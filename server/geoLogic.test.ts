@@ -284,6 +284,8 @@ describe("优化任务、内容模板与报告", () => {
       },
     ]));
     expect(reviewedReport.markdownContent).toContain("人工修订后确认海豚知道在该回答中被推荐");
+    expect(reviewedReport.markdownContent).toContain("人工修订后确认缺口为行业选型文章不足");
+    expect(reviewedReport.markdownContent).toContain("人工修订建议优先补行业选型文章");
     expect(report.markdownContent).toContain("**50 条问题**");
     expect(report.markdownContent).toContain("**10 条客户指定问题**");
     expect(report.mentionRecommendationSummary).toContain("2 条提到本企业");

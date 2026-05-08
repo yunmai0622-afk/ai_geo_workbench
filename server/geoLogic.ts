@@ -629,6 +629,20 @@ export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike
   const notRecommendedReasons = uniqueNonEmpty(analyses.filter(item => item.recommendsEnterprise !== 1).map(item => item.notRecommendedReason || item.optimizationSuggestion), 8);
   const contentGapItems = uniqueNonEmpty(analyses.map(item => item.contentGap), 10);
   const gapDiagnostics = buildContentGapDiagnostics(project, analyses);
+  const manuallyReviewedAnalyses = analyses.filter(item => Boolean((item as ReviewableAnalysis).manuallyReviewed));
+  const manualReviewEvidence = uniqueNonEmpty(
+    manuallyReviewedAnalyses.flatMap(item => [
+      item.questionText,
+      item.recommendationReason,
+      item.notRecommendedReason,
+      item.contentGap,
+      item.optimizationSuggestion,
+    ]),
+    8,
+  );
+  const manualReviewSummary = manuallyReviewedAnalyses.length > 0
+    ? `本轮有 ${manuallyReviewedAnalyses.length} 条 AI 分析经过人工修订，报告、评分、任务和模板应优先采用修订后的结论。人工修订补充的关键证据包括：${manualReviewEvidence.join("；")}。`
+    : "本轮未检测到人工修订样本，报告仅基于 AI 原始语义分析生成。";
   const sampleLimitNotice = sampleCount < 30 ? `本轮样本量为 ${sampleCount} 条，适合作为 P0 初步诊断和行动排序依据，但不应被夸大为全网结论。` : `本轮样本量为 ${sampleCount} 条，可用于观察当前 AI 搜索中的主要趋势。`;
   const coverageStats = questionStats ?? { totalQuestions: sampleCount, aiGeneratedQuestions: sampleCount, specifiedQuestions: 0 };
   const questionCoverageSummary = `当前问题库共 ${coverageStats.totalQuestions} 条问题，其中 AI 生成问题 ${coverageStats.aiGeneratedQuestions} 条，客户指定问题 ${coverageStats.specifiedQuestions} 条。`;
@@ -664,7 +678,7 @@ export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike
   const markdownContent = `# ${project.enterpriseName} GEO 诊断报告
 
 ## 1. 报告摘要
-本报告基于 ${project.enterpriseName} 的真实项目信息、已导入的 ${sampleCount} 条 AI 回答、对应 AI 语义分析结果和 GEO 评分生成，不使用虚构样本或虚构客户案例。当前 GEO 总分为 **${scoreDetail.totalScore} 分**，等级为 **${scoreDetail.visibilityLevel}**。${mentionRecommendationSummary} ${questionCoverageSummary} 最大问题不是 AI 完全误解企业，而是 AI 在多数高意向问题中没有稳定提及和推荐 ${project.enterpriseName}；最大机会是企业卖点中已经包含 ${project.coreSellingPoints}，只要把这些能力转化为官网定位、FAQ、竞品对比、案例和行业选型内容，就有机会提升 AI 可引用性。${sampleLimitNotice}
+本报告基于 ${project.enterpriseName} 的真实项目信息、已导入的 ${sampleCount} 条 AI 回答、对应 AI 语义分析结果和 GEO 评分生成，不使用虚构样本或虚构客户案例。当前 GEO 总分为 **${scoreDetail.totalScore} 分**，等级为 **${scoreDetail.visibilityLevel}**。${mentionRecommendationSummary} ${questionCoverageSummary} ${manualReviewSummary} 最大问题不是 AI 完全误解企业，而是 AI 在多数高意向问题中没有稳定提及和推荐 ${project.enterpriseName}；最大机会是企业卖点中已经包含 ${project.coreSellingPoints}，只要把这些能力转化为官网定位、FAQ、竞品对比、案例和行业选型内容，就有机会提升 AI 可引用性。${sampleLimitNotice}
 
 ## 2. 一句话结论
 ${oneSentenceConclusion}
@@ -695,6 +709,8 @@ AI 尚未充分理解的能力包括：${project.coreSellingPoints}。这些能�
 | 优先级内容缺口 | 为什么缺 | 影响哪些 AI 问题 | 影响指标 | 应该怎么补 |
 |---|---|---|---|---|
 ${gapDiagnostics.map((item, index) => `| ${index + 1}. ${item.gap} | ${item.why} | ${item.questions} | ${item.metric} | ${item.action} |`).join("\n")}
+
+本轮逐题分析与人工修订后识别的具体内容缺口包括：${contentGaps}。
 
 这些缺口共同指向一个问题：${project.enterpriseName} 需要把“业务能力”翻译成“AI 可读的公开证据”。不是简单增加宣传文案，而是让每个页面回答一个明确问题：我是谁、适合谁、解决什么、凭什么可信、和竞品怎么选。
 

@@ -132,19 +132,46 @@ const normalizeQuestionText = (value: string) => value.trim();
 
 async function insertSpecifiedQuestions(projectId: number, rows: ManualQuestionImportRow[], source: "manual" | "csv") {
   const db = await requireDb();
-  const existing = await db.select({ questionText: questions.questionText }).from(questions).where(eq(questions.projectId, projectId));
-  const known = new Set(existing.map(item => item.questionText));
+  const existing = await db.select().from(questions).where(eq(questions.projectId, projectId));
+  const known = new Map(existing.map(item => [item.questionText, item]));
   const toInsert = [];
   let skippedDuplicateCount = 0;
+  let convertedSpecifiedCount = 0;
 
   for (const row of rows) {
     const questionText = normalizeQuestionText(row.questionText);
-    if (!questionText || known.has(questionText)) {
+    if (!questionText) {
       skippedDuplicateCount += 1;
       continue;
     }
-    known.add(questionText);
-    toInsert.push({
+
+    const existingQuestion = known.get(questionText);
+    if (existingQuestion) {
+      skippedDuplicateCount += 1;
+      if (existingQuestion.source === "ai_generated" || existingQuestion.questionType !== "指定问题") {
+        await db.update(questions).set({
+          questionType: "指定问题",
+          source,
+          targetKeyword: row.targetKeyword?.trim() || existingQuestion.targetKeyword,
+          intentLevel: row.intentLevel?.trim() || existingQuestion.intentLevel || "高",
+          businessValue: row.businessValue ?? existingQuestion.businessValue ?? 5,
+          enabled: 1,
+        }).where(eq(questions.id, existingQuestion.id));
+        known.set(questionText, {
+          ...existingQuestion,
+          questionType: "指定问题",
+          source,
+          targetKeyword: row.targetKeyword?.trim() || existingQuestion.targetKeyword,
+          intentLevel: row.intentLevel?.trim() || existingQuestion.intentLevel || "高",
+          businessValue: row.businessValue ?? existingQuestion.businessValue ?? 5,
+          enabled: 1,
+        });
+        convertedSpecifiedCount += 1;
+      }
+      continue;
+    }
+
+    const inserted = {
       projectId,
       questionText,
       questionType: row.questionType ?? "指定问题" as const,
@@ -153,7 +180,9 @@ async function insertSpecifiedQuestions(projectId: number, rows: ManualQuestionI
       businessValue: row.businessValue ?? 5,
       enabled: 1,
       source,
-    });
+    };
+    known.set(questionText, inserted as typeof questions.$inferSelect);
+    toInsert.push(inserted);
   }
 
   if (toInsert.length > 0) {
@@ -165,6 +194,7 @@ async function insertSpecifiedQuestions(projectId: number, rows: ManualQuestionI
     success: true,
     addedCount: toInsert.length,
     skippedDuplicateCount,
+    convertedSpecifiedCount,
     totalCount: existing.length + toInsert.length,
   } as const;
 }
