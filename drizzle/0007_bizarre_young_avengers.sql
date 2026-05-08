@@ -1,0 +1,1 @@
+ALTER TABLE `geo_articles` MODIFY COLUMN `status` enum('待生成','已生成','待质检','质检通过','待审核','审核通过','已发布','待复测','质检未通过','审核未通过') NOT NULL DEFAULT '待质检';

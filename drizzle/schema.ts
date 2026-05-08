@@ -83,6 +83,28 @@ export const templateTypeEnum = mysqlEnum("templateType", [
   "行业选型文章模板",
 ]);
 
+export const articleTypeEnum = mysqlEnum("articleType", [
+  "官网版 GEO 文章",
+  "问答型 GEO 文章",
+  "竞品对比型 GEO 文章",
+  "行业选型型 GEO 文章",
+]);
+
+export const articleStatusEnum = mysqlEnum("status", [
+  "待生成",
+  "已生成",
+  "待质检",
+  "质检通过",
+  "待审核",
+  "审核通过",
+  "已发布",
+  "待复测",
+  "质检未通过",
+  "审核未通过",
+]);
+
+export const publishChannelEnum = mysqlEnum("publishChannel", ["系统内置 GEO 内容页"]);
+
 export const projects = mysqlTable("projects", {
   id: int("id").autoincrement().primaryKey(),
   enterpriseName: varchar("enterpriseName", { length: 255 }).notNull(),
@@ -207,6 +229,69 @@ export const reports = mysqlTable("reports", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const geoArticleTopics = mysqlTable("geo_article_topics", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  optimizationTaskId: int("optimizationTaskId"),
+  sourceAnalysisIds: json("sourceAnalysisIds").$type<number[]>().notNull(),
+  sourceQuestionIds: json("sourceQuestionIds").$type<number[]>().notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  articleType: articleTypeEnum.notNull(),
+  contentGap: text("contentGap").notNull(),
+  businessReason: text("businessReason").notNull(),
+  status: articleStatusEnum.default("待生成").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const geoArticles = mysqlTable("geo_articles", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  topicId: int("topicId").notNull(),
+  optimizationTaskId: int("optimizationTaskId"),
+  title: varchar("title", { length: 255 }).notNull(),
+  articleType: articleTypeEnum.notNull(),
+  markdownContent: text("markdownContent").notNull(),
+  thirdPartyMaterials: json("thirdPartyMaterials").$type<Record<string, string>>().notNull(),
+  status: articleStatusEnum.default("待质检").notNull(),
+  publicPath: varchar("publicPath", { length: 1000 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export const geoArticleQualityScores = mysqlTable("geo_article_quality_scores", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  articleId: int("articleId").notNull(),
+  problemMatchScore: int("problemMatchScore").default(0).notNull(),
+  evidenceScore: int("evidenceScore").default(0).notNull(),
+  structureScore: int("structureScore").default(0).notNull(),
+  originalityScore: int("originalityScore").default(0).notNull(),
+  geoCitableScore: int("geoCitableScore").default(0).notNull(),
+  complianceScore: int("complianceScore").default(0).notNull(),
+  totalScore: int("totalScore").default(0).notNull(),
+  blocked: int("blocked").default(0).notNull(),
+  blockReasons: json("blockReasons").$type<string[]>().notNull(),
+  reviewSummary: text("reviewSummary").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const geoPublishRecords = mysqlTable("geo_publish_records", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  articleId: int("articleId").notNull(),
+  optimizationTaskId: int("optimizationTaskId"),
+  publishChannel: publishChannelEnum.notNull(),
+  publishUrl: varchar("publishUrl", { length: 1000 }).notNull(),
+  publishStatus: varchar("publishStatus", { length: 64 }).default("已发布").notNull(),
+  qualityScore: int("qualityScore").default(0).notNull(),
+  needRetest: int("needRetest").default(1).notNull(),
+  notes: text("notes"),
+  publishedAt: timestamp("publishedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Project = typeof projects.$inferSelect;
@@ -225,3 +310,11 @@ export type ContentTemplate = typeof contentTemplates.$inferSelect;
 export type InsertContentTemplate = typeof contentTemplates.$inferInsert;
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = typeof reports.$inferInsert;
+export type GeoArticleTopic = typeof geoArticleTopics.$inferSelect;
+export type InsertGeoArticleTopic = typeof geoArticleTopics.$inferInsert;
+export type GeoArticle = typeof geoArticles.$inferSelect;
+export type InsertGeoArticle = typeof geoArticles.$inferInsert;
+export type GeoArticleQualityScore = typeof geoArticleQualityScores.$inferSelect;
+export type InsertGeoArticleQualityScore = typeof geoArticleQualityScores.$inferInsert;
+export type GeoPublishRecord = typeof geoPublishRecords.$inferSelect;
+export type InsertGeoPublishRecord = typeof geoPublishRecords.$inferInsert;

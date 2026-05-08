@@ -23,9 +23,10 @@ const projectNextSteps: Record<string, { completedStep: string; nextAction: stri
   analysis_done: { completedStep: "AI 语义分析已完成", nextAction: "生成 GEO 评分", buttonText: "计算评分", targetPath: "/scores" },
   score_done: { completedStep: "GEO 评分已生成", nextAction: "生成优化任务", buttonText: "生成任务", targetPath: "/tasks" },
   tasks_ready: { completedStep: "优化任务已生成", nextAction: "生成内容模板和报告", buttonText: "生成模板和报告", targetPath: "/reports" },
-  report_ready: { completedStep: "模板和报告已生成", nextAction: "查看报告 / 执行优化任务", buttonText: "查看报告", targetPath: "/reports" },
+  report_ready: { completedStep: "模板和报告已生成", nextAction: "生成 GEO 文章选题并进入质检审核", buttonText: "进入文章发布", targetPath: "/articles" },
 };
 
+type ProjectStepHint = { completedStep: string; nextAction: string; buttonText: string; targetPath: string };
 type ProjectFormState = {
   enterpriseName: string;
   industry: string;
@@ -53,6 +54,17 @@ const emptyProjectForm: ProjectFormState = {
 const splitList = (value: string) => value.split(/[，,\n]/).map(item => item.trim()).filter(Boolean);
 const joinList = (value: string[] | null | undefined) => (value ?? []).join("，");
 const nowLocalValue = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const downloadTextFile = (filename: string, content: string, mimeType: string) => {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+};
+const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const materialToHtml = (title: string, content: string) => `<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1" />\n<title>${escapeHtml(title)}</title>\n</head>\n<body>\n<article>\n${escapeHtml(content).split("\n").map(line => line.trim() ? `<p>${line}</p>` : "").join("\n")}\n</article>\n</body>\n</html>`;
 
 function PageHeader({ title, description }: { title: string; description: string }) {
   return (
@@ -143,10 +155,10 @@ function useSelectedProject() {
   return { projects: projectsQuery.data ?? [], selectedProject, selectedProjectId, setProjectId, projectInput, isLoading: projectsQuery.isLoading };
 }
 
-function ProjectProgressCard({ project }: { project?: { status: string | null } }) {
+function ProjectProgressCard({ project, articleHint }: { project?: { status: string | null }; articleHint?: ProjectStepHint }) {
   if (!project) return null;
   const status = project.status ?? "created";
-  const next = projectNextSteps[status] ?? projectNextSteps.created;
+  const next = articleHint ?? projectNextSteps[status] ?? projectNextSteps.created;
   return (
     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
@@ -159,18 +171,37 @@ function ProjectProgressCard({ project }: { project?: { status: string | null } 
   );
 }
 
+function resolveArticleStepHint(tasks: Array<{ id: number; status?: string | null }>, topics: Array<{ id: number }>, articles: Array<{ id: number; status: string | null }>, records: Array<{ id: number }>): ProjectStepHint | undefined {
+  const hasTasks = tasks.length > 0;
+  const hasTopics = topics.length > 0;
+  const hasArticles = articles.length > 0;
+  if (hasTasks && !hasTopics) return { completedStep: "优化任务已生成", nextAction: "有优化任务但无文章选题：生成 GEO 文章选题", buttonText: "生成文章选题", targetPath: "/articles" };
+  if (hasTopics && !hasArticles) return { completedStep: "GEO 文章选题已生成", nextAction: "有选题但无文章：生成 GEO 文章", buttonText: "生成 GEO 文章", targetPath: "/articles" };
+  if (articles.some(article => article.status === "已生成" || article.status === "待质检")) return { completedStep: "GEO 文章已生成", nextAction: "有文章但未质检：进行 GEO 内容质量评分", buttonText: "进行质量评分", targetPath: "/articles" };
+  if (articles.some(article => article.status === "待审核" || article.status === "质检通过")) return { completedStep: "GEO 内容质检通过", nextAction: "质检通过但未审核：人工审核文章", buttonText: "人工审核文章", targetPath: "/articles" };
+  if (articles.some(article => article.status === "审核通过")) return { completedStep: "文章已审核通过", nextAction: "审核通过但未发布：发布到 GEO 内容页", buttonText: "发布到内容页", targetPath: "/articles" };
+  if (articles.some(article => article.status === "已发布") || records.length > 0) return { completedStep: "GEO 文章已发布", nextAction: "已发布：等待复测", buttonText: "查看发布记录", targetPath: "/articles" };
+  return undefined;
+}
+
 function ProjectSelector({ selectedProjectId, setProjectId, projects }: { selectedProjectId?: number; setProjectId: (id: number | undefined) => void; projects: Array<{ id: number; enterpriseName: string; industry: string; status: string | null }> }) {
+  const selectedProject = projects.find(project => project.id === selectedProjectId);
+  const hintInput = { projectId: selectedProjectId };
+  const tasksHintQuery = trpc.geo.tasks.list.useQuery(hintInput, { enabled: Boolean(selectedProjectId && selectedProject?.status === "report_ready") });
+  const topicsHintQuery = trpc.geo.articles.topics.list.useQuery(hintInput, { enabled: Boolean(selectedProjectId && selectedProject?.status === "report_ready") });
+  const articlesHintQuery = trpc.geo.articles.list.useQuery(hintInput, { enabled: Boolean(selectedProjectId && selectedProject?.status === "report_ready") });
+  const recordsHintQuery = trpc.geo.articles.publishRecords.useQuery(hintInput, { enabled: Boolean(selectedProjectId && selectedProject?.status === "report_ready") });
+  const articleHint = selectedProject?.status === "report_ready" ? resolveArticleStepHint(tasksHintQuery.data ?? [], topicsHintQuery.data ?? [], articlesHintQuery.data ?? [], recordsHintQuery.data ?? []) : undefined;
   if (projects.length === 0) {
     return <EmptyState title="请先创建企业项目" description="后续问题生成、回答导入、语义分析和 GEO 评分都必须基于真实企业项目进行。" />;
   }
-  const selectedProject = projects.find(project => project.id === selectedProjectId);
   return (
     <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
       <Select label="当前企业项目" value={selectedProjectId ? String(selectedProjectId) : "none"} onChange={value => setProjectId(value === "none" ? undefined : Number(value))}>
         <option value="none">请选择项目</option>
         {projects.map(project => <option key={project.id} value={project.id}>{project.enterpriseName}｜{project.industry}</option>)}
       </Select>
-      <ProjectProgressCard project={selectedProject} />
+      <ProjectProgressCard project={selectedProject} articleHint={articleHint} />
     </div>
   );
 }
@@ -723,3 +754,135 @@ export function ReportsPage() {
     </div>
   );
 }
+
+type QualityScoreView = {
+  articleId: number;
+  problemMatchScore: number;
+  evidenceScore: number;
+  structureScore: number;
+  originalityScore: number;
+  geoCitableScore: number;
+  complianceScore: number;
+  totalScore: number;
+  blocked: number;
+  blockReasons: string[];
+  reviewSummary: string;
+  createdAt: Date | string;
+};
+
+const articleStatusStyles: Record<string, string> = {
+  待生成: "bg-slate-100 text-slate-700",
+  已生成: "bg-blue-50 text-blue-700",
+  待质检: "bg-indigo-50 text-indigo-700",
+  质检通过: "bg-emerald-50 text-emerald-700",
+  质检未通过: "bg-red-50 text-red-700",
+  待审核: "bg-amber-50 text-amber-700",
+  审核通过: "bg-green-50 text-green-700",
+  审核未通过: "bg-red-50 text-red-700",
+  已发布: "bg-purple-50 text-purple-700",
+  待复测: "bg-cyan-50 text-cyan-700",
+};
+
+const qualityDimensions: Array<[keyof QualityScoreView, string, number]> = [
+  ["problemMatchScore", "问题匹配度", 20],
+  ["evidenceScore", "内容证据强度", 20],
+  ["structureScore", "结构化程度", 15],
+  ["originalityScore", "原创与信息增量", 15],
+  ["geoCitableScore", "GEO 可引用性", 15],
+  ["complianceScore", "合规与可信度", 15],
+];
+
+const thirdPartyPlatformLabels: Record<string, string> = {
+  xiaohongshu: "小红书",
+  zhihu: "知乎",
+  wechat: "公众号",
+  baijiahao: "百家号",
+  toutiao: "头条号",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  return <span className={`rounded-full px-2 py-1 text-xs font-medium ${articleStatusStyles[status] ?? "bg-slate-100 text-slate-700"}`}>{status}</span>;
+}
+
+function scoreForArticle(scores: QualityScoreView[], articleId: number) {
+  return scores.find(score => score.articleId === articleId) ?? null;
+}
+
+function publicUrl(path?: string | null) {
+  if (!path) return "";
+  return `${window.location.origin}${path}`;
+}
+
+export function ArticlesPage() {
+  const utils = trpc.useUtils();
+  const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();
+  const topicsQuery = trpc.geo.articles.topics.list.useQuery(projectInput);
+  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput);
+  const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput);
+  const recordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput);
+  const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput);
+  const generateTopics = trpc.geo.articles.topics.generate.useMutation({
+    onSuccess: async result => { await utils.geo.articles.topics.list.invalidate(); toast.success(`已生成 ${result.count} 个文章选题`); },
+    onError: error => toast.error(error.message),
+  });
+  const generateArticle = trpc.geo.articles.generate.useMutation({
+    onSuccess: async () => { await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.topics.list.invalidate()]); toast.success("文章初稿已生成"); },
+    onError: error => toast.error(error.message),
+  });
+  const qualityCheck = trpc.geo.articles.qualityCheck.useMutation({
+    onSuccess: async result => { await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.latestQualityScores.invalidate()]); toast[result.success ? "success" : "error"](result.success ? "质检通过，可进入人工审核" : "质检未通过，已阻断发布"); },
+    onError: error => toast.error(error.message),
+  });
+  const auditArticle = trpc.geo.articles.audit.useMutation({
+    onSuccess: async () => { await utils.geo.articles.list.invalidate(); toast.success("人工审核状态已更新"); },
+    onError: error => toast.error(error.message),
+  });
+  const publishArticle = trpc.geo.articles.publish.useMutation({
+    onSuccess: async result => { await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.publishRecords.invalidate(), utils.geo.tasks.list.invalidate()]); toast.success(`已发布到内置内容页：${result.publicPath}`); },
+    onError: error => toast.error(error.message),
+  });
+
+  const qualityScores = (scoresQuery.data ?? []) as QualityScoreView[];
+  const taskById = new Map((tasksQuery.data ?? []).map(task => [task.id, task]));
+
+  return (
+    <div>
+      <PageHeader title="文章发布" description="基于真实诊断数据生成 GEO 文章选题与初稿，经过 100 分质量评分和人工审核后，发布到系统内置 GEO 内容页；小红书、知乎、公众号、百家号和头条号仅生成可复制素材，不会自动发布。" />
+      <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} />
+      {selectedProjectId ? <div className="space-y-5">
+        <Card>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-950">文章选题生成</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">选题来源于客户问题、AI 未推荐原因、内容缺口、优化任务和人工修订后的分析结论；不会生成无来源文章。</p>
+            </div>
+            <Button disabled={generateTopics.isPending} onClick={() => generateTopics.mutate({ projectId: selectedProjectId })}>{generateTopics.isPending ? "正在生成..." : "生成文章选题"}</Button>
+          </div>
+          {(topicsQuery.data ?? []).length === 0 ? <div className="mt-5"><EmptyState title="暂无文章选题" description="请先完成分析、评分和优化任务，再生成文章选题。" /></div> : <div className="mt-5 grid gap-4 lg:grid-cols-2">{(topicsQuery.data ?? []).map(topic => {
+            const relatedTask = topic.optimizationTaskId ? taskById.get(topic.optimizationTaskId) : null;
+            return <div key={topic.id} className="rounded-lg border border-slate-200 p-4"><div className="flex items-start justify-between gap-3"><div><StatusBadge status={topic.status} /><h3 className="mt-2 font-semibold text-slate-950">{topic.title}</h3><p className="mt-1 text-xs text-slate-500">{topic.articleType}｜关联任务：{relatedTask?.taskName ?? "未匹配"}</p></div><Button variant="secondary" disabled={generateArticle.isPending || topic.status === "已生成"} onClick={() => generateArticle.mutate({ topicId: topic.id })}>{topic.status === "已生成" ? "已生成" : "生成初稿"}</Button></div><p className="mt-3 text-sm leading-6 text-slate-600"><b>内容缺口：</b>{topic.contentGap}</p><p className="mt-2 text-sm leading-6 text-slate-600"><b>业务理由：</b>{topic.businessReason}</p></div>;
+          })}</div>}
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 text-lg font-semibold text-slate-950">文章质检、审核与发布</h2>
+          {(articlesQuery.data ?? []).length === 0 ? <EmptyState title="暂无文章初稿" description="请先从文章选题生成初稿。初稿会展示来源、状态、质量评分和第三方平台素材。" /> : null}
+          <div className="space-y-5">{(articlesQuery.data ?? []).map(article => {
+            const score = scoreForArticle(qualityScores, article.id);
+            const materials = (article.thirdPartyMaterials ?? {}) as Record<string, string>;
+            return <div key={article.id} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div><StatusBadge status={article.status} /><h3 className="mt-2 text-lg font-semibold text-slate-950">{article.title}</h3><p className="mt-1 text-xs text-slate-500">{article.articleType}｜文章 ID：{article.id}｜公开路径：{article.publicPath ? publicUrl(article.publicPath) : "尚未发布"}</p></div><div className="flex flex-wrap gap-2"><Button variant="secondary" disabled={qualityCheck.isPending || !(article.status === "已生成" || article.status === "待质检")} onClick={() => qualityCheck.mutate({ articleId: article.id })}>质检评分</Button><Button variant="secondary" disabled={auditArticle.isPending || !score || Boolean(score.blocked) || score.totalScore < 80 || !(article.status === "待审核" || article.status === "质检通过")} onClick={() => auditArticle.mutate({ articleId: article.id, approved: true, note: "人工确认内容可发布" })}>审核通过</Button><Button variant="danger" disabled={auditArticle.isPending || !(article.status === "待审核" || article.status === "质检通过")} onClick={() => auditArticle.mutate({ articleId: article.id, approved: false, note: "人工审核退回" })}>审核退回</Button><Button disabled={publishArticle.isPending || article.status !== "审核通过"} onClick={() => publishArticle.mutate({ articleId: article.id })}>发布到内置页</Button></div></div>
+              {score ? <div className="mt-4 rounded-lg bg-slate-50 p-4"><div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-medium text-slate-900">质量总分：<span className={score.totalScore >= 80 && !score.blocked ? "text-emerald-700" : "text-red-700"}>{score.totalScore}</span> / 100</p><p className="mt-1 text-xs text-slate-500">{score.blocked ? "存在阻断风险，不能发布" : score.totalScore >= 80 ? "达到发布门槛，可进入审核" : "低于 80 分，不能发布"}</p></div><p className="text-xs text-slate-500">评分时间：{new Date(score.createdAt).toLocaleString()}</p></div><div className="mt-3 grid gap-2 md:grid-cols-3">{qualityDimensions.map(([key, label, max]) => <div key={String(key)} className="rounded-lg border border-slate-200 bg-white p-3"><p className="text-xs text-slate-500">{label} / {max}</p><p className="mt-1 text-xl font-semibold text-slate-900">{Number(score[key])}</p></div>)}</div><p className="mt-3 text-sm leading-6 text-slate-600"><b>质检摘要：</b>{score.reviewSummary}</p>{score.blockReasons.length > 0 ? <p className="mt-2 text-sm leading-6 text-red-700"><b>阻断原因：</b>{score.blockReasons.join("；")}</p> : null}</div> : <div className="mt-4"><EmptyState title="尚未质检" description="发布前必须先完成 100 分质量评分，且总分不低于 80 分、无阻断风险。" /></div>}
+              <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr]"><pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-4 text-sm leading-6 text-slate-100">{article.markdownContent}</pre><div className="rounded-lg border border-slate-200 p-4"><h4 className="font-semibold text-slate-950">第三方平台素材</h4><p className="mt-1 text-sm leading-6 text-slate-600">以下内容仅供复制到对应平台人工发布，系统不会自动发布。</p><div className="mt-3 space-y-2">{Object.entries(materials).map(([key, value]) => <div key={key} className="rounded-lg bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-slate-900">{thirdPartyPlatformLabels[key] ?? key}</p><Button variant="secondary" onClick={() => navigator.clipboard.writeText(value).then(() => toast.success("已复制平台素材"))}>复制</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${key}.md`, value, "text/markdown;charset=utf-8")}>导出 Markdown</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${key}.html`, materialToHtml(`${article.title}-${key}`, value), "text/html;charset=utf-8")}>导出 HTML</Button></div><p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-5 text-slate-600">{value}</p></div>)}</div></div></div>
+            </div>;
+          })}</div>
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 text-lg font-semibold text-slate-950">发布记录</h2>
+          {(recordsQuery.data ?? []).length === 0 ? <EmptyState title="暂无发布记录" description="文章通过质检与人工审核后发布到内置 GEO 内容页，系统会在这里记录公开链接和待复测状态。" /> : <div className="space-y-3">{(recordsQuery.data ?? []).map(record => <div key={record.id} className="rounded-lg border border-slate-200 p-4"><div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"><div><p className="font-medium text-slate-950">{record.publishChannel}</p><p className="mt-1 text-sm text-slate-600">质量分：{record.qualityScore}｜状态：{record.publishStatus}｜待复测：{record.needRetest ? "是" : "否"}</p><p className="mt-1 text-sm text-slate-600">{record.notes}</p></div><Button variant="secondary" onClick={() => navigator.clipboard.writeText(publicUrl(record.publishUrl)).then(() => toast.success("已复制公开链接"))}>复制公开链接</Button></div></div>)}</div>}
+        </Card>
+      </div> : null}
+    </div>
+  );
+}
+

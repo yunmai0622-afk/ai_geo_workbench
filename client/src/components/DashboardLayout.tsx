@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Brain, Building2, ClipboardList, FileText, Gauge, HelpCircle, LogOut, PanelLeft, Upload } from "lucide-react";
+import { Brain, Building2, ClipboardList, FilePenLine, FileText, Gauge, HelpCircle, LogOut, PanelLeft, Upload } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -35,6 +35,7 @@ const menuItems = [
   { icon: Gauge, label: "GEO 评分", path: "/scores" },
   { icon: ClipboardList, label: "优化工作台", path: "/tasks" },
   { icon: FileText, label: "内容模板与报告", path: "/reports" },
+  { icon: FilePenLine, label: "文章发布", path: "/articles" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

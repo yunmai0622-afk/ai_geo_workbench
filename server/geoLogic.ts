@@ -35,7 +35,7 @@ export const projectNextSteps: Record<ProjectStatus, { completedStep: string; ne
   analysis_done: { completedStep: "AI 语义分析已完成", nextAction: "生成 GEO 评分", buttonText: "计算评分", targetPath: "/scores" },
   score_done: { completedStep: "GEO 评分已生成", nextAction: "生成优化任务", buttonText: "生成任务", targetPath: "/tasks" },
   tasks_ready: { completedStep: "优化任务已生成", nextAction: "生成内容模板和报告", buttonText: "生成模板和报告", targetPath: "/reports" },
-  report_ready: { completedStep: "模板和报告已生成", nextAction: "查看报告 / 执行优化任务", buttonText: "查看报告", targetPath: "/reports" },
+  report_ready: { completedStep: "模板和报告已生成", nextAction: "生成 GEO 文章选题并进入质检审核", buttonText: "进入文章发布", targetPath: "/articles" },
 };
 
 export type AnalysisLike = {

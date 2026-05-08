@@ -5,9 +5,10 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AnalysisPage, ProjectsPage, QuestionsPage, ReportsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
+import { AnalysisPage, ArticlesPage, ProjectsPage, QuestionsPage, ReportsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
+import GeoPublicContentPage from "./pages/GeoPublicContent";
 
-function Router() {
+function PrivateRoutes() {
   return (
     <DashboardLayout>
       <Switch>
@@ -18,10 +19,20 @@ function Router() {
         <Route path="/scores" component={ScoresPage} />
         <Route path="/tasks" component={TasksPage} />
         <Route path="/reports" component={ReportsPage} />
+        <Route path="/articles" component={ArticlesPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
     </DashboardLayout>
+  );
+}
+
+function Router() {
+  return (
+    <Switch>
+      <Route path="/geo/content/:projectId/:articleId" component={GeoPublicContentPage} />
+      <Route component={PrivateRoutes} />
+    </Switch>
   );
 }
 

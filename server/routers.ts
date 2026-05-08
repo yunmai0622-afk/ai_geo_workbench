@@ -11,6 +11,10 @@ import {
   aiResponses,
   analysisResults,
   contentTemplates,
+  geoArticleQualityScores,
+  geoArticleTopics,
+  geoArticles,
+  geoPublishRecords,
   geoScores,
   optimizationTasks,
   projects,
@@ -34,6 +38,15 @@ import {
   taskTypes,
   templateTypes,
 } from "./geoLogic";
+import {
+  articleTypes,
+  canAuditArticle,
+  canPublishArticle,
+  generateGeoArticleDraft,
+  generateGeoArticleTopics,
+  scoreGeoArticleQuality,
+  type ArticleStatus,
+} from "./geoArticleLogic";
 
 const projectInput = z.object({
   enterpriseName: z.string().min(1, "请输入企业名称"),
@@ -612,6 +625,154 @@ const geoRouter = router({
       await db.insert(reports).values({ projectId: input.projectId, geoScoreId: latestScore[0].id, ...report });
       await updateProjectStatus(input.projectId, "report_ready");
       return { success: true, report } as const;
+    }),
+  }),
+
+  articles: router({
+    topics: router({
+      list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+        const db = await requireDb();
+        if (!input.projectId) return [];
+        return db.select().from(geoArticleTopics).where(eq(geoArticleTopics.projectId, input.projectId)).orderBy(desc(geoArticleTopics.createdAt));
+      }),
+      generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+        const db = await requireDb();
+        const project = await getProjectOrThrow(input.projectId);
+        const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, input.projectId));
+        const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
+        const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, input.projectId));
+        const tasks = await db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
+        const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
+        const generated = generateGeoArticleTopics({ project, questions: projectQuestions, analyses: analysesWithQuestions, tasks });
+        await db.delete(geoArticleTopics).where(eq(geoArticleTopics.projectId, input.projectId));
+        await db.insert(geoArticleTopics).values(generated.map(topic => ({ ...topic, articleType: topic.articleType, status: topic.status })));
+        return { success: true, count: generated.length } as const;
+      }),
+    }),
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+      const db = await requireDb();
+      if (!input.projectId) return [];
+      return db.select().from(geoArticles).where(eq(geoArticles.projectId, input.projectId)).orderBy(desc(geoArticles.createdAt));
+    }),
+    latestQualityScores: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+      const db = await requireDb();
+      if (!input.projectId) return [];
+      return db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.projectId, input.projectId)).orderBy(desc(geoArticleQualityScores.createdAt));
+    }),
+    publishRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+      const db = await requireDb();
+      if (!input.projectId) return [];
+      return db.select().from(geoPublishRecords).where(eq(geoPublishRecords.projectId, input.projectId)).orderBy(desc(geoPublishRecords.publishedAt));
+    }),
+    generate: protectedProcedure.input(z.object({ topicId: z.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb();
+      const topicRows = await db.select().from(geoArticleTopics).where(eq(geoArticleTopics.id, input.topicId)).limit(1);
+      const topic = topicRows[0];
+      if (!topic) throw new TRPCError({ code: "NOT_FOUND", message: "文章选题不存在" });
+      const project = await getProjectOrThrow(topic.projectId);
+      const taskRows = topic.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, topic.optimizationTaskId)).limit(1) : [];
+      const task = taskRows[0];
+      if (!task) throw new TRPCError({ code: "BAD_REQUEST", message: "文章选题必须绑定优化任务，不能生成无来源文章" });
+      const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, topic.projectId));
+      const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, topic.projectId));
+      const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, topic.projectId));
+      const sourceQuestionIds = Array.isArray(topic.sourceQuestionIds) ? topic.sourceQuestionIds : [];
+      const sourceAnalysisIds = Array.isArray(topic.sourceAnalysisIds) ? topic.sourceAnalysisIds : [];
+      const questionScope = projectQuestions.filter(question => sourceQuestionIds.includes(question.id));
+      const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
+      const analysisScope = analysesWithQuestions.filter(analysis => sourceAnalysisIds.includes(analysis.id));
+      const draft = generateGeoArticleDraft({
+        project,
+        topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
+        task,
+        questions: questionScope.length > 0 ? questionScope : projectQuestions,
+        analyses: analysisScope.length > 0 ? analysisScope : analysesWithQuestions,
+      });
+      const inserted = await db.insert(geoArticles).values(draft).$returningId();
+      await db.update(geoArticleTopics).set({ status: "已生成" }).where(eq(geoArticleTopics.id, topic.id));
+      return { success: true, articleId: inserted[0]?.id ?? 0 } as const;
+    }),
+    qualityCheck: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb();
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+      if (!(article.status === "已生成" || article.status === "待质检")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "只有已生成但未质检的文章可以进行质量评分" });
+      }
+      const project = await getProjectOrThrow(article.projectId);
+      const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, article.projectId));
+      const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, article.projectId));
+      const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, article.projectId));
+      const taskRows = article.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, article.optimizationTaskId)).limit(1) : [];
+      const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
+      const quality = scoreGeoArticleQuality({ article, project, questions: projectQuestions, analyses: analysesWithQuestions, task: taskRows[0] ?? null });
+      await db.insert(geoArticleQualityScores).values({
+        projectId: article.projectId,
+        articleId: article.id,
+        problemMatchScore: quality.problemMatchScore,
+        evidenceScore: quality.evidenceScore,
+        structureScore: quality.structureScore,
+        originalityScore: quality.originalityScore,
+        geoCitableScore: quality.geoCitableScore,
+        complianceScore: quality.complianceScore,
+        totalScore: quality.totalScore,
+        blocked: quality.blocked ? 1 : 0,
+        blockReasons: quality.blockReasons,
+        reviewSummary: quality.reviewSummary,
+      });
+      await db.update(geoArticles).set({ status: quality.blocked ? "质检未通过" : "待审核" }).where(eq(geoArticles.id, article.id));
+      return { success: !quality.blocked, quality } as const;
+    }),
+    audit: protectedProcedure.input(z.object({ articleId: z.number().int().positive(), approved: z.boolean(), note: z.string().optional().default("") })).mutation(async ({ input }) => {
+      const db = await requireDb();
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
+      const latestScore = scoreRows[0];
+      const canAudit = canAuditArticle(article.status as ArticleStatus, latestScore ? { totalScore: latestScore.totalScore, blocked: Boolean(latestScore.blocked) } : null);
+      if (!canAudit) throw new TRPCError({ code: "BAD_REQUEST", message: "未质检通过或低于 80 分的文章不能审核" });
+      await db.update(geoArticles).set({ status: input.approved ? "审核通过" : "审核未通过" }).where(eq(geoArticles.id, article.id));
+      return { success: true } as const;
+    }),
+    publish: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb();
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+      if (!canPublishArticle(article.status as ArticleStatus)) throw new TRPCError({ code: "BAD_REQUEST", message: "未审核通过的文章不能发布" });
+      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
+      const latestScore = scoreRows[0];
+      if (!latestScore || latestScore.blocked || latestScore.totalScore < 80) throw new TRPCError({ code: "BAD_REQUEST", message: "文章质量分低于 80 或存在禁止发布风险，不能发布" });
+      const publicPath = `/geo/content/${article.projectId}/${article.id}`;
+      await db.update(geoArticles).set({ status: "已发布", publicPath }).where(eq(geoArticles.id, article.id));
+      if (article.optimizationTaskId) {
+        await db.update(optimizationTasks).set({ status: "retest", publishedUrl: publicPath, needRetest: 1 }).where(eq(optimizationTasks.id, article.optimizationTaskId));
+      }
+      await db.insert(geoPublishRecords).values({
+        projectId: article.projectId,
+        articleId: article.id,
+        optimizationTaskId: article.optimizationTaskId,
+        publishChannel: "系统内置 GEO 内容页",
+        publishUrl: publicPath,
+        publishStatus: "已发布",
+        qualityScore: latestScore.totalScore,
+        needRetest: 1,
+        notes: "人工审核通过后发布到系统内置 GEO 内容页，等待复测。",
+      });
+      return { success: true, publicPath } as const;
+    }),
+    publicContent: publicProcedure.input(z.object({ projectId: z.number().int().positive(), articleId: z.number().int().positive() })).query(async ({ input }) => {
+      const db = await requireDb();
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article || article.projectId !== input.projectId || !(article.status === "已发布" || article.status === "待复测")) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "内容不存在或尚未发布" });
+      }
+      const project = await getProjectOrThrow(article.projectId);
+      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
+      return { article, project, qualityScore: scoreRows[0] ?? null } as const;
     }),
   }),
 });
