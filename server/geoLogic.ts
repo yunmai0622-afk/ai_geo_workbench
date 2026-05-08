@@ -406,7 +406,7 @@ ${homepageTask ? `${homepageTask.taskName}：${homepageTask.generationReason}。
 
 ${projectContextBlock}
 
-> 本 FAQ 用于补齐 AI 可引用的问答语料。所有回答都应结合 ${project.enterpriseName} 的行业、目标客户、核心卖点和竞品语境，不能填写假链接或未授权案例。若需要放置链接，请使用：“暂无真实链接，请发布后填写。”
+> 本 FAQ 用于补齐 AI 可引用的问答语料。所有回答都应结合 ${project.enterpriseName} 的行业、目标客户、核心卖点和竞品语境，不能填写未经核验的链接或未授权案例。若需要放置链接，请使用：“暂无真实链接，请发布后填写。”
 
 ${faqItems.map(([question, answer], index) => `## ${index + 1}. ${question}\n${answer}`).join("\n\n")}
 
