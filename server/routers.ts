@@ -414,10 +414,21 @@ const geoRouter = router({
       if (!latestScore[0]) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先计算 GEO 评分，再生成诊断报告" });
       }
+      const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, input.projectId));
+      const questionTextByResponseId = new Map(responses.map(response => [response.id, response.questionText]));
+      const analysesWithQuestions = analyses.map(analysis => ({
+        ...analysis,
+        questionText: questionTextByResponseId.get(analysis.aiResponseId) ?? null,
+      }));
       const report = generateReportMarkdown(project, {
+        aiVisibilityScore: latestScore[0].aiVisibilityScore,
+        aiRecommendationScore: latestScore[0].aiRecommendationScore,
+        competitorWinScore: latestScore[0].competitorWinScore,
+        cognitionAccuracyScore: latestScore[0].cognitionAccuracyScore,
+        contentAssetScore: latestScore[0].contentAssetScore,
         totalScore: latestScore[0].totalScore,
         visibilityLevel: latestScore[0].visibilityLevel,
-      }, analyses);
+      }, analysesWithQuestions);
       await db.delete(reports).where(eq(reports.projectId, input.projectId));
       await db.insert(reports).values({ projectId: input.projectId, geoScoreId: latestScore[0].id, ...report });
       await updateProjectStatus(input.projectId, "report_ready");
