@@ -706,7 +706,13 @@ const geoRouter = router({
       const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, article.projectId));
       const taskRows = article.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, article.optimizationTaskId)).limit(1) : [];
       const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
-      const quality = scoreGeoArticleQuality({ article, project, questions: projectQuestions, analyses: analysesWithQuestions, task: taskRows[0] ?? null });
+      const quality = scoreGeoArticleQuality({
+        article: article as unknown as Parameters<typeof scoreGeoArticleQuality>[0]["article"],
+        project,
+        questions: projectQuestions,
+        analyses: analysesWithQuestions,
+        task: taskRows[0] ?? null,
+      });
       await db.insert(geoArticleQualityScores).values({
         projectId: article.projectId,
         articleId: article.id,

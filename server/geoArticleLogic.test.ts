@@ -6,6 +6,9 @@ import {
   generateGeoArticleDraft,
   generateGeoArticleTopics,
   scoreGeoArticleQuality,
+  sortContentGapAnalysesByPriority,
+  validateGenerationBasis,
+  validateGeoCollectableStructure,
   type P11AnalysisLike,
   type P11ProjectLike,
   type P11QuestionLike,
@@ -108,6 +111,7 @@ describe("P1.1 GEO article generation", () => {
       expect(topic.sourceQuestionIds.length).toBeGreaterThan(0);
       expect(topic.businessReason).toContain("客户指定问题");
     });
+    expect(topics.length).toBeLessThanOrEqual(10);
   });
 
   it("scores a generated article above the publish threshold when it cites evidence and remains compliant", () => {
@@ -116,21 +120,98 @@ describe("P1.1 GEO article generation", () => {
     const score = scoreGeoArticleQuality({ article: draft, project, questions, analyses, task: tasks[0] });
     expect(score.totalScore).toBeGreaterThanOrEqual(80);
     expect(draft.status).toBe("待质检");
+    expect(draft.generationBasis.customerQuestion).toContain("制造企业如何选择");
+    expect(draft.generationBasis.contentGap).toContain("缺少");
+    expect(draft.generationBasis.optimizationTask).toBe(tasks[0].taskName);
+    expect(draft.generationBasis.notRecommendedReason).toContain("公开内容");
+    expect(draft.generationBasis.competitorGap).toContain("云答科技");
+    expect(draft.citableSnippets.length).toBeGreaterThanOrEqual(3);
+    expect(draft.citableSnippets.length).toBeLessThanOrEqual(5);
+    expect(validateGeoCollectableStructure(draft.markdownContent, draft.citableSnippets, draft.generationBasis)).toEqual([]);
+    expect(draft.markdownContent).toContain("## 摘要");
+    expect(draft.markdownContent).toContain("## 核心问题回答");
+    expect(draft.markdownContent).toContain("## 适合客户");
+    expect(draft.markdownContent).toContain("## 不适合客户");
+    expect(draft.markdownContent).toContain("## 竞品/方案对比");
+    expect(draft.markdownContent).toContain("## FAQ");
+    expect(draft.markdownContent).toContain("## 结论");
+    expect(draft.markdownContent).toContain("## 行动引导");
+    expect(draft.markdownContent).toContain("## 更新时间");
+    expect(draft.markdownContent).toContain("## 企业实体信息");
     expect(score.blocked).toBe(false);
     expect(canAuditArticle("待质检", score)).toBe(false);
     expect(canAuditArticle("待审核", score)).toBe(true);
     expect(canPublishArticle("待审核")).toBe(false);
     expect(canPublishArticle("审核通过")).toBe(true);
-    expect(Object.keys(draft.thirdPartyMaterials)).toEqual(["官网版", "公众号版", "知乎回答版", "小红书笔记版", "百家号/头条号版"]);
+    expect(Object.keys(draft.thirdPartyMaterials)).toEqual(["GEO 内容页版", "官网版", "公众号长文版", "知乎回答版", "小红书笔记版", "百家号/头条号版"]);
+    expect(draft.thirdPartyMaterials["GEO 内容页版"]).toContain("## 摘要");
+    expect(draft.thirdPartyMaterials["公众号长文版"]).toContain("## 生成依据");
+    expect(draft.thirdPartyMaterials["知乎回答版"]).toContain("可引用短答案");
   });
 
   it("blocks publishing for low quality or forbidden content", () => {
     const forbidden = detectForbiddenArticleContent("清源智能保证排名第一，参考 https://example.com/placeholder");
     expect(forbidden.length).toBeGreaterThan(0);
     const score = scoreGeoArticleQuality({ article: { title: "短文", markdownContent: "保证排名，https://example.com" }, project, questions, analyses, task: tasks[0] });
+    const noBasisScore = scoreGeoArticleQuality({ article: { title: "有标题", markdownContent: "## 摘要\n缺少生成依据的文章。" }, project, questions, analyses, task: tasks[0] });
     expect(score.blocked).toBe(true);
     expect(score.totalScore).toBeLessThan(80);
+    expect(noBasisScore.blocked).toBe(true);
+    expect(noBasisScore.blockReasons.join("；")).toContain("生成依据");
     expect(canAuditArticle("质检通过", score)).toBe(false);
     expect(canPublishArticle("质检通过")).toBe(false);
+  });
+
+  it("rejects article generation when a mandatory generation basis field is missing", () => {
+    const [topic] = generateGeoArticleTopics({ project, questions, analyses, tasks });
+    expect(() => validateGenerationBasis({
+      customerQuestionId: 1,
+      customerQuestion: questions[0].questionText,
+      contentGap: analyses[0].contentGap ?? "",
+      optimizationTaskId: tasks[0].id,
+      optimizationTask: tasks[0].taskName,
+      notRecommendedReason: analyses[0].notRecommendedReason ?? "",
+      competitorGap: "",
+      competitorNames: project.competitorNames,
+      sourceAnalysisIds: [analyses[0].id],
+      sourceQuestionIds: [questions[0].id],
+      manualReviewConclusion: "人工确认。",
+    })).toThrow(/竞品差距/);
+    expect(() => generateGeoArticleDraft({ project, topic: { ...topic, id: 32 }, task: tasks[0], questions: [], analyses })).toThrow(/客户指定问题/);
+  });
+
+  it("orders default core article topics by content gap priority together with task priority", () => {
+    const priorityAnalyses: P11AnalysisLike[] = [
+      {
+        ...analyses[0],
+        id: 31,
+        questionText: questions[2].questionText,
+        manuallyReviewed: 0,
+        contentGap: "低优先级 FAQ 细节缺口",
+        notRecommendedReason: "低优先级问题没有形成购买决策阻断",
+        recommendedCompetitors: ["智服平台"],
+      },
+      {
+        ...analyses[1],
+        id: 32,
+        questionText: questions[0].questionText,
+        manuallyReviewed: 1,
+        contentGap: "高优先级行业选型与竞品差距缺口",
+        notRecommendedReason: "高价值客户指定问题下竞品更容易被 AI 推荐",
+        recommendedCompetitors: ["云答科技"],
+      },
+    ];
+    const priorityTasks: P11TaskLike[] = [
+      { ...tasks[2], id: 41, priority: "P2", taskName: "补齐低优先级 FAQ" },
+      { ...tasks[0], id: 42, priority: "P0", taskName: "补齐高优先级行业选型页" },
+    ];
+    const orderedGaps = sortContentGapAnalysesByPriority(priorityAnalyses, questions);
+    expect(orderedGaps[0].contentGap).toBe("高优先级行业选型与竞品差距缺口");
+    const topics = generateGeoArticleTopics({ project, questions, analyses: priorityAnalyses, tasks: priorityTasks });
+    expect(topics.length).toBeGreaterThanOrEqual(5);
+    expect(topics.length).toBeLessThanOrEqual(10);
+    expect(topics[0].optimizationTaskId).toBe(42);
+    expect(topics[0].contentGap).toContain("高优先级行业选型与竞品差距缺口");
+    expect(topics[0].businessReason).toContain("高价值客户指定问题下竞品更容易被 AI 推荐");
   });
 });

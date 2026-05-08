@@ -793,6 +793,12 @@ const qualityDimensions: Array<[keyof QualityScoreView, string, number]> = [
 ];
 
 const thirdPartyPlatformLabels: Record<string, string> = {
+  "GEO 内容页版": "GEO 内容页版",
+  "官网版": "官网版",
+  "公众号长文版": "公众号长文版",
+  "知乎回答版": "知乎回答版",
+  "小红书笔记版": "小红书笔记版",
+  "百家号/头条号版": "百家号/头条号版",
   xiaohongshu: "小红书",
   zhihu: "知乎",
   wechat: "公众号",
@@ -811,6 +817,37 @@ function scoreForArticle(scores: QualityScoreView[], articleId: number) {
 function publicUrl(path?: string | null) {
   if (!path) return "";
   return `${window.location.origin}${path}`;
+}
+
+type ArticleGenerationBasisView = {
+  customerQuestion?: string;
+  contentGap?: string;
+  optimizationTaskName?: string;
+  notRecommendedReason?: string;
+  competitorGap?: string;
+  humanRevisionConclusion?: string;
+};
+
+type ArticleCitableSnippetView = {
+  question?: string;
+  answer?: string;
+};
+
+function generationBasisRows(basis: ArticleGenerationBasisView | null): Array<[string, string]> {
+  if (!basis) return [];
+  const rows: Array<[string, string]> = [
+    ["客户指定问题", basis.customerQuestion ?? ""],
+    ["内容缺口", basis.contentGap ?? ""],
+    ["优化任务", basis.optimizationTaskName ?? ""],
+    ["AI 未推荐原因", basis.notRecommendedReason ?? ""],
+    ["竞品差距", basis.competitorGap ?? ""],
+    ["人工修订结论", basis.humanRevisionConclusion ?? ""],
+  ];
+  return rows.filter(([, value]) => value.trim().length > 0);
+}
+
+function hasRequiredBasis(basis: ArticleGenerationBasisView | null) {
+  return generationBasisRows(basis).length >= 5;
 }
 
 export function ArticlesPage() {
@@ -870,9 +907,13 @@ export function ArticlesPage() {
           <div className="space-y-5">{(articlesQuery.data ?? []).map(article => {
             const score = scoreForArticle(qualityScores, article.id);
             const materials = (article.thirdPartyMaterials ?? {}) as Record<string, string>;
+            const basis = (article.generationBasis ?? null) as ArticleGenerationBasisView | null;
+            const basisRows = generationBasisRows(basis);
+            const snippets = ((article.citableSnippets ?? []) as ArticleCitableSnippetView[]).filter(item => item.question && item.answer).slice(0, 5);
             return <div key={article.id} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div><StatusBadge status={article.status} /><h3 className="mt-2 text-lg font-semibold text-slate-950">{article.title}</h3><p className="mt-1 text-xs text-slate-500">{article.articleType}｜文章 ID：{article.id}｜公开路径：{article.publicPath ? publicUrl(article.publicPath) : "尚未发布"}</p></div><div className="flex flex-wrap gap-2"><Button variant="secondary" disabled={qualityCheck.isPending || !(article.status === "已生成" || article.status === "待质检")} onClick={() => qualityCheck.mutate({ articleId: article.id })}>质检评分</Button><Button variant="secondary" disabled={auditArticle.isPending || !score || Boolean(score.blocked) || score.totalScore < 80 || !(article.status === "待审核" || article.status === "质检通过")} onClick={() => auditArticle.mutate({ articleId: article.id, approved: true, note: "人工确认内容可发布" })}>审核通过</Button><Button variant="danger" disabled={auditArticle.isPending || !(article.status === "待审核" || article.status === "质检通过")} onClick={() => auditArticle.mutate({ articleId: article.id, approved: false, note: "人工审核退回" })}>审核退回</Button><Button disabled={publishArticle.isPending || article.status !== "审核通过"} onClick={() => publishArticle.mutate({ articleId: article.id })}>发布到内置页</Button></div></div>
+              <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr]"><div className="rounded-lg border border-slate-200 bg-white p-4"><div className="flex items-center justify-between gap-2"><h4 className="font-semibold text-slate-950">生成依据</h4><span className={hasRequiredBasis(basis) ? "rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700" : "rounded-full bg-red-50 px-2 py-1 text-xs text-red-700"}>{hasRequiredBasis(basis) ? "依据完整" : "依据不足，禁止生成/发布"}</span></div>{basisRows.length === 0 ? <p className="mt-3 text-sm text-red-700">该文章缺少生成依据，请重新从真实优化任务生成。</p> : <dl className="mt-3 space-y-2">{basisRows.map(([label, value]) => <div key={label} className="rounded-md bg-slate-50 p-3"><dt className="text-xs font-medium text-slate-500">{label}</dt><dd className="mt-1 text-sm leading-6 text-slate-700">{value}</dd></div>)}</dl>}</div><div className="rounded-lg border border-slate-200 bg-white p-4"><h4 className="font-semibold text-slate-950">引用友好片段</h4><p className="mt-1 text-sm text-slate-600">供 AI 搜索结果摘取的 3-5 段短答案。</p>{snippets.length === 0 ? <p className="mt-3 text-sm text-red-700">暂无引用片段，请重新生成文章。</p> : <div className="mt-3 space-y-2">{snippets.map((item, index) => <div key={index} className="rounded-md bg-indigo-50 p-3"><p className="text-sm font-medium text-indigo-950">{item.question}</p><p className="mt-1 text-sm leading-6 text-indigo-900">{item.answer}</p></div>)}</div>}</div></div>
               {score ? <div className="mt-4 rounded-lg bg-slate-50 p-4"><div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-medium text-slate-900">质量总分：<span className={score.totalScore >= 80 && !score.blocked ? "text-emerald-700" : "text-red-700"}>{score.totalScore}</span> / 100</p><p className="mt-1 text-xs text-slate-500">{score.blocked ? "存在阻断风险，不能发布" : score.totalScore >= 80 ? "达到发布门槛，可进入审核" : "低于 80 分，不能发布"}</p></div><p className="text-xs text-slate-500">评分时间：{new Date(score.createdAt).toLocaleString()}</p></div><div className="mt-3 grid gap-2 md:grid-cols-3">{qualityDimensions.map(([key, label, max]) => <div key={String(key)} className="rounded-lg border border-slate-200 bg-white p-3"><p className="text-xs text-slate-500">{label} / {max}</p><p className="mt-1 text-xl font-semibold text-slate-900">{Number(score[key])}</p></div>)}</div><p className="mt-3 text-sm leading-6 text-slate-600"><b>质检摘要：</b>{score.reviewSummary}</p>{score.blockReasons.length > 0 ? <p className="mt-2 text-sm leading-6 text-red-700"><b>阻断原因：</b>{score.blockReasons.join("；")}</p> : null}</div> : <div className="mt-4"><EmptyState title="尚未质检" description="发布前必须先完成 100 分质量评分，且总分不低于 80 分、无阻断风险。" /></div>}
-              <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr]"><pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-4 text-sm leading-6 text-slate-100">{article.markdownContent}</pre><div className="rounded-lg border border-slate-200 p-4"><h4 className="font-semibold text-slate-950">第三方平台素材</h4><p className="mt-1 text-sm leading-6 text-slate-600">以下内容仅供复制到对应平台人工发布，系统不会自动发布。</p><div className="mt-3 space-y-2">{Object.entries(materials).map(([key, value]) => <div key={key} className="rounded-lg bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-slate-900">{thirdPartyPlatformLabels[key] ?? key}</p><Button variant="secondary" onClick={() => navigator.clipboard.writeText(value).then(() => toast.success("已复制平台素材"))}>复制</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${key}.md`, value, "text/markdown;charset=utf-8")}>导出 Markdown</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${key}.html`, materialToHtml(`${article.title}-${key}`, value), "text/html;charset=utf-8")}>导出 HTML</Button></div><p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-5 text-slate-600">{value}</p></div>)}</div></div></div>
+              <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr]"><pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-4 text-sm leading-6 text-slate-100">{article.markdownContent}</pre><div className="rounded-lg border border-slate-200 p-4"><h4 className="font-semibold text-slate-950">第三方平台素材</h4><p className="mt-1 text-sm leading-6 text-slate-600">同一篇内容已适配 GEO 内容页版、官网版、公众号长文版、知乎回答版、小红书笔记版、百家号/头条号版；除 GEO 内容页外，其余平台仅支持复制和导出，不会自动登录或自动发布。</p><div className="mt-3 space-y-2">{Object.entries(materials).map(([key, value]) => <div key={key} className="rounded-lg bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-slate-900">{thirdPartyPlatformLabels[key] ?? key}</p><Button variant="secondary" onClick={() => navigator.clipboard.writeText(value).then(() => toast.success("已复制平台素材"))}>复制</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${key}.md`, value, "text/markdown;charset=utf-8")}>导出 Markdown</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${key}.html`, materialToHtml(`${article.title}-${key}`, value), "text/html;charset=utf-8")}>导出 HTML</Button></div><p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-5 text-slate-600">{value}</p></div>)}</div></div></div>
             </div>;
           })}</div>
         </Card>
