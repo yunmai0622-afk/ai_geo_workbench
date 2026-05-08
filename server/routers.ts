@@ -103,9 +103,22 @@ const requireDb = async () => {
   return db;
 };
 
+export const resolveForwardProjectStatus = (
+  currentStatus: typeof projectStatuses[number] | null | undefined,
+  requestedStatus: typeof projectStatuses[number],
+) => {
+  const currentIndex = currentStatus ? projectStatuses.indexOf(currentStatus) : -1;
+  const requestedIndex = projectStatuses.indexOf(requestedStatus);
+  return requestedIndex >= currentIndex ? requestedStatus : currentStatus ?? requestedStatus;
+};
+
 const updateProjectStatus = async (projectId: number, status: typeof projectStatuses[number]) => {
   const db = await requireDb();
-  await db.update(projects).set({ status }).where(eq(projects.id, projectId));
+  const current = await db.select({ status: projects.status }).from(projects).where(eq(projects.id, projectId)).limit(1);
+  const nextStatus = resolveForwardProjectStatus(current[0]?.status, status);
+  if (nextStatus !== current[0]?.status) {
+    await db.update(projects).set({ status: nextStatus }).where(eq(projects.id, projectId));
+  }
 };
 
 const getProjectOrThrow = async (projectId: number) => {
