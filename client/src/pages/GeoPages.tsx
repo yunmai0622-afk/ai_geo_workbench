@@ -4,7 +4,26 @@ import { trpc } from "@/lib/trpc";
 
 const questionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
 const platforms = ["ChatGPT", "DeepSeek", "豆包", "Kimi", "通义", "文心", "Perplexity", "其他"] as const;
-const statuses = ["待处理", "进行中", "已完成"] as const;
+const taskStatuses = ["todo", "doing", "done", "retest"] as const;
+const taskStatusLabels: Record<(typeof taskStatuses)[number], string> = { todo: "待处理", doing: "进行中", done: "已完成", retest: "待复测" };
+const projectStatusLabels: Record<string, string> = {
+  created: "已创建项目",
+  questions_ready: "已生成问题库",
+  responses_imported: "已导入 AI 回答",
+  analysis_done: "已完成 AI 分析",
+  score_done: "已生成 GEO 评分",
+  tasks_ready: "已生成优化任务",
+  report_ready: "已生成模板和报告",
+};
+const projectNextSteps: Record<string, { completedStep: string; nextAction: string; buttonText: string; targetPath: string }> = {
+  created: { completedStep: "项目基础信息已创建", nextAction: "生成 AI 问题库", buttonText: "生成问题库", targetPath: "/questions" },
+  questions_ready: { completedStep: "AI 问题库已准备", nextAction: "导入 AI 回答", buttonText: "去导入回答", targetPath: "/responses" },
+  responses_imported: { completedStep: "AI 回答已导入", nextAction: "运行 AI 语义分析", buttonText: "开始分析", targetPath: "/analysis" },
+  analysis_done: { completedStep: "AI 语义分析已完成", nextAction: "生成 GEO 评分", buttonText: "计算评分", targetPath: "/scores" },
+  score_done: { completedStep: "GEO 评分已生成", nextAction: "生成优化任务", buttonText: "生成任务", targetPath: "/tasks" },
+  tasks_ready: { completedStep: "优化任务已生成", nextAction: "生成内容模板和报告", buttonText: "生成模板和报告", targetPath: "/reports" },
+  report_ready: { completedStep: "模板和报告已生成", nextAction: "查看报告 / 执行优化任务", buttonText: "查看报告", targetPath: "/reports" },
+};
 
 type ProjectFormState = {
   enterpriseName: string;
@@ -123,16 +142,34 @@ function useSelectedProject() {
   return { projects: projectsQuery.data ?? [], selectedProject, selectedProjectId, setProjectId, projectInput, isLoading: projectsQuery.isLoading };
 }
 
-function ProjectSelector({ selectedProjectId, setProjectId, projects }: { selectedProjectId?: number; setProjectId: (id: number | undefined) => void; projects: Array<{ id: number; enterpriseName: string; industry: string }> }) {
+function ProjectProgressCard({ project }: { project?: { status: string | null } }) {
+  if (!project) return null;
+  const status = project.status ?? "created";
+  const next = projectNextSteps[status] ?? projectNextSteps.created;
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
+        <div><p className="text-xs text-slate-500">当前状态</p><p className="mt-1 font-semibold text-slate-950">{projectStatusLabels[status] ?? "已创建项目"}</p></div>
+        <div><p className="text-xs text-slate-500">当前已完成步骤</p><p className="mt-1 text-sm text-slate-700">{next.completedStep}</p></div>
+        <div><p className="text-xs text-slate-500">下一步建议动作</p><p className="mt-1 text-sm text-slate-700">{next.nextAction}</p></div>
+        <Button onClick={() => { window.location.href = next.targetPath; }}>{next.buttonText}</Button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectSelector({ selectedProjectId, setProjectId, projects }: { selectedProjectId?: number; setProjectId: (id: number | undefined) => void; projects: Array<{ id: number; enterpriseName: string; industry: string; status: string | null }> }) {
   if (projects.length === 0) {
     return <EmptyState title="请先创建企业项目" description="后续问题生成、回答导入、语义分析和 GEO 评分都必须基于真实企业项目进行。" />;
   }
+  const selectedProject = projects.find(project => project.id === selectedProjectId);
   return (
     <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
       <Select label="当前企业项目" value={selectedProjectId ? String(selectedProjectId) : "none"} onChange={value => setProjectId(value === "none" ? undefined : Number(value))}>
         <option value="none">请选择项目</option>
         {projects.map(project => <option key={project.id} value={project.id}>{project.enterpriseName}｜{project.industry}</option>)}
       </Select>
+      <ProjectProgressCard project={selectedProject} />
     </div>
   );
 }
@@ -242,7 +279,7 @@ export function QuestionsPage() {
   const updateQuestion = trpc.geo.questions.update.useMutation({ onSuccess: async () => { await utils.geo.questions.list.invalidate(); toast.success("问题已更新"); } });
   const deleteQuestion = trpc.geo.questions.delete.useMutation({ onSuccess: async () => { await utils.geo.questions.list.invalidate(); toast.success("问题已删除"); } });
   const toggleQuestion = trpc.geo.questions.toggle.useMutation({ onSuccess: async () => utils.geo.questions.list.invalidate() });
-  const generateQuestions = trpc.geo.questions.generate.useMutation({ onSuccess: async result => { await utils.geo.questions.list.invalidate(); toast.success(`已生成 ${result.count} 个问题`); }, onError: error => toast.error(error.message) });
+  const generateQuestions = trpc.geo.questions.generate.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.questions.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`已生成 ${result.count} 个问题`); }, onError: error => toast.error(error.message) });
   const [questionText, setQuestionText] = useState("");
   const [questionType, setQuestionType] = useState<typeof questionTypes[number]>("品牌认知");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -335,8 +372,8 @@ export function ResponsesPage() {
   const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();
   const responsesQuery = trpc.geo.aiResponses.list.useQuery(projectInput);
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput);
-  const createResponse = trpc.geo.aiResponses.create.useMutation({ onSuccess: async () => { await utils.geo.aiResponses.list.invalidate(); toast.success("AI 回答已录入"); } });
-  const importRows = trpc.geo.aiResponses.importCsvRows.useMutation({ onSuccess: async result => { await utils.geo.aiResponses.list.invalidate(); toast.success(`已导入 ${result.count} 条 AI 回答`); }, onError: error => toast.error(error.message) });
+  const createResponse = trpc.geo.aiResponses.create.useMutation({ onSuccess: async () => { await Promise.all([utils.geo.aiResponses.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success("AI 回答已保存"); }, onError: error => toast.error(error.message) });
+  const importRows = trpc.geo.aiResponses.importCsvRows.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.aiResponses.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`已导入 ${result.count} 条回答`); }, onError: error => toast.error(error.message) });
   const deleteResponse = trpc.geo.aiResponses.delete.useMutation({ onSuccess: async () => { await utils.geo.aiResponses.list.invalidate(); toast.success("AI 回答已删除"); } });
   const [questionId, setQuestionId] = useState("manual");
   const [questionText, setQuestionText] = useState("");
@@ -421,7 +458,7 @@ export function AnalysisPage() {
   const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();
   const responsesQuery = trpc.geo.aiResponses.list.useQuery(projectInput);
   const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput);
-  const runAnalysis = trpc.geo.analysis.run.useMutation({ onSuccess: async result => { await utils.geo.analysis.list.invalidate(); toast.success(`已完成 ${result.count} 条 AI 回答分析`); }, onError: error => toast.error(error.message) });
+  const runAnalysis = trpc.geo.analysis.run.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.analysis.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`已完成 ${result.count} 条分析`); }, onError: error => toast.error(error.message) });
   return (
     <div>
       <PageHeader title="AI 语义分析" description="调用 LLM 对每条 AI 原始回答进行语义分析，输出结构化 JSON。分析必须基于真实导入回答。" />
@@ -442,7 +479,7 @@ export function ScoresPage() {
   const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();
   const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput);
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput);
-  const calculate = trpc.geo.scores.calculate.useMutation({ onSuccess: async () => { await utils.geo.scores.latest.invalidate(); toast.success("GEO 评分已计算"); }, onError: error => toast.error(error.message) });
+  const calculate = trpc.geo.scores.calculate.useMutation({ onSuccess: async () => { await Promise.all([utils.geo.scores.latest.invalidate(), utils.geo.projects.list.invalidate()]); toast.success("GEO 评分已计算"); }, onError: error => toast.error(error.message) });
   const score = scoreQuery.data;
   return (
     <div>
@@ -461,8 +498,9 @@ export function TasksPage() {
   const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();
   const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput);
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput);
-  const generateTasks = trpc.geo.tasks.generate.useMutation({ onSuccess: async result => { await utils.geo.tasks.list.invalidate(); toast.success(`已生成 ${result.count} 条优化任务`); }, onError: error => toast.error(error.message) });
-  const updateStatus = trpc.geo.tasks.updateStatus.useMutation({ onSuccess: async () => utils.geo.tasks.list.invalidate() });
+  const templatesQuery = trpc.geo.templates.list.useQuery(projectInput);
+  const generateTasks = trpc.geo.tasks.generate.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.tasks.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`已生成 ${result.count} 条优化任务`); }, onError: error => toast.error(error.message) });
+  const updateStatus = trpc.geo.tasks.updateStatus.useMutation({ onSuccess: async () => { await utils.geo.tasks.list.invalidate(); toast.success("任务状态已更新"); }, onError: error => toast.error(error.message) });
   return (
     <div>
       <PageHeader title="优化工作台" description="根据语义分析结果生成官网首页、产品页、竞品对比页、FAQ、客户案例、行业文章和社媒内容任务。" />
@@ -470,7 +508,10 @@ export function TasksPage() {
       {selectedProjectId ? <Card>
         {(analysisQuery.data ?? []).length === 0 ? <EmptyState title="暂无分析结果" description="请先运行 AI 语义分析。优化任务必须来源于真实分析结果，不会凭空生成。" /> : <div className="mb-5 flex items-center justify-between"><p className="text-sm text-slate-600">当前分析样本：{analysisQuery.data?.length ?? 0} 条</p><Button disabled={generateTasks.isPending} onClick={() => generateTasks.mutate({ projectId: selectedProjectId })}>{generateTasks.isPending ? "正在生成..." : "生成优化任务"}</Button></div>}
         {(tasksQuery.data ?? []).length === 0 ? <EmptyState title="暂无优化任务" description="生成任务后，可在此查看任务名称、优先级、生成原因、执行建议、预计影响和状态。" /> : null}
-        <div className="space-y-4">{(tasksQuery.data ?? []).map(task => <div key={task.id} className="rounded-lg border border-slate-200 p-4"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div><span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">{task.taskType}｜{task.priority}</span><h3 className="mt-2 font-semibold">{task.taskName}</h3><p className="mt-2 text-sm text-slate-600"><b>生成原因：</b>{task.generationReason}</p><p className="mt-2 text-sm text-slate-600"><b>执行建议：</b>{task.executionSuggestion}</p><p className="mt-2 text-sm text-slate-600"><b>预计影响：</b>{task.expectedImpact}</p></div><select value={task.status} onChange={event => updateStatus.mutate({ id: task.id, status: event.target.value as typeof statuses[number] })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">{statuses.map(status => <option key={status} value={status}>{status}</option>)}</select></div></div>)}</div>
+        <div className="space-y-4">{(tasksQuery.data ?? []).map(task => {
+          const relatedTemplates = (templatesQuery.data ?? []).filter(template => template.optimizationTaskId === task.id);
+          return <div key={task.id} className="rounded-lg border border-slate-200 p-4"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div><span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">{task.taskType}｜{task.priority}</span><h3 className="mt-2 font-semibold">{task.taskName}</h3><p className="mt-2 text-sm text-slate-600"><b>生成原因：</b>{task.generationReason}</p><p className="mt-2 text-sm text-slate-600"><b>执行建议：</b>{task.executionSuggestion}</p><p className="mt-2 text-sm text-slate-600"><b>预计影响：</b>{task.expectedImpact}</p><p className="mt-2 text-sm text-slate-600"><b>已发布链接：</b>{task.publishedUrl || "未填写"}</p><p className="mt-1 text-sm text-slate-600"><b>完成时间：</b>{task.completedAt ? new Date(task.completedAt).toLocaleString() : "未完成"}｜<b>是否待复测：</b>{task.needRetest ? "是" : "否"}</p></div><select value={task.status} onChange={event => { const status = event.target.value as typeof taskStatuses[number]; const publishedUrl = status === "done" ? window.prompt("如已发布，请填写已发布链接，可留空", task.publishedUrl ?? "") : null; const needRetest = status === "done" ? window.confirm("是否需要复测？") : false; updateStatus.mutate({ id: task.id, status, publishedUrl, needRetest }); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">{taskStatuses.map(status => <option key={status} value={status}>{taskStatusLabels[status]}</option>)}</select></div>{relatedTemplates.length > 0 ? <div className="mt-4 rounded-lg bg-slate-50 p-3"><p className="mb-2 text-sm font-medium text-slate-800">关联内容模板</p><div className="space-y-2">{relatedTemplates.map(template => <div key={template.id} className="flex flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 md:flex-row md:items-center"><div><p className="text-sm font-medium">{template.title}</p><p className="text-xs text-slate-500">{template.templateType}</p></div><div className="flex gap-2"><Button variant="secondary" onClick={() => navigator.clipboard.writeText(template.markdownContent).then(() => toast.success("已复制模板"))}>一键复制</Button><Button variant="secondary" onClick={() => downloadMarkdown(`${template.title}.md`, template.markdownContent)}>导出 Markdown</Button></div></div>)}</div></div> : null}</div>;
+        })}</div>
       </Card> : null}
     </div>
   );
@@ -492,8 +533,8 @@ export function ReportsPage() {
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput);
   const templatesQuery = trpc.geo.templates.list.useQuery(projectInput);
   const reportQuery = trpc.geo.reports.latest.useQuery(projectInput);
-  const generateTemplates = trpc.geo.templates.generate.useMutation({ onSuccess: async result => { await utils.geo.templates.list.invalidate(); toast.success(`已生成 ${result.count} 个内容模板`); }, onError: error => toast.error(error.message) });
-  const generateReport = trpc.geo.reports.generate.useMutation({ onSuccess: async () => { await utils.geo.reports.latest.invalidate(); toast.success("诊断报告已生成"); }, onError: error => toast.error(error.message) });
+  const generateTemplates = trpc.geo.templates.generate.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.templates.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`已生成 ${result.count} 个内容模板`); }, onError: error => toast.error(error.message) });
+  const generateReport = trpc.geo.reports.generate.useMutation({ onSuccess: async () => { await Promise.all([utils.geo.reports.latest.invalidate(), utils.geo.projects.list.invalidate()]); toast.success("诊断报告已生成"); }, onError: error => toast.error(error.message) });
   return (
     <div>
       <PageHeader title="内容模板与报告" description="根据优化任务生成内容模板，并导出老板版 GEO 诊断报告 Markdown。" />
@@ -505,7 +546,7 @@ export function ReportsPage() {
         <Card>
           <h2 className="mb-4 text-lg font-semibold">内容模板</h2>
           {(templatesQuery.data ?? []).length === 0 ? <EmptyState title="暂无内容模板" description="模板只会根据已生成的优化任务创建，不会展示英文占位符或假模板。" /> : null}
-          <div className="space-y-4">{(templatesQuery.data ?? []).map(template => <div key={template.id} className="rounded-lg border border-slate-200 p-4"><div className="flex items-center justify-between gap-3"><div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{template.templateType}</span><h3 className="mt-2 font-semibold">{template.title}</h3></div><div className="flex gap-2"><Button variant="secondary" onClick={() => navigator.clipboard.writeText(template.markdownContent).then(() => toast.success("已复制模板"))}>一键复制</Button><Button variant="secondary" onClick={() => downloadMarkdown(`${template.title}.md`, template.markdownContent)}>导出 Markdown</Button></div></div><pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{template.markdownContent}</pre></div>)}</div>
+          <div className="space-y-4">{(templatesQuery.data ?? []).map(template => { const relatedTask = (tasksQuery.data ?? []).find(task => task.id === template.optimizationTaskId); return <div key={template.id} className="rounded-lg border border-slate-200 p-4"><div className="flex items-center justify-between gap-3"><div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{template.templateType}</span><h3 className="mt-2 font-semibold">{template.title}</h3><p className="mt-1 text-xs text-slate-500">关联优化任务：{relatedTask?.taskName ?? "未绑定任务"}</p></div><div className="flex gap-2"><Button variant="secondary" onClick={() => navigator.clipboard.writeText(template.markdownContent).then(() => toast.success("已复制模板"))}>一键复制</Button><Button variant="secondary" onClick={() => downloadMarkdown(`${template.title}.md`, template.markdownContent)}>导出 Markdown</Button></div></div><pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{template.markdownContent}</pre></div>; })}</div>
         </Card>
         <Card>
           <h2 className="mb-4 text-lg font-semibold">老板版 GEO 诊断报告</h2>

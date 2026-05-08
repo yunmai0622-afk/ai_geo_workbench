@@ -2,6 +2,8 @@ export const questionTypes = ["品牌认知", "行业推荐", "竞品对比", "�
 export const aiPlatforms = ["ChatGPT", "DeepSeek", "豆包", "Kimi", "通义", "文心", "Perplexity", "其他"] as const;
 export const taskTypes = ["官网首页", "产品页", "竞品对比页", "FAQ", "客户案例", "行业文章", "社媒内容"] as const;
 export const templateTypes = ["官网首页模板", "FAQ 模板", "竞品对比页模板", "客户案例页模板", "行业选型文章模板"] as const;
+export const projectStatuses = ["created", "questions_ready", "responses_imported", "analysis_done", "score_done", "tasks_ready", "report_ready"] as const;
+export const taskStatuses = ["todo", "doing", "done", "retest"] as const;
 
 export type QuestionType = (typeof questionTypes)[number];
 export type AiPlatform = (typeof aiPlatforms)[number];
@@ -9,6 +11,28 @@ export type TaskType = (typeof taskTypes)[number];
 export type TemplateType = (typeof templateTypes)[number];
 export type Priority = "P0" | "P1" | "P2";
 export type VisibilityLevel = "弱可见" | "初步可见" | "良好可见" | "强势推荐";
+export type ProjectStatus = (typeof projectStatuses)[number];
+export type TaskStatus = (typeof taskStatuses)[number];
+
+export const projectStatusLabels: Record<ProjectStatus, string> = {
+  created: "已创建项目",
+  questions_ready: "已生成问题库",
+  responses_imported: "已导入 AI 回答",
+  analysis_done: "已完成 AI 分析",
+  score_done: "已生成 GEO 评分",
+  tasks_ready: "已生成优化任务",
+  report_ready: "已生成模板和报告",
+};
+
+export const projectNextSteps: Record<ProjectStatus, { completedStep: string; nextAction: string; buttonText: string; targetPath: string }> = {
+  created: { completedStep: "项目基础信息已创建", nextAction: "生成 AI 问题库", buttonText: "生成问题库", targetPath: "/questions" },
+  questions_ready: { completedStep: "AI 问题库已准备", nextAction: "导入 AI 回答", buttonText: "去导入回答", targetPath: "/responses" },
+  responses_imported: { completedStep: "AI 回答已导入", nextAction: "运行 AI 语义分析", buttonText: "开始分析", targetPath: "/analysis" },
+  analysis_done: { completedStep: "AI 语义分析已完成", nextAction: "生成 GEO 评分", buttonText: "计算评分", targetPath: "/scores" },
+  score_done: { completedStep: "GEO 评分已生成", nextAction: "生成优化任务", buttonText: "生成任务", targetPath: "/tasks" },
+  tasks_ready: { completedStep: "优化任务已生成", nextAction: "生成内容模板和报告", buttonText: "生成模板和报告", targetPath: "/reports" },
+  report_ready: { completedStep: "模板和报告已生成", nextAction: "查看报告 / 执行优化任务", buttonText: "查看报告", targetPath: "/reports" },
+};
 
 export type AnalysisLike = {
   mentionsEnterprise: number;
@@ -118,7 +142,7 @@ export function generateOptimizationTasks(project: ProjectLike, analyses: Analys
       generationReason: `共有 ${notRecommendedCount} 条分析显示本企业未被推荐，需补足首页中的定位、卖点和可信证据。`,
       executionSuggestion: `在首页首屏明确企业名称、行业定位、目标客户、核心卖点，并增加适合 AI 摘取的结构化问答段落。当前主要缺口：${commonGap}`,
       expectedImpact: "提升 AI 对企业名称、行业定位和核心卖点的识别概率。",
-      status: "待处理" as const,
+      status: "todo" as const,
     },
     {
       taskType: "产品页" as TaskType,
@@ -127,7 +151,7 @@ export function generateOptimizationTasks(project: ProjectLike, analyses: Analys
       generationReason: "AI 回答通常需要清晰的产品能力、适用场景和选型边界作为推荐依据。",
       executionSuggestion: `围绕 ${project.coreKeywords.join("、") || project.industry} 增加产品能力、客户场景、适用与不适用边界。`,
       expectedImpact: "提升痛点解决、价格选型和高意向成交类问题中的推荐质量。",
-      status: "待处理" as const,
+      status: "todo" as const,
     },
     {
       taskType: "竞品对比页" as TaskType,
@@ -136,7 +160,7 @@ export function generateOptimizationTasks(project: ProjectLike, analyses: Analys
       generationReason: `共有 ${competitorCount} 条分析涉及竞品或竞品推荐，需要提供可验证的差异化信息。`,
       executionSuggestion: `围绕 ${project.competitorNames.join("、") || "主要竞品"} 建立客观对比维度，包括适用客户、能力边界、服务方式和差异化卖点。`,
       expectedImpact: "降低竞品在对比类问题中单方面胜出的概率。",
-      status: "待处理" as const,
+      status: "todo" as const,
     },
     {
       taskType: "FAQ" as TaskType,
@@ -145,7 +169,7 @@ export function generateOptimizationTasks(project: ProjectLike, analyses: Analys
       generationReason: "FAQ 能把品牌认知、痛点解决、价格选型等问题转化为清晰的问答语料。",
       executionSuggestion: "将问题库中的高频问题整理为官网 FAQ，并用直接、可引用、无夸张承诺的回答补充证据。",
       expectedImpact: "提升 AI 回答中引用企业官方信息的概率。",
-      status: "待处理" as const,
+      status: "todo" as const,
     },
     {
       taskType: "客户案例" as TaskType,
@@ -154,7 +178,7 @@ export function generateOptimizationTasks(project: ProjectLike, analyses: Analys
       generationReason: "AI 推荐企业时通常需要客户案例、成果证据和行业适配信息作为支撑。",
       executionSuggestion: `选择 2-3 个 ${project.targetCustomers} 相关案例，补充背景、方案、实施过程、结果指标和可公开证据。`,
       expectedImpact: "提升推荐理由的可信度和企业胜出概率。",
-      status: "待处理" as const,
+      status: "todo" as const,
     },
     {
       taskType: "行业文章" as TaskType,
@@ -163,7 +187,7 @@ export function generateOptimizationTasks(project: ProjectLike, analyses: Analys
       generationReason: "行业推荐与价格选型问题需要中立的选型框架和供应商判断标准。",
       executionSuggestion: `围绕 ${project.industry} 的采购标准、选型清单、风险点和常见误区，形成一篇可被 AI 引用的长文。`,
       expectedImpact: "提升行业推荐类问题中的品牌出现率。",
-      status: "待处理" as const,
+      status: "todo" as const,
     },
     {
       taskType: "社媒内容" as TaskType,
@@ -172,7 +196,7 @@ export function generateOptimizationTasks(project: ProjectLike, analyses: Analys
       generationReason: `共有 ${misconceptionCount} 条分析存在错误认知，需要在公开内容渠道中纠偏。`,
       executionSuggestion: "把错误认知、竞品对比和选型问题改写为短内容选题，并指向官网中的完整解释。",
       expectedImpact: "补充站外语料，降低 AI 对企业能力的错误理解。",
-      status: "待处理" as const,
+      status: "todo" as const,
     },
   ];
 }
@@ -186,31 +210,31 @@ export function generateContentTemplates(project: ProjectLike, tasks: Array<{ id
 
   return [
     {
-      taskId: tasks.find(task => task.taskType === "官网首页")?.id,
+      optimizationTaskId: tasks.find(task => task.taskType === "官网首页")?.id,
       templateType: "官网首页模板" as TemplateType,
       title: `${project.enterpriseName} 官网首页 GEO 优化模板`,
       markdownContent: `# ${project.enterpriseName} 官网首页优化模板\n\n## 首屏定位\n${project.enterpriseName} 是面向 ${project.targetCustomers} 的 ${project.industry} 企业，核心价值是 ${project.coreSellingPoints}。\n\n## AI 可引用摘要\n- 企业名称：${project.enterpriseName}\n- 行业：${project.industry}\n- 服务地区：${project.region}\n- 官网：${project.website}\n- 核心关键词：${project.coreKeywords.join("、")}\n\n## 推荐理由素材\n请补充客户成果、服务流程、产品能力和公开证据，避免空泛宣传。\n\n## 本轮任务依据\n${taskSummary}`,
     },
     {
-      taskId: tasks.find(task => task.taskType === "FAQ")?.id,
+      optimizationTaskId: tasks.find(task => task.taskType === "FAQ")?.id,
       templateType: "FAQ 模板" as TemplateType,
       title: `${project.enterpriseName} FAQ 模板`,
       markdownContent: `# ${project.enterpriseName} FAQ 模板\n\n## ${project.enterpriseName} 适合哪些客户？\n适合 ${project.targetCustomers}，尤其是正在关注 ${project.coreKeywords.join("、")} 的企业。\n\n## ${project.enterpriseName} 的核心优势是什么？\n${project.coreSellingPoints}\n\n## 与竞品相比如何选择？\n建议围绕业务场景、实施成本、服务能力、案例证据和长期支持进行比较。`,
     },
     {
-      taskId: tasks.find(task => task.taskType === "竞品对比页")?.id,
+      optimizationTaskId: tasks.find(task => task.taskType === "竞品对比页")?.id,
       templateType: "竞品对比页模板" as TemplateType,
       title: `${project.enterpriseName} 竞品对比页模板`,
       markdownContent: `# ${project.enterpriseName} 与竞品对比模板\n\n## 对比对象\n${project.competitorNames.join("、") || "请补充竞品名称"}\n\n## 适用场景对比\n从目标客户、产品能力、服务深度、实施周期和可验证案例进行客观比较。\n\n## 选择 ${project.enterpriseName} 的场景\n当客户关注 ${project.coreSellingPoints} 时，可优先评估 ${project.enterpriseName}。`,
     },
     {
-      taskId: tasks.find(task => task.taskType === "客户案例")?.id,
+      optimizationTaskId: tasks.find(task => task.taskType === "客户案例")?.id,
       templateType: "客户案例页模板" as TemplateType,
       title: `${project.enterpriseName} 客户案例页模板`,
       markdownContent: `# ${project.enterpriseName} 客户案例模板\n\n## 客户背景\n请说明客户行业、规模、业务挑战和目标。\n\n## 解决方案\n说明 ${project.enterpriseName} 提供的产品或服务，以及实施路径。\n\n## 结果与证据\n补充可公开的量化结果、客户反馈或第三方证明。`,
     },
     {
-      taskId: tasks.find(task => task.taskType === "行业文章")?.id,
+      optimizationTaskId: tasks.find(task => task.taskType === "行业文章")?.id,
       templateType: "行业选型文章模板" as TemplateType,
       title: `${project.industry} 行业选型文章模板`,
       markdownContent: `# ${project.industry} 选型指南\n\n## 适合阅读对象\n${project.targetCustomers}\n\n## 选型关键问题\n- 是否覆盖 ${project.coreKeywords.join("、")} 等核心场景？\n- 是否有真实案例与公开证据？\n- 与 ${project.competitorNames.join("、") || "同类方案"} 相比，差异化价值是否清晰？\n\n## 建议行动\n先明确业务目标，再基于能力、案例、服务和成本进行综合判断。`,

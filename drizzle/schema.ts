@@ -42,6 +42,16 @@ export const aiPlatformEnum = mysqlEnum("aiPlatform", [
   "其他",
 ]);
 
+export const projectStatusEnum = mysqlEnum("status", [
+  "created",
+  "questions_ready",
+  "responses_imported",
+  "analysis_done",
+  "score_done",
+  "tasks_ready",
+  "report_ready",
+]);
+
 export const visibilityLevelEnum = mysqlEnum("visibilityLevel", [
   "弱可见",
   "初步可见",
@@ -60,7 +70,7 @@ export const taskTypeEnum = mysqlEnum("taskType", [
 ]);
 
 export const taskPriorityEnum = mysqlEnum("taskPriority", ["P0", "P1", "P2"]);
-export const taskStatusEnum = mysqlEnum("taskStatus", ["待处理", "进行中", "已完成"]);
+export const taskStatusEnum = mysqlEnum("status", ["todo", "doing", "done", "retest"]);
 
 export const templateTypeEnum = mysqlEnum("templateType", [
   "官网首页模板",
@@ -81,6 +91,7 @@ export const projects = mysqlTable("projects", {
   coreSellingPoints: text("coreSellingPoints").notNull(),
   competitorNames: json("competitorNames").$type<string[]>().notNull(),
   coreKeywords: json("coreKeywords").$type<string[]>().notNull(),
+  status: projectStatusEnum.default("created").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -150,7 +161,10 @@ export const optimizationTasks = mysqlTable("optimization_tasks", {
   generationReason: text("generationReason").notNull(),
   executionSuggestion: text("executionSuggestion").notNull(),
   expectedImpact: text("expectedImpact").notNull(),
-  status: taskStatusEnum.default("待处理").notNull(),
+  status: taskStatusEnum.default("todo").notNull(),
+  publishedUrl: varchar("published_url", { length: 1000 }),
+  completedAt: timestamp("completed_at"),
+  needRetest: int("need_retest").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -158,7 +172,7 @@ export const optimizationTasks = mysqlTable("optimization_tasks", {
 export const contentTemplates = mysqlTable("content_templates", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
-  taskId: int("taskId"),
+  optimizationTaskId: int("optimization_task_id"),
   templateType: templateTypeEnum.notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   markdownContent: text("markdownContent").notNull(),

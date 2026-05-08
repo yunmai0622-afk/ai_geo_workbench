@@ -23,7 +23,9 @@ import {
   generateContentTemplates,
   generateOptimizationTasks,
   generateReportMarkdown,
+  projectStatuses,
   questionTypes,
+  taskStatuses,
   taskTypes,
   templateTypes,
 } from "./geoLogic";
@@ -62,6 +64,11 @@ const requireDb = async () => {
   return db;
 };
 
+const updateProjectStatus = async (projectId: number, status: typeof projectStatuses[number]) => {
+  const db = await requireDb();
+  await db.update(projects).set({ status }).where(eq(projects.id, projectId));
+};
+
 const getProjectOrThrow = async (projectId: number) => {
   const db = await requireDb();
   const result = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
@@ -88,7 +95,7 @@ const geoRouter = router({
     }),
     create: protectedProcedure.input(projectInput).mutation(async ({ input }) => {
       const db = await requireDb();
-      await db.insert(projects).values(input);
+      await db.insert(projects).values({ ...input, status: "created" });
       return { success: true } as const;
     }),
     update: protectedProcedure.input(projectInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
@@ -183,6 +190,7 @@ const geoRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI 未返回 50 个问题，请重新生成" });
       }
       await db.insert(questions).values(parsed.questions.map(item => ({ ...item, projectId: input.projectId, enabled: 1 })));
+      await updateProjectStatus(input.projectId, "questions_ready");
       return { success: true, count: parsed.questions.length } as const;
     }),
   }),
@@ -196,11 +204,14 @@ const geoRouter = router({
     create: protectedProcedure.input(aiResponseInput).mutation(async ({ input }) => {
       const db = await requireDb();
       await db.insert(aiResponses).values({ ...input, questionId: input.questionId ?? null, checkedAt: new Date(input.checkedAt) });
+      await updateProjectStatus(input.projectId, "responses_imported");
       return { success: true } as const;
     }),
     importCsvRows: protectedProcedure.input(z.object({ rows: z.array(aiResponseInput).min(1) })).mutation(async ({ input }) => {
       const db = await requireDb();
       await db.insert(aiResponses).values(input.rows.map(row => ({ ...row, questionId: row.questionId ?? null, checkedAt: new Date(row.checkedAt) })));
+      const projectIds = Array.from(new Set(input.rows.map(row => row.projectId)));
+      await Promise.all(projectIds.map(projectId => updateProjectStatus(projectId, "responses_imported")));
       return { success: true, count: input.rows.length } as const;
     }),
     delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
@@ -302,6 +313,7 @@ const geoRouter = router({
 
       await db.delete(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       await db.insert(analysisResults).values(rows);
+      await updateProjectStatus(input.projectId, "analysis_done");
       return { success: true, count: rows.length } as const;
     }),
   }),
@@ -322,6 +334,7 @@ const geoRouter = router({
       const score = calculateGeoScore(analyses);
       await db.delete(geoScores).where(eq(geoScores.projectId, input.projectId));
       await db.insert(geoScores).values({ projectId: input.projectId, ...score });
+      await updateProjectStatus(input.projectId, "score_done");
       return { success: true, score } as const;
     }),
   }),
@@ -342,11 +355,22 @@ const geoRouter = router({
       const generated = generateOptimizationTasks(project, analyses);
       await db.delete(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
       await db.insert(optimizationTasks).values(generated.map(task => ({ ...task, projectId: input.projectId })));
+      await updateProjectStatus(input.projectId, "tasks_ready");
       return { success: true, count: generated.length } as const;
     }),
-    updateStatus: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["待处理", "进行中", "已完成"]) })).mutation(async ({ input }) => {
+    updateStatus: protectedProcedure.input(z.object({
+      id: z.number().int().positive(),
+      status: z.enum(taskStatuses),
+      publishedUrl: z.string().optional().nullable(),
+      needRetest: z.boolean().optional().default(false),
+    })).mutation(async ({ input }) => {
       const db = await requireDb();
-      await db.update(optimizationTasks).set({ status: input.status }).where(eq(optimizationTasks.id, input.id));
+      await db.update(optimizationTasks).set({
+        status: input.status,
+        publishedUrl: input.status === "done" ? input.publishedUrl ?? null : null,
+        needRetest: input.status === "done" && input.needRetest ? 1 : 0,
+        completedAt: input.status === "done" ? new Date() : null,
+      }).where(eq(optimizationTasks.id, input.id));
       return { success: true } as const;
     }),
   }),
@@ -367,6 +391,7 @@ const geoRouter = router({
       const generated = generateContentTemplates(project, tasks.map(task => ({ id: task.id, taskType: task.taskType, taskName: task.taskName, generationReason: task.generationReason, executionSuggestion: task.executionSuggestion })));
       await db.delete(contentTemplates).where(eq(contentTemplates.projectId, input.projectId));
       await db.insert(contentTemplates).values(generated.map(item => ({ ...item, projectId: input.projectId, templateType: item.templateType as typeof templateTypes[number] })));
+      await updateProjectStatus(input.projectId, "report_ready");
       return { success: true, count: generated.length } as const;
     }),
   }),
@@ -395,6 +420,7 @@ const geoRouter = router({
       }, analyses);
       await db.delete(reports).where(eq(reports.projectId, input.projectId));
       await db.insert(reports).values({ projectId: input.projectId, geoScoreId: latestScore[0].id, ...report });
+      await updateProjectStatus(input.projectId, "report_ready");
       return { success: true, report } as const;
     }),
   }),

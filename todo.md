@@ -28,3 +28,19 @@
 - [x] 编写 Vitest 测试覆盖核心业务逻辑
 - [x] 完成类型检查与开发环境状态检查
 - [x] 保存最终交付检查点
+
+## 轻量 Harness 本轮变更
+
+- [x] 为 projects 增加 status 字段，支持 created、questions_ready、responses_imported、analysis_done、score_done、tasks_ready、report_ready
+- [x] 创建项目后状态为 created，并在生成问题、导入回答、完成分析、生成评分、生成任务、生成模板或报告后自动推进状态
+- [x] 在 Dashboard 顶部增加当前进度卡片，展示当前状态、已完成步骤、下一步建议动作和下一步操作按钮
+- [x] 为 optimization_tasks 补充 todo、doing、done、retest 四种状态流转
+- [x] 为 optimization_tasks 补充 published_url、completed_at、need_retest 字段
+- [x] 任务状态改为 done 时支持填写已发布链接并勾选是否需要复测
+- [x] 为 content_templates 增加 optimization_task_id 绑定字段
+- [x] 在优化任务详情中展示关联内容模板，并支持一键复制和导出 Markdown
+- [x] 在内容模板页展示关联的优化任务名称
+- [x] 保持无真实数据时阻断生成假结果
+- [x] 保持现有 10 个 Vitest 用例通过，并按需补充状态流转核心测试
+- [x] 完成类型检查、环境检查并保存交付检查点
+- [x] 核查 GeoPages.tsx 顶部 React hooks 与事件类型导入，确认轻量 Harness 页面通过类型检查
