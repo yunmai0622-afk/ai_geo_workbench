@@ -36,6 +36,13 @@
       "when": 1778230227445,
       "tag": "0004_orange_tiger_shark",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1778230993089,
+      "tag": "0005_naive_vector",
+      "breakpoints": true
     }
   ]
 }

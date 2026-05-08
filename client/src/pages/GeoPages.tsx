@@ -536,21 +536,111 @@ export function AnalysisPage() {
   const responsesQuery = trpc.geo.aiResponses.list.useQuery(projectInput);
   const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput);
   const runAnalysis = trpc.geo.analysis.run.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.analysis.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`已完成 ${result.count} 条分析`); }, onError: error => toast.error(error.message) });
+  const saveManualReview = trpc.geo.analysis.saveManualReview.useMutation({ onSuccess: async () => { await utils.geo.analysis.list.invalidate(); toast.success("人工修订已保存"); closeManualReview(); }, onError: error => toast.error(error.message) });
+  const undoManualReview = trpc.geo.analysis.undoManualReview.useMutation({ onSuccess: async () => { await utils.geo.analysis.list.invalidate(); toast.success("已撤销人工修订"); }, onError: error => toast.error(error.message) });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [manualForm, setManualForm] = useState({
+    mentionsEnterprise: false,
+    recommendsEnterprise: false,
+    mentionsCompetitors: false,
+    recommendedCompetitorsText: "",
+    enterpriseWins: false,
+    recommendationReason: "",
+    notRecommendedReason: "",
+    hasMisconception: false,
+    contentGap: "",
+    optimizationSuggestion: "",
+    confidence: "80",
+    reviewNote: "",
+  });
+  const openManualReview = (item: NonNullable<typeof analysisQuery.data>[number]) => {
+    const override = item.manualOverrideJson as Record<string, unknown> | null;
+    setEditingId(item.id);
+    setManualForm({
+      mentionsEnterprise: Boolean(item.mentionsEnterprise),
+      recommendsEnterprise: Boolean(item.recommendsEnterprise),
+      mentionsCompetitors: Boolean(item.mentionsCompetitors),
+      recommendedCompetitorsText: joinList(item.recommendedCompetitors),
+      enterpriseWins: Boolean(item.enterpriseWins),
+      recommendationReason: item.recommendationReason ?? "",
+      notRecommendedReason: item.notRecommendedReason ?? "",
+      hasMisconception: Boolean(item.hasMisconception),
+      contentGap: item.contentGap ?? "",
+      optimizationSuggestion: item.optimizationSuggestion ?? "",
+      confidence: typeof override?.confidence === "number" ? String(override.confidence) : "80",
+      reviewNote: item.reviewNote ?? "",
+    });
+  };
+  const closeManualReview = () => setEditingId(null);
+  const updateManualForm = (key: keyof typeof manualForm, value: string | boolean) => setManualForm(prev => ({ ...prev, [key]: value }));
+  const submitManualReview = () => {
+    if (!editingId) return;
+    const confidenceValue = manualForm.confidence.trim() ? Number(manualForm.confidence) : null;
+    if (confidenceValue !== null && (!Number.isFinite(confidenceValue) || confidenceValue < 0 || confidenceValue > 100)) return toast.error("置信度需填写 0-100 之间的数字");
+    saveManualReview.mutate({
+      id: editingId,
+      mentionsEnterprise: manualForm.mentionsEnterprise,
+      recommendsEnterprise: manualForm.recommendsEnterprise,
+      mentionsCompetitors: manualForm.mentionsCompetitors,
+      recommendedCompetitors: splitList(manualForm.recommendedCompetitorsText),
+      enterpriseWins: manualForm.enterpriseWins,
+      recommendationReason: manualForm.recommendationReason,
+      notRecommendedReason: manualForm.notRecommendedReason,
+      hasMisconception: manualForm.hasMisconception,
+      contentGap: manualForm.contentGap,
+      optimizationSuggestion: manualForm.optimizationSuggestion,
+      confidence: confidenceValue,
+      reviewNote: manualForm.reviewNote,
+    });
+  };
+  const editingItem = (analysisQuery.data ?? []).find(item => item.id === editingId);
   return (
     <div>
-      <PageHeader title="AI 语义分析" description="调用 LLM 对每条 AI 原始回答进行语义分析，输出结构化 JSON。分析必须基于真实导入回答。" />
+      <PageHeader title="AI 语义分析" description="调用 LLM 对每条 AI 原始回答进行语义分析，输出结构化 JSON。分析必须基于真实导入回答；如 AI 判断不准确，可人工修订结构化结果供后续评分、任务、模板和报告使用。" />
       <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} />
       {selectedProjectId ? <Card>
         {(responsesQuery.data ?? []).length === 0 ? <EmptyState title="暂无可分析的 AI 回答" description="请先到 AI 回答导入页录入或导入真实回答，再运行语义分析。" /> : <div className="mb-5 flex items-center justify-between"><p className="text-sm text-slate-600">当前可分析回答：{responsesQuery.data?.length ?? 0} 条</p><Button disabled={runAnalysis.isPending} onClick={() => runAnalysis.mutate({ projectId: selectedProjectId })}>{runAnalysis.isPending ? "正在分析..." : "运行 AI 语义分析"}</Button></div>}
         {(analysisQuery.data ?? []).length === 0 ? <EmptyState title="暂无分析结果" description="运行语义分析后，系统会展示是否提到本企业、是否推荐、竞品情况、错误认知、内容缺口与优化建议。" /> : null}
         <div className="space-y-4">
-          {(analysisQuery.data ?? []).map(item => <div key={item.id} className="rounded-lg border border-slate-200 p-4"><div className="grid gap-3 text-sm md:grid-cols-2"><p><b>是否提到本企业：</b>{item.mentionsEnterprise ? "是" : "否"}</p><p><b>是否推荐本企业：</b>{item.recommendsEnterprise ? "是" : "否"}</p><p><b>是否提到竞品：</b>{item.mentionsCompetitors ? "是" : "否"}</p><p><b>本企业是否胜出：</b>{item.enterpriseWins ? "是" : "否"}</p><p><b>被推荐竞品：</b>{joinList(item.recommendedCompetitors) || "无"}</p><p><b>是否存在错误认知：</b>{item.hasMisconception ? "是" : "否"}</p></div><div className="mt-3 space-y-2 text-sm text-slate-700"><p><b>推荐理由：</b>{item.recommendationReason || "无"}</p><p><b>未推荐原因：</b>{item.notRecommendedReason || "无"}</p><p><b>内容缺口：</b>{item.contentGap || "无"}</p><p><b>优化建议：</b>{item.optimizationSuggestion || "无"}</p></div><pre className="mt-3 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{JSON.stringify(item.rawJson, null, 2)}</pre></div>)}
+          {(analysisQuery.data ?? []).map(item => <div key={item.id} className="rounded-lg border border-slate-200 p-4">
+            <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="flex flex-wrap gap-2">
+                <span className={`rounded-full px-2 py-1 text-xs ${item.manuallyReviewed ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-700"}`}>{item.manuallyReviewed ? "已人工修订" : "AI 原始分析"}</span>
+                {item.manuallyReviewed && item.reviewedAt ? <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">修订时间：{new Date(item.reviewedAt).toLocaleString()}</span> : null}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => openManualReview(item)}>{item.manuallyReviewed ? "编辑修订" : "人工修订"}</Button>
+                {item.manuallyReviewed ? <Button variant="danger" onClick={() => undoManualReview.mutate({ id: item.id })}>撤销人工修订</Button> : null}
+              </div>
+            </div>
+            <div className="grid gap-3 text-sm md:grid-cols-2"><p><b>是否提到本企业：</b>{item.mentionsEnterprise ? "是" : "否"}</p><p><b>是否推荐本企业：</b>{item.recommendsEnterprise ? "是" : "否"}</p><p><b>是否提到竞品：</b>{item.mentionsCompetitors ? "是" : "否"}</p><p><b>本企业是否胜出：</b>{item.enterpriseWins ? "是" : "否"}</p><p><b>被推荐竞品：</b>{joinList(item.recommendedCompetitors) || "无"}</p><p><b>是否存在错误认知：</b>{item.hasMisconception ? "是" : "否"}</p></div>
+            <div className="mt-3 space-y-2 text-sm text-slate-700"><p><b>推荐理由：</b>{item.recommendationReason || "无"}</p><p><b>未推荐原因：</b>{item.notRecommendedReason || "无"}</p><p><b>内容缺口：</b>{item.contentGap || "无"}</p><p><b>优化建议：</b>{item.optimizationSuggestion || "无"}</p>{item.reviewNote ? <p><b>修订备注：</b>{item.reviewNote}</p> : null}</div>
+            <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-700">查看原始 AI 分析</summary><pre className="mt-2 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{JSON.stringify(item.rawJson, null, 2)}</pre></details>
+            {item.manuallyReviewed ? <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-700">查看人工修订结果</summary><pre className="mt-2 overflow-auto rounded-lg bg-amber-950 p-3 text-xs text-amber-50">{JSON.stringify(item.manualOverrideJson, null, 2)}</pre></details> : null}
+          </div>)}
         </div>
       </Card> : null}
+      {editingId && editingItem ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+        <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-xl bg-white p-5 shadow-xl">
+          <div className="mb-4 flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold">人工修订分析结果</h2><p className="mt-1 text-sm text-slate-600">原始 AI 分析不会被覆盖，保存后后续评分、任务、模板和报告会优先使用人工修订结果。</p></div><Button variant="secondary" onClick={closeManualReview}>关闭</Button></div>
+          <div className="grid gap-3 text-sm md:grid-cols-2">
+            {[ ["mentionsEnterprise", "是否提到本企业"], ["recommendsEnterprise", "是否推荐本企业"], ["mentionsCompetitors", "是否提到竞品"], ["enterpriseWins", "本企业是否胜出"], ["hasMisconception", "是否存在错误认知"] ].map(([key, label]) => <label key={key} className="flex items-center gap-2 rounded-lg border border-slate-200 p-3"><input type="checkbox" checked={Boolean(manualForm[key as keyof typeof manualForm])} onChange={event => updateManualForm(key as keyof typeof manualForm, event.target.checked)} />{label}</label>)}
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <TextArea label="被推荐竞品" value={manualForm.recommendedCompetitorsText} onChange={value => updateManualForm("recommendedCompetitorsText", value)} placeholder="多个竞品用逗号或换行分隔" />
+            <Input label="置信度（0-100）" value={manualForm.confidence} onChange={value => updateManualForm("confidence", value)} type="number" />
+            <TextArea label="推荐理由" value={manualForm.recommendationReason} onChange={value => updateManualForm("recommendationReason", value)} />
+            <TextArea label="未推荐原因" value={manualForm.notRecommendedReason} onChange={value => updateManualForm("notRecommendedReason", value)} />
+            <TextArea label="错误认知 / 内容缺口" value={manualForm.contentGap} onChange={value => updateManualForm("contentGap", value)} />
+            <TextArea label="优化建议" value={manualForm.optimizationSuggestion} onChange={value => updateManualForm("optimizationSuggestion", value)} />
+            <div className="md:col-span-2"><TextArea label="修订备注" value={manualForm.reviewNote} onChange={value => updateManualForm("reviewNote", value)} placeholder="说明为什么需要修订，可为空" /></div>
+          </div>
+          <div className="mt-5 flex justify-end gap-2"><Button variant="secondary" onClick={closeManualReview}>取消</Button><Button disabled={saveManualReview.isPending} onClick={submitManualReview}>{saveManualReview.isPending ? "正在保存..." : "保存人工修订"}</Button></div>
+        </div>
+      </div> : null}
     </div>
   );
 }
-
 export function ScoresPage() {
   const utils = trpc.useUtils();
   const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();

@@ -140,6 +140,10 @@ export const analysisResults = mysqlTable("analysis_results", {
   contentGap: text("contentGap"),
   optimizationSuggestion: text("optimizationSuggestion"),
   rawJson: json("rawJson").$type<Record<string, unknown>>().notNull(),
+  manualOverrideJson: json("manual_override_json").$type<Record<string, unknown> | null>(),
+  manuallyReviewed: int("manually_reviewed").default(0).notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNote: text("review_note"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

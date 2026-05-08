@@ -24,6 +24,8 @@ import {
   generateContentTemplates,
   generateOptimizationTasks,
   generateReportMarkdown,
+  resolveEffectiveAnalysisResult,
+  resolveEffectiveAnalysisResults,
   projectStatuses,
   questionSources,
   questionTypes,
@@ -78,6 +80,21 @@ const aiResponseInput = z.object({
   aiPlatform: z.enum(aiPlatforms),
   rawAnswer: z.string().min(1, "请输入 AI 原始回答"),
   checkedAt: z.string().min(1, "请输入检测时间"),
+});
+const analysisManualReviewInput = z.object({
+  id: z.number().int().positive(),
+  mentionsEnterprise: z.boolean(),
+  recommendsEnterprise: z.boolean(),
+  mentionsCompetitors: z.boolean(),
+  recommendedCompetitors: z.array(z.string()).default([]),
+  enterpriseWins: z.boolean(),
+  recommendationReason: z.string().optional().default(""),
+  notRecommendedReason: z.string().optional().default(""),
+  hasMisconception: z.boolean(),
+  contentGap: z.string().optional().default(""),
+  optimizationSuggestion: z.string().optional().default(""),
+  confidence: z.number().min(0).max(100).optional().nullable(),
+  reviewNote: z.string().optional().nullable(),
 });
 
 const requireDb = async () => {
@@ -302,7 +319,8 @@ const geoRouter = router({
     list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
-      return db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId)).orderBy(desc(analysisResults.createdAt));
+      const rows = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId)).orderBy(desc(analysisResults.createdAt));
+      return rows.map(resolveEffectiveAnalysisResult);
     }),
     run: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
@@ -384,6 +402,10 @@ const geoRouter = router({
           contentGap: parsed.contentGap,
           optimizationSuggestion: parsed.optimizationSuggestion,
           rawJson: parsed,
+          manualOverrideJson: null,
+          manuallyReviewed: 0,
+          reviewedAt: null,
+          reviewNote: null,
         });
       }
 
@@ -391,6 +413,39 @@ const geoRouter = router({
       await db.insert(analysisResults).values(rows);
       await updateProjectStatus(input.projectId, "analysis_done");
       return { success: true, count: rows.length } as const;
+    }),
+    saveManualReview: protectedProcedure.input(analysisManualReviewInput).mutation(async ({ input }) => {
+      const db = await requireDb();
+      const manualOverrideJson = {
+        mentionsEnterprise: input.mentionsEnterprise,
+        recommendsEnterprise: input.recommendsEnterprise,
+        mentionsCompetitors: input.mentionsCompetitors,
+        recommendedCompetitors: input.recommendedCompetitors.map(item => item.trim()).filter(Boolean),
+        enterpriseWins: input.enterpriseWins,
+        recommendationReason: input.recommendationReason.trim(),
+        notRecommendedReason: input.notRecommendedReason.trim(),
+        hasMisconception: input.hasMisconception,
+        contentGap: input.contentGap.trim(),
+        optimizationSuggestion: input.optimizationSuggestion.trim(),
+        confidence: input.confidence ?? null,
+      };
+      await db.update(analysisResults).set({
+        manualOverrideJson,
+        manuallyReviewed: 1,
+        reviewedAt: new Date(),
+        reviewNote: input.reviewNote?.trim() || null,
+      }).where(eq(analysisResults.id, input.id));
+      return { success: true } as const;
+    }),
+    undoManualReview: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb();
+      await db.update(analysisResults).set({
+        manualOverrideJson: null,
+        manuallyReviewed: 0,
+        reviewedAt: null,
+        reviewNote: null,
+      }).where(eq(analysisResults.id, input.id));
+      return { success: true } as const;
     }),
   }),
 
@@ -407,7 +462,7 @@ const geoRouter = router({
       if (analyses.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析，再计算 GEO 评分" });
       }
-      const score = calculateGeoScore(analyses);
+      const score = calculateGeoScore(resolveEffectiveAnalysisResults(analyses));
       await db.delete(geoScores).where(eq(geoScores.projectId, input.projectId));
       await db.insert(geoScores).values({ projectId: input.projectId, ...score });
       await updateProjectStatus(input.projectId, "score_done");
@@ -428,7 +483,7 @@ const geoRouter = router({
       if (analyses.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析，再生成优化任务" });
       }
-      const generated = generateOptimizationTasks(project, analyses);
+      const generated = generateOptimizationTasks(project, resolveEffectiveAnalysisResults(analyses));
       await db.delete(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
       await db.insert(optimizationTasks).values(generated.map(task => ({ ...task, projectId: input.projectId })));
       await updateProjectStatus(input.projectId, "tasks_ready");
@@ -483,6 +538,7 @@ const geoRouter = router({
       const db = await requireDb();
       const project = await getProjectOrThrow(input.projectId);
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
+      const effectiveAnalyses = resolveEffectiveAnalysisResults(analyses);
       if (analyses.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析，再生成诊断报告" });
       }
@@ -498,7 +554,7 @@ const geoRouter = router({
         specifiedQuestions: projectQuestions.filter(question => question.source === "manual" || question.source === "csv").length,
       };
       const questionTextByResponseId = new Map(responses.map(response => [response.id, response.questionText]));
-      const analysesWithQuestions = analyses.map(analysis => ({
+      const analysesWithQuestions = effectiveAnalyses.map(analysis => ({
         ...analysis,
         questionText: questionTextByResponseId.get(analysis.aiResponseId) ?? null,
       }));

@@ -7,6 +7,8 @@ import {
   getVisibilityLevel,
   questionSources,
   questionTypes,
+  resolveEffectiveAnalysisResult,
+  resolveEffectiveAnalysisResults,
   type AnalysisLike,
   type ProjectLike,
 } from "./geoLogic";
@@ -128,6 +130,24 @@ describe("GEO 评分与等级", () => {
     expect(score.contentAssetScore).toBe(50);
     expect(score.totalScore).toBe(60);
     expect(score.visibilityLevel).toBe("良好可见");
+    const reviewedScore = calculateGeoScore(resolveEffectiveAnalysisResults([
+      {
+        ...analyses[2],
+        manuallyReviewed: 1,
+        manualOverrideJson: {
+          mentionsEnterprise: true,
+          recommendsEnterprise: true,
+          mentionsCompetitors: true,
+          recommendedCompetitors: ["竞品甲"],
+          enterpriseWins: true,
+          hasMisconception: false,
+          contentGap: "人工修订后的内容缺口",
+          optimizationSuggestion: "人工修订后的优化建议",
+        },
+      },
+    ]));
+    expect(reviewedScore.totalScore).toBe(85);
+    expect(reviewedScore.aiRecommendationScore).toBe(100);
     expect(questionTypes).toContain("指定问题");
     expect(questionSources).toEqual(["ai_generated", "manual", "csv"]);
     expect(score.calculationDetail.weights).toEqual({
@@ -169,6 +189,23 @@ describe("优化任务、内容模板与报告", () => {
       "社媒内容",
     ]);
     expect(tasks.every(task => task.taskName && task.generationReason && task.executionSuggestion && task.expectedImpact && task.status)).toBe(true);
+
+    const reviewedAnalysis = resolveEffectiveAnalysisResult({
+      ...analyses[2],
+      manuallyReviewed: true,
+      manualOverrideJson: {
+        mentionsEnterprise: false,
+        recommendsEnterprise: false,
+        mentionsCompetitors: false,
+        recommendedCompetitors: [],
+        enterpriseWins: false,
+        hasMisconception: true,
+        contentGap: "人工修订：缺少官网定位页与权威 FAQ",
+        optimizationSuggestion: "人工修订：优先补官网定位页与 FAQ",
+      },
+    });
+    const reviewedTasks = generateOptimizationTasks(project, [reviewedAnalysis]);
+    expect(reviewedTasks[0].executionSuggestion).toContain("人工修订：缺少官网定位页与权威 FAQ");
   });
 
   it("没有分析结果时拒绝生成优化任务", () => {
@@ -228,6 +265,25 @@ describe("优化任务、内容模板与报告", () => {
     expect(report.markdownContent).toContain("当前问题库共 50 条问题");
     expect(report.markdownContent).toContain("AI 生成问题 40 条");
     expect(report.markdownContent).toContain("客户指定问题 10 条");
+    const reviewedReport = generateReportMarkdown(dolphinProject, { totalScore: score.totalScore, visibilityLevel: score.visibilityLevel }, resolveEffectiveAnalysisResults([
+      {
+        ...dolphinAnalyses[5],
+        manuallyReviewed: true,
+        manualOverrideJson: {
+          mentionsEnterprise: true,
+          recommendsEnterprise: true,
+          mentionsCompetitors: false,
+          recommendedCompetitors: [],
+          enterpriseWins: true,
+          recommendationReason: "人工修订后确认海豚知道在该回答中被推荐",
+          notRecommendedReason: "",
+          hasMisconception: false,
+          contentGap: "人工修订后确认缺口为行业选型文章不足",
+          optimizationSuggestion: "人工修订建议优先补行业选型文章",
+        },
+      },
+    ]));
+    expect(reviewedReport.markdownContent).toContain("人工修订后确认海豚知道在该回答中被推荐");
     expect(report.markdownContent).toContain("**50 条问题**");
     expect(report.markdownContent).toContain("**10 条客户指定问题**");
     expect(report.mentionRecommendationSummary).toContain("2 条提到本企业");

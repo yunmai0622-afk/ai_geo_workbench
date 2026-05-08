@@ -50,7 +50,53 @@ export type AnalysisLike = {
   recommendationReason?: string | null;
   notRecommendedReason?: string | null;
   questionText?: string | null;
+  confidence?: number | null;
 };
+export type ManualAnalysisOverride = {
+  mentionsEnterprise?: boolean | number;
+  recommendsEnterprise?: boolean | number;
+  mentionsCompetitors?: boolean | number;
+  recommendedCompetitors?: string[];
+  enterpriseWins?: boolean | number;
+  recommendationReason?: string | null;
+  notRecommendedReason?: string | null;
+  hasMisconception?: boolean | number;
+  contentGap?: string | null;
+  optimizationSuggestion?: string | null;
+  confidence?: number | null;
+};
+export type ReviewableAnalysis<T extends AnalysisLike = AnalysisLike> = T & {
+  manuallyReviewed?: number | boolean | null;
+  manualOverrideJson?: Record<string, unknown> | null;
+};
+const toFlag = (value: unknown, fallback: number) => {
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (typeof value === "number") return value === 1 ? 1 : 0;
+  return fallback;
+};
+const toNullableText = (value: unknown, fallback?: string | null) => typeof value === "string" ? value : fallback ?? null;
+const toStringList = (value: unknown, fallback: string[]) => Array.isArray(value) ? value.map(item => String(item).trim()).filter(Boolean) : fallback;
+export function resolveEffectiveAnalysisResult<T extends ReviewableAnalysis>(analysis: T): T {
+  if (!analysis.manuallyReviewed || !analysis.manualOverrideJson || typeof analysis.manualOverrideJson !== "object") return analysis;
+  const override = analysis.manualOverrideJson as ManualAnalysisOverride;
+  return {
+    ...analysis,
+    mentionsEnterprise: toFlag(override.mentionsEnterprise, analysis.mentionsEnterprise),
+    recommendsEnterprise: toFlag(override.recommendsEnterprise, analysis.recommendsEnterprise),
+    mentionsCompetitors: toFlag(override.mentionsCompetitors, analysis.mentionsCompetitors),
+    recommendedCompetitors: toStringList(override.recommendedCompetitors, analysis.recommendedCompetitors),
+    enterpriseWins: toFlag(override.enterpriseWins, analysis.enterpriseWins),
+    recommendationReason: toNullableText(override.recommendationReason, analysis.recommendationReason),
+    notRecommendedReason: toNullableText(override.notRecommendedReason, analysis.notRecommendedReason),
+    hasMisconception: toFlag(override.hasMisconception, analysis.hasMisconception),
+    contentGap: toNullableText(override.contentGap, analysis.contentGap),
+    optimizationSuggestion: toNullableText(override.optimizationSuggestion, analysis.optimizationSuggestion),
+    confidence: typeof override.confidence === "number" ? override.confidence : analysis.confidence ?? null,
+  };
+}
+export function resolveEffectiveAnalysisResults<T extends ReviewableAnalysis>(analyses: T[]): T[] {
+  return analyses.map(resolveEffectiveAnalysisResult);
+}
 
 export type ProjectLike = {
   id: number;
