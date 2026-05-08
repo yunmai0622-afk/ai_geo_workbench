@@ -10,7 +10,7 @@
  *   const { url: imageUrl } = await generateImage({
  *     prompt: "Add a rainbow to this landscape",
  *     originalImages: [{
- *       url: "https://example.com/original.jpg",
+ *       url: "暂无真实链接，请发布后填写。",
  *       mimeType: "image/jpeg"
  *     }]
  *   });

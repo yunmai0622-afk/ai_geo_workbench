@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   attachQuestionTextToAnalyses,
   calculateGeoScore,
@@ -18,7 +19,7 @@ const project: ProjectLike = {
   id: 1,
   enterpriseName: "示例科技",
   industry: "企业服务",
-  website: "https://example.com",
+  website: "暂无真实链接，请发布后填写。",
   region: "中国",
   productIntro: "面向企业的 AI 搜索增长诊断服务",
   targetCustomers: "B2B 企业市场部和增长负责人",
@@ -86,7 +87,7 @@ const dolphinProject: ProjectLike = {
   id: 2,
   enterpriseName: "海豚知道",
   industry: "知识付费 SaaS 与企业 AI 经营系统",
-  website: "https://example.com/dolphin",
+  website: "暂无真实链接，请发布后填写。",
   region: "中国",
   productIntro: "面向知识付费老师和教育培训机构的课程售卖、直播转化、私域经营、AI 定位、AI 诊断和 AI 经营系统。",
   targetCustomers: "知识付费老师、教育培训机构、内容创业者和企业服务客户",
@@ -250,6 +251,46 @@ describe("优化任务、内容模板与报告", () => {
     ["行业背景", "常见误区", "判断服务商是否靠谱的标准", "主流方案对比", "适合不同企业的选择建议", "FAQ", "行动引导"].forEach(section => {
       expect(industryTemplate?.markdownContent).toContain(section);
     });
+
+    expect(homepageTemplate?.markdownContent.length ?? 0).toBeGreaterThanOrEqual(800);
+    expect((faqTemplate?.markdownContent.match(/^## \d+\./gm) ?? []).length).toBeGreaterThanOrEqual(20);
+    expect(competitorTemplate?.markdownContent.length ?? 0).toBeGreaterThanOrEqual(1000);
+    expect(caseTemplate?.markdownContent.length ?? 0).toBeGreaterThanOrEqual(700);
+    expect(industryTemplate?.markdownContent.length ?? 0).toBeGreaterThanOrEqual(1200);
+
+    const requiredProjectSignals = [project.enterpriseName, project.industry, project.targetCustomers, project.coreSellingPoints, project.competitorNames[0], project.competitorNames[1]];
+    templates.forEach(template => {
+      requiredProjectSignals.forEach(signal => {
+        expect(template.markdownContent).toContain(signal);
+      });
+    });
+    expect(homepageTemplate?.markdownContent).toContain("我们是谁");
+    expect(homepageTemplate?.markdownContent).toContain("解决什么问题");
+    expect(competitorTemplate?.markdownContent).toContain("两类企业分别适合谁");
+    expect(competitorTemplate?.markdownContent).toContain("功能/服务能力对比");
+    expect(industryTemplate?.markdownContent).toContain("为什么需要这类服务");
+    expect(industryTemplate?.markdownContent).toContain("企业选择时的常见误区");
+    expect(industryTemplate?.markdownContent).toContain("本企业适合的客户类型");
+    expect(caseTemplate?.markdownContent).toContain("没有已授权、可验证的客户数据前，不应编造");
+    expect(caseTemplate?.markdownContent).toContain("可发布版本");
+    expect(templates.every(template => template.markdownContent.includes("对应优化任务"))).toBe(true);
+    expect(templates.every(template => template.markdownContent.includes(project.enterpriseName))).toBe(true);
+    const forbiddenPlaceholders = [
+      "example" + ".com",
+      "示例" + "链接",
+      "测试" + "链接",
+      "假" + "官网",
+      "假" + "发布链接",
+    ];
+    const combinedTemplateMarkdown = templates.map(template => template.markdownContent).join("\n");
+    forbiddenPlaceholders.forEach(placeholder => {
+      expect(combinedTemplateMarkdown).not.toContain(placeholder);
+    });
+    expect(combinedTemplateMarkdown).toContain("暂无真实链接，请发布后填写。");
+
+    const frontendPageSource = readFileSync(new URL("../client/src/pages/GeoPages.tsx", import.meta.url), "utf8");
+    expect(frontendPageSource).toContain("navigator.clipboard.writeText(template.markdownContent)");
+    expect(frontendPageSource).toContain("downloadMarkdown(`${template.title}.md`, template.markdownContent)");
   });
 
   it("没有优化任务时拒绝生成内容模板", () => {
@@ -359,6 +400,11 @@ describe("优化任务、内容模板与报告", () => {
     expect(report.markdownContent.length).toBeGreaterThan(2000);
     expect(report.markdownContent.length).toBeLessThan(12000);
     expect(report.markdownContent).toContain("样本量有限");
+    expect(report.markdownContent).not.toContain("example" + ".com");
+    expect(report.markdownContent).not.toContain("示例" + "链接");
+    expect(report.markdownContent).not.toContain("测试" + "链接");
+    expect(report.markdownContent).not.toContain("假" + "官网");
+    expect(report.markdownContent).not.toContain("假" + "发布链接");
     expect(report.markdownContent).toContain("25 分");
     expect(report.markdownContent).toContain("弱可见");
     expect(report.markdownContent).toContain("被提及 **2 次**");
