@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, question_text AS questionText, question_id AS questionId FROM ai_responses WHERE project_id = 1 LIMIT 10;\nSELECT id, question_text AS questionText, source FROM questions WHERE project_id = 1 LIMIT 15;\nSELECT COUNT(*) AS totalResponses, SUM(CASE WHEN question_text IS NULL OR question_text = '' THEN 1 ELSE 0 END) AS responsesMissingQuestionText, SUM(CASE WHEN question_id IS NULL THEN 1 ELSE 0 END) AS responsesMissingQuestionId FROM ai_responses WHERE project_id = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, question_text AS questionText, question_id AS questionId FROM ai_responses WHERE project_id = 1 LIMIT 10;\nSELECT id, question_text AS questionText, source FROM questions WHERE project_id = 1 LIMIT 15;\nSELECT COUNT(*) AS totalResponses, SUM(CASE WHEN question_text IS NULL OR question_text = '' THEN 1 ELSE 0 END) AS responsesMissingQuestionText, SUM(CASE WHEN question_id IS NULL THEN 1 ELSE 0 END) AS responsesMissingQuestionId FROM ai_responses WHERE project_id = 1;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'project_id' in 'where clause'"
+  ]
+}

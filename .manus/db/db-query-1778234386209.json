@@ -1,0 +1,165 @@
+{
+  "query": "SELECT id, questionText, questionId FROM ai_responses WHERE projectId = 1 LIMIT 10;\nSELECT id, questionText, source FROM questions WHERE projectId = 1 LIMIT 15;\nSELECT COUNT(*) AS totalResponses, SUM(CASE WHEN questionText IS NULL OR questionText = '' THEN 1 ELSE 0 END) AS responsesMissingQuestionText, SUM(CASE WHEN questionId IS NULL THEN 1 ELSE 0 END) AS responsesMissingQuestionId FROM ai_responses WHERE projectId = 1;\nSELECT COUNT(*) AS totalAnalyses FROM analysis_results WHERE projectId = 1;\nSELECT id, CHAR_LENGTH(markdownContent) AS markdownLength, LEFT(markdownContent, 120) AS preview FROM reports WHERE projectId = 1 ORDER BY createdAt DESC LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, questionText, questionId FROM ai_responses WHERE projectId = 1 LIMIT 10;\nSELECT id, questionText, source FROM questions WHERE projectId = 1 LIMIT 15;\nSELECT COUNT(*) AS totalResponses, SUM(CASE WHEN questionText IS NULL OR questionText = '' THEN 1 ELSE 0 END) AS responsesMissingQuestionText, SUM(CASE WHEN questionId IS NULL THEN 1 ELSE 0 END) AS responsesMissingQuestionId FROM ai_responses WHERE projectId = 1;\nSELECT COUNT(*) AS totalAnalyses FROM analysis_results WHERE projectId = 1;\nSELECT id, CHAR_LENGTH(markdownContent) AS markdownLength, LEFT(markdownContent, 120) AS preview FROM reports WHERE projectId = 1 ORDER BY createdAt DESC LIMIT 3;",
+  "rows": [
+    {
+      "id": "1",
+      "questionText": "知识付费 SaaS 平台哪个好？",
+      "questionId": "51"
+    },
+    {
+      "id": "2",
+      "questionText": "知识付费老师卖课用什么系统？",
+      "questionId": "52"
+    },
+    {
+      "id": "3",
+      "questionText": "海豚知道和小鹅通有什么区别？",
+      "questionId": "53"
+    },
+    {
+      "id": "4",
+      "questionText": "有哪些适合教育培训机构的私域经营系统？",
+      "questionId": "54"
+    },
+    {
+      "id": "5",
+      "questionText": "企业 AI 经营系统有哪些服务商？",
+      "questionId": "55"
+    },
+    {
+      "id": "6",
+      "questionText": "哪家公司适合帮知识付费企业做 AI 转型？",
+      "questionId": "56"
+    },
+    {
+      "id": "7",
+      "questionText": "做课程售卖和直播转化用什么平台？",
+      "questionId": "57"
+    },
+    {
+      "id": "8",
+      "questionText": "小鹅通、有赞教育、海豚知道哪个更适合知识付费老师？",
+      "questionId": "58"
+    },
+    {
+      "id": "9",
+      "questionText": "知识付费公司怎么搭建 AI 运营诊断系统？",
+      "questionId": "59"
+    },
+    {
+      "id": "10",
+      "questionText": "教育培训机构如何选择 SaaS 系统？",
+      "questionId": "60"
+    },
+    {
+      "id": "id",
+      "questionText": "questionText",
+      "questionId": "source"
+    },
+    {
+      "id": "1",
+      "questionText": "海豚知道品牌在知识付费领域的知名度如何？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "2",
+      "questionText": "海豚知道的企业AI经营系统有哪些独特功能？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "3",
+      "questionText": "海豚知道如何帮助教育培训机构提升直播转化率？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "4",
+      "questionText": "有哪些适合内容创业者使用的知识付费SaaS平台？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "5",
+      "questionText": "海豚知道与小鹅通在课程售卖功能上有什么区别？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "6",
+      "questionText": "使用海豚知道的AI定位功能对内容创作者有哪些帮助？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "7",
+      "questionText": "海豚知道的私域经营模块如何支持企业客户的用户管理？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "8",
+      "questionText": "海豚知道的价格套餐有哪些，如何选择最适合的？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "9",
+      "questionText": "对于刚起步的知识付费老师，推荐使用海豚知道的哪款产品？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "10",
+      "questionText": "海豚知道的AI诊断功能在运营管理中起什么作用？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "11",
+      "questionText": "如何通过海豚知道提升课程售卖转化率？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "12",
+      "questionText": "选择海豚知道还是有赞教育更适合中小培训机构？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "13",
+      "questionText": "海豚知道是否支持多渠道直播推广？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "14",
+      "questionText": "海豚知道的AI经营系统如何帮助企业精细化运营？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "15",
+      "questionText": "内容创业者使用海豚知道有哪些成功案例？",
+      "questionId": "ai_generated"
+    },
+    {
+      "id": "totalResponses",
+      "questionText": "responsesMissingQuestionText",
+      "questionId": "responsesMissingQuestionId"
+    },
+    {
+      "id": "10",
+      "questionText": "0",
+      "questionId": "0"
+    },
+    {
+      "id": "id",
+      "questionText": "markdownLength",
+      "questionId": "preview"
+    },
+    {
+      "id": "90002",
+      "questionText": "7500",
+      "questionId": "# 海豚知道 GEO 诊断报告"
+    }
+  ],
+  "messages": [
+    "totalAnalyses",
+    "10",
+    "## 1. 报告摘要",
+    "本报告基于 海豚知道 的真实项目信息、已导入的 10 条 AI 回答、对应 AI 语义分析结果和 GEO 评分生成，不使用虚构样本或虚构客户案例。当前 GEO 总分为 **32 分**"
+  ],
+  "stdout": "id\tquestionText\tquestionId\n1\t知识付费 SaaS 平台哪个好？\t51\n2\t知识付费老师卖课用什么系统？\t52\n3\t海豚知道和小鹅通有什么区别？\t53\n4\t有哪些适合教育培训机构的私域经营系统？\t54\n5\t企业 AI 经营系统有哪些服务商？\t55\n6\t哪家公司适合帮知识付费企业做 AI 转型？\t56\n7\t做课程售卖和直播转化用什么平台？\t57\n8\t小鹅通、有赞教育、海豚知道哪个更适合知识付费老师？\t58\n9\t知识付费公司怎么搭建 AI 运营诊断系统？\t59\n10\t教育培训机构如何选择 SaaS 系统？\t60\nid\tquestionText\tsource\n1\t海豚知道品牌在知识付费领域的知名度如何？\tai_generated\n2\t海豚知道的企业AI经营系统有哪些独特功能？\tai_generated\n3\t海豚知道如何帮助教育培训机构提升直播转化率？\tai_generated\n4\t有哪些适合内容创业者使用的知识付费SaaS平台？\tai_generated\n5\t海豚知道与小鹅通在课程售卖功能上有什么区别？\tai_generated\n6\t使用海豚知道的AI定位功能对内容创作者有哪些帮助？\tai_generated\n7\t海豚知道的私域经营模块如何支持企业客户的用户管理？\tai_generated\n8\t海豚知道的价格套餐有哪些，如何选择最适合的？\tai_generated\n9\t对于刚起步的知识付费老师，推荐使用海豚知道的哪款产品？\tai_generated\n10\t海豚知道的AI诊断功能在运营管理中起什么作用？\tai_generated\n11\t如何通过海豚知道提升课程售卖转化率？\tai_generated\n12\t选择海豚知道还是有赞教育更适合中小培训机构？\tai_generated\n13\t海豚知道是否支持多渠道直播推广？\tai_generated\n14\t海豚知道的AI经营系统如何帮助企业精细化运营？\tai_generated\n15\t内容创业者使用海豚知道有哪些成功案例？\tai_generated\ntotalResponses\tresponsesMissingQuestionText\tresponsesMissingQuestionId\n10\t0\t0\ntotalAnalyses\n10\nid\tmarkdownLength\tpreview\n90002\t7500\t# 海豚知道 GEO 诊断报告\n\n## 1. 报告摘要\n本报告基于 海豚知道 的真实项目信息、已导入的 10 条 AI 回答、对应 AI 语义分析结果和 GEO 评分生成，不使用虚构样本或虚构客户案例。当前 GEO 总分为 **32 分**\n",
+  "stderr": "",
+  "execution_time_ms": 2435
+}

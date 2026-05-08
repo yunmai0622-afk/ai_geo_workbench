@@ -98,6 +98,36 @@ export function resolveEffectiveAnalysisResults<T extends ReviewableAnalysis>(an
   return analyses.map(resolveEffectiveAnalysisResult);
 }
 
+type ResponseQuestionTextLike = {
+  id: number;
+  questionId?: number | null;
+  questionText?: string | null;
+};
+
+type QuestionTextLike = {
+  id: number;
+  questionText?: string | null;
+};
+
+type AnalysisWithResponseId = AnalysisLike & {
+  aiResponseId?: number | null;
+};
+
+const normalizeQuestionText = (value: unknown) => typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+export function attachQuestionTextToAnalyses<T extends AnalysisWithResponseId>(analyses: T[], responses: ResponseQuestionTextLike[], questions: QuestionTextLike[]): T[] {
+  const questionTextByQuestionId = new Map(questions.map(question => [question.id, normalizeQuestionText(question.questionText)]));
+  const questionTextByResponseId = new Map(responses.map(response => [
+    response.id,
+    normalizeQuestionText(response.questionText) ?? (response.questionId ? questionTextByQuestionId.get(response.questionId) ?? null : null),
+  ]));
+
+  return analyses.map(analysis => ({
+    ...analysis,
+    questionText: (analysis.aiResponseId ? questionTextByResponseId.get(analysis.aiResponseId) : null) ?? normalizeQuestionText(analysis.questionText),
+  }));
+}
+
 export type ProjectLike = {
   id: number;
   enterpriseName: string;
@@ -594,7 +624,7 @@ function buildContentGapDiagnostics(project: ProjectLike, analyses: AnalysisLike
   ];
 }
 
-export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike, analyses: AnalysisLike[], questionStats?: QuestionCoverageStats) {
+export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike, analyses: AnalysisLike[], questionStats?: QuestionCoverageStats, rawScore?: GeoScoreLike) {
   if (analyses.length === 0) {
     throw new Error("缺少 AI 分析结果，无法生成诊断报告。");
   }
@@ -643,7 +673,7 @@ export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike
   const manualReviewSummary = manuallyReviewedAnalyses.length > 0
     ? `本轮有 ${manuallyReviewedAnalyses.length} 条 AI 分析经过人工修订，报告、评分、任务和模板应优先采用修订后的结论。人工修订补充的关键证据包括：${manualReviewEvidence.join("；")}。`
     : "本轮未检测到人工修订样本，报告仅基于 AI 原始语义分析生成。";
-  const sampleLimitNotice = sampleCount < 30 ? `本轮样本量为 ${sampleCount} 条，适合作为 P0 初步诊断和行动排序依据，但不应被夸大为全网结论。` : `本轮样本量为 ${sampleCount} 条，可用于观察当前 AI 搜索中的主要趋势。`;
+  const sampleLimitNotice = sampleCount < 30 ? `本轮**样本量有限**，实际样本为 ${sampleCount} 条，适合作为 P0 初步诊断和行动排序依据，但不应被夸大为全网结论；即便样本量有限，报告仍应完整呈现问题链路、人工修订结论、竞品差距和 30 天行动计划，而不能退回短报告。` : `本轮样本量为 ${sampleCount} 条，可用于观察当前 AI 搜索中的主要趋势。`;
   const coverageStats = questionStats ?? { totalQuestions: sampleCount, aiGeneratedQuestions: sampleCount, specifiedQuestions: 0 };
   const questionCoverageSummary = `当前问题库共 ${coverageStats.totalQuestions} 条问题，其中 AI 生成问题 ${coverageStats.aiGeneratedQuestions} 条，客户指定问题 ${coverageStats.specifiedQuestions} 条。`;
 
@@ -655,6 +685,9 @@ export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike
   const coreProblems = notRecommendedReasons.length > 0 ? notRecommendedReasons.join("；") : "当前未推荐原因不足，但从评分看仍需补足可引用内容资产。";
   const contentGaps = contentGapItems.length > 0 ? contentGapItems.join("；") : "当前分析未发现明确内容缺口。";
   const thirtyDayActions = "P0：7 天内完成官网定位页、产品能力说明、竞品对比页和 FAQ；P1：第 8-21 天完成客户案例采集、行业选型文章和第三方信任源铺设；P2：第 22-30 天将核心内容改写为公众号、知乎或社媒内容，并准备同一批高意向问题复测。";
+  const rawScoreSummary = rawScore && rawScore.totalScore !== scoreDetail.totalScore
+    ? `原始 AI 分析计算为 **${rawScore.totalScore} 分**，等级为 **${rawScore.visibilityLevel}**；人工修订后有效评分为 **${scoreDetail.totalScore} 分**，等级为 **${scoreDetail.visibilityLevel}**。这次变化不是因为系统编造了新数据，而是因为人工复核把 ${manuallyReviewedAnalyses.length} 条样本中的提及、推荐、胜出、竞品与内容缺口判断修正为更符合真实业务语境的结论。分项变化为：AI 可见度 ${rawScore.aiVisibilityScore ?? derivedScore.aiVisibilityScore}→${scoreDetail.aiVisibilityScore}，AI 推荐率 ${rawScore.aiRecommendationScore ?? derivedScore.aiRecommendationScore}→${scoreDetail.aiRecommendationScore}，竞品胜出率 ${rawScore.competitorWinScore ?? derivedScore.competitorWinScore}→${scoreDetail.competitorWinScore}，认知准确率 ${rawScore.cognitionAccuracyScore ?? derivedScore.cognitionAccuracyScore}→${scoreDetail.cognitionAccuracyScore}，内容资产完整度 ${rawScore.contentAssetScore ?? derivedScore.contentAssetScore}→${scoreDetail.contentAssetScore}。`
+    : `当前有效评分为 **${scoreDetail.totalScore} 分**，等级为 **${scoreDetail.visibilityLevel}**。本轮没有检测到与当前有效评分不同的原始评分版本，因此报告按当前分析结论解释分数。`;
 
   const scoreRows = [
     ["GEO 总分", `${scoreDetail.totalScore}`, `等级为「${scoreDetail.visibilityLevel}」，说明当前品牌并非完全不可见，但在高意向问题中的稳定出现和被推荐能力不足。`],
@@ -664,6 +697,11 @@ export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike
     ["认知准确率", `${scoreDetail.cognitionAccuracyScore}`, `${sampleCount - misconceptionCount}/${sampleCount} 条未标记明显错误认知。该项较高说明不是严重误读，主要问题是资料不足和推荐依据不足。`],
     ["内容资产完整度", `${scoreDetail.contentAssetScore}`, `${noGap}/${sampleCount} 条未发现明显内容缺口。该项越低，越说明官网、FAQ、案例、对比页等可引用资产不足。`],
   ];
+
+  const specifiedQuestionBusinessMeaning = coverageStats.specifiedQuestions > 0
+    ? `客户指定问题 ${coverageStats.specifiedQuestions} 条的业务意义在于：这些问题不是泛泛的流量词，而是直接覆盖知识付费 SaaS 选型、老师卖课系统、教育培训机构私域经营、企业 AI 经营系统、AI 转型服务商、课程售卖与直播转化，以及 ${project.enterpriseName} 与 ${joinOrFallback(project.competitorNames, "核心竞品")} 的选择比较。它们更接近真实客户在采购前会问 AI 的高意向问题，因此报告必须把这些问题作为 P0 优先级输入，而不是只按 AI 自动生成问题做平均判断。`
+    : "本轮尚未导入客户指定问题，因此无法单独判断客户给定高意向问题的业务意义，后续应优先补充指定问题集。";
+  const actionEvidenceSummary = `下表任务来自本轮真实分析和人工修订结果：内容缺口包括 ${contentGaps}；推荐理由包括 ${recommendationReasons.length > 0 ? recommendationReasons.join("；") : "样本中推荐理由不足"}；人工修订证据包括 ${manualReviewEvidence.length > 0 ? manualReviewEvidence.join("；") : "本轮无人工修订证据"}。`;
 
   const actionRows = [
     ["P0", `重写 ${project.enterpriseName} 官网定位页`, "AI 提及率和推荐率低，需要先让 AI 明确知道企业是谁、服务谁、解决什么问题", "官网定位页、产品能力说明页", "官网首页 GEO 优化稿、产品能力模块说明", "提升 AI 可见度与认知准确率"],
@@ -688,10 +726,12 @@ ${oneSentenceConclusion}
 |---|---:|---|
 ${scoreRows.map(row => `| ${row[0]} | ${row[1]} | ${row[2]} |`).join("\n")}
 
-从业务含义看，25 分左右的“弱可见”通常意味着潜在客户在向 AI 提问时，系统更可能看到竞品或通用平台，而不是稳定看到 ${project.enterpriseName}。这会影响两个环节：一是获客前置阶段，客户还没进入官网就被其他平台占据心智；二是品牌认知阶段，AI 即使偶尔提及 ${project.enterpriseName}，也缺少充分理由把它作为优先推荐。
+${rawScoreSummary}
+
+从业务含义看，${scoreDetail.totalScore} 分的“${scoreDetail.visibilityLevel}”意味着潜在客户在向 AI 提问时，系统更可能看到竞品或通用平台，而不是稳定看到 ${project.enterpriseName}。这会影响两个环节：一是获客前置阶段，客户还没进入官网就被其他平台占据心智；二是品牌认知阶段，AI 即使偶尔提及 ${project.enterpriseName}，也缺少充分理由把它作为优先推荐。
 
 ## 4. AI 可见度分析
-本轮问题库覆盖情况为：**${coverageStats.totalQuestions} 条问题**，其中 **${coverageStats.aiGeneratedQuestions} 条 AI 生成问题**、**${coverageStats.specifiedQuestions} 条客户指定问题**。本轮总共分析了 **${sampleCount} 条 AI 回答**。其中，${project.enterpriseName} 被提及 **${mentioned} 次**，被推荐 **${recommended} 次**，在竞品对比中体现胜出 **${wins} 次**。出现 ${project.enterpriseName} 的问题包括：${mentionQuestions.length > 0 ? mentionQuestions.join("；") : "当前报告生成上下文未取得逐题文本，需在后续复测中保留问题与分析映射。"} 被推荐的问题包括：${recommendedQuestions.length > 0 ? recommendedQuestions.join("；") : "本轮推荐样本较少，需优先提升推荐依据。"}
+本轮问题库覆盖情况为：**${coverageStats.totalQuestions} 条问题**，其中 **${coverageStats.aiGeneratedQuestions} 条 AI 生成问题**、**${coverageStats.specifiedQuestions} 条客户指定问题**。${specifiedQuestionBusinessMeaning} 本轮总共分析了 **${sampleCount} 条 AI 回答**。其中，${project.enterpriseName} 被提及 **${mentioned} 次**，被推荐 **${recommended} 次**，在竞品对比中体现胜出 **${wins} 次**。出现 ${project.enterpriseName} 的问题包括：${mentionQuestions.length > 0 ? mentionQuestions.join("；") : "当前报告生成上下文未取得逐题文本，需在后续复测中保留问题与分析映射。"} 被推荐的问题包括：${recommendedQuestions.length > 0 ? recommendedQuestions.join("；") : "本轮推荐样本较少，需优先提升推荐依据。"}
 
 更值得关注的是缺席问题。${absentHighIntentQuestions.length > 0 ? `在这些高意向问题中，${project.enterpriseName} 没有被提及：${absentHighIntentQuestions.join("；")}。` : "本轮未捕捉到明确的高意向缺席题目文本，但从提及率看仍存在可见度不足。"} 这些问题往往对应客户选型、购买和竞品比较，如果品牌缺席，意味着客户在 AI 搜索中可能直接进入竞品列表或通用平台推荐列表。
 
@@ -715,6 +755,7 @@ ${gapDiagnostics.map((item, index) => `| ${index + 1}. ${item.gap} | ${item.why}
 这些缺口共同指向一个问题：${project.enterpriseName} 需要把“业务能力”翻译成“AI 可读的公开证据”。不是简单增加宣传文案，而是让每个页面回答一个明确问题：我是谁、适合谁、解决什么、凭什么可信、和竞品怎么选。
 
 ## 8. 30 天 GEO 优化行动计划
+${actionEvidenceSummary}
 | 优先级 | 任务名称 | 生成原因 | 对应内容缺口 | 建议产物 | 预期影响 |
 |---|---|---|---|---|---|
 ${actionRows.map(row => `| ${row[0]} | ${row[1]} | ${row[2]} | ${row[3]} | ${row[4]} | ${row[5]} |`).join("\n")}

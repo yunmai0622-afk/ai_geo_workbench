@@ -20,6 +20,7 @@ import {
 import {
   aiPlatforms,
   generatedQuestionTypes,
+  attachQuestionTextToAnalyses,
   calculateGeoScore,
   generateContentTemplates,
   generateOptimizationTasks,
@@ -585,6 +586,7 @@ const geoRouter = router({
       if (analyses.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析，再生成诊断报告" });
       }
+      const rawScore = calculateGeoScore(analyses);
       const latestScore = await db.select().from(geoScores).where(eq(geoScores.projectId, input.projectId)).orderBy(desc(geoScores.createdAt)).limit(1);
       if (!latestScore[0]) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先计算 GEO 评分，再生成诊断报告" });
@@ -596,11 +598,7 @@ const geoRouter = router({
         aiGeneratedQuestions: projectQuestions.filter(question => question.source === "ai_generated").length,
         specifiedQuestions: projectQuestions.filter(question => question.source === "manual" || question.source === "csv").length,
       };
-      const questionTextByResponseId = new Map(responses.map(response => [response.id, response.questionText]));
-      const analysesWithQuestions = effectiveAnalyses.map(analysis => ({
-        ...analysis,
-        questionText: questionTextByResponseId.get(analysis.aiResponseId) ?? null,
-      }));
+      const analysesWithQuestions = attachQuestionTextToAnalyses(effectiveAnalyses, responses, projectQuestions);
       const report = generateReportMarkdown(project, {
         aiVisibilityScore: latestScore[0].aiVisibilityScore,
         aiRecommendationScore: latestScore[0].aiRecommendationScore,
@@ -609,7 +607,7 @@ const geoRouter = router({
         contentAssetScore: latestScore[0].contentAssetScore,
         totalScore: latestScore[0].totalScore,
         visibilityLevel: latestScore[0].visibilityLevel,
-      }, analysesWithQuestions, questionStats);
+      }, analysesWithQuestions, questionStats, rawScore);
       await db.delete(reports).where(eq(reports.projectId, input.projectId));
       await db.insert(reports).values({ projectId: input.projectId, geoScoreId: latestScore[0].id, ...report });
       await updateProjectStatus(input.projectId, "report_ready");

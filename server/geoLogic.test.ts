@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  attachQuestionTextToAnalyses,
   calculateGeoScore,
   generateContentTemplates,
   generateOptimizationTasks,
@@ -255,6 +256,35 @@ describe("优化任务、内容模板与报告", () => {
     expect(() => generateContentTemplates(project, [])).toThrow("缺少优化任务");
   });
 
+  it("报告生成前可从问题表回填 AI 回答缺失的问题文本", () => {
+    const mappedAnalyses = attachQuestionTextToAnalyses([
+      {
+        ...dolphinAnalyses[0],
+        aiResponseId: 101,
+        questionText: null,
+      },
+      {
+        ...dolphinAnalyses[1],
+        aiResponseId: 102,
+        questionText: "保留已有问题文本",
+      },
+    ], [
+      { id: 101, questionId: 501, questionText: "" },
+      { id: 102, questionId: 502, questionText: null },
+    ], [
+      { id: 501, questionText: "知识付费老师卖课用什么系统？" },
+      { id: 502, questionText: "海豚知道和小鹅通有什么区别？" },
+    ]);
+
+    expect(mappedAnalyses[0].questionText).toBe("知识付费老师卖课用什么系统？");
+    expect(mappedAnalyses[1].questionText).toBe("海豚知道和小鹅通有什么区别？");
+    const score = calculateGeoScore(mappedAnalyses);
+    const report = generateReportMarkdown(dolphinProject, { totalScore: score.totalScore, visibilityLevel: score.visibilityLevel }, mappedAnalyses, { totalQuestions: 2, aiGeneratedQuestions: 0, specifiedQuestions: 2 });
+    expect(report.markdownContent).toContain("知识付费老师卖课用什么系统？");
+    expect(report.markdownContent).toContain("海豚知道和小鹅通有什么区别？");
+    expect(report.markdownContent.length).toBeGreaterThan(2000);
+  });
+
   it("生成客户交付级老板版 Markdown 诊断报告并包含固定结构", () => {
     const score = calculateGeoScore(dolphinAnalyses);
     const report = generateReportMarkdown(dolphinProject, { totalScore: score.totalScore, visibilityLevel: score.visibilityLevel }, dolphinAnalyses, { totalQuestions: 50, aiGeneratedQuestions: 40, specifiedQuestions: 10 });
@@ -265,29 +295,59 @@ describe("优化任务、内容模板与报告", () => {
     expect(report.markdownContent).toContain("当前问题库共 50 条问题");
     expect(report.markdownContent).toContain("AI 生成问题 40 条");
     expect(report.markdownContent).toContain("客户指定问题 10 条");
-    const reviewedReport = generateReportMarkdown(dolphinProject, { totalScore: score.totalScore, visibilityLevel: score.visibilityLevel }, resolveEffectiveAnalysisResults([
-      {
-        ...dolphinAnalyses[5],
-        manuallyReviewed: true,
-        manualOverrideJson: {
-          mentionsEnterprise: true,
-          recommendsEnterprise: true,
-          mentionsCompetitors: false,
-          recommendedCompetitors: [],
-          enterpriseWins: true,
-          recommendationReason: "人工修订后确认海豚知道在该回答中被推荐",
-          notRecommendedReason: "",
-          hasMisconception: false,
-          contentGap: "人工修订后确认缺口为行业选型文章不足",
-          optimizationSuggestion: "人工修订建议优先补行业选型文章",
-        },
-      },
-    ]));
+    const reviewedDolphinAnalyses = resolveEffectiveAnalysisResults(dolphinAnalyses.map((analysis, index) => {
+      if (index === 5) {
+        return {
+          ...analysis,
+          manuallyReviewed: true,
+          manualOverrideJson: {
+            mentionsEnterprise: true,
+            recommendsEnterprise: true,
+            mentionsCompetitors: false,
+            recommendedCompetitors: [],
+            enterpriseWins: true,
+            recommendationReason: "人工修订后确认海豚知道在该回答中被推荐",
+            notRecommendedReason: "",
+            hasMisconception: false,
+            contentGap: "人工修订后确认缺口为 AI 经营诊断系统专题页不足",
+            optimizationSuggestion: "人工修订建议优先补 AI 经营诊断系统专题页",
+          },
+        };
+      }
+      if (index === 8) {
+        return {
+          ...analysis,
+          manuallyReviewed: true,
+          manualOverrideJson: {
+            mentionsEnterprise: false,
+            recommendsEnterprise: false,
+            mentionsCompetitors: true,
+            recommendedCompetitors: ["小鹅通", "有赞教育"],
+            enterpriseWins: false,
+            recommendationReason: "",
+            notRecommendedReason: "人工修订后确认该问题更倾向小鹅通、有赞教育，海豚知道缺少竞品对比、FAQ 和客户案例证据",
+            hasMisconception: false,
+            contentGap: "人工修订后确认缺口为竞品对比页、FAQ、客户案例",
+            optimizationSuggestion: "人工修订建议优先补小鹅通、有赞教育对比页、FAQ 与客户案例",
+          },
+        };
+      }
+      return analysis;
+    }));
+    const reviewedScore = calculateGeoScore(reviewedDolphinAnalyses);
+    const reviewedReport = generateReportMarkdown(dolphinProject, reviewedScore, reviewedDolphinAnalyses, { totalQuestions: 50, aiGeneratedQuestions: 40, specifiedQuestions: 10 }, score);
+    expect(reviewedScore.totalScore).toBe(32);
+    expect(reviewedReport.markdownContent).toContain("原始 AI 分析计算为 **25 分**");
+    expect(reviewedReport.markdownContent).toContain("人工修订后有效评分为 **32 分**");
+    expect(reviewedReport.markdownContent).toContain("人工复核把 2 条样本");
     expect(reviewedReport.markdownContent).toContain("人工修订后确认海豚知道在该回答中被推荐");
-    expect(reviewedReport.markdownContent).toContain("人工修订后确认缺口为行业选型文章不足");
-    expect(reviewedReport.markdownContent).toContain("人工修订建议优先补行业选型文章");
+    expect(reviewedReport.markdownContent).toContain("人工修订后确认缺口为 AI 经营诊断系统专题页不足");
+    expect(reviewedReport.markdownContent).toContain("人工修订建议优先补 AI 经营诊断系统专题页");
+    expect(reviewedReport.markdownContent).toContain("人工修订后确认该问题更倾向小鹅通、有赞教育");
     expect(report.markdownContent).toContain("**50 条问题**");
     expect(report.markdownContent).toContain("**10 条客户指定问题**");
+    expect(report.markdownContent).toContain("客户指定问题 10 条的业务意义");
+    expect(report.markdownContent).toContain("真实客户在采购前会问 AI 的高意向问题");
     expect(report.mentionRecommendationSummary).toContain("2 条提到本企业");
     expect(report.mentionRecommendationSummary).toContain("1 条推荐本企业");
     expect(report.mentionRecommendationSummary).toContain("1 条在竞品对比中体现本企业胜出");
@@ -298,6 +358,7 @@ describe("优化任务、内容模板与报告", () => {
     expect(report.thirtyDayActions).toContain("30 天");
     expect(report.markdownContent.length).toBeGreaterThan(2000);
     expect(report.markdownContent.length).toBeLessThan(12000);
+    expect(report.markdownContent).toContain("样本量有限");
     expect(report.markdownContent).toContain("25 分");
     expect(report.markdownContent).toContain("弱可见");
     expect(report.markdownContent).toContain("被提及 **2 次**");
@@ -307,6 +368,11 @@ describe("优化任务、内容模板与报告", () => {
     expect(report.markdownContent).toContain("内容缺口诊断");
     expect(report.markdownContent).toContain("关键内容模板摘要");
     expect(report.markdownContent).toContain("下一轮复测建议");
+    expect(report.markdownContent).toContain("| 优先级 | 任务名称 | 生成原因 | 对应内容缺口 | 建议产物 | 预期影响 |");
+    expect(report.markdownContent).toContain("| P0 |");
+    expect(report.markdownContent).toContain("| P1 |");
+    expect(report.markdownContent).toContain("| P2 |");
+    expect(report.markdownContent).toContain("下表任务来自本轮真实分析和人工修订结果");
     [
       "## 1. 报告摘要",
       "## 2. 一句话结论",
