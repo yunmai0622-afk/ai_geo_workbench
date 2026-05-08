@@ -5,6 +5,8 @@ import {
   generateOptimizationTasks,
   generateReportMarkdown,
   getVisibilityLevel,
+  questionSources,
+  questionTypes,
   type AnalysisLike,
   type ProjectLike,
 } from "./geoLogic";
@@ -126,6 +128,8 @@ describe("GEO 评分与等级", () => {
     expect(score.contentAssetScore).toBe(50);
     expect(score.totalScore).toBe(60);
     expect(score.visibilityLevel).toBe("良好可见");
+    expect(questionTypes).toContain("指定问题");
+    expect(questionSources).toEqual(["ai_generated", "manual", "csv"]);
     expect(score.calculationDetail.weights).toEqual({
       aiVisibility: "25%",
       aiRecommendation: "25%",
@@ -216,11 +220,16 @@ describe("优化任务、内容模板与报告", () => {
 
   it("生成客户交付级老板版 Markdown 诊断报告并包含固定结构", () => {
     const score = calculateGeoScore(dolphinAnalyses);
-    const report = generateReportMarkdown(dolphinProject, { totalScore: score.totalScore, visibilityLevel: score.visibilityLevel }, dolphinAnalyses);
+    const report = generateReportMarkdown(dolphinProject, { totalScore: score.totalScore, visibilityLevel: score.visibilityLevel }, dolphinAnalyses, { totalQuestions: 50, aiGeneratedQuestions: 40, specifiedQuestions: 10 });
 
     expect(report.oneSentenceConclusion).toContain("海豚知道");
     expect(report.totalScore).toBe(25);
     expect(report.mentionRecommendationSummary).toContain("共分析 10 条 AI 回答");
+    expect(report.markdownContent).toContain("当前问题库共 50 条问题");
+    expect(report.markdownContent).toContain("AI 生成问题 40 条");
+    expect(report.markdownContent).toContain("客户指定问题 10 条");
+    expect(report.markdownContent).toContain("**50 条问题**");
+    expect(report.markdownContent).toContain("**10 条客户指定问题**");
     expect(report.mentionRecommendationSummary).toContain("2 条提到本企业");
     expect(report.mentionRecommendationSummary).toContain("1 条推荐本企业");
     expect(report.mentionRecommendationSummary).toContain("1 条在竞品对比中体现本企业胜出");

@@ -2,7 +2,8 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
-const questionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
+const questionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交", "指定问题"] as const;
+const questionSourceLabels: Record<string, string> = { ai_generated: "AI 生成", manual: "手动指定", csv: "CSV 导入" };
 const platforms = ["ChatGPT", "DeepSeek", "豆包", "Kimi", "通义", "文心", "Perplexity", "其他"] as const;
 const taskStatuses = ["todo", "doing", "done", "retest"] as const;
 const taskStatusLabels: Record<(typeof taskStatuses)[number], string> = { todo: "待处理", doing: "进行中", done: "已完成", retest: "待复测" };
@@ -275,51 +276,127 @@ export function QuestionsPage() {
   const utils = trpc.useUtils();
   const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput);
-  const createQuestion = trpc.geo.questions.create.useMutation({ onSuccess: async () => { await utils.geo.questions.list.invalidate(); toast.success("问题已保存"); } });
-  const updateQuestion = trpc.geo.questions.update.useMutation({ onSuccess: async () => { await utils.geo.questions.list.invalidate(); toast.success("问题已更新"); } });
+  const createQuestion = trpc.geo.questions.create.useMutation({ onSuccess: async () => { await Promise.all([utils.geo.questions.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success("问题已保存"); }, onError: error => toast.error(error.message) });
+  const updateQuestion = trpc.geo.questions.update.useMutation({ onSuccess: async () => { await utils.geo.questions.list.invalidate(); toast.success("问题已更新"); }, onError: error => toast.error(error.message) });
   const deleteQuestion = trpc.geo.questions.delete.useMutation({ onSuccess: async () => { await utils.geo.questions.list.invalidate(); toast.success("问题已删除"); } });
   const toggleQuestion = trpc.geo.questions.toggle.useMutation({ onSuccess: async () => utils.geo.questions.list.invalidate() });
   const generateQuestions = trpc.geo.questions.generate.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.questions.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`已生成 ${result.count} 个问题`); }, onError: error => toast.error(error.message) });
+  const batchAddSpecified = trpc.geo.questions.batchAddSpecified.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.questions.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`新增 ${result.addedCount} 条，跳过重复 ${result.skippedDuplicateCount} 条，当前共 ${result.totalCount} 条`); }, onError: error => toast.error(error.message) });
+  const importSpecifiedCsvRows = trpc.geo.questions.importSpecifiedCsvRows.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.questions.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`新增 ${result.addedCount} 条，跳过重复 ${result.skippedDuplicateCount} 条，当前共 ${result.totalCount} 条`); }, onError: error => toast.error(error.message) });
   const [questionText, setQuestionText] = useState("");
   const [questionType, setQuestionType] = useState<typeof questionTypes[number]>("品牌认知");
+  const [bulkText, setBulkText] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!selectedProjectId) return toast.error("请先选择项目");
-    const payload = { projectId: selectedProjectId, questionText, questionType, enabled: true };
+    const payload = { projectId: selectedProjectId, questionText, questionType, enabled: true, source: "manual" as const };
     if (editingId) updateQuestion.mutate({ id: editingId, ...payload });
     else createQuestion.mutate(payload);
     setQuestionText("");
     setEditingId(null);
   };
 
+  const submitBulk = () => {
+    if (!selectedProjectId) return toast.error("请先选择项目");
+    const rows = bulkText.split(/\r?\n/).map(item => item.trim()).filter(Boolean);
+    if (rows.length === 0) return toast.error("请粘贴至少 1 行指定问题");
+    batchAddSpecified.mutate({ projectId: selectedProjectId, questions: rows });
+    setBulkText("");
+  };
+
+  const downloadCsvTemplate = () => {
+    const csv = "question_text,question_type,target_keyword,intent_level,business_value\n知识付费 SaaS 平台哪个好？,指定问题,知识付费 SaaS,高,5\n海豚知道和小鹅通有什么区别？,指定问题,海豚知道,高,5\n";
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "指定问题导入模板.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const onQuestionCsv = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedProjectId) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rows = parseCsv(String(reader.result ?? ""));
+      const headers = rows[0] ?? [];
+      const dataRows = rows.slice(1);
+      const get = (row: string[], names: string[]) => {
+        const index = headers.findIndex(header => names.includes(header.trim()));
+        return index >= 0 ? row[index] : "";
+      };
+      const payload = dataRows.map(row => {
+        const type = get(row, ["question_type", "问题类型", "questionType"]);
+        const value = Number(get(row, ["business_value", "业务价值", "businessValue"]));
+        return {
+          questionText: get(row, ["question_text", "问题", "question", "questionText"]),
+          questionType: (questionTypes as readonly string[]).includes(type) ? type as typeof questionTypes[number] : "指定问题" as const,
+          targetKeyword: get(row, ["target_keyword", "目标关键词", "targetKeyword"]) || null,
+          intentLevel: get(row, ["intent_level", "意图等级", "intentLevel"]) || "高",
+          businessValue: Number.isFinite(value) && value >= 1 && value <= 5 ? value : 5,
+        };
+      }).filter(row => row.questionText);
+      if (payload.length === 0) return toast.error("CSV 未识别到有效问题，请确认表头包含 question_text");
+      importSpecifiedCsvRows.mutate({ projectId: selectedProjectId, rows: payload });
+    };
+    reader.readAsText(file, "utf-8");
+    event.currentTarget.value = "";
+  };
+
   return (
     <div>
-      <PageHeader title="问题库" description="根据企业信息调用 AI 生成 50 个提问，也支持手动新增、编辑、删除、启用或禁用问题。" />
+      <PageHeader title="问题库" description="根据企业信息调用 AI 生成 50 个提问，也支持客户指定问题的批量添加、CSV 导入、编辑、删除、启用或禁用。" />
       <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} />
-      {selectedProjectId ? <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
+      {selectedProjectId ? <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
         <Card>
           <h2 className="mb-4 text-lg font-semibold">问题操作</h2>
-          <div className="mb-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">AI 生成结果直接来自当前企业信息，不会用假问题补齐。如生成失败，请检查项目信息后重试。</div>
+          <div className="mb-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">AI 生成结果直接来自当前企业信息，不会用假问题补齐；客户指定问题会进入后续 AI 回答导入、分析、评分和报告链路。</div>
           <Button disabled={generateQuestions.isPending} onClick={() => generateQuestions.mutate({ projectId: selectedProjectId })}>{generateQuestions.isPending ? "正在生成..." : "AI 生成 50 个问题"}</Button>
-          <form onSubmit={submit} className="mt-6 space-y-4">
+          <form onSubmit={submit} className="mt-6 space-y-4 border-t pt-5">
+            <h3 className="font-medium">手动新增单个问题</h3>
             <TextArea label="问题内容" value={questionText} onChange={setQuestionText} />
             <Select label="问题类型" value={questionType} onChange={value => setQuestionType(value as typeof questionTypes[number])}>{questionTypes.map(type => <option key={type} value={type}>{type}</option>)}</Select>
             <Button type="submit">{editingId ? "保存问题" : "新增问题"}</Button>
           </form>
+          <div className="mt-6 space-y-4 border-t pt-5">
+            <h3 className="font-medium">批量添加指定问题</h3>
+            <TextArea label="每行一个指定问题" value={bulkText} onChange={setBulkText} rows={6} placeholder={"知识付费 SaaS 平台哪个好？\n海豚知道和小鹅通有什么区别？\n企业 AI 经营系统有哪些服务商？"} />
+            <Button disabled={batchAddSpecified.isPending} onClick={submitBulk}>{batchAddSpecified.isPending ? "正在添加..." : "批量添加指定问题"}</Button>
+          </div>
+          <div className="mt-6 border-t pt-5">
+            <h3 className="mb-2 font-medium">导入指定问题 CSV</h3>
+            <p className="mb-3 text-sm text-slate-600">CSV 表头：question_text、question_type、target_keyword、intent_level、business_value。空字段会自动使用指定问题、高意向、业务价值 5。</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Button variant="secondary" onClick={downloadCsvTemplate}>下载指定问题 CSV 模板</Button>
+              <input type="file" accept=".csv,text/csv" onChange={onQuestionCsv} className="text-sm" />
+            </div>
+          </div>
         </Card>
         <Card>
-          <h2 className="mb-4 text-lg font-semibold">问题列表</h2>
-          {(questionsQuery.data ?? []).length === 0 ? <EmptyState title="暂无问题" description="请先点击 AI 生成 50 个问题，或手动新增问题。" /> : null}
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">问题列表</h2>
+              <p className="mt-1 text-sm text-slate-600">当前共 {(questionsQuery.data ?? []).length} 条问题，AI 生成 {(questionsQuery.data ?? []).filter(question => question.source === "ai_generated").length} 条，指定问题 {(questionsQuery.data ?? []).filter(question => question.source === "manual" || question.source === "csv").length} 条。</p>
+            </div>
+          </div>
+          {(questionsQuery.data ?? []).length === 0 ? <EmptyState title="暂无问题" description="请先点击 AI 生成 50 个问题，或批量添加客户指定问题。" /> : null}
           <div className="space-y-3">
             {(questionsQuery.data ?? []).map(question => (
               <div key={question.id} className="rounded-lg border border-slate-200 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{question.questionType}</span>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{question.questionType}</span>
+                      <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">{questionSourceLabels[question.source] ?? "AI 生成"}</span>
+                      <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700">意图：{question.intentLevel ?? "中"}</span>
+                      <span className="rounded-full bg-orange-50 px-2 py-1 text-xs text-orange-700">业务价值：{question.businessValue ?? 3}</span>
+                    </div>
                     <p className="mt-2 text-sm font-medium text-slate-950">{question.questionText}</p>
-                    <p className="mt-1 text-xs text-slate-500">状态：{question.enabled ? "启用" : "禁用"}</p>
+                    <p className="mt-1 text-xs text-slate-500">状态：{question.enabled ? "启用" : "禁用"}{question.targetKeyword ? `｜关键词：${question.targetKeyword}` : ""}</p>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <Button variant="secondary" onClick={() => { setEditingId(question.id); setQuestionText(question.questionText); setQuestionType(question.questionType); }}>编辑</Button>

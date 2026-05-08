@@ -19,11 +19,13 @@ import {
 } from "../drizzle/schema";
 import {
   aiPlatforms,
+  generatedQuestionTypes,
   calculateGeoScore,
   generateContentTemplates,
   generateOptimizationTasks,
   generateReportMarkdown,
   projectStatuses,
+  questionSources,
   questionTypes,
   taskStatuses,
   taskTypes,
@@ -46,8 +48,28 @@ const questionInput = z.object({
   projectId: z.number().int().positive(),
   questionText: z.string().min(1, "请输入问题"),
   questionType: z.enum(questionTypes),
+  targetKeyword: z.string().optional().nullable(),
+  intentLevel: z.string().optional().default("高"),
+  businessValue: z.number().int().min(1).max(5).optional().default(5),
+  source: z.enum(questionSources).optional().default("manual"),
   enabled: z.boolean().default(true),
 });
+
+const manualQuestionImportRow = z.object({
+  questionText: z.string().min(1, "请输入问题"),
+  questionType: z.enum(questionTypes).optional().default("指定问题"),
+  targetKeyword: z.string().optional().nullable(),
+  intentLevel: z.string().optional().default("高"),
+  businessValue: z.number().int().min(1).max(5).optional().default(5),
+});
+
+type ManualQuestionImportRow = {
+  questionText: string;
+  questionType?: (typeof questionTypes)[number];
+  targetKeyword?: string | null;
+  intentLevel?: string;
+  businessValue?: number;
+};
 
 const aiResponseInput = z.object({
   projectId: z.number().int().positive(),
@@ -75,6 +97,47 @@ const getProjectOrThrow = async (projectId: number) => {
   if (result.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "项目不存在" });
   return result[0];
 };
+
+const normalizeQuestionText = (value: string) => value.trim();
+
+async function insertSpecifiedQuestions(projectId: number, rows: ManualQuestionImportRow[], source: "manual" | "csv") {
+  const db = await requireDb();
+  const existing = await db.select({ questionText: questions.questionText }).from(questions).where(eq(questions.projectId, projectId));
+  const known = new Set(existing.map(item => item.questionText));
+  const toInsert = [];
+  let skippedDuplicateCount = 0;
+
+  for (const row of rows) {
+    const questionText = normalizeQuestionText(row.questionText);
+    if (!questionText || known.has(questionText)) {
+      skippedDuplicateCount += 1;
+      continue;
+    }
+    known.add(questionText);
+    toInsert.push({
+      projectId,
+      questionText,
+      questionType: row.questionType ?? "指定问题" as const,
+      targetKeyword: row.targetKeyword?.trim() || null,
+      intentLevel: row.intentLevel?.trim() || "高",
+      businessValue: row.businessValue ?? 5,
+      enabled: 1,
+      source,
+    });
+  }
+
+  if (toInsert.length > 0) {
+    await db.insert(questions).values(toInsert);
+  }
+  await updateProjectStatus(projectId, "questions_ready");
+
+  return {
+    success: true,
+    addedCount: toInsert.length,
+    skippedDuplicateCount,
+    totalCount: existing.length + toInsert.length,
+  } as const;
+}
 
 function parseLLMJson<T>(content: unknown): T {
   if (typeof content !== "string") {
@@ -126,13 +189,14 @@ const geoRouter = router({
     }),
     create: protectedProcedure.input(questionInput).mutation(async ({ input }) => {
       const db = await requireDb();
-      await db.insert(questions).values({ ...input, enabled: input.enabled ? 1 : 0 });
+      await db.insert(questions).values({ ...input, targetKeyword: input.targetKeyword?.trim() || null, intentLevel: input.intentLevel ?? "高", businessValue: input.businessValue ?? 5, source: input.source ?? "manual", enabled: input.enabled ? 1 : 0 });
+      await updateProjectStatus(input.projectId, "questions_ready");
       return { success: true } as const;
     }),
     update: protectedProcedure.input(questionInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
       const { id, ...values } = input;
-      await db.update(questions).set({ ...values, enabled: values.enabled ? 1 : 0 }).where(eq(questions.id, id));
+      await db.update(questions).set({ ...values, targetKeyword: values.targetKeyword?.trim() || null, intentLevel: values.intentLevel ?? "高", businessValue: values.businessValue ?? 5, source: values.source ?? "manual", enabled: values.enabled ? 1 : 0 }).where(eq(questions.id, id));
       return { success: true } as const;
     }),
     toggle: protectedProcedure.input(z.object({ id: z.number().int().positive(), enabled: z.boolean() })).mutation(async ({ input }) => {
@@ -145,6 +209,18 @@ const geoRouter = router({
       await db.delete(questions).where(eq(questions.id, input.id));
       return { success: true } as const;
     }),
+    batchAddSpecified: protectedProcedure.input(z.object({
+      projectId: z.number().int().positive(),
+      questions: z.array(z.string().min(1)).min(1),
+    })).mutation(async ({ input }) => {
+      return insertSpecifiedQuestions(input.projectId, input.questions.map(questionText => ({ questionText })), "manual");
+    }),
+    importSpecifiedCsvRows: protectedProcedure.input(z.object({
+      projectId: z.number().int().positive(),
+      rows: z.array(manualQuestionImportRow).min(1),
+    })).mutation(async ({ input }) => {
+      return insertSpecifiedQuestions(input.projectId, input.rows, "csv");
+    }),
     generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
       const project = await getProjectOrThrow(input.projectId);
@@ -153,7 +229,7 @@ const geoRouter = router({
           { role: "system", content: "你是企业 GEO / AI Visibility 诊断顾问。请只输出符合 JSON Schema 的中文结果。" },
           {
             role: "user",
-            content: `请根据以下企业信息生成 50 个用户可能向 AI 对话平台提出的问题。必须覆盖问题类型：${questionTypes.join("、")}。\n\n企业名称：${project.enterpriseName}\n行业：${project.industry}\n官网：${project.website}\n地区：${project.region}\n产品介绍：${project.productIntro}\n目标客户：${project.targetCustomers}\n核心卖点：${project.coreSellingPoints}\n竞品：${project.competitorNames.join("、")}\n核心关键词：${project.coreKeywords.join("、")}`,
+            content: `请根据以下企业信息生成 50 个用户可能向 AI 对话平台提出的问题。必须覆盖问题类型：${generatedQuestionTypes.join("、")}。\n\n企业名称：${project.enterpriseName}\n行业：${project.industry}\n官网：${project.website}\n地区：${project.region}\n产品介绍：${project.productIntro}\n目标客户：${project.targetCustomers}\n核心卖点：${project.coreSellingPoints}\n竞品：${project.competitorNames.join("、")}\n核心关键词：${project.coreKeywords.join("、")}`,
           },
         ],
         response_format: {
@@ -172,7 +248,7 @@ const geoRouter = router({
                     type: "object",
                     properties: {
                       questionText: { type: "string" },
-                      questionType: { type: "string", enum: questionTypes },
+                      questionType: { type: "string", enum: generatedQuestionTypes },
                     },
                     required: ["questionText", "questionType"],
                     additionalProperties: false,
@@ -185,11 +261,11 @@ const geoRouter = router({
           },
         },
       });
-      const parsed = parseLLMJson<{ questions: Array<{ questionText: string; questionType: typeof questionTypes[number] }> }>(response.choices[0]?.message.content);
+      const parsed = parseLLMJson<{ questions: Array<{ questionText: string; questionType: typeof generatedQuestionTypes[number] }> }>(response.choices[0]?.message.content);
       if (parsed.questions.length !== 50) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI 未返回 50 个问题，请重新生成" });
       }
-      await db.insert(questions).values(parsed.questions.map(item => ({ ...item, projectId: input.projectId, enabled: 1 })));
+      await db.insert(questions).values(parsed.questions.map(item => ({ ...item, projectId: input.projectId, targetKeyword: null, intentLevel: "中", businessValue: 3, source: "ai_generated" as const, enabled: 1 })));
       await updateProjectStatus(input.projectId, "questions_ready");
       return { success: true, count: parsed.questions.length } as const;
     }),
@@ -415,6 +491,12 @@ const geoRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先计算 GEO 评分，再生成诊断报告" });
       }
       const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, input.projectId));
+      const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, input.projectId));
+      const questionStats = {
+        totalQuestions: projectQuestions.length,
+        aiGeneratedQuestions: projectQuestions.filter(question => question.source === "ai_generated").length,
+        specifiedQuestions: projectQuestions.filter(question => question.source === "manual" || question.source === "csv").length,
+      };
       const questionTextByResponseId = new Map(responses.map(response => [response.id, response.questionText]));
       const analysesWithQuestions = analyses.map(analysis => ({
         ...analysis,
@@ -428,7 +510,7 @@ const geoRouter = router({
         contentAssetScore: latestScore[0].contentAssetScore,
         totalScore: latestScore[0].totalScore,
         visibilityLevel: latestScore[0].visibilityLevel,
-      }, analysesWithQuestions);
+      }, analysesWithQuestions, questionStats);
       await db.delete(reports).where(eq(reports.projectId, input.projectId));
       await db.insert(reports).values({ projectId: input.projectId, geoScoreId: latestScore[0].id, ...report });
       await updateProjectStatus(input.projectId, "report_ready");

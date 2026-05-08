@@ -64,3 +64,16 @@
 - [x] 确认所有内容模板继续绑定对应优化任务，并保持一键复制与 Markdown 导出能力
 - [x] 保持 P0 主链路、轻量 Harness 状态机、10 个 Vitest 用例和 pnpm check 通过
 - [x] 核查 GeoPages.tsx 中阻断开发服务解析的 `coconst` 拼写错误，当前源码未复现该错误
+
+## 指定问题集导入与覆盖能力
+
+- [x] 在问题库页增加批量添加指定问题入口，按多行文本拆分问题并写入默认字段 question_type=指定问题、intent_level=高、business_value=5、enabled=true、source=manual
+- [x] 在问题库页增加指定问题 CSV 导入能力，支持 question_text、question_type、target_keyword、intent_level、business_value 字段和默认值回填，source=csv
+- [x] 增加下载指定问题 CSV 模板按钮
+- [x] 同一项目下按 question_text 完全相同去重，导入后提示新增数、跳过重复数和当前问题库总数
+- [x] 为 questions 增加 source 字段，支持 ai_generated、manual、csv，并在问题列表中以中文展示来源
+- [x] 保持 AI 自动生成 50 条问题能力不受影响，AI 生成问题写入 source=ai_generated
+- [x] 确认指定问题进入后续 AI 回答导入、AI 分析、GEO 评分和报告链路
+- [x] 在报告中展示总问题数、AI 生成问题数和指定问题数
+- [x] 导入指定问题后保持项目 questions_ready 状态，不新增复杂状态
+- [x] 补充或更新 Vitest，保持 10 个用例继续通过并确认 pnpm check 通过

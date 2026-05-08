@@ -29,7 +29,10 @@ export const questionTypeEnum = mysqlEnum("questionType", [
   "痛点解决",
   "价格选型",
   "高意向成交",
+  "指定问题",
 ]);
+
+export const questionSourceEnum = mysqlEnum("source", ["ai_generated", "manual", "csv"]);
 
 export const aiPlatformEnum = mysqlEnum("aiPlatform", [
   "ChatGPT",
@@ -101,6 +104,10 @@ export const questions = mysqlTable("questions", {
   projectId: int("projectId").notNull(),
   questionText: text("questionText").notNull(),
   questionType: questionTypeEnum.notNull(),
+  targetKeyword: varchar("targetKeyword", { length: 255 }),
+  intentLevel: varchar("intentLevel", { length: 64 }).default("中").notNull(),
+  businessValue: int("businessValue").default(3).notNull(),
+  source: questionSourceEnum.default("ai_generated").notNull(),
   enabled: int("enabled").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

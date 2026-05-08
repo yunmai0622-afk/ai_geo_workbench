@@ -1,4 +1,7 @@
-export const questionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
+export const generatedQuestionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
+export const questionTypes = [...generatedQuestionTypes, "指定问题"] as const;
+export const questionSources = ["ai_generated", "manual", "csv"] as const;
+export const questionSourceLabels: Record<(typeof questionSources)[number], string> = { ai_generated: "AI 生成", manual: "手动指定", csv: "CSV 导入" };
 export const aiPlatforms = ["ChatGPT", "DeepSeek", "豆包", "Kimi", "通义", "文心", "Perplexity", "其他"] as const;
 export const taskTypes = ["官网首页", "产品页", "竞品对比页", "FAQ", "客户案例", "行业文章", "社媒内容"] as const;
 export const templateTypes = ["官网首页模板", "FAQ 模板", "竞品对比页模板", "客户案例页模板", "行业选型文章模板"] as const;
@@ -6,6 +9,7 @@ export const projectStatuses = ["created", "questions_ready", "responses_importe
 export const taskStatuses = ["todo", "doing", "done", "retest"] as const;
 
 export type QuestionType = (typeof questionTypes)[number];
+export type QuestionSource = (typeof questionSources)[number];
 export type AiPlatform = (typeof aiPlatforms)[number];
 export type TaskType = (typeof taskTypes)[number];
 export type TemplateType = (typeof templateTypes)[number];
@@ -69,6 +73,12 @@ export type GeoScoreLike = {
   contentAssetScore?: number;
   totalScore: number;
   visibilityLevel: VisibilityLevel;
+};
+
+export type QuestionCoverageStats = {
+  totalQuestions: number;
+  aiGeneratedQuestions: number;
+  specifiedQuestions: number;
 };
 
 export function getVisibilityLevel(totalScore: number): VisibilityLevel {
@@ -538,7 +548,7 @@ function buildContentGapDiagnostics(project: ProjectLike, analyses: AnalysisLike
   ];
 }
 
-export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike, analyses: AnalysisLike[]) {
+export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike, analyses: AnalysisLike[], questionStats?: QuestionCoverageStats) {
   if (analyses.length === 0) {
     throw new Error("缺少 AI 分析结果，无法生成诊断报告。");
   }
@@ -574,6 +584,8 @@ export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike
   const contentGapItems = uniqueNonEmpty(analyses.map(item => item.contentGap), 10);
   const gapDiagnostics = buildContentGapDiagnostics(project, analyses);
   const sampleLimitNotice = sampleCount < 30 ? `本轮样本量为 ${sampleCount} 条，适合作为 P0 初步诊断和行动排序依据，但不应被夸大为全网结论。` : `本轮样本量为 ${sampleCount} 条，可用于观察当前 AI 搜索中的主要趋势。`;
+  const coverageStats = questionStats ?? { totalQuestions: sampleCount, aiGeneratedQuestions: sampleCount, specifiedQuestions: 0 };
+  const questionCoverageSummary = `当前问题库共 ${coverageStats.totalQuestions} 条问题，其中 AI 生成问题 ${coverageStats.aiGeneratedQuestions} 条，客户指定问题 ${coverageStats.specifiedQuestions} 条。`;
 
   const oneSentenceConclusion = `${project.enterpriseName} 当前在 AI 搜索中的可见度偏弱：${sampleCount} 条 AI 回答中仅 ${mentioned} 条提及、${recommended} 条推荐、${wins} 条显示本企业胜出，GEO 总分 ${scoreDetail.totalScore}，等级为「${scoreDetail.visibilityLevel}」；下一步应优先补齐官网定位页、竞品对比页、FAQ、客户案例和行业选型内容，让 AI 有明确、可信、可引用的推荐依据。`;
   const mentionRecommendationSummary = `共分析 ${sampleCount} 条 AI 回答，其中 ${mentioned} 条提到本企业，${recommended} 条推荐本企业，${wins} 条在竞品对比中体现本企业胜出。`;
@@ -606,7 +618,7 @@ export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike
   const markdownContent = `# ${project.enterpriseName} GEO 诊断报告
 
 ## 1. 报告摘要
-本报告基于 ${project.enterpriseName} 的真实项目信息、已导入的 ${sampleCount} 条 AI 回答、对应 AI 语义分析结果和 GEO 评分生成，不使用虚构样本或虚构客户案例。当前 GEO 总分为 **${scoreDetail.totalScore} 分**，等级为 **${scoreDetail.visibilityLevel}**。${mentionRecommendationSummary} 最大问题不是 AI 完全误解企业，而是 AI 在多数高意向问题中没有稳定提及和推荐 ${project.enterpriseName}；最大机会是企业卖点中已经包含 ${project.coreSellingPoints}，只要把这些能力转化为官网定位、FAQ、竞品对比、案例和行业选型内容，就有机会提升 AI 可引用性。${sampleLimitNotice}
+本报告基于 ${project.enterpriseName} 的真实项目信息、已导入的 ${sampleCount} 条 AI 回答、对应 AI 语义分析结果和 GEO 评分生成，不使用虚构样本或虚构客户案例。当前 GEO 总分为 **${scoreDetail.totalScore} 分**，等级为 **${scoreDetail.visibilityLevel}**。${mentionRecommendationSummary} ${questionCoverageSummary} 最大问题不是 AI 完全误解企业，而是 AI 在多数高意向问题中没有稳定提及和推荐 ${project.enterpriseName}；最大机会是企业卖点中已经包含 ${project.coreSellingPoints}，只要把这些能力转化为官网定位、FAQ、竞品对比、案例和行业选型内容，就有机会提升 AI 可引用性。${sampleLimitNotice}
 
 ## 2. 一句话结论
 ${oneSentenceConclusion}
@@ -619,7 +631,7 @@ ${scoreRows.map(row => `| ${row[0]} | ${row[1]} | ${row[2]} |`).join("\n")}
 从业务含义看，25 分左右的“弱可见”通常意味着潜在客户在向 AI 提问时，系统更可能看到竞品或通用平台，而不是稳定看到 ${project.enterpriseName}。这会影响两个环节：一是获客前置阶段，客户还没进入官网就被其他平台占据心智；二是品牌认知阶段，AI 即使偶尔提及 ${project.enterpriseName}，也缺少充分理由把它作为优先推荐。
 
 ## 4. AI 可见度分析
-本轮总共分析了 **${sampleCount} 条 AI 回答**。其中，${project.enterpriseName} 被提及 **${mentioned} 次**，被推荐 **${recommended} 次**，在竞品对比中体现胜出 **${wins} 次**。出现 ${project.enterpriseName} 的问题包括：${mentionQuestions.length > 0 ? mentionQuestions.join("；") : "当前报告生成上下文未取得逐题文本，需在后续复测中保留问题与分析映射。"} 被推荐的问题包括：${recommendedQuestions.length > 0 ? recommendedQuestions.join("；") : "本轮推荐样本较少，需优先提升推荐依据。"}
+本轮问题库覆盖情况为：**${coverageStats.totalQuestions} 条问题**，其中 **${coverageStats.aiGeneratedQuestions} 条 AI 生成问题**、**${coverageStats.specifiedQuestions} 条客户指定问题**。本轮总共分析了 **${sampleCount} 条 AI 回答**。其中，${project.enterpriseName} 被提及 **${mentioned} 次**，被推荐 **${recommended} 次**，在竞品对比中体现胜出 **${wins} 次**。出现 ${project.enterpriseName} 的问题包括：${mentionQuestions.length > 0 ? mentionQuestions.join("；") : "当前报告生成上下文未取得逐题文本，需在后续复测中保留问题与分析映射。"} 被推荐的问题包括：${recommendedQuestions.length > 0 ? recommendedQuestions.join("；") : "本轮推荐样本较少，需优先提升推荐依据。"}
 
 更值得关注的是缺席问题。${absentHighIntentQuestions.length > 0 ? `在这些高意向问题中，${project.enterpriseName} 没有被提及：${absentHighIntentQuestions.join("；")}。` : "本轮未捕捉到明确的高意向缺席题目文本，但从提及率看仍存在可见度不足。"} 这些问题往往对应客户选型、购买和竞品比较，如果品牌缺席，意味着客户在 AI 搜索中可能直接进入竞品列表或通用平台推荐列表。
 
