@@ -105,6 +105,25 @@ export const articleStatusEnum = mysqlEnum("status", [
 
 export const publishChannelEnum = mysqlEnum("publishChannel", ["系统内置 GEO 内容页"]);
 
+export const geoAssetSourceTypeEnum = mysqlEnum("sourceType", [
+  "企业基础资料",
+  "产品服务资料",
+  "客户案例资料",
+  "竞品资料",
+  "合规资料",
+  "内容风格资料",
+  "发布策略资料",
+  "通用资料",
+]);
+
+export const geoAssetInputModeEnum = mysqlEnum("inputMode", ["文件上传", "文本粘贴", "人工录入"]);
+export const geoAssetTrustLevelEnum = mysqlEnum("trustLevel", ["高", "中", "低"]);
+export const geoAssetParseStatusEnum = mysqlEnum("parseStatus", ["待解析", "已解析", "解析失败", "人工确认"]);
+export const customerCaseTypeEnum = mysqlEnum("caseType", ["真实案例", "待补充案例线索"]);
+export const customerCaseVerificationStatusEnum = mysqlEnum("verificationStatus", ["待确认", "已确认", "不可公开", "信息不足"]);
+export const publishReviewModeEnum = mysqlEnum("reviewMode", ["全人工审核", "高分自动发布", "全自动发布"]);
+export const platformAuthorizationStatusEnum = mysqlEnum("authorizationStatus", ["未配置", "待人工授权", "已授权", "已失效", "无需授权"]);
+
 export const projects = mysqlTable("projects", {
   id: int("id").autoincrement().primaryKey(),
   enterpriseName: varchar("enterpriseName", { length: 255 }).notNull(),
@@ -295,6 +314,165 @@ export const geoPublishRecords = mysqlTable("geo_publish_records", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const enterpriseGeoProfiles = mysqlTable("enterprise_geo_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  enterpriseName: varchar("enterpriseName", { length: 255 }).notNull(),
+  shortName: varchar("shortName", { length: 255 }),
+  officialWebsite: varchar("officialWebsite", { length: 500 }),
+  industry: varchar("industry", { length: 255 }),
+  region: varchar("region", { length: 255 }),
+  productServiceIntro: text("productServiceIntro"),
+  targetCustomers: text("targetCustomers"),
+  coreSellingPoints: text("coreSellingPoints"),
+  servicePriceRange: varchar("servicePriceRange", { length: 255 }),
+  serviceModel: text("serviceModel"),
+  fitCustomers: text("fitCustomers"),
+  unfitCustomers: text("unfitCustomers"),
+  salesChannels: json("salesChannels").$type<string[]>().notNull(),
+  commonQuestions: json("commonQuestions").$type<string[]>().notNull(),
+  purchaseDecisionFactors: json("purchaseDecisionFactors").$type<string[]>().notNull(),
+  productIntro: text("productIntro"),
+  featureNotes: text("featureNotes"),
+  serviceProcess: text("serviceProcess"),
+  deliveryPlan: text("deliveryPlan"),
+  afterSalesService: text("afterSalesService"),
+  competitorDifference: text("competitorDifference"),
+  priceExplanation: text("priceExplanation"),
+  salesTalkTracks: text("salesTalkTracks"),
+  commonObjections: text("commonObjections"),
+  completionScore: int("completionScore").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const geoAssetSources = mysqlTable("geo_asset_sources", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  sourceType: geoAssetSourceTypeEnum.notNull(),
+  inputMode: geoAssetInputModeEnum.notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  originalFileName: varchar("originalFileName", { length: 500 }),
+  fileKey: varchar("fileKey", { length: 1000 }),
+  fileUrl: varchar("fileUrl", { length: 1000 }),
+  mimeType: varchar("mimeType", { length: 255 }),
+  contentDigest: text("contentDigest"),
+  structuredSummary: json("structuredSummary").$type<Record<string, unknown>>().notNull(),
+  trustLevel: geoAssetTrustLevelEnum.default("中").notNull(),
+  parseStatus: geoAssetParseStatusEnum.default("待解析").notNull(),
+  isPublic: int("isPublic").default(0).notNull(),
+  canUseForGeneration: int("canUseForGeneration").default(0).notNull(),
+  manuallyConfirmed: int("manuallyConfirmed").default(0).notNull(),
+  parsedAt: timestamp("parsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const customerCases = mysqlTable("customer_cases", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  caseType: customerCaseTypeEnum.notNull(),
+  customerName: varchar("customerName", { length: 255 }).notNull(),
+  customerIndustry: varchar("customerIndustry", { length: 255 }),
+  customerBackground: text("customerBackground"),
+  originalProblem: text("originalProblem"),
+  chosenReason: text("chosenReason"),
+  usedProductService: text("usedProductService"),
+  executionProcess: text("executionProcess"),
+  resultData: text("resultData"),
+  customerFeedback: text("customerFeedback"),
+  allowPublic: int("allowPublic").default(0).notNull(),
+  publicVersion: text("publicVersion"),
+  sensitiveNotes: text("sensitiveNotes"),
+  sourceAssetIds: json("sourceAssetIds").$type<number[]>().notNull(),
+  verificationStatus: customerCaseVerificationStatusEnum.default("待确认").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const competitorProfiles = mysqlTable("competitor_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  competitorName: varchar("competitorName", { length: 255 }).notNull(),
+  website: varchar("website", { length: 500 }),
+  positioning: text("positioning"),
+  strengths: text("strengths"),
+  weaknesses: text("weaknesses"),
+  priceInfo: text("priceInfo"),
+  contentAssets: text("contentAssets"),
+  aiRecommendationSignals: text("aiRecommendationSignals"),
+  comparisonNotes: text("comparisonNotes"),
+  sourceAssetIds: json("sourceAssetIds").$type<number[]>().notNull(),
+  canReference: int("canReference").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const complianceRules = mysqlTable("compliance_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  ruleName: varchar("ruleName", { length: 255 }).notNull(),
+  forbiddenClaims: text("forbiddenClaims"),
+  forbiddenWords: json("forbiddenWords").$type<string[]>().notNull(),
+  requiredDisclaimers: text("requiredDisclaimers"),
+  dataUsageRules: text("dataUsageRules"),
+  caseUsageRules: text("caseUsageRules"),
+  priceUsageRules: text("priceUsageRules"),
+  competitorMentionRules: text("competitorMentionRules"),
+  reviewRequiredTopics: json("reviewRequiredTopics").$type<string[]>().notNull(),
+  enabled: int("enabled").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const contentStyleProfiles = mysqlTable("content_style_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  profileName: varchar("profileName", { length: 255 }).notNull(),
+  tone: varchar("tone", { length: 255 }).notNull(),
+  writingStyle: text("writingStyle"),
+  terminology: json("terminology").$type<string[]>().notNull(),
+  forbiddenTone: text("forbiddenTone"),
+  exampleTitles: json("exampleTitles").$type<string[]>().notNull(),
+  exampleParagraphs: json("exampleParagraphs").$type<string[]>().notNull(),
+  targetReader: text("targetReader"),
+  preferredLength: varchar("preferredLength", { length: 255 }),
+  ctaStyle: text("ctaStyle"),
+  enabled: int("enabled").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const publishStrategies = mysqlTable("publish_strategies", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  strategyName: varchar("strategyName", { length: 255 }).notNull(),
+  reviewMode: publishReviewModeEnum.default("全人工审核").notNull(),
+  dailyLimit: int("dailyLimit"),
+  minQualityScore: int("minQualityScore").default(80).notNull(),
+  preferredPlatforms: json("preferredPlatforms").$type<string[]>().notNull(),
+  bannedPlatforms: json("bannedPlatforms").$type<string[]>().notNull(),
+  platformNotes: text("platformNotes"),
+  enabled: int("enabled").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const platformAuthorizationConfigs = mysqlTable("platform_authorization_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  platformName: varchar("platformName", { length: 255 }).notNull(),
+  accountAlias: varchar("accountAlias", { length: 255 }),
+  authorizationStatus: platformAuthorizationStatusEnum.default("未配置").notNull(),
+  credentialStorageMode: varchar("credentialStorageMode", { length: 255 }).default("不保存明文凭证").notNull(),
+  secureCredentialRef: varchar("secureCredentialRef", { length: 500 }),
+  authorizationNotes: text("authorizationNotes"),
+  authorizedAt: timestamp("authorizedAt"),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Project = typeof projects.$inferSelect;
@@ -321,3 +499,19 @@ export type GeoArticleQualityScore = typeof geoArticleQualityScores.$inferSelect
 export type InsertGeoArticleQualityScore = typeof geoArticleQualityScores.$inferInsert;
 export type GeoPublishRecord = typeof geoPublishRecords.$inferSelect;
 export type InsertGeoPublishRecord = typeof geoPublishRecords.$inferInsert;
+export type EnterpriseGeoProfile = typeof enterpriseGeoProfiles.$inferSelect;
+export type InsertEnterpriseGeoProfile = typeof enterpriseGeoProfiles.$inferInsert;
+export type GeoAssetSource = typeof geoAssetSources.$inferSelect;
+export type InsertGeoAssetSource = typeof geoAssetSources.$inferInsert;
+export type CustomerCase = typeof customerCases.$inferSelect;
+export type InsertCustomerCase = typeof customerCases.$inferInsert;
+export type CompetitorProfile = typeof competitorProfiles.$inferSelect;
+export type InsertCompetitorProfile = typeof competitorProfiles.$inferInsert;
+export type ComplianceRule = typeof complianceRules.$inferSelect;
+export type InsertComplianceRule = typeof complianceRules.$inferInsert;
+export type ContentStyleProfile = typeof contentStyleProfiles.$inferSelect;
+export type InsertContentStyleProfile = typeof contentStyleProfiles.$inferInsert;
+export type PublishStrategy = typeof publishStrategies.$inferSelect;
+export type InsertPublishStrategy = typeof publishStrategies.$inferInsert;
+export type PlatformAuthorizationConfig = typeof platformAuthorizationConfigs.$inferSelect;
+export type InsertPlatformAuthorizationConfig = typeof platformAuthorizationConfigs.$inferInsert;

@@ -6,13 +6,17 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnalysisPage, ArticlesPage, ProjectsPage, QuestionsPage, ReportsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
+import Home from "./pages/Home";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
+import AssetCenterPage from "./pages/AssetCenter";
 
 function PrivateRoutes() {
   return (
     <DashboardLayout>
       <Switch>
-        <Route path="/" component={ProjectsPage} />
+        <Route path="/" component={Home} />
+        <Route path="/projects" component={ProjectsPage} />
+        <Route path="/assets" component={AssetCenterPage} />
         <Route path="/questions" component={QuestionsPage} />
         <Route path="/responses" component={ResponsesPage} />
         <Route path="/analysis" component={AnalysisPage} />

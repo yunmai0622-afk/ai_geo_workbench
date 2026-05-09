@@ -21,14 +21,16 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Brain, Building2, ClipboardList, FilePenLine, FileText, Gauge, HelpCircle, LogOut, PanelLeft, Upload } from "lucide-react";
+import { Archive, Brain, Building2, ClipboardList, FilePenLine, FileText, Gauge, HelpCircle, LogOut, PanelLeft, Sparkles, Upload } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: Building2, label: "项目管理", path: "/" },
+  { icon: Sparkles, label: "增长指挥舱", path: "/" },
+  { icon: Building2, label: "项目管理", path: "/projects" },
+  { icon: Archive, label: "企业资料中心", path: "/assets" },
   { icon: HelpCircle, label: "问题库", path: "/questions" },
   { icon: Upload, label: "AI 回答导入", path: "/responses" },
   { icon: Brain, label: "AI 语义分析", path: "/analysis" },
