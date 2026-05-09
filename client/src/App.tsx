@@ -5,7 +5,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AnalysisPage, ArticlesPage, ProjectsPage, QuestionsPage, ReportsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
+import { AnalysisPage, ArticlesPage, MonitoringPage, ProjectsPage, QuestionsPage, ReportsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
 import Home from "./pages/Home";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
 import AssetCenterPage from "./pages/AssetCenter";
@@ -17,6 +17,7 @@ function PrivateRoutes() {
         <Route path="/" component={Home} />
         <Route path="/projects" component={ProjectsPage} />
         <Route path="/assets" component={AssetCenterPage} />
+        <Route path="/diagnosis" component={QuestionsPage} />
         <Route path="/questions" component={QuestionsPage} />
         <Route path="/responses" component={ResponsesPage} />
         <Route path="/analysis" component={AnalysisPage} />
@@ -24,6 +25,8 @@ function PrivateRoutes() {
         <Route path="/tasks" component={TasksPage} />
         <Route path="/reports" component={ReportsPage} />
         <Route path="/articles" component={ArticlesPage} />
+        <Route path="/publish" component={ArticlesPage} />
+        <Route path="/monitoring" component={MonitoringPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
@@ -43,7 +46,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
           <Router />

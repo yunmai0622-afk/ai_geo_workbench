@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { GeoStatusGuide, pageGuides } from "@/components/GeoStatusGuide";
 
 const questionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交", "指定问题"] as const;
 const questionSourceLabels: Record<string, string> = { ai_generated: "AI 生成", manual: "手动指定", csv: "CSV 导入" };
@@ -67,24 +68,28 @@ const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g,
 const materialToHtml = (title: string, content: string) => `<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1" />\n<title>${escapeHtml(title)}</title>\n</head>\n<body>\n<article>\n${escapeHtml(content).split("\n").map(line => line.trim() ? `<p>${line}</p>` : "").join("\n")}\n</article>\n</body>\n</html>`;
 
 function PageHeader({ title, description }: { title: string; description: string }) {
+  const guide = pageGuides[title];
   return (
-    <div className="mb-6">
-      <p className="text-sm font-medium text-blue-700">企业 GEO 管理平台</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{title}</h1>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
+    <div className="mb-6 space-y-4">
+      <div className="rounded-3xl border border-cyan-300/15 bg-slate-950/70 p-6 text-slate-100 shadow-[0_0_34px_rgba(56,189,248,0.10)] backdrop-blur">
+        <p className="text-sm font-medium text-cyan-200">企业 AI GEO 增长工作台</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">{title}</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{description}</p>
+      </div>
+      {guide ? <GeoStatusGuide {...guide} /> : null}
     </div>
   );
 }
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>{children}</section>;
+  return <section className={`rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-slate-100 shadow-[0_0_28px_rgba(15,23,42,0.40)] backdrop-blur ${className}`}>{children}</section>;
 }
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-      <p className="font-medium text-slate-900">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    <div className="rounded-2xl border border-dashed border-cyan-300/20 bg-cyan-400/5 p-6 text-center">
+      <p className="font-medium text-slate-100">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
     </div>
   );
 }
@@ -382,6 +387,16 @@ export function QuestionsPage() {
     <div>
       <PageHeader title="问题库" description="根据企业信息调用 AI 生成 50 个提问，也支持客户指定问题的批量添加、CSV 导入、编辑、删除、启用或禁用。" />
       <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} />
+      {selectedProjectId ? <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {[
+          ["AI 是否提及品牌", "读取真实回答中的 mentionsEnterprise 字段，避免用主观印象判断品牌可见度。"],
+          ["AI 是否推荐品牌", "区分仅被提到与被明确推荐，作为推荐率和后续评分依据。"],
+          ["推荐竞品", "记录 AI 优先推荐的竞品名称，用于判断竞品压制与差异化内容缺口。"],
+          ["未推荐原因", "保留 notRecommendedReason，不把缺失信息包装成确定性优势。"],
+          ["内容缺口", "把错误认知、FAQ 缺口、案例缺口和对比页缺口沉淀为内容策略。"],
+          ["人工修订状态", "原始 AI 分析与人工修订分层保存，后续评分、任务和报告优先使用已审核结论。"],
+        ].map(([title, desc]) => <div key={title} className="rounded-2xl border border-cyan-300/10 bg-slate-950/55 p-4 text-slate-100 shadow-[0_0_24px_rgba(34,211,238,0.08)]"><p className="text-sm font-semibold text-cyan-100">{title}</p><p className="mt-2 text-xs leading-5 text-slate-400">{desc}</p></div>)}
+      </section> : null}
       {selectedProjectId ? <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
         <Card>
           <h2 className="mb-4 text-lg font-semibold">问题操作</h2>
@@ -527,8 +542,18 @@ export function ResponsesPage() {
 
   return (
     <div>
-      <PageHeader title="AI 回答导入" description="手动录入或通过 CSV 批量导入来自 ChatGPT、DeepSeek、豆包、Kimi、通义、文心、Perplexity 等平台的真实回答。" />
+      <PageHeader title="AI 认知扫描" description="手动录入或通过 CSV 批量导入来自 ChatGPT、DeepSeek、豆包、Kimi、通义、文心、Perplexity 等平台的真实回答，扫描 AI 是否提及/推荐品牌、推荐竞品、未推荐原因、内容缺口和人工修订状态。" />
       <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} />
+      {selectedProjectId ? <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {[
+          ["AI 是否提及品牌", "读取真实回答中的 mentionsEnterprise 字段，避免用主观印象判断品牌可见度。"],
+          ["AI 是否推荐品牌", "区分仅被提到与被明确推荐，作为推荐率和后续评分依据。"],
+          ["推荐竞品", "记录 AI 优先推荐的竞品名称，用于判断竞品压制与差异化内容缺口。"],
+          ["未推荐原因", "保留 notRecommendedReason，不把缺失信息包装成确定性优势。"],
+          ["内容缺口", "把错误认知、FAQ 缺口、案例缺口和对比页缺口沉淀为内容策略。"],
+          ["人工修订状态", "原始 AI 分析与人工修订分层保存，后续评分、任务和报告优先使用已审核结论。"],
+        ].map(([title, desc]) => <div key={title} className="rounded-2xl border border-cyan-300/10 bg-slate-950/55 p-4 text-slate-100 shadow-[0_0_24px_rgba(34,211,238,0.08)]"><p className="text-sm font-semibold text-cyan-100">{title}</p><p className="mt-2 text-xs leading-5 text-slate-400">{desc}</p></div>)}
+      </section> : null}
       {selectedProjectId ? <div className="grid gap-5 lg:grid-cols-[420px_1fr]">
         <Card>
           <h2 className="mb-4 text-lg font-semibold">手动录入</h2>
@@ -731,15 +756,34 @@ export function ReportsPage() {
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput);
   const templatesQuery = trpc.geo.templates.list.useQuery(projectInput);
   const reportQuery = trpc.geo.reports.latest.useQuery(projectInput);
+  const recordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput);
+  const deliveryReports = [
+    { title: "GEO 诊断报告", status: reportQuery.data ? "已生成" : "待生成", detail: "来自真实 AI 回答、语义分析、GEO 评分和优化任务，解释品牌为什么未被提及或推荐。" },
+    { title: "内容发布报告", status: (recordsQuery.data ?? []).length > 0 ? `${(recordsQuery.data ?? []).length} 条发布记录` : "待发布", detail: "汇总已发布内容、发布渠道、质量分、公开链接和是否待复测。" },
+    { title: "收录监测报告", status: (recordsQuery.data ?? []).some(record => Boolean(record.needRetest)) ? "待人工复测" : "等待样本", detail: "记录搜索收录、AI 提及、AI 推荐和竞品压制变化，不做自动抓取。" },
+    { title: "复测报告", status: "人工复测后生成", detail: "对比发布前后 AI 回答变化，说明哪些认知已改善、哪些问题仍需补内容。" },
+    { title: "客户交付报告", status: reportQuery.data ? "可整理交付" : "待诊断报告", detail: "面向客户汇总诊断、内容、发布、监测和下一步建议，只引用已确认事实。" },
+  ];
   const generateTemplates = trpc.geo.templates.generate.useMutation({ onSuccess: async result => { await Promise.all([utils.geo.templates.list.invalidate(), utils.geo.projects.list.invalidate()]); toast.success(`已生成 ${result.count} 个内容模板`); }, onError: error => toast.error(error.message) });
   const generateReport = trpc.geo.reports.generate.useMutation({ onSuccess: async () => { await Promise.all([utils.geo.reports.latest.invalidate(), utils.geo.projects.list.invalidate()]); toast.success("诊断报告已生成"); }, onError: error => toast.error(error.message) });
   return (
     <div>
-      <PageHeader title="内容模板与报告" description="根据优化任务生成内容模板，并导出老板版 GEO 诊断报告 Markdown。" />
+      <PageHeader title="客户交付中心" description="面向客户交付 GEO 诊断报告、内容发布报告、收录监测报告、复测报告和客户交付报告，并保留原有内容模板与 Markdown 导出能力。" />
       <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} />
       {selectedProjectId ? <div className="space-y-5">
         <Card>
-          {(tasksQuery.data ?? []).length === 0 ? <EmptyState title="暂无优化任务" description="请先在优化工作台生成任务，再生成内容模板和诊断报告。" /> : <div className="flex flex-wrap gap-3"><Button disabled={generateTemplates.isPending} onClick={() => generateTemplates.mutate({ projectId: selectedProjectId })}>{generateTemplates.isPending ? "正在生成模板..." : "生成内容模板"}</Button><Button disabled={generateReport.isPending} onClick={() => generateReport.mutate({ projectId: selectedProjectId })}>{generateReport.isPending ? "正在生成报告..." : "生成老板版 GEO 诊断报告"}</Button></div>}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-medium text-cyan-200">客户交付中心</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">五类报告交付物</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">报告只读取当前系统中的诊断、资产、文章、发布和复测记录，不会把没有来源的效果数据写成确定性结论。</p>
+            </div>
+            {(tasksQuery.data ?? []).length === 0 ? null : <div className="flex flex-wrap gap-3"><Button disabled={generateTemplates.isPending} onClick={() => generateTemplates.mutate({ projectId: selectedProjectId })}>{generateTemplates.isPending ? "正在生成模板..." : "生成内容模板"}</Button><Button disabled={generateReport.isPending} onClick={() => generateReport.mutate({ projectId: selectedProjectId })}>{generateReport.isPending ? "正在生成报告..." : "生成GEO 诊断报告"}</Button></div>}
+          </div>
+          {(tasksQuery.data ?? []).length === 0 ? <div className="mt-4"><EmptyState title="暂无优化任务" description="请先在优化工作台生成任务，再生成内容模板和诊断报告。" /></div> : null}
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            {deliveryReports.map(report => <div key={report.title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"><p className="text-sm font-semibold text-white">{report.title}</p><span className="mt-3 inline-flex rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-100">{report.status}</span><p className="mt-3 text-xs leading-5 text-slate-400">{report.detail}</p></div>)}
+          </div>
         </Card>
         <Card>
           <h2 className="mb-4 text-lg font-semibold">内容模板</h2>
@@ -747,7 +791,7 @@ export function ReportsPage() {
           <div className="space-y-4">{(templatesQuery.data ?? []).map(template => { const relatedTask = (tasksQuery.data ?? []).find(task => task.id === template.optimizationTaskId); return <div key={template.id} className="rounded-lg border border-slate-200 p-4"><div className="flex items-center justify-between gap-3"><div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{template.templateType}</span><h3 className="mt-2 font-semibold">{template.title}</h3><p className="mt-1 text-xs text-slate-500">关联优化任务：{relatedTask?.taskName ?? "未绑定任务"}</p></div><div className="flex gap-2"><Button variant="secondary" onClick={() => navigator.clipboard.writeText(template.markdownContent).then(() => toast.success("已复制模板"))}>一键复制</Button><Button variant="secondary" onClick={() => downloadMarkdown(`${template.title}.md`, template.markdownContent)}>导出 Markdown</Button></div></div><pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{template.markdownContent}</pre></div>; })}</div>
         </Card>
         <Card>
-          <h2 className="mb-4 text-lg font-semibold">老板版 GEO 诊断报告</h2>
+          <h2 className="mb-4 text-lg font-semibold">GEO 诊断报告</h2>
           {!reportQuery.data ? <EmptyState title="暂无诊断报告" description="请先完成分析、评分和任务生成，再生成报告。报告内容会来自真实导入与计算结果。" /> : <div><div className="mb-3 flex gap-2"><Button variant="secondary" onClick={() => navigator.clipboard.writeText(reportQuery.data?.markdownContent ?? "").then(() => toast.success("已复制报告"))}>一键复制</Button><Button variant="secondary" onClick={() => downloadMarkdown(`${(reportQuery.data?.oneSentenceConclusion ?? "GEO诊断报告").slice(0, 20)}.md`, reportQuery.data?.markdownContent ?? "")}>导出 Markdown</Button></div><pre className="max-h-[560px] overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-4 text-sm text-slate-100">{reportQuery.data?.markdownContent ?? ""}</pre></div>}
         </Card>
       </div> : null}
@@ -945,3 +989,85 @@ export function ArticlesPage() {
   );
 }
 
+
+export function MonitoringPage() {
+  const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();
+  const recordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput);
+  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput);
+  const records = recordsQuery.data ?? [];
+  const articles = articlesQuery.data ?? [];
+  const articleTitleById = new Map(articles.map(article => [article.id, article.title]));
+  const publishedCount = records.length;
+  const pendingRetestCount = records.filter(record => Boolean(record.needRetest)).length;
+  const latestRecord = records[0];
+  const latestPublishedAt = latestRecord?.publishedAt ? new Date(latestRecord.publishedAt).toLocaleString() : "暂无真实发布记录";
+  const radarItems = [
+    { title: "GEO 内容页收录", value: publishedCount > 0 ? `${publishedCount} 篇待人工复测` : "暂无发布内容", detail: "从真实发布记录读取公开链接和发布状态，发布后再人工记录搜索引擎收录情况。" },
+    { title: "AI 是否提及品牌", value: pendingRetestCount > 0 ? "待检测" : "等待发布", detail: "复测 ChatGPT、DeepSeek、豆包、Kimi 等平台回答中的品牌提及变化，结果回填报告中心。" },
+    { title: "AI 是否推荐品牌", value: pendingRetestCount > 0 ? "待检测" : "等待发布", detail: "对比复测前后推荐位置，判断是否从未推荐进入可推荐，不承诺保证推荐。" },
+    { title: "竞品压制变化", value: pendingRetestCount > 0 ? "持续观察" : "等待样本", detail: "跟踪竞品仍被优先推荐的原因，反向生成下一轮内容缺口和竞品对比素材。" },
+    { title: "最近检测", value: latestPublishedAt, detail: "当前字段来自最近一条真实发布时间；本轮不做自动抓取或定时复测。" },
+  ];
+  const nextOptimizations = [
+    "优先复测已发布且质量评分合格的 GEO 内容页。",
+    "如果 AI 未提及品牌，回到内容策略补充实体、案例和产品差异证据。",
+    "如果 AI 提及但不推荐，补充竞品对比、适用场景和客户选择理由。",
+    "复测结论进入客户交付中心，作为收录监测报告和复测报告的一部分。",
+  ];
+  return (
+    <div>
+      <PageHeader title="收录监测" description="AI 收录雷达用于记录内容发布后的收录、AI 提及、AI 推荐、竞品压制、最近检测和下一步优化建议。本轮不新增自动抓取或定时任务，只读取真实发布记录并保留人工复测工作台。" />
+      <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} />
+      {selectedProjectId ? <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <Card>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-cyan-200">AI 收录雷达</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">发布内容复测状态</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400">这里聚合真实发布记录后的可见性信号，帮助客户理解内容是否被搜索和 AI 回答引用。当前为轻量监测台，不自动抓取第三方平台。</p>
+            </div>
+            <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">人工复测</span>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {radarItems.map(item => (
+              <div key={item.title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-white">{item.title}</p>
+                  <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-xs text-cyan-100">{item.value}</span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-400">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+            <h3 className="text-sm font-semibold text-white">真实发布内容</h3>
+            {records.length === 0 ? <EmptyState title="暂无真实发布记录" description="请先在内容生产页完成质检、人工审核并发布到内置 GEO 内容页，再进入 AI 收录雷达复测。" /> : <div className="mt-3 space-y-3">
+              {records.map(record => (
+                <div key={record.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">
+                  <p className="font-medium text-white">{articleTitleById.get(record.articleId) ?? `文章 #${record.articleId}`}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">发布渠道：{record.publishChannel}｜状态：{record.publishStatus}｜质量分：{record.qualityScore}｜待复测：{record.needRetest ? "是" : "否"}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">最近检测：{record.publishedAt ? new Date(record.publishedAt).toLocaleString() : "待人工复测"}｜公开链接：{publicUrl(record.publishUrl)}</p>
+                </div>
+              ))}
+            </div>}
+          </div>
+        </Card>
+        <Card>
+          <p className="text-sm font-medium text-violet-200">下一步优化建议</p>
+          <div className="mt-4 space-y-3">
+            {nextOptimizations.map((item, index) => (
+              <div key={item} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-400/10 text-xs font-semibold text-violet-100">{index + 1}</span>
+                <p className="text-sm leading-6 text-slate-300">{item}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4">
+            <p className="text-sm font-medium text-rose-100">真实风险</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">收录和 AI 推荐不能保证发生；报告中只能记录已检测事实、公开证据和客户确认信息，不能承诺保证收录或保证排名。</p>
+          </div>
+        </Card>
+      </div> : null}
+    </div>
+  );
+}

@@ -13,17 +13,19 @@ describe("V1.2 首页增长指挥舱静态回归", () => {
     expect(appSource).toContain('<Route path="/projects" component={ProjectsPage} />');
   });
 
-  it("侧边栏展示中文增长指挥舱、项目管理和企业资料中心入口", () => {
+  it("侧边栏展示中文客户路径导航入口，并保留项目管理别名", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    expect(layoutSource).toContain('label: "增长指挥舱", path: "/"');
-    expect(layoutSource).toContain('label: "项目管理", path: "/projects"');
-    expect(layoutSource).toContain('label: "企业资料中心", path: "/assets"');
+    const appSource = readProjectFile("client/src/App.tsx");
+    expect(layoutSource).toContain('label: "总览指挥舱", desc: "当前项目与下一步", path: "/"');
+    expect(layoutSource).toContain('label: "企业资产", desc: "AI 资料中枢", path: "/assets"');
+    expect(layoutSource).toContain('label: "AI 诊断", desc: "认知扫描与评分", path: "/diagnosis"');
+    expect(appSource).toContain('<Route path="/projects" component={ProjectsPage} />');
   });
 
   it("首页指挥舱呈现 Sprint 1 核心指标和边界约束", () => {
     const homeSource = readProjectFile("client/src/pages/Home.tsx");
-    expect(homeSource).toContain("增长指挥舱");
-    expect(homeSource).toContain("企业资料完整度");
+    expect(homeSource).toContain("AI GEO 增长中枢");
+    expect(homeSource).toContain("资料完整度");
     expect(homeSource).toContain("资料来源");
     expect(homeSource).toContain("真实案例");
     expect(homeSource).toContain("竞品资料");

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { GeoStatusGuide } from "@/components/GeoStatusGuide";
 import { trpc } from "@/lib/trpc";
 import { AlertTriangle, Archive, Building2, CheckCircle2, Database, FileText, LockKeyhole, ShieldCheck, Sparkles, UploadCloud } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
@@ -176,9 +177,9 @@ export default function AssetCenterPage() {
       <div className="relative z-10 space-y-6">
         <div className="flex flex-col gap-4 rounded-3xl border border-cyan-300/15 bg-white/[0.04] p-6 backdrop-blur md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="flex items-center gap-2 text-sm font-medium text-cyan-200"><Sparkles className="h-4 w-4" /> AI GEO 企业资料中心</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">企业 GEO 资产库</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">集中沉淀企业资料、产品服务、真实案例、竞品、合规、内容风格、发布策略与平台授权占位。后续内容生成只能引用已确认且允许用于生成的资料，不允许无来源资料、编造案例、明文账号密码进入系统。</p>
+            <p className="flex items-center gap-2 text-sm font-medium text-cyan-200"><Sparkles className="h-4 w-4" /> AI 资料中枢</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">企业资产库接入控制台</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">用卡片化方式沉淀企业资料、产品服务、客户案例、竞品资料、合规规则、内容风格、发布策略与平台授权状态。后续文章生成、质量评分和发布前检查只能引用已确认且允许使用的资料。</p>
           </div>
           <div className="min-w-[260px] space-y-2">
             <Label>当前项目</Label>
@@ -188,6 +189,16 @@ export default function AssetCenterPage() {
             </select>
           </div>
         </div>
+
+        <GeoStatusGuide
+          stage="企业资产"
+          completion={summary?.completionScore ?? 0}
+          nextAction={summary?.nextAction ?? "先补齐企业基础资料、产品服务、客户案例、竞品资料、合规规则、内容风格和发布策略。"}
+          why="资产库是后续文章生成、质量评分和发布前检查的证据来源；没有来源的关键事实不能写成确定性结论。"
+          risk={(summary?.riskReminders ?? ["资料不足时，客户案例、结果数据和价格口径不能被编造或默认公开。"])[0]}
+          ctaLabel="进入内容生产"
+          ctaPath="/articles"
+        />
 
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard title="资料完整度" value={`${summary?.completionScore ?? 0}%`} desc={selectedProject ? `${selectedProject.enterpriseName} 的资料沉淀状态` : "请先选择项目"} icon={Database} />
