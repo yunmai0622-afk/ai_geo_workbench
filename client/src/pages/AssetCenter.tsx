@@ -196,9 +196,40 @@ export default function AssetCenterPage() {
           nextAction={summary?.nextAction ?? "先补齐企业基础资料、产品服务、客户案例、竞品资料、合规规则、内容风格和发布策略。"}
           why="资产库是后续文章生成、质量评分和发布前检查的证据来源；没有来源的关键事实不能写成确定性结论。"
           risk={(summary?.riskReminders ?? ["资料不足时，客户案例、结果数据和价格口径不能被编造或默认公开。"])[0]}
-          ctaLabel="进入内容生产"
-          ctaPath="/articles"
+          ctaLabel={summary?.completionScore === 0 ? "开始补充企业资料" : "进入内容生产"}
+          ctaPath={summary?.completionScore === 0 ? "/assets" : "/articles"}
         />
+
+        {(summary?.completionScore ?? 0) === 0 ? (
+          <Card className="border-amber-300/25 bg-amber-400/10 text-slate-100 shadow-[0_0_32px_rgba(251,191,36,0.12)]">
+            <CardHeader>
+              <CardDescription className="text-amber-200">企业资产 0% 引导</CardDescription>
+              <CardTitle className="text-white">企业 GEO 资产尚未建立</CardTitle>
+              <p className="text-sm leading-6 text-slate-300">系统需要先了解企业资料，才能生成准确、可溯源、高质量的 GEO 内容。</p>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+              <div className="rounded-3xl border border-white/10 bg-slate-950/55 p-4">
+                <p className="text-sm font-semibold text-white">下一步建议</p>
+                <ol className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+                  <li>1. 补充企业基础资料</li>
+                  <li>2. 上传产品介绍或服务资料</li>
+                  <li>3. 补充 1-3 个真实客户案例</li>
+                  <li>4. 补充主要竞品资料</li>
+                  <li>5. 配置合规规则和发布策略</li>
+                </ol>
+              </div>
+              <div className="space-y-3 rounded-3xl border border-amber-300/15 bg-slate-950/55 p-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => document.getElementById('asset-profile-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="bg-amber-300 text-slate-950 hover:bg-amber-200">开始补充企业资料</Button>
+                  <Button onClick={() => document.getElementById('asset-source-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} variant="outline" className="border-white/15 bg-white/[0.04] text-slate-100 hover:bg-white/10">上传资料文档</Button>
+                </div>
+                <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-3 text-sm leading-6 text-amber-100">
+                  风险提醒：资料不足时，系统不得编造案例、数据、价格和效果承诺。
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard title="资料完整度" value={`${summary?.completionScore ?? 0}%`} desc={selectedProject ? `${selectedProject.enterpriseName} 的资料沉淀状态` : "请先选择项目"} icon={Database} />
@@ -230,7 +261,7 @@ export default function AssetCenterPage() {
             <TabsTrigger value="strategy">发布策略与授权</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="profile">
+          <TabsContent value="profile" id="asset-profile-section">
             <Card className="border-white/10 bg-slate-950/70 text-slate-100"><CardHeader><CardTitle>企业基础信息与产品服务资料</CardTitle><CardDescription className="text-slate-400">用于后续诊断、文章依据、质量评分和发布策略推荐。</CardDescription></CardHeader><CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <TextField label="企业名称" value={profile.enterpriseName} onChange={enterpriseName => setProfile(prev => ({ ...prev, enterpriseName }))} />
@@ -268,7 +299,7 @@ export default function AssetCenterPage() {
             </CardContent></Card>
           </TabsContent>
 
-          <TabsContent value="sources">
+          <TabsContent value="sources" id="asset-source-section">
             <Card className="border-white/10 bg-slate-950/70 text-slate-100"><CardHeader><CardTitle className="flex items-center gap-2"><UploadCloud className="h-5 w-5 text-cyan-300" /> 资料上传或粘贴</CardTitle><CardDescription className="text-slate-400">上传文件会先进入对象存储，数据库仅保存 fileKey、fileUrl、类型、解析状态和结构化摘要。</CardDescription></CardHeader><CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3"><TextField label="资料标题" value={sourceForm.title} onChange={title => setSourceForm(prev => ({ ...prev, title }))} /><SelectField label="资料类型" value={sourceForm.sourceType} options={sourceTypes} onChange={sourceType => setSourceForm(prev => ({ ...prev, sourceType }))} /><SelectField label="可信度" value={sourceForm.trustLevel} options={trustLevels} onChange={trustLevel => setSourceForm(prev => ({ ...prev, trustLevel }))} /></div>
               <AreaField label="资料摘要 / 粘贴内容" value={sourceForm.contentDigest} onChange={contentDigest => setSourceForm(prev => ({ ...prev, contentDigest }))} rows={5} />

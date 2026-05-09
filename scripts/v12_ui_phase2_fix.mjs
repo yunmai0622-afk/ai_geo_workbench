@@ -1,8 +1,15 @@
-import { GeoStatusGuide } from "@/components/GeoStatusGuide";
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = '/home/ubuntu/ai_geo_workbench';
+const homePath = path.join(root, 'client/src/pages/Home.tsx');
+const assetPath = path.join(root, 'client/src/pages/AssetCenter.tsx');
+
+const home = String.raw`import { GeoStatusGuide } from "@/components/GeoStatusGuide";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, Archive, Brain, CheckCircle2, ClipboardList, Factory, FileCheck2, Gauge, Radar, Rocket, ShieldCheck, Sparkles, Target, TrendingUp, Zap } from "lucide-react";
+import { AlertTriangle, Archive, Brain, CheckCircle2, ClipboardList, Database, Factory, FileCheck2, FileText, Gauge, Layers3, Radar, Rocket, ShieldCheck, Sparkles, Target, TrendingUp, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -35,7 +42,7 @@ const metricTone = {
 
 function MetricCard({ title, value, desc, icon: Icon, tone = "cyan" }: { title: string; value: string; desc: string; icon: typeof Sparkles; tone?: keyof typeof metricTone }) {
   return (
-    <div className={`rounded-3xl border bg-slate-950/66 p-4 ${metricTone[tone]}`}>
+    <div className={\`rounded-3xl border bg-slate-950/66 p-4 \${metricTone[tone]}\`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-slate-300">{title}</p>
         <Icon className="h-4 w-4" />
@@ -105,14 +112,14 @@ export default function Home() {
   const totalScore = typeof latestScore.totalScore === "number" ? latestScore.totalScore : 0;
   const isLoading = projectsLoading || summaryLoading || analysisQuery.isLoading || scoreQuery.isLoading;
   const nextAction = completionScore === 0
-    ? "先建立企业 GEO 资产：补企业资料、上传资料文档、补真实案例与客户案例、补竞品和配置合规发布策略。"
+    ? "先建立企业 GEO 资产：补企业资料、上传资料文档、补客户案例、补竞品和配置合规发布策略。"
     : summary?.nextAction ?? "按企业资产 → AI 诊断 → 内容生产 → 平台发布 → 收录监测 → 再优化继续推进。";
 
   const metrics = [
     { title: "GEO 总分", value: `${totalScore}`, desc: isLoading ? "正在读取评分" : "综合 AI 可见度、推荐率、竞品胜出和资产完整度", icon: Gauge, tone: "cyan" as const },
     { title: "AI 可见度", value: `${aiVisibility}%`, desc: `${mentioned}/${analyses.length || 0} 条 AI 回答提及企业`, icon: Brain, tone: "violet" as const },
     { title: "AI 推荐率", value: `${recommendationRate}%`, desc: `${recommended}/${analyses.length || 0} 条 AI 回答推荐企业`, icon: Sparkles, tone: "emerald" as const },
-    { title: "竞品资料与竞品胜出率", value: `${competitorWinRate}%`, desc: `${enterpriseWins}/${analyses.length || 0} 条 AI 回答中企业胜出`, icon: Target, tone: "amber" as const },
+    { title: "竞品胜出率", value: `${competitorWinRate}%`, desc: `${enterpriseWins}/${analyses.length || 0} 条 AI 回答中企业胜出`, icon: Target, tone: "amber" as const },
     { title: "内容质量均分", value: `${avgQuality}`, desc: "来自已质检 GEO 文章的平均总分", icon: ShieldCheck, tone: "rose" as const },
     { title: "已生成文章", value: String(generatedArticles.length), desc: "含待质检、待审核、审核通过和已发布文章", icon: Factory, tone: "cyan" as const },
     { title: "已发布内容", value: String(publishedArticles), desc: "以内置 GEO 内容页发布记录为主", icon: Rocket, tone: "violet" as const },
@@ -153,9 +160,9 @@ export default function Home() {
                   </select>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => setLocation("/assets")} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">下一步动作：补充企业资产</Button>
-                  <Button onClick={() => setLocation("/diagnosis")} variant="outline" className="border-white/15 bg-white/[0.04] text-slate-100 hover:bg-white/10">启动 AI 诊断</Button>
-                  <Button onClick={() => setLocation("/articles")} variant="outline" className="border-white/15 bg-white/[0.04] text-slate-100 hover:bg-white/10">进入内容生产</Button>
+                  <Button onClick={() => setLocation('/assets')} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">下一步动作：补充企业资产</Button>
+                  <Button onClick={() => setLocation('/diagnosis')} variant="outline" className="border-white/15 bg-white/[0.04] text-slate-100 hover:bg-white/10">启动 AI 诊断</Button>
+                  <Button onClick={() => setLocation('/articles')} variant="outline" className="border-white/15 bg-white/[0.04] text-slate-100 hover:bg-white/10">进入内容生产</Button>
                 </div>
               </div>
 
@@ -179,7 +186,7 @@ export default function Home() {
                   <span className="font-semibold text-cyan-200">{statusLabel}</span>
                 </div>
                 <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-slate-300">资料完整度｜资料来源</span>
+                  <span className="text-slate-300">资料完整度</span>
                   <span className="font-semibold text-cyan-200">{completionScore}%</span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-slate-800">
@@ -215,7 +222,7 @@ export default function Home() {
         <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
           <Card className="border-white/10 bg-white/[0.04] text-slate-100 backdrop-blur">
             <CardHeader>
-              <CardDescription className="text-cyan-200">GEO 增长路径｜GEO 闭环流程</CardDescription>
+              <CardDescription className="text-cyan-200">GEO 增长路径</CardDescription>
               <CardTitle className="text-white">企业资产 → AI 诊断 → 内容生产 → 平台发布 → 收录监测 → 再优化</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -250,8 +257,8 @@ export default function Home() {
                 <CardTitle className="text-white">下一轮应优先完成</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm leading-6 text-slate-300">
-                {(tasks.length ? tasks.slice(0, 3).map(task => task.taskName) : ["补齐企业资料与客户案例", "检查内容质量分是否达到 80 分", "发布后进入收录与 AI 推荐复测"]).map(item => <p key={item}>• {item}</p>)}
-                <Button onClick={() => setLocation("/tasks")} variant="outline" className="w-full border-white/15 bg-white/[0.04] text-slate-100 hover:bg-white/10">查看内容策略</Button>
+                {(tasks.length ? tasks.slice(0, 3).map(task => task.title) : ["补齐企业资料与客户案例", "检查内容质量分是否达到 80 分", "发布后进入收录与 AI 推荐复测"]).map(item => <p key={item}>• {item}</p>)}
+                <Button onClick={() => setLocation('/tasks')} variant="outline" className="w-full border-white/15 bg-white/[0.04] text-slate-100 hover:bg-white/10">查看内容策略</Button>
               </CardContent>
             </Card>
           </div>
@@ -264,16 +271,59 @@ export default function Home() {
                 <p className="font-medium text-amber-100">尚未创建企业项目</p>
                 <p className="mt-1 text-sm text-slate-300">请先创建项目，再补充企业资产、执行诊断和生成内容。</p>
               </div>
-              <Button onClick={() => setLocation("/projects")} className="bg-amber-300 text-slate-950 hover:bg-amber-200">创建项目</Button>
+              <Button onClick={() => setLocation('/projects')} className="bg-amber-300 text-slate-950 hover:bg-amber-200">创建项目</Button>
             </CardContent>
           </Card>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-cyan-300/10 bg-slate-950/50 p-4 text-xs text-slate-400">
           <Brain className="h-4 w-4 text-cyan-200" />
-          <span>平台授权状态：第三方平台只生成素材，不自动登录发布。风险提示：不固定日更铺文、不保存明文平台凭证、不编造客户案例或效果数据、不把文件字节写入数据库、不自动代发第三方平台。</span>
+          <span>底线约束：不固定日更铺文、不保存明文平台凭证、不编造客户案例或效果数据、不把文件字节写入数据库、不自动代发第三方平台。</span>
         </div>
       </main>
     </div>
   );
 }
+`;
+
+fs.writeFileSync(homePath, home);
+
+let asset = fs.readFileSync(assetPath, 'utf8');
+asset = asset.replace('          ctaLabel="进入内容生产"\n          ctaPath="/articles"', '          ctaLabel={summary?.completionScore === 0 ? "开始补充企业资料" : "进入内容生产"}\n          ctaPath={summary?.completionScore === 0 ? "/assets" : "/articles"}');
+const zeroCard = String.raw`
+
+        {(summary?.completionScore ?? 0) === 0 ? (
+          <Card className="border-amber-300/25 bg-amber-400/10 text-slate-100 shadow-[0_0_32px_rgba(251,191,36,0.12)]">
+            <CardHeader>
+              <CardDescription className="text-amber-200">企业资产 0% 引导</CardDescription>
+              <CardTitle className="text-white">企业 GEO 资产尚未建立</CardTitle>
+              <p className="text-sm leading-6 text-slate-300">系统需要先了解企业资料，才能生成准确、可溯源、高质量的 GEO 内容。</p>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+              <div className="rounded-3xl border border-white/10 bg-slate-950/55 p-4">
+                <p className="text-sm font-semibold text-white">下一步建议</p>
+                <ol className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+                  <li>1. 补充企业基础资料</li>
+                  <li>2. 上传产品介绍或服务资料</li>
+                  <li>3. 补充 1-3 个真实客户案例</li>
+                  <li>4. 补充主要竞品资料</li>
+                  <li>5. 配置合规规则和发布策略</li>
+                </ol>
+              </div>
+              <div className="space-y-3 rounded-3xl border border-amber-300/15 bg-slate-950/55 p-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => document.getElementById('asset-profile-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="bg-amber-300 text-slate-950 hover:bg-amber-200">开始补充企业资料</Button>
+                  <Button onClick={() => document.getElementById('asset-source-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} variant="outline" className="border-white/15 bg-white/[0.04] text-slate-100 hover:bg-white/10">上传资料文档</Button>
+                </div>
+                <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-3 text-sm leading-6 text-amber-100">
+                  风险提醒：资料不足时，系统不得编造案例、数据、价格和效果承诺。
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}`;
+asset = asset.replace('\n\n        <div className="grid gap-4 md:grid-cols-4">', `${zeroCard}\n\n        <div className="grid gap-4 md:grid-cols-4">`);
+asset = asset.replace('<TabsContent value="profile">', '<TabsContent value="profile" id="asset-profile-section">');
+asset = asset.replace('<TabsContent value="sources">', '<TabsContent value="sources" id="asset-source-section">');
+fs.writeFileSync(assetPath, asset);
+`;

@@ -25,7 +25,7 @@ export function GeoStatusGuide({ stage, completion, nextAction, why, risk, ctaLa
               <CircleDotDashed className="h-3.5 w-3.5" /> 当前阶段：{stage}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
-              <CheckCircle2 className="h-3.5 w-3.5" /> 完成度 {safeCompletion}%
+              <CheckCircle2 className="h-3.5 w-3.5" /> 当前完成度 {safeCompletion}%
             </span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -57,6 +57,70 @@ export function GeoStatusGuide({ stage, completion, nextAction, why, risk, ctaLa
 }
 
 export const pageGuides: Record<string, GeoStatusGuideProps> = {
+
+  "总览指挥舱": {
+    stage: "总览指挥舱",
+    completion: 68,
+    nextAction: "从当前项目与当前 GEO 阶段进入下一步动作，优先处理资产、诊断、内容或复测缺口。",
+    why: "客户需要第一眼看到 GEO 增长闭环，而不是普通后台列表。",
+    risk: "指标来自当前系统数据；缺少样本时必须提示待补齐，不能虚构成果。",
+    ctaLabel: "补充企业资产",
+    ctaPath: "/assets",
+  },
+  "企业资产": {
+    stage: "企业资产",
+    completion: 20,
+    nextAction: "补充企业基础资料、产品服务资料、客户案例、竞品资料、合规规则和发布策略。",
+    why: "企业资产是文章生成、质量评分和发布准入的事实来源。",
+    risk: "资料不足时，系统不得编造案例、数据、价格和效果承诺。",
+    ctaLabel: "开始补充企业资料",
+    ctaPath: "/assets",
+  },
+  "AI 诊断": {
+    stage: "AI 诊断",
+    completion: 55,
+    nextAction: "导入真实 AI 回答，完成语义分析和 GEO 评分，定位未提及、未推荐和竞品胜出原因。",
+    why: "诊断结果决定内容机会池和优化任务，不能跳过真实问题与回答。",
+    risk: "不得用模拟回答替代真实 AI 诊断样本。",
+    ctaLabel: "查看内容策略",
+    ctaPath: "/tasks",
+  },
+  "内容策略": {
+    stage: "内容策略",
+    completion: 72,
+    nextAction: "把诊断缺口转化为可执行任务，并明确优先级、内容选题和复测指标。",
+    why: "内容策略连接 AI 诊断与内容生产，避免随机写文章。",
+    risk: "没有来源的任务会破坏诊断链路和客户交付可信度。",
+    ctaLabel: "进入内容生产",
+    ctaPath: "/articles",
+  },
+  "内容生产": {
+    stage: "内容生产",
+    completion: 82,
+    nextAction: "从内容机会池生成文章，检查生成依据、GEO 内容质量评分和是否允许发布。",
+    why: "客户需要确认每篇文章为什么写、解决哪个问题、是否达到发布标准。",
+    risk: "低于 80 分、依据不足或存在合规阻断时禁止发布。",
+    ctaLabel: "查看平台发布",
+    ctaPath: "/publish",
+  },
+  "平台发布": {
+    stage: "平台发布",
+    completion: 86,
+    nextAction: "确认第一优先级平台、第二优先级平台、不建议平台、发布注意事项和复测指标。",
+    why: "平台选择影响内容形式和复测效果，不能把所有文章当普通发布列表处理。",
+    risk: "第三方平台当前只生成素材，不自动登录发布。",
+    ctaLabel: "进入收录监测",
+    ctaPath: "/monitoring",
+  },
+  "报告中心": {
+    stage: "报告中心",
+    completion: 92,
+    nextAction: "汇总诊断、内容、发布、收录监测、复测和客户交付报告。",
+    why: "客户交付需要把 GEO 增长闭环串成可解释结果和下一步计划。",
+    risk: "报告只能引用已确认事实，不承诺保证收录、排名或 AI 推荐。",
+    ctaLabel: "查看收录监测",
+    ctaPath: "/monitoring",
+  },
   "项目管理": {
     stage: "项目建档",
     completion: 15,
