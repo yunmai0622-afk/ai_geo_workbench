@@ -1057,6 +1057,11 @@ const geoRouter = router({
       if (!input.projectId) return [];
       return db.select().from(geoPublishRecords).where(eq(geoPublishRecords.projectId, input.projectId)).orderBy(desc(geoPublishRecords.publishedAt));
     }),
+    inclusionMonitoringRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+      const db = await requireDb();
+      if (!input.projectId) return [];
+      return db.select().from(geoInclusionMonitoringRecords).where(eq(geoInclusionMonitoringRecords.projectId, input.projectId)).orderBy(desc(geoInclusionMonitoringRecords.createdAt));
+    }),
     generate: protectedProcedure.input(z.object({ topicId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
       const topicRows = await db.select().from(geoArticleTopics).where(eq(geoArticleTopics.id, input.topicId)).limit(1);
