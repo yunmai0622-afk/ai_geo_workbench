@@ -5,9 +5,20 @@ type ArticleGenerationBasisView = {
   customerQuestion?: string;
   contentGap?: string;
   optimizationTaskName?: string;
+  optimizationTask?: string;
   notRecommendedReason?: string;
   competitorGap?: string;
   humanRevisionConclusion?: string;
+  manualReviewConclusion?: string;
+  assetLibraryUsage?: {
+    enterpriseMaterials?: Array<{ title?: string; sourceType?: string; trustLevel?: string; isPublic?: boolean }>;
+    competitorMaterials?: Array<{ competitorName?: string; differentiation?: string }>;
+    customerCaseUsage?: { used?: boolean; status?: string };
+    complianceRules?: string[];
+    contentStyles?: string[];
+    publishStrategy?: string[];
+    missingEvidenceNotes?: string[];
+  };
 };
 
 type ArticleCitableSnippetView = {
@@ -24,10 +35,17 @@ function generationBasisRows(basis: ArticleGenerationBasisView | null): Array<[s
   const rows: Array<[string, string]> = [
     ["客户指定问题", basis.customerQuestion ?? ""],
     ["内容缺口", basis.contentGap ?? ""],
-    ["优化任务", basis.optimizationTaskName ?? ""],
+    ["优化任务", basis.optimizationTaskName ?? basis.optimizationTask ?? ""],
     ["AI 未推荐原因", basis.notRecommendedReason ?? ""],
     ["竞品差距", basis.competitorGap ?? ""],
-    ["人工修订结论", basis.humanRevisionConclusion ?? ""],
+    ["人工修订结论", basis.humanRevisionConclusion ?? basis.manualReviewConclusion ?? ""],
+    ["使用了哪些企业资料", basis.assetLibraryUsage?.enterpriseMaterials?.map(item => `${item.title ?? "未命名资料"}（${item.sourceType ?? "资料"}，${item.trustLevel ?? "可信度未标注"}，${item.isPublic ? "可公开" : "不可公开"}）`).join("；") ?? ""],
+    ["使用了哪些竞品资料", basis.assetLibraryUsage?.competitorMaterials?.map(item => `${item.competitorName ?? "未命名竞品"}：${item.differentiation ?? "差异待补充"}`).join("；") ?? ""],
+    ["是否使用客户案例", basis.assetLibraryUsage?.customerCaseUsage?.status ?? ""],
+    ["是否使用合规规则", basis.assetLibraryUsage?.complianceRules?.join("；") ?? ""],
+    ["是否使用内容风格", basis.assetLibraryUsage?.contentStyles?.join("；") ?? ""],
+    ["是否使用发布策略", basis.assetLibraryUsage?.publishStrategy?.join("；") ?? ""],
+    ["证据缺口", basis.assetLibraryUsage?.missingEvidenceNotes?.join("；") ?? ""],
   ];
   return rows.filter(([, value]) => value.trim().length > 0);
 }

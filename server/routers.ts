@@ -50,10 +50,12 @@ import {
   articleTypes,
   canAuditArticle,
   canPublishArticle,
+  evaluateAssetLibraryPrePublishCheck,
   generateGeoArticleDraft,
   generateGeoArticleTopics,
   scoreGeoArticleQuality,
   type ArticleStatus,
+  type P12AssetLibraryContext,
 } from "./geoArticleLogic";
 import { storagePut } from "./storage";
 import {
@@ -164,6 +166,28 @@ const getProjectOrThrow = async (projectId: number) => {
   const result = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
   if (result.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "项目不存在" });
   return result[0];
+};
+
+const getAssetLibraryContext = async (projectId: number): Promise<P12AssetLibraryContext> => {
+  const db = await requireDb();
+  const [profiles, assetSources, cases, competitors, rules, styles, strategies] = await Promise.all([
+    db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, projectId)).orderBy(desc(enterpriseGeoProfiles.updatedAt)).limit(1),
+    db.select().from(geoAssetSources).where(eq(geoAssetSources.projectId, projectId)).orderBy(desc(geoAssetSources.updatedAt)),
+    db.select().from(customerCases).where(eq(customerCases.projectId, projectId)).orderBy(desc(customerCases.updatedAt)),
+    db.select().from(competitorProfiles).where(eq(competitorProfiles.projectId, projectId)).orderBy(desc(competitorProfiles.updatedAt)),
+    db.select().from(complianceRules).where(eq(complianceRules.projectId, projectId)).orderBy(desc(complianceRules.updatedAt)),
+    db.select().from(contentStyleProfiles).where(eq(contentStyleProfiles.projectId, projectId)).orderBy(desc(contentStyleProfiles.updatedAt)),
+    db.select().from(publishStrategies).where(eq(publishStrategies.projectId, projectId)).orderBy(desc(publishStrategies.updatedAt)),
+  ]);
+  return {
+    profile: profiles[0] ?? null,
+    assetSources,
+    customerCases: cases,
+    competitorProfiles: competitors,
+    complianceRules: rules,
+    contentStyleProfiles: styles,
+    publishStrategies: strategies,
+  };
 };
 
 const normalizeQuestionText = (value: string) => value.trim();
@@ -1047,12 +1071,14 @@ const geoRouter = router({
       const questionScope = projectQuestions.filter(question => sourceQuestionIds.includes(question.id));
       const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
       const analysisScope = analysesWithQuestions.filter(analysis => sourceAnalysisIds.includes(analysis.id));
+      const assetLibrary = await getAssetLibraryContext(topic.projectId);
       const draft = generateGeoArticleDraft({
         project,
         topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
         task,
         questions: questionScope.length > 0 ? questionScope : projectQuestions,
         analyses: analysisScope.length > 0 ? analysisScope : analysesWithQuestions,
+        assetLibrary,
       });
       const inserted = await db.insert(geoArticles).values(draft).$returningId();
       await db.update(geoArticleTopics).set({ status: "已生成" }).where(eq(geoArticleTopics.id, topic.id));
@@ -1072,12 +1098,14 @@ const geoRouter = router({
       const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, article.projectId));
       const taskRows = article.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, article.optimizationTaskId)).limit(1) : [];
       const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
+      const assetLibrary = await getAssetLibraryContext(article.projectId);
       const quality = scoreGeoArticleQuality({
         article: article as unknown as Parameters<typeof scoreGeoArticleQuality>[0]["article"],
         project,
         questions: projectQuestions,
         analyses: analysesWithQuestions,
         task: taskRows[0] ?? null,
+        assetLibrary,
       });
       await db.insert(geoArticleQualityScores).values({
         projectId: article.projectId,
@@ -1117,6 +1145,15 @@ const geoRouter = router({
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
       if (!latestScore || latestScore.blocked || latestScore.totalScore < 80) throw new TRPCError({ code: "BAD_REQUEST", message: "文章质量分低于 80 或存在禁止发布风险，不能发布" });
+      const assetLibrary = await getAssetLibraryContext(article.projectId);
+      const prePublishCheck = evaluateAssetLibraryPrePublishCheck({
+        content: `${article.title}
+${article.markdownContent}`,
+        project: await getProjectOrThrow(article.projectId),
+        basis: article.generationBasis as Parameters<typeof evaluateAssetLibraryPrePublishCheck>[0]["basis"],
+        assetLibrary,
+      });
+      if (prePublishCheck.blocked) throw new TRPCError({ code: "BAD_REQUEST", message: prePublishCheck.summary });
       const publicPath = `/geo/content/${article.projectId}/${article.id}`;
       await db.update(geoArticles).set({ status: "已发布", publicPath }).where(eq(geoArticles.id, article.id));
       if (article.optimizationTaskId) {

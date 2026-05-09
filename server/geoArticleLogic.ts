@@ -24,11 +24,78 @@ export type P11GenerationBasis = {
   sourceAnalysisIds: number[];
   sourceQuestionIds: number[];
   manualReviewConclusion: string;
+  assetLibraryUsage?: P12AssetLibraryUsage;
 };
 
 export type P11CitableSnippet = {
   question: string;
   answer: string;
+};
+
+export type P12AssetCitation = {
+  id: number;
+  title: string;
+  category: string;
+  sourceType: string;
+  trustLevel?: string | null;
+  isPublic: boolean;
+  canUseForGeneration: boolean;
+  summary: string;
+};
+
+export type P12CustomerCaseCitation = {
+  id: number;
+  customerName: string;
+  caseType: string;
+  allowPublic: boolean;
+  hasResultData: boolean;
+  publicVersion: string;
+};
+
+export type P12CompetitorCitation = {
+  id: number;
+  competitorName: string;
+  website?: string | null;
+  differentiation?: string | null;
+  canReference: boolean;
+  sourceNotes?: string | null;
+};
+
+export type P12AssetLibraryUsage = {
+  enterpriseMaterials: P12AssetCitation[];
+  competitorMaterials: P12CompetitorCitation[];
+  customerCaseUsage: {
+    used: boolean;
+    status: string;
+    references: P12CustomerCaseCitation[];
+  };
+  complianceRules: string[];
+  contentStyles: string[];
+  publishStrategy: string[];
+  missingEvidenceNotes: string[];
+};
+
+export type P12AssetLibraryContext = {
+  profile?: Record<string, unknown> | null;
+  assetSources?: Array<Record<string, unknown>>;
+  customerCases?: Array<Record<string, unknown>>;
+  competitorProfiles?: Array<Record<string, unknown>>;
+  complianceRules?: Array<Record<string, unknown>>;
+  contentStyleProfiles?: Array<Record<string, unknown>>;
+  publishStrategies?: Array<Record<string, unknown>>;
+};
+
+export type P12PrePublishCheck = {
+  enterprisePositioningConsistent: boolean;
+  productDescriptionConsistent: boolean;
+  competitorDifferenceConsistent: boolean;
+  usesNonPublicAsset: boolean;
+  forbiddenTerms: string[];
+  forbiddenClaims: string[];
+  unconfirmedFacts: string[];
+  blocked: boolean;
+  blockReasons: string[];
+  summary: string;
 };
 
 export type P11GeoStructure = {
@@ -131,6 +198,11 @@ export type P11QualityScore = {
   blockReasons: string[];
   optimizationSuggestions: string[];
   reviewSummary: string;
+  assetEvidenceStrength: string;
+  factSourceSummary: string;
+  unconfirmedFacts: string[];
+  complianceRiskSummary: string;
+  prePublishCheck: P12PrePublishCheck;
 };
 
 const unique = <T>(items: T[]) => Array.from(new Set(items.filter(Boolean)));
@@ -140,6 +212,170 @@ const truncate = (value: string, max = 90) => value.length > max ? `${value.slic
 const countIncludes = (content: string, values: string[]) => values.filter(value => value && content.includes(value)).length;
 const priorityWeight = (priority: P11TaskLike["priority"]) => priority === "P0" ? 0 : priority === "P1" ? 1 : 2;
 const taskPriorityScore = (priority: P11TaskLike["priority"]) => priority === "P0" ? 3 : priority === "P1" ? 2 : 1;
+
+const asBool = (value: unknown) => value === true || value === 1 || value === "1";
+const valueText = (value: unknown) => typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
+const jsonSummaryText = (value: unknown) => {
+  if (!value) return "";
+  if (typeof value === "string") return value.slice(0, 180);
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return [record.digest, record.title, record.keywords].flatMap(item => Array.isArray(item) ? item : [item]).map(valueText).filter(Boolean).join("；").slice(0, 180);
+  }
+  return String(value).slice(0, 180);
+};
+const splitGovernanceTerms = (value: unknown) => Array.isArray(value)
+  ? value.map(valueText).filter(Boolean)
+  : valueText(value).split(/\n|,|，|；|;/).map(item => item.trim()).filter(Boolean);
+
+function summarizeAssetSource(asset: Record<string, unknown>, category: string): P12AssetCitation {
+  return {
+    id: Number(asset.id ?? 0),
+    title: valueText(asset.title) || category,
+    category,
+    sourceType: valueText(asset.sourceType) || category,
+    trustLevel: valueText(asset.trustLevel) || null,
+    isPublic: asBool(asset.isPublic),
+    canUseForGeneration: asBool(asset.canUseForGeneration),
+    summary: jsonSummaryText(asset.structuredSummary) || valueText(asset.contentDigest).slice(0, 180),
+  };
+}
+
+export function buildAssetLibraryUsage(assetLibrary?: P12AssetLibraryContext | null): P12AssetLibraryUsage {
+  const sources = assetLibrary?.assetSources ?? [];
+  const profile = assetLibrary?.profile ?? null;
+  const enterpriseMaterials = sources
+    .filter(asset => asBool(asset.canUseForGeneration) && asBool(asset.manuallyConfirmed))
+    .filter(asset => ["企业基础资料", "产品服务资料", "官网内容", "销售话术", "产品手册", "通用资料", "客户案例文档"].includes(valueText(asset.sourceType)))
+    .map(asset => summarizeAssetSource(asset, valueText(asset.sourceType) || "企业资料"))
+    .slice(0, 8);
+
+  const competitorMaterials: P12CompetitorCitation[] = (assetLibrary?.competitorProfiles ?? [])
+    .filter(item => asBool(item.canReference))
+    .map(item => ({
+      id: Number(item.id ?? 0),
+      competitorName: valueText(item.competitorName),
+      website: valueText(item.website) || null,
+      differentiation: valueText(item.comparisonNotes) || valueText(item.positioning) || null,
+      canReference: asBool(item.canReference),
+      sourceNotes: valueText(item.aiRecommendationSignals) || valueText(item.contentAssets) || "资产库竞品资料",
+    }))
+    .filter(item => item.competitorName)
+    .slice(0, 6);
+
+  const realPublicCases: P12CustomerCaseCitation[] = (assetLibrary?.customerCases ?? [])
+    .filter(item => valueText(item.caseType) === "真实案例" && asBool(item.allowPublic) && valueText(item.verificationStatus) === "已确认")
+    .map(item => ({
+      id: Number(item.id ?? 0),
+      customerName: valueText(item.customerName) || "可公开客户案例",
+      caseType: valueText(item.caseType),
+      allowPublic: asBool(item.allowPublic),
+      hasResultData: Boolean(valueText(item.resultData)),
+      publicVersion: valueText(item.publicVersion),
+    }))
+    .slice(0, 4);
+
+  const hasCaseResultData = realPublicCases.some(item => item.hasResultData);
+  const priceText = [profile?.servicePriceRange, profile?.priceExplanation].map(valueText).filter(Boolean).join("；");
+  const complianceRules = (assetLibrary?.complianceRules ?? [])
+    .filter(item => asBool(item.enabled ?? 1))
+    .map(item => [valueText(item.ruleName) || "合规规则", valueText(item.forbiddenClaims), valueText(item.requiredDisclaimers)].filter(Boolean).join("："))
+    .filter(Boolean)
+    .slice(0, 5);
+  const contentStyles = (assetLibrary?.contentStyleProfiles ?? [])
+    .filter(item => asBool(item.enabled ?? 1))
+    .map(item => [valueText(item.profileName) || "内容风格", valueText(item.tone), valueText(item.writingStyle)].filter(Boolean).join("："))
+    .filter(Boolean)
+    .slice(0, 5);
+  const publishStrategy = (assetLibrary?.publishStrategies ?? [])
+    .filter(item => asBool(item.enabled ?? 1))
+    .map(item => `审核模式：${valueText(item.reviewMode) || "未设置"}；每日上限：${valueText(item.dailyLimit) || "未设置"}；最低质量分：${valueText(item.minQualityScore) || "未设置"}；优先平台：${Array.isArray(item.preferredPlatforms) ? item.preferredPlatforms.join("、") : valueText(item.preferredPlatforms) || "未设置"}`)
+    .slice(0, 3);
+
+  const missingEvidenceNotes = [
+    ...(realPublicCases.length === 0 ? ["案例信息待补充"] : []),
+    ...(!hasCaseResultData ? ["数据暂无公开来源"] : []),
+    ...(!priceText ? ["价格口径需客户确认"] : []),
+  ];
+
+  return {
+    enterpriseMaterials,
+    competitorMaterials,
+    customerCaseUsage: {
+      used: realPublicCases.length > 0,
+      status: realPublicCases.length > 0 ? "已使用允许公开的真实案例" : "案例信息待补充",
+      references: realPublicCases,
+    },
+    complianceRules,
+    contentStyles,
+    publishStrategy,
+    missingEvidenceNotes,
+  };
+}
+
+function formatCitationList(items: Array<{ title?: string; competitorName?: string; trustLevel?: string | null; isPublic?: boolean; summary?: string; differentiation?: string | null }>, emptyText: string) {
+  if (items.length === 0) return emptyText;
+  return items.map(item => {
+    const name = item.title ?? item.competitorName ?? "未命名资料";
+    const publicText = typeof item.isPublic === "boolean" ? `；公开状态：${item.isPublic ? "可公开" : "不可公开"}` : "";
+    const trustText = item.trustLevel ? `；可信度：${item.trustLevel}` : "";
+    const summary = item.summary || item.differentiation || "已进入资产库";
+    return `- ${name}${trustText}${publicText}；摘要：${summary}`;
+  }).join("\n");
+}
+
+export function evaluateAssetLibraryPrePublishCheck(input: {
+  content: string;
+  project: P11ProjectLike;
+  basis?: P11GenerationBasis | null;
+  assetLibrary?: P12AssetLibraryContext | null;
+}): P12PrePublishCheck {
+  const usage = input.basis?.assetLibraryUsage ?? buildAssetLibraryUsage(input.assetLibrary);
+  const profile = input.assetLibrary?.profile ?? null;
+  const complianceRules = input.assetLibrary?.complianceRules ?? [];
+  const content = input.content;
+  const enterprisePositioning = [input.project.enterpriseName, input.project.targetCustomers, valueText(profile?.targetCustomers)].filter(Boolean);
+  const productSignals = [input.project.productIntro, valueText(profile?.productServiceIntro), valueText(profile?.productIntro)].filter(Boolean);
+  const competitorSignals = usage.competitorMaterials.map(item => item.competitorName).concat(input.basis?.competitorNames ?? input.project.competitorNames).filter(Boolean);
+  const forbiddenTerms = complianceRules.flatMap(rule => splitGovernanceTerms(rule.forbiddenWords)).filter(term => term && content.includes(term));
+  const forbiddenClaimsFromRules = complianceRules.flatMap(rule => splitGovernanceTerms(rule.forbiddenClaims));
+  const forbiddenClaims = unique([
+    ...forbiddenClaimsFromRules.filter(term => term && content.includes(term)),
+    ...(/保证收录|保证排名|一定收录|一定排名|保证推荐|一定推荐|百分百|100%/.test(content) ? ["禁止承诺保证收录或排名"] : []),
+    ...detectForbiddenArticleContent(content),
+  ]);
+  const undisclosedUnconfirmedFacts = [
+    ...(usage.customerCaseUsage.used ? [] : (content.includes("案例信息待补充") ? [] : ["客户案例缺失但文章未标注案例信息待补充"])),
+    ...(usage.missingEvidenceNotes.includes("数据暂无公开来源") && !content.includes("数据暂无公开来源") ? ["结果数据缺少公开来源但文章未标注"] : []),
+    ...(usage.missingEvidenceNotes.includes("价格口径需客户确认") && !content.includes("价格口径需客户确认") ? ["价格数据缺少确认口径但文章未标注"] : []),
+  ];
+  const unconfirmedFacts = unique([...usage.missingEvidenceNotes, ...undisclosedUnconfirmedFacts]);
+  const usesNonPublicAsset = content.includes("不可公开资料") || usage.enterpriseMaterials.some(item => !item.isPublic) || usage.customerCaseUsage.references.some(item => !item.allowPublic);
+  const enterprisePositioningConsistent = enterprisePositioning.length === 0 || enterprisePositioning.some(signal => content.includes(signal.slice(0, Math.min(12, signal.length))));
+  const productDescriptionConsistent = productSignals.length === 0 || productSignals.some(signal => content.includes(signal.slice(0, Math.min(16, signal.length))));
+  const competitorDifferenceConsistent = competitorSignals.length === 0 || competitorSignals.some(signal => content.includes(signal));
+  const blockReasons = [
+    ...(enterprisePositioningConsistent ? [] : ["发布前检查未通过：内容与企业定位不一致"]),
+    ...(productDescriptionConsistent ? [] : ["发布前检查未通过：内容与产品说明不一致"]),
+    ...(competitorDifferenceConsistent ? [] : ["发布前检查未通过：内容未体现资产库中的竞品差异"]),
+    ...(usesNonPublicAsset ? ["发布前检查未通过：文章生成依据包含不可公开资料"] : []),
+    ...(forbiddenTerms.length > 0 ? [`发布前检查未通过：命中禁用词：${unique(forbiddenTerms).join("、")}`] : []),
+    ...(forbiddenClaims.length > 0 ? [`发布前检查未通过：存在不允许承诺或高风险表述：${forbiddenClaims.join("、")}`] : []),
+    ...(undisclosedUnconfirmedFacts.length > 0 ? [`发布前检查未通过：存在未披露的未确认事实：${undisclosedUnconfirmedFacts.join("、")}`] : []),
+  ];
+  return {
+    enterprisePositioningConsistent,
+    productDescriptionConsistent,
+    competitorDifferenceConsistent,
+    usesNonPublicAsset,
+    forbiddenTerms: unique(forbiddenTerms),
+    forbiddenClaims,
+    unconfirmedFacts,
+    blocked: blockReasons.length > 0,
+    blockReasons,
+    summary: blockReasons.length > 0 ? `发布前检查阻断：${blockReasons.join("；")}` : "发布前检查通过：企业定位、产品说明、竞品差异、公开资料和合规规则均未发现阻断项。",
+  };
+}
 
 export function validateGenerationBasis(basis: Partial<P11GenerationBasis> | null | undefined): asserts basis is P11GenerationBasis {
   const missing = [
@@ -292,7 +528,7 @@ function buildEvidenceList(input: { questions: P11QuestionLike[]; analyses: P11A
   return { questionsText, gaps, reasons, competitors };
 }
 
-export function buildGenerationBasis(input: { project: P11ProjectLike; topic: P11TopicDraft & { id?: number }; task: P11TaskLike; questions: P11QuestionLike[]; analyses: P11AnalysisLike[] }): P11GenerationBasis {
+export function buildGenerationBasis(input: { project: P11ProjectLike; topic: P11TopicDraft & { id?: number }; task: P11TaskLike; questions: P11QuestionLike[]; analyses: P11AnalysisLike[]; assetLibrary?: P12AssetLibraryContext | null }): P11GenerationBasis {
   const specifiedQuestion = input.questions.find(question => question.source === "manual" || question.questionType === "指定问题") ?? input.questions[0];
   const gapAnalysis = input.analyses.find(analysis => nonEmpty(analysis.contentGap) && nonEmpty(analysis.notRecommendedReason));
   const competitorNames = unique((gapAnalysis?.recommendedCompetitors ?? []).concat(input.project.competitorNames));
@@ -314,6 +550,7 @@ export function buildGenerationBasis(input: { project: P11ProjectLike; topic: P1
     sourceAnalysisIds: input.topic.sourceAnalysisIds,
     sourceQuestionIds: input.topic.sourceQuestionIds,
     manualReviewConclusion: manualReviewConclusion || "人工修订结论未单独补充，当前文章仅使用系统诊断结果，发布前建议业务负责人复核。",
+    assetLibraryUsage: buildAssetLibraryUsage(input.assetLibrary),
   };
   validateGenerationBasis(basis);
   return basis;
@@ -358,12 +595,22 @@ function buildGeoStructure(input: { project: P11ProjectLike; basis: P11Generatio
 }
 
 function formatGenerationBasis(basis: P11GenerationBasis) {
+  const usage = basis.assetLibraryUsage;
   return [
     `- 客户指定问题：${basis.customerQuestion}`,
     `- 内容缺口：${basis.contentGap}`,
     `- 优化任务：${basis.optimizationTask}`,
     `- AI 未推荐原因：${basis.notRecommendedReason}`,
     `- 竞品差距：${basis.competitorGap}`,
+    ...(usage ? [
+      "- 使用企业资料：\n" + formatCitationList(usage.enterpriseMaterials, "暂无可用企业资料，需补充企业基础资料或产品服务资料。"),
+      "- 使用竞品资料：\n" + (usage.competitorMaterials.length > 0 ? usage.competitorMaterials.map(item => `- ${item.competitorName}；我方差异化：${item.differentiation || "待补充"}；来源：${item.sourceNotes || "资产库竞品资料"}`).join("\n") : "暂无可引用竞品资料。"),
+      `- 是否使用客户案例：${usage.customerCaseUsage.status}`,
+      `- 是否使用合规规则：${usage.complianceRules.length > 0 ? usage.complianceRules.join("；") : "未配置，发布前需人工复核。"}`,
+      `- 是否使用内容风格：${usage.contentStyles.length > 0 ? usage.contentStyles.join("；") : "未配置，按稳健解释型风格处理。"}`,
+      `- 是否使用发布策略：${usage.publishStrategy.length > 0 ? usage.publishStrategy.join("；") : "未配置，默认全人工审核。"}`,
+      `- 证据缺口提示：${usage.missingEvidenceNotes.length > 0 ? usage.missingEvidenceNotes.join("；") : "暂无关键证据缺口。"}`,
+    ] : []),
   ].join("\n");
 }
 
@@ -401,6 +648,7 @@ export function generateGeoArticleDraft(input: {
   task: P11TaskLike;
   questions: P11QuestionLike[];
   analyses: P11AnalysisLike[];
+  assetLibrary?: P12AssetLibraryContext | null;
 }): P11ArticleDraft {
   if (!input.topic.optimizationTaskId && !nonEmpty(input.topic.contentGap)) throw new Error("文章选题必须绑定任务或内容缺口。");
   const { project, topic, task } = input;
@@ -409,7 +657,9 @@ export function generateGeoArticleDraft(input: {
   const snippets = buildCitableSnippets({ project, basis }).slice(0, 5);
   const structure = buildGeoStructure({ project, basis, snippets, task });
   const evidence = buildEvidenceList({ project, task, questions: input.questions, analyses: input.analyses });
-  const intro = `${project.enterpriseName}在${project.industry}场景中的 GEO 优化，必须从客户真实会问的问题、AI 没有推荐企业的原因、竞品被提及的理由和当前内容缺口出发。本文根据本项目已完成的 GEO 诊断结果整理，不虚构案例，不添加未验证链接，也不承诺任何平台的绝对排名结果。`;
+  const assetUsage = basis.assetLibraryUsage ?? buildAssetLibraryUsage(input.assetLibrary);
+  const evidenceGapText = assetUsage.missingEvidenceNotes.length > 0 ? assetUsage.missingEvidenceNotes.join("；") : "暂无关键证据缺口。";
+  const intro = `${project.enterpriseName}在${project.industry}场景中的 GEO 优化，必须从客户真实会问的问题、AI 没有推荐企业的原因、竞品被提及的理由和当前内容缺口出发。本文根据本项目已完成的 GEO 诊断结果与企业 GEO 资产库整理，不虚构案例，不添加未验证链接，也不承诺任何平台的绝对排名结果。`;
   const content = [
     `# ${topic.title}`,
     intro,
@@ -424,7 +674,7 @@ export function generateGeoArticleDraft(input: {
     paragraph("竞品/方案对比", structure.comparison),
     paragraph("四、建议发布的内容结构", `建议围绕“问题—判断标准—企业能力—竞品差异—适用边界—下一步行动”组织内容。第一部分回答客户真实问题，第二部分说明行业选型标准，第三部分用${project.enterpriseName}已有卖点解释适配场景，第四部分客观说明与${basis.competitorNames.slice(0, 2).join("、")}的内容差异，第五部分列出仍需客户补充的真实案例、截图、链接和数据。`),
     paragraph("五、企业可被 AI 引用的信息", `${project.enterpriseName}目前可被整理为以下可引用信息：产品或服务介绍为「${project.productIntro}」；目标客户为「${project.targetCustomers}」；核心卖点为「${project.coreSellingPoints}」。这些信息应在官网、FAQ、竞品对比页和行业文章中保持一致，避免 AI 在不同页面中读取到相互矛盾的描述。`),
-    paragraph("六、发布前应补齐的证据清单", `为避免文章停留在概念层面，建议发布前由业务负责人补充以下真实证据：第一，能够证明${project.enterpriseName}服务边界的官网页面或产品说明；第二，能够解释${project.targetCustomers}为何适用的真实问答；第三，能够展示部署方式、售后流程或数据口径的截图；第四，与${basis.competitorNames.slice(0, 2).join("、")}进行客观比较时使用的可核验事实。若这些证据暂时缺失，应在文章中明确标注“需要补充”，而不是填写未经核验的案例或引用无法访问的链接。`),
+    paragraph("六、发布前应补齐的证据清单", `为避免文章停留在概念层面，建议发布前由业务负责人补充以下真实证据：第一，能够证明${project.enterpriseName}服务边界的官网页面或产品说明；第二，能够解释${project.targetCustomers}为何适用的真实问答；第三，能够展示部署方式、售后流程或数据口径的截图；第四，与${basis.competitorNames.slice(0, 2).join("、")}进行客观比较时使用的可核验事实。当前资产库证据缺口为：${evidenceGapText}。若这些证据暂时缺失，应在文章中明确标注对应缺口，而不是填写未经核验的案例、结果数据、价格口径或引用无法访问的链接。`),
     paragraph("引用友好片段", formatSnippets(snippets)),
     paragraph("FAQ", structure.faq.map(item => `### ${item.question}\n\n${item.answer}`).join("\n\n")),
     paragraph("结论", structure.conclusion),
@@ -456,6 +706,7 @@ export function scoreGeoArticleQuality(input: {
   questions: P11QuestionLike[];
   analyses: P11AnalysisLike[];
   task?: P11TaskLike | null;
+  assetLibrary?: P12AssetLibraryContext | null;
 }): P11QualityScore {
   const content = `${input.article.title}\n${input.article.markdownContent}`;
   const forbiddenReasons = detectForbiddenArticleContent(content);
@@ -468,9 +719,14 @@ export function scoreGeoArticleQuality(input: {
   const length = content.length;
   const hasNoFakeDisclaimer = content.includes("不虚构案例") && content.includes("不承诺") && content.includes("绝对排名");
   const basisComplete = Boolean(input.article.generationBasis && validateGeoCollectableStructure(content, input.article.citableSnippets ?? undefined, input.article.generationBasis).filter(item => item === "完整生成依据").length === 0);
+  const assetUsage = input.article.generationBasis?.assetLibraryUsage ?? buildAssetLibraryUsage(input.assetLibrary);
+  const prePublishCheck = evaluateAssetLibraryPrePublishCheck({ content, project: input.project, basis: input.article.generationBasis ?? undefined, assetLibrary: input.assetLibrary });
+  const assetEvidenceStrength = assetUsage.enterpriseMaterials.length >= 2 && assetUsage.competitorMaterials.length >= 1 ? "高" : assetUsage.enterpriseMaterials.length >= 1 ? "中" : "低";
+  const factSourceSummary = `资产库企业资料 ${assetUsage.enterpriseMaterials.length} 条，竞品资料 ${assetUsage.competitorMaterials.length} 条，客户案例 ${assetUsage.customerCaseUsage.references.length} 条；${assetUsage.customerCaseUsage.status}`;
+  const complianceRiskSummary = `${prePublishCheck.blocked ? prePublishCheck.summary : "未发现资产库合规阻断项。"}${prePublishCheck.unconfirmedFacts.length > 0 ? ` 未确认事实：${prePublishCheck.unconfirmedFacts.join("；")}` : " 未确认事实：无"}`;
 
   const problemMatchScore = Math.min(20, 8 + Math.min(questionMatches, 2) * 5 + (basisComplete ? 2 : 0));
-  const evidenceScore = Math.min(20, 6 + Math.min(gapMatches, 2) * 4 + Math.min(competitorMatches, 2) * 2 + (input.task ? 4 : 0) + (basisComplete ? 2 : 0));
+  const evidenceScore = Math.min(20, 6 + Math.min(gapMatches, 2) * 4 + Math.min(competitorMatches, 2) * 2 + (input.task ? 4 : 0) + (basisComplete ? 2 : 0) + (assetEvidenceStrength === "高" ? 2 : assetEvidenceStrength === "中" ? 1 : 0));
   const structureScore = structureIssues.length === 0 ? 15 : Math.min(12, headingCount >= 8 ? 12 : headingCount >= 4 ? 8 : 4);
   const originalityScore = Math.min(15, length >= 3000 ? 15 : length >= 2200 ? 12 : length >= 1500 ? 9 : 5);
   const geoCitableScore = Math.min(15, 5 + (content.includes(input.project.enterpriseName) ? 2 : 0) + (content.includes("引用友好片段") ? 4 : 0) + (content.includes("企业实体信息") ? 2 : 0) + (content.includes("复测") ? 2 : 0));
@@ -480,6 +736,7 @@ export function scoreGeoArticleQuality(input: {
   const structureBlocked = structureIssues.length > 0;
   const blockReasons = [
     ...forbiddenReasons,
+    ...prePublishCheck.blockReasons,
     ...(structureBlocked ? [`缺少 GEO 可收录结构或生成依据：${structureIssues.join("、")}`] : []),
     ...(lowScoreBlocked ? [`内容质量分 ${totalScore} 低于 80 分`] : []),
   ];
@@ -490,6 +747,9 @@ export function scoreGeoArticleQuality(input: {
     ...(structureIssues.length > 0 ? ["补齐 GEO 可收录结构、完整生成依据和 3-5 段引用友好片段后再进入审核。"] : []),
     ...(length < 3000 ? ["增加可核验的企业实体信息、适合/不适合客户、FAQ 与发布后复测说明，提高可引用完整度。"] : []),
     ...(forbiddenReasons.length > 0 ? ["删除假链接、占位链接、虚假案例、虚假数据和排名保证等高风险表述。"] : []),
+    ...(assetEvidenceStrength === "低" ? ["补充并确认企业基础资料、产品服务资料或官网内容，提升资产库证据强度。"] : []),
+    ...(assetUsage.missingEvidenceNotes.length > 0 ? [`关键事实仍需补充或确认：${assetUsage.missingEvidenceNotes.join("；")}。`] : []),
+    ...(prePublishCheck.blocked ? ["根据资产库发布前检查结果，修正不可公开资料、禁用词、未确认事实或不允许承诺内容后再发布。"] : []),
   ];
   if (optimizationSuggestions.length === 0) {
     optimizationSuggestions.push("当前文章已达到发布阈值，发布前仍建议人工补充真实页面链接、截图、案例或可核验数据，并完成业务负责人复核。");
@@ -506,8 +766,13 @@ export function scoreGeoArticleQuality(input: {
     blockReasons,
     optimizationSuggestions,
     reviewSummary: blockReasons.length > 0
-      ? `质检未通过：${blockReasons.join("；")}。优化建议：${optimizationSuggestions.join("；")}`
-      : `质检通过：文章具备生成依据、GEO 可收录结构、引用友好片段、平台适配素材和合规说明，质量分 ${totalScore}。优化建议：${optimizationSuggestions.join("；")}`,
+      ? `质检未通过：${blockReasons.join("；")}。资产库证据强度：${assetEvidenceStrength}。事实来源：${factSourceSummary}。未确认事实：${prePublishCheck.unconfirmedFacts.length > 0 ? prePublishCheck.unconfirmedFacts.join("；") : "无"}。合规风险：${complianceRiskSummary}。优化建议：${optimizationSuggestions.join("；")}`
+      : `质检通过：文章具备生成依据、GEO 可收录结构、引用友好片段、平台适配素材和合规说明，质量分 ${totalScore}。资产库证据强度：${assetEvidenceStrength}。事实来源：${factSourceSummary}。未确认事实：${prePublishCheck.unconfirmedFacts.length > 0 ? prePublishCheck.unconfirmedFacts.join("；") : "无"}。合规风险：${complianceRiskSummary}。优化建议：${optimizationSuggestions.join("；")}`,
+    assetEvidenceStrength,
+    factSourceSummary,
+    unconfirmedFacts: prePublishCheck.unconfirmedFacts,
+    complianceRiskSummary,
+    prePublishCheck,
   };
 }
 

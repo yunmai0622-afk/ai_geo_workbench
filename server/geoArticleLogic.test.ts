@@ -5,6 +5,7 @@ import {
   detectForbiddenArticleContent,
   generateGeoArticleDraft,
   generateGeoArticleTopics,
+  evaluateAssetLibraryPrePublishCheck,
   scoreGeoArticleQuality,
   sortContentGapAnalysesByPriority,
   validateGenerationBasis,
@@ -13,6 +14,7 @@ import {
   type P11ProjectLike,
   type P11QuestionLike,
   type P11TaskLike,
+  type P12AssetLibraryContext,
 } from "./geoArticleLogic";
 
 const project: P11ProjectLike = {
@@ -216,5 +218,228 @@ describe("P1.1 GEO article generation", () => {
     expect(topics[0].optimizationTaskId).toBe(42);
     expect(topics[0].contentGap).toContain("高优先级行业选型与竞品差距缺口");
     expect(topics[0].businessReason).toContain("高价值客户指定问题下竞品更容易被 AI 推荐");
+  });
+});
+
+
+describe("V1.2 Sprint 1.5 asset library integration verification", () => {
+  const dolphinProject: P11ProjectLike = {
+    ...project,
+    id: 88,
+    enterpriseName: "海豚知道",
+    industry: "企业 AI 搜索增长与 GEO 内容优化",
+    website: "https://haitunzhidao.example",
+    region: "中国",
+    productIntro: "帮助企业诊断 AI 搜索可见度、生成 GEO 内容并完成发布前质检",
+    targetCustomers: "希望被 AI 搜索准确理解和推荐的 B2B 企业",
+    coreSellingPoints: "企业资料中心、真实证据引用、竞品差异分析、合规质检和发布前阻断",
+    competitorNames: ["传统 SEO 代运营", "内容外包团队"],
+    coreKeywords: ["GEO", "AI 搜索优化", "企业资产库"],
+  };
+
+  const assetLibrary = {
+    profile: {
+      targetCustomers: "B2B 企业市场部、增长团队和内容负责人",
+      productServiceIntro: "基于企业资料中心生成有依据的 GEO 文章",
+      productIntro: "诊断、内容生成、质量评分、发布前检查",
+      servicePriceRange: "",
+      priceExplanation: "",
+    },
+    assetSources: [
+      {
+        id: 501,
+        title: "海豚知道企业基础资料",
+        sourceType: "企业基础资料",
+        trustLevel: "高",
+        isPublic: 1,
+        canUseForGeneration: 1,
+        manuallyConfirmed: 1,
+        structuredSummary: { digest: "海豚知道面向 B2B 企业提供 GEO 诊断、内容生成和发布前质检。" },
+      },
+      {
+        id: 502,
+        title: "海豚知道产品服务说明",
+        sourceType: "产品服务资料",
+        trustLevel: "高",
+        isPublic: 1,
+        canUseForGeneration: 1,
+        manuallyConfirmed: 1,
+        structuredSummary: { digest: "产品强调资料依据、合规规则和发布策略，不承诺保证收录或排名。" },
+      },
+    ],
+    customerCases: [
+      {
+        id: 601,
+        customerName: "待访谈客户",
+        caseType: "待补充案例线索",
+        allowPublic: 0,
+        verificationStatus: "待确认",
+        publicVersion: "",
+        resultData: "",
+      },
+    ],
+    competitorProfiles: [
+      {
+        id: 701,
+        competitorName: "传统 SEO 代运营",
+        website: "https://seo.example",
+        positioning: "偏关键词排名与站外执行",
+        comparisonNotes: "海豚知道强调 AI 搜索语境下的企业资料引用、事实可信度和发布前合规阻断。",
+        aiRecommendationSignals: "竞品常被推荐因为公开内容多，但未必具备企业内部资料依据。",
+        canReference: 1,
+      },
+    ],
+    complianceRules: [
+      {
+        id: 801,
+        ruleName: "GEO 合规边界",
+        enabled: 1,
+        forbiddenWords: "保证排名\n保证收录",
+        forbiddenClaims: "不得承诺保证收录、保证排名或百分百推荐",
+        requiredDisclaimers: "应说明结果受平台算法、公开资料完整度和复测周期影响",
+      },
+    ],
+    contentStyleProfiles: [
+      {
+        id: 901,
+        profileName: "专业克制型",
+        enabled: 1,
+        tone: "专业、克制、证据优先",
+        writingStyle: "先说明依据，再给建议，不夸大效果",
+      },
+    ],
+    publishStrategies: [
+      {
+        id: 1001,
+        enabled: 1,
+        reviewMode: "全人工审核",
+        dailyLimit: 2,
+        minQualityScore: 85,
+        preferredPlatforms: ["官网", "公众号"],
+      },
+    ],
+  };
+
+  it("uses asset library references when generating a new GEO article for 海豚知道", () => {
+    const [topic] = generateGeoArticleTopics({ project: dolphinProject, questions, analyses, tasks });
+    const draft = generateGeoArticleDraft({ project: dolphinProject, topic: { ...topic, id: 8801 }, task: tasks[0], questions, analyses, assetLibrary });
+    const basisText = JSON.stringify(draft.generationBasis);
+    expect(draft.generationBasis.assetLibraryUsage?.enterpriseMaterials.map(item => item.title)).toContain("海豚知道企业基础资料");
+    expect(draft.generationBasis.assetLibraryUsage?.competitorMaterials.map(item => item.competitorName)).toContain("传统 SEO 代运营");
+    expect(draft.generationBasis.assetLibraryUsage?.customerCaseUsage.status).toBe("案例信息待补充");
+    expect(draft.markdownContent).toContain("案例信息待补充");
+    expect(draft.markdownContent).toContain("数据暂无公开来源");
+    expect(draft.markdownContent).toContain("价格口径需客户确认");
+    expect(draft.markdownContent).not.toMatch(/真实案例显示|客户案例显示.*提升|结果数据为|价格为[0-9]|收费为[0-9]|[0-9]+%提升/);
+    expect(basisText).toContain("GEO 合规边界");
+    expect(basisText).toContain("专业克制型");
+    expect(basisText).toContain("全人工审核");
+  });
+
+  it("scores quality with asset evidence strength and fact-source visibility", () => {
+    const [topic] = generateGeoArticleTopics({ project: dolphinProject, questions, analyses, tasks });
+    const draft = generateGeoArticleDraft({ project: dolphinProject, topic: { ...topic, id: 8802 }, task: tasks[0], questions, analyses, assetLibrary });
+    const score = scoreGeoArticleQuality({ article: draft, project: dolphinProject, questions, analyses, task: tasks[0], assetLibrary });
+    expect(score.assetEvidenceStrength).toBe("高");
+    expect(score.factSourceSummary).toContain("资产库企业资料 2 条");
+    expect(score.unconfirmedFacts).toEqual(expect.arrayContaining(["案例信息待补充", "数据暂无公开来源", "价格口径需客户确认"]));
+    expect(score.complianceRiskSummary).toContain("未确认事实");
+    expect(score.reviewSummary).toContain("资产库证据强度");
+  });
+
+  it("reads seven 海豚知道 asset categories from a fixed sample across generation, scoring and pre-publish checks", () => {
+    const completeAssetLibrary: P12AssetLibraryContext = {
+      ...assetLibrary,
+      profile: {
+        ...assetLibrary.profile,
+        enterpriseName: "海豚知道",
+        productServiceIntro: "企业 GEO 诊断、文章生成、质量评分和发布前检查",
+        productIntro: "用企业资料、产品资料、客户案例、竞品资料、合规规则、内容风格与发布策略约束内容生成",
+        servicePriceRange: "按项目阶段报价，具体价格口径需客户确认",
+        priceExplanation: "价格仅能引用客户确认口径，不得自行编造",
+      },
+      customerCases: [
+        {
+          id: 602,
+          customerName: "某 SaaS 企业",
+          caseType: "真实案例",
+          allowPublic: 1,
+          verificationStatus: "已确认",
+          publicVersion: "该客户用海豚知道梳理 AI 搜索内容缺口并建立发布前审核流程。",
+          resultData: "已确认公开数据：形成 12 个可审核选题",
+        },
+      ],
+      competitorProfiles: [
+        {
+          id: 702,
+          competitorName: "传统 SEO 代运营",
+          website: "https://seo.example",
+          positioning: "偏关键词排名与外链执行",
+          comparisonNotes: "海豚知道差异在于使用企业资产库约束生成、评分和发布前阻断。",
+          aiRecommendationSignals: "竞品因公开内容多更易被 AI 识别。",
+          canReference: 1,
+        },
+      ],
+      complianceRules: [
+        {
+          id: 802,
+          ruleName: "海豚知道内容合规规则",
+          enabled: 1,
+          forbiddenWords: "保证排名\n保证收录",
+          forbiddenClaims: "不得承诺保证收录、保证排名或百分百推荐",
+          requiredDisclaimers: "应标注资料来源与不确定性",
+        },
+      ],
+      contentStyleProfiles: [
+        {
+          id: 902,
+          profileName: "海豚知道内容风格",
+          enabled: 1,
+          tone: "专业、克制、证据优先",
+          writingStyle: "先说明依据，再说明限制条件",
+        },
+      ],
+      publishStrategies: [
+        {
+          id: 1002,
+          enabled: 1,
+          reviewMode: "全人工审核",
+          dailyLimit: 2,
+          minQualityScore: 85,
+          preferredPlatforms: ["官网", "公众号"],
+        },
+      ],
+    };
+    const [topic] = generateGeoArticleTopics({ project: dolphinProject, questions, analyses, tasks });
+    const draft = generateGeoArticleDraft({ project: dolphinProject, topic: { ...topic, id: 8804 }, task: tasks[0], questions, analyses, assetLibrary: completeAssetLibrary });
+    const usage = draft.generationBasis.assetLibraryUsage;
+    expect(usage?.enterpriseMaterials.map(item => item.title)).toEqual(expect.arrayContaining(["海豚知道企业基础资料", "海豚知道产品服务说明"]));
+    expect(JSON.stringify(completeAssetLibrary.profile)).toContain("企业 GEO 诊断、文章生成、质量评分和发布前检查");
+    expect(usage?.customerCaseUsage.status).toBe("已使用允许公开的真实案例");
+    expect(usage?.customerCaseUsage.references.map(item => item.customerName)).toContain("某 SaaS 企业");
+    expect(usage?.competitorMaterials.map(item => item.competitorName)).toContain("传统 SEO 代运营");
+    expect(usage?.complianceRules.join("\n")).toContain("海豚知道内容合规规则");
+    expect(usage?.contentStyles.join("\n")).toContain("海豚知道内容风格");
+    expect(usage?.publishStrategy.join("\n")).toContain("全人工审核");
+    const score = scoreGeoArticleQuality({ article: draft, project: dolphinProject, questions, analyses, task: tasks[0], assetLibrary: completeAssetLibrary });
+    expect(score.factSourceSummary).toContain("资产库企业资料 2 条");
+    expect(score.factSourceSummary).toContain("客户案例 1 条");
+    const check = evaluateAssetLibraryPrePublishCheck({ content: draft.markdownContent, project: dolphinProject, basis: draft.generationBasis, assetLibrary: completeAssetLibrary });
+    expect(check.enterprisePositioningConsistent).toBe(true);
+    expect(check.productDescriptionConsistent).toBe(true);
+    expect(check.competitorDifferenceConsistent).toBe(true);
+  });
+
+  it("blocks pre-publish checks for non-public assets, forbidden terms, fabricated cases and guaranteed ranking claims", () => {
+    const [topic] = generateGeoArticleTopics({ project: dolphinProject, questions, analyses, tasks });
+    const draft = generateGeoArticleDraft({ project: dolphinProject, topic: { ...topic, id: 8803 }, task: tasks[0], questions, analyses, assetLibrary });
+    const unsafeContent = `${draft.markdownContent}\n本文引用不可公开资料，并编造案例，保证收录，保证排名。`;
+    const check = evaluateAssetLibraryPrePublishCheck({ content: unsafeContent, project: dolphinProject, basis: draft.generationBasis, assetLibrary });
+    expect(check.blocked).toBe(true);
+    expect(check.usesNonPublicAsset).toBe(true);
+    expect(check.forbiddenTerms).toEqual(expect.arrayContaining(["保证排名", "保证收录"]));
+    expect(check.blockReasons.join("；")).toContain("不可公开资料");
+    expect(check.blockReasons.join("；")).toContain("编造案例");
+    expect(check.blockReasons.join("；")).toContain("禁止承诺保证收录或排名");
   });
 });
