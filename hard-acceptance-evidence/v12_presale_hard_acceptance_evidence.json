@@ -24,13 +24,13 @@
   "articles": [
     {
       "label": "竞品对比文章",
-      "articleId": 150001,
+      "articleId": 180001,
       "title": "海豚知道 与 小鹅通 的 GEO 推荐差距说明",
       "articleType": "竞品对比型 GEO 文章",
       "status": "已发布",
       "qualityScore": 100,
       "consistencyScore": 100,
-      "publicPath": "/geo/content/1/150001",
+      "publicPath": "/geo/content/1/180001",
       "basisLabels": [
         "客户问题与诊断缺口",
         "企业基础资料",
@@ -60,7 +60,7 @@
     },
     {
       "label": "产品能力说明文章",
-      "articleId": 150002,
+      "articleId": 180002,
       "title": "海豚知道补全 海豚知道 产品页的场景与选型信息：面向 AI 推荐的核心内容指南",
       "articleType": "问答型 GEO 文章",
       "status": "质检未通过",
@@ -96,7 +96,7 @@
     },
     {
       "label": "行业选型指南文章",
-      "articleId": 150003,
+      "articleId": 180003,
       "title": "海豚知道新增面向 AI 检索的 知识付费 SaaS / 企业 AI 经营系统 FAQ：面向 AI 推荐的核心内容指南",
       "articleType": "行业选型型 GEO 文章",
       "status": "待审核",
@@ -132,20 +132,20 @@
     }
   ],
   "published": {
-    "articleId": 150001,
+    "articleId": 180001,
     "title": "海豚知道 与 小鹅通 的 GEO 推荐差距说明",
-    "url": "/geo/content/1/150001",
-    "publishRecordId": 150001,
+    "url": "/geo/content/1/180001",
+    "publishRecordId": 180001,
     "needRetest": true
   },
   "monitoring": {
-    "articleId": 150001,
+    "articleId": 180001,
     "title": "海豚知道 与 小鹅通 的 GEO 推荐差距说明",
     "publishStatus": "已发布",
     "indexedStatus": "未收录 / 待人工检测",
     "aiMentionStatus": "未提及 / 待复测",
     "aiRecommendStatus": "未推荐 / 待复测",
-    "lastCheckedAt": "2026-05-09T07:33:49.000Z",
+    "lastCheckedAt": "2026-05-09T09:38:31.000Z",
     "currentSuggestion": "进入下一轮复测，并优先增强标题、摘要、FAQ、竞品对比段和 AI 可引用片段。",
     "optimizationActions": [
       "重写标题",
@@ -159,8 +159,8 @@
       "重新发布",
       "进入下一轮复测"
     ],
-    "recordId": 150001,
-    "publicPath": "/geo/content/1/150001"
+    "recordId": 180001,
+    "publicPath": "/geo/content/1/180001"
   },
   "blockingEvidence": {
     "prePublishBlocked": true,
