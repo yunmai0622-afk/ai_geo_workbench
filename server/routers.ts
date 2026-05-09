@@ -20,6 +20,7 @@ import {
   geoArticleTopics,
   geoArticles,
   geoPublishRecords,
+  geoInclusionMonitoringRecords,
   geoAssetSources,
   geoScores,
   optimizationTasks,
@@ -59,6 +60,7 @@ import {
   type P12AssetLibraryContext,
 } from "./geoArticleLogic";
 import { storagePut } from "./storage";
+import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import {
   assetInputModes,
   assetSourceTypes,
@@ -1203,7 +1205,7 @@ ${article.markdownContent}`,
       if (article.optimizationTaskId) {
         await db.update(optimizationTasks).set({ status: "retest", publishedUrl: publicPath, needRetest: 1 }).where(eq(optimizationTasks.id, article.optimizationTaskId));
       }
-      await db.insert(geoPublishRecords).values({
+      const insertResult = await db.insert(geoPublishRecords).values({
         projectId: article.projectId,
         articleId: article.id,
         optimizationTaskId: article.optimizationTaskId,
@@ -1214,6 +1216,17 @@ ${article.markdownContent}`,
         needRetest: 1,
         notes: "人工审核通过后发布到系统内置 GEO 内容页，等待复测。",
       });
+      const publishRecordId = Number((insertResult as { insertId?: number[] | number }).insertId ?? 0);
+      const latestPublishRows = publishRecordId > 0 ? [] : await db.select().from(geoPublishRecords).where(eq(geoPublishRecords.articleId, article.id)).orderBy(desc(geoPublishRecords.createdAt)).limit(1);
+      const resolvedPublishRecordId = publishRecordId > 0 ? publishRecordId : latestPublishRows[0]?.id;
+      if (!resolvedPublishRecordId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "发布记录创建失败，无法进入收录监测" });
+      await db.insert(geoInclusionMonitoringRecords).values(buildInitialInclusionMonitoringRecord({
+        projectId: article.projectId,
+        articleId: article.id,
+        publishRecordId: resolvedPublishRecordId,
+        publicUrl: publicPath,
+        qualityScore: latestScore.totalScore,
+      }));
       return { success: true, publicPath } as const;
     }),
     publicContent: publicProcedure.input(z.object({ projectId: z.number().int().positive(), articleId: z.number().int().positive() })).query(async ({ input }) => {

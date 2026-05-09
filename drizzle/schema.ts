@@ -104,6 +104,9 @@ export const articleStatusEnum = mysqlEnum("status", [
 ]);
 
 export const publishChannelEnum = mysqlEnum("publishChannel", ["系统内置 GEO 内容页"]);
+export const inclusionMonitorStatusEnum = mysqlEnum("inclusionMonitorStatus", ["未检测", "检测中", "已收录", "未收录", "检测失败"]);
+export const aiMentionMonitorStatusEnum = mysqlEnum("aiMentionMonitorStatus", ["未检测", "检测中", "已提及", "未提及", "检测失败"]);
+export const aiRecommendMonitorStatusEnum = mysqlEnum("aiRecommendMonitorStatus", ["未检测", "检测中", "已推荐", "未推荐", "检测失败"]);
 
 export const geoAssetSourceTypeEnum = mysqlEnum("sourceType", [
   "企业基础资料",
@@ -313,6 +316,23 @@ export const geoPublishRecords = mysqlTable("geo_publish_records", {
   needRetest: int("needRetest").default(1).notNull(),
   notes: text("notes"),
   publishedAt: timestamp("publishedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const geoInclusionMonitoringRecords = mysqlTable("geo_inclusion_monitoring_records", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  articleId: int("articleId").notNull(),
+  publishRecordId: int("publishRecordId").notNull(),
+  publicUrl: varchar("publicUrl", { length: 1000 }).notNull(),
+  inclusionStatus: inclusionMonitorStatusEnum.default("未检测").notNull(),
+  aiMentionStatus: aiMentionMonitorStatusEnum.default("未检测").notNull(),
+  aiRecommendStatus: aiRecommendMonitorStatusEnum.default("未检测").notNull(),
+  lastCheckedAt: timestamp("lastCheckedAt"),
+  currentSuggestion: text("currentSuggestion").notNull(),
+  optimizationSuggestions: json("optimizationSuggestions").$type<string[]>().notNull(),
+  rawJson: json("rawJson").$type<Record<string, unknown>>().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -78,6 +78,13 @@
       "when": 1778307804761,
       "tag": "0010_green_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1778337862202,
+      "tag": "0011_purple_wiccan",
+      "breakpoints": true
     }
   ]
 }
