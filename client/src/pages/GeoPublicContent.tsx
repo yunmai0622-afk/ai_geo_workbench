@@ -213,8 +213,12 @@ function dedupeSnippets(snippets: ArticleCitableSnippetView[]) {
 function makeShortAnswer(value: string, maxLength = 180) {
   const cleaned = normalizeText(value);
   if (cleaned.length <= maxLength) return cleaned;
-  const clipped = cleaned.slice(0, maxLength).replace(/[，；、：][^，；、：]*$/, "");
-  return `${clipped}。`;
+  let clipped = cleaned.slice(0, maxLength).replace(/[，；、：][^，；、：]*$/, "").trim();
+  const openQuotes = clipped.match(/「/g)?.length ?? 0;
+  const closeQuotes = clipped.match(/」/g)?.length ?? 0;
+  if (openQuotes > closeQuotes) clipped = clipped.replace(/「[^「」]*$/, "").trim();
+  const sentence = `${clipped.replace(/[。！？.!?]+$/, "")}。`;
+  return normalizeText(sentence);
 }
 function createFallbackParagraphs(title: string, project: { enterpriseName?: string; industry?: string; targetCustomers?: string; coreSellingPoints?: string }) {
   const enterprise = normalizeText(project.enterpriseName ?? "该企业") || "该企业";
