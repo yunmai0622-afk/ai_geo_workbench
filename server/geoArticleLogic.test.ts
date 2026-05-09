@@ -139,6 +139,8 @@ describe("P1.1 GEO article generation", () => {
     expect(draft.markdownContent).toContain("## 更新时间");
     expect(draft.markdownContent).toContain("## 企业实体信息");
     expect(score.blocked).toBe(false);
+    expect(score.optimizationSuggestions.length).toBeGreaterThan(0);
+    expect(score.reviewSummary).toContain("优化建议");
     expect(canAuditArticle("待质检", score)).toBe(false);
     expect(canAuditArticle("待审核", score)).toBe(true);
     expect(canPublishArticle("待审核")).toBe(false);
@@ -158,6 +160,7 @@ describe("P1.1 GEO article generation", () => {
     expect(score.totalScore).toBeLessThan(80);
     expect(noBasisScore.blocked).toBe(true);
     expect(noBasisScore.blockReasons.join("；")).toContain("生成依据");
+    expect(noBasisScore.optimizationSuggestions.join("；")).toContain("生成依据");
     expect(canAuditArticle("质检通过", score)).toBe(false);
     expect(canPublishArticle("质检通过")).toBe(false);
   });

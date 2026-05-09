@@ -129,6 +129,7 @@ export type P11QualityScore = {
   totalScore: number;
   blocked: boolean;
   blockReasons: string[];
+  optimizationSuggestions: string[];
   reviewSummary: string;
 };
 
@@ -482,6 +483,17 @@ export function scoreGeoArticleQuality(input: {
     ...(structureBlocked ? [`缺少 GEO 可收录结构或生成依据：${structureIssues.join("、")}`] : []),
     ...(lowScoreBlocked ? [`内容质量分 ${totalScore} 低于 80 分`] : []),
   ];
+  const optimizationSuggestions = [
+    ...(questionMatches < 2 ? ["补充更多客户指定问题的原文表达，并把问题放入摘要、FAQ 和行动引导。"] : []),
+    ...(gapMatches < 2 ? ["补齐诊断中的内容缺口说明，明确对应页面、FAQ、对比信息或证据清单。"] : []),
+    ...(competitorMatches < 1 ? ["增加客观竞品/方案对比，说明适用边界，避免攻击竞品或绝对化承诺。"] : []),
+    ...(structureIssues.length > 0 ? ["补齐 GEO 可收录结构、完整生成依据和 3-5 段引用友好片段后再进入审核。"] : []),
+    ...(length < 3000 ? ["增加可核验的企业实体信息、适合/不适合客户、FAQ 与发布后复测说明，提高可引用完整度。"] : []),
+    ...(forbiddenReasons.length > 0 ? ["删除假链接、占位链接、虚假案例、虚假数据和排名保证等高风险表述。"] : []),
+  ];
+  if (optimizationSuggestions.length === 0) {
+    optimizationSuggestions.push("当前文章已达到发布阈值，发布前仍建议人工补充真实页面链接、截图、案例或可核验数据，并完成业务负责人复核。");
+  }
   return {
     problemMatchScore,
     evidenceScore,
@@ -492,9 +504,10 @@ export function scoreGeoArticleQuality(input: {
     totalScore,
     blocked: blockReasons.length > 0,
     blockReasons,
+    optimizationSuggestions,
     reviewSummary: blockReasons.length > 0
-      ? `质检未通过：${blockReasons.join("；")}。`
-      : `质检通过：文章具备生成依据、GEO 可收录结构、引用友好片段、平台适配素材和合规说明，质量分 ${totalScore}。`,
+      ? `质检未通过：${blockReasons.join("；")}。优化建议：${optimizationSuggestions.join("；")}`
+      : `质检通过：文章具备生成依据、GEO 可收录结构、引用友好片段、平台适配素材和合规说明，质量分 ${totalScore}。优化建议：${optimizationSuggestions.join("；")}`,
   };
 }
 

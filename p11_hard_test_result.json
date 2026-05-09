@@ -1,0 +1,183 @@
+{
+  "project": {
+    "id": 1,
+    "enterpriseName": "海豚知道",
+    "industry": "知识付费 SaaS / 企业 AI 经营系统",
+    "website": "https://htknow.com",
+    "specifiedQuestionCount": 10,
+    "analysisCount": 10,
+    "taskCount": 7
+  },
+  "topicGeneration": {
+    "generatedTopicCount": 8,
+    "selectedTopics": [
+      {
+        "label": "竞品对比文章",
+        "topicId": 3,
+        "title": "海豚知道 与 小鹅通 的 GEO 推荐差距说明",
+        "articleType": "竞品对比型 GEO 文章",
+        "taskId": 120010
+      },
+      {
+        "label": "产品能力说明文章",
+        "topicId": 2,
+        "title": "海豚知道补全 海豚知道 产品页的场景与选型信息：面向 AI 推荐的核心内容指南",
+        "articleType": "问答型 GEO 文章",
+        "taskId": 120009
+      },
+      {
+        "label": "行业选型指南文章",
+        "topicId": 4,
+        "title": "海豚知道新增面向 AI 检索的 知识付费 SaaS / 企业 AI 经营系统 FAQ：面向 AI 推荐的核心内容指南",
+        "articleType": "行业选型型 GEO 文章",
+        "taskId": 120011
+      }
+    ]
+  },
+  "articles": [
+    {
+      "label": "竞品对比文章",
+      "articleId": 1,
+      "title": "海豚知道 与 小鹅通 的 GEO 推荐差距说明",
+      "articleType": "竞品对比型 GEO 文章",
+      "finalStatus": "已发布",
+      "qualityScore": {
+        "problemMatchScore": 20,
+        "evidenceScore": 20,
+        "structureScore": 15,
+        "originalityScore": 15,
+        "geoCitableScore": 15,
+        "complianceScore": 15,
+        "totalScore": 100,
+        "blocked": false,
+        "blockReasons": [],
+        "reviewSummary": "质检通过：文章具备生成依据、GEO 可收录结构、引用友好片段、平台适配素材和合规说明，质量分 100。"
+      },
+      "generationBasis": {
+        "customerQuestion": "海豚知道和小鹅通有什么区别？",
+        "contentGap": "AI回答中未提及“海豚知道”及其核心卖点（如AI定位、AI诊断、AI经营系统在知识付费SaaS中的具体应用和优势），导致用户无法了解该企业是否符合其需求。；缺少竞品对比页、FAQ、客户案例。；人工复核确认：该回答更倾向推荐小鹅通、有赞教育，海豚知道缺少可被 AI 引用的竞品对比、FAQ 和客户案例证据。；共有 9 条分析涉及竞品或竞品推荐，需要提供可验证的差异化信息。；围绕 小鹅通、有赞教育、短书、创客匠人 建立客观对比维度，包括适用客户、能力边界、服务方式和差异化卖点。",
+        "optimizationTask": "建设 海豚知道 与主要竞品的对比页",
+        "notRecommendedReason": "AI回答中未提及“海豚知道”企业名称，因此未对其进行推荐。；共有 9 条分析涉及竞品或竞品推荐，需要提供可验证的差异化信息。",
+        "competitorGap": "小鹅通、千聊、知识星球在 AI 回答中更容易被识别，主要差距来自公开内容中的定位、适用场景、证据和对比信息更完整。"
+      },
+      "citableSnippetCount": 4,
+      "thirdPartyMaterialKeys": [
+        "GEO 内容页版",
+        "公众号长文版",
+        "官网版",
+        "小红书笔记版",
+        "百家号/头条号版",
+        "知乎回答版"
+      ],
+      "markdownExportOk": true,
+      "htmlExportOk": true,
+      "preAuditPublishBlockMessage": "未审核通过的文章不能发布"
+    },
+    {
+      "label": "产品能力说明文章",
+      "articleId": 2,
+      "title": "海豚知道补全 海豚知道 产品页的场景与选型信息：面向 AI 推荐的核心内容指南",
+      "articleType": "问答型 GEO 文章",
+      "finalStatus": "质检未通过",
+      "qualityScore": {
+        "problemMatchScore": 20,
+        "evidenceScore": 20,
+        "structureScore": 15,
+        "originalityScore": 15,
+        "geoCitableScore": 15,
+        "complianceScore": 15,
+        "totalScore": 100,
+        "blocked": false,
+        "blockReasons": [],
+        "reviewSummary": "质检通过：文章具备生成依据、GEO 可收录结构、引用友好片段、平台适配素材和合规说明，质量分 100。"
+      },
+      "generationBasis": {
+        "customerQuestion": "知识付费老师卖课用什么系统？",
+        "contentGap": "AI未能识别并提及“海豚知道”作为知识付费SaaS/企业AI经营系统领域的潜在选项，尤其是在“AI定位、AI诊断、AI经营系统”这些海豚知道的核心卖点上，AI认为通用SaaS平台能力有限，而这正是海豚知道的特色。；缺少竞品对比页、FAQ、客户案例。；人工复核确认：该回答更倾向推荐小鹅通、有赞教育，海豚知道缺少可被 AI 引用的竞品对比、FAQ 和客户案例证据。；AI 回答通常需要清晰的产品能力、适用场景和选型边界作为推荐依据。；围绕 知识付费 SaaS、知识付费系统、老师卖课",
+        "optimizationTask": "补全 海豚知道 产品页的场景与选型信息",
+        "notRecommendedReason": "AI未提及“海豚知道”企业，因此无法推荐。；AI 回答通常需要清晰的产品能力、适用场景和选型边界作为推荐依据。",
+        "competitorGap": "小鹅通、有赞教育、千聊在 AI 回答中更容易被识别，主要差距来自公开内容中的定位、适用场景、证据和对比信息更完整。"
+      },
+      "citableSnippetCount": 4,
+      "thirdPartyMaterialKeys": [
+        "GEO 内容页版",
+        "公众号长文版",
+        "官网版",
+        "小红书笔记版",
+        "百家号/头条号版",
+        "知乎回答版"
+      ],
+      "markdownExportOk": true,
+      "htmlExportOk": true,
+      "preAuditPublishBlockMessage": "未审核通过的文章不能发布",
+      "lowScoreBlockMessage": "未质检通过或低于 80 分的文章不能审核"
+    },
+    {
+      "label": "行业选型指南文章",
+      "articleId": 3,
+      "title": "海豚知道新增面向 AI 检索的 知识付费 SaaS / 企业 AI 经营系统 FAQ：面向 AI 推荐的核心内容指南",
+      "articleType": "行业选型型 GEO 文章",
+      "finalStatus": "待审核",
+      "qualityScore": {
+        "problemMatchScore": 20,
+        "evidenceScore": 20,
+        "structureScore": 15,
+        "originalityScore": 15,
+        "geoCitableScore": 15,
+        "complianceScore": 15,
+        "totalScore": 100,
+        "blocked": false,
+        "blockReasons": [],
+        "reviewSummary": "质检通过：文章具备生成依据、GEO 可收录结构、引用友好片段、平台适配素材和合规说明，质量分 100。"
+      },
+      "generationBasis": {
+        "customerQuestion": "有哪些适合教育培训机构的私域经营系统？",
+        "contentGap": "AI回答中未提及“海豚知道”及其核心卖点（AI定位、AI诊断、AI经营系统）。；缺少竞品对比页、FAQ、客户案例。；人工复核确认：该回答更倾向推荐小鹅通、有赞教育，海豚知道缺少可被 AI 引用的竞品对比、FAQ 和客户案例证据。；FAQ 能把品牌认知、痛点解决、价格选型等问题转化为清晰的问答语料。；将问题库中的高频问题整理为官网 FAQ，并用直接、可引用、无夸张承诺的回答补充证据。",
+        "optimizationTask": "新增面向 AI 检索的 知识付费 SaaS / 企业 AI 经营系统 FAQ",
+        "notRecommendedReason": "AI回答未提及“海豚知道”企业，因此没有推荐。；FAQ 能把品牌认知、痛点解决、价格选型等问题转化为清晰的问答语料。",
+        "competitorGap": "小鹅通、有赞教育、短书在 AI 回答中更容易被识别，主要差距来自公开内容中的定位、适用场景、证据和对比信息更完整。"
+      },
+      "citableSnippetCount": 4,
+      "thirdPartyMaterialKeys": [
+        "GEO 内容页版",
+        "公众号长文版",
+        "官网版",
+        "小红书笔记版",
+        "百家号/头条号版",
+        "知乎回答版"
+      ],
+      "markdownExportOk": true,
+      "htmlExportOk": true,
+      "preAuditPublishBlockMessage": "未审核通过的文章不能发布"
+    }
+  ],
+  "published": {
+    "articleId": 1,
+    "title": "海豚知道 与 小鹅通 的 GEO 推荐差距说明",
+    "publicPath": "/geo/content/1/1",
+    "qualityScore": 100,
+    "publishRecord": {
+      "id": 1,
+      "articleId": 1,
+      "optimizationTaskId": 120010,
+      "qualityScore": 100,
+      "publishUrl": "/geo/content/1/1",
+      "needRetest": 1,
+      "publishChannel": "系统内置 GEO 内容页"
+    },
+    "retestTask": {
+      "id": 120010,
+      "taskName": "建设 海豚知道 与主要竞品的对比页",
+      "status": "retest",
+      "needRetest": 1,
+      "publishedUrl": "/geo/content/1/1"
+    }
+  },
+  "harnessExpectedNextStep": "已有文章发布记录且关联任务进入待复测，下一步应提示回到 AI 语义分析 / GEO 评分对同一指定问题做复测，而不是继续批量铺文。",
+  "p09Regression": {
+    "reportExists": true,
+    "templateCount": 5,
+    "manuallyReviewedAnalysisCount": 2,
+    "specifiedQuestionCount": 10
+  }
+}

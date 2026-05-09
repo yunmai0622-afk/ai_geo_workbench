@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, enterpriseName, industry, status, website, productIntro, targetCustomers, coreSellingPoints, competitorNames, coreKeywords FROM projects WHERE enterpriseName = '海豚知道';\nSELECT COUNT(*) AS question_count, SUM(CASE WHEN source IN ('manual','csv') OR questionType='指定问题' THEN 1 ELSE 0 END) AS specified_question_count FROM questions WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1);\nSELECT id, questionText, questionType, source, businessValue FROM questions WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1) AND (source IN ('manual','csv') OR questionType='指定问题') ORDER BY id LIMIT 12;\nSELECT COUNT(*) AS analysis_count, SUM(CASE WHEN manually_reviewed=1 THEN 1 ELSE 0 END) AS reviewed_count FROM analysis_results WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1);\nSELECT id, taskName, taskType, taskPriority, status, need_retest, published_url FROM optimization_tasks WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1) ORDER BY FIELD(taskPriority,'P0','P1','P2'), id LIMIT 10;\nSELECT COUNT(*) AS article_count FROM geo_articles WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1);\nSELECT COUNT(*) AS publication_count FROM geo_publish_records WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, enterpriseName, industry, status, website, productIntro, targetCustomers, coreSellingPoints, competitorNames, coreKeywords FROM projects WHERE enterpriseName = '海豚知道';\nSELECT COUNT(*) AS question_count, SUM(CASE WHEN source IN ('manual','csv') OR questionType='指定问题' THEN 1 ELSE 0 END) AS specified_question_count FROM questions WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1);\nSELECT id, questionText, questionType, source, businessValue FROM questions WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1) AND (source IN ('manual','csv') OR questionType='指定问题') ORDER BY id LIMIT 12;\nSELECT COUNT(*) AS analysis_count, SUM(CASE WHEN manually_reviewed=1 THEN 1 ELSE 0 END) AS reviewed_count FROM analysis_results WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1);\nSELECT id, taskName, taskType, taskPriority, status, need_retest, published_url FROM optimization_tasks WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1) ORDER BY FIELD(taskPriority,'P0','P1','P2'), id LIMIT 10;\nSELECT COUNT(*) AS article_count FROM geo_articles WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1);\nSELECT COUNT(*) AS publication_count FROM geo_publish_records WHERE projectId = (SELECT id FROM projects WHERE enterpriseName='海豚知道' LIMIT 1);",
+  "rows": [
+    {
+      "id": "1",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 SaaS / 企业 AI 经营系统",
+      "status": "report_ready",
+      "website": "https://htknow.com",
+      "productIntro": "面向知识付费与教育培训业务的 SaaS 与企业 AI 经营系统，覆盖课程售卖、直播转化、私域经营、AI 定位、AI 诊断与经营动作管理。",
+      "targetCustomers": "知识付费老师、教育培训机构、内容创业者、企业服务客户",
+      "coreSellingPoints": "课程售卖、直播转化、私域经营、AI 定位、AI 诊断、AI 经营系统",
+      "competitorNames": "[\"小鹅通\", \"有赞教育\", \"短书\", \"创客匠人\"]",
+      "coreKeywords": "[\"知识付费 SaaS\", \"知识付费系统\", \"老师卖课平台\", \"AI 经营系统\", \"AI 定位\", \"AI 诊断\"]"
+    }
+  ],
+  "messages": [
+    "question_count\tspecified_question_count",
+    "60\t10",
+    "id\tquestionText\tquestionType\tsource\tbusinessValue",
+    "51\t知识付费 SaaS 平台哪个好？\t指定问题\tmanual\t3",
+    "52\t知识付费老师卖课用什么系统？\t指定问题\tmanual\t3",
+    "53\t海豚知道和小鹅通有什么区别？\t指定问题\tmanual\t3",
+    "54\t有哪些适合教育培训机构的私域经营系统？\t指定问题\tmanual\t3",
+    "55\t企业 AI 经营系统有哪些服务商？\t指定问题\tmanual\t3",
+    "56\t哪家公司适合帮知识付费企业做 AI 转型？\t指定问题\tmanual\t3",
+    "57\t做课程售卖和直播转化用什么平台？\t指定问题\tmanual\t3",
+    "58\t小鹅通、有赞教育、海豚知道哪个更适合知识付费老师？\t指定问题\tmanual\t3",
+    "59\t知识付费公司怎么搭建 AI 运营诊断系统？\t指定问题\tmanual\t3",
+    "60\t教育培训机构如何选择 SaaS 系统？\t指定问题\tmanual\t3",
+    "analysis_count\treviewed_count",
+    "10\t2",
+    "id\ttaskName\ttaskType\ttaskPriority\tstatus\tneed_retest\tpublished_url",
+    "120008\t强化 海豚知道 官网首页的 AI 可引用信息\t官网首页\tP0\ttodo\t0\tNULL",
+    "120009\t补全 海豚知道 产品页的场景与选型信息\t产品页\tP0\ttodo\t0\tNULL",
+    "120010\t建设 海豚知道 与主要竞品的对比页\t竞品对比页\tP0\ttodo\t0\tNULL",
+    "120012\t沉淀 知识付费老师、教育培训机构、内容创业者、企业服务客户 的客户案例页\t客户案例\tP0\ttodo\t0\tNULL",
+    "120011\t新增面向 AI 检索的 知识付费 SaaS / 企业 AI 经营系统 FAQ\tFAQ\tP1\ttodo\t0\tNULL",
+    "120013\t发布 知识付费 SaaS / 企业 AI 经营系统 行业选型文章\t行业文章\tP1\ttodo\t0\tNULL",
+    "120014\t将核心缺口改写为知乎/小红书/公众号内容\t社媒内容\tP2\ttodo\t0\tNULL",
+    "article_count",
+    "0",
+    "publication_count",
+    "0"
+  ],
+  "stdout": "id\tenterpriseName\tindustry\tstatus\twebsite\tproductIntro\ttargetCustomers\tcoreSellingPoints\tcompetitorNames\tcoreKeywords\n1\t海豚知道\t知识付费 SaaS / 企业 AI 经营系统\treport_ready\thttps://htknow.com\t面向知识付费与教育培训业务的 SaaS 与企业 AI 经营系统，覆盖课程售卖、直播转化、私域经营、AI 定位、AI 诊断与经营动作管理。\t知识付费老师、教育培训机构、内容创业者、企业服务客户\t课程售卖、直播转化、私域经营、AI 定位、AI 诊断、AI 经营系统\t[\"小鹅通\", \"有赞教育\", \"短书\", \"创客匠人\"]\t[\"知识付费 SaaS\", \"知识付费系统\", \"老师卖课平台\", \"AI 经营系统\", \"AI 定位\", \"AI 诊断\"]\nquestion_count\tspecified_question_count\n60\t10\nid\tquestionText\tquestionType\tsource\tbusinessValue\n51\t知识付费 SaaS 平台哪个好？\t指定问题\tmanual\t3\n52\t知识付费老师卖课用什么系统？\t指定问题\tmanual\t3\n53\t海豚知道和小鹅通有什么区别？\t指定问题\tmanual\t3\n54\t有哪些适合教育培训机构的私域经营系统？\t指定问题\tmanual\t3\n55\t企业 AI 经营系统有哪些服务商？\t指定问题\tmanual\t3\n56\t哪家公司适合帮知识付费企业做 AI 转型？\t指定问题\tmanual\t3\n57\t做课程售卖和直播转化用什么平台？\t指定问题\tmanual\t3\n58\t小鹅通、有赞教育、海豚知道哪个更适合知识付费老师？\t指定问题\tmanual\t3\n59\t知识付费公司怎么搭建 AI 运营诊断系统？\t指定问题\tmanual\t3\n60\t教育培训机构如何选择 SaaS 系统？\t指定问题\tmanual\t3\nanalysis_count\treviewed_count\n10\t2\nid\ttaskName\ttaskType\ttaskPriority\tstatus\tneed_retest\tpublished_url\n120008\t强化 海豚知道 官网首页的 AI 可引用信息\t官网首页\tP0\ttodo\t0\tNULL\n120009\t补全 海豚知道 产品页的场景与选型信息\t产品页\tP0\ttodo\t0\tNULL\n120010\t建设 海豚知道 与主要竞品的对比页\t竞品对比页\tP0\ttodo\t0\tNULL\n120012\t沉淀 知识付费老师、教育培训机构、内容创业者、企业服务客户 的客户案例页\t客户案例\tP0\ttodo\t0\tNULL\n120011\t新增面向 AI 检索的 知识付费 SaaS / 企业 AI 经营系统 FAQ\tFAQ\tP1\ttodo\t0\tNULL\n120013\t发布 知识付费 SaaS / 企业 AI 经营系统 行业选型文章\t行业文章\tP1\ttodo\t0\tNULL\n120014\t将核心缺口改写为知乎/小红书/公众号内容\t社媒内容\tP2\ttodo\t0\tNULL\narticle_count\n0\npublication_count\n0\n",
+  "stderr": "",
+  "execution_time_ms": 3131
+}

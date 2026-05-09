@@ -1,0 +1,13 @@
+{
+  "query": "SHOW TABLES LIKE '%publish%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SHOW TABLES LIKE '%publish%';",
+  "rows": [
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (%publish%)": "geo_publish_records"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (%publish%)\ngeo_publish_records\n",
+  "stderr": "",
+  "execution_time_ms": 1761
+}
