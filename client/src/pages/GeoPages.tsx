@@ -1,7 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { GeoStatusGuide, pageGuides } from "@/components/GeoStatusGuide";
+import { GeoStatusGuide, pageGuides, type GeoStatusGuideProps } from "@/components/GeoStatusGuide";
 import { useLocation } from "wouter";
 
 const questionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交", "指定问题"] as const;
@@ -28,7 +28,7 @@ const projectNextSteps: Record<string, { completedStep: string; nextAction: stri
   report_ready: { completedStep: "模板和报告已生成", nextAction: "生成 GEO 文章选题并进入质检审核", buttonText: "进入文章发布", targetPath: "/articles" },
 };
 
-type ProjectStepHint = { completedStep: string; nextAction: string; buttonText: string; targetPath: string };
+type ProjectStepHint = { completedStep: string; nextAction: string; buttonText: string; targetPath: string; statusLabel?: string; secondaryButtonText?: string; secondaryTargetPath?: string };
 type ProjectFormState = {
   enterpriseName: string;
   industry: string;
@@ -68,8 +68,8 @@ const downloadTextFile = (filename: string, content: string, mimeType: string) =
 const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const materialToHtml = (title: string, content: string) => `<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1" />\n<title>${escapeHtml(title)}</title>\n</head>\n<body>\n<article>\n${escapeHtml(content).split("\n").map(line => line.trim() ? `<p>${line}</p>` : "").join("\n")}\n</article>\n</body>\n</html>`;
 
-function PageHeader({ title, description }: { title: string; description: string }) {
-  const guide = pageGuides[title];
+function PageHeader({ title, description, guideOverride }: { title: string; description: string; guideOverride?: GeoStatusGuideProps }) {
+  const guide = guideOverride ?? pageGuides[title];
   return (
     <div className="mb-6 space-y-4">
       <div className="rounded-3xl border border-cyan-300/15 bg-slate-950/70 p-6 text-slate-100 shadow-[0_0_34px_rgba(56,189,248,0.10)] backdrop-blur">
@@ -82,8 +82,8 @@ function PageHeader({ title, description }: { title: string; description: string
   );
 }
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-3xl border border-white/10 bg-slate-950/70 p-5 text-slate-100 shadow-[0_0_28px_rgba(15,23,42,0.40)] backdrop-blur ${className}`}>{children}</section>;
+function Card({ children, className = "", id }: { children: React.ReactNode; className?: string; id?: string }) {
+  return <section id={id} className={`rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-slate-950/20 backdrop-blur ${className}`}>{children}</section>;
 }
 
 function EmptyState({ title, description }: { title: string; description: string }) {
@@ -164,14 +164,14 @@ function useSelectedProject() {
 function ProjectProgressCard({ project, articleHint }: { project?: { status: string | null }; articleHint?: ProjectStepHint }) {
   if (!project) return null;
   const status = project.status ?? "created";
-  const next = articleHint ?? projectNextSteps[status] ?? projectNextSteps.created;
+  const next: ProjectStepHint = articleHint ?? projectNextSteps[status] ?? projectNextSteps.created;
   return (
     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-center">
-        <div><p className="text-xs text-slate-500">当前状态</p><p className="mt-1 font-semibold text-slate-950">{projectStatusLabels[status] ?? "已创建项目"}</p></div>
+        <div><p className="text-xs text-slate-500">当前状态</p><p className="mt-1 font-semibold text-slate-950">{next.statusLabel ?? projectStatusLabels[status] ?? "已创建项目"}</p></div>
         <div><p className="text-xs text-slate-500">当前已完成步骤</p><p className="mt-1 text-sm text-slate-700">{next.completedStep}</p></div>
         <div><p className="text-xs text-slate-500">下一步建议动作</p><p className="mt-1 text-sm text-slate-700">{next.nextAction}</p></div>
-        <Button onClick={() => { window.location.href = next.targetPath; }}>{next.buttonText}</Button>
+        <div className="flex flex-wrap gap-2"><Button onClick={() => { window.location.href = next.targetPath; }}>{next.buttonText}</Button>{next.secondaryButtonText && next.secondaryTargetPath ? <Button variant="secondary" onClick={() => { window.location.href = next.secondaryTargetPath!; }}>{next.secondaryButtonText}</Button> : null}</div>
       </div>
     </div>
   );
@@ -190,14 +190,14 @@ function resolveArticleStepHint(tasks: Array<{ id: number; status?: string | nul
   return undefined;
 }
 
-function ProjectSelector({ selectedProjectId, setProjectId, projects }: { selectedProjectId?: number; setProjectId: (id: number | undefined) => void; projects: Array<{ id: number; enterpriseName: string; industry: string; status: string | null }> }) {
+function ProjectSelector({ selectedProjectId, setProjectId, projects, articleHintOverride }: { selectedProjectId?: number; setProjectId: (id: number | undefined) => void; projects: Array<{ id: number; enterpriseName: string; industry: string; status: string | null }>; articleHintOverride?: ProjectStepHint }) {
   const selectedProject = projects.find(project => project.id === selectedProjectId);
   const hintInput = { projectId: selectedProjectId };
   const tasksHintQuery = trpc.geo.tasks.list.useQuery(hintInput, { enabled: Boolean(selectedProjectId && selectedProject?.status === "report_ready") });
   const topicsHintQuery = trpc.geo.articles.topics.list.useQuery(hintInput, { enabled: Boolean(selectedProjectId && selectedProject?.status === "report_ready") });
   const articlesHintQuery = trpc.geo.articles.list.useQuery(hintInput, { enabled: Boolean(selectedProjectId && selectedProject?.status === "report_ready") });
   const recordsHintQuery = trpc.geo.articles.publishRecords.useQuery(hintInput, { enabled: Boolean(selectedProjectId && selectedProject?.status === "report_ready") });
-  const articleHint = selectedProject?.status === "report_ready" ? resolveArticleStepHint(tasksHintQuery.data ?? [], topicsHintQuery.data ?? [], articlesHintQuery.data ?? [], recordsHintQuery.data ?? []) : undefined;
+  const articleHint = articleHintOverride ?? (selectedProject?.status === "report_ready" ? resolveArticleStepHint(tasksHintQuery.data ?? [], topicsHintQuery.data ?? [], articlesHintQuery.data ?? [], recordsHintQuery.data ?? []) : undefined);
   if (projects.length === 0) {
     return <EmptyState title="请先创建企业项目" description="后续问题生成、回答导入、语义分析和 GEO 评分都必须基于真实企业项目进行。" />;
   }
@@ -893,6 +893,7 @@ type FactTraceabilityView = {
   articleStatement?: string;
   sourceType?: string;
   sourceName?: string;
+  sourceUrl?: string;
   isPublic?: boolean;
   credibility?: string;
   manuallyConfirmed?: boolean;
@@ -927,6 +928,92 @@ function consistencyLabel(check: ConsistencyCheckView | null) {
   return { text: `一致性阻断 ${check.score ?? "-"}分`, className: "bg-red-50 text-red-700" };
 }
 
+type PublishArticleStatus = "未质检" | "质检未通过" | "待人工确认" | "允许发布" | "已发布" | "待复测";
+
+type PublishCheckSummary = {
+  hasNonPublicMaterial: boolean;
+  hasUnconfirmedFact: boolean;
+  hasMissingSourceFact: boolean;
+  hasForbiddenWord: boolean;
+  hasAbsolutePromise: boolean;
+  allowPublish: boolean;
+  blockReasons: string[];
+};
+
+const requiredMaterialPlatforms = [
+  { key: "wechat", label: "公众号版" },
+  { key: "zhihu", label: "知乎版" },
+  { key: "xiaohongshu", label: "小红书版" },
+  { key: "baijiaToutiao", label: "百家号 / 头条号版" },
+] as const;
+
+function hasTextRisk(value: string, keywords: string[]) {
+  return keywords.some(keyword => value.includes(keyword));
+}
+
+function buildMaterialEntries(materials: Record<string, string>, articleTitle: string, markdownContent: string) {
+  return requiredMaterialPlatforms.map(platform => {
+    const content = materials[platform.key]
+      ?? materials[platform.label]
+      ?? materials[platform.label.replace("版", "长文版")]
+      ?? materials[platform.label.replace("版", "回答版")]
+      ?? materials[platform.label.replace("版", "笔记版")]
+      ?? materials["百家号/头条号版"]
+      ?? materials["百家号 / 头条号版"]
+      ?? `# ${articleTitle}
+
+${markdownContent}`;
+    return { ...platform, content };
+  });
+}
+
+export function buildPublishCheckSummary(score: QualityScoreView | null | undefined, consistency: ConsistencyCheckView | null, basis: ArticleGenerationBasisView | null, factTraceability: FactTraceabilityView[], markdownContent: string): PublishCheckSummary {
+  const blockReasons: string[] = [];
+  const factRows = factTraceability.filter(item => item.factPoint || item.articleStatement || item.sourceName);
+  const hasNonPublicMaterial = factRows.some(item => item.isPublic === false || hasTextRisk(item.riskNote ?? "", ["不可公开", "内部", "敏感"]));
+  const hasUnconfirmedFact = factRows.length === 0 || factRows.some(item => item.manuallyConfirmed !== true);
+  const hasMissingSourceFact = factRows.length === 0 || factRows.some(item => !item.sourceName && !item.sourceUrl);
+  const hasForbiddenWord = hasTextRisk(markdownContent, ["最", "唯一", "第一", "保证", "100%", "绝对"]);
+  const hasAbsolutePromise = hasTextRisk(markdownContent, ["保证收录", "保证推荐", "一定排名", "永久有效", "绝对"]);
+  if (!score) blockReasons.push("内容尚未完成 GEO 内容质量评分。");
+  if (score && score.totalScore < 80) blockReasons.push("内容质量分低于最低发布标准。");
+  if (score?.blocked) blockReasons.push(...(score.blockReasons?.length ? score.blockReasons : ["内容质量评分存在阻断风险。"])) ;
+  if (!consistency) blockReasons.push("一致性检查尚未完成。");
+  if (consistency && (consistency.score ?? 0) < 80) blockReasons.push("一致性评分低于 80。");
+  if (consistency?.publishAllowed === false || consistency?.riskLevel === "高") blockReasons.push(...(consistency.blockReasons?.length ? consistency.blockReasons : ["一致性检查未通过。"])) ;
+  if (hasNonPublicMaterial) blockReasons.push("存在不可公开资料。");
+  if (hasUnconfirmedFact) blockReasons.push("存在未确认事实，请先完成人工确认。");
+  if (hasMissingSourceFact) blockReasons.push("存在缺少来源的关键事实。");
+  if (hasForbiddenWord) blockReasons.push("存在禁用词或高风险表达。");
+  if (hasAbsolutePromise) blockReasons.push("存在绝对承诺。");
+  if (!hasRequiredBasis(basis)) blockReasons.push("生成依据不足，需补充客户问题、内容缺口、优化任务、竞品差距或企业资料引用。");
+  return { hasNonPublicMaterial, hasUnconfirmedFact, hasMissingSourceFact, hasForbiddenWord, hasAbsolutePromise, allowPublish: blockReasons.length === 0, blockReasons: Array.from(new Set(blockReasons)) };
+}
+
+export function publishStatusForArticle(articleStatus: string, score: QualityScoreView | null | undefined, summary: PublishCheckSummary, record?: { needRetest?: boolean | number | null } | null): PublishArticleStatus {
+  if (articleStatus === "已发布") return record?.needRetest ? "待复测" : "已发布";
+  if (!score) return "未质检";
+  if (score.blocked || score.totalScore < 80) return "质检未通过";
+  if (summary.hasUnconfirmedFact || summary.hasMissingSourceFact || summary.hasNonPublicMaterial) return "待人工确认";
+  if (!summary.allowPublish) return "质检未通过";
+  return "允许发布";
+}
+
+function formatPublishedAt(value?: string | Date | null) {
+  if (!value) return "待记录";
+  return new Date(value).toLocaleString();
+}
+
+export function projectPublishSummary(articleViews: Array<{ status: PublishArticleStatus }>, recordsLength: number): GeoStatusGuideProps {
+  const total = articleViews.length;
+  const unscored = articleViews.filter(item => item.status === "未质检").length;
+  const publishable = articleViews.filter(item => item.status === "允许发布").length;
+  if (total === 0) return { stage: "平台发布", completion: 0, nextAction: "先生成高质量 GEO 文章", why: "没有内容就无法进入发布环节", risk: "请先回到内容生产页生成并质检文章。", ctaLabel: "去内容生产", ctaPath: "/articles" };
+  if (recordsLength > 0) return { stage: "发布后待监测", completion: 82, nextAction: "进入收录监测，检查是否被收录、被 AI 提及、被 AI 推荐", why: "已发布内容需要用复测验证是否形成 GEO 增长效果。", risk: unscored > 0 ? `已发布 ${recordsLength} 篇，另有 ${unscored} 篇待质检。` : `已发布 ${recordsLength} 篇 GEO 内容，下一步应进入监测闭环。`, ctaLabel: "进入收录监测", ctaPath: "/monitoring" };
+  if (publishable > 0) return { stage: "平台发布", completion: 68, nextAction: "选择通过检查的文章发布到 GEO 内容页", why: "通过发布形成可访问的 GEO 内容资产", risk: "第三方平台当前只生成素材，不自动登录发布。", ctaLabel: "发布到 GEO 内容页", ctaPath: "/publish" };
+  return { stage: "发布前准备", completion: 45, nextAction: "完成 GEO 内容质量评分", why: "低于 80 分或未通过一致性检查的内容不能发布", risk: "请先处理质检、事实溯源和一致性阻断原因。", ctaLabel: "去内容生产", ctaPath: "/articles" };
+}
+
 function generationBasisRows(basis: ArticleGenerationBasisView | null): Array<[string, string]> {
   if (!basis) return [];
   const rows: Array<[string, string]> = [
@@ -953,7 +1040,7 @@ function hasRequiredBasis(basis: ArticleGenerationBasisView | null) {
 
 export function ArticlesPage() {
   const utils = trpc.useUtils();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const isPublishRoute = location === "/publish";
   const { projects, selectedProjectId, setProjectId, projectInput } = useSelectedProject();
   const topicsQuery = trpc.geo.articles.topics.list.useQuery(projectInput);
@@ -1012,29 +1099,67 @@ export function ArticlesPage() {
     return { text: "80-89 分：建议优化后发布", className: "bg-amber-50 text-amber-700" };
   };
   const platformPlan = (article: NonNullable<typeof articlesQuery.data>[number], basis: ArticleGenerationBasisView | null, score: QualityScoreView | null | undefined) => {
-    const hasPublicEvidence = hasRequiredBasis(basis);
-    const isHighQuality = Boolean(score && !score.blocked && score.totalScore >= 80);
+    const type = article.articleType ?? "GEO 内容";
+    const isQa = type.includes("问答") || type.includes("FAQ") || type.includes("对比");
+    const isCase = type.includes("案例") || type.includes("产品") || type.includes("方案");
+    const hasPublicEvidence = hasRequiredBasis(basis) && (score?.evidenceScore ?? 0) >= 16;
     return {
-      first: isHighQuality && hasPublicEvidence ? "GEO 内容页 / 官网知识库" : "暂不进入外部平台，先补依据与质检",
-      second: isHighQuality ? "知乎回答 / 公众号长文" : "仅保留内部草稿",
-      blocked: hasPublicEvidence ? "证据不足的平台化夸大表达" : "小红书、百家号、头条号等需要强证据的外部分发",
-      reason: basis?.contentGap ? `优先补齐“${basis.contentGap}”相关 AI 内容缺口，并服务关联客户问题。` : "平台优先级基于当前优化任务、质量分和可公开证据生成。",
-      form: article.articleType.includes("问答") ? "问答型短答案、FAQ、AI 可引用片段" : "长文解读、FAQ、竞品对比段、AI 可引用摘要",
+      first: "GEO 内容页 / 官网",
+      second: isQa ? "知乎 / 公众号" : isCase ? "公众号 / 百家号" : "公众号 / 小红书",
+      blocked: hasPublicEvidence ? "未经改写的硬广承诺型平台分发" : "小红书、百家号、头条号等需要强证据的外部分发",
+      reason: "该内容需要先沉淀为官方结构化内容资产，方便 AI 抽取和后续复测。",
+      form: isQa ? "问答型短答案、FAQ、AI 可引用片段" : "长文解读、FAQ、竞品对比段、AI 可引用摘要",
       note: "第三方平台当前只生成素材，不自动登录发布；发布前需要人工确认标题、案例、数据、合规词和平台规则。",
-      metric: "复测指标：搜索收录状态、AI 提及状态、AI 推荐状态、关联问题回答变化、竞品胜出率变化。",
+      metric: "搜索收录状态、AI 提及状态、AI 推荐状态、关联问题回答变化、竞品胜出率变化。",
     };
   };
 
+  const articlePublishViews = articles.map(article => {
+    const score = scoreForArticle(qualityScores, article.id);
+    const basis = (article.generationBasis ?? null) as ArticleGenerationBasisView | null;
+    const factTraceability = ((article.factTraceability ?? []) as FactTraceabilityView[]);
+    const consistency = (article.consistencyCheck ?? null) as ConsistencyCheckView | null;
+    const record = records.find(item => item.articleId === article.id || item.publishUrl === article.publicPath);
+    const checkSummary = buildPublishCheckSummary(score, consistency, basis, factTraceability, article.markdownContent ?? "");
+    const status = publishStatusForArticle(article.status, score, checkSummary, record);
+    const plan = platformPlan(article, basis, score);
+    const task = article.optimizationTaskId ? taskById.get(article.optimizationTaskId) : null;
+    const rawMaterials = (article.thirdPartyMaterials ?? {}) as Record<string, string>;
+    return { article, score, basis, factTraceability, consistency, record, checkSummary, status, plan, task, materialEntries: buildMaterialEntries(rawMaterials, article.title, article.markdownContent ?? "") };
+  });
+  const publishPageGuide = projectPublishSummary(articlePublishViews, records.length);
+  const projectPublishedCount = records.length;
+  const projectUnscoredCount = articlePublishViews.filter(item => item.status === "未质检").length;
+  const projectPublishableCount = articlePublishViews.filter(item => item.status === "允许发布").length;
+  const currentProjectCardText = isPublishRoute && projectPublishedCount > 0
+    ? { status: "已有内容发布，待收录监测", completed: `已发布 ${projectPublishedCount} 篇 GEO 内容${projectUnscoredCount > 0 ? `，另有 ${projectUnscoredCount} 篇待质检` : ""}`, next: "进入收录监测，检查收录、AI 提及和 AI 推荐状态" }
+    : isPublishRoute && projectPublishableCount > 0
+      ? { status: "平台发布", completed: `已有 ${projectPublishableCount} 篇内容通过发布前检查`, next: "选择通过检查的文章发布到 GEO 内容页" }
+      : isPublishRoute && articles.length > 0
+        ? { status: "发布前准备", completed: `已有 ${articles.length} 篇文章，需完成发布前检查`, next: "完成 GEO 内容质量评分与一致性检查" }
+        : { status: "平台发布", completed: "尚未生成 GEO 文章", next: "先生成高质量 GEO 文章" };
+  const publishProjectStepHint: ProjectStepHint | undefined = isPublishRoute ? {
+    statusLabel: currentProjectCardText.status,
+    completedStep: currentProjectCardText.completed,
+    nextAction: currentProjectCardText.next,
+    buttonText: projectPublishedCount > 0 && projectUnscoredCount > 0 ? "查看已发布记录" : projectPublishedCount > 0 ? "进入收录监测" : projectPublishableCount > 0 ? "发布到 GEO 内容页" : "去内容生产",
+    targetPath: projectPublishedCount > 0 && projectUnscoredCount > 0 ? "/publish#publish-records" : projectPublishedCount > 0 ? "/monitoring" : projectPublishableCount > 0 ? "/publish#pending-publish-articles" : "/articles",
+    secondaryButtonText: projectPublishedCount > 0 && projectUnscoredCount > 0 ? "去处理待质检文章" : undefined,
+    secondaryTargetPath: projectPublishedCount > 0 && projectUnscoredCount > 0 ? "/articles" : undefined,
+  } : undefined;
+
   return (
     <div>
-      <PageHeader title={isPublishRoute ? "平台发布" : "内容生产"} description={isPublishRoute ? "平台发布页突出平台优先级、推荐原因、适合内容形式、发布注意事项和复测指标；第三方平台当前只生成素材，不自动登录发布。" : "内容生产页围绕内容机会池、文章列表、GEO 内容质量评分、质量总分、生成依据和是否允许发布，确保每篇文章都来自真实诊断链路。"} />
-      <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} />
+      <PageHeader title={isPublishRoute ? "平台发布" : "内容生产"} description={isPublishRoute ? "平台发布页用于选择通过检查的文章、查看发布前检查、发布到系统内置 GEO 内容页、查看发布记录并进入收录监测；第三方平台当前只生成素材，不自动登录发布。" : "内容生产页围绕内容机会池、文章列表、GEO 内容质量评分、质量总分、生成依据和是否允许发布，确保每篇文章都来自真实诊断链路。"} guideOverride={isPublishRoute ? publishPageGuide : undefined} />
+      <ProjectSelector selectedProjectId={selectedProjectId} setProjectId={setProjectId} projects={projects} articleHintOverride={isPublishRoute ? publishProjectStepHint : undefined} />
       {selectedProjectId ? <div className="space-y-5">
-        <Card>
+        {isPublishRoute ? (
+          <>
+            <Card>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-medium text-cyan-200">{isPublishRoute ? "平台优先级决策台" : "内容生产总览"}</p>
-              <h2 className="mt-1 text-xl font-semibold text-white">{isPublishRoute ? "先判断平台，再安排素材与复测" : "内容机会池 → 文章列表 → 质量评分 → 发布准入"}</h2>
+              <p className="text-sm font-medium text-cyan-200">{isPublishRoute ? "当前项目" : "内容生产总览"}</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">{isPublishRoute ? currentProjectCardText.status : "内容机会池 → 文章列表 → 质量评分 → 发布准入"}</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{isPublishRoute ? "每篇内容必须先明确第一优先级平台、第二优先级平台和不建议平台，避免把未达标内容推向外部分发渠道。" : "每篇文章卡片都会展示关联客户问题、内容缺口、优化任务、目标平台、质量分和是否允许发布。"}</p>
             </div>
             <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">第三方平台当前只生成素材，不自动登录发布。</span>
@@ -1044,6 +1169,83 @@ export function ArticlesPage() {
           </div>
         </Card>
 
+        {isPublishRoute ? <Card>
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">待发布文章</h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">仅展示已生成且通过发布前检查的 GEO 内容。未通过质量评分或一致性检查的内容不能发布。</p>
+            </div>
+            <Button variant="secondary" onClick={() => setLocation("/articles")}>去内容生产</Button>
+          </div>
+          {articles.length === 0 ? <div className="mt-5"><EmptyState title="当前还没有可发布文章" description="请先生成高质量 GEO 文章，并完成质量评分、一致性检查和事实溯源确认。" /></div> : <div className="mt-5 space-y-5">{articlePublishViews.map(view => {
+            const { article, score, consistency, record, checkSummary, status, plan, task, materialEntries } = view;
+            const blockText = checkSummary.blockReasons.length > 0 ? `禁止发布：${checkSummary.blockReasons[0]}` : "允许发布：发布前检查已通过。";
+            return <div id={`publish-article-${article.id}`} key={article.id} className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <StatusBadge status={status} />
+                  <h3 className="mt-2 text-xl font-semibold text-white">{article.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">文章类型：{article.articleType}｜当前状态：{status}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {status === "未质检" ? <Button onClick={() => setLocation("/articles")}>去质量评分</Button> : null}
+                  {status === "质检未通过" ? <Button variant="secondary" onClick={() => optimizeVersion.mutate({ articleId: article.id, mode: "增强版", reason: "平台发布页发现内容质量未达发布标准" })}>生成优化版本</Button> : null}
+                  {status === "待人工确认" ? <Button variant="secondary" onClick={() => toast.info("存在未确认事实，确认后才可发布")}>查看事实溯源</Button> : null}
+                  {status === "允许发布" ? <Button disabled={publishArticle.isPending || !checkSummary.allowPublish} onClick={() => publishArticle.mutate({ articleId: article.id })}>发布到 GEO 内容页</Button> : null}
+                  {status === "允许发布" ? <Button variant="secondary" onClick={() => toast.info(blockText)}>查看发布前检查</Button> : null}
+                  {status === "允许发布" ? <Button variant="secondary" onClick={() => navigator.clipboard.writeText(materialEntries.map(item => `## ${item.label}\n\n${item.content}`).join("\n\n")).then(() => toast.success("已复制第三方平台素材"))}>复制第三方平台素材</Button> : null}
+                  {status === "已发布" || status === "待复测" ? <Button variant="secondary" onClick={() => window.open(publicUrl(record?.publishUrl ?? article.publicPath), "_blank")}>查看内容页</Button> : null}
+                  {status === "已发布" || status === "待复测" ? <Button onClick={() => setLocation("/monitoring")}>进入收录监测</Button> : null}
+                </div>
+              </div>
+              {status === "质检未通过" ? <p className="mt-3 rounded-2xl border border-red-300/20 bg-red-400/10 p-3 text-sm leading-6 text-red-100">内容质量未达发布标准。</p> : null}
+              {status === "待人工确认" ? <p className="mt-3 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3 text-sm leading-6 text-amber-50">存在未确认事实，确认后才可发布。</p> : null}
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3"><p className="text-xs text-cyan-200">内容质量分</p><p className="mt-1 text-lg font-semibold text-white">{score?.totalScore ?? "未质检"}</p></div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3"><p className="text-xs text-cyan-200">一致性评分</p><p className="mt-1 text-lg font-semibold text-white">{consistency?.score ?? "未检查"}</p></div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3"><p className="text-xs text-cyan-200">事实溯源状态</p><p className="mt-1 text-sm text-slate-200">{checkSummary.hasUnconfirmedFact ? "存在未确认事实" : "已确认"}</p></div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3"><p className="text-xs text-cyan-200">发布前检查状态</p><p className={checkSummary.allowPublish ? "mt-1 text-sm text-emerald-200" : "mt-1 text-sm text-red-200"}>{checkSummary.allowPublish ? "允许发布" : blockText}</p></div>
+              </div>
+              <div className="mt-4 rounded-2xl border border-blue-300/20 bg-blue-500/10 p-4">
+                <h4 className="font-semibold text-blue-100">发布前检查摘要</h4>
+                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                  {[ ["是否存在不可公开资料", checkSummary.hasNonPublicMaterial], ["是否存在未确认事实", checkSummary.hasUnconfirmedFact], ["是否存在缺少来源的关键事实", checkSummary.hasMissingSourceFact], ["是否存在禁用词", checkSummary.hasForbiddenWord], ["是否存在绝对承诺", checkSummary.hasAbsolutePromise] ].map(([label, risk]) => <p key={String(label)} className="rounded-xl border border-white/10 bg-slate-950/50 p-3 text-sm text-slate-200"><b>{String(label)}：</b>{risk ? "是" : "否"}</p>)}
+                  <p className="rounded-xl border border-white/10 bg-slate-950/50 p-3 text-sm text-slate-200"><b>是否允许发布：</b>{checkSummary.allowPublish ? "是" : "否"}</p>
+                </div>
+                <p className={checkSummary.allowPublish ? "mt-3 text-sm leading-6 text-emerald-200" : "mt-3 text-sm leading-6 text-red-200"}><b>阻断原因：</b>{checkSummary.allowPublish ? "无" : checkSummary.blockReasons.join("；")}</p>
+                {!checkSummary.allowPublish ? <Button disabled onClick={() => undefined}>发布到 GEO 内容页</Button> : null}
+              </div>
+              <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/5 p-4">
+                <h4 className="font-semibold text-cyan-100">平台优先级决策台：{article.title}</h4>
+                <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <p className="text-sm leading-6 text-slate-200"><b>第一优先级平台：</b>{plan.first}</p>
+                  <p className="text-sm leading-6 text-slate-200"><b>推荐原因：</b>{plan.reason}</p>
+                  <p className="text-sm leading-6 text-slate-200"><b>第二优先级平台：</b>{plan.second}</p>
+                  <p className="text-sm leading-6 text-slate-200"><b>不建议平台：</b>{plan.blocked}</p>
+                  <p className="text-sm leading-6 text-slate-200"><b>关联优化任务：</b>{task?.taskName ?? "未匹配"}</p>
+                  <p className="text-sm leading-6 text-slate-200"><b>目标复测指标：</b>{plan.metric}</p>
+                </div>
+              </div>
+              {record ? <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4"><p className="font-semibold text-emerald-100">发布成功</p><p className="mt-2 text-sm leading-6 text-emerald-50">内容页链接：<a className="underline" href={publicUrl(record.publishUrl)} target="_blank" rel="noreferrer">{publicUrl(record.publishUrl)}</a>｜发布时间：{formatPublishedAt(record.createdAt)}｜发布平台：GEO 内容页 / 官网｜关联任务状态：待复测</p><Button onClick={() => setLocation("/monitoring")}>进入收录监测</Button></div> : null}
+              {(status === "允许发布" || status === "已发布" || status === "待复测") ? <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4"><h4 className="font-semibold text-white">第三方平台素材</h4><p className="mt-1 text-sm leading-6 text-amber-100">第三方平台当前只生成素材，不自动登录发布。</p><div className="mt-3 space-y-2">{materialEntries.map(item => <div key={item.key} className="rounded-xl bg-white/[0.04] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium text-white">{item.label}</p><div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => navigator.clipboard.writeText(item.content).then(() => toast.success("已复制素材"))}>复制素材</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${item.key}.md`, item.content, "text/markdown;charset=utf-8")}>导出 Markdown</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${item.key}.html`, materialToHtml(`${article.title}-${item.label}`, item.content), "text/html;charset=utf-8")}>导出 HTML</Button></div></div></div>)}</div></div> : null}
+            </div>;
+          })}</div>}
+        </Card> : null}
+
+        {isPublishRoute ? <Card>
+          <h2 className="mb-4 text-lg font-semibold text-white">发布记录</h2>
+          {records.length === 0 ? <div><EmptyState title="当前还没有已发布内容。" description="请先选择一篇质量分 80 分以上、通过一致性检查的 GEO 内容，发布到 GEO 内容页。" /><div className="mt-4"><Button onClick={() => document.getElementById("publish-article-" + articlePublishViews[0]?.article.id)?.scrollIntoView({ behavior: "smooth" })}>查看待发布文章</Button></div></div> : <div className="space-y-3">{records.map(record => {
+            const article = articles.find(item => item.id === record.articleId);
+            const score = article ? scoreForArticle(qualityScores, article.id) : null;
+            const consistency = (article?.consistencyCheck ?? null) as ConsistencyCheckView | null;
+            return <div key={record.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><p className="font-medium text-white">{article?.title ?? "未匹配文章"}</p><p className="mt-1 text-sm text-slate-300">发布平台：GEO 内容页 / 官网｜发布时间：{formatPublishedAt(record.createdAt)}</p><p className="mt-1 text-sm text-slate-300">内容质量分：{record.qualityScore ?? score?.totalScore ?? "未记录"}｜一致性评分：{consistency?.score ?? "未记录"}｜发布状态：{record.publishStatus}｜是否待复测：{record.needRetest ? "是" : "否"}</p><a className="mt-1 block text-sm text-cyan-200 underline" href={publicUrl(record.publishUrl)} target="_blank" rel="noreferrer">{publicUrl(record.publishUrl)}</a></div><div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => window.open(publicUrl(record.publishUrl), "_blank")}>查看内容页</Button><Button onClick={() => setLocation("/monitoring")}>进入收录监测</Button></div></div></div>;
+          })}</div>}
+        </Card> : null}
+          </>
+        ) : null}
+
+        {!isPublishRoute ? (
+          <div className="contents">
         <Card>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
@@ -1131,16 +1333,17 @@ export function ArticlesPage() {
                 </div>
                 <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-sm leading-6 text-amber-50"><b>发布注意事项：</b>{plan.note}</p>
               </div>
-
               <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr]"><pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-2xl bg-slate-950 p-4 text-sm leading-6 text-slate-100">{article.markdownContent}</pre><div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"><h4 className="font-semibold text-white">第三方平台素材</h4><p className="mt-1 text-sm leading-6 text-slate-400">除内置 GEO 内容页外，其余平台只支持复制和导出素材，不会自动登录或自动发布。</p><div className="mt-3 space-y-2">{Object.entries(materials).map(([key, value]) => <div key={key} className="rounded-xl bg-slate-950/60 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium text-white">{thirdPartyPlatformLabels[key] ?? key}</p><div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => navigator.clipboard.writeText(value).then(() => toast.success("已复制平台素材"))}>复制</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${key}.md`, value, "text/markdown;charset=utf-8")}>导出 Markdown</Button><Button variant="secondary" onClick={() => downloadTextFile(`${article.id}-${key}.html`, materialToHtml(`${article.title}-${key}`, value), "text/html;charset=utf-8")}>导出 HTML</Button></div></div><p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-5 text-slate-400">{value}</p></div>)}</div></div></div>
-            </div>;
+            </div>
           })}</div>
         </Card>
 
-        <Card>
+        <Card id="publish-records">
           <h2 className="mb-4 text-lg font-semibold text-white">发布记录</h2>
           {records.length === 0 ? <EmptyState title="暂无发布记录" description="文章通过质检与人工审核后发布到内置 GEO 内容页，系统会在这里记录公开链接和待复测状态。" /> : <div className="space-y-3">{records.map(record => <div key={record.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"><div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"><div><p className="font-medium text-white">{record.publishChannel}</p><p className="mt-1 text-sm text-slate-300">质量分：{record.qualityScore}｜状态：{record.publishStatus}｜待复测：{record.needRetest ? "是" : "否"}</p><p className="mt-1 text-sm text-slate-400">{record.notes}</p></div><Button variant="secondary" onClick={() => navigator.clipboard.writeText(publicUrl(record.publishUrl)).then(() => toast.success("已复制公开链接"))}>复制公开链接</Button></div></div>)}</div>}
         </Card>
+          </div>
+        ) : null}
       </div> : null}
     </div>
   );
