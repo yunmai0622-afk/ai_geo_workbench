@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, enterpriseName, industry, status, website FROM projects ORDER BY id;\nSELECT COUNT(*) AS user_count FROM users;\nSELECT id, role, openId, name FROM users ORDER BY id LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, enterpriseName, industry, status, website FROM projects ORDER BY id;\nSELECT COUNT(*) AS user_count FROM users;\nSELECT id, role, openId, name FROM users ORDER BY id LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 SaaS / 企业 AI 经营系统",
+      "status": "report_ready",
+      "website": "https://htknow.com"
+    }
+  ],
+  "messages": [
+    "user_count",
+    "1",
+    "id\trole\topenId\tname",
+    "1\tadmin\tidQPRgYSSV5HgoazuAaxBP\t文召 王"
+  ],
+  "stdout": "id\tenterpriseName\tindustry\tstatus\twebsite\n1\t海豚知道\t知识付费 SaaS / 企业 AI 经营系统\treport_ready\thttps://htknow.com\nuser_count\n1\nid\trole\topenId\tname\n1\tadmin\tidQPRgYSSV5HgoazuAaxBP\t文召 王\n",
+  "stderr": "",
+  "execution_time_ms": 2249
+}

@@ -9,6 +9,7 @@ import { AnalysisPage, ArticlesPage, MonitoringPage, ProjectsPage, QuestionsPage
 import Home from "./pages/Home";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
 import AssetCenterPage from "./pages/AssetCenter";
+import DemoGeoPage from "./pages/DemoGeo";
 
 function PrivateRoutes() {
   return (
@@ -37,6 +38,8 @@ function PrivateRoutes() {
 function Router() {
   return (
     <Switch>
+      <Route path="/demo" component={DemoGeoPage} />
+      <Route path="/demo/geo" component={DemoGeoPage} />
       <Route path="/geo/content/:projectId/:articleId" component={GeoPublicContentPage} />
       <Route component={PrivateRoutes} />
     </Switch>
