@@ -416,7 +416,7 @@ export default function ComponentsShowcase() {
                   <Label htmlFor="message">Message</Label>
                   <Textarea
                     id="message"
-                    placeholder="Type your message here."
+                    placeholder="请输入消息内容"
                   />
                 </div>
                 <div className="space-y-2">

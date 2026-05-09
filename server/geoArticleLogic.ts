@@ -387,9 +387,9 @@ function containsUnsafeForbiddenTerm(content: string, term: string) {
   if (!term) return false;
   let index = content.indexOf(term);
   while (index >= 0) {
-    const before = content.slice(Math.max(0, index - 16), index);
-    const after = content.slice(index + term.length, index + term.length + 16);
-    const guardedContext = /(不得|不应|不要|不能|禁止|禁用|避免|不承诺|不得承诺).{0,10}$/.test(before) || /^(等高风险表述|等违规表述|等禁用词|作为禁用词|风险提示|内容合规规则)/.test(after);
+    const before = content.slice(Math.max(0, index - 40), index);
+    const after = content.slice(index + term.length, index + term.length + 20);
+    const guardedContext = /(不得承诺|不得|不应|不要|不能|禁止|禁用|避免|不承诺)[^。；\n]{0,32}$/.test(before) || /^(等高风险表述|等违规表述|等禁用词|作为禁用词|风险提示|内容合规规则)/.test(after);
     if (!guardedContext) return true;
     index = content.indexOf(term, index + term.length);
   }

@@ -266,7 +266,7 @@ export default function AssetCenterPage() {
               <div className="grid gap-4 md:grid-cols-3">
                 <TextField label="企业名称" value={profile.enterpriseName} onChange={enterpriseName => setProfile(prev => ({ ...prev, enterpriseName }))} />
                 <TextField label="企业简称" value={profile.shortName} onChange={shortName => setProfile(prev => ({ ...prev, shortName }))} />
-                <TextField label="官网" value={profile.officialWebsite} onChange={officialWebsite => setProfile(prev => ({ ...prev, officialWebsite }))} placeholder="https://example.com" />
+                <TextField label="官网" value={profile.officialWebsite} onChange={officialWebsite => setProfile(prev => ({ ...prev, officialWebsite }))} placeholder="例如：https://www.haitunzhidao.com" />
                 <TextField label="行业" value={profile.industry} onChange={industry => setProfile(prev => ({ ...prev, industry }))} />
                 <TextField label="地区" value={profile.region} onChange={region => setProfile(prev => ({ ...prev, region }))} />
                 <TextField label="服务价格区间" value={profile.servicePriceRange} onChange={servicePriceRange => setProfile(prev => ({ ...prev, servicePriceRange }))} />

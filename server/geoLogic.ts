@@ -672,7 +672,7 @@ export function generateReportMarkdown(project: ProjectLike, score: GeoScoreLike
   const manualReviewSummary = manuallyReviewedAnalyses.length > 0
     ? `本轮有 ${manuallyReviewedAnalyses.length} 条 AI 分析经过人工修订，报告、评分、任务和模板应优先采用修订后的结论。人工修订补充的关键证据包括：${manualReviewEvidence.join("；")}。`
     : "本轮未检测到人工修订样本，报告仅基于 AI 原始语义分析生成。";
-  const sampleLimitNotice = sampleCount < 30 ? `本轮**样本量有限**，实际样本为 ${sampleCount} 条，适合作为 P0 初步诊断和行动排序依据，但不应被夸大为全网结论；即便样本量有限，报告仍应完整呈现问题链路、人工修订结论、竞品差距和 30 天行动计划，而不能退回短报告。` : `本轮样本量为 ${sampleCount} 条，可用于观察当前 AI 搜索中的主要趋势。`;
+  const sampleLimitNotice = sampleCount < 30 ? `本轮**样本量有限**，实际样本为 ${sampleCount} 条，适合作为 P0 初步诊断和行动排序依据，但不代表全网绝对排名，也不应被夸大为全网结论；即便样本量有限，报告仍应完整呈现问题链路、人工修订结论、竞品差距和 30 天行动计划，而不能退回短报告。` : `本轮样本量为 ${sampleCount} 条，可用于观察当前 AI 搜索中的主要趋势，但不代表全网绝对排名。`;
   const coverageStats = questionStats ?? { totalQuestions: sampleCount, aiGeneratedQuestions: sampleCount, specifiedQuestions: 0 };
   const questionCoverageSummary = `当前问题库共 ${coverageStats.totalQuestions} 条问题，其中 AI 生成问题 ${coverageStats.aiGeneratedQuestions} 条，客户指定问题 ${coverageStats.specifiedQuestions} 条。`;
 
