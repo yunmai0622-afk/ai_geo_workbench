@@ -94,6 +94,7 @@ function PublicEmpty({ title, description }: { title: string; description: strin
 function normalizeText(value: string) {
   return value
     .replace(/海豚知道补全\s*海豚知道\s*/g, "海豚知道补全")
+    .replace(/当前资产库证据缺口为：暂无关键证据缺口[。.]*/g, "")
     .replace(/暂无关键证据缺口。。/g, "暂无关键证据缺口。")
     .replace(/。。+/g, "。")
     .replace(/；缺少[」"]?的可引用说明。?/g, "，仍需补充更完整的可引用说明。")
@@ -319,7 +320,6 @@ export default function GeoPublicContentPage() {
             <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[11px] tracking-normal text-cyan-100">公开 GEO 内容页</span>
           </div>
           <h1 className="mt-5 max-w-4xl text-3xl font-semibold tracking-tight text-white md:text-5xl">{normalizeText(article.title)}</h1>
-          <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300">这是一篇面向外部访客阅读的正式 GEO 文章。页面优先呈现正文、结论、可引用摘要和企业实体信息，底部提供可选核验入口。</p>
           <div className="mt-7 grid gap-4 md:grid-cols-4">
             <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><p className="text-xs text-slate-400">文章类型</p><p className="mt-2 font-semibold text-white">{article.articleType}</p></div>
             <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4"><p className="text-xs text-emerald-100/80">发布状态</p><p className="mt-2 font-semibold text-emerald-100">{article.status}</p></div>
@@ -332,10 +332,10 @@ export default function GeoPublicContentPage() {
         <article className="mt-8 rounded-[2rem] border border-white/10 bg-slate-950/72 p-6 shadow-[0_0_45px_rgba(15,23,42,0.45)] backdrop-blur md:p-10">
           <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
             <div>
-              <p className="text-xs font-semibold tracking-[0.22em] text-cyan-300">正式对外文章</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">正式文章正文</h2>
+              <p className="text-xs font-semibold tracking-[0.22em] text-cyan-300">公开内容</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">文章正文</h2>
             </div>
-            <span className="hidden rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs text-cyan-100 md:inline-flex">正文优先展示</span>
+            <span className="hidden rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs text-cyan-100 md:inline-flex">公开阅读版</span>
           </div>
           <div className="mt-8 space-y-9">
             {formalSections.map(section => (

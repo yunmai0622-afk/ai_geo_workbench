@@ -47,7 +47,8 @@ describe("V1.2 可售卖版主流程静态回归", () => {
 
   it("公开内容页保持正式文章体验，审计信息默认折叠", () => {
     const publicPageSource = readProjectFile("client/src/pages/GeoPublicContent.tsx");
-    expect(publicPageSource).toContain("正式文章正文");
+    expect(publicPageSource).toContain("文章正文");
+    expect(publicPageSource).not.toContain("正式文章正文");
     expect(publicPageSource).toContain("AI 可引用摘要");
     expect(publicPageSource).toContain("企业实体信息");
     expect(publicPageSource).toContain("查看生成依据与事实溯源");

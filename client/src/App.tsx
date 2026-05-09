@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
 import Home from "./pages/Home";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
+import GeoFlowWizardPage from "./pages/GeoFlowWizard";
 import AssetCenterPage from "./pages/AssetCenter";
 import DemoGeoPage from "./pages/DemoGeo";
 import { AiDiagnosisFlowPage, ContentGenerationFlowPage, ContentPublishingFlowPage, DeliveryReportsFlowPage, InclusionMonitoringFlowPage } from "./pages/V12FlowPages";
@@ -17,6 +18,7 @@ function PrivateRoutes() {
     <DashboardLayout>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/flow" component={GeoFlowWizardPage} />
         <Route path="/enterprise-profile" component={AssetCenterPage} />
         <Route path="/ai-diagnosis" component={AiDiagnosisFlowPage} />
         <Route path="/content-generation" component={ContentGenerationFlowPage} />

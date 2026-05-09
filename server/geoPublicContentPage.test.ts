@@ -103,7 +103,8 @@ describe("公开 GEO 内容页阅读体验", () => {
   it("默认展示正式文章结构、AI 可引用摘要、企业实体信息和风险声明", () => {
     const html = renderHtml();
 
-    expect(html).toContain("正式文章正文");
+    expect(html).toContain("文章正文");
+    expect(html).not.toContain("正式文章正文");
     expect(html).toContain("AI 可引用摘要");
     expect(html).toContain("企业实体信息");
     expect(html).toContain("海豚知道是什么");
@@ -111,6 +112,10 @@ describe("公开 GEO 内容页阅读体验", () => {
     expect(html).toContain("两者分别适合谁");
     expect(html).toContain("AI 为什么更容易识别小鹅通");
     expect(html).toContain("风险提示：本文不承诺保证排名、保证收录或保证被 AI 推荐。");
+
+    for (const forbidden of ["Formal Article", "这是一篇面向外部访客阅读的正式 GEO 文章", "正文优先展示", "当前资产库证据缺口为：暂无关键证据缺口", "。。"]) {
+      expect(html).not.toContain(forbidden);
+    }
   });
 
   it("公开页默认不渲染后台审计信息和 8 项生成依据审计", () => {
