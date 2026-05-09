@@ -50,6 +50,7 @@ import {
   articleTypes,
   canAuditArticle,
   canPublishArticle,
+  buildOptimizedArticleVersion,
   evaluateAssetLibraryPrePublishCheck,
   generateGeoArticleDraft,
   generateGeoArticleTopics,
@@ -1121,8 +1122,50 @@ const geoRouter = router({
         blockReasons: quality.blockReasons,
         reviewSummary: quality.reviewSummary,
       });
-      await db.update(geoArticles).set({ status: quality.blocked ? "质检未通过" : "待审核" }).where(eq(geoArticles.id, article.id));
+      await db.update(geoArticles).set({
+        status: quality.blocked ? "质检未通过" : "待审核",
+        factTraceability: quality.factTraceability,
+        consistencyCheck: quality.consistencyCheck,
+      }).where(eq(geoArticles.id, article.id));
       return { success: !quality.blocked, quality } as const;
+    }),
+    optimizeVersion: protectedProcedure.input(z.object({ articleId: z.number().int().positive(), mode: z.enum(["增强版", "FAQ", "竞品对比", "AI 可引用片段", "移除无来源数据", "资料待补充表述", "案例采集模板"]), reason: z.string().optional().default("") })).mutation(async ({ input }) => {
+      const db = await requireDb();
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+      const project = await getProjectOrThrow(article.projectId);
+      const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, article.projectId));
+      const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, article.projectId));
+      const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, article.projectId));
+      const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
+      const taskRows = article.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, article.optimizationTaskId)).limit(1) : [];
+      const assetLibrary = await getAssetLibraryContext(article.projectId);
+      const currentQuality = scoreGeoArticleQuality({
+        article: article as unknown as Parameters<typeof scoreGeoArticleQuality>[0]["article"],
+        project,
+        questions: projectQuestions,
+        analyses: analysesWithQuestions,
+        task: taskRows[0] ?? null,
+        assetLibrary,
+      });
+      const optimized = buildOptimizedArticleVersion({ article: article as unknown as Parameters<typeof buildOptimizedArticleVersion>[0]["article"], quality: currentQuality, mode: input.mode, reason: input.reason });
+      const nextQuality = scoreGeoArticleQuality({
+        article: { ...(article as unknown as Parameters<typeof scoreGeoArticleQuality>[0]["article"]), markdownContent: optimized.markdownContent },
+        project,
+        questions: projectQuestions,
+        analyses: analysesWithQuestions,
+        task: taskRows[0] ?? null,
+        assetLibrary,
+      });
+      await db.update(geoArticles).set({
+        markdownContent: optimized.markdownContent,
+        optimizationVersions: optimized.versions,
+        factTraceability: nextQuality.factTraceability,
+        consistencyCheck: nextQuality.consistencyCheck,
+        status: "待质检",
+      }).where(eq(geoArticles.id, article.id));
+      return { success: true, versionCount: optimized.versions.length, quality: nextQuality } as const;
     }),
     audit: protectedProcedure.input(z.object({ articleId: z.number().int().positive(), approved: z.boolean(), note: z.string().optional().default("") })).mutation(async ({ input }) => {
       const db = await requireDb();
@@ -1131,8 +1174,9 @@ const geoRouter = router({
       if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
+      const consistency = article.consistencyCheck as { publishAllowed?: boolean; score?: number; riskLevel?: string; blockReasons?: string[] } | null;
       const canAudit = canAuditArticle(article.status as ArticleStatus, latestScore ? { totalScore: latestScore.totalScore, blocked: Boolean(latestScore.blocked) } : null);
-      if (!canAudit) throw new TRPCError({ code: "BAD_REQUEST", message: "未质检通过或低于 80 分的文章不能审核" });
+      if (!canAudit || consistency?.publishAllowed === false || (consistency?.score ?? 100) < 80 || consistency?.riskLevel === "高") throw new TRPCError({ code: "BAD_REQUEST", message: "未质检通过、低于 80 分或一致性检查未通过的文章不能审核" });
       await db.update(geoArticles).set({ status: input.approved ? "审核通过" : "审核未通过" }).where(eq(geoArticles.id, article.id));
       return { success: true } as const;
     }),

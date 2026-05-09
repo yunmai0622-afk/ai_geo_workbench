@@ -6,6 +6,9 @@ import {
   generateGeoArticleDraft,
   generateGeoArticleTopics,
   evaluateAssetLibraryPrePublishCheck,
+  buildFactTraceability,
+  buildOptimizedArticleVersion,
+  evaluateArticleConsistencyCheck,
   scoreGeoArticleQuality,
   sortContentGapAnalysesByPriority,
   validateGenerationBasis,
@@ -102,6 +105,92 @@ const tasks: P11TaskLike[] = [
   },
 ];
 
+const p11CompliantAssetLibrary: P12AssetLibraryContext = {
+  profile: {
+    enterpriseName: "清源智能",
+    targetCustomers: "中大型制造企业、设备厂商和售后服务团队",
+    productServiceIntro: "面向制造企业的私有知识库、售后问答和工单辅助系统",
+    coreSellingPoints: "私有知识库、工单闭环、问答命中率分析和多部门协同",
+    publicMaterialsSummary: "官网可公开引用企业基础资料、产品服务说明和售后知识库能力介绍。",
+  },
+  assetSources: [
+    {
+      id: 301,
+      title: "清源智能企业基础资料",
+      sourceType: "企业基础资料",
+      category: "企业资料",
+      contentDigest: "清源智能面向中大型制造企业、设备厂商和售后服务团队提供知识库与客服自动化能力。",
+      canUseForGeneration: 1,
+      manuallyConfirmed: 1,
+      isPublic: 1,
+      trustLevel: "官方",
+      confidenceLevel: "high",
+    },
+    {
+      id: 302,
+      title: "清源智能产品服务说明",
+      sourceType: "产品手册",
+      category: "产品服务资料",
+      contentDigest: "产品支持私有知识库、工单闭环、问答命中率分析和多部门协同。",
+      canUseForGeneration: 1,
+      manuallyConfirmed: 1,
+      isPublic: 1,
+      trustLevel: "官方",
+      confidenceLevel: "high",
+    },
+  ],
+  customerCases: [
+    {
+      id: 401,
+      customerName: "某设备厂商",
+      industry: "制造业",
+      caseType: "真实案例",
+      scenario: "售后知识库问答与工单辅助",
+      publicVersion: "通过公开授权案例说明知识库维护流程，不承诺绝对效果。",
+      resultData: "公开授权案例已确认。",
+      allowPublic: 1,
+      verificationStatus: "已确认",
+    },
+  ],
+  competitorProfiles: [
+    {
+      id: 501,
+      competitorName: "云答科技",
+      competitorSummary: "公开资料更强调通用客服机器人。",
+      differentiation: "清源智能更强调工业知识库、工单闭环和售后协同。",
+      sourceNotes: "竞品公开页面摘要",
+      canReference: 1,
+    },
+  ],
+  complianceRules: [
+    {
+      id: 601,
+      ruleName: "公开内容合规规则",
+      forbiddenTerms: ["保证排名", "保证推荐"],
+      forbiddenClaims: "不得承诺绝对排名、保证收录或百分百效果。",
+      requiredDisclaimers: "涉及案例结果时必须说明来源和适用边界。",
+    },
+  ],
+  contentStyleProfiles: [
+    {
+      id: 701,
+      styleName: "稳健解释型",
+      tone: "专业、克制、可验证",
+      structureRules: "先回答问题，再说明适用边界、案例来源和行动建议。",
+      examplePhrases: "建议以复测、资料待补充、公开来源为准等表达。",
+    },
+  ],
+  publishStrategies: [
+    {
+      id: 801,
+      platformName: "官网",
+      qualityThreshold: 80,
+      priority: "P1",
+      reviewRequirement: "全人工审核后发布",
+    },
+  ],
+};
+
 describe("P1.1 GEO article generation", () => {
   it("generates topics from real tasks, manual questions, analysis gaps and covers at least three article types", () => {
     const topics = generateGeoArticleTopics({ project, questions, analyses, tasks });
@@ -118,8 +207,8 @@ describe("P1.1 GEO article generation", () => {
 
   it("scores a generated article above the publish threshold when it cites evidence and remains compliant", () => {
     const [topic] = generateGeoArticleTopics({ project, questions, analyses, tasks });
-    const draft = generateGeoArticleDraft({ project, topic: { ...topic, id: 31 }, task: tasks[0], questions, analyses });
-    const score = scoreGeoArticleQuality({ article: draft, project, questions, analyses, task: tasks[0] });
+    const draft = generateGeoArticleDraft({ project, topic: { ...topic, id: 31 }, task: tasks[0], questions, analyses, assetLibrary: p11CompliantAssetLibrary });
+    const score = scoreGeoArticleQuality({ article: draft, project, questions, analyses, task: tasks[0], assetLibrary: p11CompliantAssetLibrary });
     expect(score.totalScore).toBeGreaterThanOrEqual(80);
     expect(draft.status).toBe("待质检");
     expect(draft.generationBasis.customerQuestion).toContain("制造企业如何选择");
@@ -127,6 +216,7 @@ describe("P1.1 GEO article generation", () => {
     expect(draft.generationBasis.optimizationTask).toBe(tasks[0].taskName);
     expect(draft.generationBasis.notRecommendedReason).toContain("公开内容");
     expect(draft.generationBasis.competitorGap).toContain("云答科技");
+    expect(draft.generationBasis.generationBasisAuditItems?.filter(item => item.publishBlocking)).toEqual([]);
     expect(draft.citableSnippets.length).toBeGreaterThanOrEqual(3);
     expect(draft.citableSnippets.length).toBeLessThanOrEqual(5);
     expect(validateGeoCollectableStructure(draft.markdownContent, draft.citableSnippets, draft.generationBasis)).toEqual([]);
@@ -441,5 +531,135 @@ describe("V1.2 Sprint 1.5 asset library integration verification", () => {
     expect(check.blockReasons.join("；")).toContain("不可公开资料");
     expect(check.blockReasons.join("；")).toContain("编造案例");
     expect(check.blockReasons.join("；")).toContain("禁止承诺保证收录或排名");
+  });
+});
+
+
+describe("V1.2 Sprint 2 fact traceability, consistency checks and optimization versions", () => {
+  const sprint2AssetLibrary: P12AssetLibraryContext = {
+    profile: {
+      enterpriseName: "清源智能",
+      targetCustomers: "制造企业售后团队",
+      productServiceIntro: "清源智能提供工业知识库、售后问答和工单辅助闭环能力。",
+      productIntro: "私有知识库、工单闭环、问答命中率分析",
+      servicePriceRange: "按项目阶段报价，价格口径需客户确认",
+      priceExplanation: "公开内容不得自行编造价格。",
+    },
+    assetSources: [
+      {
+        id: 2001,
+        title: "清源智能企业基础资料",
+        sourceType: "企业基础资料",
+        trustLevel: "高",
+        isPublic: 1,
+        canUseForGeneration: 1,
+        manuallyConfirmed: 1,
+        structuredSummary: { digest: "清源智能服务制造企业售后团队，强调工业知识库与工单闭环。" },
+      },
+      {
+        id: 2002,
+        title: "清源智能产品服务资料",
+        sourceType: "产品服务资料",
+        trustLevel: "高",
+        isPublic: 1,
+        canUseForGeneration: 1,
+        manuallyConfirmed: 1,
+        structuredSummary: { digest: "产品能力包括私有知识库、售后问答、命中率分析和多部门协同。" },
+      },
+    ],
+    customerCases: [
+      {
+        id: 2101,
+        customerName: "某设备厂商",
+        caseType: "真实案例",
+        allowPublic: 1,
+        verificationStatus: "已确认",
+        publicVersion: "某设备厂商使用清源智能梳理售后知识库并建立问答审核流程。",
+        resultData: "公开结果仅表述为形成可审核的售后 FAQ 与工单分类模板。",
+      },
+    ],
+    competitorProfiles: [
+      {
+        id: 2201,
+        competitorName: "云答科技",
+        website: "https://yunda.example",
+        positioning: "通用客服自动化平台",
+        comparisonNotes: "清源智能更强调制造业售后知识库和工单闭环场景。",
+        aiRecommendationSignals: "竞品公开页面覆盖通用客服关键词较多。",
+        canReference: 1,
+      },
+    ],
+    complianceRules: [
+      {
+        id: 2301,
+        ruleName: "公开内容合规规则",
+        enabled: 1,
+        forbiddenWords: "保证排名\n保证推荐",
+        forbiddenClaims: "不得承诺保证排名、保证推荐或百分百效果",
+        requiredDisclaimers: "应说明内容效果取决于公开资料完整度、平台算法和复测周期。",
+      },
+    ],
+    contentStyleProfiles: [
+      {
+        id: 2401,
+        profileName: "证据优先型",
+        enabled: 1,
+        tone: "专业、克制、证据优先",
+        writingStyle: "先说明依据，再说明限制条件。",
+      },
+    ],
+    publishStrategies: [
+      {
+        id: 2501,
+        enabled: 1,
+        reviewMode: "全人工审核",
+        dailyLimit: 2,
+        minQualityScore: 85,
+        preferredPlatforms: ["官网", "公众号"],
+      },
+    ],
+  };
+
+  it("attaches a fact traceability table and passes consistency when all cited facts are public and confirmed", () => {
+    const [topic] = generateGeoArticleTopics({ project, questions, analyses, tasks });
+    const draft = generateGeoArticleDraft({ project, topic: { ...topic, id: 9901 }, task: tasks[0], questions, analyses, assetLibrary: sprint2AssetLibrary });
+    const traceability = buildFactTraceability({ project, basis: draft.generationBasis, content: draft.markdownContent, assetLibrary: sprint2AssetLibrary });
+    const consistency = evaluateArticleConsistencyCheck({ content: draft.markdownContent, project, basis: draft.generationBasis, assetLibrary: sprint2AssetLibrary, factTraceability: traceability });
+    expect(traceability.map(item => item.factPoint)).toEqual(expect.arrayContaining(["客户指定问题", "产品服务口径", "企业资料", "产品服务资料", "客户案例", "竞品资料", "合规规则", "内容风格", "发布策略"]));
+    expect(traceability.every(item => item.sourceType && item.sourceName)).toBe(true);
+    expect(draft.factTraceability.length).toBeGreaterThanOrEqual(traceability.length - 1);
+    expect(draft.consistencyCheck.publishAllowed).toBe(true);
+    expect(consistency.publishAllowed).toBe(true);
+    expect(consistency.score).toBeGreaterThanOrEqual(80);
+    expect(consistency.summary).toContain("一致性检查通过");
+  });
+
+  it("blocks publishing and recommends remediation when content conflicts with asset governance", () => {
+    const [topic] = generateGeoArticleTopics({ project, questions, analyses, tasks });
+    const draft = generateGeoArticleDraft({ project, topic: { ...topic, id: 9902 }, task: tasks[0], questions, analyses, assetLibrary: sprint2AssetLibrary });
+    const unsafeContent = `${draft.markdownContent}\n内部不可公开资料显示，清源智能保证排名并且保证推荐，还出现无来源的 100% 效率提升。`;
+    const consistency = evaluateArticleConsistencyCheck({ content: unsafeContent, project, basis: draft.generationBasis, assetLibrary: sprint2AssetLibrary });
+    expect(consistency.publishAllowed).toBe(false);
+    expect(consistency.score).toBeLessThan(80);
+    expect(consistency.riskLevel).toBe("高");
+    expect(consistency.blockReasons.join("；")).toContain("保证排名");
+    expect(consistency.suggestions).toEqual(expect.arrayContaining(["生成增强版", "补充 FAQ", "移除无来源数据", "重新评分", "重新一致性检查"]));
+  });
+
+  it("preserves old article snapshots when generating optimized versions", () => {
+    const [topic] = generateGeoArticleTopics({ project, questions, analyses, tasks });
+    const draft = generateGeoArticleDraft({ project, topic: { ...topic, id: 9903 }, task: tasks[0], questions, analyses, assetLibrary: sprint2AssetLibrary });
+    const quality = scoreGeoArticleQuality({ article: draft, project, questions, analyses, task: tasks[0], assetLibrary: sprint2AssetLibrary });
+    const first = buildOptimizedArticleVersion({ article: { title: draft.title, markdownContent: draft.markdownContent, status: "质检未通过", optimizationVersions: [] }, quality, mode: "FAQ", reason: "补齐 FAQ 与 AI 可引用短答案" });
+    const second = buildOptimizedArticleVersion({ article: { title: draft.title, markdownContent: first.markdownContent, status: "待质检", optimizationVersions: first.versions }, quality, mode: "竞品对比", reason: "补齐客观竞品对比段" });
+    expect(first.markdownContent).toContain("## 补充 FAQ");
+    expect(second.markdownContent).toContain("## 补充竞品对比段");
+    expect(second.versions).toHaveLength(2);
+    expect(second.versions[0].version).toBe(1);
+    expect(second.versions[0].markdownContent).toBe(draft.markdownContent);
+    expect(second.versions[0].previousStatus).toBe("质检未通过");
+    expect(second.versions[0].previousScore).toBe(quality.totalScore);
+    expect(second.versions[1].version).toBe(2);
+    expect(second.versions[1].reason).toContain("竞品对比");
   });
 });

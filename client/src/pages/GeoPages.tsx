@@ -888,6 +888,44 @@ type ArticleCitableSnippetView = {
   question?: string;
   answer?: string;
 };
+type FactTraceabilityView = {
+  factPoint?: string;
+  articleStatement?: string;
+  sourceType?: string;
+  sourceName?: string;
+  isPublic?: boolean;
+  credibility?: string;
+  manuallyConfirmed?: boolean;
+  riskNote?: string;
+};
+type ConsistencyCheckView = {
+  score?: number;
+  passed?: boolean;
+  publishAllowed?: boolean;
+  riskLevel?: "低" | "中" | "高" | string;
+  summary?: string;
+  blockReasons?: string[];
+  suggestions?: string[];
+  conflictItems?: Array<{ field?: string; articleStatement?: string; expectedStatement?: string; riskLevel?: string; suggestion?: string }>;
+  checkedAt?: string;
+};
+type OptimizationVersionView = {
+  version?: number;
+  createdAt?: string;
+  mode?: string;
+  previousStatus?: string;
+  previousScore?: number;
+  title?: string;
+  reason?: string;
+  consistencyScore?: number;
+  markdownContent?: string;
+};
+const optimizationModeOptions: Array<"增强版" | "FAQ" | "竞品对比" | "AI 可引用片段" | "移除无来源数据" | "资料待补充表述" | "案例采集模板"> = ["增强版", "FAQ", "竞品对比", "AI 可引用片段", "移除无来源数据", "资料待补充表述", "案例采集模板"];
+function consistencyLabel(check: ConsistencyCheckView | null) {
+  if (!check) return { text: "一致性未检查", className: "bg-slate-100 text-slate-700" };
+  if (check.publishAllowed && (check.score ?? 0) >= 80 && check.riskLevel !== "高") return { text: `一致性通过 ${check.score ?? "-"}分`, className: "bg-emerald-50 text-emerald-700" };
+  return { text: `一致性阻断 ${check.score ?? "-"}分`, className: "bg-red-50 text-red-700" };
+}
 
 function generationBasisRows(basis: ArticleGenerationBasisView | null): Array<[string, string]> {
   if (!basis) return [];
@@ -933,6 +971,10 @@ export function ArticlesPage() {
   });
   const qualityCheck = trpc.geo.articles.qualityCheck.useMutation({
     onSuccess: async result => { await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.latestQualityScores.invalidate()]); toast[result.success ? "success" : "error"](result.success ? "质检通过，可进入人工审核" : "质检未通过，已阻断发布"); },
+    onError: error => toast.error(error.message),
+  });
+  const optimizeVersion = trpc.geo.articles.optimizeVersion.useMutation({
+    onSuccess: async result => { await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.latestQualityScores.invalidate()]); toast.success(`已生成优化版本，当前保留 ${result.versionCount} 个历史版本`); },
     onError: error => toast.error(error.message),
   });
   const auditArticle = trpc.geo.articles.audit.useMutation({
@@ -1026,17 +1068,21 @@ export function ArticlesPage() {
             const basis = (article.generationBasis ?? null) as ArticleGenerationBasisView | null;
             const basisRows = generationBasisRows(basis);
             const snippets = ((article.citableSnippets ?? []) as ArticleCitableSnippetView[]).filter(item => item.question && item.answer).slice(0, 5);
+            const factTraceability = ((article.factTraceability ?? []) as FactTraceabilityView[]).filter(item => item.factPoint || item.articleStatement || item.sourceName).slice(0, 6);
+            const consistency = (article.consistencyCheck ?? null) as ConsistencyCheckView | null;
+            const consistencyState = consistencyLabel(consistency);
+            const versions = ((article.optimizationVersions ?? []) as OptimizationVersionView[]).slice().reverse().slice(0, 3);
             const plan = platformPlan(article, basis, score);
             const record = articleRecordById.get(article.id);
-            const allowPublish = Boolean(score && !score.blocked && score.totalScore >= 80 && hasRequiredBasis(basis));
+            const allowPublish = Boolean(score && !score.blocked && score.totalScore >= 80 && hasRequiredBasis(basis) && consistency?.publishAllowed !== false && (consistency?.score ?? 100) >= 80 && consistency?.riskLevel !== "高");
             return <div key={article.id} className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <div className="flex flex-wrap gap-2"><StatusBadge status={article.status} /><span className={`rounded-full px-2 py-1 text-xs ${qualityState.className}`}>{qualityState.text}</span><span className={allowPublish ? "rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700" : "rounded-full bg-red-50 px-2 py-1 text-xs text-red-700"}>是否允许发布：{allowPublish ? "允许，需人工审核确认" : "不允许"}</span></div>
+                  <div className="flex flex-wrap gap-2"><StatusBadge status={article.status} /><span className={`rounded-full px-2 py-1 text-xs ${qualityState.className}`}>{qualityState.text}</span><span className={`rounded-full px-2 py-1 text-xs ${consistencyState.className}`}>{consistencyState.text}</span><span className={allowPublish ? "rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700" : "rounded-full bg-red-50 px-2 py-1 text-xs text-red-700"}>是否允许发布：{allowPublish ? "允许，需人工审核确认" : "不允许"}</span></div>
                   <h3 className="mt-3 text-lg font-semibold text-white">{article.title}</h3>
                   <p className="mt-1 text-xs text-slate-400">文章类型：{article.articleType}｜当前状态：{article.status}｜内容质量分：{score ? `${score.totalScore} / 100` : "未评分"}</p>
                 </div>
-                <div className="flex flex-wrap gap-2"><Button variant="secondary" disabled={qualityCheck.isPending || !(article.status === "已生成" || article.status === "待质检")} onClick={() => qualityCheck.mutate({ articleId: article.id })}>质检评分</Button><Button variant="secondary" disabled={auditArticle.isPending || !score || Boolean(score.blocked) || score.totalScore < 80 || !(article.status === "待审核" || article.status === "质检通过")} onClick={() => auditArticle.mutate({ articleId: article.id, approved: true, note: "人工确认内容可发布" })}>审核通过</Button><Button variant="danger" disabled={auditArticle.isPending || !(article.status === "待审核" || article.status === "质检通过")} onClick={() => auditArticle.mutate({ articleId: article.id, approved: false, note: "人工审核退回" })}>审核退回</Button><Button disabled={publishArticle.isPending || article.status !== "审核通过"} onClick={() => publishArticle.mutate({ articleId: article.id })}>发布到内置页</Button></div>
+                <div className="flex flex-wrap gap-2"><Button variant="secondary" disabled={qualityCheck.isPending || !(article.status === "已生成" || article.status === "待质检")} onClick={() => qualityCheck.mutate({ articleId: article.id })}>质检评分</Button><Button variant="secondary" disabled={optimizeVersion.isPending} onClick={() => optimizeVersion.mutate({ articleId: article.id, mode: "增强版", reason: "低于 80 分或一致性未通过时生成增强版本" })}>生成增强版</Button><Button variant="secondary" disabled={optimizeVersion.isPending} onClick={() => optimizeVersion.mutate({ articleId: article.id, mode: "FAQ", reason: "补充 FAQ 与 AI 可引用答案" })}>补充 FAQ</Button><Button variant="secondary" disabled={optimizeVersion.isPending} onClick={() => optimizeVersion.mutate({ articleId: article.id, mode: "竞品对比", reason: "补充客观竞品对比段" })}>补充竞品对比</Button><Button variant="secondary" disabled={auditArticle.isPending || !score || Boolean(score.blocked) || score.totalScore < 80 || consistency?.publishAllowed === false || (consistency?.score ?? 100) < 80 || consistency?.riskLevel === "高" || !(article.status === "待审核" || article.status === "质检通过")} onClick={() => auditArticle.mutate({ articleId: article.id, approved: true, note: "人工确认内容可发布" })}>审核通过</Button><Button variant="danger" disabled={auditArticle.isPending || !(article.status === "待审核" || article.status === "质检通过")} onClick={() => auditArticle.mutate({ articleId: article.id, approved: false, note: "人工审核退回" })}>审核退回</Button><Button disabled={publishArticle.isPending || article.status !== "审核通过"} onClick={() => publishArticle.mutate({ articleId: article.id })}>发布到内置页</Button></div>
               </div>
 
               <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
@@ -1051,6 +1097,24 @@ export function ArticlesPage() {
               <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr]">
                 <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"><div className="flex items-center justify-between gap-2"><h4 className="font-semibold text-white">生成依据</h4><span className={hasRequiredBasis(basis) ? "rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700" : "rounded-full bg-red-50 px-2 py-1 text-xs text-red-700"}>{hasRequiredBasis(basis) ? "依据完整" : "依据不足，禁止发布"}</span></div>{basisRows.length === 0 ? <p className="mt-3 text-sm text-red-200">该文章缺少生成依据，请重新从真实优化任务生成。</p> : <dl className="mt-3 space-y-2">{basisRows.map(([label, value]) => <div key={label} className="rounded-xl bg-white/[0.04] p-3"><dt className="text-xs font-medium text-slate-400">{label}</dt><dd className="mt-1 text-sm leading-6 text-slate-200">{value}</dd></div>)}</dl>}</div>
                 <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"><h4 className="font-semibold text-white">引用友好片段</h4><p className="mt-1 text-sm text-slate-400">供 AI 搜索结果摘取的 3-5 段短答案。</p>{snippets.length === 0 ? <p className="mt-3 text-sm text-red-200">暂无引用片段，请重新生成文章。</p> : <div className="mt-3 space-y-2">{snippets.map((item, index) => <div key={index} className="rounded-xl bg-indigo-400/10 p-3"><p className="text-sm font-medium text-indigo-100">{item.question}</p><p className="mt-1 text-sm leading-6 text-indigo-50">{item.answer}</p></div>)}</div>}</div>
+              <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold text-emerald-50">事实溯源表</h4><span className="text-xs text-emerald-100">来自企业资料、案例、竞品资料、合规规则和诊断链路</span></div>
+                  {factTraceability.length === 0 ? <p className="mt-3 text-sm leading-6 text-emerald-50/80">暂无事实溯源记录。请重新生成文章或执行质检，以便把资产库事实接入生产链路。</p> : <div className="mt-3 space-y-2">{factTraceability.map((fact, index) => <div key={`${article.id}-fact-${index}`} className="rounded-xl bg-slate-950/60 p-3"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-medium text-white">{fact.factPoint ?? "未命名事实"}</span><span className={fact.isPublic ? "rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700" : "rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700"}>{fact.isPublic ? "可公开" : "不可公开/待确认"}</span><span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-200">可信度：{fact.credibility ?? "未标注"}</span></div><p className="mt-2 text-sm leading-6 text-slate-200">{fact.articleStatement ?? "资料待补充"}</p><p className="mt-1 text-xs leading-5 text-slate-400">来源：{fact.sourceType ?? "未知来源"}｜{fact.sourceName ?? "未命名来源"}｜人工确认：{fact.manuallyConfirmed ? "是" : "否"}</p>{fact.riskNote ? <p className="mt-1 text-xs leading-5 text-amber-100">风险提示：{fact.riskNote}</p> : null}</div>)}</div>}
+                </div>
+                <div className="rounded-2xl border border-amber-300/15 bg-amber-400/10 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold text-amber-50">一致性检查</h4><span className={`rounded-full px-2 py-1 text-xs ${consistencyState.className}`}>{consistencyState.text}</span></div>
+                  <p className="mt-3 text-sm leading-6 text-amber-50/90">{consistency?.summary ?? "暂无一致性检查结果。执行质检后，系统会统一检查客户问题、内容缺口、优化任务、禁用词、案例真实性和公开可引用性。"}</p>
+                  {consistency?.blockReasons?.length ? <div className="mt-3"><p className="text-xs font-medium text-red-100">阻断原因</p><ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-red-50">{consistency.blockReasons.slice(0, 4).map(reason => <li key={reason}>{reason}</li>)}</ul></div> : null}
+                  {consistency?.suggestions?.length ? <div className="mt-3"><p className="text-xs font-medium text-cyan-100">下一步建议</p><div className="mt-2 flex flex-wrap gap-2">{consistency.suggestions.slice(0, 6).map(suggestion => <span key={suggestion} className="rounded-full bg-slate-950/60 px-2 py-1 text-xs text-slate-200">{suggestion}</span>)}</div></div> : null}
+                  {consistency?.conflictItems?.length ? <div className="mt-3 space-y-2">{consistency.conflictItems.slice(0, 3).map((item, index) => <div key={`${article.id}-conflict-${index}`} className="rounded-xl bg-slate-950/60 p-3"><p className="text-sm font-medium text-white">{item.field ?? "冲突项"}｜{item.riskLevel ?? "风险待判定"}</p><p className="mt-1 text-xs leading-5 text-slate-300">{item.articleStatement ?? "当前表述待补充"}</p><p className="mt-1 text-xs leading-5 text-amber-100">建议：{item.suggestion ?? item.expectedStatement ?? "重新评分并补齐来源"}</p></div>)}</div> : null}
+                </div>
+              </div>
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-semibold text-white">优化版本历史</h4><span className="text-xs text-slate-400">低于 80 分或一致性未通过时可生成增强版、FAQ、竞品对比等版本，并保留旧稿快照。</span></div>
+                <div className="mt-3 flex flex-wrap gap-2">{optimizationModeOptions.map(mode => <Button key={mode} variant="secondary" disabled={optimizeVersion.isPending} onClick={() => optimizeVersion.mutate({ articleId: article.id, mode, reason: `手动生成${mode}以补齐评分或一致性问题` })}>{mode}</Button>)}</div>
+                {versions.length === 0 ? <p className="mt-3 text-sm leading-6 text-slate-400">暂无历史版本。每次生成优化版本都会保存旧稿标题、状态、质量分、一致性分和生成原因。</p> : <div className="mt-3 grid gap-3 md:grid-cols-3">{versions.map(version => <div key={`${article.id}-version-${version.version}`} className="rounded-xl bg-slate-950/60 p-3"><p className="text-sm font-medium text-white">V{version.version ?? "?"}｜{version.mode ?? "优化"}</p><p className="mt-1 text-xs leading-5 text-slate-400">{version.createdAt ? new Date(version.createdAt).toLocaleString() : "时间未记录"}</p><p className="mt-1 text-xs leading-5 text-slate-300">旧状态：{version.previousStatus ?? "未知"}｜旧分：{version.previousScore ?? "未评分"}｜一致性：{version.consistencyScore ?? "未检查"}</p><p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{version.reason ?? "已保留旧稿快照，可用于人工回溯。"}</p></div>)}</div>}
+              </div>
               </div>
 
               {score ? <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4"><div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-medium text-white">GEO 内容质量评分：<span className={score.totalScore >= 80 && !score.blocked ? "text-emerald-300" : "text-red-300"}>{score.totalScore}</span> / 100</p><p className="mt-1 text-xs text-slate-400">{qualityState.text}</p></div><p className="text-xs text-slate-400">评分时间：{new Date(score.createdAt).toLocaleString()}</p></div><div className="mt-3 grid gap-2 md:grid-cols-3">{qualityDimensions.map(([key, label, max]) => <div key={String(key)} className="rounded-xl border border-white/10 bg-white/[0.04] p-3"><p className="text-xs text-slate-400">{label} / {max}</p><p className="mt-1 text-xl font-semibold text-white">{Number(score[key])}</p></div>)}</div><p className="mt-3 text-sm leading-6 text-slate-300"><b>质检摘要：</b>{score.reviewSummary}</p>{score.blockReasons.length > 0 ? <p className="mt-2 text-sm leading-6 text-red-200"><b>阻断原因：</b>{score.blockReasons.join("；")}</p> : null}</div> : <div className="mt-4"><EmptyState title="尚未质检" description="发布前必须先完成 GEO 内容质量评分，且总分不低于 80 分、无阻断风险。" /></div>}
