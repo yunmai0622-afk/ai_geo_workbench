@@ -21,21 +21,20 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Archive, BarChart3, Brain, ClipboardList, Factory, FileText, LogOut, PanelLeft, Radar, Rocket, Sparkles } from "lucide-react";
+import { BarChart3, Brain, Building2, FileBarChart2, FileText, LogOut, PanelLeft, RadioTower, Send, Sparkles } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: Sparkles, label: "总览指挥舱", desc: "当前项目与下一步", path: "/", aliases: ["/"] },
-  { icon: Archive, label: "企业资产", desc: "AI 资料中枢", path: "/assets", aliases: ["/assets", "/projects"] },
-  { icon: Brain, label: "AI 诊断", desc: "认知扫描与评分", path: "/diagnosis", aliases: ["/diagnosis", "/questions", "/responses", "/analysis", "/scores"] },
-  { icon: ClipboardList, label: "内容策略", desc: "任务优先级", path: "/tasks", aliases: ["/tasks"] },
-  { icon: Factory, label: "内容生产", desc: "AI 内容工厂", path: "/articles", aliases: ["/articles"] },
-  { icon: Rocket, label: "平台发布", desc: "平台策略决策台", path: "/publish", aliases: ["/publish"] },
-  { icon: Radar, label: "收录监测", desc: "AI 收录雷达", path: "/monitoring", aliases: ["/monitoring"] },
-  { icon: FileText, label: "报告中心", desc: "客户交付中心", path: "/reports", aliases: ["/reports"] },
+  { icon: Sparkles, label: "总览", desc: "项目进度与下一步", path: "/", aliases: ["/"] },
+  { icon: Building2, label: "企业档案", desc: "六类资料状态", path: "/enterprise-profile", aliases: ["/enterprise-profile", "/assets", "/projects"] },
+  { icon: Brain, label: "AI 诊断", desc: "问题、回答与缺口", path: "/ai-diagnosis", aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"] },
+  { icon: FileText, label: "内容生成", desc: "三类推荐内容", path: "/content-generation", aliases: ["/content-generation", "/articles", "/tasks"] },
+  { icon: Send, label: "内容发布", desc: "可发布与已发布", path: "/content-publishing", aliases: ["/content-publishing", "/publish"] },
+  { icon: RadioTower, label: "收录监测", desc: "收录、提及、推荐", path: "/inclusion-monitoring", aliases: ["/inclusion-monitoring", "/monitoring"] },
+  { icon: FileBarChart2, label: "交付报告", desc: "四类客户报告", path: "/delivery-reports", aliases: ["/delivery-reports", "/reports"] },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -72,7 +71,7 @@ export default function DashboardLayout({
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">登录后继续</h1>
             <p className="max-w-sm text-sm leading-6 text-slate-400">
-              访问 AI GEO 增长中枢需要先登录。登录后可继续查看诊断、资产、内容、发布与报告闭环。
+              访问 AI GEO 增长工作台需要先登录。登录后可按企业档案、AI 诊断、内容生成、内容发布、收录监测、交付报告完成闭环。
             </p>
           </div>
           <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
@@ -156,8 +155,8 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
               </button>
               {!isCollapsed ? (
                 <div className="min-w-0">
-                  <span className="block truncate text-sm font-semibold tracking-tight text-white">AI GEO 增长中枢</span>
-                  <span className="block truncate text-xs text-slate-400">诊断 · 资产 · 内容 · 发布 · 报告</span>
+                  <span className="block truncate text-sm font-semibold tracking-tight text-white">AI GEO 增长工作台</span>
+                  <span className="block truncate text-xs text-slate-400">建档 · 诊断 · 内容 · 发布 · 监测 · 报告</span>
                 </div>
               ) : null}
             </div>

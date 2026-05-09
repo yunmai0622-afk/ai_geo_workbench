@@ -5,29 +5,36 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AnalysisPage, ArticlesPage, MonitoringPage, ProjectsPage, QuestionsPage, ReportsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
+import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
 import Home from "./pages/Home";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
 import AssetCenterPage from "./pages/AssetCenter";
 import DemoGeoPage from "./pages/DemoGeo";
+import { AiDiagnosisFlowPage, ContentGenerationFlowPage, ContentPublishingFlowPage, DeliveryReportsFlowPage, InclusionMonitoringFlowPage } from "./pages/V12FlowPages";
 
 function PrivateRoutes() {
   return (
     <DashboardLayout>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/enterprise-profile" component={AssetCenterPage} />
+        <Route path="/ai-diagnosis" component={AiDiagnosisFlowPage} />
+        <Route path="/content-generation" component={ContentGenerationFlowPage} />
+        <Route path="/content-publishing" component={ContentPublishingFlowPage} />
+        <Route path="/inclusion-monitoring" component={InclusionMonitoringFlowPage} />
+        <Route path="/delivery-reports" component={DeliveryReportsFlowPage} />
         <Route path="/projects" component={ProjectsPage} />
         <Route path="/assets" component={AssetCenterPage} />
-        <Route path="/diagnosis" component={QuestionsPage} />
+        <Route path="/diagnosis" component={AiDiagnosisFlowPage} />
         <Route path="/questions" component={QuestionsPage} />
         <Route path="/responses" component={ResponsesPage} />
         <Route path="/analysis" component={AnalysisPage} />
         <Route path="/scores" component={ScoresPage} />
         <Route path="/tasks" component={TasksPage} />
-        <Route path="/reports" component={ReportsPage} />
-        <Route path="/articles" component={ArticlesPage} />
-        <Route path="/publish" component={ArticlesPage} />
-        <Route path="/monitoring" component={MonitoringPage} />
+        <Route path="/reports" component={DeliveryReportsFlowPage} />
+        <Route path="/articles" component={ContentGenerationFlowPage} />
+        <Route path="/publish" component={ContentPublishingFlowPage} />
+        <Route path="/monitoring" component={InclusionMonitoringFlowPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

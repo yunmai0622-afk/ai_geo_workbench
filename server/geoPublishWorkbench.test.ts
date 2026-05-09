@@ -36,25 +36,25 @@ const approvedTraceability = [
 describe("平台发布工作台规则", () => {
   it("按真实发布阶段计算平台发布页顶部状态引导", () => {
     expect(projectPublishSummary([], 0)).toMatchObject({
-      stage: "平台发布",
+      stage: "内容发布",
       nextAction: "先生成高质量 GEO 文章",
-      ctaLabel: "去内容生产",
-      ctaPath: "/articles",
+      ctaLabel: "去内容生成",
+      ctaPath: "/content-generation",
     });
 
     expect(projectPublishSummary([{ status: "允许发布" }], 0)).toMatchObject({
-      stage: "平台发布",
+      stage: "内容发布",
       nextAction: "选择通过检查的文章发布到 GEO 内容页",
       ctaLabel: "发布到 GEO 内容页",
-      ctaPath: "/publish",
+      ctaPath: "/content-publishing",
     });
 
     const publishedGuide = projectPublishSummary([{ status: "已发布" }, { status: "未质检" }], 7);
     expect(publishedGuide).toMatchObject({
-      stage: "发布后待监测",
+      stage: "内容发布",
       nextAction: "进入收录监测，检查是否被收录、被 AI 提及、被 AI 推荐",
       ctaLabel: "进入收录监测",
-      ctaPath: "/monitoring",
+      ctaPath: "/inclusion-monitoring",
     });
     expect(publishedGuide.risk).toContain("已发布 7 篇，另有 1 篇待质检");
   });

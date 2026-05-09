@@ -5,65 +5,53 @@ import { resolve } from "node:path";
 const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf-8");
 
-describe("V1.2 首页增长指挥舱静态回归", () => {
-  it("将 AI GEO 增长指挥舱注册为首页，并保留项目管理独立入口", () => {
+describe("V1.2 可售卖版主流程静态回归", () => {
+  it("将 AI GEO 增长工作台注册为首页，并保留项目管理兼容入口", () => {
     const appSource = readProjectFile("client/src/App.tsx");
     expect(appSource).toContain('import Home from "./pages/Home";');
     expect(appSource).toContain('<Route path="/" component={Home} />');
     expect(appSource).toContain('<Route path="/projects" component={ProjectsPage} />');
   });
 
-  it("侧边栏展示中文客户路径导航入口，并保留项目管理别名", () => {
+  it("侧边栏只展示 V1.2 七个一级客户路径入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    const appSource = readProjectFile("client/src/App.tsx");
-    expect(layoutSource).toContain('label: "总览指挥舱", desc: "当前项目与下一步", path: "/"');
-    expect(layoutSource).toContain('label: "企业资产", desc: "AI 资料中枢", path: "/assets"');
-    expect(layoutSource).toContain('label: "AI 诊断", desc: "认知扫描与评分", path: "/diagnosis"');
-    expect(appSource).toContain('<Route path="/projects" component={ProjectsPage} />');
-  });
-
-  it("首页指挥舱呈现 Sprint 1 核心指标和边界约束", () => {
-    const homeSource = readProjectFile("client/src/pages/Home.tsx");
-    expect(homeSource).toContain("AI GEO 增长中枢");
-    expect(homeSource).toContain("资料完整度");
-    expect(homeSource).toContain("资料来源");
-    expect(homeSource).toContain("真实案例");
-    expect(homeSource).toContain("竞品资料");
-    expect(homeSource).toContain("不保存明文平台凭证");
-    expect(homeSource).toContain("不把文件字节写入数据库");
-    expect(homeSource).toContain("不自动代发第三方平台");
-  });
-
-  it("企业资料中心覆盖七类资料保存入口和后端读取接口", () => {
-    const assetCenterSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    const routerSource = readProjectFile("server/routers.ts");
-    expect(assetCenterSource).toContain("企业基础信息与产品服务资料");
-    expect(assetCenterSource).toContain("客户案例");
-    expect(assetCenterSource).toContain("竞品资料");
-    expect(assetCenterSource).toContain("合规规则");
-    expect(assetCenterSource).toContain("内容风格");
-    expect(assetCenterSource).toContain("发布策略");
-    expect(assetCenterSource).toContain("平台授权");
-    expect(routerSource).toContain("upsertProfile");
-    expect(routerSource).toContain("addTextSource");
-    expect(routerSource).toContain("createCustomerCase");
-    expect(routerSource).toContain("createCompetitor");
-    expect(routerSource).toContain("createComplianceRule");
-    expect(routerSource).toContain("createStyleProfile");
-    expect(routerSource).toContain("createPublishStrategy");
-    expect(routerSource).toContain("createPlatformAuthorization");
-  });
-
-  it("文章详情与公开页显式展示六类资产库生成依据", () => {
-    const articlePageSource = readProjectFile("client/src/pages/GeoPages.tsx");
-    const publicPageSource = readProjectFile("client/src/pages/GeoPublicContent.tsx");
-    for (const source of [articlePageSource, publicPageSource]) {
-      expect(source).toContain("使用了哪些企业资料");
-      expect(source).toContain("使用了哪些竞品资料");
-      expect(source).toContain("是否使用客户案例");
-      expect(source).toContain("是否使用合规规则");
-      expect(source).toContain("是否使用内容风格");
-      expect(source).toContain("是否使用发布策略");
+    for (const label of ["总览", "企业档案", "AI 诊断", "内容生成", "内容发布", "收录监测", "交付报告"]) {
+      expect(layoutSource).toContain(`label: "${label}"`);
     }
+    for (const forbidden of ["内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "平台发布", "报告中心"]) {
+      expect(layoutSource).not.toContain(`label: "${forbidden}"`);
+    }
+  });
+
+  it("首页作为唯一 6 步主流程入口展示项目、进度、任务、指标、风险和继续下一步", () => {
+    const homeSource = readProjectFile("client/src/pages/Home.tsx");
+    expect(homeSource).toContain("AI GEO 增长工作台");
+    expect(homeSource).toContain("建档、诊断、内容、发布、监测、报告");
+    for (const text of ["当前项目", "当前进度", "当前任务", "继续下一步", "6 步进度条", "核心指标", "当前风险提醒", "本轮试跑闭环已完成"]) {
+      expect(homeSource).toContain(text);
+    }
+    for (const step of ["企业档案", "AI 诊断", "内容生成", "内容发布", "收录监测", "交付报告"]) {
+      expect(homeSource).toContain(step);
+    }
+  });
+
+  it("企业档案页只保留六类资料卡片和一个主动作", () => {
+    const assetCenterSource = readProjectFile("client/src/pages/AssetCenter.tsx");
+    for (const text of ["企业基础资料", "产品服务资料", "客户案例", "竞品资料", "合规规则", "发布策略"]) {
+      expect(assetCenterSource).toContain(text);
+    }
+    expect(assetCenterSource).toContain("当前页面只保留一个主动作");
+    expect(assetCenterSource).not.toContain("内容风格");
+    expect(assetCenterSource).not.toContain("平台授权配置占位");
+  });
+
+  it("公开内容页保持正式文章体验，审计信息默认折叠", () => {
+    const publicPageSource = readProjectFile("client/src/pages/GeoPublicContent.tsx");
+    expect(publicPageSource).toContain("正式文章正文");
+    expect(publicPageSource).toContain("AI 可引用摘要");
+    expect(publicPageSource).toContain("企业实体信息");
+    expect(publicPageSource).toContain("查看生成依据与事实溯源");
+    expect(publicPageSource).toContain("<details");
+    expect(publicPageSource).not.toContain("<details open");
   });
 });

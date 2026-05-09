@@ -288,9 +288,12 @@ describe("优化任务、内容模板与报告", () => {
     });
     expect(combinedTemplateMarkdown).toContain("暂无真实链接，请发布后填写。");
 
-    const frontendPageSource = readFileSync(new URL("../client/src/pages/GeoPages.tsx", import.meta.url), "utf8");
-    expect(frontendPageSource).toContain("navigator.clipboard.writeText(template.markdownContent)");
-    expect(frontendPageSource).toContain("downloadMarkdown(`${template.title}.md`, template.markdownContent)");
+    const frontendPageSource = readFileSync(new URL("../client/src/pages/V12FlowPages.tsx", import.meta.url), "utf8");
+    expect(frontendPageSource).toContain("竞品对比文章");
+    expect(frontendPageSource).toContain("产品能力说明文章");
+    expect(frontendPageSource).toContain("行业选型 / FAQ 文章");
+    expect(frontendPageSource).toContain("发布准入");
+    expect(frontendPageSource).toContain("阻断原因");
   });
 
   it("没有优化任务时拒绝生成内容模板", () => {
