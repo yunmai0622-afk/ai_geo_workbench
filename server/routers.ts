@@ -430,6 +430,7 @@ const geoAssetRouter = router({
         styleProfiles: [],
         publishStrategies: [],
         platformAuthorizations: [],
+        counts: { assetSources: 0, usableAssets: 0, customerCases: 0, realCases: 0, competitors: 0, complianceRules: 0, styleProfiles: 0, publishStrategies: 0, platformAuthorizations: 0 },
       } as const;
     }
     await getProjectOrThrow(input.projectId);
@@ -447,8 +448,9 @@ const geoAssetRouter = router({
     const completionScore = profile?.completionScore ?? calculateProfileCompletionScore(profile);
     const usableAssetCount = sources.filter(source => source.canUseForGeneration && source.manuallyConfirmed).length;
     const realCaseCount = cases.filter(item => item.caseType === "真实案例" && item.verificationStatus === "已确认").length;
-    const riskReminders = [
-      usableAssetCount === 0 ? "暂无已确认且允许用于内容生成的资料，后续文章不能直接引用客户资料。" : "已有可用于内容生成的客户资料，后续文章应强制引用。",
+      const counts = { assetSources: sources.length, usableAssets: usableAssetCount, customerCases: cases.length, realCases: realCaseCount, competitors: competitors.length, complianceRules: rules.length, styleProfiles: styles.length, publishStrategies: strategies.length, platformAuthorizations: authorizations.length };
+      const riskReminders = [
+        usableAssetCount === 0 ? "暂无已确认且允许用于内容生成的资料，后续文章不能直接引用客户资料。" : "已有可用于内容生成的客户资料，后续文章应强制引用。",
       realCaseCount === 0 ? "暂无已确认真实案例，系统不得编造客户案例、结果数据或客户反馈。" : "已有已确认真实案例，引用时仍需遵守公开授权和敏感信息规则。",
       authorizations.some(item => /password|pwd|token|cookie|密码/i.test(`${item.authorizationNotes ?? ""}${item.secureCredentialRef ?? ""}`)) ? "平台授权配置存在疑似敏感信息，请立即清理。" : "平台授权配置采用脱敏或引用方式，不保存明文账号密码。",
     ];
@@ -459,12 +461,13 @@ const geoAssetRouter = router({
         : realCaseCount === 0
           ? "如需案例型内容，请先补充真实案例来源；否则后续内容应避开案例承诺。"
           : "资产库可支撑后续诊断、内容生成、质检和发布策略。";
-    return {
-      profile,
-      completionScore,
-      nextAction,
-      riskReminders,
-      assetSources: sources,
+      return {
+        profile,
+        completionScore,
+        nextAction,
+        riskReminders,
+        counts,
+        assetSources: sources,
       customerCases: cases,
       competitors,
       complianceRules: rules,
@@ -546,17 +549,47 @@ const geoAssetRouter = router({
     }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
   }),
+  updateCustomerCase: protectedProcedure.input(customerCaseInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    const db = await requireDb();
+    await getProjectOrThrow(input.projectId);
+    try {
+      validateCustomerCaseInput(input);
+    } catch (error) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "客户案例校验失败" });
+    }
+    const { id, ...values } = input;
+    await db.update(customerCases).set({
+      ...values,
+      allowPublic: booleanToInt(values.allowPublic),
+      verificationStatus: values.caseType === "待补充案例线索" ? "信息不足" : values.verificationStatus,
+    }).where(eq(customerCases.id, id));
+    return { success: true, id } as const;
+  }),
   createCompetitor: protectedProcedure.input(competitorInput).mutation(async ({ input }) => {
     const db = await requireDb();
     await getProjectOrThrow(input.projectId);
     const inserted = await db.insert(competitorProfiles).values({ ...input, canReference: booleanToInt(input.canReference) }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
   }),
+  updateCompetitor: protectedProcedure.input(competitorInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    const db = await requireDb();
+    await getProjectOrThrow(input.projectId);
+    const { id, ...values } = input;
+    await db.update(competitorProfiles).set({ ...values, canReference: booleanToInt(values.canReference) }).where(eq(competitorProfiles.id, id));
+    return { success: true, id } as const;
+  }),
   createComplianceRule: protectedProcedure.input(complianceRuleInput).mutation(async ({ input }) => {
     const db = await requireDb();
     await getProjectOrThrow(input.projectId);
     const inserted = await db.insert(complianceRules).values({ ...input, enabled: booleanToInt(input.enabled) }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
+  }),
+  updateComplianceRule: protectedProcedure.input(complianceRuleInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    const db = await requireDb();
+    await getProjectOrThrow(input.projectId);
+    const { id, ...values } = input;
+    await db.update(complianceRules).set({ ...values, enabled: booleanToInt(values.enabled) }).where(eq(complianceRules.id, id));
+    return { success: true, id } as const;
   }),
   createStyleProfile: protectedProcedure.input(contentStyleInput).mutation(async ({ input }) => {
     const db = await requireDb();
@@ -569,6 +602,13 @@ const geoAssetRouter = router({
     await getProjectOrThrow(input.projectId);
     const inserted = await db.insert(publishStrategies).values({ ...input, dailyLimit: input.dailyLimit ?? null, enabled: booleanToInt(input.enabled) }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
+  }),
+  updatePublishStrategy: protectedProcedure.input(publishStrategyInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    const db = await requireDb();
+    await getProjectOrThrow(input.projectId);
+    const { id, ...values } = input;
+    await db.update(publishStrategies).set({ ...values, dailyLimit: values.dailyLimit ?? null, enabled: booleanToInt(values.enabled) }).where(eq(publishStrategies.id, id));
+    return { success: true, id } as const;
   }),
   createPlatformAuthorization: protectedProcedure.input(platformAuthorizationInput).mutation(async ({ input }) => {
     const db = await requireDb();
@@ -590,6 +630,27 @@ const geoAssetRouter = router({
       authorizedAt: input.authorizationStatus === "已授权" ? new Date() : null,
     }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
+  }),
+  updatePlatformAuthorization: protectedProcedure.input(platformAuthorizationInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    const db = await requireDb();
+    await getProjectOrThrow(input.projectId);
+    let safeInput: ReturnType<typeof sanitizePlatformAuthorizationInput>;
+    try {
+      safeInput = sanitizePlatformAuthorizationInput(input);
+    } catch (error) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "平台授权配置不安全" });
+    }
+    const { id } = input;
+    await db.update(platformAuthorizationConfigs).set({
+      platformName: input.platformName,
+      accountAlias: input.accountAlias,
+      authorizationStatus: input.authorizationStatus,
+      credentialStorageMode: safeInput.credentialStorageMode,
+      secureCredentialRef: input.secureCredentialRef,
+      authorizationNotes: input.authorizationNotes,
+      authorizedAt: input.authorizationStatus === "已授权" ? new Date() : null,
+    }).where(eq(platformAuthorizationConfigs.id, id));
+    return { success: true, id } as const;
   }),
   evidencePack: protectedProcedure.input(z.object({ projectId: z.number().int().positive(), assetIds: z.array(z.number().int().positive()).min(1) })).query(async ({ input }) => {
     const db = await requireDb();
@@ -770,7 +831,11 @@ const geoRouter = router({
       const db = await requireDb();
       if (!input.projectId) return [];
       const rows = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId)).orderBy(desc(analysisResults.createdAt));
-      return rows.map(resolveEffectiveAnalysisResult);
+      const [responseRows, questionRows] = await Promise.all([
+        db.select({ id: aiResponses.id, questionId: aiResponses.questionId, questionText: aiResponses.questionText }).from(aiResponses).where(eq(aiResponses.projectId, input.projectId)),
+        db.select({ id: questions.id, questionText: questions.questionText }).from(questions).where(eq(questions.projectId, input.projectId)),
+      ]);
+      return attachQuestionTextToAnalyses(rows.map(resolveEffectiveAnalysisResult), responseRows, questionRows);
     }),
     run: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
@@ -787,7 +852,7 @@ const geoRouter = router({
             { role: "system", content: "你是严谨的 GEO / AI Visibility 语义分析师。必须基于 AI 原始回答做语义判断，不得只做关键词匹配，不得编造原文不存在的信息。请只输出 JSON。" },
             {
               role: "user",
-              content: `企业信息：\n企业名称：${project.enterpriseName}\n行业：${project.industry}\n核心卖点：${project.coreSellingPoints}\n竞品：${project.competitorNames.join("、")}\n\n问题：${item.questionText}\nAI 平台：${item.aiPlatform}\nAI 原始回答：${item.rawAnswer}\n\n请判断该回答是否提到和推荐本企业、是否提到竞品、被推荐竞品、本企业是否胜出、推荐理由、未推荐原因、是否存在错误认知、内容缺口和优化建议。`,
+              content: `企业信息：\n企业名称：${project.enterpriseName}\n行业：${project.industry}\n核心卖点：${project.coreSellingPoints}\n目标客户：${project.targetCustomers}\n竞品：${project.competitorNames.join("、")}\n\n问题：${item.questionText}\nAI 平台：${item.aiPlatform}\nAI 原始回答：${item.rawAnswer}\n\n请逐题判断该回答是否提到和推荐本企业、是否提到竞品、被推荐竞品、本企业是否胜出、推荐理由、未推荐原因、是否存在错误认知、内容缺口和优化建议。要求：1）所有结论必须引用或概括原回答证据；2）contentGap 必须针对该问题和原回答，不得复用“缺少案例/对比/FAQ”等固定模板；3）optimizationSuggestion 必须给出可执行页面或内容动作；4）如果本企业已被推荐，仍需说明推荐依据和残余缺口；5）不要编造客户案例、排名、价格或第三方数据。`,
             },
           ],
           response_format: {
@@ -808,6 +873,11 @@ const geoRouter = router({
                   hasMisconception: { type: "boolean" },
                   contentGap: { type: "string" },
                   optimizationSuggestion: { type: "string" },
+                  semanticSummary: { type: "string" },
+                  evidenceExcerpt: { type: "string" },
+                  competitorGap: { type: "string" },
+                  decisionBasis: { type: "string" },
+                  recommendedActionType: { type: "string", enum: ["补官网事实", "补产品说明", "补竞品对比", "补 FAQ", "补案例证据", "补社媒内容"] },
                 },
                 required: [
                   "mentionsEnterprise",
@@ -820,6 +890,11 @@ const geoRouter = router({
                   "hasMisconception",
                   "contentGap",
                   "optimizationSuggestion",
+                  "semanticSummary",
+                  "evidenceExcerpt",
+                  "competitorGap",
+                  "decisionBasis",
+                  "recommendedActionType",
                 ],
                 additionalProperties: false,
               },
@@ -837,6 +912,11 @@ const geoRouter = router({
           hasMisconception: boolean;
           contentGap: string;
           optimizationSuggestion: string;
+          semanticSummary: string;
+          evidenceExcerpt: string;
+          competitorGap: string;
+          decisionBasis: string;
+          recommendedActionType: "补官网事实" | "补产品说明" | "补竞品对比" | "补 FAQ" | "补案例证据" | "补社媒内容";
         }>(llm.choices[0]?.message.content);
         rows.push({
           projectId: input.projectId,
@@ -851,7 +931,20 @@ const geoRouter = router({
           hasMisconception: parsed.hasMisconception ? 1 : 0,
           contentGap: parsed.contentGap,
           optimizationSuggestion: parsed.optimizationSuggestion,
-          rawJson: parsed,
+          rawJson: {
+            ...parsed,
+            questionText: item.questionText,
+            aiPlatform: item.aiPlatform,
+            questionDiagnosis: {
+              questionText: item.questionText,
+              aiPlatform: item.aiPlatform,
+              semanticSummary: parsed.semanticSummary,
+              evidenceExcerpt: parsed.evidenceExcerpt,
+              competitorGap: parsed.competitorGap,
+              decisionBasis: parsed.decisionBasis,
+              recommendedActionType: parsed.recommendedActionType,
+            },
+          },
           manualOverrideJson: null,
           manuallyReviewed: 0,
           reviewedAt: null,

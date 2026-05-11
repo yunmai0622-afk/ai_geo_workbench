@@ -762,6 +762,37 @@ export function canPublishArticle(status: ArticleStatus) {
   return status === "审核通过";
 }
 
+function compactTitleText(value: string, maxLength = 28) {
+  return truncate(value.replace(/[\r\n]+/g, " ").replace(/[？?。！!；;：:，,]/g, " ").replace(/\s+/g, " ").trim(), maxLength);
+}
+
+function buildNaturalTopicTitle(input: { project: P11ProjectLike; question: P11QuestionLike; task: P11TaskLike; analysis: P11AnalysisLike; articleType: ArticleType; competitor: string; index: number }) {
+  const questionFocus = compactTitleText(input.question.questionText, 26) || compactTitleText(input.task.taskName, 18);
+  const gapFocus = compactTitleText(input.analysis.contentGap || input.task.generationReason || input.task.executionSuggestion, 22);
+  const taskFocus = compactTitleText(input.task.taskName.replace(/^(补齐|优化|建设|新增)/, ""), 18);
+  const enterprise = input.project.enterpriseName;
+  const variants: Record<ArticleType, string[]> = {
+    "官网版 GEO 文章": [
+      `${enterprise}如何回答「${questionFocus}」：资料、边界与证据清单`,
+      `${enterprise}${taskFocus || "公开资料"}补齐指南：让 AI 能读懂的官网内容`,
+    ],
+    "问答型 GEO 文章": [
+      `客户问「${questionFocus}」时，${enterprise}需要补齐哪些 AI 可引用信息`,
+      `${enterprise}围绕「${questionFocus}」的 FAQ 回答与证据整理`,
+    ],
+    "竞品对比型 GEO 文章": [
+      `${enterprise}与${input.competitor}在「${questionFocus}」场景下的内容差距`,
+      `为什么 AI 更容易提到${input.competitor}：${enterprise}${gapFocus || "内容缺口"}对比`,
+    ],
+    "行业选型型 GEO 文章": [
+      `${input.project.industry}选型时，AI 更需要哪些可验证资料`,
+      `${enterprise}面向${input.project.targetCustomers}的选型说明：从问题到证据`,
+    ],
+  };
+  const selected = variants[input.articleType][input.index % variants[input.articleType].length];
+  return truncate(selected, 120);
+}
+
 export function generateGeoArticleTopics(input: {
   project: P11ProjectLike;
   questions: P11QuestionLike[];
@@ -812,9 +843,8 @@ export function generateGeoArticleTopics(input: {
     const competitor = unique((primaryAnalysis.recommendedCompetitors ?? []).concat(input.project.competitorNames))[0];
     if (!competitor) throw new Error("缺少竞品差距信息，不能生成 GEO 文章选题。");
     const articleType = articleTypeCycle[index % articleTypeCycle.length];
-    const title = articleType === "竞品对比型 GEO 文章"
-      ? `${input.project.enterpriseName} 与 ${competitor} 的 GEO 推荐差距说明`
-      : `${input.project.enterpriseName}${task.taskName.replace(/^补齐|^优化|^建设/, "")}：面向 AI 推荐的核心内容指南`;
+    let title = buildNaturalTopicTitle({ project: input.project, question, task, analysis: primaryAnalysis, articleType, competitor, index });
+    if (topics.some(item => item.title === title)) title = truncate(`${title}（${task.taskType}）`, 120);
     topics.push({
       projectId: input.project.id,
       optimizationTaskId: task.id,
@@ -976,6 +1006,8 @@ export function generateGeoArticleDraft(input: {
   const evidence = buildEvidenceList({ project, task, questions: input.questions, analyses: input.analyses });
   const assetUsage = basis.assetLibraryUsage ?? buildAssetLibraryUsage(input.assetLibrary);
   const evidenceGapText = assetUsage.missingEvidenceNotes.length > 0 ? assetUsage.missingEvidenceNotes.join("；") : "暂无关键证据缺口。";
+  const enterpriseEvidenceText = formatCitationList(assetUsage.enterpriseMaterials, "暂无可直接引用的企业资料，正文只能保留为资料待补充表述。");
+  const competitorEvidenceText = assetUsage.competitorMaterials.length > 0 ? assetUsage.competitorMaterials.map(item => `- ${item.competitorName}：${item.differentiation || "差异化资料待补充"}；来源：${item.sourceNotes || "资产库竞品资料"}`).join("\n") : "暂无可直接引用的竞品资料，竞品对比只保留诊断层面的客观缺口。";
   const intro = `${project.enterpriseName}在${project.industry}场景中的 GEO 优化，必须从客户真实会问的问题、AI 没有推荐企业的原因、竞品被提及的理由和当前内容缺口出发。本文根据本项目已完成的 GEO 诊断结果与企业 GEO 资产库整理，不虚构案例，不添加未验证链接，也不承诺任何平台的绝对排名结果。`;
   const content = [
     `# ${topic.title}`,
@@ -988,9 +1020,9 @@ export function generateGeoArticleDraft(input: {
     paragraph("三、当前内容缺口", `结合 AI 语义分析和优化任务「${task.taskName}」，当前最需要补齐的内容缺口包括：\n\n${evidence.gaps || basis.contentGap}\n\n这些缺口会影响 AI 判断企业是否适合作为答案中的推荐对象，也会影响潜在客户理解企业与竞品之间的差异。`),
     paragraph("适合客户", structure.suitableCustomers),
     paragraph("不适合客户", structure.unsuitableCustomers),
-    paragraph("竞品/方案对比", structure.comparison),
-    paragraph("四、建议发布的内容结构", `建议围绕“问题—判断标准—企业能力—竞品差异—适用边界—下一步行动”组织内容。第一部分回答客户真实问题，第二部分说明行业选型标准，第三部分用${project.enterpriseName}已有卖点解释适配场景，第四部分客观说明与${basis.competitorNames.slice(0, 2).join("、")}的内容差异，第五部分列出仍需客户补充的真实案例、截图、链接和数据。`),
-    paragraph("五、企业可被 AI 引用的信息", `${project.enterpriseName}目前可被整理为以下可引用信息：产品或服务介绍为「${project.productIntro}」；目标客户为「${project.targetCustomers}」；核心卖点为「${project.coreSellingPoints}」。这些信息应在官网、FAQ、竞品对比页和行业文章中保持一致，避免 AI 在不同页面中读取到相互矛盾的描述。`),
+    paragraph("竞品/方案对比", `${structure.comparison}\n\n可用竞品资料：\n${competitorEvidenceText}`),
+    paragraph("四、建议发布的内容结构", `建议围绕“问题—判断标准—企业能力—竞品差异—适用边界—下一步行动”组织内容。第一部分回答客户真实问题，第二部分说明行业选型标准，第三部分用${project.enterpriseName}已有卖点和资产库资料解释适配场景，第四部分客观说明与${basis.competitorNames.slice(0, 2).join("、")}的内容差异，第五部分列出仍需客户补充的真实案例、截图、链接和数据。`),
+    paragraph("五、企业可被 AI 引用的信息", `${project.enterpriseName}目前可被整理为以下可引用信息：产品或服务介绍为「${project.productIntro}」；目标客户为「${project.targetCustomers}」；核心卖点为「${project.coreSellingPoints}」。这些信息应在官网、FAQ、竞品对比页和行业文章中保持一致，避免 AI 在不同页面中读取到相互矛盾的描述。\n\n本篇实际使用的企业资料：\n${enterpriseEvidenceText}`),
     paragraph("六、发布前应补齐的证据清单", `为避免文章停留在概念层面，建议发布前由业务负责人补充以下真实证据：第一，能够证明${project.enterpriseName}服务边界的官网页面或产品说明；第二，能够解释${project.targetCustomers}为何适用的真实问答；第三，能够展示部署方式、售后流程或数据口径的截图；第四，与${basis.competitorNames.slice(0, 2).join("、")}进行客观比较时使用的可核验事实。当前资产库证据缺口为：${evidenceGapText}。若这些证据暂时缺失，应在文章中明确标注对应缺口，而不是填写未经核验的案例、结果数据、价格口径或引用无法访问的链接。`),
     paragraph("引用友好片段", formatSnippets(snippets)),
     paragraph("FAQ", structure.faq.map(item => `### ${item.question}\n\n${item.answer}`).join("\n\n")),
