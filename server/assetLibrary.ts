@@ -106,6 +106,10 @@ export function assertNoPlainCredentialKeys(input: Record<string, unknown>) {
   if (/密码\s*[:：=]|账号密码|明文密码|cookie\s*[:：=]|token\s*[:：=]/i.test(notes)) {
     throw new Error("平台授权备注不能保存明文密码、Cookie 或 Token");
   }
+  const secureCredentialRef = typeof input.secureCredentialRef === "string" ? input.secureCredentialRef : "";
+  if (/password\s*[:：=]|passwd\s*[:：=]|pwd\s*[:：=]|cookie\s*[:：=]|token\s*[:：=]|账号密码|明文密码|密码\s*[:：=]/i.test(secureCredentialRef)) {
+    throw new Error("平台授权凭证引用不能保存明文密码、Cookie 或 Token");
+  }
 }
 
 export function sanitizePlatformAuthorizationInput<T extends Record<string, unknown>>(input: T): T & { credentialStorageMode: string } {

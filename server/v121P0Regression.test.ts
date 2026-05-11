@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { sanitizePlatformAuthorizationInput } from "./assetLibrary";
+import { deriveQuestionDiagnosisMeta } from "./geoLogic";
 import { generateGeoArticleDraft, generateGeoArticleTopics, type P11AnalysisLike, type P11ProjectLike, type P11QuestionLike, type P11TaskLike, type P12AssetLibraryContext } from "./geoArticleLogic";
 
 const root = resolve(__dirname, "..");
@@ -100,8 +101,24 @@ describe("V1.2.1 P0 regression coverage", () => {
     expect(Object.keys(draft.thirdPartyMaterials)).toEqual(["GEO 内容页版", "官网版", "公众号长文版", "知乎回答版", "小红书笔记版", "百家号/头条号版"]);
   });
 
+  it("AI 诊断元信息必须按具体问题生成至少 3 类类型和逐题用户意图", () => {
+    const samples = [
+      "企业内训和知识库能不能用海豚知道搭建？",
+      "做线上训练营，怎么降低运营和助教成本？",
+      "想从小鹅通迁移到更轻量的知识付费工具，有什么选择？",
+      "有没有支持课程、社群、打卡、分销一体化的系统？",
+      "海豚知道适合个人 IP 做知识付费吗？",
+    ].map(questionText => deriveQuestionDiagnosisMeta({ questionText, recommendedActionType: "补竞品对比" }));
+
+    expect(new Set(samples.map(sample => sample.questionType)).size).toBeGreaterThanOrEqual(3);
+    expect(samples.every(sample => sample.userIntent.length >= 12)).toBe(true);
+    expect(samples.map(sample => sample.questionType)).toContain("痛点解决");
+    expect(samples.map(sample => sample.questionType)).toContain("迁移选型");
+  });
+
   it("第三方平台授权配置不得保存明文凭证，前端必须提供授权入口和阻断按钮", () => {
     expect(() => sanitizePlatformAuthorizationInput({ platformName: "知乎", authorizationNotes: "token: abc" })).toThrow(/明文密码|Cookie|Token/);
+    expect(() => sanitizePlatformAuthorizationInput({ platformName: "知乎", secureCredentialRef: "token=abc" })).toThrow(/明文密码|Cookie|Token/);
     const safe = sanitizePlatformAuthorizationInput({ platformName: "知乎", authorizationNotes: "凭证保存在企业密码库 2026-05 记录", secureCredentialRef: "vault://geo/zhihu" });
     expect(safe.credentialStorageMode).toBe("不保存明文凭证");
 
@@ -111,6 +128,9 @@ describe("V1.2.1 P0 regression coverage", () => {
     expect(assetCenter).toContain("禁止填写密码、Token、Cookie");
     expect(geoPages).toContain("buildThirdPartyPublishGate");
     expect(geoPages).toContain("disabled={!gate.allowManualPublish}");
+    expect(geoPages).toContain("复制素材");
+    expect(geoPages).toContain("回填发布链接");
+    expect(geoPages).toContain("标记已人工发布");
     expect(geoPages).toContain("系统不会代发");
   });
 });

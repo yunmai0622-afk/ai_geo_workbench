@@ -14,6 +14,7 @@ describe("V1.2 enterprise GEO asset library", () => {
   it("rejects platform authorization configs containing plain credential fields or notes", () => {
     expect(() => assertNoPlainCredentialKeys({ platformName: "知乎", password: "123456" })).toThrow("明文凭证字段");
     expect(() => assertNoPlainCredentialKeys({ platformName: "小红书", authorizationNotes: "账号密码：demo/123456" })).toThrow("不能保存明文密码");
+    expect(() => assertNoPlainCredentialKeys({ platformName: "知乎", secureCredentialRef: "password=demo123" })).toThrow("凭证引用不能保存明文密码");
 
     const safe = sanitizePlatformAuthorizationInput({
       platformName: "公众号",

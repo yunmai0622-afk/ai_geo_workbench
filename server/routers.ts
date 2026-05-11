@@ -35,6 +35,7 @@ import {
   generatedQuestionTypes,
   attachQuestionTextToAnalyses,
   calculateGeoScore,
+  deriveQuestionDiagnosisMeta,
   generateContentTemplates,
   generateOptimizationTasks,
   generateReportMarkdown,
@@ -918,6 +919,12 @@ const geoRouter = router({
           decisionBasis: string;
           recommendedActionType: "补官网事实" | "补产品说明" | "补竞品对比" | "补 FAQ" | "补案例证据" | "补社媒内容";
         }>(llm.choices[0]?.message.content);
+        const diagnosisMeta = deriveQuestionDiagnosisMeta({
+          questionText: item.questionText,
+          recommendedActionType: parsed.recommendedActionType,
+          contentGap: parsed.contentGap,
+          optimizationSuggestion: parsed.optimizationSuggestion,
+        });
         rows.push({
           projectId: input.projectId,
           aiResponseId: item.id,
@@ -933,11 +940,17 @@ const geoRouter = router({
           optimizationSuggestion: parsed.optimizationSuggestion,
           rawJson: {
             ...parsed,
+            questionType: diagnosisMeta.questionType,
+            issueType: diagnosisMeta.questionType,
+            userIntent: diagnosisMeta.userIntent,
             questionText: item.questionText,
             aiPlatform: item.aiPlatform,
             questionDiagnosis: {
               questionText: item.questionText,
               aiPlatform: item.aiPlatform,
+              questionType: diagnosisMeta.questionType,
+              issueType: diagnosisMeta.questionType,
+              userIntent: diagnosisMeta.userIntent,
               semanticSummary: parsed.semanticSummary,
               evidenceExcerpt: parsed.evidenceExcerpt,
               competitorGap: parsed.competitorGap,

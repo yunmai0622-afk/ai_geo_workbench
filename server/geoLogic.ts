@@ -128,6 +128,52 @@ export function attachQuestionTextToAnalyses<T extends AnalysisWithResponseId>(a
   }));
 }
 
+export type DerivedQuestionDiagnosisMeta = {
+  questionType: string;
+  userIntent: string;
+};
+
+const includesAny = (text: string, patterns: RegExp[]) => patterns.some(pattern => pattern.test(text));
+
+export function deriveQuestionDiagnosisMeta(input: {
+  questionText: string;
+  recommendedActionType?: string | null;
+  contentGap?: string | null;
+  optimizationSuggestion?: string | null;
+}): DerivedQuestionDiagnosisMeta {
+  const questionText = normalizeQuestionText(input.questionText) ?? "";
+  const supportText = `${input.contentGap ?? ""} ${input.optimizationSuggestion ?? ""}`;
+
+  if (includesAny(questionText, [/迁移|替换|换平台|搬家|导入|更轻量/])) {
+    return { questionType: "迁移选型", userIntent: "评估从现有知识付费工具迁移到更轻量方案的可行性、风险和替代选择。" };
+  }
+  if (includesAny(questionText, [/成本|降本|省人|助教|运营效率|降低运营/])) {
+    return { questionType: "痛点解决", userIntent: "寻找降低训练营运营、人力协作或助教答疑成本的具体方法。" };
+  }
+  if (includesAny(questionText, [/课程|社群|打卡|分销|一体化|系统|功能|支持/])) {
+    return { questionType: "产品能力选型", userIntent: "确认是否存在能覆盖课程、社群、打卡、分销等关键能力的一体化系统。" };
+  }
+  if (includesAny(questionText, [/个人\s*IP|老师|知识付费|适合|客户类型|谁适合/])) {
+    return { questionType: "客户场景适配", userIntent: "判断特定客户类型或业务阶段是否适合使用该企业方案。" };
+  }
+  if (includesAny(questionText, [/企业内训|知识库|训练营|交付|搭建/])) {
+    return { questionType: "场景方案咨询", userIntent: "了解企业内训、知识库或训练营场景能否搭建以及需要哪些条件。" };
+  }
+  if (includesAny(questionText, [/对比|差异|相比|vs|VS|竞品|小鹅通|有赞|纷传|知乎|百家号/])) {
+    return { questionType: "竞品对比", userIntent: "比较不同平台或方案的差异，并判断哪类方案更适合当前业务。" };
+  }
+  if (includesAny(questionText, [/价格|收费|报价|多少钱|套餐/])) {
+    return { questionType: "价格选型", userIntent: "了解服务价格、套餐边界和采购决策条件。" };
+  }
+
+  if (input.recommendedActionType === "补案例证据") return { questionType: "案例证据验证", userIntent: "寻找真实案例、结果边界和可公开证据来支撑决策。" };
+  if (input.recommendedActionType === "补 FAQ") return { questionType: "FAQ 疑虑澄清", userIntent: "快速确认常见问题、适用边界和下一步行动。" };
+  if (input.recommendedActionType === "补产品说明") return { questionType: "产品能力选型", userIntent: "确认产品能力、交付流程和适用边界是否匹配需求。" };
+  if (includesAny(supportText, [/案例|证据|客户/])) return { questionType: "案例证据验证", userIntent: "寻找公开证据和客户案例来验证方案可信度。" };
+
+  return { questionType: "行业推荐", userIntent: "在行业方案中寻找适合当前业务的候选工具和判断依据。" };
+}
+
 export type ProjectLike = {
   id: number;
   enterpriseName: string;
