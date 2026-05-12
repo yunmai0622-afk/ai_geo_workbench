@@ -532,3 +532,12 @@
 - [x] V1.2.1 阻断修复：AI 诊断结果必须为每条问题保存具体问题类型和用户意图，避免 10 条全部归为同一类型。
 - [x] V1.2.1 阻断修复：第三方平台授权/人工发布流程必须展示精确提示“当前第三方平台暂不支持自动登录发布，只支持生成素材、复制发布、人工回填链接”。
 - [x] V1.2.1 阻断修复：第三方平台人工发布流程必须展示复制素材、回填发布链接、标记已人工发布入口，且不得展示自动发布成功。
+- [x] 本轮仅整理项目交接说明：技术栈、目录结构、命令、数据库/存储、环境变量、已实现功能、已知问题、源码下载方式；不新增功能、不重构、不优化页面、不生成假数据。
+
+## 本轮源码导出
+
+- [x] 按用户要求导出完整项目源码压缩包，包含 package.json、pnpm-lock.yaml、client、server、drizzle、scripts、shared、vite.config.ts、tsconfig.json，并排除 node_modules、dist、.manus-logs、.webdev、临时日志文件和真实 .env 文件；不新增功能、不修改代码、不重构。
+
+## V1.0-Boundary-Refreeze-2
+
+- [x] 仅更新 HARNESS.md，冻结 V1.0 发布矩阵、目标 AI 入口、A/B/C 发布能力等级、人工确认后发布边界、反同质化与平台适配审查要求，并执行 corepack pnpm check、corepack pnpm test、corepack pnpm build；禁止修改功能代码、页面、后端业务逻辑。
