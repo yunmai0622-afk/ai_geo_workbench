@@ -219,7 +219,7 @@ export default function ComponentsShowcase() {
     setTimeout(() => {
       const aiResponse: Message = {
         role: "assistant",
-        content: `This is a **demo response**. In a real app, you would call a tRPC mutation here:\n\n\`\`\`typescript\nconst chatMutation = trpc.ai.chat.useMutation({\n  onSuccess: (response) => {\n    setChatMessages(prev => [...prev, {\n      role: "assistant",\n      content: response.choices[0].message.content\n    }]);\n  }\n});\n\nchatMutation.mutate({ messages: newMessages });\n\`\`\`\n\nYour message was: "${content}"`,
+        content: `这是**演示回复**。正式环境中会调用后端对话接口返回结果。\n\n你的消息是：「${content}」`,
       };
       setChatMessages([...newMessages, aiResponse]);
       setIsChatLoading(false);
@@ -1403,7 +1403,7 @@ export default function ComponentsShowcase() {
                       Features markdown rendering, auto-scrolling, and loading states.
                     </p>
                     <p className="mt-2">
-                      This is a demo with simulated responses. In a real app, you'd connect it to a tRPC mutation.
+                      这是演示模式，回复为本地模拟；正式环境会连接后端对话接口。
                     </p>
                   </div>
                   <AIChatBox
@@ -1416,7 +1416,7 @@ export default function ComponentsShowcase() {
                     suggestedPrompts={[
                       "What is React?",
                       "Explain TypeScript",
-                      "How to use tRPC?",
+                      "如何开始本周内容计划？",
                       "Best practices for web development",
                     ]}
                   />

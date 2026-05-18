@@ -67,7 +67,7 @@ export default function DemoGeoPage() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#040816]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
           <a href="#overview" className="group inline-flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 text-sm font-bold text-cyan-100 shadow-lg shadow-cyan-500/20">GEO</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 text-sm font-bold text-cyan-100 shadow-lg shadow-cyan-500/20">内容增长系统</span>
             <span>
               <span className="block text-sm font-semibold text-white">V1.2 外部只读 Demo</span>
               <span className="block text-xs text-slate-400">{demoProject.shortName} 样板项目</span>
@@ -98,10 +98,10 @@ export default function DemoGeoPage() {
             <div>
               <div className="mb-5 flex flex-wrap gap-3">
                 <StatusBadge>公开只读</StatusBadge>
-                <StatusBadge tone="violet">无需 Manus OAuth</StatusBadge>
+                <StatusBadge tone="violet">无需登录</StatusBadge>
                 <StatusBadge tone="emerald">仅样板数据</StatusBadge>
               </div>
-              <p className="text-sm font-semibold uppercase tracking-[0.42em] text-cyan-200/80">AI GEO Growth Workbench</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.42em] text-cyan-200/80">AI 内容增长系统 Growth Workbench</p>
               <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-white md:text-6xl">{demoProject.name}</h1>
               <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300 md:text-lg">外部验收、销售演示和客户试跑展示专用入口。页面完整展示 V1.2 的核心样板能力，但不开放任何写操作、生成操作或发布操作。</p>
               <div className="mt-7 flex flex-wrap gap-3">
@@ -113,7 +113,7 @@ export default function DemoGeoPage() {
           </div>
         </section>
 
-        <Section eyebrow="01 / Overview" title="总览指挥舱" description="展示外部 Demo 的核心指标、当前阶段、下一步动作、GEO 增长路径、AI 今日建议和待复测任务。">
+        <Section eyebrow="01 / Overview" title="总览指挥舱" description="展示外部 Demo 的核心指标、当前阶段、下一步动作、内容增长路径、AI 今日建议和待复测任务。">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {demoMetrics.map((metric) => (
               <article key={metric.label} className={`rounded-3xl border p-5 shadow-xl ${toneClasses[metric.tone]}`}>
@@ -125,7 +125,7 @@ export default function DemoGeoPage() {
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-              <h3 className="text-lg font-semibold text-white">GEO 增长路径</h3>
+              <h3 className="text-lg font-semibold text-white">内容增长路径</h3>
               <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
                 {growthPath.map((step, index) => (
                   <div key={step} className="relative rounded-2xl border border-cyan-300/15 bg-slate-950/75 p-4">
@@ -143,7 +143,7 @@ export default function DemoGeoPage() {
               <div className="rounded-3xl border border-amber-300/15 bg-amber-400/5 p-5">
                 <p className="text-sm font-semibold text-amber-100">待处理任务</p>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-                  <li>复测已发布 GEO 内容页收录状态。</li>
+                  <li>复测已发布 公开内容页收录状态。</li>
                   <li>复测 AI 是否提及、是否推荐海豚知道。</li>
                   <li>补充客户案例证据链，避免泛化表述。</li>
                 </ul>
@@ -163,13 +163,13 @@ export default function DemoGeoPage() {
           </div>
         </Section>
 
-        <Section eyebrow="03 / Diagnosis" title="AI 诊断" description="展示 10 条客户指定问题、AI 回答、语义分析、GEO 评分、内容缺口、竞品差距和人工修订样本。">
+        <Section eyebrow="03 / Diagnosis" title="内容诊断" description="展示 10 条客户指定问题、AI 回答、语义分析、内容评分、内容缺口、竞品差距和人工修订样本。">
           <div id="diagnosis" className="grid gap-4 lg:grid-cols-2">
             {diagnosisQuestions.map((item, index) => (
               <article key={item.question} className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="text-base font-semibold leading-6 text-white">{index + 1}. {item.question}</h3>
-                  <StatusBadge tone={item.score >= 40 ? "emerald" : "blue"}>GEO {item.score}</StatusBadge>
+                  <StatusBadge tone={item.score >= 40 ? "emerald" : "blue"}>内容增长系统 {item.score}</StatusBadge>
                 </div>
                 <p className="mt-4 text-sm leading-6 text-slate-300"><span className="text-cyan-200">AI 回答：</span>{item.answer}</p>
                 <div className="mt-4 grid gap-3 text-xs leading-5 text-slate-300 md:grid-cols-2">
@@ -183,7 +183,7 @@ export default function DemoGeoPage() {
           </div>
         </Section>
 
-        <Section eyebrow="04 / Content" title="内容生产" description="展示 3 篇核心 GEO 内容，每篇包含 8 项生成依据、事实溯源表、质量评分、一致性检查、发布前检查和 AI 可引用片段。">
+        <Section eyebrow="04 / Content" title="内容生产" description="展示 3 篇核心 内容，每篇包含 8 项生成依据、事实溯源表、质量评分、一致性检查、发布前检查和 AI 可引用片段。">
           <div id="content" className="space-y-5">
             {demoArticles.map((article) => (
               <article key={article.title} className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-violet-950/10 md:p-6">
@@ -193,7 +193,7 @@ export default function DemoGeoPage() {
                     <h3 className="mt-3 text-xl font-semibold text-white">{article.title}</h3>
                     <p className="mt-2 text-sm text-slate-400">{article.status}</p>
                   </div>
-                  <StatusBadge tone={article.qualityScore >= 95 ? "emerald" : "violet"}>GEO 内容质量评分 {article.qualityScore}/100</StatusBadge>
+                  <StatusBadge tone={article.qualityScore >= 95 ? "emerald" : "violet"}>内容质量评分 {article.qualityScore}/100</StatusBadge>
                 </div>
                 <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="rounded-3xl border border-cyan-300/15 bg-cyan-400/5 p-4">
@@ -240,7 +240,7 @@ export default function DemoGeoPage() {
           </div>
         </Section>
 
-        <Section eyebrow="05 / Publish" title="平台发布" description="展示系统内置 GEO 内容页发布记录、可访问链接和第三方平台只读素材说明，不执行发布动作。">
+        <Section eyebrow="05 / Publish" title="平台发布" description="展示系统内置 公开内容页发布记录、可访问链接和第三方平台只读素材说明，不执行发布动作。">
           <div id="publish" className="space-y-4">
             {publishRecords.map((record) => (
               <article key={record.title} className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
@@ -279,7 +279,7 @@ export default function DemoGeoPage() {
           </div>
         </Section>
 
-        <Section eyebrow="07 / Report" title="报告中心" description="展示至少 1 份客户可读 GEO 试跑报告，并保留样本量有限的风险说明。">
+        <Section eyebrow="07 / Report" title="报告中心" description="展示至少 1 份客户可读 内容增长系统 试跑报告，并保留样本量有限的风险说明。">
           <div id="report" className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
             <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">客户可读报告</p>

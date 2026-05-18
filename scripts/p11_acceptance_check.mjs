@@ -13,7 +13,7 @@ const files = {
   test: read("server/geoArticleLogic.test.ts"),
 };
 
-const requiredStructure = ["## 摘要", "## 核心问题回答", "## 适合客户", "## 不适合客户", "## 竞品/方案对比", "## FAQ", "## 结论", "## 行动引导", "## 更新时间", "## 企业实体信息"];
+const requiredStructure = ["## 引言", "## 核心问题回答", "## 产品与能力说明", "## 与同类方案的客观对比", "## 适合谁与可能不太适合的情况", "## 常见问答（FAQ）", "## 结论与下一步", "## 更新说明", "## 发布后如何自行核对效果", "## 便于引用的要点"];
 const requiredBasisFields = ["customerQuestion", "contentGap", "optimizationTask", "notRecommendedReason", "competitorGap"];
 const platformKeys = ["GEO 内容页版", "官网版", "公众号长文版", "知乎回答版", "小红书笔记版", "百家号/头条号版"];
 

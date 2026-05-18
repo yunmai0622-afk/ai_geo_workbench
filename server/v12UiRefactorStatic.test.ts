@@ -5,24 +5,23 @@ import { resolve } from "node:path";
 const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf-8");
 
-describe("V1.2 可售卖版产品体验静态回归", () => {
-  it("首页是 AI GEO 增长工作台，并展示 6 步闭环与继续下一步", () => {
-    const homeSource = readProjectFile("client/src/pages/Home.tsx");
-    expect(homeSource).toContain("AI GEO 增长工作台");
-    expect(homeSource).toContain("建档、诊断、内容、发布、监测、报告");
-    expect(homeSource).toContain("继续下一步");
-    expect(homeSource).toContain("6 步进度条");
-    expect(homeSource).toContain("核心指标");
-    expect(homeSource).toContain("当前风险提醒");
-    expect(homeSource).toContain("本轮试跑闭环已完成");
+describe("V1.0 可售卖版产品体验静态回归", () => {
+  it("首页展示今日概览、本周任务与核心数据区", () => {
+    const homeSource = readProjectFile("client/src/pages/Home.tsx") + readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
+    expect(homeSource).toContain("内容增长工作台");
+    expect(homeSource).toContain("本周内容任务");
+    expect(homeSource).toContain("开始生成本周文章");
+    expect(homeSource).toContain("暂时无法加载，请刷新重试");
+    expect(homeSource).not.toContain("V1.0 核心三步流程");
+    expect(homeSource).not.toContain("关键产物入口");
   });
 
-  it("侧边栏按 V1.2 主流程展示 7 个中文一级入口，并隐藏后台辅助能力", () => {
+  it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    for (const label of ["总览", "企业档案", "AI 诊断", "内容生成", "内容发布", "收录监测", "交付报告"]) {
+    for (const label of ["工作台", "我的信息", "内容诊断", "本周内容", "发布记录", "内容进展", "效果报告"]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
-    for (const forbidden of ["内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "平台发布", "报告中心"]) {
+    for (const forbidden of ["总览", "内容生成", "内容发布", "收录监测", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心"]) {
       expect(layoutSource).not.toContain(`label: "${forbidden}"`);
     }
   });
@@ -30,7 +29,15 @@ describe("V1.2 可售卖版产品体验静态回归", () => {
   it("主路由把六步客户路径接入 V1.2 页面，并保留旧路径兼容", () => {
     const appSource = readProjectFile("client/src/App.tsx");
     expect(appSource).toContain("AiDiagnosisFlowPage");
-    expect(appSource).toContain("ContentGenerationFlowPage");
+    expect(appSource).toContain("WeeklyContentPage");
+    expect(appSource).toContain('path="/articles"');
+    expect(appSource).toMatch(/path="\/articles"[\s\S]*Redirect to="\/weekly"/);
+    expect(appSource).toContain("ProgressPage");
+    expect(appSource).toContain("OnboardingPage");
+    expect(appSource).toContain('path="/weekly"');
+    expect(appSource).toContain('path="/progress"');
+    expect(appSource).toContain('path="/onboarding"');
+    expect(appSource).toContain("profileHasBrand");
     expect(appSource).toContain("ContentPublishingFlowPage");
     expect(appSource).toContain("InclusionMonitoringFlowPage");
     expect(appSource).toContain("DeliveryReportsFlowPage");
@@ -50,38 +57,50 @@ describe("V1.2 可售卖版产品体验静态回归", () => {
     expect(assetSource).toContain("<GeoStatusGuide");
   });
 
-  it("企业档案页呈现六类资料和单一主动作", () => {
+  it("企业档案页呈现 Section 结构与资料完整度", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    for (const text of ["企业档案", "企业基础资料", "产品服务资料", "客户案例", "竞品资料", "合规规则", "发布策略", "当前页面只保留一个主动作"]) {
+    for (const text of ["企业档案", "Section 1 · 基本身份", "Section 2 · 你的客户", "Section 3 · 有什么证明", "保存基本身份", "保存客户信息", "资料完整度"]) {
       expect(assetSource).toContain(text);
     }
-    expect(assetSource).toContain("资料完整度");
     expect(assetSource).toContain("资料不足时不得编造案例、数据、价格和效果承诺");
   });
 
-  it("AI 诊断页只展示客户问题、AI 回答、诊断结果、内容缺口和下一步建议", () => {
+  it("AI 诊断页客户化展示目标问题、诊断结果、评分、任务和下一步建议", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of ["客户问题", "AI 回答", "诊断结果", "内容缺口", "下一步建议"]) {
+    for (const text of ["内容诊断", "目标客户问题", "重新生成", "诊断结果", "内容缺口", "内容覆盖评分", "优化任务", "进入内容生产"]) {
       expect(flowSource).toContain(text);
     }
-    expect(flowSource).toContain("整理客户问题");
-    expect(flowSource).toContain("生成诊断结果");
-    expect(flowSource).toContain("进入内容生成");
-  });
-
-  it("内容生成页只展示三类推荐内容，并显示发布准入状态和阻断原因", () => {
-    const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of ["竞品对比文章", "产品能力说明文章", "行业选型 / FAQ 文章", "发布准入", "阻断原因", "允许发布", "暂不可发布", "待质检"]) {
-      expect(flowSource).toContain(text);
+    expect(flowSource).toContain("运行内容诊断");
+    expect(flowSource).toContain("建议标题");
+    expect(flowSource).toContain("核心论点");
+    for (const forbidden of ["问题文本 questionText", "AI 平台 aiPlatform", "原始回答 rawAnswer", "analysis_results"]) {
+      expect(flowSource).not.toContain(forbidden);
     }
   });
 
-  it("内容发布页只展示可发布、已发布和默认折叠的第三方平台素材说明", () => {
+  it("内容生产页客户化展示内容计划、选题、文章、质量检查和下一步动作", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of ["可发布内容", "已发布内容", "第三方平台素材", "当前只生成可复制素材", "不自动登录第三方平台"]) {
+    for (const text of ["内容生产计划", "本步骤用于根据 内容诊断结果和优化任务，制定本周内容计划", "保存内容计划", "生成本周内容选题", "内容重复风险", "进入发布记录"]) {
       expect(flowSource).toContain(text);
     }
-    expect(flowSource).toContain("<details");
+  });
+
+  it("发布记录页仅保留登记入口与列表，不出现平台授权配置字段", () => {
+    const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
+    for (const text of ["发布记录", "新建发布记录", "已发布记录列表", "选择文章", "选择平台（多选）", "保存链接", "createManualPublishRecord", "updateManualPublishRecord", "publishRecords"]) {
+      expect(flowSource).toContain(text);
+    }
+    for (const forbidden of ["连接发布平台", "可由交付人员配置", "风险边界", "支持方式", "appId", "appSecret", "authorizerAppId", "publishMode", "platform_authorization_configs"]) {
+      expect(flowSource).not.toContain(forbidden);
+    }
+  });
+
+  it("发布记录页用手动登记接口闭环，不接入真实自动发布", () => {
+    const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
+    for (const text of ["createManualPublishRecord", "updateManualPublishRecord", "publishRecords"]) {
+      expect(flowSource).toContain(text);
+    }
+    expect(flowSource).not.toContain("trpc.geo.articles.publish.useMutation");
   });
 
   it("收录监测页展示已发布内容监测卡片和有限样本风险", () => {
@@ -91,9 +110,18 @@ describe("V1.2 可售卖版产品体验静态回归", () => {
     }
   });
 
-  it("交付报告页只展示四类报告卡片并保留风险说明", () => {
+  it("交付报告页为面向客户的分区结构并保留合规小字", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of ["GEO 诊断报告", "内容生产报告", "发布监测报告", "复测优化报告", "风险说明", "只展示四类报告卡片", "不承诺保证收录、保证排名或保证被 AI 推荐"]) {
+    for (const text of [
+      "本轮交付摘要",
+      "内容诊断结果",
+      "优化任务清单",
+      "已生成内容",
+      "发布记录",
+      "下一步建议",
+      "不承诺保证收录、排名或 AI 推荐",
+      "暂无发布记录，请前往发布记录页登记",
+    ]) {
       expect(flowSource).toContain(text);
     }
   });

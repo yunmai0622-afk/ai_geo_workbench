@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `extensionApiKey` varchar(100);\nCREATE TABLE IF NOT EXISTS `publish_tasks` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `projectId` int NOT NULL,\n  `articleId` int NOT NULL,\n  `platform` varchar(50) NOT NULL,\n  `status` varchar(20) NOT NULL DEFAULT 'pending',\n  `articleTitle` text NOT NULL,\n  `articleContent` text NOT NULL,\n  `resultUrl` varchar(500),\n  `errorMessage` text,\n  `apiKey` varchar(100),\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `publish_tasks_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `extensionApiKey` varchar(100);\nCREATE TABLE IF NOT EXISTS `publish_tasks` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `projectId` int NOT NULL,\n  `articleId` int NOT NULL,\n  `platform` varchar(50) NOT NULL,\n  `status` varchar(20) NOT NULL DEFAULT 'pending',\n  `articleTitle` text NOT NULL,\n  `articleContent` text NOT NULL,\n  `resultUrl` varchar(500),\n  `errorMessage` text,\n  `apiKey` varchar(100),\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `publish_tasks_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2363
+}

@@ -13,7 +13,7 @@ describe("V1.2 外部只读 Demo 页面渲染", () => {
 
     expect(html).toContain("V1.2 外部只读 Demo");
     expect(html).toContain("海豚知道｜知识付费 SaaS / 企业 AI 经营系统");
-    expect(html).toContain("无需 Manus OAuth");
+    expect(html).toContain("无需登录");
     expect(html).toContain("仅样板数据");
 
     for (const moduleTitle of ["总览指挥舱", "企业资产", "AI 诊断", "内容生产", "平台发布", "收录监测", "报告中心"]) {

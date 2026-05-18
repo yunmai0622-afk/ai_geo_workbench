@@ -1,15 +1,22 @@
 import { TRPCError } from "@trpc/server";
-import { COOKIE_NAME } from "@shared/const";
-import { desc, eq } from "drizzle-orm";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { and, asc, desc, eq, inArray, like, not } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
+import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getDb } from "./db";
+import { getDb, upsertUser } from "./db";
+import { publishTasksRouter } from "./publishTasksRouter";
+
+/** 无真实平台原始回答时的占位 `ai_responses.rawAnswer` 前缀，可安全批量清理。 */
+const GEO_SYNTHETIC_AI_RESPONSE_PREFIX = "【系统自动】";
 import {
   aiResponses,
   analysisResults,
+  contentPlanItems,
+  contentPlans,
   contentTemplates,
   complianceRules,
   competitorProfiles,
@@ -56,10 +63,16 @@ import {
   evaluateAssetLibraryPrePublishCheck,
   generateGeoArticleDraft,
   generateGeoArticleTopics,
+  generateTargetQuestions as llmGenerateTargetSearchQuestions,
+  GEO_ARTICLE_MIN_PASS_SCORE,
+  parseOptimizationTaskCard,
+  resolveEnterpriseProfileForContent,
   scoreGeoArticleQuality,
+  withResolvedEnterpriseProfile,
   type ArticleStatus,
   type P12AssetLibraryContext,
 } from "./geoArticleLogic";
+import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import {
@@ -73,7 +86,6 @@ import {
   customerCaseTypes,
   platformAuthorizationStatuses,
   publishReviewModes,
-  sanitizePlatformAuthorizationInput,
   summarizeTextToStructuredSummary,
   validateCustomerCaseInput,
 } from "./assetLibrary";
@@ -125,6 +137,61 @@ const aiResponseInput = z.object({
   rawAnswer: z.string().min(1, "请输入 AI 原始回答"),
   checkedAt: z.string().min(1, "请输入检测时间"),
 });
+
+const contentPlanInput = z.object({
+  id: z.number().int().positive().optional(),
+  projectId: z.number().int().positive(),
+  planName: z.string().min(1, "请输入计划名称"),
+  weekStartDate: z.string().min(1, "请选择周期开始日期"),
+  weeklyArticleCount: z.number().int().min(1).max(20),
+  targetPlatforms: z.array(z.string().min(1)).min(1, "请选择目标发布平台"),
+  contentTypes: z.array(z.string().min(1)).min(1, "请选择内容类型"),
+  linkedOptimizationTaskIds: z.array(z.number().int().positive()).min(1, "请选择要绑定的优化任务"),
+  status: z.string().optional().default("已配置"),
+});
+
+const contentPlanItemInput = z.object({
+  projectId: z.number().int().positive(),
+  planId: z.number().int().positive(),
+  topicId: z.number().int().positive().optional().nullable(),
+  articleId: z.number().int().positive().optional().nullable(),
+  targetPlatform: z.string().min(1, "请选择目标平台"),
+  contentType: z.string().min(1, "请选择内容类型"),
+  status: z.string().optional().default("待生成"),
+  differentiationAngle: z.string().optional().nullable(),
+  duplicateRisk: z.string().optional().nullable(),
+});
+
+const manualPublishPlatforms = [
+  "自有内容站 / 企业官网 GEO 页面",
+  "微信公众号",
+  "知乎",
+  "百家号",
+  "头条号",
+  "小红书",
+  "搜狐号",
+  "网易号",
+  "CSDN / 掘金",
+] as const;
+
+const manualPublishStatuses = [
+  "pending_human_publish",
+  "published",
+  "publish_failed",
+  "manual_publish_needed",
+  "link_backfilled",
+] as const;
+
+const manualPublishRecordInput = z.object({
+  projectId: z.number().int().positive(),
+  articleId: z.number().int().positive(),
+  publishPlatform: z.enum(manualPublishPlatforms),
+  publishTitle: z.string().min(1, "请输入发布标题"),
+  publishUrl: z.string().optional().default(""),
+  publishedAt: z.string().min(1, "请选择发布时间"),
+  publishStatus: z.enum(manualPublishStatuses),
+  notes: z.string().optional().default(""),
+});
 const analysisManualReviewInput = z.object({
   id: z.number().int().positive(),
   mentionsEnterprise: z.boolean(),
@@ -174,27 +241,77 @@ const getProjectOrThrow = async (projectId: number) => {
 
 const getAssetLibraryContext = async (projectId: number): Promise<P12AssetLibraryContext> => {
   const db = await requireDb();
-  const [profiles, assetSources, cases, competitors, rules, styles, strategies] = await Promise.all([
+  const [profiles, assetSources, cases, competitors, styles] = await Promise.all([
     db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, projectId)).orderBy(desc(enterpriseGeoProfiles.updatedAt)).limit(1),
     db.select().from(geoAssetSources).where(eq(geoAssetSources.projectId, projectId)).orderBy(desc(geoAssetSources.updatedAt)),
     db.select().from(customerCases).where(eq(customerCases.projectId, projectId)).orderBy(desc(customerCases.updatedAt)),
     db.select().from(competitorProfiles).where(eq(competitorProfiles.projectId, projectId)).orderBy(desc(competitorProfiles.updatedAt)),
-    db.select().from(complianceRules).where(eq(complianceRules.projectId, projectId)).orderBy(desc(complianceRules.updatedAt)),
     db.select().from(contentStyleProfiles).where(eq(contentStyleProfiles.projectId, projectId)).orderBy(desc(contentStyleProfiles.updatedAt)),
-    db.select().from(publishStrategies).where(eq(publishStrategies.projectId, projectId)).orderBy(desc(publishStrategies.updatedAt)),
   ]);
-  return {
+  return withResolvedEnterpriseProfile({
     profile: profiles[0] ?? null,
     assetSources,
     customerCases: cases,
     competitorProfiles: competitors,
-    complianceRules: rules,
+    complianceRules: [],
     contentStyleProfiles: styles,
-    publishStrategies: strategies,
-  };
+    publishStrategies: [],
+  });
 };
 
 const normalizeQuestionText = (value: string) => value.trim();
+
+/** 保存 AI 原始回答后，将每条回答中的客户问题写入 questions（source=manual）；同一 projectId 下 questionText（trim 后）已存在则跳过 */
+async function syncManualQuestionsFromAiResponseImport(
+  db: Awaited<ReturnType<typeof requireDb>>,
+  rows: Array<{ projectId: number; questionText: string }>,
+) {
+  const byProject = new Map<number, string[]>();
+  for (const row of rows) {
+    const text = normalizeQuestionText(row.questionText);
+    if (!text) continue;
+    const list = byProject.get(row.projectId);
+    if (list) list.push(text);
+    else byProject.set(row.projectId, [text]);
+  }
+
+  for (const [projectId, texts] of Array.from(byProject.entries())) {
+    const existingRows = await db.select({ questionText: questions.questionText }).from(questions).where(eq(questions.projectId, projectId));
+    const existingSet = new Set(existingRows.map(r => normalizeQuestionText(r.questionText)));
+
+    const batchSeen = new Set<string>();
+    const toInsert: Array<{
+      projectId: number;
+      questionText: string;
+      questionType: "指定问题";
+      targetKeyword: null;
+      intentLevel: string;
+      businessValue: number;
+      source: "manual";
+      enabled: number;
+    }> = [];
+
+    for (const text of texts) {
+      if (existingSet.has(text) || batchSeen.has(text)) continue;
+      batchSeen.add(text);
+      existingSet.add(text);
+      toInsert.push({
+        projectId,
+        questionText: text,
+        questionType: "指定问题",
+        targetKeyword: null,
+        intentLevel: "高",
+        businessValue: 5,
+        source: "manual",
+        enabled: 1,
+      });
+    }
+
+    if (toInsert.length > 0) {
+      await db.insert(questions).values(toInsert);
+    }
+  }
+}
 
 async function insertSpecifiedQuestions(projectId: number, rows: ManualQuestionImportRow[], source: "manual" | "csv") {
   const db = await requireDb();
@@ -276,6 +393,45 @@ function parseLLMJson<T>(content: unknown): T {
   }
 }
 
+/** V12 目标客户问题在 `questions.targetKeyword` 中写入的 JSON：`{ intent, disadvantaged }`。 */
+function parseQuestionGeoMeta(targetKeyword: string | null | undefined): { intent: string; disadvantaged: boolean } {
+  const raw = typeof targetKeyword === "string" ? targetKeyword.trim() : "";
+  if (raw.startsWith("{")) {
+    try {
+      const j = JSON.parse(raw) as { intent?: unknown; disadvantaged?: unknown };
+      const intent = typeof j.intent === "string" ? j.intent.trim().slice(0, 32) : "";
+      return { intent, disadvantaged: j.disadvantaged === true };
+    } catch {
+      /* ignore */
+    }
+  }
+  return { intent: "", disadvantaged: false };
+}
+
+function buildEnterpriseInfoBlockForDiagnosis(
+  project: Awaited<ReturnType<typeof getProjectOrThrow>>,
+  profile: (typeof enterpriseGeoProfiles.$inferSelect) | undefined,
+): string {
+  const resolved = resolveEnterpriseProfileForContent(profile ?? null);
+  const painFromProfile = profile?.customerPains?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim());
+  const painStr = painFromProfile?.length ? painFromProfile.join("；") : resolved.customerPains.join("；") || "（档案未填，请结合行业常识推演）";
+  const compArr = profile?.competitors?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim()) ?? [];
+  const comps = compArr.length > 0 ? compArr.join("、") : project.competitorNames.join("、") || "（未填）";
+  return [
+    `企业名称：${project.enterpriseName}`,
+    `行业：${project.industry}`,
+    `官网：${project.website}`,
+    `地区：${project.region}`,
+    `品牌/定位摘要：${resolved.oneLiner || project.coreSellingPoints}`,
+    `核心产品：${resolved.productDesc || project.productIntro}`,
+    `目标客户：${resolved.targetCustomer || project.targetCustomers}`,
+    `核心卖点：${project.coreSellingPoints}`,
+    `主要竞品：${comps}`,
+    `客户核心痛点：${painStr}`,
+    `核心关键词：${project.coreKeywords.join("、")}`,
+  ].join("\n");
+}
+
 
 const nonEmptyString = z.string().trim().min(1);
 const optionalText = z.string().optional().default("");
@@ -308,6 +464,18 @@ const enterpriseProfileInput = z.object({
   priceExplanation: optionalText,
   salesTalkTracks: optionalText,
   commonObjections: optionalText,
+  /** 与 `enterprise_geo_profiles` 列对齐：含旧版 NOT NULL JSON 与 V2 扩展列（见 drizzle/schema.ts `enterpriseGeoProfiles`） */
+  brandName: optionalText,
+  industryTag: optionalText,
+  productDesc: optionalText,
+  mainChannel: optionalText,
+  targetCustomer: optionalText,
+  customerPains: z.array(z.string()).optional(),
+  competitors: z.array(z.string()).optional(),
+  hasCases: z.boolean().optional(),
+  oneLiner: optionalText,
+  keyPoints: z.array(z.string()).optional(),
+  keywords: z.array(z.string()).optional(),
 });
 
 const assetSourceBaseInput = z.object({
@@ -399,7 +567,7 @@ const publishStrategyInput = z.object({
   strategyName: nonEmptyString,
   reviewMode: z.enum(publishReviewModes).default("全人工审核"),
   dailyLimit: z.number().int().positive().nullable().optional(),
-  minQualityScore: z.number().int().min(0).max(100).default(80),
+  minQualityScore: z.number().int().min(0).max(100).default(GEO_ARTICLE_MIN_PASS_SCORE),
   preferredPlatforms: z.array(z.string()).default([]),
   bannedPlatforms: z.array(z.string()).default([]),
   platformNotes: optionalText,
@@ -482,12 +650,13 @@ const geoAssetRouter = router({
     await getProjectOrThrow(input.projectId);
     const completionScore = calculateProfileCompletionScore(input);
     const existing = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
-    const values = { ...input, completionScore };
+    const raw = { ...input, completionScore } as Record<string, unknown>;
+    const values = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) as typeof raw;
     if (existing[0]) {
       await db.update(enterpriseGeoProfiles).set(values).where(eq(enterpriseGeoProfiles.id, existing[0].id));
       return { success: true, id: existing[0].id, completionScore } as const;
     }
-    const inserted = await db.insert(enterpriseGeoProfiles).values(values).$returningId();
+    const inserted = await db.insert(enterpriseGeoProfiles).values(values as never).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0, completionScore } as const;
   }),
   addTextSource: protectedProcedure.input(assetTextInput).mutation(async ({ input }) => {
@@ -579,18 +748,12 @@ const geoAssetRouter = router({
     await db.update(competitorProfiles).set({ ...values, canReference: booleanToInt(values.canReference) }).where(eq(competitorProfiles.id, id));
     return { success: true, id } as const;
   }),
-  createComplianceRule: protectedProcedure.input(complianceRuleInput).mutation(async ({ input }) => {
-    const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
-    const inserted = await db.insert(complianceRules).values({ ...input, enabled: booleanToInt(input.enabled) }).$returningId();
-    return { success: true, id: inserted[0]?.id ?? 0 } as const;
+  /** 合规规则 / 发布策略 / 平台授权 的客户写入入口已关闭，统一由 `server/systemConfig.ts` 与只读历史表承载。 */
+  createComplianceRule: protectedProcedure.input(complianceRuleInput).mutation(() => {
+    throw new TRPCError({ code: "FORBIDDEN", message: "合规规则已迁移为系统统一配置，此入口已关闭。" });
   }),
-  updateComplianceRule: protectedProcedure.input(complianceRuleInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
-    const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
-    const { id, ...values } = input;
-    await db.update(complianceRules).set({ ...values, enabled: booleanToInt(values.enabled) }).where(eq(complianceRules.id, id));
-    return { success: true, id } as const;
+  updateComplianceRule: protectedProcedure.input(complianceRuleInput.extend({ id: z.number().int().positive() })).mutation(() => {
+    throw new TRPCError({ code: "FORBIDDEN", message: "合规规则已迁移为系统统一配置，此入口已关闭。" });
   }),
   createStyleProfile: protectedProcedure.input(contentStyleInput).mutation(async ({ input }) => {
     const db = await requireDb();
@@ -598,60 +761,85 @@ const geoAssetRouter = router({
     const inserted = await db.insert(contentStyleProfiles).values({ ...input, enabled: booleanToInt(input.enabled) }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
   }),
-  createPublishStrategy: protectedProcedure.input(publishStrategyInput).mutation(async ({ input }) => {
-    const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
-    const inserted = await db.insert(publishStrategies).values({ ...input, dailyLimit: input.dailyLimit ?? null, enabled: booleanToInt(input.enabled) }).$returningId();
-    return { success: true, id: inserted[0]?.id ?? 0 } as const;
+  createPublishStrategy: protectedProcedure.input(publishStrategyInput).mutation(() => {
+    throw new TRPCError({ code: "FORBIDDEN", message: "发布策略已迁移为系统统一配置，此入口已关闭。" });
   }),
-  updatePublishStrategy: protectedProcedure.input(publishStrategyInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
-    const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
-    const { id, ...values } = input;
-    await db.update(publishStrategies).set({ ...values, dailyLimit: values.dailyLimit ?? null, enabled: booleanToInt(values.enabled) }).where(eq(publishStrategies.id, id));
-    return { success: true, id } as const;
+  updatePublishStrategy: protectedProcedure.input(publishStrategyInput.extend({ id: z.number().int().positive() })).mutation(() => {
+    throw new TRPCError({ code: "FORBIDDEN", message: "发布策略已迁移为系统统一配置，此入口已关闭。" });
   }),
-  createPlatformAuthorization: protectedProcedure.input(platformAuthorizationInput).mutation(async ({ input }) => {
+  createPlatformAuthorization: protectedProcedure.input(platformAuthorizationInput).mutation(() => {
+    throw new TRPCError({ code: "FORBIDDEN", message: "第三方平台授权已不在企业档案维护，此入口已关闭。" });
+  }),
+  updatePlatformAuthorization: protectedProcedure.input(platformAuthorizationInput.extend({ id: z.number().int().positive() })).mutation(() => {
+    throw new TRPCError({ code: "FORBIDDEN", message: "第三方平台授权已不在企业档案维护，此入口已关闭。" });
+  }),
+  generateProfileMarketingCopy: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
     const db = await requireDb();
     await getProjectOrThrow(input.projectId);
-    let safeInput: ReturnType<typeof sanitizePlatformAuthorizationInput>;
-    try {
-      safeInput = sanitizePlatformAuthorizationInput(input);
-    } catch (error) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "平台授权配置不安全" });
+    const rows = await db
+      .select()
+      .from(enterpriseGeoProfiles)
+      .where(eq(enterpriseGeoProfiles.projectId, input.projectId))
+      .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+      .limit(1);
+    const p = rows[0];
+    if (!p) throw new TRPCError({ code: "BAD_REQUEST", message: "请先保存企业档案。" });
+    const brandName = String(p.brandName ?? p.enterpriseName ?? "").trim();
+    const industryTag = String(p.industryTag ?? p.industry ?? "").trim();
+    const productDesc = String(p.productDesc ?? p.productServiceIntro ?? p.productIntro ?? "").trim();
+    const targetCustomer = String(p.targetCustomer ?? p.targetCustomers ?? "").trim();
+    const painsRaw: unknown = p.customerPains;
+    let pains: string[] = [];
+    if (Array.isArray(painsRaw)) pains = painsRaw.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim());
+    else if (typeof painsRaw === "string" && painsRaw.trim()) {
+      try {
+        const j = JSON.parse(painsRaw) as unknown;
+        if (Array.isArray(j)) pains = j.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim());
+      } catch {
+        /* ignore */
+      }
     }
-    const inserted = await db.insert(platformAuthorizationConfigs).values({
-      projectId: input.projectId,
-      platformName: input.platformName,
-      accountAlias: input.accountAlias,
-      authorizationStatus: input.authorizationStatus,
-      credentialStorageMode: safeInput.credentialStorageMode,
-      secureCredentialRef: input.secureCredentialRef,
-      authorizationNotes: input.authorizationNotes,
-      authorizedAt: input.authorizationStatus === "已授权" ? new Date() : null,
-    }).$returningId();
-    return { success: true, id: inserted[0]?.id ?? 0 } as const;
-  }),
-  updatePlatformAuthorization: protectedProcedure.input(platformAuthorizationInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
-    const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
-    let safeInput: ReturnType<typeof sanitizePlatformAuthorizationInput>;
-    try {
-      safeInput = sanitizePlatformAuthorizationInput(input);
-    } catch (error) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "平台授权配置不安全" });
+    if (!brandName || !industryTag || !productDesc || !targetCustomer || pains.length === 0) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成「基本身份」与「你的客户」必填项并保存。" });
     }
-    const { id } = input;
-    await db.update(platformAuthorizationConfigs).set({
-      platformName: input.platformName,
-      accountAlias: input.accountAlias,
-      authorizationStatus: input.authorizationStatus,
-      credentialStorageMode: safeInput.credentialStorageMode,
-      secureCredentialRef: input.secureCredentialRef,
-      authorizationNotes: input.authorizationNotes,
-      authorizedAt: input.authorizationStatus === "已授权" ? new Date() : null,
-    }).where(eq(platformAuthorizationConfigs.id, id));
-    return { success: true, id } as const;
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: "你是 B2B 企业内容与市场顾问。只输出符合 JSON Schema 的中文结果；卖点要具体可验证倾向，关键词用于 GEO 内容检索场景。" },
+        {
+          role: "user",
+          content: `根据以下信息生成：1）一句话介绍 oneLiner（不超过 60 字）；2）核心卖点 keyPoints（3-8 条，每条不超过 24 字）；3）核心关键词 keywords（5-12 个词或短语，每条不超过 12 字）。\n\n企业/品牌：${brandName}\n行业方向：${industryTag}\n产品/服务：${productDesc}\n目标客户：${targetCustomer}\n客户痛点：${pains.join("、")}`,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "profile_marketing_snippets",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              oneLiner: { type: "string" },
+              keyPoints: {
+                type: "array",
+                minItems: 3,
+                maxItems: 8,
+                items: { type: "string" },
+              },
+              keywords: {
+                type: "array",
+                minItems: 5,
+                maxItems: 12,
+                items: { type: "string" },
+              },
+            },
+            required: ["oneLiner", "keyPoints", "keywords"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+    const parsed = parseLLMJson<{ oneLiner: string; keyPoints: string[]; keywords: string[] }>(response.choices[0]?.message.content);
+    return { oneLiner: parsed.oneLiner.trim(), keyPoints: parsed.keyPoints.map(s => s.trim()).filter(Boolean), keywords: parsed.keywords.map(s => s.trim()).filter(Boolean) } as const;
   }),
   evidencePack: protectedProcedure.input(z.object({ projectId: z.number().int().positive(), assetIds: z.array(z.number().int().positive()).min(1) })).query(async ({ input }) => {
     const db = await requireDb();
@@ -750,6 +938,51 @@ const geoRouter = router({
     })).mutation(async ({ input }) => {
       return insertSpecifiedQuestions(input.projectId, input.rows, "csv");
     }),
+    /** 基于企业档案生成 5–10 条 AI 检索型目标问题，写入 questions（覆盖同项目历史 ai_generated 行）。 */
+    generateTargetQuestions: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb();
+      const project = await getProjectOrThrow(input.projectId);
+      const profileRows = await db
+        .select()
+        .from(enterpriseGeoProfiles)
+        .where(eq(enterpriseGeoProfiles.projectId, input.projectId))
+        .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+        .limit(1);
+      const ep = profileRows[0];
+      const resolved = resolveEnterpriseProfileForContent(ep ?? null);
+      const painFromProfile = ep?.customerPains?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim());
+      const customerPains = painFromProfile?.length ? painFromProfile.join("；") : resolved.customerPains.join("；") || "（档案未填客户痛点，请结合行业常识推演）";
+      const compArr = ep?.competitors?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim()) ?? [];
+      const competitors = compArr.length > 0 ? compArr.join("、") : project.competitorNames.join("、") || "（未填）";
+      const keyPointsFromEp = ep?.keyPoints?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim()).join("；");
+      const keyPointsStr = keyPointsFromEp && keyPointsFromEp.length > 0
+        ? keyPointsFromEp
+        : (resolved.keyPoints.join("；") || project.coreSellingPoints);
+      const generated = await llmGenerateTargetSearchQuestions({
+        brandName: (ep?.brandName?.trim() || resolved.brandName || project.enterpriseName).trim(),
+        industryTag: (ep?.industryTag?.trim() || project.industry).trim(),
+        productDesc: (ep?.productDesc?.trim() || resolved.productDesc || project.productIntro).trim(),
+        targetCustomer: (ep?.targetCustomer?.trim() || resolved.targetCustomer || project.targetCustomers).trim(),
+        customerPains,
+        competitors,
+        keyPoints: keyPointsStr,
+      });
+      await db.delete(questions).where(and(eq(questions.projectId, input.projectId), eq(questions.source, "ai_generated")));
+      await db.insert(questions).values(
+        generated.map(item => ({
+          projectId: input.projectId,
+          questionText: item.questionText,
+          questionType: "指定问题" as const,
+          targetKeyword: JSON.stringify({ intent: item.intent, disadvantaged: item.disadvantaged }),
+          intentLevel: "高",
+          businessValue: item.disadvantaged ? 9 : 7,
+          source: "ai_generated" as const,
+          enabled: 1,
+        })),
+      );
+      await updateProjectStatus(input.projectId, "questions_ready");
+      return { success: true, count: generated.length } as const;
+    }),
     generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
       const project = await getProjectOrThrow(input.projectId);
@@ -809,12 +1042,17 @@ const geoRouter = router({
     create: protectedProcedure.input(aiResponseInput).mutation(async ({ input }) => {
       const db = await requireDb();
       await db.insert(aiResponses).values({ ...input, questionId: input.questionId ?? null, checkedAt: new Date(input.checkedAt) });
+      await syncManualQuestionsFromAiResponseImport(db, [{ projectId: input.projectId, questionText: input.questionText }]);
       await updateProjectStatus(input.projectId, "responses_imported");
       return { success: true } as const;
     }),
     importCsvRows: protectedProcedure.input(z.object({ rows: z.array(aiResponseInput).min(1) })).mutation(async ({ input }) => {
       const db = await requireDb();
       await db.insert(aiResponses).values(input.rows.map(row => ({ ...row, questionId: row.questionId ?? null, checkedAt: new Date(row.checkedAt) })));
+      await syncManualQuestionsFromAiResponseImport(
+        db,
+        input.rows.map(row => ({ projectId: row.projectId, questionText: row.questionText })),
+      );
       const projectIds = Array.from(new Set(input.rows.map(row => row.projectId)));
       await Promise.all(projectIds.map(projectId => updateProjectStatus(projectId, "responses_imported")));
       return { success: true, count: input.rows.length } as const;
@@ -841,131 +1079,242 @@ const geoRouter = router({
     run: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
       const project = await getProjectOrThrow(input.projectId);
-      const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, input.projectId)).orderBy(desc(aiResponses.createdAt));
-      if (responses.length === 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "请先录入或导入 AI 回答，再进行语义分析" });
-      }
+      const profileRows = await db
+        .select()
+        .from(enterpriseGeoProfiles)
+        .where(eq(enterpriseGeoProfiles.projectId, input.projectId))
+        .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+        .limit(1);
+      const profileRow = profileRows[0];
+      const enterpriseInfo = buildEnterpriseInfoBlockForDiagnosis(project, profileRow);
 
-      const rows = [];
-      for (const item of responses) {
-        const llm = await invokeLLM({
-          messages: [
-            { role: "system", content: "你是严谨的 GEO / AI Visibility 语义分析师。必须基于 AI 原始回答做语义判断，不得只做关键词匹配，不得编造原文不存在的信息。请只输出 JSON。" },
-            {
-              role: "user",
-              content: `企业信息：\n企业名称：${project.enterpriseName}\n行业：${project.industry}\n核心卖点：${project.coreSellingPoints}\n目标客户：${project.targetCustomers}\n竞品：${project.competitorNames.join("、")}\n\n问题：${item.questionText}\nAI 平台：${item.aiPlatform}\nAI 原始回答：${item.rawAnswer}\n\n请逐题判断该回答是否提到和推荐本企业、是否提到竞品、被推荐竞品、本企业是否胜出、推荐理由、未推荐原因、是否存在错误认知、内容缺口和优化建议。要求：1）所有结论必须引用或概括原回答证据；2）contentGap 必须针对该问题和原回答，不得复用“缺少案例/对比/FAQ”等固定模板；3）optimizationSuggestion 必须给出可执行页面或内容动作；4）如果本企业已被推荐，仍需说明推荐依据和残余缺口；5）不要编造客户案例、排名、价格或第三方数据。`,
-            },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "geo_analysis_result",
-              strict: true,
-              schema: {
-                type: "object",
-                properties: {
-                  mentionsEnterprise: { type: "boolean" },
-                  recommendsEnterprise: { type: "boolean" },
-                  mentionsCompetitors: { type: "boolean" },
-                  recommendedCompetitors: { type: "array", items: { type: "string" } },
-                  enterpriseWins: { type: "boolean" },
-                  recommendationReason: { type: "string" },
-                  notRecommendedReason: { type: "string" },
-                  hasMisconception: { type: "boolean" },
-                  contentGap: { type: "string" },
-                  optimizationSuggestion: { type: "string" },
-                  semanticSummary: { type: "string" },
-                  evidenceExcerpt: { type: "string" },
-                  competitorGap: { type: "string" },
-                  decisionBasis: { type: "string" },
-                  recommendedActionType: { type: "string", enum: ["补官网事实", "补产品说明", "补竞品对比", "补 FAQ", "补案例证据", "补社媒内容"] },
-                },
-                required: [
-                  "mentionsEnterprise",
-                  "recommendsEnterprise",
-                  "mentionsCompetitors",
-                  "recommendedCompetitors",
-                  "enterpriseWins",
-                  "recommendationReason",
-                  "notRecommendedReason",
-                  "hasMisconception",
-                  "contentGap",
-                  "optimizationSuggestion",
-                  "semanticSummary",
-                  "evidenceExcerpt",
-                  "competitorGap",
-                  "decisionBasis",
-                  "recommendedActionType",
-                ],
-                additionalProperties: false,
-              },
-            },
-          },
-        });
-        const parsed = parseLLMJson<{
-          mentionsEnterprise: boolean;
-          recommendsEnterprise: boolean;
-          mentionsCompetitors: boolean;
-          recommendedCompetitors: string[];
-          enterpriseWins: boolean;
-          recommendationReason: string;
-          notRecommendedReason: string;
-          hasMisconception: boolean;
-          contentGap: string;
-          optimizationSuggestion: string;
-          semanticSummary: string;
-          evidenceExcerpt: string;
-          competitorGap: string;
-          decisionBasis: string;
-          recommendedActionType: "补官网事实" | "补产品说明" | "补竞品对比" | "补 FAQ" | "补案例证据" | "补社媒内容";
-        }>(llm.choices[0]?.message.content);
-        const diagnosisMeta = deriveQuestionDiagnosisMeta({
-          questionText: item.questionText,
-          recommendedActionType: parsed.recommendedActionType,
-          contentGap: parsed.contentGap,
-          optimizationSuggestion: parsed.optimizationSuggestion,
-        });
-        rows.push({
-          projectId: input.projectId,
-          aiResponseId: item.id,
-          mentionsEnterprise: parsed.mentionsEnterprise ? 1 : 0,
-          recommendsEnterprise: parsed.recommendsEnterprise ? 1 : 0,
-          mentionsCompetitors: parsed.mentionsCompetitors ? 1 : 0,
-          recommendedCompetitors: parsed.recommendedCompetitors,
-          enterpriseWins: parsed.enterpriseWins ? 1 : 0,
-          recommendationReason: parsed.recommendationReason,
-          notRecommendedReason: parsed.notRecommendedReason,
-          hasMisconception: parsed.hasMisconception ? 1 : 0,
-          contentGap: parsed.contentGap,
-          optimizationSuggestion: parsed.optimizationSuggestion,
-          rawJson: {
-            ...parsed,
-            questionType: diagnosisMeta.questionType,
-            issueType: diagnosisMeta.questionType,
-            userIntent: diagnosisMeta.userIntent,
-            questionText: item.questionText,
-            aiPlatform: item.aiPlatform,
-            questionDiagnosis: {
-              questionText: item.questionText,
-              aiPlatform: item.aiPlatform,
-              questionType: diagnosisMeta.questionType,
-              issueType: diagnosisMeta.questionType,
-              userIntent: diagnosisMeta.userIntent,
-              semanticSummary: parsed.semanticSummary,
-              evidenceExcerpt: parsed.evidenceExcerpt,
-              competitorGap: parsed.competitorGap,
-              decisionBasis: parsed.decisionBasis,
-              recommendedActionType: parsed.recommendedActionType,
-            },
-          },
-          manualOverrideJson: null,
-          manuallyReviewed: 0,
-          reviewedAt: null,
-          reviewNote: null,
+      const qrows = await db.select().from(questions).where(eq(questions.projectId, input.projectId));
+      const diagnosisQuestions = qrows
+        .filter(q => q.enabled === 1 && q.questionType === "指定问题")
+        .sort((a, b) => (b.businessValue ?? 0) - (a.businessValue ?? 0))
+        .slice(0, 10);
+      if (diagnosisQuestions.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "请先在 AI 诊断页点击「重新生成」，或添加「指定问题」类型问题，再运行诊断。",
         });
       }
 
       await db.delete(analysisResults).where(eq(analysisResults.projectId, input.projectId));
+      await db.delete(aiResponses).where(
+        and(eq(aiResponses.projectId, input.projectId), like(aiResponses.rawAnswer, `${GEO_SYNTHETIC_AI_RESPONSE_PREFIX}%`)),
+      );
+
+        const diagnosisSystemPrompt = `你是一位GEO内容策略专家，专注于分析企业内容如何更好地回答目标客户的真实问题。
+你的任务是推演：当用户在ChatGPT、Perplexity等AI工具中输入这个问题时，该企业现有的内容能否被AI引用来回答这个问题。
+
+分析框架：
+1. 这个问题的核心是什么痛点或需求？
+2. AI回答这个问题时会引用什么类型的内容？（案例/数据/方法论/工具说明）
+3. 该企业目前是否有公开内容能回答这个问题？
+4. 内容缺口是什么？需要补充什么类型的内容才能被AI引用？
+5. 建议创作的内容方向（不是竞品对比，而是帮客户解决这个问题的内容）
+
+重要约束：
+- 不要以「竞品对比」作为内容建议方向
+- 内容建议应该是「帮客户解决问题」的视角，不是「证明自己比竞品强」的视角
+- 建议标题应该是客户会主动搜索的标题，不是品牌宣传标题
+- 「是否易提及」和「是否易推荐」必须独立判断，不要两个布尔值长期雷同（在合理解释前提下）`;
+
+        const platformItemSchema = {
+          type: "string",
+          enum: ["知乎", "小红书", "百家号", "头条号", "微信公众号", "官网"],
+        } as const;
+
+        const rows = [];
+        for (const q of diagnosisQuestions) {
+          const stub = `${GEO_SYNTHETIC_AI_RESPONSE_PREFIX}未采集真实 AI 平台原始回答；请仅依据企业档案与目标检索意图做 GEO 缺口推演。`;
+          const inserted = await db.insert(aiResponses).values({
+            projectId: input.projectId,
+            questionId: q.id,
+            questionText: q.questionText,
+            aiPlatform: "其他",
+            rawAnswer: stub,
+            checkedAt: new Date(),
+          }).$returningId();
+          const responseId = inserted[0]?.id ?? 0;
+          if (!responseId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "写入诊断占位记录失败" });
+
+          const { intent: questionIntent, disadvantaged: questionDisadvantaged } = parseQuestionGeoMeta(q.targetKeyword);
+          const disadvantagedLabel = questionDisadvantaged ? "是" : "否";
+          const intentLabel = questionIntent || "（未标注，请结合问题文本推断）";
+
+          const llm = await invokeLLM({
+            max_tokens: 4096,
+            timeout_ms: 120000,
+            messages: [
+              { role: "system", content: diagnosisSystemPrompt },
+              {
+                role: "user",
+                content: [
+                  "企业信息：",
+                  enterpriseInfo,
+                  "",
+                  `客户问题：${q.questionText}`,
+                  `用户意图：${intentLabel}`,
+                  `该问题是否为内容覆盖薄弱场景：${disadvantagedLabel}`,
+                  "",
+                  "若「内容覆盖薄弱场景」为「是」，easyToRecommend 原则上应为 false，除非有明确公开证据表明内容仍易被引用来回答该问题。",
+                  "",
+                  "请分析并输出以下字段（以 JSON 对象给出，字段名与 Schema 一致）：",
+                  "- easyToMention：该企业是否容易在AI回答中被提及（布尔）",
+                  "- easyToRecommend：该企业内容是否容易被AI引用来回答这个问题（布尔）",
+                  "- contentGap：当前内容缺口，具体指出缺什么类型的内容（2-3句话）",
+                  "- suggestedTitle：建议创作的内容标题（客户会主动搜索的标题，不含品牌名，不是竞品对比）",
+                  "- coreTheses：支撑该标题的2条核心论点，从客户收益角度表达（字符串数组，长度2）",
+                  "- recommendedPlatforms：推荐发布平台（从知乎/小红书/百家号/头条号/微信公众号/官网中选1-2个）",
+                  "- strongestCompetitor：在这个问题场景下，哪类内容/方案最容易被AI优先引用（不一定是具体品牌；一句话）",
+                ].join("\n"),
+              },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "geo_analysis_result_v12",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    easyToMention: { type: "boolean" },
+                    easyToRecommend: { type: "boolean" },
+                    contentGap: { type: "string" },
+                    suggestedTitle: { type: "string" },
+                    coreTheses: { type: "array", minItems: 2, maxItems: 2, items: { type: "string" } },
+                    recommendedPlatforms: { type: "array", minItems: 1, maxItems: 2, items: platformItemSchema },
+                    strongestCompetitor: { type: "string" },
+                  },
+                  required: [
+                    "easyToMention",
+                    "easyToRecommend",
+                    "contentGap",
+                    "suggestedTitle",
+                    "coreTheses",
+                    "recommendedPlatforms",
+                    "strongestCompetitor",
+                  ],
+                  additionalProperties: false,
+                },
+              },
+            },
+          });
+          const parsed = parseLLMJson<{
+            easyToMention: boolean;
+            easyToRecommend: boolean;
+            contentGap: string;
+            suggestedTitle: string;
+            coreTheses: string[];
+            recommendedPlatforms: Array<"知乎" | "小红书" | "百家号" | "头条号" | "微信公众号" | "官网">;
+            strongestCompetitor: string;
+          }>(llm.choices[0]?.message.content);
+
+          const recommendedActionType = "补案例证据" as const;
+          const strong = typeof parsed.strongestCompetitor === "string" ? parsed.strongestCompetitor.trim() : "";
+          const suggestedTitle = typeof parsed.suggestedTitle === "string" ? parsed.suggestedTitle.trim() : "";
+          const theses = Array.isArray(parsed.coreTheses) ? parsed.coreTheses.map(x => String(x).trim()).filter(Boolean) : [];
+          const t1 = theses[0] ?? "";
+          const t2 = theses[1] ?? "";
+          const platforms = Array.isArray(parsed.recommendedPlatforms) ? parsed.recommendedPlatforms.map(String) : [];
+          const optSuggestionLines = [
+            `建议标题：《${suggestedTitle || "（待补充标题）"}》`,
+            `核心论点：①${t1 || "—"} ②${t2 || "—"}`,
+            `推荐发布平台：${platforms.join("、") || "官网"}`,
+          ];
+          const optimizationSuggestion = optSuggestionLines.join("\n");
+          const mentionsCompetitors = strong.length > 0;
+          const recommendedCompetitors = strong ? [strong.slice(0, 120)] : [];
+          const recommendationReason = parsed.easyToMention
+            ? "推演：在典型中文 AI 对话语境下，企业有一定概率被用户问题顺带提及。"
+            : "推演：在公开语料与品牌认知有限时，模型较难主动关联到本企业。";
+          const notRecommendedReason = parsed.easyToRecommend
+            ? ""
+            : "推演：在缺乏可引用结构化内容或竞品声量更高时，模型更倾向不推荐或仅泛化回答。";
+          const semanticSummary = [suggestedTitle, t1, t2].filter(Boolean).join("；");
+          const evidenceExcerpt = [t1, t2].filter(Boolean).join("；");
+          const competitorGap = strong;
+          const decisionBasis = `${parsed.contentGap ?? ""}`.slice(0, 500);
+
+          const diagnosisMeta = deriveQuestionDiagnosisMeta({
+            questionText: q.questionText,
+            recommendedActionType,
+            contentGap: parsed.contentGap,
+            optimizationSuggestion,
+          });
+          const userIntentDisplay = questionIntent || diagnosisMeta.userIntent;
+
+          const legacyParsed = {
+            mentionsEnterprise: parsed.easyToMention,
+            recommendsEnterprise: parsed.easyToRecommend,
+            mentionsCompetitors,
+            recommendedCompetitors,
+            enterpriseWins: parsed.easyToRecommend,
+            recommendationReason,
+            notRecommendedReason,
+            hasMisconception: false,
+            contentGap: parsed.contentGap,
+            optimizationSuggestion,
+            semanticSummary,
+            evidenceExcerpt,
+            competitorGap,
+            decisionBasis,
+            recommendedActionType,
+          };
+
+          rows.push({
+            projectId: input.projectId,
+            aiResponseId: responseId,
+            mentionsEnterprise: parsed.easyToMention ? 1 : 0,
+            recommendsEnterprise: parsed.easyToRecommend ? 1 : 0,
+            mentionsCompetitors: mentionsCompetitors ? 1 : 0,
+            recommendedCompetitors,
+            enterpriseWins: parsed.easyToRecommend ? 1 : 0,
+            recommendationReason,
+            notRecommendedReason,
+            hasMisconception: 0,
+            contentGap: parsed.contentGap,
+            optimizationSuggestion,
+            rawJson: {
+              ...legacyParsed,
+              syntheticDiagnosis: true,
+              questionType: diagnosisMeta.questionType,
+              issueType: diagnosisMeta.questionType,
+              userIntent: userIntentDisplay,
+              questionIntent,
+              questionDisadvantaged: questionDisadvantaged,
+              questionText: q.questionText,
+              aiPlatform: "其他",
+              suggestedTitle,
+              coreTheses: [t1, t2].filter(Boolean),
+              recommendedPlatforms: platforms,
+              strongestCompetitor: strong,
+              questionDiagnosis: {
+                questionText: q.questionText,
+                aiPlatform: "其他",
+                questionType: diagnosisMeta.questionType,
+                issueType: diagnosisMeta.questionType,
+                userIntent: userIntentDisplay,
+                semanticSummary,
+                evidenceExcerpt: "",
+                competitorGap,
+                decisionBasis,
+                recommendedActionType,
+                suggestedTitle,
+                coreTheses: [t1, t2].filter(Boolean),
+                recommendedPlatforms: platforms,
+                strongestCompetitor: strong,
+              },
+            },
+            manualOverrideJson: null,
+            manuallyReviewed: 0,
+            reviewedAt: null,
+            reviewNote: null,
+          });
+        }
+
       await db.insert(analysisResults).values(rows);
       await updateProjectStatus(input.projectId, "analysis_done");
       return { success: true, count: rows.length } as const;
@@ -1009,8 +1358,55 @@ const geoRouter = router({
     latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb();
       if (!input.projectId) return null;
-      const result = await db.select().from(geoScores).where(eq(geoScores.projectId, input.projectId)).orderBy(desc(geoScores.createdAt)).limit(1);
-      return result[0] ?? null;
+      // Fix: 问题4 — 同一项目多条历史评分时，按创建时间再按 id 取最新一条，避免偶发排序不稳定读到旧分。
+      // 修复1：多取几行打日志，确认 where projectId 生效且首行即最新（若首行 projectId ≠ 请求 id 说明过滤异常）。
+      const candidates = await db
+        .select()
+        .from(geoScores)
+        .where(eq(geoScores.projectId, input.projectId))
+        .orderBy(desc(geoScores.createdAt), desc(geoScores.id))
+        .limit(3);
+      const row = candidates[0] ?? null;
+      const mismatched = candidates.filter(r => r.projectId !== input.projectId);
+      if (mismatched.length > 0) {
+        console.error("[geo.scores.latest] projectId 过滤异常：返回行与请求不一致", {
+          requestedProjectId: input.projectId,
+          rows: mismatched.map(r => ({ id: r.id, projectId: r.projectId })),
+        });
+      }
+      console.info("[geo.scores.latest]", {
+        requestedProjectId: input.projectId,
+        returned: row
+          ? {
+              id: row.id,
+              projectId: row.projectId,
+              createdAt: row.createdAt,
+              totalScore: row.totalScore,
+            }
+          : null,
+        sameProjectTop3: candidates.map(r => ({
+          id: r.id,
+          projectId: r.projectId,
+          createdAt: r.createdAt,
+          totalScore: r.totalScore,
+        })),
+      });
+      return row;
+    }),
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+      const db = await requireDb();
+      if (!input.projectId) return [];
+      return db
+        .select({
+          id: geoScores.id,
+          totalScore: geoScores.totalScore,
+          aiVisibilityScore: geoScores.aiVisibilityScore,
+          aiRecommendationScore: geoScores.aiRecommendationScore,
+          createdAt: geoScores.createdAt,
+        })
+        .from(geoScores)
+        .where(eq(geoScores.projectId, input.projectId))
+        .orderBy(asc(geoScores.createdAt));
     }),
     calculate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
@@ -1039,7 +1435,7 @@ const geoRouter = router({
       if (analyses.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析，再生成优化任务" });
       }
-      const generated = generateOptimizationTasks(project, resolveEffectiveAnalysisResults(analyses));
+      const generated = await generateOptimizationTasks(project, resolveEffectiveAnalysisResults(analyses));
       await db.delete(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
       await db.insert(optimizationTasks).values(generated.map(task => ({ ...task, projectId: input.projectId })));
       await updateProjectStatus(input.projectId, "tasks_ready");
@@ -1127,6 +1523,125 @@ const geoRouter = router({
     }),
   }),
 
+  contentPlans: router({
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+      const db = await requireDb();
+      if (!input.projectId) return [];
+      await getProjectOrThrow(input.projectId);
+      return db.select().from(contentPlans).where(eq(contentPlans.projectId, input.projectId)).orderBy(desc(contentPlans.createdAt));
+    }),
+    latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+      const db = await requireDb();
+      if (!input.projectId) {
+        return {
+          plan: null,
+          items: [],
+          planName: null,
+          startDate: null,
+          targetPlatforms: [] as string[],
+          contentTypes: [] as string[],
+          weeklyArticleCount: null,
+          status: null,
+          linkedOptimizationTaskIds: [] as number[],
+        } as const;
+      }
+      await getProjectOrThrow(input.projectId);
+      const plans = await db.select().from(contentPlans).where(eq(contentPlans.projectId, input.projectId)).orderBy(desc(contentPlans.createdAt)).limit(1);
+      const plan = plans[0] ?? null;
+      if (!plan) {
+        return {
+          plan: null,
+          items: [],
+          planName: null,
+          startDate: null,
+          targetPlatforms: [] as string[],
+          contentTypes: [] as string[],
+          weeklyArticleCount: null,
+          status: null,
+          linkedOptimizationTaskIds: [] as number[],
+        } as const;
+      }
+      const items = await db.select().from(contentPlanItems).where(eq(contentPlanItems.planId, plan.id)).orderBy(desc(contentPlanItems.createdAt));
+      // Fix: 问题5 — 为交付页提供与前端约定一致的扁平字段（不改表结构）。
+      return {
+        plan,
+        items,
+        planName: plan.planName,
+        startDate: plan.weekStartDate,
+        targetPlatforms: plan.targetPlatforms,
+        contentTypes: plan.contentTypes,
+        weeklyArticleCount: plan.weeklyArticleCount,
+        status: plan.status,
+        linkedOptimizationTaskIds: plan.linkedOptimizationTaskIds,
+      } as const;
+    }),
+    upsert: protectedProcedure.input(contentPlanInput).mutation(async ({ input }) => {
+      const db = await requireDb();
+      await getProjectOrThrow(input.projectId);
+
+      const selectedTasks = await db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
+      const validTaskIds = new Set(selectedTasks.map(task => task.id));
+      const linkedOptimizationTaskIds = input.linkedOptimizationTaskIds.filter(taskId => validTaskIds.has(taskId));
+      if (linkedOptimizationTaskIds.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "请至少绑定一个属于当前项目的优化任务（已自动忽略无效或跨项目的任务 ID）。",
+        });
+      }
+
+      const values = {
+        projectId: input.projectId,
+        planName: input.planName.trim(),
+        weekStartDate: input.weekStartDate,
+        weeklyArticleCount: input.weeklyArticleCount,
+        targetPlatforms: input.targetPlatforms,
+        contentTypes: input.contentTypes,
+        linkedOptimizationTaskIds,
+        status: input.status,
+      };
+
+      if (input.id) {
+        const existing = await db.select().from(contentPlans).where(eq(contentPlans.id, input.id)).limit(1);
+        if (!existing[0] || existing[0].projectId !== input.projectId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "内容生产计划不存在或不属于当前项目" });
+        }
+        await db.update(contentPlans).set(values).where(eq(contentPlans.id, input.id));
+        return { success: true, planId: input.id } as const;
+      }
+
+      const inserted = await db.insert(contentPlans).values(values).$returningId();
+      return { success: true, planId: inserted[0]?.id ?? 0 } as const;
+    }),
+    addItem: protectedProcedure.input(contentPlanItemInput).mutation(async ({ input }) => {
+      const db = await requireDb();
+      await getProjectOrThrow(input.projectId);
+      const planRows = await db.select().from(contentPlans).where(eq(contentPlans.id, input.planId)).limit(1);
+      const plan = planRows[0];
+      if (!plan || plan.projectId !== input.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "内容生产计划不存在或不属于当前项目" });
+      }
+      if (input.topicId) {
+        const topicRows = await db.select().from(geoArticleTopics).where(eq(geoArticleTopics.id, input.topicId)).limit(1);
+        if (!topicRows[0] || topicRows[0].projectId !== input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "内容选题不属于当前项目" });
+      }
+      if (input.articleId) {
+        const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        if (!articleRows[0] || articleRows[0].projectId !== input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "文章不属于当前项目" });
+      }
+      const inserted = await db.insert(contentPlanItems).values({
+        planId: input.planId,
+        topicId: input.topicId ?? null,
+        articleId: input.articleId ?? null,
+        targetPlatform: input.targetPlatform,
+        contentType: input.contentType,
+        status: input.status,
+        differentiationAngle: input.differentiationAngle ?? null,
+        duplicateRisk: input.duplicateRisk ?? null,
+      }).$returningId();
+      return { success: true, itemId: inserted[0]?.id ?? 0 } as const;
+    }),
+  }),
+
   articles: router({
     topics: router({
       list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
@@ -1137,31 +1652,136 @@ const geoRouter = router({
       generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
         const db = await requireDb();
         const project = await getProjectOrThrow(input.projectId);
-        const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, input.projectId));
-        const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
-        const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, input.projectId));
         const tasks = await db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
-        const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
-        const generated = generateGeoArticleTopics({ project, questions: projectQuestions, analyses: analysesWithQuestions, tasks });
+        const generated = generateGeoArticleTopics({
+          project,
+          tasks: tasks.map(t => ({
+            id: t.id,
+            taskType: t.taskType,
+            taskName: t.taskName,
+            priority: t.priority as "P0" | "P1" | "P2",
+            generationReason: t.generationReason,
+            executionSuggestion: t.executionSuggestion,
+            expectedImpact: t.expectedImpact,
+            status: t.status,
+          })),
+        });
         await db.delete(geoArticleTopics).where(eq(geoArticleTopics.projectId, input.projectId));
         await db.insert(geoArticleTopics).values(generated.map(topic => ({ ...topic, articleType: topic.articleType, status: topic.status })));
-        return { success: true, count: generated.length } as const;
+        return { success: true, count: generated.length, topics: generated } as const;
       }),
     }),
     list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
-      return db.select().from(geoArticles).where(eq(geoArticles.projectId, input.projectId)).orderBy(desc(geoArticles.createdAt));
+      // Fix: 问题3 — 排除旧格式「如何回答…」长标题占位文章（较按 topics 时间过滤更直观、可预期）。
+      const rows = await db
+        .select()
+        .from(geoArticles)
+        .where(and(eq(geoArticles.projectId, input.projectId), not(like(geoArticles.title, "%如何回答%"))))
+        .orderBy(desc(geoArticles.createdAt));
+      // 修复2：列表仅 from geoArticles、无 join；若仍出现重复行则按 id 去重（防御性，避免上游或映射层重复）。
+      const uniqueRows = Array.from(new Map(rows.map(r => [r.id, r])).values());
+      // Fix: 问题2 — 补充目标平台/内容类型：库表无独立列，从绑定优化任务的 executionSuggestion 卡片解析；否则回退 articleType。
+      const taskIds = Array.from(new Set(uniqueRows.map(row => row.optimizationTaskId).filter((id): id is number => typeof id === "number" && id > 0)));
+      const tasks = taskIds.length
+        ? await db
+            .select()
+            .from(optimizationTasks)
+            .where(and(eq(optimizationTasks.projectId, input.projectId), inArray(optimizationTasks.id, taskIds)))
+        : [];
+      const taskById = new Map(tasks.map(task => [task.id, task] as const));
+      return uniqueRows.map(article => {
+        const task = article.optimizationTaskId ? taskById.get(article.optimizationTaskId) : undefined;
+        const card = task ? parseOptimizationTaskCard(task.executionSuggestion) : null;
+        const targetPlatform = card?.recommendedPlatform?.length ? card.recommendedPlatform.join("、") : "";
+        const contentType = (card?.contentType && card.contentType.trim()) || article.articleType;
+        return { ...article, targetPlatform: targetPlatform || null, contentType };
+      });
     }),
     latestQualityScores: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
-      return db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.projectId, input.projectId)).orderBy(desc(geoArticleQualityScores.createdAt));
+      const rows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.projectId, input.projectId)).orderBy(desc(geoArticleQualityScores.createdAt));
+      // Fix: 问题1 — isPass 与「仅合规类阻断」一致，避免高分仍显示未通过。
+      const hasComplianceBlock = (reasons: string[]) =>
+        reasons.some(reason => /禁用词|禁止承诺|合规/.test(reason));
+      return rows.map(row => {
+        const blockReasons = Array.isArray(row.blockReasons) ? row.blockReasons : [];
+        const isPass = row.totalScore >= 60 && !hasComplianceBlock(blockReasons);
+        return { ...row, isPass };
+      });
     }),
     publishRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
       return db.select().from(geoPublishRecords).where(eq(geoPublishRecords.projectId, input.projectId)).orderBy(desc(geoPublishRecords.publishedAt));
+    }),
+    createManualPublishRecord: protectedProcedure.input(manualPublishRecordInput).mutation(async ({ input }) => {
+      const db = await requireDb();
+      await getProjectOrThrow(input.projectId);
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article || article.projectId !== input.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+      }
+      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
+      const latestScore = scoreRows[0];
+      if (!latestScore || latestScore.blocked || latestScore.totalScore < GEO_ARTICLE_MIN_PASS_SCORE) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `只有已通过 GEO 质检且质量分不低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 的内容才能记录人工发布结果` });
+      }
+      const publishedAt = new Date(input.publishedAt);
+      if (Number.isNaN(publishedAt.getTime())) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "发布时间格式不正确" });
+      }
+      const inserted = await db.insert(geoPublishRecords).values({
+        projectId: input.projectId,
+        articleId: article.id,
+        optimizationTaskId: article.optimizationTaskId,
+        publishChannel: input.publishPlatform,
+        publishTitle: input.publishTitle,
+        publishUrl: input.publishUrl.trim(),
+        publishStatus: input.publishStatus,
+        qualityScore: latestScore.totalScore,
+        needRetest: input.publishStatus === "published" || input.publishStatus === "link_backfilled" ? 1 : 0,
+        notes: [
+          "V1.0 人工确认发布记录：本系统只记录人工发布结果和公开链接，不调用外部平台 API，不创建收录监测记录。",
+          input.notes.trim(),
+        ].filter(Boolean).join("\n"),
+        publishedAt,
+      }).$returningId();
+      return { success: true, id: inserted[0]?.id ?? 0 } as const;
+    }),
+    updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb();
+      await getProjectOrThrow(input.projectId);
+      const recordRows = await db.select().from(geoPublishRecords).where(eq(geoPublishRecords.id, input.id)).limit(1);
+      const record = recordRows[0];
+      if (!record || record.projectId !== input.projectId || record.articleId !== input.articleId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目和内容的发布记录" });
+      }
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article || article.projectId !== input.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+      }
+      const publishedAt = new Date(input.publishedAt);
+      if (Number.isNaN(publishedAt.getTime())) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "发布时间格式不正确" });
+      }
+      await db.update(geoPublishRecords).set({
+        publishChannel: input.publishPlatform,
+        publishTitle: input.publishTitle,
+        publishUrl: input.publishUrl.trim(),
+        publishStatus: input.publishStatus,
+        needRetest: input.publishStatus === "published" || input.publishStatus === "link_backfilled" ? 1 : 0,
+        notes: [
+          "V1.0 人工确认发布记录：本系统只记录人工发布结果和公开链接，不调用外部平台 API，不创建收录监测记录。",
+          input.notes.trim(),
+        ].filter(Boolean).join("\n"),
+        publishedAt,
+      }).where(eq(geoPublishRecords.id, input.id));
+      return { success: true, id: input.id } as const;
     }),
     inclusionMonitoringRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb();
@@ -1186,61 +1806,49 @@ const geoRouter = router({
       const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
       const analysisScope = analysesWithQuestions.filter(analysis => sourceAnalysisIds.includes(analysis.id));
       const assetLibrary = await getAssetLibraryContext(topic.projectId);
-      const draft = generateGeoArticleDraft({
-        project,
-        topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
-        task,
-        questions: questionScope.length > 0 ? questionScope : projectQuestions,
-        analyses: analysisScope.length > 0 ? analysisScope : analysesWithQuestions,
-        assetLibrary,
-      });
+      let draft;
+      try {
+        draft = await generateGeoArticleDraft({
+          project,
+          topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
+          task,
+          questions: questionScope.length > 0 ? questionScope : projectQuestions,
+          analyses: analysisScope.length > 0 ? analysisScope : analysesWithQuestions,
+          assetLibrary,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "GEO 文章生成失败";
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+      }
       const inserted = await db.insert(geoArticles).values(draft).$returningId();
+      const articleId = inserted[0]?.id ?? 0;
+      if (!articleId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "文章写入失败" });
       await db.update(geoArticleTopics).set({ status: "已生成" }).where(eq(geoArticleTopics.id, topic.id));
-      return { success: true, articleId: inserted[0]?.id ?? 0 } as const;
+      const qcResult = await runGeoArticleQualityCheckFlow(db, articleId);
+      return {
+        success: true,
+        articleId,
+        quality: qcResult.quality,
+        autoRewriteCount: qcResult.autoRewriteCount,
+        finalStatus: qcResult.finalStatus,
+        qualityCheckPassed: qcResult.finalStatus === "质检通过",
+      } as const;
     }),
     qualityCheck: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
       const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
       if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
-      if (!(article.status === "已生成" || article.status === "待质检")) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "只有已生成但未质检的文章可以进行质量评分" });
+      if (!(article.status === "已生成" || article.status === "待质检" || article.status === "需人工审核" || article.status === "质检未通过")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "当前状态的文章不能重新执行质量评分" });
       }
-      const project = await getProjectOrThrow(article.projectId);
-      const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, article.projectId));
-      const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, article.projectId));
-      const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, article.projectId));
-      const taskRows = article.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, article.optimizationTaskId)).limit(1) : [];
-      const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
-      const assetLibrary = await getAssetLibraryContext(article.projectId);
-      const quality = scoreGeoArticleQuality({
-        article: article as unknown as Parameters<typeof scoreGeoArticleQuality>[0]["article"],
-        project,
-        questions: projectQuestions,
-        analyses: analysesWithQuestions,
-        task: taskRows[0] ?? null,
-        assetLibrary,
-      });
-      await db.insert(geoArticleQualityScores).values({
-        projectId: article.projectId,
-        articleId: article.id,
-        problemMatchScore: quality.problemMatchScore,
-        evidenceScore: quality.evidenceScore,
-        structureScore: quality.structureScore,
-        originalityScore: quality.originalityScore,
-        geoCitableScore: quality.geoCitableScore,
-        complianceScore: quality.complianceScore,
-        totalScore: quality.totalScore,
-        blocked: quality.blocked ? 1 : 0,
-        blockReasons: quality.blockReasons,
-        reviewSummary: quality.reviewSummary,
-      });
-      await db.update(geoArticles).set({
-        status: quality.blocked ? "质检未通过" : "待审核",
-        factTraceability: quality.factTraceability,
-        consistencyCheck: quality.consistencyCheck,
-      }).where(eq(geoArticles.id, article.id));
-      return { success: !quality.blocked, quality } as const;
+      const qcResult = await runGeoArticleQualityCheckFlow(db, input.articleId);
+      return {
+        success: qcResult.success,
+        quality: qcResult.quality,
+        autoRewriteCount: qcResult.autoRewriteCount,
+        finalStatus: qcResult.finalStatus,
+      } as const;
     }),
     optimizeVersion: protectedProcedure.input(z.object({ articleId: z.number().int().positive(), mode: z.enum(["增强版", "FAQ", "竞品对比", "AI 可引用片段", "移除无来源数据", "资料待补充表述", "案例采集模板"]), reason: z.string().optional().default("") })).mutation(async ({ input }) => {
       const db = await requireDb();
@@ -1289,7 +1897,7 @@ const geoRouter = router({
       const latestScore = scoreRows[0];
       const consistency = article.consistencyCheck as { publishAllowed?: boolean; score?: number; riskLevel?: string; blockReasons?: string[] } | null;
       const canAudit = canAuditArticle(article.status as ArticleStatus, latestScore ? { totalScore: latestScore.totalScore, blocked: Boolean(latestScore.blocked) } : null);
-      if (!canAudit || consistency?.publishAllowed === false || (consistency?.score ?? 100) < 80 || consistency?.riskLevel === "高") throw new TRPCError({ code: "BAD_REQUEST", message: "未质检通过、低于 80 分或一致性检查未通过的文章不能审核" });
+      if (!canAudit || consistency?.publishAllowed === false || (consistency?.score ?? 100) < GEO_ARTICLE_MIN_PASS_SCORE || consistency?.riskLevel === "高") throw new TRPCError({ code: "BAD_REQUEST", message: `未质检通过、低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分或一致性检查未通过的文章不能审核` });
       await db.update(geoArticles).set({ status: input.approved ? "审核通过" : "审核未通过" }).where(eq(geoArticles.id, article.id));
       return { success: true } as const;
     }),
@@ -1301,7 +1909,7 @@ const geoRouter = router({
       if (!canPublishArticle(article.status as ArticleStatus)) throw new TRPCError({ code: "BAD_REQUEST", message: "未审核通过的文章不能发布" });
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
-      if (!latestScore || latestScore.blocked || latestScore.totalScore < 80) throw new TRPCError({ code: "BAD_REQUEST", message: "文章质量分低于 80 或存在禁止发布风险，不能发布" });
+      if (!latestScore || latestScore.blocked || latestScore.totalScore < GEO_ARTICLE_MIN_PASS_SCORE) throw new TRPCError({ code: "BAD_REQUEST", message: `文章质量分低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 或存在禁止发布风险，不能发布` });
       const assetLibrary = await getAssetLibraryContext(article.projectId);
       const prePublishCheck = evaluateAssetLibraryPrePublishCheck({
         content: `${article.title}
@@ -1348,8 +1956,20 @@ ${article.markdownContent}`,
         throw new TRPCError({ code: "NOT_FOUND", message: "内容不存在或尚未发布" });
       }
       const project = await getProjectOrThrow(article.projectId);
+      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, article.projectId)).limit(1);
+      const prof = profileRows[0];
+      const projectForPublic = prof
+        ? {
+            ...project,
+            brandName: prof.brandName ?? undefined,
+            targetCustomer: prof.targetCustomer ?? undefined,
+            productDesc: prof.productDesc ?? undefined,
+            productServiceIntro: prof.productServiceIntro ?? undefined,
+            oneLiner: prof.oneLiner ?? undefined,
+          }
+        : project;
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
-      return { article, project, qualityScore: scoreRows[0] ?? null } as const;
+      return { article, project: projectForPublic, qualityScore: scoreRows[0] ?? null } as const;
     }),
   }),
 });
@@ -1358,6 +1978,31 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    devLogin: publicProcedure.mutation(async ({ ctx }) => {
+      if (process.env.NODE_ENV === "production") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "本地开发登录不能在生产环境使用" });
+      }
+
+      const openId = "local-dev-user";
+      const name = "本地开发用户";
+      await upsertUser({
+        openId,
+        name,
+        email: "local-dev@example.invalid",
+        loginMethod: "local-dev",
+        role: "admin",
+        lastSignedIn: new Date(),
+      });
+
+      const sessionToken = await sdk.signSession({
+        openId,
+        appId: process.env.VITE_APP_ID || "local-dev",
+        name,
+      }, { expiresInMs: ONE_YEAR_MS });
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      return { success: true } as const;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -1367,6 +2012,7 @@ export const appRouter = router({
     }),
   }),
   geo: geoRouter,
+  publishTasks: publishTasksRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "内容增长系统 - 自动发布",
+  "version": "1.0.0",
+  "description": "连接内容增长系统，自动发布文章到各平台",
+  "permissions": ["storage", "alarms", "tabs", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://www.zhihu.com/*",
+    "https://mp.toutiao.com/*",
+    "https://mp.sohu.com/*",
+    "https://baijiahao.baidu.com/*",
+    "https://mp.weixin.qq.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "48": "icons/icon48.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.zhihu.com/creator*"],
+      "js": ["content-scripts/shared.js", "content-scripts/zhihu.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://mp.toutiao.com/*"],
+      "js": ["content-scripts/shared.js", "content-scripts/toutiao.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://mp.sohu.com/*"],
+      "js": ["content-scripts/shared.js", "content-scripts/sohu.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://baijiahao.baidu.com/*"],
+      "js": ["content-scripts/shared.js", "content-scripts/baijiahao.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://mp.weixin.qq.com/*"],
+      "js": ["content-scripts/shared.js", "content-scripts/wechat.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

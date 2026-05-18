@@ -1,4 +1,4 @@
-import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -11,12 +11,14 @@ export const users = mysqlTable("users", {
    * Use this for relations between tables.
    */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
+  /** OAuth/local auth identifier (openId). Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  /** 浏览器发布插件 API 密钥 */
+  extensionApiKey: varchar("extensionApiKey", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -100,10 +102,22 @@ export const articleStatusEnum = mysqlEnum("status", [
   "已发布",
   "待复测",
   "质检未通过",
+  "需人工审核",
   "审核未通过",
 ]);
 
-export const publishChannelEnum = mysqlEnum("publishChannel", ["系统内置 GEO 内容页"]);
+export const publishChannelEnum = mysqlEnum("publishChannel", [
+  "系统内置 GEO 内容页",
+  "自有内容站 / 企业官网 GEO 页面",
+  "微信公众号",
+  "知乎",
+  "百家号",
+  "头条号",
+  "小红书",
+  "搜狐号",
+  "网易号",
+  "CSDN / 掘金",
+]);
 export const inclusionMonitorStatusEnum = mysqlEnum("inclusionMonitorStatus", ["未检测", "检测中", "已收录", "未收录", "检测失败"]);
 export const aiMentionMonitorStatusEnum = mysqlEnum("aiMentionMonitorStatus", ["未检测", "检测中", "已提及", "未提及", "检测失败"]);
 export const aiRecommendMonitorStatusEnum = mysqlEnum("aiRecommendMonitorStatus", ["未检测", "检测中", "已推荐", "未推荐", "检测失败"]);
@@ -286,6 +300,35 @@ export const geoArticles = mysqlTable("geo_articles", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+export const contentPlans = mysqlTable("content_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  planName: varchar("planName", { length: 255 }).notNull(),
+  weekStartDate: varchar("weekStartDate", { length: 32 }).notNull(),
+  weeklyArticleCount: int("weeklyArticleCount").default(3).notNull(),
+  targetPlatforms: json("targetPlatforms").$type<string[]>().notNull(),
+  contentTypes: json("contentTypes").$type<string[]>().notNull(),
+  linkedOptimizationTaskIds: json("linkedOptimizationTaskIds").$type<number[]>().notNull(),
+  status: varchar("status", { length: 64 }).default("已配置").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const contentPlanItems = mysqlTable("content_plan_items", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  topicId: int("topicId"),
+  articleId: int("articleId"),
+  targetPlatform: varchar("targetPlatform", { length: 255 }).notNull(),
+  contentType: varchar("contentType", { length: 255 }).notNull(),
+  status: varchar("status", { length: 64 }).default("待生成").notNull(),
+  differentiationAngle: text("differentiationAngle"),
+  duplicateRisk: varchar("duplicateRisk", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const geoArticleQualityScores = mysqlTable("geo_article_quality_scores", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
@@ -310,6 +353,7 @@ export const geoPublishRecords = mysqlTable("geo_publish_records", {
   articleId: int("articleId").notNull(),
   optimizationTaskId: int("optimizationTaskId"),
   publishChannel: publishChannelEnum.notNull(),
+  publishTitle: varchar("publishTitle", { length: 500 }),
   publishUrl: varchar("publishUrl", { length: 1000 }).notNull(),
   publishStatus: varchar("publishStatus", { length: 64 }).default("已发布").notNull(),
   qualityScore: int("qualityScore").default(0).notNull(),
@@ -364,6 +408,18 @@ export const enterpriseGeoProfiles = mysqlTable("enterprise_geo_profiles", {
   priceExplanation: text("priceExplanation"),
   salesTalkTracks: text("salesTalkTracks"),
   commonObjections: text("commonObjections"),
+  /** V2 企业档案（可空；由迁移从旧列回填部分字段） */
+  brandName: text("brandName"),
+  industryTag: text("industryTag"),
+  productDesc: text("productDesc"),
+  mainChannel: text("mainChannel"),
+  targetCustomer: text("targetCustomer"),
+  customerPains: json("customerPains").$type<string[] | null>(),
+  competitors: json("competitors").$type<string[] | null>(),
+  hasCases: boolean("hasCases"),
+  oneLiner: text("oneLiner"),
+  keyPoints: json("keyPoints").$type<string[] | null>(),
+  keywords: json("keywords").$type<string[] | null>(),
   completionScore: int("completionScore").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -481,6 +537,21 @@ export const publishStrategies = mysqlTable("publish_strategies", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const publishTasks = mysqlTable("publish_tasks", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  articleId: int("articleId").notNull(),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  articleTitle: text("articleTitle").notNull(),
+  articleContent: text("articleContent").notNull(),
+  resultUrl: varchar("resultUrl", { length: 500 }),
+  errorMessage: text("errorMessage"),
+  apiKey: varchar("apiKey", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const platformAuthorizationConfigs = mysqlTable("platform_authorization_configs", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
@@ -518,6 +589,10 @@ export type GeoArticleTopic = typeof geoArticleTopics.$inferSelect;
 export type InsertGeoArticleTopic = typeof geoArticleTopics.$inferInsert;
 export type GeoArticle = typeof geoArticles.$inferSelect;
 export type InsertGeoArticle = typeof geoArticles.$inferInsert;
+export type ContentPlan = typeof contentPlans.$inferSelect;
+export type InsertContentPlan = typeof contentPlans.$inferInsert;
+export type ContentPlanItem = typeof contentPlanItems.$inferSelect;
+export type InsertContentPlanItem = typeof contentPlanItems.$inferInsert;
 export type GeoArticleQualityScore = typeof geoArticleQualityScores.$inferSelect;
 export type InsertGeoArticleQualityScore = typeof geoArticleQualityScores.$inferInsert;
 export type GeoPublishRecord = typeof geoPublishRecords.$inferSelect;
@@ -538,3 +613,5 @@ export type PublishStrategy = typeof publishStrategies.$inferSelect;
 export type InsertPublishStrategy = typeof publishStrategies.$inferInsert;
 export type PlatformAuthorizationConfig = typeof platformAuthorizationConfigs.$inferSelect;
 export type InsertPlatformAuthorizationConfig = typeof platformAuthorizationConfigs.$inferInsert;
+export type PublishTask = typeof publishTasks.$inferSelect;
+export type InsertPublishTask = typeof publishTasks.$inferInsert;

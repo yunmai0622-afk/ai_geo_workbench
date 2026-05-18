@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `geo_articles` MODIFY COLUMN `status` ENUM(\n  '待生成',\n  '已生成',\n  '待质检',\n  '质检通过',\n  '待审核',\n  '审核通过',\n  '已发布',\n  '待复测',\n  '质检未通过',\n  '需人工审核',\n  '审核未通过'\n) NOT NULL DEFAULT '待质检';\nALTER TABLE `geo_article_topics` MODIFY COLUMN `status` ENUM(\n  '待生成',\n  '已生成',\n  '待质检',\n  '质检通过',\n  '待审核',\n  '审核通过',\n  '已发布',\n  '待复测',\n  '质检未通过',\n  '需人工审核',\n  '审核未通过'\n) NOT NULL DEFAULT '待生成';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `geo_articles` MODIFY COLUMN `status` ENUM(\n  '待生成',\n  '已生成',\n  '待质检',\n  '质检通过',\n  '待审核',\n  '审核通过',\n  '已发布',\n  '待复测',\n  '质检未通过',\n  '需人工审核',\n  '审核未通过'\n) NOT NULL DEFAULT '待质检';\nALTER TABLE `geo_article_topics` MODIFY COLUMN `status` ENUM(\n  '待生成',\n  '已生成',\n  '待质检',\n  '质检通过',\n  '待审核',\n  '审核通过',\n  '已发布',\n  '待复测',\n  '质检未通过',\n  '需人工审核',\n  '审核未通过'\n) NOT NULL DEFAULT '待生成';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2669
+}

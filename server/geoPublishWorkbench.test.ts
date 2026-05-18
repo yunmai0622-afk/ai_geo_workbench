@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { buildPublishCheckSummary, projectPublishSummary, publishStatusForArticle } from "../client/src/pages/GeoPages";
 
 const approvedBasis = {
@@ -37,32 +38,34 @@ describe("平台发布工作台规则", () => {
   it("按真实发布阶段计算平台发布页顶部状态引导", () => {
     expect(projectPublishSummary([], 0)).toMatchObject({
       stage: "内容发布",
-      nextAction: "先生成高质量 GEO 文章",
-      ctaLabel: "去内容生成",
-      ctaPath: "/content-generation",
+      nextAction: "先生成高质量文章",
+      ctaLabel: "去本周内容",
+      ctaPath: "/weekly",
     });
 
     expect(projectPublishSummary([{ status: "允许发布" }], 0)).toMatchObject({
       stage: "内容发布",
-      nextAction: "选择通过检查的文章发布到 GEO 内容页",
-      ctaLabel: "发布到 GEO 内容页",
+      nextAction: "选择通过检查的文章发布到 公开内容页",
+      ctaLabel: "发布到 公开内容页",
       ctaPath: "/content-publishing",
     });
 
-    const publishedGuide = projectPublishSummary([{ status: "已发布" }, { status: "未质检" }], 7);
+    const publishedGuide = projectPublishSummary([{ status: "已发布" }, { status: "未检查" }], 7);
     expect(publishedGuide).toMatchObject({
       stage: "内容发布",
       nextAction: "进入收录监测，检查是否被收录、被 AI 提及、被 AI 推荐",
       ctaLabel: "进入收录监测",
       ctaPath: "/inclusion-monitoring",
     });
-    expect(publishedGuide.risk).toContain("已发布 7 篇，另有 1 篇待质检");
+    expect(publishedGuide.risk).toContain("已发布 7 篇，另有 1 篇待检查或待审核");
   });
 
   it("发布前检查会阻断低分、一致性不足和未确认事实", () => {
+    const lowQualityScore = GEO_ARTICLE_MIN_PASS_SCORE - 5;
+    const lowConsistencyScore = GEO_ARTICLE_MIN_PASS_SCORE - 4;
     const summary = buildPublishCheckSummary(
-      { totalScore: 72, blocked: false, blockReasons: [] } as any,
-      { score: 76, publishAllowed: false, riskLevel: "中", blockReasons: ["一致性评分低于 80。"] } as any,
+      { totalScore: lowQualityScore, blocked: false, blockReasons: [] } as any,
+      { score: lowConsistencyScore, publishAllowed: false, riskLevel: "中", blockReasons: [`一致性评分低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分。`] } as any,
       approvedBasis as any,
       [{ factPoint: "关键事实", sourceName: "", isPublic: true, manuallyConfirmed: false }] as any,
       "本文不包含绝对承诺。",
@@ -70,12 +73,12 @@ describe("平台发布工作台规则", () => {
 
     expect(summary.allowPublish).toBe(false);
     expect(summary.blockReasons).toEqual(expect.arrayContaining([
-      "内容质量分低于最低发布标准。",
-      "一致性评分低于 80。",
+      `内容质量分低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分。`,
+      `一致性评分低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分或未通过检查。`,
       "存在未确认事实，请先完成人工确认。",
       "存在缺少来源的关键事实。",
     ]));
-    expect(publishStatusForArticle("draft", { totalScore: 72, blocked: false } as any, summary)).toBe("质检未通过");
+    expect(publishStatusForArticle("draft", { totalScore: lowQualityScore, blocked: false } as any, summary)).toBe("质量未通过");
   });
 
   it("质量、一致性、事实溯源和生成依据全部通过时允许发布", () => {

@@ -537,7 +537,3 @@
 ## 本轮源码导出
 
 - [x] 按用户要求导出完整项目源码压缩包，包含 package.json、pnpm-lock.yaml、client、server、drizzle、scripts、shared、vite.config.ts、tsconfig.json，并排除 node_modules、dist、.manus-logs、.webdev、临时日志文件和真实 .env 文件；不新增功能、不修改代码、不重构。
-
-## V1.0-Boundary-Refreeze-2
-
-- [x] 仅更新 HARNESS.md，冻结 V1.0 发布矩阵、目标 AI 入口、A/B/C 发布能力等级、人工确认后发布边界、反同质化与平台适配审查要求，并执行 corepack pnpm check、corepack pnpm test、corepack pnpm build；禁止修改功能代码、页面、后端业务逻辑。

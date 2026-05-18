@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+
+vi.mock("./_core/llm", () => ({
+  invokeLLM: vi.fn(),
+}));
+
+import { invokeLLM } from "./_core/llm";
 import {
   attachQuestionTextToAnalyses,
   calculateGeoScore,
@@ -177,20 +183,61 @@ describe("GEO 评分与等级", () => {
   });
 });
 
-describe("优化任务、内容模板与报告", () => {
-  it("根据真实分析结果生成七类优化任务", () => {
-    const tasks = generateOptimizationTasks(project, analyses);
+const mockLlmTask = (overrides: Partial<{
+  taskName: string;
+  priority: "P0" | "P1" | "P2";
+  problemSolved: string;
+  articleTitle: string;
+  keyPoints: string[];
+  targetKeywords: string[];
+  recommendedPlatform: Array<"知乎" | "小红书" | "百家号" | "头条号" | "微信公众号" | "官网">;
+  contentType: "痛点解决" | "场景指南" | "案例证据";
+}>) => ({
+  taskName: "官网首页信息补强",
+  priority: "P0" as const,
+  problemSolved: "共有未推荐样本，需要首页可引用信息",
+  articleTitle: "首页 GEO 信息补强示例",
+  keyPoints: ["论点一示例文字控长", "论点二示例文字控长", "论点三示例文字控长"],
+  targetKeywords: ["GEO", "可见度", "知识付费"],
+  recommendedPlatform: ["官网", "微信公众号"] as Array<"知乎" | "小红书" | "百家号" | "头条号" | "微信公众号" | "官网">,
+  contentType: "痛点解决" as const,
+  ...overrides,
+});
 
-    expect(tasks.map(task => task.taskType)).toEqual([
-      "官网首页",
-      "产品页",
-      "竞品对比页",
-      "FAQ",
+const defaultMockOptimizationTasks = () => ({
+  tasks: [
+    mockLlmTask({ contentType: "痛点解决", taskName: "直播低转化诊断内容", priority: "P0" }),
+    mockLlmTask({ contentType: "案例证据", taskName: "客户案例沉淀", priority: "P0" }),
+    mockLlmTask({ contentType: "场景指南", taskName: "私域成交路径指南", priority: "P1" }),
+    mockLlmTask({ contentType: "痛点解决", taskName: "退款高发根因稿", priority: "P1" }),
+    mockLlmTask({ contentType: "场景指南", taskName: "从0卖课实操长文", priority: "P1" }),
+    mockLlmTask({ contentType: "案例证据", taskName: "证据补强案例", priority: "P2" }),
+    mockLlmTask({ contentType: "痛点解决", taskName: "复购弱改进任务", priority: "P2" }),
+  ],
+});
+
+describe("优化任务、内容模板与报告", () => {
+  beforeEach(() => {
+    vi.mocked(invokeLLM).mockReset();
+    vi.mocked(invokeLLM).mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(defaultMockOptimizationTasks()) } }],
+    } as never);
+  });
+
+  it("根据诊断结果经 LLM 生成优化任务并写入任务卡片", async () => {
+    const tasks = await generateOptimizationTasks(project, analyses);
+
+    expect(tasks.length).toBe(7);
+    expect(tasks.every(task => task.taskName && task.generationReason && task.executionSuggestion.includes("__GEO_TASK_CARD__") && task.expectedImpact && task.status)).toBe(true);
+    expect(tasks.map(t => t.taskType)).toEqual([
+      "行业文章",
       "客户案例",
       "行业文章",
-      "社媒内容",
+      "行业文章",
+      "行业文章",
+      "客户案例",
+      "行业文章",
     ]);
-    expect(tasks.every(task => task.taskName && task.generationReason && task.executionSuggestion && task.expectedImpact && task.status)).toBe(true);
 
     const reviewedAnalysis = resolveEffectiveAnalysisResult({
       ...analyses[2],
@@ -206,16 +253,32 @@ describe("优化任务、内容模板与报告", () => {
         optimizationSuggestion: "人工修订：优先补官网定位页与 FAQ",
       },
     });
-    const reviewedTasks = generateOptimizationTasks(project, [reviewedAnalysis]);
-    expect(reviewedTasks[0].executionSuggestion).toContain("人工修订：缺少官网定位页与权威 FAQ");
+    vi.mocked(invokeLLM).mockResolvedValueOnce({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            tasks: [
+              mockLlmTask({
+                taskName: "人工修订对齐",
+                problemSolved: "人工修订：缺少官网定位页与权威 FAQ",
+                articleTitle: "首页与 FAQ 同步修订",
+              }),
+              ...defaultMockOptimizationTasks().tasks.slice(1),
+            ],
+          }),
+        },
+      }],
+    } as never);
+    const reviewedTasks = await generateOptimizationTasks(project, [reviewedAnalysis]);
+    expect(reviewedTasks[0].generationReason).toContain("人工修订：缺少官网定位页与权威 FAQ");
   });
 
-  it("没有分析结果时拒绝生成优化任务", () => {
-    expect(() => generateOptimizationTasks(project, [])).toThrow("缺少 AI 分析结果");
+  it("没有分析结果时拒绝生成优化任务", async () => {
+    await expect(generateOptimizationTasks(project, [])).rejects.toThrow("缺少 AI 分析结果");
   });
 
-  it("根据优化任务生成五类内容模板并绑定任务", () => {
-    const tasks = generateOptimizationTasks(project, analyses);
+  it("根据优化任务生成五类内容模板并绑定任务", async () => {
+    const tasks = await generateOptimizationTasks(project, analyses);
     const templates = generateContentTemplates(project, tasks.map((task, index) => ({ id: index + 1, ...task })));
 
     expect(templates.map(template => template.templateType)).toEqual([
@@ -225,7 +288,8 @@ describe("优化任务、内容模板与报告", () => {
       "客户案例页模板",
       "行业选型文章模板",
     ]);
-    expect(templates.every(template => template.optimizationTaskId && template.title.includes("模板") && template.markdownContent.startsWith("#"))).toBe(true);
+    expect(templates.every(template => template.title.includes("模板") && template.markdownContent.startsWith("#"))).toBe(true);
+    expect(templates.filter(t => t.templateType !== "官网首页模板").every(t => Boolean(t.optimizationTaskId))).toBe(true);
 
     const homepageTemplate = templates.find(template => template.templateType === "官网首页模板");
     const faqTemplate = templates.find(template => template.templateType === "FAQ 模板");
@@ -289,11 +353,11 @@ describe("优化任务、内容模板与报告", () => {
     expect(combinedTemplateMarkdown).toContain("暂无真实链接，请发布后填写。");
 
     const frontendPageSource = readFileSync(new URL("../client/src/pages/V12FlowPages.tsx", import.meta.url), "utf8");
-    expect(frontendPageSource).toContain("竞品对比文章");
-    expect(frontendPageSource).toContain("产品能力说明文章");
-    expect(frontendPageSource).toContain("行业选型 / FAQ 文章");
-    expect(frontendPageSource).toContain("发布准入");
-    expect(frontendPageSource).toContain("阻断原因");
+    expect(frontendPageSource).toContain("内容生产计划");
+    expect(frontendPageSource).toContain("保存内容计划");
+    expect(frontendPageSource).toContain("生成本周内容选题");
+    expect(frontendPageSource).toContain("内容重复风险");
+    expect(frontendPageSource).toContain("进入发布记录");
   });
 
   it("没有优化任务时拒绝生成内容模板", () => {

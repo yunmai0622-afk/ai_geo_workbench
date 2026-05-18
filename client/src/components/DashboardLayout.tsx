@@ -19,22 +19,23 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl, isLoginConfigured } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { BarChart3, Brain, Building2, FileBarChart2, FileText, LogOut, PanelLeft, RadioTower, Send, Sparkles } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { BarChart3, Brain, Building2, FileBarChart2, FileText, LineChart, LogOut, PanelLeft, Send, Sparkles } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: Sparkles, label: "总览", desc: "项目进度与下一步", path: "/", aliases: ["/"] },
-  { icon: Building2, label: "企业档案", desc: "六类资料状态", path: "/enterprise-profile", aliases: ["/enterprise-profile", "/assets", "/projects"] },
-  { icon: Brain, label: "AI 诊断", desc: "问题、回答与缺口", path: "/ai-diagnosis", aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"] },
-  { icon: FileText, label: "内容生成", desc: "三类推荐内容", path: "/content-generation", aliases: ["/content-generation", "/articles", "/tasks"] },
-  { icon: Send, label: "内容发布", desc: "可发布与已发布", path: "/content-publishing", aliases: ["/content-publishing", "/publish"] },
-  { icon: RadioTower, label: "收录监测", desc: "收录、提及、推荐", path: "/inclusion-monitoring", aliases: ["/inclusion-monitoring", "/monitoring"] },
-  { icon: FileBarChart2, label: "交付报告", desc: "四类客户报告", path: "/delivery-reports", aliases: ["/delivery-reports", "/reports"] },
+  { icon: Sparkles, label: "工作台", desc: "今日概览与本周任务", path: "/", aliases: ["/", "/flow"] },
+  { icon: Building2, label: "我的信息", desc: "品牌与产品信息", path: "/enterprise-profile", aliases: ["/enterprise-profile", "/assets", "/projects"] },
+  { icon: Brain, label: "内容诊断", desc: "分析内容缺口", path: "/ai-diagnosis", aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"] },
+  { icon: FileText, label: "本周内容", desc: "生成并发布文章", path: "/weekly", aliases: ["/weekly", "/content-generation", "/articles"] },
+  { icon: Send, label: "发布记录", desc: "登记已发布文章", path: "/content-publishing", aliases: ["/content-publishing", "/publish", "/inclusion-monitoring", "/monitoring"] },
+  { icon: LineChart, label: "内容进展", desc: "累计效果与评分趋势", path: "/progress", aliases: ["/progress"] },
+  { icon: FileBarChart2, label: "效果报告", desc: "查看内容成果", path: "/delivery-reports", aliases: ["/delivery-reports", "/reports"] },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -52,6 +53,13 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
+  const utils = trpc.useUtils();
+  const devLogin = trpc.auth.devLogin.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+      window.location.reload();
+    },
+  });
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -62,6 +70,7 @@ export default function DashboardLayout({
   }
 
   if (!user) {
+    const loginConfigured = isLoginConfigured();
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
         <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-cyan-300/15 bg-white/[0.04] p-8 text-center shadow-[0_0_42px_rgba(56,189,248,0.14)]">
@@ -71,12 +80,24 @@ export default function DashboardLayout({
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">登录后继续</h1>
             <p className="max-w-sm text-sm leading-6 text-slate-400">
-              访问 AI GEO 增长工作台需要先登录。登录后可按企业档案、AI 诊断、内容生成、内容发布、收录监测、交付报告完成闭环。
+              访问企业内容增长系统需要先登录。登录后可按企业档案、内容诊断、内容生产、发布记录、交付报告推进客户项目。
             </p>
           </div>
-          <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
-            登录
-          </Button>
+          {loginConfigured ? (
+            <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+              登录
+            </Button>
+          ) : (
+            <div className="w-full space-y-3">
+              <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">
+                本地环境未配置外部 OAuth 登录参数。可使用本地开发登录进入系统验收页面；生产环境不会启用该入口。
+              </div>
+              <Button onClick={() => devLogin.mutate()} disabled={devLogin.isPending} size="lg" className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+                {devLogin.isPending ? "正在登录" : "本地开发登录"}
+              </Button>
+              {devLogin.error ? <p className="text-sm leading-6 text-red-200">{devLogin.error.message}</p> : null}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -155,16 +176,15 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
               </button>
               {!isCollapsed ? (
                 <div className="min-w-0">
-                  <span className="block truncate text-sm font-semibold tracking-tight text-white">AI GEO 增长工作台</span>
-                  <span className="block truncate text-xs text-slate-400">建档 · 诊断 · 内容 · 发布 · 监测 · 报告</span>
+                  <span className="block truncate text-sm font-semibold tracking-tight text-white">内容增长系统</span>
+                  <span className="block truncate text-xs text-slate-400">每周持续生成，持续被AI推荐</span>
                 </div>
               ) : null}
             </div>
           </SidebarHeader>
 
           <SidebarContent className="gap-0 bg-slate-950/95">
-            <div className="px-4 py-4 text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500 group-data-[collapsible=icon]:hidden">客户增长路径</div>
-            <SidebarMenu className="px-2 py-1">
+            <SidebarMenu className="px-2 py-1 pt-3">
               {menuItems.map(item => {
                 const isActive = item.aliases.includes(location);
                 return (
@@ -227,7 +247,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </div>
           </div>
         )}
-        <main className="min-h-screen flex-1 bg-slate-950 p-4 text-slate-100 md:p-6">{children}</main>
+        <main className="notranslate min-h-screen flex-1 bg-slate-950 p-4 text-slate-100 md:p-6" translate="no">{children}</main>
       </SidebarInset>
     </>
   );

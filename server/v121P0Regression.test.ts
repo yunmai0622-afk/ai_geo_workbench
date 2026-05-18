@@ -1,11 +1,29 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sanitizePlatformAuthorizationInput } from "./assetLibrary";
 import { deriveQuestionDiagnosisMeta } from "./geoLogic";
 import { generateGeoArticleDraft, generateGeoArticleTopics, type P11AnalysisLike, type P11ProjectLike, type P11QuestionLike, type P11TaskLike, type P12AssetLibraryContext } from "./geoArticleLogic";
 
+beforeAll(() => {
+  process.env.GEO_ARTICLE_BODY = "test-template";
+});
+afterAll(() => {
+  delete process.env.GEO_ARTICLE_BODY;
+});
+
 const root = resolve(__dirname, "..");
+
+function geoTaskCardExecutionV121(articleTitle: string, contentType: string) {
+  const card = JSON.stringify({
+    articleTitle,
+    keyPoints: ["论点一二十字内写满写满写", "论点二二十字内写满写满写", "论点三二十字内写满写满写"],
+    targetKeywords: ["零售数据", "经营预警", "指标治理"],
+    recommendedPlatform: ["官网"],
+    contentType,
+  });
+  return `指引\n\n__GEO_TASK_CARD__\n${card}`;
+}
 
 const project: P11ProjectLike = {
   id: 9,
@@ -58,9 +76,9 @@ const analyses: P11AnalysisLike[] = [
 ];
 
 const tasks: P11TaskLike[] = [
-  { id: 801, taskType: "行业文章", taskName: "补齐连锁零售经营数据平台选型说明", priority: "P1", generationReason: "AI 未稳定推荐企业，需要补齐选型依据。", executionSuggestion: "围绕客户指定问题生成官网 GEO 文章。", expectedImpact: "提升 AI 对企业适用场景的理解", status: "todo" },
-  { id: 802, taskType: "竞品对比页", taskName: "建设星河数据与数云台差异说明", priority: "P1", generationReason: "竞品更容易被 AI 推荐。", executionSuggestion: "使用客观边界和事实来源组织对比。", expectedImpact: "缩小竞品推荐差距", status: "todo" },
-  { id: 803, taskType: "FAQ", taskName: "补充无专职数据团队门店的 FAQ", priority: "P2", generationReason: "AI 对适用边界理解不足。", executionSuggestion: "增加适合/不适合客户和上线条件。", expectedImpact: "减少错误认知", status: "todo" },
+  { id: 801, taskType: "行业文章", taskName: "补齐连锁零售经营数据平台选型说明", priority: "P1", generationReason: "AI 未稳定推荐企业，需要补齐选型依据。", executionSuggestion: geoTaskCardExecutionV121("连锁零售经营数据分析平台选型说明", "场景指南"), expectedImpact: "提升 AI 对企业适用场景的理解", status: "todo" },
+  { id: 802, taskType: "竞品对比页", taskName: "建设星河数据与数云台差异说明", priority: "P1", generationReason: "竞品更容易被 AI 推荐。", executionSuggestion: geoTaskCardExecutionV121("星河数据与数云台门店预警能力对比", "竞品对比"), expectedImpact: "缩小竞品推荐差距", status: "todo" },
+  { id: 803, taskType: "FAQ", taskName: "补充无专职数据团队门店的 FAQ", priority: "P2", generationReason: "AI 对适用边界理解不足。", executionSuggestion: geoTaskCardExecutionV121("无专职数据团队门店 FAQ", "FAQ"), expectedImpact: "减少错误认知", status: "todo" },
 ];
 
 const assetLibrary: P12AssetLibraryContext = {
@@ -83,20 +101,21 @@ const assetLibrary: P12AssetLibraryContext = {
 };
 
 describe("V1.2.1 P0 regression coverage", () => {
-  it("生成文章标题应来自问题、任务和竞品差距，而不是重复固定模板", () => {
-    const topics = generateGeoArticleTopics({ project, questions, analyses, tasks });
-    expect(topics.length).toBeGreaterThanOrEqual(3);
+  it("生成选题与任务卡片建议标题一致，一任务一条", () => {
+    const topics = generateGeoArticleTopics({ project, tasks });
+    expect(topics).toHaveLength(tasks.length);
     expect(new Set(topics.map(topic => topic.title)).size).toBe(topics.length);
-    expect(topics.some(topic => topic.title.includes("资料、边界与证据清单") || topic.title.includes("AI 可引用信息"))).toBe(true);
-    expect(topics.every(topic => !/^补齐内容缺口\d+$/.test(topic.title))).toBe(true);
+    expect(topics.some(topic => topic.title.includes("选型说明") || topic.title.includes("对比") || topic.title.includes("FAQ"))).toBe(true);
+    expect(topics.every(topic => !topic.title.includes(`${project.enterpriseName}如何回答`))).toBe(true);
+    expect(topics.every(topic => !topic.title.includes(`${project.enterpriseName}面向`))).toBe(true);
   });
 
-  it("生成正文详情应保留生成依据、真实资料引用和第三方素材，但只允许 GEO 内容页自动发布", () => {
-    const [topic] = generateGeoArticleTopics({ project, questions, analyses, tasks });
-    const draft = generateGeoArticleDraft({ project, topic: { ...topic, id: 77 }, task: tasks[0], questions, analyses, assetLibrary });
+  it("生成正文详情应保留生成依据、真实资料引用和第三方素材，但只允许 GEO 内容页自动发布", async () => {
+    const [topic] = generateGeoArticleTopics({ project, tasks });
+    const draft = await generateGeoArticleDraft({ project, topic: { ...topic, id: 77 }, task: tasks[0], questions, analyses, assetLibrary });
     expect(draft.generationBasis.customerQuestion).toContain("连锁零售");
-    expect(draft.markdownContent).toContain("## 生成依据");
-    expect(draft.markdownContent).toContain("本篇实际使用的企业资料");
+    expect(draft.markdownContent).toContain("## 问题与背景");
+    expect(draft.markdownContent).toContain("便于引用的要点");
     expect(draft.markdownContent).toContain("资料待补充");
     expect(Object.keys(draft.thirdPartyMaterials)).toEqual(["GEO 内容页版", "官网版", "公众号长文版", "知乎回答版", "小红书笔记版", "百家号/头条号版"]);
   });
@@ -124,8 +143,9 @@ describe("V1.2.1 P0 regression coverage", () => {
 
     const assetCenter = readFileSync(resolve(root, "client/src/pages/AssetCenter.tsx"), "utf-8");
     const geoPages = readFileSync(resolve(root, "client/src/pages/GeoPages.tsx"), "utf-8");
-    expect(assetCenter).toContain("createPlatformAuthorization");
-    expect(assetCenter).toContain("禁止填写密码、Token、Cookie");
+    const v12Flow = readFileSync(resolve(root, "client/src/pages/V12FlowPages.tsx"), "utf-8");
+    expect(assetCenter).not.toContain("createPlatformAuthorization");
+    expect(v12Flow).toContain("禁止填写公众号账号密码");
     expect(geoPages).toContain("buildThirdPartyPublishGate");
     expect(geoPages).toContain("disabled={!gate.allowManualPublish}");
     expect(geoPages).toContain("复制素材");

@@ -27,12 +27,13 @@ describe("V1.2 enterprise GEO asset library", () => {
     expect(Object.keys(safe)).not.toContain("password");
   });
 
-  it("prevents fabricated real customer cases without source evidence", () => {
-    expect(() => validateCustomerCaseInput({
+  it("allows real customer cases without bound asset sources", () => {
+    const r = validateCustomerCaseInput({
       caseType: "真实案例",
       customerName: "某制造企业",
       sourceAssetIds: [],
-    })).toThrow("不能无来源编造案例");
+    });
+    expect(r.sourceAssetIds).toEqual([]);
 
     expect(validateCustomerCaseInput({
       caseType: "待补充案例线索",

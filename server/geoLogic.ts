@@ -1,3 +1,5 @@
+import { invokeLLM } from "./_core/llm";
+
 export const generatedQuestionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
 export const questionTypes = [...generatedQuestionTypes, "指定问题"] as const;
 export const questionSources = ["ai_generated", "manual", "csv"] as const;
@@ -263,10 +265,6 @@ export function calculateGeoScore(analyses: AnalysisLike[]) {
   };
 }
 
-function hasGap(analyses: AnalysisLike[], keyword: string) {
-  return analyses.some(item => `${item.contentGap ?? ""}${item.optimizationSuggestion ?? ""}${item.notRecommendedReason ?? ""}`.includes(keyword));
-}
-
 function uniqueNonEmpty(values: Array<string | null | undefined>, limit = 8) {
   return Array.from(new Set(values.map(value => (value ?? "").trim()).filter(Boolean))).slice(0, limit);
 }
@@ -279,81 +277,219 @@ function taskByType(tasks: Array<{ id?: number; taskType: TaskType; taskName: st
   return tasks.find(task => task.taskType === type);
 }
 
-export function generateOptimizationTasks(project: ProjectLike, analyses: AnalysisLike[]) {
+function formatEnterpriseInfoForOptimizationTasks(project: ProjectLike): string {
+  return [
+    `企业名称：${project.enterpriseName}`,
+    `行业：${project.industry}`,
+    `官网：${project.website}`,
+    `地区：${project.region}`,
+    `产品介绍：${project.productIntro}`,
+    `目标客户：${project.targetCustomers}`,
+    `核心卖点：${project.coreSellingPoints}`,
+    `主要竞品：${project.competitorNames.join("、")}`,
+    `核心关键词：${project.coreKeywords.join("、")}`,
+  ].join("\n");
+}
+
+function formatAnalysesForOptimizationPrompt(analyses: AnalysisLike[]): string {
+  return analyses.map((a, i) => {
+    const q = a.questionText ?? `诊断样本${i + 1}`;
+    const rec = a.recommendsEnterprise === 1 ? "是" : "否";
+    const gap = (a.contentGap ?? "").trim();
+    const sug = (a.optimizationSuggestion ?? "").trim().slice(0, 320);
+    const raw = (a as { rawJson?: unknown }).rawJson;
+    const rawObj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+    const st = typeof rawObj.suggestedTitle === "string" ? rawObj.suggestedTitle.trim() : "";
+    const lines = [
+      `【${i + 1}】客户问题：${q}`,
+      `推演是否易推荐本企业：${rec}`,
+      gap ? `内容缺口：${gap}` : "",
+      st ? `建议标题：${st}` : "",
+      sug ? `已给出的优化指令摘要：${sug}` : "",
+    ];
+    return lines.filter(Boolean).join("\n");
+  }).join("\n\n");
+}
+
+function mapContentTypeToTaskType(contentType: string): TaskType {
+  const key = contentType.trim();
+  const m: Record<string, TaskType> = {
+    痛点解决: "行业文章",
+    场景指南: "行业文章",
+    案例证据: "客户案例",
+    竞品对比: "竞品对比页",
+    案例文章: "客户案例",
+    FAQ: "FAQ",
+    产品页: "产品页",
+  };
+  return m[key] ?? "行业文章";
+}
+
+function parseOptimizationTasksLlmJson(content: unknown): { tasks: Array<Record<string, unknown>> } {
+  if (typeof content !== "string") throw new Error("AI 返回格式不是文本 JSON");
+  try {
+    return JSON.parse(content) as { tasks: Array<Record<string, unknown>> };
+  } catch {
+    throw new Error("AI 返回 JSON 解析失败");
+  }
+}
+
+const GEO_OPT_TASK_CARD_MARK = "__GEO_TASK_CARD__";
+
+/**
+ * 基于诊断结果调用 LLM 生成 5–7 条可执行的 GEO 内容优化任务（替换原规则拼装）。
+ */
+export async function generateOptimizationTasks(project: ProjectLike, analyses: AnalysisLike[]) {
   if (analyses.length === 0) {
     throw new Error("缺少 AI 分析结果，无法生成优化任务。");
   }
 
-  const notRecommendedCount = analyses.filter(item => item.recommendsEnterprise !== 1).length;
-  const misconceptionCount = analyses.filter(item => item.hasMisconception === 1).length;
-  const competitorCount = analyses.filter(item => item.mentionsCompetitors === 1 || item.recommendedCompetitors.length > 0).length;
-  const commonGap = analyses.map(item => item.contentGap).filter(Boolean).slice(0, 3).join("；") || "AI 回答中缺少可被引用的企业优势、场景证据或对比信息。";
+  const enterpriseInfo = formatEnterpriseInfoForOptimizationTasks(project);
+  const diagnosisResults = formatAnalysesForOptimizationPrompt(analyses);
+  const count = analyses.length;
 
-  return [
-    {
-      taskType: "官网首页" as TaskType,
-      taskName: `强化 ${project.enterpriseName} 官网首页的 AI 可引用信息`,
-      priority: notRecommendedCount > 0 ? "P0" as Priority : "P1" as Priority,
-      generationReason: `共有 ${notRecommendedCount} 条分析显示本企业未被推荐，需补足首页中的定位、卖点和可信证据。`,
-      executionSuggestion: `在首页首屏明确企业名称、行业定位、目标客户、核心卖点，并增加适合 AI 摘取的结构化问答段落。当前主要缺口：${commonGap}`,
-      expectedImpact: "提升 AI 对企业名称、行业定位和核心卖点的识别概率。",
-      status: "todo" as const,
+  const systemPrompt = `你是一位内容策略专家，专门为企业生成「以客户痛点为中心」的GEO内容优化任务。
+每个任务必须是能直接交给内容编辑执行的具体指令。
+
+内容方向只允许以下三类：
+1. 痛点解决类：帮助目标客户解决具体经营问题，文章标题是客户会主动搜索的问题
+2. 场景指南类：为特定客户场景提供完整的操作路径和方法论
+3. 案例证据类：用真实客户案例证明解决方案有效，数据脱敏但过程真实
+
+禁止生成：
+- 竞品对比类任务（不生成「海豚知道 vs 小鹅通」类内容）
+- 品牌宣传类任务（不生成以品牌为主语的自夸内容）
+- 泛行业科普类任务（不生成与企业产品无直接关联的通用内容）`;
+  const userPrompt = [
+    `企业信息：${enterpriseInfo}`,
+    "",
+    `以下是该企业的AI可见度诊断结果（共${count}条问题分析）：`,
+    diagnosisResults,
+    "",
+    "请生成5-7个内容优化任务，每个任务包含：",
+    "- taskName：任务名称（15字以内，从客户视角表达）",
+    "- priority：P0/P1/P2",
+    "- problemSolved：这个任务解决哪个客户痛点（来自诊断结果，1句话）",
+    "- articleTitle：文章标题（客户会主动搜索的标题，25字以内，不含品牌名）",
+    "- keyPoints：核心论点3条，每条从「客户能获得什么」角度表达，20字以内",
+    "- targetKeywords：目标关键词3-5个，是客户搜索词而非品牌词",
+    "- recommendedPlatform：推荐发布平台1-2个",
+    "- contentType：从「痛点解决/场景指南/案例证据」三选一",
+    "",
+    "优先级判断：",
+    "- P0：诊断中「内容覆盖薄弱」且客户搜索频率高的痛点",
+    "- P1：有内容但深度不足的场景",
+    "- P2：锦上添花",
+    "",
+    "将任务数组放在根对象的 `tasks` 字段中返回（仅此根对象）。",
+  ].join("\n");
+
+  const platformEnum = ["知乎", "小红书", "百家号", "头条号", "微信公众号", "官网"] as const;
+  const response = await invokeLLM({
+    max_tokens: 8192,
+    timeout_ms: 120000,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "geo_optimization_tasks_v12",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            tasks: {
+              type: "array",
+              minItems: 5,
+              maxItems: 7,
+              items: {
+                type: "object",
+                properties: {
+                  taskName: { type: "string" },
+                  priority: { type: "string", enum: ["P0", "P1", "P2"] },
+                  problemSolved: { type: "string" },
+                  articleTitle: { type: "string" },
+                  keyPoints: { type: "array", minItems: 3, maxItems: 3, items: { type: "string" } },
+                  targetKeywords: { type: "array", minItems: 3, maxItems: 5, items: { type: "string" } },
+                  recommendedPlatform: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 2,
+                    items: { type: "string", enum: [...platformEnum] },
+                  },
+                  contentType: { type: "string", enum: ["痛点解决", "场景指南", "案例证据"] },
+                },
+                required: [
+                  "taskName",
+                  "priority",
+                  "problemSolved",
+                  "articleTitle",
+                  "keyPoints",
+                  "targetKeywords",
+                  "recommendedPlatform",
+                  "contentType",
+                ],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["tasks"],
+          additionalProperties: false,
+        },
+      },
     },
-    {
-      taskType: "产品页" as TaskType,
-      taskName: `补全 ${project.enterpriseName} 产品页的场景与选型信息`,
-      priority: hasGap(analyses, "产品") || hasGap(analyses, "功能") ? "P0" as Priority : "P1" as Priority,
-      generationReason: "AI 回答通常需要清晰的产品能力、适用场景和选型边界作为推荐依据。",
-      executionSuggestion: `围绕 ${project.coreKeywords.join("、") || project.industry} 增加产品能力、客户场景、适用与不适用边界。`,
-      expectedImpact: "提升痛点解决、价格选型和高意向成交类问题中的推荐质量。",
+  });
+
+  const parsed = parseOptimizationTasksLlmJson(response.choices[0]?.message.content);
+  const list = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+  if (list.length < 5) throw new Error("AI 返回的优化任务不足 5 条，请重试");
+
+  return list.slice(0, 7).map(item => {
+    const taskName = typeof item.taskName === "string" ? item.taskName.trim().slice(0, 15) : "内容优化任务";
+    const priority = item.priority === "P0" || item.priority === "P1" || item.priority === "P2" ? item.priority : ("P1" as Priority);
+    const problemSolved = typeof item.problemSolved === "string" ? item.problemSolved.trim() : "补齐诊断发现的内容缺口";
+    const articleTitle = typeof item.articleTitle === "string" ? item.articleTitle.trim().slice(0, 25) : taskName;
+    const keyPoints = Array.isArray(item.keyPoints) ? item.keyPoints.map(x => String(x).trim()).filter(Boolean).slice(0, 3) : [];
+    const targetKeywords = Array.isArray(item.targetKeywords) ? item.targetKeywords.map(x => String(x).trim()).filter(Boolean).slice(0, 5) : [];
+    const recommendedPlatform = Array.isArray(item.recommendedPlatform) ? item.recommendedPlatform.map(x => String(x).trim()).filter(Boolean).slice(0, 2) : [];
+    const contentType = typeof item.contentType === "string" ? item.contentType.trim() : "场景指南";
+    const taskType = mapContentTypeToTaskType(contentType);
+
+    const kpLines = keyPoints.map((k, idx) => `${idx + 1}. ${k.slice(0, 20)}`).join("\n");
+    const kwLine = targetKeywords.join("、");
+    const platLine = recommendedPlatform.join("、");
+
+    const instruction = [
+      "请内容编辑按以下可执行指引产出正文或页面：",
+      `建议文章/页面标题：《${articleTitle}》`,
+      "核心论点（每条不超过 20 字）：",
+      kpLines || "1. —\n2. —\n3. —",
+      `目标关键词：${kwLine || "（待补充）"}`,
+      `推荐发布平台：${platLine || "官网"}`,
+      `内容类型：${contentType}`,
+    ].join("\n");
+
+    const card = JSON.stringify({
+      articleTitle,
+      keyPoints,
+      targetKeywords,
+      recommendedPlatform,
+      contentType,
+    });
+    const executionSuggestion = `${instruction}\n\n${GEO_OPT_TASK_CARD_MARK}\n${card}`;
+
+    return {
+      taskType,
+      taskName: taskName || "内容优化任务",
+      priority,
+      generationReason: problemSolved,
+      executionSuggestion,
+      expectedImpact: "将诊断缺口转化为可发布的结构化内容，提高 AI 可引用与推荐概率。",
       status: "todo" as const,
-    },
-    {
-      taskType: "竞品对比页" as TaskType,
-      taskName: `建设 ${project.enterpriseName} 与主要竞品的对比页`,
-      priority: competitorCount > 0 ? "P0" as Priority : "P2" as Priority,
-      generationReason: `共有 ${competitorCount} 条分析涉及竞品或竞品推荐，需要提供可验证的差异化信息。`,
-      executionSuggestion: `围绕 ${project.competitorNames.join("、") || "主要竞品"} 建立客观对比维度，包括适用客户、能力边界、服务方式和差异化卖点。`,
-      expectedImpact: "降低竞品在对比类问题中单方面胜出的概率。",
-      status: "todo" as const,
-    },
-    {
-      taskType: "FAQ" as TaskType,
-      taskName: `新增面向 AI 检索的 ${project.industry} FAQ`,
-      priority: "P1" as Priority,
-      generationReason: "FAQ 能把品牌认知、痛点解决、价格选型等问题转化为清晰的问答语料。",
-      executionSuggestion: "将问题库中的高频问题整理为官网 FAQ，并用直接、可引用、无夸张承诺的回答补充证据。",
-      expectedImpact: "提升 AI 回答中引用企业官方信息的概率。",
-      status: "todo" as const,
-    },
-    {
-      taskType: "客户案例" as TaskType,
-      taskName: `沉淀 ${project.targetCustomers} 的客户案例页`,
-      priority: hasGap(analyses, "案例") || hasGap(analyses, "证据") ? "P0" as Priority : "P1" as Priority,
-      generationReason: "AI 推荐企业时通常需要客户案例、成果证据和行业适配信息作为支撑。",
-      executionSuggestion: `选择 2-3 个 ${project.targetCustomers} 相关案例，补充背景、方案、实施过程、结果指标和可公开证据。`,
-      expectedImpact: "提升推荐理由的可信度和企业胜出概率。",
-      status: "todo" as const,
-    },
-    {
-      taskType: "行业文章" as TaskType,
-      taskName: `发布 ${project.industry} 行业选型文章`,
-      priority: "P1" as Priority,
-      generationReason: "行业推荐与价格选型问题需要中立的选型框架和供应商判断标准。",
-      executionSuggestion: `围绕 ${project.industry} 的采购标准、选型清单、风险点和常见误区，形成一篇可被 AI 引用的长文。`,
-      expectedImpact: "提升行业推荐类问题中的品牌出现率。",
-      status: "todo" as const,
-    },
-    {
-      taskType: "社媒内容" as TaskType,
-      taskName: `将核心缺口改写为知乎/小红书/公众号内容`,
-      priority: misconceptionCount > 0 ? "P1" as Priority : "P2" as Priority,
-      generationReason: `共有 ${misconceptionCount} 条分析存在错误认知，需要在公开内容渠道中纠偏。`,
-      executionSuggestion: "把错误认知、竞品对比和选型问题改写为短内容选题，并指向官网中的完整解释。",
-      expectedImpact: "补充站外语料，降低 AI 对企业能力的错误理解。",
-      status: "todo" as const,
-    },
-  ];
+    };
+  });
 }
 
 export function generateContentTemplates(project: ProjectLike, tasks: Array<{ id?: number; taskType: TaskType; taskName: string; generationReason: string; executionSuggestion: string }>) {
@@ -372,6 +508,9 @@ export function generateContentTemplates(project: ProjectLike, tasks: Array<{ id
   const compareTask = taskByType(tasks, "竞品对比页");
   const caseTask = taskByType(tasks, "客户案例");
   const industryTask = taskByType(tasks, "行业文章");
+  const fallbackBind = industryTask ?? caseTask ?? tasks[0];
+  const resolvedCompareTask = compareTask ?? fallbackBind;
+  const resolvedFaqTask = faqTask ?? fallbackBind;
 
   const faqItems = [
     [`${project.enterpriseName} 是什么？`, `${project.enterpriseName} 是面向 ${project.targetCustomers} 的 ${project.industry} 解决方案，核心围绕 ${project.coreSellingPoints}，帮助客户把获客、转化、经营诊断和持续增长连接起来。官网或公开页面应把企业名称、行业、服务对象和核心能力放在同一段中，便于 AI 在回答行业推荐、痛点解决和品牌认知问题时准确引用。`],
@@ -457,7 +596,7 @@ ${projectContextBlock}
 ${faqItems.map(([question, answer], index) => `## ${index + 1}. ${question}\n${answer}`).join("\n\n")}
 
 ## 对应优化任务
-${faqTask ? `${faqTask.taskName}：${faqTask.executionSuggestion}` : "待绑定 FAQ 优化任务。"}`;
+${resolvedFaqTask ? `${resolvedFaqTask.taskName}：${resolvedFaqTask.executionSuggestion}` : "待绑定 FAQ 优化任务。"}`;
 
   const compareContent = `# ${project.enterpriseName} 与 ${competitors} 怎么选？
 
@@ -508,7 +647,7 @@ ${project.enterpriseName} 的优势是更容易围绕 AI 经营、定位诊断�
 如果核心问题是收款、上架和交付，优先看工具；如果核心问题是定位、转化、复购和经营复盘，应评估经营系统和诊断服务。
 
 ## 对应优化任务
-${compareTask ? `${compareTask.taskName}：${compareTask.generationReason}。执行建议：${compareTask.executionSuggestion}` : "待绑定竞品对比优化任务。"}`;
+${resolvedCompareTask ? `${resolvedCompareTask.taskName}：${resolvedCompareTask.generationReason}。执行建议：${resolvedCompareTask.executionSuggestion}` : "待绑定竞品对比优化任务。"}`;
 
   const caseContent = `# ${project.enterpriseName} 客户案例采集模板
 
@@ -603,8 +742,8 @@ ${industryTask ? `${industryTask.taskName}：${industryTask.generationReason}。
 
   return [
     { optimizationTaskId: homepageTask?.id, templateType: "官网首页模板" as TemplateType, title: `${project.enterpriseName} 官网首页 GEO 优化模板`, markdownContent: homepageContent },
-    { optimizationTaskId: faqTask?.id, templateType: "FAQ 模板" as TemplateType, title: `${project.enterpriseName} FAQ 模板`, markdownContent: faqContent },
-    { optimizationTaskId: compareTask?.id, templateType: "竞品对比页模板" as TemplateType, title: `${project.enterpriseName} 竞品对比页模板`, markdownContent: compareContent },
+    { optimizationTaskId: resolvedFaqTask?.id, templateType: "FAQ 模板" as TemplateType, title: `${project.enterpriseName} FAQ 模板`, markdownContent: faqContent },
+    { optimizationTaskId: resolvedCompareTask?.id, templateType: "竞品对比页模板" as TemplateType, title: `${project.enterpriseName} 竞品对比页模板`, markdownContent: compareContent },
     { optimizationTaskId: caseTask?.id, templateType: "客户案例页模板" as TemplateType, title: `${project.enterpriseName} 客户案例页模板`, markdownContent: caseContent },
     { optimizationTaskId: industryTask?.id, templateType: "行业选型文章模板" as TemplateType, title: `${project.industry} 行业选型文章模板`, markdownContent: industryContent },
   ];

@@ -1,8 +1,11 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
+import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { trpc } from "@/lib/trpc";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
@@ -11,7 +14,16 @@ import GeoPublicContentPage from "./pages/GeoPublicContent";
 import GeoFlowWizardPage from "./pages/GeoFlowWizard";
 import AssetCenterPage from "./pages/AssetCenter";
 import DemoGeoPage from "./pages/DemoGeo";
-import { AiDiagnosisFlowPage, ContentGenerationFlowPage, ContentPublishingFlowPage, DeliveryReportsFlowPage, InclusionMonitoringFlowPage } from "./pages/V12FlowPages";
+import OnboardingPage from "./pages/OnboardingPage";
+import { AiDiagnosisFlowPage, ContentPublishingFlowPage, DeliveryReportsFlowPage, InclusionMonitoringFlowPage } from "./pages/V12FlowPages";
+import WeeklyContentPage from "./pages/WeeklyContentPage";
+import ProgressPage from "./pages/ProgressPage";
+
+function profileHasBrand(profile: unknown): boolean {
+  if (!profile || typeof profile !== "object") return false;
+  const brandName = (profile as Record<string, unknown>).brandName;
+  return typeof brandName === "string" && brandName.trim().length > 0;
+}
 
 function PrivateRoutes() {
   return (
@@ -21,7 +33,11 @@ function PrivateRoutes() {
         <Route path="/flow" component={GeoFlowWizardPage} />
         <Route path="/enterprise-profile" component={AssetCenterPage} />
         <Route path="/ai-diagnosis" component={AiDiagnosisFlowPage} />
-        <Route path="/content-generation" component={ContentGenerationFlowPage} />
+        <Route path="/weekly" component={WeeklyContentPage} />
+        <Route path="/progress" component={ProgressPage} />
+        <Route path="/content-generation">
+          <Redirect to="/weekly" />
+        </Route>
         <Route path="/content-publishing" component={ContentPublishingFlowPage} />
         <Route path="/inclusion-monitoring" component={InclusionMonitoringFlowPage} />
         <Route path="/delivery-reports" component={DeliveryReportsFlowPage} />
@@ -34,7 +50,9 @@ function PrivateRoutes() {
         <Route path="/scores" component={ScoresPage} />
         <Route path="/tasks" component={TasksPage} />
         <Route path="/reports" component={DeliveryReportsFlowPage} />
-        <Route path="/articles" component={ContentGenerationFlowPage} />
+        <Route path="/articles">
+          <Redirect to="/weekly" />
+        </Route>
         <Route path="/publish" component={ContentPublishingFlowPage} />
         <Route path="/monitoring" component={InclusionMonitoringFlowPage} />
         <Route path="/404" component={NotFound} />
@@ -44,13 +62,45 @@ function PrivateRoutes() {
   );
 }
 
+/** 登录后检查企业档案 brandName，未完成引导则进入 /onboarding */
+function AuthenticatedAppShell() {
+  const [location] = useLocation();
+  const { loading: authLoading, user } = useAuth();
+  const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, { enabled: Boolean(user) });
+  const projectId = projects[0]?.id;
+  const summaryQuery = trpc.geo.assetLibrary.summary.useQuery({ projectId }, { enabled: Boolean(user) && Boolean(projectId) });
+
+  if (authLoading) {
+    return <DashboardLayoutSkeleton />;
+  }
+
+  const profileLoading = Boolean(user) && (projectsLoading || (Boolean(projectId) && summaryQuery.isLoading));
+
+  if (profileLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[50vh] items-center justify-center text-slate-400">加载中...</div>
+      </DashboardLayout>
+    );
+  }
+
+  const hasBrand = projectId ? profileHasBrand(summaryQuery.data?.profile) : false;
+
+  if (user && !hasBrand && location !== "/onboarding") {
+    return <Redirect to="/onboarding" />;
+  }
+
+  return <PrivateRoutes />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/demo" component={DemoGeoPage} />
       <Route path="/demo/geo" component={DemoGeoPage} />
       <Route path="/geo/content/:projectId/:articleId" component={GeoPublicContentPage} />
-      <Route component={PrivateRoutes} />
+      <Route path="/onboarding" component={OnboardingPage} />
+      <Route component={AuthenticatedAppShell} />
     </Switch>
   );
 }

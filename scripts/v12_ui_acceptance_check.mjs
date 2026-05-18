@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 const root = resolve(process.cwd());
 const read = (relativePath) => readFileSync(resolve(root, relativePath), 'utf-8');
 const sources = {
-  home: read('client/src/pages/Home.tsx'),
+  home: read('client/src/pages/Home.tsx') + read('client/src/components/V1WorkbenchOverview.tsx'),
   layout: read('client/src/components/DashboardLayout.tsx'),
   app: read('client/src/App.tsx'),
   flow: read('client/src/pages/V12FlowPages.tsx'),
@@ -20,38 +20,49 @@ const assertNotContains = (name, source, forbidden) => {
   if (source.includes(forbidden)) failures.push(`${name} 不应出现：${forbidden}`);
 };
 
-assertContains('首页', sources.home, 'AI GEO 增长工作台');
-assertContains('首页', sources.home, '建档、诊断、内容、发布、监测、报告');
-assertContains('首页', sources.home, '6 步进度条');
-assertContains('首页', sources.home, '继续下一步');
+assertContains('首页', sources.home, '内容增长工作台');
+assertContains('首页', sources.home, '今日概览与本周任务');
+assertContains('首页', sources.home, '本周内容任务');
+assertContains('首页', sources.home, '最近发布');
+assertContains('首页', sources.home, '内容诊断');
+assertContains('首页', sources.home, '累计发布篇数');
 
-for (const item of ['总览', '企业档案', 'AI 诊断', '内容生成', '内容发布', '收录监测', '交付报告']) {
+for (const item of ['工作台', '我的信息', '内容诊断', '本周内容', '发布记录', '内容进展', '效果报告']) {
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
-  assertContains('状态引导条或流程页', sources.guide + sources.home + sources.assets + sources.flow, item);
 }
-for (const item of ['内容策略', '平台优先级', '事实溯源', '一致性检查', '发布前检查', '第三方素材', 'AI 可引用片段', '内容增长流水线', '平台发布', '报告中心', '工作台', 'AI训练', '账号管理', 'AI创作', '自动化发布', '收录排名', '付费投稿']) {
+for (const item of ['总览', '内容生成', '内容发布', '收录监测', '内容策略', '平台优先级', '事实溯源', '一致性检查', '发布前检查', '第三方素材', 'AI 可引用片段', '内容增长流水线', '报告中心', 'AI训练', '账号管理', 'AI创作', '自动化发布', '收录排名', '付费投稿']) {
   assertNotContains('左侧一级菜单', sources.layout, `label: "${item}"`);
+}
+
+for (const item of ['V1.0 核心三步流程', '关键产物入口', 'GEO 可见度', '推演', '资产库']) {
+  assertNotContains('首页', sources.home, item);
 }
 
 for (const item of ['当前阶段', '完成度', '下一步动作', '为什么要做', '风险提醒']) {
   assertContains('状态引导条组件', sources.guide, item);
 }
-for (const item of ['企业基础资料', '产品服务资料', '客户案例', '竞品资料', '合规规则', '发布策略', '当前页面只保留一个主动作']) {
+for (const item of ['企业档案', 'Section 1 · 基本身份', 'Section 2 · 你的客户', 'Section 3 · 有什么证明', '保存基本身份', '保存客户信息', '资料完整度']) {
   assertContains('企业档案页', sources.assets, item);
 }
-for (const item of ['客户问题', 'AI 回答', '诊断结果', '内容缺口', '下一步建议']) {
+for (const item of ['内容诊断', '目标客户问题', '重新生成', '诊断结果', '内容缺口', '内容覆盖评分', '优化任务', '进入内容生产']) {
   assertContains('AI 诊断页', sources.flow, item);
 }
-for (const item of ['竞品对比文章', '产品能力说明文章', '行业选型 / FAQ 文章', '发布准入', '阻断原因']) {
+for (const item of ['问题文本 questionText', 'AI 平台 aiPlatform', '原始回答 rawAnswer', 'analysis_results']) {
+  assertNotContains('AI 诊断页', sources.flow, item);
+}
+for (const item of ['内容生产计划', '本步骤用于根据 内容诊断结果和优化任务，制定本周内容计划', '保存内容计划', '生成本周内容选题', '进入发布记录']) {
   assertContains('内容生成页', sources.flow, item);
 }
-for (const item of ['可发布内容', '已发布内容', '第三方平台素材', '当前只生成可复制素材', '不自动登录第三方平台']) {
-  assertContains('内容发布页', sources.flow, item);
+for (const item of ['发布记录', '新建发布记录', '已发布记录列表', '选择文章', '选择平台（多选）', '保存链接', 'createManualPublishRecord', 'updateManualPublishRecord', 'publishRecords']) {
+  assertContains('发布记录页', sources.flow, item);
+}
+for (const item of ['连接发布平台', '可由交付人员配置', '风险边界', '支持方式']) {
+  assertNotContains('发布记录页', sources.flow, item);
 }
 for (const item of ['已发布内容监测卡片', '收录', 'AI 提及', 'AI 推荐', '最近检测时间', '当前建议', '监测结果来自有限样本']) {
   assertContains('收录监测页', sources.flow, item);
 }
-for (const item of ['GEO 诊断报告', '内容生产报告', '发布监测报告', '复测优化报告', '风险说明']) {
+for (const item of ['本轮交付摘要', '内容诊断结果', '优化任务清单', '已生成内容', '发布记录', '下一步建议', '不承诺保证收录、排名或 AI 推荐']) {
   assertContains('交付报告页', sources.flow, item);
 }
 
@@ -62,9 +73,9 @@ for (const [name, source] of Object.entries(sources)) {
 }
 
 if (failures.length > 0) {
-  console.error('V1.2 UI 硬验收失败：');
+  console.error('V1.0 UI 硬验收失败：');
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
-console.log('V1.2 UI 硬验收通过：首页、七个一级入口、六步流程页面、状态引导条与中文占位检查均通过。');
+console.log('V1.0 UI 硬验收通过：首页、六个一级入口、核心三步流程、状态引导条与中文占位检查均通过。');

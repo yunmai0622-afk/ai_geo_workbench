@@ -128,9 +128,6 @@ export function validateCustomerCaseInput(input: {
   customerFeedback?: string | null;
 }) {
   const sourceAssetIds = input.sourceAssetIds ?? [];
-  if (input.caseType === "真实案例" && sourceAssetIds.length === 0) {
-    throw new Error("真实客户案例必须引用至少一条客户资料来源，不能无来源编造案例");
-  }
   if (input.caseType === "真实案例" && !input.customerName?.trim()) {
     throw new Error("真实客户案例必须填写客户名称或可公开客户代称");
   }

@@ -5,42 +5,52 @@ import { resolve } from "node:path";
 const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf-8");
 
-describe("V1.2 可售卖版主流程静态回归", () => {
-  it("将 AI GEO 增长工作台注册为首页，并保留项目管理兼容入口", () => {
+describe("V1.0 客户主路径静态回归", () => {
+  it("将企业 GEO 内容增长工作台注册为首页，并保留项目管理兼容入口", () => {
     const appSource = readProjectFile("client/src/App.tsx");
     expect(appSource).toContain('import Home from "./pages/Home";');
     expect(appSource).toContain('<Route path="/" component={Home} />');
     expect(appSource).toContain('<Route path="/projects" component={ProjectsPage} />');
   });
 
-  it("侧边栏只展示 V1.2 七个一级客户路径入口", () => {
+  it("侧边栏展示客户主入口（含内容进展占位），并把旧路径作为兼容别名", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    for (const label of ["总览", "企业档案", "AI 诊断", "内容生成", "内容发布", "收录监测", "交付报告"]) {
+    for (const label of ["工作台", "我的信息", "内容诊断", "本周内容", "发布记录", "内容进展", "效果报告"]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
-    for (const forbidden of ["内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "平台发布", "报告中心"]) {
+    expect(layoutSource).toContain('path: "/progress"');
+    expect(layoutSource).toContain('path: "/progress"');
+    expect(layoutSource).not.toContain("即将上线");
+    for (const forbidden of ["总览", "内容生成", "内容发布", "收录监测", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心"]) {
       expect(layoutSource).not.toContain(`label: "${forbidden}"`);
     }
+    for (const alias of ["/projects", "/assets", "/diagnosis", "/questions", "/responses", "/analysis", "/scores", "/weekly", "/content-generation", "/articles", "/publish", "/monitoring", "/inclusion-monitoring", "/reports"]) {
+      expect(layoutSource).toContain(alias);
+    }
   });
 
-  it("首页作为唯一 6 步主流程入口展示项目、进度、任务、指标、风险和继续下一步", () => {
-    const homeSource = readProjectFile("client/src/pages/Home.tsx");
-    expect(homeSource).toContain("AI GEO 增长工作台");
-    expect(homeSource).toContain("建档、诊断、内容、发布、监测、报告");
-    for (const text of ["当前项目", "当前进度", "当前任务", "继续下一步", "6 步进度条", "核心指标", "当前风险提醒", "本轮试跑闭环已完成"]) {
+  it("首页展示今日概览、本周任务与累计进展", () => {
+    const homeSource = readProjectFile("client/src/pages/Home.tsx") + readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
+    expect(homeSource).toContain("内容增长工作台");
+    expect(homeSource).toContain("今日概览与本周任务");
+    for (const text of ["你好", "本周内容任务", "最近发布", "内容诊断", "累计发布篇数", "覆盖问题场景", "内容覆盖评分", "较上次变化"]) {
       expect(homeSource).toContain(text);
     }
-    for (const step of ["企业档案", "AI 诊断", "内容生成", "内容发布", "收录监测", "交付报告"]) {
-      expect(homeSource).toContain(step);
+    expect(homeSource).toContain("geo.scores.latest");
+    expect(homeSource).toContain("geo.tasks.list");
+    expect(homeSource).toContain("geo.articles.list");
+    expect(homeSource).toContain("geo.articles.publishRecords");
+    for (const forbidden of ["V1.0 核心三步流程", "关键产物入口", "GEO 可见度", "推演", "资产库", "analysis_results", "geo_scores"]) {
+      expect(homeSource).not.toContain(forbidden);
     }
   });
 
-  it("企业档案页只保留六类资料卡片和一个主动作", () => {
+  it("企业档案页为 Section 结构并保留资料完整度提示", () => {
     const assetCenterSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    for (const text of ["企业基础资料", "产品服务资料", "客户案例", "竞品资料", "合规规则", "发布策略"]) {
+    for (const text of ["Section 1 · 基本身份", "Section 2 · 你的客户", "Section 3 · 有什么证明", "保存基本身份", "保存客户信息"]) {
       expect(assetCenterSource).toContain(text);
     }
-    expect(assetCenterSource).toContain("当前页面只保留一个主动作");
+    expect(assetCenterSource).toContain("资料完整度");
     expect(assetCenterSource).not.toContain("内容风格");
     expect(assetCenterSource).not.toContain("平台授权配置占位");
   });

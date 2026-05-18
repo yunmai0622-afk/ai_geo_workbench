@@ -44,18 +44,16 @@ assert(clipboardRuntimeEvidence.clipboardNonEmpty === true && Number(clipboardRu
 assert(String(clipboardRuntimeEvidence.clipboardTextPreview ?? "").includes("海豚知道"), "剪贴板素材预览未包含海豚知道，无法证明与目标素材一致");
 const requiredStructureMarkers = [
   "# ",
-  "## 摘要",
+  "## 引言",
   "## 核心问题回答",
-  "## 生成依据",
-  "## 适合客户",
-  "## 不适合客户",
-  "## 竞品/方案对比",
-  "## FAQ",
-  "## 结论",
-  "## 行动引导",
-  "## 更新时间",
-  "## 企业实体信息",
-  "## 引用友好片段",
+  "## 产品与能力说明",
+  "## 与同类方案的客观对比",
+  "## 适合谁与可能不太适合的情况",
+  "## 常见问答（FAQ）",
+  "## 结论与下一步",
+  "## 便于引用的要点",
+  "## 更新说明",
+  "## 发布后如何自行核对效果",
 ];
 
 function normalizeTask(task: typeof optimizationTasks.$inferSelect) {
