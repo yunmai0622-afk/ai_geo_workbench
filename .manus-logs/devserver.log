@@ -651,3 +651,34 @@
 [2026-05-18T10:10:06.815Z] }
 [2026-05-18T10:10:06.815Z] ]
 [2026-05-18T10:10:06.816Z] }
+[2026-05-18T10:12:16.391Z] [geo.scores.latest] {
+[2026-05-18T10:12:16.392Z] requestedProjectId: 1,
+[2026-05-18T10:12:16.392Z] returned: {
+[2026-05-18T10:12:16.393Z] id: 630001,
+[2026-05-18T10:12:16.393Z] projectId: 1,
+[2026-05-18T10:12:16.394Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T10:12:16.394Z] totalScore: 40
+[2026-05-18T10:12:16.394Z] },
+[2026-05-18T10:12:16.395Z] sameProjectTop3: [
+[2026-05-18T10:12:16.395Z] {
+[2026-05-18T10:12:16.395Z] id: 630001,
+[2026-05-18T10:12:16.396Z] projectId: 1,
+[2026-05-18T10:12:16.396Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T10:12:16.397Z] totalScore: 40
+[2026-05-18T10:12:16.397Z] }
+[2026-05-18T10:12:16.397Z] ]
+[2026-05-18T10:12:16.397Z] }
+[2026-05-18T11:05:48.357Z] 7:05:48 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-18T11:05:48.480Z] 7:05:48 AM [tsx] change in ./server/publishTasksRouter.ts Restarting...
+[2026-05-18T11:05:50.006Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T11:05:50.272Z] Server running on http://localhost:3000/
+[2026-05-18T11:06:33.209Z] Dev server process group stopped
+[2026-05-18T11:06:33.212Z] ELIFECYCLE  Command failed.
+[2026-05-18T11:06:33.242Z] Dev server exited with code -15
+[2026-05-18T11:06:36.224Z] Starting dev server with command: pnpm run dev
+[2026-05-18T11:06:37.044Z] 
+[2026-05-18T11:06:37.045Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-18T11:06:37.046Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-18T11:06:37.046Z] 
+[2026-05-18T11:06:38.692Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T11:06:38.975Z] Server running on http://localhost:3000/

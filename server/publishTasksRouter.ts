@@ -5,6 +5,7 @@ import { z } from "zod";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { geoArticleQualityScores, geoArticles, geoPublishRecords, publishTasks, users } from "../drizzle/schema";
 import { getDb } from "./db";
+import { buildCustomExtensionZip, resolveServerUrlFromRequest } from "./extensionDownload";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 const publishPlatformSlugEnum = z.enum(["zhihu", "toutiao", "sohu", "baijiahao", "wechat"]);
@@ -152,5 +153,16 @@ export const publishTasksRouter = router({
   getApiKey: protectedProcedure.query(async ({ ctx }) => {
     const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);
     return { apiKey } as const;
+  }),
+
+  downloadExtension: protectedProcedure.mutation(async ({ ctx }) => {
+    const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);
+    const serverUrl = resolveServerUrlFromRequest(ctx.req);
+    const zipBuffer = buildCustomExtensionZip(serverUrl, apiKey);
+    return {
+      fileName: "content-growth-publish-extension.zip",
+      mimeType: "application/zip",
+      dataBase64: zipBuffer.toString("base64"),
+    } as const;
   }),
 });

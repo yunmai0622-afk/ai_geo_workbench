@@ -211,7 +211,7 @@ export default function WeeklyContentPage() {
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
-  const extensionApiKeyQuery = trpc.publishTasks.getApiKey.useQuery();
+  const downloadExtension = trpc.publishTasks.downloadExtension.useMutation();
 
   const autoTopicsTriggeredRef = useRef(false);
   const [preparingTopics, setPreparingTopics] = useState(false);
@@ -390,21 +390,28 @@ export default function WeeklyContentPage() {
     setShowExtensionHint(false);
   };
 
-  const copyExtensionApiKey = async () => {
-    const key = extensionApiKeyQuery.data?.apiKey;
-    if (!key) {
-      toast.error("API 密钥尚未加载，请稍后重试");
-      return;
-    }
+  const handleDownloadExtension = async () => {
     try {
-      await navigator.clipboard.writeText(key);
-      toast.success("已复制插件 API 密钥");
-    } catch {
-      toast.error("复制失败，请手动选中密钥复制");
+      const result = await downloadExtension.mutateAsync();
+      const binary = atob(result.dataBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: result.mimeType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = result.fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      toast.success("插件已下载，请在 Chrome 扩展程序页面加载");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "下载插件失败，请稍后重试");
     }
   };
-
-  const serverOrigin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
     <div className="relative mx-auto max-w-5xl pb-32 pt-2 text-slate-100">
@@ -433,42 +440,19 @@ export default function WeeklyContentPage() {
       <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm">
         <p className="font-medium text-slate-100">浏览器发布插件</p>
         <p className="mt-1 text-xs text-slate-400">
-          安装插件后，将下方「服务器地址」与「API 密钥」填入插件 popup，在各平台完成登录即可自动发布。
+          下载插件后，在 Chrome 扩展程序页面加载，安装即自动配置完成；再在各平台完成登录即可自动发布。
         </p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-500">服务器地址（填入插件）</p>
-            <p className="truncate font-mono text-xs text-cyan-100">{serverOrigin || "—"}</p>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-500">API 密钥（填入插件）</p>
-            <p className="truncate font-mono text-xs text-cyan-100">
-              {extensionApiKeyQuery.isLoading
-                ? "加载中…"
-                : extensionApiKeyQuery.isError
-                  ? "加载失败，请刷新页面"
-                  : extensionApiKeyQuery.data?.apiKey ?? "—"}
-            </p>
-          </div>
-        </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button
             type="button"
             size="sm"
             variant="outline"
             className="border-cyan-400/40 text-cyan-100 hover:bg-cyan-400/10"
-            disabled={!extensionApiKeyQuery.data?.apiKey}
-            onClick={() => void copyExtensionApiKey()}
+            disabled={downloadExtension.isPending}
+            onClick={() => void handleDownloadExtension()}
           >
-            复制 API 密钥
+            {downloadExtension.isPending ? "正在打包…" : "下载插件"}
           </Button>
-          <a
-            href="/browser-extension.zip"
-            download="content-growth-publish-extension.zip"
-            className="inline-flex h-8 items-center rounded-md border border-cyan-400/40 px-3 text-xs font-medium text-cyan-100 hover:bg-cyan-400/10"
-          >
-            下载插件
-          </a>
           {showExtensionHint ? (
             <button type="button" className="text-xs text-slate-500 hover:text-slate-300" onClick={dismissExtensionHint}>
               收起说明
@@ -477,7 +461,7 @@ export default function WeeklyContentPage() {
         </div>
         {showExtensionHint ? (
           <p className="mt-2 text-xs text-slate-500">
-            流程：下载并安装插件 → 复制密钥并保存 → 在插件中连接各平台并登录 → 回到本页选择文章「发布到平台」。
+            流程：下载插件 → Chrome 扩展程序 → 开发者模式 → 加载已解压 → 连接各平台登录 → 本页「发布到平台」。
           </p>
         ) : null}
       </div>
