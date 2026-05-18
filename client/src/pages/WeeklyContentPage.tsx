@@ -211,6 +211,7 @@ export default function WeeklyContentPage() {
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
+  const extensionApiKeyQuery = trpc.publishTasks.getApiKey.useQuery();
 
   const autoTopicsTriggeredRef = useRef(false);
   const [preparingTopics, setPreparingTopics] = useState(false);
@@ -389,6 +390,22 @@ export default function WeeklyContentPage() {
     setShowExtensionHint(false);
   };
 
+  const copyExtensionApiKey = async () => {
+    const key = extensionApiKeyQuery.data?.apiKey;
+    if (!key) {
+      toast.error("API 密钥尚未加载，请稍后重试");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(key);
+      toast.success("已复制插件 API 密钥");
+    } catch {
+      toast.error("复制失败，请手动选中密钥复制");
+    }
+  };
+
+  const serverOrigin = typeof window !== "undefined" ? window.location.origin : "";
+
   return (
     <div className="relative mx-auto max-w-5xl pb-32 pt-2 text-slate-100">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -413,23 +430,57 @@ export default function WeeklyContentPage() {
         </div>
       </div>
 
-      {showExtensionHint ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
-          <span>需要安装浏览器插件才能自动发布，</span>
-          <div className="flex items-center gap-2">
-            <a
-              href="/browser-extension.zip"
-              download="content-growth-publish-extension.zip"
-              className="font-medium text-cyan-200 underline underline-offset-2 hover:text-white"
-            >
-              点击下载插件
-            </a>
-            <button type="button" className="text-xs text-slate-400 hover:text-slate-200" onClick={dismissExtensionHint}>
-              不再提示
-            </button>
+      <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm">
+        <p className="font-medium text-slate-100">浏览器发布插件</p>
+        <p className="mt-1 text-xs text-slate-400">
+          安装插件后，将下方「服务器地址」与「API 密钥」填入插件 popup，在各平台完成登录即可自动发布。
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-500">服务器地址（填入插件）</p>
+            <p className="truncate font-mono text-xs text-cyan-100">{serverOrigin || "—"}</p>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-500">API 密钥（填入插件）</p>
+            <p className="truncate font-mono text-xs text-cyan-100">
+              {extensionApiKeyQuery.isLoading
+                ? "加载中…"
+                : extensionApiKeyQuery.isError
+                  ? "加载失败，请刷新页面"
+                  : extensionApiKeyQuery.data?.apiKey ?? "—"}
+            </p>
           </div>
         </div>
-      ) : null}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="border-cyan-400/40 text-cyan-100 hover:bg-cyan-400/10"
+            disabled={!extensionApiKeyQuery.data?.apiKey}
+            onClick={() => void copyExtensionApiKey()}
+          >
+            复制 API 密钥
+          </Button>
+          <a
+            href="/browser-extension.zip"
+            download="content-growth-publish-extension.zip"
+            className="inline-flex h-8 items-center rounded-md border border-cyan-400/40 px-3 text-xs font-medium text-cyan-100 hover:bg-cyan-400/10"
+          >
+            下载插件
+          </a>
+          {showExtensionHint ? (
+            <button type="button" className="text-xs text-slate-500 hover:text-slate-300" onClick={dismissExtensionHint}>
+              收起说明
+            </button>
+          ) : null}
+        </div>
+        {showExtensionHint ? (
+          <p className="mt-2 text-xs text-slate-500">
+            流程：下载并安装插件 → 复制密钥并保存 → 在插件中连接各平台并登录 → 回到本页选择文章「发布到平台」。
+          </p>
+        ) : null}
+      </div>
 
       <p className="mt-6 text-sm text-slate-300">
         本周已生成 <span className="font-medium text-white">{weeklyArticles.length}</span> 篇 · 已发布{" "}

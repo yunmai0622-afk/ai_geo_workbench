@@ -1,0 +1,34 @@
+{
+  "query": "SELECT 'geo_articles' as tbl, COUNT(*) as cnt FROM geo_articles\nUNION ALL\nSELECT 'geo_article_topics', COUNT(*) FROM geo_article_topics\nUNION ALL\nSELECT 'content_plans', COUNT(*) FROM content_plans\nUNION ALL\nSELECT 'content_plan_items', COUNT(*) FROM content_plan_items\nUNION ALL\nSELECT 'geo_publish_records', COUNT(*) FROM geo_publish_records\nUNION ALL\nSELECT 'publish_tasks', COUNT(*) FROM publish_tasks;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT 'geo_articles' as tbl, COUNT(*) as cnt FROM geo_articles\nUNION ALL\nSELECT 'geo_article_topics', COUNT(*) FROM geo_article_topics\nUNION ALL\nSELECT 'content_plans', COUNT(*) FROM content_plans\nUNION ALL\nSELECT 'content_plan_items', COUNT(*) FROM content_plan_items\nUNION ALL\nSELECT 'geo_publish_records', COUNT(*) FROM geo_publish_records\nUNION ALL\nSELECT 'publish_tasks', COUNT(*) FROM publish_tasks;",
+  "rows": [
+    {
+      "tbl": "geo_publish_records",
+      "cnt": "21"
+    },
+    {
+      "tbl": "content_plan_items",
+      "cnt": "0"
+    },
+    {
+      "tbl": "content_plans",
+      "cnt": "0"
+    },
+    {
+      "tbl": "geo_article_topics",
+      "cnt": "10"
+    },
+    {
+      "tbl": "publish_tasks",
+      "cnt": "0"
+    },
+    {
+      "tbl": "geo_articles",
+      "cnt": "62"
+    }
+  ],
+  "messages": [],
+  "stdout": "tbl\tcnt\ngeo_publish_records\t21\ncontent_plan_items\t0\ncontent_plans\t0\ngeo_article_topics\t10\npublish_tasks\t0\ngeo_articles\t62\n",
+  "stderr": "",
+  "execution_time_ms": 2540
+}
