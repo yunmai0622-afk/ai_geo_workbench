@@ -1,9 +1,0 @@
-{
-  "query": "ALTER TABLE `content_templates` RENAME COLUMN `taskId` TO `optimizationTaskId`;\nALTER TABLE `optimization_tasks` RENAME COLUMN `taskStatus` TO `status`;\nALTER TABLE `optimization_tasks` MODIFY COLUMN `status` enum('todo','doing','done','retest') NOT NULL DEFAULT 'todo';\nALTER TABLE `optimization_tasks` ADD `publishedUrl` varchar(1000);\nALTER TABLE `optimization_tasks` ADD `completedAt` timestamp;\nALTER TABLE `optimization_tasks` ADD `needRetest` int DEFAULT 0 NOT NULL;\nALTER TABLE `projects` ADD `status` enum('created','questions_ready','responses_imported','analysis_done','score_done','tasks_ready','report_ready') DEFAULT 'created' NOT NULL;",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `content_templates` RENAME COLUMN `taskId` TO `optimizationTaskId`;\nALTER TABLE `optimization_tasks` RENAME COLUMN `taskStatus` TO `status`;\nALTER TABLE `optimization_tasks` MODIFY COLUMN `status` enum('todo','doing','done','retest') NOT NULL DEFAULT 'todo';\nALTER TABLE `optimization_tasks` ADD `publishedUrl` varchar(1000);\nALTER TABLE `optimization_tasks` ADD `completedAt` timestamp;\nALTER TABLE `optimization_tasks` ADD `needRetest` int DEFAULT 0 NOT NULL;\nALTER TABLE `projects` ADD `status` enum('created','questions_ready','responses_imported','analysis_done','score_done','tasks_ready','report_ready') DEFAULT 'created' NOT NULL;",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 3833
-}

@@ -8,14 +8,61 @@
     .field { margin-bottom: 12px; }
     label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
     input { width: 100%; padding: 8px; background: #1a1a2e; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 13px; box-sizing: border-box; }
-    button { width: 100%; padding: 10px; background: #22d3ee; color: #000; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+    #saveBtn { width: 100%; padding: 10px; background: #22d3ee; color: #000; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 8px; }
     .platform-list { margin-top: 16px; }
-    .platform-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #222; gap: 8px; }
-    .platform-name { font-size: 13px; flex: 1; }
-    .status { font-size: 11px; min-width: 48px; text-align: right; }
+    .platform-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #222;
+      gap: 8px;
+    }
+    .platform-name {
+      font-size: 13px;
+      white-space: nowrap;
+      min-width: 60px;
+    }
+    .status {
+      font-size: 11px;
+      white-space: nowrap;
+      flex: 1;
+      text-align: center;
+    }
     .connected { color: #22c55e; }
     .disconnected { color: #888; }
-    .connect-btn { padding: 4px 10px; font-size: 11px; background: transparent; border: 1px solid #444; border-radius: 4px; color: #ccc; cursor: pointer; white-space: nowrap; }
+    .connect-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      background: transparent;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #checkBtn {
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    #connectHint {
+      display: none;
+      margin-top: 10px;
+      padding: 8px 10px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #a5f3fc;
+      background: rgba(34, 211, 238, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -33,29 +80,31 @@
     <div class="platform-item">
       <span class="platform-name">知乎</span>
       <span class="status disconnected" id="zhihu-status">未连接</span>
-      <button class="connect-btn" data-platform="zhihu" data-url="https://www.zhihu.com/signin">连接</button>
+      <button class="connect-btn" data-platform="zhihu" data-label="知乎" data-url="https://www.zhihu.com/signin">连接</button>
     </div>
     <div class="platform-item">
       <span class="platform-name">头条号</span>
       <span class="status disconnected" id="toutiao-status">未连接</span>
-      <button class="connect-btn" data-platform="toutiao" data-url="https://mp.toutiao.com">连接</button>
+      <button class="connect-btn" data-platform="toutiao" data-label="头条号" data-url="https://mp.toutiao.com">连接</button>
     </div>
     <div class="platform-item">
       <span class="platform-name">搜狐号</span>
       <span class="status disconnected" id="sohu-status">未连接</span>
-      <button class="connect-btn" data-platform="sohu" data-url="https://mp.sohu.com">连接</button>
+      <button class="connect-btn" data-platform="sohu" data-label="搜狐号" data-url="https://mp.sohu.com">连接</button>
     </div>
     <div class="platform-item">
       <span class="platform-name">百家号</span>
       <span class="status disconnected" id="baijiahao-status">未连接</span>
-      <button class="connect-btn" data-platform="baijiahao" data-url="https://baijiahao.baidu.com">连接</button>
+      <button class="connect-btn" data-platform="baijiahao" data-label="百家号" data-url="https://baijiahao.baidu.com">连接</button>
     </div>
     <div class="platform-item">
       <span class="platform-name">微信公众号</span>
       <span class="status disconnected" id="wechat-status">未连接</span>
-      <button class="connect-btn" data-platform="wechat" data-url="https://mp.weixin.qq.com">连接</button>
+      <button class="connect-btn" data-platform="wechat" data-label="微信公众号" data-url="https://mp.weixin.qq.com">连接</button>
     </div>
   </div>
+  <p id="connectHint">请在打开的页面登录，登录后插件会自动检测。</p>
+  <button type="button" id="checkBtn">刷新连接状态</button>
   <script src="popup.js"></script>
 </body>
 </html>

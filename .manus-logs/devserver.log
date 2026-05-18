@@ -1,0 +1,653 @@
+[2026-05-09T14:41:29.163Z] Starting dev server with command: pnpm run dev
+[2026-05-09T14:41:31.545Z] 
+[2026-05-09T14:41:31.546Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-09T14:41:31.546Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-09T14:41:31.546Z] 
+[2026-05-09T14:41:33.593Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-09T14:41:33.911Z] Server running on http://localhost:3000/
+[2026-05-09T14:41:35.653Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-09T14:41:37.919Z] [Auth] Missing session cookie
+[2026-05-09T14:43:51.437Z] 10:43:51 AM [tsx] change in ./drizzle/schema.ts Restarting...
+[2026-05-09T14:43:53.153Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-09T14:43:53.425Z] Server running on http://localhost:3000/
+[2026-05-09T14:43:54.451Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-09T14:44:09.111Z] 10:44:09 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-09T14:44:10.869Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-09T14:44:11.133Z] Server running on http://localhost:3000/
+[2026-05-09T14:44:12.280Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-09T14:47:48.420Z] 10:47:48 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-09T14:47:50.141Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-09T14:47:50.396Z] Server running on http://localhost:3000/
+[2026-05-09T14:47:52.088Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-09T15:33:32.693Z] 11:33:32 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-09T15:33:34.304Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-09T15:33:34.565Z] Server running on http://localhost:3000/
+[2026-05-09T15:37:57.744Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-09T15:45:01.153Z] 11:45:01 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-11T04:24:56.798Z] 12:24:56 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T04:24:58.495Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T04:24:58.749Z] Server running on http://localhost:3000/
+[2026-05-11T04:24:59.348Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T04:29:53.096Z] 12:29:53 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T04:29:54.961Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T04:29:55.217Z] Server running on http://localhost:3000/
+[2026-05-11T04:29:57.066Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T04:30:13.935Z] 12:30:13 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T04:30:15.647Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T04:30:15.929Z] Server running on http://localhost:3000/
+[2026-05-11T04:30:16.774Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T04:33:48.809Z] 12:33:48 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T04:33:50.928Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T04:33:51.293Z] Server running on http://localhost:3000/
+[2026-05-11T04:33:53.050Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T04:33:57.004Z] 12:33:57 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T04:33:58.961Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T04:33:59.260Z] Server running on http://localhost:3000/
+[2026-05-11T04:34:01.414Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T04:58:01.017Z] 12:58:01 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-05-11T04:58:15.458Z] 12:58:15 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-05-11T04:58:34.004Z] 12:58:34 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T04:58:35.710Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T04:58:36.036Z] Server running on http://localhost:3000/
+[2026-05-11T04:58:40.038Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T04:58:52.119Z] 12:58:52 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T04:58:53.759Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T04:58:54.032Z] Server running on http://localhost:3000/
+[2026-05-11T04:58:58.066Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T05:00:44.754Z] 1:00:44 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T05:00:46.812Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T05:00:47.159Z] Server running on http://localhost:3000/
+[2026-05-11T05:00:49.321Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T05:01:09.056Z] 1:01:09 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-05-11T05:01:09.264Z] 1:01:09 AM [vite] (client) hmr invalidate /src/pages/GeoPages.tsx Could not Fast Refresh ("buildPublishCheckSummary" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-11T05:01:09.265Z] 1:01:09 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-11T05:01:19.531Z] 1:01:19 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-05-11T05:01:20.069Z] 1:01:20 AM [vite] (client) hmr invalidate /src/pages/GeoPages.tsx Could not Fast Refresh ("buildPublishCheckSummary" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-11T05:01:20.070Z] 1:01:20 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-11T05:04:14.825Z] 1:04:14 AM [tsx] change in ./server/geoArticleLogic.ts Restarting...
+[2026-05-11T05:04:16.820Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T05:04:17.102Z] Server running on http://localhost:3000/
+[2026-05-11T05:04:21.738Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T05:05:22.395Z] 1:05:22 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-05-11T05:05:23.134Z] 1:05:23 AM [vite] (client) hmr invalidate /src/pages/GeoPages.tsx Could not Fast Refresh ("buildPublishCheckSummary" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-11T05:05:23.135Z] 1:05:23 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-11T05:08:47.853Z] 1:08:47 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-05-11T05:09:26.029Z] 1:09:26 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-05-11T05:09:26.663Z] 1:09:26 AM [vite] (client) hmr invalidate /src/pages/GeoPages.tsx Could not Fast Refresh (new export)
+[2026-05-11T05:09:26.664Z] 1:09:26 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-11T05:13:13.485Z] 1:13:13 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-05-11T07:37:45.561Z] 3:37:45 AM [tsx] change in ./server/assetLibrary.ts Restarting...
+[2026-05-11T07:37:47.204Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T07:37:47.456Z] Server running on http://localhost:3000/
+[2026-05-11T07:37:48.955Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T07:41:33.191Z] 3:41:33 AM [tsx] change in ./server/geoLogic.ts Restarting...
+[2026-05-11T07:41:35.013Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T07:41:35.290Z] Server running on http://localhost:3000/
+[2026-05-11T07:41:35.845Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T07:41:44.243Z] 3:41:44 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T07:41:46.115Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T07:41:46.423Z] Server running on http://localhost:3000/
+[2026-05-11T07:41:46.794Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T07:41:53.346Z] 3:41:53 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-11T07:41:55.293Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-11T07:41:55.576Z] Server running on http://localhost:3000/
+[2026-05-11T07:41:57.706Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-11T07:48:18.072Z] 3:48:18 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-05-11T07:48:18.547Z] 3:48:18 AM [vite] (client) hmr invalidate /src/pages/GeoPages.tsx Could not Fast Refresh ("buildPublishCheckSummary" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-11T07:48:18.547Z] 3:48:18 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-11T08:16:56.276Z] 4:16:56 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-05-11T08:16:57.007Z] 4:16:57 AM [vite] (client) hmr invalidate /src/pages/GeoPages.tsx Could not Fast Refresh ("buildPublishCheckSummary" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-11T08:16:57.008Z] 4:16:57 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-18T08:34:43.103Z] Dev server process group stopped
+[2026-05-18T08:34:46.205Z] Starting dev server with command: pnpm run dev
+[2026-05-18T08:34:47.360Z] 
+[2026-05-18T08:34:47.361Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-18T08:34:47.362Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-18T08:34:47.362Z] 
+[2026-05-18T08:34:49.954Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T08:34:50.386Z] Server running on http://localhost:3000/
+[2026-05-18T08:34:51.339Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-18T08:38:54.738Z] 4:38:54 AM [vite] (client) hmr update /src/index.css, /src/components/ui/input.tsx
+[2026-05-18T08:38:54.741Z] 4:38:54 AM [vite] (client) hmr update /src/index.css, /src/components/DashboardLayout.tsx, /src/components/ui/sidebar.tsx
+[2026-05-18T08:38:54.742Z] 4:38:54 AM [vite] (client) hmr update /src/index.css, /src/components/ui/input.tsx
+[2026-05-18T08:38:54.742Z] 4:38:54 AM [vite] (client) hmr update /src/index.css, /src/pages/DemoGeo.tsx
+[2026-05-18T08:38:54.742Z] 4:38:54 AM [vite] (client) page reload src/lib/trpc.ts
+[2026-05-18T08:38:54.743Z] 4:38:54 AM [vite] (client) hmr update /src/index.css, /src/components/ErrorBoundary.tsx, /src/components/ui/tooltip.tsx, /src/components/ui/button.tsx, /src/components/ui/avatar.tsx, /src/components/ui/dropdown-menu.tsx, /src/components/ui/card.tsx, /src/components/ui/sidebar.tsx, /src/components/ui/skeleton.tsx, /src/components/ui/separator.tsx, /src/components/ui/sheet.tsx, /src/components/ui/input.tsx, /src/components/ui/dialog.tsx
+[2026-05-18T08:38:54.743Z] 4:38:54 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-05-18T08:38:54.744Z] 4:38:54 AM [vite] (client) hmr update /src/index.css
+[2026-05-18T08:38:54.744Z] 4:38:54 AM [vite] (client) hmr update /src/pages/DemoGeo.tsx, /src/index.css
+[2026-05-18T08:38:54.745Z] 4:38:54 AM [vite] (client) hmr update /src/pages/GeoFlowWizard.tsx, /src/index.css
+[2026-05-18T08:38:54.745Z] 4:38:54 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-05-18T08:38:54.746Z] 4:38:54 AM [vite] (client) hmr update /src/pages/GeoPublicContent.tsx, /src/index.css
+[2026-05-18T08:38:54.746Z] 4:38:54 AM [vite] (client) hmr update /src/pages/Home.tsx, /src/index.css
+[2026-05-18T08:38:54.746Z] 4:38:54 AM [vite] (client) hmr update /src/pages/NotFound.tsx, /src/index.css
+[2026-05-18T08:38:54.747Z] 4:38:54 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-18T08:38:54.747Z] 4:38:54 AM [vite] changed tsconfig file detected: /home/ubuntu/ai_geo_workbench/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+[2026-05-18T08:38:54.751Z] 4:38:54 AM [vite] (client) page reload index.html
+[2026-05-18T08:38:54.752Z] 4:38:54 AM [vite] (client) page reload public/.gitkeep
+[2026-05-18T08:38:54.752Z] 4:38:54 AM [vite] (client) page reload public/__manus__/debug-collector.js
+[2026-05-18T08:38:54.753Z] 4:38:54 AM [vite] (client) page reload src/App.tsx
+[2026-05-18T08:38:54.754Z] 4:38:54 AM [vite] (client) page reload src/_core/hooks/useAuth.ts
+[2026-05-18T08:38:54.754Z] 4:38:54 AM [vite] (client) page reload src/components/AIChatBox.tsx
+[2026-05-18T08:38:54.755Z] 4:38:54 AM [vite] (client) page reload src/components/DashboardLayout.tsx
+[2026-05-18T08:38:54.755Z] 4:38:54 AM [vite] (client) page reload src/components/DashboardLayoutSkeleton.tsx
+[2026-05-18T08:38:54.756Z] 4:38:54 AM [vite] (client) page reload src/components/ErrorBoundary.tsx
+[2026-05-18T08:38:54.756Z] 4:38:54 AM [vite] (client) page reload src/components/GeoStatusGuide.tsx
+[2026-05-18T08:38:54.757Z] 4:38:54 AM [vite] (client) page reload src/components/ManusDialog.tsx
+[2026-05-18T08:38:54.757Z] 4:38:54 AM [vite] (client) page reload src/components/Map.tsx
+[2026-05-18T08:38:54.758Z] 4:38:54 AM [vite] (client) page reload src/components/ui/accordion.tsx
+[2026-05-18T08:38:54.758Z] 4:38:54 AM [vite] (client) page reload src/components/ui/alert-dialog.tsx
+[2026-05-18T08:38:54.759Z] 4:38:54 AM [vite] (client) page reload src/components/ui/alert.tsx
+[2026-05-18T08:38:54.759Z] 4:38:54 AM [vite] (client) page reload src/components/ui/aspect-ratio.tsx
+[2026-05-18T08:38:54.760Z] 4:38:54 AM [vite] (client) page reload src/components/ui/avatar.tsx
+[2026-05-18T08:38:54.760Z] 4:38:54 AM [vite] (client) page reload src/components/ui/badge.tsx
+[2026-05-18T08:38:54.760Z] 4:38:54 AM [vite] (client) page reload src/components/ui/breadcrumb.tsx
+[2026-05-18T08:38:54.761Z] 4:38:54 AM [vite] (client) page reload src/components/ui/button-group.tsx
+[2026-05-18T08:38:54.761Z] 4:38:54 AM [vite] (client) page reload src/components/ui/button.tsx
+[2026-05-18T08:38:54.762Z] 4:38:54 AM [vite] (client) page reload src/components/ui/calendar.tsx
+[2026-05-18T08:38:54.762Z] 4:38:54 AM [vite] (client) page reload src/components/ui/card.tsx
+[2026-05-18T08:38:54.762Z] 4:38:54 AM [vite] (client) page reload src/components/ui/carousel.tsx
+[2026-05-18T08:38:54.763Z] 4:38:54 AM [vite] (client) page reload src/components/ui/chart.tsx
+[2026-05-18T08:38:54.763Z] 4:38:54 AM [vite] (client) page reload src/components/ui/checkbox.tsx
+[2026-05-18T08:38:54.764Z] 4:38:54 AM [vite] (client) page reload src/components/ui/collapsible.tsx
+[2026-05-18T08:38:54.764Z] 4:38:54 AM [vite] (client) page reload src/components/ui/command.tsx
+[2026-05-18T08:38:54.765Z] 4:38:54 AM [vite] (client) page reload src/components/ui/context-menu.tsx
+[2026-05-18T08:38:54.765Z] 4:38:54 AM [vite] (client) page reload src/components/ui/dialog.tsx
+[2026-05-18T08:38:54.765Z] 4:38:54 AM [vite] (client) page reload src/components/ui/drawer.tsx
+[2026-05-18T08:38:54.766Z] 4:38:54 AM [vite] (client) page reload src/components/ui/dropdown-menu.tsx
+[2026-05-18T08:38:54.766Z] 4:38:54 AM [vite] (client) page reload src/components/ui/empty.tsx
+[2026-05-18T08:38:54.766Z] 4:38:54 AM [vite] (client) page reload src/components/ui/field.tsx
+[2026-05-18T08:38:54.767Z] 4:38:54 AM [vite] (client) page reload src/components/ui/form.tsx
+[2026-05-18T08:38:54.767Z] 4:38:54 AM [vite] (client) page reload src/components/ui/hover-card.tsx
+[2026-05-18T08:38:54.767Z] 4:38:54 AM [vite] (client) page reload src/components/ui/input-group.tsx
+[2026-05-18T08:38:54.768Z] 4:38:54 AM [vite] (client) page reload src/components/ui/input-otp.tsx
+[2026-05-18T08:38:54.768Z] 4:38:54 AM [vite] (client) page reload src/components/ui/input.tsx
+[2026-05-18T08:38:54.768Z] 4:38:54 AM [vite] (client) page reload src/components/ui/item.tsx
+[2026-05-18T08:38:54.769Z] 4:38:54 AM [vite] (client) page reload src/components/ui/kbd.tsx
+[2026-05-18T08:38:54.769Z] 4:38:54 AM [vite] (client) page reload src/components/ui/label.tsx
+[2026-05-18T08:38:54.769Z] 4:38:54 AM [vite] (client) page reload src/components/ui/menubar.tsx
+[2026-05-18T08:38:54.770Z] 4:38:54 AM [vite] (client) page reload src/components/ui/navigation-menu.tsx
+[2026-05-18T08:38:54.770Z] 4:38:54 AM [vite] (client) page reload src/components/ui/pagination.tsx
+[2026-05-18T08:38:54.770Z] 4:38:54 AM [vite] (client) page reload src/components/ui/popover.tsx
+[2026-05-18T08:38:54.771Z] 4:38:54 AM [vite] (client) page reload src/components/ui/progress.tsx
+[2026-05-18T08:38:54.771Z] 4:38:54 AM [vite] (client) page reload src/components/ui/radio-group.tsx
+[2026-05-18T08:38:54.771Z] 4:38:54 AM [vite] (client) page reload src/components/ui/resizable.tsx
+[2026-05-18T08:38:54.772Z] 4:38:54 AM [vite] (client) page reload src/components/ui/scroll-area.tsx
+[2026-05-18T08:38:54.772Z] 4:38:54 AM [vite] (client) page reload src/components/ui/select.tsx
+[2026-05-18T08:38:54.773Z] 4:38:54 AM [vite] (client) page reload src/components/ui/separator.tsx
+[2026-05-18T08:38:54.773Z] 4:38:54 AM [vite] (client) page reload src/components/ui/sheet.tsx
+[2026-05-18T08:38:54.773Z] 4:38:54 AM [vite] (client) page reload src/components/ui/sidebar.tsx
+[2026-05-18T08:38:54.774Z] 4:38:54 AM [vite] (client) page reload src/components/ui/skeleton.tsx
+[2026-05-18T08:38:54.774Z] 4:38:54 AM [vite] (client) page reload src/components/ui/slider.tsx
+[2026-05-18T08:38:54.775Z] 4:38:54 AM [vite] (client) page reload src/components/ui/sonner.tsx
+[2026-05-18T08:38:54.775Z] 4:38:54 AM [vite] (client) page reload src/components/ui/spinner.tsx
+[2026-05-18T08:38:54.776Z] 4:38:54 AM [vite] (client) page reload src/components/ui/switch.tsx
+[2026-05-18T08:38:54.776Z] 4:38:54 AM [vite] (client) page reload src/components/ui/table.tsx
+[2026-05-18T08:38:54.776Z] 4:38:54 AM [vite] (client) page reload src/components/ui/tabs.tsx
+[2026-05-18T08:38:54.777Z] 4:38:54 AM [vite] (client) page reload src/components/ui/textarea.tsx
+[2026-05-18T08:38:54.777Z] 4:38:54 AM [vite] (client) page reload src/components/ui/toggle-group.tsx
+[2026-05-18T08:38:54.778Z] 4:38:54 AM [vite] (client) page reload src/components/ui/toggle.tsx
+[2026-05-18T08:38:54.778Z] 4:38:54 AM [vite] (client) page reload src/components/ui/tooltip.tsx
+[2026-05-18T08:38:54.779Z] 4:38:54 AM [vite] (client) page reload src/const.ts
+[2026-05-18T08:38:54.779Z] 4:38:54 AM [vite] (client) hmr update /src/index.css
+[2026-05-18T08:38:54.780Z] 4:38:54 AM [vite] (client) page reload src/main.tsx
+[2026-05-18T08:38:54.780Z] 4:38:54 AM [vite] (client) page reload src/contexts/ThemeContext.tsx
+[2026-05-18T08:38:54.781Z] 4:38:54 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/const.ts
+[2026-05-18T08:38:54.782Z] 4:38:54 AM [vite] (client) page reload src/App.tsx
+[2026-05-18T08:38:54.782Z] 4:38:54 AM [vite] (client) page reload src/const.ts
+[2026-05-18T08:38:54.782Z] 4:38:54 AM [vite] (client) hmr update /src/index.css
+[2026-05-18T08:38:54.783Z] 4:38:54 AM [vite] (client) page reload src/main.tsx
+[2026-05-18T08:38:54.783Z] 4:38:54 AM [vite] (client) page reload src/components/AIChatBox.tsx
+[2026-05-18T08:38:54.784Z] 4:38:54 AM [vite] (client) page reload src/components/DashboardLayout.tsx
+[2026-05-18T08:38:54.784Z] 4:38:54 AM [vite] (client) page reload src/components/DashboardLayoutSkeleton.tsx
+[2026-05-18T08:38:54.784Z] 4:38:54 AM [vite] (client) page reload src/components/ErrorBoundary.tsx
+[2026-05-18T08:38:54.785Z] 4:38:54 AM [vite] (client) page reload src/components/GeoStatusGuide.tsx
+[2026-05-18T08:38:54.785Z] 4:38:54 AM [vite] (client) page reload src/components/ManusDialog.tsx
+[2026-05-18T08:38:54.785Z] 4:38:54 AM [vite] (client) page reload src/components/Map.tsx
+[2026-05-18T08:38:54.786Z] 4:38:54 AM [vite] (client) page reload src/contexts/ThemeContext.tsx
+[2026-05-18T08:38:54.786Z] 4:38:54 AM [vite] (client) page reload src/_core/hooks/useAuth.ts
+[2026-05-18T08:38:54.787Z] 4:38:54 AM [vite] (client) page reload src/components/ui/accordion.tsx
+[2026-05-18T08:38:54.787Z] 4:38:54 AM [vite] (client) page reload src/components/ui/alert-dialog.tsx
+[2026-05-18T08:38:54.787Z] 4:38:54 AM [vite] (client) page reload src/components/ui/alert.tsx
+[2026-05-18T08:38:54.788Z] 4:38:54 AM [vite] (client) page reload src/components/ui/aspect-ratio.tsx
+[2026-05-18T08:38:54.788Z] 4:38:54 AM [vite] (client) page reload src/components/ui/avatar.tsx
+[2026-05-18T08:38:54.789Z] 4:38:54 AM [vite] (client) page reload src/components/ui/badge.tsx
+[2026-05-18T08:38:54.789Z] 4:38:54 AM [vite] (client) page reload src/components/ui/breadcrumb.tsx
+[2026-05-18T08:38:54.790Z] 4:38:54 AM [vite] (client) page reload src/components/ui/button-group.tsx
+[2026-05-18T08:38:54.790Z] 4:38:54 AM [vite] (client) page reload src/components/ui/button.tsx
+[2026-05-18T08:38:54.791Z] 4:38:54 AM [vite] (client) page reload src/components/ui/calendar.tsx
+[2026-05-18T08:38:54.791Z] 4:38:54 AM [vite] (client) page reload src/components/ui/card.tsx
+[2026-05-18T08:38:54.791Z] 4:38:54 AM [vite] (client) page reload src/components/ui/carousel.tsx
+[2026-05-18T08:38:54.792Z] 4:38:54 AM [vite] (client) page reload src/components/ui/chart.tsx
+[2026-05-18T08:38:54.792Z] 4:38:54 AM [vite] (client) page reload src/components/ui/checkbox.tsx
+[2026-05-18T08:38:54.792Z] 4:38:54 AM [vite] (client) page reload src/components/ui/collapsible.tsx
+[2026-05-18T08:38:54.793Z] 4:38:54 AM [vite] (client) page reload src/components/ui/command.tsx
+[2026-05-18T08:38:54.793Z] 4:38:54 AM [vite] (client) page reload src/components/ui/context-menu.tsx
+[2026-05-18T08:38:54.793Z] 4:38:54 AM [vite] (client) page reload src/components/ui/dialog.tsx
+[2026-05-18T08:38:54.794Z] 4:38:54 AM [vite] (client) page reload src/components/ui/drawer.tsx
+[2026-05-18T08:38:54.794Z] 4:38:54 AM [vite] (client) page reload src/components/ui/dropdown-menu.tsx
+[2026-05-18T08:38:54.796Z] 4:38:54 AM [vite] (client) page reload src/components/ui/empty.tsx
+[2026-05-18T08:38:54.796Z] 4:38:54 AM [vite] (client) page reload src/components/ui/field.tsx
+[2026-05-18T08:38:54.797Z] 4:38:54 AM [vite] (client) page reload src/components/ui/form.tsx
+[2026-05-18T08:38:54.797Z] 4:38:54 AM [vite] (client) page reload src/components/ui/hover-card.tsx
+[2026-05-18T08:38:54.798Z] 4:38:54 AM [vite] (client) page reload src/components/ui/input-group.tsx
+[2026-05-18T08:38:54.798Z] 4:38:54 AM [vite] (client) page reload src/components/ui/input-otp.tsx
+[2026-05-18T08:38:54.799Z] 4:38:54 AM [vite] (client) page reload src/components/ui/input.tsx
+[2026-05-18T08:38:54.799Z] 4:38:54 AM [vite] (client) page reload src/components/ui/item.tsx
+[2026-05-18T08:38:54.800Z] 4:38:54 AM [vite] (client) page reload src/components/ui/kbd.tsx
+[2026-05-18T08:38:54.800Z] 4:38:54 AM [vite] (client) page reload src/components/ui/label.tsx
+[2026-05-18T08:38:54.800Z] 4:38:54 AM [vite] (client) page reload src/components/ui/menubar.tsx
+[2026-05-18T08:38:54.801Z] 4:38:54 AM [vite] (client) page reload src/components/ui/navigation-menu.tsx
+[2026-05-18T08:38:54.801Z] 4:38:54 AM [vite] (client) page reload src/components/ui/pagination.tsx
+[2026-05-18T08:38:54.801Z] 4:38:54 AM [vite] (client) page reload src/components/ui/popover.tsx
+[2026-05-18T08:38:54.802Z] 4:38:54 AM [vite] (client) page reload src/components/ui/progress.tsx
+[2026-05-18T08:38:54.802Z] 4:38:54 AM [vite] (client) page reload src/components/ui/radio-group.tsx
+[2026-05-18T08:38:54.803Z] 4:38:54 AM [vite] (client) page reload src/components/ui/resizable.tsx
+[2026-05-18T08:38:54.803Z] 4:38:54 AM [vite] (client) page reload src/components/ui/scroll-area.tsx
+[2026-05-18T08:38:54.803Z] 4:38:54 AM [vite] (client) page reload src/components/ui/select.tsx
+[2026-05-18T08:38:54.804Z] 4:38:54 AM [vite] (client) page reload src/components/ui/separator.tsx
+[2026-05-18T08:38:54.804Z] 4:38:54 AM [vite] (client) page reload src/components/ui/sheet.tsx
+[2026-05-18T08:38:54.804Z] 4:38:54 AM [vite] (client) page reload src/components/ui/sidebar.tsx
+[2026-05-18T08:38:54.805Z] 4:38:54 AM [vite] (client) page reload src/components/ui/skeleton.tsx
+[2026-05-18T08:38:54.805Z] 4:38:54 AM [vite] (client) page reload src/components/ui/slider.tsx
+[2026-05-18T08:38:54.805Z] 4:38:54 AM [vite] (client) page reload src/components/ui/sonner.tsx
+[2026-05-18T08:38:54.806Z] 4:38:54 AM [vite] (client) page reload src/components/ui/spinner.tsx
+[2026-05-18T08:38:54.806Z] 4:38:54 AM [vite] (client) page reload src/components/ui/switch.tsx
+[2026-05-18T08:38:54.807Z] 4:38:54 AM [vite] (client) page reload src/components/ui/table.tsx
+[2026-05-18T08:38:54.807Z] 4:38:54 AM [vite] (client) page reload src/components/ui/tabs.tsx
+[2026-05-18T08:38:54.807Z] 4:38:54 AM [vite] (client) page reload src/components/ui/textarea.tsx
+[2026-05-18T08:38:54.808Z] 4:38:54 AM [vite] (client) page reload src/components/ui/toggle-group.tsx
+[2026-05-18T08:38:54.808Z] 4:38:54 AM [vite] (client) page reload src/components/ui/toggle.tsx
+[2026-05-18T08:38:54.809Z] 4:38:54 AM [vite] (client) page reload src/components/ui/tooltip.tsx
+[2026-05-18T08:38:54.872Z] 4:38:54 AM [tsx] unlink in ./shared/const.ts Restarting...
+[2026-05-18T08:38:57.052Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T08:38:57.492Z] 4:38:57 AM [vite] (client) Re-optimizing dependencies because vite config has changed
+[2026-05-18T08:38:57.519Z] Server running on http://localhost:3000/
+[2026-05-18T08:41:20.799Z] Dev server process group stopped
+[2026-05-18T08:41:20.802Z] ELIFECYCLE  Command failed.
+[2026-05-18T08:41:20.845Z] Dev server exited with code -15
+[2026-05-18T08:41:23.820Z] Starting dev server with command: pnpm run dev
+[2026-05-18T08:41:24.796Z] 
+[2026-05-18T08:41:24.797Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-18T08:41:24.797Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-18T08:41:24.798Z] 
+[2026-05-18T08:41:26.647Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T08:41:26.947Z] Server running on http://localhost:3000/
+[2026-05-18T08:41:30.858Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-18T08:42:07.375Z] [geo.scores.latest] {
+[2026-05-18T08:42:07.375Z] requestedProjectId: 1,
+[2026-05-18T08:42:07.376Z] returned: {
+[2026-05-18T08:42:07.376Z] id: 600001,
+[2026-05-18T08:42:07.376Z] projectId: 1,
+[2026-05-18T08:42:07.377Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:42:07.377Z] totalScore: 43
+[2026-05-18T08:42:07.377Z] },
+[2026-05-18T08:42:07.378Z] sameProjectTop3: [
+[2026-05-18T08:42:07.378Z] {
+[2026-05-18T08:42:07.378Z] id: 600001,
+[2026-05-18T08:42:07.379Z] projectId: 1,
+[2026-05-18T08:42:07.379Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:42:07.379Z] totalScore: 43
+[2026-05-18T08:42:07.380Z] }
+[2026-05-18T08:42:07.380Z] ]
+[2026-05-18T08:42:07.380Z] }
+[2026-05-18T08:42:21.340Z] [geo.scores.latest] {
+[2026-05-18T08:42:21.341Z] requestedProjectId: 1,
+[2026-05-18T08:42:21.341Z] returned: {
+[2026-05-18T08:42:21.341Z] id: 600001,
+[2026-05-18T08:42:21.342Z] projectId: 1,
+[2026-05-18T08:42:21.342Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:42:21.342Z] totalScore: 43
+[2026-05-18T08:42:21.343Z] },
+[2026-05-18T08:42:21.343Z] sameProjectTop3: [
+[2026-05-18T08:42:21.343Z] {
+[2026-05-18T08:42:21.344Z] id: 600001,
+[2026-05-18T08:42:21.344Z] projectId: 1,
+[2026-05-18T08:42:21.344Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:42:21.345Z] totalScore: 43
+[2026-05-18T08:42:21.345Z] }
+[2026-05-18T08:42:21.345Z] ]
+[2026-05-18T08:42:21.346Z] }
+[2026-05-18T08:42:25.484Z] [geo.scores.latest] {
+[2026-05-18T08:42:25.485Z] requestedProjectId: 1,
+[2026-05-18T08:42:25.485Z] returned: {
+[2026-05-18T08:42:25.486Z] id: 600001,
+[2026-05-18T08:42:25.486Z] projectId: 1,
+[2026-05-18T08:42:25.486Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:42:25.487Z] totalScore: 43
+[2026-05-18T08:42:25.487Z] },
+[2026-05-18T08:42:25.487Z] sameProjectTop3: [
+[2026-05-18T08:42:25.488Z] {
+[2026-05-18T08:42:25.488Z] id: 600001,
+[2026-05-18T08:42:25.488Z] projectId: 1,
+[2026-05-18T08:42:25.489Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:42:25.489Z] totalScore: 43
+[2026-05-18T08:42:25.489Z] }
+[2026-05-18T08:42:25.489Z] ]
+[2026-05-18T08:42:25.490Z] }
+[2026-05-18T08:42:44.543Z] [geo.scores.latest] {
+[2026-05-18T08:42:44.544Z] requestedProjectId: 1,
+[2026-05-18T08:42:44.545Z] returned: {
+[2026-05-18T08:42:44.545Z] id: 600001,
+[2026-05-18T08:42:44.545Z] projectId: 1,
+[2026-05-18T08:42:44.545Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:42:44.546Z] totalScore: 43
+[2026-05-18T08:42:44.546Z] },
+[2026-05-18T08:42:44.547Z] sameProjectTop3: [
+[2026-05-18T08:42:44.547Z] {
+[2026-05-18T08:42:44.547Z] id: 600001,
+[2026-05-18T08:42:44.548Z] projectId: 1,
+[2026-05-18T08:42:44.548Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:42:44.548Z] totalScore: 43
+[2026-05-18T08:42:44.548Z] }
+[2026-05-18T08:42:44.549Z] ]
+[2026-05-18T08:42:44.549Z] }
+[2026-05-18T08:44:16.284Z] [geo.scores.latest] {
+[2026-05-18T08:44:16.285Z] requestedProjectId: 1,
+[2026-05-18T08:44:16.285Z] returned: {
+[2026-05-18T08:44:16.286Z] id: 600001,
+[2026-05-18T08:44:16.286Z] projectId: 1,
+[2026-05-18T08:44:16.286Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:44:16.287Z] totalScore: 43
+[2026-05-18T08:44:16.287Z] },
+[2026-05-18T08:44:16.287Z] sameProjectTop3: [
+[2026-05-18T08:44:16.288Z] {
+[2026-05-18T08:44:16.288Z] id: 600001,
+[2026-05-18T08:44:16.288Z] projectId: 1,
+[2026-05-18T08:44:16.288Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:44:16.289Z] totalScore: 43
+[2026-05-18T08:44:16.289Z] }
+[2026-05-18T08:44:16.289Z] ]
+[2026-05-18T08:44:16.290Z] }
+[2026-05-18T08:48:01.202Z] Dev server process group stopped
+[2026-05-18T08:48:01.205Z] ELIFECYCLE  Command failed.
+[2026-05-18T08:48:01.236Z] Dev server exited with code -15
+[2026-05-18T08:48:04.215Z] Starting dev server with command: pnpm run dev
+[2026-05-18T08:48:05.071Z] 
+[2026-05-18T08:48:05.072Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-18T08:48:05.073Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-18T08:48:05.073Z] 
+[2026-05-18T08:48:06.798Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T08:48:07.059Z] Server running on http://localhost:3000/
+[2026-05-18T08:48:34.882Z] Dev server process group stopped
+[2026-05-18T08:48:34.886Z] ELIFECYCLE  Command failed.
+[2026-05-18T08:48:34.957Z] Dev server exited with code -15
+[2026-05-18T08:48:37.895Z] Starting dev server with command: pnpm run dev
+[2026-05-18T08:48:38.731Z] 
+[2026-05-18T08:48:38.732Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-18T08:48:38.732Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-18T08:48:38.733Z] 
+[2026-05-18T08:48:40.446Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T08:48:40.716Z] Server running on http://localhost:3000/
+[2026-05-18T08:48:54.768Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-18T08:49:17.272Z] [geo.scores.latest] {
+[2026-05-18T08:49:17.273Z] requestedProjectId: 1,
+[2026-05-18T08:49:17.273Z] returned: {
+[2026-05-18T08:49:17.273Z] id: 600001,
+[2026-05-18T08:49:17.274Z] projectId: 1,
+[2026-05-18T08:49:17.274Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:49:17.274Z] totalScore: 43
+[2026-05-18T08:49:17.275Z] },
+[2026-05-18T08:49:17.275Z] sameProjectTop3: [
+[2026-05-18T08:49:17.275Z] {
+[2026-05-18T08:49:17.276Z] id: 600001,
+[2026-05-18T08:49:17.276Z] projectId: 1,
+[2026-05-18T08:49:17.277Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:49:17.277Z] totalScore: 43
+[2026-05-18T08:49:17.277Z] }
+[2026-05-18T08:49:17.278Z] ]
+[2026-05-18T08:49:17.278Z] }
+[2026-05-18T08:49:39.395Z] [geo.scores.latest] {
+[2026-05-18T08:49:39.396Z] requestedProjectId: 1,
+[2026-05-18T08:49:39.397Z] returned: {
+[2026-05-18T08:49:39.397Z] id: 600001,
+[2026-05-18T08:49:39.397Z] projectId: 1,
+[2026-05-18T08:49:39.398Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:49:39.398Z] totalScore: 43
+[2026-05-18T08:49:39.398Z] },
+[2026-05-18T08:49:39.399Z] sameProjectTop3: [
+[2026-05-18T08:49:39.399Z] {
+[2026-05-18T08:49:39.399Z] id: 600001,
+[2026-05-18T08:49:39.400Z] projectId: 1,
+[2026-05-18T08:49:39.400Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:49:39.400Z] totalScore: 43
+[2026-05-18T08:49:39.400Z] }
+[2026-05-18T08:49:39.401Z] ]
+[2026-05-18T08:49:39.401Z] }
+[2026-05-18T08:51:36.501Z] [geo.scores.latest] {
+[2026-05-18T08:51:36.502Z] requestedProjectId: 1,
+[2026-05-18T08:51:36.502Z] returned: {
+[2026-05-18T08:51:36.503Z] id: 600001,
+[2026-05-18T08:51:36.503Z] projectId: 1,
+[2026-05-18T08:51:36.503Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:51:36.504Z] totalScore: 43
+[2026-05-18T08:51:36.504Z] },
+[2026-05-18T08:51:36.504Z] sameProjectTop3: [
+[2026-05-18T08:51:36.504Z] {
+[2026-05-18T08:51:36.505Z] id: 600001,
+[2026-05-18T08:51:36.505Z] projectId: 1,
+[2026-05-18T08:51:36.505Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:51:36.506Z] totalScore: 43
+[2026-05-18T08:51:36.506Z] }
+[2026-05-18T08:51:36.506Z] ]
+[2026-05-18T08:51:36.507Z] }
+[2026-05-18T08:52:01.632Z] [geo.scores.latest] {
+[2026-05-18T08:52:01.632Z] requestedProjectId: 1,
+[2026-05-18T08:52:01.633Z] returned: {
+[2026-05-18T08:52:01.633Z] id: 600001,
+[2026-05-18T08:52:01.633Z] projectId: 1,
+[2026-05-18T08:52:01.634Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:52:01.634Z] totalScore: 43
+[2026-05-18T08:52:01.634Z] },
+[2026-05-18T08:52:01.635Z] sameProjectTop3: [
+[2026-05-18T08:52:01.635Z] {
+[2026-05-18T08:52:01.636Z] id: 600001,
+[2026-05-18T08:52:01.636Z] projectId: 1,
+[2026-05-18T08:52:01.636Z] createdAt: 2026-05-11T08:21:12.000Z,
+[2026-05-18T08:52:01.637Z] totalScore: 43
+[2026-05-18T08:52:01.638Z] }
+[2026-05-18T08:52:01.638Z] ]
+[2026-05-18T08:52:01.639Z] }
+[2026-05-18T08:53:03.580Z] [geo.scores.latest] {
+[2026-05-18T08:53:03.581Z] requestedProjectId: 1,
+[2026-05-18T08:53:03.582Z] returned: {
+[2026-05-18T08:53:03.582Z] id: 630001,
+[2026-05-18T08:53:03.583Z] projectId: 1,
+[2026-05-18T08:53:03.583Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T08:53:03.583Z] totalScore: 40
+[2026-05-18T08:53:03.583Z] },
+[2026-05-18T08:53:03.584Z] sameProjectTop3: [
+[2026-05-18T08:53:03.584Z] {
+[2026-05-18T08:53:03.584Z] id: 630001,
+[2026-05-18T08:53:03.585Z] projectId: 1,
+[2026-05-18T08:53:03.585Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T08:53:03.585Z] totalScore: 40
+[2026-05-18T08:53:03.586Z] }
+[2026-05-18T08:53:03.586Z] ]
+[2026-05-18T08:53:03.586Z] }
+[2026-05-18T08:59:45.806Z] [geo.scores.latest] {
+[2026-05-18T08:59:45.806Z] requestedProjectId: 1,
+[2026-05-18T08:59:45.807Z] returned: {
+[2026-05-18T08:59:45.807Z] id: 630001,
+[2026-05-18T08:59:45.807Z] projectId: 1,
+[2026-05-18T08:59:45.808Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T08:59:45.808Z] totalScore: 40
+[2026-05-18T08:59:45.808Z] },
+[2026-05-18T08:59:45.809Z] sameProjectTop3: [
+[2026-05-18T08:59:45.809Z] {
+[2026-05-18T08:59:45.809Z] id: 630001,
+[2026-05-18T08:59:45.809Z] projectId: 1,
+[2026-05-18T08:59:45.810Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T08:59:45.810Z] totalScore: 40
+[2026-05-18T08:59:45.810Z] }
+[2026-05-18T08:59:45.811Z] ]
+[2026-05-18T08:59:45.811Z] }
+[2026-05-18T09:21:14.090Z] 5:21:14 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-18T09:21:19.987Z] Dev server process group stopped
+[2026-05-18T09:21:19.992Z] ELIFECYCLE  Command failed.
+[2026-05-18T09:21:20.023Z] Dev server exited with code -15
+[2026-05-18T09:21:23.023Z] Starting dev server with command: pnpm run dev
+[2026-05-18T09:21:23.941Z] 
+[2026-05-18T09:21:23.942Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-18T09:21:23.943Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-18T09:21:23.943Z] 
+[2026-05-18T09:21:25.866Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T09:21:26.152Z] Server running on http://localhost:3000/
+[2026-05-18T09:21:27.834Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-18T09:21:48.824Z] [geo.scores.latest] {
+[2026-05-18T09:21:48.825Z] requestedProjectId: 1,
+[2026-05-18T09:21:48.826Z] returned: {
+[2026-05-18T09:21:48.826Z] id: 630001,
+[2026-05-18T09:21:48.826Z] projectId: 1,
+[2026-05-18T09:21:48.827Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T09:21:48.827Z] totalScore: 40
+[2026-05-18T09:21:48.827Z] },
+[2026-05-18T09:21:48.828Z] sameProjectTop3: [
+[2026-05-18T09:21:48.828Z] {
+[2026-05-18T09:21:48.828Z] id: 630001,
+[2026-05-18T09:21:48.829Z] projectId: 1,
+[2026-05-18T09:21:48.829Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T09:21:48.829Z] totalScore: 40
+[2026-05-18T09:21:48.830Z] }
+[2026-05-18T09:21:48.830Z] ]
+[2026-05-18T09:21:48.830Z] }
+[2026-05-18T10:06:48.659Z] 6:06:48 AM [vite] changed tsconfig file detected: /home/ubuntu/ai_geo_workbench/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+[2026-05-18T10:06:48.665Z] 6:06:48 AM [vite] (client) page reload src/pages/ComponentShowcase.tsx
+[2026-05-18T10:06:48.666Z] 6:06:48 AM [vite] (client) page reload src/pages/Home.tsx
+[2026-05-18T10:06:48.666Z] 6:06:48 AM [vite] (client) page reload src/pages/GeoPublicContent.tsx
+[2026-05-18T10:06:48.667Z] 6:06:48 AM [vite] (client) page reload src/pages/DemoGeo.tsx
+[2026-05-18T10:06:48.667Z] 6:06:48 AM [vite] (client) page reload src/pages/WeeklyContentPage.tsx
+[2026-05-18T10:06:48.668Z] 6:06:48 AM [vite] (client) page reload src/pages/V12FlowPages.tsx
+[2026-05-18T10:06:48.668Z] 6:06:48 AM [vite] (client) page reload src/pages/ProgressPage.tsx
+[2026-05-18T10:06:48.669Z] 6:06:48 AM [vite] (client) page reload src/pages/GeoPages.tsx
+[2026-05-18T10:06:48.669Z] 6:06:48 AM [vite] (client) page reload src/pages/GeoFlowWizard.tsx
+[2026-05-18T10:06:48.669Z] 6:06:48 AM [vite] (client) page reload src/pages/AssetCenter.tsx
+[2026-05-18T10:06:48.670Z] 6:06:48 AM [vite] (client) page reload src/pages/OnboardingPage.tsx
+[2026-05-18T10:06:48.670Z] 6:06:48 AM [vite] (client) page reload src/pages/NotFound.tsx
+[2026-05-18T10:06:48.670Z] 6:06:48 AM [vite] (client) page reload src/lib/demoGeoData.ts
+[2026-05-18T10:06:48.671Z] 6:06:48 AM [vite] (client) page reload src/lib/trpc.ts
+[2026-05-18T10:06:48.671Z] 6:06:48 AM [vite] (client) page reload src/lib/utils.ts
+[2026-05-18T10:06:48.672Z] 6:06:48 AM [vite] (client) page reload src/hooks/usePersistFn.ts
+[2026-05-18T10:06:48.672Z] 6:06:48 AM [vite] (client) page reload src/hooks/useComposition.ts
+[2026-05-18T10:06:48.672Z] 6:06:48 AM [vite] (client) page reload src/hooks/useMobile.tsx
+[2026-05-18T10:06:48.673Z] 6:06:48 AM [vite] (client) page reload src/_core/hooks/useAuth.ts
+[2026-05-18T10:06:48.673Z] 6:06:48 AM [vite] (client) page reload src/contexts/ThemeContext.tsx
+[2026-05-18T10:06:48.673Z] 6:06:48 AM [vite] (client) page reload src/components/ui/aspect-ratio.tsx
+[2026-05-18T10:06:48.674Z] 6:06:48 AM [vite] (client) page reload src/components/ui/alert-dialog.tsx
+[2026-05-18T10:06:48.674Z] 6:06:48 AM [vite] (client) page reload src/components/ui/button-group.tsx
+[2026-05-18T10:06:48.674Z] 6:06:48 AM [vite] (client) page reload src/components/ui/card.tsx
+[2026-05-18T10:06:48.675Z] 6:06:48 AM [vite] (client) page reload src/components/ui/input-group.tsx
+[2026-05-18T10:06:48.675Z] 6:06:48 AM [vite] (client) page reload src/components/ui/pagination.tsx
+[2026-05-18T10:06:48.675Z] 6:06:48 AM [vite] (client) page reload src/components/ui/popover.tsx
+[2026-05-18T10:06:48.676Z] 6:06:48 AM [vite] (client) page reload src/components/ui/progress.tsx
+[2026-05-18T10:06:48.676Z] 6:06:48 AM [vite] (client) page reload src/components/ui/slider.tsx
+[2026-05-18T10:06:48.676Z] 6:06:48 AM [vite] (client) page reload src/components/ui/tabs.tsx
+[2026-05-18T10:06:48.677Z] 6:06:48 AM [vite] (client) page reload src/components/ui/input-otp.tsx
+[2026-05-18T10:06:48.677Z] 6:06:48 AM [vite] (client) page reload src/components/ui/chart.tsx
+[2026-05-18T10:06:48.677Z] 6:06:48 AM [vite] (client) page reload src/components/ui/hover-card.tsx
+[2026-05-18T10:06:48.677Z] 6:06:48 AM [vite] (client) page reload src/components/ui/sheet.tsx
+[2026-05-18T10:06:48.678Z] 6:06:48 AM [vite] (client) page reload src/components/ui/field.tsx
+[2026-05-18T10:06:48.678Z] 6:06:48 AM [vite] (client) page reload src/components/ui/scroll-area.tsx
+[2026-05-18T10:06:48.679Z] 6:06:48 AM [vite] (client) page reload src/components/ui/resizable.tsx
+[2026-05-18T10:06:48.679Z] 6:06:48 AM [vite] (client) page reload src/components/ui/label.tsx
+[2026-05-18T10:06:48.679Z] 6:06:48 AM [vite] (client) page reload src/components/ui/sonner.tsx
+[2026-05-18T10:06:48.680Z] 6:06:48 AM [vite] (client) page reload src/components/ui/navigation-menu.tsx
+[2026-05-18T10:06:48.680Z] 6:06:48 AM [vite] (client) page reload src/components/ui/accordion.tsx
+[2026-05-18T10:06:48.680Z] 6:06:48 AM [vite] (client) page reload src/components/ui/drawer.tsx
+[2026-05-18T10:06:48.681Z] 6:06:48 AM [vite] (client) page reload src/components/ui/empty.tsx
+[2026-05-18T10:06:48.681Z] 6:06:48 AM [vite] (client) page reload src/components/ui/tooltip.tsx
+[2026-05-18T10:06:48.682Z] 6:06:48 AM [vite] (client) page reload src/components/ui/alert.tsx
+[2026-05-18T10:06:48.682Z] 6:06:48 AM [vite] (client) page reload src/components/ui/switch.tsx
+[2026-05-18T10:06:48.682Z] 6:06:48 AM [vite] (client) page reload src/components/ui/calendar.tsx
+[2026-05-18T10:06:48.683Z] 6:06:48 AM [vite] (client) page reload src/components/ui/breadcrumb.tsx
+[2026-05-18T10:06:48.683Z] 6:06:48 AM [vite] (client) page reload src/components/ui/radio-group.tsx
+[2026-05-18T10:06:48.683Z] 6:06:48 AM [vite] (client) page reload src/components/ui/command.tsx
+[2026-05-18T10:06:48.684Z] 6:06:48 AM [vite] (client) page reload src/components/ui/item.tsx
+[2026-05-18T10:06:48.684Z] 6:06:48 AM [vite] (client) page reload src/components/ui/toggle-group.tsx
+[2026-05-18T10:06:48.684Z] 6:06:48 AM [vite] (client) page reload src/components/ui/avatar.tsx
+[2026-05-18T10:06:48.685Z] 6:06:48 AM [vite] (client) page reload src/components/ui/menubar.tsx
+[2026-05-18T10:06:48.685Z] 6:06:48 AM [vite] (client) page reload src/components/ui/kbd.tsx
+[2026-05-18T10:06:48.685Z] 6:06:48 AM [vite] (client) page reload src/components/ui/dialog.tsx
+[2026-05-18T10:06:48.685Z] 6:06:48 AM [vite] (client) page reload src/components/ui/badge.tsx
+[2026-05-18T10:06:48.686Z] 6:06:48 AM [vite] (client) page reload src/components/ui/sidebar.tsx
+[2026-05-18T10:06:48.686Z] 6:06:48 AM [vite] (client) page reload src/components/ui/table.tsx
+[2026-05-18T10:06:48.686Z] 6:06:48 AM [vite] (client) page reload src/components/ui/separator.tsx
+[2026-05-18T10:06:48.687Z] 6:06:48 AM [vite] (client) page reload src/components/ui/button.tsx
+[2026-05-18T10:06:48.687Z] 6:06:48 AM [vite] (client) page reload src/components/ui/toggle.tsx
+[2026-05-18T10:06:48.687Z] 6:06:48 AM [vite] (client) page reload src/components/ui/checkbox.tsx
+[2026-05-18T10:06:48.688Z] 6:06:48 AM [vite] (client) page reload src/components/ui/spinner.tsx
+[2026-05-18T10:06:48.688Z] 6:06:48 AM [vite] (client) page reload src/components/ui/collapsible.tsx
+[2026-05-18T10:06:48.688Z] 6:06:48 AM [vite] (client) page reload src/components/ui/dropdown-menu.tsx
+[2026-05-18T10:06:48.689Z] 6:06:48 AM [vite] (client) page reload src/components/ui/select.tsx
+[2026-05-18T10:06:48.689Z] 6:06:48 AM [vite] (client) page reload src/components/ui/textarea.tsx
+[2026-05-18T10:06:48.689Z] 6:06:48 AM [vite] (client) page reload src/components/ui/input.tsx
+[2026-05-18T10:06:48.690Z] 6:06:48 AM [vite] (client) page reload src/components/ui/skeleton.tsx
+[2026-05-18T10:06:48.690Z] 6:06:48 AM [vite] (client) page reload src/components/ui/context-menu.tsx
+[2026-05-18T10:06:48.690Z] 6:06:48 AM [vite] (client) page reload src/components/ui/form.tsx
+[2026-05-18T10:06:48.691Z] 6:06:48 AM [vite] (client) page reload src/components/ui/carousel.tsx
+[2026-05-18T10:06:48.691Z] 6:06:48 AM [vite] (client) page reload src/components/ManusDialog.tsx
+[2026-05-18T10:06:48.691Z] 6:06:48 AM [vite] (client) page reload src/components/AIChatBox.tsx
+[2026-05-18T10:06:48.691Z] 6:06:48 AM [vite] (client) page reload src/components/DashboardLayout.tsx
+[2026-05-18T10:06:48.692Z] 6:06:48 AM [vite] (client) page reload src/components/DashboardLayoutSkeleton.tsx
+[2026-05-18T10:06:48.692Z] 6:06:48 AM [vite] (client) page reload src/components/ErrorBoundary.tsx
+[2026-05-18T10:06:48.692Z] 6:06:48 AM [vite] (client) page reload src/components/GeoStatusGuide.tsx
+[2026-05-18T10:06:48.693Z] 6:06:48 AM [vite] (client) page reload src/components/Map.tsx
+[2026-05-18T10:06:48.693Z] 6:06:48 AM [vite] (client) page reload src/components/V1WorkbenchOverview.tsx
+[2026-05-18T10:06:48.693Z] 6:06:48 AM [vite] (client) page reload src/const.ts
+[2026-05-18T10:06:48.694Z] 6:06:48 AM [vite] (client) page reload src/App.tsx
+[2026-05-18T10:06:48.694Z] 6:06:48 AM [vite] (client) page reload src/main.tsx
+[2026-05-18T10:06:48.694Z] 6:06:48 AM [vite] (client) hmr update /src/index.css
+[2026-05-18T10:06:48.695Z] 6:06:48 AM [vite] (client) page reload public/__manus__/debug-collector.js
+[2026-05-18T10:06:48.697Z] 6:06:48 AM [vite] (client) page reload public/.gitkeep
+[2026-05-18T10:06:48.697Z] 6:06:48 AM [vite] (client) page reload index.html
+[2026-05-18T10:06:48.698Z] 6:06:48 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/const.ts
+[2026-05-18T10:06:48.781Z] 6:06:48 AM [tsx] unlink in ./vite.config.ts Restarting...
+[2026-05-18T10:06:49.060Z] c
+[2026-05-18T10:06:49.061Z] node:internal/modules/run_main:122
+[2026-05-18T10:06:49.061Z] triggerUncaughtException(
+[2026-05-18T10:06:49.061Z] ^
+[2026-05-18T10:06:49.062Z] Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/ai_geo_workbench/server/_core/index.ts' imported from /home/ubuntu/ai_geo_workbench/
+[2026-05-18T10:06:49.062Z] at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+[2026-05-18T10:06:49.063Z] at moduleResolve (node:internal/modules/esm/resolve:932:10)
+[2026-05-18T10:06:49.063Z] at defaultResolve (node:internal/modules/esm/resolve:1056:11)
+[2026-05-18T10:06:49.063Z] at nextResolve (node:internal/modules/esm/hooks:748:28)
+[2026-05-18T10:06:49.064Z] at resolveBase (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1779098808928:2:3744)
+[2026-05-18T10:06:49.064Z] at resolveDirectory (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1779098808928:2:4243)
+[2026-05-18T10:06:49.064Z] at resolveTsPaths (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1779098808928:2:4984)
+[2026-05-18T10:06:49.065Z] at resolve (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1779098808928:2:5361)
+[2026-05-18T10:06:49.065Z] at nextResolve (node:internal/modules/esm/hooks:748:28)
+[2026-05-18T10:06:49.065Z] at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {
+[2026-05-18T10:06:49.066Z] code: 'ERR_MODULE_NOT_FOUND',
+[2026-05-18T10:06:49.066Z] url: 'file:///home/ubuntu/ai_geo_workbench/server/_core/index.ts'
+[2026-05-18T10:06:49.066Z] }
+[2026-05-18T10:06:49.067Z] 
+[2026-05-18T10:06:49.067Z] Node.js v22.13.0
+[2026-05-18T10:09:45.347Z] Dev server process group stopped
+[2026-05-18T10:09:45.350Z] ELIFECYCLE  Command failed.
+[2026-05-18T10:09:45.365Z] Dev server exited with code -15
+[2026-05-18T10:09:48.364Z] Starting dev server with command: pnpm run dev
+[2026-05-18T10:09:49.191Z] 
+[2026-05-18T10:09:49.192Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-18T10:09:49.192Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-18T10:09:49.193Z] 
+[2026-05-18T10:09:50.860Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-18T10:09:51.130Z] 6:09:51 AM [vite] (client) Re-optimizing dependencies because lockfile has changed
+[2026-05-18T10:09:51.152Z] Server running on http://localhost:3000/
+[2026-05-18T10:09:58.296Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-18T10:10:06.810Z] [geo.scores.latest] {
+[2026-05-18T10:10:06.810Z] requestedProjectId: 1,
+[2026-05-18T10:10:06.811Z] returned: {
+[2026-05-18T10:10:06.811Z] id: 630001,
+[2026-05-18T10:10:06.811Z] projectId: 1,
+[2026-05-18T10:10:06.812Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T10:10:06.812Z] totalScore: 40
+[2026-05-18T10:10:06.812Z] },
+[2026-05-18T10:10:06.813Z] sameProjectTop3: [
+[2026-05-18T10:10:06.813Z] {
+[2026-05-18T10:10:06.813Z] id: 630001,
+[2026-05-18T10:10:06.814Z] projectId: 1,
+[2026-05-18T10:10:06.814Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-18T10:10:06.815Z] totalScore: 40
+[2026-05-18T10:10:06.815Z] }
+[2026-05-18T10:10:06.815Z] ]
+[2026-05-18T10:10:06.816Z] }

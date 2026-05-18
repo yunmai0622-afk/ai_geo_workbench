@@ -73,3 +73,69 @@ async function updateTaskStatus(serverUrl, apiKey, taskId, status, resultUrl, er
     }),
   });
 }
+
+/** 在页面上下文中执行登录检测表达式（由 background 注入） */
+function checkPlatformLogin(checkScript) {
+  try {
+    // eslint-disable-next-line no-eval
+    return Boolean(eval(checkScript));
+  } catch {
+    return false;
+  }
+}
+
+const PLATFORM_CHECKS = {
+  zhihu: {
+    match: "zhihu.com",
+    checkScript: `document.cookie.includes('z_c0') || !!document.querySelector('.AppHeader-userInfo')`,
+  },
+  toutiao: {
+    match: "mp.toutiao.com",
+    checkScript: `!!document.querySelector('.user-info') || document.cookie.includes('sessionid')`,
+  },
+  sohu: {
+    match: "mp.sohu.com",
+    checkScript: `!!document.querySelector('.user-avatar') || document.cookie.includes('SUV')`,
+  },
+  baijiahao: {
+    match: "baijiahao.baidu.com",
+    checkScript: `!!document.querySelector('.user-info') || document.cookie.includes('BDUSS')`,
+  },
+  wechat: {
+    match: "mp.weixin.qq.com",
+    checkScript: `!!document.querySelector('#a_nickname') || document.title.includes('公众')`,
+  },
+};
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== "complete" || !tab.url) return;
+
+  for (const [platform, config] of Object.entries(PLATFORM_CHECKS)) {
+    if (!tab.url.includes(config.match)) continue;
+
+    try {
+      const result = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: checkPlatformLogin,
+        args: [config.checkScript],
+      });
+
+      const isLoggedIn = result?.[0]?.result;
+      if (!isLoggedIn) continue;
+
+      const { platformStatus } = await chrome.storage.local.get(["platformStatus"]);
+      const status = platformStatus || {};
+      status[platform] = true;
+      await chrome.storage.local.set({ platformStatus: status });
+
+      chrome.runtime
+        .sendMessage({
+          action: "platformConnected",
+          platform,
+        })
+        .catch(() => {});
+    } catch {
+      // 页面可能拒绝脚本注入，忽略
+    }
+  }
+});

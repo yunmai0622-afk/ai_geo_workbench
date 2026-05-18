@@ -1,8 +1,0 @@
-{
-  "query": "SELECT id, article_id, optimization_task_id, quality_score, publish_url, need_retest, publish_channel FROM geo_article_publish_records WHERE article_id IN (30001, 30002, 30003) ORDER BY id DESC;",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, article_id, optimization_task_id, quality_score, publish_url, need_retest, publish_channel FROM geo_article_publish_records WHERE article_id IN (30001, 30002, 30003) ORDER BY id DESC;",
-  "returncode": 1,
-  "logs": [
-    "ERROR 1146 (42S02) at line 1: Table 'kzxhj9uy5xjygmmczjypbe.geo_article_publish_records' doesn't exist"
-  ]
-}

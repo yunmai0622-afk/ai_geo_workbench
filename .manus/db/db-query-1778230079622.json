@@ -1,9 +1,0 @@
-{
-  "query": "ALTER TABLE `questions` MODIFY COLUMN `questionType` enum('品牌认知','行业推荐','竞品对比','痛点解决','价格选型','高意向成交','指定问题') NOT NULL;\nALTER TABLE `questions` ADD `targetKeyword` varchar(255);\nALTER TABLE `questions` ADD `intentLevel` varchar(64) NOT NULL DEFAULT '中';\nALTER TABLE `questions` ADD `businessValue` int NOT NULL DEFAULT 3;\nALTER TABLE `questions` ADD `source` enum('ai_generated','manual','csv') NOT NULL DEFAULT 'ai_generated';",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `questions` MODIFY COLUMN `questionType` enum('品牌认知','行业推荐','竞品对比','痛点解决','价格选型','高意向成交','指定问题') NOT NULL;\nALTER TABLE `questions` ADD `targetKeyword` varchar(255);\nALTER TABLE `questions` ADD `intentLevel` varchar(64) NOT NULL DEFAULT '中';\nALTER TABLE `questions` ADD `businessValue` int NOT NULL DEFAULT 3;\nALTER TABLE `questions` ADD `source` enum('ai_generated','manual','csv') NOT NULL DEFAULT 'ai_generated';",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 3128
-}
