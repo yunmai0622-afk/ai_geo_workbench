@@ -537,3 +537,8 @@
 ## 本轮源码导出
 
 - [x] 按用户要求导出完整项目源码压缩包，包含 package.json、pnpm-lock.yaml、client、server、drizzle、scripts、shared、vite.config.ts、tsconfig.json，并排除 node_modules、dist、.manus-logs、.webdev、临时日志文件和真实 .env 文件；不新增功能、不修改代码、不重构。
+- [x] 修复发布按钮点击后任务创建但插件未实际执行发布的问题
+- [x] background.js processTask 增加等待页面加载完成逻辑（替代固定4秒等待）
+- [x] background.js processTask 增加 sendMessage 重试机制
+- [x] background.js handlePollTasks 增加详细日志便于调试
+- [x] 重新打包 browser-extension.zip

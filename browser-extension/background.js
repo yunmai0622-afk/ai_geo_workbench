@@ -1,4 +1,4 @@
-const BUILD_TAG = "bg-v6-pending-watch";
+const BUILD_TAG = "bg-v7-publish-fix";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
 const PLATFORM_URLS = {
@@ -12,15 +12,13 @@ const PLATFORM_URLS = {
 // ==================== 发布任务轮询 ====================
 
 chrome.alarms.create("pollTasks", { periodInMinutes: 0.5 });
-// 登录检测轮询 alarm（每 5 秒 = 最小间隔约 0.08 分钟，但 Chrome 最小是 0.5 分钟）
-// 所以改用 delayInMinutes 递归方式
+// 登录检测轮询 alarm
 chrome.alarms.create("checkLogin", { delayInMinutes: 0.1, periodInMinutes: 0.1 });
 
 chrome.alarms.onAlarm.addListener(async alarm => {
   if (alarm.name === "pollTasks") {
     await handlePollTasks();
   } else if (alarm.name === "checkLogin") {
-    // 每次 alarm 触发时，先检查是否有 pendingWatch 需要处理
     await processPendingWatch();
     await handleCheckLogin();
   }
@@ -28,57 +26,148 @@ chrome.alarms.onAlarm.addListener(async alarm => {
 
 async function handlePollTasks() {
   const { apiKey, serverUrl } = await chrome.storage.sync.get(["apiKey", "serverUrl"]);
-  if (!apiKey || !serverUrl) return;
+  if (!apiKey || !serverUrl) {
+    console.log("[轮询] 跳过：apiKey 或 serverUrl 未配置");
+    return;
+  }
 
   try {
     const input = encodeURIComponent(JSON.stringify({ json: { apiKey } }));
-    const res = await fetch(`${serverUrl.replace(/\/$/, "")}/api/trpc/publishTasks.pending?input=${input}`);
+    const url = `${serverUrl.replace(/\/$/, "")}/api/trpc/publishTasks.pending?input=${input}`;
+    console.log(`[轮询] 请求待发布任务: ${url}`);
+    const res = await fetch(url);
     const data = await res.json();
     const tasks = data?.result?.data?.json?.tasks || [];
 
+    console.log(`[轮询] 获取到 ${tasks.length} 个待发布任务`);
+
     for (const task of tasks) {
+      console.log(`[轮询] 开始处理任务 id=${task.id} platform=${task.platform} title=${task.articleTitle}`);
       await processTask(task, apiKey, serverUrl.replace(/\/$/, ""));
     }
   } catch (e) {
-    console.error("轮询失败", e);
+    console.error("[轮询] 请求失败", e);
+  }
+}
+
+/**
+ * 等待 tab 加载完成
+ */
+function waitForTabComplete(tabId, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      reject(new Error(`等待 tab ${tabId} 加载超时 (${timeoutMs}ms)`));
+    }, timeoutMs);
+
+    function listener(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === "complete") {
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    }
+
+    // 先检查当前状态
+    chrome.tabs.get(tabId).then(tab => {
+      if (tab.status === "complete") {
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      } else {
+        chrome.tabs.onUpdated.addListener(listener);
+      }
+    }).catch(err => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+/**
+ * 带重试的 sendMessage
+ */
+async function sendMessageWithRetry(tabId, message, maxRetries = 5, delayMs = 2000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[发布] sendMessage 尝试 ${attempt}/${maxRetries} tabId=${tabId}`);
+      const result = await chrome.tabs.sendMessage(tabId, message);
+      return result;
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      console.warn(`[发布] sendMessage 失败 (${attempt}/${maxRetries}): ${errMsg}`);
+      if (attempt === maxRetries) {
+        throw new Error(`sendMessage 在 ${maxRetries} 次重试后仍然失败: ${errMsg}`);
+      }
+      // 等待后重试，给 content script 更多加载时间
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
   }
 }
 
 async function processTask(task, apiKey, serverUrl) {
   const url = PLATFORM_URLS[task.platform];
-  if (!url) return;
+  if (!url) {
+    console.error(`[发布] 未知平台: ${task.platform}`);
+    await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, `未知平台: ${task.platform}`);
+    return;
+  }
 
+  console.log(`[发布] 开始任务 id=${task.id} platform=${task.platform} 打开: ${url}`);
   await updateTaskStatus(serverUrl, apiKey, task.id, "processing");
 
-  const tab = await chrome.tabs.create({ url, active: false });
-
-  await new Promise(resolve => setTimeout(resolve, 4000));
+  let tab;
+  try {
+    tab = await chrome.tabs.create({ url, active: true });
+    console.log(`[发布] 已创建 tab id=${tab.id} 等待加载完成...`);
+  } catch (e) {
+    const errMsg = e instanceof Error ? e.message : String(e);
+    console.error(`[发布] 创建 tab 失败: ${errMsg}`);
+    await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, `创建 tab 失败: ${errMsg}`);
+    return;
+  }
 
   try {
-    const result = await chrome.tabs.sendMessage(tab.id, {
+    // 等待页面加载完成
+    await waitForTabComplete(tab.id, 30000);
+    console.log(`[发布] tab ${tab.id} 加载完成，额外等待 3 秒让 content script 注入...`);
+
+    // 额外等待让 content script 完全注入和初始化
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // 带重试的消息发送
+    const result = await sendMessageWithRetry(tab.id, {
       action: "publish",
       task,
-    });
+    }, 5, 3000);
+
+    console.log(`[发布] 任务 id=${task.id} 执行结果:`, JSON.stringify(result));
 
     if (result?.success) {
       await updateTaskStatus(serverUrl, apiKey, task.id, "completed", result.url);
+      console.log(`[发布] 任务 id=${task.id} 发布成功 url=${result.url}`);
     } else {
-      await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, result?.error || "发布失败");
+      const errorMsg = result?.error || "发布失败（content script 返回失败）";
+      await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, errorMsg);
+      console.error(`[发布] 任务 id=${task.id} 发布失败: ${errorMsg}`);
     }
   } catch (e) {
-    await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, e instanceof Error ? e.message : String(e));
+    const errMsg = e instanceof Error ? e.message : String(e);
+    console.error(`[发布] 任务 id=${task.id} 执行异常: ${errMsg}`);
+    await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, errMsg);
   } finally {
-    setTimeout(() => {
-      chrome.tabs.remove(tab.id).catch(() => undefined);
-    }, 5000);
+    // 延迟关闭 tab
+    if (tab && tab.id) {
+      setTimeout(() => {
+        chrome.tabs.remove(tab.id).catch(() => undefined);
+      }, 8000);
+    }
   }
 }
 
 async function updateTaskStatus(serverUrl, apiKey, taskId, status, resultUrl, errorMessage) {
-  await fetch(`${serverUrl}/api/trpc/publishTasks.complete`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  try {
+    const body = {
       json: {
         apiKey,
         taskId,
@@ -86,8 +175,19 @@ async function updateTaskStatus(serverUrl, apiKey, taskId, status, resultUrl, er
         resultUrl: resultUrl || undefined,
         errorMessage: errorMessage || undefined,
       },
-    }),
-  });
+    };
+    console.log(`[发布] 更新任务状态: taskId=${taskId} status=${status}`);
+    const res = await fetch(`${serverUrl}/api/trpc/publishTasks.complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.error(`[发布] 更新状态失败: HTTP ${res.status}`);
+    }
+  } catch (e) {
+    console.error(`[发布] 更新状态异常:`, e);
+  }
 }
 
 // ==================== 登录检测（持久化到 storage） ====================
@@ -199,14 +299,11 @@ async function handleCheckLogin() {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`[检测] ${platform} tabId=${tabId} 失败:`, message);
-      // 如果脚本注入失败（tab 可能还在加载），不移除，下次再试
     }
   }
 }
 
 // ==================== 接收 popup 的连接请求 ====================
-
-// popup 写入 pendingWatch 后关闭，background 通过 alarm 或 onChanged 处理
 
 // 平台 URL 前缀映射（用于匹配 tab）
 const PLATFORM_URL_PATTERNS = {
