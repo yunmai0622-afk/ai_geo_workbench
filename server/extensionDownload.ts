@@ -46,7 +46,7 @@ function stripExistingAutoConfig(source: string): string {
 
 function buildAutoConfigPrefix(serverUrl: string, apiKey: string): string {
   return `${AUTO_CONFIG_MARKER}
-chrome.storage.local.set({
+chrome.storage.sync.set({
   serverUrl: '${escapeJsSingleQuoted(serverUrl)}',
   apiKey: '${escapeJsSingleQuoted(apiKey)}'
 });

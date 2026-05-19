@@ -1,3 +1,11 @@
+const PLATFORM_LABELS = {
+  zhihu: "知乎",
+  toutiao: "头条号",
+  sohu: "搜狐号",
+  baijiahao: "百家号",
+  wechat: "微信公众号",
+};
+
 function applyPlatformStatus(platformStatus) {
   if (!platformStatus) return;
   Object.entries(platformStatus).forEach(([platform, connected]) => {
@@ -12,12 +20,29 @@ function applyPlatformStatus(platformStatus) {
 function showConnectHint(platformLabel) {
   const hint = document.getElementById("connectHint");
   if (!hint) return;
-  hint.textContent = `已打开${platformLabel}，请在页面完成登录；登录后插件会自动检测并显示「已连接」。`;
+  hint.textContent = `请在打开的${platformLabel}页面完成登录，插件会自动检测并显示「已连接」。`;
   hint.style.display = "block";
 }
 
+async function connectPlatform(platform, url, label) {
+  const tab = await chrome.tabs.create({ url, active: true });
+  if (tab.id != null) {
+    chrome.runtime
+      .sendMessage({
+        action: "watchTab",
+        tabId: tab.id,
+        platform,
+      })
+      .catch(() => {});
+  }
+  showConnectHint(label || PLATFORM_LABELS[platform] || platform);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
-  const { serverUrl, apiKey, platformStatus } = await chrome.storage.local.get(["serverUrl", "apiKey", "platformStatus"]);
+  const [{ serverUrl, apiKey }, { platformStatus }] = await Promise.all([
+    chrome.storage.sync.get(["serverUrl", "apiKey"]),
+    chrome.storage.local.get(["platformStatus"]),
+  ]);
 
   if (serverUrl) document.getElementById("serverUrl").value = serverUrl;
   if (apiKey) document.getElementById("apiKey").value = apiKey;
@@ -28,9 +53,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", () => {
       const url = btn.getAttribute("data-url");
       const platform = btn.getAttribute("data-platform");
-      const label = btn.getAttribute("data-label") || platform || "平台";
-      if (url) chrome.tabs.create({ url, active: true });
-      showConnectHint(label);
+      const label = btn.getAttribute("data-label") || PLATFORM_LABELS[platform] || platform || "平台";
+      if (url && platform) void connectPlatform(platform, url, label);
     });
   });
 
@@ -61,7 +85,7 @@ chrome.runtime.onMessage.addListener(message => {
 document.getElementById("saveBtn").addEventListener("click", async () => {
   const serverUrl = document.getElementById("serverUrl").value.trim();
   const apiKey = document.getElementById("apiKey").value.trim();
-  await chrome.storage.local.set({ serverUrl, apiKey });
+  await chrome.storage.sync.set({ serverUrl, apiKey });
   const saveBtn = document.getElementById("saveBtn");
   saveBtn.textContent = "已保存 ✓";
   setTimeout(() => {

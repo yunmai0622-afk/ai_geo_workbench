@@ -1,3 +1,6 @@
+const BUILD_TAG = "bg-v3-sync-credentials";
+console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
+
 const PLATFORM_URLS = {
   zhihu: "https://www.zhihu.com/creator/writing/article/publish",
   toutiao: "https://mp.toutiao.com/profile_v4/graphic/publish",
@@ -11,7 +14,7 @@ chrome.alarms.create("pollTasks", { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener(async alarm => {
   if (alarm.name !== "pollTasks") return;
 
-  const { apiKey, serverUrl } = await chrome.storage.local.get(["apiKey", "serverUrl"]);
+  const { apiKey, serverUrl } = await chrome.storage.sync.get(["apiKey", "serverUrl"]);
   if (!apiKey || !serverUrl) return;
 
   try {
@@ -84,58 +87,75 @@ function checkPlatformLogin(checkScript) {
   }
 }
 
-const PLATFORM_CHECKS = {
-  zhihu: {
-    match: "zhihu.com",
-    checkScript: `document.cookie.includes('z_c0') || !!document.querySelector('.AppHeader-userInfo')`,
-  },
-  toutiao: {
-    match: "mp.toutiao.com",
-    checkScript: `!!document.querySelector('.user-info') || document.cookie.includes('sessionid')`,
-  },
-  sohu: {
-    match: "mp.sohu.com",
-    checkScript: `!!document.querySelector('.user-avatar') || document.cookie.includes('SUV')`,
-  },
-  baijiahao: {
-    match: "baijiahao.baidu.com",
-    checkScript: `!!document.querySelector('.user-info') || document.cookie.includes('BDUSS')`,
-  },
-  wechat: {
-    match: "mp.weixin.qq.com",
-    checkScript: `!!document.querySelector('#a_nickname') || document.title.includes('公众')`,
-  },
+/** tabId -> platform，连接平台后持续轮询直到检测到登录 */
+const watchingTabs = new Map();
+
+const LOGIN_CHECKS = {
+  zhihu: `document.cookie.includes('z_c0') || !!document.querySelector('.AppHeader-userInfo')`,
+  toutiao: `document.cookie.includes('sessionid') || !!document.querySelector('.user-info')`,
+  sohu: `document.cookie.includes('SUV') || !!document.querySelector('.user-avatar')`,
+  baijiahao: `document.cookie.includes('BDUSS') || !!document.querySelector('.user-info')`,
+  wechat: `!!document.querySelector('#a_nickname') || document.title.includes('公众')`,
 };
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status !== "complete" || !tab.url) return;
+async function markPlatformConnected(platform) {
+  const { platformStatus } = await chrome.storage.local.get(["platformStatus"]);
+  const status = platformStatus || {};
+  status[platform] = true;
+  await chrome.storage.local.set({ platformStatus: status });
+  chrome.runtime.sendMessage({ action: "platformConnected", platform }).catch(() => {});
+}
 
-  for (const [platform, config] of Object.entries(PLATFORM_CHECKS)) {
-    if (!tab.url.includes(config.match)) continue;
+async function pollWatchingTabs() {
+  if (watchingTabs.size === 0) return;
 
+  for (const [tabId, platform] of watchingTabs.entries()) {
     try {
+      const tab = await chrome.tabs.get(tabId).catch(() => null);
+      if (!tab) {
+        console.log(`[检测] ${platform} tabId=${tabId} tab已关闭，停止监听`);
+        watchingTabs.delete(tabId);
+        continue;
+      }
+
+      const checkScript = LOGIN_CHECKS[platform];
+      if (!checkScript) {
+        console.warn(`[检测] 未知平台 ${platform}，停止监听 tabId=${tabId}`);
+        watchingTabs.delete(tabId);
+        continue;
+      }
+
+      console.log(`[检测] ${platform} tabId=${tabId} url=${tab.url ?? "(无)"} 开始执行脚本`);
+
       const result = await chrome.scripting.executeScript({
         target: { tabId },
         func: checkPlatformLogin,
-        args: [config.checkScript],
+        args: [checkScript],
       });
 
+      console.log(`[检测] ${platform} tabId=${tabId} result=`, result);
+
       const isLoggedIn = result?.[0]?.result;
-      if (!isLoggedIn) continue;
+      console.log(`[检测] ${platform} tabId=${tabId} isLoggedIn=`, isLoggedIn);
 
-      const { platformStatus } = await chrome.storage.local.get(["platformStatus"]);
-      const status = platformStatus || {};
-      status[platform] = true;
-      await chrome.storage.local.set({ platformStatus: status });
-
-      chrome.runtime
-        .sendMessage({
-          action: "platformConnected",
-          platform,
-        })
-        .catch(() => {});
-    } catch {
-      // 页面可能拒绝脚本注入，忽略
+      if (isLoggedIn) {
+        console.log(`[检测] ${platform} tabId=${tabId} 登录成功，更新连接状态`);
+        await markPlatformConnected(platform);
+        watchingTabs.delete(tabId);
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`[检测] ${platform} tabId=${tabId} 执行脚本失败:`, message, e);
     }
+  }
+}
+
+setInterval(pollWatchingTabs, 5000);
+
+chrome.runtime.onMessage.addListener(message => {
+  if (message.action === "watchTab" && message.tabId != null && message.platform) {
+    console.log(`[监听] 开始监听 tabId=${message.tabId} platform=${message.platform}`);
+    watchingTabs.set(message.tabId, message.platform);
+    void pollWatchingTabs();
   }
 });
