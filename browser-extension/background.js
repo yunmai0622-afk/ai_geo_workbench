@@ -1,4 +1,4 @@
-const BUILD_TAG = "bg-v3-sync-credentials";
+const BUILD_TAG = "bg-v4-direct-inject";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
 const PLATFORM_URLS = {
@@ -77,25 +77,32 @@ async function updateTaskStatus(serverUrl, apiKey, taskId, status, resultUrl, er
   });
 }
 
-/** 在页面上下文中执行登录检测表达式（由 background 注入） */
-function checkPlatformLogin(checkScript) {
-  try {
-    // eslint-disable-next-line no-eval
-    return Boolean(eval(checkScript));
-  } catch {
-    return false;
-  }
-}
-
 /** tabId -> platform，连接平台后持续轮询直到检测到登录 */
 const watchingTabs = new Map();
 
-const LOGIN_CHECKS = {
-  zhihu: `!!document.querySelector('[class*="Avatar"]') || document.cookie.includes('z_c0')`,
-  toutiao: `document.cookie.includes('sessionid') || !!document.querySelector('.user-info')`,
-  sohu: `document.cookie.includes('SUV') || !!document.querySelector('.user-avatar')`,
-  baijiahao: `document.cookie.includes('BDUSS') || !!document.querySelector('.user-info')`,
-  wechat: `!!document.querySelector('#a_nickname') || document.title.includes('公众')`,
+/** 各平台的登录检测函数 - 直接注入到页面执行 */
+function checkZhihu() {
+  return !!document.querySelector('[class*="Avatar"]') || document.cookie.includes('z_c0');
+}
+function checkToutiao() {
+  return document.cookie.includes('sessionid') || !!document.querySelector('.user-info') || !!document.querySelector('[class*="user"]');
+}
+function checkSohu() {
+  return document.cookie.includes('SUV') || !!document.querySelector('.user-avatar') || !!document.querySelector('[class*="avatar"]');
+}
+function checkBaijiahao() {
+  return document.cookie.includes('BDUSS') || !!document.querySelector('.user-info') || !!document.querySelector('[class*="avatar"]');
+}
+function checkWechat() {
+  return !!document.querySelector('#a_nickname') || document.title.includes('公众');
+}
+
+const LOGIN_CHECK_FUNCS = {
+  zhihu: checkZhihu,
+  toutiao: checkToutiao,
+  sohu: checkSohu,
+  baijiahao: checkBaijiahao,
+  wechat: checkWechat,
 };
 
 async function markPlatformConnected(platform) {
@@ -118,8 +125,8 @@ async function pollWatchingTabs() {
         continue;
       }
 
-      const checkScript = LOGIN_CHECKS[platform];
-      if (!checkScript) {
+      const checkFunc = LOGIN_CHECK_FUNCS[platform];
+      if (!checkFunc) {
         console.warn(`[检测] 未知平台 ${platform}，停止监听 tabId=${tabId}`);
         watchingTabs.delete(tabId);
         continue;
@@ -129,11 +136,9 @@ async function pollWatchingTabs() {
 
       const result = await chrome.scripting.executeScript({
         target: { tabId },
-        func: checkPlatformLogin,
-        args: [checkScript],
+        func: checkFunc,
+        world: "MAIN",
       });
-
-      console.log(`[检测] ${platform} tabId=${tabId} result=`, result);
 
       const isLoggedIn = result?.[0]?.result;
       console.log(`[检测] ${platform} tabId=${tabId} isLoggedIn=`, isLoggedIn);
@@ -145,17 +150,32 @@ async function pollWatchingTabs() {
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      console.error(`[检测] ${platform} tabId=${tabId} 执行脚本失败:`, message, e);
+      console.error(`[检测] ${platform} tabId=${tabId} 执行脚本失败:`, message);
     }
   }
 }
 
 setInterval(pollWatchingTabs, 5000);
 
+// === 通信方式 1: sendMessage（popup 直接发送） ===
 chrome.runtime.onMessage.addListener(message => {
   if (message.action === "watchTab" && message.tabId != null && message.platform) {
-    console.log(`[监听] 开始监听 tabId=${message.tabId} platform=${message.platform}`);
+    console.log(`[监听] 收到 sendMessage: tabId=${message.tabId} platform=${message.platform}`);
     watchingTabs.set(message.tabId, message.platform);
     void pollWatchingTabs();
+  }
+});
+
+// === 通信方式 2: storage 变化监听（备用，解决 MV3 Service Worker 休眠问题） ===
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && changes.watchRequest) {
+    const req = changes.watchRequest.newValue;
+    if (req && req.tabId != null && req.platform) {
+      console.log(`[监听] 收到 storage 变化: tabId=${req.tabId} platform=${req.platform}`);
+      watchingTabs.set(req.tabId, req.platform);
+      void pollWatchingTabs();
+      // 清除请求，避免重复触发
+      chrome.storage.local.remove("watchRequest");
+    }
   }
 });

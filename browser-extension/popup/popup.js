@@ -27,13 +27,21 @@ function showConnectHint(platformLabel) {
 async function connectPlatform(platform, url, label) {
   const tab = await chrome.tabs.create({ url, active: true });
   if (tab.id != null) {
+    // 方式 1: sendMessage（可能因 Service Worker 休眠而失败）
     chrome.runtime
       .sendMessage({
         action: "watchTab",
         tabId: tab.id,
         platform,
       })
-      .catch(() => {});
+      .catch(() => {
+        console.log("[popup] sendMessage 失败，使用 storage 备用方案");
+      });
+
+    // 方式 2: 通过 storage 传递（更可靠，Service Worker 会被 onChanged 唤醒）
+    await chrome.storage.local.set({
+      watchRequest: { tabId: tab.id, platform, timestamp: Date.now() },
+    });
   }
   showConnectHint(label || PLATFORM_LABELS[platform] || platform);
 }
