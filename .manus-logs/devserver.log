@@ -908,3 +908,66 @@
 [2026-05-19T16:59:54.988Z] ]
 [2026-05-19T16:59:54.988Z] }
 [2026-05-19T16:59:58.808Z] 12:59:58 PM [vite] (client) hmr update /src/index.css
+[2026-05-19T17:00:45.324Z] [geo.scores.latest] {
+[2026-05-19T17:00:45.325Z] requestedProjectId: 1,
+[2026-05-19T17:00:45.326Z] returned: {
+[2026-05-19T17:00:45.326Z] id: 630001,
+[2026-05-19T17:00:45.326Z] projectId: 1,
+[2026-05-19T17:00:45.326Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-19T17:00:45.327Z] totalScore: 40
+[2026-05-19T17:00:45.327Z] },
+[2026-05-19T17:00:45.327Z] sameProjectTop3: [
+[2026-05-19T17:00:45.328Z] {
+[2026-05-19T17:00:45.328Z] id: 630001,
+[2026-05-19T17:00:45.328Z] projectId: 1,
+[2026-05-19T17:00:45.329Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-19T17:00:45.329Z] totalScore: 40
+[2026-05-19T17:00:45.329Z] }
+[2026-05-19T17:00:45.330Z] ]
+[2026-05-19T17:00:45.330Z] }
+[2026-05-19T17:10:10.679Z] [geo.scores.latest] {
+[2026-05-19T17:10:10.680Z] requestedProjectId: 1,
+[2026-05-19T17:10:10.680Z] returned: {
+[2026-05-19T17:10:10.680Z] id: 630001,
+[2026-05-19T17:10:10.681Z] projectId: 1,
+[2026-05-19T17:10:10.681Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-19T17:10:10.681Z] totalScore: 40
+[2026-05-19T17:10:10.682Z] },
+[2026-05-19T17:10:10.682Z] sameProjectTop3: [
+[2026-05-19T17:10:10.682Z] {
+[2026-05-19T17:10:10.683Z] id: 630001,
+[2026-05-19T17:10:10.683Z] projectId: 1,
+[2026-05-19T17:10:10.683Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-19T17:10:10.683Z] totalScore: 40
+[2026-05-19T17:10:10.684Z] }
+[2026-05-19T17:10:10.684Z] ]
+[2026-05-19T17:10:10.684Z] }
+[2026-05-19T17:10:26.091Z] Dev server process group stopped
+[2026-05-19T17:10:26.093Z] ELIFECYCLE  Command failed.
+[2026-05-19T17:10:26.149Z] Dev server exited with code -15
+[2026-05-19T17:10:29.117Z] Starting dev server with command: pnpm run dev
+[2026-05-19T17:10:29.854Z] 
+[2026-05-19T17:10:29.855Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-19T17:10:29.856Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-19T17:10:29.856Z] 
+[2026-05-19T17:10:31.517Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-19T17:10:31.812Z] Server running on http://localhost:3000/
+[2026-05-19T17:10:34.079Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-19T17:10:42.936Z] [geo.scores.latest] {
+[2026-05-19T17:10:42.937Z] requestedProjectId: 1,
+[2026-05-19T17:10:42.938Z] returned: {
+[2026-05-19T17:10:42.938Z] id: 630001,
+[2026-05-19T17:10:42.938Z] projectId: 1,
+[2026-05-19T17:10:42.939Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-19T17:10:42.939Z] totalScore: 40
+[2026-05-19T17:10:42.939Z] },
+[2026-05-19T17:10:42.940Z] sameProjectTop3: [
+[2026-05-19T17:10:42.940Z] {
+[2026-05-19T17:10:42.940Z] id: 630001,
+[2026-05-19T17:10:42.941Z] projectId: 1,
+[2026-05-19T17:10:42.941Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-19T17:10:42.941Z] totalScore: 40
+[2026-05-19T17:10:42.941Z] }
+[2026-05-19T17:10:42.942Z] ]
+[2026-05-19T17:10:42.942Z] }
+[2026-05-19T17:10:46.925Z] 1:10:46 PM [vite] (client) hmr update /src/index.css
