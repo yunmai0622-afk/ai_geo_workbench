@@ -4,9 +4,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   if (message.action === "checkLogin") {
-    const isLogin = Boolean(document.cookie.includes("z_c0") || document.querySelector(".AppHeader-userInfo"));
+    const isLogin = Boolean(document.querySelector('[class*="Avatar"]') || document.cookie.includes("z_c0"));
     sendResponse({ isLogin });
   }
 });
 
-reportPlatformLogin("zhihu", Boolean(document.querySelector(".AppHeader-userInfo") || document.cookie.includes("z_c0")));
+reportPlatformLogin("zhihu", Boolean(document.querySelector('[class*="Avatar"]') || document.cookie.includes("z_c0")));

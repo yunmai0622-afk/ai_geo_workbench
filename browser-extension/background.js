@@ -91,7 +91,7 @@ function checkPlatformLogin(checkScript) {
 const watchingTabs = new Map();
 
 const LOGIN_CHECKS = {
-  zhihu: `document.cookie.includes('z_c0') || !!document.querySelector('.AppHeader-userInfo')`,
+  zhihu: `!!document.querySelector('[class*="Avatar"]') || document.cookie.includes('z_c0')`,
   toutiao: `document.cookie.includes('sessionid') || !!document.querySelector('.user-info')`,
   sohu: `document.cookie.includes('SUV') || !!document.querySelector('.user-avatar')`,
   baijiahao: `document.cookie.includes('BDUSS') || !!document.querySelector('.user-info')`,
