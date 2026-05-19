@@ -1,4 +1,4 @@
-const BUILD_TAG = "bg-v5-alarm-persistent";
+const BUILD_TAG = "bg-v6-pending-watch";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
 const PLATFORM_URLS = {
@@ -20,6 +20,8 @@ chrome.alarms.onAlarm.addListener(async alarm => {
   if (alarm.name === "pollTasks") {
     await handlePollTasks();
   } else if (alarm.name === "checkLogin") {
+    // 每次 alarm 触发时，先检查是否有 pendingWatch 需要处理
+    await processPendingWatch();
     await handleCheckLogin();
   }
 });
@@ -204,7 +206,48 @@ async function handleCheckLogin() {
 
 // ==================== 接收 popup 的连接请求 ====================
 
-// 方式 1: sendMessage
+// popup 写入 pendingWatch 后关闭，background 通过 alarm 或 onChanged 处理
+
+// 平台 URL 前缀映射（用于匹配 tab）
+const PLATFORM_URL_PATTERNS = {
+  zhihu: ["zhihu.com"],
+  toutiao: ["mp.toutiao.com", "toutiao.com"],
+  sohu: ["mp.sohu.com", "sohu.com"],
+  baijiahao: ["baijiahao.baidu.com"],
+  wechat: ["mp.weixin.qq.com"],
+};
+
+/** 处理 pendingWatch：找到匹配的 tab 并加入监听列表 */
+async function processPendingWatch() {
+  const { pendingWatch } = await chrome.storage.local.get(["pendingWatch"]);
+  if (!pendingWatch || !pendingWatch.platform) return;
+
+  // 超过 2 分钟的 pendingWatch 视为过期
+  if (Date.now() - (pendingWatch.timestamp || 0) > 120000) {
+    await chrome.storage.local.remove("pendingWatch");
+    return;
+  }
+
+  const platform = pendingWatch.platform;
+  const patterns = PLATFORM_URL_PATTERNS[platform] || [];
+
+  // 查找匹配的 tab
+  const allTabs = await chrome.tabs.query({});
+  const matchedTab = allTabs.find(tab => {
+    if (!tab.url) return false;
+    return patterns.some(p => tab.url.includes(p));
+  });
+
+  if (matchedTab && matchedTab.id != null) {
+    console.log(`[pendingWatch] 找到 ${platform} tab: id=${matchedTab.id} url=${matchedTab.url}`);
+    await addWatchingTab(matchedTab.id, platform);
+    await chrome.storage.local.remove("pendingWatch");
+  } else {
+    console.log(`[pendingWatch] ${platform} 暂未找到匹配的 tab，等待下次检查...`);
+  }
+}
+
+// 方式 1: sendMessage（如果 popup 没被关闭的话）
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === "watchTab" && message.tabId != null && message.platform) {
     console.log(`[监听] 收到 sendMessage: tabId=${message.tabId} platform=${message.platform}`);
@@ -212,12 +255,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       handleCheckLogin();
       sendResponse({ ok: true });
     });
-    return true; // 异步响应
+    return true;
   }
 });
 
-// 方式 2: storage 变化监听（备用）
+// 方式 2: storage 变化监听
 chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && changes.pendingWatch) {
+    const req = changes.pendingWatch.newValue;
+    if (req && req.platform) {
+      console.log(`[监听] 收到 storage pendingWatch: platform=${req.platform}`);
+      // 延迟 2 秒处理，等 tab 加载
+      setTimeout(() => processPendingWatch(), 2000);
+    }
+  }
   if (areaName === "local" && changes.watchRequest) {
     const req = changes.watchRequest.newValue;
     if (req && req.tabId != null && req.platform) {
@@ -225,7 +276,6 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
       addWatchingTab(req.tabId, req.platform).then(() => {
         handleCheckLogin();
       });
-      // 清除请求
       chrome.storage.local.remove("watchRequest");
     }
   }

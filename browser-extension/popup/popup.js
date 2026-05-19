@@ -25,24 +25,15 @@ function showConnectHint(platformLabel) {
 }
 
 async function connectPlatform(platform, url, label) {
-  const tab = await chrome.tabs.create({ url, active: true });
-  if (tab.id != null) {
-    // 方式 1: sendMessage（可能因 Service Worker 休眠而失败）
-    chrome.runtime
-      .sendMessage({
-        action: "watchTab",
-        tabId: tab.id,
-        platform,
-      })
-      .catch(() => {
-        console.log("[popup] sendMessage 失败，使用 storage 备用方案");
-      });
+  // 关键修复：先写入 storage 中的 pendingWatch（不依赖 tab.id）
+  // 这样即使 popup 在 tabs.create 后立即关闭，background 的 alarm 也能读到
+  await chrome.storage.local.set({
+    pendingWatch: { platform, url, timestamp: Date.now() },
+  });
 
-    // 方式 2: 通过 storage 传递（更可靠，Service Worker 会被 onChanged 唤醒）
-    await chrome.storage.local.set({
-      watchRequest: { tabId: tab.id, platform, timestamp: Date.now() },
-    });
-  }
+  // 然后打开 tab（popup 可能在此之后被关闭）
+  chrome.tabs.create({ url, active: true });
+
   showConnectHint(label || PLATFORM_LABELS[platform] || platform);
 }
 
