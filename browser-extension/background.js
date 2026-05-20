@@ -3,7 +3,7 @@ chrome.storage.sync.set({
   apiKey: 'bd9a998e0a6244d09d7ea7d6e9c0c1e2'
 })
 
-const BUILD_TAG = "bg-v8-zhihu-url-fix";
+const BUILD_TAG = "bg-v9-cover-upload-fix";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
 const PLATFORM_URLS = {
@@ -47,7 +47,7 @@ async function handlePollTasks() {
     console.log(`[轮询] 获取到 ${tasks.length} 个待发布任务`);
 
     for (const task of tasks) {
-      console.log(`[轮询] 开始处理任务 id=${task.id} platform=${task.platform} title=${task.articleTitle}`);
+      console.log(`[轮询] 开始处理任务 id=${task.id} platform=${task.platform} title=${task.articleTitle} coverImageUrl=${task.coverImageUrl || '(无)'}`);
       await processTask(task, apiKey, serverUrl.replace(/\/$/, ""));
     }
   } catch (e) {
@@ -118,7 +118,7 @@ async function processTask(task, apiKey, serverUrl) {
     return;
   }
 
-  console.log(`[发布] 开始任务 id=${task.id} platform=${task.platform} 打开: ${url}`);
+  console.log(`[发布] 开始任务 id=${task.id} platform=${task.platform} 打开: ${url} coverImageUrl=${task.coverImageUrl || '(无)'}`);
   await updateTaskStatus(serverUrl, apiKey, task.id, "processing");
 
   let tab;
