@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, platform, articleTitle, coverImageUrl, status FROM publish_tasks ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, platform, articleTitle, coverImageUrl, status FROM publish_tasks ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "150002",
+      "platform": "zhihu",
+      "articleTitle": "社群活跃但训练课率低？三步诊断与提升策略",
+      "coverImageUrl": "NULL",
+      "status": "completed"
+    },
+    {
+      "id": "150001",
+      "platform": "zhihu",
+      "articleTitle": "新手老师从0到1搭建训练营的完整步骤与避坑指南",
+      "coverImageUrl": "NULL",
+      "status": "completed"
+    },
+    {
+      "id": "120002",
+      "platform": "zhihu",
+      "articleTitle": "线下课程线上化实战指南：三步打造高转化训练营",
+      "coverImageUrl": "NULL",
+      "status": "completed"
+    },
+    {
+      "id": "120001",
+      "platform": "zhihu",
+      "articleTitle": "线下课程线上化实战指南：三步打造高转化训练营",
+      "coverImageUrl": "NULL",
+      "status": "failed"
+    },
+    {
+      "id": "90002",
+      "platform": "zhihu",
+      "articleTitle": "线下课程线上化实战指南：三步打造高转化训练营",
+      "coverImageUrl": "NULL",
+      "status": "failed"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplatform\tarticleTitle\tcoverImageUrl\tstatus\n150002\tzhihu\t社群活跃但训练课率低？三步诊断与提升策略\tNULL\tcompleted\n150001\tzhihu\t新手老师从0到1搭建训练营的完整步骤与避坑指南\tNULL\tcompleted\n120002\tzhihu\t线下课程线上化实战指南：三步打造高转化训练营\tNULL\tcompleted\n120001\tzhihu\t线下课程线上化实战指南：三步打造高转化训练营\tNULL\tfailed\n90002\tzhihu\t线下课程线上化实战指南：三步打造高转化训练营\tNULL\tfailed\n",
+  "stderr": "",
+  "execution_time_ms": 2048
+}
