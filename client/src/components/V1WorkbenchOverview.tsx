@@ -88,6 +88,11 @@ export default function V1WorkbenchOverview() {
   const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery();
   const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(() => projects[0]?.id);
 
+  // SEO: 设置页面标题
+  useEffect(() => {
+    document.title = "企业 AI 搜索增长工作台 - GEO 内容诊断与智能发布";
+  }, []);
+
   useEffect(() => {
     if (!selectedProjectId && projects[0]?.id) setSelectedProjectId(projects[0].id);
   }, [projects, selectedProjectId]);
@@ -185,8 +190,8 @@ export default function V1WorkbenchOverview() {
     <div className="mx-auto max-w-5xl space-y-8 pb-16 pt-2 text-slate-100">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">内容增长工作台</h1>
-          <p className="mt-1 text-sm text-slate-500">今日概览与本周任务</p>
+          <h1 className="text-xl font-semibold tracking-tight text-white">企业 AI 搜索增长工作台</h1>
+          <h2 className="mt-1 text-sm font-normal text-slate-500">GEO 内容诊断与智能发布 — 今日概览与本周任务</h2>
         </div>
         <div className="flex flex-col gap-1 sm:items-end">
           <label className="text-xs text-slate-500">当前项目</label>
