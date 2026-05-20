@@ -542,3 +542,8 @@
 - [x] background.js processTask 增加 sendMessage 重试机制
 - [x] background.js handlePollTasks 增加详细日志便于调试
 - [x] 重新打包 browser-extension.zip
+- [x] 修复知乎发布 URL 404 问题（旧 URL /creator/writing/article/publish 已失效）
+- [x] 更新 PLATFORM_URLS.zhihu 为正确的知乎写文章入口 URL
+- [x] 更新 manifest.json content_scripts 匹配规则覆盖 zhuanlan.zhihu.com
+- [x] 改进 zhihu.js 和 shared.js 适配知乎 Draft.js 富文本编辑器（使用键盘输入代替 innerHTML）
+- [x] 重新打包 browser-extension.zip

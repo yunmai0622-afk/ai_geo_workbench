@@ -6,6 +6,7 @@
   "permissions": ["storage", "alarms", "tabs", "activeTab", "scripting"],
   "host_permissions": [
     "https://www.zhihu.com/*",
+    "https://zhuanlan.zhihu.com/*",
     "https://mp.toutiao.com/*",
     "https://mp.sohu.com/*",
     "https://baijiahao.baidu.com/*",
@@ -25,7 +26,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.zhihu.com/creator*"],
+      "matches": ["https://www.zhihu.com/creator*", "https://zhuanlan.zhihu.com/*"],
       "js": ["content-scripts/shared.js", "content-scripts/zhihu.js"],
       "run_at": "document_idle"
     },

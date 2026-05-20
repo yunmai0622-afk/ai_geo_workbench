@@ -1,8 +1,8 @@
-const BUILD_TAG = "bg-v7-publish-fix";
+const BUILD_TAG = "bg-v8-zhihu-url-fix";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
 const PLATFORM_URLS = {
-  zhihu: "https://www.zhihu.com/creator/writing/article/publish",
+  zhihu: "https://zhuanlan.zhihu.com/write",
   toutiao: "https://mp.toutiao.com/profile_v4/graphic/publish",
   sohu: "https://mp.sohu.com/mpfe/v3/submit",
   baijiahao: "https://baijiahao.baidu.com/builder/rc/edit?type=news",
