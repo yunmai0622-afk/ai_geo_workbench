@@ -191,35 +191,67 @@ function normalizeZhihuPublishedUrl(url) {
 }
 
 /**
- * 知乎：必须点击「发布」并等待成功，不能把自动保存草稿的 /edit 页当成已发布
+ * 等待知乎发布确认弹窗里的「发布」按钮出现
+ */
+async function waitForConfirmButton(timeoutMs = 8000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const btn =
+      document.querySelector('.PublishPanel button[type="button"]:not([disabled])') ||
+      document.querySelector('.Modal button[type="button"]:not([disabled])') ||
+      document.querySelector('[class*="publishPanel"] button:not([disabled])') ||
+      document.querySelector('[class*="PublishPanel"] button:not([disabled])') ||
+      document.querySelector('[class*="modal"] button:not([disabled])') ||
+      Array.from(document.querySelectorAll("button")).find(b => {
+        const txt = b.textContent?.trim() || "";
+        return (txt === "发布" || txt === "发表") && !b.disabled;
+      });
+
+    if (btn) return btn;
+    await sleep(500);
+  }
+  return null;
+}
+
+/**
+ * 知乎两步发布：先点「发布文章」打开弹窗，再在弹窗内点「发布」确认
+ */
+async function clickZhihuPublishSteps() {
+  const firstBtn =
+    document.querySelector('button[type="submit"]') ||
+    Array.from(document.querySelectorAll("button")).find(b => {
+      if (isInsideZhihuBodyEditor(b)) return false;
+      const text = b.textContent?.trim() || "";
+      return /发布文章|^发布$|发表/.test(text);
+    });
+
+  if (!firstBtn) throw new Error("找不到发布按钮");
+
+  console.log("[发布] 第一步：点击", textOrEmpty(firstBtn));
+  firstBtn.click();
+  await sleep(3000);
+
+  const confirmBtn = await waitForConfirmButton(8000);
+  if (!confirmBtn) {
+    throw new Error("未找到发布确认弹窗中的发布按钮");
+  }
+
+  console.log("[发布] 第二步：弹窗确认", confirmBtn.textContent?.trim());
+  confirmBtn.click();
+  await sleep(3000);
+}
+
+function textOrEmpty(el) {
+  return el?.textContent?.trim() || "(无文案)";
+}
+
+/**
+ * 知乎：必须完成两步发布并等待成功，不能把自动保存草稿的 /edit 页当成已发布
  */
 async function clickZhihuPublishAndWait() {
-  const urlBeforePublish = window.location.href;
-  console.log("[发布] 当前页面（填稿后）:", urlBeforePublish);
+  console.log("[发布] 当前页面（填稿后）:", window.location.href);
 
-  const publishBtn = Array.from(document.querySelectorAll("button, [role='button']")).find(b => {
-    if (isInsideZhihuBodyEditor(b)) return false;
-    const text = (b.textContent || "").trim();
-    return text === "发布" || text === "发布文章";
-  });
-
-  if (!publishBtn) {
-    throw new Error("找不到知乎「发布」按钮");
-  }
-
-  console.log("[发布] 点击知乎发布按钮");
-  publishBtn.click();
-  await sleep(2000);
-
-  const confirmBtn = Array.from(document.querySelectorAll("button, [role='button']")).find(b => {
-    const text = (b.textContent || "").trim();
-    return /^确认发布$|^确定发布$|^确认$/.test(text);
-  });
-  if (confirmBtn) {
-    console.log("[发布] 点击确认弹窗:", confirmBtn.textContent?.trim());
-    confirmBtn.click();
-    await sleep(1500);
-  }
+  await clickZhihuPublishSteps();
 
   let publishedUrl = null;
   for (let i = 0; i < 40; i += 1) {
