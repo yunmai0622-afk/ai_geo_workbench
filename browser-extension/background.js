@@ -3,7 +3,7 @@ chrome.storage.sync.set({
   apiKey: 'bd9a998e0a6244d09d7ea7d6e9c0c1e2'
 })
 
-const BUILD_TAG = "bg-v9-cover-upload-fix";
+const BUILD_TAG = "bg-v12-publish-after-click";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
 const PLATFORM_URLS = {
@@ -48,7 +48,7 @@ async function handlePollTasks() {
 
     for (const task of tasks) {
       console.log(
-        `[轮询] 开始处理任务 id=${task.id} platform=${task.platform} title=${task.articleTitle} coverImageUrl=${task.coverImageUrl || "(无)"}`,
+        `[轮询] 开始处理任务 id=${task.id} platform=${task.platform} title=${task.articleTitle} coverImageUrl=${task.coverImageUrl || "(无)"} coverBase64=${task.coverImageBase64 ? "有" : "无"}`,
       );
       await processTask(task, apiKey, serverUrl.replace(/\/$/, ""));
     }
@@ -152,9 +152,13 @@ async function processTask(task, apiKey, serverUrl) {
 
     console.log(`[发布] 任务 id=${task.id} 执行结果:`, JSON.stringify(result));
 
-    if (result?.success) {
+    if (result?.success && result?.published) {
       await updateTaskStatus(serverUrl, apiKey, task.id, "completed", result.url);
-      console.log(`[发布] 任务 id=${task.id} 发布成功 url=${result.url}`);
+      console.log(`[发布] 任务 id=${task.id} 已点击发布并确认成功 url=${result.url}`);
+    } else if (result?.success && !result?.published) {
+      const errorMsg = "内容已填写但未确认发布成功，请手动检查后重试";
+      await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, errorMsg);
+      console.error(`[发布] 任务 id=${task.id} ${errorMsg}`);
     } else {
       const errorMsg = result?.error || "发布失败（content script 返回失败）";
       await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, errorMsg);

@@ -43,6 +43,44 @@ async function assertApiKeyUser(apiKey: string) {
   return rows[0];
 }
 
+const MAX_COVER_BYTES = 3 * 1024 * 1024;
+
+function resolveCoverImageUrl(raw: string | null | undefined, origin: string): string | null {
+  if (!raw) return null;
+  return raw.startsWith("http") ? raw : `${origin}${raw}`;
+}
+
+/** 服务端代理下载封面，避免插件跨域 Failed to fetch */
+async function attachCoverImagePayload(coverImageUrl: string | null, origin: string) {
+  const resolvedUrl = resolveCoverImageUrl(coverImageUrl, origin);
+  if (!resolvedUrl) {
+    return { coverImageUrl: null as string | null, coverImageBase64: undefined, coverImageMime: undefined };
+  }
+
+  try {
+    const res = await fetch(resolvedUrl);
+    if (!res.ok) {
+      console.warn(`[封面图] 服务端下载失败 HTTP ${res.status}: ${resolvedUrl}`);
+      return { coverImageUrl: resolvedUrl, coverImageBase64: undefined, coverImageMime: undefined };
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > MAX_COVER_BYTES) {
+      console.warn(`[封面图] 图片过大 (${buf.length} bytes)，插件将仅保留 URL: ${resolvedUrl}`);
+      return { coverImageUrl: resolvedUrl, coverImageBase64: undefined, coverImageMime: undefined };
+    }
+    const mime = res.headers.get("content-type") || "image/png";
+    console.log(`[封面图] 服务端已缓存封面 base64，${buf.length} bytes`);
+    return {
+      coverImageUrl: resolvedUrl,
+      coverImageBase64: buf.toString("base64"),
+      coverImageMime: mime,
+    };
+  } catch (e) {
+    console.warn(`[封面图] 服务端下载异常:`, e);
+    return { coverImageUrl: resolvedUrl, coverImageBase64: undefined, coverImageMime: undefined };
+  }
+}
+
 export const publishTasksRouter = router({
   create: protectedProcedure
     .input(
@@ -93,16 +131,27 @@ export const publishTasksRouter = router({
       })
       .from(publishTasks)
       .where(and(eq(publishTasks.apiKey, input.apiKey), eq(publishTasks.status, "pending")));
-    // 将相对路径的 coverImageUrl 转为完整 URL，方便插件端下载
-    const protocol = ctx.req.headers["x-forwarded-proto"] || "https";
+    const forwardedProto = ctx.req.headers["x-forwarded-proto"];
+    const protocol = Array.isArray(forwardedProto)
+      ? forwardedProto[0]
+      : typeof forwardedProto === "string"
+        ? forwardedProto.split(",")[0]?.trim()
+        : "https";
     const host = ctx.req.headers.host || "aigeoworkb-kzxhj9uy.manus.space";
-    const origin = `${protocol}://${host}`;
-    const tasks = rows.map(row => ({
-      ...row,
-      coverImageUrl: row.coverImageUrl
-        ? (row.coverImageUrl.startsWith("http") ? row.coverImageUrl : `${origin}${row.coverImageUrl}`)
-        : null,
-    }));
+    const origin = `${protocol || "https"}://${host}`;
+
+    const tasks = await Promise.all(
+      rows.map(async row => {
+        const cover = await attachCoverImagePayload(row.coverImageUrl, origin);
+        return {
+          id: row.id,
+          platform: row.platform,
+          articleTitle: row.articleTitle,
+          articleContent: row.articleContent,
+          ...cover,
+        };
+      }),
+    );
     return { tasks } as const;
   }),
 
@@ -165,6 +214,31 @@ export const publishTasksRouter = router({
       }
 
       return { ok: true } as const;
+    }),
+
+  latestByArticle: protectedProcedure
+    .input(
+      z.object({
+        articleId: z.number().int().positive(),
+        projectId: z.number().int().positive(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const db = await requireDb();
+      const rows = await db
+        .select({
+          id: publishTasks.id,
+          platform: publishTasks.platform,
+          status: publishTasks.status,
+          resultUrl: publishTasks.resultUrl,
+          errorMessage: publishTasks.errorMessage,
+          createdAt: publishTasks.createdAt,
+        })
+        .from(publishTasks)
+        .where(and(eq(publishTasks.articleId, input.articleId), eq(publishTasks.projectId, input.projectId)))
+        .orderBy(desc(publishTasks.id))
+        .limit(20);
+      return { tasks: rows } as const;
     }),
 
   getApiKey: protectedProcedure.query(async ({ ctx }) => {

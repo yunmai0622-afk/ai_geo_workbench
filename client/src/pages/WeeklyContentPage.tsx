@@ -364,22 +364,64 @@ export default function WeeklyContentPage() {
     });
   };
 
+  const pollPublishTasksUntilDone = useCallback(
+    async (articleId: number, taskIds: number[]) => {
+      if (!selectedProjectId || taskIds.length === 0) return;
+
+      for (let i = 0; i < 40; i += 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const data = await utils.publishTasks.latestByArticle.fetch({
+          articleId,
+          projectId: selectedProjectId,
+        });
+        const tracked = data.tasks.filter(t => taskIds.includes(t.id));
+        if (tracked.length === 0) continue;
+
+        const allDone = tracked.every(t => t.status === "completed" || t.status === "failed");
+        if (!allDone) continue;
+
+        await invalidateArticles();
+
+        const ok = tracked.filter(t => t.status === "completed");
+        const failed = tracked.filter(t => t.status === "failed");
+        if (ok.length > 0) {
+          toast.success(
+            ok.length === tracked.length
+              ? "发布成功，文章已标记为已发布"
+              : `${ok.length} 个平台发布成功，${failed.length} 个失败`,
+          );
+        } else {
+          toast.error(failed[0]?.errorMessage || "发布失败，请稍后重试");
+        }
+        return;
+      }
+
+      await invalidateArticles();
+      toast.message("发布仍在进行，请稍后刷新页面查看状态");
+    },
+    [invalidateArticles, selectedProjectId, utils],
+  );
+
   const handleConfirmPublish = async () => {
     if (!publishArticle || !selectedProjectId || selectedPlatforms.size === 0) {
       toast.error("请至少选择一个发布平台");
       return;
     }
+    const articleId = publishArticle.id;
+    const taskIds: number[] = [];
     try {
       for (const slug of Array.from(selectedPlatforms)) {
-        await createPublishTask.mutateAsync({
-          articleId: publishArticle.id,
+        const res = await createPublishTask.mutateAsync({
+          articleId,
           platform: slug as (typeof PUBLISH_PLATFORMS)[number]["slug"],
           projectId: selectedProjectId,
         });
+        taskIds.push(res.taskId);
       }
-      toast.success("已加入发布队列，插件将自动完成发布");
+      toast.success("已提交发布任务，插件发布中…");
       setPublishDialogOpen(false);
       setPublishArticle(null);
+      void pollPublishTasksUntilDone(articleId, taskIds);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "创建发布任务失败");
     }
