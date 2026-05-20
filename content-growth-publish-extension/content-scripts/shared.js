@@ -190,108 +190,30 @@ function normalizeZhihuPublishedUrl(url) {
   return url.replace(/\/edit\/?(\?|#|$)/, "$1").replace(/\/edit$/, "");
 }
 
-/**
- * 等待知乎发布确认弹窗里的「发布」按钮出现
- */
-async function waitForConfirmButton(timeoutMs = 8000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const btn =
-      document.querySelector('.PublishPanel button[type="button"]:not([disabled])') ||
-      document.querySelector('.Modal button[type="button"]:not([disabled])') ||
-      document.querySelector('[class*="publishPanel"] button:not([disabled])') ||
-      document.querySelector('[class*="PublishPanel"] button:not([disabled])') ||
-      document.querySelector('[class*="modal"] button:not([disabled])') ||
-      Array.from(document.querySelectorAll("button")).find(b => {
-        const txt = b.textContent?.trim() || "";
-        return (txt === "发布" || txt === "发表") && !b.disabled;
-      });
-
-    if (btn) return btn;
-    await sleep(500);
-  }
-  return null;
-}
-
-/**
- * 知乎两步发布：先点「发布文章」打开弹窗，再在弹窗内点「发布」确认
- */
-async function clickZhihuPublishSteps() {
-  const firstBtn =
+async function clickPublishButton() {
+  // 知乎「发布文章」按钮 — 直接发布，无二次弹窗
+  const btn =
+    document.querySelector("button.WriteIndex-publishButton") ||
+    document.querySelector('button[class*="publishButton"]') ||
+    document.querySelector('button[class*="PublishButton"]') ||
+    document.querySelector('button[class*="publish-button"]') ||
     document.querySelector('button[type="submit"]') ||
     Array.from(document.querySelectorAll("button")).find(b => {
       if (isInsideZhihuBodyEditor(b)) return false;
-      const text = b.textContent?.trim() || "";
-      return /发布文章|^发布$|发表/.test(text);
+      const txt = b.textContent?.trim() ?? "";
+      if (/保存草稿|存草稿|草稿/.test(txt)) return false;
+      return txt === "发布文章" || txt === "发布" || txt === "发表文章" || /发布|发表|提交/.test(txt);
     });
 
-  if (!firstBtn) throw new Error("找不到发布按钮");
+  if (!btn) throw new Error("找不到发布按钮");
 
-  console.log("[发布] 第一步：点击", textOrEmpty(firstBtn));
-  firstBtn.click();
-  await sleep(3000);
+  console.log(`[发布] 点击发布按钮: "${btn.textContent?.trim()}"`);
+  btn.click();
 
-  const confirmBtn = await waitForConfirmButton(8000);
-  if (!confirmBtn) {
-    throw new Error("未找到发布确认弹窗中的发布按钮");
-  }
-
-  console.log("[发布] 第二步：弹窗确认", confirmBtn.textContent?.trim());
-  confirmBtn.click();
-  await sleep(3000);
-}
-
-function textOrEmpty(el) {
-  return el?.textContent?.trim() || "(无文案)";
-}
-
-/**
- * 知乎：必须完成两步发布并等待成功，不能把自动保存草稿的 /edit 页当成已发布
- */
-async function clickZhihuPublishAndWait() {
-  console.log("[发布] 当前页面（填稿后）:", window.location.href);
-
-  await clickZhihuPublishSteps();
-
-  let publishedUrl = null;
-  for (let i = 0; i < 40; i += 1) {
-    await sleep(1000);
-    const href = window.location.href;
-    const pageText = document.body.innerText || "";
-
-    if (/发布成功|发表成功|已成功发布/.test(pageText)) {
-      publishedUrl = normalizeZhihuPublishedUrl(href);
-      console.log("[发布] 检测到发布成功文案");
-      break;
-    }
-
-    if (i >= 5 && href.includes("/p/") && !href.includes("/write")) {
-      publishedUrl = normalizeZhihuPublishedUrl(href);
-      console.log("[发布] 页面已离开 write 且进入文章页，视为发布完成");
-      break;
-    }
-  }
-
-  if (!publishedUrl) {
-    throw new Error("发布超时：未检测到发布成功（可能仅保存了草稿）");
-  }
-
-  console.log("[发布] 知乎发布成功，链接:", publishedUrl);
-  return publishedUrl;
-}
-
-async function clickPublishButton(platform) {
-  if (platform === "zhihu" || isZhihuEditor()) {
-    return clickZhihuPublishAndWait();
-  }
-
-  const publishBtn =
-    document.querySelector('button[type="submit"]') ||
-    Array.from(document.querySelectorAll("button")).find(b => /发布|发表|提交/.test(b.textContent || ""));
-  if (!publishBtn) throw new Error("找不到发布按钮");
-  publishBtn.click();
   await sleep(5000);
-  return window.location.href;
+
+  const href = window.location.href;
+  return isZhihuEditor() ? normalizeZhihuPublishedUrl(href) : href;
 }
 
 function fileFromBase64(base64, mimeType, filename = "cover.jpg") {
@@ -472,7 +394,7 @@ async function publishArticle(task) {
       await uploadZhihuCover(task);
     }
 
-    const publishedUrl = await clickPublishButton(task.platform);
+    const publishedUrl = await clickPublishButton();
     console.log(`[shared] publishArticle 发布流程结束 url=${publishedUrl}`);
     return { success: true, url: publishedUrl, published: true };
   } catch (e) {
