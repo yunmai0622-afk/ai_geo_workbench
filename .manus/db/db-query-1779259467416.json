@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, platform, articleTitle, coverImageUrl, status, createdAt FROM publish_tasks ORDER BY id DESC LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, platform, articleTitle, coverImageUrl, status, createdAt FROM publish_tasks ORDER BY id DESC LIMIT 3;",
+  "rows": [
+    {
+      "id": "180001",
+      "platform": "zhihu",
+      "articleTitle": "如何高效统一分析学员的分散打卡数据？",
+      "coverImageUrl": "/manus-storage/generated/1779258909387_cc623795.png",
+      "status": "completed",
+      "createdAt": "2026-05-20 06:35:09"
+    },
+    {
+      "id": "150002",
+      "platform": "zhihu",
+      "articleTitle": "社群活跃但训练课率低？三步诊断与提升策略",
+      "coverImageUrl": "NULL",
+      "status": "completed",
+      "createdAt": "2026-05-20 05:57:25"
+    },
+    {
+      "id": "150001",
+      "platform": "zhihu",
+      "articleTitle": "新手老师从0到1搭建训练营的完整步骤与避坑指南",
+      "coverImageUrl": "NULL",
+      "status": "completed",
+      "createdAt": "2026-05-20 05:54:31"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplatform\tarticleTitle\tcoverImageUrl\tstatus\tcreatedAt\n180001\tzhihu\t如何高效统一分析学员的分散打卡数据？\t/manus-storage/generated/1779258909387_cc623795.png\tcompleted\t2026-05-20 06:35:09\n150002\tzhihu\t社群活跃但训练课率低？三步诊断与提升策略\tNULL\tcompleted\t2026-05-20 05:57:25\n150001\tzhihu\t新手老师从0到1搭建训练营的完整步骤与避坑指南\tNULL\tcompleted\t2026-05-20 05:54:31\n",
+  "stderr": "",
+  "execution_time_ms": 1770
+}

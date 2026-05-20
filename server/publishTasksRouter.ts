@@ -75,12 +75,12 @@ export const publishTasksRouter = router({
         })
         .$returningId();
       if (!coverImageUrl) {
-        console.warn(`[封面图] 任务 ${inserted[0]?.id ?? "?"} 未生成封面（请检查 ARK_API_KEY）`);
+        console.warn(`[封面图] 任务 ${inserted[0]?.id ?? "?"} 未生成封面`);
       }
       return { taskId: inserted[0]?.id ?? 0, coverImageUrl: coverImageUrl ?? null } as const;
     }),
 
-  pending: publicProcedure.input(z.object({ apiKey: z.string().min(8).max(100) })).query(async ({ input }) => {
+  pending: publicProcedure.input(z.object({ apiKey: z.string().min(8).max(100) })).query(async ({ input, ctx }) => {
     await assertApiKeyUser(input.apiKey);
     const db = await requireDb();
     const rows = await db
@@ -93,7 +93,17 @@ export const publishTasksRouter = router({
       })
       .from(publishTasks)
       .where(and(eq(publishTasks.apiKey, input.apiKey), eq(publishTasks.status, "pending")));
-    return { tasks: rows } as const;
+    // 将相对路径的 coverImageUrl 转为完整 URL，方便插件端下载
+    const protocol = ctx.req.headers["x-forwarded-proto"] || "https";
+    const host = ctx.req.headers.host || "aigeoworkb-kzxhj9uy.manus.space";
+    const origin = `${protocol}://${host}`;
+    const tasks = rows.map(row => ({
+      ...row,
+      coverImageUrl: row.coverImageUrl
+        ? (row.coverImageUrl.startsWith("http") ? row.coverImageUrl : `${origin}${row.coverImageUrl}`)
+        : null,
+    }));
+    return { tasks } as const;
   }),
 
   complete: publicProcedure
