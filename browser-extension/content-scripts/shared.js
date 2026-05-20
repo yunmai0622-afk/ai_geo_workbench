@@ -191,10 +191,58 @@ async function clickPublishButton() {
   await sleep(3000);
 }
 
+/**
+ * 从 URL 下载图片并转为 File 对象
+ */
+async function fetchImageAsFile(url, filename = "cover.jpg") {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`下载封面图失败: ${res.status}`);
+  const blob = await res.blob();
+  return new File([blob], filename, { type: blob.type || "image/jpeg" });
+}
+
+/**
+ * 知乎封面图上传
+ */
+async function uploadZhihuCover(imageUrl) {
+  if (!imageUrl) return;
+
+  try {
+    const coverInput =
+      document.querySelector('input[type="file"][accept*="image"]') ||
+      document.querySelector('.cover-uploader input[type="file"]') ||
+      document.querySelector('[class*="cover"] input[type="file"]') ||
+      document.querySelector('[class*="Cover"] input[type="file"]') ||
+      document.querySelector('[class*="upload"] input[type="file"]');
+
+    if (!coverInput) {
+      console.warn("[封面图] 未找到封面图 input，跳过上传");
+      return;
+    }
+
+    const file = await fetchImageAsFile(imageUrl, "cover.jpg");
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    coverInput.files = dt.files;
+    coverInput.dispatchEvent(new Event("change", { bubbles: true }));
+    coverInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    await sleep(3000);
+    console.log("[封面图] 知乎封面图上传完成");
+  } catch (e) {
+    console.warn("[封面图] 上传失败（不影响发布）:", e);
+  }
+}
+
 async function publishArticle(task) {
   try {
     console.log(`[shared] publishArticle 开始 platform=${task.platform} title=${task.articleTitle}`);
     await fillTitleAndBody(task.articleTitle, task.articleContent);
+
+    if (task.coverImageUrl) {
+      await uploadZhihuCover(task.coverImageUrl);
+    }
+
     await clickPublishButton();
     console.log(`[shared] publishArticle 完成 url=${window.location.href}`);
     return { success: true, url: window.location.href };

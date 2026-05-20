@@ -545,6 +545,7 @@ export const publishTasks = mysqlTable("publish_tasks", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   articleTitle: text("articleTitle").notNull(),
   articleContent: text("articleContent").notNull(),
+  coverImageUrl: varchar("coverImageUrl", { length: 2000 }),
   resultUrl: varchar("resultUrl", { length: 500 }),
   errorMessage: text("errorMessage"),
   apiKey: varchar("apiKey", { length: 100 }),

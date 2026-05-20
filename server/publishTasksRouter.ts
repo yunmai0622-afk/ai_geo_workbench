@@ -6,6 +6,7 @@ import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { geoArticleQualityScores, geoArticles, geoPublishRecords, publishTasks, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { buildCustomExtensionZip, resolveServerUrlFromRequest } from "./extensionDownload";
+import { generateCoverImage } from "./volcengineImageGen";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 const publishPlatformSlugEnum = z.enum(["zhihu", "toutiao", "sohu", "baijiahao", "wechat"]);
@@ -59,6 +60,7 @@ export const publishTasksRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
       }
       const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);
+      const coverImageUrl = await generateCoverImage(article.title ?? "").catch(() => null);
       const inserted = await db
         .insert(publishTasks)
         .values({
@@ -68,6 +70,7 @@ export const publishTasksRouter = router({
           status: "pending",
           articleTitle: article.title,
           articleContent: article.markdownContent ?? "",
+          coverImageUrl: coverImageUrl ?? undefined,
           apiKey,
         })
         .$returningId();
@@ -83,6 +86,7 @@ export const publishTasksRouter = router({
         platform: publishTasks.platform,
         articleTitle: publishTasks.articleTitle,
         articleContent: publishTasks.articleContent,
+        coverImageUrl: publishTasks.coverImageUrl,
       })
       .from(publishTasks)
       .where(and(eq(publishTasks.apiKey, input.apiKey), eq(publishTasks.status, "pending")));
