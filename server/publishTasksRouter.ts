@@ -74,7 +74,10 @@ export const publishTasksRouter = router({
           apiKey,
         })
         .$returningId();
-      return { taskId: inserted[0]?.id ?? 0 } as const;
+      if (!coverImageUrl) {
+        console.warn(`[封面图] 任务 ${inserted[0]?.id ?? "?"} 未生成封面（请检查 ARK_API_KEY）`);
+      }
+      return { taskId: inserted[0]?.id ?? 0, coverImageUrl: coverImageUrl ?? null } as const;
     }),
 
   pending: publicProcedure.input(z.object({ apiKey: z.string().min(8).max(100) })).query(async ({ input }) => {

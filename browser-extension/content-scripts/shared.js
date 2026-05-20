@@ -192,28 +192,69 @@ async function clickPublishButton() {
 }
 
 /**
- * 从 URL 下载图片并转为 File 对象
+ * 经 background 下载封面（避免知乎页面跨域 fetch 失败）
  */
 async function fetchImageAsFile(url, filename = "cover.jpg") {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`下载封面图失败: ${res.status}`);
-  const blob = await res.blob();
-  return new File([blob], filename, { type: blob.type || "image/jpeg" });
+  const resp = await chrome.runtime.sendMessage({ action: "fetchCoverImage", url });
+  if (!resp?.ok) {
+    throw new Error(resp?.error || "background 下载封面图失败");
+  }
+  const binary = atob(resp.base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: resp.mimeType });
+  return new File([blob], filename, { type: resp.mimeType });
+}
+
+function findZhihuCoverFileInput() {
+  const inputs = Array.from(document.querySelectorAll('input[type="file"]'));
+  console.log(
+    "[封面图] 页面 file input 数量:",
+    inputs.length,
+    inputs.map(inp => ({ accept: inp.accept, name: inp.name, hidden: inp.hidden })),
+  );
+  const imageInput = inputs.find(inp => {
+    const accept = (inp.accept || "").toLowerCase();
+    return !accept || accept.includes("image") || accept.includes("*");
+  });
+  return imageInput || inputs[0] || null;
+}
+
+async function openZhihuCoverPanel() {
+  const clickables = Array.from(
+    document.querySelectorAll('button, [role="button"], label, div, span, a'),
+  );
+  const trigger = clickables.find(el => {
+    const text = (el.textContent || "").trim();
+    return /添加封面|上传封面|文章封面|设置封面|更换封面|封面图/.test(text) && text.length <= 16;
+  });
+  if (trigger) {
+    console.log("[封面图] 点击封面入口:", trigger.textContent?.trim());
+    trigger.click();
+    await sleep(1500);
+    return true;
+  }
+  return false;
 }
 
 /**
  * 知乎封面图上传
  */
 async function uploadZhihuCover(imageUrl) {
-  if (!imageUrl) return;
+  if (!imageUrl) {
+    console.warn("[封面图] 任务无 coverImageUrl，跳过上传");
+    return;
+  }
 
   try {
-    const coverInput =
-      document.querySelector('input[type="file"][accept*="image"]') ||
-      document.querySelector('.cover-uploader input[type="file"]') ||
-      document.querySelector('[class*="cover"] input[type="file"]') ||
-      document.querySelector('[class*="Cover"] input[type="file"]') ||
-      document.querySelector('[class*="upload"] input[type="file"]');
+    console.log("[封面图] 开始上传:", imageUrl);
+    await openZhihuCoverPanel();
+
+    let coverInput = findZhihuCoverFileInput();
+    if (!coverInput) {
+      await sleep(1000);
+      coverInput = findZhihuCoverFileInput();
+    }
 
     if (!coverInput) {
       console.warn("[封面图] 未找到封面图 input，跳过上传");
@@ -227,7 +268,7 @@ async function uploadZhihuCover(imageUrl) {
     coverInput.dispatchEvent(new Event("change", { bubbles: true }));
     coverInput.dispatchEvent(new Event("input", { bubbles: true }));
 
-    await sleep(3000);
+    await sleep(5000);
     console.log("[封面图] 知乎封面图上传完成");
   } catch (e) {
     console.warn("[封面图] 上传失败（不影响发布）:", e);
@@ -236,10 +277,22 @@ async function uploadZhihuCover(imageUrl) {
 
 async function publishArticle(task) {
   try {
-    console.log(`[shared] publishArticle 开始 platform=${task.platform} title=${task.articleTitle}`);
+    console.log(
+      `[shared] publishArticle 开始 platform=${task.platform} title=${task.articleTitle} coverImageUrl=${task.coverImageUrl || "(无)"}`,
+    );
+
+    if (isZhihuEditor() && task.coverImageUrl) {
+      const titleInput = findZhihuTitleInput();
+      if (titleInput && task.articleTitle) {
+        setInputValue(titleInput, task.articleTitle);
+        await sleep(500);
+      }
+      await uploadZhihuCover(task.coverImageUrl);
+    }
+
     await fillTitleAndBody(task.articleTitle, task.articleContent);
 
-    if (task.coverImageUrl) {
+    if (!isZhihuEditor() && task.coverImageUrl) {
       await uploadZhihuCover(task.coverImageUrl);
     }
 

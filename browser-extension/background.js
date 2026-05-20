@@ -3,7 +3,7 @@ chrome.storage.sync.set({
   apiKey: 'bd9a998e0a6244d09d7ea7d6e9c0c1e2'
 })
 
-const BUILD_TAG = "bg-v8-zhihu-url-fix";
+const BUILD_TAG = "bg-v9-cover-upload-fix";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
 const PLATFORM_URLS = {
@@ -47,7 +47,9 @@ async function handlePollTasks() {
     console.log(`[轮询] 获取到 ${tasks.length} 个待发布任务`);
 
     for (const task of tasks) {
-      console.log(`[轮询] 开始处理任务 id=${task.id} platform=${task.platform} title=${task.articleTitle}`);
+      console.log(
+        `[轮询] 开始处理任务 id=${task.id} platform=${task.platform} title=${task.articleTitle} coverImageUrl=${task.coverImageUrl || "(无)"}`,
+      );
       await processTask(task, apiKey, serverUrl.replace(/\/$/, ""));
     }
   } catch (e) {
@@ -118,7 +120,9 @@ async function processTask(task, apiKey, serverUrl) {
     return;
   }
 
-  console.log(`[发布] 开始任务 id=${task.id} platform=${task.platform} 打开: ${url}`);
+  console.log(
+    `[发布] 开始任务 id=${task.id} platform=${task.platform} coverImageUrl=${task.coverImageUrl || "(无)"} 打开: ${url}`,
+  );
   await updateTaskStatus(serverUrl, apiKey, task.id, "processing");
 
   let tab;
@@ -351,6 +355,31 @@ async function processPendingWatch() {
 
 // 方式 1: sendMessage（如果 popup 没被关闭的话）
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.action === "fetchCoverImage" && message.url) {
+    (async () => {
+      try {
+        console.log(`[封面图] background 下载: ${message.url}`);
+        const res = await fetch(message.url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+        sendResponse({
+          ok: true,
+          base64: btoa(binary),
+          mimeType: blob.type || "image/jpeg",
+        });
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        console.error("[封面图] background 下载失败:", errMsg);
+        sendResponse({ ok: false, error: errMsg });
+      }
+    })();
+    return true;
+  }
+
   if (message.action === "watchTab" && message.tabId != null && message.platform) {
     console.log(`[监听] 收到 sendMessage: tabId=${message.tabId} platform=${message.platform}`);
     addWatchingTab(message.tabId, message.platform).then(() => {

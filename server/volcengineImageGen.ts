@@ -36,12 +36,15 @@ export async function generateCoverImage(articleTitle: string): Promise<string |
     }
 
     const data = (await res.json()) as { data?: Array<{ url?: string; b64_json?: string }> };
-    const imageUrl = data?.data?.[0]?.url ?? null;
+    const first = data?.data?.[0];
+    const imageUrl = first?.url ?? null;
 
     if (imageUrl) {
       console.log(`[封面图] 生成成功: ${imageUrl}`);
+    } else if (first?.b64_json) {
+      console.warn("[封面图] API 仅返回 b64_json 无 url，无法写入任务（请检查模型或改用返回 url 的配置）");
     } else {
-      console.warn("[封面图] 返回数据中没有 url 字段:", JSON.stringify(data));
+      console.warn("[封面图] 返回数据中没有可用图片:", JSON.stringify(data).slice(0, 500));
     }
 
     return imageUrl;
