@@ -1418,3 +1418,42 @@
 [2026-05-20T05:08:53.467Z] ]
 [2026-05-20T05:08:53.467Z] }
 [2026-05-20T05:35:41.079Z] 1:35:41 AM [vite] (client) hmr update /src/index.css
+[2026-05-20T05:36:35.338Z] [geo.scores.latest] {
+[2026-05-20T05:36:35.339Z] requestedProjectId: 1,
+[2026-05-20T05:36:35.339Z] returned: {
+[2026-05-20T05:36:35.339Z] id: 630001,
+[2026-05-20T05:36:35.340Z] projectId: 1,
+[2026-05-20T05:36:35.340Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-20T05:36:35.340Z] totalScore: 40
+[2026-05-20T05:36:35.341Z] },
+[2026-05-20T05:36:35.341Z] sameProjectTop3: [
+[2026-05-20T05:36:35.341Z] {
+[2026-05-20T05:36:35.342Z] id: 630001,
+[2026-05-20T05:36:35.342Z] projectId: 1,
+[2026-05-20T05:36:35.342Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-20T05:36:35.343Z] totalScore: 40
+[2026-05-20T05:36:35.343Z] }
+[2026-05-20T05:36:35.343Z] ]
+[2026-05-20T05:36:35.344Z] }
+[2026-05-20T05:45:32.446Z] 1:45:32 AM [tsx] change in ./server/publishTasksRouter.ts Restarting...
+[2026-05-20T05:45:34.163Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-20T05:45:34.460Z] Server running on http://localhost:3000/
+[2026-05-20T05:45:35.386Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-20T05:45:44.312Z] [geo.scores.latest] {
+[2026-05-20T05:45:44.313Z] requestedProjectId: 1,
+[2026-05-20T05:45:44.313Z] returned: {
+[2026-05-20T05:45:44.314Z] id: 630001,
+[2026-05-20T05:45:44.314Z] projectId: 1,
+[2026-05-20T05:45:44.314Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-20T05:45:44.315Z] totalScore: 40
+[2026-05-20T05:45:44.315Z] },
+[2026-05-20T05:45:44.315Z] sameProjectTop3: [
+[2026-05-20T05:45:44.316Z] {
+[2026-05-20T05:45:44.316Z] id: 630001,
+[2026-05-20T05:45:44.316Z] projectId: 1,
+[2026-05-20T05:45:44.317Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-20T05:45:44.317Z] totalScore: 40
+[2026-05-20T05:45:44.317Z] }
+[2026-05-20T05:45:44.318Z] ]
+[2026-05-20T05:45:44.318Z] }
+[2026-05-20T05:48:18.678Z] 1:48:18 AM [vite] (client) hmr update /src/index.css
