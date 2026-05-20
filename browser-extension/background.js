@@ -1,3 +1,8 @@
+chrome.storage.sync.set({
+  serverUrl: 'https://aigeoworkb-kzxhj9uy.manus.space',
+  apiKey: 'bd9a998e0a6244d09d7ea7d6e9c0c1e2'
+})
+
 const BUILD_TAG = "bg-v8-zhihu-url-fix";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
