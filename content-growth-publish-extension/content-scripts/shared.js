@@ -23,30 +23,31 @@ function isZhihuEditor() {
     window.location.href.includes("zhihu.com/creator");
 }
 
-async function fillTitleAndBody(title, contentMarkdown) {
+async function fillTitle(title) {
   const titleInput =
     document.querySelector('textarea[placeholder*="标题"]') ||
     document.querySelector("textarea.Input") ||
     document.querySelector("textarea");
+  if (!titleInput) return;
 
-  if (titleInput) {
-    titleInput.focus();
-    const nativeTextareaSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLTextAreaElement.prototype,
-      "value",
-    )?.set;
-    if (nativeTextareaSetter) {
-      nativeTextareaSetter.call(titleInput, title);
-    } else {
-      titleInput.value = title;
-    }
-    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
-    titleInput.dispatchEvent(new Event("change", { bubbles: true }));
-    await sleep(500);
+  titleInput.focus();
+  const nativeSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLTextAreaElement.prototype,
+    "value",
+  )?.set;
+  if (nativeSetter) {
+    nativeSetter.call(titleInput, title);
+  } else {
+    titleInput.value = title;
   }
+  titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+  titleInput.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(500);
+}
 
+async function fillBody(contentMarkdown) {
   const editor = document.querySelector(".public-DraftEditor-content");
-  if (!editor) throw new Error("找不到正文编辑器（.public-DraftEditor-content）");
+  if (!editor) throw new Error("找不到正文编辑器");
 
   editor.click();
   editor.focus();
@@ -59,12 +60,13 @@ async function fillTitleAndBody(title, contentMarkdown) {
   const plainText = markdownToPlainText(contentMarkdown);
   const clipboardData = new DataTransfer();
   clipboardData.setData("text/plain", plainText);
-  const pasteEvent = new ClipboardEvent("paste", {
-    bubbles: true,
-    cancelable: true,
-    clipboardData,
-  });
-  editor.dispatchEvent(pasteEvent);
+  editor.dispatchEvent(
+    new ClipboardEvent("paste", {
+      bubbles: true,
+      cancelable: true,
+      clipboardData,
+    }),
+  );
   await sleep(1000);
 }
 
@@ -184,13 +186,15 @@ async function publishArticle(task) {
     await waitForEditor();
     await sleep(1000);
 
-    await fillTitleAndBody(task.articleTitle, task.articleContent);
+    await fillTitle(task.articleTitle);
 
     if (task.coverImageUrl || task.coverImageBase64) {
       await uploadZhihuCover(task.coverImageUrl, task);
+      await sleep(1000);
     }
 
-    await sleep(2000);
+    await fillBody(task.articleContent);
+    await sleep(1000);
 
     const publishedUrl = await clickPublishButton();
     console.log(`[shared] publishArticle 发布流程结束 url=${publishedUrl}`);
