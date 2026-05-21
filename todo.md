@@ -548,3 +548,4 @@
 - [x] 改进 zhihu.js 和 shared.js 适配知乎 Draft.js 富文本编辑器（使用键盘输入代替 innerHTML）
 - [x] 重新打包 browser-extension.zip
 - [x] 修复首页 SEO：添加关键词、H2 标题、优化 title 长度（30-60字符）、添加 meta description（50-160字符）
+- [x] 在管理面板中增加插件版本信息模块，显示当前版本号和最近更新日志
