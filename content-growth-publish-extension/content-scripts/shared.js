@@ -50,15 +50,15 @@ async function fillTitleAndBody(title, contentMarkdown) {
 
   editor.click();
   editor.focus();
-  await sleep(500);
+  await sleep(2000);
 
   document.execCommand("selectAll", false, null);
   document.execCommand("delete", false, null);
-  await sleep(200);
+  await sleep(300);
 
   const plainText = markdownToPlainText(contentMarkdown);
   document.execCommand("insertText", false, plainText);
-  await sleep(500);
+  await sleep(1000);
 }
 
 function normalizeZhihuPublishedUrl(url) {
@@ -158,11 +158,24 @@ async function uploadZhihuCover(imageUrl, task) {
   }
 }
 
+async function waitForEditor(timeoutMs = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const editor = document.querySelector(".public-DraftEditor-content");
+    if (editor) return editor;
+    await sleep(500);
+  }
+  throw new Error("等待编辑器超时");
+}
+
 async function publishArticle(task) {
   try {
     console.log(
       `[shared] publishArticle 开始 platform=${task.platform} title=${task.articleTitle} coverImageUrl=${task.coverImageUrl || "(无)"}`,
     );
+
+    await waitForEditor();
+    await sleep(1000);
 
     await fillTitleAndBody(task.articleTitle, task.articleContent);
 
