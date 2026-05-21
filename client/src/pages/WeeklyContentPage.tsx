@@ -508,12 +508,13 @@ export default function WeeklyContentPage() {
         ) : null}
         <div className="mt-4 border-t border-white/5 pt-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-cyan-400/10 px-2 py-0.5 text-xs font-medium text-cyan-200 ring-1 ring-inset ring-cyan-400/20">v1.8.0</span>
-            <span className="text-xs text-slate-500">BUILD: bg-v18-textarea-draftjs</span>
+            <span className="inline-flex items-center rounded-md bg-cyan-400/10 px-2 py-0.5 text-xs font-medium text-cyan-200 ring-1 ring-inset ring-cyan-400/20">v1.9.0</span>
+            <span className="text-xs text-slate-500">BUILD: bg-v19-timing-fix</span>
           </div>
           <details className="mt-2 text-xs text-slate-400">
             <summary className="cursor-pointer text-slate-300 hover:text-cyan-200">更新日志</summary>
             <ul className="mt-2 space-y-1.5 pl-3">
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.9</span><span>等待编辑器就绪并延长 Draft.js 填充时序，提升成功率</span></li>
               <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.8</span><span>标题用 textarea、正文 click+focus 后 insertText，提升填充稳定性</span></li>
               <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.7</span><span>知乎正文改用 Draft.js insertText 填充，解决内容丢失问题</span></li>
               <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.6</span><span>编辑器适配修复，精简 shared.js 发布逻辑</span></li>
