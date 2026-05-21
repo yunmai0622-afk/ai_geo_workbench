@@ -508,12 +508,13 @@ export default function WeeklyContentPage() {
         ) : null}
         <div className="mt-4 border-t border-white/5 pt-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-cyan-400/10 px-2 py-0.5 text-xs font-medium text-cyan-200 ring-1 ring-inset ring-cyan-400/20">v2.1.0</span>
-            <span className="text-xs text-slate-500">BUILD: bg-v21-order-fix</span>
+            <span className="inline-flex items-center rounded-md bg-cyan-400/10 px-2 py-0.5 text-xs font-medium text-cyan-200 ring-1 ring-inset ring-cyan-400/20">v2.2.0</span>
+            <span className="text-xs text-slate-500">BUILD: bg-v22-wait-publish-btn</span>
           </div>
           <details className="mt-2 text-xs text-slate-400">
             <summary className="cursor-pointer text-slate-300 hover:text-cyan-200">更新日志</summary>
             <ul className="mt-2 space-y-1.5 pl-3">
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v2.2</span><span>等待发布按钮可点击后再点击，避免无效操作</span></li>
               <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v2.1</span><span>先上传封面再 paste 正文，避免焦点被抢</span></li>
               <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v2.0</span><span>Draft.js 正文改用 ClipboardEvent paste 填充，提升兼容性</span></li>
               <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.9</span><span>等待编辑器就绪并延长 Draft.js 填充时序，提升成功率</span></li>
