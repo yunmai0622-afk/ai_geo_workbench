@@ -50,14 +50,21 @@ async function fillTitleAndBody(title, contentMarkdown) {
 
   editor.click();
   editor.focus();
-  await sleep(2000);
+  await sleep(500);
 
   document.execCommand("selectAll", false, null);
   document.execCommand("delete", false, null);
-  await sleep(300);
+  await sleep(200);
 
   const plainText = markdownToPlainText(contentMarkdown);
-  document.execCommand("insertText", false, plainText);
+  const clipboardData = new DataTransfer();
+  clipboardData.setData("text/plain", plainText);
+  const pasteEvent = new ClipboardEvent("paste", {
+    bubbles: true,
+    cancelable: true,
+    clipboardData,
+  });
+  editor.dispatchEvent(pasteEvent);
   await sleep(1000);
 }
 
