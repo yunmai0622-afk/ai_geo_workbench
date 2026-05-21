@@ -506,6 +506,24 @@ export default function WeeklyContentPage() {
             流程：下载插件 → Chrome 扩展程序 → 开发者模式 → 加载已解压 → 连接各平台登录 → 本页「发布到平台」。
           </p>
         ) : null}
+        <div className="mt-4 border-t border-white/5 pt-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-md bg-cyan-400/10 px-2 py-0.5 text-xs font-medium text-cyan-200 ring-1 ring-inset ring-cyan-400/20">v1.6.0</span>
+            <span className="text-xs text-slate-500">BUILD: bg-v16-editor-fix</span>
+          </div>
+          <details className="mt-2 text-xs text-slate-400">
+            <summary className="cursor-pointer text-slate-300 hover:text-cyan-200">更新日志</summary>
+            <ul className="mt-2 space-y-1.5 pl-3">
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.6</span><span>编辑器适配修复，精简 shared.js 发布逻辑</span></li>
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.5</span><span>知乎封面图改用 UploadPicture-input 选择器上传</span></li>
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.4</span><span>知乎发布改回单步点击，精简弹窗确认逻辑</span></li>
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.3</span><span>插件目录重命名，新增发布弹窗确认流程</span></li>
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.2</span><span>封面图经 background 下载解决跨域，增强知乎上传逻辑</span></li>
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.1</span><span>封面图改用内置 Forge API 生成，无需额外 API Key</span></li>
+              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.0</span><span>修复知乎发布 URL 404，适配 zhuanlan.zhihu.com/write</span></li>
+            </ul>
+          </details>
+        </div>
       </div>
 
       <p className="mt-6 text-sm text-slate-300">
