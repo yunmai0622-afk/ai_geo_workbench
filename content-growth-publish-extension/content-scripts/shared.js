@@ -74,26 +74,34 @@ function normalizeZhihuPublishedUrl(url) {
   return url.replace(/\/edit\/?(\?|#|$)/, "$1").replace(/\/edit$/, "");
 }
 
-async function clickPublishButton() {
-  // 知乎「发布文章」按钮 — 直接发布，无二次弹窗
-  const btn =
-    document.querySelector("button.WriteIndex-publishButton") ||
-    document.querySelector('button[class*="publishButton"]') ||
-    document.querySelector('button[class*="PublishButton"]') ||
-    document.querySelector('button[class*="publish-button"]') ||
-    document.querySelector('button[type="submit"]') ||
-    Array.from(document.querySelectorAll("button")).find(b => {
+async function waitForPublishButton(timeoutMs = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const classBtn = document.querySelector(
+      "button.WriteIndex-publishButton:not([disabled])",
+    );
+    if (classBtn && !isInsideZhihuBodyEditor(classBtn)) return classBtn;
+
+    const btn = Array.from(document.querySelectorAll("button")).find(b => {
       if (isInsideZhihuBodyEditor(b)) return false;
-      const txt = b.textContent?.trim() ?? "";
-      if (/保存草稿|存草稿|草稿/.test(txt)) return false;
-      return txt === "发布文章" || txt === "发布" || txt === "发表文章" || /发布|发表|提交/.test(txt);
+      if (b.disabled || b.getAttribute("aria-disabled") === "true") return false;
+      const txt = b.textContent?.trim();
+      if (/保存草稿|存草稿|草稿/.test(txt ?? "")) return false;
+      return txt === "发布" || txt === "发布文章";
     });
+    if (btn) return btn;
 
-  if (!btn) throw new Error("找不到发布按钮");
+    await sleep(500);
+  }
+  return null;
+}
 
-  console.log(`[发布] 点击发布按钮: "${btn.textContent?.trim()}"`);
-  btn.click();
+async function clickPublishButton() {
+  const publishBtn = await waitForPublishButton(15000);
+  if (!publishBtn) throw new Error("等待发布按钮超时");
 
+  console.log("[发布] 点击发布按钮");
+  publishBtn.click();
   await sleep(5000);
 
   const href = window.location.href;
