@@ -2,15 +2,17 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function markdownToHtml(markdown) {
+/**
+ * Markdown 转纯文本（保留换行，去掉 HTML 标签）
+ */
+function markdownToPlainText(markdown) {
   if (!markdown) return "";
   return markdown
-    .replace(/^## (.*$)/gm, "<h2>$1</h2>")
-    .replace(/^### (.*$)/gm, "<h3>$1</h3>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/^(.+)$/gm, "<p>$1</p>");
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -19,16 +21,6 @@ function markdownToHtml(markdown) {
 function isZhihuEditor() {
   return window.location.hostname === "zhuanlan.zhihu.com" ||
     window.location.href.includes("zhihu.com/creator");
-}
-
-async function setEditableHtml(el, html) {
-  if (!el) return;
-  el.focus();
-  document.execCommand("selectAll", false, null);
-  document.execCommand("delete", false, null);
-  await sleep(300);
-  document.execCommand("insertHTML", false, html);
-  await sleep(500);
 }
 
 async function fillTitleAndBody(title, contentMarkdown) {
@@ -40,9 +32,6 @@ async function fillTitleAndBody(title, contentMarkdown) {
 
   if (titleInput) {
     titleInput.focus();
-    titleInput.value = "";
-    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
-    await sleep(200);
     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype,
       "value",
@@ -63,14 +52,19 @@ async function fillTitleAndBody(title, contentMarkdown) {
     await sleep(500);
   }
 
-  const editor =
-    document.querySelector(".ProseMirror") ||
-    document.querySelector(".ql-editor") ||
-    document.querySelector('[contenteditable="true"]');
+  const editor = document.querySelector(".public-DraftEditor-content");
+  if (!editor) throw new Error("找不到正文编辑器（.public-DraftEditor-content）");
 
-  if (!editor) throw new Error("找不到正文编辑器");
+  editor.focus();
+  await sleep(300);
 
-  await setEditableHtml(editor, markdownToHtml(contentMarkdown));
+  document.execCommand("selectAll", false, null);
+  document.execCommand("delete", false, null);
+  await sleep(300);
+
+  const plainText = markdownToPlainText(contentMarkdown);
+  document.execCommand("insertText", false, plainText);
+  await sleep(500);
 }
 
 function normalizeZhihuPublishedUrl(url) {
