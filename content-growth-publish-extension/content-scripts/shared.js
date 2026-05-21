@@ -25,25 +25,18 @@ function isZhihuEditor() {
 
 async function fillTitleAndBody(title, contentMarkdown) {
   const titleInput =
-    document.querySelector(".WriteIndex-titleInput input") ||
-    document.querySelector('input[placeholder*="标题"]') ||
     document.querySelector('textarea[placeholder*="标题"]') ||
-    document.querySelector('input[name="title"]');
+    document.querySelector("textarea.Input") ||
+    document.querySelector("textarea");
 
   if (titleInput) {
     titleInput.focus();
-    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      "value",
-    )?.set;
-    const nativeTextareaValueSetter = Object.getOwnPropertyDescriptor(
+    const nativeTextareaSetter = Object.getOwnPropertyDescriptor(
       window.HTMLTextAreaElement.prototype,
       "value",
     )?.set;
-    const setter =
-      titleInput instanceof HTMLTextAreaElement ? nativeTextareaValueSetter : nativeInputValueSetter;
-    if (setter) {
-      setter.call(titleInput, title);
+    if (nativeTextareaSetter) {
+      nativeTextareaSetter.call(titleInput, title);
     } else {
       titleInput.value = title;
     }
@@ -55,12 +48,13 @@ async function fillTitleAndBody(title, contentMarkdown) {
   const editor = document.querySelector(".public-DraftEditor-content");
   if (!editor) throw new Error("找不到正文编辑器（.public-DraftEditor-content）");
 
+  editor.click();
   editor.focus();
-  await sleep(300);
+  await sleep(500);
 
   document.execCommand("selectAll", false, null);
   document.execCommand("delete", false, null);
-  await sleep(300);
+  await sleep(200);
 
   const plainText = markdownToPlainText(contentMarkdown);
   document.execCommand("insertText", false, plainText);
