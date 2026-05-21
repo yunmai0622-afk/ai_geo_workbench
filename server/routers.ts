@@ -75,6 +75,7 @@ import {
 import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
+import { buildAiMentionSuggestion, runAiMentionCheck } from "./geoAiMentionCheck";
 import {
   assetInputModes,
   assetSourceTypes,
@@ -1971,6 +1972,110 @@ ${article.markdownContent}`,
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       return { article, project: projectForPublic, qualityScore: scoreRows[0] ?? null } as const;
     }),
+  }),
+  aiMentionCheck: router({
+    run: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          recordId: z.number().int().positive().optional(),
+          engines: z.array(z.enum(["doubao", "deepseek", "kimi"])).optional(),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+
+        const projectRows = await db.select().from(projects).where(eq(projects.id, input.projectId)).limit(1);
+        const project = projectRows[0];
+        if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "项目不存在" });
+
+        const profileRows = await db
+          .select()
+          .from(enterpriseGeoProfiles)
+          .where(eq(enterpriseGeoProfiles.projectId, input.projectId))
+          .limit(1);
+        const profile = profileRows[0];
+
+        const questionRows = await db
+          .select({ questionText: questions.questionText })
+          .from(questions)
+          .where(eq(questions.projectId, input.projectId))
+          .orderBy(desc(questions.businessValue))
+          .limit(5);
+
+        if (questionRows.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "项目暂无问题数据，请先生成问题" });
+        }
+
+        const checkResult = await runAiMentionCheck({
+          enterpriseName: profile?.enterpriseName ?? project.enterpriseName,
+          shortName: profile?.shortName ?? undefined,
+          questions: questionRows.map(q => q.questionText),
+          engines: input.engines,
+        });
+
+        if (checkResult.results.length === 0) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "未获得任何 AI 实测回答，请配置 OPENAI_API_KEY（豆包/DeepSeek）或 KIMI_API_KEY",
+          });
+        }
+
+        const mentionStatus = checkResult.mentionRate > 0 ? "已提及" : "未提及";
+        const recommendStatus = checkResult.recommendRate > 0 ? "已推荐" : "未推荐";
+        const suggestion = buildAiMentionSuggestion(checkResult);
+        const now = new Date();
+
+        if (input.recordId) {
+          await db
+            .update(geoInclusionMonitoringRecords)
+            .set({
+              aiMentionStatus: mentionStatus,
+              aiRecommendStatus: recommendStatus,
+              aiTestResults: checkResult.results,
+              lastAiTestedAt: now,
+              lastCheckedAt: now,
+              currentSuggestion: suggestion,
+              rawJson: {
+                ...checkResult.engineSummary,
+                mentionRate: checkResult.mentionRate,
+                recommendRate: checkResult.recommendRate,
+                source: "ai_mention_check",
+                testedAt: now.toISOString(),
+              },
+            })
+            .where(eq(geoInclusionMonitoringRecords.id, input.recordId));
+        }
+
+        return {
+          ok: true,
+          mentionRate: checkResult.mentionRate,
+          recommendRate: checkResult.recommendRate,
+          engineSummary: checkResult.engineSummary,
+          resultCount: checkResult.results.length,
+          aiMentionStatus: mentionStatus,
+          aiRecommendStatus: recommendStatus,
+          aiTestResults: checkResult.results,
+        } as const;
+      }),
+    results: protectedProcedure
+      .input(z.object({ recordId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const db = await requireDb();
+        const rows = await db
+          .select()
+          .from(geoInclusionMonitoringRecords)
+          .where(eq(geoInclusionMonitoringRecords.id, input.recordId))
+          .limit(1);
+        const record = rows[0];
+        if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "监测记录不存在" });
+        return {
+          aiMentionStatus: record.aiMentionStatus,
+          aiRecommendStatus: record.aiRecommendStatus,
+          aiTestResults: record.aiTestResults ?? [],
+          lastAiTestedAt: record.lastAiTestedAt,
+        } as const;
+      }),
   }),
 });
 

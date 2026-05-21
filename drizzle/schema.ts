@@ -377,6 +377,19 @@ export const geoInclusionMonitoringRecords = mysqlTable("geo_inclusion_monitorin
   currentSuggestion: text("currentSuggestion").notNull(),
   optimizationSuggestions: json("optimizationSuggestions").$type<string[]>().notNull(),
   rawJson: json("rawJson").$type<Record<string, unknown>>().notNull(),
+  aiTestResults: json("aiTestResults").$type<
+    Array<{
+      engine: string;
+      question: string;
+      answer: string;
+      mentionsBrand: boolean;
+      recommendsBrand: boolean;
+      recommendationRank: number | null;
+      testedAt: string;
+      engineName?: string;
+    }>
+  >(),
+  lastAiTestedAt: timestamp("lastAiTestedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

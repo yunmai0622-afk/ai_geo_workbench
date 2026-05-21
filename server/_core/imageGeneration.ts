@@ -20,6 +20,8 @@ import { ENV } from "./env";
 
 export type GenerateImageOptions = {
   prompt: string;
+  width?: number;
+  height?: number;
   originalImages?: Array<{
     url?: string;
     b64Json?: string;
@@ -61,6 +63,9 @@ export async function generateImage(
     body: JSON.stringify({
       prompt: options.prompt,
       original_images: options.originalImages || [],
+      ...(options.width != null && options.height != null
+        ? { width: options.width, height: options.height }
+        : {}),
     }),
   });
 

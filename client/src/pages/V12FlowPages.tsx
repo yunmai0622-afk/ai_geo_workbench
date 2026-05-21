@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Brain, ChevronDown, FileBarChart2, FileText, HelpCircle, RadioTower, Send, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, startTransition } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 
 type ProjectOption = { id: number; enterpriseName: string };
 
@@ -121,6 +122,17 @@ type PublishRecordLike = {
 
 type ManualPublishStatus = "pending_human_publish" | "published" | "publish_failed" | "manual_publish_needed" | "link_backfilled";
 
+type AiTestResultLike = {
+  engine: string;
+  engineName?: string;
+  question: string;
+  answer?: string;
+  mentionsBrand: boolean;
+  recommendsBrand: boolean;
+  recommendationRank?: number | null;
+  testedAt?: string;
+};
+
 type MonitoringRecordLike = {
   id: number;
   articleId: number;
@@ -130,7 +142,9 @@ type MonitoringRecordLike = {
   aiMentionStatus: string;
   aiRecommendStatus: string;
   lastCheckedAt?: Date | string | null;
+  lastAiTestedAt?: Date | string | null;
   currentSuggestion?: string | null;
+  aiTestResults?: AiTestResultLike[] | null;
 };
 
 type ReportLike = {
@@ -2057,14 +2071,145 @@ export function ContentPublishingFlowPage() {
 
 export function InclusionMonitoringFlowPage() {
   const [, setLocation] = useLocation();
+  const utils = trpc.useUtils();
   const { projects, selectedProjectId, setSelectedProjectId, projectInput, enabled } = useProjectSelection();
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const records = (monitoringQuery.data ?? []) as MonitoringRecordLike[];
+  const [runningRecordId, setRunningRecordId] = useState<number | null>(null);
+
+  const runCheck = trpc.geo.aiMentionCheck.run.useMutation({
+    onSuccess: async data => {
+      toast.success(
+        `实测完成：提及率 ${Math.round(data.mentionRate * 100)}%，推荐率 ${Math.round(data.recommendRate * 100)}%`,
+      );
+      if (selectedProjectId) {
+        await utils.geo.articles.inclusionMonitoringRecords.invalidate({ projectId: selectedProjectId });
+      }
+      await monitoringQuery.refetch();
+    },
+    onError: e => toast.error(e.message),
+    onSettled: () => setRunningRecordId(null),
+  });
 
   return (
     <div className="space-y-6 text-slate-100">
-      <GeoStatusGuide stage="收录监测" completion={records.length > 0 ? 90 : 62} nextAction="生成客户报告" why="收录监测页只展示已发布内容监测卡片，记录收录、AI 提及、AI 推荐、最近检测时间和当前建议。" risk="监测结果来自有限样本，不代表全网绝对排名。" ctaLabel="生成客户报告" ctaPath="/delivery-reports" />
-      <Card className="border-white/10 bg-white/[0.04] text-slate-100"><CardHeader><CardTitle className="text-white">收录监测</CardTitle><CardDescription className="text-cyan-200">已发布内容监测卡片。</CardDescription></CardHeader><CardContent className="space-y-5"><ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />{records.length === 0 ? <EmptyStep title="暂无收录监测记录" description="请先完成内容发布，发布成功后会自动创建未检测监测记录。" /> : <div className="grid gap-4 lg:grid-cols-2">{records.map(record => <div key={record.id} className="rounded-3xl border border-white/10 bg-slate-950/56 p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-white">文章 ID：{record.articleId}</p><a className="mt-2 inline-block text-sm text-cyan-200 underline" href={toAbsoluteUrl(record.publicUrl)} target="_blank" rel="noreferrer">公开链接：{toAbsoluteUrl(record.publicUrl)}</a><p className="mt-2 text-sm text-slate-400">最近检测时间：{formatTime(record.lastCheckedAt) === "未记录" ? "未检测" : formatTime(record.lastCheckedAt)}</p></div><RadioTower className="h-5 w-5 text-cyan-200" /></div><div className="mt-4 grid gap-3 sm:grid-cols-3"><InfoCard title="收录状态" desc={record.inclusionStatus || "未检测"} /><InfoCard title="AI 提及状态" desc={record.aiMentionStatus || "未检测"} /><InfoCard title="AI 推荐状态" desc={record.aiRecommendStatus || "未检测"} /></div><p className="mt-4 text-sm text-amber-100">当前建议：{record.currentSuggestion ?? "保持监测并更新客户报告。"}</p></div>)}</div>}<div className="flex justify-end"><Button onClick={() => setLocation("/delivery-reports")} disabled={records.length === 0} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">进入交付报告</Button></div></CardContent></Card>
+      <GeoStatusGuide
+        stage="收录监测"
+        completion={records.length > 0 ? 90 : 62}
+        nextAction="生成客户报告"
+        why="收录监测页展示已发布内容的收录、AI 提及与推荐状态；可一键对豆包、DeepSeek、Kimi 做真实可见度实测。"
+        risk="监测结果来自有限样本，不代表全网绝对排名。"
+        ctaLabel="生成客户报告"
+        ctaPath="/delivery-reports"
+      />
+      <Card className="border-white/10 bg-white/[0.04] text-slate-100">
+        <CardHeader>
+          <CardTitle className="text-white">收录监测</CardTitle>
+          <CardDescription className="text-cyan-200">
+            已发布内容监测卡片；点击「立即实测」将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <ProjectSelector
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            setSelectedProjectId={setSelectedProjectId}
+          />
+          {records.length === 0 ? (
+            <EmptyStep
+              title="暂无收录监测记录"
+              description="请先完成内容发布，发布成功后会自动创建未检测监测记录。"
+            />
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {records.map(record => (
+                <div key={record.id} className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-white">文章 ID：{record.articleId}</p>
+                      <a
+                        className="mt-2 inline-block text-sm text-cyan-200 underline"
+                        href={toAbsoluteUrl(record.publicUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        公开链接：{toAbsoluteUrl(record.publicUrl)}
+                      </a>
+                      <p className="mt-2 text-sm text-slate-400">
+                        最近检测：
+                        {formatTime(record.lastCheckedAt) === "未记录" ? "未检测" : formatTime(record.lastCheckedAt)}
+                      </p>
+                      {record.lastAiTestedAt ? (
+                        <p className="mt-1 text-sm text-slate-500">
+                          AI 实测：{formatTime(record.lastAiTestedAt)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <RadioTower className="h-5 w-5 shrink-0 text-cyan-200" />
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <InfoCard title="收录状态" desc={record.inclusionStatus || "未检测"} />
+                    <InfoCard title="AI 提及状态" desc={record.aiMentionStatus || "未检测"} />
+                    <InfoCard title="AI 推荐状态" desc={record.aiRecommendStatus || "未检测"} />
+                  </div>
+                  <p className="mt-4 text-sm text-amber-100">
+                    当前建议：{record.currentSuggestion ?? "保持监测并更新客户报告。"}
+                  </p>
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-cyan-400/40 text-cyan-100 hover:bg-cyan-400/10"
+                      disabled={!selectedProjectId || runCheck.isPending}
+                      onClick={() => {
+                        if (!selectedProjectId) return;
+                        setRunningRecordId(record.id);
+                        runCheck.mutate({
+                          projectId: selectedProjectId,
+                          recordId: record.id,
+                          engines: ["doubao", "deepseek", "kimi"],
+                        });
+                      }}
+                    >
+                      {runCheck.isPending && runningRecordId === record.id
+                        ? "实测中…"
+                        : "立即实测 AI 可见度"}
+                    </Button>
+                  </div>
+                  {record.aiTestResults && record.aiTestResults.length > 0 ? (
+                    <div className="mt-4 space-y-2 rounded-2xl border border-white/10 bg-slate-900/50 p-3">
+                      <p className="text-xs font-medium text-cyan-200">实测明细</p>
+                      {record.aiTestResults.map((r, i) => (
+                        <div
+                          key={`${r.engine}-${i}`}
+                          className="rounded-xl border border-white/5 bg-slate-950/60 px-3 py-2 text-xs text-slate-300"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-white">{r.engineName ?? r.engine}</span>
+                            <span className="text-slate-500">{r.mentionsBrand ? "提及" : "未提及"}</span>
+                            <span className="text-slate-500">{r.recommendsBrand ? "推荐" : "-"}</span>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-slate-400">{r.question}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setLocation("/delivery-reports")}
+              disabled={records.length === 0}
+              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+            >
+              进入交付报告
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
