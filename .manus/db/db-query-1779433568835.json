@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `delivery_report_share_tokens` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `token` varchar(64) NOT NULL,\n  `projectId` int NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `expiresAt` timestamp,\n  `isEnabled` boolean NOT NULL DEFAULT true,\n  CONSTRAINT `delivery_report_share_tokens_id` PRIMARY KEY(`id`),\n  CONSTRAINT `delivery_report_share_tokens_token_unique` UNIQUE(`token`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute CREATE TABLE `delivery_report_share_tokens` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `token` varchar(64) NOT NULL,\n  `projectId` int NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `expiresAt` timestamp,\n  `isEnabled` boolean NOT NULL DEFAULT true,\n  CONSTRAINT `delivery_report_share_tokens_id` PRIMARY KEY(`id`),\n  CONSTRAINT `delivery_report_share_tokens_token_unique` UNIQUE(`token`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2721
+}

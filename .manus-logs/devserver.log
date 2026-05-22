@@ -2602,3 +2602,26 @@
 [2026-05-22T02:48:14.164Z] ]
 [2026-05-22T02:48:14.164Z] }
 [2026-05-22T02:48:42.799Z] 10:48:42 PM [vite] (client) hmr update /src/index.css
+[2026-05-22T02:49:30.734Z] [geo.scores.latest] {
+[2026-05-22T02:49:30.735Z] requestedProjectId: 1,
+[2026-05-22T02:49:30.735Z] returned: {
+[2026-05-22T02:49:30.735Z] id: 660001,
+[2026-05-22T02:49:30.736Z] projectId: 1,
+[2026-05-22T02:49:30.736Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T02:49:30.736Z] totalScore: 40
+[2026-05-22T02:49:30.737Z] },
+[2026-05-22T02:49:30.737Z] sameProjectTop3: [
+[2026-05-22T02:49:30.737Z] {
+[2026-05-22T02:49:30.737Z] id: 660001,
+[2026-05-22T02:49:30.738Z] projectId: 1,
+[2026-05-22T02:49:30.738Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T02:49:30.739Z] totalScore: 40
+[2026-05-22T02:49:30.739Z] }
+[2026-05-22T02:49:30.740Z] ]
+[2026-05-22T02:49:30.740Z] }
+[2026-05-22T07:05:54.815Z] 3:05:54 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-05-22T07:05:54.817Z] 3:05:54 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-22T07:05:54.916Z] 3:05:54 AM [tsx] change in ./server/geoAiMentionCheck.ts Restarting...
+[2026-05-22T07:05:56.528Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-22T07:05:56.817Z] Server running on http://localhost:3000/
+[2026-05-22T07:05:56.818Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
