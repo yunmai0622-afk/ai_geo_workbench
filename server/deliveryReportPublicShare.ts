@@ -1,11 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   analysisResults,
   deliveryReportShareTokens,
   enterpriseGeoProfiles,
+  geoArticles,
   geoInclusionMonitoringRecords,
+  geoPublishRecords,
   geoScores,
   projects,
   reports,
@@ -15,6 +17,7 @@ import {
   DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE,
   DELIVERY_REPORT_SHARE_INVALID_MESSAGE,
   mapItemToPublicEvidence,
+  mapRecordsToPublicPublishedContent,
   type DeliveryReportPublicEvidencePayload,
   type DeliveryReportPublicSharePayload,
 } from "@shared/deliveryReportPublicShare";
@@ -175,12 +178,47 @@ export async function buildDeliveryReportPublicSharePayload(
     })),
   );
 
+  const publishRows = await db
+    .select({
+      publishTitle: geoPublishRecords.publishTitle,
+      publishChannel: geoPublishRecords.publishChannel,
+      publishUrl: geoPublishRecords.publishUrl,
+      publishedAt: geoPublishRecords.publishedAt,
+      articleId: geoPublishRecords.articleId,
+    })
+    .from(geoPublishRecords)
+    .where(eq(geoPublishRecords.projectId, projectId))
+    .orderBy(desc(geoPublishRecords.publishedAt));
+
+  const articleIds = Array.from(new Set(publishRows.map(row => row.articleId)));
+  const articleTitleById = new Map<number, string>();
+  if (articleIds.length > 0) {
+    const articleRows = await db
+      .select({ id: geoArticles.id, title: geoArticles.title })
+      .from(geoArticles)
+      .where(inArray(geoArticles.id, articleIds));
+    for (const article of articleRows) {
+      if (article.title) articleTitleById.set(article.id, article.title);
+    }
+  }
+
+  const publishedContent = mapRecordsToPublicPublishedContent(
+    publishRows.map(row => ({
+      publishTitle: row.publishTitle,
+      publishChannel: row.publishChannel,
+      publishUrl: row.publishUrl,
+      publishedAt: row.publishedAt,
+      articleTitle: articleTitleById.get(row.articleId) ?? null,
+    })),
+  );
+
   return {
     brandName,
     enterpriseName,
     reportGeneratedAt: reportGeneratedAt ? reportGeneratedAt.toISOString() : null,
     conclusionLine,
     aiTest: toPublicAiTestAggregate(aggregate),
+    publishedContent,
   };
 }
 

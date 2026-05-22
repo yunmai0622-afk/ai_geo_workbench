@@ -17,6 +17,74 @@ export type AiTestCompetitorMention = {
   context?: string;
 };
 
+export type AiTestMissReason =
+  | "fresh_content_delay"
+  | "question_too_generic"
+  | "weak_brand_entity"
+  | "no_retrieval_signal"
+  | "unknown";
+
+const AI_TEST_MISS_REASONS: AiTestMissReason[] = [
+  "fresh_content_delay",
+  "question_too_generic",
+  "weak_brand_entity",
+  "no_retrieval_signal",
+  "unknown",
+];
+
+const MISS_REASON_LABELS: Record<AiTestMissReason, string> = {
+  fresh_content_delay: "内容刚发布，AI 可能尚未抓取或更新。",
+  question_too_generic: "问题较泛，AI 更倾向回答通用方案，不一定会主动推荐具体品牌。",
+  weak_brand_entity: "品牌与该场景的关联信号较弱，AI 还没有形成明确认知。",
+  no_retrieval_signal: "暂未发现 AI 引用或检索到相关内容。",
+  unknown: "暂无法判断，需要持续复测。",
+};
+
+const GENERIC_QUESTION_PATTERN =
+  /(怎么办|怎么解决|有什么工具|如何管理|有哪些|如何用|怎么处理|有什么方法|如何提升|如何解决|怎么选|哪个好)/;
+
+export function isAiTestMissReason(value: unknown): value is AiTestMissReason {
+  return typeof value === "string" && (AI_TEST_MISS_REASONS as string[]).includes(value);
+}
+
+export function missReasonLabelCn(reason: AiTestMissReason | undefined | null): string | null {
+  if (!reason || !isAiTestMissReason(reason)) return null;
+  return MISS_REASON_LABELS[reason];
+}
+
+export type InferMissReasonInput = {
+  question: string;
+  citedUrls: string[];
+  testedAt: string;
+  articlePublishedAt?: Date | string | null;
+  brandNames?: string[];
+};
+
+export function inferMissReason(input: InferMissReasonInput): AiTestMissReason {
+  const testedAt = new Date(input.testedAt);
+  const publishedAtRaw = input.articlePublishedAt;
+  if (publishedAtRaw) {
+    const publishedAt = publishedAtRaw instanceof Date ? publishedAtRaw : new Date(publishedAtRaw);
+    if (!Number.isNaN(publishedAt.getTime()) && !Number.isNaN(testedAt.getTime())) {
+      const days = (testedAt.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24);
+      if (days >= 0 && days < 7) return "fresh_content_delay";
+    }
+  }
+
+  const question = input.question.trim();
+  const brandNames = (input.brandNames ?? []).filter(n => n.trim().length >= 2);
+  const brandInQuestion = brandNames.some(name => question.includes(name));
+  if (GENERIC_QUESTION_PATTERN.test(question) && !brandInQuestion) {
+    return "question_too_generic";
+  }
+
+  if (input.citedUrls.length === 0) {
+    return "no_retrieval_signal";
+  }
+
+  return "weak_brand_entity";
+}
+
 /** 兼容旧字段 + Phase C1-A 扩展字段 */
 export type AiTestEvidenceItem = {
   engine: string;
@@ -38,6 +106,7 @@ export type AiTestEvidenceItem = {
   parseStatus: AiTestParseStatus;
   parseError?: string | null;
   testStage: AiTestStage;
+  missReason?: AiTestMissReason;
 };
 
 export type AiTestStageMetrics = {
@@ -273,6 +342,9 @@ export function normalizeAiTestResult(raw: unknown): AiTestEvidenceItem | null {
       ? parseStatusRaw
       : "success";
 
+  const missReasonRaw = r.missReason;
+  const missReason = isAiTestMissReason(missReasonRaw) ? missReasonRaw : undefined;
+
   return {
     engine: String(r.engine ?? "unknown"),
     engineName: String(r.engineName ?? r.engine ?? "未知引擎"),
@@ -293,6 +365,7 @@ export function normalizeAiTestResult(raw: unknown): AiTestEvidenceItem | null {
     parseStatus,
     parseError: typeof r.parseError === "string" ? r.parseError : null,
     testStage: resolveTestStage(r),
+    ...(missReason ? { missReason } : {}),
   };
 }
 

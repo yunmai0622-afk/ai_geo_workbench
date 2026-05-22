@@ -2131,6 +2131,24 @@ ${article.markdownContent}`,
 
         const competitorNames = await resolveProjectCompetitorNames(db, input.projectId);
 
+        let missReasonContext: { articlePublishedAt?: Date | null } | undefined;
+        if (input.recordId) {
+          const monitoringRows = await db
+            .select({ publishRecordId: geoInclusionMonitoringRecords.publishRecordId })
+            .from(geoInclusionMonitoringRecords)
+            .where(eq(geoInclusionMonitoringRecords.id, input.recordId))
+            .limit(1);
+          const publishRecordId = monitoringRows[0]?.publishRecordId;
+          if (publishRecordId) {
+            const publishRows = await db
+              .select({ publishedAt: geoPublishRecords.publishedAt })
+              .from(geoPublishRecords)
+              .where(eq(geoPublishRecords.id, publishRecordId))
+              .limit(1);
+            missReasonContext = { articlePublishedAt: publishRows[0]?.publishedAt ?? null };
+          }
+        }
+
         const checkResult = await runAiMentionCheck({
           enterpriseName: profile?.enterpriseName ?? project.enterpriseName,
           shortName: profile?.shortName ?? undefined,
@@ -2138,6 +2156,7 @@ ${article.markdownContent}`,
           engines: input.engines,
           competitorNames,
           testStage: input.testStage,
+          missReasonContext,
         });
 
         if (checkResult.results.length === 0) {

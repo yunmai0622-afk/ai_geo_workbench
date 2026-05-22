@@ -67,8 +67,12 @@ for (const item of ['连接发布平台', '可由交付人员配置', '风险边
 for (const item of ['已发布内容监测卡片', '收录', 'AI 提及', 'AI 推荐', '最近检测时间', '当前建议', '监测结果来自有限样本']) {
   assertContains('收录监测页', sources.flow, item);
 }
-for (const item of ['本轮交付摘要', '内容诊断结果', '优化任务清单', '已生成内容', '发布记录', '下一步建议', '不承诺保证收录、排名或 AI 推荐']) {
+const deliveryReportPages = sources.flow + sources.customerView;
+for (const item of ['DeliveryReportCustomerView', '内容诊断结果', '优化任务清单', '已生成内容']) {
   assertContains('交付报告页', sources.flow, item);
+}
+for (const item of ['AI 搜索可见度评分', '不承诺保证收录、排名或 AI 推荐']) {
+  assertContains('交付报告页', deliveryReportPages, item);
 }
 assertContains('App 路由', sources.app, 'path="/delivery-reports/share/:projectId"');
 assertContains('App 路由', sources.app, 'path="/delivery-reports/public/:token"');
@@ -102,9 +106,10 @@ assertContains('匿名证据页', sources.evidenceView, 'AI 原始回答');
 assertNotContains('匿名证据展示', sources.evidenceView + sources.publicEvidence, 'rawAnswer');
 assertContains('共享路径', read('shared/deliveryReportPublicShare.ts'), '/delivery-reports/public/');
 const customerPages = sources.share + sources.customerView + sources.publicShare;
-for (const item of ['AI 搜索实测结果', '发布前后复测对比', '查看证据', '下一步优化建议', 'GEO 总体结论']) {
+for (const item of ['AI 搜索可见度评分', 'AI 搜索实测结果', '本轮发布内容', '下一步建议', '查看完整证据', '查看证据', '查看文章', '本轮暂无发布记录']) {
   assertContains('客户查看页', customerPages, item);
 }
+assertContains('匿名分享类型', read('shared/deliveryReportPublicShare.ts'), 'publishedContent');
 for (const item of ['rawAnswer', 'taskId', 'provider', 'mock', 'schema', 'testStage', 'aiTestResults']) {
   assertNotContains('客户查看页', sources.publicShare + sources.customerView, item);
 }

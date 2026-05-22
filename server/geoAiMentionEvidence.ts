@@ -1,10 +1,12 @@
 import type {
   AiTestCompetitorMention,
   AiTestEvidenceItem,
+  AiTestMissReason,
   AiTestParseStatus,
   AiTestSentiment,
   AiTestStage,
 } from "@shared/aiTestEvidence";
+import { inferMissReason } from "@shared/aiTestEvidence";
 import { eq } from "drizzle-orm";
 import { competitorProfiles, enterpriseGeoProfiles, projects } from "../drizzle/schema";
 import type { AiEngine, AiTestResult } from "./geoAiMentionCheck";
@@ -115,11 +117,16 @@ export function buildEvidenceSummary(input: {
   return parts.join("");
 }
 
+export type EnrichAiTestResultContext = {
+  articlePublishedAt?: Date | string | null;
+};
+
 export function enrichAiTestResult(
   base: AiTestResult,
   competitorNames: string[],
   brandNames: string[],
   testStage: AiTestStage = "manual_check",
+  context?: EnrichAiTestResultContext,
 ): AiTestEvidenceItem {
   const answer = base.answer;
   const namesForBrand = brandNames.filter(Boolean);
@@ -149,6 +156,17 @@ export function enrichAiTestResult(
     citedUrls,
   });
 
+  let missReason: AiTestMissReason | undefined;
+  if (!base.mentionsBrand) {
+    missReason = inferMissReason({
+      question: base.question,
+      citedUrls,
+      testedAt: base.testedAt,
+      articlePublishedAt: context?.articlePublishedAt,
+      brandNames: namesForBrand,
+    });
+  }
+
   return {
     engine: base.engine,
     engineName: base.engineName,
@@ -169,6 +187,7 @@ export function enrichAiTestResult(
     parseStatus,
     parseError,
     testStage,
+    ...(missReason ? { missReason } : {}),
   };
 }
 

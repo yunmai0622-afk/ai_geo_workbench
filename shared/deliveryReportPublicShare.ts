@@ -1,6 +1,14 @@
 import type { AiTestEvidenceAggregate, AiTestEvidenceItem, AiTestSentiment } from "./aiTestEvidence";
 import { parseStatusLabelCn, testStageLabelCn } from "./aiTestEvidence";
 
+/** 匿名报告「本轮发布内容」客户安全字段 */
+export type DeliveryReportPublicPublishedItem = {
+  title: string;
+  platform: string;
+  publishedAt: string | null;
+  url: string;
+};
+
 /** 匿名客户报告页只读数据（无工程字段、无用户敏感信息） */
 export type DeliveryReportPublicSharePayload = {
   brandName: string;
@@ -8,7 +16,25 @@ export type DeliveryReportPublicSharePayload = {
   reportGeneratedAt: string | null;
   conclusionLine: string;
   aiTest: AiTestEvidenceAggregate;
+  publishedContent: DeliveryReportPublicPublishedItem[];
 };
+
+export function mapRecordsToPublicPublishedContent(
+  records: Array<{
+    publishTitle: string | null;
+    publishChannel: string;
+    publishUrl: string;
+    publishedAt: Date;
+    articleTitle?: string | null;
+  }>,
+): DeliveryReportPublicPublishedItem[] {
+  return records.map(record => ({
+    title: record.publishTitle?.trim() || record.articleTitle?.trim() || "未命名内容",
+    platform: record.publishChannel,
+    publishedAt: record.publishedAt ? record.publishedAt.toISOString() : null,
+    url: record.publishUrl,
+  }));
+}
 
 export const DELIVERY_REPORT_SHARE_INVALID_MESSAGE =
   "报告链接无效或已失效，请联系服务人员重新获取";

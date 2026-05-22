@@ -4,7 +4,7 @@
  */
 
 import type { AiTestEvidenceItem, AiTestStage } from "@shared/aiTestEvidence";
-import { enrichAiTestResult } from "./geoAiMentionEvidence";
+import { enrichAiTestResult, type EnrichAiTestResultContext } from "./geoAiMentionEvidence";
 
 export type AiEngine = "doubao" | "deepseek" | "kimi";
 
@@ -30,6 +30,8 @@ export interface AiMentionCheckInput {
   competitorNames?: string[];
   /** 测试阶段：发布前 / 发布后复测 / 人工复测 */
   testStage?: AiTestStage;
+  /** 用于未提及原因诊断（如文章发布时间） */
+  missReasonContext?: EnrichAiTestResultContext;
 }
 
 export interface AiMentionCheckOutput {
@@ -176,7 +178,7 @@ export function buildAiMentionSuggestion(result: { mentionRate: number; recommen
   const recommendPct = Math.round(result.recommendRate * 100);
 
   if (mentionPct === 0) {
-    return `实测结果：品牌在豆包/DeepSeek/Kimi 中均未被提及（提及率 0%）。建议优先发布更多 GEO 内容，增强品牌实体信号。`;
+    return `实测结果：品牌在豆包/DeepSeek/Kimi 中均未被提及（提及率 0%）。本次实测中，品牌暂未被 AI 主动提及。可能是问题较泛、品牌实体信号不足，或内容尚未被 AI 检索到。当前问题多为场景痛点类或通用解决方案类问题，AI 更倾向直接给出方法，而不是推荐具体品牌。建议后续补充品牌认知类、竞品对比类内容，并在文章中强化「品牌名 + 品类 + 适用场景」的实体信号。新发布内容建议 7-14 天后复测。`;
   }
   if (recommendPct === 0) {
     return `实测结果：品牌提及率 ${mentionPct}%，但尚未获得 AI 推荐（推荐率 0%）。建议强化竞品差异化内容和客户案例。`;
@@ -191,6 +193,7 @@ export async function runAiMentionCheck(input: AiMentionCheckInput): Promise<AiM
   const competitorNames = input.competitorNames ?? [];
   const brandNames = [input.enterpriseName, input.shortName].filter(Boolean) as string[];
   const testStage = input.testStage ?? "manual_check";
+  const missReasonContext = input.missReasonContext;
 
   for (const engine of engines) {
     const config = ENGINE_CONFIG[engine];
@@ -214,6 +217,7 @@ export async function runAiMentionCheck(input: AiMentionCheckInput): Promise<AiM
           competitorNames,
           brandNames,
           testStage,
+          missReasonContext,
         ),
       );
 

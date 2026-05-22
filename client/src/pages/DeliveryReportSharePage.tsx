@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { DeliveryReportCustomerView } from "@/components/DeliveryReportCustomerView";
 import { Button } from "@/components/ui/button";
 import { getLoginUrl, isLoginConfigured } from "@/const";
+import { mapPublishRecordsToItems } from "@/lib/deliveryReportDisplay";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
 import { BarChart3 } from "lucide-react";
@@ -95,6 +96,8 @@ function DeliveryReportShareContent() {
   const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
   const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
+  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const reportQuery = trpc.geo.reports.latest.useQuery(projectInput, { enabled });
 
@@ -108,7 +111,18 @@ function DeliveryReportShareContent() {
 
   const score = scoreQuery.data as Record<string, unknown> | null | undefined;
   const analyses = (analysisQuery.data ?? []) as Array<Record<string, unknown>>;
+  const articles = (articlesQuery.data ?? []) as Array<{ id: number; title?: string }>;
+  const publishRecords = (publishRecordsQuery.data ?? []) as Array<Record<string, unknown>>;
+
   const totalScore = typeof score?.totalScore === "number" ? score.totalScore : typeof score?.total_score === "number" ? (score.total_score as number) : null;
+  const aiVisibilityScore =
+    typeof score?.aiVisibilityScore === "number"
+      ? score.aiVisibilityScore
+      : typeof score?.ai_visibility_score === "number"
+        ? (score.ai_visibility_score as number)
+        : null;
+  const visibilityScore = aiVisibilityScore ?? totalScore;
+
   const firstAnalysis = analyses[0];
   const conclusionLine =
     totalScore != null && firstAnalysis
@@ -124,6 +138,19 @@ function DeliveryReportShareContent() {
     if (scoreAt) return new Date(scoreAt as string | Date);
     return null;
   })();
+
+  const articleTitleById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const a of articles) {
+      if (typeof a.id === "number" && a.title) m.set(a.id, String(a.title));
+    }
+    return m;
+  }, [articles]);
+
+  const publishedItems = useMemo(
+    () => mapPublishRecordsToItems(publishRecords, articleTitleById),
+    [publishRecords, articleTitleById],
+  );
 
   const aiTestAggregate = useMemo(() => {
     const rows = (monitoringQuery.data ?? []) as MonitoringRow[];
@@ -144,7 +171,11 @@ function DeliveryReportShareContent() {
     );
   }
 
-  const loading = projectsQuery.isLoading || summaryQuery.isLoading || monitoringQuery.isLoading;
+  const loading =
+    projectsQuery.isLoading ||
+    summaryQuery.isLoading ||
+    monitoringQuery.isLoading ||
+    publishRecordsQuery.isLoading;
 
   return (
     <DeliveryReportCustomerView
@@ -152,7 +183,10 @@ function DeliveryReportShareContent() {
       enterpriseName={enterpriseName}
       reportGeneratedAt={reportGeneratedAt}
       conclusionLine={conclusionLine}
+      visibilityScore={visibilityScore}
+      publishCount={publishedItems.length}
       aiTestAggregate={aiTestAggregate}
+      publishedItems={publishedItems}
       loading={loading}
       showEvidenceLinks
       onNavigateEvidence={path => setLocation(path)}

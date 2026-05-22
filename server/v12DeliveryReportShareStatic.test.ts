@@ -61,21 +61,24 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(publicSource).not.toContain("/geo/evidence/");
 
     for (const text of [
+      "AI 搜索可见度评分",
       "AI 搜索实测结果",
       "发布前后复测对比",
-      "分引擎结果",
-      "关键证据样例",
+      "本轮发布内容",
+      "下一步建议",
+      "查看完整证据",
       "查看证据",
-      "下一步优化建议",
-      "GEO 总体结论",
       "暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以生成可追溯的品牌可见度结果。",
     ]) {
-      const customerPages = customerViewSource + publicSource + shareSource + readProjectFile("shared/deliveryReportPublicShare.ts");
+      const customerPages = customerViewSource + publicSource + shareSource;
       expect(customerPages).toContain(text);
     }
+    expect(flowSource).toContain("DeliveryReportCustomerView");
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain(
       "报告链接无效或已失效，请联系服务人员重新获取",
     );
+    expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("publishedContent");
+    expect(readProjectFile("server/deliveryReportPublicShare.ts")).toContain("geoPublishRecords");
 
     for (const forbidden of [
       "rawAnswer",

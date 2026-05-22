@@ -23,4 +23,13 @@ describe("geoAiMentionCheck", () => {
     expect(buildAiMentionSuggestion({ mentionRate: 0.4, recommendRate: 0 })).toContain("推荐率 0%");
     expect(buildAiMentionSuggestion({ mentionRate: 0.4, recommendRate: 0.2 })).toContain("提及率 40%");
   });
+
+  it("zero mention advice explains likely reasons", () => {
+    const text = buildAiMentionSuggestion({ mentionRate: 0, recommendRate: 0 });
+    expect(text).toContain("问题较泛");
+    expect(text).toContain("品牌实体信号");
+    expect(text).toContain("品牌认知类");
+    expect(text).toContain("竞品对比类");
+    expect(text).toContain("7-14 天后复测");
+  });
 });

@@ -1,16 +1,14 @@
+import { DeliveryReportCustomerView } from "@/components/DeliveryReportCustomerView";
 import { GeoStatusGuide } from "@/components/GeoStatusGuide";
+import { mapPublishRecordsToItems } from "@/lib/deliveryReportDisplay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import {
   aggregateAiTestEvidence,
   buildEvidenceDetailPath,
-  formatCountMetric,
-  formatDeltaCount,
-  formatDeltaPercent,
-  formatDeltaRank,
-  formatPercentMetric,
-  formatRankMetric,
+  isAiTestMissReason,
+  missReasonLabelCn,
   sentimentLabelCn,
   type AiTestStage,
 } from "@shared/aiTestEvidence";
@@ -167,6 +165,7 @@ type AiTestResultLike = {
   mentionedBrand?: boolean;
   recommendedBrand?: boolean;
   sentiment?: "positive" | "neutral" | "negative";
+  missReason?: string;
 };
 
 type MonitoringRecordLike = {
@@ -2424,6 +2423,11 @@ export function InclusionMonitoringFlowPage() {
                             </Button>
                           </div>
                           <p className="mt-1 line-clamp-2 text-slate-400">{r.question}</p>
+                          {!(r.mentionedBrand ?? r.mentionsBrand) && isAiTestMissReason(r.missReason) ? (
+                            <p className="mt-2 text-xs leading-relaxed text-amber-100/90">
+                              未提及原因：{missReasonLabelCn(r.missReason)}
+                            </p>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -2462,11 +2466,11 @@ export function DeliveryReportsFlowPage() {
   const [showAllDiagnoses, setShowAllDiagnoses] = useState(false);
 
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
+  const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
   const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
   const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
   const qualityScoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
-  const contentPlanQuery = trpc.geo.contentPlans.latest.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
 
@@ -2485,7 +2489,6 @@ export function DeliveryReportsFlowPage() {
   const tasks = (tasksQuery.data ?? []) as any[];
   const articles = (articlesQuery.data ?? []) as any[];
   const qualityScores = (qualityScoresQuery.data ?? []) as any[];
-  const contentPlan = contentPlanQuery.data as any;
   const publishRecords = (publishRecordsQuery.data ?? []) as any[];
 
   const latestScoreByArticleId = useMemo(() => {
@@ -2505,12 +2508,6 @@ export function DeliveryReportsFlowPage() {
       : typeof score?.ai_visibility_score === "number"
         ? (score.ai_visibility_score as number)
         : null;
-  const aiRecommendationScore =
-    typeof score?.aiRecommendationScore === "number"
-      ? score.aiRecommendationScore
-      : typeof score?.ai_recommendation_score === "number"
-        ? (score.ai_recommendation_score as number)
-        : null;
   const firstAnalysis = analyses[0];
   const contentGapPrimary = (firstAnalysis?.contentGap ?? firstAnalysis?.content_gap ?? "") as string;
   const notRecommendedPrimary = (firstAnalysis?.notRecommendedReason ?? firstAnalysis?.not_recommended_reason ?? "") as string;
@@ -2528,11 +2525,6 @@ export function DeliveryReportsFlowPage() {
         : "建议先在 内容诊断页生成优化任务，并在内容生产页落地成稿。";
 
   const visibleAnalyses = showAllDiagnoses ? analyses : analyses.slice(0, 3);
-  const planName = contentPlan?.planName ?? contentPlan?.plan?.planName;
-  const planStart = contentPlan?.startDate ?? contentPlan?.plan?.weekStartDate;
-  const planPlatforms = (contentPlan?.targetPlatforms ?? contentPlan?.plan?.targetPlatforms) as string[] | undefined;
-  const planTypes = (contentPlan?.contentTypes ?? contentPlan?.plan?.contentTypes) as string[] | undefined;
-  const hasPlan = Boolean(contentPlan?.plan ?? planName);
 
   const articleTitleById = useMemo(() => {
     const m = new Map<number, string>();
@@ -2541,6 +2533,32 @@ export function DeliveryReportsFlowPage() {
     }
     return m;
   }, [articles]);
+
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const profile = summaryQuery.data?.profile as Record<string, unknown> | undefined;
+  const brandName =
+    (typeof profile?.brandName === "string" && profile.brandName.trim()) ||
+    selectedProject?.enterpriseName ||
+    "未填写品牌名称";
+  const enterpriseName = selectedProject?.enterpriseName ?? "—";
+  const visibilityScore = aiVisibilityScore ?? totalScore;
+  const publishedItems = useMemo(
+    () => mapPublishRecordsToItems(publishRecords as Array<Record<string, unknown>>, articleTitleById),
+    [publishRecords, articleTitleById],
+  );
+  const suggestionLines = useMemo(() => {
+    const lines = [
+      nextActionLine,
+      maxProblemLine.startsWith("暂无") ? null : `优先处理：${maxProblemLine}`,
+      publishRecords.length > 0 ? "对已发布内容保持监测，稳定收录后安排发布前后复测。" : null,
+    ].filter((line): line is string => Boolean(line?.trim()));
+    return lines.slice(0, 3);
+  }, [nextActionLine, maxProblemLine, publishRecords.length]);
+  const reportGeneratedAt = (() => {
+    const scoreAt = score?.createdAt ?? score?.created_at;
+    if (scoreAt) return new Date(scoreAt as string | Date);
+    return null;
+  })();
 
   return (
     <div className="space-y-8 pb-10 text-slate-100">
@@ -2620,72 +2638,26 @@ export function DeliveryReportsFlowPage() {
         ) : null}
       </div>
 
-      {/* 老板版摘要：交付页首屏核心 */}
-      <Card className="border-cyan-400/25 bg-gradient-to-br from-cyan-500/10 via-slate-950/40 to-slate-950/80 shadow-lg shadow-cyan-900/20">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl text-white">本轮交付摘要</CardTitle>
-          <CardDescription className="text-cyan-100/90">给决策层的一页结论</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {!selectedProjectId ? (
-            <p className="text-sm text-slate-400">请选择项目后查看交付摘要。</p>
-          ) : (
-            <>
-              <p className="text-base leading-relaxed text-slate-100">{conclusionLine}</p>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-center lg:text-left">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-500">内容覆盖</p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-left">
-                    <div>
-                      <p className="text-[10px] text-slate-500">AI 提及分</p>
-                      <p className="text-lg font-semibold text-cyan-200">{aiVisibilityScore != null ? `${aiVisibilityScore} 分` : "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-slate-500">AI 推荐分</p>
-                      <p className="text-lg font-semibold text-cyan-200">{aiRecommendationScore != null ? `${aiRecommendationScore} 分` : "—"}</p>
-                    </div>
-                  </div>
-                  {totalScore != null ? (
-                    <p className="mt-2 text-center text-[11px] text-slate-500 lg:text-left">综合评分 {totalScore} 分</p>
-                  ) : (
-                    <p className="mt-2 text-center text-[11px] text-slate-500 lg:text-left">综合评分 —</p>
-                  )}
-                  <p className="mt-2 text-center text-[11px] leading-snug text-slate-500 lg:text-left">内容覆盖评分（满分100），含提及率与推荐率加权</p>
-                </div>
-                {[
-                  { label: "已生成内容", value: `${articles.length} 篇` },
-                  { label: "已发布", value: `${publishRecords.length} 篇` },
-                  { label: "优化任务", value: `${tasks.length} 个` },
-                ].map(item => (
-                  <div key={item.label} className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-center">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">{item.label}</p>
-                    <p className="mt-1 text-lg font-semibold text-cyan-200">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-                  <p className="text-xs font-medium text-amber-200/90">当前最大问题</p>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-200">{maxProblemLine}</p>
-                </div>
-                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                  <p className="text-xs font-medium text-emerald-200/90">下一步最重要动作</p>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-200">{nextActionLine}</p>
-                </div>
-              </div>
-              {hasPlan ? (
-                <p className="text-xs leading-relaxed text-slate-400">
-                  <span className="text-slate-500">内容计划摘要：</span>
-                  {planName ?? "未命名计划"}
-                  {planStart ? ` · 周期起 ${planStart}` : ""}
-                  {planPlatforms?.length ? ` · 平台 ${planPlatforms.join("、")}` : ""}
-                  {planTypes?.length ? ` · 类型 ${planTypes.join("、")}` : ""}
-                </p>
-              ) : null}
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {selectedProjectId ? (
+        <DeliveryReportCustomerView
+          embedded
+          brandName={brandName}
+          enterpriseName={enterpriseName}
+          reportGeneratedAt={reportGeneratedAt}
+          conclusionLine={conclusionLine}
+          visibilityScore={visibilityScore}
+          publishCount={publishRecords.length}
+          aiTestAggregate={aiTestAggregate}
+          publishedItems={publishedItems}
+          suggestionLines={suggestionLines}
+          showEvidenceLinks
+          showMonitoringCta
+          onGoMonitoring={() => setLocation("/inclusion-monitoring")}
+          onNavigateEvidence={path => setLocation(path)}
+        />
+      ) : (
+        <p className="text-sm text-slate-400">请选择项目后查看客户报告预览。</p>
+      )}
 
       {/* 第一区：内容诊断结果 */}
       <section className="space-y-3">
@@ -2882,250 +2854,6 @@ export function DeliveryReportsFlowPage() {
           </div>
         )}
       </section>
-
-      {/* AI 搜索实测结果 */}
-      <section className="space-y-4">
-        <h2 className="border-b border-white/10 pb-2 text-lg font-semibold text-white">AI 搜索实测结果</h2>
-        <p className="text-sm leading-relaxed text-slate-400">
-          本板块展示的是系统对主流 AI 搜索引擎的真实问题测试结果，用于判断品牌在 AI 回答中的出现频率、推荐情况和竞品对比情况。每一条结果都可以查看原始
-          AI 回答，确保数据可追溯、可复查。
-        </p>
-        {aiTestAggregate.questionCount === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/15 bg-slate-950/40 p-6 text-sm text-slate-400">
-            暂无 AI 搜索实测数据。建议先进行一次 AI 实测，以生成可追溯的品牌可见度结果。
-            <div className="mt-4">
-              <Button className="bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => setLocation("/inclusion-monitoring")}>
-                前往收录监测实测
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: "实测问题数", value: String(aiTestAggregate.questionCount) },
-                { label: "覆盖 AI 引擎数", value: String(aiTestAggregate.engineCount) },
-                { label: "品牌提及率", value: `${Math.round(aiTestAggregate.mentionRate * 100)}%` },
-                { label: "品牌推荐率", value: `${Math.round(aiTestAggregate.recommendRate * 100)}%` },
-                { label: "平均排名", value: aiTestAggregate.averageRank != null ? String(Math.round(aiTestAggregate.averageRank * 10) / 10) : "—" },
-                {
-                  label: "情感占比",
-                  value: `正 ${aiTestAggregate.sentimentCounts.positive} / 中 ${aiTestAggregate.sentimentCounts.neutral} / 负 ${aiTestAggregate.sentimentCounts.negative}`,
-                },
-                { label: "竞品提及次数", value: String(aiTestAggregate.competitorMentionCount) },
-                { label: "引用来源数量", value: String(aiTestAggregate.citedUrlCount) },
-              ].map(item => (
-                <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3">
-                  <p className="text-[11px] text-slate-500">{item.label}</p>
-                  <p className="mt-1 text-lg font-semibold text-cyan-200">{item.value}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-white/10 bg-slate-950/40 p-5">
-              <h3 className="text-base font-semibold text-white">发布前后复测对比</h3>
-              <p className="text-sm leading-relaxed text-slate-400">
-                本区域用于对比同一条监测记录在内容发布前后的 AI 搜索表现变化。请先在收录监测中选择「发布前测试」并完成实测；内容发布并稳定收录
-                7-14 天后，再对同一条监测记录选择「发布后复测」。
-              </p>
-              {!aiTestAggregate.publishCompare.before.hasData || !aiTestAggregate.publishCompare.after.hasData ? (
-                <p className="text-sm leading-relaxed text-slate-400">
-                  暂无完整的发布前后对比数据。请对同一条监测记录分别完成「发布前测试」和「发布后复测」，系统会自动生成品牌提及率、推荐率和平均排名变化。
-                </p>
-              ) : null}
-              {aiTestAggregate.publishCompare.hasAnyStageData ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[520px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-white/10 text-xs text-slate-400">
-                        <th className="py-2 pr-4 font-medium">指标</th>
-                        <th className="py-2 pr-4 font-medium">发布前</th>
-                        <th className="py-2 pr-4 font-medium">发布后</th>
-                        <th className="py-2 font-medium">变化</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-slate-200">
-                      {[
-                        {
-                          label: "实测问题数",
-                          before: formatCountMetric(
-                            aiTestAggregate.publishCompare.before.hasData
-                              ? aiTestAggregate.publishCompare.before.questionCount
-                              : null,
-                          ),
-                          after: formatCountMetric(
-                            aiTestAggregate.publishCompare.after.hasData
-                              ? aiTestAggregate.publishCompare.after.questionCount
-                              : null,
-                          ),
-                          change: formatDeltaCount(
-                            aiTestAggregate.publishCompare.before.hasData &&
-                              aiTestAggregate.publishCompare.after.hasData
-                              ? aiTestAggregate.publishCompare.after.questionCount -
-                                  aiTestAggregate.publishCompare.before.questionCount
-                              : null,
-                          ),
-                        },
-                        {
-                          label: "品牌提及率",
-                          before: formatPercentMetric(aiTestAggregate.publishCompare.before.mentionRate),
-                          after: formatPercentMetric(aiTestAggregate.publishCompare.after.mentionRate),
-                          change: formatDeltaPercent(aiTestAggregate.publishCompare.changes.mentionRateDelta),
-                        },
-                        {
-                          label: "品牌推荐率",
-                          before: formatPercentMetric(aiTestAggregate.publishCompare.before.recommendRate),
-                          after: formatPercentMetric(aiTestAggregate.publishCompare.after.recommendRate),
-                          change: formatDeltaPercent(aiTestAggregate.publishCompare.changes.recommendRateDelta),
-                        },
-                        {
-                          label: "平均排名",
-                          before: formatRankMetric(aiTestAggregate.publishCompare.before.averageRank),
-                          after: formatRankMetric(aiTestAggregate.publishCompare.after.averageRank),
-                          change: formatDeltaRank(aiTestAggregate.publishCompare.changes.averageRankDelta),
-                        },
-                        {
-                          label: "引用来源数量",
-                          before: formatCountMetric(
-                            aiTestAggregate.publishCompare.before.hasData
-                              ? aiTestAggregate.publishCompare.before.citedUrlCount
-                              : null,
-                          ),
-                          after: formatCountMetric(
-                            aiTestAggregate.publishCompare.after.hasData
-                              ? aiTestAggregate.publishCompare.after.citedUrlCount
-                              : null,
-                          ),
-                          change: formatDeltaCount(aiTestAggregate.publishCompare.changes.citedUrlCountDelta),
-                        },
-                      ].map(row => (
-                        <tr key={row.label} className="border-b border-white/5">
-                          <td className="py-3 pr-4 font-medium text-slate-300">{row.label}</td>
-                          <td className="py-3 pr-4">{row.before}</td>
-                          <td className="py-3 pr-4">{row.after}</td>
-                          <td className="py-3 text-cyan-200">{row.change}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-200">分引擎结果</h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                {aiTestAggregate.byEngine.map(engine => (
-                  <Card key={engine.engineName} className="border-white/10 bg-white/[0.04]">
-                    <CardContent className="space-y-2 pt-4 text-sm text-slate-300">
-                      <p className="font-semibold text-white">{engine.engineName}</p>
-                      <p>测试问题数量：{engine.questionCount}</p>
-                      <p>品牌提及率：{Math.round(engine.mentionRate * 100)}%</p>
-                      <p>品牌推荐率：{Math.round(engine.recommendRate * 100)}%</p>
-                      <p>情感倾向：{sentimentLabelCn(engine.dominantSentiment)}</p>
-                      <p>最近测试时间：{engine.lastTestedAt ? new Date(engine.lastTestedAt).toLocaleString() : "—"}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-200">关键证据样例</h3>
-              <div className="space-y-2">
-                {aiTestAggregate.keySamples.map(sample => (
-                  <div
-                    key={`${sample.monitoringRecordId}-${sample.resultIndex}`}
-                    className="flex flex-col gap-3 rounded-xl border border-white/10 bg-slate-950/50 p-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0 text-sm text-slate-300">
-                      <p className="font-medium text-white line-clamp-1">{sample.question}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {sample.engineName} · 提及 {sample.mentionedBrand ? "是" : "否"} · 推荐 {sample.recommendedBrand ? "是" : "否"} ·{" "}
-                        {sentimentLabelCn(sample.sentiment)}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="shrink-0 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-                      onClick={() => setLocation(buildEvidenceDetailPath(sample.monitoringRecordId, sample.resultIndex))}
-                    >
-                      查看证据
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* 第四区：发布记录（表格） */}
-      <section className="space-y-3">
-        <h2 className="border-b border-white/10 pb-2 text-lg font-semibold text-white">发布记录</h2>
-        {publishRecords.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/15 bg-slate-950/40 p-6 text-center">
-            <p className="text-sm text-slate-300">暂无发布记录，请前往发布记录页登记</p>
-            <Button className="mt-4 bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => setLocation("/content-publishing")}>
-              去发布记录页
-            </Button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-white/10">
-            <table className="w-full min-w-[560px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 bg-slate-950/80 text-xs text-slate-400">
-                  <th className="px-3 py-2 font-medium">文章标题</th>
-                  <th className="px-3 py-2 font-medium">平台</th>
-                  <th className="px-3 py-2 font-medium">发布时间</th>
-                  <th className="px-3 py-2 font-medium">链接</th>
-                </tr>
-              </thead>
-              <tbody>
-                {publishRecords.map((r: any) => {
-                  const title = articleTitleById.get(r.articleId) ?? r.publishTitle ?? r.title ?? "—";
-                  const url = r.publishUrl ?? r.publicUrl ?? r.public_url;
-                  const platform = r.publishChannel ?? r.platform ?? "—";
-                  return (
-                    <tr key={r.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                      <td className="max-w-[200px] px-3 py-2 align-top text-slate-100">
-                        <span className="line-clamp-2">{title}</span>
-                      </td>
-                      <td className="px-3 py-2 align-top text-slate-300">{platform}</td>
-                      <td className="px-3 py-2 align-top text-slate-400">{r.publishedAt ?? r.published_at ? formatTime(r.publishedAt ?? r.published_at) : "—"}</td>
-                      <td className="px-3 py-2 align-top">
-                        {url ? (
-                          <a href={url} target="_blank" rel="noreferrer" className="text-cyan-300 underline">
-                            打开
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* 第五区：下一步建议 */}
-      <section className="space-y-3">
-        <h2 className="border-b border-white/10 pb-2 text-lg font-semibold text-white">下一步建议</h2>
-        <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-300">
-          <li>优先补齐诊断中标记的内容缺口，并落到可公开发布的结构化文章。</li>
-          <li>对已生成内容完成质量检查与修订，确保无合规类阻断后再登记外链。</li>
-          <li>在已选平台持续发布，用公开链接沉淀为下一轮复测样本。</li>
-          <li>下一周期重跑 内容诊断与 内容评分，对比本轮基线变化。</li>
-          <li>若竞品在 AI 回答中占位上升，及时更新企业档案与对比叙事。</li>
-        </ol>
-      </section>
-
-      <p className="text-[11px] leading-relaxed text-slate-600">
-        说明：样本量有限，不代表全网绝对排名；不承诺保证收录、排名或 AI 推荐；未确认事实与不可公开资料不得写入对外正式材料；发布结果以人工确认与平台审核为准。
-      </p>
 
       <div className="flex justify-end border-t border-white/10 pt-4">
         <Button onClick={() => setLocation("/")} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">

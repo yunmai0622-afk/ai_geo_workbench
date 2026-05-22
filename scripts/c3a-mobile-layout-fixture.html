@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>C3-A Mobile Layout Fixture</title>
+  </head>
+  <body class="min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
+    <div class="mx-auto max-w-4xl space-y-10 px-4 py-8">
+      <header class="space-y-6 rounded-3xl border border-cyan-400/20 bg-slate-950/90 p-6">
+        <p class="text-sm font-medium text-cyan-200/90">AI 搜索可见度评分</p>
+        <h1 class="text-2xl font-bold">示例品牌 当前在 AI 搜索中的可见度评分：<span class="block text-5xl text-cyan-300">72 分</span></h1>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="rounded-2xl border border-white/10 p-4 text-3xl">12%</div>
+          <div class="rounded-2xl border border-white/10 p-4 text-3xl">8%</div>
+        </div>
+      </header>
+      <section class="space-y-4">
+        <h2 class="text-xl font-semibold">AI 搜索实测结果</h2>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div class="rounded-2xl border p-4 text-3xl">12%</div>
+          <div class="rounded-2xl border p-4 text-3xl">8%</div>
+          <div class="rounded-2xl border p-4 text-3xl">6</div>
+        </div>
+        <table class="w-full table-fixed text-sm">
+          <tr><th class="w-[28%] p-2">指标</th><th class="p-2">发布前</th><th class="p-2">发布后</th><th class="p-2">变化</th></tr>
+          <tr><td class="break-words p-2">品牌提及率</td><td class="break-words p-2">10%</td><td class="break-words p-2">12%</td><td class="p-2">+2%</td></tr>
+        </table>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold">本轮发布内容</h2>
+        <div class="rounded-2xl border p-4">
+          <p class="font-medium">示例文章标题很长很长很长很长很长很长很长很长很长很长</p>
+          <a class="mt-3 inline-block min-h-11 break-all text-cyan-300 underline" href="#">查看文章</a>
+        </div>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold">下一步建议</h2>
+        <p class="text-sm">优先完成 AI 实测并登记发布链接。</p>
+      </section>
+    </div>
+  </body>
+</html>

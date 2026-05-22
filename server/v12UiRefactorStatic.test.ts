@@ -114,17 +114,13 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("交付报告页为面向客户的分区结构并保留合规小字", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of [
-      "本轮交付摘要",
-      "内容诊断结果",
-      "优化任务清单",
-      "已生成内容",
-      "发布记录",
-      "下一步建议",
-      "不承诺保证收录、排名或 AI 推荐",
-      "暂无发布记录，请前往发布记录页登记",
-    ]) {
+    const customerView = readProjectFile("client/src/components/DeliveryReportCustomerView.tsx");
+    for (const text of ["DeliveryReportCustomerView", "内容诊断结果", "优化任务清单", "已生成内容"]) {
       expect(flowSource).toContain(text);
+    }
+    expect(customerView).toContain("不承诺保证收录、排名或 AI 推荐");
+    for (const text of ["AI 搜索可见度评分", "本轮发布内容", "下一步建议", "查看文章"]) {
+      expect(customerView).toContain(text);
     }
   });
 });

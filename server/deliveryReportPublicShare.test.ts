@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
-import { buildDeliveryReportPublicEvidencePath, buildDeliveryReportPublicPath, mapItemToPublicEvidence } from "@shared/deliveryReportPublicShare";
+import {
+  buildDeliveryReportPublicEvidencePath,
+  buildDeliveryReportPublicPath,
+  mapItemToPublicEvidence,
+  mapRecordsToPublicPublishedContent,
+} from "@shared/deliveryReportPublicShare";
 import {
   assertMonitoringRecordForShareProject,
   generateDeliveryReportShareToken,
@@ -60,6 +65,29 @@ describe("delivery report public share", () => {
     }
     expect(payload.aiAnswerText).toContain("推荐某品牌");
     expect(payload.stageLabel).toBe("发布前测试");
+  });
+
+  it("maps publish records to customer-safe published content fields only", () => {
+    const items = mapRecordsToPublicPublishedContent([
+      {
+        publishTitle: "GEO 交付说明",
+        publishChannel: "知乎",
+        publishUrl: "https://example.com/article",
+        publishedAt: new Date("2026-05-01T08:00:00.000Z"),
+        articleTitle: "备用标题",
+      },
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({
+      title: "GEO 交付说明",
+      platform: "知乎",
+      publishedAt: "2026-05-01T08:00:00.000Z",
+      url: "https://example.com/article",
+    });
+    const serialized = JSON.stringify(items);
+    for (const forbidden of ["articleId", "recordId", "projectId", "publicUrl"]) {
+      expect(serialized).not.toContain(forbidden);
+    }
   });
 
   it("strips internal item list from aggregate payload", () => {

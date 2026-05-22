@@ -1,4 +1,5 @@
 import { DeliveryReportCustomerView } from "@/components/DeliveryReportCustomerView";
+import { formatPublishedAtLabel } from "@/lib/deliveryReportDisplay";
 import { trpc } from "@/lib/trpc";
 import {
   buildDeliveryReportPublicEvidencePath,
@@ -49,6 +50,8 @@ export default function DeliveryReportPublicPage() {
         enterpriseName="—"
         reportGeneratedAt={null}
         conclusionLine=""
+        visibilityScore={null}
+        publishCount={0}
         aiTestAggregate={emptyAggregate}
         loading
         showEvidenceLinks={false}
@@ -65,12 +68,24 @@ export default function DeliveryReportPublicPage() {
   }
 
   const data = shareQuery.data;
+  const publishedItems = (data.publishedContent ?? []).map(item => ({
+    title: item.title,
+    platform: item.platform,
+    publishedAt: formatPublishedAtLabel(item.publishedAt),
+    url: item.url,
+  }));
   return (
     <DeliveryReportCustomerView
       brandName={data.brandName}
       enterpriseName={data.enterpriseName}
       reportGeneratedAt={data.reportGeneratedAt ? new Date(data.reportGeneratedAt) : null}
       conclusionLine={data.conclusionLine}
+      visibilityScore={(() => {
+        const m = data.conclusionLine.match(/综合评分\s*(\d+)\s*分/);
+        return m ? Number(m[1]) : null;
+      })()}
+      publishCount={publishedItems.length}
+      publishedItems={publishedItems}
       aiTestAggregate={data.aiTest}
       showEvidenceLinks
       buildEvidenceLink={sample => buildDeliveryReportPublicEvidencePath(token, sample.monitoringRecordId, sample.resultIndex)}
