@@ -2074,8 +2074,21 @@ export function InclusionMonitoringFlowPage() {
   const utils = trpc.useUtils();
   const { projects, selectedProjectId, setSelectedProjectId, projectInput, enabled } = useProjectSelection();
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
+  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const records = (monitoringQuery.data ?? []) as MonitoringRecordLike[];
+  const publishRecordCount = (publishRecordsQuery.data ?? []).length;
   const [runningRecordId, setRunningRecordId] = useState<number | null>(null);
+
+  const backfillMonitoring = trpc.geo.inclusionMonitoring.backfill.useMutation({
+    onSuccess: async data => {
+      toast.success(data.backfilled > 0 ? `已补录 ${data.backfilled} 条监测记录` : "暂无需要补录的发布记录");
+      if (selectedProjectId) {
+        await utils.geo.articles.inclusionMonitoringRecords.invalidate({ projectId: selectedProjectId });
+      }
+      await monitoringQuery.refetch();
+    },
+    onError: e => toast.error(e.message),
+  });
 
   const runCheck = trpc.geo.aiMentionCheck.run.useMutation({
     onSuccess: async data => {
@@ -2103,11 +2116,25 @@ export function InclusionMonitoringFlowPage() {
         ctaPath="/delivery-reports"
       />
       <Card className="border-white/10 bg-white/[0.04] text-slate-100">
-        <CardHeader>
-          <CardTitle className="text-white">收录监测</CardTitle>
-          <CardDescription className="text-cyan-200">
-            已发布内容监测卡片；点击「立即实测」将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle className="text-white">收录监测</CardTitle>
+            <CardDescription className="text-cyan-200">
+              已发布内容监测卡片；点击「立即实测」将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。
+            </CardDescription>
+          </div>
+          {selectedProjectId && publishRecordCount > 0 ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-cyan-400/40 text-cyan-100 hover:bg-cyan-400/10"
+              disabled={backfillMonitoring.isPending}
+              onClick={() => backfillMonitoring.mutate({ projectId: selectedProjectId })}
+            >
+              {backfillMonitoring.isPending ? "补录中…" : "补录监测记录"}
+            </Button>
+          ) : null}
         </CardHeader>
         <CardContent className="space-y-5">
           <ProjectSelector
@@ -2116,10 +2143,36 @@ export function InclusionMonitoringFlowPage() {
             setSelectedProjectId={setSelectedProjectId}
           />
           {records.length === 0 ? (
-            <EmptyStep
-              title="暂无收录监测记录"
-              description="请先完成内容发布，发布成功后会自动创建未检测监测记录。"
-            />
+            <div className="space-y-4">
+              <EmptyStep
+                title="暂无收录监测记录"
+                description={
+                  publishRecordCount > 0
+                    ? `当前项目已有 ${publishRecordCount} 条发布记录（含人工登记），可一键为尚未关联的发布记录补录监测卡片。`
+                    : "请先完成内容发布，发布成功后会自动创建未检测监测记录。"
+                }
+              />
+              {selectedProjectId && publishRecordCount > 0 ? (
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                    disabled={backfillMonitoring.isPending}
+                    onClick={() => backfillMonitoring.mutate({ projectId: selectedProjectId })}
+                  >
+                    {backfillMonitoring.isPending ? "补录中…" : "为已有发布记录补录监测"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-white/15 text-slate-100 hover:bg-white/10"
+                    onClick={() => setLocation("/content-publishing")}
+                  >
+                    前往内容发布
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {records.map(record => (

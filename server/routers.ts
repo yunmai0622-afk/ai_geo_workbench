@@ -1973,6 +1973,38 @@ ${article.markdownContent}`,
       return { article, project: projectForPublic, qualityScore: scoreRows[0] ?? null } as const;
     }),
   }),
+  inclusionMonitoring: router({
+    backfill: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+
+        const publishRecords = await db.select().from(geoPublishRecords)
+          .where(eq(geoPublishRecords.projectId, input.projectId));
+
+        const existingMonitoringRecords = await db.select({
+          publishRecordId: geoInclusionMonitoringRecords.publishRecordId,
+        }).from(geoInclusionMonitoringRecords)
+          .where(eq(geoInclusionMonitoringRecords.projectId, input.projectId));
+
+        const existingIds = new Set(existingMonitoringRecords.map(r => r.publishRecordId));
+        const missing = publishRecords.filter(r => !existingIds.has(r.id));
+
+        for (const record of missing) {
+          await db.insert(geoInclusionMonitoringRecords).values(
+            buildInitialInclusionMonitoringRecord({
+              projectId: record.projectId,
+              articleId: record.articleId,
+              publishRecordId: record.id,
+              publicUrl: record.publishUrl,
+              qualityScore: record.qualityScore,
+            }),
+          );
+        }
+
+        return { backfilled: missing.length } as const;
+      }),
+  }),
   aiMentionCheck: router({
     run: protectedProcedure
       .input(
