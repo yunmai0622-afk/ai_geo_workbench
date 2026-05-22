@@ -2625,3 +2625,161 @@
 [2026-05-22T07:05:56.528Z] c[OAuth] Initialized with baseURL: https://api.manus.im
 [2026-05-22T07:05:56.817Z] Server running on http://localhost:3000/
 [2026-05-22T07:05:56.818Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-22T07:07:32.138Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-22T07:07:40.444Z] [geo.scores.latest] {
+[2026-05-22T07:07:40.445Z] requestedProjectId: 1,
+[2026-05-22T07:07:40.445Z] returned: {
+[2026-05-22T07:07:40.445Z] id: 660001,
+[2026-05-22T07:07:40.446Z] projectId: 1,
+[2026-05-22T07:07:40.446Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T07:07:40.447Z] totalScore: 40
+[2026-05-22T07:07:40.447Z] },
+[2026-05-22T07:07:40.447Z] sameProjectTop3: [
+[2026-05-22T07:07:40.448Z] {
+[2026-05-22T07:07:40.448Z] id: 660001,
+[2026-05-22T07:07:40.448Z] projectId: 1,
+[2026-05-22T07:07:40.449Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T07:07:40.449Z] totalScore: 40
+[2026-05-22T07:07:40.449Z] }
+[2026-05-22T07:07:40.450Z] ]
+[2026-05-22T07:07:40.450Z] }
+[2026-05-22T07:07:56.920Z] [geo.scores.latest] {
+[2026-05-22T07:07:56.921Z] requestedProjectId: 1,
+[2026-05-22T07:07:56.921Z] returned: {
+[2026-05-22T07:07:56.921Z] id: 660001,
+[2026-05-22T07:07:56.922Z] projectId: 1,
+[2026-05-22T07:07:56.922Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T07:07:56.923Z] totalScore: 40
+[2026-05-22T07:07:56.923Z] },
+[2026-05-22T07:07:56.923Z] sameProjectTop3: [
+[2026-05-22T07:07:56.924Z] {
+[2026-05-22T07:07:56.924Z] id: 660001,
+[2026-05-22T07:07:56.924Z] projectId: 1,
+[2026-05-22T07:07:56.925Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T07:07:56.925Z] totalScore: 40
+[2026-05-22T07:07:56.925Z] }
+[2026-05-22T07:07:56.926Z] ]
+[2026-05-22T07:07:56.926Z] }
+[2026-05-22T07:10:56.818Z] [定时实测] 开始执行 2026-05-22T07:10:56.818Z
+[2026-05-22T07:10:57.271Z] [定时实测] 找到 30 条需要检测的记录
+[2026-05-22T07:11:08.312Z] [实测] 豆包 请求异常: TypeError: fetch failed
+[2026-05-22T07:11:08.314Z] at node:internal/deps/undici/undici:13484:13
+[2026-05-22T07:11:08.315Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-05-22T07:11:08.315Z] at async askEngine (/home/ubuntu/ai_geo_workbench/server/geoAiMentionCheck.ts:92:17)
+[2026-05-22T07:11:08.316Z] at async runAiMentionCheck (/home/ubuntu/ai_geo_workbench/server/geoAiMentionCheck.ts:199:22)
+[2026-05-22T07:11:08.316Z] at async runDailyAiCheck (/home/ubuntu/ai_geo_workbench/server/scheduledAiCheck.ts:61:22) {
+[2026-05-22T07:11:08.317Z] [cause]: Error: Client network socket disconnected before secure TLS connection was established
+[2026-05-22T07:11:08.317Z] at TLSSocket.onConnectEnd (node:_tls_wrap:1732:19)
+[2026-05-22T07:11:08.318Z] at TLSSocket.emit (node:events:536:35)
+[2026-05-22T07:11:08.318Z] at endReadableNT (node:internal/streams/readable:1698:12)
+[2026-05-22T07:11:08.319Z] at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[2026-05-22T07:11:08.319Z] code: 'ECONNRESET',
+[2026-05-22T07:11:08.319Z] path: undefined,
+[2026-05-22T07:11:08.320Z] host: 'ark.cn-beijing.volces.com',
+[2026-05-22T07:11:08.320Z] port: 443,
+[2026-05-22T07:11:08.321Z] localAddress: null
+[2026-05-22T07:11:08.321Z] }
+[2026-05-22T07:11:08.321Z] }
+[2026-05-22T07:13:46.450Z] [实测] 豆包 完成：提及 1/4，推荐 1/4
+[2026-05-22T07:16:52.377Z] [实测] DeepSeek 完成：提及 1/5，推荐 0/5
+[2026-05-22T07:16:54.165Z] [定时实测] 记录 1 完成：提及=已提及
+[2026-05-22T07:20:12.033Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-22T07:23:30.184Z] [实测] DeepSeek 完成：提及 1/5，推荐 0/5
+[2026-05-22T07:23:35.282Z] [定时实测] 记录 30001 完成：提及=已提及
+[2026-05-22T07:26:56.885Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-22T07:29:57.895Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-22T07:29:59.648Z] [定时实测] 记录 60001 完成：提及=已提及
+[2026-05-22T07:33:20.479Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-22T07:36:34.071Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-22T07:36:36.358Z] [定时实测] 记录 60002 完成：提及=已提及
+[2026-05-22T07:40:00.509Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-05-22T07:43:21.664Z] [实测] DeepSeek 完成：提及 1/5，推荐 0/5
+[2026-05-22T07:43:23.526Z] [定时实测] 记录 60003 完成：提及=已提及
+[2026-05-22T07:46:55.159Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-05-22T07:50:02.211Z] [实测] DeepSeek 完成：提及 1/5，推荐 0/5
+[2026-05-22T07:50:03.966Z] [定时实测] 记录 90001 完成：提及=已提及
+[2026-05-22T07:53:36.794Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-05-22T07:57:03.947Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-22T07:57:08.846Z] [定时实测] 记录 120001 完成：提及=已提及
+[2026-05-22T08:00:33.159Z] [实测] 豆包 完成：提及 2/5，推荐 2/5
+[2026-05-22T08:03:54.487Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-22T08:03:56.805Z] [定时实测] 记录 150001 完成：提及=已提及
+[2026-05-22T08:07:21.802Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-22T08:10:50.825Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-22T08:10:53.129Z] [定时实测] 记录 180001 完成：提及=已提及
+[2026-05-22T08:14:14.324Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-22T08:17:28.311Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-22T08:17:31.198Z] [定时实测] 记录 210001 完成：提及=已提及
+[2026-05-22T08:20:57.265Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-22T08:24:10.490Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-22T08:24:13.088Z] [定时实测] 记录 240001 完成：提及=已提及
+[2026-05-22T08:27:31.159Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-05-22T09:42:14.861Z] [实测] DeepSeek 请求异常: TypeError: fetch failed
+[2026-05-22T09:42:14.861Z] at node:internal/deps/undici/undici:13484:13
+[2026-05-22T09:42:14.862Z] at async askEngine (/home/ubuntu/ai_geo_workbench/server/geoAiMentionCheck.ts:92:17)
+[2026-05-22T09:42:14.862Z] at async runAiMentionCheck (/home/ubuntu/ai_geo_workbench/server/geoAiMentionCheck.ts:199:22)
+[2026-05-22T09:42:14.863Z] at async runDailyAiCheck (/home/ubuntu/ai_geo_workbench/server/scheduledAiCheck.ts:61:22) {
+[2026-05-22T09:42:14.863Z] [cause]: SocketError: other side closed
+[2026-05-22T09:42:14.863Z] at TLSSocket.<anonymous> (node:internal/deps/undici/undici:6287:28)
+[2026-05-22T09:42:14.864Z] at TLSSocket.emit (node:events:536:35)
+[2026-05-22T09:42:14.864Z] at endReadableNT (node:internal/streams/readable:1698:12)
+[2026-05-22T09:42:14.864Z] at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[2026-05-22T09:42:14.865Z] code: 'UND_ERR_SOCKET',
+[2026-05-22T09:42:14.865Z] socket: {
+[2026-05-22T09:42:14.865Z] localAddress: '169.254.0.21',
+[2026-05-22T09:42:14.866Z] localPort: 42140,
+[2026-05-22T09:42:14.866Z] remoteAddress: '101.126.7.76',
+[2026-05-22T09:42:14.866Z] remotePort: 443,
+[2026-05-22T09:42:14.867Z] remoteFamily: 'IPv4',
+[2026-05-22T09:42:14.871Z] timeout: undefined,
+[2026-05-22T09:42:14.873Z] bytesWritten: 4303,
+[2026-05-22T09:42:14.873Z] bytesRead: 22619
+[2026-05-22T09:42:14.874Z] }
+[2026-05-22T09:42:14.875Z] }
+[2026-05-22T09:42:14.875Z] }
+[2026-05-22T09:42:23.705Z] [geo.scores.latest] {
+[2026-05-22T09:42:23.706Z] requestedProjectId: 1,
+[2026-05-22T09:42:23.707Z] returned: {
+[2026-05-22T09:42:23.707Z] id: 690001,
+[2026-05-22T09:42:23.708Z] projectId: 1,
+[2026-05-22T09:42:23.708Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-22T09:42:23.708Z] totalScore: 40
+[2026-05-22T09:42:23.708Z] },
+[2026-05-22T09:42:23.709Z] sameProjectTop3: [
+[2026-05-22T09:42:23.709Z] {
+[2026-05-22T09:42:23.710Z] id: 690001,
+[2026-05-22T09:42:23.710Z] projectId: 1,
+[2026-05-22T09:42:23.710Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-22T09:42:23.710Z] totalScore: 40
+[2026-05-22T09:42:23.711Z] }
+[2026-05-22T09:42:23.711Z] ]
+[2026-05-22T09:42:23.712Z] }
+[2026-05-22T09:42:24.201Z] 5:42:24 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerView.tsx
+[2026-05-22T09:42:24.202Z] 5:42:24 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicPage.tsx, /src/index.css
+[2026-05-22T09:42:24.203Z] 5:42:24 AM [vite] (client) hmr update /src/pages/DeliveryReportSharePage.tsx, /src/index.css
+[2026-05-22T09:42:24.205Z] 5:42:24 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-22T09:42:24.207Z] 5:42:24 AM [vite] (client) hmr update /src/pages/DeliveryReportSharePage.tsx, /src/pages/AiSearchEvidencePage.tsx, /src/pages/V12FlowPages.tsx, /src/pages/DeliveryReportPublicEvidencePage.tsx, /src/pages/DeliveryReportPublicPage.tsx, /src/components/AiSearchEvidenceView.tsx, /src/components/DeliveryReportCustomerView.tsx
+[2026-05-22T09:42:24.207Z] 5:42:24 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicEvidencePage.tsx, /src/pages/DeliveryReportPublicPage.tsx, /src/pages/AiSearchEvidencePage.tsx
+[2026-05-22T09:42:24.289Z] 5:42:24 AM [tsx] change in ./shared/deliveryReportPublicShare.ts Restarting...
+[2026-05-22T09:42:25.882Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-22T09:42:26.159Z] Server running on http://localhost:3000/
+[2026-05-22T09:42:26.160Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-22T09:42:26.702Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-22T09:42:37.650Z] [geo.scores.latest] {
+[2026-05-22T09:42:37.651Z] requestedProjectId: 1,
+[2026-05-22T09:42:37.651Z] returned: {
+[2026-05-22T09:42:37.651Z] id: 690001,
+[2026-05-22T09:42:37.652Z] projectId: 1,
+[2026-05-22T09:42:37.652Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-22T09:42:37.652Z] totalScore: 40
+[2026-05-22T09:42:37.653Z] },
+[2026-05-22T09:42:37.653Z] sameProjectTop3: [
+[2026-05-22T09:42:37.653Z] {
+[2026-05-22T09:42:37.654Z] id: 690001,
+[2026-05-22T09:42:37.654Z] projectId: 1,
+[2026-05-22T09:42:37.654Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-22T09:42:37.655Z] totalScore: 40
+[2026-05-22T09:42:37.655Z] }
+[2026-05-22T09:42:37.655Z] ]
+[2026-05-22T09:42:37.656Z] }
+[2026-05-22T09:43:16.331Z] 5:43:16 AM [vite] (client) hmr update /src/index.css
