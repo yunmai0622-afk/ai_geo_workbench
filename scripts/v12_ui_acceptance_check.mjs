@@ -7,6 +7,11 @@ const sources = {
   home: read('client/src/pages/Home.tsx') + read('client/src/components/V1WorkbenchOverview.tsx'),
   layout: read('client/src/components/DashboardLayout.tsx'),
   app: read('client/src/App.tsx'),
+  share: read('client/src/pages/DeliveryReportSharePage.tsx'),
+  customerView: read('client/src/components/DeliveryReportCustomerView.tsx'),
+  publicShare: read('client/src/pages/DeliveryReportPublicPage.tsx'),
+  publicEvidence: read('client/src/pages/DeliveryReportPublicEvidencePage.tsx'),
+  evidenceView: read('client/src/components/AiSearchEvidenceView.tsx'),
   flow: read('client/src/pages/V12FlowPages.tsx'),
   guide: read('client/src/components/GeoStatusGuide.tsx'),
   assets: read('client/src/pages/AssetCenter.tsx'),
@@ -20,7 +25,7 @@ const assertNotContains = (name, source, forbidden) => {
   if (source.includes(forbidden)) failures.push(`${name} 不应出现：${forbidden}`);
 };
 
-assertContains('首页', sources.home, '内容增长工作台');
+assertContains('首页', sources.home, '企业 AI 搜索增长工作台');
 assertContains('首页', sources.home, '今日概览与本周任务');
 assertContains('首页', sources.home, '本周内容任务');
 assertContains('首页', sources.home, '最近发布');
@@ -64,6 +69,44 @@ for (const item of ['已发布内容监测卡片', '收录', 'AI 提及', 'AI �
 }
 for (const item of ['本轮交付摘要', '内容诊断结果', '优化任务清单', '已生成内容', '发布记录', '下一步建议', '不承诺保证收录、排名或 AI 推荐']) {
   assertContains('交付报告页', sources.flow, item);
+}
+assertContains('App 路由', sources.app, 'path="/delivery-reports/share/:projectId"');
+assertContains('App 路由', sources.app, 'path="/delivery-reports/public/:token"');
+assertContains('App 路由', sources.app, 'path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex"');
+for (const item of ['复制客户报告链接', '重新生成客户报告链接', '禁用客户报告链接', 'createShareLink', 'disableShareLink', 'regenerateShareLink', 'sharePath']) {
+  assertContains('交付报告页', sources.flow, item);
+}
+assertContains('交付报告页', sources.flow, '新的客户报告链接已生成并复制');
+assertContains('交付报告页', sources.flow, '客户报告链接已禁用，原链接将无法访问');
+assertContains('交付报告页', sources.flow, '确定要禁用当前客户报告链接吗？');
+assertContains('交付报告页', sources.flow, '确定要重新生成客户报告链接吗？');
+assertContains('交付报告页', sources.flow, 'window.confirm');
+assertContains('交付报告页', sources.flow, '客户报告链接已复制。该链接长期有效，请仅发送给对应客户');
+const copyToastLine =
+  sources.flow.match(/toast\.success\("客户报告链接已复制[^"]*"\)/)?.[0] ?? '';
+if (!copyToastLine) failures.push('交付报告页 缺少：复制链接成功 toast');
+for (const item of ['长期有效', '仅发送给对应客户']) {
+  assertContains('复制链接成功提示', copyToastLine, item);
+}
+for (const forbidden of ['shareToken', 'projectId', 'migration', 'rawAnswer']) {
+  assertNotContains('复制链接成功提示', copyToastLine, forbidden);
+}
+assertContains('部署说明', read('HARNESS.md'), '0019_delivery_report_share_tokens');
+assertContains('部署说明', read('HARNESS.md'), 'pnpm db:push');
+assertContains('匿名分享文案', read('shared/deliveryReportPublicShare.ts'), '报告链接无效或已失效，请联系服务人员重新获取');
+assertContains('匿名分享文案', read('shared/deliveryReportPublicShare.ts'), '证据链接无效或已失效，请联系服务人员重新获取');
+assertContains('匿名客户报告页', sources.publicShare, 'buildDeliveryReportPublicEvidencePath');
+assertNotContains('匿名客户报告页', sources.publicShare, '/geo/evidence/');
+assertContains('匿名证据页', sources.publicEvidence + sources.evidenceView, 'AI 搜索实测证据');
+assertContains('匿名证据页', sources.evidenceView, 'AI 原始回答');
+assertNotContains('匿名证据展示', sources.evidenceView + sources.publicEvidence, 'rawAnswer');
+assertContains('共享路径', read('shared/deliveryReportPublicShare.ts'), '/delivery-reports/public/');
+const customerPages = sources.share + sources.customerView + sources.publicShare;
+for (const item of ['AI 搜索实测结果', '发布前后复测对比', '查看证据', '下一步优化建议', 'GEO 总体结论']) {
+  assertContains('客户查看页', customerPages, item);
+}
+for (const item of ['rawAnswer', 'taskId', 'provider', 'mock', 'schema', 'testStage', 'aiTestResults']) {
+  assertNotContains('客户查看页', sources.publicShare + sources.customerView, item);
 }
 
 const placeholderPattern = /\b(Lorem|Ipsum|TODO placeholder|Coming Soon|coming soon|Untitled|New Project|Dashboard)\b/;

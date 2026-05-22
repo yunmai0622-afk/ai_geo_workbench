@@ -1,0 +1,236 @@
+import { randomBytes } from "node:crypto";
+import { TRPCError } from "@trpc/server";
+import { and, desc, eq } from "drizzle-orm";
+import {
+  analysisResults,
+  deliveryReportShareTokens,
+  enterpriseGeoProfiles,
+  geoInclusionMonitoringRecords,
+  geoScores,
+  projects,
+  reports,
+} from "../drizzle/schema";
+import { aggregateAiTestEvidence, normalizeAiTestResult, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
+import {
+  DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE,
+  DELIVERY_REPORT_SHARE_INVALID_MESSAGE,
+  mapItemToPublicEvidence,
+  type DeliveryReportPublicEvidencePayload,
+  type DeliveryReportPublicSharePayload,
+} from "@shared/deliveryReportPublicShare";
+import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
+import { getDb } from "./db";
+
+type DbConn = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+export const SHARE_TOKEN_INVALID = DELIVERY_REPORT_SHARE_INVALID_MESSAGE;
+export const SHARE_EVIDENCE_INVALID = DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE;
+
+export function assertMonitoringRecordForShareProject(recordProjectId: number, tokenProjectId: number) {
+  if (recordProjectId !== tokenProjectId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: SHARE_EVIDENCE_INVALID });
+  }
+}
+
+export function generateDeliveryReportShareToken() {
+  return randomBytes(32).toString("base64url");
+}
+
+export function toPublicAiTestAggregate(
+  aggregate: AiTestEvidenceAggregate & { items?: unknown },
+): AiTestEvidenceAggregate {
+  const { items: _items, ...publicAggregate } = aggregate as AiTestEvidenceAggregate & { items?: unknown };
+  return publicAggregate;
+}
+
+export function isShareTokenRowActive(row: { isEnabled: boolean; expiresAt: Date | null } | undefined): boolean {
+  if (!row) return false;
+  if (!row.isEnabled) return false;
+  if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return false;
+  return true;
+}
+
+export async function resolveShareTokenProjectId(db: DbConn, token: string): Promise<number> {
+  const rows = await db
+    .select()
+    .from(deliveryReportShareTokens)
+    .where(eq(deliveryReportShareTokens.token, token))
+    .limit(1);
+  const row = rows[0];
+  if (!isShareTokenRowActive(row)) {
+    throw new TRPCError({ code: "NOT_FOUND", message: SHARE_TOKEN_INVALID });
+  }
+  return row.projectId;
+}
+
+/** 禁用 projectId 下所有启用中的分享链接（软禁用，不删除记录） */
+export async function disableEnabledShareTokensForProject(
+  db: DbConn,
+  projectId: number,
+): Promise<{ disabled: boolean; count: number }> {
+  const enabled = await db
+    .select({ id: deliveryReportShareTokens.id })
+    .from(deliveryReportShareTokens)
+    .where(and(eq(deliveryReportShareTokens.projectId, projectId), eq(deliveryReportShareTokens.isEnabled, true)));
+
+  if (enabled.length === 0) {
+    return { disabled: false, count: 0 };
+  }
+
+  await db
+    .update(deliveryReportShareTokens)
+    .set({ isEnabled: false })
+    .where(and(eq(deliveryReportShareTokens.projectId, projectId), eq(deliveryReportShareTokens.isEnabled, true)));
+
+  return { disabled: true, count: enabled.length };
+}
+
+/** 禁用旧链接并生成新的随机分享链接 */
+export async function regenerateShareLinkForProject(db: DbConn, projectId: number): Promise<string> {
+  await disableEnabledShareTokensForProject(db, projectId);
+  const token = generateDeliveryReportShareToken();
+  await db.insert(deliveryReportShareTokens).values({ token, projectId, isEnabled: true });
+  return token;
+}
+
+export async function getOrCreateShareTokenForProject(db: DbConn, projectId: number): Promise<string> {
+  const existing = await db
+    .select()
+    .from(deliveryReportShareTokens)
+    .where(and(eq(deliveryReportShareTokens.projectId, projectId), eq(deliveryReportShareTokens.isEnabled, true)))
+    .orderBy(desc(deliveryReportShareTokens.createdAt))
+    .limit(1);
+
+  if (existing[0]) {
+    const row = existing[0];
+    if (!row.expiresAt || row.expiresAt.getTime() >= Date.now()) {
+      return row.token;
+    }
+  }
+
+  const token = generateDeliveryReportShareToken();
+  await db.insert(deliveryReportShareTokens).values({ token, projectId, isEnabled: true });
+  return token;
+}
+
+export async function buildDeliveryReportPublicSharePayload(
+  db: DbConn,
+  projectId: number,
+): Promise<DeliveryReportPublicSharePayload> {
+  const projectRows = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+  const project = projectRows[0];
+  if (!project) {
+    throw new TRPCError({ code: "NOT_FOUND", message: SHARE_TOKEN_INVALID });
+  }
+
+  const profileRows = await db
+    .select()
+    .from(enterpriseGeoProfiles)
+    .where(eq(enterpriseGeoProfiles.projectId, projectId))
+    .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+    .limit(1);
+  const profile = profileRows[0];
+  const brandName = profile?.brandName?.trim() || project.enterpriseName || "未填写品牌名称";
+  const enterpriseName = project.enterpriseName || "—";
+
+  const scoreRows = await db
+    .select()
+    .from(geoScores)
+    .where(eq(geoScores.projectId, projectId))
+    .orderBy(desc(geoScores.createdAt))
+    .limit(1);
+  const score = scoreRows[0];
+  const totalScore = score?.totalScore ?? null;
+
+  const analysisRows = await db.select().from(analysisResults).where(eq(analysisResults.projectId, projectId)).limit(1);
+  const firstAnalysis = analysisRows[0];
+  const conclusionLine =
+    totalScore != null && firstAnalysis
+      ? `本轮内容综合评分 ${totalScore} 分；在典型 AI 问答场景下，品牌在 AI 回答中的提及与推荐表现存在可优化空间，建议用可公开、可引用的内容资产持续补齐证据链。`
+      : totalScore != null
+        ? `本轮内容综合评分 ${totalScore} 分；建议结合下方 AI 搜索实测结果，持续优化品牌可见度与推荐表现。`
+        : "请先完成内容诊断与 AI 搜索实测，以便生成面向客户的 GEO 总体结论。";
+
+  const reportRows = await db
+    .select({ createdAt: reports.createdAt })
+    .from(reports)
+    .where(eq(reports.projectId, projectId))
+    .orderBy(desc(reports.createdAt))
+    .limit(1);
+  const reportGeneratedAt = reportRows[0]?.createdAt ?? score?.createdAt ?? null;
+
+  const monitoringRows = await db
+    .select({
+      id: geoInclusionMonitoringRecords.id,
+      aiTestResults: geoInclusionMonitoringRecords.aiTestResults,
+    })
+    .from(geoInclusionMonitoringRecords)
+    .where(eq(geoInclusionMonitoringRecords.projectId, projectId))
+    .orderBy(desc(geoInclusionMonitoringRecords.createdAt));
+
+  const aggregate = aggregateAiTestEvidence(
+    monitoringRows.map(row => ({
+      monitoringRecordId: row.id,
+      results: Array.isArray(row.aiTestResults) ? row.aiTestResults : [],
+    })),
+  );
+
+  return {
+    brandName,
+    enterpriseName,
+    reportGeneratedAt: reportGeneratedAt ? reportGeneratedAt.toISOString() : null,
+    conclusionLine,
+    aiTest: toPublicAiTestAggregate(aggregate),
+  };
+}
+
+export async function buildDeliveryReportPublicEvidencePayload(
+  db: DbConn,
+  token: string,
+  recordId: number,
+  resultIndex: number,
+): Promise<DeliveryReportPublicEvidencePayload> {
+  const projectId = await resolveShareTokenProjectId(db, token);
+
+  const rows = await db
+    .select()
+    .from(geoInclusionMonitoringRecords)
+    .where(eq(geoInclusionMonitoringRecords.id, recordId))
+    .limit(1);
+  const record = rows[0];
+  if (!record) {
+    throw new TRPCError({ code: "NOT_FOUND", message: SHARE_EVIDENCE_INVALID });
+  }
+
+  assertMonitoringRecordForShareProject(record.projectId, projectId);
+
+  const rawResults = Array.isArray(record.aiTestResults) ? record.aiTestResults : [];
+  const raw = rawResults[resultIndex];
+  if (raw == null) {
+    throw new TRPCError({ code: "NOT_FOUND", message: SHARE_EVIDENCE_INVALID });
+  }
+
+  const item = normalizeAiTestResult(raw);
+  if (!item) {
+    throw new TRPCError({ code: "NOT_FOUND", message: SHARE_EVIDENCE_INVALID });
+  }
+
+  const projectRows = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+  const project = projectRows[0];
+  const profileRows = await db
+    .select()
+    .from(enterpriseGeoProfiles)
+    .where(eq(enterpriseGeoProfiles.projectId, projectId))
+    .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+    .limit(1);
+  const profile = profileRows[0];
+  const brandName = profile?.brandName?.trim() || project?.enterpriseName || "未填写品牌名称";
+  const enterpriseName = project?.enterpriseName || "—";
+  const competitorNames = await resolveProjectCompetitorNames(db, projectId);
+
+  return mapItemToPublicEvidence(item, {
+    brandName,
+    enterpriseName,
+    competitorConfigured: competitorNames.length > 0,
+  });
+}

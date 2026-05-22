@@ -8,7 +8,7 @@ const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRo
 describe("V1.0 可售卖版产品体验静态回归", () => {
   it("首页展示今日概览、本周任务与核心数据区", () => {
     const homeSource = readProjectFile("client/src/pages/Home.tsx") + readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
-    expect(homeSource).toContain("内容增长工作台");
+    expect(homeSource).toContain("企业 AI 搜索增长工作台");
     expect(homeSource).toContain("本周内容任务");
     expect(homeSource).toContain("开始生成本周文章");
     expect(homeSource).toContain("暂时无法加载，请刷新重试");
@@ -41,6 +41,8 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(appSource).toContain("ContentPublishingFlowPage");
     expect(appSource).toContain("InclusionMonitoringFlowPage");
     expect(appSource).toContain("DeliveryReportsFlowPage");
+    expect(appSource).toContain('path="/delivery-reports/share/:projectId"');
+    expect(appSource).toContain('path="/delivery-reports/public/:token"');
     for (const path of ["/ai-diagnosis", "/content-generation", "/content-publishing", "/inclusion-monitoring", "/delivery-reports", "/articles", "/publish", "/monitoring", "/reports"]) {
       expect(appSource).toContain(`path="${path}"`);
     }

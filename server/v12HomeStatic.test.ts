@@ -31,7 +31,7 @@ describe("V1.0 客户主路径静态回归", () => {
 
   it("首页展示今日概览、本周任务与累计进展", () => {
     const homeSource = readProjectFile("client/src/pages/Home.tsx") + readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
-    expect(homeSource).toContain("内容增长工作台");
+    expect(homeSource).toContain("企业 AI 搜索增长工作台");
     expect(homeSource).toContain("今日概览与本周任务");
     for (const text of ["你好", "本周内容任务", "最近发布", "内容诊断", "累计发布篇数", "覆盖问题场景", "内容覆盖评分", "较上次变化"]) {
       expect(homeSource).toContain(text);

@@ -15,6 +15,10 @@ import GeoFlowWizardPage from "./pages/GeoFlowWizard";
 import AssetCenterPage from "./pages/AssetCenter";
 import DemoGeoPage from "./pages/DemoGeo";
 import OnboardingPage from "./pages/OnboardingPage";
+import AiSearchEvidencePage from "./pages/AiSearchEvidencePage";
+import DeliveryReportPublicEvidencePage from "./pages/DeliveryReportPublicEvidencePage";
+import DeliveryReportPublicPage from "./pages/DeliveryReportPublicPage";
+import DeliveryReportSharePage from "./pages/DeliveryReportSharePage";
 import { AiDiagnosisFlowPage, ContentPublishingFlowPage, DeliveryReportsFlowPage, InclusionMonitoringFlowPage } from "./pages/V12FlowPages";
 import WeeklyContentPage from "./pages/WeeklyContentPage";
 import ProgressPage from "./pages/ProgressPage";
@@ -40,6 +44,7 @@ function PrivateRoutes() {
         </Route>
         <Route path="/content-publishing" component={ContentPublishingFlowPage} />
         <Route path="/inclusion-monitoring" component={InclusionMonitoringFlowPage} />
+        <Route path="/geo/evidence/:monitoringId/:resultIndex" component={AiSearchEvidencePage} />
         <Route path="/delivery-reports" component={DeliveryReportsFlowPage} />
         <Route path="/projects" component={ProjectsPage} />
         <Route path="/assets" component={AssetCenterPage} />
@@ -99,6 +104,9 @@ function Router() {
       <Route path="/demo" component={DemoGeoPage} />
       <Route path="/demo/geo" component={DemoGeoPage} />
       <Route path="/geo/content/:projectId/:articleId" component={GeoPublicContentPage} />
+      <Route path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex" component={DeliveryReportPublicEvidencePage} />
+      <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />
+      <Route path="/delivery-reports/share/:projectId" component={DeliveryReportSharePage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route component={AuthenticatedAppShell} />
     </Switch>

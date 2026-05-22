@@ -45,7 +45,7 @@ describe("工作台 Flow 页（与首页同组件）", () => {
 
   it("/flow 页面展示今日概览、问候语与项目选择", () => {
     const html = renderHtml();
-    expect(html).toContain("内容增长工作台");
+    expect(html).toContain("企业 AI 搜索增长工作台");
     expect(html).toContain("今日概览与本周任务");
     expect(html).toContain("你好");
     expect(html).toContain("当前项目");

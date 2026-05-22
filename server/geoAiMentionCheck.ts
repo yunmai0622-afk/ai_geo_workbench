@@ -3,6 +3,9 @@
  * 支持：豆包（火山引擎）、DeepSeek、Kimi
  */
 
+import type { AiTestEvidenceItem, AiTestStage } from "@shared/aiTestEvidence";
+import { enrichAiTestResult } from "./geoAiMentionEvidence";
+
 export type AiEngine = "doubao" | "deepseek" | "kimi";
 
 export interface AiTestResult {
@@ -16,15 +19,21 @@ export interface AiTestResult {
   testedAt: string;
 }
 
+export type { AiTestEvidenceItem };
+
 export interface AiMentionCheckInput {
   enterpriseName: string;
   shortName?: string;
   questions: string[];
   engines?: AiEngine[];
+  /** 企业档案 / 项目配置中的竞品名称，用于竞品提及分析 */
+  competitorNames?: string[];
+  /** 测试阶段：发布前 / 发布后复测 / 人工复测 */
+  testStage?: AiTestStage;
 }
 
 export interface AiMentionCheckOutput {
-  results: AiTestResult[];
+  results: AiTestEvidenceItem[];
   mentionRate: number;
   recommendRate: number;
   engineSummary: Record<
@@ -177,8 +186,11 @@ export function buildAiMentionSuggestion(result: { mentionRate: number; recommen
 
 export async function runAiMentionCheck(input: AiMentionCheckInput): Promise<AiMentionCheckOutput> {
   const engines = input.engines ?? (["doubao", "deepseek", "kimi"] as AiEngine[]);
-  const results: AiTestResult[] = [];
+  const results: AiTestEvidenceItem[] = [];
   const questions = input.questions.slice(0, 5);
+  const competitorNames = input.competitorNames ?? [];
+  const brandNames = [input.enterpriseName, input.shortName].filter(Boolean) as string[];
+  const testStage = input.testStage ?? "manual_check";
 
   for (const engine of engines) {
     const config = ENGINE_CONFIG[engine];
@@ -189,14 +201,21 @@ export async function runAiMentionCheck(input: AiMentionCheckInput): Promise<AiM
 
       const analysis = analyzeAnswer(answer, input.enterpriseName, input.shortName);
 
-      results.push({
-        engine,
-        engineName: config.name,
-        question,
-        answer,
-        ...analysis,
-        testedAt: new Date().toISOString(),
-      });
+      results.push(
+        enrichAiTestResult(
+          {
+            engine,
+            engineName: config.name,
+            question,
+            answer,
+            ...analysis,
+            testedAt: new Date().toISOString(),
+          },
+          competitorNames,
+          brandNames,
+          testStage,
+        ),
+      );
 
       await new Promise(r => setTimeout(r, 500));
     }

@@ -249,6 +249,16 @@ export const contentTemplates = mysqlTable("content_templates", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** 交付报告匿名只读分享（绑定 projectId，非报告快照） */
+export const deliveryReportShareTokens = mysqlTable("delivery_report_share_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+});
+
 export const reports = mysqlTable("reports", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
@@ -387,6 +397,22 @@ export const geoInclusionMonitoringRecords = mysqlTable("geo_inclusion_monitorin
       recommendationRank: number | null;
       testedAt: string;
       engineName?: string;
+      rawAnswer?: string;
+      mentionedBrand?: boolean;
+      recommendedBrand?: boolean;
+      brandRank?: number | null;
+      citedUrls?: string[];
+      sentiment?: "positive" | "neutral" | "negative";
+      competitorMentions?: Array<{
+        name: string;
+        mentioned: boolean;
+        rank?: number | null;
+        context?: string;
+      }>;
+      evidenceSummary?: string;
+      parseStatus?: "success" | "partial" | "failed";
+      parseError?: string | null;
+      testStage?: "before_publish" | "after_publish" | "manual_check";
     }>
   >(),
   lastAiTestedAt: timestamp("lastAiTestedAt"),

@@ -2,6 +2,30 @@ import { GeoStatusGuide } from "@/components/GeoStatusGuide";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
+import {
+  aggregateAiTestEvidence,
+  buildEvidenceDetailPath,
+  formatCountMetric,
+  formatDeltaCount,
+  formatDeltaPercent,
+  formatDeltaRank,
+  formatPercentMetric,
+  formatRankMetric,
+  sentimentLabelCn,
+  type AiTestStage,
+} from "@shared/aiTestEvidence";
+
+const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
+  { value: "manual_check", label: "人工复测" },
+  { value: "before_publish", label: "发布前测试" },
+  { value: "after_publish", label: "发布后复测" },
+];
+
+const MONITORING_TEST_STAGE_DONE_LABEL: Record<AiTestStage, string> = {
+  manual_check: "人工复测",
+  before_publish: "发布前测试",
+  after_publish: "发布后复测",
+};
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -101,6 +125,14 @@ type PlatformAuthorizationLike = {
   authorizationNotes?: string | null;
 };
 
+type PublishRecordMonitoringLike = {
+  id: number;
+  aiMentionStatus: string;
+  aiRecommendStatus?: string | null;
+  inclusionStatus?: string | null;
+  lastAiTestedAt?: Date | string | null;
+};
+
 type PublishRecordLike = {
   id: number;
   articleId?: number | null;
@@ -118,6 +150,7 @@ type PublishRecordLike = {
   createdAt?: number | Date | string | null;
   updatedAt?: number | Date | string | null;
   notes?: string | null;
+  monitoring?: PublishRecordMonitoringLike | null;
 };
 
 type ManualPublishStatus = "pending_human_publish" | "published" | "publish_failed" | "manual_publish_needed" | "link_backfilled";
@@ -131,6 +164,9 @@ type AiTestResultLike = {
   recommendsBrand: boolean;
   recommendationRank?: number | null;
   testedAt?: string;
+  mentionedBrand?: boolean;
+  recommendedBrand?: boolean;
+  sentiment?: "positive" | "neutral" | "negative";
 };
 
 type MonitoringRecordLike = {
@@ -1770,12 +1806,87 @@ export function ContentGenerationFlowPage() {
   return <ContentGenerationFlowInner key={String(selection.selectedProjectId ?? "none")} selection={selection} />;
 }
 
+function AiMentionBadge({
+  status,
+  monitoringId,
+  projectId,
+  onNavigate,
+}: {
+  status: string | null;
+  monitoringId: number | null;
+  projectId: number;
+  onNavigate: (path: string) => void;
+}) {
+  const handleClick = () => {
+    const params = new URLSearchParams({ projectId: String(projectId) });
+    if (monitoringId) params.set("recordId", String(monitoringId));
+    onNavigate(`/inclusion-monitoring?${params.toString()}`);
+  };
+
+  if (!status || status === "未检测") {
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={e => {
+          if (e.key === "Enter" || e.key === " ") handleClick();
+        }}
+        className="ml-2 inline-flex cursor-pointer items-center rounded px-2 py-0.5 text-xs bg-gray-700 text-gray-400 hover:bg-gray-600"
+        title="点击查看收录监测详情"
+      >
+        未检测
+      </span>
+    );
+  }
+
+  if (status === "已提及") {
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={e => {
+          if (e.key === "Enter" || e.key === " ") handleClick();
+        }}
+        className="ml-2 inline-flex cursor-pointer items-center rounded px-2 py-0.5 text-xs bg-green-900 text-green-400 hover:bg-green-800"
+        title="点击查看收录监测详情"
+      >
+        ✓ AI已提及
+      </span>
+    );
+  }
+
+  if (status === "未提及") {
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={e => {
+          if (e.key === "Enter" || e.key === " ") handleClick();
+        }}
+        className="ml-2 inline-flex cursor-pointer items-center rounded px-2 py-0.5 text-xs bg-yellow-900 text-yellow-400 hover:bg-yellow-800"
+        title="点击查看收录监测详情"
+      >
+        AI未提及
+      </span>
+    );
+  }
+
+  return null;
+}
+
 export function ContentPublishingFlowPage() {
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { projects, selectedProjectId, setSelectedProjectId, projectInput, enabled } = useProjectSelection();
   const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
-  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
+  const publishRecordsQuery = trpc.geo.publishRecords.listWithStatus.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const createManualPublishRecord = trpc.geo.articles.createManualPublishRecord.useMutation();
   const updateManualPublishRecord = trpc.geo.articles.updateManualPublishRecord.useMutation();
   const [message, setMessage] = useState<string>();
@@ -1870,7 +1981,7 @@ export function ContentPublishingFlowPage() {
           notes: "",
         });
       }
-      await utils.geo.articles.publishRecords.invalidate({ projectId: selectedProjectId });
+      await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
       await publishRecordsQuery.refetch();
       setMessage(`已保存 ${platforms.length} 条发布记录。`);
       setPlatformSelected(Object.fromEntries(publishRecordUiPlatforms.map(p => [p, false])) as Record<PublishRecordUiPlatform, boolean>);
@@ -1909,7 +2020,7 @@ export function ContentPublishingFlowPage() {
         publishStatus,
         notes: publishRecordNoticeText(record.notes),
       });
-      await utils.geo.articles.publishRecords.invalidate({ projectId: selectedProjectId });
+      await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
       await publishRecordsQuery.refetch();
       setMessage("链接已更新。");
     } catch (e) {
@@ -2033,7 +2144,19 @@ export function ContentPublishingFlowPage() {
                       const title = article?.title || record.publishTitle || "—";
                       return (
                         <tr key={record.id} className="border-b border-white/5 align-top">
-                          <td className="py-3 pr-4 font-medium text-white">{title}</td>
+                          <td className="py-3 pr-4 font-medium text-white">
+                            <span className="inline-flex flex-wrap items-center gap-1">
+                              {title}
+                              {selectedProjectId ? (
+                                <AiMentionBadge
+                                  status={record.monitoring?.aiMentionStatus ?? null}
+                                  monitoringId={record.monitoring?.id ?? null}
+                                  projectId={selectedProjectId}
+                                  onNavigate={setLocation}
+                                />
+                              ) : null}
+                            </span>
+                          </td>
                           <td className="py-3 pr-4">{record.publishChannel || "—"}</td>
                           <td className="py-3 pr-4 whitespace-nowrap">{formatTime(record.publishedAt)}</td>
                           <td className="py-3 pr-4">
@@ -2070,7 +2193,7 @@ export function ContentPublishingFlowPage() {
 }
 
 export function InclusionMonitoringFlowPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { projects, selectedProjectId, setSelectedProjectId, projectInput, enabled } = useProjectSelection();
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
@@ -2078,12 +2201,40 @@ export function InclusionMonitoringFlowPage() {
   const records = (monitoringQuery.data ?? []) as MonitoringRecordLike[];
   const publishRecordCount = (publishRecordsQuery.data ?? []).length;
   const [runningRecordId, setRunningRecordId] = useState<number | null>(null);
+  const [selectedTestStage, setSelectedTestStage] = useState<AiTestStage>("manual_check");
+
+  const urlParams = useMemo(() => {
+    const search = location.includes("?") ? location.slice(location.indexOf("?")) : window.location.search;
+    return new URLSearchParams(search);
+  }, [location]);
+  const targetRecordId = urlParams.get("recordId");
+
+  useEffect(() => {
+    const projectIdParam = urlParams.get("projectId");
+    if (projectIdParam) {
+      const pid = Number(projectIdParam);
+      if (Number.isFinite(pid) && pid > 0) setSelectedProjectId(pid);
+    }
+  }, [urlParams, setSelectedProjectId]);
+
+  useEffect(() => {
+    if (!targetRecordId || records.length === 0) return;
+    const el = document.getElementById(`monitoring-record-${targetRecordId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.style.outline = "2px solid #3b82f6";
+    const timer = window.setTimeout(() => {
+      el.style.outline = "";
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [targetRecordId, records]);
 
   const backfillMonitoring = trpc.geo.inclusionMonitoring.backfill.useMutation({
     onSuccess: async data => {
       toast.success(data.backfilled > 0 ? `已补录 ${data.backfilled} 条监测记录` : "暂无需要补录的发布记录");
       if (selectedProjectId) {
         await utils.geo.articles.inclusionMonitoringRecords.invalidate({ projectId: selectedProjectId });
+        await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
       }
       await monitoringQuery.refetch();
     },
@@ -2091,12 +2242,14 @@ export function InclusionMonitoringFlowPage() {
   });
 
   const runCheck = trpc.geo.aiMentionCheck.run.useMutation({
-    onSuccess: async data => {
+    onSuccess: async (data, variables) => {
+      const stageLabel = MONITORING_TEST_STAGE_DONE_LABEL[variables.testStage ?? "manual_check"];
       toast.success(
-        `实测完成：提及率 ${Math.round(data.mentionRate * 100)}%，推荐率 ${Math.round(data.recommendRate * 100)}%`,
+        `${stageLabel}已更新（已保留其他阶段测试结果）：提及率 ${Math.round(data.mentionRate * 100)}%，推荐率 ${Math.round(data.recommendRate * 100)}%`,
       );
       if (selectedProjectId) {
         await utils.geo.articles.inclusionMonitoringRecords.invalidate({ projectId: selectedProjectId });
+        await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
       }
       await monitoringQuery.refetch();
     },
@@ -2120,7 +2273,7 @@ export function InclusionMonitoringFlowPage() {
           <div>
             <CardTitle className="text-white">收录监测</CardTitle>
             <CardDescription className="text-cyan-200">
-              已发布内容监测卡片；点击「立即实测」将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。
+              已发布内容监测卡片；选择测试阶段后点击「立即实测」，将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。
             </CardDescription>
           </div>
           {selectedProjectId && publishRecordCount > 0 ? (
@@ -2176,7 +2329,7 @@ export function InclusionMonitoringFlowPage() {
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {records.map(record => (
-                <div key={record.id} className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+                <div id={`monitoring-record-${record.id}`} key={record.id} className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-white">文章 ID：{record.articleId}</p>
@@ -2189,7 +2342,7 @@ export function InclusionMonitoringFlowPage() {
                         公开链接：{toAbsoluteUrl(record.publicUrl)}
                       </a>
                       <p className="mt-2 text-sm text-slate-400">
-                        最近检测：
+                        最近检测时间：
                         {formatTime(record.lastCheckedAt) === "未记录" ? "未检测" : formatTime(record.lastCheckedAt)}
                       </p>
                       {record.lastAiTestedAt ? (
@@ -2208,12 +2361,26 @@ export function InclusionMonitoringFlowPage() {
                   <p className="mt-4 text-sm text-amber-100">
                     当前建议：{record.currentSuggestion ?? "保持监测并更新客户报告。"}
                   </p>
-                  <div className="mt-4">
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    <label className="flex min-w-[10rem] flex-col gap-1.5 text-sm text-slate-300">
+                      <span className="font-medium text-slate-100">测试阶段</span>
+                      <select
+                        value={selectedTestStage}
+                        onChange={e => setSelectedTestStage(e.target.value as AiTestStage)}
+                        disabled={runCheck.isPending}
+                        className="h-9 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                      >
+                        {MONITORING_TEST_STAGE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
-                      className="border-cyan-400/40 text-cyan-100 hover:bg-cyan-400/10"
+                      className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
                       disabled={!selectedProjectId || runCheck.isPending}
                       onClick={() => {
                         if (!selectedProjectId) return;
@@ -2222,12 +2389,11 @@ export function InclusionMonitoringFlowPage() {
                           projectId: selectedProjectId,
                           recordId: record.id,
                           engines: ["doubao", "deepseek", "kimi"],
+                          testStage: selectedTestStage,
                         });
                       }}
                     >
-                      {runCheck.isPending && runningRecordId === record.id
-                        ? "实测中…"
-                        : "立即实测 AI 可见度"}
+                      {runCheck.isPending && runningRecordId === record.id ? "实测中…" : "立即实测"}
                     </Button>
                   </div>
                   {record.aiTestResults && record.aiTestResults.length > 0 ? (
@@ -2238,10 +2404,24 @@ export function InclusionMonitoringFlowPage() {
                           key={`${r.engine}-${i}`}
                           className="rounded-xl border border-white/5 bg-slate-950/60 px-3 py-2 text-xs text-slate-300"
                         >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium text-white">{r.engineName ?? r.engine}</span>
-                            <span className="text-slate-500">{r.mentionsBrand ? "提及" : "未提及"}</span>
-                            <span className="text-slate-500">{r.recommendsBrand ? "推荐" : "-"}</span>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-white">{r.engineName ?? r.engine}</span>
+                              <span className="text-slate-500">{(r.mentionedBrand ?? r.mentionsBrand) ? "提及" : "未提及"}</span>
+                              <span className="text-slate-500">{(r.recommendedBrand ?? r.recommendsBrand) ? "推荐" : "-"}</span>
+                              {r.sentiment ? (
+                                <span className="text-slate-500">{sentimentLabelCn(r.sentiment as "positive" | "neutral" | "negative")}</span>
+                              ) : null}
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-cyan-300 hover:bg-cyan-400/10 hover:text-cyan-200"
+                              onClick={() => setLocation(buildEvidenceDetailPath(record.id, i))}
+                            >
+                              查看证据
+                            </Button>
                           </div>
                           <p className="mt-1 line-clamp-2 text-slate-400">{r.question}</p>
                         </div>
@@ -2267,9 +2447,18 @@ export function InclusionMonitoringFlowPage() {
   );
 }
 
+const CONFIRM_DISABLE_CUSTOMER_REPORT_LINK =
+  "确定要禁用当前客户报告链接吗？禁用后，客户将无法通过原链接查看报告和证据。";
+const CONFIRM_REGENERATE_CUSTOMER_REPORT_LINK =
+  "确定要重新生成客户报告链接吗？重新生成后，旧链接将立即失效，请将新链接发送给对应客户。";
+
 export function DeliveryReportsFlowPage() {
   const [, setLocation] = useLocation();
   const { projects, selectedProjectId, setSelectedProjectId, projectInput, enabled } = useProjectSelection();
+  const createShareLink = trpc.geo.reports.createShareLink.useMutation();
+  const disableShareLink = trpc.geo.reports.disableShareLink.useMutation();
+  const regenerateShareLink = trpc.geo.reports.regenerateShareLink.useMutation();
+  const shareLinkBusy = createShareLink.isPending || disableShareLink.isPending || regenerateShareLink.isPending;
   const [showAllDiagnoses, setShowAllDiagnoses] = useState(false);
 
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
@@ -2279,6 +2468,17 @@ export function DeliveryReportsFlowPage() {
   const qualityScoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
   const contentPlanQuery = trpc.geo.contentPlans.latest.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
+  const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
+
+  const aiTestAggregate = useMemo(() => {
+    const rows = (monitoringQuery.data ?? []) as MonitoringRecordLike[];
+    return aggregateAiTestEvidence(
+      rows.map(r => ({
+        monitoringRecordId: r.id,
+        results: r.aiTestResults ?? [],
+      })),
+    );
+  }, [monitoringQuery.data]);
 
   const score = scoreQuery.data as Record<string, unknown> | null | undefined;
   const analyses = (analysisQuery.data ?? []) as any[];
@@ -2344,10 +2544,80 @@ export function DeliveryReportsFlowPage() {
 
   return (
     <div className="space-y-8 pb-10 text-slate-100">
-      <div className="flex flex-col gap-3 border-b border-white/10 pb-5">
-        <h1 className="text-2xl font-bold tracking-tight text-white">本轮内容效果报告</h1>
-        <p className="text-sm text-slate-400">本轮内容诊断与生成的完整成果</p>
-        <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
+      <div className="flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-3">
+          <h1 className="text-2xl font-bold tracking-tight text-white">本轮内容效果报告</h1>
+          <p className="text-sm text-slate-400">本轮内容诊断与生成的完整成果</p>
+          <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
+        </div>
+        {selectedProjectId ? (
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 border-cyan-400/40 text-cyan-100 hover:bg-cyan-500/10"
+              disabled={shareLinkBusy}
+              onClick={() => {
+                void (async () => {
+                  try {
+                    const { sharePath } = await createShareLink.mutateAsync({ projectId: selectedProjectId });
+                    const url = `${window.location.origin}${sharePath}`;
+                    await navigator.clipboard.writeText(url);
+                    toast.success("客户报告链接已复制。该链接长期有效，请仅发送给对应客户");
+                  } catch {
+                    toast.error("复制失败，请稍后重试或联系技术人员");
+                  }
+                })();
+              }}
+            >
+              复制客户报告链接
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 border-cyan-400/40 text-cyan-100 hover:bg-cyan-500/10"
+              disabled={shareLinkBusy}
+              onClick={() => {
+                void (async () => {
+                  if (!window.confirm(CONFIRM_REGENERATE_CUSTOMER_REPORT_LINK)) return;
+                  try {
+                    const { sharePath } = await regenerateShareLink.mutateAsync({ projectId: selectedProjectId });
+                    const url = `${window.location.origin}${sharePath}`;
+                    await navigator.clipboard.writeText(url);
+                    toast.success("新的客户报告链接已生成并复制。旧链接已失效，请将新链接发送给对应客户");
+                  } catch {
+                    toast.error("操作失败，请稍后重试或联系技术人员");
+                  }
+                })();
+              }}
+            >
+              重新生成客户报告链接
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 border-amber-400/35 text-amber-100 hover:bg-amber-500/10"
+              disabled={shareLinkBusy}
+              onClick={() => {
+                void (async () => {
+                  if (!window.confirm(CONFIRM_DISABLE_CUSTOMER_REPORT_LINK)) return;
+                  try {
+                    const result = await disableShareLink.mutateAsync({ projectId: selectedProjectId });
+                    if (!result.disabled) {
+                      toast.message("当前暂无可禁用的客户报告链接");
+                      return;
+                    }
+                    toast.success("客户报告链接已禁用，原链接将无法访问");
+                  } catch {
+                    toast.error("操作失败，请稍后重试或联系技术人员");
+                  }
+                })();
+              }}
+            >
+              禁用客户报告链接
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {/* 老板版摘要：交付页首屏核心 */}
@@ -2609,6 +2879,183 @@ export function DeliveryReportsFlowPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      {/* AI 搜索实测结果 */}
+      <section className="space-y-4">
+        <h2 className="border-b border-white/10 pb-2 text-lg font-semibold text-white">AI 搜索实测结果</h2>
+        <p className="text-sm leading-relaxed text-slate-400">
+          本板块展示的是系统对主流 AI 搜索引擎的真实问题测试结果，用于判断品牌在 AI 回答中的出现频率、推荐情况和竞品对比情况。每一条结果都可以查看原始
+          AI 回答，确保数据可追溯、可复查。
+        </p>
+        {aiTestAggregate.questionCount === 0 ? (
+          <div className="rounded-xl border border-dashed border-white/15 bg-slate-950/40 p-6 text-sm text-slate-400">
+            暂无 AI 搜索实测数据。建议先进行一次 AI 实测，以生成可追溯的品牌可见度结果。
+            <div className="mt-4">
+              <Button className="bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => setLocation("/inclusion-monitoring")}>
+                前往收录监测实测
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: "实测问题数", value: String(aiTestAggregate.questionCount) },
+                { label: "覆盖 AI 引擎数", value: String(aiTestAggregate.engineCount) },
+                { label: "品牌提及率", value: `${Math.round(aiTestAggregate.mentionRate * 100)}%` },
+                { label: "品牌推荐率", value: `${Math.round(aiTestAggregate.recommendRate * 100)}%` },
+                { label: "平均排名", value: aiTestAggregate.averageRank != null ? String(Math.round(aiTestAggregate.averageRank * 10) / 10) : "—" },
+                {
+                  label: "情感占比",
+                  value: `正 ${aiTestAggregate.sentimentCounts.positive} / 中 ${aiTestAggregate.sentimentCounts.neutral} / 负 ${aiTestAggregate.sentimentCounts.negative}`,
+                },
+                { label: "竞品提及次数", value: String(aiTestAggregate.competitorMentionCount) },
+                { label: "引用来源数量", value: String(aiTestAggregate.citedUrlCount) },
+              ].map(item => (
+                <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3">
+                  <p className="text-[11px] text-slate-500">{item.label}</p>
+                  <p className="mt-1 text-lg font-semibold text-cyan-200">{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-slate-950/40 p-5">
+              <h3 className="text-base font-semibold text-white">发布前后复测对比</h3>
+              <p className="text-sm leading-relaxed text-slate-400">
+                本区域用于对比同一条监测记录在内容发布前后的 AI 搜索表现变化。请先在收录监测中选择「发布前测试」并完成实测；内容发布并稳定收录
+                7-14 天后，再对同一条监测记录选择「发布后复测」。
+              </p>
+              {!aiTestAggregate.publishCompare.before.hasData || !aiTestAggregate.publishCompare.after.hasData ? (
+                <p className="text-sm leading-relaxed text-slate-400">
+                  暂无完整的发布前后对比数据。请对同一条监测记录分别完成「发布前测试」和「发布后复测」，系统会自动生成品牌提及率、推荐率和平均排名变化。
+                </p>
+              ) : null}
+              {aiTestAggregate.publishCompare.hasAnyStageData ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-xs text-slate-400">
+                        <th className="py-2 pr-4 font-medium">指标</th>
+                        <th className="py-2 pr-4 font-medium">发布前</th>
+                        <th className="py-2 pr-4 font-medium">发布后</th>
+                        <th className="py-2 font-medium">变化</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-200">
+                      {[
+                        {
+                          label: "实测问题数",
+                          before: formatCountMetric(
+                            aiTestAggregate.publishCompare.before.hasData
+                              ? aiTestAggregate.publishCompare.before.questionCount
+                              : null,
+                          ),
+                          after: formatCountMetric(
+                            aiTestAggregate.publishCompare.after.hasData
+                              ? aiTestAggregate.publishCompare.after.questionCount
+                              : null,
+                          ),
+                          change: formatDeltaCount(
+                            aiTestAggregate.publishCompare.before.hasData &&
+                              aiTestAggregate.publishCompare.after.hasData
+                              ? aiTestAggregate.publishCompare.after.questionCount -
+                                  aiTestAggregate.publishCompare.before.questionCount
+                              : null,
+                          ),
+                        },
+                        {
+                          label: "品牌提及率",
+                          before: formatPercentMetric(aiTestAggregate.publishCompare.before.mentionRate),
+                          after: formatPercentMetric(aiTestAggregate.publishCompare.after.mentionRate),
+                          change: formatDeltaPercent(aiTestAggregate.publishCompare.changes.mentionRateDelta),
+                        },
+                        {
+                          label: "品牌推荐率",
+                          before: formatPercentMetric(aiTestAggregate.publishCompare.before.recommendRate),
+                          after: formatPercentMetric(aiTestAggregate.publishCompare.after.recommendRate),
+                          change: formatDeltaPercent(aiTestAggregate.publishCompare.changes.recommendRateDelta),
+                        },
+                        {
+                          label: "平均排名",
+                          before: formatRankMetric(aiTestAggregate.publishCompare.before.averageRank),
+                          after: formatRankMetric(aiTestAggregate.publishCompare.after.averageRank),
+                          change: formatDeltaRank(aiTestAggregate.publishCompare.changes.averageRankDelta),
+                        },
+                        {
+                          label: "引用来源数量",
+                          before: formatCountMetric(
+                            aiTestAggregate.publishCompare.before.hasData
+                              ? aiTestAggregate.publishCompare.before.citedUrlCount
+                              : null,
+                          ),
+                          after: formatCountMetric(
+                            aiTestAggregate.publishCompare.after.hasData
+                              ? aiTestAggregate.publishCompare.after.citedUrlCount
+                              : null,
+                          ),
+                          change: formatDeltaCount(aiTestAggregate.publishCompare.changes.citedUrlCountDelta),
+                        },
+                      ].map(row => (
+                        <tr key={row.label} className="border-b border-white/5">
+                          <td className="py-3 pr-4 font-medium text-slate-300">{row.label}</td>
+                          <td className="py-3 pr-4">{row.before}</td>
+                          <td className="py-3 pr-4">{row.after}</td>
+                          <td className="py-3 text-cyan-200">{row.change}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-200">分引擎结果</h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                {aiTestAggregate.byEngine.map(engine => (
+                  <Card key={engine.engineName} className="border-white/10 bg-white/[0.04]">
+                    <CardContent className="space-y-2 pt-4 text-sm text-slate-300">
+                      <p className="font-semibold text-white">{engine.engineName}</p>
+                      <p>测试问题数量：{engine.questionCount}</p>
+                      <p>品牌提及率：{Math.round(engine.mentionRate * 100)}%</p>
+                      <p>品牌推荐率：{Math.round(engine.recommendRate * 100)}%</p>
+                      <p>情感倾向：{sentimentLabelCn(engine.dominantSentiment)}</p>
+                      <p>最近测试时间：{engine.lastTestedAt ? new Date(engine.lastTestedAt).toLocaleString() : "—"}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-200">关键证据样例</h3>
+              <div className="space-y-2">
+                {aiTestAggregate.keySamples.map(sample => (
+                  <div
+                    key={`${sample.monitoringRecordId}-${sample.resultIndex}`}
+                    className="flex flex-col gap-3 rounded-xl border border-white/10 bg-slate-950/50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 text-sm text-slate-300">
+                      <p className="font-medium text-white line-clamp-1">{sample.question}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {sample.engineName} · 提及 {sample.mentionedBrand ? "是" : "否"} · 推荐 {sample.recommendedBrand ? "是" : "否"} ·{" "}
+                        {sentimentLabelCn(sample.sentiment)}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                      onClick={() => setLocation(buildEvidenceDetailPath(sample.monitoringRecordId, sample.resultIndex))}
+                    >
+                      查看证据
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </section>

@@ -75,7 +75,19 @@ import {
 import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
+import { mergeAiTestResultsByStage, normalizeAiTestResult } from "@shared/aiTestEvidence";
 import { buildAiMentionSuggestion, runAiMentionCheck } from "./geoAiMentionCheck";
+import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
+import {
+  buildDeliveryReportPublicEvidencePayload,
+  buildDeliveryReportPublicSharePayload,
+  disableEnabledShareTokensForProject,
+  getOrCreateShareTokenForProject,
+  regenerateShareLinkForProject,
+  resolveShareTokenProjectId,
+} from "./deliveryReportPublicShare";
+import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare";
+import { runDailyAiCheck } from "./scheduledAiCheck";
 import {
   assetInputModes,
   assetSourceTypes,
@@ -869,6 +881,38 @@ const geoAssetRouter = router({
 
 const geoRouter = router({
   assetLibrary: geoAssetRouter,
+  publishRecords: router({
+    listWithStatus: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const db = await requireDb();
+
+        const records = await db
+          .select()
+          .from(geoPublishRecords)
+          .where(eq(geoPublishRecords.projectId, input.projectId))
+          .orderBy(desc(geoPublishRecords.publishedAt));
+
+        const monitoringRecords = await db
+          .select({
+            publishRecordId: geoInclusionMonitoringRecords.publishRecordId,
+            id: geoInclusionMonitoringRecords.id,
+            aiMentionStatus: geoInclusionMonitoringRecords.aiMentionStatus,
+            aiRecommendStatus: geoInclusionMonitoringRecords.aiRecommendStatus,
+            inclusionStatus: geoInclusionMonitoringRecords.inclusionStatus,
+            lastAiTestedAt: geoInclusionMonitoringRecords.lastAiTestedAt,
+          })
+          .from(geoInclusionMonitoringRecords)
+          .where(eq(geoInclusionMonitoringRecords.projectId, input.projectId));
+
+        const monitoringMap = new Map(monitoringRecords.map(r => [r.publishRecordId, r]));
+
+        return records.map(r => ({
+          ...r,
+          monitoring: monitoringMap.get(r.id) ?? null,
+        }));
+      }),
+  }),
   projects: router({
     list: protectedProcedure.query(async () => {
       const db = await requireDb();
@@ -1522,6 +1566,51 @@ const geoRouter = router({
       await updateProjectStatus(input.projectId, "report_ready");
       return { success: true, report } as const;
     }),
+    createShareLink: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+        await getProjectOrThrow(input.projectId);
+        const shareToken = await getOrCreateShareTokenForProject(db, input.projectId);
+        const sharePath = buildDeliveryReportPublicPath(shareToken);
+        return { sharePath, shareToken } as const;
+      }),
+    disableShareLink: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+        await getProjectOrThrow(input.projectId);
+        const result = await disableEnabledShareTokensForProject(db, input.projectId);
+        return { success: true, disabled: result.disabled, count: result.count } as const;
+      }),
+    regenerateShareLink: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+        await getProjectOrThrow(input.projectId);
+        const shareToken = await regenerateShareLinkForProject(db, input.projectId);
+        const sharePath = buildDeliveryReportPublicPath(shareToken);
+        return { success: true, sharePath } as const;
+      }),
+    publicShare: publicProcedure
+      .input(z.object({ token: z.string().min(16).max(64) }))
+      .query(async ({ input }) => {
+        const db = await requireDb();
+        const projectId = await resolveShareTokenProjectId(db, input.token);
+        return buildDeliveryReportPublicSharePayload(db, projectId);
+      }),
+    publicEvidence: publicProcedure
+      .input(
+        z.object({
+          token: z.string().min(16).max(64),
+          recordId: z.number().int().positive(),
+          resultIndex: z.number().int().min(0),
+        }),
+      )
+      .query(async ({ input }) => {
+        const db = await requireDb();
+        return buildDeliveryReportPublicEvidencePayload(db, input.token, input.recordId, input.resultIndex);
+      }),
   }),
 
   contentPlans: router({
@@ -2012,6 +2101,7 @@ ${article.markdownContent}`,
           projectId: z.number().int().positive(),
           recordId: z.number().int().positive().optional(),
           engines: z.array(z.enum(["doubao", "deepseek", "kimi"])).optional(),
+          testStage: z.enum(["before_publish", "after_publish", "manual_check"]).optional().default("manual_check"),
         }),
       )
       .mutation(async ({ input }) => {
@@ -2039,11 +2129,15 @@ ${article.markdownContent}`,
           throw new TRPCError({ code: "BAD_REQUEST", message: "项目暂无问题数据，请先生成问题" });
         }
 
+        const competitorNames = await resolveProjectCompetitorNames(db, input.projectId);
+
         const checkResult = await runAiMentionCheck({
           enterpriseName: profile?.enterpriseName ?? project.enterpriseName,
           shortName: profile?.shortName ?? undefined,
           questions: questionRows.map(q => q.questionText),
           engines: input.engines,
+          competitorNames,
+          testStage: input.testStage,
         });
 
         if (checkResult.results.length === 0) {
@@ -2058,13 +2152,22 @@ ${article.markdownContent}`,
         const suggestion = buildAiMentionSuggestion(checkResult);
         const now = new Date();
 
+        let savedResults = checkResult.results;
         if (input.recordId) {
+          const recordRows = await db
+            .select({ aiTestResults: geoInclusionMonitoringRecords.aiTestResults })
+            .from(geoInclusionMonitoringRecords)
+            .where(eq(geoInclusionMonitoringRecords.id, input.recordId))
+            .limit(1);
+          const existingResults = recordRows[0]?.aiTestResults ?? [];
+          savedResults = mergeAiTestResultsByStage(existingResults, checkResult.results, input.testStage);
+
           await db
             .update(geoInclusionMonitoringRecords)
             .set({
               aiMentionStatus: mentionStatus,
               aiRecommendStatus: recommendStatus,
-              aiTestResults: checkResult.results,
+              aiTestResults: savedResults,
               lastAiTestedAt: now,
               lastCheckedAt: now,
               currentSuggestion: suggestion,
@@ -2087,7 +2190,47 @@ ${article.markdownContent}`,
           resultCount: checkResult.results.length,
           aiMentionStatus: mentionStatus,
           aiRecommendStatus: recommendStatus,
-          aiTestResults: checkResult.results,
+          aiTestResults: savedResults,
+        } as const;
+      }),
+    runDaily: protectedProcedure.mutation(async () => {
+      runDailyAiCheck().catch(console.error);
+      return { ok: true, message: "定时检测已触发，将在后台执行" } as const;
+    }),
+    evidenceDetail: protectedProcedure
+      .input(
+        z.object({
+          monitoringRecordId: z.number().int().positive(),
+          resultIndex: z.number().int().min(0),
+        }),
+      )
+      .query(async ({ input }) => {
+        const db = await requireDb();
+        const rows = await db
+          .select()
+          .from(geoInclusionMonitoringRecords)
+          .where(eq(geoInclusionMonitoringRecords.id, input.monitoringRecordId))
+          .limit(1);
+        const record = rows[0];
+        if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "监测记录不存在" });
+
+        const rawResults = record.aiTestResults ?? [];
+        const raw = rawResults[input.resultIndex];
+        if (raw == null) throw new TRPCError({ code: "NOT_FOUND", message: "实测证据不存在" });
+
+        const item = normalizeAiTestResult(raw);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "实测证据无法解析" });
+
+        const competitorNames = await resolveProjectCompetitorNames(db, record.projectId);
+        const projectRows = await db.select().from(projects).where(eq(projects.id, record.projectId)).limit(1);
+
+        return {
+          item,
+          monitoringRecordId: record.id,
+          projectId: record.projectId,
+          articleId: record.articleId,
+          enterpriseName: projectRows[0]?.enterpriseName ?? "",
+          competitorConfigured: competitorNames.length > 0,
         } as const;
       }),
     results: protectedProcedure
