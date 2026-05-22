@@ -2545,3 +2545,60 @@
 [2026-05-21T07:35:39.460Z] ]
 [2026-05-21T07:35:39.460Z] }
 [2026-05-21T07:36:26.429Z] 3:36:26 AM [vite] (client) hmr update /src/index.css
+[2026-05-21T07:37:16.475Z] [geo.scores.latest] {
+[2026-05-21T07:37:16.476Z] requestedProjectId: 1,
+[2026-05-21T07:37:16.477Z] returned: {
+[2026-05-21T07:37:16.477Z] id: 630001,
+[2026-05-21T07:37:16.477Z] projectId: 1,
+[2026-05-21T07:37:16.478Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-21T07:37:16.478Z] totalScore: 40
+[2026-05-21T07:37:16.478Z] },
+[2026-05-21T07:37:16.479Z] sameProjectTop3: [
+[2026-05-21T07:37:16.479Z] {
+[2026-05-21T07:37:16.480Z] id: 630001,
+[2026-05-21T07:37:16.480Z] projectId: 1,
+[2026-05-21T07:37:16.480Z] createdAt: 2026-05-18T08:52:28.000Z,
+[2026-05-21T07:37:16.481Z] totalScore: 40
+[2026-05-21T07:37:16.481Z] }
+[2026-05-21T07:37:16.481Z] ]
+[2026-05-21T07:37:16.482Z] }
+[2026-05-22T02:45:16.093Z] [geo.scores.latest] {
+[2026-05-22T02:45:16.094Z] requestedProjectId: 1,
+[2026-05-22T02:45:16.094Z] returned: {
+[2026-05-22T02:45:16.095Z] id: 660001,
+[2026-05-22T02:45:16.095Z] projectId: 1,
+[2026-05-22T02:45:16.095Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T02:45:16.096Z] totalScore: 40
+[2026-05-22T02:45:16.096Z] },
+[2026-05-22T02:45:16.096Z] sameProjectTop3: [
+[2026-05-22T02:45:16.096Z] {
+[2026-05-22T02:45:16.097Z] id: 660001,
+[2026-05-22T02:45:16.097Z] projectId: 1,
+[2026-05-22T02:45:16.098Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T02:45:16.098Z] totalScore: 40
+[2026-05-22T02:45:16.098Z] }
+[2026-05-22T02:45:16.099Z] ]
+[2026-05-22T02:45:16.099Z] }
+[2026-05-22T02:48:02.421Z] 10:48:02 PM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-22T02:48:02.521Z] 10:48:02 PM [tsx] change in ./server/routers.ts Restarting...
+[2026-05-22T02:48:04.194Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-22T02:48:04.478Z] Server running on http://localhost:3000/
+[2026-05-22T02:48:05.133Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-22T02:48:14.159Z] [geo.scores.latest] {
+[2026-05-22T02:48:14.160Z] requestedProjectId: 1,
+[2026-05-22T02:48:14.160Z] returned: {
+[2026-05-22T02:48:14.160Z] id: 660001,
+[2026-05-22T02:48:14.161Z] projectId: 1,
+[2026-05-22T02:48:14.161Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T02:48:14.161Z] totalScore: 40
+[2026-05-22T02:48:14.162Z] },
+[2026-05-22T02:48:14.162Z] sameProjectTop3: [
+[2026-05-22T02:48:14.162Z] {
+[2026-05-22T02:48:14.163Z] id: 660001,
+[2026-05-22T02:48:14.163Z] projectId: 1,
+[2026-05-22T02:48:14.163Z] createdAt: 2026-05-21T07:40:45.000Z,
+[2026-05-22T02:48:14.163Z] totalScore: 40
+[2026-05-22T02:48:14.164Z] }
+[2026-05-22T02:48:14.164Z] ]
+[2026-05-22T02:48:14.164Z] }
+[2026-05-22T02:48:42.799Z] 10:48:42 PM [vite] (client) hmr update /src/index.css
