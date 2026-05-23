@@ -1,5 +1,13 @@
-import { Badge } from "@/components/ui/badge";
+import {
+  AiEmptyState,
+  AiMetricCard,
+  AiPageHero,
+  AiPageShell,
+  AiSection,
+  AiStatusBadge,
+} from "@/components/ai/ProductUi";
 import { Button } from "@/components/ui/button";
+import { aiInput } from "@/lib/aiProductUi";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +19,11 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import {
+  DEFAULT_WEEKLY_GENERATION_COUNT,
+  MAX_WEEKLY_GENERATION_COUNT,
+  weeklyGenerationCountClientError,
+} from "@shared/weeklyContentGeneration";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -177,12 +190,6 @@ function qualityPasses(article: ArticleRow, q?: QualityScoreRow) {
   return article.status === "质检通过" || q.totalScore >= GEO_ARTICLE_MIN_PASS_SCORE;
 }
 
-function scoreBadgeClass(score: number) {
-  if (score >= 80) return "border-emerald-400/50 bg-emerald-400/10 text-emerald-200";
-  if (score >= 60) return "border-amber-400/50 bg-amber-400/10 text-amber-200";
-  return "border-rose-400/50 bg-rose-400/10 text-rose-200";
-}
-
 function previewText(markdown?: string | null, max = 400) {
   const raw = (markdown ?? "").replace(/^#+\s*/gm, "").replace(/\*\*/g, "").trim();
   if (raw.length <= max) return raw;
@@ -217,7 +224,10 @@ export default function WeeklyContentPage() {
   const [preparingTopics, setPreparingTopics] = useState(false);
   const [generatingTopicIds, setGeneratingTopicIds] = useState<Set<number>>(() => new Set());
   const [expandedTopicIds, setExpandedTopicIds] = useState<Set<number>>(() => new Set());
-  const [batchState, setBatchState] = useState<{ current: number; total: number } | null>(null);
+  const [batchState, setBatchState] = useState<{ current: number; total: number; target: number } | null>(null);
+  const [countPreset, setCountPreset] = useState<"7" | "14" | "21" | "custom">("7");
+  const [customCount, setCustomCount] = useState(String(DEFAULT_WEEKLY_GENERATION_COUNT));
+  const [countError, setCountError] = useState<string | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishArticle, setPublishArticle] = useState<ArticleRow | null>(null);
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
@@ -225,6 +235,7 @@ export default function WeeklyContentPage() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(EXTENSION_HINT_KEY) !== "1";
   });
+  const [publishToolsOpen, setPublishToolsOpen] = useState(false);
 
   const tasks = (tasksQuery.data ?? []) as TaskRow[];
   const topics = (topicsQuery.data ?? []) as TopicRow[];
@@ -271,7 +282,7 @@ export default function WeeklyContentPage() {
     autoTopicsTriggeredRef.current = true;
     setPreparingTopics(true);
     generateTopicsMutation
-      .mutateAsync({ projectId: selectedProjectId! })
+      .mutateAsync({ projectId: selectedProjectId!, generationCount: DEFAULT_WEEKLY_GENERATION_COUNT })
       .then(async () => {
         await topicsQuery.refetch();
       })
@@ -319,19 +330,62 @@ export default function WeeklyContentPage() {
     void generateOne(topicId);
   };
 
-  const handleBatchGenerate = async () => {
-    if (pendingTopicIds.length === 0) return;
-    const total = pendingTopicIds.length;
-    setBatchState({ current: 0, total });
-    let done = 0;
-    for (let i = 0; i < pendingTopicIds.length; i++) {
-      const topicId = pendingTopicIds[i]!;
-      setBatchState({ current: i + 1, total });
-      const ok = await generateOne(topicId);
-      if (ok) done += 1;
+  const resolveGenerationCount = useCallback((): number | null => {
+    if (countPreset === "custom") {
+      const err = weeklyGenerationCountClientError(customCount);
+      setCountError(err);
+      return err ? null : Number(customCount);
     }
-    setBatchState(null);
-    if (done === total) toast.success(`本周 ${done} 篇文章已生成`);
+    setCountError(null);
+    return Number(countPreset);
+  }, [countPreset, customCount]);
+
+  const handleWeeklyGenerate = async () => {
+    if (!selectedProjectId) return;
+    const targetCount = resolveGenerationCount();
+    if (targetCount == null) return;
+
+    setBatchState({ current: 0, total: targetCount, target: targetCount });
+    try {
+      const topicResult = await generateTopicsMutation.mutateAsync({
+        projectId: selectedProjectId,
+        generationCount: targetCount,
+      });
+      const [topicRefetch, articleRefetch] = await Promise.all([topicsQuery.refetch(), articlesQuery.refetch()]);
+      const refreshedTopics = (topicRefetch.data ?? []) as TopicRow[];
+      const refreshedArticles = (articleRefetch.data ?? []) as ArticleRow[];
+      const topicToArticle = new Map<number, ArticleRow>();
+      for (const a of refreshedArticles) {
+        if (typeof a.topicId === "number") topicToArticle.set(a.topicId, a);
+      }
+      const pending = refreshedTopics.filter(t => !topicToArticle.has(t.id)).map(t => t.id);
+      const toGenerate = pending.slice(0, targetCount);
+      const total = toGenerate.length;
+      if (total === 0) {
+        toast.message("暂无可生成的内容方向，请先完成内容诊断");
+        return;
+      }
+      setBatchState({ current: 0, total, target: targetCount });
+      let done = 0;
+      for (let i = 0; i < toGenerate.length; i++) {
+        const topicId = toGenerate[i]!;
+        setBatchState({ current: i + 1, total, target: targetCount });
+        const ok = await generateOne(topicId);
+        if (ok) done += 1;
+      }
+      const planned = topicResult?.count ?? targetCount;
+      if (done === 0) {
+        toast.error("本次未能成功生成内容，请稍后重试");
+      } else if (done < planned) {
+        toast.success(`本次实际生成 ${done} 篇内容（目标 ${planned} 篇）`);
+      } else {
+        toast.success(`已生成 ${done} 篇内容`);
+      }
+    } catch {
+      toast.error("生成本周内容失败，请稍后重试");
+    } finally {
+      setBatchState(null);
+    }
   };
 
   const batchBusy = batchState !== null;
@@ -339,6 +393,33 @@ export default function WeeklyContentPage() {
   const batchDone = !batchBusy && pendingTopicIds.length === 0 && topics.length > 0 && topics.every(t => articleByTopicId.has(t.id));
 
   const estMinutesRemaining = batchState ? Math.max(1, Math.ceil((batchState.total - batchState.current + 1) * 2)) : 0;
+
+  const generatedAssetCount = useMemo(
+    () => topics.filter(t => articleByTopicId.has(t.id)).length,
+    [topics, articleByTopicId],
+  );
+  const publishedAssetCount = useMemo(
+    () => topics.filter(t => articleByTopicId.get(t.id)?.status === "已发布").length,
+    [topics, articleByTopicId],
+  );
+  const pendingPublishCount = Math.max(0, generatedAssetCount - publishedAssetCount);
+
+  const displayTargetCount = useMemo(() => {
+    if (batchState) return batchState.target;
+    if (countPreset === "custom") {
+      const err = weeklyGenerationCountClientError(customCount);
+      if (err) return null;
+      return Number(customCount);
+    }
+    return Number(countPreset);
+  }, [batchState, countPreset, customCount]);
+
+  function assetNextStepHint(status: "pending" | "generating" | "generated" | "published", pass: boolean): string {
+    if (status === "pending") return "等待生成，可单独生成或批量生成";
+    if (status === "generating") return "正在生成正文，请稍候";
+    if (status === "published") return "已发布，可在发布记录补充公开链接";
+    return pass ? "可复制内容并发布到外部平台" : "建议优化质量分后再发布";
+  }
 
   const toggleExpand = (topicId: number) => {
     setExpandedTopicIds(prev => {
@@ -456,87 +537,115 @@ export default function WeeklyContentPage() {
   };
 
   return (
-    <div className="relative mx-auto max-w-5xl pb-32 pt-2 text-slate-100">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-white">本周内容</h1>
-          <p className="mt-1 text-sm text-slate-500">按诊断建议生成文章，复制后到平台发布</p>
-        </div>
-        <div className="flex flex-col gap-1 sm:items-end">
-          <label className="text-xs text-slate-500">当前项目</label>
-          <select
-            value={selectedProjectId ?? ""}
-            onChange={e => setSelectedProjectId(Number(e.target.value) || undefined)}
-            className="h-10 min-w-[200px] rounded-xl border border-white/10 bg-slate-900/90 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
-          >
-            <option value="">请选择项目</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.enterpriseName}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+    <AiPageShell>
+      <AiPageHero
+        title="内容资产生产"
+        description="围绕目标问题批量生成可用于 AI 搜索优化的内容资产。"
+        badge="资产生产台"
+      >
+        <label className="text-xs text-slate-500">当前项目</label>
+        <select
+          value={selectedProjectId ?? ""}
+          onChange={e => setSelectedProjectId(Number(e.target.value) || undefined)}
+          className={`${aiInput} min-w-[200px]`}
+        >
+          <option value="">请选择项目</option>
+          {projects.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.enterpriseName}
+            </option>
+          ))}
+        </select>
+      </AiPageHero>
 
-      <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm">
-        <p className="font-medium text-slate-100">浏览器发布插件</p>
-        <p className="mt-1 text-xs text-slate-400">
-          下载插件后，在 Chrome 扩展程序页面加载，安装即自动配置完成；再在各平台完成登录即可自动发布。
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="border-cyan-400/40 text-cyan-100 hover:bg-cyan-400/10"
-            disabled={downloadExtension.isPending}
-            onClick={() => void handleDownloadExtension()}
-          >
-            {downloadExtension.isPending ? "正在打包…" : "下载插件"}
-          </Button>
-          {showExtensionHint ? (
-            <button type="button" className="text-xs text-slate-500 hover:text-slate-300" onClick={dismissExtensionHint}>
-              收起说明
-            </button>
-          ) : null}
-        </div>
-        {showExtensionHint ? (
-          <p className="mt-2 text-xs text-slate-500">
-            流程：下载插件 → Chrome 扩展程序 → 开发者模式 → 加载已解压 → 连接各平台登录 → 本页「发布到平台」。
-          </p>
-        ) : null}
-        <div className="mt-4 border-t border-white/5 pt-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-cyan-400/10 px-2 py-0.5 text-xs font-medium text-cyan-200 ring-1 ring-inset ring-cyan-400/20">v2.2.0</span>
-            <span className="text-xs text-slate-500">BUILD: bg-v22-wait-publish-btn</span>
-          </div>
-          <details className="mt-2 text-xs text-slate-400">
-            <summary className="cursor-pointer text-slate-300 hover:text-cyan-200">更新日志</summary>
-            <ul className="mt-2 space-y-1.5 pl-3">
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v2.2</span><span>等待发布按钮可点击后再点击，避免无效操作</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v2.1</span><span>先上传封面再 paste 正文，避免焦点被抢</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v2.0</span><span>Draft.js 正文改用 ClipboardEvent paste 填充，提升兼容性</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.9</span><span>等待编辑器就绪并延长 Draft.js 填充时序，提升成功率</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.8</span><span>标题用 textarea、正文 click+focus 后 insertText，提升填充稳定性</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.7</span><span>知乎正文改用 Draft.js insertText 填充，解决内容丢失问题</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.6</span><span>编辑器适配修复，精简 shared.js 发布逻辑</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.5</span><span>知乎封面图改用 UploadPicture-input 选择器上传</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.4</span><span>知乎发布改回单步点击，精简弹窗确认逻辑</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.3</span><span>插件目录重命名，新增发布弹窗确认流程</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.2</span><span>封面图经 background 下载解决跨域，增强知乎上传逻辑</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.1</span><span>封面图改用内置 Forge API 生成，无需额外 API Key</span></li>
-              <li className="flex gap-2"><span className="shrink-0 text-cyan-400/70">v1.0</span><span>修复知乎发布 URL 404，适配 zhuanlan.zhihu.com/write</span></li>
-            </ul>
-          </details>
-        </div>
-      </div>
+      {enabled && queriesReady && !showDiagnosisEmpty && !showDirectionEmpty && topics.length > 0 ? (
+        <>
+          <section className="ai-console-panel space-y-6 rounded-2xl border border-cyan-400/20 p-5 md:p-6">
+            <div>
+              <h2 className="text-lg font-semibold text-white">AI 内容资产生产控制台</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                选择生成数量，系统将围绕目标问题批量生成可发布的 AI 搜索资产。
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AiMetricCard label="当前任务方向数" value={String(tasks.length)} accent="violet" />
+              <AiMetricCard label="本周已生成篇数" value={String(weeklyArticles.length)} accent="cyan" />
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">生成数量</p>
+              <div className="ai-segmented" role="group" aria-label="生成数量">
+                {(["7", "14", "21", "custom"] as const).map(key => (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={anyGenerating}
+                    data-active={countPreset === key}
+                    onClick={() => {
+                      setCountPreset(key);
+                      setCountError(null);
+                    }}
+                    className="ai-segmented-item"
+                  >
+                    {key === "custom" ? "自定义" : `${key} 篇`}
+                  </button>
+                ))}
+              </div>
+              {countPreset === "custom" ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_WEEKLY_GENERATION_COUNT}
+                    value={customCount}
+                    disabled={anyGenerating}
+                    onChange={e => {
+                      setCustomCount(e.target.value);
+                      setCountError(weeklyGenerationCountClientError(e.target.value));
+                    }}
+                    className={`${aiInput} max-w-[8rem]`}
+                    placeholder="1-50"
+                  />
+                  {countError ? <p className="text-xs text-amber-200">{countError}</p> : null}
+                </div>
+              ) : null}
+            </div>
+            {batchBusy && batchState ? (
+              <p className="text-sm text-cyan-100">
+                正在生成 {batchState.target} 篇内容（{batchState.current}/{batchState.total}）… 预计还需约 {estMinutesRemaining}{" "}
+                分钟
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              variant="ai"
+              className="h-12 w-full text-base disabled:opacity-50 sm:w-auto sm:min-w-[220px]"
+              disabled={anyGenerating || (countPreset === "custom" && Boolean(countError)) || tasks.length === 0}
+              onClick={() => void handleWeeklyGenerate()}
+            >
+              {batchBusy && batchState ? `正在生成 ${batchState.target} 篇内容…` : "生成内容资产"}
+            </Button>
+          </section>
 
-      <p className="mt-6 text-sm text-slate-300">
-        本周已生成 <span className="font-medium text-white">{weeklyArticles.length}</span> 篇 · 已发布{" "}
-        <span className="font-medium text-white">{publishedCount}</span> 篇 · 覆盖{" "}
-        <span className="font-medium text-white">{sceneCount}</span> 个问题场景
-      </p>
+          <AiSection title="本轮生产进度">
+            {batchDone ? (
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                <span className="text-emerald-300">✓</span>
+                <span>本轮内容资产已生成完成</span>
+              </div>
+            ) : null}
+            <div className="ai-progress-strip">
+              <AiMetricCard
+                label="本轮目标"
+                value={displayTargetCount != null ? `${displayTargetCount} 篇` : "—"}
+                accent="cyan"
+              />
+              <AiMetricCard label="已生成" value={`${generatedAssetCount} 篇`} accent="violet" />
+              <AiMetricCard label="已发布" value={`${publishedAssetCount} 篇`} accent="emerald" />
+              <AiMetricCard label="待发布" value={`${pendingPublishCount} 篇`} accent="amber" />
+            </div>
+          </AiSection>
+        </>
+      ) : null}
 
       {!enabled ? (
         <p className="mt-10 text-sm text-slate-400">请先选择项目</p>
@@ -548,200 +657,231 @@ export default function WeeklyContentPage() {
           <p className="text-sm">正在准备本周内容建议...</p>
         </div>
       ) : showDiagnosisEmpty ? (
-        <div className="mt-16 rounded-3xl border border-white/10 bg-slate-900/60 p-10 text-center">
-          <p className="text-base text-slate-200">还没有内容诊断数据，请先运行内容诊断</p>
-          <Button type="button" className="mt-6 bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => setLocation("/ai-diagnosis")}>
-            去诊断
-          </Button>
-        </div>
+        <AiEmptyState
+          title="当前暂无可生成内容任务"
+          description="请先完成 AI 内容诊断，系统将基于品牌定位生成内容资产方向。"
+          actionLabel="去完成内容诊断"
+          onAction={() => setLocation("/ai-diagnosis")}
+        />
       ) : showDirectionEmpty ? (
-        <div className="mt-16 rounded-3xl border border-white/10 bg-slate-900/60 p-10 text-center">
-          <p className="text-base font-medium text-slate-200">还没有内容方向建议</p>
-          <p className="mt-2 text-sm text-slate-400">先运行内容诊断，系统会自动为你生成本周内容方向</p>
-          <Button type="button" className="mt-6 bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => setLocation("/ai-diagnosis")}>
-            去运行内容诊断 →
-          </Button>
-        </div>
+        <AiEmptyState
+          title="当前暂无可生成内容任务"
+          description="请先完成 AI 内容诊断，系统将基于品牌定位生成内容资产方向。"
+          actionLabel="去完成内容诊断"
+          onAction={() => setLocation("/ai-diagnosis")}
+        />
       ) : topics.length === 0 ? (
-        <p className="mt-10 text-sm text-slate-400">暂无选题</p>
+        <p className="text-sm text-slate-400">暂无选题</p>
       ) : (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {topics.map(topic => {
-            const meta = topicMeta(topic, tasks);
-            const article = articleByTopicId.get(topic.id);
-            const isGenerating = generatingTopicIds.has(topic.id);
-            const isPublished = article?.status === "已发布";
-            const isGenerated = Boolean(article) && !isPublished;
-            const isPending = !article && !isGenerating;
-            const q = article ? scoresByArticleId.get(article.id) : undefined;
-            const pass = article ? qualityPasses(article, q) : false;
-            const expanded = expandedTopicIds.has(topic.id);
-            const borderColor = contentTypeBorderColor(meta.contentType);
+        <AiSection title="内容资产卡片区" description={`覆盖 ${sceneCount} 个问题场景 · 共 ${topics.length} 篇资产方向`}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {topics.map(topic => {
+              const meta = topicMeta(topic, tasks);
+              const article = articleByTopicId.get(topic.id);
+              const isGenerating = generatingTopicIds.has(topic.id);
+              const isPublished = article?.status === "已发布";
+              const isGenerated = Boolean(article) && !isPublished;
+              const isPending = !article && !isGenerating;
+              const q = article ? scoresByArticleId.get(article.id) : undefined;
+              const pass = article ? qualityPasses(article, q) : false;
+              const expanded = expandedTopicIds.has(topic.id);
+              const borderColor = contentTypeBorderColor(meta.contentType);
+              const targetQuestion = meta.keyPoints[0] ?? topic.businessReason?.slice(0, 80) ?? "待关联目标问题";
+              const statusKey = isPublished
+                ? "published"
+                : isGenerating
+                  ? "generating"
+                  : isGenerated
+                    ? "generated"
+                    : "pending";
+              const statusLabel = isPublished ? "已发布" : isGenerating ? "生成中" : isGenerated ? "待发布" : "待生成";
+              const statusTone = isPublished ? "success" : isGenerating ? "info" : isGenerated ? (pass ? "info" : "warning") : "neutral";
 
-            return (
-              <div
-                key={topic.id}
-                role={isGenerated ? "button" : undefined}
-                tabIndex={isGenerated ? 0 : undefined}
-                onClick={() => {
-                  if (isGenerated && article) toggleExpand(topic.id);
-                }}
-                onKeyDown={e => {
-                  if (isGenerated && article && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault();
-                    toggleExpand(topic.id);
-                  }
-                }}
-                className={`flex flex-col rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-left shadow-inner transition ${
-                  isPublished ? "opacity-75" : ""
-                } ${isGenerated ? "cursor-pointer hover:border-white/20" : ""}`}
-                style={{ borderLeftWidth: 4, borderLeftColor: borderColor }}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="border-white/15 text-slate-200">
-                    {meta.contentType}
-                  </Badge>
-                  {isGenerated && q ? (
-                    <>
-                      <Badge variant="outline" className={scoreBadgeClass(q.totalScore)}>
-                        {q.totalScore} 分
-                      </Badge>
-                      <Badge variant="outline" className={pass ? "border-emerald-400/40 text-emerald-200" : "border-amber-400/40 text-amber-200"}>
-                        {pass ? "通过" : "未通过"}
-                      </Badge>
-                    </>
-                  ) : null}
-                  {isPublished ? (
-                    <Badge variant="outline" className="border-emerald-400/50 bg-emerald-400/10 text-emerald-200">
-                      ✓ 已发布
-                    </Badge>
-                  ) : null}
-                </div>
-
-                <h3 className={`mt-3 line-clamp-2 text-base font-semibold leading-snug ${isPublished ? "text-slate-400" : "text-white"}`}>
-                  {topic.title}
-                </h3>
-
-                {isPending || isGenerating ? (
-                  meta.keyPoints.length > 0 ? (
-                    <p className="mt-2 text-xs leading-relaxed text-slate-500">{meta.keyPoints.join(" · ")}</p>
-                  ) : null
-                ) : null}
-
-                <div className="mt-4 border-t border-white/10 pt-4">
-                  {isPending ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full border-white/15 text-cyan-100 hover:bg-white/10"
-                      disabled={anyGenerating}
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleGenerateOne(topic.id);
+              return (
+                <article
+                  key={topic.id}
+                  className={`ai-asset-card flex flex-col overflow-hidden ${isPublished ? "opacity-80" : ""}`}
+                  style={{ borderLeftWidth: 4, borderLeftColor: borderColor }}
+                >
+                  <div className="border-b border-white/8 bg-slate-950/40 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <AiStatusBadge tone={statusTone}>{statusLabel}</AiStatusBadge>
+                      <span className="text-xs text-slate-500">{meta.contentType}</span>
+                    </div>
+                    <h3
+                      className={`mt-2 line-clamp-2 text-base font-semibold leading-snug ${isPublished ? "text-slate-400" : "text-white"}`}
+                      role={isGenerated ? "button" : undefined}
+                      tabIndex={isGenerated ? 0 : undefined}
+                      onClick={() => {
+                        if (isGenerated && article) toggleExpand(topic.id);
+                      }}
+                      onKeyDown={e => {
+                        if (isGenerated && article && (e.key === "Enter" || e.key === " ")) {
+                          e.preventDefault();
+                          toggleExpand(topic.id);
+                        }
                       }}
                     >
-                      生成这篇文章
-                    </Button>
-                  ) : null}
+                      {topic.title}
+                    </h3>
+                  </div>
 
-                  {isGenerating ? (
-                    <div className="flex items-center justify-center gap-2 py-2 text-sm text-slate-400">
-                      <Spinner className="size-4 text-cyan-400" />
-                      生成中...
+                  <div className="flex flex-1 flex-col gap-3 px-4 py-3">
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">目标问题</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{targetQuestion}</p>
                     </div>
-                  ) : null}
+                    {isGenerated && q ? (
+                      <p className="text-sm">
+                        <span className="text-slate-500">内容评分 </span>
+                        <span className={`font-semibold ${pass ? "text-emerald-300" : "text-amber-200"}`}>{q.totalScore} 分</span>
+                        <span className="text-slate-600"> · </span>
+                        <span className="text-xs text-slate-500">{pass ? "质量通过" : "建议优化"}</span>
+                      </p>
+                    ) : null}
+                    <p className="text-xs text-cyan-200/80">{assetNextStepHint(statusKey, pass)}</p>
 
-                  {isGenerated && article ? (
-                    <div className="space-y-3" onClick={e => e.stopPropagation()}>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="mt-auto space-y-2 border-t border-white/8 pt-3">
+                      {isPending ? (
                         <Button
                           type="button"
-                          variant="outline"
-                          size="sm"
-                          className="border-white/15 text-slate-200"
-                          onClick={() => void copyText("标题", article.title ?? topic.title)}
+                          variant="ai"
+                          className="w-full"
+                          disabled={anyGenerating}
+                          onClick={() => handleGenerateOne(topic.id)}
                         >
-                          复制标题
+                          生成这篇文章
                         </Button>
+                      ) : null}
+                      {isGenerating ? (
+                        <div className="flex items-center justify-center gap-2 py-2 text-sm text-slate-400">
+                          <Spinner className="size-4 text-cyan-400" />
+                          生成中...
+                        </div>
+                      ) : null}
+                      {isGenerated && article ? (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-white/15 text-slate-200"
+                              onClick={() => void copyText("标题", article.title ?? topic.title)}
+                            >
+                              复制标题
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-white/15 text-slate-200"
+                              onClick={() => void copyText("正文", article.markdownContent ?? "")}
+                            >
+                              复制正文
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-white/15 text-slate-400"
+                              onClick={() => setLocation("/content-publishing")}
+                            >
+                              标记已发布
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ai"
+                              size="sm"
+                              disabled={createPublishTask.isPending}
+                              onClick={() => openPublishDialog(article)}
+                            >
+                              发布到平台
+                            </Button>
+                          </div>
+                          {expanded ? (
+                            <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-500">{previewText(article.markdownContent)}</p>
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-xs text-slate-500 hover:text-cyan-200"
+                              onClick={() => toggleExpand(topic.id)}
+                            >
+                              展开正文预览
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
+                      {isPublished ? (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="border-white/15 text-slate-200"
-                          onClick={() => void copyText("正文", article.markdownContent ?? "")}
-                        >
-                          复制正文
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="border-white/15 text-cyan-100"
+                          className="w-full border-white/15 text-slate-300"
                           onClick={() => setLocation("/content-publishing")}
                         >
-                          标记已发布
+                          查看发布记录
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="border-cyan-400/40 text-cyan-100 hover:bg-cyan-400/10"
-                          disabled={createPublishTask.isPending}
-                          onClick={() => openPublishDialog(article)}
-                        >
-                          发布到平台
-                        </Button>
-                      </div>
-                      {expanded ? (
-                        <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400">{previewText(article.markdownContent)}</p>
                       ) : null}
                     </div>
-                  ) : null}
-
-                  {isPublished ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full border-white/15 text-slate-300"
-                      onClick={e => {
-                        e.stopPropagation();
-                        setLocation("/content-publishing");
-                      }}
-                    >
-                      查看发布记录
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </AiSection>
       )}
 
-      {enabled && topics.length > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-md">
-          <div className="mx-auto max-w-5xl">
-            {batchBusy && batchState ? (
-              <p className="mb-2 text-center text-xs text-slate-400">
-                生成中（{batchState.current}/{batchState.total}）... 预计还需约 {estMinutesRemaining} 分钟
+      {enabled ? (
+        <details
+          className="ai-glass-panel border-white/8 bg-slate-950/30 text-sm opacity-90"
+          open={publishToolsOpen}
+          onToggle={e => setPublishToolsOpen((e.target as HTMLDetailsElement).open)}
+        >
+          <summary className="cursor-pointer list-none px-4 py-3 font-medium text-slate-400 hover:text-slate-200 [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex items-center gap-2">
+              <span className="text-cyan-500/80">▸</span>
+              发布辅助工具
+            </span>
+          </summary>
+          <div className="space-y-3 border-t border-white/8 px-4 pb-4 pt-2">
+            <p className="text-xs text-slate-500">用于辅助交付人员把内容发布到外部平台。</p>
+            <p className="text-xs text-slate-500">
+              下载插件后，在 Chrome 扩展程序页面加载；再在各平台完成登录即可配合「发布到平台」使用。
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-white/12 text-slate-300"
+                disabled={downloadExtension.isPending}
+                onClick={() => void handleDownloadExtension()}
+              >
+                {downloadExtension.isPending ? "正在打包…" : "下载插件"}
+              </Button>
+              {showExtensionHint ? (
+                <button type="button" className="text-xs text-slate-500 hover:text-slate-300" onClick={dismissExtensionHint}>
+                  不再提示
+                </button>
+              ) : null}
+            </div>
+            {showExtensionHint ? (
+              <p className="text-xs text-slate-600">
+                流程：下载插件 → Chrome 扩展程序 → 开发者模式 → 加载已解压 → 连接各平台登录。
               </p>
-            ) : batchDone ? (
-              <p className="mb-2 text-center text-sm text-emerald-300">本周 {topics.length} 篇文章已生成 ✓</p>
             ) : null}
-            <Button
-              type="button"
-              className="h-12 w-full rounded-xl bg-cyan-400 text-base font-medium text-slate-950 hover:bg-cyan-300 disabled:opacity-50"
-              disabled={pendingTopicIds.length === 0 || anyGenerating}
-              onClick={() => void handleBatchGenerate()}
-            >
-              {batchBusy && batchState
-                ? `生成中（${batchState.current}/${batchState.total}）...`
-                : batchDone
-                  ? `本周 ${topics.length} 篇文章已生成 ✓`
-                  : `生成全部未生成文章（${pendingTopicIds.length}篇）`}
-            </Button>
+            <details className="text-xs text-slate-500">
+              <summary className="cursor-pointer text-slate-500 hover:text-slate-400">插件更新日志</summary>
+              <ul className="mt-2 space-y-1 pl-3">
+                <li>v2.2 · 等待发布按钮可点击后再操作</li>
+                <li>v2.0 · 正文粘贴兼容性提升</li>
+              </ul>
+            </details>
           </div>
-        </div>
+        </details>
       ) : null}
 
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
@@ -780,6 +920,6 @@ export default function WeeklyContentPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AiPageShell>
   );
 }

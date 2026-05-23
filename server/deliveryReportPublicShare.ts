@@ -13,6 +13,7 @@ import {
   reports,
 } from "../drizzle/schema";
 import { aggregateAiTestEvidence, normalizeAiTestResult, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
+import { buildDeliveryReportConclusionLine, resolveDeliveryReportVisibilityScore } from "@shared/deliveryReportScore";
 import {
   DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE,
   DELIVERY_REPORT_SHARE_INVALID_MESSAGE,
@@ -143,16 +144,11 @@ export async function buildDeliveryReportPublicSharePayload(
     .orderBy(desc(geoScores.createdAt))
     .limit(1);
   const score = scoreRows[0];
-  const totalScore = score?.totalScore ?? null;
+  const visibilityScore = resolveDeliveryReportVisibilityScore(score ?? null);
 
   const analysisRows = await db.select().from(analysisResults).where(eq(analysisResults.projectId, projectId)).limit(1);
   const firstAnalysis = analysisRows[0];
-  const conclusionLine =
-    totalScore != null && firstAnalysis
-      ? `本轮内容综合评分 ${totalScore} 分；在典型 AI 问答场景下，品牌在 AI 回答中的提及与推荐表现存在可优化空间，建议用可公开、可引用的内容资产持续补齐证据链。`
-      : totalScore != null
-        ? `本轮内容综合评分 ${totalScore} 分；建议结合下方 AI 搜索实测结果，持续优化品牌可见度与推荐表现。`
-        : "请先完成内容诊断与 AI 搜索实测，以便生成面向客户的 GEO 总体结论。";
+  const conclusionLine = buildDeliveryReportConclusionLine(visibilityScore, Boolean(firstAnalysis));
 
   const reportRows = await db
     .select({ createdAt: reports.createdAt })
@@ -216,6 +212,7 @@ export async function buildDeliveryReportPublicSharePayload(
     brandName,
     enterpriseName,
     reportGeneratedAt: reportGeneratedAt ? reportGeneratedAt.toISOString() : null,
+    visibilityScore,
     conclusionLine,
     aiTest: toPublicAiTestAggregate(aggregate),
     publishedContent,

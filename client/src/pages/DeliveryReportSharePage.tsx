@@ -2,7 +2,11 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { DeliveryReportCustomerView } from "@/components/DeliveryReportCustomerView";
 import { Button } from "@/components/ui/button";
 import { getLoginUrl, isLoginConfigured } from "@/const";
-import { mapPublishRecordsToItems } from "@/lib/deliveryReportDisplay";
+import {
+  buildDeliveryReportConclusionLine,
+  mapPublishRecordsToItems,
+  resolveDeliveryReportVisibilityScore,
+} from "@/lib/deliveryReportDisplay";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
 import { BarChart3 } from "lucide-react";
@@ -114,22 +118,9 @@ function DeliveryReportShareContent() {
   const articles = (articlesQuery.data ?? []) as Array<{ id: number; title?: string }>;
   const publishRecords = (publishRecordsQuery.data ?? []) as Array<Record<string, unknown>>;
 
-  const totalScore = typeof score?.totalScore === "number" ? score.totalScore : typeof score?.total_score === "number" ? (score.total_score as number) : null;
-  const aiVisibilityScore =
-    typeof score?.aiVisibilityScore === "number"
-      ? score.aiVisibilityScore
-      : typeof score?.ai_visibility_score === "number"
-        ? (score.ai_visibility_score as number)
-        : null;
-  const visibilityScore = aiVisibilityScore ?? totalScore;
-
+  const visibilityScore = resolveDeliveryReportVisibilityScore(score);
   const firstAnalysis = analyses[0];
-  const conclusionLine =
-    totalScore != null && firstAnalysis
-      ? `本轮内容综合评分 ${totalScore} 分；在典型 AI 问答场景下，品牌在 AI 回答中的提及与推荐表现存在可优化空间，建议用可公开、可引用的内容资产持续补齐证据链。`
-      : totalScore != null
-        ? `本轮内容综合评分 ${totalScore} 分；建议结合下方 AI 搜索实测结果，持续优化品牌可见度与推荐表现。`
-        : "请先完成内容诊断与 AI 搜索实测，以便生成面向客户的 GEO 总体结论。";
+  const conclusionLine = buildDeliveryReportConclusionLine(visibilityScore, Boolean(firstAnalysis));
 
   const reportGeneratedAt = (() => {
     const report = reportQuery.data as { createdAt?: Date | string } | null | undefined;

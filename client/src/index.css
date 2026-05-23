@@ -196,17 +196,217 @@
 }
 
 @layer components {
-  .geo-ai-surface {
+  .geo-ai-surface,
+  .ai-glass-card {
+    border: 1px solid rgba(125, 211, 252, 0.16);
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.52));
+    box-shadow:
+      0 0 40px rgba(56, 189, 248, 0.1),
+      0 12px 40px rgba(2, 6, 23, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(18px);
+    border-radius: 1.25rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .ai-glass-card:hover {
+    border-color: rgba(125, 211, 252, 0.28);
+    box-shadow:
+      0 0 48px rgba(56, 189, 248, 0.14),
+      0 12px 40px rgba(2, 6, 23, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .ai-glass-panel {
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    background: linear-gradient(160deg, rgba(15, 23, 42, 0.82), rgba(17, 24, 39, 0.55));
+    box-shadow: 0 0 28px rgba(99, 102, 241, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(14px);
+    border-radius: 1.5rem;
+  }
+
+  .ai-metric-card {
+    border: 1px solid rgba(56, 189, 248, 0.14);
+    background: linear-gradient(155deg, rgba(8, 47, 73, 0.35), rgba(15, 23, 42, 0.75));
+    box-shadow: 0 0 26px rgba(56, 189, 248, 0.08);
+    border-radius: 1.25rem;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .ai-metric-card .ai-metric-value {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: #a5f3fc;
+  }
+
+  .ai-page-hero {
+    position: relative;
+    padding: 1.75rem 1.5rem 2rem;
+    border-radius: 1.75rem;
     border: 1px solid rgba(125, 211, 252, 0.14);
-    background: linear-gradient(145deg, rgba(15, 23, 42, 0.86), rgba(30, 41, 59, 0.48));
-    box-shadow: 0 0 34px rgba(56, 189, 248, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(16px);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 27, 75, 0.45));
+    box-shadow:
+      0 0 60px rgba(56, 189, 248, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .ai-hero-title {
+    background: linear-gradient(120deg, #f8fafc 0%, #a5f3fc 45%, #c4b5fd 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .ai-page-header {
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  }
+
+  .ai-action-card {
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 1.25rem;
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(17, 24, 39, 0.55));
+    box-shadow: 0 0 24px rgba(99, 102, 241, 0.06);
+  }
+
+  .ai-asset-card {
+    box-shadow: 0 8px 32px rgba(2, 6, 23, 0.35);
+  }
+
+  .ai-empty-state {
+    border: 1px dashed rgba(148, 163, 184, 0.2);
+    border-radius: 1.5rem;
+    background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.06), transparent 55%);
+  }
+
+  .ai-funnel-step {
+    border: 1px solid rgba(56, 189, 248, 0.12);
+    border-radius: 1.25rem;
+    background: linear-gradient(160deg, rgba(8, 47, 73, 0.25), rgba(15, 23, 42, 0.7));
+  }
+
+  .ai-funnel-connector {
+    position: absolute;
+    right: -0.5rem;
+    top: 50%;
+    width: 1rem;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.5), transparent);
+  }
+
+  .ai-console-panel {
+    backdrop-filter: blur(12px);
+  }
+
+  .ai-segmented {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(15, 23, 42, 0.65);
+  }
+
+  .ai-segmented-item {
+    min-width: 3.5rem;
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgb(148 163 184);
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .ai-segmented-item[data-active="true"] {
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.25), rgba(139, 92, 246, 0.2));
+    color: rgb(224 242 254);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
+  }
+
+  .ai-segmented-item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .ai-progress-strip {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: 768px) {
+    .ai-progress-strip {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .ai-sidebar-group-label {
+    padding: 0.5rem 0.75rem 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.65);
+  }
+
+  .ai-sidebar-active-bar {
+    box-shadow:
+      inset 3px 0 0 0 rgba(34, 211, 238, 0.9),
+      0 0 32px rgba(56, 189, 248, 0.2);
+  }
+
+  .ai-report-cover {
+    border-radius: 1.75rem;
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(49, 46, 129, 0.35));
+    padding: 2rem 1.75rem;
+    box-shadow: 0 0 56px rgba(139, 92, 246, 0.12);
+  }
+
+  .ai-page-shell {
+    position: relative;
+    z-index: 1;
+  }
+
+  .ai-app-canvas::before {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(34, 211, 238, 0.14), transparent 36%),
+      radial-gradient(circle at 88% 4%, rgba(139, 92, 246, 0.16), transparent 34%),
+      radial-gradient(circle at 50% 100%, rgba(14, 165, 233, 0.08), transparent 42%);
+  }
+
+  .ai-app-canvas > * {
+    position: relative;
+    z-index: 1;
   }
 
   .geo-grid-bg {
     background-image:
-      linear-gradient(rgba(148, 163, 184, 0.14) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 0.14) 1px, transparent 1px);
-    background-size: 32px 32px;
+      linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  .ai-data-table thead tr {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(15, 23, 42, 0.65);
+  }
+
+  .ai-data-table tbody tr {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  }
+
+  .ai-data-table th,
+  .ai-data-table td {
+    padding: 0.75rem 1rem;
+    vertical-align: top;
   }
 }

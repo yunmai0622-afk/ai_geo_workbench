@@ -14,6 +14,8 @@ export type DeliveryReportPublicSharePayload = {
   brandName: string;
   enterpriseName: string;
   reportGeneratedAt: string | null;
+  /** 与 conclusionLine 一致：内容覆盖总分 totalScore */
+  visibilityScore: number | null;
   conclusionLine: string;
   aiTest: AiTestEvidenceAggregate;
   publishedContent: DeliveryReportPublicPublishedItem[];

@@ -1,6 +1,33 @@
+import { AiPageHeader } from "@/components/AiPageHeader";
+import {
+  AiActionCard,
+  AiConsolePanel,
+  AiGlassPanel,
+  AiMetricCard,
+  AiPageHero,
+  AiPageShell,
+  AiSection,
+  AiStatusBadge,
+  AiStepRail,
+} from "@/components/ai/ProductUi";
 import { DeliveryReportCustomerView } from "@/components/DeliveryReportCustomerView";
 import { GeoStatusGuide } from "@/components/GeoStatusGuide";
-import { mapPublishRecordsToItems } from "@/lib/deliveryReportDisplay";
+import {
+  buildPublishNextActions,
+  computePlatformDistribution,
+  computePublishOverview,
+  formatMetricValue,
+  publishStatusLabel,
+  recordPublicLink,
+  retestHintForRecord,
+  type PublishRecordForDisplay,
+} from "@/lib/assetProgressDisplay";
+import { aiChipActive, aiChipIdle, aiDataTable, aiGlassPanel, aiInput, aiInternalZone, aiListRow, aiMetricCard, aiSubPanel } from "@/lib/aiProductUi";
+import {
+  buildDeliveryReportConclusionLine,
+  mapPublishRecordsToItems,
+  resolveDeliveryReportVisibilityScore,
+} from "@/lib/deliveryReportDisplay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -204,7 +231,7 @@ function useProjectSelection() {
 
 function ProjectSelector({ projects, selectedProjectId, setSelectedProjectId }: { projects: ProjectOption[]; selectedProjectId?: number; setSelectedProjectId: (id?: number) => void }) {
   return (
-    <select value={selectedProjectId ?? ""} onChange={event => setSelectedProjectId(Number(event.target.value) || undefined)} className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 md:max-w-md">
+    <select value={selectedProjectId ?? ""} onChange={event => setSelectedProjectId(Number(event.target.value) || undefined)} className={aiInput}>
       <option value="">请选择项目</option>
       {projects.map(project => <option key={project.id} value={project.id}>{project.enterpriseName}</option>)}
     </select>
@@ -213,16 +240,21 @@ function ProjectSelector({ projects, selectedProjectId, setSelectedProjectId }: 
 
 function InfoCard({ title, desc, value }: { title: string; desc: string; value?: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-slate-950/56 p-5 text-slate-100">
-      <p className="text-sm font-semibold text-cyan-100">{title}</p>
-      {value ? <p className="mt-2 text-2xl font-semibold text-white">{value}</p> : null}
+    <div className="ai-metric-card text-slate-100">
+      <p className="text-xs font-medium uppercase tracking-wide text-cyan-200/80">{title}</p>
+      {value ? <p className="ai-metric-value mt-2 text-white">{value}</p> : null}
       <p className="mt-2 text-sm leading-6 text-slate-400">{desc}</p>
     </div>
   );
 }
 
 function EmptyStep({ title, description }: { title: string; description: string }) {
-  return <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-6 text-sm leading-6 text-slate-300"><p className="font-semibold text-white">{title}</p><p className="mt-2">{description}</p></div>;
+  return (
+    <div className="ai-glass-panel border border-dashed border-white/15 p-6 text-sm leading-6 text-slate-300">
+      <p className="font-semibold text-white">{title}</p>
+      <p className="mt-2">{description}</p>
+    </div>
+  );
 }
 
 function ActionState({ message, error }: { message?: string; error?: string }) {
@@ -425,7 +457,7 @@ function taskStatusLabelCn(status: string | undefined) {
 function priorityBadgeClass(p: string | undefined) {
   if (p === "P0") return "border-rose-500/50 bg-rose-950/60 text-rose-100";
   if (p === "P1") return "border-amber-500/50 bg-amber-950/50 text-amber-100";
-  return "border-slate-500/40 bg-slate-900/70 text-slate-300";
+  return "border-violet-500/30 bg-violet-950/40 text-violet-100";
 }
 
 function customerErrorMessage(value?: string) {
@@ -447,6 +479,135 @@ function scoreFactors(score?: { aiVisibilityScore?: number | null; aiRecommendat
   if (!score) return "主要因素将在评分生成后展示。";
   return `主要因素：AI 提及 ${score.aiVisibilityScore ?? 0} 分，AI 推荐 ${score.aiRecommendationScore ?? 0} 分，内容资产 ${score.contentAssetScore ?? 0} 分。`;
 }
+
+type DiagnosisAnalysisRow = {
+  id: number;
+  contentGap?: string | null;
+  notRecommendedReason?: string | null;
+  rawJson?: unknown;
+  updatedAt?: Date | string | null;
+  createdAt?: Date | string | null;
+};
+
+type DiagnosisQuestionRow = {
+  id: number;
+  questionText?: string | null;
+  targetKeyword?: string | null;
+};
+
+function diagnosisLastRunLabel(analyses: DiagnosisAnalysisRow[]): string {
+  if (analyses.length === 0) return "暂无数据";
+  let max = NaN;
+  for (const row of analyses) {
+    for (const value of [row.updatedAt, row.createdAt]) {
+      if (!value) continue;
+      const t = new Date(value).getTime();
+      if (!Number.isNaN(t)) max = Number.isNaN(max) ? t : Math.max(max, t);
+    }
+  }
+  if (Number.isNaN(max)) return "暂无数据";
+  return new Date(max).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function countDiagnosisGaps(analyses: DiagnosisAnalysisRow[]): number {
+  if (analyses.length === 0) return 0;
+  const withGap = analyses.filter(row => {
+    const gap = (row.contentGap ?? "").trim();
+    const reason = (row.notRecommendedReason ?? "").trim();
+    return gap.length > 0 || reason.length > 0;
+  });
+  return withGap.length > 0 ? withGap.length : analyses.length;
+}
+
+function buildDiagnosisHeadlineLine(
+  score?: { totalScore?: number | null } | null,
+  gapCount = 0,
+): string {
+  if (!score || typeof score.totalScore !== "number") {
+    return "请先完成诊断流程，系统将在此给出可面向客户的一句话结论。";
+  }
+  if (score.totalScore >= 80) {
+    return "品牌内容资产覆盖较好，AI 已能较稳定识别并推荐；建议持续补充竞品对比与案例证据，巩固推荐信号。";
+  }
+  if (score.totalScore >= 50) {
+    return "当前品牌内容资产中等偏上，AI 能识别通用问题，但品牌推荐信号仍不够稳定，需补强缺口方向的内容。";
+  }
+  if (gapCount > 0) {
+    return "当前品牌内容资产仍偏薄弱，AI 更容易识别通用问题，但尚未形成稳定的品牌推荐信号。";
+  }
+  return "当前品牌内容资产仍偏薄弱，建议优先补齐官网、FAQ 与案例类可引用内容。";
+}
+
+function topDiagnosisGapCards(analyses: DiagnosisAnalysisRow[], limit = 5) {
+  const cards: { id: number; title: string; detail: string }[] = [];
+  for (const item of analyses) {
+    const detail = diagnosisJson(item) as Record<string, unknown>;
+    const gapRaw = (item.contentGap ?? item.notRecommendedReason ?? "").trim();
+    const gap = gapRaw || diagnosisText(item.notRecommendedReason, "");
+    if (!gap || gap === "暂无。") continue;
+    cards.push({
+      id: item.id,
+      title: diagnosisText(detail.questionText, "内容缺口"),
+      detail: gap.length > 140 ? `${gap.slice(0, 140)}…` : gap,
+    });
+    if (cards.length >= limit) break;
+  }
+  return cards;
+}
+
+const TARGET_QUESTION_PREVIEW_COUNT = 8;
+
+function targetQuestionIntentLabel(intent: string, disadvantaged: boolean) {
+  if (intent.trim()) return intent.trim();
+  return disadvantaged ? "劣势场景" : "目标问题";
+}
+
+function buildTargetQuestionGenerateMessage(result: {
+  count: number;
+  newCount?: number;
+  filteredCount?: number;
+  hadPreviousQuestions?: boolean;
+}) {
+  const n = result.newCount ?? result.count;
+  if ((result.filteredCount ?? 0) > 0) {
+    return `已过滤部分重复问题，本次生成 ${n} 个新问题。`;
+  }
+  if (result.hadPreviousQuestions) {
+    return "已生成一组新的目标客户问题。";
+  }
+  return `已生成并写入 ${result.count} 条目标客户问题。`;
+}
+
+function topTargetQuestionCards(questions: DiagnosisQuestionRow[], limit = TARGET_QUESTION_PREVIEW_COUNT) {
+  return questions.slice(0, limit).map(q => {
+    const meta = parseStoredQuestionMeta(q.targetKeyword ?? null);
+    return {
+      id: q.id,
+      title: (q.questionText ?? "").trim() || "待补充问题",
+      intentLabel: targetQuestionIntentLabel(meta.intent, meta.disadvantaged),
+      disadvantaged: meta.disadvantaged,
+    };
+  });
+}
+
+const DIAGNOSIS_CONSOLE_STEPS = [
+  { title: "品牌与产品信息", desc: "完善企业档案与产品服务" },
+  { title: "目标客户与场景", desc: "生成指定检索问题" },
+  { title: "内容方向与平台", desc: "分析缺口与覆盖评分" },
+  { title: "生成诊断结论", desc: "输出优化任务与建议" },
+] as const;
+
+const DIAGNOSIS_NEXT_ACTIONS = [
+  { title: "生成本周内容资产", hint: "根据诊断任务批量生成可发布的 AI 搜索内容" },
+  { title: "补充品牌认知类内容", hint: "强化官网、FAQ 与品牌介绍，提升 AI 识别稳定性" },
+  { title: "补充竞品对比类内容", hint: "围绕劣势场景补齐对比与案例，改善推荐信号" },
+] as const;
 
 function yesNo(value: unknown) {
   return value === true || value === 1 ? "是" : "否";
@@ -671,6 +832,35 @@ export function AiDiagnosisFlowPage() {
   );
   const canOperate = Boolean(selectedProjectId && hasProfile);
   const complete = analyses.length > 0 && Boolean(scoreQuery.data) && tasks.length > 0;
+  const [gapsExpanded, setGapsExpanded] = useState(false);
+  const [questionsExpanded, setQuestionsExpanded] = useState(false);
+  const [consoleQuestionsExpanded, setConsoleQuestionsExpanded] = useState(false);
+
+  const gapCount = useMemo(() => countDiagnosisGaps(analyses as DiagnosisAnalysisRow[]), [analyses]);
+  const gapCardsPreview = useMemo(() => topDiagnosisGapCards(analyses as DiagnosisAnalysisRow[], 5), [analyses]);
+  const gapCardsAll = useMemo(() => topDiagnosisGapCards(analyses as DiagnosisAnalysisRow[], 50), [analyses]);
+  const questionCardsPreview = useMemo(
+    () => topTargetQuestionCards(targetQuestions as DiagnosisQuestionRow[], TARGET_QUESTION_PREVIEW_COUNT),
+    [targetQuestions],
+  );
+  const questionCardsAll = useMemo(() => topTargetQuestionCards(targetQuestions as DiagnosisQuestionRow[], 50), [targetQuestions]);
+  const consoleQuestionPreview = useMemo(() => {
+    const list = targetQuestions as DiagnosisQuestionRow[];
+    const limit = consoleQuestionsExpanded ? list.length : TARGET_QUESTION_PREVIEW_COUNT;
+    return list.slice(0, limit);
+  }, [targetQuestions, consoleQuestionsExpanded]);
+  const lastDiagnosisLabel = useMemo(() => diagnosisLastRunLabel(analyses as DiagnosisAnalysisRow[]), [analyses]);
+  const headline = useMemo(() => buildDiagnosisHeadlineLine(scoreQuery.data ?? null, gapCount), [scoreQuery.data, gapCount]);
+  const scoreDisplay =
+    scoreQuery.data && typeof scoreQuery.data.totalScore === "number" ? `${scoreQuery.data.totalScore} 分` : "暂无数据";
+  const stepActiveIndex = complete ? 3 : analyses.length > 0 ? 2 : targetQuestions.length > 0 ? 1 : hasProfile ? 0 : 0;
+  const diagnoseBtnLabel = running
+    ? "正在运行内容诊断"
+    : analyses.length > 0
+      ? "重新诊断"
+      : "开始 AI 内容诊断";
+  const visibleGapCards = gapsExpanded ? gapCardsAll : gapCardsPreview;
+  const visibleQuestionCards = questionsExpanded ? questionCardsAll : questionCardsPreview;
 
   async function executeDiagnosisPipeline(projectId: number) {
     setProgress("正在基于企业信息与目标问题生成诊断…");
@@ -706,17 +896,18 @@ export function AiDiagnosisFlowPage() {
       const refetchResult = await questionsQuery.refetch();
       const refreshed = refetchResult.data ?? [];
       const readyTargets = refreshed.filter(q => Number(q.enabled) !== 0 && q.questionType === "指定问题");
+      const genHint = buildTargetQuestionGenerateMessage(result);
       if (readyTargets.length === 0) {
-        setMessage(`已写入 ${result.count} 条目标客户问题，但列表暂未同步到可用的「指定问题」。请刷新页面或点击「运行内容诊断」重试。`);
+        setMessage(`${genHint} 但列表暂未同步到可用的「指定问题」，请刷新页面或点击「运行内容诊断」重试。`);
         return;
       }
-      setMessage(`已生成并写入 ${result.count} 条目标客户问题，正在自动运行内容诊断…`);
+      setMessage(`${genHint} 正在自动运行内容诊断…`);
       try {
         await executeDiagnosisPipeline(selectedProjectId);
       } catch (diagErr) {
         setProgress(undefined);
         setError(customerErrorMessage(diagErr instanceof Error ? diagErr.message : "运行内容诊断失败"));
-        setMessage(`已生成 ${result.count} 条目标客户问题，但自动诊断未完成。请点击「运行内容诊断」重试。`);
+        setMessage(`${genHint} 但自动诊断未完成，请点击「运行内容诊断」重试。`);
       }
     } catch (err) {
       setError(customerErrorMessage(err instanceof Error ? err.message : "生成问题失败"));
@@ -744,139 +935,278 @@ export function AiDiagnosisFlowPage() {
   }
 
   return (
-    <div className="space-y-6 text-slate-100">
-      <GeoStatusGuide
-        stage="内容诊断"
-        completion={complete ? 86 : analyses.length > 0 ? 72 : targetQuestions.length > 0 ? 58 : hasProfile ? 42 : 22}
-        nextAction={
-          complete
-            ? "进入内容生产"
-            : running || generatingQuestions
-              ? "正在生成问题或运行诊断…"
-              : targetQuestions.length > 0
-                ? "运行内容诊断"
-                : "重新生成目标客户问题"
-        }
-        why="基于企业档案与目标客户检索问题，分析内容缺口、生成评分与优化任务。"
-        risk="诊断为模型分析结果，未接入各 AI 平台实时回答；样本与结论仅供内容规划参考。"
-        ctaLabel="进入内容生产"
-        ctaPath="/content-generation"
-      />
-      <Card className="border-white/10 bg-white/[0.04] text-slate-100">
-        <CardHeader>
-          <CardTitle className="text-white">内容诊断</CardTitle>
-          <CardDescription className="text-cyan-200">
-            系统根据企业档案自动生成目标客户检索问题，并结合竞品与行业常识做 内容分析，输出诊断摘要、内容覆盖评分与优化任务。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
+    <AiPageShell>
+      <AiPageHero
+        title="AI 内容诊断"
+        description="识别品牌内容缺口，生成面向 AI 搜索的内容资产方向。"
+        badge="内容诊断"
+      >
+        <label className="text-xs text-slate-500">当前项目</label>
+        <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
+      </AiPageHero>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AiMetricCard label="最近诊断时间" value={lastDiagnosisLabel} accent="violet" />
+        <AiMetricCard label="内容覆盖评分" value={scoreDisplay} accent="cyan" />
+        <AiMetricCard label="发现内容缺口数" value={analyses.length > 0 ? String(gapCount) : "暂无数据"} accent="amber" />
+        <AiMetricCard
+          label="目标客户问题"
+          value={targetQuestions.length > 0 ? `${targetQuestions.length} 个` : "暂无数据"}
+          hint="已纳入诊断的指定问题"
+          accent="emerald"
+        />
+      </div>
+
+      <AiSection title="诊断流程控制台" description="按步骤完成输入与诊断，不改变原有提交逻辑。">
+        <AiConsolePanel className="max-w-4xl space-y-5">
+          <AiStepRail activeIndex={stepActiveIndex} steps={[...DIAGNOSIS_CONSOLE_STEPS]} />
           <ActionState message={message} error={error || pageError} />
-          {loading ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">正在读取项目、企业档案、问题与诊断结果...</div> : null}
-          {projects.length === 0 ? <EmptyStep title="暂无项目" description="请先进入企业档案页面创建企业项目，再回到本页生成问题并运行诊断。" /> : null}
-          {selectedProjectId && !hasProfile && !assetSummaryQuery.isLoading ? (
-            <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">当前项目还没有企业档案，请先进入企业档案完成建档。</div>
+          {loading ? (
+            <p className="text-sm text-slate-400">正在读取项目、企业档案、问题与诊断结果…</p>
           ) : null}
-          {progress ? <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm text-cyan-50">{progress}</div> : null}
+          {projects.length === 0 ? (
+            <EmptyStep title="暂无项目" description="请先进入企业档案页面创建企业项目，再回到本页生成问题并运行诊断。" />
+          ) : null}
+          {selectedProjectId && !hasProfile && !assetSummaryQuery.isLoading ? (
+            <p className="rounded-xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-50">
+              当前项目还没有企业档案，请先进入企业档案完成建档。
+            </p>
+          ) : null}
+          {progress ? (
+            <p className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">{progress}</p>
+          ) : null}
 
-          <div className="grid gap-3 text-sm text-slate-300 md:grid-cols-3">
-            <span className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">目标客户问题</span>
-            <span className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">分析内容缺口</span>
-            <span className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">形成内容评分与优化任务</span>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-5">
-            <InfoCard title="目标客户问题" value={String(targetQuestions.length)} desc="已纳入诊断的「指定问题」；含 AI 自动生成与手动添加。" />
-            <InfoCard title="诊断结果" value={String(analyses.length)} desc="按问题维度输出的内容缺口。" />
-            <InfoCard title="内容覆盖评分" value={scoreQuery.data ? String(scoreQuery.data.totalScore) : "未生成"} desc={scoreQuery.data ? `AI 提及 ${scoreQuery.data.aiVisibilityScore} / AI 推荐 ${scoreQuery.data.aiRecommendationScore}` : "运行诊断后同步计算。"} />
-            <InfoCard title="优化任务" value={String(tasks.length)} desc={tasks.length > 0 ? "已生成下一步内容优化任务。" : "请先完成诊断并生成优化任务。"} />
-            <InfoCard title="全部问题库" value={String(questions.length)} desc="含历史批量问题；诊断仅使用指定问题子集。" />
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <h2 className="font-semibold text-white">目标客户问题</h2>
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
+            <div className="rounded-xl border border-white/8 bg-slate-950/40 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Step 2</p>
+                  <h3 className="mt-1 font-medium text-white">目标客户问题</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    基于企业档案生成客户会在 AI 中搜索的问题；重新生成会避开上一轮重复表述。
+                  </p>
+                </div>
                 <Button
                   type="button"
+                  size="sm"
                   onClick={() => void handleGenerateTargetQuestions()}
                   disabled={!canOperate || generatingQuestions || running}
                   variant="outline"
-                  className="shrink-0 border-white/15 text-cyan-100 hover:bg-white/10 sm:self-start"
+                  className="shrink-0 border-white/15 text-cyan-100"
                 >
                   {generatingQuestions ? "正在生成…" : "重新生成"}
                 </Button>
               </div>
               {targetQuestions.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-400">暂无问题，点击重新生成</p>
+                <p className="mt-4 text-sm text-slate-500">暂无问题，点击右上角「重新生成」</p>
               ) : (
-                <ul className="mt-4 max-h-64 list-none space-y-2 overflow-auto p-0 text-sm text-slate-300">
-                  {targetQuestions.slice(0, 20).map(q => {
-                    const qm = parseStoredQuestionMeta(q.targetKeyword ?? null);
+                <div className="mt-4 space-y-2">
+                  {consoleQuestionPreview.map(q => {
+                    const meta = parseStoredQuestionMeta(q.targetKeyword ?? null);
+                    const typeLabel = targetQuestionIntentLabel(meta.intent, meta.disadvantaged);
                     return (
-                      <li key={q.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                        <span>{q.questionText}</span>
-                        {qm.disadvantaged ? <span className="ml-2 text-xs text-amber-300">劣势场景</span> : null}
-                        {qm.intent ? <span className="mt-1 block text-xs text-slate-500">意图：{qm.intent}</span> : null}
-                      </li>
+                      <div key={q.id} className="rounded-lg border border-white/8 bg-slate-950/50 px-3 py-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <AiStatusBadge tone={meta.disadvantaged ? "warning" : "info"}>{typeLabel}</AiStatusBadge>
+                          {meta.disadvantaged ? (
+                            <span className="text-[10px] text-amber-200/80">影响诊断质量</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-200">{q.questionText}</p>
+                      </div>
                     );
                   })}
-                </ul>
+                  {targetQuestions.length > TARGET_QUESTION_PREVIEW_COUNT ? (
+                    <button
+                      type="button"
+                      className="text-xs text-cyan-200/90 hover:text-cyan-100"
+                      onClick={() => setConsoleQuestionsExpanded(v => !v)}
+                    >
+                      {consoleQuestionsExpanded ? "收起" : `展开全部（${targetQuestions.length}）`}
+                    </button>
+                  ) : null}
+                </div>
               )}
-              <div className="mt-4 flex flex-wrap justify-end gap-3">
-                <Button onClick={() => setLocation("/enterprise-profile")} variant="outline" className="border-white/15 text-cyan-100 hover:bg-white/10">
-                  进入企业档案
-                </Button>
-              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-4 border-white/12 text-slate-400"
+                onClick={() => setLocation("/enterprise-profile")}
+              >
+                进入企业档案
+              </Button>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
-              <h2 className="font-semibold text-white">内容覆盖评分</h2>
-              <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-                <div className="min-w-0 flex-1">
-                  {scoreQuery.data ? (
-                    <div className="space-y-3 text-sm leading-6 text-slate-300">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <p>总分：{scoreQuery.data.totalScore}</p>
-                        <p>当前等级：{scoreQuery.data.visibilityLevel}</p>
-                        <p>AI 提及分：{scoreQuery.data.aiVisibilityScore}</p>
-                        <p>AI 推荐分：{scoreQuery.data.aiRecommendationScore}</p>
-                      </div>
-                      <p className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-3 text-cyan-50">分数代表分析语境下企业对 内容覆盖与内容资产的匹配程度。</p>
-                      <p>{scoreReason(scoreQuery.data)}</p>
-                      <p>{scoreFactors(scoreQuery.data)}</p>
-                      <p className="text-emerald-100">下一步：优先处理 P0 优化任务，再进入内容生产生成本周内容计划。</p>
-                    </div>
-                  ) : (
-                    <p className="text-sm leading-6 text-slate-400">当前还没有生成 内容覆盖评分。生成目标客户问题后，可在此运行诊断。</p>
-                  )}
+            <div className="rounded-xl border border-white/8 bg-slate-950/40 p-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Step 4</p>
+              <h3 className="mt-1 font-medium text-white">运行内容诊断</h3>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                <div className="rounded-lg border border-white/6 bg-slate-950/40 px-3 py-2">
+                  <p className="text-[10px] text-slate-500">已准备问题</p>
+                  <p className="mt-1 text-sm font-medium text-cyan-100">
+                    {targetQuestions.length > 0 ? `${targetQuestions.length} 个` : "暂无"}
+                  </p>
                 </div>
-                <div className="flex shrink-0 flex-col gap-2 lg:max-w-[12rem] lg:border-l lg:border-white/10 lg:pl-6">
-                  <Button
-                    onClick={() => void handleRunDiagnosis()}
-                    disabled={!canOperate || targetQuestions.length === 0 || running || generatingQuestions}
-                    className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300 lg:w-auto lg:min-w-[10.5rem]"
-                  >
-                    {running ? "正在运行内容诊断" : analyses.length > 0 ? "重新诊断" : "运行内容诊断"}
-                  </Button>
-                  <p className="text-xs leading-5 text-slate-500">查看分数后可直接重跑；首次诊断也在此开始。</p>
+                <div className="rounded-lg border border-white/6 bg-slate-950/40 px-3 py-2 sm:col-span-2 lg:col-span-1 xl:col-span-2">
+                  <p className="text-[10px] text-slate-500">诊断将产出</p>
+                  <ul className="mt-1 space-y-0.5 text-xs text-slate-400">
+                    <li>· 诊断结论（一句话 + 评分）</li>
+                    <li>· 内容缺口清单</li>
+                    <li>· 优化任务与下一步建议</li>
+                  </ul>
                 </div>
               </div>
+              <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                {targetQuestions.length > 0
+                  ? "基于上方目标客户问题，分析品牌在 AI 搜索中的内容覆盖与缺口。"
+                  : "请先在 Step 2 生成目标客户问题，再运行诊断。"}
+              </p>
+              <Button
+                type="button"
+                variant="ai"
+                className="mt-4 h-11 w-full"
+                disabled={!canOperate || targetQuestions.length === 0 || running || generatingQuestions}
+                onClick={() => void handleRunDiagnosis()}
+              >
+                {diagnoseBtnLabel}
+              </Button>
             </div>
           </div>
+        </AiConsolePanel>
+      </AiSection>
 
-          <div className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
-            <h2 className="font-semibold text-white">诊断结果</h2>
+      <AiSection title="核心诊断结论" description="优先阅读一句话结论，再查看缺口与目标问题。">
+        <div className="ai-glass-panel border-violet-400/20 bg-gradient-to-br from-violet-500/10 via-slate-950/60 to-cyan-500/5 p-6 md:p-8">
+          <p className="text-lg font-semibold leading-relaxed text-white md:text-xl">{headline}</p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <AiMetricCard label="内容覆盖评分" value={scoreDisplay} accent="cyan" />
+            <AiMetricCard label="内容缺口数" value={analyses.length > 0 ? String(gapCount) : "暂无数据"} accent="amber" />
+            <AiMetricCard
+              label="推荐生成方向数"
+              value={tasks.length > 0 ? String(tasks.length) : "暂无数据"}
+              hint="来自优化任务"
+              accent="violet"
+            />
+          </div>
+        </div>
+      </AiSection>
+
+      <AiSection title="内容缺口与目标问题">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-slate-300">内容缺口</h3>
+            {gapCardsPreview.length === 0 ? (
+              <p className="text-sm text-slate-500">暂无内容缺口。请运行内容诊断后查看。</p>
+            ) : (
+              <div className="space-y-2">
+                {visibleGapCards.map(card => (
+                  <div key={card.id} className="ai-asset-card border-l-4 border-l-amber-400/50 p-4">
+                    <p className="line-clamp-1 text-sm font-medium text-white">{card.title}</p>
+                    <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-400">{card.detail}</p>
+                  </div>
+                ))}
+                {gapCardsAll.length > 5 ? (
+                  <button
+                    type="button"
+                    className="text-xs text-cyan-200/90 hover:text-cyan-100"
+                    onClick={() => setGapsExpanded(v => !v)}
+                  >
+                    {gapsExpanded ? "收起" : `查看全部（${gapCardsAll.length}）`}
+                  </button>
+                ) : null}
+              </div>
+            )}
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-slate-300">目标问题</h3>
+            {questionCardsPreview.length === 0 ? (
+              <p className="text-sm text-slate-500">暂无目标问题。请点击「重新生成」。</p>
+            ) : (
+              <div className="space-y-2">
+                {visibleQuestionCards.map(card => (
+                  <div key={card.id} className="ai-asset-card border-l-4 border-l-cyan-400/40 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AiStatusBadge tone={card.disadvantaged ? "warning" : "info"}>{card.intentLabel}</AiStatusBadge>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-white">{card.title}</p>
+                  </div>
+                ))}
+                {targetQuestions.length > TARGET_QUESTION_PREVIEW_COUNT ? (
+                  <button
+                    type="button"
+                    className="text-xs text-cyan-200/90 hover:text-cyan-100"
+                    onClick={() => setQuestionsExpanded(v => !v)}
+                  >
+                    {questionsExpanded ? "收起" : `展开全部（${targetQuestions.length}）`}
+                  </button>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
+      </AiSection>
+
+      <AiSection title="下一步内容资产动作" description="完成诊断后，按优先级推进内容资产生产。">
+        <ul className="grid gap-3 md:grid-cols-3">
+          {DIAGNOSIS_NEXT_ACTIONS.map((action, idx) => (
+            <li key={action.title} className="rounded-2xl border border-white/8 bg-slate-950/35 px-4 py-4">
+              <p className="text-xs text-slate-500">动作 {idx + 1}</p>
+              <p className="mt-2 font-medium text-white">{action.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">{action.hint}</p>
+            </li>
+          ))}
+        </ul>
+        {complete ? (
+          <p className="text-sm text-emerald-200/90">内容诊断已完成。下一步：进入内容资产生产，根据优化任务批量生成内容。</p>
+        ) : null}
+        <Button
+          type="button"
+          variant="ai"
+          className="h-12 min-w-[220px]"
+          disabled={!complete}
+          onClick={() => setLocation("/weekly")}
+        >
+          去生成内容资产
+        </Button>
+      </AiSection>
+
+      <details className="ai-glass-panel border-white/8 bg-slate-950/30 text-sm">
+        <summary className="cursor-pointer list-none px-5 py-4 font-medium text-slate-400 hover:text-slate-200 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <span className="text-cyan-500/80">▸</span>
+            完整诊断明细
+          </span>
+        </summary>
+        <div className="space-y-6 border-t border-white/8 px-5 pb-6 pt-4">
+          <div>
+            <h3 className="font-semibold text-white">内容覆盖评分</h3>
+            {scoreQuery.data ? (
+              <div className="mt-3 space-y-2 text-sm leading-6 text-slate-400">
+                <p>
+                  总分 {scoreQuery.data.totalScore} · 等级 {scoreQuery.data.visibilityLevel} · AI 提及{" "}
+                  {scoreQuery.data.aiVisibilityScore} · AI 推荐 {scoreQuery.data.aiRecommendationScore}
+                </p>
+                <p>{scoreReason(scoreQuery.data)}</p>
+                <p>{scoreFactors(scoreQuery.data)}</p>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">当前还没有生成 内容覆盖评分。</p>
+            )}
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-white">诊断结果</h3>
             {analyses.length === 0 ? (
-              <p className="mt-3 text-sm leading-6 text-slate-400">当前还没有诊断结果。请先生成目标问题，再点击「运行内容诊断」。</p>
+              <p className="mt-2 text-sm text-slate-500">当前还没有诊断结果。请先生成目标问题，再点击运行内容诊断。</p>
             ) : (
               <div className="mt-3 space-y-3">
-                {analyses.slice(0, 10).map(item => {
+                {analyses.map(item => {
                   const detail = diagnosisJson(item) as Record<string, unknown>;
                   const v12 = diagnosisV12DisplayFields(detail);
                   return (
-                    <div key={item.id} className="rounded-2xl bg-white/[0.03] p-4 text-sm leading-6 text-slate-300">
-                      <p className="font-medium text-white">客户问题：{diagnosisText(detail.questionText, "未关联客户问题")}</p>
-                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <div key={item.id} className="rounded-2xl border border-white/6 bg-white/[0.02] p-4 text-sm leading-6 text-slate-400">
+                      <p className="font-medium text-slate-200">客户问题：{diagnosisText(detail.questionText, "未关联客户问题")}</p>
+                      <div className="mt-3 grid gap-2 md:grid-cols-2">
                         <p>客户搜这个问题时，AI会提到你吗：{yesNo(item.mentionsEnterprise)}</p>
                         <p>AI会把你推荐给客户吗：{yesNo(item.recommendsEnterprise)}</p>
                         <p>被关注的竞品：{listText(item.recommendedCompetitors)}</p>
@@ -885,13 +1215,15 @@ export function AiDiagnosisFlowPage() {
                       <p className="mt-2">内容缺口 / 未推荐原因：{diagnosisText(item.notRecommendedReason, "暂无。")}</p>
                       <p>内容缺口：{item.contentGap || "暂无"}</p>
                       <p>优化建议：{item.optimizationSuggestion || "暂无"}</p>
-                      <div className="mt-2 space-y-2 rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-3 text-cyan-50">
+                      <div className="mt-2 space-y-2 rounded-xl border border-cyan-300/15 bg-cyan-400/5 p-3 text-cyan-100/90">
                         <p>
-                          <span className="text-xs text-cyan-200/90">建议标题</span>
-                          <span className="mt-1 block text-sm text-cyan-50">{v12.suggestedTitle ? `《${v12.suggestedTitle}》` : diagnosisText(detail.semanticSummary, "暂无。")}</span>
+                          <span className="text-xs text-cyan-200/80">建议标题</span>
+                          <span className="mt-1 block text-sm">
+                            {v12.suggestedTitle ? `《${v12.suggestedTitle}》` : diagnosisText(detail.semanticSummary, "暂无。")}
+                          </span>
                         </p>
                         <div>
-                          <p className="text-xs text-cyan-200/90">核心论点</p>
+                          <p className="text-xs text-cyan-200/80">核心论点</p>
                           {v12.coreTheses.length > 0 ? (
                             <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
                               {v12.coreTheses.map((t, idx) => (
@@ -899,12 +1231,14 @@ export function AiDiagnosisFlowPage() {
                               ))}
                             </ul>
                           ) : (
-                            <p className="mt-1 text-sm text-slate-400">暂无结构化论点，请结合上方「优化建议」执行。</p>
+                            <p className="mt-1 text-sm text-slate-500">暂无结构化论点，请结合上方「优化建议」执行。</p>
                           )}
                         </div>
                         <p>
-                          <span className="text-xs text-cyan-200/90">推荐发布平台</span>
-                          <span className="mt-1 block text-sm">{v12.recommendedPlatforms.length ? v12.recommendedPlatforms.join("、") : "待补充"}</span>
+                          <span className="text-xs text-cyan-200/80">推荐发布平台</span>
+                          <span className="mt-1 block text-sm">
+                            {v12.recommendedPlatforms.length ? v12.recommendedPlatforms.join("、") : "待补充"}
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -914,23 +1248,26 @@ export function AiDiagnosisFlowPage() {
             )}
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
-            <h2 className="font-semibold text-white">优化任务</h2>
+          <div>
+            <h3 className="font-semibold text-white">优化任务</h3>
             {tasks.length === 0 ? (
-              <p className="mt-3 text-sm leading-6 text-slate-400">当前还没有优化任务。请先运行内容诊断。</p>
+              <p className="mt-2 text-sm text-slate-500">当前还没有优化任务。请先运行内容诊断。</p>
             ) : (
               <div className="mt-3 grid gap-3 lg:grid-cols-2">
                 {tasks.map(task => {
                   const card = parseGeoTaskCard(task.executionSuggestion);
                   return (
-                    <div key={task.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-300">
-                      <p className="font-medium text-white">任务名称：{task.taskName}</p>
-                      <p className="mt-1 text-cyan-200">优先级：{task.priority || "待评估"}</p>
+                    <div key={task.id} className="rounded-2xl border border-white/6 bg-slate-950/40 p-4 text-sm leading-6 text-slate-400">
+                      <p className="font-medium text-slate-200">任务名称：{task.taskName}</p>
+                      <p className="mt-1 text-cyan-200/90">优先级：{task.priority || "待评估"}</p>
                       <p>这个任务解决什么问题：{task.generationReason || "用于补齐诊断发现的内容缺口。"}</p>
                       <p>建议内容类型：{task.taskType || "内容"}</p>
                       {card ? (
-                        <div className="mt-2 space-y-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-slate-200">
-                          <p><span className="text-xs text-slate-500">建议标题</span><span className="mt-1 block text-cyan-100">《{card.articleTitle}》</span></p>
+                        <div className="mt-2 space-y-2 rounded-xl border border-white/8 p-3">
+                          <p>
+                            <span className="text-xs text-slate-500">建议标题</span>
+                            <span className="mt-1 block text-cyan-100">《{card.articleTitle}》</span>
+                          </p>
                           <div>
                             <p className="text-xs text-slate-500">核心论点</p>
                             <ul className="mt-1 list-disc space-y-1 pl-5">
@@ -939,28 +1276,30 @@ export function AiDiagnosisFlowPage() {
                               ))}
                             </ul>
                           </div>
-                          <p><span className="text-xs text-slate-500">目标关键词</span><span className="mt-1 block">{card.targetKeywords.join("、")}</span></p>
-                          <p><span className="text-xs text-slate-500">推荐发布平台</span><span className="mt-1 block">{card.recommendedPlatform.join("、")}</span></p>
-                          <p><span className="text-xs text-slate-500">内容形态</span><span className="mt-1 block">{card.contentType}</span></p>
+                          <p>
+                            <span className="text-xs text-slate-500">目标关键词</span>
+                            <span className="mt-1 block">{card.targetKeywords.join("、")}</span>
+                          </p>
+                          <p>
+                            <span className="text-xs text-slate-500">推荐发布平台</span>
+                            <span className="mt-1 block">{card.recommendedPlatform.join("、")}</span>
+                          </p>
+                          <p>
+                            <span className="text-xs text-slate-500">内容形态</span>
+                            <span className="mt-1 block">{card.contentType}</span>
+                          </p>
                         </div>
                       ) : null}
-                      <p className="mt-2 text-emerald-100">下一步动作：进入内容生产，基于该任务生成本周内容计划。</p>
+                      <p className="mt-2 text-emerald-200/80">下一步动作：进入内容生产，基于该任务生成本周内容计划。</p>
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
-
-          {complete ? <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">内容诊断已完成。下一步：进入内容生产，根据优化任务生成本周内容计划。</div> : null}
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button onClick={() => setLocation("/content-generation")} disabled={!complete} variant="outline" className="border-white/15 text-cyan-100 hover:bg-white/10">
-              进入内容生产
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </details>
+    </AiPageShell>
   );
 }
 
@@ -1402,7 +1741,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
         <CardContent className="space-y-5">
           <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
           <ActionState message={message} error={error || pageError} />
-          {pageLoading ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">正在读取项目、企业资料、诊断结果、优化任务、内容计划、选题、文章和已有质量分...</div> : null}
+          {pageLoading ? <div className="rounded-2xl border border-white/8 bg-slate-950/35 p-4 text-sm text-slate-300">正在读取项目、企业资料、诊断结果、优化任务、内容计划、选题、文章和已有质量分...</div> : null}
           {projects.length === 0 ? <EmptyStep title="暂无项目" description="请先进入企业档案页面创建项目，再完成 内容诊断后生成内容。" /> : null}
           {selectedProjectId && !hasProfile && !assetSummaryQuery.isLoading ? <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">当前项目还没有企业档案。内容计划需要企业定位、产品与客户信息；请先在「企业档案」完成 Section 1 / 2 等必填项并保存。</div> : null}
           {selectedProjectId && !hasDiagnosis && !analysisQuery.isLoading ? <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">当前项目还没有 内容诊断结果。内容必须基于诊断缺口生成，请先进入内容诊断生成目标问题并运行诊断。</div> : null}
@@ -1416,7 +1755,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             <InfoCard title="已生成文章" value={String(articles.length)} desc="每次生成 1 篇并自动完成质量检查与轻量差异度检查。" />
           </div>
 
-          <section className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+          <section className="ai-glass-panel p-5 md:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">1. 配置本周内容生产计划</h2>
@@ -1428,17 +1767,17 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               <label className="space-y-2 text-sm text-slate-300">
                 <span className="font-medium text-slate-100">计划名称</span>
                 <span className="block text-xs text-slate-500">给本周内容计划起一个名字，方便后续复盘。示例：5月第2周 内容计划</span>
-                <input value={contentPlan.name} onChange={event => setContentPlan(plan => ({ ...plan, name: event.target.value }))} className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400" />
+                <input value={contentPlan.name} onChange={event => setContentPlan(plan => ({ ...plan, name: event.target.value }))} className={aiInput} />
               </label>
               <label className="space-y-2 text-sm text-slate-300">
                 <span className="font-medium text-slate-100">周期开始日期</span>
                 <span className="block text-xs text-slate-500">选择本周内容计划的开始时间。</span>
-                <input type="date" value={contentPlan.weekStart} onChange={event => setContentPlan(plan => ({ ...plan, weekStart: event.target.value }))} className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400" />
+                <input type="date" value={contentPlan.weekStart} onChange={event => setContentPlan(plan => ({ ...plan, weekStart: event.target.value }))} className={aiInput} />
               </label>
               <label className="space-y-2 text-sm text-slate-300">
                 <span className="font-medium text-slate-100">本周计划生成篇数</span>
                 <span className="block text-xs text-slate-500">建议 3-5 篇，不建议一次生成过多。</span>
-                <input type="number" min={1} max={10} value={contentPlan.weeklyCount} onChange={event => setContentPlan(plan => ({ ...plan, weeklyCount: Number(event.target.value) || 1 }))} className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400" />
+                <input type="number" min={1} max={10} value={contentPlan.weeklyCount} onChange={event => setContentPlan(plan => ({ ...plan, weeklyCount: Number(event.target.value) || 1 }))} className={aiInput} />
               </label>
             </div>
             <div className="mt-5">
@@ -1446,7 +1785,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               <p className="mt-1 text-sm text-slate-400">选择本周内容将优先适配的平台。本页只配置内容计划，不连接平台、不发布。</p>
               <div className="mt-3 grid gap-3 lg:grid-cols-3">
                 {platformMatrix.map(platform => (
-                  <button key={platform.name} type="button" onClick={() => togglePlanValue("targetPlatforms", platform.name)} className={`rounded-2xl border p-4 text-left text-sm leading-6 transition ${contentPlan.targetPlatforms.includes(platform.name) ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50" : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"}`}>
+                  <button key={platform.name} type="button" onClick={() => togglePlanValue("targetPlatforms", platform.name)} className={contentPlan.targetPlatforms.includes(platform.name) ? aiChipActive : aiChipIdle}>
                     <p className="font-medium text-white">{platformDisplayName(platform.name)}</p>
                     <p className="mt-1 text-cyan-200">{platform.priority}</p>
                     <p className="mt-1">{platform.capability}</p>
@@ -1460,17 +1799,17 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               <p className="mt-1 text-sm text-slate-400">选择本周要补齐的内容资产类型，让内容围绕诊断缺口和优化任务展开。</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {contentTypeOptions.map(type => (
-                  <button key={type} type="button" onClick={() => togglePlanValue("contentTypes", type)} className={`rounded-full border px-3 py-2 text-sm ${contentPlan.contentTypes.includes(type) ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50" : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"}`}>{type}</button>
+                  <button key={type} type="button" onClick={() => togglePlanValue("contentTypes", type)} className={`rounded-full border px-3 py-2 text-sm ${contentPlan.contentTypes.includes(type) ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50" : "border-white/8 bg-slate-950/35 text-slate-300 hover:bg-white/[0.06]"}`}>{type}</button>
                 ))}
               </div>
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-slate-400">{latestPlan ? `已保存计划：${latestPlan.planName}。内容计划明细 ${contentPlanItems.length} 条。` : "保存计划后才能生成本周内容选题。"}</p>
-              <Button onClick={handleSaveContentPlan} disabled={!selectedProjectId || !planFormComplete || savingPlan} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">{savingPlan ? "正在保存内容计划" : latestPlan ? "更新内容计划" : "保存内容计划"}</Button>
+              <Button onClick={handleSaveContentPlan} disabled={!selectedProjectId || !planFormComplete || savingPlan} variant="ai">{savingPlan ? "正在保存内容计划" : latestPlan ? "更新内容计划" : "保存内容计划"}</Button>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+          <section className="ai-glass-panel p-5 md:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">2. 选择优化任务进入内容计划</h2>
@@ -1481,7 +1820,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             {tasks.length === 0 ? <EmptyStep title="暂无优化任务" description="完成 内容诊断并生成任务后，才能基于任务生成内容。" /> : <div className="mt-4 grid gap-3 lg:grid-cols-2">{tasks.map(task => {
               const card = parseGeoTaskCard(task.executionSuggestion);
               return (
-                <button key={task.id} type="button" onClick={() => togglePlanTask(task.id)} className={`rounded-2xl border p-4 text-left text-sm leading-6 transition ${contentPlan.taskIds.includes(task.id) ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50" : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"}`}>
+                <button key={task.id} type="button" onClick={() => togglePlanTask(task.id)} className={contentPlan.taskIds.includes(task.id) ? aiChipActive : aiChipIdle}>
                   <p className="font-medium text-white">{contentPlan.taskIds.includes(task.id) ? "已纳入计划：" : ""}{task.taskName}</p>
                   <p className="mt-1 text-cyan-200">{task.taskType || "内容任务"} · {task.priority || "优先级未标注"}</p>
                   <p className="mt-2 text-slate-400">{task.generationReason || "该任务来自 内容诊断后的内容缺口判断。"}</p>
@@ -1498,13 +1837,13 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             })}</div>}
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+          <section className="ai-glass-panel p-5 md:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">3. 生成并选择本周内容选题</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-400">选题与优化任务一一对应，标题与类型来自任务卡片。点击按钮从任务同步选题列表。重复风险仅为轻量规则提示。</p>
               </div>
-              <Button onClick={handleGenerateTopics} disabled={!pageReady || generatingTopics || contentGenerating} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">{generatingTopics ? "正在生成本周内容选题" : "生成本周内容选题"}</Button>
+              <Button onClick={handleGenerateTopics} disabled={!pageReady || generatingTopics || contentGenerating} variant="ai">{generatingTopics ? "正在生成本周内容选题" : "生成本周内容选题"}</Button>
             </div>
             <div
               className="mt-4"
@@ -1522,7 +1861,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                     const platformLine = topicCard?.recommendedPlatform?.length ? topicCard.recommendedPlatform.join("、") : "—";
                     const contentTypeLine = topicCard?.contentType || topic.articleType || "—";
                     return (
-                      <button key={topic.id} type="button" onClick={() => setSelectedTopicId(topic.id)} className={`rounded-2xl border p-4 text-left text-sm leading-6 transition ${selectedTopicId === topic.id ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50" : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"}`}>
+                      <button key={topic.id} type="button" onClick={() => setSelectedTopicId(topic.id)} className={selectedTopicId === topic.id ? aiChipActive : aiChipIdle}>
                         <p className="font-medium text-white">{topic.title}</p>
                         <p className="mt-2 text-slate-400">优化任务：{taskForTopic?.taskName ?? "—"}</p>
                         {topicCard?.keyPoints?.length ? (
@@ -1544,7 +1883,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+          <section className="ai-glass-panel p-5 md:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">4. 生成内容</h2>
@@ -1554,7 +1893,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 <Button
                   onClick={handleGenerateArticle}
                   disabled={!selectedTopicId || generatingTopics || contentGenerating || checkingQuality}
-                  className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                  variant="ai"
                 >
                   {generatingArticle && !batchGeneratingAll ? "生成中…" : "生成 1 篇文章"}
                 </Button>
@@ -1574,7 +1913,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               const stTask = tasks.find(t => t.id === selectedTopic.optimizationTaskId);
               const stCard = parseGeoTaskCard(stTask?.executionSuggestion ?? null);
               return (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-300">
+                <div className="mt-4 rounded-2xl border border-white/8 bg-slate-950/35 p-4 text-sm leading-6 text-slate-300">
                   <p className="font-medium text-white">当前选题：{selectedTopic.title}</p>
                   <p className="mt-1">优化任务：{stTask?.taskName ?? "—"}</p>
                   <p className="mt-1">推荐平台：{stCard?.recommendedPlatform?.length ? stCard.recommendedPlatform.join("、") : "—"}</p>
@@ -1583,7 +1922,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               );
             })()}
             {articlesSorted.length > 0 ? (
-              <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+              <div className={`mt-4 p-4 ${aiSubPanel}`}>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">已生成文章</p>
                 <p className="mt-1 text-xs text-slate-400">按生成时间倒序；点击一行可查看正文与下方质量检查详情。</p>
                 <ul className="mt-3 divide-y divide-white/10">
@@ -1626,7 +1965,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             ) : null}
             {!selectedArticle ? <EmptyStep title="暂无已生成文章" description="生成后会在这里展示发布标题、Markdown 正文、生成依据和下一步检查状态。" /> : (
               <div className="mt-4 space-y-4">
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="rounded-3xl border border-white/8 bg-slate-950/35 p-5">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <p className="text-sm text-cyan-200">文章 #{selectedArticle.id} · {cyclePick(contentPlan.targetPlatforms, 0, "目标平台待确认")} · {cyclePick(contentPlan.contentTypes, 0, selectedArticle.articleType || "内容")}</p>
@@ -1635,14 +1974,14 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-200">{selectedArticle.status || (selectedQuality ? "已检查" : "生成中")}</span>
                   </div>
                   <div className="mt-5 space-y-4">
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/56 p-4">
+                    <div className="ai-glass-panel p-4">
                       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">发布标题</p>
                       <p className="mt-1 text-xs text-slate-500">已按企业简称处理工商全称，可直接微调后复制。</p>
                       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
                         <input
                           value={publishTitleEdit}
                           onChange={event => setPublishTitleEdit(event.target.value)}
-                          className="min-h-10 w-full flex-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                          className={`${aiInput} min-h-10 flex-1 py-2`}
                           placeholder="发布用标题"
                           aria-label="发布标题"
                         />
@@ -1656,7 +1995,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                         </Button>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/56 p-4">
+                    <div className="ai-glass-panel p-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">正文（Markdown）</p>
@@ -1674,43 +2013,43 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                       <textarea
                         readOnly
                         value={publishBodyMarkdown}
-                        className="mt-3 max-h-[520px] min-h-[240px] w-full resize-y rounded-xl border border-white/10 bg-slate-950/80 p-3 font-mono text-sm leading-6 text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                        className={`mt-3 max-h-[520px] min-h-[240px] w-full resize-y p-3 font-mono text-sm leading-6 text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/30 ${aiInput}`}
                         aria-label="文章 Markdown 正文"
                       />
                     </div>
                     <p className="text-center text-sm text-slate-400">复制后前往对应平台粘贴发布</p>
                   </div>
                   <div className="mt-5 grid gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/56 p-4 text-sm leading-6 text-slate-300">
+                    <div className="ai-glass-panel p-4 text-sm leading-6 text-slate-300">
                       <p className="font-medium text-white">优化任务</p>
                       <p className="mt-2">{textValue(basis.optimizationTask ?? selectedTask?.taskName)}</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/56 p-4 text-sm leading-6 text-slate-300">
+                    <div className="ai-glass-panel p-4 text-sm leading-6 text-slate-300">
                       <p className="font-medium text-white">目标问题</p>
                       <p className="mt-2">{textValue(basis.customerQuestion)}</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/56 p-4 text-sm leading-6 text-slate-300">
+                    <div className="ai-glass-panel p-4 text-sm leading-6 text-slate-300">
                       <p className="font-medium text-white">本周计划归属</p>
                       <p className="mt-2">计划：{contentPlan.name || "未命名计划"}</p>
                       <p className="mt-1">目标平台：{cyclePick(contentPlan.targetPlatforms, 0, "未选择目标平台")}</p>
                       <p className="mt-1">内容类型：{cyclePick(contentPlan.contentTypes, 0, selectedArticle.articleType || "内容")}</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/56 p-4 text-sm leading-6 text-slate-300">
+                    <div className="ai-glass-panel p-4 text-sm leading-6 text-slate-300">
                       <p className="font-medium text-white">企业资料依据</p>
                       {enterpriseMaterials.length > 0 ? <ul className="mt-2 list-disc space-y-1 pl-5">{enterpriseMaterials.slice(0, 4).map((item, index) => <li key={index}>{textValue(item.name ?? item.title ?? item.sourceName, "企业资料")}：{textValue(item.summary ?? item.content ?? item.evidence, "已纳入生成依据")}</li>)}</ul> : assetSources.length > 0 ? <ul className="mt-2 list-disc space-y-1 pl-5">{assetSources.slice(0, 4).map((source, index) => <li key={index}>{source.title || source.sourceType || `资料来源 ${index + 1}`}</li>)}</ul> : <p className="mt-2">企业资料依据较少，发布前建议补充来源和案例。</p>}
                     </div>
                   </div>
                   <div className="mt-5 grid gap-3 text-sm text-slate-300 md:grid-cols-3">
-                    <span className="rounded-2xl border border-white/10 bg-slate-950/56 px-4 py-3">质量状态：{selectedQuality ? `${selectedQuality.totalScore} 分` : "生成后自动质量检查"}</span>
-                    <span className="rounded-2xl border border-white/10 bg-slate-950/56 px-4 py-3">差异度：{selectedArticle ? duplicateRiskLabel(antiDuplication.similarityRisk) : "待检查"}</span>
-                    <span className="rounded-2xl border border-white/10 bg-slate-950/56 px-4 py-3">发布准备：{reviewPassed ? "可进入人工确认" : reviewComplete ? "需修订或复核" : "待生成"}</span>
+                    <span className="ai-glass-panel px-4 py-3">质量状态：{selectedQuality ? `${selectedQuality.totalScore} 分` : "生成后自动质量检查"}</span>
+                    <span className="ai-glass-panel px-4 py-3">差异度：{selectedArticle ? duplicateRiskLabel(antiDuplication.similarityRisk) : "待检查"}</span>
+                    <span className="ai-glass-panel px-4 py-3">发布准备：{reviewPassed ? "可进入人工确认" : reviewComplete ? "需修订或复核" : "待生成"}</span>
                   </div>
                 </div>
               </div>
             )}
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+          <section className="ai-glass-panel p-5 md:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">5. 文章质量检查</h2>
@@ -1753,7 +2092,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 <InfoCard title="平台适配性" value={String(selectedQuality.complianceScore ?? "未记录")} desc={`目标平台：${cyclePick(contentPlan.targetPlatforms, 0, "未选择目标平台")}。检查基础格式和合规边界。`} />
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-sm leading-6 text-slate-300">
+                <div className="rounded-3xl border border-white/8 bg-slate-950/35 p-5 text-sm leading-6 text-slate-300">
                   <h3 className="font-semibold text-white">阻断原因（仅合规）</h3>
                   {qualityBlocked && stringList(selectedQuality.blockReasons).length > 0 ? (
                     <ul className="mt-3 list-disc space-y-1 pl-5">{stringList(selectedQuality.blockReasons).map((reason, index) => <li key={index}>{reason}</li>)}</ul>
@@ -1761,7 +2100,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                     <p className="mt-3 text-emerald-100">未发现合规类阻断。</p>
                   )}
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-sm leading-6 text-slate-300">
+                <div className="rounded-3xl border border-white/8 bg-slate-950/35 p-5 text-sm leading-6 text-slate-300">
                   <h3 className="font-semibold text-white">发布前可优化的建议（非必须）</h3>
                   <ul className="mt-3 list-disc space-y-1 pl-5">
                   {stringList((selectedQuality as any).optimizationSuggestions ?? []).map((suggestion, index) => <li key={`s-${index}`}>{suggestion}</li>)}
@@ -1771,7 +2110,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                   </ul>
                 </div>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-sm leading-6 text-slate-300">
+              <div className="rounded-3xl border border-white/8 bg-slate-950/35 p-5 text-sm leading-6 text-slate-300">
                 <h3 className="font-semibold text-white">与历史文章差异度</h3>
                 <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <p>标题是否重复：{antiDuplication.titleRepeated ? "是" : "否"}</p>
@@ -1912,7 +2251,7 @@ export function ContentPublishingFlowPage() {
     setLinkDraftById(prev => {
       const next = { ...prev };
       for (const r of publishRecords) {
-        const url = (r.publishUrl || r.publicUrl || "").trim();
+        const url = recordPublicLink(r);
         if (next[r.id] === undefined) next[r.id] = url;
       }
       return next;
@@ -2031,20 +2370,41 @@ export function ContentPublishingFlowPage() {
 
   const loading = articlesQuery.isLoading || scoresQuery.isLoading || publishRecordsQuery.isLoading;
 
+  const publishOverview = useMemo(
+    () => computePublishOverview(publishRecords as PublishRecordForDisplay[]),
+    [publishRecords],
+  );
+  const platformRows = useMemo(
+    () => computePlatformDistribution(publishRecords as PublishRecordForDisplay[]),
+    [publishRecords],
+  );
+  const publishNextActions = useMemo(
+    () => buildPublishNextActions(publishRecords as PublishRecordForDisplay[]),
+    [publishRecords],
+  );
+
   return (
-    <div className="space-y-6 text-slate-100">
-      <Card className="border-white/10 bg-white/[0.04] text-slate-100">
+    <AiPageShell>
+      <AiPageHero
+        title="资产发布记录"
+        description="跟踪每篇 AI 搜索资产的发布平台、公开链接和后续复测状态。"
+        badge="资产库"
+      >
+        <label className="text-xs text-slate-500">当前项目</label>
+        <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
+      </AiPageHero>
+
+      <Card className="ai-glass-card border-0 bg-transparent text-slate-100 shadow-none">
         <CardHeader>
-          <CardTitle className="text-white">发布记录</CardTitle>
-          <CardDescription className="text-cyan-200">登记已发布到外部平台的文章与公开链接。</CardDescription>
+          <CardTitle className="text-white">发布登记</CardTitle>
+          <CardDescription className="text-slate-400">登记已发布到外部平台的 AI 搜索资产与公开链接。</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8">
-          <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
+        <CardContent className="space-y-10">
           <ActionState message={message} error={error || articlesQuery.error?.message || scoresQuery.error?.message || publishRecordsQuery.error?.message} />
-          {loading ? <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">正在加载文章与发布记录…</div> : null}
+          {loading ? <div className="rounded-2xl border border-white/8 bg-slate-950/35 p-4 text-sm text-slate-300">正在加载文章与发布记录…</div> : null}
           {projects.length === 0 ? <EmptyStep title="暂无项目" description="请先在企业档案中创建项目。" /> : null}
 
-          <section className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+          <section className="ai-glass-panel p-5 md:p-6">
             <h2 className="text-lg font-semibold text-white">新建发布记录</h2>
             {publishableArticles.length === 0 ? (
               <div className="mt-4">
@@ -2057,7 +2417,7 @@ export function ContentPublishingFlowPage() {
                   <select
                     value={newArticleId === "" ? "" : String(newArticleId)}
                     onChange={event => setNewArticleId(event.target.value ? Number(event.target.value) : "")}
-                    className="h-10 w-full max-w-2xl rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                    className={`${aiInput} max-w-2xl`}
                   >
                     {publishableArticles.map(a => (
                       <option key={a.id} value={a.id}>
@@ -2091,7 +2451,7 @@ export function ContentPublishingFlowPage() {
                           value={linkByPlatform[p]}
                           onChange={e => setLinkByPlatform(s => ({ ...s, [p]: e.target.value }))}
                           placeholder="https://"
-                          className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                          className={aiInput}
                         />
                       </label>
                     ) : null,
@@ -2103,14 +2463,14 @@ export function ContentPublishingFlowPage() {
                     type="datetime-local"
                     value={publishedAtForm}
                     onChange={e => setPublishedAtForm(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                    className={aiInput}
                   />
                 </label>
                 <div className="flex justify-end">
                   <Button
                     onClick={() => void handleSaveNewRecords()}
                     disabled={!selectedProjectId || savingNew || publishRecordUiPlatforms.every(p => !platformSelected[p])}
-                    className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                    variant="ai"
                   >
                     {savingNew ? "保存中…" : "保存"}
                   </Button>
@@ -2119,75 +2479,130 @@ export function ContentPublishingFlowPage() {
             )}
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
-            <h2 className="text-lg font-semibold text-white">已发布记录列表</h2>
-            {publishRecords.length === 0 ? (
-              <div className="mt-4">
-                <EmptyStep title="暂无发布记录" description="在上方新建发布记录后，将在此列表展示。" />
-              </div>
+          <section className="ai-glass-panel p-5 md:p-6" aria-label="发布资产概览">
+            <h2 className="text-lg font-semibold text-white">发布资产概览</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {(
+                [
+                  ["已发布内容数", publishOverview.publishedContentCount],
+                  ["覆盖平台数", publishOverview.platformCount],
+                  ["有公开链接数量", publishOverview.withLinkCount],
+                  ["待复测内容数", publishOverview.pendingRetestCount],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className={aiMetricCard}>
+                  <p className="text-xs text-slate-500">{label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{formatMetricValue(value)}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="ai-glass-panel p-5 md:p-6" aria-label="平台分布">
+            <h2 className="text-lg font-semibold text-white">平台分布</h2>
+            {platformRows.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">暂无平台分布数据</p>
             ) : (
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[640px] border-collapse text-left text-sm text-slate-200">
-                  <thead>
-                    <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-slate-400">
-                      <th className="py-3 pr-4 font-medium">文章标题</th>
-                      <th className="py-3 pr-4 font-medium">平台</th>
-                      <th className="py-3 pr-4 font-medium">发布时间</th>
-                      <th className="py-3 pr-4 font-medium">链接</th>
-                      <th className="py-3 font-medium w-28">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {publishRecords.map(record => {
-                      const article = record.articleId ? publishRecordArticleMap.get(record.articleId) : undefined;
-                      const title = article?.title || record.publishTitle || "—";
-                      return (
-                        <tr key={record.id} className="border-b border-white/5 align-top">
-                          <td className="py-3 pr-4 font-medium text-white">
-                            <span className="inline-flex flex-wrap items-center gap-1">
-                              {title}
-                              {selectedProjectId ? (
-                                <AiMentionBadge
-                                  status={record.monitoring?.aiMentionStatus ?? null}
-                                  monitoringId={record.monitoring?.id ?? null}
-                                  projectId={selectedProjectId}
-                                  onNavigate={setLocation}
-                                />
-                              ) : null}
-                            </span>
-                          </td>
-                          <td className="py-3 pr-4">{record.publishChannel || "—"}</td>
-                          <td className="py-3 pr-4 whitespace-nowrap">{formatTime(record.publishedAt)}</td>
-                          <td className="py-3 pr-4">
-                            <input
-                              value={linkDraftById[record.id] ?? ""}
-                              onChange={e => setLinkDraftById(d => ({ ...d, [record.id]: e.target.value }))}
-                              placeholder="https://"
-                              className="w-full min-w-[12rem] rounded-lg border border-white/10 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus-visible:ring-1 focus-visible:ring-cyan-400"
-                            />
-                          </td>
-                          <td className="py-3">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-white/15 text-cyan-100 hover:bg-white/10"
-                              disabled={savingRowId === record.id}
-                              onClick={() => void handleSaveRowLink(record)}
-                            >
-                              {savingRowId === record.id ? "保存中" : "保存链接"}
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {platformRows.map(row => (
+                  <li
+                    key={row.platform}
+                    className="rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1.5 text-sm text-cyan-50"
+                  >
+                    {row.platform}：{row.count} 篇
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
+
+          <section className="ai-glass-panel p-5 md:p-6" aria-label="发布记录列表">
+            <h2 className="text-lg font-semibold text-white">发布记录列表</h2>
+            {publishRecords.length === 0 ? (
+              <div className="mt-4">
+                <EmptyStep title="暂无发布记录" description="在上方新建发布记录后，将在此展示资产卡片。" />
+              </div>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {publishRecords.map(record => {
+                  const article = record.articleId ? publishRecordArticleMap.get(record.articleId) : undefined;
+                  const title = article?.title || record.publishTitle || "无标题";
+                  const link = recordPublicLink(record);
+                  const displayLink = (linkDraftById[record.id] ?? link).trim();
+                  return (
+                    <li key={record.id} className={`${aiListRow} space-y-3 p-4`}>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-white">{title}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                            <span className="rounded-full border border-white/10 bg-slate-950/60 px-2 py-0.5 text-slate-300">
+                              {record.publishChannel || "未标注平台"}
+                            </span>
+                            <span className="text-slate-500">{formatTime(record.publishedAt)}</span>
+                            <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2 py-0.5 text-cyan-100">
+                              {publishStatusLabel(record.publishStatus)}
+                            </span>
+                            {selectedProjectId ? (
+                              <AiMentionBadge
+                                status={record.monitoring?.aiMentionStatus ?? null}
+                                monitoringId={record.monitoring?.id ?? null}
+                                projectId={selectedProjectId}
+                                onNavigate={setLocation}
+                              />
+                            ) : null}
+                          </div>
+                        </div>
+                        {displayLink ? (
+                          <a
+                            href={displayLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="shrink-0 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-3 py-1.5 text-sm text-cyan-100 hover:bg-cyan-500/20"
+                          >
+                            查看文章
+                          </a>
+                        ) : null}
+                      </div>
+                      <p className="text-xs text-slate-400">{retestHintForRecord(record)}</p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <label className="min-w-0 flex-1 space-y-1 text-xs text-slate-500">
+                          <span>公开链接</span>
+                          <input
+                            value={linkDraftById[record.id] ?? ""}
+                            onChange={e => setLinkDraftById(d => ({ ...d, [record.id]: e.target.value }))}
+                            placeholder="粘贴平台公开链接"
+                            className={`${aiInput} max-w-none py-1.5 text-xs`}
+                          />
+                        </label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 border-white/15 text-cyan-100 hover:bg-white/10"
+                          disabled={savingRowId === record.id}
+                          onClick={() => void handleSaveRowLink(record)}
+                        >
+                          {savingRowId === record.id ? "保存中" : "保存链接"}
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <AiSection title="下一步发布动作">
+            <div className="grid gap-3 lg:grid-cols-3">
+              {publishNextActions.map(line => (
+                <div key={line} className="ai-action-card p-4 text-sm text-slate-300">
+                  {line}
+                </div>
+              ))}
+            </div>
+          </AiSection>
         </CardContent>
       </Card>
-    </div>
+    </AiPageShell>
   );
 }
 
@@ -2279,8 +2694,8 @@ export function InclusionMonitoringFlowPage() {
             <Button
               type="button"
               size="sm"
-              variant="outline"
-              className="shrink-0 border-cyan-400/40 text-cyan-100 hover:bg-cyan-400/10"
+              variant="aiOutline"
+              className="shrink-0"
               disabled={backfillMonitoring.isPending}
               onClick={() => backfillMonitoring.mutate({ projectId: selectedProjectId })}
             >
@@ -2308,7 +2723,7 @@ export function InclusionMonitoringFlowPage() {
                 <div className="flex flex-wrap gap-3">
                   <Button
                     type="button"
-                    className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                    variant="ai"
                     disabled={backfillMonitoring.isPending}
                     onClick={() => backfillMonitoring.mutate({ projectId: selectedProjectId })}
                   >
@@ -2328,7 +2743,7 @@ export function InclusionMonitoringFlowPage() {
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {records.map(record => (
-                <div id={`monitoring-record-${record.id}`} key={record.id} className="rounded-3xl border border-white/10 bg-slate-950/56 p-5">
+                <div id={`monitoring-record-${record.id}`} key={record.id} className="ai-glass-panel p-5 md:p-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-white">文章 ID：{record.articleId}</p>
@@ -2367,7 +2782,7 @@ export function InclusionMonitoringFlowPage() {
                         value={selectedTestStage}
                         onChange={e => setSelectedTestStage(e.target.value as AiTestStage)}
                         disabled={runCheck.isPending}
-                        className="h-9 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                        className={`${aiInput} h-9`}
                       >
                         {MONITORING_TEST_STAGE_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>
@@ -2379,7 +2794,7 @@ export function InclusionMonitoringFlowPage() {
                     <Button
                       type="button"
                       size="sm"
-                      className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                      variant="ai"
                       disabled={!selectedProjectId || runCheck.isPending}
                       onClick={() => {
                         if (!selectedProjectId) return;
@@ -2396,12 +2811,12 @@ export function InclusionMonitoringFlowPage() {
                     </Button>
                   </div>
                   {record.aiTestResults && record.aiTestResults.length > 0 ? (
-                    <div className="mt-4 space-y-2 rounded-2xl border border-white/10 bg-slate-900/50 p-3">
+                    <div className={`mt-4 space-y-2 p-3 ${aiSubPanel}`}>
                       <p className="text-xs font-medium text-cyan-200">实测明细</p>
                       {record.aiTestResults.map((r, i) => (
                         <div
                           key={`${r.engine}-${i}`}
-                          className="rounded-xl border border-white/5 bg-slate-950/60 px-3 py-2 text-xs text-slate-300"
+                          className={`rounded-xl px-3 py-2 text-xs text-slate-300 ${aiListRow}`}
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-2">
@@ -2440,7 +2855,7 @@ export function InclusionMonitoringFlowPage() {
             <Button
               onClick={() => setLocation("/delivery-reports")}
               disabled={records.length === 0}
-              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+              variant="ai"
             >
               进入交付报告
             </Button>
@@ -2501,22 +2916,12 @@ export function DeliveryReportsFlowPage() {
     return m;
   }, [qualityScores]);
 
-  const totalScore = typeof score?.totalScore === "number" ? score.totalScore : typeof score?.total_score === "number" ? (score.total_score as number) : null;
-  const aiVisibilityScore =
-    typeof score?.aiVisibilityScore === "number"
-      ? score.aiVisibilityScore
-      : typeof score?.ai_visibility_score === "number"
-        ? (score.ai_visibility_score as number)
-        : null;
+  const visibilityScore = resolveDeliveryReportVisibilityScore(score);
   const firstAnalysis = analyses[0];
   const contentGapPrimary = (firstAnalysis?.contentGap ?? firstAnalysis?.content_gap ?? "") as string;
   const notRecommendedPrimary = (firstAnalysis?.notRecommendedReason ?? firstAnalysis?.not_recommended_reason ?? "") as string;
   const maxProblemLine = [notRecommendedPrimary, contentGapPrimary].map(s => (typeof s === "string" ? s.trim() : "")).filter(Boolean)[0] || "暂无诊断结论，请先在 内容诊断页完成一轮诊断。";
-  const conclusionLine = totalScore != null && firstAnalysis
-    ? `本轮 内容综合评分 ${totalScore} 分；在典型 AI 问答场景下，企业被提及与推荐的表现存在结构性差距，需用可引用内容资产补齐证据链。`
-    : totalScore != null
-      ? `本轮 内容综合评分 ${totalScore} 分；建议继续完善诊断样本并同步内容生产与发布记录。`
-      : "请先完成 内容诊断与评分，以便生成本轮面向客户的结论摘要。";
+  const conclusionLine = buildDeliveryReportConclusionLine(visibilityScore, Boolean(firstAnalysis));
   const nextActionLine =
     tasks.length > 0
       ? `优先完成 ${tasks.filter((t: any) => t.priority === "P0").length > 0 ? "P0" : "高优先级"} 优化任务对应的内容生产与质量检查，再登记发布链接。`
@@ -2541,7 +2946,6 @@ export function DeliveryReportsFlowPage() {
     selectedProject?.enterpriseName ||
     "未填写品牌名称";
   const enterpriseName = selectedProject?.enterpriseName ?? "—";
-  const visibilityScore = aiVisibilityScore ?? totalScore;
   const publishedItems = useMemo(
     () => mapPublishRecordsToItems(publishRecords as Array<Record<string, unknown>>, articleTitleById),
     [publishRecords, articleTitleById],
@@ -2561,19 +2965,21 @@ export function DeliveryReportsFlowPage() {
   })();
 
   return (
-    <div className="space-y-8 pb-10 text-slate-100">
-      <div className="flex flex-col gap-3 border-b border-white/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-3">
-          <h1 className="text-2xl font-bold tracking-tight text-white">本轮内容效果报告</h1>
-          <p className="text-sm text-slate-400">本轮内容诊断与生成的完整成果</p>
-          <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
-        </div>
-        {selectedProjectId ? (
+    <AiPageShell className="pb-10">
+      <AiPageHero
+        title="客户交付报告"
+        description="面向客户的 AI 搜索增长交付物：经营结论、实测结果与下一轮优化动作。"
+        badge="客户交付"
+      >
+        <label className="text-xs text-slate-500">当前项目</label>
+        <ProjectSelector projects={projects} selectedProjectId={selectedProjectId} setSelectedProjectId={setSelectedProjectId} />
+      </AiPageHero>
+      {selectedProjectId ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             <Button
               type="button"
-              variant="outline"
-              className="shrink-0 border-cyan-400/40 text-cyan-100 hover:bg-cyan-500/10"
+              variant="aiOutline"
+              className="shrink-0"
               disabled={shareLinkBusy}
               onClick={() => {
                 void (async () => {
@@ -2592,8 +2998,8 @@ export function DeliveryReportsFlowPage() {
             </Button>
             <Button
               type="button"
-              variant="outline"
-              className="shrink-0 border-cyan-400/40 text-cyan-100 hover:bg-cyan-500/10"
+              variant="aiOutline"
+              className="shrink-0"
               disabled={shareLinkBusy}
               onClick={() => {
                 void (async () => {
@@ -2636,7 +3042,6 @@ export function DeliveryReportsFlowPage() {
             </Button>
           </div>
         ) : null}
-      </div>
 
       {selectedProjectId ? (
         <DeliveryReportCustomerView
@@ -2659,10 +3064,16 @@ export function DeliveryReportsFlowPage() {
         <p className="text-sm text-slate-400">请选择项目后查看客户报告预览。</p>
       )}
 
+      <div className={aiInternalZone}>
+        <div className="mb-6 border-b border-white/5 pb-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">内部交付工作区</p>
+          <p className="mt-1 text-sm text-slate-500">仅供团队推进交付使用，不纳入客户报告正文；视觉层级弱于上方客户报告。</p>
+        </div>
+        <div className="space-y-8 opacity-90">
       {/* 第一区：内容诊断结果 */}
       <section className="space-y-3">
-        <div className="flex items-end justify-between gap-3 border-b border-white/10 pb-2">
-          <h2 className="text-lg font-semibold text-white">内容诊断结果</h2>
+        <div className="flex items-end justify-between gap-3 border-b border-white/5 pb-2">
+          <h2 className="text-base font-medium text-slate-300">内容诊断结果</h2>
           <span className="text-xs text-slate-500">{analyses.length} 条</span>
         </div>
         {analyses.length === 0 ? (
@@ -2684,7 +3095,7 @@ export function DeliveryReportsFlowPage() {
               const gapText = (a.contentGap ?? a.content_gap ?? "") as string;
               const thesisLine = v12.coreTheses.length ? v12.coreTheses.join("；") : "—";
               return (
-                <Card key={a.id ?? i} className="border-white/10 bg-white/[0.04]">
+                <Card key={a.id ?? i} className="ai-glass-card border-0 bg-transparent shadow-none">
                   <CardContent className="space-y-3 pt-5">
                     <p className="text-sm font-semibold leading-snug text-white">{a.questionText ?? a.question_text ?? a.question ?? "—"}</p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -2720,7 +3131,7 @@ export function DeliveryReportsFlowPage() {
                         <ChevronDown className="h-3.5 w-3.5" />
                         展开详情（内容缺口 / 核心论点）
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2 space-y-2 rounded-lg border border-white/10 bg-slate-950/50 p-3 text-sm text-slate-300">
+                      <CollapsibleContent className={`mt-2 space-y-2 p-3 text-sm text-slate-300 ${aiSubPanel}`}>
                         <p>
                           <span className="text-slate-500">内容缺口：</span>
                           {gapText?.trim() || "—"}
@@ -2746,7 +3157,7 @@ export function DeliveryReportsFlowPage() {
 
       {/* 第二区：优化任务 */}
       <section className="space-y-3">
-        <h2 className="border-b border-white/10 pb-2 text-lg font-semibold text-white">优化任务清单</h2>
+        <h2 className="border-b border-white/5 pb-2 text-base font-medium text-slate-300">优化任务清单</h2>
         {tasks.length === 0 ? (
           <p className="text-sm text-slate-400">暂无优化任务。</p>
         ) : (
@@ -2757,7 +3168,7 @@ export function DeliveryReportsFlowPage() {
               const kws = card?.targetKeywords?.slice(0, 3) ?? [];
               const platforms = card?.recommendedPlatform ?? [];
               return (
-                <Card key={t.id ?? i} className="border-white/10 bg-white/[0.04]">
+                <Card key={t.id ?? i} className="ai-glass-card border-0 bg-transparent shadow-none">
                   <CardContent className="space-y-2 pt-4">
                     <div className="flex items-start justify-between gap-2">
                       <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white" title={t.taskName ?? ""}>
@@ -2773,7 +3184,7 @@ export function DeliveryReportsFlowPage() {
                     <div className="flex flex-wrap gap-1">
                       {kws.length ? (
                         kws.map((kw: string) => (
-                          <Badge key={kw} variant="outline" className="border-slate-600/60 bg-slate-900/80 text-slate-200">
+                          <Badge key={kw} variant="outline" className="border-violet-500/25 bg-violet-950/35 text-violet-100">
                             {kw}
                           </Badge>
                         ))
@@ -2805,14 +3216,14 @@ export function DeliveryReportsFlowPage() {
 
       {/* 第三区：已生成内容（表格） */}
       <section className="space-y-3">
-        <h2 className="border-b border-white/10 pb-2 text-lg font-semibold text-white">已生成内容</h2>
+        <h2 className="border-b border-white/5 pb-2 text-base font-medium text-slate-300">已生成内容</h2>
         {articles.length === 0 ? (
           <p className="text-sm text-slate-400">暂无已生成内容。</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-white/10">
-            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+          <div className={`${aiGlassPanel} overflow-x-auto p-1`}>
+            <table className={`${aiDataTable} min-w-[640px]`}>
               <thead>
-                <tr className="border-b border-white/10 bg-slate-950/80 text-xs text-slate-400">
+                <tr className="text-xs text-slate-500">
                   <th className="px-3 py-2 font-medium">文章标题</th>
                   <th className="px-3 py-2 font-medium">目标平台</th>
                   <th className="px-3 py-2 font-medium">内容类型</th>
@@ -2829,7 +3240,7 @@ export function DeliveryReportsFlowPage() {
                   const complianceBlock = reasons.some(r => /禁用词|禁止承诺|合规/.test(r));
                   const pass = typeof q?.isPass === "boolean" ? q.isPass : num != null && num >= 60 && !complianceBlock;
                   return (
-                    <tr key={a.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                    <tr key={a.id} className="border-b border-white/5 hover:bg-cyan-500/5">
                       <td className="max-w-[220px] px-3 py-2 align-top text-slate-100">
                         <span className="line-clamp-2">{a.title ?? "—"}</span>
                       </td>
@@ -2854,12 +3265,14 @@ export function DeliveryReportsFlowPage() {
           </div>
         )}
       </section>
+        </div>
+      </div>
 
-      <div className="flex justify-end border-t border-white/10 pt-4">
-        <Button onClick={() => setLocation("/")} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">
-          返回总览
+      <div className="flex justify-end border-t border-white/5 pt-8 opacity-80">
+        <Button onClick={() => setLocation("/")} variant="aiOutline">
+          返回增长总览
         </Button>
       </div>
-    </div>
+    </AiPageShell>
   );
 }

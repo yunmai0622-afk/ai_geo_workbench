@@ -1,3 +1,811 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// server/_core/env.ts
+var ENV;
+var init_env = __esm({
+  "server/_core/env.ts"() {
+    "use strict";
+    ENV = {
+      appId: process.env.VITE_APP_ID ?? "",
+      cookieSecret: process.env.JWT_SECRET ?? "",
+      databaseUrl: process.env.DATABASE_URL ?? "",
+      oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
+      ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
+      isProduction: process.env.NODE_ENV === "production",
+      forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
+      forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? ""
+    };
+  }
+});
+
+// server/_core/llm.ts
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
+import { connect as tlsConnect } from "node:tls";
+function openAIErrorContext(input) {
+  const { detected } = proxyEnv();
+  const original = input.originalError;
+  const originalCode = original?.code ?? original?.cause?.code ?? "unknown";
+  const originalMessage = original?.message ?? String(input.originalError ?? "");
+  return `provider=openai baseURL=${input.baseUrl} requestURL=${input.requestURL} model=${input.model} timeoutMs=${input.timeoutMs} proxyDetected=${JSON.stringify(detected)} originalCode=${originalCode}${originalMessage ? ` originalMessage=${originalMessage}` : ""}`;
+}
+function requestOpenAIThroughProxy(input) {
+  return new Promise((resolve, reject) => {
+    const targetUrl = new URL(input.apiUrl);
+    const proxyUrl = new URL(input.proxyUrl);
+    const proxyRequest = proxyUrl.protocol === "https:" ? httpsRequest : httpRequest;
+    if (targetUrl.protocol !== "https:") {
+      reject(new Error(`OpenAI proxy mode only supports https targets, got ${targetUrl.protocol}`));
+      return;
+    }
+    if (proxyUrl.protocol !== "http:" && proxyUrl.protocol !== "https:") {
+      reject(new Error(`Unsupported proxy protocol: ${proxyUrl.protocol}`));
+      return;
+    }
+    const targetPort = targetUrl.port ? Number(targetUrl.port) : 443;
+    const proxyPort = proxyUrl.port ? Number(proxyUrl.port) : proxyUrl.protocol === "https:" ? 443 : 80;
+    const authHeader = proxyAuthorizationHeader(proxyUrl);
+    const connectReq = proxyRequest({
+      hostname: proxyUrl.hostname,
+      port: proxyPort,
+      method: "CONNECT",
+      path: `${targetUrl.hostname}:${targetPort}`,
+      headers: {
+        Host: `${targetUrl.hostname}:${targetPort}`,
+        ...authHeader ? { "Proxy-Authorization": authHeader } : {}
+      },
+      timeout: input.timeoutMs
+    });
+    let settled = false;
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      connectReq.destroy();
+      reject(error);
+    };
+    const timer = setTimeout(() => {
+      fail(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
+    }, input.timeoutMs);
+    connectReq.on("connect", (res, socket) => {
+      if (res.statusCode !== 200) {
+        clearTimeout(timer);
+        fail(Object.assign(new Error(`Proxy CONNECT failed with status ${res.statusCode}`), { code: "PROXY_CONNECT_FAILED" }));
+        return;
+      }
+      const secureSocket = tlsConnect({
+        socket,
+        servername: targetUrl.hostname
+      }, () => {
+        const body = JSON.stringify(input.payload);
+        const path3 = `${targetUrl.pathname}${targetUrl.search}`;
+        const headers = {
+          ...input.headers,
+          Host: targetUrl.host,
+          "Content-Length": Buffer.byteLength(body).toString(),
+          Connection: "close"
+        };
+        const headerText = Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join("\r\n");
+        secureSocket.write(`POST ${path3} HTTP/1.1\r
+${headerText}\r
+\r
+${body}`);
+      });
+      const chunks = [];
+      secureSocket.setTimeout(input.timeoutMs, () => {
+        secureSocket.destroy(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
+      });
+      secureSocket.on("data", (chunk) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      secureSocket.on("error", fail);
+      secureSocket.on("end", () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        const raw = Buffer.concat(chunks).toString("utf8");
+        const separator = raw.indexOf("\r\n\r\n");
+        const header = separator >= 0 ? raw.slice(0, separator) : raw;
+        const body = separator >= 0 ? raw.slice(separator + 4) : "";
+        const [statusLine] = header.split("\r\n");
+        const match = /^HTTP\/\d(?:\.\d)?\s+(\d+)\s*(.*)$/.exec(statusLine ?? "");
+        resolve({
+          status: match ? Number(match[1]) : 0,
+          statusText: match?.[2] ?? "",
+          body
+        });
+      });
+    });
+    connectReq.on("timeout", () => {
+      fail(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
+    });
+    connectReq.on("error", fail);
+    connectReq.end();
+  });
+}
+function requestOpenAIDirect(input) {
+  return new Promise((resolve, reject) => {
+    const targetUrl = new URL(input.apiUrl);
+    const body = JSON.stringify(input.payload);
+    const requestImpl = targetUrl.protocol === "https:" ? httpsRequest : httpRequest;
+    const req = requestImpl({
+      protocol: targetUrl.protocol,
+      hostname: targetUrl.hostname,
+      port: targetUrl.port ? Number(targetUrl.port) : targetUrl.protocol === "https:" ? 443 : 80,
+      method: "POST",
+      path: `${targetUrl.pathname}${targetUrl.search}`,
+      headers: {
+        ...input.headers,
+        "Content-Length": Buffer.byteLength(body).toString()
+      },
+      timeout: input.timeoutMs
+    }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      response.on("end", () => {
+        resolve({
+          status: response.statusCode ?? 0,
+          statusText: response.statusMessage ?? "",
+          body: Buffer.concat(chunks).toString("utf8")
+        });
+      });
+    });
+    const timer = setTimeout(() => {
+      req.destroy(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
+    }, input.timeoutMs);
+    req.on("timeout", () => {
+      req.destroy(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
+    });
+    req.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    req.on("close", () => {
+      clearTimeout(timer);
+    });
+    req.write(body);
+    req.end();
+  });
+}
+async function requestOpenAI(input) {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+  };
+  const { proxyUrl } = proxyEnv();
+  if (proxyUrl) {
+    return requestOpenAIThroughProxy({
+      apiUrl: input.apiUrl,
+      proxyUrl,
+      payload: input.payload,
+      headers,
+      timeoutMs: input.timeoutMs
+    });
+  }
+  return requestOpenAIDirect({
+    apiUrl: input.apiUrl,
+    payload: input.payload,
+    headers,
+    timeoutMs: input.timeoutMs
+  });
+}
+async function invokeManusForge(params) {
+  assertManusApiKey();
+  const timeoutMs = params.timeoutMs ?? params.timeout_ms ?? resolveOpenAITimeoutMs();
+  const controller = new AbortController();
+  const killTimer = setTimeout(() => controller.abort(), timeoutMs);
+  const payload = {
+    model: "gemini-2.5-flash",
+    ...buildCommonPayload(params),
+    thinking: {
+      budget_tokens: 128
+    }
+  };
+  let response;
+  try {
+    response = await fetch(resolveManusApiUrl(), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${ENV.forgeApiKey}`
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`LLM invoke timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(killTimer);
+  }
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `LLM invoke failed: ${response.status} ${response.statusText} \u2013 ${errorText}`
+    );
+  }
+  return await response.json();
+}
+async function invokeOpenAI(params) {
+  assertOpenAIApiKey();
+  const baseUrl = resolveOpenAIBaseUrl();
+  const apiUrl = resolveOpenAIApiUrl();
+  const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+  const timeoutMs = params.timeoutMs ?? params.timeout_ms ?? resolveOpenAITimeoutMs();
+  const payload = {
+    model,
+    ...buildCommonPayload(params)
+  };
+  let response;
+  try {
+    response = await requestOpenAI({ apiUrl, payload, model, timeoutMs });
+  } catch (error) {
+    throw new Error(`OpenAI LLM network failure: ${openAIErrorContext({ baseUrl, requestURL: apiUrl, model, timeoutMs, originalError: error })}`);
+  }
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(
+      `OpenAI LLM invoke failed: ${openAIErrorContext({ baseUrl, requestURL: apiUrl, model, timeoutMs })} status=${response.status} ${response.statusText} \u2013 ${response.body}`
+    );
+  }
+  return normalizeOpenAIResult(JSON.parse(response.body));
+}
+async function invokeLLM(params) {
+  const provider = process.env.LLM_PROVIDER ?? "openai";
+  if (provider === "openai") {
+    return invokeOpenAI(params);
+  }
+  return invokeManusForge(params);
+}
+var ensureArray, normalizeContentPart, normalizeMessage, normalizeToolChoice, resolveManusApiUrl, assertManusApiKey, resolveOpenAIBaseUrl, resolveOpenAIChatCompletionsPath, resolveOpenAIApiUrl, resolveOpenAITimeoutMs, proxyEnv, proxyAuthorizationHeader, assertOpenAIApiKey, normalizeResponseFormat, buildCommonPayload, normalizeOpenAIResult;
+var init_llm = __esm({
+  "server/_core/llm.ts"() {
+    "use strict";
+    init_env();
+    ensureArray = (value) => Array.isArray(value) ? value : [value];
+    normalizeContentPart = (part) => {
+      if (typeof part === "string") {
+        return { type: "text", text: part };
+      }
+      if (part.type === "text") {
+        return part;
+      }
+      if (part.type === "image_url") {
+        return part;
+      }
+      if (part.type === "file_url") {
+        return part;
+      }
+      throw new Error("Unsupported message content part");
+    };
+    normalizeMessage = (message) => {
+      const { role, name, tool_call_id } = message;
+      if (role === "tool" || role === "function") {
+        const content = ensureArray(message.content).map((part) => typeof part === "string" ? part : JSON.stringify(part)).join("\n");
+        return {
+          role,
+          name,
+          tool_call_id,
+          content
+        };
+      }
+      const contentParts = ensureArray(message.content).map(normalizeContentPart);
+      if (contentParts.length === 1 && contentParts[0].type === "text") {
+        return {
+          role,
+          name,
+          content: contentParts[0].text
+        };
+      }
+      return {
+        role,
+        name,
+        content: contentParts
+      };
+    };
+    normalizeToolChoice = (toolChoice, tools) => {
+      if (!toolChoice) return void 0;
+      if (toolChoice === "none" || toolChoice === "auto") {
+        return toolChoice;
+      }
+      if (toolChoice === "required") {
+        if (!tools || tools.length === 0) {
+          throw new Error(
+            "tool_choice 'required' was provided but no tools were configured"
+          );
+        }
+        if (tools.length > 1) {
+          throw new Error(
+            "tool_choice 'required' needs a single tool or specify the tool name explicitly"
+          );
+        }
+        return {
+          type: "function",
+          function: { name: tools[0].function.name }
+        };
+      }
+      if ("name" in toolChoice) {
+        return {
+          type: "function",
+          function: { name: toolChoice.name }
+        };
+      }
+      return toolChoice;
+    };
+    resolveManusApiUrl = () => ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0 ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions` : "https://forge.manus.im/v1/chat/completions";
+    assertManusApiKey = () => {
+      if (!ENV.forgeApiKey) {
+        throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+      }
+    };
+    resolveOpenAIBaseUrl = () => (process.env.OPENAI_BASE_URL ?? "https://api.openai.com").replace(/\/+$/, "");
+    resolveOpenAIChatCompletionsPath = () => {
+      const path3 = process.env.OPENAI_CHAT_COMPLETIONS_PATH ?? "/chat/completions";
+      return path3.startsWith("/") ? path3 : `/${path3}`;
+    };
+    resolveOpenAIApiUrl = () => {
+      const baseUrl = resolveOpenAIBaseUrl();
+      if (baseUrl.endsWith("/chat/completions")) return baseUrl;
+      const chatCompletionsPath = resolveOpenAIChatCompletionsPath();
+      if (baseUrl.endsWith("/v1") || baseUrl.endsWith("/api/v3")) return `${baseUrl}${chatCompletionsPath}`;
+      return `${baseUrl}/v1${chatCompletionsPath}`;
+    };
+    resolveOpenAITimeoutMs = () => {
+      const raw = Number(process.env.OPENAI_TIMEOUT_MS ?? 6e4);
+      return Number.isFinite(raw) && raw > 0 ? raw : 6e4;
+    };
+    proxyEnv = () => {
+      const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+      const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy;
+      const allProxy = process.env.ALL_PROXY || process.env.all_proxy;
+      return {
+        httpsProxy,
+        httpProxy,
+        allProxy,
+        proxyUrl: httpsProxy || httpProxy || allProxy,
+        detected: {
+          HTTPS_PROXY: Boolean(httpsProxy),
+          HTTP_PROXY: Boolean(httpProxy),
+          ALL_PROXY: Boolean(allProxy)
+        }
+      };
+    };
+    proxyAuthorizationHeader = (proxyUrl) => {
+      if (!proxyUrl.username && !proxyUrl.password) return void 0;
+      const credentials = `${decodeURIComponent(proxyUrl.username)}:${decodeURIComponent(proxyUrl.password)}`;
+      return `Basic ${Buffer.from(credentials).toString("base64")}`;
+    };
+    assertOpenAIApiKey = () => {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error("OPENAI_API_KEY is not configured");
+      }
+    };
+    normalizeResponseFormat = ({
+      responseFormat,
+      response_format,
+      outputSchema,
+      output_schema
+    }) => {
+      const explicitFormat = responseFormat || response_format;
+      if (explicitFormat) {
+        if (explicitFormat.type === "json_schema" && !explicitFormat.json_schema?.schema) {
+          throw new Error(
+            "responseFormat json_schema requires a defined schema object"
+          );
+        }
+        return explicitFormat;
+      }
+      const schema = outputSchema || output_schema;
+      if (!schema) return void 0;
+      if (!schema.name || !schema.schema) {
+        throw new Error("outputSchema requires both name and schema");
+      }
+      return {
+        type: "json_schema",
+        json_schema: {
+          name: schema.name,
+          schema: schema.schema,
+          ...typeof schema.strict === "boolean" ? { strict: schema.strict } : {}
+        }
+      };
+    };
+    buildCommonPayload = (params) => {
+      const {
+        messages,
+        tools,
+        toolChoice,
+        tool_choice,
+        maxTokens,
+        max_tokens,
+        outputSchema,
+        output_schema,
+        responseFormat,
+        response_format
+      } = params;
+      const payload = {
+        messages: messages.map(normalizeMessage)
+      };
+      if (tools && tools.length > 0) {
+        payload.tools = tools;
+      }
+      const normalizedToolChoice = normalizeToolChoice(
+        toolChoice || tool_choice,
+        tools
+      );
+      if (normalizedToolChoice) {
+        payload.tool_choice = normalizedToolChoice;
+      }
+      payload.max_tokens = max_tokens ?? maxTokens ?? 32768;
+      const normalizedResponseFormat = normalizeResponseFormat({
+        responseFormat,
+        response_format,
+        outputSchema,
+        output_schema
+      });
+      if (normalizedResponseFormat) {
+        payload.response_format = normalizedResponseFormat;
+      }
+      return payload;
+    };
+    normalizeOpenAIResult = (result) => ({
+      id: result.id,
+      created: result.created,
+      model: result.model,
+      choices: result.choices.map((choice) => ({
+        index: choice.index,
+        message: {
+          role: choice.message.role,
+          content: choice.message.content ?? "",
+          ...choice.message.tool_calls ? { tool_calls: choice.message.tool_calls } : {}
+        },
+        finish_reason: choice.finish_reason
+      })),
+      ...result.usage ? { usage: result.usage } : {}
+    });
+  }
+});
+
+// shared/enterpriseProfileIndustry.ts
+var ENTERPRISE_INDUSTRY_OPTIONS, industryPainPointOptions, ALL_PRESET_PAINS;
+var init_enterpriseProfileIndustry = __esm({
+  "shared/enterpriseProfileIndustry.ts"() {
+    "use strict";
+    ENTERPRISE_INDUSTRY_OPTIONS = [
+      "\u77E5\u8BC6\u4ED8\u8D39 / \u6559\u80B2\u57F9\u8BAD",
+      "\u5185\u5BB9\u7535\u5546",
+      "\u672C\u5730\u751F\u6D3B",
+      "\u4F01\u4E1A\u670D\u52A1 / SaaS",
+      "\u8D22\u7A0E\u6CD5\u52A1",
+      "\u533B\u7F8E\u5065\u5EB7",
+      "\u623F\u4EA7\u5BB6\u5C45",
+      "\u62DB\u5546\u52A0\u76DF",
+      "\u5B9E\u4F53\u95E8\u5E97",
+      "\u804C\u4E1A\u57F9\u8BAD",
+      "\u54A8\u8BE2\u670D\u52A1",
+      "\u4E2A\u4EBA IP / \u4E13\u5BB6\u578B\u670D\u52A1",
+      "B2B \u5236\u9020 / \u5DE5\u4E1A\u54C1",
+      "\u5176\u4ED6"
+    ];
+    industryPainPointOptions = {
+      "\u77E5\u8BC6\u4ED8\u8D39 / \u6559\u80B2\u57F9\u8BAD": [
+        "\u6D41\u91CF\u6709\u4F46\u4E0D\u6210\u4EA4",
+        "\u79C1\u57DF\u8F6C\u5316\u7387\u4F4E",
+        "\u76F4\u64AD\u6CA1\u6709\u8F6C\u5316",
+        "\u8BFE\u7A0B\u5356\u4E0D\u52A8",
+        "\u5B66\u5458\u5B8C\u8BFE\u7387\u4F4E",
+        "\u52A9\u6559\u4EA4\u4ED8\u538B\u529B\u5927",
+        "\u590D\u8D2D\u7387\u4F4E",
+        "\u5BA2\u6237\u4E0D\u77E5\u9053\u9009\u4EC0\u4E48\u8BFE",
+        "\u5185\u5BB9\u6301\u7EED\u4EA7\u51FA\u96BE"
+      ],
+      \u5185\u5BB9\u7535\u5546: [
+        "\u77ED\u89C6\u9891\u6709\u64AD\u653E\u4F46\u4E0D\u51FA\u5355",
+        "\u76F4\u64AD\u95F4\u8F6C\u5316\u7387\u4F4E",
+        "\u5546\u54C1\u5356\u70B9\u8868\u8FBE\u4E0D\u6E05",
+        "\u7528\u6237\u4FE1\u4EFB\u4E0D\u8DB3",
+        "\u590D\u8D2D\u7387\u4F4E",
+        "\u5185\u5BB9\u79CD\u8349\u5F31",
+        "\u7ADE\u54C1\u540C\u8D28\u5316\u4E25\u91CD",
+        "\u8FBE\u4EBA\u5408\u4F5C\u6548\u679C\u4E0D\u7A33\u5B9A"
+      ],
+      \u672C\u5730\u751F\u6D3B: [
+        "\u5230\u5E97\u5BA2\u6D41\u4E0D\u7A33\u5B9A",
+        "\u7EBF\u4E0A\u83B7\u5BA2\u6210\u672C\u9AD8",
+        "\u56E2\u8D2D\u8F6C\u5316\u4F4E",
+        "\u5DEE\u8BC4\u5F71\u54CD\u5927",
+        "\u590D\u8D2D\u7387\u4F4E",
+        "\u95E8\u5E97\u5185\u5BB9\u4E0D\u4F1A\u505A",
+        "\u540C\u57CE\u7ADE\u4E89\u540C\u8D28\u5316",
+        "\u79C1\u57DF\u6C89\u6DC0\u96BE"
+      ],
+      "\u4F01\u4E1A\u670D\u52A1 / SaaS": [
+        "\u5BA2\u6237\u4E0D\u77E5\u9053\u4EA7\u54C1\u4EF7\u503C",
+        "\u9500\u552E\u7EBF\u7D22\u8D28\u91CF\u4F4E",
+        "\u5BA2\u6237\u51B3\u7B56\u5468\u671F\u957F",
+        "\u5B98\u7F51\u5185\u5BB9\u65E0\u6CD5\u8F6C\u5316",
+        "\u7ADE\u54C1\u5BF9\u6BD4\u4E0D\u5360\u4F18",
+        "\u5BA2\u6237\u6210\u529F\u538B\u529B\u5927",
+        "\u7EED\u8D39\u7406\u7531\u4E0D\u8DB3",
+        "\u6848\u4F8B\u8BF4\u670D\u529B\u5F31"
+      ],
+      \u8D22\u7A0E\u6CD5\u52A1: [
+        "\u5BA2\u6237\u4FE1\u4EFB\u5EFA\u7ACB\u96BE",
+        "\u7EBF\u7D22\u8D28\u91CF\u4F4E",
+        "\u670D\u52A1\u540C\u8D28\u5316",
+        "\u5408\u89C4\u8868\u8FBE\u98CE\u9669\u9AD8",
+        "\u5BA2\u5355\u4EF7\u9AD8\u96BE\u8F6C\u5316",
+        "\u6848\u4F8B\u4E0D\u4FBF\u516C\u5F00",
+        "\u7EED\u8D39\u7406\u7531\u4E0D\u8DB3",
+        "\u83B7\u5BA2\u6E20\u9053\u5355\u4E00"
+      ],
+      \u533B\u7F8E\u5065\u5EB7: [
+        "\u5BA2\u6237\u4FE1\u4EFB\u4E0D\u8DB3",
+        "\u83B7\u5BA2\u6210\u672C\u9AD8",
+        "\u7ADE\u54C1\u4EF7\u683C\u6218",
+        "\u6848\u4F8B\u4E0D\u4FBF\u516C\u5F00",
+        "\u590D\u8D2D\u5468\u671F\u957F",
+        "\u5185\u5BB9\u5408\u89C4\u8981\u6C42\u9AD8",
+        "\u5230\u5E97\u8F6C\u5316\u4F4E",
+        "\u54C1\u724C\u5DEE\u5F02\u5316\u5F31"
+      ],
+      \u623F\u4EA7\u5BB6\u5C45: [
+        "\u5BA2\u6237\u4FE1\u4EFB\u5EFA\u7ACB\u96BE",
+        "\u7EBF\u7D22\u6210\u672C\u9AD8",
+        "\u5185\u5BB9\u540C\u8D28\u5316\u4E25\u91CD",
+        "\u5BA2\u6237\u51B3\u7B56\u5468\u671F\u957F",
+        "\u79C1\u57DF\u8DDF\u8FDB\u96BE",
+        "\u672C\u5730\u6848\u4F8B\u4E0D\u8DB3",
+        "\u9AD8\u5BA2\u5355\u6210\u4EA4\u96BE",
+        "\u6E20\u9053\u4F9D\u8D56\u4E2D\u4ECB"
+      ],
+      \u62DB\u5546\u52A0\u76DF: [
+        "\u62DB\u5546\u7EBF\u7D22\u8D28\u91CF\u4F4E",
+        "\u54C1\u724C\u4FE1\u4EFB\u4E0D\u8DB3",
+        "\u7ADE\u54C1\u653F\u7B56\u5BF9\u6BD4\u96BE",
+        "\u843D\u5730\u652F\u6301\u8BF4\u4E0D\u6E05",
+        "\u62DB\u5546\u5185\u5BB9\u540C\u8D28\u5316",
+        "\u8F6C\u5316\u5468\u671F\u957F",
+        "\u533A\u57DF\u5E02\u573A\u5DEE\u5F02\u5927",
+        "\u52A0\u76DF\u5546\u987E\u8651\u591A"
+      ],
+      \u5B9E\u4F53\u95E8\u5E97: [
+        "\u5230\u5E97\u5BA2\u6D41\u4E0D\u8DB3",
+        "\u7EBF\u4E0A\u5F15\u6D41\u96BE",
+        "\u4F1A\u5458\u590D\u8D2D\u4F4E",
+        "\u540C\u57CE\u7ADE\u4E89\u5F3A",
+        "\u95E8\u5E97\u5185\u5BB9\u4E0D\u4F1A\u505A",
+        "\u4FC3\u9500\u4F9D\u8D56\u4E25\u91CD",
+        "\u5458\u5DE5\u6267\u884C\u529B\u4E0D\u8DB3",
+        "\u54C1\u724C\u8BA4\u77E5\u5F31"
+      ],
+      \u804C\u4E1A\u57F9\u8BAD: [
+        "\u62DB\u751F\u7EBF\u7D22\u8D28\u91CF\u4F4E",
+        "\u8BFE\u7A0B\u5356\u70B9\u4E0D\u6E05",
+        "\u5C31\u4E1A\u7ED3\u679C\u96BE\u8BC1\u660E",
+        "\u7ADE\u54C1\u8BFE\u7A0B\u540C\u8D28\u5316",
+        "\u53E3\u7891\u4F20\u64AD\u5F31",
+        "\u7EED\u62A5\u7387\u4F4E",
+        "\u6E20\u9053\u6295\u653E ROI \u4F4E",
+        "\u6559\u5B66\u4EA4\u4ED8\u538B\u529B\u5927"
+      ],
+      \u54A8\u8BE2\u670D\u52A1: [
+        "\u5BA2\u6237\u51B3\u7B56\u5468\u671F\u957F",
+        "\u670D\u52A1\u4EF7\u503C\u96BE\u91CF\u5316",
+        "\u6848\u4F8B\u4E0D\u4FBF\u516C\u5F00",
+        "\u7EBF\u7D22\u8D28\u91CF\u4F4E",
+        "\u4FE1\u4EFB\u5EFA\u7ACB\u96BE",
+        "\u5BA2\u5355\u4EF7\u9AD8\u96BE\u6210\u4EA4",
+        "\u5185\u5BB9\u4E13\u4E1A\u4F46\u96BE\u61C2",
+        "\u590D\u8D2D\u7406\u7531\u4E0D\u8DB3"
+      ],
+      "\u4E2A\u4EBA IP / \u4E13\u5BB6\u578B\u670D\u52A1": [
+        "\u6D41\u91CF\u6709\u4F46\u4E0D\u6210\u4EA4",
+        "\u4EBA\u8BBE\u5B9A\u4F4D\u4E0D\u6E05",
+        "\u5185\u5BB9\u6301\u7EED\u4EA7\u51FA\u96BE",
+        "\u79C1\u57DF\u8F6C\u5316\u7387\u4F4E",
+        "\u8BFE\u7A0B/\u670D\u52A1\u5356\u4E0D\u52A8",
+        "\u4FE1\u4EFB\u5EFA\u7ACB\u5468\u671F\u957F",
+        "\u7ADE\u54C1\u4E13\u5BB6\u591A",
+        "\u4EA4\u4ED8\u7CBE\u529B\u4E0D\u8DB3"
+      ],
+      "B2B \u5236\u9020 / \u5DE5\u4E1A\u54C1": [
+        "\u5BA2\u6237\u51B3\u7B56\u5468\u671F\u957F",
+        "\u6280\u672F\u53C2\u6570\u96BE\u8BB2\u6E05",
+        "\u6848\u4F8B\u8BF4\u670D\u529B\u5F31",
+        "\u7EBF\u7D22\u8D28\u91CF\u4F4E",
+        "\u6E20\u9053\u4F9D\u8D56\u7ECF\u9500\u5546",
+        "\u54C1\u724C\u8BA4\u77E5\u5F31",
+        "\u7ADE\u54C1\u540C\u8D28\u5316",
+        "\u552E\u540E\u95EE\u9898\u5F71\u54CD\u53E3\u7891"
+      ],
+      \u5176\u4ED6: [
+        "\u83B7\u5BA2\u6210\u672C\u9AD8",
+        "\u8F6C\u5316\u7387\u4F4E",
+        "\u54C1\u724C\u8BA4\u77E5\u4E0D\u8DB3",
+        "\u5185\u5BB9\u4E0D\u4F1A\u505A",
+        "\u7ADE\u54C1\u538B\u529B\u5927",
+        "\u5BA2\u6237\u4FE1\u4EFB\u4E0D\u8DB3",
+        "\u590D\u8D2D\u7387\u4F4E",
+        "\u51B3\u7B56\u5468\u671F\u957F"
+      ]
+    };
+    ALL_PRESET_PAINS = new Set(
+      Object.values(industryPainPointOptions).flatMap((list) => [...list])
+    );
+  }
+});
+
+// server/enterpriseProfileAnalyze.ts
+var enterpriseProfileAnalyze_exports = {};
+__export(enterpriseProfileAnalyze_exports, {
+  analyzeEnterpriseProfileDocument: () => analyzeEnterpriseProfileDocument,
+  enterpriseProfileAnalysisSchema: () => enterpriseProfileAnalysisSchema,
+  enterpriseProfileAnalyzeInputSchema: () => enterpriseProfileAnalyzeInputSchema
+});
+import { z as z3 } from "zod";
+function parseAnalysisJson(content) {
+  if (typeof content !== "string") throw new Error("AI \u8FD4\u56DE\u683C\u5F0F\u5F02\u5E38\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
+  let raw;
+  try {
+    raw = JSON.parse(content);
+  } catch {
+    throw new Error("AI \u8FD4\u56DE\u89E3\u6790\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
+  }
+  const parsed = enterpriseProfileAnalysisSchema.safeParse(raw);
+  if (!parsed.success) throw new Error("AI \u8FD4\u56DE\u7ED3\u6784\u4E0D\u5B8C\u6574\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
+  return parsed.data;
+}
+function normalizeIndustry(industry, customIndustry) {
+  if (!industry?.trim()) return { industry: null, customIndustry: customIndustry?.trim() || null };
+  const t2 = industry.trim();
+  if (ENTERPRISE_INDUSTRY_OPTIONS.includes(t2)) {
+    return { industry: t2, customIndustry: t2 === "\u5176\u4ED6" ? customIndustry?.trim() || null : null };
+  }
+  return { industry: "\u5176\u4ED6", customIndustry: t2 };
+}
+async function analyzeEnterpriseProfileDocument(documentText) {
+  const trimmed = documentText.trim();
+  const industryList = ENTERPRISE_INDUSTRY_OPTIONS.join("\u3001");
+  const response = await invokeLLM({
+    max_tokens: 4096,
+    timeout_ms: 12e4,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: [
+          `\u53EF\u9009\u884C\u4E1A\u65B9\u5411\uFF08industry \u5B57\u6BB5\u5FC5\u987B\u4ECE\u4E2D\u9009\u4E00\uFF09\uFF1A${industryList}`,
+          "",
+          "\u4F01\u4E1A\u8D44\u6599\u539F\u6587\uFF1A",
+          trimmed.slice(0, 48e3),
+          "",
+          "\u8BF7\u8F93\u51FA JSON \u5BF9\u8C61\uFF0C\u5B57\u6BB5\uFF1AbrandName, industry, customIndustry, businessSummary, mainPlatforms, targetCustomers, customerPainPoints, competitors, caseSummary, caseActions, caseResults, confidenceNotes"
+        ].join("\n")
+      }
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "enterprise_profile_document_analysis",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            brandName: { type: "string" },
+            industry: { type: "string" },
+            customIndustry: { type: "string" },
+            businessSummary: { type: "string" },
+            mainPlatforms: { type: "string" },
+            targetCustomers: { type: "string" },
+            customerPainPoints: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 8
+            },
+            competitors: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 12
+            },
+            caseSummary: { type: "string" },
+            caseActions: { type: "string" },
+            caseResults: { type: "string" },
+            confidenceNotes: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 6
+            }
+          },
+          required: [
+            "brandName",
+            "industry",
+            "customIndustry",
+            "businessSummary",
+            "mainPlatforms",
+            "targetCustomers",
+            "customerPainPoints",
+            "competitors",
+            "caseSummary",
+            "caseActions",
+            "caseResults",
+            "confidenceNotes"
+          ],
+          additionalProperties: false
+        }
+      }
+    }
+  });
+  const parsed = parseAnalysisJson(response.choices[0]?.message.content);
+  const norm = normalizeIndustry(parsed.industry, parsed.customIndustry);
+  return {
+    ...parsed,
+    industry: norm.industry,
+    customIndustry: norm.customIndustry,
+    brandName: parsed.brandName?.trim() || null,
+    businessSummary: parsed.businessSummary?.trim() || null,
+    mainPlatforms: parsed.mainPlatforms?.trim() || null,
+    targetCustomers: parsed.targetCustomers?.trim() || null,
+    customerPainPoints: parsed.customerPainPoints.map((s) => s.trim()).filter(Boolean).slice(0, 8),
+    competitors: parsed.competitors.map((s) => s.trim()).filter(Boolean).slice(0, 12),
+    caseSummary: parsed.caseSummary?.trim() || null,
+    caseActions: parsed.caseActions?.trim() || null,
+    caseResults: parsed.caseResults?.trim() || null,
+    confidenceNotes: parsed.confidenceNotes.map((s) => s.trim()).filter(Boolean).slice(0, 6)
+  };
+}
+var enterpriseProfileAnalyzeInputSchema, emptyToNull, enterpriseProfileAnalysisSchema, SYSTEM_PROMPT;
+var init_enterpriseProfileAnalyze = __esm({
+  "server/enterpriseProfileAnalyze.ts"() {
+    "use strict";
+    init_llm();
+    init_enterpriseProfileIndustry();
+    enterpriseProfileAnalyzeInputSchema = z3.object({
+      projectId: z3.number().int().positive(),
+      documentText: z3.string().min(20, "\u8D44\u6599\u5185\u5BB9\u8FC7\u77ED\uFF0C\u8BF7\u8865\u5145\u540E\u91CD\u8BD5").max(5e4, "\u8D44\u6599\u5185\u5BB9\u8FC7\u957F\uFF0C\u8BF7\u5206\u6BB5\u4E0A\u4F20")
+    });
+    emptyToNull = (v) => {
+      if (v === null || v === void 0) return null;
+      const t2 = String(v).trim();
+      return t2.length > 0 ? t2 : null;
+    };
+    enterpriseProfileAnalysisSchema = z3.object({
+      brandName: z3.preprocess(emptyToNull, z3.string().nullable()),
+      industry: z3.preprocess(emptyToNull, z3.string().nullable()),
+      customIndustry: z3.preprocess(emptyToNull, z3.string().nullable()),
+      businessSummary: z3.preprocess(emptyToNull, z3.string().nullable()),
+      mainPlatforms: z3.preprocess(emptyToNull, z3.string().nullable()),
+      targetCustomers: z3.preprocess(emptyToNull, z3.string().nullable()),
+      customerPainPoints: z3.array(z3.string()).default([]),
+      competitors: z3.array(z3.string()).default([]),
+      caseSummary: z3.preprocess(emptyToNull, z3.string().nullable()),
+      caseActions: z3.preprocess(emptyToNull, z3.string().nullable()),
+      caseResults: z3.preprocess(emptyToNull, z3.string().nullable()),
+      confidenceNotes: z3.array(z3.string()).default([])
+    });
+    SYSTEM_PROMPT = `\u4F60\u662F\u4F01\u4E1A\u8D44\u6599\u7ED3\u6784\u5316\u63D0\u53D6\u52A9\u624B\u3002\u53EA\u4ECE\u7528\u6237\u63D0\u4F9B\u7684\u8D44\u6599\u539F\u6587\u4E2D\u63D0\u53D6\u4FE1\u606F\uFF0C\u8F93\u51FA\u4E25\u683C JSON\u3002
+
+\u89C4\u5219\uFF1A
+1. \u4E0D\u786E\u5B9A\u7684\u5B57\u6BB5\u5FC5\u987B\u8FD4\u56DE null\uFF08\u6570\u7EC4\u5B57\u6BB5\u65E0\u8BC1\u636E\u5219\u8FD4\u56DE\u7A7A\u6570\u7EC4 []\uFF09
+2. \u7981\u6B62\u7F16\u9020\u5BA2\u6237\u6848\u4F8B\u3001\u7ED3\u679C\u6570\u636E\u3001\u4EF7\u683C\u627F\u8BFA
+3. \u6848\u4F8B\u76F8\u5173\u5B57\u6BB5\uFF1A\u4EC5\u5F53\u8D44\u6599\u4E2D\u6709\u660E\u786E\u6848\u4F8B\u63CF\u8FF0\u65F6\u624D\u586B\u5199\uFF0C\u5426\u5219 caseSummary/caseActions/caseResults \u5747\u4E3A null
+4. industry \u5FC5\u987B\u4ECE\u7ED9\u5B9A\u884C\u4E1A\u9009\u9879\u4E2D\u9009\u62E9\uFF1B\u65E0\u6CD5\u5339\u914D\u65F6\u9009\u300C\u5176\u4ED6\u300D\uFF0C\u5E76\u5C06\u5177\u4F53\u884C\u4E1A\u5199\u5165 customIndustry
+5. customerPainPoints \u987B\u7ED3\u5408\u884C\u4E1A\u4E0E\u8D44\u6599\uFF0C\u6700\u591A 8 \u6761\uFF0C\u6BCF\u6761\u4E0D\u8D85\u8FC7 24 \u5B57
+6. competitors \u4EC5\u63D0\u53D6\u8D44\u6599\u4E2D\u660E\u786E\u63D0\u53CA\u7684\u7ADE\u54C1/\u5BF9\u6BD4\u54C1\u724C\uFF0C\u4E0D\u8981\u731C\u6D4B
+7. confidenceNotes \u7528\u7B80\u77ED\u4E2D\u6587\u8BF4\u660E\u8BC6\u522B\u4F9D\u636E\u6216\u4E0D\u786E\u5B9A\u70B9\uFF081-4 \u6761\uFF09
+8. \u4E0D\u8981\u8F93\u51FA\u4EFB\u4F55\u975E schema \u89C4\u5B9A\u7684\u989D\u5916\u5B57\u6BB5`;
+  }
+});
+
 // server/_core/index.ts
 import "dotenv/config";
 import express2 from "express";
@@ -242,6 +1050,14 @@ var contentTemplates = mysqlTable("content_templates", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
 });
+var deliveryReportShareTokens = mysqlTable("delivery_report_share_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  projectId: int("projectId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  isEnabled: boolean("isEnabled").default(true).notNull()
+});
 var reports = mysqlTable("reports", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
@@ -363,6 +1179,8 @@ var geoInclusionMonitoringRecords = mysqlTable("geo_inclusion_monitoring_records
   currentSuggestion: text("currentSuggestion").notNull(),
   optimizationSuggestions: json("optimizationSuggestions").$type().notNull(),
   rawJson: json("rawJson").$type().notNull(),
+  aiTestResults: json("aiTestResults").$type(),
+  lastAiTestedAt: timestamp("lastAiTestedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
 });
@@ -523,6 +1341,7 @@ var publishTasks = mysqlTable("publish_tasks", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   articleTitle: text("articleTitle").notNull(),
   articleContent: text("articleContent").notNull(),
+  coverImageUrl: varchar("coverImageUrl", { length: 2e3 }),
   resultUrl: varchar("resultUrl", { length: 500 }),
   errorMessage: text("errorMessage"),
   apiKey: varchar("apiKey", { length: 100 }),
@@ -544,19 +1363,8 @@ var platformAuthorizationConfigs = mysqlTable("platform_authorization_configs", 
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
 });
 
-// server/_core/env.ts
-var ENV = {
-  appId: process.env.VITE_APP_ID ?? "",
-  cookieSecret: process.env.JWT_SECRET ?? "",
-  databaseUrl: process.env.DATABASE_URL ?? "",
-  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
-  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
-  isProduction: process.env.NODE_ENV === "production",
-  forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
-  forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? ""
-};
-
 // server/db.ts
+init_env();
 var _db = null;
 async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -659,6 +1467,7 @@ var ForbiddenError = (msg) => new HttpError(403, msg);
 import axios from "axios";
 import { parse as parseCookieHeader } from "cookie";
 import { SignJWT, jwtVerify } from "jose";
+init_env();
 var isNonEmptyString = (value) => typeof value === "string" && value.length > 0;
 var EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 var GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
@@ -914,6 +1723,7 @@ function registerOAuthRoutes(app) {
 }
 
 // server/_core/storageProxy.ts
+init_env();
 function registerStorageProxy(app) {
   app.get("/manus-storage/*", async (req, res) => {
     const key = req.params["0"];
@@ -955,456 +1765,16 @@ function registerStorageProxy(app) {
 }
 
 // server/routers.ts
-import { TRPCError as TRPCError5 } from "@trpc/server";
-import { and as and2, asc, desc as desc3, eq as eq4, inArray, like, not } from "drizzle-orm";
-import { z as z3 } from "zod";
-
-// server/_core/llm.ts
-import { request as httpRequest } from "node:http";
-import { request as httpsRequest } from "node:https";
-import { connect as tlsConnect } from "node:tls";
-var ensureArray = (value) => Array.isArray(value) ? value : [value];
-var normalizeContentPart = (part) => {
-  if (typeof part === "string") {
-    return { type: "text", text: part };
-  }
-  if (part.type === "text") {
-    return part;
-  }
-  if (part.type === "image_url") {
-    return part;
-  }
-  if (part.type === "file_url") {
-    return part;
-  }
-  throw new Error("Unsupported message content part");
-};
-var normalizeMessage = (message) => {
-  const { role, name, tool_call_id } = message;
-  if (role === "tool" || role === "function") {
-    const content = ensureArray(message.content).map((part) => typeof part === "string" ? part : JSON.stringify(part)).join("\n");
-    return {
-      role,
-      name,
-      tool_call_id,
-      content
-    };
-  }
-  const contentParts = ensureArray(message.content).map(normalizeContentPart);
-  if (contentParts.length === 1 && contentParts[0].type === "text") {
-    return {
-      role,
-      name,
-      content: contentParts[0].text
-    };
-  }
-  return {
-    role,
-    name,
-    content: contentParts
-  };
-};
-var normalizeToolChoice = (toolChoice, tools) => {
-  if (!toolChoice) return void 0;
-  if (toolChoice === "none" || toolChoice === "auto") {
-    return toolChoice;
-  }
-  if (toolChoice === "required") {
-    if (!tools || tools.length === 0) {
-      throw new Error(
-        "tool_choice 'required' was provided but no tools were configured"
-      );
-    }
-    if (tools.length > 1) {
-      throw new Error(
-        "tool_choice 'required' needs a single tool or specify the tool name explicitly"
-      );
-    }
-    return {
-      type: "function",
-      function: { name: tools[0].function.name }
-    };
-  }
-  if ("name" in toolChoice) {
-    return {
-      type: "function",
-      function: { name: toolChoice.name }
-    };
-  }
-  return toolChoice;
-};
-var resolveManusApiUrl = () => ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0 ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions` : "https://forge.manus.im/v1/chat/completions";
-var assertManusApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
-  }
-};
-var resolveOpenAIBaseUrl = () => (process.env.OPENAI_BASE_URL ?? "https://api.openai.com").replace(/\/+$/, "");
-var resolveOpenAIChatCompletionsPath = () => {
-  const path3 = process.env.OPENAI_CHAT_COMPLETIONS_PATH ?? "/chat/completions";
-  return path3.startsWith("/") ? path3 : `/${path3}`;
-};
-var resolveOpenAIApiUrl = () => {
-  const baseUrl = resolveOpenAIBaseUrl();
-  if (baseUrl.endsWith("/chat/completions")) return baseUrl;
-  const chatCompletionsPath = resolveOpenAIChatCompletionsPath();
-  if (baseUrl.endsWith("/v1") || baseUrl.endsWith("/api/v3")) return `${baseUrl}${chatCompletionsPath}`;
-  return `${baseUrl}/v1${chatCompletionsPath}`;
-};
-var resolveOpenAITimeoutMs = () => {
-  const raw = Number(process.env.OPENAI_TIMEOUT_MS ?? 6e4);
-  return Number.isFinite(raw) && raw > 0 ? raw : 6e4;
-};
-var proxyEnv = () => {
-  const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
-  const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy;
-  const allProxy = process.env.ALL_PROXY || process.env.all_proxy;
-  return {
-    httpsProxy,
-    httpProxy,
-    allProxy,
-    proxyUrl: httpsProxy || httpProxy || allProxy,
-    detected: {
-      HTTPS_PROXY: Boolean(httpsProxy),
-      HTTP_PROXY: Boolean(httpProxy),
-      ALL_PROXY: Boolean(allProxy)
-    }
-  };
-};
-var proxyAuthorizationHeader = (proxyUrl) => {
-  if (!proxyUrl.username && !proxyUrl.password) return void 0;
-  const credentials = `${decodeURIComponent(proxyUrl.username)}:${decodeURIComponent(proxyUrl.password)}`;
-  return `Basic ${Buffer.from(credentials).toString("base64")}`;
-};
-var assertOpenAIApiKey = () => {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not configured");
-  }
-};
-var normalizeResponseFormat = ({
-  responseFormat,
-  response_format,
-  outputSchema,
-  output_schema
-}) => {
-  const explicitFormat = responseFormat || response_format;
-  if (explicitFormat) {
-    if (explicitFormat.type === "json_schema" && !explicitFormat.json_schema?.schema) {
-      throw new Error(
-        "responseFormat json_schema requires a defined schema object"
-      );
-    }
-    return explicitFormat;
-  }
-  const schema = outputSchema || output_schema;
-  if (!schema) return void 0;
-  if (!schema.name || !schema.schema) {
-    throw new Error("outputSchema requires both name and schema");
-  }
-  return {
-    type: "json_schema",
-    json_schema: {
-      name: schema.name,
-      schema: schema.schema,
-      ...typeof schema.strict === "boolean" ? { strict: schema.strict } : {}
-    }
-  };
-};
-var buildCommonPayload = (params) => {
-  const {
-    messages,
-    tools,
-    toolChoice,
-    tool_choice,
-    maxTokens,
-    max_tokens,
-    outputSchema,
-    output_schema,
-    responseFormat,
-    response_format
-  } = params;
-  const payload = {
-    messages: messages.map(normalizeMessage)
-  };
-  if (tools && tools.length > 0) {
-    payload.tools = tools;
-  }
-  const normalizedToolChoice = normalizeToolChoice(
-    toolChoice || tool_choice,
-    tools
-  );
-  if (normalizedToolChoice) {
-    payload.tool_choice = normalizedToolChoice;
-  }
-  payload.max_tokens = max_tokens ?? maxTokens ?? 32768;
-  const normalizedResponseFormat = normalizeResponseFormat({
-    responseFormat,
-    response_format,
-    outputSchema,
-    output_schema
-  });
-  if (normalizedResponseFormat) {
-    payload.response_format = normalizedResponseFormat;
-  }
-  return payload;
-};
-var normalizeOpenAIResult = (result) => ({
-  id: result.id,
-  created: result.created,
-  model: result.model,
-  choices: result.choices.map((choice) => ({
-    index: choice.index,
-    message: {
-      role: choice.message.role,
-      content: choice.message.content ?? "",
-      ...choice.message.tool_calls ? { tool_calls: choice.message.tool_calls } : {}
-    },
-    finish_reason: choice.finish_reason
-  })),
-  ...result.usage ? { usage: result.usage } : {}
-});
-function openAIErrorContext(input) {
-  const { detected } = proxyEnv();
-  const original = input.originalError;
-  const originalCode = original?.code ?? original?.cause?.code ?? "unknown";
-  const originalMessage = original?.message ?? String(input.originalError ?? "");
-  return `provider=openai baseURL=${input.baseUrl} requestURL=${input.requestURL} model=${input.model} timeoutMs=${input.timeoutMs} proxyDetected=${JSON.stringify(detected)} originalCode=${originalCode}${originalMessage ? ` originalMessage=${originalMessage}` : ""}`;
-}
-function requestOpenAIThroughProxy(input) {
-  return new Promise((resolve, reject) => {
-    const targetUrl = new URL(input.apiUrl);
-    const proxyUrl = new URL(input.proxyUrl);
-    const proxyRequest = proxyUrl.protocol === "https:" ? httpsRequest : httpRequest;
-    if (targetUrl.protocol !== "https:") {
-      reject(new Error(`OpenAI proxy mode only supports https targets, got ${targetUrl.protocol}`));
-      return;
-    }
-    if (proxyUrl.protocol !== "http:" && proxyUrl.protocol !== "https:") {
-      reject(new Error(`Unsupported proxy protocol: ${proxyUrl.protocol}`));
-      return;
-    }
-    const targetPort = targetUrl.port ? Number(targetUrl.port) : 443;
-    const proxyPort = proxyUrl.port ? Number(proxyUrl.port) : proxyUrl.protocol === "https:" ? 443 : 80;
-    const authHeader = proxyAuthorizationHeader(proxyUrl);
-    const connectReq = proxyRequest({
-      hostname: proxyUrl.hostname,
-      port: proxyPort,
-      method: "CONNECT",
-      path: `${targetUrl.hostname}:${targetPort}`,
-      headers: {
-        Host: `${targetUrl.hostname}:${targetPort}`,
-        ...authHeader ? { "Proxy-Authorization": authHeader } : {}
-      },
-      timeout: input.timeoutMs
-    });
-    let settled = false;
-    const fail = (error) => {
-      if (settled) return;
-      settled = true;
-      connectReq.destroy();
-      reject(error);
-    };
-    const timer = setTimeout(() => {
-      fail(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
-    }, input.timeoutMs);
-    connectReq.on("connect", (res, socket) => {
-      if (res.statusCode !== 200) {
-        clearTimeout(timer);
-        fail(Object.assign(new Error(`Proxy CONNECT failed with status ${res.statusCode}`), { code: "PROXY_CONNECT_FAILED" }));
-        return;
-      }
-      const secureSocket = tlsConnect({
-        socket,
-        servername: targetUrl.hostname
-      }, () => {
-        const body = JSON.stringify(input.payload);
-        const path3 = `${targetUrl.pathname}${targetUrl.search}`;
-        const headers = {
-          ...input.headers,
-          Host: targetUrl.host,
-          "Content-Length": Buffer.byteLength(body).toString(),
-          Connection: "close"
-        };
-        const headerText = Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join("\r\n");
-        secureSocket.write(`POST ${path3} HTTP/1.1\r
-${headerText}\r
-\r
-${body}`);
-      });
-      const chunks = [];
-      secureSocket.setTimeout(input.timeoutMs, () => {
-        secureSocket.destroy(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
-      });
-      secureSocket.on("data", (chunk) => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      secureSocket.on("error", fail);
-      secureSocket.on("end", () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        const raw = Buffer.concat(chunks).toString("utf8");
-        const separator = raw.indexOf("\r\n\r\n");
-        const header = separator >= 0 ? raw.slice(0, separator) : raw;
-        const body = separator >= 0 ? raw.slice(separator + 4) : "";
-        const [statusLine] = header.split("\r\n");
-        const match = /^HTTP\/\d(?:\.\d)?\s+(\d+)\s*(.*)$/.exec(statusLine ?? "");
-        resolve({
-          status: match ? Number(match[1]) : 0,
-          statusText: match?.[2] ?? "",
-          body
-        });
-      });
-    });
-    connectReq.on("timeout", () => {
-      fail(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
-    });
-    connectReq.on("error", fail);
-    connectReq.end();
-  });
-}
-function requestOpenAIDirect(input) {
-  return new Promise((resolve, reject) => {
-    const targetUrl = new URL(input.apiUrl);
-    const body = JSON.stringify(input.payload);
-    const requestImpl = targetUrl.protocol === "https:" ? httpsRequest : httpRequest;
-    const req = requestImpl({
-      protocol: targetUrl.protocol,
-      hostname: targetUrl.hostname,
-      port: targetUrl.port ? Number(targetUrl.port) : targetUrl.protocol === "https:" ? 443 : 80,
-      method: "POST",
-      path: `${targetUrl.pathname}${targetUrl.search}`,
-      headers: {
-        ...input.headers,
-        "Content-Length": Buffer.byteLength(body).toString()
-      },
-      timeout: input.timeoutMs
-    }, (response) => {
-      const chunks = [];
-      response.on("data", (chunk) => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      response.on("end", () => {
-        resolve({
-          status: response.statusCode ?? 0,
-          statusText: response.statusMessage ?? "",
-          body: Buffer.concat(chunks).toString("utf8")
-        });
-      });
-    });
-    const timer = setTimeout(() => {
-      req.destroy(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
-    }, input.timeoutMs);
-    req.on("timeout", () => {
-      req.destroy(Object.assign(new Error(`OpenAI request timed out after ${input.timeoutMs}ms`), { code: "OPENAI_TIMEOUT" }));
-    });
-    req.on("error", (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
-    req.on("close", () => {
-      clearTimeout(timer);
-    });
-    req.write(body);
-    req.end();
-  });
-}
-async function requestOpenAI(input) {
-  const headers = {
-    "content-type": "application/json",
-    authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-  };
-  const { proxyUrl } = proxyEnv();
-  if (proxyUrl) {
-    return requestOpenAIThroughProxy({
-      apiUrl: input.apiUrl,
-      proxyUrl,
-      payload: input.payload,
-      headers,
-      timeoutMs: input.timeoutMs
-    });
-  }
-  return requestOpenAIDirect({
-    apiUrl: input.apiUrl,
-    payload: input.payload,
-    headers,
-    timeoutMs: input.timeoutMs
-  });
-}
-async function invokeManusForge(params) {
-  assertManusApiKey();
-  const timeoutMs = params.timeoutMs ?? params.timeout_ms ?? resolveOpenAITimeoutMs();
-  const controller = new AbortController();
-  const killTimer = setTimeout(() => controller.abort(), timeoutMs);
-  const payload = {
-    model: "gemini-2.5-flash",
-    ...buildCommonPayload(params),
-    thinking: {
-      budget_tokens: 128
-    }
-  };
-  let response;
-  try {
-    response = await fetch(resolveManusApiUrl(), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${ENV.forgeApiKey}`
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      throw new Error(`LLM invoke timed out after ${timeoutMs}ms`);
-    }
-    throw error;
-  } finally {
-    clearTimeout(killTimer);
-  }
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `LLM invoke failed: ${response.status} ${response.statusText} \u2013 ${errorText}`
-    );
-  }
-  return await response.json();
-}
-async function invokeOpenAI(params) {
-  assertOpenAIApiKey();
-  const baseUrl = resolveOpenAIBaseUrl();
-  const apiUrl = resolveOpenAIApiUrl();
-  const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
-  const timeoutMs = params.timeoutMs ?? params.timeout_ms ?? resolveOpenAITimeoutMs();
-  const payload = {
-    model,
-    ...buildCommonPayload(params)
-  };
-  let response;
-  try {
-    response = await requestOpenAI({ apiUrl, payload, model, timeoutMs });
-  } catch (error) {
-    throw new Error(`OpenAI LLM network failure: ${openAIErrorContext({ baseUrl, requestURL: apiUrl, model, timeoutMs, originalError: error })}`);
-  }
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(
-      `OpenAI LLM invoke failed: ${openAIErrorContext({ baseUrl, requestURL: apiUrl, model, timeoutMs })} status=${response.status} ${response.statusText} \u2013 ${response.body}`
-    );
-  }
-  return normalizeOpenAIResult(JSON.parse(response.body));
-}
-async function invokeLLM(params) {
-  const provider = process.env.LLM_PROVIDER ?? "openai";
-  if (provider === "openai") {
-    return invokeOpenAI(params);
-  }
-  return invokeManusForge(params);
-}
+import { TRPCError as TRPCError7 } from "@trpc/server";
+import { and as and3, asc, desc as desc4, eq as eq7, inArray as inArray2, like, not } from "drizzle-orm";
+import { z as z4 } from "zod";
+init_llm();
 
 // server/_core/systemRouter.ts
 import { z } from "zod";
 
 // server/_core/notification.ts
+init_env();
 import { TRPCError } from "@trpc/server";
 var TITLE_MAX_LENGTH = 1200;
 var CONTENT_MAX_LENGTH = 2e4;
@@ -1546,9 +1916,196 @@ var systemRouter = router({
 
 // server/publishTasksRouter.ts
 import { randomUUID } from "node:crypto";
-import { TRPCError as TRPCError3 } from "@trpc/server";
+import { TRPCError as TRPCError4 } from "@trpc/server";
 import { and, desc, eq as eq2 } from "drizzle-orm";
 import { z as z2 } from "zod";
+
+// server/extensionDownload.ts
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import AdmZip from "adm-zip";
+import { TRPCError as TRPCError3 } from "@trpc/server";
+var EXTENSION_ZIP_RELATIVE = "client/public/browser-extension.zip";
+var AUTO_CONFIG_MARKER = "// \u81EA\u52A8\u914D\u7F6E\uFF08\u5B89\u88C5\u65F6\u751F\u6210\uFF09";
+function escapeJsSingleQuoted(value) {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+function resolveServerUrlFromRequest(req) {
+  const host = req.headers.host;
+  if (!host) {
+    throw new TRPCError3({ code: "BAD_REQUEST", message: "\u65E0\u6CD5\u8BC6\u522B\u670D\u52A1\u5668\u5730\u5740" });
+  }
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  let protocol = req.protocol || "http";
+  if (forwardedProto) {
+    const raw = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+    const first = raw?.split(",")[0]?.trim();
+    if (first) protocol = first;
+  }
+  return `${protocol}://${host}`.replace(/\/$/, "");
+}
+function stripExistingAutoConfig(source) {
+  if (!source.includes(AUTO_CONFIG_MARKER)) return source;
+  const lines = source.split("\n");
+  const start = lines.findIndex((line) => line.includes(AUTO_CONFIG_MARKER));
+  if (start < 0) return source;
+  let end = start + 1;
+  while (end < lines.length && !lines[end].startsWith("const ") && !lines[end].startsWith("chrome.alarms")) {
+    end += 1;
+  }
+  while (end < lines.length && lines[end].trim() === "") {
+    end += 1;
+  }
+  return lines.slice(end).join("\n");
+}
+function buildAutoConfigPrefix(serverUrl, apiKey) {
+  return `${AUTO_CONFIG_MARKER}
+chrome.storage.sync.set({
+  serverUrl: '${escapeJsSingleQuoted(serverUrl)}',
+  apiKey: '${escapeJsSingleQuoted(apiKey)}'
+});
+
+`;
+}
+function buildCustomExtensionZip(serverUrl, apiKey) {
+  const zipPath = join(process.cwd(), EXTENSION_ZIP_RELATIVE);
+  if (!existsSync(zipPath)) {
+    throw new TRPCError3({ code: "NOT_FOUND", message: "\u63D2\u4EF6\u5B89\u88C5\u5305\u4E0D\u5B58\u5728\uFF0C\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458" });
+  }
+  const zip = new AdmZip(readFileSync(zipPath));
+  const entry = zip.getEntry("background.js");
+  if (!entry) {
+    throw new TRPCError3({ code: "INTERNAL_SERVER_ERROR", message: "\u63D2\u4EF6\u5305\u683C\u5F0F\u5F02\u5E38\uFF1A\u7F3A\u5C11 background.js" });
+  }
+  const original = entry.getData().toString("utf8");
+  const cleaned = stripExistingAutoConfig(original);
+  const updated = buildAutoConfigPrefix(serverUrl, apiKey) + cleaned;
+  zip.updateFile("background.js", Buffer.from(updated, "utf8"));
+  return zip.toBuffer();
+}
+
+// server/storage.ts
+init_env();
+function getForgeConfig() {
+  const forgeUrl = ENV.forgeApiUrl;
+  const forgeKey = ENV.forgeApiKey;
+  if (!forgeUrl || !forgeKey) {
+    throw new Error(
+      "Storage config missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
+    );
+  }
+  return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
+}
+function normalizeKey(relKey) {
+  return relKey.replace(/^\/+/, "");
+}
+function appendHashSuffix(relKey) {
+  const hash = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  const lastDot = relKey.lastIndexOf(".");
+  if (lastDot === -1) return `${relKey}_${hash}`;
+  return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
+}
+async function storagePut(relKey, data, contentType = "application/octet-stream") {
+  const { forgeUrl, forgeKey } = getForgeConfig();
+  const key = appendHashSuffix(normalizeKey(relKey));
+  const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
+  presignUrl.searchParams.set("path", key);
+  const presignResp = await fetch(presignUrl, {
+    headers: { Authorization: `Bearer ${forgeKey}` }
+  });
+  if (!presignResp.ok) {
+    const msg = await presignResp.text().catch(() => presignResp.statusText);
+    throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
+  }
+  const { url: s3Url } = await presignResp.json();
+  if (!s3Url) throw new Error("Forge returned empty presign URL");
+  const blob = typeof data === "string" ? new Blob([data], { type: contentType }) : new Blob([data], { type: contentType });
+  const uploadResp = await fetch(s3Url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: blob
+  });
+  if (!uploadResp.ok) {
+    throw new Error(`Storage upload to S3 failed (${uploadResp.status})`);
+  }
+  return { key, url: `/manus-storage/${key}` };
+}
+
+// server/_core/imageGeneration.ts
+init_env();
+async function generateImage(options) {
+  if (!ENV.forgeApiUrl) {
+    throw new Error("BUILT_IN_FORGE_API_URL is not configured");
+  }
+  if (!ENV.forgeApiKey) {
+    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+  }
+  const baseUrl = ENV.forgeApiUrl.endsWith("/") ? ENV.forgeApiUrl : `${ENV.forgeApiUrl}/`;
+  const fullUrl = new URL(
+    "images.v1.ImageService/GenerateImage",
+    baseUrl
+  ).toString();
+  const response = await fetch(fullUrl, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      "connect-protocol-version": "1",
+      authorization: `Bearer ${ENV.forgeApiKey}`
+    },
+    body: JSON.stringify({
+      prompt: options.prompt,
+      original_images: options.originalImages || [],
+      ...options.width != null && options.height != null ? { width: options.width, height: options.height } : {}
+    })
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Image generation request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
+    );
+  }
+  const result = await response.json();
+  const base64Data = result.image.b64Json;
+  const buffer = Buffer.from(base64Data, "base64");
+  const { url } = await storagePut(
+    `generated/${Date.now()}.png`,
+    buffer,
+    result.image.mimeType
+  );
+  return {
+    url
+  };
+}
+
+// server/volcengineImageGen.ts
+var COVER_WIDTH = 1440;
+var COVER_HEIGHT = 810;
+async function generateCoverImage(articleTitle) {
+  try {
+    const prompt = `\u77E5\u4E4E\u4E13\u680F\u6587\u7AE0\u5C01\u9762\u56FE\uFF0C\u4E3B\u9898\uFF1A${articleTitle}\u3002
+\u8981\u6C42\uFF1A\u6781\u7B80\u73B0\u4EE3\u8BBE\u8BA1\u98CE\u683C\uFF0C\u6DF1\u8272\u80CC\u666F\uFF08\u6DF1\u84DD\u6216\u6DF1\u7070\uFF09\uFF0C\u5927\u5B57\u6392\u7248\u7A81\u51FA\u4E3B\u9898\u5173\u952E\u8BCD\uFF0C
+\u914D\u5408\u7B80\u6D01\u7684\u7EBF\u6761\u56FE\u5F62\u6216\u56FE\u6807\uFF0C\u4E13\u4E1A\u611F\u5F3A\uFF0C\u9002\u5408\u77E5\u8BC6\u4ED8\u8D39\u5185\u5BB9\uFF0C
+\u7981\u6B62\u51FA\u73B0\u4EFB\u4F55\u6587\u5B57\u6C34\u5370\uFF0C\u7981\u6B62\u5361\u901A\u98CE\u683C\uFF0C\u7981\u6B62\u4EBA\u8138\u7279\u5199\uFF0C16:9\u6A2A\u7248\u6784\u56FE`;
+    console.log(`[\u5C01\u9762\u56FE] \u5F00\u59CB\u751F\u6210\uFF0C\u6807\u9898: ${articleTitle}\uFF0C\u5C3A\u5BF8: ${COVER_WIDTH}x${COVER_HEIGHT}`);
+    const { url } = await generateImage({
+      prompt,
+      width: COVER_WIDTH,
+      height: COVER_HEIGHT
+    });
+    if (url) {
+      console.log(`[\u5C01\u9762\u56FE] \u751F\u6210\u6210\u529F: ${url}`);
+    } else {
+      console.warn("[\u5C01\u9762\u56FE] \u751F\u6210\u8FD4\u56DE\u7A7A url");
+    }
+    return url ?? null;
+  } catch (e) {
+    console.error("[\u5C01\u9762\u56FE] \u751F\u6210\u5F02\u5E38:", e);
+    return null;
+  }
+}
+
+// server/publishTasksRouter.ts
 var publishPlatformSlugEnum = z2.enum(["zhihu", "toutiao", "sohu", "baijiahao", "wechat"]);
 var PLATFORM_TO_PUBLISH_CHANNEL = {
   zhihu: "\u77E5\u4E4E",
@@ -1559,14 +2116,14 @@ var PLATFORM_TO_PUBLISH_CHANNEL = {
 };
 async function requireDb() {
   const db = await getDb();
-  if (!db) throw new TRPCError3({ code: "INTERNAL_SERVER_ERROR", message: "\u6570\u636E\u5E93\u4E0D\u53EF\u7528" });
+  if (!db) throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message: "\u6570\u636E\u5E93\u4E0D\u53EF\u7528" });
   return db;
 }
 async function ensureUserExtensionApiKey(userId) {
   const db = await requireDb();
   const rows = await db.select({ id: users.id, extensionApiKey: users.extensionApiKey }).from(users).where(eq2(users.id, userId)).limit(1);
   const user = rows[0];
-  if (!user) throw new TRPCError3({ code: "NOT_FOUND", message: "\u7528\u6237\u4E0D\u5B58\u5728" });
+  if (!user) throw new TRPCError4({ code: "NOT_FOUND", message: "\u7528\u6237\u4E0D\u5B58\u5728" });
   if (user.extensionApiKey) return user.extensionApiKey;
   const apiKey = randomUUID().replace(/-/g, "");
   await db.update(users).set({ extensionApiKey: apiKey }).where(eq2(users.id, userId));
@@ -1575,8 +2132,41 @@ async function ensureUserExtensionApiKey(userId) {
 async function assertApiKeyUser(apiKey) {
   const db = await requireDb();
   const rows = await db.select().from(users).where(eq2(users.extensionApiKey, apiKey)).limit(1);
-  if (!rows[0]) throw new TRPCError3({ code: "UNAUTHORIZED", message: "\u65E0\u6548\u7684 API \u5BC6\u94A5" });
+  if (!rows[0]) throw new TRPCError4({ code: "UNAUTHORIZED", message: "\u65E0\u6548\u7684 API \u5BC6\u94A5" });
   return rows[0];
+}
+var MAX_COVER_BYTES = 3 * 1024 * 1024;
+function resolveCoverImageUrl(raw, origin) {
+  if (!raw) return null;
+  return raw.startsWith("http") ? raw : `${origin}${raw}`;
+}
+async function attachCoverImagePayload(coverImageUrl, origin) {
+  const resolvedUrl = resolveCoverImageUrl(coverImageUrl, origin);
+  if (!resolvedUrl) {
+    return { coverImageUrl: null, coverImageBase64: void 0, coverImageMime: void 0 };
+  }
+  try {
+    const res = await fetch(resolvedUrl);
+    if (!res.ok) {
+      console.warn(`[\u5C01\u9762\u56FE] \u670D\u52A1\u7AEF\u4E0B\u8F7D\u5931\u8D25 HTTP ${res.status}: ${resolvedUrl}`);
+      return { coverImageUrl: resolvedUrl, coverImageBase64: void 0, coverImageMime: void 0 };
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > MAX_COVER_BYTES) {
+      console.warn(`[\u5C01\u9762\u56FE] \u56FE\u7247\u8FC7\u5927 (${buf.length} bytes)\uFF0C\u63D2\u4EF6\u5C06\u4EC5\u4FDD\u7559 URL: ${resolvedUrl}`);
+      return { coverImageUrl: resolvedUrl, coverImageBase64: void 0, coverImageMime: void 0 };
+    }
+    const mime = res.headers.get("content-type") || "image/png";
+    console.log(`[\u5C01\u9762\u56FE] \u670D\u52A1\u7AEF\u5DF2\u7F13\u5B58\u5C01\u9762 base64\uFF0C${buf.length} bytes`);
+    return {
+      coverImageUrl: resolvedUrl,
+      coverImageBase64: buf.toString("base64"),
+      coverImageMime: mime
+    };
+  } catch (e) {
+    console.warn(`[\u5C01\u9762\u56FE] \u670D\u52A1\u7AEF\u4E0B\u8F7D\u5F02\u5E38:`, e);
+    return { coverImageUrl: resolvedUrl, coverImageBase64: void 0, coverImageMime: void 0 };
+  }
 }
 var publishTasksRouter = router({
   create: protectedProcedure.input(
@@ -1590,9 +2180,10 @@ var publishTasksRouter = router({
     const articleRows = await db.select().from(geoArticles).where(eq2(geoArticles.id, input.articleId)).limit(1);
     const article = articleRows[0];
     if (!article || article.projectId !== input.projectId) {
-      throw new TRPCError3({ code: "NOT_FOUND", message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u5185\u5BB9" });
+      throw new TRPCError4({ code: "NOT_FOUND", message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u5185\u5BB9" });
     }
     const apiKey = await ensureUserExtensionApiKey(ctx.user.id);
+    const coverImageUrl = await generateCoverImage(article.title ?? "").catch(() => null);
     const inserted = await db.insert(publishTasks).values({
       projectId: input.projectId,
       articleId: input.articleId,
@@ -1600,20 +2191,41 @@ var publishTasksRouter = router({
       status: "pending",
       articleTitle: article.title,
       articleContent: article.markdownContent ?? "",
+      coverImageUrl: coverImageUrl ?? void 0,
       apiKey
     }).$returningId();
-    return { taskId: inserted[0]?.id ?? 0 };
+    if (!coverImageUrl) {
+      console.warn(`[\u5C01\u9762\u56FE] \u4EFB\u52A1 ${inserted[0]?.id ?? "?"} \u672A\u751F\u6210\u5C01\u9762`);
+    }
+    return { taskId: inserted[0]?.id ?? 0, coverImageUrl: coverImageUrl ?? null };
   }),
-  pending: publicProcedure.input(z2.object({ apiKey: z2.string().min(8).max(100) })).query(async ({ input }) => {
+  pending: publicProcedure.input(z2.object({ apiKey: z2.string().min(8).max(100) })).query(async ({ input, ctx }) => {
     await assertApiKeyUser(input.apiKey);
     const db = await requireDb();
     const rows = await db.select({
       id: publishTasks.id,
       platform: publishTasks.platform,
       articleTitle: publishTasks.articleTitle,
-      articleContent: publishTasks.articleContent
+      articleContent: publishTasks.articleContent,
+      coverImageUrl: publishTasks.coverImageUrl
     }).from(publishTasks).where(and(eq2(publishTasks.apiKey, input.apiKey), eq2(publishTasks.status, "pending")));
-    return { tasks: rows };
+    const forwardedProto = ctx.req.headers["x-forwarded-proto"];
+    const protocol = Array.isArray(forwardedProto) ? forwardedProto[0] : typeof forwardedProto === "string" ? forwardedProto.split(",")[0]?.trim() : "https";
+    const host = ctx.req.headers.host || "aigeoworkb-kzxhj9uy.manus.space";
+    const origin = `${protocol || "https"}://${host}`;
+    const tasks = await Promise.all(
+      rows.map(async (row) => {
+        const cover = await attachCoverImagePayload(row.coverImageUrl, origin);
+        return {
+          id: row.id,
+          platform: row.platform,
+          articleTitle: row.articleTitle,
+          articleContent: row.articleContent,
+          ...cover
+        };
+      })
+    );
+    return { tasks };
   }),
   complete: publicProcedure.input(
     z2.object({
@@ -1629,7 +2241,7 @@ var publishTasksRouter = router({
     const taskRows = await db.select().from(publishTasks).where(eq2(publishTasks.id, input.taskId)).limit(1);
     const task = taskRows[0];
     if (!task || task.apiKey !== input.apiKey) {
-      throw new TRPCError3({ code: "NOT_FOUND", message: "\u53D1\u5E03\u4EFB\u52A1\u4E0D\u5B58\u5728\u6216\u65E0\u6743\u64CD\u4F5C" });
+      throw new TRPCError4({ code: "NOT_FOUND", message: "\u53D1\u5E03\u4EFB\u52A1\u4E0D\u5B58\u5728\u6216\u65E0\u6743\u64CD\u4F5C" });
     }
     await db.update(publishTasks).set({
       status: input.status,
@@ -1662,13 +2274,41 @@ var publishTasksRouter = router({
     }
     return { ok: true };
   }),
+  latestByArticle: protectedProcedure.input(
+    z2.object({
+      articleId: z2.number().int().positive(),
+      projectId: z2.number().int().positive()
+    })
+  ).query(async ({ input }) => {
+    const db = await requireDb();
+    const rows = await db.select({
+      id: publishTasks.id,
+      platform: publishTasks.platform,
+      status: publishTasks.status,
+      resultUrl: publishTasks.resultUrl,
+      errorMessage: publishTasks.errorMessage,
+      createdAt: publishTasks.createdAt
+    }).from(publishTasks).where(and(eq2(publishTasks.articleId, input.articleId), eq2(publishTasks.projectId, input.projectId))).orderBy(desc(publishTasks.id)).limit(20);
+    return { tasks: rows };
+  }),
   getApiKey: protectedProcedure.query(async ({ ctx }) => {
     const apiKey = await ensureUserExtensionApiKey(ctx.user.id);
     return { apiKey };
+  }),
+  downloadExtension: protectedProcedure.mutation(async ({ ctx }) => {
+    const apiKey = await ensureUserExtensionApiKey(ctx.user.id);
+    const serverUrl = resolveServerUrlFromRequest(ctx.req);
+    const zipBuffer = buildCustomExtensionZip(serverUrl, apiKey);
+    return {
+      fileName: "content-growth-publish-extension.zip",
+      mimeType: "application/zip",
+      dataBase64: zipBuffer.toString("base64")
+    };
   })
 });
 
 // server/geoLogic.ts
+init_llm();
 var generatedQuestionTypes = ["\u54C1\u724C\u8BA4\u77E5", "\u884C\u4E1A\u63A8\u8350", "\u7ADE\u54C1\u5BF9\u6BD4", "\u75DB\u70B9\u89E3\u51B3", "\u4EF7\u683C\u9009\u578B", "\u9AD8\u610F\u5411\u6210\u4EA4"];
 var questionTypes = [...generatedQuestionTypes, "\u6307\u5B9A\u95EE\u9898"];
 var questionSources = ["ai_generated", "manual", "csv"];
@@ -2460,6 +3100,79 @@ ${actionRows.map((row) => `| ${row[0]} | ${row[1]} | ${row[2]} | ${row[3]} | ${r
   };
 }
 
+// server/geoArticleLogic.ts
+init_llm();
+
+// shared/targetQuestionDedup.ts
+function normalizeQuestionKey(text2) {
+  return text2.trim().toLowerCase().replace(/[\s\u3000，。！？、；：""''（）\[\]【】.,;:'"()\-—·]/g, "").replace(/[\?？]/g, "");
+}
+function bigramSet(text2) {
+  const set = /* @__PURE__ */ new Set();
+  const n = normalizeQuestionKey(text2);
+  if (n.length < 2) {
+    if (n) set.add(n);
+    return set;
+  }
+  for (let i = 0; i < n.length - 1; i++) set.add(n.slice(i, i + 2));
+  return set;
+}
+function jaccardSimilarity(a, b) {
+  const sa = bigramSet(a);
+  const sb = bigramSet(b);
+  if (sa.size === 0 && sb.size === 0) return 1;
+  if (sa.size === 0 || sb.size === 0) return 0;
+  let inter = 0;
+  sa.forEach((x) => {
+    if (sb.has(x)) inter++;
+  });
+  const union = sa.size + sb.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+function isExactDuplicateQuestion(a, b) {
+  const ta = a.trim();
+  const tb = b.trim();
+  if (!ta || !tb) return false;
+  if (ta === tb) return true;
+  const na = normalizeQuestionKey(ta);
+  const nb = normalizeQuestionKey(tb);
+  return na.length > 0 && na === nb;
+}
+function isSimilarQuestion(a, b, threshold = 0.72) {
+  if (isExactDuplicateQuestion(a, b)) return true;
+  const na = normalizeQuestionKey(a);
+  const nb = normalizeQuestionKey(b);
+  if (na.length >= 4 && nb.length >= 4) {
+    if (na.includes(nb) || nb.includes(na)) {
+      const ratio = Math.min(na.length, nb.length) / Math.max(na.length, nb.length);
+      if (ratio >= 0.65) return true;
+    }
+  }
+  return jaccardSimilarity(a, b) >= threshold;
+}
+function isDuplicateAgainstList(candidate, others) {
+  return others.some((other) => isSimilarQuestion(candidate, other));
+}
+function dedupeTargetQuestionRows(rows, excludeQuestions = []) {
+  const exclude = excludeQuestions.map((t2) => t2.trim()).filter(Boolean);
+  const kept = [];
+  let filteredCount = 0;
+  for (const row of rows) {
+    const text2 = (row.questionText ?? "").trim();
+    if (!text2) {
+      filteredCount++;
+      continue;
+    }
+    const pool = [...exclude, ...kept.map((k) => k.questionText)];
+    if (isDuplicateAgainstList(text2, pool)) {
+      filteredCount++;
+      continue;
+    }
+    kept.push(row);
+  }
+  return { kept, filteredCount };
+}
+
 // server/systemConfig.ts
 var SYSTEM_COMPLIANCE_RULE_NAME = "\u7CFB\u7EDF\u9ED8\u8BA4 GEO \u5408\u89C4";
 var SYSTEM_FORBIDDEN_WORDS = [
@@ -3023,6 +3736,32 @@ function canAuditArticle(status, quality) {
 function canPublishArticle(status) {
   return status === "\u5BA1\u6838\u901A\u8FC7";
 }
+function buildTopicDraftFromTask(projectId, task, variantRound) {
+  const card = parseOptimizationTaskCard(task.executionSuggestion);
+  const titleRaw = (card?.articleTitle || task.taskName || "\u5185\u5BB9\u9009\u9898").trim();
+  const suffix = variantRound > 0 ? ` \xB7 \u5EF6\u4F38\u7BC7${variantRound + 1}` : "";
+  const titleBase = titleRaw.length + suffix.length > 255 ? titleRaw.slice(0, Math.max(1, 255 - suffix.length)) : titleRaw;
+  const title = `${titleBase}${suffix}`.trim() || "\u5185\u5BB9\u9009\u9898";
+  const problemSolved = (task.generationReason || "").trim() || "\uFF08\u5F85\u8865\u5145\u4EFB\u52A1\u7F3A\u53E3\u8BF4\u660E\uFF09";
+  const contentType = (card?.contentType || "").trim() || "\u573A\u666F\u6307\u5357";
+  const articleType = contentTypeLabelToArticleType(contentType);
+  const platforms = card?.recommendedPlatform?.length ? card.recommendedPlatform.join("\u3001") : "\u5F85\u9009";
+  const kw = card?.targetKeywords?.length ? card.targetKeywords.join("\u3001") : "";
+  const kp = card?.keyPoints?.length ? card.keyPoints.join("\uFF1B") : "";
+  const variantNote = variantRound > 0 ? `\uFF1B\u672C\u7BC7\u4E3A\u540C\u4F18\u5316\u4EFB\u52A1\u5EF6\u4F38\u5185\u5BB9\uFF08\u7B2C ${variantRound + 1} \u7BC7\uFF09` : "";
+  const businessReason = `\u4F18\u5316\u4EFB\u52A1\uFF1A${task.taskName}\uFF1B\u5185\u5BB9\u7C7B\u578B\uFF1A${contentType}\uFF1B\u63A8\u8350\u5E73\u53F0\uFF1A${platforms}${kw ? `\uFF1B\u76EE\u6807\u5173\u952E\u8BCD\uFF1A${kw}` : ""}${kp ? `\uFF1B\u6838\u5FC3\u8BBA\u70B9\uFF1A${kp}` : ""}${variantNote}`;
+  return {
+    projectId,
+    optimizationTaskId: task.id,
+    sourceAnalysisIds: [],
+    sourceQuestionIds: [],
+    title,
+    articleType,
+    contentGap: problemSolved,
+    businessReason,
+    status: "\u5F85\u751F\u6210"
+  };
+}
 function generateGeoArticleTopics(input) {
   if (input.tasks.length === 0) throw new Error("\u7F3A\u5C11\u4F18\u5316\u4EFB\u52A1\uFF0C\u4E0D\u80FD\u751F\u6210\u5185\u5BB9\u9009\u9898\u3002");
   const uniqueTasks = [];
@@ -3032,29 +3771,23 @@ function generateGeoArticleTopics(input) {
     seenIds.add(task.id);
     uniqueTasks.push(task);
   }
-  return uniqueTasks.map((task) => {
-    const card = parseOptimizationTaskCard(task.executionSuggestion);
-    const titleRaw = (card?.articleTitle || task.taskName || "\u5185\u5BB9\u9009\u9898").trim();
-    const title = titleRaw.length > 255 ? titleRaw.slice(0, 255) : titleRaw;
-    const problemSolved = (task.generationReason || "").trim() || "\uFF08\u5F85\u8865\u5145\u4EFB\u52A1\u7F3A\u53E3\u8BF4\u660E\uFF09";
-    const contentType = (card?.contentType || "").trim() || "\u573A\u666F\u6307\u5357";
-    const articleType = contentTypeLabelToArticleType(contentType);
-    const platforms = card?.recommendedPlatform?.length ? card.recommendedPlatform.join("\u3001") : "\u5F85\u9009";
-    const kw = card?.targetKeywords?.length ? card.targetKeywords.join("\u3001") : "";
-    const kp = card?.keyPoints?.length ? card.keyPoints.join("\uFF1B") : "";
-    const businessReason = `\u4F18\u5316\u4EFB\u52A1\uFF1A${task.taskName}\uFF1B\u5185\u5BB9\u7C7B\u578B\uFF1A${contentType}\uFF1B\u63A8\u8350\u5E73\u53F0\uFF1A${platforms}${kw ? `\uFF1B\u76EE\u6807\u5173\u952E\u8BCD\uFF1A${kw}` : ""}${kp ? `\uFF1B\u6838\u5FC3\u8BBA\u70B9\uFF1A${kp}` : ""}`;
-    return {
-      projectId: input.project.id,
-      optimizationTaskId: task.id,
-      sourceAnalysisIds: [],
-      sourceQuestionIds: [],
-      title,
-      articleType,
-      contentGap: problemSolved,
-      businessReason,
-      status: "\u5F85\u751F\u6210"
-    };
-  });
+  const target = input.targetCount != null ? Math.max(1, Math.min(50, input.targetCount)) : uniqueTasks.length;
+  const result = [];
+  const usedTitles = /* @__PURE__ */ new Set();
+  let round = 0;
+  while (result.length < target && uniqueTasks.length > 0 && round < 60) {
+    for (const task of uniqueTasks) {
+      if (result.length >= target) break;
+      const draft = buildTopicDraftFromTask(input.project.id, task, round);
+      const key = draft.title.trim().toLowerCase();
+      if (!key || usedTitles.has(key)) continue;
+      usedTitles.add(key);
+      result.push(draft);
+    }
+    round += 1;
+  }
+  if (result.length === 0) throw new Error("\u7F3A\u5C11\u4F18\u5316\u4EFB\u52A1\uFF0C\u4E0D\u80FD\u751F\u6210\u5185\u5BB9\u9009\u9898\u3002");
+  return result.slice(0, target);
 }
 function paragraph(title, body) {
   return `## ${title}
@@ -3766,23 +4499,37 @@ ${markdownContent}`,
   if (!next) throw new Error("AI \u672A\u8FD4\u56DE\u6709\u6548\u6B63\u6587");
   return next;
 }
-var GEO_TARGET_QUESTIONS_SYSTEM_PROMPT = `\u4F60\u662F\u4E00\u4F4D\u6DF1\u5EA6\u7406\u89E3\u77E5\u8BC6\u4ED8\u8D39\u4E0E\u5185\u5BB9\u521B\u4E1A\u5BA2\u6237\u7684\u5185\u5BB9\u7B56\u7565\u4E13\u5BB6\u3002
-\u4F60\u7684\u4EFB\u52A1\u662F\u751F\u6210\u300C\u76EE\u6807\u5BA2\u6237\u5728\u9047\u5230\u771F\u5B9E\u7ECF\u8425\u95EE\u9898\u65F6\uFF0C\u4F1A\u5728AI\u5DE5\u5177\u4E2D\u641C\u7D22\u7684\u95EE\u9898\u300D\u3002
+var GEO_TARGET_QUESTION_INTENTS = [
+  "\u75DB\u70B9\u95EE\u9898",
+  "\u9009\u578B\u95EE\u9898",
+  "\u7ADE\u54C1\u5BF9\u6BD4",
+  "\u4EF7\u683C\u4E0EROI",
+  "\u843D\u5730\u6267\u884C",
+  "\u98CE\u9669\u987E\u8651"
+];
+var GEO_TARGET_QUESTIONS_SYSTEM_PROMPT = `\u4F60\u662F\u4E00\u4F4D\u6DF1\u5EA6\u7406\u89E3 B2B / \u77E5\u8BC6\u4ED8\u8D39\u5BA2\u6237\u7684\u5185\u5BB9\u7B56\u7565\u4E13\u5BB6\u3002
+\u4F60\u7684\u4EFB\u52A1\u662F\u751F\u6210\u300C\u76EE\u6807\u5BA2\u6237\u5728 AI \u641C\u7D22\u6216\u5BF9\u8BDD\u4E2D\u4F1A\u771F\u5B9E\u63D0\u51FA\u7684\u68C0\u7D22\u95EE\u9898\u300D\u3002
 
 \u751F\u6210\u89C4\u5219\uFF1A
-1. \u95EE\u9898\u5FC5\u987B\u662F\u5BA2\u6237\u89C6\u89D2\uFF0C\u4ECE\u5BA2\u6237\u7684\u75DB\u70B9\u3001\u56F0\u60D1\u3001\u9700\u6C42\u51FA\u53D1\uFF0C\u4E0D\u662F\u54C1\u724C\u89C6\u89D2
-2. \u95EE\u9898\u5FC5\u987B\u5E26\u6709\u5177\u4F53\u573A\u666F\uFF0C\u4F8B\u5982\u300C\u76F4\u64AD\u95F4\u6BCF\u5929\u6709500\u4EBA\u8FDB\u6765\uFF0C\u4F46\u4E0B\u5355\u7684\u4E0D\u52305\u4E2A\uFF0C\u95EE\u9898\u51FA\u5728\u54EA\uFF1F\u300D
-3. \u7981\u6B62\u751F\u6210\u300CXX\u54C1\u724C vs XX\u54C1\u724C\u54EA\u4E2A\u597D\u300D\u8FD9\u7C7B\u7ADE\u54C1\u5BF9\u6BD4\u95EE\u9898
-4. \u7981\u6B62\u751F\u6210\u300CXX\u5E73\u53F0\u600E\u4E48\u6837\u300D\u8FD9\u7C7B\u5E73\u53F0\u8BC4\u6D4B\u95EE\u9898
-5. \u95EE\u9898\u8986\u76D6\u4EE5\u4E0B\u4E09\u4E2A\u7EF4\u5EA6\uFF0C\u6BCF\u4E2A\u7EF4\u5EA6\u81F3\u5C112\u6761\uFF1A
-   - \u75DB\u70B9\u8BCA\u65AD\uFF1A\u5BA2\u6237\u6709\u5177\u4F53\u7ECF\u8425\u95EE\u9898\uFF0C\u60F3\u627E\u5230\u6839\u56E0\uFF08\u5982\u300C\u76F4\u64AD\u8F6C\u5316\u7387\u4F4E\u300D\u300C\u9000\u6B3E\u591A\u300D\u300C\u79C1\u57DF\u6CA1\u590D\u8D2D\u300D\uFF09
-   - \u8DEF\u5F84\u63A2\u7D22\uFF1A\u5BA2\u6237\u60F3\u77E5\u9053\u600E\u4E48\u505A\u67D0\u4EF6\u4E8B\uFF08\u5982\u300C\u600E\u4E48\u4ECE0\u5F00\u59CB\u5356\u8BFE\u300D\u300C\u5982\u4F55\u642D\u5EFA\u79C1\u57DF\u6210\u4EA4\u4F53\u7CFB\u300D\uFF09
-   - \u5DE5\u5177\u9009\u62E9\uFF1A\u5BA2\u6237\u5728\u7279\u5B9A\u573A\u666F\u4E0B\u60F3\u627E\u5408\u9002\u7684\u89E3\u51B3\u65B9\u6848\uFF08\u5982\u300C\u6709\u4EC0\u4E48\u5DE5\u5177\u80FD\u5E2E\u6211\u5206\u6790\u76F4\u64AD\u6570\u636E\u300D\uFF09
-6. \u751F\u62108-10\u6761\uFF0C\u4E0D\u591A\u4E0D\u5C11
-7. \u52A3\u52BF\u9898\uFF1A\u4FDD\u75592-3\u6761\u300C\u5BA2\u6237\u95EE\u9898\u573A\u666F\u4E0B\uFF0C\u8BE5\u4F01\u4E1A\u76EE\u524D\u5185\u5BB9\u8986\u76D6\u4E0D\u8DB3\u300D\u7684\u95EE\u9898\uFF0C\u7528\u4E8E\u66B4\u9732\u771F\u5B9E\u7F3A\u53E3
+1. \u95EE\u9898\u5FC5\u987B\u662F\u5BA2\u6237\u89C6\u89D2\uFF0C\u4ECE\u75DB\u70B9\u3001\u9009\u578B\u3001\u987E\u8651\u51FA\u53D1\uFF0C\u4E0D\u8981\u5199\u6210\u54C1\u724C\u5E7F\u544A\u8BED
+2. \u6BCF\u6761\u95EE\u9898\u8981\u6709\u5177\u4F53\u573A\u666F\u6216\u51B3\u7B56\u9636\u6BB5\uFF0C\u907F\u514D\u7A7A\u6CDB\u5957\u8BDD
+3. \u4E0D\u8981\u91CD\u590D\u300C\u5386\u53F2\u5DF2\u6709\u95EE\u9898\u300D\u5217\u8868\u4E2D\u7684\u4EFB\u4F55\u4E00\u6761\uFF08\u542B\u540C\u4E49\u6539\u5199\u3001\u4EC5\u6362\u4E00\u4E24\u4E2A\u8BCD\uFF09
+4. \u6362\u4E0D\u540C\u8868\u8FBE\u89D2\u5EA6\uFF1A\u53EF\u4ECE\u300C\u53D1\u73B0\u75DB\u70B9 \u2192 \u9009\u578B\u5BF9\u6BD4 \u2192 \u9884\u7B97 ROI \u2192 \u843D\u5730\u6267\u884C \u2192 \u98CE\u9669\u987E\u8651\u300D\u8986\u76D6
+5. \u95EE\u9898\u7C7B\u578B\u987B\u8986\u76D6\u4EE5\u4E0B 6 \u7C7B\uFF0C\u6BCF\u7C7B\u81F3\u5C11 1 \u6761\uFF0Cintent \u5B57\u6BB5\u4ECE\u4E0B\u5217\u679A\u4E3E\u4E2D\u9009\u4E00\uFF1A
+   - \u75DB\u70B9\u95EE\u9898\uFF1A\u7ECF\u8425/\u4E1A\u52A1\u5361\u70B9\u3001\u60F3\u627E\u5230\u6839\u56E0
+   - \u9009\u578B\u95EE\u9898\uFF1A\u600E\u4E48\u9009\u65B9\u6848\u3001\u9009\u4EC0\u4E48\u7C7B\u578B\u4EA7\u54C1
+   - \u7ADE\u54C1\u5BF9\u6BD4\uFF1A\u5BA2\u6237\u5728\u5BF9\u6BD4\u4E0D\u540C\u8DEF\u7EBF\u6216\u4F9B\u5E94\u5546\uFF08\u4E0D\u51FA\u73B0\u5177\u4F53\u7ADE\u54C1\u54C1\u724C\u540D\uFF09
+   - \u4EF7\u683C\u4E0EROI\uFF1A\u9884\u7B97\u3001\u6295\u5165\u4EA7\u51FA\u3001\u662F\u5426\u503C\u5F97\u4E70
+   - \u843D\u5730\u6267\u884C\uFF1A\u5B9E\u65BD\u6B65\u9AA4\u3001\u5468\u671F\u3001\u56E2\u961F\u5982\u4F55\u63A8\u8FDB
+   - \u98CE\u9669\u987E\u8651\uFF1A\u8E29\u5751\u3001\u5931\u8D25\u6848\u4F8B\u3001\u5408\u89C4\u4E0E\u6548\u679C\u4E0D\u786E\u5B9A\u6027
+6. \u7981\u6B62\u751F\u6210\u300CXX\u54C1\u724C vs XX\u54C1\u724C\u54EA\u4E2A\u597D\u300D\u8FD9\u7C7B\u5E26\u5177\u4F53\u54C1\u724C\u540D\u7684\u5BF9\u6BD4\u53E5
+7. \u7981\u6B62\u751F\u6210\u300CXX\u5E73\u53F0\u600E\u4E48\u6837\u300D\u8FD9\u7C7B\u5E73\u53F0\u8BC4\u6D4B\u95EE\u9898
+8. \u751F\u6210 8-10 \u6761\uFF1B\u82E5\u63D0\u4F9B\u4E86\u5386\u53F2\u95EE\u9898\uFF0C\u987B\u4E0E\u5386\u53F2\u660E\u663E\u4E0D\u540C
+9. \u52A3\u52BF\u9898\uFF1A\u4FDD\u7559 2-3 \u6761 disadvantaged \u4E3A true \u7684\u95EE\u9898\uFF08\u8BE5\u4F01\u4E1A\u5185\u5BB9\u8986\u76D6\u4E0D\u8DB3\u7684\u68C0\u7D22\u573A\u666F\uFF09
 
 \u53EA\u8F93\u51FA\u7B26\u5408 JSON Schema \u7684\u5355\u4E2A JSON \u5BF9\u8C61\uFF0C\u4E0D\u8981\u8F93\u51FA\u5176\u5B83\u6587\u5B57\u3002`;
 async function generateTargetQuestions(input) {
+  const exclude = (input.excludeQuestions ?? []).map((t2) => t2.trim()).filter(Boolean);
   const userContent = [
     "\u4F01\u4E1A\u4FE1\u606F\uFF1A",
     `- \u54C1\u724C\u540D\u79F0\uFF1A${input.brandName}`,
@@ -3792,12 +4539,18 @@ async function generateTargetQuestions(input) {
     `- \u5BA2\u6237\u6838\u5FC3\u75DB\u70B9\uFF1A${input.customerPains}`,
     `- \u6838\u5FC3\u5356\u70B9\uFF1A${input.keyPoints}`,
     "",
+    ...exclude.length > 0 ? [
+      "\u5386\u53F2\u5DF2\u6709\u95EE\u9898\uFF08\u7981\u6B62\u91CD\u590D\u6216\u9AD8\u5EA6\u76F8\u4F3C\uFF0C\u8BF7\u6362\u89D2\u5EA6\u3001\u6362\u51B3\u7B56\u9636\u6BB5\u3001\u6362\u95EE\u9898\u7C7B\u578B\uFF09\uFF1A",
+      ...exclude.map((q, i) => `${i + 1}. ${q}`),
+      ""
+    ] : [],
     "\u8BF7\u751F\u62108-10\u6761\u76EE\u6807\u5BA2\u6237\u771F\u5B9E\u641C\u7D22\u95EE\u9898\uFF1A",
-    "1. \u6BCF\u6761\u95EE\u9898\u63A7\u5236\u572825\u5B57\u4EE5\u5185",
-    "2. \u95EE\u9898\u5FC5\u987B\u662F\u5BA2\u6237\u81EA\u5DF1\u4F1A\u8BF4\u7684\u8BDD\uFF0C\u4E0D\u80FD\u51FA\u73B0\u54C1\u724C\u540D",
-    "3. \u5FC5\u987B\u67092-3\u6761\u5BA2\u6237\u75DB\u70B9\u8BCA\u65AD\u7C7B\u95EE\u9898\uFF08disadvantaged: true\uFF09",
-    "4. \u7981\u6B62\u51FA\u73B0\u7ADE\u54C1\u540D\u79F0",
-    "5. \u8FD4\u56DEJSON\u6570\u7EC4\uFF0C\u6BCF\u4E2A\u5BF9\u8C61\u5305\u542B\uFF1Aquestion\u3001intent\uFF08\u7528\u6237\u610F\u56FE\uFF0C\u4ECE\u300C\u75DB\u70B9\u8BCA\u65AD/\u8DEF\u5F84\u63A2\u7D22/\u5DE5\u5177\u9009\u62E9\u300D\u4E09\u9009\u4E00\uFF09\u3001disadvantaged\uFF08\u5E03\u5C14\u503C\uFF09",
+    "1. \u6BCF\u6761\u95EE\u9898\u63A7\u5236\u5728 40 \u5B57\u4EE5\u5185\uFF0C\u8868\u8FF0\u5B8C\u6574",
+    "2. \u95EE\u9898\u5FC5\u987B\u662F\u5BA2\u6237\u81EA\u5DF1\u4F1A\u8BF4\u7684\u8BDD\uFF0C\u4E0D\u80FD\u51FA\u73B0\u672C\u4F01\u4E1A\u54C1\u724C\u540D",
+    "3. \u5FC5\u987B\u6709 2-3 \u6761 disadvantaged \u4E3A true \u7684\u52A3\u52BF\u573A\u666F\u95EE\u9898",
+    "4. \u7981\u6B62\u51FA\u73B0\u5177\u4F53\u7ADE\u54C1\u54C1\u724C\u540D",
+    `5. intent \u4ECE\u4EE5\u4E0B\u516D\u9009\u4E00\uFF1A${GEO_TARGET_QUESTION_INTENTS.join("\u3001")}`,
+    "6. \u4E0D\u8981\u4E0E\u5386\u53F2\u5DF2\u6709\u95EE\u9898\u91CD\u590D\uFF1B\u8986\u76D6\u4E0D\u540C\u5BA2\u6237\u51B3\u7B56\u9636\u6BB5",
     "",
     "\u5C06\u4E0A\u8FF0\u6570\u7EC4\u653E\u5728\u6839\u5BF9\u8C61\u7684 `questions` \u5B57\u6BB5\u4E2D\u8F93\u51FA\uFF08\u4EC5\u6B64\u4E00\u4E2A\u6839\u5BF9\u8C61\uFF09\u3002"
   ].join("\n");
@@ -3824,7 +4577,7 @@ async function generateTargetQuestions(input) {
                 type: "object",
                 properties: {
                   question: { type: "string" },
-                  intent: { type: "string", enum: ["\u75DB\u70B9\u8BCA\u65AD", "\u8DEF\u5F84\u63A2\u7D22", "\u5DE5\u5177\u9009\u62E9"] },
+                  intent: { type: "string", enum: [...GEO_TARGET_QUESTION_INTENTS] },
                   disadvantaged: { type: "boolean" }
                 },
                 required: ["question", "intent", "disadvantaged"],
@@ -3843,31 +4596,48 @@ async function generateTargetQuestions(input) {
   const list = Array.isArray(parsed.questions) ? parsed.questions : [];
   const rows = [];
   const seen = /* @__PURE__ */ new Set();
-  const allowedIntent = /* @__PURE__ */ new Set(["\u75DB\u70B9\u8BCA\u65AD", "\u8DEF\u5F84\u63A2\u7D22", "\u5DE5\u5177\u9009\u62E9"]);
+  const allowedIntent = new Set(GEO_TARGET_QUESTION_INTENTS);
+  const legacyIntentMap = {
+    \u75DB\u70B9\u8BCA\u65AD: "\u75DB\u70B9\u95EE\u9898",
+    \u8DEF\u5F84\u63A2\u7D22: "\u843D\u5730\u6267\u884C",
+    \u5DE5\u5177\u9009\u62E9: "\u9009\u578B\u95EE\u9898"
+  };
   for (const item of list) {
     const questionText = typeof item.question === "string" ? item.question.trim() : "";
     const intentRaw = typeof item.intent === "string" ? item.intent.trim() : "";
-    const intent = allowedIntent.has(intentRaw) ? intentRaw : "";
+    const intent = (allowedIntent.has(intentRaw) ? intentRaw : legacyIntentMap[intentRaw]) || "";
     const disadvantaged = item.disadvantaged === true;
-    if (!questionText || questionText.length > 25) continue;
+    if (!questionText || questionText.length > 80) continue;
     if (!intent) continue;
     if (seen.has(questionText)) continue;
     seen.add(questionText);
     rows.push({ questionText, questionType: "\u6307\u5B9A\u95EE\u9898", intent, disadvantaged });
   }
-  if (rows.length < 8) throw new Error("AI \u8FD4\u56DE\u7684\u6709\u6548\u95EE\u9898\u4E0D\u8DB3 8 \u6761\uFF0C\u8BF7\u91CD\u8BD5");
-  const disadvantagedCount = rows.filter((r) => r.disadvantaged).length;
-  if (disadvantagedCount < 2) throw new Error("AI \u8FD4\u56DE\u7684\u52A3\u52BF\u573A\u666F\u95EE\u9898\u4E0D\u8DB3 2 \u6761\uFF0C\u8BF7\u91CD\u8BD5");
-  return rows.slice(0, 10);
+  const llmParsedCount = rows.length;
+  const { kept, filteredCount: batchFiltered } = dedupeTargetQuestionRows(rows, exclude);
+  const finalRows = kept.slice(0, 10);
+  if (finalRows.length === 0) {
+    throw new Error(
+      exclude.length > 0 ? "\u751F\u6210\u7ED3\u679C\u4E0E\u5386\u53F2\u95EE\u9898\u91CD\u590D\u8FC7\u591A\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5" : "AI \u8FD4\u56DE\u7684\u6709\u6548\u95EE\u9898\u4E3A\u7A7A\uFF0C\u8BF7\u91CD\u8BD5"
+    );
+  }
+  if (exclude.length === 0) {
+    if (finalRows.length < 8) throw new Error("AI \u8FD4\u56DE\u7684\u6709\u6548\u95EE\u9898\u4E0D\u8DB3 8 \u6761\uFF0C\u8BF7\u91CD\u8BD5");
+    const disadvantagedCount = finalRows.filter((r) => r.disadvantaged).length;
+    if (disadvantagedCount < 2) throw new Error("AI \u8FD4\u56DE\u7684\u52A3\u52BF\u573A\u666F\u95EE\u9898\u4E0D\u8DB3 2 \u6761\uFF0C\u8BF7\u91CD\u8BD5");
+  } else if (batchFiltered > 0 && finalRows.length < 3) {
+    throw new Error("\u53BB\u91CD\u540E\u65B0\u95EE\u9898\u8FC7\u5C11\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
+  }
+  return { rows: finalRows, llmParsedCount, filteredCount: batchFiltered };
 }
 
 // server/geoArticleQualityCheckFlow.ts
-import { TRPCError as TRPCError4 } from "@trpc/server";
+import { TRPCError as TRPCError5 } from "@trpc/server";
 import { desc as desc2, eq as eq3 } from "drizzle-orm";
 var MAX_AUTO_QUALITY_REWRITES = 2;
 async function getProjectOrThrow(db, projectId) {
   const result = await db.select().from(projects).where(eq3(projects.id, projectId)).limit(1);
-  if (result.length === 0) throw new TRPCError4({ code: "NOT_FOUND", message: "\u9879\u76EE\u4E0D\u5B58\u5728" });
+  if (result.length === 0) throw new TRPCError5({ code: "NOT_FOUND", message: "\u9879\u76EE\u4E0D\u5B58\u5728" });
   return result[0];
 }
 async function getAssetLibraryContext(db, projectId) {
@@ -3891,7 +4661,7 @@ async function getAssetLibraryContext(db, projectId) {
 async function runGeoArticleQualityCheckFlow(db, articleId) {
   const articleRows = await db.select().from(geoArticles).where(eq3(geoArticles.id, articleId)).limit(1);
   const article = articleRows[0];
-  if (!article) throw new TRPCError4({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
+  if (!article) throw new TRPCError5({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
   const project = await getProjectOrThrow(db, article.projectId);
   const projectQuestions = await db.select().from(questions).where(eq3(questions.projectId, article.projectId));
   const analyses = await db.select().from(analysisResults).where(eq3(analysisResults.projectId, article.projectId));
@@ -3988,7 +4758,7 @@ async function runGeoArticleQualityCheckFlow(db, articleId) {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "\u81EA\u52A8\u6362\u89D2\u91CD\u5199\u5931\u8D25";
-      throw new TRPCError4({ code: "INTERNAL_SERVER_ERROR", message });
+      throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message });
     }
     optimizationVersions.push({
       version: optimizationVersions.length + 1,
@@ -4026,52 +4796,6 @@ async function runGeoArticleQualityCheckFlow(db, articleId) {
   return { success: false, quality, autoRewriteCount: used, finalStatus: "\u9700\u4EBA\u5DE5\u5BA1\u6838" };
 }
 
-// server/storage.ts
-function getForgeConfig() {
-  const forgeUrl = ENV.forgeApiUrl;
-  const forgeKey = ENV.forgeApiKey;
-  if (!forgeUrl || !forgeKey) {
-    throw new Error(
-      "Storage config missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
-    );
-  }
-  return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
-}
-function normalizeKey(relKey) {
-  return relKey.replace(/^\/+/, "");
-}
-function appendHashSuffix(relKey) {
-  const hash = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-  const lastDot = relKey.lastIndexOf(".");
-  if (lastDot === -1) return `${relKey}_${hash}`;
-  return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
-}
-async function storagePut(relKey, data, contentType = "application/octet-stream") {
-  const { forgeUrl, forgeKey } = getForgeConfig();
-  const key = appendHashSuffix(normalizeKey(relKey));
-  const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
-  presignUrl.searchParams.set("path", key);
-  const presignResp = await fetch(presignUrl, {
-    headers: { Authorization: `Bearer ${forgeKey}` }
-  });
-  if (!presignResp.ok) {
-    const msg = await presignResp.text().catch(() => presignResp.statusText);
-    throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
-  }
-  const { url: s3Url } = await presignResp.json();
-  if (!s3Url) throw new Error("Forge returned empty presign URL");
-  const blob = typeof data === "string" ? new Blob([data], { type: contentType }) : new Blob([data], { type: contentType });
-  const uploadResp = await fetch(s3Url, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: blob
-  });
-  if (!uploadResp.ok) {
-    throw new Error(`Storage upload to S3 failed (${uploadResp.status})`);
-  }
-  return { key, url: `/manus-storage/${key}` };
-}
-
 // server/geoMonitoring.ts
 var initialMonitoringSuggestions = [
   "\u7B49\u5F85\u641C\u7D22\u5F15\u64CE\u6293\u53D6\u540E\u6267\u884C\u9996\u6B21\u4EBA\u5DE5\u6536\u5F55\u68C0\u6D4B\u3002",
@@ -4097,6 +4821,830 @@ function buildInitialInclusionMonitoringRecord(input) {
       createdBy: "geo.articles.publish"
     }
   };
+}
+
+// shared/aiTestEvidence.ts
+var AI_TEST_STAGES = ["before_publish", "after_publish", "manual_check"];
+var STAGE_SORT_ORDER = {
+  before_publish: 0,
+  after_publish: 1,
+  manual_check: 2
+};
+var AI_TEST_MISS_REASONS = [
+  "fresh_content_delay",
+  "question_too_generic",
+  "weak_brand_entity",
+  "no_retrieval_signal",
+  "unknown"
+];
+var GENERIC_QUESTION_PATTERN = /(怎么办|怎么解决|有什么工具|如何管理|有哪些|如何用|怎么处理|有什么方法|如何提升|如何解决|怎么选|哪个好)/;
+function isAiTestMissReason(value) {
+  return typeof value === "string" && AI_TEST_MISS_REASONS.includes(value);
+}
+function inferMissReason(input) {
+  const testedAt = new Date(input.testedAt);
+  const publishedAtRaw = input.articlePublishedAt;
+  if (publishedAtRaw) {
+    const publishedAt = publishedAtRaw instanceof Date ? publishedAtRaw : new Date(publishedAtRaw);
+    if (!Number.isNaN(publishedAt.getTime()) && !Number.isNaN(testedAt.getTime())) {
+      const days = (testedAt.getTime() - publishedAt.getTime()) / (1e3 * 60 * 60 * 24);
+      if (days >= 0 && days < 7) return "fresh_content_delay";
+    }
+  }
+  const question = input.question.trim();
+  const brandNames = (input.brandNames ?? []).filter((n) => n.trim().length >= 2);
+  const brandInQuestion = brandNames.some((name) => question.includes(name));
+  if (GENERIC_QUESTION_PATTERN.test(question) && !brandInQuestion) {
+    return "question_too_generic";
+  }
+  if (input.citedUrls.length === 0) {
+    return "no_retrieval_signal";
+  }
+  return "weak_brand_entity";
+}
+function parseStatusLabelCn(status) {
+  if (status === "failed") return "\u7ED3\u6784\u5316\u89E3\u6790\u672A\u5B8C\u6210";
+  if (status === "partial") return "\u90E8\u5206\u7ED3\u6784\u5316\u89E3\u6790\u672A\u5B8C\u6210";
+  return "\u89E3\u6790\u5B8C\u6210";
+}
+function resolveTestStage(raw) {
+  if (!raw || typeof raw !== "object") return "manual_check";
+  const stage = raw.testStage;
+  if (typeof stage === "string" && AI_TEST_STAGES.includes(stage)) {
+    return stage;
+  }
+  return "manual_check";
+}
+function testStageLabelCn(stage) {
+  if (stage === "before_publish") return "\u53D1\u5E03\u524D\u6D4B\u8BD5";
+  if (stage === "after_publish") return "\u53D1\u5E03\u540E\u590D\u6D4B";
+  return "\u4EBA\u5DE5\u590D\u6D4B";
+}
+function mergeAiTestResultsByStage(existing, incoming, stage) {
+  const kept = existing.map((raw) => normalizeAiTestResult(raw)).filter((item) => item !== null).filter((item) => item.testStage !== stage);
+  const nextBatch = incoming.map((item) => ({ ...item, testStage: stage }));
+  const merged = [...kept, ...nextBatch];
+  merged.sort((a, b) => {
+    const order = STAGE_SORT_ORDER[a.testStage] - STAGE_SORT_ORDER[b.testStage];
+    if (order !== 0) return order;
+    return String(a.testedAt).localeCompare(String(b.testedAt));
+  });
+  return merged;
+}
+function computeStageMetrics(items, stage) {
+  const stageItems = items.filter((item) => item.testStage === stage);
+  if (stageItems.length === 0) {
+    return {
+      hasData: false,
+      questionCount: 0,
+      mentionRate: null,
+      recommendRate: null,
+      averageRank: null,
+      citedUrlCount: null
+    };
+  }
+  const mentionCount = stageItems.filter((i) => i.mentionedBrand).length;
+  const recommendCount = stageItems.filter((i) => i.recommendedBrand).length;
+  const ranks = stageItems.map((i) => i.brandRank).filter((r) => typeof r === "number");
+  const citedUrlSet = /* @__PURE__ */ new Set();
+  for (const item of stageItems) {
+    for (const url of item.citedUrls) citedUrlSet.add(url);
+  }
+  return {
+    hasData: true,
+    questionCount: stageItems.length,
+    mentionRate: mentionCount / stageItems.length,
+    recommendRate: recommendCount / stageItems.length,
+    averageRank: ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null,
+    citedUrlCount: citedUrlSet.size
+  };
+}
+function buildPublishBeforeAfterCompare(items) {
+  const before = computeStageMetrics(items, "before_publish");
+  const after = computeStageMetrics(items, "after_publish");
+  const delta = (afterVal, beforeVal) => afterVal !== null && beforeVal !== null ? afterVal - beforeVal : null;
+  return {
+    before,
+    after,
+    changes: {
+      mentionRateDelta: delta(after.mentionRate, before.mentionRate),
+      recommendRateDelta: delta(after.recommendRate, before.recommendRate),
+      averageRankDelta: delta(after.averageRank, before.averageRank),
+      citedUrlCountDelta: after.citedUrlCount !== null && before.citedUrlCount !== null ? after.citedUrlCount - before.citedUrlCount : null
+    },
+    hasAnyStageData: before.hasData || after.hasData
+  };
+}
+function normalizeAiTestResult(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw;
+  const answer = String(r.rawAnswer ?? r.answer ?? "").trim();
+  if (!answer && !r.question) return null;
+  const mentionsBrand = Boolean(r.mentionedBrand ?? r.mentionsBrand);
+  const recommendsBrand = Boolean(r.recommendedBrand ?? r.recommendsBrand);
+  const recommendationRank = typeof r.brandRank === "number" ? r.brandRank : typeof r.recommendationRank === "number" ? r.recommendationRank : null;
+  const citedUrls = Array.isArray(r.citedUrls) ? r.citedUrls.filter((u) => typeof u === "string" && u.trim().length > 0) : [];
+  const competitorMentions = Array.isArray(r.competitorMentions) ? r.competitorMentions.filter((c) => typeof c?.name === "string") : [];
+  const sentimentRaw = r.sentiment;
+  const sentiment = sentimentRaw === "positive" || sentimentRaw === "negative" || sentimentRaw === "neutral" ? sentimentRaw : mentionsBrand ? "neutral" : "neutral";
+  const parseStatusRaw = r.parseStatus;
+  const parseStatus = parseStatusRaw === "success" || parseStatusRaw === "partial" || parseStatusRaw === "failed" ? parseStatusRaw : "success";
+  const missReasonRaw = r.missReason;
+  const missReason = isAiTestMissReason(missReasonRaw) ? missReasonRaw : void 0;
+  return {
+    engine: String(r.engine ?? "unknown"),
+    engineName: String(r.engineName ?? r.engine ?? "\u672A\u77E5\u5F15\u64CE"),
+    question: String(r.question ?? ""),
+    testedAt: String(r.testedAt ?? (/* @__PURE__ */ new Date()).toISOString()),
+    answer,
+    mentionsBrand,
+    recommendsBrand,
+    recommendationRank,
+    rawAnswer: answer,
+    mentionedBrand: mentionsBrand,
+    recommendedBrand: recommendsBrand,
+    brandRank: recommendationRank,
+    citedUrls,
+    sentiment,
+    competitorMentions,
+    evidenceSummary: typeof r.evidenceSummary === "string" ? r.evidenceSummary : void 0,
+    parseStatus,
+    parseError: typeof r.parseError === "string" ? r.parseError : null,
+    testStage: resolveTestStage(r),
+    ...missReason ? { missReason } : {}
+  };
+}
+function dominantSentiment(items) {
+  const counts = { positive: 0, neutral: 0, negative: 0 };
+  for (const item of items) counts[item.sentiment] += 1;
+  if (counts.positive >= counts.negative && counts.positive >= counts.neutral) return "positive";
+  if (counts.negative > counts.positive) return "negative";
+  return "neutral";
+}
+function aggregateAiTestEvidence(rows) {
+  const items = [];
+  for (const row of rows) {
+    row.results.forEach((raw, resultIndex) => {
+      const normalized = normalizeAiTestResult(raw);
+      if (!normalized) return;
+      items.push({ ...normalized, monitoringRecordId: row.monitoringRecordId, resultIndex });
+    });
+  }
+  const total = items.length;
+  const mentionCount = items.filter((i) => i.mentionedBrand).length;
+  const recommendCount = items.filter((i) => i.recommendedBrand).length;
+  const ranks = items.map((i) => i.brandRank).filter((r) => typeof r === "number");
+  const engineNames = Array.from(new Set(items.map((i) => i.engineName)));
+  const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
+  for (const item of items) sentimentCounts[item.sentiment] += 1;
+  let competitorMentionCount = 0;
+  const citedUrlSet = /* @__PURE__ */ new Set();
+  for (const item of items) {
+    competitorMentionCount += item.competitorMentions.filter((c) => c.mentioned).length;
+    for (const url of item.citedUrls) citedUrlSet.add(url);
+  }
+  const byEngine = engineNames.map((engineName) => {
+    const engineItems = items.filter((i) => i.engineName === engineName);
+    const eq8 = engineItems.length;
+    const lastTestedAt = engineItems.map((i) => i.testedAt).sort().at(-1) ?? null;
+    return {
+      engineName,
+      questionCount: eq8,
+      mentionRate: eq8 > 0 ? engineItems.filter((i) => i.mentionedBrand).length / eq8 : 0,
+      recommendRate: eq8 > 0 ? engineItems.filter((i) => i.recommendedBrand).length / eq8 : 0,
+      dominantSentiment: dominantSentiment(engineItems),
+      lastTestedAt
+    };
+  });
+  const sortedSamples = [...items].sort((a, b) => {
+    const score = (x) => (x.recommendedBrand ? 4 : 0) + (x.mentionedBrand ? 2 : 0) + (x.sentiment === "positive" ? 1 : 0);
+    return score(b) - score(a);
+  });
+  const keySamples = sortedSamples.slice(0, 5).map((s) => ({
+    monitoringRecordId: s.monitoringRecordId,
+    resultIndex: s.resultIndex,
+    engineName: s.engineName,
+    question: s.question,
+    mentionedBrand: s.mentionedBrand,
+    recommendedBrand: s.recommendedBrand,
+    sentiment: s.sentiment
+  }));
+  return {
+    items,
+    questionCount: total,
+    engineCount: engineNames.length,
+    mentionRate: total > 0 ? mentionCount / total : 0,
+    recommendRate: total > 0 ? recommendCount / total : 0,
+    averageRank: ranks.length > 0 ? ranks.reduce((a, b) => a + b, 0) / ranks.length : null,
+    sentimentCounts,
+    competitorMentionCount,
+    citedUrlCount: citedUrlSet.size,
+    byEngine,
+    keySamples,
+    publishCompare: buildPublishBeforeAfterCompare(items)
+  };
+}
+
+// server/geoAiMentionEvidence.ts
+import { eq as eq4 } from "drizzle-orm";
+function uniqueStrings(values) {
+  return Array.from(new Set(values));
+}
+var URL_PATTERN = /https?:\/\/[^\s)\]>"'，。；]+/gi;
+var NEGATIVE_KEYWORDS = ["\u4E0D\u63A8\u8350", "\u4E0D\u5EFA\u8BAE", "\u98CE\u9669", "\u7F3A\u70B9", "\u4E0D\u8DB3", "\u4E0D\u597D", "\u8C28\u614E", "\u95EE\u9898\u8F83\u591A", "\u6709\u5F85", "\u52A3\u52BF"];
+var POSITIVE_KEYWORDS = ["\u63A8\u8350", "\u9996\u9009", "\u4F18\u8D28", "\u9886\u5148", "\u503C\u5F97", "\u4E0D\u9519", "\u9002\u5408", "\u4F18\u52BF\u660E\u663E", "\u503C\u5F97\u4FE1\u8D56"];
+function extractCitedUrls(answer) {
+  const matches = answer.match(URL_PATTERN) ?? [];
+  return uniqueStrings(matches.map((u) => u.replace(/[.,;:!?）)]+$/, "").trim()).filter(Boolean)).slice(0, 20);
+}
+function analyzeSentiment(answer, brandNames, mentionsBrand, recommendsBrand) {
+  if (!mentionsBrand) return "neutral";
+  const hasNegative = NEGATIVE_KEYWORDS.some((kw) => {
+    const idx = answer.indexOf(kw);
+    if (idx === -1) return false;
+    const ctx = answer.slice(Math.max(0, idx - 40), idx + 40);
+    return brandNames.some((name) => ctx.includes(name));
+  });
+  if (hasNegative) return "negative";
+  const hasPositive = recommendsBrand || POSITIVE_KEYWORDS.some((kw) => {
+    const idx = answer.indexOf(kw);
+    if (idx === -1) return false;
+    const ctx = answer.slice(Math.max(0, idx - 40), idx + 40);
+    return brandNames.some((name) => ctx.includes(name));
+  });
+  if (hasPositive) return "positive";
+  return "neutral";
+}
+function excerptContext(answer, index, radius = 60) {
+  return answer.slice(Math.max(0, index - radius), Math.min(answer.length, index + radius)).trim();
+}
+function detectRankBefore(answer, index) {
+  const before = answer.slice(Math.max(0, index - 20), index);
+  const rankMatch = before.match(/第\s*([一二三四五六七八九十\d]+)|(\d+)\s*[\.、]/);
+  if (!rankMatch) return null;
+  const chineseMap = {
+    \u4E00: 1,
+    \u4E8C: 2,
+    \u4E09: 3,
+    \u56DB: 4,
+    \u4E94: 5,
+    \u516D: 6,
+    \u4E03: 7,
+    \u516B: 8,
+    \u4E5D: 9,
+    \u5341: 10
+  };
+  const rankStr = rankMatch[1] || rankMatch[2];
+  return chineseMap[rankStr] ?? parseInt(rankStr, 10) ?? null;
+}
+function analyzeCompetitorMentions(answer, competitorNames) {
+  const uniqueNames = uniqueStrings(competitorNames.map((n) => n.trim()).filter(Boolean)).slice(0, 12);
+  return uniqueNames.map((name) => {
+    const idx = answer.indexOf(name);
+    if (idx === -1) {
+      return { name, mentioned: false, rank: null, context: void 0 };
+    }
+    return {
+      name,
+      mentioned: true,
+      rank: detectRankBefore(answer, idx),
+      context: excerptContext(answer, idx)
+    };
+  });
+}
+function buildEvidenceSummary(input) {
+  const parts = [`${input.engineName} \u5B9E\u6D4B\uFF1A`];
+  parts.push(input.mentionsBrand ? "\u56DE\u7B54\u4E2D\u63D0\u53CA\u672C\u54C1\u724C" : "\u56DE\u7B54\u4E2D\u672A\u63D0\u53CA\u672C\u54C1\u724C");
+  parts.push(input.recommendsBrand ? "\uFF0C\u5E76\u51FA\u73B0\u63A8\u8350\u503E\u5411" : "");
+  parts.push(`\uFF1B\u60C5\u611F\u503E\u5411\u4E3A${input.sentiment === "positive" ? "\u6B63\u5411" : input.sentiment === "negative" ? "\u8D1F\u5411" : "\u4E2D\u6027"}`);
+  const compCount = input.competitorMentions.filter((c) => c.mentioned).length;
+  if (input.competitorMentions.length > 0) {
+    parts.push(`\uFF1B\u7ADE\u54C1\u63D0\u53CA ${compCount} \u4E2A`);
+  }
+  if (input.citedUrls.length > 0) {
+    parts.push(`\uFF1B\u5F15\u7528\u6765\u6E90 ${input.citedUrls.length} \u6761`);
+  }
+  return parts.join("");
+}
+function enrichAiTestResult(base, competitorNames, brandNames, testStage = "manual_check", context) {
+  const answer = base.answer;
+  const namesForBrand = brandNames.filter(Boolean);
+  let parseStatus = "success";
+  let parseError = null;
+  let competitorMentions = [];
+  let sentiment = "neutral";
+  let citedUrls = [];
+  try {
+    citedUrls = extractCitedUrls(answer);
+    sentiment = analyzeSentiment(answer, namesForBrand, base.mentionsBrand, base.recommendsBrand);
+    competitorMentions = analyzeCompetitorMentions(answer, competitorNames);
+  } catch (e) {
+    parseStatus = "partial";
+    parseError = e instanceof Error ? e.message : "\u7ED3\u6784\u5316\u89E3\u6790\u5F02\u5E38";
+    sentiment = base.mentionsBrand ? "neutral" : "neutral";
+    competitorMentions = competitorNames.map((name) => ({ name, mentioned: false, rank: null }));
+  }
+  const evidenceSummary = buildEvidenceSummary({
+    engineName: base.engineName,
+    mentionsBrand: base.mentionsBrand,
+    recommendsBrand: base.recommendsBrand,
+    sentiment,
+    competitorMentions,
+    citedUrls
+  });
+  let missReason;
+  if (!base.mentionsBrand) {
+    missReason = inferMissReason({
+      question: base.question,
+      citedUrls,
+      testedAt: base.testedAt,
+      articlePublishedAt: context?.articlePublishedAt,
+      brandNames: namesForBrand
+    });
+  }
+  return {
+    engine: base.engine,
+    engineName: base.engineName,
+    question: base.question,
+    testedAt: base.testedAt,
+    answer,
+    mentionsBrand: base.mentionsBrand,
+    recommendsBrand: base.recommendsBrand,
+    recommendationRank: base.recommendationRank,
+    rawAnswer: answer,
+    mentionedBrand: base.mentionsBrand,
+    recommendedBrand: base.recommendsBrand,
+    brandRank: base.recommendationRank,
+    citedUrls,
+    sentiment,
+    competitorMentions,
+    evidenceSummary,
+    parseStatus,
+    parseError,
+    testStage,
+    ...missReason ? { missReason } : {}
+  };
+}
+async function resolveProjectCompetitorNames(db, projectId) {
+  const [projectRows, profileRows, competitorRows] = await Promise.all([
+    db.select({ competitorNames: projects.competitorNames }).from(projects).where(eq4(projects.id, projectId)).limit(1),
+    db.select({ competitors: enterpriseGeoProfiles.competitors }).from(enterpriseGeoProfiles).where(eq4(enterpriseGeoProfiles.projectId, projectId)).limit(1),
+    db.select({ competitorName: competitorProfiles.competitorName }).from(competitorProfiles).where(eq4(competitorProfiles.projectId, projectId))
+  ]);
+  const fromProject = projectRows[0]?.competitorNames ?? [];
+  const fromProfile = profileRows[0]?.competitors?.filter((x) => typeof x === "string" && x.trim().length > 0) ?? [];
+  const fromAssets = competitorRows.map((r) => r.competitorName).filter((s) => Boolean(s?.trim()));
+  return uniqueStrings([...fromProject, ...fromProfile, ...fromAssets].map((s) => s.trim()).filter(Boolean));
+}
+
+// server/geoAiMentionCheck.ts
+var ENGINE_CONFIG = {
+  doubao: {
+    name: "\u8C46\u5305",
+    apiUrl: process.env.OPENAI_BASE_URL ? `${process.env.OPENAI_BASE_URL}/chat/completions` : "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+    model: process.env.OPENAI_MODEL ?? "ep-20251210143333-s6bb7",
+    apiKey: process.env.OPENAI_API_KEY ?? ""
+  },
+  deepseek: {
+    name: "DeepSeek",
+    apiUrl: process.env.OPENAI_BASE_URL ? `${process.env.OPENAI_BASE_URL}/chat/completions` : "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+    model: process.env.ARK_DEEPSEEK_MODEL_ID ?? process.env.OPENAI_MODEL ?? "ep-20251210143333-s6bb7",
+    apiKey: process.env.OPENAI_API_KEY ?? ""
+  },
+  kimi: {
+    name: "Kimi",
+    apiUrl: "https://api.moonshot.cn/v1/chat/completions",
+    model: "moonshot-v1-8k",
+    apiKey: process.env.KIMI_API_KEY ?? ""
+  }
+};
+async function askEngine(engine, question) {
+  const config = ENGINE_CONFIG[engine];
+  const apiKey = config.apiKey;
+  if (!apiKey) {
+    console.warn(`[\u5B9E\u6D4B] ${config.name} API Key \u672A\u914D\u7F6E\uFF0C\u8DF3\u8FC7`);
+    return null;
+  }
+  try {
+    const res = await fetch(config.apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [{ role: "user", content: question }],
+        max_tokens: 1e3,
+        temperature: 0.3
+      })
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[\u5B9E\u6D4B] ${config.name} \u8BF7\u6C42\u5931\u8D25 HTTP ${res.status}:`, err);
+      return null;
+    }
+    const data = await res.json();
+    return data?.choices?.[0]?.message?.content ?? null;
+  } catch (e) {
+    console.error(`[\u5B9E\u6D4B] ${config.name} \u8BF7\u6C42\u5F02\u5E38:`, e);
+    return null;
+  }
+}
+function analyzeAnswer(answer, enterpriseName, shortName) {
+  const lowerAnswer = answer.toLowerCase();
+  const names = [enterpriseName, shortName].filter(Boolean);
+  const mentionsBrand = names.some((name) => lowerAnswer.includes(name.toLowerCase()));
+  if (!mentionsBrand) {
+    return { mentionsBrand: false, recommendsBrand: false, recommendationRank: null };
+  }
+  const recommendKeywords = ["\u63A8\u8350", "\u5EFA\u8BAE", "\u9996\u9009", "\u4F18\u5148", "\u53EF\u4EE5\u8003\u8651", "\u4E0D\u9519", "\u9002\u5408", "\u503C\u5F97"];
+  const recommendsBrand = recommendKeywords.some((kw) => {
+    const idx = answer.indexOf(kw);
+    if (idx === -1) return false;
+    const context = answer.slice(Math.max(0, idx - 50), idx + 50);
+    return names.some((name) => context.includes(name));
+  });
+  let recommendationRank = null;
+  if (recommendsBrand) {
+    for (const name of names) {
+      const idx = answer.indexOf(name);
+      if (idx === -1) continue;
+      const before = answer.slice(Math.max(0, idx - 20), idx);
+      const rankMatch = before.match(/第\s*([一二三四五六七八九十\d]+)|(\d+)\s*[\.、]/);
+      if (rankMatch) {
+        const chineseMap = {
+          \u4E00: 1,
+          \u4E8C: 2,
+          \u4E09: 3,
+          \u56DB: 4,
+          \u4E94: 5,
+          \u516D: 6,
+          \u4E03: 7,
+          \u516B: 8,
+          \u4E5D: 9,
+          \u5341: 10
+        };
+        const rankStr = rankMatch[1] || rankMatch[2];
+        recommendationRank = chineseMap[rankStr] ?? parseInt(rankStr, 10) ?? null;
+        break;
+      }
+    }
+  }
+  return { mentionsBrand, recommendsBrand, recommendationRank };
+}
+function buildAiMentionSuggestion(result) {
+  const mentionPct = Math.round(result.mentionRate * 100);
+  const recommendPct = Math.round(result.recommendRate * 100);
+  if (mentionPct === 0) {
+    return `\u5B9E\u6D4B\u7ED3\u679C\uFF1A\u54C1\u724C\u5728\u8C46\u5305/DeepSeek/Kimi \u4E2D\u5747\u672A\u88AB\u63D0\u53CA\uFF08\u63D0\u53CA\u7387 0%\uFF09\u3002\u672C\u6B21\u5B9E\u6D4B\u4E2D\uFF0C\u54C1\u724C\u6682\u672A\u88AB AI \u4E3B\u52A8\u63D0\u53CA\u3002\u53EF\u80FD\u662F\u95EE\u9898\u8F83\u6CDB\u3001\u54C1\u724C\u5B9E\u4F53\u4FE1\u53F7\u4E0D\u8DB3\uFF0C\u6216\u5185\u5BB9\u5C1A\u672A\u88AB AI \u68C0\u7D22\u5230\u3002\u5F53\u524D\u95EE\u9898\u591A\u4E3A\u573A\u666F\u75DB\u70B9\u7C7B\u6216\u901A\u7528\u89E3\u51B3\u65B9\u6848\u7C7B\u95EE\u9898\uFF0CAI \u66F4\u503E\u5411\u76F4\u63A5\u7ED9\u51FA\u65B9\u6CD5\uFF0C\u800C\u4E0D\u662F\u63A8\u8350\u5177\u4F53\u54C1\u724C\u3002\u5EFA\u8BAE\u540E\u7EED\u8865\u5145\u54C1\u724C\u8BA4\u77E5\u7C7B\u3001\u7ADE\u54C1\u5BF9\u6BD4\u7C7B\u5185\u5BB9\uFF0C\u5E76\u5728\u6587\u7AE0\u4E2D\u5F3A\u5316\u300C\u54C1\u724C\u540D + \u54C1\u7C7B + \u9002\u7528\u573A\u666F\u300D\u7684\u5B9E\u4F53\u4FE1\u53F7\u3002\u65B0\u53D1\u5E03\u5185\u5BB9\u5EFA\u8BAE 7-14 \u5929\u540E\u590D\u6D4B\u3002`;
+  }
+  if (recommendPct === 0) {
+    return `\u5B9E\u6D4B\u7ED3\u679C\uFF1A\u54C1\u724C\u63D0\u53CA\u7387 ${mentionPct}%\uFF0C\u4F46\u5C1A\u672A\u83B7\u5F97 AI \u63A8\u8350\uFF08\u63A8\u8350\u7387 0%\uFF09\u3002\u5EFA\u8BAE\u5F3A\u5316\u7ADE\u54C1\u5DEE\u5F02\u5316\u5185\u5BB9\u548C\u5BA2\u6237\u6848\u4F8B\u3002`;
+  }
+  return `\u5B9E\u6D4B\u7ED3\u679C\uFF1A\u54C1\u724C\u63D0\u53CA\u7387 ${mentionPct}%\uFF0CAI \u63A8\u8350\u7387 ${recommendPct}%\u3002\u7EE7\u7EED\u4FDD\u6301\u5185\u5BB9\u66F4\u65B0\u8282\u594F\uFF0C\u6269\u5927 AI \u53EF\u89C1\u5EA6\u3002`;
+}
+async function runAiMentionCheck(input) {
+  const engines = input.engines ?? ["doubao", "deepseek", "kimi"];
+  const results = [];
+  const questions2 = input.questions.slice(0, 5);
+  const competitorNames = input.competitorNames ?? [];
+  const brandNames = [input.enterpriseName, input.shortName].filter(Boolean);
+  const testStage = input.testStage ?? "manual_check";
+  const missReasonContext = input.missReasonContext;
+  for (const engine of engines) {
+    const config = ENGINE_CONFIG[engine];
+    for (const question of questions2) {
+      const answer = await askEngine(engine, question);
+      if (!answer) continue;
+      const analysis = analyzeAnswer(answer, input.enterpriseName, input.shortName);
+      results.push(
+        enrichAiTestResult(
+          {
+            engine,
+            engineName: config.name,
+            question,
+            answer,
+            ...analysis,
+            testedAt: (/* @__PURE__ */ new Date()).toISOString()
+          },
+          competitorNames,
+          brandNames,
+          testStage,
+          missReasonContext
+        )
+      );
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    const engineResults = results.filter((r) => r.engine === engine);
+    console.log(
+      `[\u5B9E\u6D4B] ${config.name} \u5B8C\u6210\uFF1A\u63D0\u53CA ${engineResults.filter((r) => r.mentionsBrand).length}/${engineResults.length}\uFF0C\u63A8\u8350 ${engineResults.filter((r) => r.recommendsBrand).length}/${engineResults.length}`
+    );
+  }
+  const engineSummary = {};
+  for (const engine of engines) {
+    const engineResults = results.filter((r) => r.engine === engine);
+    engineSummary[engine] = {
+      mentionCount: engineResults.filter((r) => r.mentionsBrand).length,
+      recommendCount: engineResults.filter((r) => r.recommendsBrand).length,
+      totalQuestions: engineResults.length
+    };
+  }
+  const totalMentions = results.filter((r) => r.mentionsBrand).length;
+  const totalRecommends = results.filter((r) => r.recommendsBrand).length;
+  const total = results.length;
+  return {
+    results,
+    mentionRate: total > 0 ? totalMentions / total : 0,
+    recommendRate: total > 0 ? totalRecommends / total : 0,
+    engineSummary
+  };
+}
+
+// server/deliveryReportPublicShare.ts
+import { randomBytes } from "node:crypto";
+import { TRPCError as TRPCError6 } from "@trpc/server";
+import { and as and2, desc as desc3, eq as eq5, inArray } from "drizzle-orm";
+
+// shared/deliveryReportScore.ts
+function readGeoContentCoverageTotalScore(score) {
+  if (!score) return null;
+  if (typeof score.totalScore === "number" && Number.isFinite(score.totalScore)) return score.totalScore;
+  if (typeof score.total_score === "number" && Number.isFinite(score.total_score)) return score.total_score;
+  return null;
+}
+function resolveDeliveryReportVisibilityScore(score) {
+  return readGeoContentCoverageTotalScore(score);
+}
+function buildDeliveryReportConclusionLine(totalScore, hasAnalysis) {
+  if (totalScore == null) {
+    return "\u8BF7\u5148\u5B8C\u6210 \u5185\u5BB9\u8BCA\u65AD\u4E0E\u8BC4\u5206\uFF0C\u4EE5\u4FBF\u751F\u6210\u672C\u8F6E\u9762\u5411\u5BA2\u6237\u7684\u7ED3\u8BBA\u6458\u8981\u3002";
+  }
+  if (hasAnalysis) {
+    return `\u672C\u8F6E AI \u641C\u7D22\u53EF\u89C1\u5EA6\u7EFC\u5408\u8BC4\u5206 ${totalScore} \u5206\uFF1B\u5728\u5178\u578B AI \u95EE\u7B54\u573A\u666F\u4E0B\uFF0C\u54C1\u724C\u5728 AI \u56DE\u7B54\u4E2D\u7684\u63D0\u53CA\u4E0E\u63A8\u8350\u8868\u73B0\u5B58\u5728\u53EF\u4F18\u5316\u7A7A\u95F4\uFF0C\u5EFA\u8BAE\u7528\u53EF\u516C\u5F00\u3001\u53EF\u5F15\u7528\u7684\u5185\u5BB9\u8D44\u4EA7\u6301\u7EED\u8865\u9F50\u8BC1\u636E\u94FE\u3002`;
+  }
+  return `\u672C\u8F6E AI \u641C\u7D22\u53EF\u89C1\u5EA6\u7EFC\u5408\u8BC4\u5206 ${totalScore} \u5206\uFF1B\u5EFA\u8BAE\u7ED3\u5408\u4E0B\u65B9 AI \u641C\u7D22\u5B9E\u6D4B\u7ED3\u679C\uFF0C\u6301\u7EED\u4F18\u5316\u54C1\u724C\u53EF\u89C1\u5EA6\u4E0E\u63A8\u8350\u8868\u73B0\u3002`;
+}
+
+// shared/deliveryReportPublicShare.ts
+function mapRecordsToPublicPublishedContent(records) {
+  return records.map((record) => ({
+    title: record.publishTitle?.trim() || record.articleTitle?.trim() || "\u672A\u547D\u540D\u5185\u5BB9",
+    platform: record.publishChannel,
+    publishedAt: record.publishedAt ? record.publishedAt.toISOString() : null,
+    url: record.publishUrl
+  }));
+}
+var DELIVERY_REPORT_SHARE_INVALID_MESSAGE = "\u62A5\u544A\u94FE\u63A5\u65E0\u6548\u6216\u5DF2\u5931\u6548\uFF0C\u8BF7\u8054\u7CFB\u670D\u52A1\u4EBA\u5458\u91CD\u65B0\u83B7\u53D6";
+function buildDeliveryReportPublicPath(token) {
+  return `/delivery-reports/public/${token}`;
+}
+var DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE = "\u8BC1\u636E\u94FE\u63A5\u65E0\u6548\u6216\u5DF2\u5931\u6548\uFF0C\u8BF7\u8054\u7CFB\u670D\u52A1\u4EBA\u5458\u91CD\u65B0\u83B7\u53D6";
+function mapItemToPublicEvidence(item, meta) {
+  const aiAnswerText = item.answer || item.rawAnswer;
+  const brandMentionExcerpt = item.mentionedBrand ? aiAnswerText.slice(0, 280) + (aiAnswerText.length > 280 ? "\u2026" : "") : "\u56DE\u7B54\u4E2D\u672A\u51FA\u73B0\u672C\u54C1\u724C\u540D\u79F0\uFF0C\u7CFB\u7EDF\u5224\u5B9A\u4E3A\u672A\u63D0\u53CA\u3002";
+  return {
+    brandName: meta.brandName,
+    enterpriseName: meta.enterpriseName,
+    question: item.question,
+    engineName: item.engineName,
+    stageLabel: testStageLabelCn(item.testStage),
+    testedAt: item.testedAt,
+    aiAnswerText,
+    mentionedBrand: item.mentionedBrand,
+    recommendedBrand: item.recommendedBrand,
+    brandRank: item.brandRank,
+    sentiment: item.sentiment,
+    competitorMentions: item.competitorMentions.map((c) => ({
+      name: c.name,
+      mentioned: c.mentioned,
+      rank: c.rank ?? null,
+      context: c.context
+    })),
+    citedUrls: [...item.citedUrls],
+    parseStatusLabel: parseStatusLabelCn(item.parseStatus),
+    parseNeedsAttention: item.parseStatus === "partial" || item.parseStatus === "failed",
+    evidenceSummary: item.evidenceSummary,
+    competitorConfigured: meta.competitorConfigured,
+    brandMentionExcerpt
+  };
+}
+
+// server/deliveryReportPublicShare.ts
+var SHARE_TOKEN_INVALID = DELIVERY_REPORT_SHARE_INVALID_MESSAGE;
+var SHARE_EVIDENCE_INVALID = DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE;
+function assertMonitoringRecordForShareProject(recordProjectId, tokenProjectId) {
+  if (recordProjectId !== tokenProjectId) {
+    throw new TRPCError6({ code: "NOT_FOUND", message: SHARE_EVIDENCE_INVALID });
+  }
+}
+function generateDeliveryReportShareToken() {
+  return randomBytes(32).toString("base64url");
+}
+function toPublicAiTestAggregate(aggregate) {
+  const { items: _items, ...publicAggregate } = aggregate;
+  return publicAggregate;
+}
+function isShareTokenRowActive(row) {
+  if (!row) return false;
+  if (!row.isEnabled) return false;
+  if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return false;
+  return true;
+}
+async function resolveShareTokenProjectId(db, token) {
+  const rows = await db.select().from(deliveryReportShareTokens).where(eq5(deliveryReportShareTokens.token, token)).limit(1);
+  const row = rows[0];
+  if (!isShareTokenRowActive(row)) {
+    throw new TRPCError6({ code: "NOT_FOUND", message: SHARE_TOKEN_INVALID });
+  }
+  return row.projectId;
+}
+async function disableEnabledShareTokensForProject(db, projectId) {
+  const enabled = await db.select({ id: deliveryReportShareTokens.id }).from(deliveryReportShareTokens).where(and2(eq5(deliveryReportShareTokens.projectId, projectId), eq5(deliveryReportShareTokens.isEnabled, true)));
+  if (enabled.length === 0) {
+    return { disabled: false, count: 0 };
+  }
+  await db.update(deliveryReportShareTokens).set({ isEnabled: false }).where(and2(eq5(deliveryReportShareTokens.projectId, projectId), eq5(deliveryReportShareTokens.isEnabled, true)));
+  return { disabled: true, count: enabled.length };
+}
+async function regenerateShareLinkForProject(db, projectId) {
+  await disableEnabledShareTokensForProject(db, projectId);
+  const token = generateDeliveryReportShareToken();
+  await db.insert(deliveryReportShareTokens).values({ token, projectId, isEnabled: true });
+  return token;
+}
+async function getOrCreateShareTokenForProject(db, projectId) {
+  const existing = await db.select().from(deliveryReportShareTokens).where(and2(eq5(deliveryReportShareTokens.projectId, projectId), eq5(deliveryReportShareTokens.isEnabled, true))).orderBy(desc3(deliveryReportShareTokens.createdAt)).limit(1);
+  if (existing[0]) {
+    const row = existing[0];
+    if (!row.expiresAt || row.expiresAt.getTime() >= Date.now()) {
+      return row.token;
+    }
+  }
+  const token = generateDeliveryReportShareToken();
+  await db.insert(deliveryReportShareTokens).values({ token, projectId, isEnabled: true });
+  return token;
+}
+async function buildDeliveryReportPublicSharePayload(db, projectId) {
+  const projectRows = await db.select().from(projects).where(eq5(projects.id, projectId)).limit(1);
+  const project = projectRows[0];
+  if (!project) {
+    throw new TRPCError6({ code: "NOT_FOUND", message: SHARE_TOKEN_INVALID });
+  }
+  const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq5(enterpriseGeoProfiles.projectId, projectId)).orderBy(desc3(enterpriseGeoProfiles.updatedAt)).limit(1);
+  const profile = profileRows[0];
+  const brandName = profile?.brandName?.trim() || project.enterpriseName || "\u672A\u586B\u5199\u54C1\u724C\u540D\u79F0";
+  const enterpriseName = project.enterpriseName || "\u2014";
+  const scoreRows = await db.select().from(geoScores).where(eq5(geoScores.projectId, projectId)).orderBy(desc3(geoScores.createdAt)).limit(1);
+  const score = scoreRows[0];
+  const visibilityScore = resolveDeliveryReportVisibilityScore(score ?? null);
+  const analysisRows = await db.select().from(analysisResults).where(eq5(analysisResults.projectId, projectId)).limit(1);
+  const firstAnalysis = analysisRows[0];
+  const conclusionLine = buildDeliveryReportConclusionLine(visibilityScore, Boolean(firstAnalysis));
+  const reportRows = await db.select({ createdAt: reports.createdAt }).from(reports).where(eq5(reports.projectId, projectId)).orderBy(desc3(reports.createdAt)).limit(1);
+  const reportGeneratedAt = reportRows[0]?.createdAt ?? score?.createdAt ?? null;
+  const monitoringRows = await db.select({
+    id: geoInclusionMonitoringRecords.id,
+    aiTestResults: geoInclusionMonitoringRecords.aiTestResults
+  }).from(geoInclusionMonitoringRecords).where(eq5(geoInclusionMonitoringRecords.projectId, projectId)).orderBy(desc3(geoInclusionMonitoringRecords.createdAt));
+  const aggregate = aggregateAiTestEvidence(
+    monitoringRows.map((row) => ({
+      monitoringRecordId: row.id,
+      results: Array.isArray(row.aiTestResults) ? row.aiTestResults : []
+    }))
+  );
+  const publishRows = await db.select({
+    publishTitle: geoPublishRecords.publishTitle,
+    publishChannel: geoPublishRecords.publishChannel,
+    publishUrl: geoPublishRecords.publishUrl,
+    publishedAt: geoPublishRecords.publishedAt,
+    articleId: geoPublishRecords.articleId
+  }).from(geoPublishRecords).where(eq5(geoPublishRecords.projectId, projectId)).orderBy(desc3(geoPublishRecords.publishedAt));
+  const articleIds = Array.from(new Set(publishRows.map((row) => row.articleId)));
+  const articleTitleById = /* @__PURE__ */ new Map();
+  if (articleIds.length > 0) {
+    const articleRows = await db.select({ id: geoArticles.id, title: geoArticles.title }).from(geoArticles).where(inArray(geoArticles.id, articleIds));
+    for (const article of articleRows) {
+      if (article.title) articleTitleById.set(article.id, article.title);
+    }
+  }
+  const publishedContent = mapRecordsToPublicPublishedContent(
+    publishRows.map((row) => ({
+      publishTitle: row.publishTitle,
+      publishChannel: row.publishChannel,
+      publishUrl: row.publishUrl,
+      publishedAt: row.publishedAt,
+      articleTitle: articleTitleById.get(row.articleId) ?? null
+    }))
+  );
+  return {
+    brandName,
+    enterpriseName,
+    reportGeneratedAt: reportGeneratedAt ? reportGeneratedAt.toISOString() : null,
+    visibilityScore,
+    conclusionLine,
+    aiTest: toPublicAiTestAggregate(aggregate),
+    publishedContent
+  };
+}
+async function buildDeliveryReportPublicEvidencePayload(db, token, recordId, resultIndex) {
+  const projectId = await resolveShareTokenProjectId(db, token);
+  const rows = await db.select().from(geoInclusionMonitoringRecords).where(eq5(geoInclusionMonitoringRecords.id, recordId)).limit(1);
+  const record = rows[0];
+  if (!record) {
+    throw new TRPCError6({ code: "NOT_FOUND", message: SHARE_EVIDENCE_INVALID });
+  }
+  assertMonitoringRecordForShareProject(record.projectId, projectId);
+  const rawResults = Array.isArray(record.aiTestResults) ? record.aiTestResults : [];
+  const raw = rawResults[resultIndex];
+  if (raw == null) {
+    throw new TRPCError6({ code: "NOT_FOUND", message: SHARE_EVIDENCE_INVALID });
+  }
+  const item = normalizeAiTestResult(raw);
+  if (!item) {
+    throw new TRPCError6({ code: "NOT_FOUND", message: SHARE_EVIDENCE_INVALID });
+  }
+  const projectRows = await db.select().from(projects).where(eq5(projects.id, projectId)).limit(1);
+  const project = projectRows[0];
+  const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq5(enterpriseGeoProfiles.projectId, projectId)).orderBy(desc3(enterpriseGeoProfiles.updatedAt)).limit(1);
+  const profile = profileRows[0];
+  const brandName = profile?.brandName?.trim() || project?.enterpriseName || "\u672A\u586B\u5199\u54C1\u724C\u540D\u79F0";
+  const enterpriseName = project?.enterpriseName || "\u2014";
+  const competitorNames = await resolveProjectCompetitorNames(db, projectId);
+  return mapItemToPublicEvidence(item, {
+    brandName,
+    enterpriseName,
+    competitorConfigured: competitorNames.length > 0
+  });
+}
+
+// server/scheduledAiCheck.ts
+import { eq as eq6, isNull, lt, or } from "drizzle-orm";
+async function runDailyAiCheck() {
+  console.log(`[\u5B9A\u65F6\u5B9E\u6D4B] \u5F00\u59CB\u6267\u884C ${(/* @__PURE__ */ new Date()).toISOString()}`);
+  const db = await getDb();
+  if (!db) {
+    console.error("[\u5B9A\u65F6\u5B9E\u6D4B] \u6570\u636E\u5E93\u4E0D\u53EF\u7528\uFF0C\u8DF3\u8FC7");
+    return;
+  }
+  const threshold = new Date(Date.now() - 23 * 60 * 60 * 1e3);
+  const records = await db.select().from(geoInclusionMonitoringRecords).where(
+    or(
+      eq6(geoInclusionMonitoringRecords.aiMentionStatus, "\u672A\u68C0\u6D4B"),
+      isNull(geoInclusionMonitoringRecords.lastAiTestedAt),
+      lt(geoInclusionMonitoringRecords.lastAiTestedAt, threshold)
+    )
+  ).limit(50);
+  console.log(`[\u5B9A\u65F6\u5B9E\u6D4B] \u627E\u5230 ${records.length} \u6761\u9700\u8981\u68C0\u6D4B\u7684\u8BB0\u5F55`);
+  for (const record of records) {
+    try {
+      const projectRows = await db.select().from(projects).where(eq6(projects.id, record.projectId)).limit(1);
+      const project = projectRows[0];
+      if (!project) continue;
+      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq6(enterpriseGeoProfiles.projectId, record.projectId)).limit(1);
+      const profile = profileRows[0];
+      const questionRows = await db.select({ questionText: questions.questionText }).from(questions).where(eq6(questions.projectId, record.projectId)).limit(5);
+      if (questionRows.length === 0) {
+        console.log(`[\u5B9A\u65F6\u5B9E\u6D4B] \u9879\u76EE ${record.projectId} \u65E0\u95EE\u9898\u6570\u636E\uFF0C\u8DF3\u8FC7`);
+        continue;
+      }
+      const competitorNames = await resolveProjectCompetitorNames(db, record.projectId);
+      const result = await runAiMentionCheck({
+        enterpriseName: profile?.enterpriseName ?? project.enterpriseName,
+        shortName: profile?.shortName ?? void 0,
+        questions: questionRows.map((q) => q.questionText),
+        engines: ["doubao", "deepseek"],
+        competitorNames,
+        testStage: "manual_check"
+      });
+      if (result.results.length === 0) {
+        console.log(`[\u5B9A\u65F6\u5B9E\u6D4B] \u8BB0\u5F55 ${record.id} \u672A\u83B7\u5F97 AI \u56DE\u7B54\uFF0C\u8DF3\u8FC7`);
+        continue;
+      }
+      const mentionStatus = result.mentionRate > 0 ? "\u5DF2\u63D0\u53CA" : "\u672A\u63D0\u53CA";
+      const recommendStatus = result.recommendRate > 0 ? "\u5DF2\u63A8\u8350" : "\u672A\u63A8\u8350";
+      const savedResults = mergeAiTestResultsByStage(record.aiTestResults ?? [], result.results, "manual_check");
+      await db.update(geoInclusionMonitoringRecords).set({
+        aiMentionStatus: mentionStatus,
+        aiRecommendStatus: recommendStatus,
+        aiTestResults: savedResults,
+        lastAiTestedAt: /* @__PURE__ */ new Date(),
+        lastCheckedAt: /* @__PURE__ */ new Date()
+      }).where(eq6(geoInclusionMonitoringRecords.id, record.id));
+      console.log(`[\u5B9A\u65F6\u5B9E\u6D4B] \u8BB0\u5F55 ${record.id} \u5B8C\u6210\uFF1A\u63D0\u53CA=${mentionStatus}`);
+      await new Promise((r) => setTimeout(r, 2e3));
+    } catch (e) {
+      console.error(`[\u5B9A\u65F6\u5B9E\u6D4B] \u8BB0\u5F55 ${record.id} \u5931\u8D25:`, e);
+    }
+  }
+  console.log(`[\u5B9A\u65F6\u5B9E\u6D4B] \u672C\u6B21\u6267\u884C\u5B8C\u6210 ${(/* @__PURE__ */ new Date()).toISOString()}`);
+}
+function startDailyAiCheckScheduler() {
+  setTimeout(() => {
+    runDailyAiCheck();
+    setInterval(runDailyAiCheck, 24 * 60 * 60 * 1e3);
+  }, 5 * 60 * 1e3);
+  console.log("[\u5B9A\u65F6\u5B9E\u6D4B] \u8C03\u5EA6\u5668\u5DF2\u542F\u52A8\uFF0C\u5C06\u5728 5 \u5206\u949F\u540E\u9996\u6B21\u6267\u884C\uFF0C\u4E4B\u540E\u6BCF 24 \u5C0F\u65F6\u6267\u884C\u4E00\u6B21");
 }
 
 // server/assetLibrary.ts
@@ -4223,63 +5771,63 @@ function createUploadAssetDbRecord(input) {
 
 // server/routers.ts
 var GEO_SYNTHETIC_AI_RESPONSE_PREFIX = "\u3010\u7CFB\u7EDF\u81EA\u52A8\u3011";
-var projectInput = z3.object({
-  enterpriseName: z3.string().min(1, "\u8BF7\u8F93\u5165\u4F01\u4E1A\u540D\u79F0"),
-  industry: z3.string().min(1, "\u8BF7\u8F93\u5165\u884C\u4E1A"),
-  website: z3.string().min(1, "\u8BF7\u8F93\u5165\u5B98\u7F51"),
-  region: z3.string().min(1, "\u8BF7\u8F93\u5165\u5730\u533A"),
-  productIntro: z3.string().min(1, "\u8BF7\u8F93\u5165\u4EA7\u54C1\u4ECB\u7ECD"),
-  targetCustomers: z3.string().min(1, "\u8BF7\u8F93\u5165\u76EE\u6807\u5BA2\u6237"),
-  coreSellingPoints: z3.string().min(1, "\u8BF7\u8F93\u5165\u6838\u5FC3\u5356\u70B9"),
-  competitorNames: z3.array(z3.string()).default([]),
-  coreKeywords: z3.array(z3.string()).default([])
+var projectInput = z4.object({
+  enterpriseName: z4.string().min(1, "\u8BF7\u8F93\u5165\u4F01\u4E1A\u540D\u79F0"),
+  industry: z4.string().min(1, "\u8BF7\u8F93\u5165\u884C\u4E1A"),
+  website: z4.string().min(1, "\u8BF7\u8F93\u5165\u5B98\u7F51"),
+  region: z4.string().min(1, "\u8BF7\u8F93\u5165\u5730\u533A"),
+  productIntro: z4.string().min(1, "\u8BF7\u8F93\u5165\u4EA7\u54C1\u4ECB\u7ECD"),
+  targetCustomers: z4.string().min(1, "\u8BF7\u8F93\u5165\u76EE\u6807\u5BA2\u6237"),
+  coreSellingPoints: z4.string().min(1, "\u8BF7\u8F93\u5165\u6838\u5FC3\u5356\u70B9"),
+  competitorNames: z4.array(z4.string()).default([]),
+  coreKeywords: z4.array(z4.string()).default([])
 });
-var questionInput = z3.object({
-  projectId: z3.number().int().positive(),
-  questionText: z3.string().min(1, "\u8BF7\u8F93\u5165\u95EE\u9898"),
-  questionType: z3.enum(questionTypes),
-  targetKeyword: z3.string().optional().nullable(),
-  intentLevel: z3.string().optional().default("\u9AD8"),
-  businessValue: z3.number().int().min(1).max(5).optional().default(5),
-  source: z3.enum(questionSources).optional().default("manual"),
-  enabled: z3.boolean().default(true)
+var questionInput = z4.object({
+  projectId: z4.number().int().positive(),
+  questionText: z4.string().min(1, "\u8BF7\u8F93\u5165\u95EE\u9898"),
+  questionType: z4.enum(questionTypes),
+  targetKeyword: z4.string().optional().nullable(),
+  intentLevel: z4.string().optional().default("\u9AD8"),
+  businessValue: z4.number().int().min(1).max(5).optional().default(5),
+  source: z4.enum(questionSources).optional().default("manual"),
+  enabled: z4.boolean().default(true)
 });
-var manualQuestionImportRow = z3.object({
-  questionText: z3.string().min(1, "\u8BF7\u8F93\u5165\u95EE\u9898"),
-  questionType: z3.enum(questionTypes).optional().default("\u6307\u5B9A\u95EE\u9898"),
-  targetKeyword: z3.string().optional().nullable(),
-  intentLevel: z3.string().optional().default("\u9AD8"),
-  businessValue: z3.number().int().min(1).max(5).optional().default(5)
+var manualQuestionImportRow = z4.object({
+  questionText: z4.string().min(1, "\u8BF7\u8F93\u5165\u95EE\u9898"),
+  questionType: z4.enum(questionTypes).optional().default("\u6307\u5B9A\u95EE\u9898"),
+  targetKeyword: z4.string().optional().nullable(),
+  intentLevel: z4.string().optional().default("\u9AD8"),
+  businessValue: z4.number().int().min(1).max(5).optional().default(5)
 });
-var aiResponseInput = z3.object({
-  projectId: z3.number().int().positive(),
-  questionId: z3.number().int().positive().optional().nullable(),
-  questionText: z3.string().min(1, "\u8BF7\u8F93\u5165\u95EE\u9898"),
-  aiPlatform: z3.enum(aiPlatforms),
-  rawAnswer: z3.string().min(1, "\u8BF7\u8F93\u5165 AI \u539F\u59CB\u56DE\u7B54"),
-  checkedAt: z3.string().min(1, "\u8BF7\u8F93\u5165\u68C0\u6D4B\u65F6\u95F4")
+var aiResponseInput = z4.object({
+  projectId: z4.number().int().positive(),
+  questionId: z4.number().int().positive().optional().nullable(),
+  questionText: z4.string().min(1, "\u8BF7\u8F93\u5165\u95EE\u9898"),
+  aiPlatform: z4.enum(aiPlatforms),
+  rawAnswer: z4.string().min(1, "\u8BF7\u8F93\u5165 AI \u539F\u59CB\u56DE\u7B54"),
+  checkedAt: z4.string().min(1, "\u8BF7\u8F93\u5165\u68C0\u6D4B\u65F6\u95F4")
 });
-var contentPlanInput = z3.object({
-  id: z3.number().int().positive().optional(),
-  projectId: z3.number().int().positive(),
-  planName: z3.string().min(1, "\u8BF7\u8F93\u5165\u8BA1\u5212\u540D\u79F0"),
-  weekStartDate: z3.string().min(1, "\u8BF7\u9009\u62E9\u5468\u671F\u5F00\u59CB\u65E5\u671F"),
-  weeklyArticleCount: z3.number().int().min(1).max(20),
-  targetPlatforms: z3.array(z3.string().min(1)).min(1, "\u8BF7\u9009\u62E9\u76EE\u6807\u53D1\u5E03\u5E73\u53F0"),
-  contentTypes: z3.array(z3.string().min(1)).min(1, "\u8BF7\u9009\u62E9\u5185\u5BB9\u7C7B\u578B"),
-  linkedOptimizationTaskIds: z3.array(z3.number().int().positive()).min(1, "\u8BF7\u9009\u62E9\u8981\u7ED1\u5B9A\u7684\u4F18\u5316\u4EFB\u52A1"),
-  status: z3.string().optional().default("\u5DF2\u914D\u7F6E")
+var contentPlanInput = z4.object({
+  id: z4.number().int().positive().optional(),
+  projectId: z4.number().int().positive(),
+  planName: z4.string().min(1, "\u8BF7\u8F93\u5165\u8BA1\u5212\u540D\u79F0"),
+  weekStartDate: z4.string().min(1, "\u8BF7\u9009\u62E9\u5468\u671F\u5F00\u59CB\u65E5\u671F"),
+  weeklyArticleCount: z4.number().int().min(1).max(20),
+  targetPlatforms: z4.array(z4.string().min(1)).min(1, "\u8BF7\u9009\u62E9\u76EE\u6807\u53D1\u5E03\u5E73\u53F0"),
+  contentTypes: z4.array(z4.string().min(1)).min(1, "\u8BF7\u9009\u62E9\u5185\u5BB9\u7C7B\u578B"),
+  linkedOptimizationTaskIds: z4.array(z4.number().int().positive()).min(1, "\u8BF7\u9009\u62E9\u8981\u7ED1\u5B9A\u7684\u4F18\u5316\u4EFB\u52A1"),
+  status: z4.string().optional().default("\u5DF2\u914D\u7F6E")
 });
-var contentPlanItemInput = z3.object({
-  projectId: z3.number().int().positive(),
-  planId: z3.number().int().positive(),
-  topicId: z3.number().int().positive().optional().nullable(),
-  articleId: z3.number().int().positive().optional().nullable(),
-  targetPlatform: z3.string().min(1, "\u8BF7\u9009\u62E9\u76EE\u6807\u5E73\u53F0"),
-  contentType: z3.string().min(1, "\u8BF7\u9009\u62E9\u5185\u5BB9\u7C7B\u578B"),
-  status: z3.string().optional().default("\u5F85\u751F\u6210"),
-  differentiationAngle: z3.string().optional().nullable(),
-  duplicateRisk: z3.string().optional().nullable()
+var contentPlanItemInput = z4.object({
+  projectId: z4.number().int().positive(),
+  planId: z4.number().int().positive(),
+  topicId: z4.number().int().positive().optional().nullable(),
+  articleId: z4.number().int().positive().optional().nullable(),
+  targetPlatform: z4.string().min(1, "\u8BF7\u9009\u62E9\u76EE\u6807\u5E73\u53F0"),
+  contentType: z4.string().min(1, "\u8BF7\u9009\u62E9\u5185\u5BB9\u7C7B\u578B"),
+  status: z4.string().optional().default("\u5F85\u751F\u6210"),
+  differentiationAngle: z4.string().optional().nullable(),
+  duplicateRisk: z4.string().optional().nullable()
 });
 var manualPublishPlatforms = [
   "\u81EA\u6709\u5185\u5BB9\u7AD9 / \u4F01\u4E1A\u5B98\u7F51 GEO \u9875\u9762",
@@ -4299,34 +5847,34 @@ var manualPublishStatuses = [
   "manual_publish_needed",
   "link_backfilled"
 ];
-var manualPublishRecordInput = z3.object({
-  projectId: z3.number().int().positive(),
-  articleId: z3.number().int().positive(),
-  publishPlatform: z3.enum(manualPublishPlatforms),
-  publishTitle: z3.string().min(1, "\u8BF7\u8F93\u5165\u53D1\u5E03\u6807\u9898"),
-  publishUrl: z3.string().optional().default(""),
-  publishedAt: z3.string().min(1, "\u8BF7\u9009\u62E9\u53D1\u5E03\u65F6\u95F4"),
-  publishStatus: z3.enum(manualPublishStatuses),
-  notes: z3.string().optional().default("")
+var manualPublishRecordInput = z4.object({
+  projectId: z4.number().int().positive(),
+  articleId: z4.number().int().positive(),
+  publishPlatform: z4.enum(manualPublishPlatforms),
+  publishTitle: z4.string().min(1, "\u8BF7\u8F93\u5165\u53D1\u5E03\u6807\u9898"),
+  publishUrl: z4.string().optional().default(""),
+  publishedAt: z4.string().min(1, "\u8BF7\u9009\u62E9\u53D1\u5E03\u65F6\u95F4"),
+  publishStatus: z4.enum(manualPublishStatuses),
+  notes: z4.string().optional().default("")
 });
-var analysisManualReviewInput = z3.object({
-  id: z3.number().int().positive(),
-  mentionsEnterprise: z3.boolean(),
-  recommendsEnterprise: z3.boolean(),
-  mentionsCompetitors: z3.boolean(),
-  recommendedCompetitors: z3.array(z3.string()).default([]),
-  enterpriseWins: z3.boolean(),
-  recommendationReason: z3.string().optional().default(""),
-  notRecommendedReason: z3.string().optional().default(""),
-  hasMisconception: z3.boolean(),
-  contentGap: z3.string().optional().default(""),
-  optimizationSuggestion: z3.string().optional().default(""),
-  confidence: z3.number().min(0).max(100).optional().nullable(),
-  reviewNote: z3.string().optional().nullable()
+var analysisManualReviewInput = z4.object({
+  id: z4.number().int().positive(),
+  mentionsEnterprise: z4.boolean(),
+  recommendsEnterprise: z4.boolean(),
+  mentionsCompetitors: z4.boolean(),
+  recommendedCompetitors: z4.array(z4.string()).default([]),
+  enterpriseWins: z4.boolean(),
+  recommendationReason: z4.string().optional().default(""),
+  notRecommendedReason: z4.string().optional().default(""),
+  hasMisconception: z4.boolean(),
+  contentGap: z4.string().optional().default(""),
+  optimizationSuggestion: z4.string().optional().default(""),
+  confidence: z4.number().min(0).max(100).optional().nullable(),
+  reviewNote: z4.string().optional().nullable()
 });
 var requireDb2 = async () => {
   const db = await getDb();
-  if (!db) throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message: "\u6570\u636E\u5E93\u8FDE\u63A5\u4E0D\u53EF\u7528" });
+  if (!db) throw new TRPCError7({ code: "INTERNAL_SERVER_ERROR", message: "\u6570\u636E\u5E93\u8FDE\u63A5\u4E0D\u53EF\u7528" });
   return db;
 };
 var resolveForwardProjectStatus = (currentStatus, requestedStatus) => {
@@ -4336,26 +5884,26 @@ var resolveForwardProjectStatus = (currentStatus, requestedStatus) => {
 };
 var updateProjectStatus = async (projectId, status) => {
   const db = await requireDb2();
-  const current = await db.select({ status: projects.status }).from(projects).where(eq4(projects.id, projectId)).limit(1);
+  const current = await db.select({ status: projects.status }).from(projects).where(eq7(projects.id, projectId)).limit(1);
   const nextStatus = resolveForwardProjectStatus(current[0]?.status, status);
   if (nextStatus !== current[0]?.status) {
-    await db.update(projects).set({ status: nextStatus }).where(eq4(projects.id, projectId));
+    await db.update(projects).set({ status: nextStatus }).where(eq7(projects.id, projectId));
   }
 };
 var getProjectOrThrow2 = async (projectId) => {
   const db = await requireDb2();
-  const result = await db.select().from(projects).where(eq4(projects.id, projectId)).limit(1);
-  if (result.length === 0) throw new TRPCError5({ code: "NOT_FOUND", message: "\u9879\u76EE\u4E0D\u5B58\u5728" });
+  const result = await db.select().from(projects).where(eq7(projects.id, projectId)).limit(1);
+  if (result.length === 0) throw new TRPCError7({ code: "NOT_FOUND", message: "\u9879\u76EE\u4E0D\u5B58\u5728" });
   return result[0];
 };
 var getAssetLibraryContext2 = async (projectId) => {
   const db = await requireDb2();
   const [profiles, assetSources, cases, competitors, styles] = await Promise.all([
-    db.select().from(enterpriseGeoProfiles).where(eq4(enterpriseGeoProfiles.projectId, projectId)).orderBy(desc3(enterpriseGeoProfiles.updatedAt)).limit(1),
-    db.select().from(geoAssetSources).where(eq4(geoAssetSources.projectId, projectId)).orderBy(desc3(geoAssetSources.updatedAt)),
-    db.select().from(customerCases).where(eq4(customerCases.projectId, projectId)).orderBy(desc3(customerCases.updatedAt)),
-    db.select().from(competitorProfiles).where(eq4(competitorProfiles.projectId, projectId)).orderBy(desc3(competitorProfiles.updatedAt)),
-    db.select().from(contentStyleProfiles).where(eq4(contentStyleProfiles.projectId, projectId)).orderBy(desc3(contentStyleProfiles.updatedAt))
+    db.select().from(enterpriseGeoProfiles).where(eq7(enterpriseGeoProfiles.projectId, projectId)).orderBy(desc4(enterpriseGeoProfiles.updatedAt)).limit(1),
+    db.select().from(geoAssetSources).where(eq7(geoAssetSources.projectId, projectId)).orderBy(desc4(geoAssetSources.updatedAt)),
+    db.select().from(customerCases).where(eq7(customerCases.projectId, projectId)).orderBy(desc4(customerCases.updatedAt)),
+    db.select().from(competitorProfiles).where(eq7(competitorProfiles.projectId, projectId)).orderBy(desc4(competitorProfiles.updatedAt)),
+    db.select().from(contentStyleProfiles).where(eq7(contentStyleProfiles.projectId, projectId)).orderBy(desc4(contentStyleProfiles.updatedAt))
   ]);
   return withResolvedEnterpriseProfile({
     profile: profiles[0] ?? null,
@@ -4378,7 +5926,7 @@ async function syncManualQuestionsFromAiResponseImport(db, rows) {
     else byProject.set(row.projectId, [text2]);
   }
   for (const [projectId, texts] of Array.from(byProject.entries())) {
-    const existingRows = await db.select({ questionText: questions.questionText }).from(questions).where(eq4(questions.projectId, projectId));
+    const existingRows = await db.select({ questionText: questions.questionText }).from(questions).where(eq7(questions.projectId, projectId));
     const existingSet = new Set(existingRows.map((r) => normalizeQuestionText2(r.questionText)));
     const batchSeen = /* @__PURE__ */ new Set();
     const toInsert = [];
@@ -4404,7 +5952,7 @@ async function syncManualQuestionsFromAiResponseImport(db, rows) {
 }
 async function insertSpecifiedQuestions(projectId, rows, source) {
   const db = await requireDb2();
-  const existing = await db.select().from(questions).where(eq4(questions.projectId, projectId));
+  const existing = await db.select().from(questions).where(eq7(questions.projectId, projectId));
   const known = new Map(existing.map((item) => [item.questionText, item]));
   const toInsert = [];
   let skippedDuplicateCount = 0;
@@ -4426,7 +5974,7 @@ async function insertSpecifiedQuestions(projectId, rows, source) {
           intentLevel: row.intentLevel?.trim() || existingQuestion.intentLevel || "\u9AD8",
           businessValue: row.businessValue ?? existingQuestion.businessValue ?? 5,
           enabled: 1
-        }).where(eq4(questions.id, existingQuestion.id));
+        }).where(eq7(questions.id, existingQuestion.id));
         known.set(questionText, {
           ...existingQuestion,
           questionType: "\u6307\u5B9A\u95EE\u9898",
@@ -4467,12 +6015,12 @@ async function insertSpecifiedQuestions(projectId, rows, source) {
 }
 function parseLLMJson(content) {
   if (typeof content !== "string") {
-    throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message: "AI \u8FD4\u56DE\u683C\u5F0F\u4E0D\u662F\u6587\u672C JSON" });
+    throw new TRPCError7({ code: "INTERNAL_SERVER_ERROR", message: "AI \u8FD4\u56DE\u683C\u5F0F\u4E0D\u662F\u6587\u672C JSON" });
   }
   try {
     return JSON.parse(content);
   } catch {
-    throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message: "AI \u8FD4\u56DE JSON \u89E3\u6790\u5931\u8D25" });
+    throw new TRPCError7({ code: "INTERNAL_SERVER_ERROR", message: "AI \u8FD4\u56DE JSON \u89E3\u6790\u5931\u8D25" });
   }
 }
 function parseQuestionGeoMeta(targetKeyword) {
@@ -4507,12 +6055,12 @@ function buildEnterpriseInfoBlockForDiagnosis(project, profile) {
     `\u6838\u5FC3\u5173\u952E\u8BCD\uFF1A${project.coreKeywords.join("\u3001")}`
   ].join("\n");
 }
-var nonEmptyString = z3.string().trim().min(1);
-var optionalText = z3.string().optional().default("");
-var optionalUrlText = z3.string().optional().default("");
+var nonEmptyString = z4.string().trim().min(1);
+var optionalText = z4.string().optional().default("");
+var optionalUrlText = z4.string().optional().default("");
 var booleanToInt = (value) => value ? 1 : 0;
-var enterpriseProfileInput = z3.object({
-  projectId: z3.number().int().positive(),
+var enterpriseProfileInput = z4.object({
+  projectId: z4.number().int().positive(),
   enterpriseName: nonEmptyString,
   shortName: optionalText,
   officialWebsite: optionalUrlText,
@@ -4525,9 +6073,9 @@ var enterpriseProfileInput = z3.object({
   serviceModel: optionalText,
   fitCustomers: optionalText,
   unfitCustomers: optionalText,
-  salesChannels: z3.array(z3.string()).default([]),
-  commonQuestions: z3.array(z3.string()).default([]),
-  purchaseDecisionFactors: z3.array(z3.string()).default([]),
+  salesChannels: z4.array(z4.string()).default([]),
+  commonQuestions: z4.array(z4.string()).default([]),
+  purchaseDecisionFactors: z4.array(z4.string()).default([]),
   productIntro: optionalText,
   featureNotes: optionalText,
   serviceProcess: optionalText,
@@ -4543,34 +6091,34 @@ var enterpriseProfileInput = z3.object({
   productDesc: optionalText,
   mainChannel: optionalText,
   targetCustomer: optionalText,
-  customerPains: z3.array(z3.string()).optional(),
-  competitors: z3.array(z3.string()).optional(),
-  hasCases: z3.boolean().optional(),
+  customerPains: z4.array(z4.string()).optional(),
+  competitors: z4.array(z4.string()).optional(),
+  hasCases: z4.boolean().optional(),
   oneLiner: optionalText,
-  keyPoints: z3.array(z3.string()).optional(),
-  keywords: z3.array(z3.string()).optional()
+  keyPoints: z4.array(z4.string()).optional(),
+  keywords: z4.array(z4.string()).optional()
 });
-var assetSourceBaseInput = z3.object({
-  projectId: z3.number().int().positive(),
-  sourceType: z3.enum(assetSourceTypes),
+var assetSourceBaseInput = z4.object({
+  projectId: z4.number().int().positive(),
+  sourceType: z4.enum(assetSourceTypes),
   title: nonEmptyString,
-  contentDigest: z3.string().optional().default(""),
-  trustLevel: z3.enum(assetTrustLevels).default("\u4E2D"),
-  isPublic: z3.boolean().default(false),
-  canUseForGeneration: z3.boolean().default(false),
-  manuallyConfirmed: z3.boolean().default(false)
+  contentDigest: z4.string().optional().default(""),
+  trustLevel: z4.enum(assetTrustLevels).default("\u4E2D"),
+  isPublic: z4.boolean().default(false),
+  canUseForGeneration: z4.boolean().default(false),
+  manuallyConfirmed: z4.boolean().default(false)
 });
 var assetTextInput = assetSourceBaseInput.extend({
-  inputMode: z3.enum(assetInputModes).default("\u6587\u672C\u7C98\u8D34")
+  inputMode: z4.enum(assetInputModes).default("\u6587\u672C\u7C98\u8D34")
 });
 var assetUploadInput = assetSourceBaseInput.extend({
   originalFileName: nonEmptyString,
-  mimeType: z3.string().default("text/plain"),
-  fileBase64: z3.string().min(1, "\u8BF7\u4E0A\u4F20\u6587\u4EF6\u5185\u5BB9")
+  mimeType: z4.string().default("text/plain"),
+  fileBase64: z4.string().min(1, "\u8BF7\u4E0A\u4F20\u6587\u4EF6\u5185\u5BB9")
 });
-var customerCaseInput = z3.object({
-  projectId: z3.number().int().positive(),
-  caseType: z3.enum(customerCaseTypes),
+var customerCaseInput = z4.object({
+  projectId: z4.number().int().positive(),
+  caseType: z4.enum(customerCaseTypes),
   customerName: nonEmptyString,
   customerIndustry: optionalText,
   customerBackground: optionalText,
@@ -4580,14 +6128,14 @@ var customerCaseInput = z3.object({
   executionProcess: optionalText,
   resultData: optionalText,
   customerFeedback: optionalText,
-  allowPublic: z3.boolean().default(false),
+  allowPublic: z4.boolean().default(false),
   publicVersion: optionalText,
   sensitiveNotes: optionalText,
-  sourceAssetIds: z3.array(z3.number().int().positive()).default([]),
-  verificationStatus: z3.enum(caseVerificationStatuses).default("\u5F85\u786E\u8BA4")
+  sourceAssetIds: z4.array(z4.number().int().positive()).default([]),
+  verificationStatus: z4.enum(caseVerificationStatuses).default("\u5F85\u786E\u8BA4")
 });
-var competitorInput = z3.object({
-  projectId: z3.number().int().positive(),
+var competitorInput = z4.object({
+  projectId: z4.number().int().positive(),
   competitorName: nonEmptyString,
   website: optionalUrlText,
   positioning: optionalText,
@@ -4597,57 +6145,57 @@ var competitorInput = z3.object({
   contentAssets: optionalText,
   aiRecommendationSignals: optionalText,
   comparisonNotes: optionalText,
-  sourceAssetIds: z3.array(z3.number().int().positive()).default([]),
-  canReference: z3.boolean().default(true)
+  sourceAssetIds: z4.array(z4.number().int().positive()).default([]),
+  canReference: z4.boolean().default(true)
 });
-var complianceRuleInput = z3.object({
-  projectId: z3.number().int().positive(),
+var complianceRuleInput = z4.object({
+  projectId: z4.number().int().positive(),
   ruleName: nonEmptyString,
   forbiddenClaims: optionalText,
-  forbiddenWords: z3.array(z3.string()).default([]),
+  forbiddenWords: z4.array(z4.string()).default([]),
   requiredDisclaimers: optionalText,
   dataUsageRules: optionalText,
   caseUsageRules: optionalText,
   priceUsageRules: optionalText,
   competitorMentionRules: optionalText,
-  reviewRequiredTopics: z3.array(z3.string()).default([]),
-  enabled: z3.boolean().default(true)
+  reviewRequiredTopics: z4.array(z4.string()).default([]),
+  enabled: z4.boolean().default(true)
 });
-var contentStyleInput = z3.object({
-  projectId: z3.number().int().positive(),
+var contentStyleInput = z4.object({
+  projectId: z4.number().int().positive(),
   profileName: nonEmptyString,
   tone: nonEmptyString,
   writingStyle: optionalText,
-  terminology: z3.array(z3.string()).default([]),
+  terminology: z4.array(z4.string()).default([]),
   forbiddenTone: optionalText,
-  exampleTitles: z3.array(z3.string()).default([]),
-  exampleParagraphs: z3.array(z3.string()).default([]),
+  exampleTitles: z4.array(z4.string()).default([]),
+  exampleParagraphs: z4.array(z4.string()).default([]),
   targetReader: optionalText,
   preferredLength: optionalText,
   ctaStyle: optionalText,
-  enabled: z3.boolean().default(true)
+  enabled: z4.boolean().default(true)
 });
-var publishStrategyInput = z3.object({
-  projectId: z3.number().int().positive(),
+var publishStrategyInput = z4.object({
+  projectId: z4.number().int().positive(),
   strategyName: nonEmptyString,
-  reviewMode: z3.enum(publishReviewModes).default("\u5168\u4EBA\u5DE5\u5BA1\u6838"),
-  dailyLimit: z3.number().int().positive().nullable().optional(),
-  minQualityScore: z3.number().int().min(0).max(100).default(GEO_ARTICLE_MIN_PASS_SCORE),
-  preferredPlatforms: z3.array(z3.string()).default([]),
-  bannedPlatforms: z3.array(z3.string()).default([]),
+  reviewMode: z4.enum(publishReviewModes).default("\u5168\u4EBA\u5DE5\u5BA1\u6838"),
+  dailyLimit: z4.number().int().positive().nullable().optional(),
+  minQualityScore: z4.number().int().min(0).max(100).default(GEO_ARTICLE_MIN_PASS_SCORE),
+  preferredPlatforms: z4.array(z4.string()).default([]),
+  bannedPlatforms: z4.array(z4.string()).default([]),
   platformNotes: optionalText,
-  enabled: z3.boolean().default(true)
+  enabled: z4.boolean().default(true)
 });
-var platformAuthorizationInput = z3.object({
-  projectId: z3.number().int().positive(),
+var platformAuthorizationInput = z4.object({
+  projectId: z4.number().int().positive(),
   platformName: nonEmptyString,
   accountAlias: optionalText,
-  authorizationStatus: z3.enum(platformAuthorizationStatuses).default("\u672A\u914D\u7F6E"),
-  secureCredentialRef: z3.string().optional().default(""),
+  authorizationStatus: z4.enum(platformAuthorizationStatuses).default("\u672A\u914D\u7F6E"),
+  secureCredentialRef: z4.string().optional().default(""),
   authorizationNotes: optionalText
 });
 var geoAssetRouter = router({
-  summary: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+  summary: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
     const db = await requireDb2();
     if (!input.projectId) {
       return {
@@ -4667,14 +6215,14 @@ var geoAssetRouter = router({
     }
     await getProjectOrThrow2(input.projectId);
     const [profiles, sources, cases, competitors, rules, styles, strategies, authorizations] = await Promise.all([
-      db.select().from(enterpriseGeoProfiles).where(eq4(enterpriseGeoProfiles.projectId, input.projectId)).limit(1),
-      db.select().from(geoAssetSources).where(eq4(geoAssetSources.projectId, input.projectId)).orderBy(desc3(geoAssetSources.createdAt)),
-      db.select().from(customerCases).where(eq4(customerCases.projectId, input.projectId)).orderBy(desc3(customerCases.createdAt)),
-      db.select().from(competitorProfiles).where(eq4(competitorProfiles.projectId, input.projectId)).orderBy(desc3(competitorProfiles.createdAt)),
-      db.select().from(complianceRules).where(eq4(complianceRules.projectId, input.projectId)).orderBy(desc3(complianceRules.createdAt)),
-      db.select().from(contentStyleProfiles).where(eq4(contentStyleProfiles.projectId, input.projectId)).orderBy(desc3(contentStyleProfiles.createdAt)),
-      db.select().from(publishStrategies).where(eq4(publishStrategies.projectId, input.projectId)).orderBy(desc3(publishStrategies.createdAt)),
-      db.select().from(platformAuthorizationConfigs).where(eq4(platformAuthorizationConfigs.projectId, input.projectId)).orderBy(desc3(platformAuthorizationConfigs.createdAt))
+      db.select().from(enterpriseGeoProfiles).where(eq7(enterpriseGeoProfiles.projectId, input.projectId)).limit(1),
+      db.select().from(geoAssetSources).where(eq7(geoAssetSources.projectId, input.projectId)).orderBy(desc4(geoAssetSources.createdAt)),
+      db.select().from(customerCases).where(eq7(customerCases.projectId, input.projectId)).orderBy(desc4(customerCases.createdAt)),
+      db.select().from(competitorProfiles).where(eq7(competitorProfiles.projectId, input.projectId)).orderBy(desc4(competitorProfiles.createdAt)),
+      db.select().from(complianceRules).where(eq7(complianceRules.projectId, input.projectId)).orderBy(desc4(complianceRules.createdAt)),
+      db.select().from(contentStyleProfiles).where(eq7(contentStyleProfiles.projectId, input.projectId)).orderBy(desc4(contentStyleProfiles.createdAt)),
+      db.select().from(publishStrategies).where(eq7(publishStrategies.projectId, input.projectId)).orderBy(desc4(publishStrategies.createdAt)),
+      db.select().from(platformAuthorizationConfigs).where(eq7(platformAuthorizationConfigs.projectId, input.projectId)).orderBy(desc4(platformAuthorizationConfigs.createdAt))
     ]);
     const profile = profiles[0] ?? null;
     const completionScore = profile?.completionScore ?? calculateProfileCompletionScore(profile);
@@ -4706,11 +6254,11 @@ var geoAssetRouter = router({
     const db = await requireDb2();
     await getProjectOrThrow2(input.projectId);
     const completionScore = calculateProfileCompletionScore(input);
-    const existing = await db.select().from(enterpriseGeoProfiles).where(eq4(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
+    const existing = await db.select().from(enterpriseGeoProfiles).where(eq7(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
     const raw = { ...input, completionScore };
     const values = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== void 0));
     if (existing[0]) {
-      await db.update(enterpriseGeoProfiles).set(values).where(eq4(enterpriseGeoProfiles.id, existing[0].id));
+      await db.update(enterpriseGeoProfiles).set(values).where(eq7(enterpriseGeoProfiles.id, existing[0].id));
       return { success: true, id: existing[0].id, completionScore };
     }
     const inserted = await db.insert(enterpriseGeoProfiles).values(values).$returningId();
@@ -4740,7 +6288,7 @@ var geoAssetRouter = router({
     const db = await requireDb2();
     await getProjectOrThrow2(input.projectId);
     const raw = Buffer.from(input.fileBase64, "base64");
-    if (raw.length === 0) throw new TRPCError5({ code: "BAD_REQUEST", message: "\u4E0A\u4F20\u6587\u4EF6\u4E3A\u7A7A" });
+    if (raw.length === 0) throw new TRPCError7({ code: "BAD_REQUEST", message: "\u4E0A\u4F20\u6587\u4EF6\u4E3A\u7A7A" });
     const relKey = `geo-assets/${input.projectId}/${Date.now()}-${input.originalFileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const stored = await storagePut(relKey, raw, input.mimeType);
     const digest = input.contentDigest || `\u5DF2\u4E0A\u4F20\u6587\u4EF6\uFF1A${input.originalFileName}\uFF0C\u5927\u5C0F ${raw.length} \u5B57\u8282\u3002\u6570\u636E\u5E93\u4EC5\u4FDD\u5B58\u6587\u4EF6 key\u3001URL \u4E0E\u6458\u8981\uFF0C\u4E0D\u4FDD\u5B58\u6587\u4EF6\u5B57\u8282\u3002`;
@@ -4767,7 +6315,7 @@ var geoAssetRouter = router({
     try {
       validateCustomerCaseInput(input);
     } catch (error) {
-      throw new TRPCError5({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "\u5BA2\u6237\u6848\u4F8B\u6821\u9A8C\u5931\u8D25" });
+      throw new TRPCError7({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "\u5BA2\u6237\u6848\u4F8B\u6821\u9A8C\u5931\u8D25" });
     }
     const inserted = await db.insert(customerCases).values({
       ...input,
@@ -4776,20 +6324,20 @@ var geoAssetRouter = router({
     }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 };
   }),
-  updateCustomerCase: protectedProcedure.input(customerCaseInput.extend({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+  updateCustomerCase: protectedProcedure.input(customerCaseInput.extend({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
     const db = await requireDb2();
     await getProjectOrThrow2(input.projectId);
     try {
       validateCustomerCaseInput(input);
     } catch (error) {
-      throw new TRPCError5({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "\u5BA2\u6237\u6848\u4F8B\u6821\u9A8C\u5931\u8D25" });
+      throw new TRPCError7({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "\u5BA2\u6237\u6848\u4F8B\u6821\u9A8C\u5931\u8D25" });
     }
     const { id, ...values } = input;
     await db.update(customerCases).set({
       ...values,
       allowPublic: booleanToInt(values.allowPublic),
       verificationStatus: values.caseType === "\u5F85\u8865\u5145\u6848\u4F8B\u7EBF\u7D22" ? "\u4FE1\u606F\u4E0D\u8DB3" : values.verificationStatus
-    }).where(eq4(customerCases.id, id));
+    }).where(eq7(customerCases.id, id));
     return { success: true, id };
   }),
   createCompetitor: protectedProcedure.input(competitorInput).mutation(async ({ input }) => {
@@ -4798,19 +6346,19 @@ var geoAssetRouter = router({
     const inserted = await db.insert(competitorProfiles).values({ ...input, canReference: booleanToInt(input.canReference) }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 };
   }),
-  updateCompetitor: protectedProcedure.input(competitorInput.extend({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+  updateCompetitor: protectedProcedure.input(competitorInput.extend({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
     const db = await requireDb2();
     await getProjectOrThrow2(input.projectId);
     const { id, ...values } = input;
-    await db.update(competitorProfiles).set({ ...values, canReference: booleanToInt(values.canReference) }).where(eq4(competitorProfiles.id, id));
+    await db.update(competitorProfiles).set({ ...values, canReference: booleanToInt(values.canReference) }).where(eq7(competitorProfiles.id, id));
     return { success: true, id };
   }),
   /** 合规规则 / 发布策略 / 平台授权 的客户写入入口已关闭，统一由 `server/systemConfig.ts` 与只读历史表承载。 */
   createComplianceRule: protectedProcedure.input(complianceRuleInput).mutation(() => {
-    throw new TRPCError5({ code: "FORBIDDEN", message: "\u5408\u89C4\u89C4\u5219\u5DF2\u8FC1\u79FB\u4E3A\u7CFB\u7EDF\u7EDF\u4E00\u914D\u7F6E\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
+    throw new TRPCError7({ code: "FORBIDDEN", message: "\u5408\u89C4\u89C4\u5219\u5DF2\u8FC1\u79FB\u4E3A\u7CFB\u7EDF\u7EDF\u4E00\u914D\u7F6E\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
   }),
-  updateComplianceRule: protectedProcedure.input(complianceRuleInput.extend({ id: z3.number().int().positive() })).mutation(() => {
-    throw new TRPCError5({ code: "FORBIDDEN", message: "\u5408\u89C4\u89C4\u5219\u5DF2\u8FC1\u79FB\u4E3A\u7CFB\u7EDF\u7EDF\u4E00\u914D\u7F6E\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
+  updateComplianceRule: protectedProcedure.input(complianceRuleInput.extend({ id: z4.number().int().positive() })).mutation(() => {
+    throw new TRPCError7({ code: "FORBIDDEN", message: "\u5408\u89C4\u89C4\u5219\u5DF2\u8FC1\u79FB\u4E3A\u7CFB\u7EDF\u7EDF\u4E00\u914D\u7F6E\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
   }),
   createStyleProfile: protectedProcedure.input(contentStyleInput).mutation(async ({ input }) => {
     const db = await requireDb2();
@@ -4819,23 +6367,37 @@ var geoAssetRouter = router({
     return { success: true, id: inserted[0]?.id ?? 0 };
   }),
   createPublishStrategy: protectedProcedure.input(publishStrategyInput).mutation(() => {
-    throw new TRPCError5({ code: "FORBIDDEN", message: "\u53D1\u5E03\u7B56\u7565\u5DF2\u8FC1\u79FB\u4E3A\u7CFB\u7EDF\u7EDF\u4E00\u914D\u7F6E\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
+    throw new TRPCError7({ code: "FORBIDDEN", message: "\u53D1\u5E03\u7B56\u7565\u5DF2\u8FC1\u79FB\u4E3A\u7CFB\u7EDF\u7EDF\u4E00\u914D\u7F6E\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
   }),
-  updatePublishStrategy: protectedProcedure.input(publishStrategyInput.extend({ id: z3.number().int().positive() })).mutation(() => {
-    throw new TRPCError5({ code: "FORBIDDEN", message: "\u53D1\u5E03\u7B56\u7565\u5DF2\u8FC1\u79FB\u4E3A\u7CFB\u7EDF\u7EDF\u4E00\u914D\u7F6E\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
+  updatePublishStrategy: protectedProcedure.input(publishStrategyInput.extend({ id: z4.number().int().positive() })).mutation(() => {
+    throw new TRPCError7({ code: "FORBIDDEN", message: "\u53D1\u5E03\u7B56\u7565\u5DF2\u8FC1\u79FB\u4E3A\u7CFB\u7EDF\u7EDF\u4E00\u914D\u7F6E\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
   }),
   createPlatformAuthorization: protectedProcedure.input(platformAuthorizationInput).mutation(() => {
-    throw new TRPCError5({ code: "FORBIDDEN", message: "\u7B2C\u4E09\u65B9\u5E73\u53F0\u6388\u6743\u5DF2\u4E0D\u5728\u4F01\u4E1A\u6863\u6848\u7EF4\u62A4\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
+    throw new TRPCError7({ code: "FORBIDDEN", message: "\u7B2C\u4E09\u65B9\u5E73\u53F0\u6388\u6743\u5DF2\u4E0D\u5728\u4F01\u4E1A\u6863\u6848\u7EF4\u62A4\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
   }),
-  updatePlatformAuthorization: protectedProcedure.input(platformAuthorizationInput.extend({ id: z3.number().int().positive() })).mutation(() => {
-    throw new TRPCError5({ code: "FORBIDDEN", message: "\u7B2C\u4E09\u65B9\u5E73\u53F0\u6388\u6743\u5DF2\u4E0D\u5728\u4F01\u4E1A\u6863\u6848\u7EF4\u62A4\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
+  updatePlatformAuthorization: protectedProcedure.input(platformAuthorizationInput.extend({ id: z4.number().int().positive() })).mutation(() => {
+    throw new TRPCError7({ code: "FORBIDDEN", message: "\u7B2C\u4E09\u65B9\u5E73\u53F0\u6388\u6743\u5DF2\u4E0D\u5728\u4F01\u4E1A\u6863\u6848\u7EF4\u62A4\uFF0C\u6B64\u5165\u53E3\u5DF2\u5173\u95ED\u3002" });
   }),
-  generateProfileMarketingCopy: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+  analyzeDocument: protectedProcedure.input(z4.object({
+    projectId: z4.number().int().positive(),
+    documentText: z4.string().min(20, "\u8D44\u6599\u5185\u5BB9\u8FC7\u77ED\uFF0C\u8BF7\u8865\u5145\u540E\u91CD\u8BD5").max(5e4, "\u8D44\u6599\u5185\u5BB9\u8FC7\u957F\uFF0C\u8BF7\u5206\u6BB5\u4E0A\u4F20")
+  })).mutation(async ({ input }) => {
+    const { analyzeEnterpriseProfileDocument: analyzeEnterpriseProfileDocument2 } = await Promise.resolve().then(() => (init_enterpriseProfileAnalyze(), enterpriseProfileAnalyze_exports));
+    await getProjectOrThrow2(input.projectId);
+    try {
+      const analysis = await analyzeEnterpriseProfileDocument2(input.documentText);
+      return { success: true, analysis };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "\u8D44\u6599\u89E3\u6790\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5";
+      throw new TRPCError7({ code: "BAD_REQUEST", message: msg });
+    }
+  }),
+  generateProfileMarketingCopy: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
     const db = await requireDb2();
     await getProjectOrThrow2(input.projectId);
-    const rows = await db.select().from(enterpriseGeoProfiles).where(eq4(enterpriseGeoProfiles.projectId, input.projectId)).orderBy(desc3(enterpriseGeoProfiles.updatedAt)).limit(1);
+    const rows = await db.select().from(enterpriseGeoProfiles).where(eq7(enterpriseGeoProfiles.projectId, input.projectId)).orderBy(desc4(enterpriseGeoProfiles.updatedAt)).limit(1);
     const p = rows[0];
-    if (!p) throw new TRPCError5({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u4FDD\u5B58\u4F01\u4E1A\u6863\u6848\u3002" });
+    if (!p) throw new TRPCError7({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u4FDD\u5B58\u4F01\u4E1A\u6863\u6848\u3002" });
     const brandName = String(p.brandName ?? p.enterpriseName ?? "").trim();
     const industryTag = String(p.industryTag ?? p.industry ?? "").trim();
     const productDesc = String(p.productDesc ?? p.productServiceIntro ?? p.productIntro ?? "").trim();
@@ -4851,7 +6413,7 @@ var geoAssetRouter = router({
       }
     }
     if (!brandName || !industryTag || !productDesc || !targetCustomer || pains.length === 0) {
-      throw new TRPCError5({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210\u300C\u57FA\u672C\u8EAB\u4EFD\u300D\u4E0E\u300C\u4F60\u7684\u5BA2\u6237\u300D\u5FC5\u586B\u9879\u5E76\u4FDD\u5B58\u3002" });
+      throw new TRPCError7({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210\u300C\u57FA\u672C\u8EAB\u4EFD\u300D\u4E0E\u300C\u4F60\u7684\u5BA2\u6237\u300D\u5FC5\u586B\u9879\u5E76\u4FDD\u5B58\u3002" });
     }
     const response = await invokeLLM({
       messages: [
@@ -4898,13 +6460,13 @@ var geoAssetRouter = router({
     const parsed = parseLLMJson(response.choices[0]?.message.content);
     return { oneLiner: parsed.oneLiner.trim(), keyPoints: parsed.keyPoints.map((s) => s.trim()).filter(Boolean), keywords: parsed.keywords.map((s) => s.trim()).filter(Boolean) };
   }),
-  evidencePack: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive(), assetIds: z3.array(z3.number().int().positive()).min(1) })).query(async ({ input }) => {
+  evidencePack: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive(), assetIds: z4.array(z4.number().int().positive()).min(1) })).query(async ({ input }) => {
     const db = await requireDb2();
     await getProjectOrThrow2(input.projectId);
-    const sources = await db.select().from(geoAssetSources).where(eq4(geoAssetSources.projectId, input.projectId));
+    const sources = await db.select().from(geoAssetSources).where(eq7(geoAssetSources.projectId, input.projectId));
     const selected = sources.filter((source) => input.assetIds.includes(source.id));
     if (selected.length !== input.assetIds.length) {
-      throw new TRPCError5({ code: "BAD_REQUEST", message: "\u5B58\u5728\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u8D44\u6599\u6765\u6E90" });
+      throw new TRPCError7({ code: "BAD_REQUEST", message: "\u5B58\u5728\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u8D44\u6599\u6765\u6E90" });
     }
     try {
       return buildAssetEvidencePack(selected.map((source) => ({
@@ -4918,46 +6480,65 @@ var geoAssetRouter = router({
         contentDigest: source.contentDigest
       })));
     } catch (error) {
-      throw new TRPCError5({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "\u8D44\u6599\u4E0D\u80FD\u4F5C\u4E3A\u5185\u5BB9\u4F9D\u636E" });
+      throw new TRPCError7({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "\u8D44\u6599\u4E0D\u80FD\u4F5C\u4E3A\u5185\u5BB9\u4F9D\u636E" });
     }
   })
 });
 var geoRouter = router({
   assetLibrary: geoAssetRouter,
+  publishRecords: router({
+    listWithStatus: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).query(async ({ input }) => {
+      const db = await requireDb2();
+      const records = await db.select().from(geoPublishRecords).where(eq7(geoPublishRecords.projectId, input.projectId)).orderBy(desc4(geoPublishRecords.publishedAt));
+      const monitoringRecords = await db.select({
+        publishRecordId: geoInclusionMonitoringRecords.publishRecordId,
+        id: geoInclusionMonitoringRecords.id,
+        aiMentionStatus: geoInclusionMonitoringRecords.aiMentionStatus,
+        aiRecommendStatus: geoInclusionMonitoringRecords.aiRecommendStatus,
+        inclusionStatus: geoInclusionMonitoringRecords.inclusionStatus,
+        lastAiTestedAt: geoInclusionMonitoringRecords.lastAiTestedAt
+      }).from(geoInclusionMonitoringRecords).where(eq7(geoInclusionMonitoringRecords.projectId, input.projectId));
+      const monitoringMap = new Map(monitoringRecords.map((r) => [r.publishRecordId, r]));
+      return records.map((r) => ({
+        ...r,
+        monitoring: monitoringMap.get(r.id) ?? null
+      }));
+    })
+  }),
   projects: router({
     list: protectedProcedure.query(async () => {
       const db = await requireDb2();
-      return db.select().from(projects).orderBy(desc3(projects.createdAt));
+      return db.select().from(projects).orderBy(desc4(projects.createdAt));
     }),
     create: protectedProcedure.input(projectInput).mutation(async ({ input }) => {
       const db = await requireDb2();
       await db.insert(projects).values({ ...input, status: "created" });
       return { success: true };
     }),
-    update: protectedProcedure.input(projectInput.extend({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+    update: protectedProcedure.input(projectInput.extend({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       const { id, ...values } = input;
-      await db.update(projects).set(values).where(eq4(projects.id, id));
+      await db.update(projects).set(values).where(eq7(projects.id, id));
       return { success: true };
     }),
-    delete: protectedProcedure.input(z3.object({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z4.object({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      await db.delete(reports).where(eq4(reports.projectId, input.id));
-      await db.delete(contentTemplates).where(eq4(contentTemplates.projectId, input.id));
-      await db.delete(optimizationTasks).where(eq4(optimizationTasks.projectId, input.id));
-      await db.delete(geoScores).where(eq4(geoScores.projectId, input.id));
-      await db.delete(analysisResults).where(eq4(analysisResults.projectId, input.id));
-      await db.delete(aiResponses).where(eq4(aiResponses.projectId, input.id));
-      await db.delete(questions).where(eq4(questions.projectId, input.id));
-      await db.delete(projects).where(eq4(projects.id, input.id));
+      await db.delete(reports).where(eq7(reports.projectId, input.id));
+      await db.delete(contentTemplates).where(eq7(contentTemplates.projectId, input.id));
+      await db.delete(optimizationTasks).where(eq7(optimizationTasks.projectId, input.id));
+      await db.delete(geoScores).where(eq7(geoScores.projectId, input.id));
+      await db.delete(analysisResults).where(eq7(analysisResults.projectId, input.id));
+      await db.delete(aiResponses).where(eq7(aiResponses.projectId, input.id));
+      await db.delete(questions).where(eq7(questions.projectId, input.id));
+      await db.delete(projects).where(eq7(projects.id, input.id));
       return { success: true };
     })
   }),
   questions: router({
-    list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      return db.select().from(questions).where(eq4(questions.projectId, input.projectId)).orderBy(desc3(questions.createdAt));
+      return db.select().from(questions).where(eq7(questions.projectId, input.projectId)).orderBy(desc4(questions.createdAt));
     }),
     create: protectedProcedure.input(questionInput).mutation(async ({ input }) => {
       const db = await requireDb2();
@@ -4965,39 +6546,47 @@ var geoRouter = router({
       await updateProjectStatus(input.projectId, "questions_ready");
       return { success: true };
     }),
-    update: protectedProcedure.input(questionInput.extend({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+    update: protectedProcedure.input(questionInput.extend({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       const { id, ...values } = input;
-      await db.update(questions).set({ ...values, targetKeyword: values.targetKeyword?.trim() || null, intentLevel: values.intentLevel ?? "\u9AD8", businessValue: values.businessValue ?? 5, source: values.source ?? "manual", enabled: values.enabled ? 1 : 0 }).where(eq4(questions.id, id));
+      await db.update(questions).set({ ...values, targetKeyword: values.targetKeyword?.trim() || null, intentLevel: values.intentLevel ?? "\u9AD8", businessValue: values.businessValue ?? 5, source: values.source ?? "manual", enabled: values.enabled ? 1 : 0 }).where(eq7(questions.id, id));
       return { success: true };
     }),
-    toggle: protectedProcedure.input(z3.object({ id: z3.number().int().positive(), enabled: z3.boolean() })).mutation(async ({ input }) => {
+    toggle: protectedProcedure.input(z4.object({ id: z4.number().int().positive(), enabled: z4.boolean() })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      await db.update(questions).set({ enabled: input.enabled ? 1 : 0 }).where(eq4(questions.id, input.id));
+      await db.update(questions).set({ enabled: input.enabled ? 1 : 0 }).where(eq7(questions.id, input.id));
       return { success: true };
     }),
-    delete: protectedProcedure.input(z3.object({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z4.object({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      await db.delete(questions).where(eq4(questions.id, input.id));
+      await db.delete(questions).where(eq7(questions.id, input.id));
       return { success: true };
     }),
-    batchAddSpecified: protectedProcedure.input(z3.object({
-      projectId: z3.number().int().positive(),
-      questions: z3.array(z3.string().min(1)).min(1)
+    batchAddSpecified: protectedProcedure.input(z4.object({
+      projectId: z4.number().int().positive(),
+      questions: z4.array(z4.string().min(1)).min(1)
     })).mutation(async ({ input }) => {
       return insertSpecifiedQuestions(input.projectId, input.questions.map((questionText) => ({ questionText })), "manual");
     }),
-    importSpecifiedCsvRows: protectedProcedure.input(z3.object({
-      projectId: z3.number().int().positive(),
-      rows: z3.array(manualQuestionImportRow).min(1)
+    importSpecifiedCsvRows: protectedProcedure.input(z4.object({
+      projectId: z4.number().int().positive(),
+      rows: z4.array(manualQuestionImportRow).min(1)
     })).mutation(async ({ input }) => {
       return insertSpecifiedQuestions(input.projectId, input.rows, "csv");
     }),
     /** 基于企业档案生成 5–10 条 AI 检索型目标问题，写入 questions（覆盖同项目历史 ai_generated 行）。 */
-    generateTargetQuestions: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    generateTargetQuestions: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       const project = await getProjectOrThrow2(input.projectId);
-      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq4(enterpriseGeoProfiles.projectId, input.projectId)).orderBy(desc3(enterpriseGeoProfiles.updatedAt)).limit(1);
+      const existingRows = await db.select({ questionText: questions.questionText }).from(questions).where(
+        and3(
+          eq7(questions.projectId, input.projectId),
+          eq7(questions.questionType, "\u6307\u5B9A\u95EE\u9898"),
+          eq7(questions.enabled, 1)
+        )
+      );
+      const excludeQuestions = existingRows.map((r) => (r.questionText ?? "").trim()).filter((t2) => t2.length > 0);
+      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq7(enterpriseGeoProfiles.projectId, input.projectId)).orderBy(desc4(enterpriseGeoProfiles.updatedAt)).limit(1);
       const ep = profileRows[0];
       const resolved = resolveEnterpriseProfileForContent(ep ?? null);
       const painFromProfile = ep?.customerPains?.filter((x) => typeof x === "string" && x.trim().length > 0).map((x) => x.trim());
@@ -5006,16 +6595,18 @@ var geoRouter = router({
       const competitors = compArr.length > 0 ? compArr.join("\u3001") : project.competitorNames.join("\u3001") || "\uFF08\u672A\u586B\uFF09";
       const keyPointsFromEp = ep?.keyPoints?.filter((x) => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).join("\uFF1B");
       const keyPointsStr = keyPointsFromEp && keyPointsFromEp.length > 0 ? keyPointsFromEp : resolved.keyPoints.join("\uFF1B") || project.coreSellingPoints;
-      const generated = await generateTargetQuestions({
+      const generatedPack = await generateTargetQuestions({
         brandName: (ep?.brandName?.trim() || resolved.brandName || project.enterpriseName).trim(),
         industryTag: (ep?.industryTag?.trim() || project.industry).trim(),
         productDesc: (ep?.productDesc?.trim() || resolved.productDesc || project.productIntro).trim(),
         targetCustomer: (ep?.targetCustomer?.trim() || resolved.targetCustomer || project.targetCustomers).trim(),
         customerPains,
         competitors,
-        keyPoints: keyPointsStr
+        keyPoints: keyPointsStr,
+        excludeQuestions
       });
-      await db.delete(questions).where(and2(eq4(questions.projectId, input.projectId), eq4(questions.source, "ai_generated")));
+      const generated = generatedPack.rows;
+      await db.delete(questions).where(and3(eq7(questions.projectId, input.projectId), eq7(questions.source, "ai_generated")));
       await db.insert(questions).values(
         generated.map((item) => ({
           projectId: input.projectId,
@@ -5029,9 +6620,15 @@ var geoRouter = router({
         }))
       );
       await updateProjectStatus(input.projectId, "questions_ready");
-      return { success: true, count: generated.length };
+      return {
+        success: true,
+        count: generated.length,
+        newCount: generated.length,
+        filteredCount: generatedPack.filteredCount,
+        hadPreviousQuestions: excludeQuestions.length > 0
+      };
     }),
-    generate: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       const project = await getProjectOrThrow2(input.projectId);
       const response = await invokeLLM({
@@ -5083,7 +6680,7 @@ var geoRouter = router({
       });
       const parsed = parseLLMJson(response.choices[0]?.message.content);
       if (parsed.questions.length !== 50) {
-        throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message: "AI \u672A\u8FD4\u56DE 50 \u4E2A\u95EE\u9898\uFF0C\u8BF7\u91CD\u65B0\u751F\u6210" });
+        throw new TRPCError7({ code: "INTERNAL_SERVER_ERROR", message: "AI \u672A\u8FD4\u56DE 50 \u4E2A\u95EE\u9898\uFF0C\u8BF7\u91CD\u65B0\u751F\u6210" });
       }
       await db.insert(questions).values(parsed.questions.map((item) => ({ ...item, projectId: input.projectId, targetKeyword: null, intentLevel: "\u4E2D", businessValue: 3, source: "ai_generated", enabled: 1 })));
       await updateProjectStatus(input.projectId, "questions_ready");
@@ -5091,10 +6688,10 @@ var geoRouter = router({
     })
   }),
   aiResponses: router({
-    list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      return db.select().from(aiResponses).where(eq4(aiResponses.projectId, input.projectId)).orderBy(desc3(aiResponses.createdAt));
+      return db.select().from(aiResponses).where(eq7(aiResponses.projectId, input.projectId)).orderBy(desc4(aiResponses.createdAt));
     }),
     create: protectedProcedure.input(aiResponseInput).mutation(async ({ input }) => {
       const db = await requireDb2();
@@ -5103,7 +6700,7 @@ var geoRouter = router({
       await updateProjectStatus(input.projectId, "responses_imported");
       return { success: true };
     }),
-    importCsvRows: protectedProcedure.input(z3.object({ rows: z3.array(aiResponseInput).min(1) })).mutation(async ({ input }) => {
+    importCsvRows: protectedProcedure.input(z4.object({ rows: z4.array(aiResponseInput).min(1) })).mutation(async ({ input }) => {
       const db = await requireDb2();
       await db.insert(aiResponses).values(input.rows.map((row) => ({ ...row, questionId: row.questionId ?? null, checkedAt: new Date(row.checkedAt) })));
       await syncManualQuestionsFromAiResponseImport(
@@ -5114,41 +6711,41 @@ var geoRouter = router({
       await Promise.all(projectIds.map((projectId) => updateProjectStatus(projectId, "responses_imported")));
       return { success: true, count: input.rows.length };
     }),
-    delete: protectedProcedure.input(z3.object({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z4.object({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      await db.delete(analysisResults).where(eq4(analysisResults.aiResponseId, input.id));
-      await db.delete(aiResponses).where(eq4(aiResponses.id, input.id));
+      await db.delete(analysisResults).where(eq7(analysisResults.aiResponseId, input.id));
+      await db.delete(aiResponses).where(eq7(aiResponses.id, input.id));
       return { success: true };
     })
   }),
   analysis: router({
-    list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      const rows = await db.select().from(analysisResults).where(eq4(analysisResults.projectId, input.projectId)).orderBy(desc3(analysisResults.createdAt));
+      const rows = await db.select().from(analysisResults).where(eq7(analysisResults.projectId, input.projectId)).orderBy(desc4(analysisResults.createdAt));
       const [responseRows, questionRows] = await Promise.all([
-        db.select({ id: aiResponses.id, questionId: aiResponses.questionId, questionText: aiResponses.questionText }).from(aiResponses).where(eq4(aiResponses.projectId, input.projectId)),
-        db.select({ id: questions.id, questionText: questions.questionText }).from(questions).where(eq4(questions.projectId, input.projectId))
+        db.select({ id: aiResponses.id, questionId: aiResponses.questionId, questionText: aiResponses.questionText }).from(aiResponses).where(eq7(aiResponses.projectId, input.projectId)),
+        db.select({ id: questions.id, questionText: questions.questionText }).from(questions).where(eq7(questions.projectId, input.projectId))
       ]);
       return attachQuestionTextToAnalyses(rows.map(resolveEffectiveAnalysisResult), responseRows, questionRows);
     }),
-    run: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    run: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       const project = await getProjectOrThrow2(input.projectId);
-      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq4(enterpriseGeoProfiles.projectId, input.projectId)).orderBy(desc3(enterpriseGeoProfiles.updatedAt)).limit(1);
+      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq7(enterpriseGeoProfiles.projectId, input.projectId)).orderBy(desc4(enterpriseGeoProfiles.updatedAt)).limit(1);
       const profileRow = profileRows[0];
       const enterpriseInfo = buildEnterpriseInfoBlockForDiagnosis(project, profileRow);
-      const qrows = await db.select().from(questions).where(eq4(questions.projectId, input.projectId));
+      const qrows = await db.select().from(questions).where(eq7(questions.projectId, input.projectId));
       const diagnosisQuestions = qrows.filter((q) => q.enabled === 1 && q.questionType === "\u6307\u5B9A\u95EE\u9898").sort((a, b) => (b.businessValue ?? 0) - (a.businessValue ?? 0)).slice(0, 10);
       if (diagnosisQuestions.length === 0) {
-        throw new TRPCError5({
+        throw new TRPCError7({
           code: "BAD_REQUEST",
           message: "\u8BF7\u5148\u5728 AI \u8BCA\u65AD\u9875\u70B9\u51FB\u300C\u91CD\u65B0\u751F\u6210\u300D\uFF0C\u6216\u6DFB\u52A0\u300C\u6307\u5B9A\u95EE\u9898\u300D\u7C7B\u578B\u95EE\u9898\uFF0C\u518D\u8FD0\u884C\u8BCA\u65AD\u3002"
         });
       }
-      await db.delete(analysisResults).where(eq4(analysisResults.projectId, input.projectId));
+      await db.delete(analysisResults).where(eq7(analysisResults.projectId, input.projectId));
       await db.delete(aiResponses).where(
-        and2(eq4(aiResponses.projectId, input.projectId), like(aiResponses.rawAnswer, `${GEO_SYNTHETIC_AI_RESPONSE_PREFIX}%`))
+        and3(eq7(aiResponses.projectId, input.projectId), like(aiResponses.rawAnswer, `${GEO_SYNTHETIC_AI_RESPONSE_PREFIX}%`))
       );
       const diagnosisSystemPrompt = `\u4F60\u662F\u4E00\u4F4DGEO\u5185\u5BB9\u7B56\u7565\u4E13\u5BB6\uFF0C\u4E13\u6CE8\u4E8E\u5206\u6790\u4F01\u4E1A\u5185\u5BB9\u5982\u4F55\u66F4\u597D\u5730\u56DE\u7B54\u76EE\u6807\u5BA2\u6237\u7684\u771F\u5B9E\u95EE\u9898\u3002
 \u4F60\u7684\u4EFB\u52A1\u662F\u63A8\u6F14\uFF1A\u5F53\u7528\u6237\u5728ChatGPT\u3001Perplexity\u7B49AI\u5DE5\u5177\u4E2D\u8F93\u5165\u8FD9\u4E2A\u95EE\u9898\u65F6\uFF0C\u8BE5\u4F01\u4E1A\u73B0\u6709\u7684\u5185\u5BB9\u80FD\u5426\u88ABAI\u5F15\u7528\u6765\u56DE\u7B54\u8FD9\u4E2A\u95EE\u9898\u3002
@@ -5181,7 +6778,7 @@ var geoRouter = router({
           checkedAt: /* @__PURE__ */ new Date()
         }).$returningId();
         const responseId = inserted[0]?.id ?? 0;
-        if (!responseId) throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message: "\u5199\u5165\u8BCA\u65AD\u5360\u4F4D\u8BB0\u5F55\u5931\u8D25" });
+        if (!responseId) throw new TRPCError7({ code: "INTERNAL_SERVER_ERROR", message: "\u5199\u5165\u8BCA\u65AD\u5360\u4F4D\u8BB0\u5F55\u5931\u8D25" });
         const { intent: questionIntent, disadvantaged: questionDisadvantaged } = parseQuestionGeoMeta(q.targetKeyword);
         const disadvantagedLabel = questionDisadvantaged ? "\u662F" : "\u5426";
         const intentLabel = questionIntent || "\uFF08\u672A\u6807\u6CE8\uFF0C\u8BF7\u7ED3\u5408\u95EE\u9898\u6587\u672C\u63A8\u65AD\uFF09";
@@ -5363,25 +6960,25 @@ var geoRouter = router({
         manuallyReviewed: 1,
         reviewedAt: /* @__PURE__ */ new Date(),
         reviewNote: input.reviewNote?.trim() || null
-      }).where(eq4(analysisResults.id, input.id));
+      }).where(eq7(analysisResults.id, input.id));
       return { success: true };
     }),
-    undoManualReview: protectedProcedure.input(z3.object({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+    undoManualReview: protectedProcedure.input(z4.object({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       await db.update(analysisResults).set({
         manualOverrideJson: null,
         manuallyReviewed: 0,
         reviewedAt: null,
         reviewNote: null
-      }).where(eq4(analysisResults.id, input.id));
+      }).where(eq7(analysisResults.id, input.id));
       return { success: true };
     })
   }),
   scores: router({
-    latest: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    latest: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return null;
-      const candidates = await db.select().from(geoScores).where(eq4(geoScores.projectId, input.projectId)).orderBy(desc3(geoScores.createdAt), desc3(geoScores.id)).limit(3);
+      const candidates = await db.select().from(geoScores).where(eq7(geoScores.projectId, input.projectId)).orderBy(desc4(geoScores.createdAt), desc4(geoScores.id)).limit(3);
       const row = candidates[0] ?? null;
       const mismatched = candidates.filter((r) => r.projectId !== input.projectId);
       if (mismatched.length > 0) {
@@ -5407,7 +7004,7 @@ var geoRouter = router({
       });
       return row;
     }),
-    list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
       return db.select({
@@ -5416,45 +7013,45 @@ var geoRouter = router({
         aiVisibilityScore: geoScores.aiVisibilityScore,
         aiRecommendationScore: geoScores.aiRecommendationScore,
         createdAt: geoScores.createdAt
-      }).from(geoScores).where(eq4(geoScores.projectId, input.projectId)).orderBy(asc(geoScores.createdAt));
+      }).from(geoScores).where(eq7(geoScores.projectId, input.projectId)).orderBy(asc(geoScores.createdAt));
     }),
-    calculate: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    calculate: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      const analyses = await db.select().from(analysisResults).where(eq4(analysisResults.projectId, input.projectId));
+      const analyses = await db.select().from(analysisResults).where(eq7(analysisResults.projectId, input.projectId));
       if (analyses.length === 0) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210 AI \u8BED\u4E49\u5206\u6790\uFF0C\u518D\u8BA1\u7B97 GEO \u8BC4\u5206" });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210 AI \u8BED\u4E49\u5206\u6790\uFF0C\u518D\u8BA1\u7B97 GEO \u8BC4\u5206" });
       }
       const score = calculateGeoScore(resolveEffectiveAnalysisResults(analyses));
-      await db.delete(geoScores).where(eq4(geoScores.projectId, input.projectId));
+      await db.delete(geoScores).where(eq7(geoScores.projectId, input.projectId));
       await db.insert(geoScores).values({ projectId: input.projectId, ...score });
       await updateProjectStatus(input.projectId, "score_done");
       return { success: true, score };
     })
   }),
   tasks: router({
-    list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      return db.select().from(optimizationTasks).where(eq4(optimizationTasks.projectId, input.projectId)).orderBy(desc3(optimizationTasks.createdAt));
+      return db.select().from(optimizationTasks).where(eq7(optimizationTasks.projectId, input.projectId)).orderBy(desc4(optimizationTasks.createdAt));
     }),
-    generate: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       const project = await getProjectOrThrow2(input.projectId);
-      const analyses = await db.select().from(analysisResults).where(eq4(analysisResults.projectId, input.projectId));
+      const analyses = await db.select().from(analysisResults).where(eq7(analysisResults.projectId, input.projectId));
       if (analyses.length === 0) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210 AI \u8BED\u4E49\u5206\u6790\uFF0C\u518D\u751F\u6210\u4F18\u5316\u4EFB\u52A1" });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210 AI \u8BED\u4E49\u5206\u6790\uFF0C\u518D\u751F\u6210\u4F18\u5316\u4EFB\u52A1" });
       }
       const generated = await generateOptimizationTasks(project, resolveEffectiveAnalysisResults(analyses));
-      await db.delete(optimizationTasks).where(eq4(optimizationTasks.projectId, input.projectId));
+      await db.delete(optimizationTasks).where(eq7(optimizationTasks.projectId, input.projectId));
       await db.insert(optimizationTasks).values(generated.map((task) => ({ ...task, projectId: input.projectId })));
       await updateProjectStatus(input.projectId, "tasks_ready");
       return { success: true, count: generated.length };
     }),
-    updateStatus: protectedProcedure.input(z3.object({
-      id: z3.number().int().positive(),
-      status: z3.enum(taskStatuses),
-      publishedUrl: z3.string().optional().nullable(),
-      needRetest: z3.boolean().optional().default(false)
+    updateStatus: protectedProcedure.input(z4.object({
+      id: z4.number().int().positive(),
+      status: z4.enum(taskStatuses),
+      publishedUrl: z4.string().optional().nullable(),
+      needRetest: z4.boolean().optional().default(false)
     })).mutation(async ({ input }) => {
       const db = await requireDb2();
       await db.update(optimizationTasks).set({
@@ -5462,52 +7059,52 @@ var geoRouter = router({
         publishedUrl: input.status === "done" ? input.publishedUrl ?? null : null,
         needRetest: input.status === "done" && input.needRetest ? 1 : 0,
         completedAt: input.status === "done" ? /* @__PURE__ */ new Date() : null
-      }).where(eq4(optimizationTasks.id, input.id));
+      }).where(eq7(optimizationTasks.id, input.id));
       return { success: true };
     })
   }),
   templates: router({
-    list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      return db.select().from(contentTemplates).where(eq4(contentTemplates.projectId, input.projectId)).orderBy(desc3(contentTemplates.createdAt));
+      return db.select().from(contentTemplates).where(eq7(contentTemplates.projectId, input.projectId)).orderBy(desc4(contentTemplates.createdAt));
     }),
-    generate: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       const project = await getProjectOrThrow2(input.projectId);
-      const tasks = await db.select().from(optimizationTasks).where(eq4(optimizationTasks.projectId, input.projectId));
+      const tasks = await db.select().from(optimizationTasks).where(eq7(optimizationTasks.projectId, input.projectId));
       if (tasks.length === 0) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u751F\u6210\u4F18\u5316\u4EFB\u52A1\uFF0C\u518D\u751F\u6210\u5185\u5BB9\u6A21\u677F" });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u751F\u6210\u4F18\u5316\u4EFB\u52A1\uFF0C\u518D\u751F\u6210\u5185\u5BB9\u6A21\u677F" });
       }
       const generated = generateContentTemplates(project, tasks.map((task) => ({ id: task.id, taskType: task.taskType, taskName: task.taskName, generationReason: task.generationReason, executionSuggestion: task.executionSuggestion })));
-      await db.delete(contentTemplates).where(eq4(contentTemplates.projectId, input.projectId));
+      await db.delete(contentTemplates).where(eq7(contentTemplates.projectId, input.projectId));
       await db.insert(contentTemplates).values(generated.map((item) => ({ ...item, projectId: input.projectId, templateType: item.templateType })));
       await updateProjectStatus(input.projectId, "report_ready");
       return { success: true, count: generated.length };
     })
   }),
   reports: router({
-    latest: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    latest: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return null;
-      const result = await db.select().from(reports).where(eq4(reports.projectId, input.projectId)).orderBy(desc3(reports.createdAt)).limit(1);
+      const result = await db.select().from(reports).where(eq7(reports.projectId, input.projectId)).orderBy(desc4(reports.createdAt)).limit(1);
       return result[0] ?? null;
     }),
-    generate: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       const project = await getProjectOrThrow2(input.projectId);
-      const analyses = await db.select().from(analysisResults).where(eq4(analysisResults.projectId, input.projectId));
+      const analyses = await db.select().from(analysisResults).where(eq7(analysisResults.projectId, input.projectId));
       const effectiveAnalyses = resolveEffectiveAnalysisResults(analyses);
       if (analyses.length === 0) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210 AI \u8BED\u4E49\u5206\u6790\uFF0C\u518D\u751F\u6210\u8BCA\u65AD\u62A5\u544A" });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210 AI \u8BED\u4E49\u5206\u6790\uFF0C\u518D\u751F\u6210\u8BCA\u65AD\u62A5\u544A" });
       }
       const rawScore = calculateGeoScore(analyses);
-      const latestScore = await db.select().from(geoScores).where(eq4(geoScores.projectId, input.projectId)).orderBy(desc3(geoScores.createdAt)).limit(1);
+      const latestScore = await db.select().from(geoScores).where(eq7(geoScores.projectId, input.projectId)).orderBy(desc4(geoScores.createdAt)).limit(1);
       if (!latestScore[0]) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u8BA1\u7B97 GEO \u8BC4\u5206\uFF0C\u518D\u751F\u6210\u8BCA\u65AD\u62A5\u544A" });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u8BA1\u7B97 GEO \u8BC4\u5206\uFF0C\u518D\u751F\u6210\u8BCA\u65AD\u62A5\u544A" });
       }
-      const responses = await db.select().from(aiResponses).where(eq4(aiResponses.projectId, input.projectId));
-      const projectQuestions = await db.select().from(questions).where(eq4(questions.projectId, input.projectId));
+      const responses = await db.select().from(aiResponses).where(eq7(aiResponses.projectId, input.projectId));
+      const projectQuestions = await db.select().from(questions).where(eq7(questions.projectId, input.projectId));
       const questionStats = {
         totalQuestions: projectQuestions.length,
         aiGeneratedQuestions: projectQuestions.filter((question) => question.source === "ai_generated").length,
@@ -5523,20 +7120,55 @@ var geoRouter = router({
         totalScore: latestScore[0].totalScore,
         visibilityLevel: latestScore[0].visibilityLevel
       }, analysesWithQuestions, questionStats, rawScore);
-      await db.delete(reports).where(eq4(reports.projectId, input.projectId));
+      await db.delete(reports).where(eq7(reports.projectId, input.projectId));
       await db.insert(reports).values({ projectId: input.projectId, geoScoreId: latestScore[0].id, ...report });
       await updateProjectStatus(input.projectId, "report_ready");
       return { success: true, report };
+    }),
+    createShareLink: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb2();
+      await getProjectOrThrow2(input.projectId);
+      const shareToken = await getOrCreateShareTokenForProject(db, input.projectId);
+      const sharePath = buildDeliveryReportPublicPath(shareToken);
+      return { sharePath, shareToken };
+    }),
+    disableShareLink: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb2();
+      await getProjectOrThrow2(input.projectId);
+      const result = await disableEnabledShareTokensForProject(db, input.projectId);
+      return { success: true, disabled: result.disabled, count: result.count };
+    }),
+    regenerateShareLink: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb2();
+      await getProjectOrThrow2(input.projectId);
+      const shareToken = await regenerateShareLinkForProject(db, input.projectId);
+      const sharePath = buildDeliveryReportPublicPath(shareToken);
+      return { success: true, sharePath };
+    }),
+    publicShare: publicProcedure.input(z4.object({ token: z4.string().min(16).max(64) })).query(async ({ input }) => {
+      const db = await requireDb2();
+      const projectId = await resolveShareTokenProjectId(db, input.token);
+      return buildDeliveryReportPublicSharePayload(db, projectId);
+    }),
+    publicEvidence: publicProcedure.input(
+      z4.object({
+        token: z4.string().min(16).max(64),
+        recordId: z4.number().int().positive(),
+        resultIndex: z4.number().int().min(0)
+      })
+    ).query(async ({ input }) => {
+      const db = await requireDb2();
+      return buildDeliveryReportPublicEvidencePayload(db, input.token, input.recordId, input.resultIndex);
     })
   }),
   contentPlans: router({
-    list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
       await getProjectOrThrow2(input.projectId);
-      return db.select().from(contentPlans).where(eq4(contentPlans.projectId, input.projectId)).orderBy(desc3(contentPlans.createdAt));
+      return db.select().from(contentPlans).where(eq7(contentPlans.projectId, input.projectId)).orderBy(desc4(contentPlans.createdAt));
     }),
-    latest: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    latest: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) {
         return {
@@ -5552,7 +7184,7 @@ var geoRouter = router({
         };
       }
       await getProjectOrThrow2(input.projectId);
-      const plans = await db.select().from(contentPlans).where(eq4(contentPlans.projectId, input.projectId)).orderBy(desc3(contentPlans.createdAt)).limit(1);
+      const plans = await db.select().from(contentPlans).where(eq7(contentPlans.projectId, input.projectId)).orderBy(desc4(contentPlans.createdAt)).limit(1);
       const plan = plans[0] ?? null;
       if (!plan) {
         return {
@@ -5567,7 +7199,7 @@ var geoRouter = router({
           linkedOptimizationTaskIds: []
         };
       }
-      const items = await db.select().from(contentPlanItems).where(eq4(contentPlanItems.planId, plan.id)).orderBy(desc3(contentPlanItems.createdAt));
+      const items = await db.select().from(contentPlanItems).where(eq7(contentPlanItems.planId, plan.id)).orderBy(desc4(contentPlanItems.createdAt));
       return {
         plan,
         items,
@@ -5583,11 +7215,11 @@ var geoRouter = router({
     upsert: protectedProcedure.input(contentPlanInput).mutation(async ({ input }) => {
       const db = await requireDb2();
       await getProjectOrThrow2(input.projectId);
-      const selectedTasks = await db.select().from(optimizationTasks).where(eq4(optimizationTasks.projectId, input.projectId));
+      const selectedTasks = await db.select().from(optimizationTasks).where(eq7(optimizationTasks.projectId, input.projectId));
       const validTaskIds = new Set(selectedTasks.map((task) => task.id));
       const linkedOptimizationTaskIds = input.linkedOptimizationTaskIds.filter((taskId) => validTaskIds.has(taskId));
       if (linkedOptimizationTaskIds.length === 0) {
-        throw new TRPCError5({
+        throw new TRPCError7({
           code: "BAD_REQUEST",
           message: "\u8BF7\u81F3\u5C11\u7ED1\u5B9A\u4E00\u4E2A\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u4F18\u5316\u4EFB\u52A1\uFF08\u5DF2\u81EA\u52A8\u5FFD\u7565\u65E0\u6548\u6216\u8DE8\u9879\u76EE\u7684\u4EFB\u52A1 ID\uFF09\u3002"
         });
@@ -5603,11 +7235,11 @@ var geoRouter = router({
         status: input.status
       };
       if (input.id) {
-        const existing = await db.select().from(contentPlans).where(eq4(contentPlans.id, input.id)).limit(1);
+        const existing = await db.select().from(contentPlans).where(eq7(contentPlans.id, input.id)).limit(1);
         if (!existing[0] || existing[0].projectId !== input.projectId) {
-          throw new TRPCError5({ code: "NOT_FOUND", message: "\u5185\u5BB9\u751F\u4EA7\u8BA1\u5212\u4E0D\u5B58\u5728\u6216\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE" });
+          throw new TRPCError7({ code: "NOT_FOUND", message: "\u5185\u5BB9\u751F\u4EA7\u8BA1\u5212\u4E0D\u5B58\u5728\u6216\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE" });
         }
-        await db.update(contentPlans).set(values).where(eq4(contentPlans.id, input.id));
+        await db.update(contentPlans).set(values).where(eq7(contentPlans.id, input.id));
         return { success: true, planId: input.id };
       }
       const inserted = await db.insert(contentPlans).values(values).$returningId();
@@ -5616,18 +7248,18 @@ var geoRouter = router({
     addItem: protectedProcedure.input(contentPlanItemInput).mutation(async ({ input }) => {
       const db = await requireDb2();
       await getProjectOrThrow2(input.projectId);
-      const planRows = await db.select().from(contentPlans).where(eq4(contentPlans.id, input.planId)).limit(1);
+      const planRows = await db.select().from(contentPlans).where(eq7(contentPlans.id, input.planId)).limit(1);
       const plan = planRows[0];
       if (!plan || plan.projectId !== input.projectId) {
-        throw new TRPCError5({ code: "NOT_FOUND", message: "\u5185\u5BB9\u751F\u4EA7\u8BA1\u5212\u4E0D\u5B58\u5728\u6216\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE" });
+        throw new TRPCError7({ code: "NOT_FOUND", message: "\u5185\u5BB9\u751F\u4EA7\u8BA1\u5212\u4E0D\u5B58\u5728\u6216\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE" });
       }
       if (input.topicId) {
-        const topicRows = await db.select().from(geoArticleTopics).where(eq4(geoArticleTopics.id, input.topicId)).limit(1);
-        if (!topicRows[0] || topicRows[0].projectId !== input.projectId) throw new TRPCError5({ code: "BAD_REQUEST", message: "\u5185\u5BB9\u9009\u9898\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE" });
+        const topicRows = await db.select().from(geoArticleTopics).where(eq7(geoArticleTopics.id, input.topicId)).limit(1);
+        if (!topicRows[0] || topicRows[0].projectId !== input.projectId) throw new TRPCError7({ code: "BAD_REQUEST", message: "\u5185\u5BB9\u9009\u9898\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE" });
       }
       if (input.articleId) {
-        const articleRows = await db.select().from(geoArticles).where(eq4(geoArticles.id, input.articleId)).limit(1);
-        if (!articleRows[0] || articleRows[0].projectId !== input.projectId) throw new TRPCError5({ code: "BAD_REQUEST", message: "\u6587\u7AE0\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE" });
+        const articleRows = await db.select().from(geoArticles).where(eq7(geoArticles.id, input.articleId)).limit(1);
+        if (!articleRows[0] || articleRows[0].projectId !== input.projectId) throw new TRPCError7({ code: "BAD_REQUEST", message: "\u6587\u7AE0\u4E0D\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE" });
       }
       const inserted = await db.insert(contentPlanItems).values({
         planId: input.planId,
@@ -5644,17 +7276,25 @@ var geoRouter = router({
   }),
   articles: router({
     topics: router({
-      list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+      list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
         const db = await requireDb2();
         if (!input.projectId) return [];
-        return db.select().from(geoArticleTopics).where(eq4(geoArticleTopics.projectId, input.projectId)).orderBy(desc3(geoArticleTopics.createdAt));
+        return db.select().from(geoArticleTopics).where(eq7(geoArticleTopics.projectId, input.projectId)).orderBy(desc4(geoArticleTopics.createdAt));
       }),
-      generate: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive() })).mutation(async ({ input }) => {
+      generate: protectedProcedure.input(z4.object({
+        projectId: z4.number().int().positive(),
+        generationCount: z4.number().int().min(1).max(50).optional()
+      })).mutation(async ({ input }) => {
         const db = await requireDb2();
         const project = await getProjectOrThrow2(input.projectId);
-        const tasks = await db.select().from(optimizationTasks).where(eq4(optimizationTasks.projectId, input.projectId));
+        const tasks = await db.select().from(optimizationTasks).where(eq7(optimizationTasks.projectId, input.projectId));
+        if (tasks.length === 0) {
+          throw new TRPCError7({ code: "BAD_REQUEST", message: "\u8BF7\u5148\u5B8C\u6210\u5185\u5BB9\u8BCA\u65AD\u5E76\u751F\u6210\u4F18\u5316\u4EFB\u52A1\uFF0C\u518D\u51C6\u5907\u672C\u5468\u5185\u5BB9\u3002" });
+        }
+        const generationCount = input.generationCount ?? 7;
         const generated = generateGeoArticleTopics({
           project,
+          targetCount: generationCount,
           tasks: tasks.map((t2) => ({
             id: t2.id,
             taskType: t2.taskType,
@@ -5666,18 +7306,18 @@ var geoRouter = router({
             status: t2.status
           }))
         });
-        await db.delete(geoArticleTopics).where(eq4(geoArticleTopics.projectId, input.projectId));
+        await db.delete(geoArticleTopics).where(eq7(geoArticleTopics.projectId, input.projectId));
         await db.insert(geoArticleTopics).values(generated.map((topic) => ({ ...topic, articleType: topic.articleType, status: topic.status })));
         return { success: true, count: generated.length, topics: generated };
       })
     }),
-    list: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      const rows = await db.select().from(geoArticles).where(and2(eq4(geoArticles.projectId, input.projectId), not(like(geoArticles.title, "%\u5982\u4F55\u56DE\u7B54%")))).orderBy(desc3(geoArticles.createdAt));
+      const rows = await db.select().from(geoArticles).where(and3(eq7(geoArticles.projectId, input.projectId), not(like(geoArticles.title, "%\u5982\u4F55\u56DE\u7B54%")))).orderBy(desc4(geoArticles.createdAt));
       const uniqueRows = Array.from(new Map(rows.map((r) => [r.id, r])).values());
       const taskIds = Array.from(new Set(uniqueRows.map((row) => row.optimizationTaskId).filter((id) => typeof id === "number" && id > 0)));
-      const tasks = taskIds.length ? await db.select().from(optimizationTasks).where(and2(eq4(optimizationTasks.projectId, input.projectId), inArray(optimizationTasks.id, taskIds))) : [];
+      const tasks = taskIds.length ? await db.select().from(optimizationTasks).where(and3(eq7(optimizationTasks.projectId, input.projectId), inArray2(optimizationTasks.id, taskIds))) : [];
       const taskById = new Map(tasks.map((task) => [task.id, task]));
       return uniqueRows.map((article) => {
         const task = article.optimizationTaskId ? taskById.get(article.optimizationTaskId) : void 0;
@@ -5687,10 +7327,10 @@ var geoRouter = router({
         return { ...article, targetPlatform: targetPlatform || null, contentType };
       });
     }),
-    latestQualityScores: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    latestQualityScores: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      const rows = await db.select().from(geoArticleQualityScores).where(eq4(geoArticleQualityScores.projectId, input.projectId)).orderBy(desc3(geoArticleQualityScores.createdAt));
+      const rows = await db.select().from(geoArticleQualityScores).where(eq7(geoArticleQualityScores.projectId, input.projectId)).orderBy(desc4(geoArticleQualityScores.createdAt));
       const hasComplianceBlock = (reasons) => reasons.some((reason) => /禁用词|禁止承诺|合规/.test(reason));
       return rows.map((row) => {
         const blockReasons = Array.isArray(row.blockReasons) ? row.blockReasons : [];
@@ -5698,27 +7338,27 @@ var geoRouter = router({
         return { ...row, isPass };
       });
     }),
-    publishRecords: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    publishRecords: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      return db.select().from(geoPublishRecords).where(eq4(geoPublishRecords.projectId, input.projectId)).orderBy(desc3(geoPublishRecords.publishedAt));
+      return db.select().from(geoPublishRecords).where(eq7(geoPublishRecords.projectId, input.projectId)).orderBy(desc4(geoPublishRecords.publishedAt));
     }),
     createManualPublishRecord: protectedProcedure.input(manualPublishRecordInput).mutation(async ({ input }) => {
       const db = await requireDb2();
       await getProjectOrThrow2(input.projectId);
-      const articleRows = await db.select().from(geoArticles).where(eq4(geoArticles.id, input.articleId)).limit(1);
+      const articleRows = await db.select().from(geoArticles).where(eq7(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
       if (!article || article.projectId !== input.projectId) {
-        throw new TRPCError5({ code: "NOT_FOUND", message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u5185\u5BB9" });
+        throw new TRPCError7({ code: "NOT_FOUND", message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u5185\u5BB9" });
       }
-      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq4(geoArticleQualityScores.articleId, article.id)).orderBy(desc3(geoArticleQualityScores.createdAt)).limit(1);
+      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq7(geoArticleQualityScores.articleId, article.id)).orderBy(desc4(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
       if (!latestScore || latestScore.blocked || latestScore.totalScore < GEO_ARTICLE_MIN_PASS_SCORE) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: `\u53EA\u6709\u5DF2\u901A\u8FC7 GEO \u8D28\u68C0\u4E14\u8D28\u91CF\u5206\u4E0D\u4F4E\u4E8E ${GEO_ARTICLE_MIN_PASS_SCORE} \u7684\u5185\u5BB9\u624D\u80FD\u8BB0\u5F55\u4EBA\u5DE5\u53D1\u5E03\u7ED3\u679C` });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: `\u53EA\u6709\u5DF2\u901A\u8FC7 GEO \u8D28\u68C0\u4E14\u8D28\u91CF\u5206\u4E0D\u4F4E\u4E8E ${GEO_ARTICLE_MIN_PASS_SCORE} \u7684\u5185\u5BB9\u624D\u80FD\u8BB0\u5F55\u4EBA\u5DE5\u53D1\u5E03\u7ED3\u679C` });
       }
       const publishedAt = new Date(input.publishedAt);
       if (Number.isNaN(publishedAt.getTime())) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: "\u53D1\u5E03\u65F6\u95F4\u683C\u5F0F\u4E0D\u6B63\u786E" });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u53D1\u5E03\u65F6\u95F4\u683C\u5F0F\u4E0D\u6B63\u786E" });
       }
       const inserted = await db.insert(geoPublishRecords).values({
         projectId: input.projectId,
@@ -5738,22 +7378,22 @@ var geoRouter = router({
       }).$returningId();
       return { success: true, id: inserted[0]?.id ?? 0 };
     }),
-    updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z3.number().int().positive() })).mutation(async ({ input }) => {
+    updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
       await getProjectOrThrow2(input.projectId);
-      const recordRows = await db.select().from(geoPublishRecords).where(eq4(geoPublishRecords.id, input.id)).limit(1);
+      const recordRows = await db.select().from(geoPublishRecords).where(eq7(geoPublishRecords.id, input.id)).limit(1);
       const record = recordRows[0];
       if (!record || record.projectId !== input.projectId || record.articleId !== input.articleId) {
-        throw new TRPCError5({ code: "NOT_FOUND", message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u548C\u5185\u5BB9\u7684\u53D1\u5E03\u8BB0\u5F55" });
+        throw new TRPCError7({ code: "NOT_FOUND", message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u548C\u5185\u5BB9\u7684\u53D1\u5E03\u8BB0\u5F55" });
       }
-      const articleRows = await db.select().from(geoArticles).where(eq4(geoArticles.id, input.articleId)).limit(1);
+      const articleRows = await db.select().from(geoArticles).where(eq7(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
       if (!article || article.projectId !== input.projectId) {
-        throw new TRPCError5({ code: "NOT_FOUND", message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u5185\u5BB9" });
+        throw new TRPCError7({ code: "NOT_FOUND", message: "\u672A\u627E\u5230\u5C5E\u4E8E\u5F53\u524D\u9879\u76EE\u7684\u5185\u5BB9" });
       }
       const publishedAt = new Date(input.publishedAt);
       if (Number.isNaN(publishedAt.getTime())) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: "\u53D1\u5E03\u65F6\u95F4\u683C\u5F0F\u4E0D\u6B63\u786E" });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u53D1\u5E03\u65F6\u95F4\u683C\u5F0F\u4E0D\u6B63\u786E" });
       }
       await db.update(geoPublishRecords).set({
         publishChannel: input.publishPlatform,
@@ -5766,26 +7406,26 @@ var geoRouter = router({
           input.notes.trim()
         ].filter(Boolean).join("\n"),
         publishedAt
-      }).where(eq4(geoPublishRecords.id, input.id));
+      }).where(eq7(geoPublishRecords.id, input.id));
       return { success: true, id: input.id };
     }),
-    inclusionMonitoringRecords: protectedProcedure.input(z3.object({ projectId: z3.number().int().positive().optional() })).query(async ({ input }) => {
+    inclusionMonitoringRecords: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb2();
       if (!input.projectId) return [];
-      return db.select().from(geoInclusionMonitoringRecords).where(eq4(geoInclusionMonitoringRecords.projectId, input.projectId)).orderBy(desc3(geoInclusionMonitoringRecords.createdAt));
+      return db.select().from(geoInclusionMonitoringRecords).where(eq7(geoInclusionMonitoringRecords.projectId, input.projectId)).orderBy(desc4(geoInclusionMonitoringRecords.createdAt));
     }),
-    generate: protectedProcedure.input(z3.object({ topicId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z4.object({ topicId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      const topicRows = await db.select().from(geoArticleTopics).where(eq4(geoArticleTopics.id, input.topicId)).limit(1);
+      const topicRows = await db.select().from(geoArticleTopics).where(eq7(geoArticleTopics.id, input.topicId)).limit(1);
       const topic = topicRows[0];
-      if (!topic) throw new TRPCError5({ code: "NOT_FOUND", message: "\u6587\u7AE0\u9009\u9898\u4E0D\u5B58\u5728" });
+      if (!topic) throw new TRPCError7({ code: "NOT_FOUND", message: "\u6587\u7AE0\u9009\u9898\u4E0D\u5B58\u5728" });
       const project = await getProjectOrThrow2(topic.projectId);
-      const taskRows = topic.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq4(optimizationTasks.id, topic.optimizationTaskId)).limit(1) : [];
+      const taskRows = topic.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq7(optimizationTasks.id, topic.optimizationTaskId)).limit(1) : [];
       const task = taskRows[0];
-      if (!task) throw new TRPCError5({ code: "BAD_REQUEST", message: "\u6587\u7AE0\u9009\u9898\u5FC5\u987B\u7ED1\u5B9A\u4F18\u5316\u4EFB\u52A1\uFF0C\u4E0D\u80FD\u751F\u6210\u65E0\u6765\u6E90\u6587\u7AE0" });
-      const projectQuestions = await db.select().from(questions).where(eq4(questions.projectId, topic.projectId));
-      const analyses = await db.select().from(analysisResults).where(eq4(analysisResults.projectId, topic.projectId));
-      const responses = await db.select().from(aiResponses).where(eq4(aiResponses.projectId, topic.projectId));
+      if (!task) throw new TRPCError7({ code: "BAD_REQUEST", message: "\u6587\u7AE0\u9009\u9898\u5FC5\u987B\u7ED1\u5B9A\u4F18\u5316\u4EFB\u52A1\uFF0C\u4E0D\u80FD\u751F\u6210\u65E0\u6765\u6E90\u6587\u7AE0" });
+      const projectQuestions = await db.select().from(questions).where(eq7(questions.projectId, topic.projectId));
+      const analyses = await db.select().from(analysisResults).where(eq7(analysisResults.projectId, topic.projectId));
+      const responses = await db.select().from(aiResponses).where(eq7(aiResponses.projectId, topic.projectId));
       const sourceQuestionIds = Array.isArray(topic.sourceQuestionIds) ? topic.sourceQuestionIds : [];
       const sourceAnalysisIds = Array.isArray(topic.sourceAnalysisIds) ? topic.sourceAnalysisIds : [];
       const questionScope = projectQuestions.filter((question) => sourceQuestionIds.includes(question.id));
@@ -5804,12 +7444,12 @@ var geoRouter = router({
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "GEO \u6587\u7AE0\u751F\u6210\u5931\u8D25";
-        throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message });
+        throw new TRPCError7({ code: "INTERNAL_SERVER_ERROR", message });
       }
       const inserted = await db.insert(geoArticles).values(draft).$returningId();
       const articleId = inserted[0]?.id ?? 0;
-      if (!articleId) throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message: "\u6587\u7AE0\u5199\u5165\u5931\u8D25" });
-      await db.update(geoArticleTopics).set({ status: "\u5DF2\u751F\u6210" }).where(eq4(geoArticleTopics.id, topic.id));
+      if (!articleId) throw new TRPCError7({ code: "INTERNAL_SERVER_ERROR", message: "\u6587\u7AE0\u5199\u5165\u5931\u8D25" });
+      await db.update(geoArticleTopics).set({ status: "\u5DF2\u751F\u6210" }).where(eq7(geoArticleTopics.id, topic.id));
       const qcResult = await runGeoArticleQualityCheckFlow(db, articleId);
       return {
         success: true,
@@ -5820,13 +7460,13 @@ var geoRouter = router({
         qualityCheckPassed: qcResult.finalStatus === "\u8D28\u68C0\u901A\u8FC7"
       };
     }),
-    qualityCheck: protectedProcedure.input(z3.object({ articleId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    qualityCheck: protectedProcedure.input(z4.object({ articleId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      const articleRows = await db.select().from(geoArticles).where(eq4(geoArticles.id, input.articleId)).limit(1);
+      const articleRows = await db.select().from(geoArticles).where(eq7(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
-      if (!article) throw new TRPCError5({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
+      if (!article) throw new TRPCError7({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
       if (!(article.status === "\u5DF2\u751F\u6210" || article.status === "\u5F85\u8D28\u68C0" || article.status === "\u9700\u4EBA\u5DE5\u5BA1\u6838" || article.status === "\u8D28\u68C0\u672A\u901A\u8FC7")) {
-        throw new TRPCError5({ code: "BAD_REQUEST", message: "\u5F53\u524D\u72B6\u6001\u7684\u6587\u7AE0\u4E0D\u80FD\u91CD\u65B0\u6267\u884C\u8D28\u91CF\u8BC4\u5206" });
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u5F53\u524D\u72B6\u6001\u7684\u6587\u7AE0\u4E0D\u80FD\u91CD\u65B0\u6267\u884C\u8D28\u91CF\u8BC4\u5206" });
       }
       const qcResult = await runGeoArticleQualityCheckFlow(db, input.articleId);
       return {
@@ -5836,17 +7476,17 @@ var geoRouter = router({
         finalStatus: qcResult.finalStatus
       };
     }),
-    optimizeVersion: protectedProcedure.input(z3.object({ articleId: z3.number().int().positive(), mode: z3.enum(["\u589E\u5F3A\u7248", "FAQ", "\u7ADE\u54C1\u5BF9\u6BD4", "AI \u53EF\u5F15\u7528\u7247\u6BB5", "\u79FB\u9664\u65E0\u6765\u6E90\u6570\u636E", "\u8D44\u6599\u5F85\u8865\u5145\u8868\u8FF0", "\u6848\u4F8B\u91C7\u96C6\u6A21\u677F"]), reason: z3.string().optional().default("") })).mutation(async ({ input }) => {
+    optimizeVersion: protectedProcedure.input(z4.object({ articleId: z4.number().int().positive(), mode: z4.enum(["\u589E\u5F3A\u7248", "FAQ", "\u7ADE\u54C1\u5BF9\u6BD4", "AI \u53EF\u5F15\u7528\u7247\u6BB5", "\u79FB\u9664\u65E0\u6765\u6E90\u6570\u636E", "\u8D44\u6599\u5F85\u8865\u5145\u8868\u8FF0", "\u6848\u4F8B\u91C7\u96C6\u6A21\u677F"]), reason: z4.string().optional().default("") })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      const articleRows = await db.select().from(geoArticles).where(eq4(geoArticles.id, input.articleId)).limit(1);
+      const articleRows = await db.select().from(geoArticles).where(eq7(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
-      if (!article) throw new TRPCError5({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
+      if (!article) throw new TRPCError7({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
       const project = await getProjectOrThrow2(article.projectId);
-      const projectQuestions = await db.select().from(questions).where(eq4(questions.projectId, article.projectId));
-      const analyses = await db.select().from(analysisResults).where(eq4(analysisResults.projectId, article.projectId));
-      const responses = await db.select().from(aiResponses).where(eq4(aiResponses.projectId, article.projectId));
+      const projectQuestions = await db.select().from(questions).where(eq7(questions.projectId, article.projectId));
+      const analyses = await db.select().from(analysisResults).where(eq7(analysisResults.projectId, article.projectId));
+      const responses = await db.select().from(aiResponses).where(eq7(aiResponses.projectId, article.projectId));
       const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
-      const taskRows = article.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq4(optimizationTasks.id, article.optimizationTaskId)).limit(1) : [];
+      const taskRows = article.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq7(optimizationTasks.id, article.optimizationTaskId)).limit(1) : [];
       const assetLibrary = await getAssetLibraryContext2(article.projectId);
       const currentQuality = scoreGeoArticleQuality({
         article,
@@ -5871,31 +7511,31 @@ var geoRouter = router({
         factTraceability: nextQuality.factTraceability,
         consistencyCheck: nextQuality.consistencyCheck,
         status: "\u5F85\u8D28\u68C0"
-      }).where(eq4(geoArticles.id, article.id));
+      }).where(eq7(geoArticles.id, article.id));
       return { success: true, versionCount: optimized.versions.length, quality: nextQuality };
     }),
-    audit: protectedProcedure.input(z3.object({ articleId: z3.number().int().positive(), approved: z3.boolean(), note: z3.string().optional().default("") })).mutation(async ({ input }) => {
+    audit: protectedProcedure.input(z4.object({ articleId: z4.number().int().positive(), approved: z4.boolean(), note: z4.string().optional().default("") })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      const articleRows = await db.select().from(geoArticles).where(eq4(geoArticles.id, input.articleId)).limit(1);
+      const articleRows = await db.select().from(geoArticles).where(eq7(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
-      if (!article) throw new TRPCError5({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
-      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq4(geoArticleQualityScores.articleId, article.id)).orderBy(desc3(geoArticleQualityScores.createdAt)).limit(1);
+      if (!article) throw new TRPCError7({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
+      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq7(geoArticleQualityScores.articleId, article.id)).orderBy(desc4(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
       const consistency = article.consistencyCheck;
       const canAudit = canAuditArticle(article.status, latestScore ? { totalScore: latestScore.totalScore, blocked: Boolean(latestScore.blocked) } : null);
-      if (!canAudit || consistency?.publishAllowed === false || (consistency?.score ?? 100) < GEO_ARTICLE_MIN_PASS_SCORE || consistency?.riskLevel === "\u9AD8") throw new TRPCError5({ code: "BAD_REQUEST", message: `\u672A\u8D28\u68C0\u901A\u8FC7\u3001\u4F4E\u4E8E ${GEO_ARTICLE_MIN_PASS_SCORE} \u5206\u6216\u4E00\u81F4\u6027\u68C0\u67E5\u672A\u901A\u8FC7\u7684\u6587\u7AE0\u4E0D\u80FD\u5BA1\u6838` });
-      await db.update(geoArticles).set({ status: input.approved ? "\u5BA1\u6838\u901A\u8FC7" : "\u5BA1\u6838\u672A\u901A\u8FC7" }).where(eq4(geoArticles.id, article.id));
+      if (!canAudit || consistency?.publishAllowed === false || (consistency?.score ?? 100) < GEO_ARTICLE_MIN_PASS_SCORE || consistency?.riskLevel === "\u9AD8") throw new TRPCError7({ code: "BAD_REQUEST", message: `\u672A\u8D28\u68C0\u901A\u8FC7\u3001\u4F4E\u4E8E ${GEO_ARTICLE_MIN_PASS_SCORE} \u5206\u6216\u4E00\u81F4\u6027\u68C0\u67E5\u672A\u901A\u8FC7\u7684\u6587\u7AE0\u4E0D\u80FD\u5BA1\u6838` });
+      await db.update(geoArticles).set({ status: input.approved ? "\u5BA1\u6838\u901A\u8FC7" : "\u5BA1\u6838\u672A\u901A\u8FC7" }).where(eq7(geoArticles.id, article.id));
       return { success: true };
     }),
-    publish: protectedProcedure.input(z3.object({ articleId: z3.number().int().positive() })).mutation(async ({ input }) => {
+    publish: protectedProcedure.input(z4.object({ articleId: z4.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb2();
-      const articleRows = await db.select().from(geoArticles).where(eq4(geoArticles.id, input.articleId)).limit(1);
+      const articleRows = await db.select().from(geoArticles).where(eq7(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
-      if (!article) throw new TRPCError5({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
-      if (!canPublishArticle(article.status)) throw new TRPCError5({ code: "BAD_REQUEST", message: "\u672A\u5BA1\u6838\u901A\u8FC7\u7684\u6587\u7AE0\u4E0D\u80FD\u53D1\u5E03" });
-      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq4(geoArticleQualityScores.articleId, article.id)).orderBy(desc3(geoArticleQualityScores.createdAt)).limit(1);
+      if (!article) throw new TRPCError7({ code: "NOT_FOUND", message: "\u6587\u7AE0\u4E0D\u5B58\u5728" });
+      if (!canPublishArticle(article.status)) throw new TRPCError7({ code: "BAD_REQUEST", message: "\u672A\u5BA1\u6838\u901A\u8FC7\u7684\u6587\u7AE0\u4E0D\u80FD\u53D1\u5E03" });
+      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq7(geoArticleQualityScores.articleId, article.id)).orderBy(desc4(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
-      if (!latestScore || latestScore.blocked || latestScore.totalScore < GEO_ARTICLE_MIN_PASS_SCORE) throw new TRPCError5({ code: "BAD_REQUEST", message: `\u6587\u7AE0\u8D28\u91CF\u5206\u4F4E\u4E8E ${GEO_ARTICLE_MIN_PASS_SCORE} \u6216\u5B58\u5728\u7981\u6B62\u53D1\u5E03\u98CE\u9669\uFF0C\u4E0D\u80FD\u53D1\u5E03` });
+      if (!latestScore || latestScore.blocked || latestScore.totalScore < GEO_ARTICLE_MIN_PASS_SCORE) throw new TRPCError7({ code: "BAD_REQUEST", message: `\u6587\u7AE0\u8D28\u91CF\u5206\u4F4E\u4E8E ${GEO_ARTICLE_MIN_PASS_SCORE} \u6216\u5B58\u5728\u7981\u6B62\u53D1\u5E03\u98CE\u9669\uFF0C\u4E0D\u80FD\u53D1\u5E03` });
       const assetLibrary = await getAssetLibraryContext2(article.projectId);
       const prePublishCheck = evaluateAssetLibraryPrePublishCheck({
         content: `${article.title}
@@ -5904,11 +7544,11 @@ ${article.markdownContent}`,
         basis: article.generationBasis,
         assetLibrary
       });
-      if (prePublishCheck.blocked) throw new TRPCError5({ code: "BAD_REQUEST", message: prePublishCheck.summary });
+      if (prePublishCheck.blocked) throw new TRPCError7({ code: "BAD_REQUEST", message: prePublishCheck.summary });
       const publicPath = `/geo/content/${article.projectId}/${article.id}`;
-      await db.update(geoArticles).set({ status: "\u5DF2\u53D1\u5E03", publicPath }).where(eq4(geoArticles.id, article.id));
+      await db.update(geoArticles).set({ status: "\u5DF2\u53D1\u5E03", publicPath }).where(eq7(geoArticles.id, article.id));
       if (article.optimizationTaskId) {
-        await db.update(optimizationTasks).set({ status: "retest", publishedUrl: publicPath, needRetest: 1 }).where(eq4(optimizationTasks.id, article.optimizationTaskId));
+        await db.update(optimizationTasks).set({ status: "retest", publishedUrl: publicPath, needRetest: 1 }).where(eq7(optimizationTasks.id, article.optimizationTaskId));
       }
       const insertResult = await db.insert(geoPublishRecords).values({
         projectId: article.projectId,
@@ -5922,9 +7562,9 @@ ${article.markdownContent}`,
         notes: "\u4EBA\u5DE5\u5BA1\u6838\u901A\u8FC7\u540E\u53D1\u5E03\u5230\u7CFB\u7EDF\u5185\u7F6E GEO \u5185\u5BB9\u9875\uFF0C\u7B49\u5F85\u590D\u6D4B\u3002"
       });
       const publishRecordId = Number(insertResult.insertId ?? 0);
-      const latestPublishRows = publishRecordId > 0 ? [] : await db.select().from(geoPublishRecords).where(eq4(geoPublishRecords.articleId, article.id)).orderBy(desc3(geoPublishRecords.createdAt)).limit(1);
+      const latestPublishRows = publishRecordId > 0 ? [] : await db.select().from(geoPublishRecords).where(eq7(geoPublishRecords.articleId, article.id)).orderBy(desc4(geoPublishRecords.createdAt)).limit(1);
       const resolvedPublishRecordId = publishRecordId > 0 ? publishRecordId : latestPublishRows[0]?.id;
-      if (!resolvedPublishRecordId) throw new TRPCError5({ code: "INTERNAL_SERVER_ERROR", message: "\u53D1\u5E03\u8BB0\u5F55\u521B\u5EFA\u5931\u8D25\uFF0C\u65E0\u6CD5\u8FDB\u5165\u6536\u5F55\u76D1\u6D4B" });
+      if (!resolvedPublishRecordId) throw new TRPCError7({ code: "INTERNAL_SERVER_ERROR", message: "\u53D1\u5E03\u8BB0\u5F55\u521B\u5EFA\u5931\u8D25\uFF0C\u65E0\u6CD5\u8FDB\u5165\u6536\u5F55\u76D1\u6D4B" });
       await db.insert(geoInclusionMonitoringRecords).values(buildInitialInclusionMonitoringRecord({
         projectId: article.projectId,
         articleId: article.id,
@@ -5934,15 +7574,15 @@ ${article.markdownContent}`,
       }));
       return { success: true, publicPath };
     }),
-    publicContent: publicProcedure.input(z3.object({ projectId: z3.number().int().positive(), articleId: z3.number().int().positive() })).query(async ({ input }) => {
+    publicContent: publicProcedure.input(z4.object({ projectId: z4.number().int().positive(), articleId: z4.number().int().positive() })).query(async ({ input }) => {
       const db = await requireDb2();
-      const articleRows = await db.select().from(geoArticles).where(eq4(geoArticles.id, input.articleId)).limit(1);
+      const articleRows = await db.select().from(geoArticles).where(eq7(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
       if (!article || article.projectId !== input.projectId || !(article.status === "\u5DF2\u53D1\u5E03" || article.status === "\u5F85\u590D\u6D4B")) {
-        throw new TRPCError5({ code: "NOT_FOUND", message: "\u5185\u5BB9\u4E0D\u5B58\u5728\u6216\u5C1A\u672A\u53D1\u5E03" });
+        throw new TRPCError7({ code: "NOT_FOUND", message: "\u5185\u5BB9\u4E0D\u5B58\u5728\u6216\u5C1A\u672A\u53D1\u5E03" });
       }
       const project = await getProjectOrThrow2(article.projectId);
-      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq4(enterpriseGeoProfiles.projectId, article.projectId)).limit(1);
+      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq7(enterpriseGeoProfiles.projectId, article.projectId)).limit(1);
       const prof = profileRows[0];
       const projectForPublic = prof ? {
         ...project,
@@ -5952,8 +7592,154 @@ ${article.markdownContent}`,
         productServiceIntro: prof.productServiceIntro ?? void 0,
         oneLiner: prof.oneLiner ?? void 0
       } : project;
-      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq4(geoArticleQualityScores.articleId, article.id)).orderBy(desc3(geoArticleQualityScores.createdAt)).limit(1);
+      const scoreRows = await db.select().from(geoArticleQualityScores).where(eq7(geoArticleQualityScores.articleId, article.id)).orderBy(desc4(geoArticleQualityScores.createdAt)).limit(1);
       return { article, project: projectForPublic, qualityScore: scoreRows[0] ?? null };
+    })
+  }),
+  inclusionMonitoring: router({
+    backfill: protectedProcedure.input(z4.object({ projectId: z4.number().int().positive() })).mutation(async ({ input }) => {
+      const db = await requireDb2();
+      const publishRecords = await db.select().from(geoPublishRecords).where(eq7(geoPublishRecords.projectId, input.projectId));
+      const existingMonitoringRecords = await db.select({
+        publishRecordId: geoInclusionMonitoringRecords.publishRecordId
+      }).from(geoInclusionMonitoringRecords).where(eq7(geoInclusionMonitoringRecords.projectId, input.projectId));
+      const existingIds = new Set(existingMonitoringRecords.map((r) => r.publishRecordId));
+      const missing = publishRecords.filter((r) => !existingIds.has(r.id));
+      for (const record of missing) {
+        await db.insert(geoInclusionMonitoringRecords).values(
+          buildInitialInclusionMonitoringRecord({
+            projectId: record.projectId,
+            articleId: record.articleId,
+            publishRecordId: record.id,
+            publicUrl: record.publishUrl,
+            qualityScore: record.qualityScore
+          })
+        );
+      }
+      return { backfilled: missing.length };
+    })
+  }),
+  aiMentionCheck: router({
+    run: protectedProcedure.input(
+      z4.object({
+        projectId: z4.number().int().positive(),
+        recordId: z4.number().int().positive().optional(),
+        engines: z4.array(z4.enum(["doubao", "deepseek", "kimi"])).optional(),
+        testStage: z4.enum(["before_publish", "after_publish", "manual_check"]).optional().default("manual_check")
+      })
+    ).mutation(async ({ input }) => {
+      const db = await requireDb2();
+      const projectRows = await db.select().from(projects).where(eq7(projects.id, input.projectId)).limit(1);
+      const project = projectRows[0];
+      if (!project) throw new TRPCError7({ code: "NOT_FOUND", message: "\u9879\u76EE\u4E0D\u5B58\u5728" });
+      const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq7(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
+      const profile = profileRows[0];
+      const questionRows = await db.select({ questionText: questions.questionText }).from(questions).where(eq7(questions.projectId, input.projectId)).orderBy(desc4(questions.businessValue)).limit(5);
+      if (questionRows.length === 0) {
+        throw new TRPCError7({ code: "BAD_REQUEST", message: "\u9879\u76EE\u6682\u65E0\u95EE\u9898\u6570\u636E\uFF0C\u8BF7\u5148\u751F\u6210\u95EE\u9898" });
+      }
+      const competitorNames = await resolveProjectCompetitorNames(db, input.projectId);
+      let missReasonContext;
+      if (input.recordId) {
+        const monitoringRows = await db.select({ publishRecordId: geoInclusionMonitoringRecords.publishRecordId }).from(geoInclusionMonitoringRecords).where(eq7(geoInclusionMonitoringRecords.id, input.recordId)).limit(1);
+        const publishRecordId = monitoringRows[0]?.publishRecordId;
+        if (publishRecordId) {
+          const publishRows = await db.select({ publishedAt: geoPublishRecords.publishedAt }).from(geoPublishRecords).where(eq7(geoPublishRecords.id, publishRecordId)).limit(1);
+          missReasonContext = { articlePublishedAt: publishRows[0]?.publishedAt ?? null };
+        }
+      }
+      const checkResult = await runAiMentionCheck({
+        enterpriseName: profile?.enterpriseName ?? project.enterpriseName,
+        shortName: profile?.shortName ?? void 0,
+        questions: questionRows.map((q) => q.questionText),
+        engines: input.engines,
+        competitorNames,
+        testStage: input.testStage,
+        missReasonContext
+      });
+      if (checkResult.results.length === 0) {
+        throw new TRPCError7({
+          code: "PRECONDITION_FAILED",
+          message: "\u672A\u83B7\u5F97\u4EFB\u4F55 AI \u5B9E\u6D4B\u56DE\u7B54\uFF0C\u8BF7\u914D\u7F6E OPENAI_API_KEY\uFF08\u8C46\u5305/DeepSeek\uFF09\u6216 KIMI_API_KEY"
+        });
+      }
+      const mentionStatus = checkResult.mentionRate > 0 ? "\u5DF2\u63D0\u53CA" : "\u672A\u63D0\u53CA";
+      const recommendStatus = checkResult.recommendRate > 0 ? "\u5DF2\u63A8\u8350" : "\u672A\u63A8\u8350";
+      const suggestion = buildAiMentionSuggestion(checkResult);
+      const now = /* @__PURE__ */ new Date();
+      let savedResults = checkResult.results;
+      if (input.recordId) {
+        const recordRows = await db.select({ aiTestResults: geoInclusionMonitoringRecords.aiTestResults }).from(geoInclusionMonitoringRecords).where(eq7(geoInclusionMonitoringRecords.id, input.recordId)).limit(1);
+        const existingResults = recordRows[0]?.aiTestResults ?? [];
+        savedResults = mergeAiTestResultsByStage(existingResults, checkResult.results, input.testStage);
+        await db.update(geoInclusionMonitoringRecords).set({
+          aiMentionStatus: mentionStatus,
+          aiRecommendStatus: recommendStatus,
+          aiTestResults: savedResults,
+          lastAiTestedAt: now,
+          lastCheckedAt: now,
+          currentSuggestion: suggestion,
+          rawJson: {
+            ...checkResult.engineSummary,
+            mentionRate: checkResult.mentionRate,
+            recommendRate: checkResult.recommendRate,
+            source: "ai_mention_check",
+            testedAt: now.toISOString()
+          }
+        }).where(eq7(geoInclusionMonitoringRecords.id, input.recordId));
+      }
+      return {
+        ok: true,
+        mentionRate: checkResult.mentionRate,
+        recommendRate: checkResult.recommendRate,
+        engineSummary: checkResult.engineSummary,
+        resultCount: checkResult.results.length,
+        aiMentionStatus: mentionStatus,
+        aiRecommendStatus: recommendStatus,
+        aiTestResults: savedResults
+      };
+    }),
+    runDaily: protectedProcedure.mutation(async () => {
+      runDailyAiCheck().catch(console.error);
+      return { ok: true, message: "\u5B9A\u65F6\u68C0\u6D4B\u5DF2\u89E6\u53D1\uFF0C\u5C06\u5728\u540E\u53F0\u6267\u884C" };
+    }),
+    evidenceDetail: protectedProcedure.input(
+      z4.object({
+        monitoringRecordId: z4.number().int().positive(),
+        resultIndex: z4.number().int().min(0)
+      })
+    ).query(async ({ input }) => {
+      const db = await requireDb2();
+      const rows = await db.select().from(geoInclusionMonitoringRecords).where(eq7(geoInclusionMonitoringRecords.id, input.monitoringRecordId)).limit(1);
+      const record = rows[0];
+      if (!record) throw new TRPCError7({ code: "NOT_FOUND", message: "\u76D1\u6D4B\u8BB0\u5F55\u4E0D\u5B58\u5728" });
+      const rawResults = record.aiTestResults ?? [];
+      const raw = rawResults[input.resultIndex];
+      if (raw == null) throw new TRPCError7({ code: "NOT_FOUND", message: "\u5B9E\u6D4B\u8BC1\u636E\u4E0D\u5B58\u5728" });
+      const item = normalizeAiTestResult(raw);
+      if (!item) throw new TRPCError7({ code: "NOT_FOUND", message: "\u5B9E\u6D4B\u8BC1\u636E\u65E0\u6CD5\u89E3\u6790" });
+      const competitorNames = await resolveProjectCompetitorNames(db, record.projectId);
+      const projectRows = await db.select().from(projects).where(eq7(projects.id, record.projectId)).limit(1);
+      return {
+        item,
+        monitoringRecordId: record.id,
+        projectId: record.projectId,
+        articleId: record.articleId,
+        enterpriseName: projectRows[0]?.enterpriseName ?? "",
+        competitorConfigured: competitorNames.length > 0
+      };
+    }),
+    results: protectedProcedure.input(z4.object({ recordId: z4.number().int().positive() })).query(async ({ input }) => {
+      const db = await requireDb2();
+      const rows = await db.select().from(geoInclusionMonitoringRecords).where(eq7(geoInclusionMonitoringRecords.id, input.recordId)).limit(1);
+      const record = rows[0];
+      if (!record) throw new TRPCError7({ code: "NOT_FOUND", message: "\u76D1\u6D4B\u8BB0\u5F55\u4E0D\u5B58\u5728" });
+      return {
+        aiMentionStatus: record.aiMentionStatus,
+        aiRecommendStatus: record.aiRecommendStatus,
+        aiTestResults: record.aiTestResults ?? [],
+        lastAiTestedAt: record.lastAiTestedAt
+      };
     })
   })
 });
@@ -5963,7 +7749,7 @@ var appRouter = router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     devLogin: publicProcedure.mutation(async ({ ctx }) => {
       if (process.env.NODE_ENV === "production") {
-        throw new TRPCError5({ code: "FORBIDDEN", message: "\u672C\u5730\u5F00\u53D1\u767B\u5F55\u4E0D\u80FD\u5728\u751F\u4EA7\u73AF\u5883\u4F7F\u7528" });
+        throw new TRPCError7({ code: "FORBIDDEN", message: "\u672C\u5730\u5F00\u53D1\u767B\u5F55\u4E0D\u80FD\u5728\u751F\u4EA7\u73AF\u5883\u4F7F\u7528" });
       }
       const openId = "local-dev-user";
       const name = "\u672C\u5730\u5F00\u53D1\u7528\u6237";
@@ -6144,6 +7930,7 @@ async function startServer() {
   }
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    startDailyAiCheckScheduler();
   });
 }
 startServer().catch(console.error);

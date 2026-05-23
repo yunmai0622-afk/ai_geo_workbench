@@ -62,10 +62,12 @@ describe("delivery report share page renders customer-facing sections", () => {
 
     for (const text of [
       "AI 搜索可见度评分",
+      "经营结论",
+      "本轮报告摘要",
       "AI 搜索实测结果",
-      "发布前后复测对比",
-      "本轮发布内容",
-      "下一步建议",
+      "发布前后变化",
+      "本轮新增 AI 搜索资产",
+      "下一轮优化动作",
       "查看完整证据",
       "查看证据",
       "暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以生成可追溯的品牌可见度结果。",

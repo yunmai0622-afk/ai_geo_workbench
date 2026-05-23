@@ -44,8 +44,8 @@ async function checkViewport(page, width) {
       clientWidth: doc.clientWidth,
       hasHero: text.includes("AI 搜索可见度评分"),
       hasAiTest: text.includes("AI 搜索实测结果"),
-      hasPublished: text.includes("本轮发布内容"),
-      hasSuggestions: text.includes("下一步建议"),
+      hasPublished: text.includes("本轮新增 AI 搜索资产"),
+      hasSuggestions: text.includes("下一轮优化动作"),
       hasViewArticle: text.includes("查看文章") || text.includes("本轮暂无发布记录"),
       hasEvidence: text.includes("查看证据") || text.includes("暂无证据"),
     };
@@ -62,8 +62,8 @@ async function checkViewport(page, width) {
   for (const [key, label] of [
     ["hasHero", "顶部英雄区"],
     ["hasAiTest", "AI 搜索实测结果"],
-    ["hasPublished", "本轮发布内容"],
-    ["hasSuggestions", "下一步建议"],
+    ["hasPublished", "本轮新增 AI 搜索资产"],
+    ["hasSuggestions", "下一轮优化动作"],
   ]) {
     if (!metrics[key]) failures.push(`${width}px：缺少${label}`);
   }

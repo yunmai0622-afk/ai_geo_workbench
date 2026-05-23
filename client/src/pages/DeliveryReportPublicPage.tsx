@@ -80,10 +80,7 @@ export default function DeliveryReportPublicPage() {
       enterpriseName={data.enterpriseName}
       reportGeneratedAt={data.reportGeneratedAt ? new Date(data.reportGeneratedAt) : null}
       conclusionLine={data.conclusionLine}
-      visibilityScore={(() => {
-        const m = data.conclusionLine.match(/综合评分\s*(\d+)\s*分/);
-        return m ? Number(m[1]) : null;
-      })()}
+      visibilityScore={data.visibilityScore ?? null}
       publishCount={publishedItems.length}
       publishedItems={publishedItems}
       aiTestAggregate={data.aiTest}

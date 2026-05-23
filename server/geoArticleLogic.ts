@@ -1,5 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { dedupeTargetQuestionRows } from "@shared/targetQuestionDedup";
 import { getSystemComplianceRulesForPrePublish, getSystemComplianceUsageLines, SYSTEM_PUBLISH_STRATEGY_LINES } from "./systemConfig";
 
 export { GEO_ARTICLE_MIN_PASS_SCORE };
@@ -954,12 +955,42 @@ export function canPublishArticle(status: ArticleStatus) {
   return status === "审核通过";
 }
 
+function buildTopicDraftFromTask(projectId: number, task: P11TaskLike, variantRound: number): P11TopicDraft {
+  const card = parseOptimizationTaskCard(task.executionSuggestion);
+  const titleRaw = (card?.articleTitle || task.taskName || "内容选题").trim();
+  const suffix = variantRound > 0 ? ` · 延伸篇${variantRound + 1}` : "";
+  const titleBase = titleRaw.length + suffix.length > 255 ? titleRaw.slice(0, Math.max(1, 255 - suffix.length)) : titleRaw;
+  const title = `${titleBase}${suffix}`.trim() || "内容选题";
+  const problemSolved = (task.generationReason || "").trim() || "（待补充任务缺口说明）";
+  const contentType = (card?.contentType || "").trim() || "场景指南";
+  const articleType = contentTypeLabelToArticleType(contentType);
+  const platforms = card?.recommendedPlatform?.length ? card.recommendedPlatform.join("、") : "待选";
+  const kw = card?.targetKeywords?.length ? card.targetKeywords.join("、") : "";
+  const kp = card?.keyPoints?.length ? card.keyPoints.join("；") : "";
+  const variantNote = variantRound > 0 ? `；本篇为同优化任务延伸内容（第 ${variantRound + 1} 篇）` : "";
+  const businessReason = `优化任务：${task.taskName}；内容类型：${contentType}；推荐平台：${platforms}${kw ? `；目标关键词：${kw}` : ""}${kp ? `；核心论点：${kp}` : ""}${variantNote}`;
+
+  return {
+    projectId,
+    optimizationTaskId: task.id,
+    sourceAnalysisIds: [] as number[],
+    sourceQuestionIds: [] as number[],
+    title,
+    articleType,
+    contentGap: problemSolved,
+    businessReason,
+    status: "待生成" as const,
+  };
+}
+
 /**
- * 为每个优化任务生成一条内容选题草稿（1 任务 → 1 选题）。
- * 调用方必须传入该项目下的完整任务列表；本函数不做条数截断。
- * 若 tasks 含重复 id，仅保留首次出现的一条，避免重复选题。
+ * 按目标篇数生成内容选题：优先每个优化任务 1 条；不足时按任务轮询生成延伸篇选题。
  */
-export function generateGeoArticleTopics(input: { project: P11ProjectLike; tasks: P11TaskLike[] }): P11TopicDraft[] {
+export function generateGeoArticleTopics(input: {
+  project: P11ProjectLike;
+  tasks: P11TaskLike[];
+  targetCount?: number;
+}): P11TopicDraft[] {
   if (input.tasks.length === 0) throw new Error("缺少优化任务，不能生成内容选题。");
   const uniqueTasks: P11TaskLike[] = [];
   const seenIds = new Set<number>();
@@ -968,30 +999,29 @@ export function generateGeoArticleTopics(input: { project: P11ProjectLike; tasks
     seenIds.add(task.id);
     uniqueTasks.push(task);
   }
-  return uniqueTasks.map(task => {
-    const card = parseOptimizationTaskCard(task.executionSuggestion);
-    const titleRaw = (card?.articleTitle || task.taskName || "内容选题").trim();
-    const title = titleRaw.length > 255 ? titleRaw.slice(0, 255) : titleRaw;
-    const problemSolved = (task.generationReason || "").trim() || "（待补充任务缺口说明）";
-    const contentType = (card?.contentType || "").trim() || "场景指南";
-    const articleType = contentTypeLabelToArticleType(contentType);
-    const platforms = card?.recommendedPlatform?.length ? card.recommendedPlatform.join("、") : "待选";
-    const kw = card?.targetKeywords?.length ? card.targetKeywords.join("、") : "";
-    const kp = card?.keyPoints?.length ? card.keyPoints.join("；") : "";
-    const businessReason = `优化任务：${task.taskName}；内容类型：${contentType}；推荐平台：${platforms}${kw ? `；目标关键词：${kw}` : ""}${kp ? `；核心论点：${kp}` : ""}`;
 
-    return {
-      projectId: input.project.id,
-      optimizationTaskId: task.id,
-      sourceAnalysisIds: [] as number[],
-      sourceQuestionIds: [] as number[],
-      title,
-      articleType,
-      contentGap: problemSolved,
-      businessReason,
-      status: "待生成" as const,
-    };
-  });
+  const target =
+    input.targetCount != null
+      ? Math.max(1, Math.min(50, input.targetCount))
+      : uniqueTasks.length;
+
+  const result: P11TopicDraft[] = [];
+  const usedTitles = new Set<string>();
+  let round = 0;
+  while (result.length < target && uniqueTasks.length > 0 && round < 60) {
+    for (const task of uniqueTasks) {
+      if (result.length >= target) break;
+      const draft = buildTopicDraftFromTask(input.project.id, task, round);
+      const key = draft.title.trim().toLowerCase();
+      if (!key || usedTitles.has(key)) continue;
+      usedTitles.add(key);
+      result.push(draft);
+    }
+    round += 1;
+  }
+
+  if (result.length === 0) throw new Error("缺少优化任务，不能生成内容选题。");
+  return result.slice(0, target);
 }
 
 function paragraph(title: string, body: string) {
@@ -1812,7 +1842,20 @@ export type GeoTargetQuestionPromptPack = {
   customerPains: string;
   competitors: string;
   keyPoints: string;
+  /** 重新生成时传入已有问题，要求 LLM 换角度且不重复 */
+  excludeQuestions?: string[];
 };
+
+export const GEO_TARGET_QUESTION_INTENTS = [
+  "痛点问题",
+  "选型问题",
+  "竞品对比",
+  "价格与ROI",
+  "落地执行",
+  "风险顾虑",
+] as const;
+
+export type GeoTargetQuestionIntent = (typeof GEO_TARGET_QUESTION_INTENTS)[number];
 
 export type GeneratedGeoTargetQuestionRow = {
   questionText: string;
@@ -1821,20 +1864,25 @@ export type GeneratedGeoTargetQuestionRow = {
   disadvantaged: boolean;
 };
 
-const GEO_TARGET_QUESTIONS_SYSTEM_PROMPT = `你是一位深度理解知识付费与内容创业客户的内容策略专家。
-你的任务是生成「目标客户在遇到真实经营问题时，会在AI工具中搜索的问题」。
+const GEO_TARGET_QUESTIONS_SYSTEM_PROMPT = `你是一位深度理解 B2B / 知识付费客户的内容策略专家。
+你的任务是生成「目标客户在 AI 搜索或对话中会真实提出的检索问题」。
 
 生成规则：
-1. 问题必须是客户视角，从客户的痛点、困惑、需求出发，不是品牌视角
-2. 问题必须带有具体场景，例如「直播间每天有500人进来，但下单的不到5个，问题出在哪？」
-3. 禁止生成「XX品牌 vs XX品牌哪个好」这类竞品对比问题
-4. 禁止生成「XX平台怎么样」这类平台评测问题
-5. 问题覆盖以下三个维度，每个维度至少2条：
-   - 痛点诊断：客户有具体经营问题，想找到根因（如「直播转化率低」「退款多」「私域没复购」）
-   - 路径探索：客户想知道怎么做某件事（如「怎么从0开始卖课」「如何搭建私域成交体系」）
-   - 工具选择：客户在特定场景下想找合适的解决方案（如「有什么工具能帮我分析直播数据」）
-6. 生成8-10条，不多不少
-7. 劣势题：保留2-3条「客户问题场景下，该企业目前内容覆盖不足」的问题，用于暴露真实缺口
+1. 问题必须是客户视角，从痛点、选型、顾虑出发，不要写成品牌广告语
+2. 每条问题要有具体场景或决策阶段，避免空泛套话
+3. 不要重复「历史已有问题」列表中的任何一条（含同义改写、仅换一两个词）
+4. 换不同表达角度：可从「发现痛点 → 选型对比 → 预算 ROI → 落地执行 → 风险顾虑」覆盖
+5. 问题类型须覆盖以下 6 类，每类至少 1 条，intent 字段从下列枚举中选一：
+   - 痛点问题：经营/业务卡点、想找到根因
+   - 选型问题：怎么选方案、选什么类型产品
+   - 竞品对比：客户在对比不同路线或供应商（不出现具体竞品品牌名）
+   - 价格与ROI：预算、投入产出、是否值得买
+   - 落地执行：实施步骤、周期、团队如何推进
+   - 风险顾虑：踩坑、失败案例、合规与效果不确定性
+6. 禁止生成「XX品牌 vs XX品牌哪个好」这类带具体品牌名的对比句
+7. 禁止生成「XX平台怎么样」这类平台评测问题
+8. 生成 8-10 条；若提供了历史问题，须与历史明显不同
+9. 劣势题：保留 2-3 条 disadvantaged 为 true 的问题（该企业内容覆盖不足的检索场景）
 
 只输出符合 JSON Schema 的单个 JSON 对象，不要输出其它文字。`;
 
@@ -1842,7 +1890,16 @@ const GEO_TARGET_QUESTIONS_SYSTEM_PROMPT = `你是一位深度理解知识付费
  * 基于企业档案调用 LLM，生成 8–10 条目标客户真实检索问题；
  * 由路由层写入 `questions`（source: ai_generated, questionType: 指定问题），并在 `targetKeyword` 存 JSON：`{ intent, disadvantaged }`。
  */
-export async function generateTargetQuestions(input: GeoTargetQuestionPromptPack): Promise<GeneratedGeoTargetQuestionRow[]> {
+export type GenerateTargetQuestionsResult = {
+  rows: GeneratedGeoTargetQuestionRow[];
+  /** LLM 解析后、相对历史去重前条数 */
+  llmParsedCount: number;
+  /** 相对历史 + 批内去重过滤条数 */
+  filteredCount: number;
+};
+
+export async function generateTargetQuestions(input: GeoTargetQuestionPromptPack): Promise<GenerateTargetQuestionsResult> {
+  const exclude = (input.excludeQuestions ?? []).map(t => t.trim()).filter(Boolean);
   const userContent = [
     "企业信息：",
     `- 品牌名称：${input.brandName}`,
@@ -1852,12 +1909,20 @@ export async function generateTargetQuestions(input: GeoTargetQuestionPromptPack
     `- 客户核心痛点：${input.customerPains}`,
     `- 核心卖点：${input.keyPoints}`,
     "",
+    ...(exclude.length > 0
+      ? [
+          "历史已有问题（禁止重复或高度相似，请换角度、换决策阶段、换问题类型）：",
+          ...exclude.map((q, i) => `${i + 1}. ${q}`),
+          "",
+        ]
+      : []),
     "请生成8-10条目标客户真实搜索问题：",
-    "1. 每条问题控制在25字以内",
-    "2. 问题必须是客户自己会说的话，不能出现品牌名",
-    "3. 必须有2-3条客户痛点诊断类问题（disadvantaged: true）",
-    "4. 禁止出现竞品名称",
-    '5. 返回JSON数组，每个对象包含：question、intent（用户意图，从「痛点诊断/路径探索/工具选择」三选一）、disadvantaged（布尔值）',
+    "1. 每条问题控制在 40 字以内，表述完整",
+    "2. 问题必须是客户自己会说的话，不能出现本企业品牌名",
+    "3. 必须有 2-3 条 disadvantaged 为 true 的劣势场景问题",
+    "4. 禁止出现具体竞品品牌名",
+    `5. intent 从以下六选一：${GEO_TARGET_QUESTION_INTENTS.join("、")}`,
+    "6. 不要与历史已有问题重复；覆盖不同客户决策阶段",
     "",
     "将上述数组放在根对象的 `questions` 字段中输出（仅此一个根对象）。",
   ].join("\n");
@@ -1885,7 +1950,7 @@ export async function generateTargetQuestions(input: GeoTargetQuestionPromptPack
                 type: "object",
                 properties: {
                   question: { type: "string" },
-                  intent: { type: "string", enum: ["痛点诊断", "路径探索", "工具选择"] },
+                  intent: { type: "string", enum: [...GEO_TARGET_QUESTION_INTENTS] },
                   disadvantaged: { type: "boolean" },
                 },
                 required: ["question", "intent", "disadvantaged"],
@@ -1904,20 +1969,40 @@ export async function generateTargetQuestions(input: GeoTargetQuestionPromptPack
   const list = Array.isArray(parsed.questions) ? parsed.questions : [];
   const rows: GeneratedGeoTargetQuestionRow[] = [];
   const seen = new Set<string>();
-  const allowedIntent = new Set(["痛点诊断", "路径探索", "工具选择"]);
+  const allowedIntent = new Set<string>(GEO_TARGET_QUESTION_INTENTS);
+  const legacyIntentMap: Record<string, GeoTargetQuestionIntent> = {
+    痛点诊断: "痛点问题",
+    路径探索: "落地执行",
+    工具选择: "选型问题",
+  };
   for (const item of list) {
     const questionText = typeof item.question === "string" ? item.question.trim() : "";
     const intentRaw = typeof item.intent === "string" ? item.intent.trim() : "";
-    const intent = allowedIntent.has(intentRaw) ? intentRaw : "";
+    const intent =
+      (allowedIntent.has(intentRaw) ? intentRaw : legacyIntentMap[intentRaw]) as GeoTargetQuestionIntent | "" || "";
     const disadvantaged = item.disadvantaged === true;
-    if (!questionText || questionText.length > 25) continue;
+    if (!questionText || questionText.length > 80) continue;
     if (!intent) continue;
     if (seen.has(questionText)) continue;
     seen.add(questionText);
     rows.push({ questionText, questionType: "指定问题", intent, disadvantaged });
   }
-  if (rows.length < 8) throw new Error("AI 返回的有效问题不足 8 条，请重试");
-  const disadvantagedCount = rows.filter(r => r.disadvantaged).length;
-  if (disadvantagedCount < 2) throw new Error("AI 返回的劣势场景问题不足 2 条，请重试");
-  return rows.slice(0, 10);
+  const llmParsedCount = rows.length;
+  const { kept, filteredCount: batchFiltered } = dedupeTargetQuestionRows(rows, exclude);
+  const finalRows = kept.slice(0, 10);
+  if (finalRows.length === 0) {
+    throw new Error(
+      exclude.length > 0
+        ? "生成结果与历史问题重复过多，请稍后重试"
+        : "AI 返回的有效问题为空，请重试",
+    );
+  }
+  if (exclude.length === 0) {
+    if (finalRows.length < 8) throw new Error("AI 返回的有效问题不足 8 条，请重试");
+    const disadvantagedCount = finalRows.filter(r => r.disadvantaged).length;
+    if (disadvantagedCount < 2) throw new Error("AI 返回的劣势场景问题不足 2 条，请重试");
+  } else if (batchFiltered > 0 && finalRows.length < 3) {
+    throw new Error("去重后新问题过少，请稍后重试");
+  }
+  return { rows: finalRows, llmParsedCount, filteredCount: batchFiltered };
 }

@@ -26,6 +26,7 @@ vi.mock("@/lib/trpc", () => ({
       articles: {
         list: { useQuery: () => ({ isLoading: false, data: [], isError: false }) },
         publishRecords: { useQuery: () => ({ isLoading: false, data: [], isError: false }) },
+        inclusionMonitoringRecords: { useQuery: () => ({ isLoading: false, data: [], isError: false }) },
       },
     },
   },
@@ -43,28 +44,26 @@ describe("工作台 Flow 页（与首页同组件）", () => {
     expect(appSource).toContain('<Route path="/flow" component={GeoFlowWizardPage} />');
   });
 
-  it("/flow 页面展示今日概览、问候语与项目选择", () => {
-    const html = renderHtml();
-    expect(html).toContain("企业 AI 搜索增长工作台");
-    expect(html).toContain("今日概览与本周任务");
-    expect(html).toContain("你好");
-    expect(html).toContain("当前项目");
-    expect(html).toContain("海豚知道");
+  it("/flow 页面展示增长总览驾驶舱", () => {
+    const source = readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
+    expect(source).toContain("AI 搜索增长总览");
+    expect(source).toContain("核心状态");
+    expect(source).toContain("生成内容资产");
+    expect(source).toContain("品牌提及率");
+    expect(source).toContain("当前项目");
   });
 
-  it("展示本周任务、核心数字与诊断入口", () => {
-    const html = renderHtml();
-    expect(html).toContain("本周内容任务");
-    expect(html).toMatch(/开始生成本周文章|先去获取本周建议/);
-    expect(html).toContain("累计发布篇数");
-    expect(html).toContain("内容诊断");
-    expect(html).toContain("最近发布");
+  it("展示行动卡与最近进展区块", () => {
+    const source = readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
+    expect(source).toContain("最近发布");
+    expect(source).toContain("诊断与实测");
+    expect(source).toContain("AiActionCard");
   });
 
-  it("无诊断时引导立即诊断，且不展示旧版三步流程文案", () => {
-    const html = renderHtml();
-    expect(html).toContain("立即诊断");
-    expect(html).not.toContain("V1.0 核心三步流程");
-    expect(html).not.toContain("关键产物入口");
+  it("不展示旧版三步流程文案", () => {
+    const source = readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
+    expect(source).not.toContain("V1.0 核心三步流程");
+    expect(source).not.toContain("关键产物入口");
+    expect(source).toMatch(/去完成内容诊断|进入内容资产生产/);
   });
 });

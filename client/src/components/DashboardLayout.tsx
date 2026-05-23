@@ -28,15 +28,43 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-const menuItems = [
-  { icon: Sparkles, label: "工作台", desc: "今日概览与本周任务", path: "/", aliases: ["/", "/flow"] },
-  { icon: Building2, label: "我的信息", desc: "品牌与产品信息", path: "/enterprise-profile", aliases: ["/enterprise-profile", "/assets", "/projects"] },
-  { icon: Brain, label: "内容诊断", desc: "分析内容缺口", path: "/ai-diagnosis", aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"] },
-  { icon: FileText, label: "本周内容", desc: "生成并发布文章", path: "/weekly", aliases: ["/weekly", "/content-generation", "/articles"] },
-  { icon: Send, label: "发布记录", desc: "登记已发布文章", path: "/content-publishing", aliases: ["/content-publishing", "/publish", "/inclusion-monitoring", "/monitoring"] },
-  { icon: LineChart, label: "内容进展", desc: "累计效果与评分趋势", path: "/progress", aliases: ["/progress"] },
-  { icon: FileBarChart2, label: "效果报告", desc: "查看内容成果", path: "/delivery-reports", aliases: ["/delivery-reports", "/reports"] },
+type MenuItem = {
+  icon: typeof Sparkles;
+  label: string;
+  desc: string;
+  path: string;
+  aliases: string[];
+};
+
+const navGroups: { title: string; items: MenuItem[] }[] = [
+  {
+    title: "增长总览",
+    items: [
+      { icon: Sparkles, label: "增长总览", desc: "驾驶舱与下一步", path: "/", aliases: ["/", "/flow"] },
+      { icon: Building2, label: "企业档案", desc: "品牌与客户画像", path: "/enterprise-profile", aliases: ["/enterprise-profile", "/assets", "/projects"] },
+    ],
+  },
+  {
+    title: "内容资产",
+    items: [
+      { icon: Brain, label: "AI 内容诊断", desc: "缺口与内容方向", path: "/ai-diagnosis", aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"] },
+      { icon: FileText, label: "内容资产生产", desc: "批量生成搜索资产", path: "/weekly", aliases: ["/weekly", "/content-generation", "/articles"] },
+    ],
+  },
+  {
+    title: "发布与复测",
+    items: [
+      { icon: Send, label: "资产发布记录", desc: "平台链接与复测", path: "/content-publishing", aliases: ["/content-publishing", "/publish", "/inclusion-monitoring", "/monitoring"] },
+      { icon: LineChart, label: "资产进展看板", desc: "漏斗与实测进展", path: "/progress", aliases: ["/progress"] },
+    ],
+  },
+  {
+    title: "客户交付",
+    items: [{ icon: FileBarChart2, label: "客户交付报告", desc: "可售卖的交付物", path: "/delivery-reports", aliases: ["/delivery-reports", "/reports"] }],
+  },
 ];
+
+const allMenuItems = navGroups.flatMap(g => g.items);
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 292;
@@ -80,7 +108,7 @@ export default function DashboardLayout({
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">登录后继续</h1>
             <p className="max-w-sm text-sm leading-6 text-slate-400">
-              访问企业内容增长系统需要先登录。登录后可按企业档案、内容诊断、内容生产、发布记录、交付报告推进客户项目。
+              登录后可按增长总览、内容诊断、资产生产、发布记录与客户交付报告推进项目。
             </p>
           </div>
           {loginConfigured ? (
@@ -130,7 +158,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.aliases.includes(location));
+  const activeMenuItem = allMenuItems.find(item => item.aliases.includes(location));
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -164,53 +192,64 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar collapsible="icon" className="border-r-0 bg-slate-950 text-slate-100" disableTransition={isResizing}>
-          <SidebarHeader className="h-20 justify-center border-b border-white/10">
+        <Sidebar
+          collapsible="icon"
+          className="border-r border-violet-500/10 bg-slate-950/90 text-slate-100 backdrop-blur-xl"
+          disableTransition={isResizing}
+        >
+          <SidebarHeader className="h-[5.5rem] justify-center border-b border-white/10 bg-gradient-to-r from-cyan-500/8 via-transparent to-violet-500/10">
             <div className="flex w-full items-center gap-3 px-2 transition-all">
               <button
                 onClick={toggleSidebar}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-cyan-200 transition-colors hover:bg-cyan-400/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/20 to-violet-600/20 text-cyan-200 shadow-[0_0_20px_rgba(56,189,248,0.15)] transition hover:border-cyan-300/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
                 aria-label="Toggle navigation"
               >
                 <PanelLeft className="h-4 w-4" />
               </button>
               {!isCollapsed ? (
                 <div className="min-w-0">
-                  <span className="block truncate text-sm font-semibold tracking-tight text-white">内容增长系统</span>
-                  <span className="block truncate text-xs text-slate-400">每周持续生成，持续被AI推荐</span>
+                  <span className="block truncate text-sm font-bold tracking-tight text-white">AI 搜索增长系统</span>
+                  <span className="block truncate text-[11px] leading-snug text-slate-400">让品牌被 AI 看见、理解和推荐</span>
                 </div>
               ) : null}
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0 bg-slate-950/95">
-            <SidebarMenu className="px-2 py-1 pt-3">
-              {menuItems.map(item => {
-                const isActive = item.aliases.includes(location);
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`mb-1 h-12 rounded-2xl border border-transparent text-slate-300 transition-all hover:border-cyan-300/20 hover:bg-cyan-400/10 hover:text-cyan-100 ${isActive ? "border-cyan-300/25 bg-cyan-400/10 text-cyan-100 shadow-[0_0_22px_rgba(56,189,248,0.14)]" : ""}`}
-                    >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-cyan-200" : "text-slate-500"}`} />
-                      <span className="flex min-w-0 flex-col items-start gap-0.5 leading-none">
-                        <span>{item.label}</span>
-                        <span className="text-[11px] font-normal text-slate-500">{item.desc}</span>
-                      </span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
+          <SidebarContent className="gap-0 bg-transparent">
+            {navGroups.map(group => (
+              <div key={group.title} className="px-2 py-2">
+                {!isCollapsed ? <p className="ai-sidebar-group-label">{group.title}</p> : null}
+                <SidebarMenu className="px-0 py-0">
+                  {group.items.map(item => {
+                    const isActive = item.aliases.includes(location);
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setLocation(item.path)}
+                          tooltip={item.label}
+                          className={`mb-1 h-auto min-h-[3.25rem] rounded-xl border border-transparent py-2.5 text-slate-400 transition-all hover:border-violet-400/15 hover:bg-white/[0.04] hover:text-cyan-50 ${
+                            isActive ? "ai-sidebar-active-bar border-cyan-400/25 bg-gradient-to-r from-cyan-500/12 to-violet-500/10 text-cyan-50" : ""
+                          }`}
+                        >
+                          <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-cyan-300" : "text-slate-500"}`} />
+                          <span className="flex min-w-0 flex-col items-start gap-0.5 leading-tight">
+                            <span className="text-sm font-medium">{item.label}</span>
+                            <span className="text-[10px] font-normal text-slate-500">{item.desc}</span>
+                          </span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </div>
+            ))}
           </SidebarContent>
 
           <SidebarFooter className="border-t border-white/10 p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-2 py-2 text-left transition-colors hover:bg-cyan-400/10 group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
+                <button className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2 text-left transition-colors hover:bg-cyan-400/10 group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
                   <Avatar className="h-9 w-9 shrink-0 border border-cyan-300/20">
                     <AvatarFallback className="bg-cyan-400/10 text-xs font-medium text-cyan-100">
                       {user?.name?.charAt(0).toUpperCase()}
@@ -247,7 +286,9 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </div>
           </div>
         )}
-        <main className="notranslate min-h-screen flex-1 bg-slate-950 p-4 text-slate-100 md:p-6" translate="no">{children}</main>
+        <main className="ai-app-canvas geo-grid-bg notranslate min-h-screen flex-1 overflow-x-hidden p-4 text-slate-100 md:p-6 lg:p-8" translate="no">
+          {children}
+        </main>
       </SidebarInset>
     </>
   );

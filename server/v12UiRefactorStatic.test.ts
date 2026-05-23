@@ -6,19 +6,19 @@ const projectRoot = resolve(__dirname, "..");
 const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf-8");
 
 describe("V1.0 可售卖版产品体验静态回归", () => {
-  it("首页展示今日概览、本周任务与核心数据区", () => {
+  it("首页展示增长驾驶舱、行动卡与核心指标", () => {
     const homeSource = readProjectFile("client/src/pages/Home.tsx") + readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
-    expect(homeSource).toContain("企业 AI 搜索增长工作台");
-    expect(homeSource).toContain("本周内容任务");
-    expect(homeSource).toContain("开始生成本周文章");
-    expect(homeSource).toContain("暂时无法加载，请刷新重试");
+    expect(homeSource).toContain("AI 搜索增长总览");
+    expect(homeSource).toContain("下一步动作");
+    expect(homeSource).toContain("AiMetricCard");
+    expect(homeSource).toContain("生成内容资产");
     expect(homeSource).not.toContain("V1.0 核心三步流程");
     expect(homeSource).not.toContain("关键产物入口");
   });
 
   it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    for (const label of ["工作台", "我的信息", "内容诊断", "本周内容", "发布记录", "内容进展", "效果报告"]) {
+    for (const label of ["增长总览", "企业档案", "AI 内容诊断", "内容资产生产", "资产发布记录", "资产进展看板", "客户交付报告"]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
     for (const forbidden of ["总览", "内容生成", "内容发布", "收录监测", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心"]) {
@@ -56,20 +56,44 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       expect(guideSource).toContain(text);
     }
     expect(flowSource).toContain("<GeoStatusGuide");
-    expect(assetSource).toContain("<GeoStatusGuide");
+    expect(assetSource).toContain("AiPageShell");
   });
 
-  it("企业档案页呈现 Section 结构与资料完整度", () => {
+  it("企业档案页呈现档案配置台结构与资料完整度", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    for (const text of ["企业档案", "Section 1 · 基本身份", "Section 2 · 你的客户", "Section 3 · 有什么证明", "保存基本身份", "保存客户信息", "资料完整度"]) {
+    for (const text of [
+      "企业 AI 搜索档案",
+      "品牌与产品信息",
+      "目标客户与购买场景",
+      "案例与信任素材",
+      "保存基本身份",
+      "保存客户信息",
+      "档案完整度",
+      "档案完成进度",
+      "完成企业档案，进入 AI 内容诊断",
+    ]) {
       expect(assetSource).toContain(text);
     }
-    expect(assetSource).toContain("资料不足时不得编造案例、数据、价格和效果承诺");
+    expect(assetSource).toContain("不得编造案例、数据、价格和效果承诺");
+    expect(assetSource).not.toContain("Section 1 · 基本身份");
   });
 
   it("AI 诊断页客户化展示目标问题、诊断结果、评分、任务和下一步建议", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of ["内容诊断", "目标客户问题", "重新生成", "诊断结果", "内容缺口", "内容覆盖评分", "优化任务", "进入内容生产"]) {
+    for (const text of [
+      "内容诊断",
+      "目标客户问题",
+      "重新生成",
+      "诊断结果",
+      "内容缺口",
+      "内容覆盖评分",
+      "优化任务",
+      "去生成内容资产",
+      "核心诊断结论",
+      "完整诊断明细",
+      "诊断流程控制台",
+      "开始 AI 内容诊断",
+    ]) {
       expect(flowSource).toContain(text);
     }
     expect(flowSource).toContain("运行内容诊断");
@@ -89,7 +113,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("发布记录页仅保留登记入口与列表，不出现平台授权配置字段", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of ["发布记录", "新建发布记录", "已发布记录列表", "选择文章", "选择平台（多选）", "保存链接", "createManualPublishRecord", "updateManualPublishRecord", "publishRecords"]) {
+    for (const text of ["发布记录", "新建发布记录", "发布记录列表", "发布资产概览", "选择文章", "选择平台（多选）", "保存链接", "createManualPublishRecord", "updateManualPublishRecord", "publishRecords"]) {
       expect(flowSource).toContain(text);
     }
     for (const forbidden of ["连接发布平台", "可由交付人员配置", "风险边界", "支持方式", "appId", "appSecret", "authorizerAppId", "publishMode", "platform_authorization_configs"]) {
@@ -119,7 +143,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       expect(flowSource).toContain(text);
     }
     expect(customerView).toContain("不承诺保证收录、排名或 AI 推荐");
-    for (const text of ["AI 搜索可见度评分", "本轮发布内容", "下一步建议", "查看文章"]) {
+    for (const text of ["AI 搜索可见度评分", "经营结论", "本轮新增 AI 搜索资产", "下一轮优化动作", "查看文章"]) {
       expect(customerView).toContain(text);
     }
   });

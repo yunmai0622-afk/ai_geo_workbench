@@ -15,7 +15,7 @@ describe("V1.0 客户主路径静态回归", () => {
 
   it("侧边栏展示客户主入口（含内容进展占位），并把旧路径作为兼容别名", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    for (const label of ["工作台", "我的信息", "内容诊断", "本周内容", "发布记录", "内容进展", "效果报告"]) {
+    for (const label of ["增长总览", "企业档案", "AI 内容诊断", "内容资产生产", "资产发布记录", "资产进展看板", "客户交付报告"]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
     expect(layoutSource).toContain('path: "/progress"');
@@ -29,11 +29,10 @@ describe("V1.0 客户主路径静态回归", () => {
     }
   });
 
-  it("首页展示今日概览、本周任务与累计进展", () => {
+  it("首页展示增长总览、核心指标与行动卡", () => {
     const homeSource = readProjectFile("client/src/pages/Home.tsx") + readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
-    expect(homeSource).toContain("企业 AI 搜索增长工作台");
-    expect(homeSource).toContain("今日概览与本周任务");
-    for (const text of ["你好", "本周内容任务", "最近发布", "内容诊断", "累计发布篇数", "覆盖问题场景", "内容覆盖评分", "较上次变化"]) {
+    expect(homeSource).toContain("AI 搜索增长总览");
+    for (const text of ["核心状态", "下一步动作", "最近进展", "品牌提及率", "AI 搜索可见度评分"]) {
       expect(homeSource).toContain(text);
     }
     expect(homeSource).toContain("geo.scores.latest");
@@ -45,12 +44,12 @@ describe("V1.0 客户主路径静态回归", () => {
     }
   });
 
-  it("企业档案页为 Section 结构并保留资料完整度提示", () => {
+  it("企业档案页为档案配置台结构并保留保存入口", () => {
     const assetCenterSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    for (const text of ["Section 1 · 基本身份", "Section 2 · 你的客户", "Section 3 · 有什么证明", "保存基本身份", "保存客户信息"]) {
+    for (const text of ["企业 AI 搜索档案", "品牌与产品信息", "目标客户与购买场景", "案例与信任素材", "保存基本身份", "保存客户信息"]) {
       expect(assetCenterSource).toContain(text);
     }
-    expect(assetCenterSource).toContain("资料完整度");
+    expect(assetCenterSource).toContain("档案完整度");
     expect(assetCenterSource).not.toContain("内容风格");
     expect(assetCenterSource).not.toContain("平台授权配置占位");
   });

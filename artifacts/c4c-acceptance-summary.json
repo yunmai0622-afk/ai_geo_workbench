@@ -1,0 +1,48 @@
+{
+  "failures": [],
+  "results": {
+    "projectId": "72",
+    "screenshots": [
+      "c4c-dashboard.png",
+      "c4c-weekly-content.png",
+      "c4c-publish-records.png",
+      "c4c-progress.png",
+      "c4c-report.png",
+      "c4c-public-report.png",
+      "c4c-mobile-public-report-375.png",
+      "c4c-mobile-public-report-390.png",
+      "c4c-mobile-public-report-414.png",
+      "c4c-public-evidence.png"
+    ],
+    "checks": {
+      "dashboard": {
+        "missing": [],
+        "ok": true
+      },
+      "weekly": {
+        "missing": [],
+        "ok": true
+      },
+      "publish": {
+        "missing": [],
+        "ok": true
+      },
+      "progress": {
+        "missing": [],
+        "ok": true
+      },
+      "report": {
+        "missing": [],
+        "ok": true
+      },
+      "public": {
+        "missing": [],
+        "ok": true
+      },
+      "evidence": {
+        "missing": [],
+        "ok": true
+      }
+    }
+  }
+}

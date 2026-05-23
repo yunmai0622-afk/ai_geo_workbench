@@ -786,6 +786,20 @@ const geoAssetRouter = router({
   updatePlatformAuthorization: protectedProcedure.input(platformAuthorizationInput.extend({ id: z.number().int().positive() })).mutation(() => {
     throw new TRPCError({ code: "FORBIDDEN", message: "第三方平台授权已不在企业档案维护，此入口已关闭。" });
   }),
+  analyzeDocument: protectedProcedure.input(z.object({
+    projectId: z.number().int().positive(),
+    documentText: z.string().min(20, "资料内容过短，请补充后重试").max(50000, "资料内容过长，请分段上传"),
+  })).mutation(async ({ input }) => {
+    const { analyzeEnterpriseProfileDocument } = await import("./enterpriseProfileAnalyze");
+    await getProjectOrThrow(input.projectId);
+    try {
+      const analysis = await analyzeEnterpriseProfileDocument(input.documentText);
+      return { success: true as const, analysis };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "资料解析失败，请稍后重试";
+      throw new TRPCError({ code: "BAD_REQUEST", message: msg });
+    }
+  }),
   generateProfileMarketingCopy: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
     const db = await requireDb();
     await getProjectOrThrow(input.projectId);
@@ -987,6 +1001,19 @@ const geoRouter = router({
     generateTargetQuestions: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
       const project = await getProjectOrThrow(input.projectId);
+      const existingRows = await db
+        .select({ questionText: questions.questionText })
+        .from(questions)
+        .where(
+          and(
+            eq(questions.projectId, input.projectId),
+            eq(questions.questionType, "指定问题"),
+            eq(questions.enabled, 1),
+          ),
+        );
+      const excludeQuestions = existingRows
+        .map(r => (r.questionText ?? "").trim())
+        .filter(t => t.length > 0);
       const profileRows = await db
         .select()
         .from(enterpriseGeoProfiles)
@@ -1003,7 +1030,7 @@ const geoRouter = router({
       const keyPointsStr = keyPointsFromEp && keyPointsFromEp.length > 0
         ? keyPointsFromEp
         : (resolved.keyPoints.join("；") || project.coreSellingPoints);
-      const generated = await llmGenerateTargetSearchQuestions({
+      const generatedPack = await llmGenerateTargetSearchQuestions({
         brandName: (ep?.brandName?.trim() || resolved.brandName || project.enterpriseName).trim(),
         industryTag: (ep?.industryTag?.trim() || project.industry).trim(),
         productDesc: (ep?.productDesc?.trim() || resolved.productDesc || project.productIntro).trim(),
@@ -1011,7 +1038,9 @@ const geoRouter = router({
         customerPains,
         competitors,
         keyPoints: keyPointsStr,
+        excludeQuestions,
       });
+      const generated = generatedPack.rows;
       await db.delete(questions).where(and(eq(questions.projectId, input.projectId), eq(questions.source, "ai_generated")));
       await db.insert(questions).values(
         generated.map(item => ({
@@ -1026,7 +1055,13 @@ const geoRouter = router({
         })),
       );
       await updateProjectStatus(input.projectId, "questions_ready");
-      return { success: true, count: generated.length } as const;
+      return {
+        success: true,
+        count: generated.length,
+        newCount: generated.length,
+        filteredCount: generatedPack.filteredCount,
+        hadPreviousQuestions: excludeQuestions.length > 0,
+      } as const;
     }),
     generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
@@ -1739,12 +1774,20 @@ const geoRouter = router({
         if (!input.projectId) return [];
         return db.select().from(geoArticleTopics).where(eq(geoArticleTopics.projectId, input.projectId)).orderBy(desc(geoArticleTopics.createdAt));
       }),
-      generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+      generate: protectedProcedure.input(z.object({
+        projectId: z.number().int().positive(),
+        generationCount: z.number().int().min(1).max(50).optional(),
+      })).mutation(async ({ input }) => {
         const db = await requireDb();
         const project = await getProjectOrThrow(input.projectId);
         const tasks = await db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
+        if (tasks.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成内容诊断并生成优化任务，再准备本周内容。" });
+        }
+        const generationCount = input.generationCount ?? 7;
         const generated = generateGeoArticleTopics({
           project,
+          targetCount: generationCount,
           tasks: tasks.map(t => ({
             id: t.id,
             taskType: t.taskType,

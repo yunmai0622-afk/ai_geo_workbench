@@ -17,7 +17,7 @@ export function GeoStatusGuide({ stage, completion, nextAction, why, risk, ctaLa
   const safeCompletion = Math.min(100, Math.max(0, completion));
 
   return (
-    <section className="geo-status-guide rounded-3xl border border-cyan-300/15 bg-slate-950/70 p-5 text-slate-100 shadow-[0_0_34px_rgba(56,189,248,0.12)] backdrop-blur">
+    <section className="geo-status-guide ai-glass-card border-cyan-300/20 p-5 text-slate-100 md:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -44,7 +44,7 @@ export function GeoStatusGuide({ stage, completion, nextAction, why, risk, ctaLa
           </div>
         </div>
         {ctaLabel && ctaPath ? (
-          <Button onClick={() => setLocation(ctaPath)} className="shrink-0 bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+          <Button onClick={() => setLocation(ctaPath)} variant="ai" className="shrink-0">
             {ctaLabel}
           </Button>
         ) : null}
