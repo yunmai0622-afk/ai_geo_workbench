@@ -18,6 +18,7 @@ import {
   showPublishCompareSection,
   type DeliveryReportPublishedItem,
 } from "@/lib/deliveryReportDisplay";
+import { DeliveryReportCustomerLightView } from "@/components/DeliveryReportCustomerLightView";
 import { useMemo, useRef, type ReactNode } from "react";
 
 export type DeliveryReportCustomerViewProps = {
@@ -33,6 +34,12 @@ export type DeliveryReportCustomerViewProps = {
   loading?: boolean;
   showEvidenceLinks?: boolean;
   embedded?: boolean;
+  /** 客户对外报告使用浅色白标；内部效果报告保持深色 */
+  variant?: "dark" | "light";
+  /** 仅用于展示报告编号后缀，不向客户展示该字段名 */
+  reportNumberSuffix?: number;
+  reportNumberSeed?: string;
+  contentAssetCount?: number;
   showMonitoringCta?: boolean;
   onNavigateEvidence?: (path: string) => void;
   buildEvidenceLink?: (sample: { monitoringRecordId: number; resultIndex: number }) => string;
@@ -68,24 +75,29 @@ function ReportSection({
   );
 }
 
-export function DeliveryReportCustomerView({
-  brandName,
-  enterpriseName,
-  reportGeneratedAt,
-  conclusionLine,
-  visibilityScore,
-  publishCount,
-  aiTestAggregate,
-  publishedItems = [],
-  suggestionLines,
-  loading,
-  showEvidenceLinks = true,
-  embedded = false,
-  showMonitoringCta = false,
-  onNavigateEvidence,
-  buildEvidenceLink,
-  onGoMonitoring,
-}: DeliveryReportCustomerViewProps) {
+export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProps) {
+  if (props.variant === "light") {
+    return <DeliveryReportCustomerLightView {...props} />;
+  }
+
+  const {
+    brandName,
+    enterpriseName,
+    reportGeneratedAt,
+    conclusionLine,
+    visibilityScore,
+    publishCount,
+    aiTestAggregate,
+    publishedItems = [],
+    suggestionLines,
+    loading,
+    showEvidenceLinks = true,
+    embedded = false,
+    showMonitoringCta = false,
+    onNavigateEvidence,
+    buildEvidenceLink,
+    onGoMonitoring,
+  } = props;
   const evidenceRef = useRef<HTMLDivElement>(null);
   const hasAiTestData = aiTestAggregate.questionCount > 0;
 

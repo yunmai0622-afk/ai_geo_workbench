@@ -37,7 +37,7 @@ export default function DeliveryReportPublicPage() {
 
   if (!enabled) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-slate-300">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-6 text-center text-slate-700">
         <p>{DELIVERY_REPORT_SHARE_INVALID_MESSAGE}</p>
       </div>
     );
@@ -46,6 +46,7 @@ export default function DeliveryReportPublicPage() {
   if (shareQuery.isLoading) {
     return (
       <DeliveryReportCustomerView
+        variant="light"
         brandName="—"
         enterpriseName="—"
         reportGeneratedAt={null}
@@ -53,6 +54,7 @@ export default function DeliveryReportPublicPage() {
         visibilityScore={null}
         publishCount={0}
         aiTestAggregate={emptyAggregate}
+        reportNumberSeed={token}
         loading
         showEvidenceLinks={false}
       />
@@ -61,7 +63,7 @@ export default function DeliveryReportPublicPage() {
 
   if (shareQuery.isError || !shareQuery.data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-slate-300">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-6 text-center text-slate-700">
         <p>{shareQuery.error?.message ?? DELIVERY_REPORT_SHARE_INVALID_MESSAGE}</p>
       </div>
     );
@@ -76,14 +78,17 @@ export default function DeliveryReportPublicPage() {
   }));
   return (
     <DeliveryReportCustomerView
+      variant="light"
       brandName={data.brandName}
       enterpriseName={data.enterpriseName}
       reportGeneratedAt={data.reportGeneratedAt ? new Date(data.reportGeneratedAt) : null}
       conclusionLine={data.conclusionLine}
       visibilityScore={data.visibilityScore ?? null}
       publishCount={publishedItems.length}
+      contentAssetCount={publishedItems.length}
       publishedItems={publishedItems}
       aiTestAggregate={data.aiTest}
+      reportNumberSeed={token}
       showEvidenceLinks
       buildEvidenceLink={sample => buildDeliveryReportPublicEvidencePath(token, sample.monitoringRecordId, sample.resultIndex)}
       onNavigateEvidence={path => setLocation(path)}

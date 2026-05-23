@@ -11,6 +11,7 @@ describe("delivery report share page renders customer-facing sections", () => {
     const shareSource = readProjectFile("client/src/pages/DeliveryReportSharePage.tsx");
     const publicSource = readProjectFile("client/src/pages/DeliveryReportPublicPage.tsx");
     const customerViewSource = readProjectFile("client/src/components/DeliveryReportCustomerView.tsx");
+    const lightViewSource = readProjectFile("client/src/components/DeliveryReportCustomerLightView.tsx");
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
     const routerSource = readProjectFile("server/routers.ts");
     const serverShareSource = readProjectFile("server/deliveryReportPublicShare.ts");
@@ -62,19 +63,29 @@ describe("delivery report share page renders customer-facing sections", () => {
 
     for (const text of [
       "AI 搜索可见度评分",
-      "经营结论",
-      "本轮报告摘要",
-      "AI 搜索实测结果",
       "发布前后变化",
       "本轮新增 AI 搜索资产",
       "下一轮优化动作",
-      "查看完整证据",
-      "查看证据",
-      "暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以生成可追溯的品牌可见度结果。",
     ]) {
-      const customerPages = customerViewSource + publicSource + shareSource;
+      const customerPages = customerViewSource + lightViewSource + publicSource + shareSource;
       expect(customerPages).toContain(text);
     }
+    expect(publicSource).toContain('variant="light"');
+    expect(shareSource).toContain('variant="light"');
+    for (const text of [
+      "GEO AI 搜索可见度优化交付报告",
+      "老板先看这 3 点",
+      "本轮你获得了什么",
+      "查看原始 AI 回答证据",
+    ]) {
+      expect(lightViewSource + publicSource + shareSource).toContain(text);
+    }
+    for (const text of ["经营结论", "本轮报告摘要", "AI 搜索实测结果", "查看完整证据", "查看证据"]) {
+      expect(customerViewSource).toContain(text);
+    }
+    expect(lightViewSource + publicSource).toContain(
+      "暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以建立可追溯的可见度基线。",
+    );
     expect(flowSource).toContain("DeliveryReportCustomerView");
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain(
       "报告链接无效或已失效，请联系服务人员重新获取",
@@ -101,10 +112,11 @@ describe("delivery report share page renders customer-facing sections", () => {
     ]) {
       expect(publicSource).not.toContain(forbidden);
       expect(customerViewSource).not.toContain(forbidden);
+      expect(lightViewSource).not.toContain(forbidden);
     }
 
     expect(readProjectFile("drizzle/schema.ts")).toContain("delivery_report_share_tokens");
     expect(serverShareSource).toContain("deliveryReportShareTokens");
-    expect(JSON.stringify(publicSource + customerViewSource)).not.toContain("projectId");
+    expect(publicSource).not.toContain("projectId");
   });
 });

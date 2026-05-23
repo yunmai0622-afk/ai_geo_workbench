@@ -52,7 +52,7 @@ function ShareLoginGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-600">
         正在加载报告…
       </div>
     );
@@ -61,23 +61,23 @@ function ShareLoginGate({ children }: { children: ReactNode }) {
   if (!user) {
     const loginConfigured = isLoginConfigured();
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-        <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-cyan-300/15 bg-white/[0.04] p-8 text-center shadow-[0_0_42px_rgba(56,189,248,0.14)]">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 text-slate-900">
+        <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg">
           <div className="flex flex-col items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
               <BarChart3 className="h-7 w-7" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">登录后查看客户报告</h1>
-            <p className="max-w-sm text-sm leading-6 text-slate-400">
+            <p className="max-w-sm text-sm leading-6 text-slate-600">
               本页为登录后可访问的客户报告预览。对外分享请使用「复制客户报告链接」生成的匿名链接。
             </p>
           </div>
           {loginConfigured ? (
-            <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+            <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-sky-600 text-white hover:bg-sky-700">
               登录
             </Button>
           ) : (
-            <Button onClick={() => devLogin.mutate()} disabled={devLogin.isPending} size="lg" className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+            <Button onClick={() => devLogin.mutate()} disabled={devLogin.isPending} size="lg" className="w-full bg-sky-600 text-white hover:bg-sky-700">
               {devLogin.isPending ? "正在登录" : "本地开发登录"}
             </Button>
           )}
@@ -156,7 +156,7 @@ function DeliveryReportShareContent() {
 
   if (!enabled) {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-16 text-slate-300">
+      <div className="mx-auto max-w-3xl bg-slate-100 px-6 py-16 text-slate-700">
         <p>报告链接无效，请向交付人员索取正确的客户报告链接。</p>
       </div>
     );
@@ -170,12 +170,15 @@ function DeliveryReportShareContent() {
 
   return (
     <DeliveryReportCustomerView
+      variant="light"
+      reportNumberSuffix={projectId}
       brandName={brandName}
       enterpriseName={enterpriseName}
       reportGeneratedAt={reportGeneratedAt}
       conclusionLine={conclusionLine}
       visibilityScore={visibilityScore}
       publishCount={publishedItems.length}
+      contentAssetCount={articles.length}
       aiTestAggregate={aiTestAggregate}
       publishedItems={publishedItems}
       loading={loading}
