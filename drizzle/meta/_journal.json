@@ -113,6 +113,34 @@
       "when": 1778900000000,
       "tag": "0016_publish_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1779508530719,
+      "tag": "0016_nifty_colonel_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1779600000000,
+      "tag": "0020_project_platform_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1779700000000,
+      "tag": "0021_geo_quality_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1779800000000,
+      "tag": "0022_geo_quality_stale",
+      "breakpoints": true
     }
   ]
 }

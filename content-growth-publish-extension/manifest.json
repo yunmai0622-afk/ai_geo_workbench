@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "内容增长系统 - 自动发布",
-  "version": "1.0.0",
-  "description": "连接内容增长系统，自动发布文章到各平台",
+  "version": "1.2.0",
+  "description": "连接内容增长系统，自动发布文章到各平台（C7-C 多平台适配器）",
   "permissions": ["storage", "alarms", "tabs", "activeTab", "scripting"],
   "host_permissions": [
     "https://www.zhihu.com/*",
@@ -27,22 +27,58 @@
   "content_scripts": [
     {
       "matches": ["https://www.zhihu.com/creator*", "https://zhuanlan.zhihu.com/*"],
-      "js": ["content-scripts/shared.js", "content-scripts/zhihu.js"],
+      "js": [
+        "content-scripts/accountDetect.js",
+        "platforms/common.js",
+        "platforms/zhihu.js",
+        "platforms/baijiahao.js",
+        "platforms/toutiao.js",
+        "platforms/sohu.js",
+        "content-scripts/shared.js",
+        "content-scripts/zhihu.js"
+      ],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://mp.toutiao.com/*"],
-      "js": ["content-scripts/shared.js", "content-scripts/toutiao.js"],
+      "js": [
+        "content-scripts/accountDetect.js",
+        "platforms/common.js",
+        "platforms/zhihu.js",
+        "platforms/baijiahao.js",
+        "platforms/toutiao.js",
+        "platforms/sohu.js",
+        "content-scripts/shared.js",
+        "content-scripts/toutiao.js"
+      ],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://mp.sohu.com/*"],
-      "js": ["content-scripts/shared.js", "content-scripts/sohu.js"],
+      "js": [
+        "content-scripts/accountDetect.js",
+        "platforms/common.js",
+        "platforms/zhihu.js",
+        "platforms/baijiahao.js",
+        "platforms/toutiao.js",
+        "platforms/sohu.js",
+        "content-scripts/shared.js",
+        "content-scripts/sohu.js"
+      ],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://baijiahao.baidu.com/*"],
-      "js": ["content-scripts/shared.js", "content-scripts/baijiahao.js"],
+      "js": [
+        "content-scripts/accountDetect.js",
+        "platforms/common.js",
+        "platforms/zhihu.js",
+        "platforms/baijiahao.js",
+        "platforms/toutiao.js",
+        "platforms/sohu.js",
+        "content-scripts/shared.js",
+        "content-scripts/baijiahao.js"
+      ],
       "run_at": "document_idle"
     },
     {

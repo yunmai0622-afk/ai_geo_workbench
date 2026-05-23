@@ -1,5 +1,6 @@
 import { AiMetricCard, AiPageHero, AiPageShell, AiSection, AiStatusBadge } from "@/components/ai/ProductUi";
 import { AiFilledMark, ProfileIntakePanel, type ProfileApplyPatch } from "@/components/enterpriseProfile/ProfileIntakePanel";
+import { PlatformAccountBindingSection } from "@/components/PlatformAccountBindingSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -626,6 +627,8 @@ export default function AssetCenterPage() {
               手动填写档案
             </Button>
           </div>
+
+          <PlatformAccountBindingSection projectId={selectedProjectId!} />
 
           <div ref={uploadSectionRef}>
             <ProfileIntakePanel

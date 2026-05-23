@@ -6,6 +6,7 @@ import {
   AiSection,
   AiStatusBadge,
 } from "@/components/ai/ProductUi";
+import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { Button } from "@/components/ui/button";
 import { aiInput } from "@/lib/aiProductUi";
 import {
@@ -17,8 +18,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { isBindingPublishPlatform, publishBlockedNoAccountMessage } from "@shared/platformAccountVerify";
+import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
+import { getGeoQualityLabel, type GeoQualityRecommendation } from "@shared/geoQualityReview";
+import {
+  GEO_QUALITY_STALE_PUBLISH_HINT,
+  isGeoQualityScoreStale,
+  shouldBlockPublishForGeoQuality,
+} from "@shared/geoQualityStale";
+import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
+import { isLegacyAiGeneratedCoverUrl, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import {
   DEFAULT_WEEKLY_GENERATION_COUNT,
   MAX_WEEKLY_GENERATION_COUNT,
@@ -54,7 +66,24 @@ type ArticleRow = {
   createdAt?: Date | string | null;
   targetPlatform?: string | null;
   contentType?: string | null;
+  coverTemplate?: string | null;
+  coverBase64?: string | null;
+  coverImageUrl?: string | null;
+  geoQualityScore?: number | null;
+  geoQualityRecommendation?: string | null;
+  geoQualityStale?: boolean | number | null;
 };
+
+function formatGeoQualitySummary(article: ArticleRow): string | null {
+  if (article.geoQualityScore == null || !article.geoQualityRecommendation) return null;
+  const label = getGeoQualityLabel(article.geoQualityRecommendation as GeoQualityRecommendation);
+  const stale = isGeoQualityScoreStale(article) ? " · 待重新质检" : "";
+  return `GEO 质量：${article.geoQualityScore} 分 · ${label}${stale}`;
+}
+
+function hasGeoQualityReview(article: ArticleRow): boolean {
+  return article.geoQualityScore != null && article.geoQualityRecommendation != null;
+}
 
 type QualityScoreRow = {
   articleId?: number;
@@ -70,8 +99,9 @@ const PUBLISH_PLATFORMS = [
   { slug: "toutiao" as const, label: "头条号" },
   { slug: "sohu" as const, label: "搜狐号" },
   { slug: "baijiahao" as const, label: "百家号" },
-  { slug: "wechat" as const, label: "微信公众号" },
 ];
+
+const publishTaskStatusLabel = publishTaskStatusCustomerLabel;
 
 function mapContentTypeLabel(raw: string): string {
   if (raw?.includes("痛点") || raw?.includes("官网")) return "痛点解决";
@@ -205,6 +235,22 @@ async function copyText(label: string, text: string) {
   }
 }
 
+function articleCoverPreviewSrc(article: ArticleRow): string | null {
+  if (article.coverBase64?.trim()) {
+    const raw = article.coverBase64.trim();
+    return raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
+  }
+  if (article.coverTemplate && article.coverImageUrl?.trim()) {
+    const url = article.coverImageUrl.trim();
+    if (url.startsWith("data:")) return url;
+  }
+  if (isLegacyAiGeneratedCoverUrl(article.coverImageUrl) && !article.coverTemplate) {
+    return null;
+  }
+  return null;
+}
+
+
 export default function WeeklyContentPage() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
@@ -213,11 +259,16 @@ export default function WeeklyContentPage() {
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
   const topicsQuery = trpc.geo.articles.topics.list.useQuery(projectInput, { enabled });
   const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
 
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
+  const updateGeneratedArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
   const downloadExtension = trpc.publishTasks.downloadExtension.useMutation();
 
   const autoTopicsTriggeredRef = useRef(false);
@@ -236,6 +287,19 @@ export default function WeeklyContentPage() {
     return localStorage.getItem(EXTENSION_HINT_KEY) !== "1";
   });
   const [publishToolsOpen, setPublishToolsOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
+  const [regeneratingCoverIds, setRegeneratingCoverIds] = useState<Set<number>>(() => new Set());
+  const [unsavedArticleIds, setUnsavedArticleIds] = useState<Set<number>>(() => new Set());
+
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const brandName = selectedProject?.enterpriseName ?? "海豚知道";
+  const projectName = selectedProject?.enterpriseName ?? "当前企业";
+
+  const platformAccountMap = useMemo(() => {
+    const rows = platformAccountsQuery.data?.accounts ?? [];
+    return new Map(rows.map(r => [r.platform, r]));
+  }, [platformAccountsQuery.data]);
 
   const tasks = (tasksQuery.data ?? []) as TaskRow[];
   const topics = (topicsQuery.data ?? []) as TopicRow[];
@@ -430,10 +494,82 @@ export default function WeeklyContentPage() {
     });
   };
 
+  const openEditor = (article: ArticleRow) => {
+    setEditorArticle(article);
+    setEditorOpen(true);
+  };
+
+  const setArticleUnsaved = useCallback((articleId: number, unsaved: boolean) => {
+    setUnsavedArticleIds(prev => {
+      const has = prev.has(articleId);
+      if (unsaved === has) return prev;
+      const next = new Set(prev);
+      if (unsaved) next.add(articleId);
+      else next.delete(articleId);
+      return next;
+    });
+  }, []);
+
+  const blockPublishIfUnsaved = useCallback(
+    (articleId: number): boolean => {
+      if (!unsavedArticleIds.has(articleId)) return false;
+      toast.error(ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE);
+      return true;
+    },
+    [unsavedArticleIds],
+  );
+
+  const blockPublishIfQualityReject = useCallback((article: ArticleRow): boolean => {
+    if (!shouldBlockPublishForGeoQuality(article)) return false;
+    toast.error("内容质量不足，建议优化后再发布");
+    return true;
+  }, []);
+
   const openPublishDialog = (article: ArticleRow) => {
+    if (blockPublishIfUnsaved(article.id)) return;
+    if (blockPublishIfQualityReject(article)) return;
+    if (isGeoQualityScoreStale(article)) {
+      toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
+    } else if (article.geoQualityRecommendation === "revise") {
+      toast.message("内容有优化空间，确认后可继续发布");
+    }
     setPublishArticle(article);
     setSelectedPlatforms(new Set());
     setPublishDialogOpen(true);
+  };
+
+  const handleRegenerateCover = async (article: ArticleRow) => {
+    if (!selectedProjectId) return;
+    const title = (article.title ?? "").trim();
+    const content = (article.markdownContent ?? "").trim();
+    if (!title || !content) {
+      toast.error("请先通过「编辑内容」填写标题与正文");
+      return;
+    }
+    setRegeneratingCoverIds(prev => new Set(prev).add(article.id));
+    try {
+      const template = normalizeArticleCoverTemplateId(article.coverTemplate);
+      const { coverBase64 } = await renderArticleCoverPng({ template, title, brandName });
+      await updateGeneratedArticle.mutateAsync({
+        projectId: selectedProjectId,
+        articleId: article.id,
+        title,
+        content,
+        coverTemplate: template,
+        coverBase64,
+        coverImageUrl: null,
+      });
+      await invalidateArticles();
+      toast.success("封面已重新生成");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "封面生成失败，可重试");
+    } finally {
+      setRegeneratingCoverIds(prev => {
+        const next = new Set(prev);
+        next.delete(article.id);
+        return next;
+      });
+    }
   };
 
   const togglePlatform = (slug: string) => {
@@ -458,21 +594,29 @@ export default function WeeklyContentPage() {
         const tracked = data.tasks.filter(t => taskIds.includes(t.id));
         if (tracked.length === 0) continue;
 
-        const allDone = tracked.every(t => t.status === "completed" || t.status === "failed");
+        const allDone = tracked.every(
+          t => t.status === "completed" || t.status === "failed" || t.status === "draft_saved",
+        );
         if (!allDone) continue;
 
         await invalidateArticles();
 
         const ok = tracked.filter(t => t.status === "completed");
+        const drafts = tracked.filter(t => t.status === "draft_saved");
         const failed = tracked.filter(t => t.status === "failed");
         if (ok.length > 0) {
           toast.success(
             ok.length === tracked.length
               ? "发布成功，文章已标记为已发布"
-              : `${ok.length} 个平台发布成功，${failed.length} 个失败`,
+              : `${ok.length} 个平台发布成功，${drafts.length} 个已存草稿，${failed.length} 个失败`,
           );
+        } else if (drafts.length > 0 && failed.length === 0) {
+          toast.success("内容已保存为平台草稿，请在平台内确认后正式发布");
         } else {
-          toast.error(failed[0]?.errorMessage || "发布失败，请稍后重试");
+          const first = failed[0];
+          toast.error(
+            first ? publishTaskStatusLabel(first) + (first.errorMessage ? `：${first.errorMessage.split("\n")[0]}` : "") : "发布失败，请稍后重试",
+          );
         }
         return;
       }
@@ -487,6 +631,22 @@ export default function WeeklyContentPage() {
     if (!publishArticle || !selectedProjectId || selectedPlatforms.size === 0) {
       toast.error("请至少选择一个发布平台");
       return;
+    }
+    if (blockPublishIfUnsaved(publishArticle.id)) return;
+    if (blockPublishIfQualityReject(publishArticle)) return;
+    if (isGeoQualityScoreStale(publishArticle)) {
+      toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
+    }
+    for (const slug of Array.from(selectedPlatforms)) {
+      if (!isBindingPublishPlatform(slug)) continue;
+      const row = platformAccountMap.get(slug);
+      if (!row?.isEnabled || !row.accountName?.trim()) {
+        toast.error(publishBlockedNoAccountMessage(slug));
+        return;
+      }
+    }
+    if (!articleCoverPreviewSrc(publishArticle)) {
+      toast.message("当前文章暂无封面，将先发布正文；可在「编辑内容」中生成封面后重试");
     }
     const articleId = publishArticle.id;
     const taskIds: number[] = [];
@@ -540,8 +700,8 @@ export default function WeeklyContentPage() {
     <AiPageShell>
       <AiPageHero
         title="内容资产生产"
-        description="围绕目标问题批量生成可用于 AI 搜索优化的内容资产。"
-        badge="资产生产台"
+        description="围绕目标问题批量生成内容资产，编辑确认标题、正文与封面后再发布到外部平台。"
+        badge="AI 内容资产编辑台"
       >
         <label className="text-xs text-slate-500">当前项目</label>
         <select
@@ -708,25 +868,45 @@ export default function WeeklyContentPage() {
                       <AiStatusBadge tone={statusTone}>{statusLabel}</AiStatusBadge>
                       <span className="text-xs text-slate-500">{meta.contentType}</span>
                     </div>
-                    <h3
-                      className={`mt-2 line-clamp-2 text-base font-semibold leading-snug ${isPublished ? "text-slate-400" : "text-white"}`}
-                      role={isGenerated ? "button" : undefined}
-                      tabIndex={isGenerated ? 0 : undefined}
-                      onClick={() => {
-                        if (isGenerated && article) toggleExpand(topic.id);
-                      }}
-                      onKeyDown={e => {
-                        if (isGenerated && article && (e.key === "Enter" || e.key === " ")) {
-                          e.preventDefault();
-                          toggleExpand(topic.id);
-                        }
-                      }}
-                    >
-                      {topic.title}
+                    <h3 className={`mt-2 line-clamp-2 text-base font-semibold leading-snug ${isPublished ? "text-slate-400" : "text-white"}`}>
+                      {article?.title ?? topic.title}
                     </h3>
+                    {isGenerated && article && formatGeoQualitySummary(article) ? (
+                      <p className="mt-1 text-xs text-cyan-100/90">{formatGeoQualitySummary(article)}</p>
+                    ) : null}
                   </div>
 
+                  {isGenerated && article ? (
+                    <div className="relative border-b border-white/8 bg-slate-900/50">
+                      {articleCoverPreviewSrc(article) ? (
+                        <img
+                          src={articleCoverPreviewSrc(article)!}
+                          alt=""
+                          className="aspect-video w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex aspect-video flex-col items-center justify-center gap-2 px-4 text-center text-xs text-slate-500">
+                          {isLegacyAiGeneratedCoverUrl(article.coverImageUrl) && !article.coverTemplate ? (
+                            <span className="text-amber-200/80">旧版封面已隐藏，请重新生成模板封面</span>
+                          ) : regeneratingCoverIds.has(article.id) ? (
+                            <>
+                              <Spinner className="size-5 text-cyan-400" />
+                              <span>正在生成封面…</span>
+                            </>
+                          ) : (
+                            <span>待生成封面</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-1 flex-col gap-3 px-4 py-3">
+                    {isGenerated && article ? (
+                      <p className="text-[10px] text-slate-500">
+                        内容类型 · {mapContentTypeLabel(article.contentType ?? meta.contentType)}
+                      </p>
+                    ) : null}
                     <div>
                       <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">目标问题</p>
                       <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{targetQuestion}</p>
@@ -762,6 +942,11 @@ export default function WeeklyContentPage() {
                       {isGenerated && article ? (
                         <div className="space-y-2">
                           <div className="flex flex-wrap gap-2">
+                            <Button type="button" variant="ai" size="sm" className="w-full sm:w-auto" onClick={() => openEditor(article)}>
+                              编辑内容
+                            </Button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
                             <Button
                               type="button"
                               variant="outline"
@@ -780,6 +965,16 @@ export default function WeeklyContentPage() {
                             >
                               复制正文
                             </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-white/15 text-slate-200"
+                              disabled={regeneratingCoverIds.has(article.id) || updateGeneratedArticle.isPending}
+                              onClick={() => void handleRegenerateCover(article)}
+                            >
+                              {regeneratingCoverIds.has(article.id) ? "生成中…" : "重新生成封面"}
+                            </Button>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             <Button
@@ -795,7 +990,7 @@ export default function WeeklyContentPage() {
                               type="button"
                               variant="ai"
                               size="sm"
-                              disabled={createPublishTask.isPending}
+                              disabled={createPublishTask.isPending || shouldBlockPublishForGeoQuality(article)}
                               onClick={() => openPublishDialog(article)}
                             >
                               发布到平台
@@ -849,7 +1044,7 @@ export default function WeeklyContentPage() {
           <div className="space-y-3 border-t border-white/8 px-4 pb-4 pt-2">
             <p className="text-xs text-slate-500">用于辅助交付人员把内容发布到外部平台。</p>
             <p className="text-xs text-slate-500">
-              下载插件后，在 Chrome 扩展程序页面加载；再在各平台完成登录即可配合「发布到平台」使用。
+              下载插件后，在 Chrome 扩展程序页面加载；系统更新后请点击「重新加载」使账号核验生效（当前插件版本 v1.2.0）。
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -876,6 +1071,8 @@ export default function WeeklyContentPage() {
             <details className="text-xs text-slate-500">
               <summary className="cursor-pointer text-slate-500 hover:text-slate-400">插件更新日志</summary>
               <ul className="mt-2 space-y-1 pl-3">
+                <li>v1.2.0 · 百家号/头条/搜狐独立发布适配器</li>
+                <li>v1.1.0 · 发布前核验企业绑定账号，防止错发</li>
                 <li>v2.2 · 等待发布按钮可点击后再操作</li>
                 <li>v2.0 · 正文粘贴兼容性提升</li>
               </ul>
@@ -884,39 +1081,114 @@ export default function WeeklyContentPage() {
         </details>
       ) : null}
 
+      {selectedProjectId && editorArticle ? (
+        <ArticleAssetEditorSheet
+          open={editorOpen}
+          onOpenChange={open => {
+            setEditorOpen(open);
+            if (!open) setEditorArticle(null);
+          }}
+          projectId={selectedProjectId}
+          brandName={brandName}
+          article={editorArticle}
+          onDirtyChange={setArticleUnsaved}
+          onSaved={() => {
+            if (editorArticle) setArticleUnsaved(editorArticle.id, false);
+            void invalidateArticles();
+          }}
+        />
+      ) : null}
+
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
         <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>选择发布平台</DialogTitle>
+            <DialogTitle>发布前账号确认</DialogTitle>
             <DialogDescription className="text-slate-400">
-              {publishArticle?.title ?? "当前文章"} · 确认后将加入插件发布队列
+              {publishArticle?.title ?? "当前文章"} · 将使用已保存的最新标题、正文与封面（如有）
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            {PUBLISH_PLATFORMS.map(p => (
-              <label key={p.slug} className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/10 px-3 py-2 hover:bg-white/5">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-cyan-400"
-                  checked={selectedPlatforms.has(p.slug)}
-                  onChange={() => togglePlatform(p.slug)}
-                />
-                <span className="text-sm">{p.label}</span>
-              </label>
-            ))}
+          <div className="space-y-2">
+            <div className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-50">
+              <p>当前企业：{projectName}</p>
+              <p className="mt-2 text-xs text-cyan-100/80">
+                系统将先核验当前浏览器登录账号是否与该企业绑定账号一致，匹配后才会继续发布。
+              </p>
+              <p className="mt-2 text-xs text-cyan-100/80">
+                请确认发布插件已更新到支持多平台适配与账号核验的版本（v1.2.0），并在扩展管理中重新加载插件。
+              </p>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-500">
+              若插件未返回账号信息，会提示「暂时无法识别当前登录账号」。请确认已重新加载最新版发布插件，并登录该企业绑定的平台账号。
+            </p>
+            {publishArticle && !hasGeoQualityReview(publishArticle) ? (
+              <p className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                当前内容尚未进行发布前质检，建议先质检后发布。
+              </p>
+            ) : null}
+            {publishArticle && isGeoQualityScoreStale(publishArticle) ? (
+              <p className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                {GEO_QUALITY_STALE_PUBLISH_HINT}
+              </p>
+            ) : null}
+            {publishArticle &&
+            !isGeoQualityScoreStale(publishArticle) &&
+            publishArticle.geoQualityRecommendation === "revise" ? (
+              <p className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                内容有优化空间，确认后可继续发布。
+              </p>
+            ) : null}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" className="border-white/15" onClick={() => setPublishDialogOpen(false)}>
-              取消
-            </Button>
-            <Button
-              type="button"
-              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-              disabled={createPublishTask.isPending || selectedPlatforms.size === 0}
-              onClick={() => void handleConfirmPublish()}
-            >
-              {createPublishTask.isPending ? "提交中..." : "确认发布"}
-            </Button>
+          <div className="space-y-3 py-2">
+            {PUBLISH_PLATFORMS.map(p => {
+              const bound = platformAccountMap.get(p.slug);
+              const expected = bound?.isEnabled && bound.accountName ? bound.accountName : null;
+              return (
+                <label key={p.slug} className="flex cursor-pointer flex-col gap-1 rounded-lg border border-white/10 px-3 py-2 hover:bg-white/5">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-cyan-400"
+                      checked={selectedPlatforms.has(p.slug)}
+                      onChange={() => togglePlatform(p.slug)}
+                    />
+                    <span className="text-sm font-medium">{p.label}</span>
+                  </div>
+                  <span className="pl-7 text-xs text-slate-500">
+                    {expected ? `应使用账号：${expected}` : "未绑定账号（发布将被阻断）"}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            {Array.from(selectedPlatforms).some(
+              slug => isBindingPublishPlatform(slug) && !platformAccountMap.get(slug)?.accountName,
+            ) ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-amber-400/30 text-amber-100"
+                onClick={() => {
+                  setPublishDialogOpen(false);
+                  setLocation("/asset-center#platform-accounts");
+                }}
+              >
+                去绑定账号
+              </Button>
+            ) : null}
+            <div className="flex w-full gap-2">
+              <Button type="button" variant="outline" className="flex-1 border-white/15" onClick={() => setPublishDialogOpen(false)}>
+                取消
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                disabled={createPublishTask.isPending || selectedPlatforms.size === 0}
+                onClick={() => void handleConfirmPublish()}
+              >
+                {createPublishTask.isPending ? "提交中..." : "开始核验并发布"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -3,7 +3,7 @@ chrome.storage.sync.set({
   apiKey: 'bd9a998e0a6244d09d7ea7d6e9c0c1e2'
 })
 
-const BUILD_TAG = "bg-v22-wait-publish-btn";
+const BUILD_TAG = "bg-v24-c7c-platform-adapters";
 console.log(`[启动] background.js 已加载 tag=${BUILD_TAG} time=${new Date().toISOString()}`);
 
 const PLATFORM_URLS = {
@@ -141,33 +141,52 @@ async function processTask(task, apiKey, serverUrl) {
     await waitForTabComplete(tab.id, 30000);
     console.log(`[发布] tab ${tab.id} 加载完成，额外等待 3 秒让 content script 注入...`);
 
-    // 额外等待让 content script 完全注入和初始化
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    // 带重试的消息发送
+    const verify = await verifyTaskAccountBeforePublish(tab.id, task, apiKey, serverUrl);
+    if (!verify.matched) {
+      return;
+    }
+
     const result = await sendMessageWithRetry(tab.id, {
       action: "publish",
       task,
     }, 5, 3000);
 
-    console.log(`[发布] 任务 id=${task.id} 执行结果:`, JSON.stringify(result));
+    console.log(
+      `[发布][${task.platform}][task=${task.id}] step=finish result=${result?.success ? "ok" : "failed"} published=${Boolean(result?.published)} draftSaved=${Boolean(result?.draftSaved)} errorType=${result?.errorType ?? ""} step=${result?.step ?? ""}`,
+    );
 
     if (result?.success && result?.published) {
       await updateTaskStatus(serverUrl, apiKey, task.id, "completed", result.url);
-      console.log(`[发布] 任务 id=${task.id} 已点击发布并确认成功 url=${result.url}`);
-    } else if (result?.success && !result?.published) {
-      const errorMsg = "内容已填写但未确认发布成功，请手动检查后重试";
-      await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, errorMsg);
-      console.error(`[发布] 任务 id=${task.id} ${errorMsg}`);
+      console.log(`[发布] 任务 id=${task.id} 已发布 url=${result.url}`);
+    } else if (result?.success && result?.draftSaved) {
+      await updateTaskStatus(
+        serverUrl,
+        apiKey,
+        task.id,
+        "draft_saved",
+        result.url ?? null,
+        null,
+      );
+      console.log(`[发布] 任务 id=${task.id} 已保存草稿 url=${result.url ?? "(无)"}`);
     } else {
-      const errorMsg = result?.error || "发布失败（content script 返回失败）";
+      const errorMsg = formatPublishFailureMessage(result);
       await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, errorMsg);
-      console.error(`[发布] 任务 id=${task.id} 发布失败: ${errorMsg}`);
+      console.error(
+        `[发布][${task.platform}][task=${task.id}] step=${result?.step ?? "unknown"} errorType=${result?.errorType ?? "unknown"} ${errorMsg}`,
+      );
     }
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
+    const payload = JSON.stringify({
+      errorType: "unknown",
+      step: "background",
+      customerMessage: "插件执行异常，请重新加载插件后重试。",
+      detail: errMsg,
+    });
     console.error(`[发布] 任务 id=${task.id} 执行异常: ${errMsg}`);
-    await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, errMsg);
+    await updateTaskStatus(serverUrl, apiKey, task.id, "failed", null, payload);
   } finally {
     // 延迟关闭 tab
     if (tab && tab.id) {
@@ -176,6 +195,99 @@ async function processTask(task, apiKey, serverUrl) {
       }, 8000);
     }
   }
+}
+
+async function verifyTaskAccountBeforePublish(tabId, task, apiKey, serverUrl) {
+  let detectedAccountName = null;
+  try {
+    const detectResp = await sendMessageWithRetry(
+      tabId,
+      { action: "detectAccount", platform: task.platform },
+      5,
+      2000,
+    );
+    detectedAccountName = detectResp?.detectedAccountName ?? null;
+  } catch (e) {
+    console.warn("[发布核验] 读取登录账号失败", e);
+  }
+
+  const expected = task.expectedAccountName ?? "";
+  const projectName = task.projectName ?? "";
+  const projectId = task.projectId ?? "";
+
+  console.log(
+    `[发布核验] projectId=${projectId} projectName=${projectName} platform=${task.platform} expected=${expected} detected=${detectedAccountName ?? "(空)"} taskId=${task.id}`,
+  );
+
+  try {
+    const body = {
+      json: {
+        taskId: task.id,
+        apiKey,
+        detectedAccountName,
+      },
+    };
+    const res = await fetch(`${serverUrl}/api/trpc/publishTasks.verifyPublishTask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    const result = data?.result?.data?.json;
+    const status = result?.status ?? "unknown";
+    const matched = Boolean(result?.matched);
+
+    console.log(
+      `[发布核验] projectId=${projectId} projectName=${projectName} platform=${task.platform} expected=${expected} detected=${detectedAccountName ?? "(空)"} status=${status} taskId=${task.id}`,
+    );
+
+    if (!matched) {
+      const err =
+        result?.status === "mismatched"
+          ? `[发布核验失败] 当前企业=${projectName} 应使用账号=${expected} 当前登录账号=${detectedAccountName ?? "(空)"} 已停止发布`
+          : `[发布核验失败] 无法识别当前登录账号，为避免错发，已停止发布`;
+      console.error(err);
+      return { matched: false };
+    }
+
+    return { matched: true };
+  } catch (e) {
+    console.error("[发布核验] 服务端核验请求失败", e);
+    await updateTaskStatus(
+      serverUrl,
+      apiKey,
+      task.id,
+      "failed",
+      null,
+      "账号核验失败，已停止发布。请确认插件已连接系统后重试。",
+    );
+    return { matched: false };
+  }
+}
+
+function formatPublishFailureMessage(result) {
+  if (!result) {
+    return JSON.stringify({
+      errorType: "unknown",
+      step: "publish",
+      customerMessage: "发布失败（插件无响应）",
+    });
+  }
+  if (result.errorMessage) return result.errorMessage;
+  if (result.customerMessage) {
+    return JSON.stringify({
+      errorType: result.errorType ?? "unknown",
+      step: result.step ?? "unknown",
+      customerMessage: result.customerMessage,
+      detail: result.error,
+    });
+  }
+  return JSON.stringify({
+    errorType: result.errorType ?? "unknown",
+    step: result.step ?? "unknown",
+    customerMessage: result.error || "发布失败",
+    detail: result.error,
+  });
 }
 
 async function updateTaskStatus(serverUrl, apiKey, taskId, status, resultUrl, errorMessage) {

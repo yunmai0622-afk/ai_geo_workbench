@@ -12,12 +12,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 function checkZhihuLogin() {
-  // 知乎登录检测：检查 cookie 中的 z_c0 或页面上的用户头像
   return Boolean(
     document.querySelector('[class*="Avatar"]') ||
-    document.querySelector('[class*="avatar"]') ||
-    document.querySelector('.GlobalWrite-navItem') ||
-    document.cookie.includes("z_c0")
+      document.querySelector('[class*="avatar"]') ||
+      document.querySelector(".GlobalWrite-navItem") ||
+      document.cookie.includes("z_c0"),
   );
 }
 

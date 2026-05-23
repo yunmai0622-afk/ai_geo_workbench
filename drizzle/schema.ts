@@ -1,4 +1,4 @@
-import { boolean, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -307,6 +307,15 @@ export const geoArticles = mysqlTable("geo_articles", {
   optimizationVersions: json("optimizationVersions").$type<Array<Record<string, unknown>>>(),
   status: articleStatusEnum.default("待质检").notNull(),
   publicPath: varchar("publicPath", { length: 1000 }),
+  coverTemplate: varchar("coverTemplate", { length: 32 }),
+  coverImageUrl: varchar("coverImageUrl", { length: 2000 }),
+  coverBase64: text("coverBase64"),
+  geoQualityScore: int("geoQualityScore"),
+  geoQualityDetail: json("geoQualityDetail").$type<Record<string, unknown>>(),
+  geoQualityReviewedAt: timestamp("geoQualityReviewedAt"),
+  geoQualityModel: varchar("geoQualityModel", { length: 50 }),
+  geoQualityRecommendation: varchar("geoQualityRecommendation", { length: 20 }),
+  geoQualityStale: int("geoQualityStale").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -581,7 +590,12 @@ export const publishTasks = mysqlTable("publish_tasks", {
   projectId: int("projectId").notNull(),
   articleId: int("articleId").notNull(),
   platform: varchar("platform", { length: 50 }).notNull(),
-  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  status: varchar("status", { length: 32 }).notNull().default("pending"),
+  projectName: varchar("projectName", { length: 255 }),
+  platformAccountId: int("platformAccountId"),
+  expectedAccountName: varchar("expectedAccountName", { length: 255 }),
+  detectedAccountName: varchar("detectedAccountName", { length: 255 }),
+  accountVerificationStatus: varchar("accountVerificationStatus", { length: 32 }).default("pending"),
   articleTitle: text("articleTitle").notNull(),
   articleContent: text("articleContent").notNull(),
   coverImageUrl: varchar("coverImageUrl", { length: 2000 }),
@@ -591,6 +605,27 @@ export const publishTasks = mysqlTable("publish_tasks", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+export const projectPlatformAccounts = mysqlTable(
+  "project_platform_accounts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    platform: varchar("platform", { length: 50 }).notNull(),
+    accountName: varchar("accountName", { length: 255 }).notNull(),
+    accountIdOrUrl: varchar("accountIdOrUrl", { length: 2000 }),
+    isEnabled: int("isEnabled").default(1).notNull(),
+    verificationStatus: varchar("verificationStatus", { length: 32 }).default("unknown").notNull(),
+    lastVerifiedAt: timestamp("lastVerifiedAt"),
+    lastDetectedAccountName: varchar("lastDetectedAccountName", { length: 255 }),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    projectPlatformUnique: uniqueIndex("project_platform_accounts_project_platform").on(table.projectId, table.platform),
+  }),
+);
 
 export const platformAuthorizationConfigs = mysqlTable("platform_authorization_configs", {
   id: int("id").autoincrement().primaryKey(),
@@ -655,3 +690,5 @@ export type PlatformAuthorizationConfig = typeof platformAuthorizationConfigs.$i
 export type InsertPlatformAuthorizationConfig = typeof platformAuthorizationConfigs.$inferInsert;
 export type PublishTask = typeof publishTasks.$inferSelect;
 export type InsertPublishTask = typeof publishTasks.$inferInsert;
+export type ProjectPlatformAccount = typeof projectPlatformAccounts.$inferSelect;
+export type InsertProjectPlatformAccount = typeof projectPlatformAccounts.$inferInsert;

@@ -9,6 +9,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, upsertUser } from "./db";
 import { publishTasksRouter } from "./publishTasksRouter";
+import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 
 /** 无真实平台原始回答时的占位 `ai_responses.rawAnswer` 前缀，可安全批量清理。 */
 const GEO_SYNTHETIC_AI_RESPONSE_PREFIX = "【系统自动】";
@@ -73,6 +74,7 @@ import {
   type P12AssetLibraryContext,
 } from "./geoArticleLogic";
 import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
+import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { mergeAiTestResultsByStage, normalizeAiTestResult } from "@shared/aiTestEvidence";
@@ -87,6 +89,7 @@ import {
   resolveShareTokenProjectId,
 } from "./deliveryReportPublicShare";
 import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare";
+import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import { runDailyAiCheck } from "./scheduledAiCheck";
 import {
   assetInputModes,
@@ -1967,6 +1970,73 @@ const geoRouter = router({
         qualityCheckPassed: qcResult.finalStatus === "质检通过",
       } as const;
     }),
+    updateGeneratedArticle: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          articleId: z.number().int().positive(),
+          title: z.string().trim().min(1, "标题不能为空").max(255),
+          content: z.string().trim().min(1, "正文不能为空"),
+          coverTemplate: z.enum(ARTICLE_COVER_TEMPLATE_IDS).optional(),
+          coverBase64: z.string().max(2_800_000).optional().nullable(),
+          coverImageUrl: z.string().max(2000).optional().nullable(),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+        await getProjectOrThrow(input.projectId);
+        const rows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        const article = rows[0];
+        if (!article || article.projectId !== input.projectId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+        }
+        const coverTemplate = input.coverTemplate
+          ? normalizeArticleCoverTemplateId(input.coverTemplate)
+          : normalizeArticleCoverTemplateId(article.coverTemplate);
+        const nextCoverBase64 = input.coverBase64 === undefined ? article.coverBase64 : input.coverBase64;
+        const nextCoverImageUrl = input.coverImageUrl === undefined ? article.coverImageUrl : input.coverImageUrl;
+        const prevCoverTemplate = normalizeArticleCoverTemplateId(article.coverTemplate);
+        const contentChanged =
+          input.title !== article.title ||
+          input.content !== article.markdownContent ||
+          coverTemplate !== prevCoverTemplate ||
+          (input.coverBase64 !== undefined && nextCoverBase64 !== article.coverBase64) ||
+          (input.coverImageUrl !== undefined && nextCoverImageUrl !== article.coverImageUrl);
+        const markQualityStale = contentChanged && article.geoQualityReviewedAt != null;
+        await db
+          .update(geoArticles)
+          .set({
+            title: input.title,
+            markdownContent: input.content,
+            coverTemplate,
+            coverBase64: nextCoverBase64,
+            coverImageUrl: nextCoverImageUrl,
+            ...(markQualityStale ? { geoQualityStale: 1 } : {}),
+          })
+          .where(eq(geoArticles.id, input.articleId));
+        const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        return { success: true, article: updated[0] ?? null } as const;
+      }),
+    contentQualityReview: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          articleId: z.number().int().positive(),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+        await getProjectOrThrow(input.projectId);
+        const { result, modelName, reviewedAt } = await runContentQualityReview(db, input);
+        const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        return {
+          success: true,
+          result,
+          modelName,
+          reviewedAt: reviewedAt.toISOString(),
+          article: updated[0] ?? null,
+        } as const;
+      }),
     qualityCheck: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
       const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
@@ -2314,6 +2384,8 @@ ${article.markdownContent}`,
         } as const;
       }),
   }),
+
+  platformAccounts: projectPlatformAccountsRouter,
 });
 
 export const appRouter = router({
