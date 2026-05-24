@@ -100,6 +100,16 @@ export function publishBlockedNoAccountMessage(platform: string): string {
   return `当前企业尚未绑定 ${label} 账号，请先在企业档案中完成平台账号配置。`;
 }
 
+export function publishMustSelectAccountMessage(platform: string): string {
+  const label = isBindingPublishPlatform(platform) ? PUBLISH_PLATFORM_LABELS[platform] : platform;
+  return `当前企业在 ${label} 绑定了多个启用账号，请选择本次发布使用的账号。`;
+}
+
+export function platformAccountInvalidMessage(platform: string): string {
+  const label = isBindingPublishPlatform(platform) ? PUBLISH_PLATFORM_LABELS[platform] : platform;
+  return `所选 ${label} 账号不存在、已禁用或不属于当前企业，请重新选择。`;
+}
+
 export function publishMismatchMessage(params: {
   projectName: string;
   expectedAccountName: string;

@@ -21,7 +21,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
-import { isBindingPublishPlatform, publishBlockedNoAccountMessage } from "@shared/platformAccountVerify";
+import {
+  isBindingPublishPlatform,
+  publishBlockedNoAccountMessage,
+  publishMustSelectAccountMessage,
+} from "@shared/platformAccountVerify";
 import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
 import { getGeoQualityLabel, type GeoQualityRecommendation } from "@shared/geoQualityReview";
 import {
@@ -29,6 +33,14 @@ import {
   isGeoQualityScoreStale,
   shouldBlockPublishForGeoQuality,
 } from "@shared/geoQualityStale";
+import {
+  ACCOUNT_GROUP_MISMATCH_HINT,
+  accountGroupsMismatch,
+  formatArticleStrategySummary,
+  getAccountGroupLabel,
+  getPublishIdentityLabel,
+  isAccountGroupType,
+} from "@shared/contentStrategy";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import { isLegacyAiGeneratedCoverUrl, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import {
@@ -72,6 +84,10 @@ type ArticleRow = {
   geoQualityScore?: number | null;
   geoQualityRecommendation?: string | null;
   geoQualityStale?: boolean | number | null;
+  contentStrategyType?: string | null;
+  publishIdentity?: string | null;
+  recommendedAccountGroup?: string | null;
+  articleType?: string | null;
 };
 
 function formatGeoQualitySummary(article: ArticleRow): string | null {
@@ -291,15 +307,68 @@ export default function WeeklyContentPage() {
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
   const [regeneratingCoverIds, setRegeneratingCoverIds] = useState<Set<number>>(() => new Set());
   const [unsavedArticleIds, setUnsavedArticleIds] = useState<Set<number>>(() => new Set());
+  const [selectedPublishAccountIds, setSelectedPublishAccountIds] = useState<Record<string, number>>({});
+
+  type PlatformAccountItem = {
+    id: number;
+    accountName: string;
+    accountGroup: string | null;
+    accountRole: string | null;
+    isEnabled: boolean;
+  };
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
 
-  const platformAccountMap = useMemo(() => {
-    const rows = platformAccountsQuery.data?.accounts ?? [];
-    return new Map(rows.map(r => [r.platform, r]));
-  }, [platformAccountsQuery.data]);
+  const platformAccountGroups = useMemo(
+    () =>
+      (platformAccountsQuery.data?.accounts ?? []) as Array<{
+        platform: string;
+        accounts: PlatformAccountItem[];
+      }>,
+    [platformAccountsQuery.data],
+  );
+
+  const getEnabledAccountsForPlatform = useCallback(
+    (slug: string) => {
+      const group = platformAccountGroups.find(g => g.platform === slug);
+      return (group?.accounts ?? []).filter(a => a.isEnabled && a.accountName?.trim());
+    },
+    [platformAccountGroups],
+  );
+
+  const pickPublishAccount = useCallback(
+    (slug: string): PlatformAccountItem | null => {
+      const enabled = getEnabledAccountsForPlatform(slug);
+      if (enabled.length === 0) return null;
+      const selectedId = selectedPublishAccountIds[slug];
+      if (selectedId) return enabled.find(a => a.id === selectedId) ?? null;
+      if (enabled.length === 1) return enabled[0]!;
+      return null;
+    },
+    [getEnabledAccountsForPlatform, selectedPublishAccountIds],
+  );
+
+  const publishAccountGroupWarnings = useMemo(() => {
+    if (!publishArticle?.recommendedAccountGroup || !isAccountGroupType(publishArticle.recommendedAccountGroup)) {
+      return [] as Array<{ slug: string; platformLabel: string; message: string }>;
+    }
+    const recLabel = getAccountGroupLabel(publishArticle.recommendedAccountGroup);
+    const out: Array<{ slug: string; platformLabel: string; message: string }> = [];
+    for (const slug of Array.from(selectedPlatforms)) {
+      const row = pickPublishAccount(slug);
+      if (!row) continue;
+      if (!accountGroupsMismatch(publishArticle.recommendedAccountGroup, row.accountGroup)) continue;
+      const boundLabel = getAccountGroupLabel(row.accountGroup) || "未设置账号组";
+      out.push({
+        slug,
+        platformLabel: PUBLISH_PLATFORMS.find(p => p.slug === slug)?.label ?? slug,
+        message: ACCOUNT_GROUP_MISMATCH_HINT(recLabel, boundLabel),
+      });
+    }
+    return out;
+  }, [publishArticle, selectedPlatforms, pickPublishAccount]);
 
   const tasks = (tasksQuery.data ?? []) as TaskRow[];
   const topics = (topicsQuery.data ?? []) as TopicRow[];
@@ -535,6 +604,7 @@ export default function WeeklyContentPage() {
     }
     setPublishArticle(article);
     setSelectedPlatforms(new Set());
+    setSelectedPublishAccountIds({});
     setPublishDialogOpen(true);
   };
 
@@ -575,8 +645,15 @@ export default function WeeklyContentPage() {
   const togglePlatform = (slug: string) => {
     setSelectedPlatforms(prev => {
       const next = new Set(prev);
+      const adding = !next.has(slug);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
+      if (adding && isBindingPublishPlatform(slug)) {
+        const enabled = getEnabledAccountsForPlatform(slug);
+        if (enabled.length === 1) {
+          setSelectedPublishAccountIds(p => ({ ...p, [slug]: enabled[0]!.id }));
+        }
+      }
       return next;
     });
   };
@@ -639,9 +716,14 @@ export default function WeeklyContentPage() {
     }
     for (const slug of Array.from(selectedPlatforms)) {
       if (!isBindingPublishPlatform(slug)) continue;
-      const row = platformAccountMap.get(slug);
-      if (!row?.isEnabled || !row.accountName?.trim()) {
+      const enabled = getEnabledAccountsForPlatform(slug);
+      if (enabled.length === 0) {
         toast.error(publishBlockedNoAccountMessage(slug));
+        return;
+      }
+      const picked = pickPublishAccount(slug);
+      if (!picked) {
+        toast.error(publishMustSelectAccountMessage(slug));
         return;
       }
     }
@@ -652,10 +734,12 @@ export default function WeeklyContentPage() {
     const taskIds: number[] = [];
     try {
       for (const slug of Array.from(selectedPlatforms)) {
+        const picked = isBindingPublishPlatform(slug) ? pickPublishAccount(slug) : null;
         const res = await createPublishTask.mutateAsync({
           articleId,
           platform: slug as (typeof PUBLISH_PLATFORMS)[number]["slug"],
           projectId: selectedProjectId,
+          platformAccountId: picked?.id ?? undefined,
         });
         taskIds.push(res.taskId);
       }
@@ -873,6 +957,11 @@ export default function WeeklyContentPage() {
                     </h3>
                     {isGenerated && article && formatGeoQualitySummary(article) ? (
                       <p className="mt-1 text-xs text-cyan-100/90">{formatGeoQualitySummary(article)}</p>
+                    ) : null}
+                    {isGenerated && article ? (
+                      <p className="mt-1 text-xs text-violet-200/90" data-testid="article-strategy-summary">
+                        {formatArticleStrategySummary(article)}
+                      </p>
                     ) : null}
                   </div>
 
@@ -1137,13 +1226,24 @@ export default function WeeklyContentPage() {
                 内容有优化空间，确认后可继续发布。
               </p>
             ) : null}
+            {publishAccountGroupWarnings.map(w => (
+              <p
+                key={w.slug}
+                className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-100"
+                data-testid="account-group-mismatch-hint"
+              >
+                <span className="font-medium">{w.platformLabel}：</span>
+                {w.message}
+              </p>
+            ))}
           </div>
           <div className="space-y-3 py-2">
             {PUBLISH_PLATFORMS.map(p => {
-              const bound = platformAccountMap.get(p.slug);
-              const expected = bound?.isEnabled && bound.accountName ? bound.accountName : null;
+              const enabledAccounts = isBindingPublishPlatform(p.slug) ? getEnabledAccountsForPlatform(p.slug) : [];
+              const picked = isBindingPublishPlatform(p.slug) ? pickPublishAccount(p.slug) : null;
+              const needsPick = selectedPlatforms.has(p.slug) && enabledAccounts.length > 1 && !picked;
               return (
-                <label key={p.slug} className="flex cursor-pointer flex-col gap-1 rounded-lg border border-white/10 px-3 py-2 hover:bg-white/5">
+                <label key={p.slug} className="flex cursor-pointer flex-col gap-2 rounded-lg border border-white/10 px-3 py-2 hover:bg-white/5">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
@@ -1153,16 +1253,71 @@ export default function WeeklyContentPage() {
                     />
                     <span className="text-sm font-medium">{p.label}</span>
                   </div>
-                  <span className="pl-7 text-xs text-slate-500">
-                    {expected ? `应使用账号：${expected}` : "未绑定账号（发布将被阻断）"}
-                  </span>
+                  {selectedPlatforms.has(p.slug) && isBindingPublishPlatform(p.slug) ? (
+                    <div className="space-y-2 pl-7">
+                      {enabledAccounts.length === 0 ? (
+                        <span className="text-xs text-amber-200">未绑定启用账号（发布将被阻断）</span>
+                      ) : enabledAccounts.length === 1 ? (
+                        <span className="text-xs text-slate-500">
+                          发布账号：{enabledAccounts[0]!.accountName}
+                          {getPublishIdentityLabel(enabledAccounts[0]!.accountRole)
+                            ? ` · ${getPublishIdentityLabel(enabledAccounts[0]!.accountRole)}`
+                            : ""}
+                          {getAccountGroupLabel(enabledAccounts[0]!.accountGroup)
+                            ? ` · ${getAccountGroupLabel(enabledAccounts[0]!.accountGroup)}`
+                            : ""}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-xs text-slate-400">选择发布账号（必选）</span>
+                          <select
+                            className={aiInput}
+                            value={selectedPublishAccountIds[p.slug] ?? ""}
+                            onChange={e =>
+                              setSelectedPublishAccountIds(prev => ({
+                                ...prev,
+                                [p.slug]: Number(e.target.value),
+                              }))
+                            }
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <option value="">请选择账号</option>
+                            {enabledAccounts.map(a => (
+                              <option key={a.id} value={a.id}>
+                                {a.accountName}
+                              </option>
+                            ))}
+                          </select>
+                          {picked ? (
+                            <span className="text-xs text-slate-500">
+                              身份：{getPublishIdentityLabel(picked.accountRole) || "未设置"} · 账号组：
+                              {getAccountGroupLabel(picked.accountGroup) || "未设置"}
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                      {needsPick ? (
+                        <span className="text-xs text-red-300">该平台有多个启用账号，请选择后再发布</span>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="pl-7 text-xs text-slate-500">
+                      {isBindingPublishPlatform(p.slug) && enabledAccounts.length === 1
+                        ? `已绑定账号：${enabledAccounts[0]!.accountName}`
+                        : isBindingPublishPlatform(p.slug) && enabledAccounts.length > 1
+                          ? `已绑定 ${enabledAccounts.length} 个启用账号`
+                          : isBindingPublishPlatform(p.slug)
+                            ? "未绑定启用账号"
+                            : "无需绑定平台账号"}
+                    </span>
+                  )}
                 </label>
               );
             })}
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             {Array.from(selectedPlatforms).some(
-              slug => isBindingPublishPlatform(slug) && !platformAccountMap.get(slug)?.accountName,
+              slug => isBindingPublishPlatform(slug) && getEnabledAccountsForPlatform(slug).length === 0,
             ) ? (
               <Button
                 type="button"

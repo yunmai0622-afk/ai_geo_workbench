@@ -22,6 +22,7 @@ import DeliveryReportSharePage from "./pages/DeliveryReportSharePage";
 import { AiDiagnosisFlowPage, ContentPublishingFlowPage, DeliveryReportsFlowPage, InclusionMonitoringFlowPage } from "./pages/V12FlowPages";
 import WeeklyContentPage from "./pages/WeeklyContentPage";
 import ProgressPage from "./pages/ProgressPage";
+import ClientDashboardPage from "./pages/ClientDashboardPage";
 
 function profileHasBrand(profile: unknown): boolean {
   if (!profile || typeof profile !== "object") return false;
@@ -33,6 +34,7 @@ function PrivateRoutes() {
   return (
     <DashboardLayout>
       <Switch>
+        <Route path="/clients" component={ClientDashboardPage} />
         <Route path="/" component={Home} />
         <Route path="/flow" component={GeoFlowWizardPage} />
         <Route path="/enterprise-profile" component={AssetCenterPage} />

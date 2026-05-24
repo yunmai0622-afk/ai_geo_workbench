@@ -14,6 +14,17 @@ import {
   type ArticleAssetDraftSnapshot,
 } from "@shared/articleAssetDraft";
 import {
+  ACCOUNT_GROUP_OPTIONS,
+  CONTENT_ASSET_TYPE_OPTIONS,
+  defaultPublishIdentity,
+  defaultRecommendedAccountGroup,
+  inferContentStrategyFromArticleType,
+  PUBLISH_IDENTITY_OPTIONS,
+  type AccountGroupType,
+  type ContentAssetType,
+  type PublishIdentity,
+} from "@shared/contentStrategy";
+import {
   ARTICLE_COVER_TEMPLATE_IDS,
   ARTICLE_COVER_TEMPLATE_LABELS,
   buildArticleCoverDataUrl,
@@ -37,6 +48,10 @@ export type EditableArticleAsset = {
   geoQualityModel?: string | null;
   geoQualityReviewedAt?: string | Date | null;
   geoQualityStale?: boolean | number | null;
+  contentStrategyType?: string | null;
+  publishIdentity?: string | null;
+  recommendedAccountGroup?: string | null;
+  articleType?: string | null;
 };
 
 type ArticleAssetEditorSheetProps = {
@@ -77,6 +92,9 @@ export function ArticleAssetEditorSheet({
   const [coverError, setCoverError] = useState<string | null>(null);
   const savedSnapshot = useRef<ArticleAssetDraftSnapshot | null>(null);
   const [qualityInitial, setQualityInitial] = useState<GeoQualityInitialState | undefined>();
+  const [contentStrategyType, setContentStrategyType] = useState<ContentAssetType | "">("");
+  const [publishIdentity, setPublishIdentity] = useState<PublishIdentity | "">("");
+  const [recommendedAccountGroup, setRecommendedAccountGroup] = useState<AccountGroupType | "">("");
 
   const buildQualityInitial = useCallback((a: EditableArticleAsset): GeoQualityInitialState => ({
     score: a.geoQualityScore,
@@ -101,6 +119,11 @@ export function ArticleAssetEditorSheet({
       coverBase64: a.coverBase64,
     });
     setQualityInitial(buildQualityInitial(a));
+    setContentStrategyType((a.contentStrategyType as ContentAssetType) || inferContentStrategyFromArticleType(a.articleType) || "");
+    setPublishIdentity((a.publishIdentity as PublishIdentity) || defaultPublishIdentity());
+    setRecommendedAccountGroup(
+      (a.recommendedAccountGroup as AccountGroupType) || defaultRecommendedAccountGroup(),
+    );
   }, [buildQualityInitial]);
 
   useEffect(() => {
@@ -182,6 +205,9 @@ export function ArticleAssetEditorSheet({
         coverTemplate: template,
         coverBase64: coverBase64Draft,
         coverImageUrl: coverBase64Draft ? null : article.coverImageUrl,
+        contentStrategyType: contentStrategyType || null,
+        publishIdentity: publishIdentity || null,
+        recommendedAccountGroup: recommendedAccountGroup || null,
       });
       if (saved.article) {
         setQualityInitial(buildQualityInitial(saved.article as EditableArticleAsset));
@@ -221,6 +247,62 @@ export function ArticleAssetEditorSheet({
               onChange={e => setTitle(e.target.value)}
               maxLength={255}
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-white/10 bg-slate-900/40 p-4">
+            <div>
+              <p className="text-sm font-medium text-white">内容策略</p>
+              <p className="mt-1 text-xs text-slate-500">
+                用于区分这篇内容适合用什么口吻、什么身份、哪类账号发布。
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="asset-strategy-type">内容类型</Label>
+              <select
+                id="asset-strategy-type"
+                className={aiInput}
+                value={contentStrategyType}
+                onChange={e => setContentStrategyType(e.target.value as ContentAssetType | "")}
+                data-testid="article-strategy-type"
+              >
+                <option value="">未设置</option>
+                {CONTENT_ASSET_TYPE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="asset-publish-identity">发布身份</Label>
+              <select
+                id="asset-publish-identity"
+                className={aiInput}
+                value={publishIdentity}
+                onChange={e => setPublishIdentity(e.target.value as PublishIdentity | "")}
+              >
+                {PUBLISH_IDENTITY_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="asset-account-group">推荐账号组</Label>
+              <select
+                id="asset-account-group"
+                className={aiInput}
+                value={recommendedAccountGroup}
+                onChange={e => setRecommendedAccountGroup(e.target.value as AccountGroupType | "")}
+              >
+                {ACCOUNT_GROUP_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="space-y-2">

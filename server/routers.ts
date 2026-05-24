@@ -77,6 +77,7 @@ import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
 import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
+import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import { mergeAiTestResultsByStage, normalizeAiTestResult } from "@shared/aiTestEvidence";
 import { buildAiMentionSuggestion, runAiMentionCheck } from "./geoAiMentionCheck";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
@@ -930,6 +931,94 @@ const geoRouter = router({
         }));
       }),
   }),
+
+  clientDashboard: router({
+    /** 客户管理台聚合查询：一次性返回所有项目关键指标 */
+    listProjectsSummary: protectedProcedure.query(async () => {
+      const db = await requireDb();
+      const allProjects = await db.select().from(projects).orderBy(desc(projects.createdAt));
+      if (allProjects.length === 0) return [];
+
+      const projectIds = allProjects.map(p => p.id);
+      const [articleRows, publishRows, monitoringRows, analysisRows, scoreRows] = await Promise.all([
+        db
+          .select({ projectId: geoArticles.projectId })
+          .from(geoArticles)
+          .where(inArray(geoArticles.projectId, projectIds)),
+        db
+          .select({ projectId: geoPublishRecords.projectId })
+          .from(geoPublishRecords)
+          .where(inArray(geoPublishRecords.projectId, projectIds)),
+        db
+          .select({
+            projectId: geoInclusionMonitoringRecords.projectId,
+            aiTestResults: geoInclusionMonitoringRecords.aiTestResults,
+          })
+          .from(geoInclusionMonitoringRecords)
+          .where(inArray(geoInclusionMonitoringRecords.projectId, projectIds)),
+        db
+          .select({
+            projectId: analysisResults.projectId,
+            createdAt: analysisResults.createdAt,
+          })
+          .from(analysisResults)
+          .where(inArray(analysisResults.projectId, projectIds))
+          .orderBy(desc(analysisResults.createdAt)),
+        db
+          .select({
+            projectId: geoScores.projectId,
+            score: geoScores.totalScore,
+            createdAt: geoScores.createdAt,
+          })
+          .from(geoScores)
+          .where(inArray(geoScores.projectId, projectIds))
+          .orderBy(desc(geoScores.createdAt)),
+      ]);
+
+      const articleCountMap = new Map<number, number>();
+      for (const r of articleRows) {
+        articleCountMap.set(r.projectId, (articleCountMap.get(r.projectId) ?? 0) + 1);
+      }
+      const publishCountMap = new Map<number, number>();
+      for (const r of publishRows) {
+        publishCountMap.set(r.projectId, (publishCountMap.get(r.projectId) ?? 0) + 1);
+      }
+      const aiTestCountMap = new Map<number, number>();
+      for (const r of monitoringRows) {
+        const results = Array.isArray(r.aiTestResults) ? r.aiTestResults : [];
+        aiTestCountMap.set(r.projectId, (aiTestCountMap.get(r.projectId) ?? 0) + results.length);
+      }
+      const lastDiagnosisMap = new Map<number, Date>();
+      for (const r of analysisRows) {
+        if (!lastDiagnosisMap.has(r.projectId)) {
+          lastDiagnosisMap.set(r.projectId, r.createdAt);
+        }
+      }
+      const latestScoreMap = new Map<number, number>();
+      for (const r of scoreRows) {
+        if (!latestScoreMap.has(r.projectId)) {
+          latestScoreMap.set(r.projectId, r.score ?? 0);
+        }
+      }
+
+      return allProjects.map(p => ({
+        id: p.id,
+        enterpriseName: p.enterpriseName,
+        industry: p.industry,
+        website: p.website,
+        region: p.region,
+        status: p.status,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        articleCount: articleCountMap.get(p.id) ?? 0,
+        publishCount: publishCountMap.get(p.id) ?? 0,
+        aiTestCount: aiTestCountMap.get(p.id) ?? 0,
+        lastDiagnosisAt: lastDiagnosisMap.get(p.id) ?? null,
+        latestGeoScore: latestScoreMap.get(p.id) ?? null,
+      }));
+    }),
+  }),
+
   projects: router({
     list: protectedProcedure.query(async () => {
       const db = await requireDb();
@@ -1980,6 +2069,9 @@ const geoRouter = router({
           coverTemplate: z.enum(ARTICLE_COVER_TEMPLATE_IDS).optional(),
           coverBase64: z.string().max(2_800_000).optional().nullable(),
           coverImageUrl: z.string().max(2000).optional().nullable(),
+          contentStrategyType: z.enum(CONTENT_ASSET_TYPES).optional().nullable(),
+          publishIdentity: z.enum(PUBLISH_IDENTITIES).optional().nullable(),
+          recommendedAccountGroup: z.enum(ACCOUNT_GROUP_TYPES).optional().nullable(),
         }),
       )
       .mutation(async ({ input }) => {
@@ -2002,7 +2094,14 @@ const geoRouter = router({
           coverTemplate !== prevCoverTemplate ||
           (input.coverBase64 !== undefined && nextCoverBase64 !== article.coverBase64) ||
           (input.coverImageUrl !== undefined && nextCoverImageUrl !== article.coverImageUrl);
-        const markQualityStale = contentChanged && article.geoQualityReviewedAt != null;
+        const strategyChanged =
+          (input.contentStrategyType !== undefined &&
+            input.contentStrategyType !== article.contentStrategyType) ||
+          (input.publishIdentity !== undefined && input.publishIdentity !== article.publishIdentity) ||
+          (input.recommendedAccountGroup !== undefined &&
+            input.recommendedAccountGroup !== article.recommendedAccountGroup);
+        const markQualityStale =
+          (contentChanged || strategyChanged) && article.geoQualityReviewedAt != null;
         await db
           .update(geoArticles)
           .set({
@@ -2011,6 +2110,13 @@ const geoRouter = router({
             coverTemplate,
             coverBase64: nextCoverBase64,
             coverImageUrl: nextCoverImageUrl,
+            ...(input.contentStrategyType !== undefined
+              ? { contentStrategyType: input.contentStrategyType }
+              : {}),
+            ...(input.publishIdentity !== undefined ? { publishIdentity: input.publishIdentity } : {}),
+            ...(input.recommendedAccountGroup !== undefined
+              ? { recommendedAccountGroup: input.recommendedAccountGroup }
+              : {}),
             ...(markQualityStale ? { geoQualityStale: 1 } : {}),
           })
           .where(eq(geoArticles.id, input.articleId));

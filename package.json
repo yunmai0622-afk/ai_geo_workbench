@@ -16,7 +16,9 @@
     "accept:p0:content-plan": "tsx scripts/p0_content_plan_acceptance.ts",
     "accept:p0:manual-publish-record": "node --import tsx scripts/p0_manual_publish_record_acceptance.ts",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:patch-geo-quality": "node scripts/apply_geo_quality_columns.mjs",
+    "db:patch-p1": "node scripts/apply_content_strategy_columns.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

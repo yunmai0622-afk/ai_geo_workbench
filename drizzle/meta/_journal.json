@@ -141,6 +141,20 @@
       "when": 1779800000000,
       "tag": "0022_geo_quality_stale",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1779900000000,
+      "tag": "0023_content_strategy_account_group",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1780000000000,
+      "tag": "0024_platform_multi_accounts",
+      "breakpoints": true
     }
   ]
 }

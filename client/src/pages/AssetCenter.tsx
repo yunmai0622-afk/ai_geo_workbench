@@ -174,6 +174,7 @@ const textareaClass = `${aiInput} min-h-[6rem] w-full max-w-none resize-y py-2`;
 
 export default function AssetCenterPage() {
   const [, setLocation] = useLocation();
+  const searchString = typeof window !== "undefined" ? window.location.search : "";
   const utils = trpc.useUtils();
   const { data: projects = [], isLoading: projectsLoading, error: projectsError, refetch: refetchProjects } = trpc.geo.projects.list.useQuery();
   const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>();
@@ -224,8 +225,17 @@ export default function AssetCenterPage() {
   const generateMarketing = trpc.geo.assetLibrary.generateProfileMarketingCopy.useMutation();
 
   useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const fromUrl = params.get("projectId");
+    if (fromUrl) {
+      const id = Number.parseInt(fromUrl, 10);
+      if (!Number.isNaN(id) && projects.some(p => p.id === id)) {
+        setSelectedProjectId(id);
+        return;
+      }
+    }
     if (!selectedProjectId && projects[0]?.id) setSelectedProjectId(projects[0].id);
-  }, [projects, selectedProjectId]);
+  }, [projects, selectedProjectId, searchString]);
 
   const projectInput = useMemo(() => ({ projectId: selectedProjectId }), [selectedProjectId]);
   const { data: summaryData, isLoading, isFetched, error: summaryError } = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled: Boolean(selectedProjectId) });

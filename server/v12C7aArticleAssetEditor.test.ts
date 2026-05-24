@@ -57,7 +57,7 @@ describe("C7-A article asset editor and template cover", () => {
     const router = read("server/publishTasksRouter.ts");
     expect(router).toContain("projectId: input.projectId");
     expect(router).toContain("expectedAccountName: boundAccount?.accountName");
-    expect(router).toContain("getEnabledPlatformAccount");
+    expect(router).toContain("resolvePublishPlatformAccount");
   });
 
   it("exposes cover template helpers and three templates", () => {

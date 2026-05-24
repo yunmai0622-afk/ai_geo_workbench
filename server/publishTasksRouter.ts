@@ -6,9 +6,14 @@ import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { geoArticleQualityScores, geoArticles, geoPublishRecords, publishTasks, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { buildCustomExtensionZip, resolveServerUrlFromRequest } from "./extensionDownload";
-import { getEnabledPlatformAccount, getProjectOrThrowConn, requireDbConn, verifyPublishTaskAccount } from "./projectPlatformAccounts";
+import {
+  getProjectOrThrowConn,
+  requireDbConn,
+  resolvePublishPlatformAccount,
+  verifyPublishTaskAccount,
+} from "./projectPlatformAccounts";
 import { buildPublishCoverImageUrl, parseDataUrlCover } from "@shared/publishCoverPayload";
-import { isBindingPublishPlatform, publishBlockedNoAccountMessage, PUBLISH_PLATFORM_LABELS } from "@shared/platformAccountVerify";
+import { isBindingPublishPlatform, PUBLISH_PLATFORM_LABELS } from "@shared/platformAccountVerify";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 const publishPlatformSlugEnum = z.enum(["zhihu", "toutiao", "sohu", "baijiahao", "wechat"]);
@@ -98,6 +103,7 @@ export const publishTasksRouter = router({
         articleId: z.number().int().positive(),
         platform: publishPlatformSlugEnum,
         projectId: z.number().int().positive(),
+        platformAccountId: z.number().int().positive().optional().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -108,12 +114,7 @@ export const publishTasksRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
       }
 
-      if (isBindingPublishPlatform(input.platform)) {
-        const bound = await getEnabledPlatformAccount(db, input.projectId, input.platform);
-        if (!bound) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: publishBlockedNoAccountMessage(input.platform) });
-        }
-      } else if (input.platform === "wechat") {
+      if (input.platform === "wechat") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "微信公众号暂不支持插件自动发布，请使用标记已发布记录人工发布结果",
@@ -122,7 +123,11 @@ export const publishTasksRouter = router({
 
       const project = await getProjectOrThrowConn(db, input.projectId);
       const boundAccount = isBindingPublishPlatform(input.platform)
-        ? await getEnabledPlatformAccount(db, input.projectId, input.platform)
+        ? await resolvePublishPlatformAccount(db, {
+            projectId: input.projectId,
+            platform: input.platform,
+            platformAccountId: input.platformAccountId ?? undefined,
+          })
         : null;
 
       const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);

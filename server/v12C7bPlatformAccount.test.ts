@@ -11,18 +11,18 @@ describe("C7-B project platform account binding", () => {
     expect(read("drizzle/schema.ts")).toContain("project_platform_accounts");
     expect(read("server/projectPlatformAccountsRouter.ts")).toContain("list:");
     expect(read("server/publishTasksRouter.ts")).toContain("expectedAccountName");
-    expect(read("server/publishTasksRouter.ts")).toContain("publishBlockedNoAccountMessage");
+    expect(read("server/publishTasksRouter.ts")).toContain("resolvePublishPlatformAccount");
   });
 
   it("blocks publish when no platform account bound", () => {
-    expect(read("server/publishTasksRouter.ts")).toContain("getEnabledPlatformAccount");
+    expect(read("server/projectPlatformAccounts.ts")).toContain("publishBlockedNoAccountMessage");
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("publishBlockedNoAccountMessage");
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("去绑定账号");
   });
 
   it("publish confirm shows project and expected account", () => {
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("当前企业：");
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("应使用账号：");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toMatch(/发布账号：|选择发布账号/);
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("开始核验并发布");
   });
 
@@ -60,10 +60,11 @@ describe("C7-B project platform account binding", () => {
 
     const binding = read("client/src/components/PlatformAccountBindingSection.tsx");
     expect(binding).toMatch(/重新加载.*插件|最新版发布插件/);
+    expect(binding).toContain("添加账号");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weekly).toContain("核验当前浏览器登录账号");
     expect(weekly).toMatch(/支持.*账号核验.*版本/);
-    expect(read("content-growth-publish-extension/manifest.json")).toMatch(/"version": "1\.[12]\.0"/);
+    expect(read("content-growth-publish-extension/manifest.json")).toMatch(/"version": "1\.2\.[01]"/);
     expect(read("drizzle/meta/_journal.json")).toContain("0020_project_platform_accounts");
   });
 });

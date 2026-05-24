@@ -316,6 +316,9 @@ export const geoArticles = mysqlTable("geo_articles", {
   geoQualityModel: varchar("geoQualityModel", { length: 50 }),
   geoQualityRecommendation: varchar("geoQualityRecommendation", { length: 20 }),
   geoQualityStale: int("geoQualityStale").default(0),
+  contentStrategyType: varchar("contentStrategyType", { length: 50 }),
+  publishIdentity: varchar("publishIdentity", { length: 50 }),
+  recommendedAccountGroup: varchar("recommendedAccountGroup", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -614,6 +617,8 @@ export const projectPlatformAccounts = mysqlTable(
     platform: varchar("platform", { length: 50 }).notNull(),
     accountName: varchar("accountName", { length: 255 }).notNull(),
     accountIdOrUrl: varchar("accountIdOrUrl", { length: 2000 }),
+    accountGroup: varchar("accountGroup", { length: 50 }),
+    accountRole: varchar("accountRole", { length: 50 }),
     isEnabled: int("isEnabled").default(1).notNull(),
     verificationStatus: varchar("verificationStatus", { length: 32 }).default("unknown").notNull(),
     lastVerifiedAt: timestamp("lastVerifiedAt"),
@@ -623,7 +628,11 @@ export const projectPlatformAccounts = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
-    projectPlatformUnique: uniqueIndex("project_platform_accounts_project_platform").on(table.projectId, table.platform),
+    projectPlatformNameUnique: uniqueIndex("project_platform_accounts_project_platform_name").on(
+      table.projectId,
+      table.platform,
+      table.accountName,
+    ),
   }),
 );
 

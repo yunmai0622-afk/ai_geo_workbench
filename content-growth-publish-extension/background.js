@@ -14,6 +14,14 @@ const PLATFORM_URLS = {
   wechat: "https://mp.weixin.qq.com/cgi-bin/appmsg?action=edit&type=10",
 };
 
+/** 一键授权检测：打开平台首页识别当前登录昵称 */
+const AUTH_HOME_URLS = {
+  zhihu: "https://www.zhihu.com",
+  baijiahao: "https://baijiahao.baidu.com",
+  toutiao: "https://mp.toutiao.com/profile_v4/index",
+  sohu: "https://mp.sohu.com",
+};
+
 // ==================== 发布任务轮询 ====================
 
 chrome.alarms.create("pollTasks", { periodInMinutes: 0.5 });
@@ -469,8 +477,117 @@ async function processPendingWatch() {
   }
 }
 
+async function relayAuthDetectResult(bridgeTabId, payload) {
+  const msg = {
+    action: "authDetectResult",
+    platform: payload.platform,
+    requestId: payload.requestId,
+    success: payload.success,
+    accountName: payload.accountName,
+    error: payload.error,
+  };
+
+  if (bridgeTabId != null) {
+    try {
+      await chrome.tabs.sendMessage(bridgeTabId, msg);
+      return;
+    } catch (e) {
+      console.warn("[授权检测] bridge tab sendMessage 失败，尝试 Web App tabs 广播", e);
+    }
+  }
+
+  const tabs = await chrome.tabs.query({});
+  for (const t of tabs) {
+    if (t.id == null || !t.url) continue;
+    if (!/localhost|127\.0\.0\.1|manus\.space|jixingzhijian/i.test(t.url)) continue;
+    try {
+      await chrome.tabs.sendMessage(t.id, msg);
+    } catch {
+      // 无 authBridge 注入的 tab 忽略
+    }
+  }
+}
+
+async function handleStartAuthDetect(message, sender) {
+  const { platform, requestId } = message;
+  const bridgeTabId = sender.tab?.id ?? null;
+  const homeUrl = AUTH_HOME_URLS[platform];
+
+  if (!homeUrl) {
+    await relayAuthDetectResult(bridgeTabId, {
+      platform,
+      requestId,
+      success: false,
+      accountName: null,
+      error: `不支持的平台: ${platform}`,
+    });
+    return;
+  }
+
+  let detectTabId = null;
+  try {
+    console.log(`[授权检测] 打开 ${platform} 首页: ${homeUrl}`);
+    const tab = await chrome.tabs.create({ url: homeUrl, active: true });
+    detectTabId = tab.id;
+    await waitForTabComplete(tab.id, 30000);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    let accountName = null;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      try {
+        const resp = await sendMessageWithRetry(tab.id, { action: "detectAccount", platform }, 2, 1500);
+        const name = resp?.detectedAccountName?.trim();
+        if (name) {
+          accountName = name;
+          break;
+        }
+      } catch (e) {
+        console.warn(`[授权检测] detectAccount 第 ${attempt + 1} 次失败`, e);
+      }
+      if (attempt < 9) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
+
+    if (accountName) {
+      console.log(`[授权检测] 成功 platform=${platform} accountName=${accountName}`);
+      await relayAuthDetectResult(bridgeTabId, {
+        platform,
+        requestId,
+        success: true,
+        accountName,
+        error: null,
+      });
+    } else {
+      await relayAuthDetectResult(bridgeTabId, {
+        platform,
+        requestId,
+        success: false,
+        accountName: null,
+        error: "未能检测到账号昵称，请确认已登录该平台",
+      });
+    }
+  } catch (e) {
+    const errMsg = e instanceof Error ? e.message : String(e);
+    console.error("[授权检测] 失败", e);
+    await relayAuthDetectResult(bridgeTabId, {
+      platform,
+      requestId,
+      success: false,
+      accountName: null,
+      error: errMsg || "账号检测失败",
+    });
+  } finally {
+    if (detectTabId != null) {
+      setTimeout(() => {
+        chrome.tabs.remove(detectTabId).catch(() => {});
+      }, 5000);
+    }
+  }
+}
+
 // 方式 1: sendMessage（如果 popup 没被关闭的话）
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "fetchCoverImage" && message.url) {
     (async () => {
       try {
@@ -502,6 +619,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       handleCheckLogin();
       sendResponse({ ok: true });
     });
+    return true;
+  }
+
+  if (message.action === "startAuthDetect") {
+    (async () => {
+      try {
+        await handleStartAuthDetect(message, sender);
+        sendResponse({ ok: true });
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        sendResponse({ ok: false, error: errMsg });
+      }
+    })();
     return true;
   }
 });

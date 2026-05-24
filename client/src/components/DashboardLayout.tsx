@@ -22,7 +22,7 @@ import {
 import { getLoginUrl, isLoginConfigured } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Brain, Building2, FileBarChart2, FileText, LineChart, LogOut, PanelLeft, Send, Sparkles } from "lucide-react";
+import { BarChart3, Brain, Building2, FileBarChart2, FileText, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -37,6 +37,18 @@ type MenuItem = {
 };
 
 const navGroups: { title: string; items: MenuItem[] }[] = [
+  {
+    title: "代理商",
+    items: [
+      {
+        icon: Users2,
+        label: "客户管理台",
+        desc: "所有客户项目总览",
+        path: "/clients",
+        aliases: ["/clients"],
+      },
+    ],
+  },
   {
     title: "增长总览",
     items: [
