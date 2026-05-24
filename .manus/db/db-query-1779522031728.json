@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `geo_articles` ADD COLUMN `geoQualityScore` int NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityDetail` json NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityReviewedAt` timestamp NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityModel` varchar(50) NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityRecommendation` varchar(20) NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityStale` int NULL DEFAULT 0;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `geo_articles` ADD COLUMN `geoQualityScore` int NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityDetail` json NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityReviewedAt` timestamp NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityModel` varchar(50) NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityRecommendation` varchar(20) NULL;\nALTER TABLE `geo_articles` ADD COLUMN `geoQualityStale` int NULL DEFAULT 0;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4232
+}
