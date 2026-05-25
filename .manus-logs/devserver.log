@@ -3038,3 +3038,64 @@
 [2026-05-23T07:40:15.490Z] ]
 [2026-05-23T07:40:15.490Z] }
 [2026-05-23T07:41:15.511Z] 3:41:15 AM [vite] (client) hmr update /src/index.css
+[2026-05-23T07:42:15.484Z] [geo.scores.latest] {
+[2026-05-23T07:42:15.485Z] requestedProjectId: 1,
+[2026-05-23T07:42:15.485Z] returned: {
+[2026-05-23T07:42:15.485Z] id: 690001,
+[2026-05-23T07:42:15.486Z] projectId: 1,
+[2026-05-23T07:42:15.486Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-23T07:42:15.486Z] totalScore: 40
+[2026-05-23T07:42:15.487Z] },
+[2026-05-23T07:42:15.487Z] sameProjectTop3: [
+[2026-05-23T07:42:15.487Z] {
+[2026-05-23T07:42:15.488Z] id: 690001,
+[2026-05-23T07:42:15.488Z] projectId: 1,
+[2026-05-23T07:42:15.488Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-23T07:42:15.489Z] totalScore: 40
+[2026-05-23T07:42:15.489Z] }
+[2026-05-23T07:42:15.489Z] ]
+[2026-05-23T07:42:15.490Z] }
+[2026-05-24T04:10:21.697Z] [定时实测] 开始执行 2026-05-24T04:10:22.395Z
+[2026-05-24T04:10:24.640Z] [定时实测] 找到 16 条需要检测的记录
+[2026-05-24T04:10:33.459Z] [geo.scores.latest] {
+[2026-05-24T04:10:33.459Z] requestedProjectId: 1,
+[2026-05-24T04:10:33.460Z] returned: {
+[2026-05-24T04:10:33.460Z] id: 690001,
+[2026-05-24T04:10:33.460Z] projectId: 1,
+[2026-05-24T04:10:33.461Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-24T04:10:33.461Z] totalScore: 40
+[2026-05-24T04:10:33.462Z] },
+[2026-05-24T04:10:33.462Z] sameProjectTop3: [
+[2026-05-24T04:10:33.463Z] {
+[2026-05-24T04:10:33.463Z] id: 690001,
+[2026-05-24T04:10:33.463Z] projectId: 1,
+[2026-05-24T04:10:33.464Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-24T04:10:33.464Z] totalScore: 40
+[2026-05-24T04:10:33.464Z] }
+[2026-05-24T04:10:33.465Z] ]
+[2026-05-24T04:10:33.465Z] }
+[2026-05-24T04:12:30.971Z] 12:12:30 AM [vite] (client) hmr update /src/index.css, /src/App.tsx
+[2026-05-24T04:12:30.972Z] 12:12:30 AM [vite] (client) hmr update /src/index.css, /src/components/ArticleAssetEditorSheet.tsx
+[2026-05-24T04:12:30.974Z] 12:12:30 AM [vite] (client) hmr update /src/index.css, /src/components/DashboardLayout.tsx
+[2026-05-24T04:12:30.977Z] 12:12:30 AM [vite] (client) hmr update /src/index.css, /src/components/PlatformAccountBindingSection.tsx
+[2026-05-24T04:12:30.978Z] 12:12:30 AM [vite] (client) hmr update /src/index.css, /src/pages/AssetCenter.tsx
+[2026-05-24T04:12:30.979Z] 12:12:30 AM [vite] (client) hmr update /src/index.css, /src/pages/WeeklyContentPage.tsx
+[2026-05-24T04:12:30.985Z] 12:12:30 AM [vite] (client) hmr update /src/components/PlatformAccountBindingSection.tsx, /src/pages/WeeklyContentPage.tsx
+[2026-05-24T04:12:33.124Z] [geo.scores.latest] {
+[2026-05-24T04:12:33.125Z] requestedProjectId: 1,
+[2026-05-24T04:12:33.126Z] returned: {
+[2026-05-24T04:12:33.126Z] id: 690001,
+[2026-05-24T04:12:33.126Z] projectId: 1,
+[2026-05-24T04:12:33.127Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-24T04:12:33.127Z] totalScore: 40
+[2026-05-24T04:12:33.127Z] },
+[2026-05-24T04:12:33.128Z] sameProjectTop3: [
+[2026-05-24T04:12:33.128Z] {
+[2026-05-24T04:12:33.128Z] id: 690001,
+[2026-05-24T04:12:33.128Z] projectId: 1,
+[2026-05-24T04:12:33.129Z] createdAt: 2026-05-22T07:11:56.000Z,
+[2026-05-24T04:12:33.129Z] totalScore: 40
+[2026-05-24T04:12:33.129Z] }
+[2026-05-24T04:12:33.130Z] ]
+[2026-05-24T04:12:33.130Z] }
+[2026-05-24T04:13:33.681Z] 12:13:33 AM [vite] (client) hmr update /src/index.css

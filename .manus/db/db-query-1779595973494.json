@@ -1,0 +1,9 @@
+{
+  "query": "DROP INDEX `project_platform_accounts_project_platform` ON `project_platform_accounts`;\nCREATE UNIQUE INDEX `project_platform_accounts_project_platform_name` ON `project_platform_accounts` (`projectId`,`platform`,`accountName`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute DROP INDEX `project_platform_accounts_project_platform` ON `project_platform_accounts`;\nCREATE UNIQUE INDEX `project_platform_accounts_project_platform_name` ON `project_platform_accounts` (`projectId`,`platform`,`accountName`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2242
+}
