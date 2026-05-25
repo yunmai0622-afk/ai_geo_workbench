@@ -60,8 +60,9 @@ const manifest = {
   copiedAt: new Date().toISOString(),
   sourceDir: releaseDir,
   files: copied.map(p => path.relative(root, p)),
-  macDmgUrl: dmg ? "/downloads/geo-local-agent-mac.dmg" : null,
   macZipUrl: zipMac ? "/downloads/geo-local-agent-mac.zip" : null,
+  /** 线上 dmg 曾出现传输损坏；manifest 暂不暴露，仅保留 zip 下载入口 */
+  macDmgUrl: null,
   winZipUrl: zipWin ? "/downloads/geo-local-agent-win.zip" : null,
   winSetupUrl: exe ? "/downloads/geo-local-agent-win.exe" : null,
 };

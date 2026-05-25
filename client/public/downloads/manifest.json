@@ -8,8 +8,8 @@
     "client/public/downloads/geo-local-agent-win.zip",
     "client/public/downloads/geo-local-agent-win.exe"
   ],
-  "macDmgUrl": "/downloads/geo-local-agent-mac.dmg",
   "macZipUrl": "/downloads/geo-local-agent-mac.zip",
+  "macDmgUrl": null,
   "winZipUrl": "/downloads/geo-local-agent-win.zip",
   "winSetupUrl": "/downloads/geo-local-agent-win.exe"
 }

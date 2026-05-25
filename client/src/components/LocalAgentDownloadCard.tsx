@@ -16,18 +16,18 @@ type DownloadManifest = {
   winSetupUrl?: string | null;
 };
 
-/** 优先 dmg：拖入「应用程序」后比 zip 更少触发「已损坏」误报 */
-function pickMacHref(manifest: DownloadManifest | null): string {
-  const dmg = manifest?.macDmgUrl;
+/** 优先 zip：避免线上 dmg 传输损坏；仅 manifest 暴露 dmg 时才回退 */
+function pickMacHref(manifest: DownloadManifest | null): string | null {
   const zip = manifest?.macZipUrl;
-  if (dmg && dmg.startsWith("/downloads/")) return dmg;
-  if (zip && zip.startsWith("/downloads/")) return zip;
-  return MAC_DOWNLOAD_ZIP;
+  const dmg = manifest?.macDmgUrl;
+  if (zip?.startsWith("/downloads/")) return zip;
+  if (dmg?.startsWith("/downloads/")) return dmg;
+  return null;
 }
 
-function pickMacZipHref(manifest: DownloadManifest | null): string | null {
-  const zip = manifest?.macZipUrl;
-  return zip?.startsWith("/downloads/") ? zip : null;
+function pickMacDmgHref(manifest: DownloadManifest | null): string | null {
+  const dmg = manifest?.macDmgUrl;
+  return dmg?.startsWith("/downloads/") ? dmg : null;
 }
 
 function pickWinHref(manifest: DownloadManifest | null): string | null {
@@ -43,7 +43,7 @@ export function LocalAgentDownloadCard() {
   const [checking, setChecking] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
-  const [macHref, setMacHref] = useState(MAC_DOWNLOAD_ZIP);
+  const [macHref, setMacHref] = useState<string | null>(MAC_DOWNLOAD_ZIP);
 
   const refreshHealth = useCallback(async () => {
     setChecking(true);
@@ -63,7 +63,7 @@ export function LocalAgentDownloadCard() {
       .then(r => (r.ok ? r.json() : null))
       .then((m: DownloadManifest | null) => {
         setManifest(m);
-        setMacHref(pickMacHref(m));
+        setMacHref(pickMacHref(m) ?? MAC_DOWNLOAD_ZIP);
       })
       .catch(() => {
         setManifest(null);
@@ -83,9 +83,10 @@ export function LocalAgentDownloadCard() {
     }
   };
 
-  const macIsDmg = macHref.endsWith(".dmg");
-  const macZipHref = pickMacZipHref(manifest);
-  const macLabel = macIsDmg ? "下载 Mac 客户端 (.dmg 推荐)" : "下载 Mac 客户端";
+  const macOffered = Boolean(macHref);
+  const macIsZip = Boolean(macHref?.endsWith(".zip"));
+  const macDmgHref = pickMacDmgHref(manifest);
+  const macLabel = macIsZip ? "下载 Mac 客户端（推荐）" : "下载 Mac 客户端";
 
   return (
     <div
@@ -125,12 +126,19 @@ export function LocalAgentDownloadCard() {
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button type="button" size="sm" className={aiPrimaryBtn} asChild data-testid="download-mac-agent">
-          <a href={macHref} download>
+        {macOffered && macHref ? (
+          <Button type="button" size="sm" className={aiPrimaryBtn} asChild data-testid="download-mac-agent">
+            <a href={macHref} download>
+              <Download className="mr-1 size-3.5" />
+              {macLabel}
+            </a>
+          </Button>
+        ) : (
+          <Button type="button" size="sm" className={aiPrimaryBtn} disabled data-testid="download-mac-agent">
             <Download className="mr-1 size-3.5" />
-            {macLabel}
-          </a>
-        </Button>
+            下载 Mac 客户端
+          </Button>
+        )}
         {winOffered && winHref ? (
           <Button type="button" size="sm" variant="outline" className={aiOutlineBtn} asChild data-testid="download-win">
             <a href={winHref} download>
@@ -173,7 +181,7 @@ export function LocalAgentDownloadCard() {
         </p>
         <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-amber-50/90">
           <li>
-            <strong>推荐</strong>：下载 <strong>.dmg</strong>，双击打开后将「GEO本地发布客户端」拖入「应用程序」，从启动台打开。
+            <strong>推荐</strong>：下载 <strong>zip</strong>，解压后将「GEO本地发布客户端」拖入「应用程序」，从启动台打开。
           </li>
           <li>
             在「应用程序」中找到该 App，<strong>按住 Control 键点击 → 打开</strong>，在弹窗中选择「打开」。
@@ -188,13 +196,12 @@ export function LocalAgentDownloadCard() {
             </code>
           </li>
         </ol>
-        {macZipHref && macIsDmg ? (
+        {macDmgHref && macIsZip ? (
           <p className="mt-2 text-xs text-amber-100/80">
-            若必须使用 zip 便携包：
-            <a href={macZipHref} className="ml-1 underline" download>
-              下载 Mac zip 备用
+            若需要 dmg 安装包：
+            <a href={macDmgHref} className="ml-1 underline" download>
+              下载 Mac dmg 备用
             </a>
-            （解压后同样可能需要「右键 → 打开」或上述 xattr 命令）。
           </p>
         ) : null}
       </div>
