@@ -14,6 +14,17 @@ const PLATFORM_URLS = {
   wechat: "https://mp.weixin.qq.com/cgi-bin/appmsg?action=edit&type=10",
 };
 
+/** Web App 页面 URL（与 authBridge TRUSTED_ORIGIN 对齐，用于回传检测结果） */
+const WEB_APP_URL_PATTERNS = [
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//,
+  /^https:\/\/[^/]+\.manus\.space\//,
+  /^https:\/\/geo\.jixingzhijian\.com\//,
+];
+
+function isWebAppUrl(url) {
+  return typeof url === "string" && WEB_APP_URL_PATTERNS.some(re => re.test(url));
+}
+
 /** 一键授权检测：打开平台首页识别当前登录昵称 */
 const AUTH_HOME_URLS = {
   zhihu: "https://www.zhihu.com",
@@ -499,7 +510,7 @@ async function relayAuthDetectResult(bridgeTabId, payload) {
   const tabs = await chrome.tabs.query({});
   for (const t of tabs) {
     if (t.id == null || !t.url) continue;
-    if (!/localhost|127\.0\.0\.1|manus\.space|jixingzhijian/i.test(t.url)) continue;
+    if (!isWebAppUrl(t.url)) continue;
     try {
       await chrome.tabs.sendMessage(t.id, msg);
     } catch {
@@ -510,6 +521,7 @@ async function relayAuthDetectResult(bridgeTabId, payload) {
 
 async function handleStartAuthDetect(message, sender) {
   const { platform, requestId } = message;
+  console.log("[授权助手] startAuthDetect", { platform, requestId, sourceTabUrl: message.sourceTabUrl });
   const bridgeTabId = sender.tab?.id ?? null;
   const homeUrl = AUTH_HOME_URLS[platform];
 

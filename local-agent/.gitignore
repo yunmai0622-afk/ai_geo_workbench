@@ -1,0 +1,9 @@
+node_modules/
+dist/
+release/
+profiles/*
+data/logs/
+!profiles/.gitkeep
+data/accounts.json
+data/config.json
+data/agent.json

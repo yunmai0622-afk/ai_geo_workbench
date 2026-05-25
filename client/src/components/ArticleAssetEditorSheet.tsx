@@ -1,3 +1,4 @@
+import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { GeoQualityScore, type GeoQualityInitialState } from "@/components/GeoQualityScore";
 import { type GeoQualityReviewResult } from "@shared/geoQualityReview";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,11 @@ export type EditableArticleAsset = {
   publishIdentity?: string | null;
   recommendedAccountGroup?: string | null;
   articleType?: string | null;
+  lifecycleStatus?: string | null;
+  lifecycleEvents?: unknown;
+  status?: string | null;
+  publicPath?: string | null;
+  lifecycle?: Parameters<typeof ArticleLifecyclePanel>[0]["lifecycle"];
 };
 
 type ArticleAssetEditorSheetProps = {
@@ -238,6 +244,9 @@ export function ArticleAssetEditorSheet({
         </SheetHeader>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-1 py-2">
+          {article ? (
+            <ArticleLifecyclePanel articleId={article.id} article={article} lifecycle={article.lifecycle} />
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="asset-title">文章标题</Label>
             <input

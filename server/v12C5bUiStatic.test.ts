@@ -19,13 +19,13 @@ describe("C5-B content production page product UI", () => {
     expect(page).not.toMatch(/fixed inset-x-0 bottom-0/);
   });
 
-  it("uses asset cards and collapsible publish tools at bottom", () => {
+  it("uses asset cards and local agent publish hint", () => {
     expect(page).toContain("内容资产卡片区");
     expect(page).toContain("AiStatusBadge");
     expect(page).toContain("目标问题");
-    expect(page).toContain("发布辅助工具");
-    expect(page).toContain("<details");
-    expect(page).not.toMatch(/浏览器发布插件/);
+    expect(page).toContain("local-agent-publish-hint");
+    expect(page).toContain("本地发布客户端");
+    expect(page).not.toMatch(/浏览器发布插件|发布辅助工具/);
   });
 
   it("defines segmented control styles", () => {

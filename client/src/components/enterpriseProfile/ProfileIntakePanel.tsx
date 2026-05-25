@@ -95,9 +95,28 @@ type Props = {
     hasCaseContent: boolean;
   };
   onApply: (patch: ProfileApplyPatch) => void;
+  sectionTitle?: string;
+  sectionDescription?: string;
 };
 
-export function ProfileIntakePanel({ projectId, enterpriseName, disabled, showPendingSaveHint, current, onApply }: Props) {
+const INTAKE_RECOGNIZED_ITEMS = [
+  "品牌与业务",
+  "目标客户",
+  "客户痛点",
+  "案例素材",
+  "信任背书",
+] as const;
+
+export function ProfileIntakePanel({
+  projectId,
+  enterpriseName,
+  disabled,
+  showPendingSaveHint,
+  current,
+  onApply,
+  sectionTitle = "先上传企业资料",
+  sectionDescription = "系统会从企业介绍、官网文案、招商资料、案例文档中自动识别品牌信息、客户画像和信任素材。应用后仅填入表单，不会自动保存。",
+}: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [docText, setDocText] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);
@@ -236,7 +255,7 @@ export function ProfileIntakePanel({ projectId, enterpriseName, disabled, showPe
     try {
       const res = await analyzeMutation.mutateAsync({ projectId, documentText: text });
       setAnalysis(res.analysis as EnterpriseProfileAnalysisResult);
-      setLocalMessage("AI 已解析资料，请预览识别结果并确认应用到档案。");
+      setLocalMessage("AI 已识别品牌与业务、客户画像、案例与信任素材，请预览后应用到表单。");
       setApplyMode("empty");
       setOverwriteConfirm(false);
     } catch (e) {
@@ -310,10 +329,7 @@ export function ProfileIntakePanel({ projectId, enterpriseName, disabled, showPe
 
   return (
     <div id="profile-upload" className="scroll-mt-24 space-y-4">
-      <AiSection
-        title="上传资料，AI 自动建档"
-        description="上传企业介绍、产品资料或客户案例，系统将自动识别品牌、业务、客户、痛点与案例信息。应用结果前会先预览，不会直接覆盖已有资料。"
-      >
+      <AiSection title={sectionTitle} description={sectionDescription}>
         <div className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}>
           {enterpriseName.trim() ? (
             <p className="rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-2.5 text-sm text-violet-100">

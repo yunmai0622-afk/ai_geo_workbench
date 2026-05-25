@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
 import { and, asc, desc, eq, inArray, like, not } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -8,6 +9,7 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, upsertUser } from "./db";
+import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 
@@ -74,6 +76,12 @@ import {
   type P12AssetLibraryContext,
 } from "./geoArticleLogic";
 import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
+import { appendArticleLifecycleEvent, getArticleLifecycleTimeline } from "./articleLifecycleService";
+import { resolveArticleLifecycleView } from "@shared/articleLifecycle";
+import { triggerManualReview, getArticleReviewFlagsByProject, enqueueReviewQueueItem } from "./reviewQueueService";
+import { recordRewriteFromQualityReject } from "./rewritePoolService";
+import { generateNextContentSuggestion, getArticleRewriteFlagsByProject } from "./rewritePoolService";
+import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkflow";
 import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
@@ -915,9 +923,9 @@ const geoRouter = router({
           .select({
             publishRecordId: geoInclusionMonitoringRecords.publishRecordId,
             id: geoInclusionMonitoringRecords.id,
-            aiMentionStatus: geoInclusionMonitoringRecords.aiMentionStatus,
-            aiRecommendStatus: geoInclusionMonitoringRecords.aiRecommendStatus,
-            inclusionStatus: geoInclusionMonitoringRecords.inclusionStatus,
+            aiMentionStatus: geoInclusionMonitoringRecords.aiMentionMonitorStatus,
+            aiRecommendStatus: geoInclusionMonitoringRecords.aiRecommendMonitorStatus,
+            inclusionStatus: geoInclusionMonitoringRecords.inclusionMonitorStatus,
             lastAiTestedAt: geoInclusionMonitoringRecords.lastAiTestedAt,
           })
           .from(geoInclusionMonitoringRecords)
@@ -1916,14 +1924,44 @@ const geoRouter = router({
             .where(and(eq(optimizationTasks.projectId, input.projectId), inArray(optimizationTasks.id, taskIds)))
         : [];
       const taskById = new Map(tasks.map(task => [task.id, task] as const));
+      const [reviewFlags, rewriteFlags] = await Promise.all([
+        getArticleReviewFlagsByProject(db, input.projectId),
+        getArticleRewriteFlagsByProject(db, input.projectId),
+      ]);
       return uniqueRows.map(article => {
         const task = article.optimizationTaskId ? taskById.get(article.optimizationTaskId) : undefined;
         const card = task ? parseOptimizationTaskCard(task.executionSuggestion) : null;
         const targetPlatform = card?.recommendedPlatform?.length ? card.recommendedPlatform.join("、") : "";
         const contentType = (card?.contentType && card.contentType.trim()) || article.articleType;
-        return { ...article, targetPlatform: targetPlatform || null, contentType };
+        const lifecycle = resolveArticleLifecycleView(article);
+        return {
+          ...article,
+          targetPlatform: targetPlatform || null,
+          contentType,
+          lifecycle,
+          postPublish: {
+            pendingReview: reviewFlags.pendingReview.has(article.id),
+            needsRewrite: rewriteFlags.needsRewrite.has(article.id),
+          },
+        };
       });
     }),
+    lifecycleTimeline: protectedProcedure
+      .input(z.object({ articleId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const db = await requireDb();
+        const timeline = await getArticleLifecycleTimeline(db, input.articleId);
+        if (!timeline) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+        }
+        const lifecycle = resolveArticleLifecycleView({
+          lifecycleStatus: timeline.lifecycleStatus,
+          lifecycleEvents: timeline.events,
+          status: timeline.legacyStatus,
+          publicPath: timeline.publicPath,
+        });
+        return { ...timeline, lifecycle };
+      }),
     latestQualityScores: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
@@ -2011,7 +2049,12 @@ const geoRouter = router({
     inclusionMonitoringRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
-      return db.select().from(geoInclusionMonitoringRecords).where(eq(geoInclusionMonitoringRecords.projectId, input.projectId)).orderBy(desc(geoInclusionMonitoringRecords.createdAt));
+      const rows = await db
+        .select()
+        .from(geoInclusionMonitoringRecords)
+        .where(eq(geoInclusionMonitoringRecords.projectId, input.projectId))
+        .orderBy(desc(geoInclusionMonitoringRecords.createdAt));
+      return rows.map(mapInclusionMonitoringRecordForApi);
     }),
     generate: protectedProcedure.input(z.object({ topicId: z.number().int().positive() })).mutation(async ({ input }) => {
       const db = await requireDb();
@@ -2048,6 +2091,11 @@ const geoRouter = router({
       const inserted = await db.insert(geoArticles).values(draft).$returningId();
       const articleId = inserted[0]?.id ?? 0;
       if (!articleId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "文章写入失败" });
+      await appendArticleLifecycleEvent(db, articleId, {
+        status: "generated",
+        source: "article_generate",
+        message: "内容资产生成完成",
+      });
       await db.update(geoArticleTopics).set({ status: "已生成" }).where(eq(geoArticleTopics.id, topic.id));
       const qcResult = await runGeoArticleQualityCheckFlow(db, articleId);
       return {
@@ -2120,6 +2168,11 @@ const geoRouter = router({
             ...(markQualityStale ? { geoQualityStale: 1 } : {}),
           })
           .where(eq(geoArticles.id, input.articleId));
+        await appendArticleLifecycleEvent(db, input.articleId, {
+          status: "confirmed",
+          source: "article_save",
+          message: "用户已保存编辑内容",
+        });
         const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
         return { success: true, article: updated[0] ?? null } as const;
       }),
@@ -2208,6 +2261,13 @@ const geoRouter = router({
       const canAudit = canAuditArticle(article.status as ArticleStatus, latestScore ? { totalScore: latestScore.totalScore, blocked: Boolean(latestScore.blocked) } : null);
       if (!canAudit || consistency?.publishAllowed === false || (consistency?.score ?? 100) < GEO_ARTICLE_MIN_PASS_SCORE || consistency?.riskLevel === "高") throw new TRPCError({ code: "BAD_REQUEST", message: `未质检通过、低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分或一致性检查未通过的文章不能审核` });
       await db.update(geoArticles).set({ status: input.approved ? "审核通过" : "审核未通过" }).where(eq(geoArticles.id, article.id));
+      if (!input.approved) {
+        await appendArticleLifecycleEvent(db, article.id, {
+          status: "needs_revision",
+          source: "audit_reject",
+          message: input.note?.trim() || "审核未通过，需修订",
+        });
+      }
       return { success: true } as const;
     }),
     publish: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ input }) => {
@@ -2257,6 +2317,48 @@ ${article.markdownContent}`,
       }));
       return { success: true, publicPath } as const;
     }),
+    retestQueue: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const db = await requireDb();
+        const items = await listPostPublishRetestQueue(db, input.projectId);
+        return { items, count: items.length } as const;
+      }),
+    rewritePool: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const db = await requireDb();
+        const items = await listRewritePool(db, input.projectId);
+        return { items, count: items.length } as const;
+      }),
+    triggerReview: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), queueId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+        try {
+          return await triggerManualReview(db, input);
+        } catch (e) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: e instanceof Error ? e.message : "触发复测失败",
+          });
+        }
+      }),
+    generateRewriteSuggestion: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), articleId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const db = await requireDb();
+        await getProjectOrThrow(input.projectId);
+        try {
+          const out = await generateNextContentSuggestion(db, input);
+          return { success: true, ...out } as const;
+        } catch (e) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: e instanceof Error ? e.message : "生成建议失败",
+          });
+        }
+      }),
     publicContent: publicProcedure.input(z.object({ projectId: z.number().int().positive(), articleId: z.number().int().positive() })).query(async ({ input }) => {
       const db = await requireDb();
       const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
@@ -2385,6 +2487,30 @@ ${article.markdownContent}`,
           });
         }
 
+        if (checkResult.mentionRate === 0 && input.recordId) {
+          const monRows = await db
+            .select({ articleId: geoInclusionMonitoringRecords.articleId })
+            .from(geoInclusionMonitoringRecords)
+            .where(eq(geoInclusionMonitoringRecords.id, input.recordId))
+            .limit(1);
+          const articleId = monRows[0]?.articleId;
+          if (articleId) {
+            await recordRewriteFromQualityReject(db, {
+              articleId,
+              projectId: input.projectId,
+              reason: "AI 实测未提及品牌，建议补充实体信号后重写",
+              source: "ai_test_no_brand",
+            });
+            await enqueueReviewQueueItem(db, {
+              articleId,
+              projectId: input.projectId,
+              triggerStatus: "ai_test",
+              reviewType: "ai_test",
+              resultNote: "AI 实测完成：品牌未被提及，待复测",
+            });
+          }
+        }
+
         const mentionStatus = checkResult.mentionRate > 0 ? "已提及" : "未提及";
         const recommendStatus = checkResult.recommendRate > 0 ? "已推荐" : "未推荐";
         const suggestion = buildAiMentionSuggestion(checkResult);
@@ -2403,8 +2529,8 @@ ${article.markdownContent}`,
           await db
             .update(geoInclusionMonitoringRecords)
             .set({
-              aiMentionStatus: mentionStatus,
-              aiRecommendStatus: recommendStatus,
+              aiMentionMonitorStatus: mentionStatus,
+              aiRecommendMonitorStatus: recommendStatus,
               aiTestResults: savedResults,
               lastAiTestedAt: now,
               lastCheckedAt: now,
@@ -2483,8 +2609,8 @@ ${article.markdownContent}`,
         const record = rows[0];
         if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "监测记录不存在" });
         return {
-          aiMentionStatus: record.aiMentionStatus,
-          aiRecommendStatus: record.aiRecommendStatus,
+          aiMentionStatus: record.aiMentionMonitorStatus ?? "未检测",
+          aiRecommendStatus: record.aiRecommendMonitorStatus ?? "未检测",
           aiTestResults: record.aiTestResults ?? [],
           lastAiTestedAt: record.lastAiTestedAt,
         } as const;
@@ -2495,6 +2621,7 @@ ${article.markdownContent}`,
 });
 
 export const appRouter = router({
+  agent: agentRouter,
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

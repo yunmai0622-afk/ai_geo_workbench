@@ -6,6 +6,7 @@ import { geoArticles, geoArticleTopics, projects } from "../drizzle/schema";
 import type { getDb } from "./db";
 import { buildQualityReviewPrompt } from "./geoQualityPrompt";
 import { defaultModelRouter } from "./modelRouter";
+import { recordRewriteFromQualityReject } from "./rewritePoolService";
 
 type Db = Awaited<ReturnType<typeof getDb>>;
 
@@ -105,6 +106,15 @@ export async function runContentQualityReview(
       geoQualityStale: 0,
     })
     .where(eq(geoArticles.id, input.articleId));
+
+  if (result.recommendation === "reject") {
+    await recordRewriteFromQualityReject(db, {
+      articleId: input.articleId,
+      projectId: input.projectId,
+      reason: `GEO 发布前质检 reject（${result.total} 分）`,
+      source: "geo_quality_reject",
+    });
+  }
 
   return { result, modelName, reviewedAt };
 }

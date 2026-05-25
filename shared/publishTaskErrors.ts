@@ -1,4 +1,4 @@
-/** 浏览器插件发布错误类型（C7-C） */
+/** 发布错误类型（含历史浏览器助手任务兼容；当前主链路为 Local Agent） */
 
 export const PUBLISH_ERROR_TYPES = [
   "login_required",
@@ -108,11 +108,16 @@ export function publishTaskStatusCustomerLabel(input: {
   status: string;
   accountVerificationStatus?: string | null;
   errorMessage?: string | null;
+  agentErrorMessage?: string | null;
 }): string {
   if (input.status === "draft_saved") return "已保存草稿";
   if (input.status === "completed") return "已发布";
   if (input.status === "processing") return "发布中";
-  if (input.status === "pending") return "待账号核验";
+  if (input.status === "pending_agent") return "等待本地客户端处理";
+  if (input.status === "agent_processing") return "本地客户端处理中";
+  if (input.status === "session_expired") return "登录失效";
+  if (input.status === "manual_required") return "需人工确认";
+  if (input.status === "pending") return "待处理（历史插件任务）";
 
   const av = input.accountVerificationStatus;
   if (av === "matched") return "账号核验通过";
@@ -121,7 +126,8 @@ export function publishTaskStatusCustomerLabel(input: {
   if (av === "unknown") return "无法识别账号";
 
   if (input.status === "failed") {
-    const parsed = parsePublishTaskErrorMessage(input.errorMessage);
+    const raw = input.agentErrorMessage ?? input.errorMessage;
+    const parsed = parsePublishTaskErrorMessage(raw);
     if (parsed) return parsed.customerMessage;
     const msg = input.errorMessage ?? "";
     if (msg.includes("账号不匹配")) return "账号不匹配";

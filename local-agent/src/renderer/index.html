@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" />
+    <title>GEO 本地发布客户端</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>GEO 本地发布客户端</h1>
+        <p class="subtitle">本机账号环境与发布任务；知乎填稿需先登录并通过检测，未验收前勿视为全自动闭环。</p>
+      </div>
+      <div class="header-meta">
+        <span id="hdr-version" class="badge">v—</span>
+        <span id="hdr-poll" class="badge muted">轮询已停止</span>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" class="tab active" data-tab="overview">总览</button>
+      <button type="button" class="tab" data-tab="accounts">账号环境</button>
+      <button type="button" class="tab" data-tab="tasks">发布任务</button>
+      <button type="button" class="tab" data-tab="logs">执行日志</button>
+      <button type="button" class="tab" data-tab="settings">设置</button>
+    </nav>
+
+    <main class="tab-panels">
+      <section id="panel-overview" class="panel active" role="tabpanel">
+        <div class="metrics" id="overview-metrics"></div>
+        <p id="overview-local-http" class="conn-line"></p>
+        <p id="overview-conn" class="conn-line"></p>
+        <div class="btn-row">
+          <button type="button" id="btn-test-conn" class="primary">测试连接</button>
+          <button type="button" id="btn-start-poll" class="primary">开始轮询</button>
+          <button type="button" id="btn-stop-poll">停止轮询</button>
+          <button type="button" id="btn-poll-once">立即拉取任务</button>
+        </div>
+        <div class="btn-row">
+          <button type="button" id="btn-open-geo-publish" class="primary">在 GEO Web 打开发布记录</button>
+          <button type="button" id="btn-open-geo-bind">在 GEO Web 绑定发布账号</button>
+          <button type="button" id="btn-open-geo-weekly">在 GEO Web 打开内容生产</button>
+        </div>
+        <div class="card">
+          <h3>最近失败</h3>
+          <p id="overview-failure" class="muted">暂无</p>
+        </div>
+        <div class="card">
+          <h3>实时输出</h3>
+          <pre id="live-log" class="live-log"></pre>
+        </div>
+      </section>
+
+      <section id="panel-accounts" class="panel" role="tabpanel" hidden>
+        <div class="btn-row">
+          <button type="button" data-create="zhihu">+ 知乎</button>
+          <button type="button" data-create="sohu">+ 搜狐号</button>
+          <button type="button" data-create="baijiahao">+ 百家号</button>
+          <button type="button" data-create="toutiao">+ 头条号</button>
+        </div>
+        <div id="accounts-root"></div>
+      </section>
+
+      <section id="panel-tasks" class="panel" role="tabpanel" hidden>
+        <p class="muted">任务来自 GEO Web 服务端，按 localAgentId 匹配。失败或需人工确认时，可在 GEO Web 发布记录页查看状态。</p>
+        <div class="btn-row compact">
+          <button type="button" id="btn-tasks-open-geo-publish">在 GEO Web 打开发布记录</button>
+        </div>
+        <div class="table-wrap">
+          <table id="tasks-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>平台</th>
+                <th>账号</th>
+                <th>标题</th>
+                <th>状态</th>
+                <th>创建</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="panel-logs" class="panel" role="tabpanel" hidden>
+        <div class="btn-row">
+          <button type="button" id="btn-copy-logs">复制当前日志</button>
+        </div>
+        <label>选择任务 <select id="log-task-select"></select></label>
+        <pre id="log-detail" class="log-detail"></pre>
+      </section>
+
+      <section id="panel-settings" class="panel" role="tabpanel" hidden>
+        <form id="settings-form" class="form-grid">
+          <label>服务地址 serverUrl <input type="text" id="set-server-url" /></label>
+          <label>agentApiKey（可选） <input type="password" id="set-api-key" autocomplete="off" /></label>
+          <label>localAgentId（只读） <input type="text" id="set-agent-id" readonly /></label>
+          <label>轮询间隔（秒） <input type="number" id="set-poll-sec" min="5" max="300" /></label>
+          <label>每轮最多处理任务数 <input type="number" id="set-max-tasks" min="1" max="3" /></label>
+          <label>日志保留天数 <input type="number" id="set-log-days" min="1" max="90" /></label>
+          <label class="check"><input type="checkbox" id="set-auto-poll" /> 启动后自动轮询</label>
+          <label class="check"><input type="checkbox" id="set-launch-login" disabled /> 开机启动（仅 UI，暂未实现）</label>
+          <label>数据目录 <input type="text" id="set-data-dir" readonly /></label>
+        </form>
+        <div class="btn-row">
+          <button type="button" id="btn-save-settings" class="primary">保存设置</button>
+          <button type="button" id="btn-open-data">打开数据目录</button>
+          <button type="button" id="btn-export-diag">导出诊断包</button>
+        </div>
+        <p id="settings-msg" class="muted"></p>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

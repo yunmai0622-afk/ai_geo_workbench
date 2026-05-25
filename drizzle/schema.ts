@@ -306,6 +306,18 @@ export const geoArticles = mysqlTable("geo_articles", {
   consistencyCheck: json("consistencyCheck").$type<Record<string, unknown>>(),
   optimizationVersions: json("optimizationVersions").$type<Array<Record<string, unknown>>>(),
   status: articleStatusEnum.default("待质检").notNull(),
+  lifecycleStatus: varchar("lifecycleStatus", { length: 32 }).default("generated"),
+  lifecycleEvents: json("lifecycleEvents").$type<
+    Array<{
+      status: string;
+      at: string;
+      source: string;
+      message?: string;
+      taskId?: number;
+      platform?: string;
+      publishTaskStatus?: string;
+    }>
+  >(),
   publicPath: varchar("publicPath", { length: 1000 }),
   coverTemplate: varchar("coverTemplate", { length: 32 }),
   coverImageUrl: varchar("coverImageUrl", { length: 2000 }),
@@ -392,9 +404,9 @@ export const geoInclusionMonitoringRecords = mysqlTable("geo_inclusion_monitorin
   articleId: int("articleId").notNull(),
   publishRecordId: int("publishRecordId").notNull(),
   publicUrl: varchar("publicUrl", { length: 1000 }).notNull(),
-  inclusionStatus: inclusionMonitorStatusEnum.default("未检测").notNull(),
-  aiMentionStatus: aiMentionMonitorStatusEnum.default("未检测").notNull(),
-  aiRecommendStatus: aiRecommendMonitorStatusEnum.default("未检测").notNull(),
+  inclusionMonitorStatus: inclusionMonitorStatusEnum.default("未检测").notNull(),
+  aiMentionMonitorStatus: aiMentionMonitorStatusEnum.default("未检测").notNull(),
+  aiRecommendMonitorStatus: aiRecommendMonitorStatusEnum.default("未检测").notNull(),
   lastCheckedAt: timestamp("lastCheckedAt"),
   currentSuggestion: text("currentSuggestion").notNull(),
   optimizationSuggestions: json("optimizationSuggestions").$type<string[]>().notNull(),
@@ -603,8 +615,45 @@ export const publishTasks = mysqlTable("publish_tasks", {
   articleContent: text("articleContent").notNull(),
   coverImageUrl: varchar("coverImageUrl", { length: 2000 }),
   resultUrl: varchar("resultUrl", { length: 500 }),
+  draftUrl: varchar("draftUrl", { length: 500 }),
+  publishedUrl: varchar("publishedUrl", { length: 500 }),
+  localAgentId: varchar("localAgentId", { length: 100 }),
+  localProfileId: varchar("localProfileId", { length: 100 }),
+  agentPickedAt: timestamp("agentPickedAt"),
+  agentFinishedAt: timestamp("agentFinishedAt"),
+  agentErrorType: varchar("agentErrorType", { length: 50 }),
+  agentErrorMessage: text("agentErrorMessage"),
+  agentLog: json("agentLog").$type<string[]>(),
   errorMessage: text("errorMessage"),
   apiKey: varchar("apiKey", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const geoReviewQueue = mysqlTable("geo_review_queue", {
+  id: int("id").autoincrement().primaryKey(),
+  articleId: int("articleId").notNull(),
+  projectId: int("projectId").notNull(),
+  triggerStatus: varchar("triggerStatus", { length: 32 }).notNull(),
+  reviewType: varchar("reviewType", { length: 32 }).notNull(),
+  scheduledAt: timestamp("scheduledAt"),
+  status: varchar("status", { length: 32 }).notNull().default("pending"),
+  result: json("result").$type<Record<string, unknown>>(),
+  publishTaskId: int("publishTaskId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const geoRewritePool = mysqlTable("geo_rewrite_pool", {
+  id: int("id").autoincrement().primaryKey(),
+  articleId: int("articleId").notNull(),
+  projectId: int("projectId").notNull(),
+  triggerStatus: varchar("triggerStatus", { length: 32 }).notNull(),
+  source: varchar("source", { length: 64 }).notNull(),
+  reason: text("reason").notNull(),
+  publishTaskId: int("publishTaskId"),
+  status: varchar("status", { length: 32 }).notNull().default("open"),
+  suggestionText: text("suggestionText"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -623,6 +672,11 @@ export const projectPlatformAccounts = mysqlTable(
     verificationStatus: varchar("verificationStatus", { length: 32 }).default("unknown").notNull(),
     lastVerifiedAt: timestamp("lastVerifiedAt"),
     lastDetectedAccountName: varchar("lastDetectedAccountName", { length: 255 }),
+    localAgentId: varchar("localAgentId", { length: 100 }),
+    localProfileId: varchar("localProfileId", { length: 100 }),
+    sessionStatus: varchar("sessionStatus", { length: 30 }),
+    lastSessionCheckedAt: timestamp("lastSessionCheckedAt"),
+    lastLoginAt: timestamp("lastLoginAt"),
     notes: text("notes"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

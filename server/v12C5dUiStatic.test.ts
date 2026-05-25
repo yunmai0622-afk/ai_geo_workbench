@@ -12,9 +12,9 @@ describe("C5-D enterprise profile page product UI", () => {
     expect(page).toContain("企业 AI 搜索档案");
     expect(page).toContain("ProfileIntakePanel");
     expect(page).toContain("上传企业资料");
-    expect(page).toContain("档案完成进度");
-    expect(page).toContain("品牌与产品信息");
-    expect(page).toContain("目标客户与购买场景");
+    expect(page).toContain("档案完成度");
+    expect(page).toContain("品牌与业务");
+    expect(page).toContain("客户画像与购买场景");
     expect(page).toContain("案例与信任素材");
     expect(page).toContain("完成企业档案，进入 AI 内容诊断");
     expect(page).toContain("AiPageShell");
@@ -25,7 +25,9 @@ describe("C5-D enterprise profile page product UI", () => {
   it("keeps save handlers unchanged", () => {
     expect(page).toContain("upsertProfile.mutateAsync");
     expect(page).toContain("createCustomerCase.mutateAsync");
-    expect(page).toContain("保存基本身份");
-    expect(page).toContain("保存客户信息");
+    expect(page).toContain("保存品牌与业务");
+    expect(page).toContain("保存客户画像");
+    expect(page).toContain("保存信任素材");
+    expect(page).toContain("PlatformAccountBindingSection");
   });
 });

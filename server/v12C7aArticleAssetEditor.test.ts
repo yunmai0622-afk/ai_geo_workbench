@@ -56,7 +56,7 @@ describe("C7-A article asset editor and template cover", () => {
   it("publish task still includes projectId and expectedAccountName after article editing", () => {
     const router = read("server/publishTasksRouter.ts");
     expect(router).toContain("projectId: input.projectId");
-    expect(router).toContain("expectedAccountName: boundAccount?.accountName");
+    expect(router).toContain("expectedAccountName: boundAccount.accountName");
     expect(router).toContain("resolvePublishPlatformAccount");
   });
 

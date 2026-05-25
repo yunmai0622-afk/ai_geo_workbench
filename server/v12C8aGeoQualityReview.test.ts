@@ -36,7 +36,7 @@ describe("C8-A GEO content quality review", () => {
   it("publish task still includes projectId and expectedAccountName", () => {
     const publishRouter = read("server/publishTasksRouter.ts");
     expect(publishRouter).toContain("projectId: input.projectId");
-    expect(publishRouter).toContain("expectedAccountName: boundAccount?.accountName");
+    expect(publishRouter).toContain("expectedAccountName: boundAccount.accountName");
   });
 
   it("GeoQualityScore embedded in editor with stale hint", () => {

@@ -55,18 +55,20 @@ export function AiPageHero({
 }
 
 export function AiSection({
+  id,
   title,
   description,
   children,
   className,
 }: {
+  id?: string;
   title?: string;
   description?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <section className={cn("ai-section space-y-5", className)}>
+    <section id={id} className={cn("ai-section space-y-5", className)}>
       {title ? (
         <div className="space-y-1.5">
           <h2 className="text-lg font-semibold tracking-tight text-white sm:text-xl">{title}</h2>

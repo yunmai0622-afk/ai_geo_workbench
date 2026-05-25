@@ -1,0 +1,10 @@
+{
+  "serverUrl": "http://127.0.0.1:3000",
+  "agentApiKey": "",
+  "localAgentId": "agent_example",
+  "pollIntervalSeconds": 15,
+  "autoStartPolling": false,
+  "logRetentionDays": 14,
+  "maxTasksPerCycle": 1,
+  "launchAtLogin": false
+}

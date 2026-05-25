@@ -38,7 +38,7 @@ describe("C7-A-Fix unsaved changes block publish", () => {
   it("publish task still includes projectId and expectedAccountName", () => {
     const router = read("server/publishTasksRouter.ts");
     expect(router).toContain("projectId: input.projectId");
-    expect(router).toContain("expectedAccountName: boundAccount?.accountName");
+    expect(router).toContain("expectedAccountName: boundAccount.accountName");
     expect(router).not.toContain("autoSave");
   });
 });

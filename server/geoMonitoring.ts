@@ -17,9 +17,9 @@ export function buildInitialInclusionMonitoringRecord(input: {
     articleId: input.articleId,
     publishRecordId: input.publishRecordId,
     publicUrl: input.publicUrl,
-    inclusionStatus: "未检测" as const,
-    aiMentionStatus: "未检测" as const,
-    aiRecommendStatus: "未检测" as const,
+    inclusionMonitorStatus: "未检测" as const,
+    aiMentionMonitorStatus: "未检测" as const,
+    aiRecommendMonitorStatus: "未检测" as const,
     currentSuggestion: "已发布文章已进入收录监测，当前状态为未检测；下一步需要人工或后续复测流程确认收录、AI 提及和 AI 推荐情况。",
     optimizationSuggestions: initialMonitoringSuggestions,
     rawJson: {

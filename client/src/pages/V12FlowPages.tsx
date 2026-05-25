@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
+import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import {
   aggregateAiTestEvidence,
   buildEvidenceDetailPath,
@@ -2225,6 +2226,23 @@ export function ContentPublishingFlowPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const autoPublishTasksQuery = trpc.publishTasks.listRecentByProject.useQuery(
+    { projectId: selectedProjectId!, limit: 20 },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const retestQueueQuery = trpc.geo.articles.retestQueue.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const rewritePoolQuery = trpc.geo.articles.rewritePool.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const triggerReview = trpc.geo.articles.triggerReview.useMutation({
+    onSuccess: () => {
+      void retestQueueQuery.refetch();
+    },
+  });
   const createManualPublishRecord = trpc.geo.articles.createManualPublishRecord.useMutation();
   const updateManualPublishRecord = trpc.geo.articles.updateManualPublishRecord.useMutation();
   const [message, setMessage] = useState<string>();
@@ -2514,6 +2532,147 @@ export function ContentPublishingFlowPage() {
                 ))}
               </ul>
             )}
+          </section>
+
+          <section className="ai-glass-panel p-5 md:p-6" aria-label="自动发布任务">
+            <h2 className="text-lg font-semibold text-white">本地客户端发布任务</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              展示最近由 GEO 本地发布客户端处理的自动发布任务，与上方人工登记记录相互独立。历史任务状态（含旧版数据）仍可在详情中查看。
+            </p>
+            {autoPublishTasksQuery.isLoading ? (
+              <p className="mt-4 text-sm text-slate-500">加载中…</p>
+            ) : (autoPublishTasksQuery.data?.tasks ?? []).length === 0 ? (
+              <p className="mt-4 text-sm text-slate-500">暂无自动发布任务</p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {(autoPublishTasksQuery.data?.tasks ?? []).map(task => (
+                  <li key={task.id} className={`${aiListRow} p-3 text-sm`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium text-white">{task.articleTitle || `文章 #${task.articleId}`}</span>
+                      <span className="rounded-full border border-cyan-400/25 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-100">
+                        {publishTaskStatusCustomerLabel({
+                          status: task.status,
+                          agentErrorMessage: task.agentErrorMessage,
+                        })}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {task.platform} · {task.expectedAccountName ?? "未指定账号"}
+                      {task.localProfileId ? ` · profile ${task.localProfileId}` : ""}
+                    </p>
+                    {task.agentErrorMessage ? (
+                      <p className="mt-1 text-xs text-amber-200/90">{task.agentErrorMessage}</p>
+                    ) : null}
+                    {task.agentFinishedAt ? (
+                      <p className="mt-1 text-xs text-slate-600">
+                        完成于 {formatTime(task.agentFinishedAt)}
+                      </p>
+                    ) : null}
+                    {task.agentLog && task.agentLog.length > 0 ? (
+                      <details className="mt-2 text-xs text-slate-500">
+                        <summary className="cursor-pointer hover:text-slate-300">查看日志</summary>
+                        <pre className="mt-1 max-h-32 overflow-auto rounded bg-slate-950/60 p-2 text-[11px]">
+                          {task.agentLog
+                            .map(line => {
+                              try {
+                                const o = JSON.parse(line) as {
+                                  step?: string;
+                                  status?: string;
+                                  message?: string;
+                                };
+                                return `[${task.platform}] ${o.step ?? "?"} · ${o.status ?? "?"}${o.message ? ` · ${o.message}` : ""}`;
+                              } catch {
+                                return line;
+                              }
+                            })
+                            .join("\n")}
+                        </pre>
+                      </details>
+                    ) : null}
+                    {task.draftUrl || task.resultUrl ? (
+                      <a
+                        href={task.draftUrl ?? task.resultUrl ?? "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-block text-xs text-cyan-300 hover:underline"
+                      >
+                        打开结果链接
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="ai-glass-panel p-5 md:p-6" aria-label="发布后复测与重写池">
+            <h2 className="text-lg font-semibold text-white">发布后复测队列 · 重写池</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              待复测：已发布且标记需复测的内容；重写池：质检未通过或本地 Agent 需人工/失败的任务对应文章。
+            </p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div>
+                <h3 className="text-sm font-medium text-cyan-100">待复测队列</h3>
+                {retestQueueQuery.isLoading ? (
+                  <p className="mt-2 text-sm text-slate-500">加载中…</p>
+                ) : (retestQueueQuery.data?.items ?? []).length === 0 ? (
+                  <p className="mt-2 text-sm text-slate-500">暂无待复测内容</p>
+                ) : (
+                  <ul className="mt-2 space-y-2">
+                    {(retestQueueQuery.data?.items ?? []).map(item => (
+                      <li key={item.queueId ?? item.articleId} className={`${aiListRow} p-3 text-sm`}>
+                        <p className="font-medium text-white">{item.title}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          触发 {item.triggerStatus} · {item.reviewType} · {item.status}
+                          {item.scheduledAt ? ` · 计划 ${new Date(item.scheduledAt).toLocaleString("zh-CN")}` : ""}
+                        </p>
+                        {selectedProjectId && item.queueId ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 h-7 border-white/15 text-xs"
+                            disabled={triggerReview.isPending}
+                            onClick={() =>
+                              void triggerReview.mutateAsync({
+                                projectId: selectedProjectId,
+                                queueId: item.queueId,
+                              })
+                            }
+                          >
+                            手动触发复测
+                          </Button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-amber-100">重写池</h3>
+                {rewritePoolQuery.isLoading ? (
+                  <p className="mt-2 text-sm text-slate-500">加载中…</p>
+                ) : (rewritePoolQuery.data?.items ?? []).length === 0 ? (
+                  <p className="mt-2 text-sm text-slate-500">暂无待重写条目</p>
+                ) : (
+                  <ul className="mt-2 space-y-2">
+                    {(rewritePoolQuery.data?.items ?? []).map(item => (
+                      <li key={`${item.articleId}-${item.poolId ?? item.publishTaskId ?? 0}`} className={`${aiListRow} p-3 text-sm`}>
+                        <p className="font-medium text-white">{item.title}</p>
+                        <p className="mt-1 text-xs text-slate-500">{item.reason}</p>
+                        {item.source ? <p className="mt-1 text-xs text-slate-600">来源 {item.source}</p> : null}
+                        {item.publishTaskStatus ? (
+                          <p className="mt-1 text-xs text-amber-200/90">任务 #{item.publishTaskId} · {item.publishTaskStatus}</p>
+                        ) : null}
+                        {item.suggestionText ? (
+                          <p className="mt-2 whitespace-pre-wrap text-xs text-cyan-100/80">{item.suggestionText}</p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </section>
 
           <section className="ai-glass-panel p-5 md:p-6" aria-label="发布记录列表">

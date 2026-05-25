@@ -4,6 +4,10 @@ import AdmZip from "adm-zip";
 import type { Request } from "express";
 import { TRPCError } from "@trpc/server";
 
+/**
+ * @legacy 早期 Chrome 发布助手安装包；主链路已切换 Local Agent，仅交付回滚使用。
+ * 见 content-growth-publish-extension/README_LEGACY.md
+ */
 const EXTENSION_ZIP_RELATIVE = "client/public/browser-extension.zip";
 const AUTO_CONFIG_MARKER = "// 自动配置（安装时生成）";
 
@@ -57,13 +61,13 @@ chrome.storage.sync.set({
 export function buildCustomExtensionZip(serverUrl: string, apiKey: string): Buffer {
   const zipPath = join(process.cwd(), EXTENSION_ZIP_RELATIVE);
   if (!existsSync(zipPath)) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "插件安装包不存在，请联系管理员" });
+    throw new TRPCError({ code: "NOT_FOUND", message: "Legacy 浏览器助手安装包不存在，请使用本地发布客户端" });
   }
 
   const zip = new AdmZip(readFileSync(zipPath));
   const entry = zip.getEntry("background.js");
   if (!entry) {
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "插件包格式异常：缺少 background.js" });
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Legacy 安装包格式异常：缺少 background.js" });
   }
 
   const original = entry.getData().toString("utf8");

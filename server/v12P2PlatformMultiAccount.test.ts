@@ -55,7 +55,8 @@ describe("P2 platform multi-account binding & publish", () => {
     const router = read("server/publishTasksRouter.ts");
     expect(router).toContain("platformAccountId");
     expect(router).toContain("resolvePublishPlatformAccount");
-    expect(router).toContain("platformAccountId: boundAccount?.id");
+    expect(router).toContain("platformAccountId: boundAccount.id");
+    expect(router).toContain("platformAccountId == null");
   });
 
   it("platformAccountId not found must fail, not fallback", () => {
@@ -72,13 +73,13 @@ describe("P2 platform multi-account binding & publish", () => {
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("publishMustSelectAccountMessage");
   });
 
-  it("single enabled account can auto select", () => {
+  it("single publish-ready account can auto select", () => {
     expect(read("server/projectPlatformAccounts.ts")).toMatch(/enabled\.length === 1/);
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("enabled.length === 1");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("ready.length === 1");
   });
 
   it("expectedAccountName equals selected accountName", () => {
-    expect(read("server/publishTasksRouter.ts")).toContain("expectedAccountName: boundAccount?.accountName");
+    expect(read("server/publishTasksRouter.ts")).toContain("expectedAccountName: boundAccount.accountName");
   });
 
   it("account group mismatch warning still works", () => {
@@ -108,8 +109,8 @@ describe("P2 platform multi-account binding & publish", () => {
 
   it("multi-account binding UI lists accounts per platform", () => {
     const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
-    expect(ui).toContain("添加账号");
-    expect(ui).toContain("platformAccounts.create");
+    expect(ui).toContain("绑定发布账号");
+    expect(ui).toContain("platformAccounts.bindLocalAgentAccount");
     expect(ui).toContain('data-testid="platform-account-row"');
   });
 

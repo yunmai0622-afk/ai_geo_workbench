@@ -63,13 +63,13 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
     for (const text of [
       "企业 AI 搜索档案",
-      "品牌与产品信息",
-      "目标客户与购买场景",
+      "品牌与业务",
+      "客户画像与购买场景",
       "案例与信任素材",
-      "保存基本身份",
-      "保存客户信息",
-      "档案完整度",
-      "档案完成进度",
+      "保存品牌与业务",
+      "保存客户画像",
+      "档案完成度",
+      "发布账号绑定",
       "完成企业档案，进入 AI 内容诊断",
     ]) {
       expect(assetSource).toContain(text);

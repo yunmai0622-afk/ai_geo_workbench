@@ -32,6 +32,8 @@ import {
   type P12AssetLibraryContext,
 } from "./geoArticleLogic";
 import { getDb } from "./db";
+import { appendArticleLifecycleEvent } from "./articleLifecycleService";
+import { recordRewriteFromQualityReject } from "./rewritePoolService";
 
 const MAX_AUTO_QUALITY_REWRITES = 2;
 
@@ -185,6 +187,11 @@ export async function runGeoArticleQualityCheckFlow(db: Db, articleId: number): 
 
   if (isGeoArticleQualityCheckPass(quality)) {
     await syncArticleFields("质检通过");
+    await appendArticleLifecycleEvent(db, articleId, {
+      status: "quality_checked",
+      source: "quality_check",
+      message: "GEO 质检通过",
+    });
     return { success: true, quality, autoRewriteCount: 0, finalStatus: "质检通过" };
   }
 
@@ -237,9 +244,25 @@ export async function runGeoArticleQualityCheckFlow(db: Db, articleId: number): 
 
   if (isGeoArticleQualityCheckPass(quality)) {
     await syncArticleFields("质检通过");
+    await appendArticleLifecycleEvent(db, articleId, {
+      status: "quality_checked",
+      source: "quality_check",
+      message: "GEO 质检通过（自动重写后）",
+    });
     return { success: true, quality, autoRewriteCount: used, finalStatus: "质检通过" };
   }
 
   await syncArticleFields("需人工审核");
+  await appendArticleLifecycleEvent(db, articleId, {
+    status: "needs_revision",
+    source: "quality_check",
+    message: "GEO 质检未通过，需修订",
+  });
+  await recordRewriteFromQualityReject(db, {
+    articleId,
+    projectId: article.projectId,
+    reason: "GEO 自动质检未通过，需修订后重新质检",
+    source: "quality_check_fail",
+  });
   return { success: false, quality, autoRewriteCount: used, finalStatus: "需人工审核" };
 }

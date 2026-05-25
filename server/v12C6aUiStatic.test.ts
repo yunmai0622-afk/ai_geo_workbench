@@ -15,7 +15,7 @@ describe("C6-A enterprise profile AI intake", () => {
     expect(page).toContain("ProfileIntakePanel");
     expect(page).toContain("上传企业资料");
     expect(panel).toContain("AI 解析并填充档案");
-    expect(panel).toContain("上传资料，AI 自动建档");
+    expect(panel).toContain("先上传企业资料");
     expect(panel).toContain("拖拽文件到此处");
   });
 

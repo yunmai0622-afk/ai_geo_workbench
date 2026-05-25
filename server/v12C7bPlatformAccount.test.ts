@@ -23,7 +23,7 @@ describe("C7-B project platform account binding", () => {
   it("publish confirm shows project and expected account", () => {
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("当前企业：");
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toMatch(/发布账号：|选择发布账号/);
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("开始核验并发布");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("发布到平台");
   });
 
   it("extension verifies account before publish", () => {
@@ -59,12 +59,14 @@ describe("C7-B project platform account binding", () => {
     expect(schema).toContain("accountVerificationStatus");
 
     const binding = read("client/src/components/PlatformAccountBindingSection.tsx");
-    expect(binding).toMatch(/重新加载.*插件|最新版发布插件/);
-    expect(binding).toContain("添加账号");
+    expect(binding).toContain("本地客户端");
+    expect(binding).toContain("绑定发布账号");
+    expect(binding).toContain("LOCAL_AGENT_BASE_URL");
+    expect(binding).not.toContain("GEO_START_AUTH");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
-    expect(weekly).toContain("核验当前浏览器登录账号");
-    expect(weekly).toMatch(/支持.*账号核验.*版本/);
-    expect(read("content-growth-publish-extension/manifest.json")).toMatch(/"version": "1\.2\.[01]"/);
+    expect(weekly).toContain("发布任务已发送至本地客户端");
+    expect(weekly).toContain("checkLocalAgentHealth");
+    expect(weekly).not.toMatch(/Chrome\s*插件|重载插件/);
     expect(read("drizzle/meta/_journal.json")).toContain("0020_project_platform_accounts");
   });
 });

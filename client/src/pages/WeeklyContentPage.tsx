@@ -7,6 +7,7 @@ import {
   AiStatusBadge,
 } from "@/components/ai/ProductUi";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
+import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { Button } from "@/components/ui/button";
 import { aiInput } from "@/lib/aiProductUi";
 import {
@@ -19,11 +20,15 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
+import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import { trpc } from "@/lib/trpc";
+import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import {
   isBindingPublishPlatform,
   publishBlockedNoAccountMessage,
+  publishBlockedNoLocalProfileMessage,
+  publishBlockedSessionExpiredMessage,
   publishMustSelectAccountMessage,
 } from "@shared/platformAccountVerify";
 import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
@@ -42,6 +47,7 @@ import {
   isAccountGroupType,
 } from "@shared/contentStrategy";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
+import { type resolveArticleLifecycleView } from "@shared/articleLifecycle";
 import { isLegacyAiGeneratedCoverUrl, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import {
   DEFAULT_WEEKLY_GENERATION_COUNT,
@@ -88,6 +94,14 @@ type ArticleRow = {
   publishIdentity?: string | null;
   recommendedAccountGroup?: string | null;
   articleType?: string | null;
+  lifecycleStatus?: string | null;
+  lifecycleEvents?: unknown;
+  publicPath?: string | null;
+  lifecycle?: ReturnType<typeof resolveArticleLifecycleView>;
+  postPublish?: {
+    pendingReview?: boolean;
+    needsRewrite?: boolean;
+  };
 };
 
 function formatGeoQualitySummary(article: ArticleRow): string | null {
@@ -108,8 +122,6 @@ type QualityScoreRow = {
 };
 
 const GEO_TASK_CARD_MARK = "__GEO_TASK_CARD__";
-const EXTENSION_HINT_KEY = "weekly-publish-extension-hint-dismissed";
-
 const PUBLISH_PLATFORMS = [
   { slug: "zhihu" as const, label: "知乎" },
   { slug: "toutiao" as const, label: "头条号" },
@@ -285,7 +297,12 @@ export default function WeeklyContentPage() {
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
   const updateGeneratedArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
-  const downloadExtension = trpc.publishTasks.downloadExtension.useMutation();
+  const generateRewriteSuggestion = trpc.geo.articles.generateRewriteSuggestion.useMutation();
+  const [suggestionDialog, setSuggestionDialog] = useState<{ open: boolean; text: string; articleTitle: string }>({
+    open: false,
+    text: "",
+    articleTitle: "",
+  });
 
   const autoTopicsTriggeredRef = useRef(false);
   const [preparingTopics, setPreparingTopics] = useState(false);
@@ -298,11 +315,7 @@ export default function WeeklyContentPage() {
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishArticle, setPublishArticle] = useState<ArticleRow | null>(null);
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
-  const [showExtensionHint, setShowExtensionHint] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(EXTENSION_HINT_KEY) !== "1";
-  });
-  const [publishToolsOpen, setPublishToolsOpen] = useState(false);
+  const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
   const [regeneratingCoverIds, setRegeneratingCoverIds] = useState<Set<number>>(() => new Set());
@@ -315,7 +328,24 @@ export default function WeeklyContentPage() {
     accountGroup: string | null;
     accountRole: string | null;
     isEnabled: boolean;
+    localAgentId: string | null;
+    localProfileId: string | null;
+    sessionStatus: string | null;
+    verificationStatus: string;
   };
+
+  const isPublishReadyAccount = (a: PlatformAccountItem) =>
+    a.isEnabled &&
+    Boolean(a.accountName?.trim()) &&
+    Boolean(a.localProfileId?.trim()) &&
+    Boolean(a.localAgentId?.trim()) &&
+    a.sessionStatus === "active";
+
+  const refreshLocalAgentHealth = useCallback(async () => {
+    const h = await checkLocalAgentHealth();
+    setLocalAgentOnline(h?.ok ?? false);
+    return h;
+  }, []);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
@@ -330,24 +360,29 @@ export default function WeeklyContentPage() {
     [platformAccountsQuery.data],
   );
 
-  const getEnabledAccountsForPlatform = useCallback(
+  const getAllEnabledAccountsForPlatform = useCallback(
     (slug: string) => {
       const group = platformAccountGroups.find(g => g.platform === slug);
-      return (group?.accounts ?? []).filter(a => a.isEnabled && a.accountName?.trim());
+      return (group?.accounts ?? []) as PlatformAccountItem[];
     },
     [platformAccountGroups],
   );
 
+  const getPublishReadyAccountsForPlatform = useCallback(
+    (slug: string) => getAllEnabledAccountsForPlatform(slug).filter(isPublishReadyAccount),
+    [getAllEnabledAccountsForPlatform],
+  );
+
   const pickPublishAccount = useCallback(
     (slug: string): PlatformAccountItem | null => {
-      const enabled = getEnabledAccountsForPlatform(slug);
-      if (enabled.length === 0) return null;
+      const ready = getPublishReadyAccountsForPlatform(slug);
+      if (ready.length === 0) return null;
       const selectedId = selectedPublishAccountIds[slug];
-      if (selectedId) return enabled.find(a => a.id === selectedId) ?? null;
-      if (enabled.length === 1) return enabled[0]!;
+      if (selectedId) return ready.find(a => a.id === selectedId) ?? null;
+      if (ready.length === 1) return ready[0]!;
       return null;
     },
-    [getEnabledAccountsForPlatform, selectedPublishAccountIds],
+    [getPublishReadyAccountsForPlatform, selectedPublishAccountIds],
   );
 
   const publishAccountGroupWarnings = useMemo(() => {
@@ -605,8 +640,14 @@ export default function WeeklyContentPage() {
     setPublishArticle(article);
     setSelectedPlatforms(new Set());
     setSelectedPublishAccountIds({});
+    void refreshLocalAgentHealth();
     setPublishDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (!publishDialogOpen) return;
+    void refreshLocalAgentHealth();
+  }, [publishDialogOpen, refreshLocalAgentHealth]);
 
   const handleRegenerateCover = async (article: ArticleRow) => {
     if (!selectedProjectId) return;
@@ -649,9 +690,9 @@ export default function WeeklyContentPage() {
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
       if (adding && isBindingPublishPlatform(slug)) {
-        const enabled = getEnabledAccountsForPlatform(slug);
-        if (enabled.length === 1) {
-          setSelectedPublishAccountIds(p => ({ ...p, [slug]: enabled[0]!.id }));
+        const ready = getPublishReadyAccountsForPlatform(slug);
+        if (ready.length === 1) {
+          setSelectedPublishAccountIds(p => ({ ...p, [slug]: ready[0]!.id }));
         }
       }
       return next;
@@ -672,7 +713,12 @@ export default function WeeklyContentPage() {
         if (tracked.length === 0) continue;
 
         const allDone = tracked.every(
-          t => t.status === "completed" || t.status === "failed" || t.status === "draft_saved",
+          t =>
+            t.status === "completed" ||
+            t.status === "failed" ||
+            t.status === "draft_saved" ||
+            t.status === "session_expired" ||
+            t.status === "manual_required",
         );
         if (!allDone) continue;
 
@@ -680,6 +726,7 @@ export default function WeeklyContentPage() {
 
         const ok = tracked.filter(t => t.status === "completed");
         const drafts = tracked.filter(t => t.status === "draft_saved");
+        const manual = tracked.filter(t => t.status === "manual_required");
         const failed = tracked.filter(t => t.status === "failed");
         if (ok.length > 0) {
           toast.success(
@@ -689,10 +736,27 @@ export default function WeeklyContentPage() {
           );
         } else if (drafts.length > 0 && failed.length === 0) {
           toast.success("内容已保存为平台草稿，请在平台内确认后正式发布");
+        } else if (manual.length > 0 && failed.length === 0 && ok.length === 0) {
+          toast.success(
+            manual.length === tracked.length
+              ? "本地 Agent 已填入标题与正文，状态为需人工确认：请在知乎窗口手动保存草稿，并在「资产发布记录」查看任务状态"
+              : `${manual.length} 个平台需人工确认保存，请在本地客户端窗口完成操作`,
+          );
         } else {
-          const first = failed[0];
+          const first = failed[0] ?? tracked.find(t => t.status === "session_expired" || t.status === "manual_required");
+          const detail =
+            first?.agentErrorMessage?.trim() ||
+            first?.errorMessage?.split("\n")[0] ||
+            "";
           toast.error(
-            first ? publishTaskStatusLabel(first) + (first.errorMessage ? `：${first.errorMessage.split("\n")[0]}` : "") : "发布失败，请稍后重试",
+            first
+              ? publishTaskStatusLabel({
+                  status: first.status,
+                  accountVerificationStatus: first.accountVerificationStatus,
+                  errorMessage: first.errorMessage,
+                  agentErrorMessage: first.agentErrorMessage,
+                }) + (detail ? `：${detail}` : "")
+              : "发布失败，请稍后重试",
           );
         }
         return;
@@ -714,10 +778,30 @@ export default function WeeklyContentPage() {
     if (isGeoQualityScoreStale(publishArticle)) {
       toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
     }
+    const health = await refreshLocalAgentHealth();
+    if (!health?.ok) {
+      toast.error(
+        "未检测到本地发布客户端。请先下载安装并启动本地发布客户端，然后到企业档案绑定发布账号。",
+      );
+      setLocation("/enterprise-profile#platform-accounts");
+      return;
+    }
     for (const slug of Array.from(selectedPlatforms)) {
       if (!isBindingPublishPlatform(slug)) continue;
-      const enabled = getEnabledAccountsForPlatform(slug);
-      if (enabled.length === 0) {
+      const ready = getPublishReadyAccountsForPlatform(slug);
+      const allEnabled = getAllEnabledAccountsForPlatform(slug).filter(a => a.isEnabled);
+      if (ready.length === 0) {
+        if (allEnabled.some(a => !a.localProfileId?.trim() || !a.localAgentId?.trim())) {
+          toast.error(
+            `${publishBlockedNoLocalProfileMessage(slug)} 请先下载安装并启动本地发布客户端，然后到企业档案绑定发布账号。`,
+          );
+          setLocation("/enterprise-profile#platform-accounts");
+          return;
+        }
+        if (allEnabled.some(a => a.sessionStatus !== "active")) {
+          toast.error(publishBlockedSessionExpiredMessage(slug));
+          return;
+        }
         toast.error(publishBlockedNoAccountMessage(slug));
         return;
       }
@@ -734,49 +818,25 @@ export default function WeeklyContentPage() {
     const taskIds: number[] = [];
     try {
       for (const slug of Array.from(selectedPlatforms)) {
-        const picked = isBindingPublishPlatform(slug) ? pickPublishAccount(slug) : null;
+        const picked = pickPublishAccount(slug)!;
         const res = await createPublishTask.mutateAsync({
           articleId,
           platform: slug as (typeof PUBLISH_PLATFORMS)[number]["slug"],
           projectId: selectedProjectId,
-          platformAccountId: picked?.id ?? undefined,
+          platformAccountId: picked.id,
         });
         taskIds.push(res.taskId);
+        if (res.publishMode !== "local_agent") {
+          toast.error("发布任务未走本地客户端，请联系交付同学检查配置");
+          return;
+        }
       }
-      toast.success("已提交发布任务，插件发布中…");
+      toast.success("发布任务已发送至本地客户端，请保持客户端运行。");
       setPublishDialogOpen(false);
       setPublishArticle(null);
       void pollPublishTasksUntilDone(articleId, taskIds);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "创建发布任务失败");
-    }
-  };
-
-  const dismissExtensionHint = () => {
-    localStorage.setItem(EXTENSION_HINT_KEY, "1");
-    setShowExtensionHint(false);
-  };
-
-  const handleDownloadExtension = async () => {
-    try {
-      const result = await downloadExtension.mutateAsync();
-      const binary = atob(result.dataBase64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      const blob = new Blob([bytes], { type: result.mimeType });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = result.fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      toast.success("插件已下载，请在 Chrome 扩展程序页面加载");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "下载插件失败，请稍后重试");
     }
   };
 
@@ -963,6 +1023,31 @@ export default function WeeklyContentPage() {
                         {formatArticleStrategySummary(article)}
                       </p>
                     ) : null}
+                    {isGenerated && article ? (
+                      <div className="mt-2">
+                        <ArticleLifecyclePanel articleId={article.id} article={article} lifecycle={article.lifecycle} compact />
+                      </div>
+                    ) : null}
+                    {isGenerated && article && (article.postPublish?.pendingReview || article.postPublish?.needsRewrite) ? (
+                      <div className="mt-2 flex flex-wrap gap-2" data-testid="article-post-publish-badges">
+                        {article.postPublish?.pendingReview ? (
+                          <span
+                            className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-100"
+                            data-testid="badge-pending-review"
+                          >
+                            待复测
+                          </span>
+                        ) : null}
+                        {article.postPublish?.needsRewrite ? (
+                          <span
+                            className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-100"
+                            data-testid="badge-needs-rewrite"
+                          >
+                            需重写
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
 
                   {isGenerated && article ? (
@@ -1084,6 +1169,33 @@ export default function WeeklyContentPage() {
                             >
                               发布到平台
                             </Button>
+                            {article.postPublish?.needsRewrite ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="border-amber-400/30 text-amber-100"
+                                data-testid="btn-generate-rewrite-suggestion"
+                                disabled={generateRewriteSuggestion.isPending || !selectedProjectId}
+                                onClick={() => {
+                                  if (!selectedProjectId) return;
+                                  void generateRewriteSuggestion
+                                    .mutateAsync({ projectId: selectedProjectId, articleId: article.id })
+                                    .then(res => {
+                                      setSuggestionDialog({
+                                        open: true,
+                                        text: res.suggestionText,
+                                        articleTitle: article.title ?? "内容资产",
+                                      });
+                                      void utils.geo.articles.list.invalidate();
+                                      void utils.geo.articles.rewritePool.invalidate();
+                                    })
+                                    .catch(e => toast.error(e instanceof Error ? e.message : "生成建议失败"));
+                                }}
+                              >
+                                {generateRewriteSuggestion.isPending ? "生成中…" : "生成新版内容建议"}
+                              </Button>
+                            ) : null}
                           </div>
                           {expanded ? (
                             <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-500">{previewText(article.markdownContent)}</p>
@@ -1119,55 +1231,15 @@ export default function WeeklyContentPage() {
       )}
 
       {enabled ? (
-        <details
-          className="ai-glass-panel border-white/8 bg-slate-950/30 text-sm opacity-90"
-          open={publishToolsOpen}
-          onToggle={e => setPublishToolsOpen((e.target as HTMLDetailsElement).open)}
-        >
-          <summary className="cursor-pointer list-none px-4 py-3 font-medium text-slate-400 hover:text-slate-200 [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-2">
-              <span className="text-cyan-500/80">▸</span>
-              发布辅助工具
-            </span>
-          </summary>
-          <div className="space-y-3 border-t border-white/8 px-4 pb-4 pt-2">
-            <p className="text-xs text-slate-500">用于辅助交付人员把内容发布到外部平台。</p>
-            <p className="text-xs text-slate-500">
-              下载插件后，在 Chrome 扩展程序页面加载；系统更新后请点击「重新加载」使账号核验生效（当前插件版本 v1.2.0）。
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="border-white/12 text-slate-300"
-                disabled={downloadExtension.isPending}
-                onClick={() => void handleDownloadExtension()}
-              >
-                {downloadExtension.isPending ? "正在打包…" : "下载插件"}
-              </Button>
-              {showExtensionHint ? (
-                <button type="button" className="text-xs text-slate-500 hover:text-slate-300" onClick={dismissExtensionHint}>
-                  不再提示
-                </button>
-              ) : null}
-            </div>
-            {showExtensionHint ? (
-              <p className="text-xs text-slate-600">
-                流程：下载插件 → Chrome 扩展程序 → 开发者模式 → 加载已解压 → 连接各平台登录。
-              </p>
-            ) : null}
-            <details className="text-xs text-slate-500">
-              <summary className="cursor-pointer text-slate-500 hover:text-slate-400">插件更新日志</summary>
-              <ul className="mt-2 space-y-1 pl-3">
-                <li>v1.2.0 · 百家号/头条/搜狐独立发布适配器</li>
-                <li>v1.1.0 · 发布前核验企业绑定账号，防止错发</li>
-                <li>v2.2 · 等待发布按钮可点击后再操作</li>
-                <li>v2.0 · 正文粘贴兼容性提升</li>
-              </ul>
-            </details>
-          </div>
-        </details>
+        <div className="ai-glass-panel border-cyan-400/15 px-4 py-3 text-sm" data-testid="local-agent-publish-hint">
+          <p className="font-medium text-cyan-100">本地发布客户端</p>
+          <p className="mt-1 text-xs text-slate-400">
+            发布任务将发送至本机 GEO 本地发布客户端（{LOCAL_AGENT_BASE_URL}）。请保持客户端运行并开启轮询；任务状态为「等待本地客户端处理」时表示已入队。
+          </p>
+          {localAgentOnline === false ? (
+            <p className="mt-2 text-xs text-amber-200">当前未检测到客户端在线，发布将被阻断。</p>
+          ) : null}
+        </div>
       ) : null}
 
       {selectedProjectId && editorArticle ? (
@@ -1188,10 +1260,27 @@ export default function WeeklyContentPage() {
         />
       ) : null}
 
-      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-        <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md">
+      <Dialog open={suggestionDialog.open} onOpenChange={open => setSuggestionDialog(s => ({ ...s, open }))}>
+        <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>发布前账号确认</DialogTitle>
+            <DialogTitle>新版内容建议</DialogTitle>
+            <DialogDescription className="text-slate-400">{suggestionDialog.articleTitle}</DialogDescription>
+          </DialogHeader>
+          <pre className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200">
+            {suggestionDialog.text}
+          </pre>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSuggestionDialog(s => ({ ...s, open: false }))}>
+              关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md" data-testid="publish-to-platform-dialog">
+          <DialogHeader>
+            <DialogTitle>发布到平台</DialogTitle>
             <DialogDescription className="text-slate-400">
               {publishArticle?.title ?? "当前文章"} · 将使用已保存的最新标题、正文与封面（如有）
             </DialogDescription>
@@ -1200,15 +1289,19 @@ export default function WeeklyContentPage() {
             <div className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-50">
               <p>当前企业：{projectName}</p>
               <p className="mt-2 text-xs text-cyan-100/80">
-                系统将先核验当前浏览器登录账号是否与该企业绑定账号一致，匹配后才会继续发布。
+                任务将发送至本地 GEO 发布客户端（{LOCAL_AGENT_BASE_URL}），由本机已绑定的平台账号环境执行填稿。
               </p>
-              <p className="mt-2 text-xs text-cyan-100/80">
-                请确认发布插件已更新到支持多平台适配与账号核验的版本（v1.2.0），并在扩展管理中重新加载插件。
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                客户端状态：
+                {localAgentOnline === true ? (
+                  <AiStatusBadge tone="success">已连接</AiStatusBadge>
+                ) : localAgentOnline === false ? (
+                  <AiStatusBadge tone="warning">未连接</AiStatusBadge>
+                ) : (
+                  <span className="text-slate-400">检测中…</span>
+                )}
               </p>
             </div>
-            <p className="text-xs leading-relaxed text-slate-500">
-              若插件未返回账号信息，会提示「暂时无法识别当前登录账号」。请确认已重新加载最新版发布插件，并登录该企业绑定的平台账号。
-            </p>
             {publishArticle && !hasGeoQualityReview(publishArticle) ? (
               <p className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
                 当前内容尚未进行发布前质检，建议先质检后发布。
@@ -1239,9 +1332,14 @@ export default function WeeklyContentPage() {
           </div>
           <div className="space-y-3 py-2">
             {PUBLISH_PLATFORMS.map(p => {
-              const enabledAccounts = isBindingPublishPlatform(p.slug) ? getEnabledAccountsForPlatform(p.slug) : [];
+              const readyAccounts = isBindingPublishPlatform(p.slug) ? getPublishReadyAccountsForPlatform(p.slug) : [];
+              const legacyAccounts = isBindingPublishPlatform(p.slug)
+                ? getAllEnabledAccountsForPlatform(p.slug).filter(
+                    a => a.isEnabled && !isPublishReadyAccount(a),
+                  )
+                : [];
               const picked = isBindingPublishPlatform(p.slug) ? pickPublishAccount(p.slug) : null;
-              const needsPick = selectedPlatforms.has(p.slug) && enabledAccounts.length > 1 && !picked;
+              const needsPick = selectedPlatforms.has(p.slug) && readyAccounts.length > 1 && !picked;
               return (
                 <label key={p.slug} className="flex cursor-pointer flex-col gap-2 rounded-lg border border-white/10 px-3 py-2 hover:bg-white/5">
                   <div className="flex items-center gap-3">
@@ -1255,17 +1353,15 @@ export default function WeeklyContentPage() {
                   </div>
                   {selectedPlatforms.has(p.slug) && isBindingPublishPlatform(p.slug) ? (
                     <div className="space-y-2 pl-7">
-                      {enabledAccounts.length === 0 ? (
-                        <span className="text-xs text-amber-200">未绑定启用账号（发布将被阻断）</span>
-                      ) : enabledAccounts.length === 1 ? (
+                      {readyAccounts.length === 0 ? (
+                        <span className="text-xs text-amber-200">无可发布账号（需绑定本地环境且登录有效）</span>
+                      ) : readyAccounts.length === 1 ? (
                         <span className="text-xs text-slate-500">
-                          发布账号：{enabledAccounts[0]!.accountName}
-                          {getPublishIdentityLabel(enabledAccounts[0]!.accountRole)
-                            ? ` · ${getPublishIdentityLabel(enabledAccounts[0]!.accountRole)}`
+                          发布账号：{readyAccounts[0]!.accountName}
+                          {readyAccounts[0]!.localProfileId
+                            ? ` · ${readyAccounts[0]!.localProfileId.slice(0, 20)}`
                             : ""}
-                          {getAccountGroupLabel(enabledAccounts[0]!.accountGroup)
-                            ? ` · ${getAccountGroupLabel(enabledAccounts[0]!.accountGroup)}`
-                            : ""}
+                          · 登录有效
                         </span>
                       ) : (
                         <>
@@ -1282,32 +1378,38 @@ export default function WeeklyContentPage() {
                             onClick={e => e.stopPropagation()}
                           >
                             <option value="">请选择账号</option>
-                            {enabledAccounts.map(a => (
+                            {readyAccounts.map(a => (
                               <option key={a.id} value={a.id}>
-                                {a.accountName}
+                                {a.accountName} · {a.localProfileId?.slice(0, 16) ?? "—"}
                               </option>
                             ))}
                           </select>
                           {picked ? (
                             <span className="text-xs text-slate-500">
-                              身份：{getPublishIdentityLabel(picked.accountRole) || "未设置"} · 账号组：
+                              profile：{picked.localProfileId} · 身份：
+                              {getPublishIdentityLabel(picked.accountRole) || "未设置"} · 账号组：
                               {getAccountGroupLabel(picked.accountGroup) || "未设置"}
                             </span>
                           ) : null}
                         </>
                       )}
+                      {legacyAccounts.length > 0 ? (
+                        <p className="text-xs text-amber-200/90">
+                          {legacyAccounts.length} 个旧账号需在企业档案重新绑定本地客户端后方可发布。
+                        </p>
+                      ) : null}
                       {needsPick ? (
-                        <span className="text-xs text-red-300">该平台有多个启用账号，请选择后再发布</span>
+                        <span className="text-xs text-red-300">该平台有多个可发布账号，请选择后再发布</span>
                       ) : null}
                     </div>
                   ) : (
                     <span className="pl-7 text-xs text-slate-500">
-                      {isBindingPublishPlatform(p.slug) && enabledAccounts.length === 1
-                        ? `已绑定账号：${enabledAccounts[0]!.accountName}`
-                        : isBindingPublishPlatform(p.slug) && enabledAccounts.length > 1
-                          ? `已绑定 ${enabledAccounts.length} 个启用账号`
+                      {isBindingPublishPlatform(p.slug) && readyAccounts.length === 1
+                        ? `可发布账号：${readyAccounts[0]!.accountName}`
+                        : isBindingPublishPlatform(p.slug) && readyAccounts.length > 1
+                          ? `${readyAccounts.length} 个可发布账号`
                           : isBindingPublishPlatform(p.slug)
-                            ? "未绑定启用账号"
+                            ? "暂无可发布账号"
                             : "无需绑定平台账号"}
                     </span>
                   )}
@@ -1317,7 +1419,7 @@ export default function WeeklyContentPage() {
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             {Array.from(selectedPlatforms).some(
-              slug => isBindingPublishPlatform(slug) && getEnabledAccountsForPlatform(slug).length === 0,
+              slug => isBindingPublishPlatform(slug) && getPublishReadyAccountsForPlatform(slug).length === 0,
             ) ? (
               <Button
                 type="button"
@@ -1325,7 +1427,7 @@ export default function WeeklyContentPage() {
                 className="w-full border-amber-400/30 text-amber-100"
                 onClick={() => {
                   setPublishDialogOpen(false);
-                  setLocation("/asset-center#platform-accounts");
+                  setLocation("/enterprise-profile#platform-accounts");
                 }}
               >
                 去绑定账号
@@ -1341,7 +1443,7 @@ export default function WeeklyContentPage() {
                 disabled={createPublishTask.isPending || selectedPlatforms.size === 0}
                 onClick={() => void handleConfirmPublish()}
               >
-                {createPublishTask.isPending ? "提交中..." : "开始核验并发布"}
+                {createPublishTask.isPending ? "提交中..." : "发布到平台"}
               </Button>
             </div>
           </DialogFooter>

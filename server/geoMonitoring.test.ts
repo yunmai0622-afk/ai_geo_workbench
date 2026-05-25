@@ -16,9 +16,9 @@ describe("geo inclusion monitoring payload", () => {
       articleId: 34,
       publishRecordId: 56,
       publicUrl: "/geo/content/12/34",
-      inclusionStatus: "未检测",
-      aiMentionStatus: "未检测",
-      aiRecommendStatus: "未检测",
+      inclusionMonitorStatus: "未检测",
+      aiMentionMonitorStatus: "未检测",
+      aiRecommendMonitorStatus: "未检测",
     });
     expect(record.optimizationSuggestions).toEqual(initialMonitoringSuggestions);
     expect(record.rawJson).toMatchObject({

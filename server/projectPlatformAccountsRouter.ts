@@ -2,6 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { ACCOUNT_GROUP_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import {
+  bindLocalAgentAccount,
   bindingPlatformZod,
   createProjectPlatformAccount,
   deleteProjectPlatformAccount,
@@ -26,6 +27,28 @@ const accountInputBase = {
   notes: z.string().max(2000).optional().nullable(),
 };
 
+const pluginBindingCreateSchema = z
+  .object({
+    ...accountInputBase,
+    platform: bindingPlatformZod,
+    bindingSource: z.literal("plugin_detected"),
+    detectedAccountName: z.string().trim().min(1).max(255),
+  })
+  .refine(data => data.accountName === data.detectedAccountName, {
+    message: "accountName 必须等于 detectedAccountName",
+    path: ["detectedAccountName"],
+  });
+
+const purposeUpdateSchema = z.object({
+  projectId: z.number().int().positive(),
+  accountId: z.number().int().positive(),
+  accountGroup: accountGroupZod,
+  accountRole: accountRoleZod,
+  isEnabled: z.boolean().optional(),
+  notes: z.string().max(2000).optional().nullable(),
+  purposeOnly: z.literal(true).optional(),
+});
+
 export const projectPlatformAccountsRouter = router({
   list: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive() }))
@@ -35,7 +58,12 @@ export const projectPlatformAccountsRouter = router({
     }),
 
   create: protectedProcedure
-    .input(z.object({ ...accountInputBase, platform: bindingPlatformZod }))
+    .input(
+      z.union([
+        pluginBindingCreateSchema,
+        z.object({ ...accountInputBase, platform: bindingPlatformZod }),
+      ]),
+    )
     .mutation(async ({ input }) => {
       const db = await requireDbConn();
       const row = await createProjectPlatformAccount(db, input);
@@ -44,14 +72,20 @@ export const projectPlatformAccountsRouter = router({
 
   update: protectedProcedure
     .input(
-      z.object({
-        ...accountInputBase,
-        accountId: z.number().int().positive(),
-      }),
+      z.union([
+        purposeUpdateSchema,
+        z.object({
+          ...accountInputBase,
+          accountId: z.number().int().positive(),
+        }),
+      ]),
     )
     .mutation(async ({ input }) => {
       const db = await requireDbConn();
-      const row = await updateProjectPlatformAccount(db, input);
+      const row = await updateProjectPlatformAccount(db, {
+        ...input,
+        purposeOnly: "purposeOnly" in input && input.purposeOnly === true ? true : undefined,
+      });
       return { success: true, account: row } as const;
     }),
 
@@ -130,5 +164,26 @@ export const projectPlatformAccountsRouter = router({
     .mutation(async ({ input }) => {
       const db = await requireDbConn();
       return verifyPlatformAccountForProjectRecord(db, input);
+    }),
+
+  bindLocalAgentAccount: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        platform: bindingPlatformZod,
+        accountName: z.string().trim().min(1).max(255),
+        accountGroup: accountGroupZod,
+        accountRole: accountRoleZod,
+        localAgentId: z.string().trim().min(1).max(100),
+        localProfileId: z.string().trim().min(1).max(100),
+        sessionStatus: z.enum(["active", "expired", "unknown"]).default("active"),
+        notes: z.string().max(2000).optional().nullable(),
+        isEnabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = await requireDbConn();
+      const row = await bindLocalAgentAccount(db, input);
+      return { success: true, account: row } as const;
     }),
 });

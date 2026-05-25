@@ -13,8 +13,15 @@ import {
   verifyPublishTaskAccount,
 } from "./projectPlatformAccounts";
 import { buildPublishCoverImageUrl, parseDataUrlCover } from "@shared/publishCoverPayload";
-import { isBindingPublishPlatform, PUBLISH_PLATFORM_LABELS } from "@shared/platformAccountVerify";
+import {
+  isBindingPublishPlatform,
+  PUBLISH_PLATFORM_LABELS,
+  publishBlockedNoLocalProfileMessage,
+  publishBlockedSessionExpiredMessage,
+  publishMustSelectAccountMessage,
+} from "@shared/platformAccountVerify";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 
 const publishPlatformSlugEnum = z.enum(["zhihu", "toutiao", "sohu", "baijiahao", "wechat"]);
 
@@ -117,21 +124,48 @@ export const publishTasksRouter = router({
       if (input.platform === "wechat") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "微信公众号暂不支持插件自动发布，请使用标记已发布记录人工发布结果",
+          message: "微信公众号请使用资产发布记录人工登记发布结果",
+        });
+      }
+
+      if (!isBindingPublishPlatform(input.platform)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "该平台请先在企业档案绑定本地发布账号后，通过本地客户端发布",
+        });
+      }
+
+      if (input.platformAccountId == null || input.platformAccountId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: publishMustSelectAccountMessage(input.platform),
         });
       }
 
       const project = await getProjectOrThrowConn(db, input.projectId);
-      const boundAccount = isBindingPublishPlatform(input.platform)
-        ? await resolvePublishPlatformAccount(db, {
-            projectId: input.projectId,
-            platform: input.platform,
-            platformAccountId: input.platformAccountId ?? undefined,
-          })
-        : null;
+      const boundAccount = await resolvePublishPlatformAccount(db, {
+        projectId: input.projectId,
+        platform: input.platform,
+        platformAccountId: input.platformAccountId,
+      });
+
+      const coverImageUrl = buildPublishCoverImageUrl(article.coverBase64, article.coverImageUrl);
+
+      if (!boundAccount.localAgentId?.trim() || !boundAccount.localProfileId?.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: publishBlockedNoLocalProfileMessage(input.platform),
+        });
+      }
+
+      if (boundAccount.sessionStatus !== "active") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: publishBlockedSessionExpiredMessage(input.platform),
+        });
+      }
 
       const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);
-      const coverImageUrl = buildPublishCoverImageUrl(article.coverBase64, article.coverImageUrl);
       const inserted = await db
         .insert(publishTasks)
         .values({
@@ -139,26 +173,40 @@ export const publishTasksRouter = router({
           projectName: project.enterpriseName,
           articleId: input.articleId,
           platform: input.platform,
-          status: "pending",
-          platformAccountId: boundAccount?.id,
-          expectedAccountName: boundAccount?.accountName,
-          accountVerificationStatus: "pending",
+          status: "pending_agent",
+          platformAccountId: boundAccount.id,
+          expectedAccountName: boundAccount.accountName,
+          accountVerificationStatus: "matched",
           articleTitle: article.title,
           articleContent: article.markdownContent ?? "",
           coverImageUrl: coverImageUrl ?? undefined,
           apiKey,
+          localAgentId: boundAccount.localAgentId,
+          localProfileId: boundAccount.localProfileId,
         })
         .$returningId();
       if (!coverImageUrl) {
         console.warn(`[封面图] 任务 ${inserted[0]?.id ?? "?"} 暂无封面，将仅发布正文`);
       }
+      const taskId = inserted[0]?.id ?? 0;
+      if (taskId > 0) {
+        await appendArticleLifecycleEvent(db, input.articleId, {
+          status: "pending_publish",
+          source: "publish_task_create",
+          message: `已创建 ${PUBLISH_PLATFORM_LABELS[input.platform]} 本地 Agent 发布任务`,
+          taskId,
+          platform: input.platform,
+          publishTaskStatus: "pending_agent",
+        });
+      }
       return {
-        taskId: inserted[0]?.id ?? 0,
+        taskId,
         coverImageUrl: coverImageUrl ?? null,
         hasCover: Boolean(coverImageUrl),
         projectName: project.enterpriseName,
-        platformLabel: isBindingPublishPlatform(input.platform) ? PUBLISH_PLATFORM_LABELS[input.platform] : input.platform,
-        expectedAccountName: boundAccount?.accountName ?? null,
+        platformLabel: PUBLISH_PLATFORM_LABELS[input.platform],
+        expectedAccountName: boundAccount.accountName ?? null,
+        publishMode: "local_agent" as const,
       } as const;
     }),
 
@@ -287,6 +335,40 @@ export const publishTasksRouter = router({
       return { ok: true } as const;
     }),
 
+  listRecentByProject: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        limit: z.number().int().min(1).max(50).optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const db = await requireDb();
+      const rows = await db
+        .select({
+          id: publishTasks.id,
+          articleId: publishTasks.articleId,
+          articleTitle: publishTasks.articleTitle,
+          platform: publishTasks.platform,
+          status: publishTasks.status,
+          expectedAccountName: publishTasks.expectedAccountName,
+          localProfileId: publishTasks.localProfileId,
+          resultUrl: publishTasks.resultUrl,
+          draftUrl: publishTasks.draftUrl,
+          agentErrorType: publishTasks.agentErrorType,
+          agentErrorMessage: publishTasks.agentErrorMessage,
+          agentLog: publishTasks.agentLog,
+          agentPickedAt: publishTasks.agentPickedAt,
+          agentFinishedAt: publishTasks.agentFinishedAt,
+          createdAt: publishTasks.createdAt,
+        })
+        .from(publishTasks)
+        .where(eq(publishTasks.projectId, input.projectId))
+        .orderBy(desc(publishTasks.id))
+        .limit(input.limit ?? 30);
+      return { tasks: rows } as const;
+    }),
+
   latestByArticle: protectedProcedure
     .input(
       z.object({
@@ -304,7 +386,15 @@ export const publishTasksRouter = router({
           accountVerificationStatus: publishTasks.accountVerificationStatus,
           expectedAccountName: publishTasks.expectedAccountName,
           detectedAccountName: publishTasks.detectedAccountName,
+          localProfileId: publishTasks.localProfileId,
           resultUrl: publishTasks.resultUrl,
+          draftUrl: publishTasks.draftUrl,
+          publishedUrl: publishTasks.publishedUrl,
+          agentErrorType: publishTasks.agentErrorType,
+          agentErrorMessage: publishTasks.agentErrorMessage,
+          agentLog: publishTasks.agentLog,
+          agentPickedAt: publishTasks.agentPickedAt,
+          agentFinishedAt: publishTasks.agentFinishedAt,
           errorMessage: publishTasks.errorMessage,
           createdAt: publishTasks.createdAt,
         })
@@ -320,6 +410,7 @@ export const publishTasksRouter = router({
     return { apiKey } as const;
   }),
 
+  /** @legacy Chrome 插件打包下载，主发布链路已切 Local Agent，保留供交付回滚 */
   downloadExtension: protectedProcedure.mutation(async ({ ctx }) => {
     const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);
     const serverUrl = resolveServerUrlFromRequest(ctx.req);

@@ -23,7 +23,7 @@ export async function runDailyAiCheck() {
     .from(geoInclusionMonitoringRecords)
     .where(
       or(
-        eq(geoInclusionMonitoringRecords.aiMentionStatus, "未检测"),
+        eq(geoInclusionMonitoringRecords.aiMentionMonitorStatus, "未检测"),
         isNull(geoInclusionMonitoringRecords.lastAiTestedAt),
         lt(geoInclusionMonitoringRecords.lastAiTestedAt, threshold),
       ),
@@ -80,8 +80,8 @@ export async function runDailyAiCheck() {
       await db
         .update(geoInclusionMonitoringRecords)
         .set({
-          aiMentionStatus: mentionStatus,
-          aiRecommendStatus: recommendStatus,
+          aiMentionMonitorStatus: mentionStatus,
+          aiRecommendMonitorStatus: recommendStatus,
           aiTestResults: savedResults,
           lastAiTestedAt: new Date(),
           lastCheckedAt: new Date(),

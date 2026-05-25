@@ -3,7 +3,7 @@
  */
 const TRUSTED_ORIGIN_PATTERNS = [
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
-  /^https:\/\/.*\.manus\.space$/,
+  /^https:\/\/[^/]+\.manus\.space$/,
   /^https:\/\/geo\.jixingzhijian\.com$/,
 ];
 
@@ -11,12 +11,16 @@ function isTrustedOrigin(origin) {
   return origin === window.location.origin || TRUSTED_ORIGIN_PATTERNS.some(re => re.test(origin));
 }
 
+console.log("[authBridge] injected", window.location.origin);
+
 window.addEventListener("message", event => {
   if (!isTrustedOrigin(event.origin)) return;
   if (!event.data || event.data.type !== "GEO_START_AUTH") return;
 
   const { platform, requestId } = event.data;
   if (!platform || !requestId) return;
+
+  console.log("[authBridge] GEO_START_AUTH", { platform, requestId, origin: event.origin });
 
   chrome.runtime.sendMessage(
     { action: "startAuthDetect", platform, requestId, sourceTabUrl: window.location.href },

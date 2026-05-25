@@ -1,4 +1,4 @@
-import { AiMetricCard, AiPageHero, AiPageShell, AiSection, AiStatusBadge } from "@/components/ai/ProductUi";
+import { AiPageHero, AiPageShell, AiSection, AiStatusBadge } from "@/components/ai/ProductUi";
 import { AiFilledMark, ProfileIntakePanel, type ProfileApplyPatch } from "@/components/enterpriseProfile/ProfileIntakePanel";
 import { PlatformAccountBindingSection } from "@/components/PlatformAccountBindingSection";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import {
   getPainOptionsForIndustry,
   resolveIndustryFromStored,
 } from "@shared/enterpriseProfileIndustry";
-import { Building2, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 
@@ -54,6 +54,7 @@ type CaseDraft = {
   id?: number;
   caseType: "真实案例" | "待补充案例线索";
   customerBackground: string;
+  originalProblem: string;
   executionProcess: string;
   resultData: string;
   allowPublic: boolean;
@@ -76,10 +77,21 @@ function buildFullProfilePayload(
     keyPoints: string[];
     keywords: string[];
     hasCases?: boolean;
+    officialWebsite?: string;
+    region?: string;
+    fitCustomers?: string;
+    purchaseDecisionFactors?: string[];
+    commonQuestions?: string[];
+    coreSellingPoints?: string;
+    servicePriceRange?: string;
+    competitorDifference?: string;
+    featureNotes?: string;
+    commonObjections?: string;
   },
 ) {
   const p = profile ?? {};
   const leg = (k: string, fallback = "") => (typeof p[k] === "string" ? (p[k] as string) : fallback);
+  const legList = (k: string) => joinListField(p[k]);
   const brand = v.brandName.trim() || leg("enterpriseName") || projectRow?.enterpriseName || "";
   const industryTag = v.industryTag.trim() || leg("industry");
   const productDesc = v.productDesc.trim() || leg("productServiceIntro") || leg("productIntro");
@@ -89,28 +101,32 @@ function buildFullProfilePayload(
     projectId,
     enterpriseName: brand,
     shortName: leg("shortName"),
-    officialWebsite: leg("officialWebsite"),
+    officialWebsite: v.officialWebsite?.trim() || leg("officialWebsite"),
     industry: industryTag,
-    region: leg("region", "中国"),
+    region: v.region?.trim() || leg("region", "中国"),
     productServiceIntro: productDesc,
     targetCustomers: targetCustomer,
-    coreSellingPoints: leg("coreSellingPoints"),
-    servicePriceRange: leg("servicePriceRange"),
+    coreSellingPoints: v.coreSellingPoints?.trim() || leg("coreSellingPoints"),
+    servicePriceRange: v.servicePriceRange?.trim() || leg("servicePriceRange"),
     serviceModel: leg("serviceModel"),
-    fitCustomers: leg("fitCustomers"),
+    fitCustomers: v.fitCustomers?.trim() || leg("fitCustomers"),
     unfitCustomers: leg("unfitCustomers"),
-    salesChannels: joinListField(p.salesChannels).length ? joinListField(p.salesChannels) : [],
-    commonQuestions: joinListField(p.commonQuestions).length ? joinListField(p.commonQuestions) : [],
-    purchaseDecisionFactors: joinListField(p.purchaseDecisionFactors).length ? joinListField(p.purchaseDecisionFactors) : [],
+    salesChannels: legList("salesChannels").length ? legList("salesChannels") : [],
+    commonQuestions: v.commonQuestions?.length ? v.commonQuestions : legList("commonQuestions").length ? legList("commonQuestions") : [],
+    purchaseDecisionFactors: v.purchaseDecisionFactors?.length
+      ? v.purchaseDecisionFactors
+      : legList("purchaseDecisionFactors").length
+        ? legList("purchaseDecisionFactors")
+        : [],
     productIntro: leg("productIntro"),
-    featureNotes: leg("featureNotes"),
+    featureNotes: v.featureNotes?.trim() || leg("featureNotes"),
     serviceProcess: leg("serviceProcess"),
     deliveryPlan: leg("deliveryPlan"),
     afterSalesService: leg("afterSalesService"),
-    competitorDifference: leg("competitorDifference"),
+    competitorDifference: v.competitorDifference?.trim() || leg("competitorDifference"),
     priceExplanation: leg("priceExplanation"),
     salesTalkTracks: leg("salesTalkTracks"),
-    commonObjections: leg("commonObjections"),
+    commonObjections: v.commonObjections?.trim() || leg("commonObjections"),
     brandName: v.brandName.trim() || brand,
     industryTag: v.industryTag.trim(),
     productDesc: v.productDesc.trim(),
@@ -170,6 +186,25 @@ function computeProfileSectionStatuses(params: {
   } as const;
 }
 
+const CUSTOMER_TYPE_PRESETS = [
+  "知识付费老师",
+  "教培机构",
+  "咨询顾问",
+  "企业培训公司",
+  "本地生活商家",
+  "连锁门店",
+  "个人 IP",
+  "B2B 企业",
+] as const;
+
+const PROFILE_STEPS = [
+  { id: "profile-upload", label: "上传资料" },
+  { id: "profile-brand", label: "品牌与业务" },
+  { id: "profile-customer", label: "客户画像" },
+  { id: "profile-trust", label: "信任素材" },
+  { id: "platform-accounts", label: "发布账号" },
+] as const;
+
 const textareaClass = `${aiInput} min-h-[6rem] w-full max-w-none resize-y py-2`;
 
 export default function AssetCenterPage() {
@@ -215,8 +250,21 @@ export default function AssetCenterPage() {
   const [casesChoice, setCasesChoice] = useState<"unset" | "has" | "none">("unset");
   const [caseRows, setCaseRows] = useState<CaseDraft[]>([]);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(() => new Set());
-  const uploadSectionRef = useRef<HTMLDivElement>(null);
-  const manualSectionRef = useRef<HTMLDivElement>(null);
+  const [officialWebsite, setOfficialWebsite] = useState("");
+  const [region, setRegion] = useState("中国");
+  const [customerTypeTags, setCustomerTypeTags] = useState<string[]>([]);
+  const [customerTypeDraft, setCustomerTypeDraft] = useState("");
+  const [purchaseTriggers, setPurchaseTriggers] = useState<string[]>([]);
+  const [purchaseTriggerDraft, setPurchaseTriggerDraft] = useState("");
+  const [commonQuestionsList, setCommonQuestionsList] = useState<string[]>([]);
+  const [commonQuestionDraft, setCommonQuestionDraft] = useState("");
+  const [dataProofText, setDataProofText] = useState("");
+  const [authorityText, setAuthorityText] = useState("");
+  const [faqConcernText, setFaqConcernText] = useState("");
+  const intakeSectionRef = useRef<HTMLDivElement>(null);
+  const brandSectionRef = useRef<HTMLDivElement>(null);
+  const customerSectionRef = useRef<HTMLDivElement>(null);
+  const trustSectionRef = useRef<HTMLDivElement>(null);
 
   const createProject = trpc.geo.projects.create.useMutation();
   const upsertProfile = trpc.geo.assetLibrary.upsertProfile.useMutation();
@@ -239,6 +287,10 @@ export default function AssetCenterPage() {
 
   const projectInput = useMemo(() => ({ projectId: selectedProjectId }), [selectedProjectId]);
   const { data: summaryData, isLoading, isFetched, error: summaryError } = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled: Boolean(selectedProjectId) });
+  const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
+    { projectId: selectedProjectId ?? 0 },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const summary = summaryData as SummaryLike | undefined;
   const profile = summary?.profile ?? null;
   const selectedProject = projects.find(p => p.id === selectedProjectId);
@@ -276,11 +328,24 @@ export default function AssetCenterPage() {
     else setCasesChoice("unset");
 
     const cases = (summaryData.customerCases ?? []) as Array<Record<string, unknown>>;
+    setOfficialWebsite(textField(p.officialWebsite));
+    setRegion(textField(p.region) || "中国");
+    const fit = textField(p.fitCustomers);
+    setCustomerTypeTags(fit ? fit.split(/[、,，]/).map(s => s.trim()).filter(Boolean) : []);
+    setPurchaseTriggers(joinListField(p.purchaseDecisionFactors));
+    setCommonQuestionsList(joinListField(p.commonQuestions));
+    const proofParts = [textField(p.coreSellingPoints), textField(p.servicePriceRange)].filter(Boolean);
+    setDataProofText(proofParts.join("\n"));
+    const authParts = [textField(p.competitorDifference), textField(p.featureNotes), textField(p.salesTalkTracks)].filter(Boolean);
+    setAuthorityText(authParts.join("\n"));
+    setFaqConcernText(textField(p.commonObjections));
+
     setCaseRows(
       cases.map(c => ({
         id: typeof c.id === "number" ? c.id : undefined,
         caseType: (textField(c.caseType) === "真实案例" ? "真实案例" : "待补充案例线索") as CaseDraft["caseType"],
         customerBackground: textField(c.customerBackground),
+        originalProblem: textField(c.originalProblem),
         executionProcess: textField(c.executionProcess),
         resultData: textField(c.resultData),
         allowPublic: boolField(c.allowPublic) ?? false,
@@ -312,6 +377,7 @@ export default function AssetCenterPage() {
             {
               caseType: "待补充案例线索",
               customerBackground: patch.caseDraft!.customerBackground,
+              originalProblem: "",
               executionProcess: patch.caseDraft!.executionProcess,
               resultData: patch.caseDraft!.resultData,
               allowPublic: false,
@@ -332,8 +398,33 @@ export default function AssetCenterPage() {
     }
     setAiFilledFields(new Set(patch.aiFilledKeys));
     setMessage("AI 识别结果已填入表单，请核对各区块后点击保存。");
-    manualSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    brandSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  const enabledPlatformAccountCount = useMemo(() => {
+    const groups = (platformAccountsQuery.data?.accounts ?? []) as Array<{ accounts: Array<{ isEnabled: boolean }> }>;
+    return groups.reduce((n, g) => n + g.accounts.filter(a => a.isEnabled).length, 0);
+  }, [platformAccountsQuery.data]);
+
+  const scrollToSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !selectedProjectId) return;
+    const hash = window.location.hash.replace(/^#/, "");
+    if (hash === "platform-accounts") {
+      requestAnimationFrame(() => scrollToSection("platform-accounts"));
+    }
+  }, [selectedProjectId]);
+
+  const customerMissingCount = useMemo(() => {
+    let n = 0;
+    if (!targetCustomer.trim()) n += 1;
+    if (customerPains.length === 0) n += 1;
+    if (purchaseTriggers.length === 0) n += 1;
+    return n;
+  }, [targetCustomer, customerPains.length, purchaseTriggers.length]);
 
   const profileGaps = useMemo(() => {
     const gaps: string[] = [];
@@ -361,6 +452,16 @@ export default function AssetCenterPage() {
       oneLiner,
       keyPoints,
       keywords,
+      officialWebsite,
+      region,
+      fitCustomers: customerTypeTags.join("、"),
+      purchaseDecisionFactors: purchaseTriggers,
+      commonQuestions: commonQuestionsList,
+      coreSellingPoints: dataProofText,
+      servicePriceRange: "",
+      competitorDifference: authorityText,
+      featureNotes: "",
+      commonObjections: faqConcernText,
     });
   }, [
     selectedProjectId,
@@ -376,7 +477,45 @@ export default function AssetCenterPage() {
     oneLiner,
     keyPoints,
     keywords,
+    officialWebsite,
+    region,
+    customerTypeTags,
+    purchaseTriggers,
+    commonQuestionsList,
+    dataProofText,
+    authorityText,
+    faqConcernText,
   ]);
+
+  function toggleCustomerType(tag: string, on: boolean) {
+    setCustomerTypeTags(prev => {
+      const set = new Set(prev);
+      if (on) set.add(tag);
+      else set.delete(tag);
+      return Array.from(set);
+    });
+  }
+
+  function addCustomCustomerType() {
+    const t = customerTypeDraft.trim();
+    if (!t || customerTypeTags.includes(t)) return;
+    setCustomerTypeTags([...customerTypeTags, t]);
+    setCustomerTypeDraft("");
+  }
+
+  function addPurchaseTrigger() {
+    const t = purchaseTriggerDraft.trim();
+    if (!t || purchaseTriggers.includes(t)) return;
+    setPurchaseTriggers([...purchaseTriggers, t]);
+    setPurchaseTriggerDraft("");
+  }
+
+  function addCommonQuestion() {
+    const t = commonQuestionDraft.trim();
+    if (!t || commonQuestionsList.includes(t)) return;
+    setCommonQuestionsList([...commonQuestionsList, t]);
+    setCommonQuestionDraft("");
+  }
 
   const completionPercent = useMemo(() => {
     const baseOk =
@@ -510,7 +649,7 @@ export default function AssetCenterPage() {
       const created = refreshed.data?.find(pr => pr.enterpriseName === enterpriseName) ?? refreshed.data?.[0];
       if (created?.id) setSelectedProjectId(created.id);
       setMessage("企业已创建，现在可以上传资料进行 AI 建档。");
-      uploadSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      intakeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "创建失败");
     }
@@ -554,16 +693,33 @@ export default function AssetCenterPage() {
     <AiPageShell className="pb-16">
       <AiPageHero
         title="企业 AI 搜索档案"
-        description="先选择或创建一个企业项目，再上传企业资料，系统将自动生成品牌、客户、痛点与案例信息，用于后续 AI 内容诊断。"
+        description="上传企业资料，AI 会自动识别品牌、业务、客户、案例和信任素材。你只需要确认和补充，系统会用这些信息生成内容、诊断问题和交付报告。"
         badge="档案配置台"
       >
         {hasSelectedProject ? (
-          <div className="w-full min-w-[200px] rounded-2xl border border-cyan-400/25 bg-cyan-500/10 px-4 py-3 sm:w-auto">
-            <p className="text-xs text-slate-500">当前企业</p>
-            <p className="mt-1 text-lg font-semibold text-white">{selectedProject?.enterpriseName}</p>
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto">
+            <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/10 px-4 py-3">
+              <p className="text-xs text-slate-500">当前企业</p>
+              <p className="mt-1 text-lg font-semibold text-white">{selectedProject?.enterpriseName}</p>
+            </div>
+            {hasProjects ? (
+              <select
+                disabled={loading}
+                value={selectedProjectId ?? ""}
+                onChange={e => setSelectedProjectId(Number(e.target.value) || undefined)}
+                className={cn(aiInput, "max-w-none text-sm")}
+                aria-label="切换企业"
+              >
+                {projects.map(pr => (
+                  <option key={pr.id} value={pr.id}>
+                    {pr.enterpriseName}
+                  </option>
+                ))}
+              </select>
+            ) : null}
           </div>
         ) : (
-          <p className="max-w-md text-sm leading-relaxed text-slate-400">请先新建第一个企业项目，创建完成后即可上传资料并 AI 自动建档。</p>
+          <p className="max-w-md text-sm leading-relaxed text-slate-400">请先新建第一个企业项目，创建完成后即可从顶部上传资料开始配置。</p>
         )}
       </AiPageHero>
 
@@ -572,75 +728,39 @@ export default function AssetCenterPage() {
       {message ? <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-3 text-sm text-emerald-100">{message}</div> : null}
       {error ? <div className="rounded-xl border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">{error}</div> : null}
 
-      <AiSection
-        title={hasProjects ? "已有企业档案" : "先新建第一个企业项目"}
-        description={
-          hasProjects
-            ? "选择一个企业后，系统会读取该企业的品牌资料、客户画像与案例信息。当前上传和保存的资料将归属于所选企业。"
-            : "创建企业项目后，才能上传资料并进行 AI 智能建档。"
-        }
-      >
-        <div className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}>
-          {hasProjects ? (
-            <>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <label className="block min-w-0 flex-1 space-y-2 text-sm">
-                  <span className="font-medium text-slate-100">选择当前企业</span>
-                  <select
-                    disabled={loading}
-                    value={selectedProjectId ?? ""}
-                    onChange={e => setSelectedProjectId(Number(e.target.value) || undefined)}
-                    className={cn(aiInput, "max-w-none")}
-                  >
-                    {projects.map(pr => (
-                      <option key={pr.id} value={pr.id}>
-                        {pr.enterpriseName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <details className="rounded-xl border border-white/8 bg-slate-950/30 text-sm">
-                <summary className="cursor-pointer px-4 py-3 font-medium text-slate-400 hover:text-slate-200">新增企业项目</summary>
-                <div className="space-y-3 border-t border-white/8 px-4 pb-4 pt-3">
-                  <p className="text-xs text-slate-500">用于为新的客户或品牌单独建立档案。创建后将自动切换到新企业。</p>
-                  {createProjectFields}
-                </div>
-              </details>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-amber-100/90">创建企业后可上传资料并自动建档，无需先填写完整表单。</p>
-              {createProjectFields}
-            </>
-          )}
-        </div>
-      </AiSection>
+      {!hasProjects ? (
+        <AiSection title="先新建第一个企业项目" description="创建企业项目后，即可从顶部上传资料开始 AI 建档。">
+          <div className={cn(aiGlassPanel, "space-y-4 p-5 md:p-6")}>
+            <p className="text-sm text-amber-100/90">创建企业后可上传资料并自动建档，无需先填写完整表单。</p>
+            {createProjectFields}
+          </div>
+        </AiSection>
+      ) : (
+        <details className={cn(aiGlassPanel, "text-sm")}>
+          <summary className="cursor-pointer px-4 py-3 font-medium text-slate-400 hover:text-slate-200">新增企业项目</summary>
+          <div className="space-y-3 border-t border-white/8 px-4 pb-4 pt-3">
+            <p className="text-xs text-slate-500">为新的客户或品牌单独建立档案，创建后将自动切换。</p>
+            {createProjectFields}
+          </div>
+        </details>
+      )}
 
       {hasSelectedProject ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <AiMetricCard label="当前企业" value={selectedProject?.enterpriseName?.slice(0, 14) ?? "—"} hint="资料归属企业" accent="violet" />
-            <AiMetricCard label="档案完整度" value={`${completionPercent}%`} hint="完成必填项后可进入诊断" accent="cyan" />
-            <AiMetricCard label="下一步动作" value={diagnosisReady ? "内容诊断" : "上传建档"} hint={nextActionLabel} accent="emerald" />
-          </div>
+          <nav className="sticky top-16 z-10 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur">
+            {PROFILE_STEPS.map(step => (
+              <button
+                key={step.id}
+                type="button"
+                className={cn(aiChipIdle, "px-3 py-1.5 text-xs")}
+                onClick={() => scrollToSection(step.id)}
+              >
+                {step.label}
+              </button>
+            ))}
+          </nav>
 
-          <div className="h-2 overflow-hidden rounded-full border border-white/8 bg-slate-950/60">
-            <div className="h-full rounded-full bg-gradient-to-r from-cyan-500/80 to-violet-500/70 transition-all" style={{ width: `${completionPercent}%` }} />
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Button className={aiPrimaryBtn} type="button" onClick={() => uploadSectionRef.current?.scrollIntoView({ behavior: "smooth" })}>
-              上传企业资料
-            </Button>
-            <Button type="button" variant="outline" className={aiOutlineBtn} onClick={() => manualSectionRef.current?.scrollIntoView({ behavior: "smooth" })}>
-              手动填写档案
-            </Button>
-          </div>
-
-          <PlatformAccountBindingSection projectId={selectedProjectId!} />
-
-          <div ref={uploadSectionRef}>
+          <div ref={intakeSectionRef}>
             <ProfileIntakePanel
               projectId={selectedProjectId}
               enterpriseName={selectedProject?.enterpriseName ?? ""}
@@ -660,34 +780,73 @@ export default function AssetCenterPage() {
             />
           </div>
 
-          <AiSection title="档案完成进度" description="按模块补齐信息，直接影响 AI 内容诊断质量。">
-        <div className="grid gap-3 md:grid-cols-3">
-          {(
-            [
-              ["brand", "品牌基础信息", sectionStatuses.brand],
-              ["customer", "目标客户画像", sectionStatuses.customer],
-              ["cases", "客户案例", sectionStatuses.cases],
-            ] as const
-          ).map(([key, title, st]) => (
-            <div key={key} className={cn(aiGlassPanel, "p-4")}>
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-medium text-white">{title}</p>
-                <AiStatusBadge tone={st.done ? "success" : "warning"}>{st.label}</AiStatusBadge>
-              </div>
-              <p className="mt-2 text-xs text-slate-500">{st.hint}</p>
+          <AiSection title="档案完成度" description={`整体完成度约 ${completionPercent}%，补齐后诊断与内容生成更准确。`}>
+            <div className="mb-4 h-2 overflow-hidden rounded-full border border-white/8 bg-slate-950/60">
+              <div className="h-full rounded-full bg-gradient-to-r from-cyan-500/80 to-violet-500/70 transition-all" style={{ width: `${completionPercent}%` }} />
             </div>
-          ))}
-        </div>
-      </AiSection>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {(
+                [
+                  {
+                    id: "profile-brand",
+                    title: "品牌与业务",
+                    done: sectionStatuses.brand.done,
+                    hint: sectionStatuses.brand.done ? "品牌信息已就绪" : "请补充名称、行业与主营业务",
+                  },
+                  {
+                    id: "profile-customer",
+                    title: "客户画像",
+                    done: sectionStatuses.customer.done && customerMissingCount === 0,
+                    hint: sectionStatuses.customer.done
+                      ? customerMissingCount > 0
+                        ? `待补充 ${customerMissingCount} 项`
+                        : "目标客户与痛点已填写"
+                      : "请填写客户是谁与核心痛点",
+                  },
+                  {
+                    id: "profile-trust",
+                    title: "信任素材",
+                    done: sectionStatuses.cases.done,
+                    hint: sectionStatuses.cases.hint,
+                  },
+                  {
+                    id: "platform-accounts",
+                    title: "发布账号",
+                    done: enabledPlatformAccountCount > 0,
+                    hint:
+                      enabledPlatformAccountCount > 0
+                        ? `已绑定 ${enabledPlatformAccountCount} 个启用账号`
+                        : "建议至少绑定一个发布账号",
+                  },
+                ] as const
+              ).map(card => (
+                <button
+                  key={card.id}
+                  type="button"
+                  className={cn(aiGlassPanel, "p-4 text-left transition hover:border-cyan-400/30")}
+                  onClick={() => scrollToSection(card.id)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-white">{card.title}</p>
+                    <AiStatusBadge tone={card.done ? "success" : "warning"}>{card.done ? "完成" : "待补充"}</AiStatusBadge>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">{card.hint}</p>
+                </button>
+              ))}
+            </div>
+          </AiSection>
 
-          <AiSection title="档案确认与修改" description="核对 AI 填充结果或手动补充，保存后进入内容诊断。">
-          <div ref={manualSectionRef} id="profile-manual-form" className="scroll-mt-24 space-y-8">
           {aiFilledFields.size > 0 ? (
             <div className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
-              部分字段已由 AI 填入，请核对后点击各区块「保存」写入档案。
+              部分字段已由 AI 填入，请核对各区块后点击对应「保存」按钮写入档案（不会自动保存）。
             </div>
           ) : null}
-          <AiSection title="品牌与产品信息" description="这部分决定系统如何理解你的品牌、品类和主营业务。">
+
+          <div ref={brandSectionRef} id="profile-brand" className="scroll-mt-28">
+          <AiSection title="品牌与业务" description="用于让 AI 理解你是谁、做什么、适合在哪些场景被推荐。">
+            <div className="flex justify-end">
+              <AiStatusBadge tone={sectionStatuses.brand.done ? "success" : "warning"}>{sectionStatuses.brand.label}</AiStatusBadge>
+            </div>
             <div className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}>
               <div className="grid gap-5 md:grid-cols-2">
                 {labelBlock(
@@ -763,7 +922,13 @@ export default function AssetCenterPage() {
                   {fieldHint("选填，用于判断内容分发渠道偏好")}
                 </>
               ))}
-              <div className="flex justify-end border-t border-white/8 pt-4">
+              {labelBlock("官网", false, (
+                <Input value={officialWebsite} onChange={e => setOfficialWebsite(e.target.value)} placeholder="https://" className={cn(aiInput, "max-w-none")} />
+              ))}
+              {labelBlock("地区", false, (
+                <Input value={region} onChange={e => setRegion(e.target.value)} className={cn(aiInput, "max-w-none")} />
+              ))}
+              <div className="flex justify-end border-t border-white/8 pt-4 md:col-span-2">
                 <Button
                   className={aiPrimaryBtn}
                   disabled={saving}
@@ -776,14 +941,21 @@ export default function AssetCenterPage() {
                     })
                   }
                 >
-                  保存基本身份
+                  保存品牌与业务
                 </Button>
               </div>
             </div>
           </AiSection>
+          </div>
 
-          <AiSection title="目标客户与购买场景" description="这部分决定系统生成哪些客户问题、内容选题和 AI 搜索测试问题。">
-            <div className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}>
+          <div ref={customerSectionRef} id="profile-customer" className="scroll-mt-28">
+          <AiSection title="客户画像与购买场景" description="这些信息会决定系统生成哪些客户问题、内容选题和 AI 搜索测试问题。">
+            <div className="flex justify-end">
+              <AiStatusBadge tone={sectionStatuses.customer.done ? "success" : "warning"}>{sectionStatuses.customer.label}</AiStatusBadge>
+            </div>
+            <div className={cn(aiGlassPanel, "grid gap-6 p-5 md:grid-cols-2 md:p-6")}>
+              <div className="space-y-5">
+                <p className="text-sm font-medium text-cyan-200/90">目标客户画像</p>
               {labelBlock(
                 <>
                   目标客户是谁
@@ -795,19 +967,63 @@ export default function AssetCenterPage() {
                   <textarea
                     value={targetCustomer}
                     onChange={e => setTargetCustomer(e.target.value)}
-                    placeholder="描述你的典型客户：行业、规模、决策角色等"
-                    rows={5}
+                    placeholder="例如：在抖音、视频号、小红书卖课的知识付费老师"
+                    rows={4}
                     className={textareaClass}
                   />
-                  {fieldHint("越具体，生成的目标问题与内容选题越贴近真实业务")}
+                  {fieldHint("越具体，系统生成的问题和内容越贴近真实业务")}
                 </>
               ))}
               <div className="space-y-2 text-sm text-slate-300">
+                <span className="font-medium text-slate-100">客户类型标签</span>
+                <p className="text-xs text-slate-500">可多选，也可自定义补充。</p>
+                <div className="flex flex-wrap gap-2">
+                  {CUSTOMER_TYPE_PRESETS.map(tag => (
+                    <label key={tag} className={cn("cursor-pointer rounded-full border px-3 py-1 text-xs", customerTypeTags.includes(tag) ? aiChipActive : aiChipIdle)}>
+                      <input type="checkbox" className="sr-only" checked={customerTypeTags.includes(tag)} onChange={e => toggleCustomerType(tag, e.target.checked)} />
+                      {tag}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {customerTypeTags
+                    .filter(t => !(CUSTOMER_TYPE_PRESETS as readonly string[]).includes(t))
+                    .map(t => (
+                      <span key={t} className="inline-flex items-center gap-1 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+                        {t}
+                        <button type="button" className="text-slate-400 hover:text-white" onClick={() => setCustomerTypeTags(customerTypeTags.filter(x => x !== t))}>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={customerTypeDraft}
+                    onChange={e => setCustomerTypeDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCustomCustomerType();
+                      }
+                    }}
+                    placeholder="自定义客户类型，回车添加"
+                    className="border-white/10 bg-slate-950/70"
+                  />
+                  <Button type="button" variant="outline" size="icon" className="border-white/15 shrink-0" onClick={addCustomCustomerType}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              </div>
+              <div className="space-y-5">
+                <p className="text-sm font-medium text-cyan-200/90">客户痛点与购买触发点</p>
+              <div className="space-y-2 text-sm text-slate-300">
                 <span className="font-medium text-slate-100">
-                  客户最大的痛点（必填，至少 1 个）
+                  客户最大痛点（必填，至少 1 个）
                   <AiFilledMark show={aiFilledFields.has("customerPains")} />
                 </span>
-                <p className="text-xs text-slate-500">系统会根据行业方向推荐常见痛点，你也可以补充自定义痛点。</p>
+                <p className="text-xs text-slate-500">选项随「行业方向」变化，请先在品牌区选择行业。</p>
                 <div className="flex flex-wrap gap-3 pt-1">
                   {painPresets.map(p => (
                     <label key={p} className="flex cursor-pointer items-center gap-2 text-slate-200">
@@ -852,8 +1068,70 @@ export default function AssetCenterPage() {
                 </div>
               </div>
               <div className="space-y-2 text-sm text-slate-300">
+                <span className="font-medium text-slate-100">购买触发点</span>
+                <p className="text-xs text-slate-500">客户通常在什么情况下会认真考虑购买。</p>
+                <div className="flex flex-wrap gap-2">
+                  {purchaseTriggers.map(t => (
+                    <span key={t} className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
+                      {t}
+                      <button type="button" className="text-slate-400 hover:text-white" onClick={() => setPurchaseTriggers(purchaseTriggers.filter(x => x !== t))}>
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={purchaseTriggerDraft}
+                    onChange={e => setPurchaseTriggerDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addPurchaseTrigger();
+                      }
+                    }}
+                    placeholder="例如：课程卖不动、直播转化下降、团队服务不过来"
+                    className="border-white/10 bg-slate-950/70"
+                  />
+                  <Button type="button" variant="outline" size="icon" className="border-white/15 shrink-0" onClick={addPurchaseTrigger}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm text-slate-300">
+                <span className="font-medium text-slate-100">客户常问问题</span>
+                <div className="flex flex-wrap gap-2">
+                  {commonQuestionsList.map(q => (
+                    <span key={q} className="inline-flex items-center gap-1 rounded-full border border-violet-400/25 bg-violet-400/10 px-3 py-1 text-xs text-violet-100">
+                      {q}
+                      <button type="button" className="text-slate-400 hover:text-white" onClick={() => setCommonQuestionsList(commonQuestionsList.filter(x => x !== q))}>
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={commonQuestionDraft}
+                    onChange={e => setCommonQuestionDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCommonQuestion();
+                      }
+                    }}
+                    placeholder="例如：你们和小鹅通/有赞教育有什么区别？"
+                    className="border-white/10 bg-slate-950/70"
+                  />
+                  <Button type="button" variant="outline" size="icon" className="border-white/15 shrink-0" onClick={addCommonQuestion}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              </div>
+              <div className="space-y-2 text-sm text-slate-300 md:col-span-2">
                 <span className="font-medium text-slate-100">
-                  主要竞品（选填，回车添加）
+                  主要竞品（选填）
                   <AiFilledMark show={aiFilledFields.has("competitors")} />
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -879,12 +1157,12 @@ export default function AssetCenterPage() {
                   className="border-white/10 bg-slate-950/70"
                 />
               </div>
-              <div className="flex justify-end border-t border-white/8 pt-4">
+              <div className="flex justify-end border-t border-white/8 pt-4 md:col-span-2">
                 <Button
                   className={aiPrimaryBtn}
                   disabled={saving}
                   onClick={() =>
-                    void runSave("客户信息", async () => {
+                    void runSave("客户画像", async () => {
                       if (!targetCustomer.trim()) throw new Error("请填写目标客户");
                       if (customerPains.length === 0) throw new Error("请至少选择一个痛点");
                       await upsertProfile.mutateAsync(basePayload());
@@ -892,11 +1170,12 @@ export default function AssetCenterPage() {
                     })
                   }
                 >
-                  保存客户信息
+                  保存客户画像
                 </Button>
               </div>
             </div>
           </AiSection>
+          </div>
 
           {showAiCard ? (
             <AiSection title="AI 推荐表达" description="基于品牌与客户信息生成，可手动修改后保存。">
@@ -1010,8 +1289,17 @@ export default function AssetCenterPage() {
             </AiSection>
           ) : null}
 
-          <AiSection title="案例与信任素材" description="客户案例会增强品牌在内容中的可信度，也有助于 AI 更准确理解你的业务价值。">
-            <div className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}>
+          <div ref={trustSectionRef} id="profile-trust" className="scroll-mt-28">
+          <AiSection title="案例与信任素材" description="这些素材会用于生成案例文章、FAQ、竞品对比、种草内容和客户交付报告。">
+            <div className="flex justify-end">
+              <AiStatusBadge tone={sectionStatuses.cases.done ? "success" : "warning"}>{sectionStatuses.cases.label}</AiStatusBadge>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className={cn(aiGlassPanel, "space-y-4 p-5 lg:col-span-2")}>
+                <div>
+                  <p className="font-medium text-white">客户案例</p>
+                  <p className="mt-1 text-xs text-slate-500">填写真实服务过的客户案例，AI 会转化成可被搜索引用的内容。</p>
+                </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
@@ -1051,14 +1339,28 @@ export default function AssetCenterPage() {
                     <div key={row.id ?? `new-${idx}`} className="space-y-4 rounded-xl border border-white/8 bg-slate-950/40 p-4">
                       <p className="text-sm font-medium text-cyan-200">案例 {idx + 1}</p>
                       <label className="space-y-2 text-sm text-slate-300 block">
-                        <span className="font-medium text-slate-100">客户画像</span>
+                        <span className="font-medium text-slate-100">客户是谁</span>
                         <textarea
                           value={row.customerBackground}
+                          placeholder="客户背景、行业、规模等"
                           onChange={e => {
                             const v = e.target.value;
                             setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, customerBackground: v } : r)));
                           }}
                           rows={3}
+                          className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm outline-none"
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm text-slate-300 block">
+                        <span className="font-medium text-slate-100">客户遇到什么问题</span>
+                        <textarea
+                          value={row.originalProblem}
+                          onChange={e => {
+                            const v = e.target.value;
+                            setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, originalProblem: v } : r)));
+                          }}
+                          rows={2}
+                          placeholder="客户当时的核心困境"
                           className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm outline-none"
                         />
                       </label>
@@ -1075,7 +1377,7 @@ export default function AssetCenterPage() {
                         />
                       </label>
                       <label className="space-y-2 text-sm text-slate-300 block">
-                        <span className="font-medium text-slate-100">结果数据（脱敏）</span>
+                        <span className="font-medium text-slate-100">结果或变化</span>
                         <textarea
                           value={row.resultData}
                           onChange={e => {
@@ -1107,7 +1409,7 @@ export default function AssetCenterPage() {
                                 customerName: name,
                                 customerIndustry: "",
                                 customerBackground: row.customerBackground.trim(),
-                                originalProblem: "",
+                                originalProblem: row.originalProblem.trim(),
                                 chosenReason: "",
                                 usedProductService: "",
                                 executionProcess: row.executionProcess.trim(),
@@ -1139,7 +1441,7 @@ export default function AssetCenterPage() {
                     onClick={() =>
                       setCaseRows([
                         ...caseRows,
-                        { caseType: "待补充案例线索", customerBackground: "", executionProcess: "", resultData: "", allowPublic: false },
+                        { caseType: "待补充案例线索", customerBackground: "", originalProblem: "", executionProcess: "", resultData: "", allowPublic: false },
                       ])
                     }
                   >
@@ -1147,10 +1449,73 @@ export default function AssetCenterPage() {
                   </Button>
                 </div>
               ) : null}
+              </div>
+
+              <div className={cn(aiGlassPanel, "space-y-3 p-5")}>
+                <div>
+                  <p className="font-medium text-white">数据证明</p>
+                  <p className="mt-1 text-xs text-slate-500">填写能证明实力的数据，越具体越容易增强 AI 对品牌的信任判断。</p>
+                </div>
+                <textarea
+                  value={dataProofText}
+                  onChange={e => setDataProofText(e.target.value)}
+                  rows={5}
+                  placeholder="例如：服务 3000+ 知识付费老师；帮助客户直播转化率提升 30%"
+                  className={textareaClass}
+                />
+              </div>
+
+              <div className={cn(aiGlassPanel, "space-y-3 p-5")}>
+                <div>
+                  <p className="font-medium text-white">权威背书</p>
+                  <p className="mt-1 text-xs text-slate-500">合作品牌、媒体报道、资质认证、专家身份等。</p>
+                </div>
+                <textarea
+                  value={authorityText}
+                  onChange={e => setAuthorityText(e.target.value)}
+                  rows={5}
+                  placeholder="例如：与 XX 品牌合作；获 XX 媒体报道；XX 平台认证讲师"
+                  className={textareaClass}
+                />
+              </div>
+
+              <div className={cn(aiGlassPanel, "space-y-3 p-5 lg:col-span-2")}>
+                <div>
+                  <p className="font-medium text-white">客户疑虑与回答</p>
+                  <p className="mt-1 text-xs text-slate-500">客户最常问的问题，适合生成 FAQ 与 AI 搜索内容。</p>
+                </div>
+                <textarea
+                  value={faqConcernText}
+                  onChange={e => setFaqConcernText(e.target.value)}
+                  rows={5}
+                  placeholder={'客户疑虑：AI 生成内容会不会很假？\n回答：我们不是批量洗稿，而是基于企业资料、客户痛点与案例生成结构化内容。'}
+                  className={textareaClass}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button
+                className={aiPrimaryBtn}
+                disabled={saving}
+                onClick={() =>
+                  void runSave("信任素材", async () => {
+                    await upsertProfile.mutateAsync(basePayload());
+                  })
+                }
+              >
+                保存信任素材
+              </Button>
             </div>
           </AiSection>
-
           </div>
+
+          <AiSection
+            id="platform-accounts"
+            title="发布账号绑定"
+            description="为不同平台、不同账号组绑定发布账号，后续发布时系统会按内容策略推荐对应账号组。"
+          >
+            <PlatformAccountBindingSection projectId={selectedProjectId!} />
+          </AiSection>
 
           <section className={cn(aiGlassPanel, "space-y-4 p-6 md:p-8")}>
             <div className="text-center md:text-left">
@@ -1175,11 +1540,10 @@ export default function AssetCenterPage() {
                 进入 AI 内容诊断
               </Button>
               <p className="text-center text-xs text-slate-500 sm:text-left">
-                档案完整度 {completionPercent}% · 保存基本身份与客户信息为必填 · 资料不足时不得编造案例、数据、价格和效果承诺
+                档案完整度 {completionPercent}% · 保存品牌与业务与客户画像为必填 · 资料不足时不得编造案例、数据、价格和效果承诺
               </p>
             </div>
           </section>
-          </AiSection>
         </>
       ) : null}
     </AiPageShell>

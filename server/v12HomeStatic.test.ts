@@ -46,7 +46,7 @@ describe("V1.0 客户主路径静态回归", () => {
 
   it("企业档案页为档案配置台结构并保留保存入口", () => {
     const assetCenterSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    for (const text of ["企业 AI 搜索档案", "品牌与产品信息", "目标客户与购买场景", "案例与信任素材", "保存基本身份", "保存客户信息"]) {
+    for (const text of ["企业 AI 搜索档案", "品牌与业务", "客户画像与购买场景", "案例与信任素材", "保存品牌与业务", "保存客户画像"]) {
       expect(assetCenterSource).toContain(text);
     }
     expect(assetCenterSource).toContain("档案完整度");

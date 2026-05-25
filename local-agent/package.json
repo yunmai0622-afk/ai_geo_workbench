@@ -1,0 +1,58 @@
+{
+  "name": "geo-local-publish-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GEO 本地发布客户端 — 代运营多平台草稿发布",
+  "main": "dist/main.js",
+  "author": "GEO",
+  "scripts": {
+    "dev": "node scripts/ensure-electron.mjs && npm run build && electron .",
+    "dev:electron": "node scripts/ensure-electron.mjs && electron .",
+    "build": "tsc -p tsconfig.json && node scripts/copy-renderer.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node scripts/validate-poc.mjs",
+    "smoke:zhihu-detect": "npm run build && node scripts/zhihu_detect_smoke.mjs",
+    "smoke:session-reuse": "npm run build && node scripts/session_reuse_smoke.mjs",
+    "package:mac": "npm run build && electron-builder --mac dmg zip && node ../scripts/copy_local_agent_download.mjs",
+    "package:win": "npm run build && electron-builder --win nsis zip",
+    "copy-downloads": "node ../scripts/copy_local_agent_download.mjs",
+    "postinstall": "node scripts/ensure-electron.mjs || true; playwright install chromium || true"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "electron": "^35.7.5",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.geo.local-publish-agent",
+    "productName": "GEO本地发布客户端",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

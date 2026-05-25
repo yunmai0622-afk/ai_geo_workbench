@@ -38,6 +38,9 @@ function PrivateRoutes() {
         <Route path="/" component={Home} />
         <Route path="/flow" component={GeoFlowWizardPage} />
         <Route path="/enterprise-profile" component={AssetCenterPage} />
+        <Route path="/asset-center">
+          <Redirect to="/enterprise-profile#platform-accounts" />
+        </Route>
         <Route path="/ai-diagnosis" component={AiDiagnosisFlowPage} />
         <Route path="/weekly" component={WeeklyContentPage} />
         <Route path="/progress" component={ProgressPage} />

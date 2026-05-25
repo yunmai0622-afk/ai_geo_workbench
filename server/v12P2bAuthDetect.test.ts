@@ -17,9 +17,14 @@ describe("P2-B one-click auth account detect", () => {
   it("authBridge file exists", () => {
     expect(existsSync(resolve(root, "content-growth-publish-extension/content-scripts/authBridge.js"))).toBe(true);
     const bridge = read("content-growth-publish-extension/content-scripts/authBridge.js");
+    const manifest = read("content-growth-publish-extension/manifest.json");
     expect(bridge).toContain("GEO_START_AUTH");
     expect(bridge).toContain("GEO_AUTH_RESULT");
-    expect(bridge).toContain("startAuthDetect");
+    expect(bridge).toContain("[authBridge] injected");
+    expect(bridge).toMatch(/\[\^\/\]\+\\.manus\\.space/);
+    expect(bridge).toContain("window.location.origin");
+    expect(manifest).toMatch(/"version": "1\.2\.4"/);
+    expect(manifest).toContain("https://*.zhihu.com/*");
   });
 
   it("background contains startAuthDetect handler", () => {
@@ -28,21 +33,30 @@ describe("P2-B one-click auth account detect", () => {
     expect(bg).toContain("handleStartAuthDetect");
     expect(bg).toContain("AUTH_HOME_URLS");
     expect(bg).toContain("authDetectResult");
+    expect(bg).toContain("isWebAppUrl");
+    expect(bg).toMatch(/\[\^\/\]\+\\.manus\\.space/);
   });
 
-  it("PlatformAccountBindingSection renders 一键授权", () => {
-    const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
-    expect(ui).toContain("一键授权");
-    expect(ui).toContain("GEO_START_AUTH");
-    expect(ui).toContain("GEO_AUTH_RESULT");
-    expect(ui).toContain("handleStartAuth");
+  it("WeeklyContentPage uses local agent publish path not extension UI", () => {
+    const weekly = read("client/src/pages/WeeklyContentPage.tsx");
+    expect(weekly).not.toMatch(/Chrome\s*插件|重载插件|下载插件/);
+    expect(weekly).toContain("发布任务已发送至本地客户端");
+    expect(weekly).toContain("checkLocalAgentHealth");
   });
 
-  it("Web page opens add dialog after GEO_AUTH_RESULT success", () => {
+  it("PlatformAccountBindingSection uses local agent HTTP not extension auth", () => {
     const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
-    expect(ui).toContain("setEditOpen(true)");
-    expect(ui).toContain("setFormAccountName(accountName)");
-    expect(ui).toMatch(/请确认身份和账号组后保存/);
+    expect(ui).toContain("绑定发布账号");
+    expect(ui).toContain("checkLocalAgentHealth");
+    expect(ui).not.toContain("GEO_START_AUTH");
+    expect(ui).not.toContain("一键授权");
+  });
+
+  it("Web bind flow opens confirm after local detect", () => {
+    const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
+    expect(ui).toContain("detectLocalAgentAccount");
+    expect(ui).toContain("bindLocalAgentAccount");
+    expect(ui).toMatch(/我已完成登录，检测账号/);
   });
 
   it("does not change router or schema for P2-B", () => {
@@ -52,8 +66,14 @@ describe("P2-B one-click auth account detect", () => {
     expect(schema).not.toContain("authBridge");
   });
 
-  it("browser-extension.zip exists", () => {
-    expect(existsSync(resolve(root, "client/public/browser-extension.zip"))).toBe(true);
+  it("legacy browser-extension.zip not exposed in main UI", () => {
+    const ui = [
+      read("client/src/pages/WeeklyContentPage.tsx"),
+      read("client/src/components/LocalAgentDownloadCard.tsx"),
+      read("client/src/components/PlatformAccountBindingSection.tsx"),
+    ].join("\n");
+    expect(ui).not.toContain("browser-extension");
+    expect(existsSync(resolve(root, "content-growth-publish-extension/README_LEGACY.md"))).toBe(true);
   });
 
   it("accountDetect still supports four binding platforms", () => {
@@ -62,5 +82,17 @@ describe("P2-B one-click auth account detect", () => {
       expect(detect).toContain(`case "${p}"`);
     }
     expect(detect).toContain("detectedAccountName");
+    expect(detect).toContain("[accountDetect] detectAccount request");
+    expect(detect).toContain('console.log("[accountDetect] candidate"');
+    expect(detect).toContain("detect zhihu start");
+    expect(detect).toContain("img[alt]");
+    expect(detect).toContain('a[href*="/people/"]');
+    expect(detect).toContain("detectedAccountName");
+    expect(detect).toContain("success: true");
+  });
+
+  it("background logs 授权助手 startAuthDetect", () => {
+    const bg = read("content-growth-publish-extension/background.js");
+    expect(bg).toContain("[授权助手] startAuthDetect");
   });
 });

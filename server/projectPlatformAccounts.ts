@@ -32,6 +32,11 @@ export type PlatformAccountDto = {
   verificationStatus: string;
   lastVerifiedAt: Date | null;
   lastDetectedAccountName: string | null;
+  localAgentId: string | null;
+  localProfileId: string | null;
+  sessionStatus: string | null;
+  lastSessionCheckedAt: Date | null;
+  lastLoginAt: Date | null;
   notes: string;
 };
 
@@ -46,6 +51,11 @@ function toDto(row: PlatformAccountRecord): PlatformAccountDto {
     verificationStatus: row.verificationStatus,
     lastVerifiedAt: row.lastVerifiedAt ?? null,
     lastDetectedAccountName: row.lastDetectedAccountName ?? null,
+    localAgentId: row.localAgentId ?? null,
+    localProfileId: row.localProfileId ?? null,
+    sessionStatus: row.sessionStatus ?? null,
+    lastSessionCheckedAt: row.lastSessionCheckedAt ?? null,
+    lastLoginAt: row.lastLoginAt ?? null,
     notes: row.notes ?? "",
   };
 }
@@ -199,12 +209,26 @@ export async function createProjectPlatformAccount(
     accountRole?: string | null;
     isEnabled?: boolean;
     notes?: string | null;
+    bindingSource?: "plugin_detected";
+    detectedAccountName?: string | null;
   },
 ) {
   validateAccountMeta(input.accountGroup, input.accountRole);
   await getProjectOrThrowConn(db, input.projectId);
   const accountName = input.accountName.trim();
+  if (input.bindingSource === "plugin_detected") {
+    const detected = input.detectedAccountName?.trim() ?? "";
+    if (!detected || detected !== accountName) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "本地客户端检测昵称与保存昵称不一致，请重新绑定发布账号",
+      });
+    }
+  }
   await assertUniqueAccountName(db, input.projectId, input.platform, accountName);
+
+  const now = new Date();
+  const fromPlugin = input.bindingSource === "plugin_detected";
 
   const inserted = await db
     .insert(projectPlatformAccounts)
@@ -217,6 +241,9 @@ export async function createProjectPlatformAccount(
       accountRole: input.accountRole?.trim() || null,
       isEnabled: input.isEnabled === false ? 0 : 1,
       notes: input.notes?.trim() || null,
+      verificationStatus: fromPlugin ? "verified" : "unknown",
+      lastDetectedAccountName: fromPlugin ? accountName : null,
+      lastVerifiedAt: fromPlugin ? now : null,
     })
     .$returningId();
   const id = inserted[0]?.id;
@@ -230,12 +257,13 @@ export async function updateProjectPlatformAccount(
   input: {
     projectId: number;
     accountId: number;
-    accountName: string;
+    accountName?: string;
     accountIdOrUrl?: string | null;
     accountGroup?: string | null;
     accountRole?: string | null;
     isEnabled?: boolean;
     notes?: string | null;
+    purposeOnly?: boolean;
   },
 ) {
   validateAccountMeta(input.accountGroup, input.accountRole);
@@ -243,19 +271,27 @@ export async function updateProjectPlatformAccount(
   if (!existing || existing.projectId !== input.projectId) {
     throw new TRPCError({ code: "NOT_FOUND", message: "账号不存在或不属于当前企业" });
   }
-  const accountName = input.accountName.trim();
-  await assertUniqueAccountName(
-    db,
-    input.projectId,
-    existing.platform as BindingPublishPlatform,
-    accountName,
-    existing.id,
-  );
+
+  const requestedName = input.accountName?.trim();
+  if (input.purposeOnly || requestedName === undefined) {
+    if (requestedName !== undefined && requestedName !== existing.accountName) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "平台显示昵称不可修改，请使用「重新验证」更新登录状态",
+      });
+    }
+  } else if (requestedName !== existing.accountName) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "平台显示昵称不可修改，请使用「重新验证」更新登录状态",
+    });
+  }
+
+  const accountName = existing.accountName;
 
   await db
     .update(projectPlatformAccounts)
     .set({
-      accountName,
       accountIdOrUrl: input.accountIdOrUrl?.trim() || null,
       accountGroup: input.accountGroup?.trim() || null,
       accountRole: input.accountRole?.trim() || null,
@@ -333,6 +369,82 @@ export async function upsertProjectPlatformAccountRecord(
   return createProjectPlatformAccount(db, input);
 }
 
+export async function bindLocalAgentAccount(
+  db: DbConn,
+  input: {
+    projectId: number;
+    platform: BindingPublishPlatform;
+    accountName: string;
+    accountRole?: string | null;
+    accountGroup?: string | null;
+    localAgentId: string;
+    localProfileId: string;
+    sessionStatus: string;
+    notes?: string | null;
+    isEnabled?: boolean;
+  },
+) {
+  validateAccountMeta(input.accountGroup, input.accountRole);
+  await getProjectOrThrowConn(db, input.projectId);
+
+  const accountName = input.accountName.trim();
+  const localAgentId = input.localAgentId.trim();
+  const localProfileId = input.localProfileId.trim();
+  if (!localAgentId || !localProfileId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "本地 Agent 标识不完整" });
+  }
+
+  const sessionStatus = input.sessionStatus.trim() || "active";
+  const now = new Date();
+
+  const existingRows = await db
+    .select()
+    .from(projectPlatformAccounts)
+    .where(
+      and(
+        eq(projectPlatformAccounts.projectId, input.projectId),
+        eq(projectPlatformAccounts.platform, input.platform),
+        eq(projectPlatformAccounts.accountName, accountName),
+      ),
+    )
+    .limit(1);
+
+  const patch = {
+    accountGroup: input.accountGroup?.trim() || null,
+    accountRole: input.accountRole?.trim() || null,
+    isEnabled: input.isEnabled === false ? 0 : 1,
+    notes: input.notes?.trim() || null,
+    localAgentId,
+    localProfileId,
+    sessionStatus,
+    verificationStatus: "verified",
+    lastDetectedAccountName: accountName,
+    lastVerifiedAt: now,
+    lastSessionCheckedAt: now,
+    lastLoginAt: sessionStatus === "active" ? now : null,
+  };
+
+  if (existingRows[0]) {
+    await db.update(projectPlatformAccounts).set(patch).where(eq(projectPlatformAccounts.id, existingRows[0].id));
+    const row = await getAccountRowById(db, existingRows[0].id);
+    return row!;
+  }
+
+  const inserted = await db
+    .insert(projectPlatformAccounts)
+    .values({
+      projectId: input.projectId,
+      platform: input.platform,
+      accountName,
+      ...patch,
+    })
+    .$returningId();
+
+  const id = inserted[0]?.id;
+  if (!id) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "绑定本地账号失败" });
+  return (await getAccountRowById(db, id))!;
+}
+
 export async function verifyPlatformAccountForProjectRecord(
   db: DbConn,
   input: {
@@ -344,11 +456,13 @@ export async function verifyPlatformAccountForProjectRecord(
   },
 ) {
   const accountRow = input.accountId
-    ? await getEnabledPlatformAccountById(db, {
-        projectId: input.projectId,
-        platform: input.platform,
-        platformAccountId: input.accountId,
-      })
+    ? await (async () => {
+        const row = await getAccountRowById(db, input.accountId!);
+        if (!row || row.projectId !== input.projectId || row.platform !== input.platform) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "账号不存在或不属于当前企业" });
+        }
+        return row;
+      })()
     : await getEnabledPlatformAccount(db, input.projectId, input.platform);
 
   if (!accountRow) {
@@ -357,12 +471,18 @@ export async function verifyPlatformAccountForProjectRecord(
 
   const result = matchPlatformAccountNames(accountRow.accountName, input.detectedAccountName);
   const detected = result.detectedAccountName;
-  const status = !detected && result.status === "login_required" ? "login_required" : result.status;
+  const publishStatus = !detected && result.status === "login_required" ? "login_required" : result.status;
+  const fromPlugin = input.verificationSource === "plugin";
+  const bindingStatus = fromPlugin
+    ? result.matched
+      ? "verified"
+      : "failed"
+    : publishStatus;
 
   await db
     .update(projectPlatformAccounts)
     .set({
-      verificationStatus: status,
+      verificationStatus: bindingStatus,
       lastVerifiedAt: new Date(),
       lastDetectedAccountName: detected,
     })
@@ -373,7 +493,8 @@ export async function verifyPlatformAccountForProjectRecord(
     expectedAccountName: accountRow.accountName,
     detectedAccountName: detected,
     matched: result.matched,
-    status,
+    status: bindingStatus,
+    publishStatus,
     message: result.message,
     verificationSource: input.verificationSource ?? "manual",
   } as const;

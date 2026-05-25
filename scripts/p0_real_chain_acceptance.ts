@@ -434,7 +434,7 @@ async function main() {
   assert(publishRecord, "发布记录未写入数据库");
   const monitoringRecord = (await db.select().from(geoInclusionMonitoringRecords).where(eq(geoInclusionMonitoringRecords.articleId, publishableArticle.id)).orderBy(desc(geoInclusionMonitoringRecords.createdAt)).limit(1))[0];
   assert(monitoringRecord, "收录监测记录未写入数据库");
-  assert(monitoringRecord.inclusionStatus === "未检测", `收录监测初始状态不是“未检测”：${monitoringRecord.inclusionStatus}`);
+  assert(monitoringRecord.inclusionMonitorStatus === "未检测", `收录监测初始状态不是“未检测”：${monitoringRecord.inclusionMonitorStatus}`);
   writeEvidence.monitoring = stepEvidence(true, "本次发布后确认收录监测记录写入，初始状态为未检测。");
 
   await caller.geo.reports.generate({ projectId });
@@ -463,7 +463,7 @@ async function main() {
     publishedPublicLink: publishResult.publicPath,
     unauthenticatedPublicAccess: true,
     publishRecord: { id: publishRecord.id, status: publishRecord.publishStatus, url: publishRecord.publishUrl },
-    monitoringRecord: { id: monitoringRecord.id, status: monitoringRecord.inclusionStatus, aiMentionStatus: monitoringRecord.aiMentionStatus, aiRecommendStatus: monitoringRecord.aiRecommendStatus },
+    monitoringRecord: { id: monitoringRecord.id, status: monitoringRecord.inclusionMonitorStatus, aiMentionStatus: monitoringRecord.aiMentionMonitorStatus, aiRecommendStatus: monitoringRecord.aiRecommendMonitorStatus },
     customerReport: { id: report.id, status: "已生成", totalScore: report.totalScore },
     dbWriteEvidence: writeEvidence,
     finalConclusion: "P0 主链路已真实跑通",

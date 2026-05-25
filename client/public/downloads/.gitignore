@@ -1,0 +1,4 @@
+*.zip
+*.dmg
+*.exe
+!manifest.json

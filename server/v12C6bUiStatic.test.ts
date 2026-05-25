@@ -21,18 +21,17 @@ describe("C6-B enterprise profile flow order", () => {
   });
 
   it("places new project as secondary when projects exist", () => {
-    expect(page).toContain("已有企业档案");
     expect(page).toContain("新增企业项目");
     expect(page).toContain("<details");
   });
 
-  it("shows document ownership and intake after enterprise", () => {
+  it("shows intake at top of profile console when project selected", () => {
     expect(panel).toContain("当前资料将应用到");
-    expect(panel).toContain("上传资料，AI 自动建档");
-    const enterpriseBlock = page.indexOf('title={hasProjects ? "已有企业档案"');
+    expect(panel).toContain("先上传企业资料");
     const intakeBlock = page.indexOf("<ProfileIntakePanel");
-    expect(enterpriseBlock).toBeGreaterThan(-1);
-    expect(intakeBlock).toBeGreaterThan(enterpriseBlock);
+    const brandBlock = page.indexOf('id="profile-brand"');
+    expect(intakeBlock).toBeGreaterThan(-1);
+    expect(brandBlock).toBeGreaterThan(intakeBlock);
   });
 
   it("auto switches after create with hint message", () => {
