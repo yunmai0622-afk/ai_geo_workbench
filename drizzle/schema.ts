@@ -143,6 +143,8 @@ export const platformAuthorizationStatusEnum = mysqlEnum("authorizationStatus", 
 
 export const projects = mysqlTable("projects", {
   id: int("id").autoincrement().primaryKey(),
+  /** 项目归属用户（P0 租户隔离）；FK → users.id */
+  ownerUserId: int("ownerUserId").notNull(),
   enterpriseName: varchar("enterpriseName", { length: 255 }).notNull(),
   industry: varchar("industry", { length: 255 }).notNull(),
   website: varchar("website", { length: 500 }).notNull(),

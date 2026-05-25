@@ -39,6 +39,7 @@ import {
   projects,
   questions,
   reports,
+  type Project,
 } from "../drizzle/schema";
 import {
   aiPlatforms,
@@ -86,6 +87,7 @@ import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
+import { GEO_ENHANCEMENT_GOAL_OPTIONS, PUBLISH_PLATFORM_IDS } from "@shared/platformContentRules";
 import { mergeAiTestResultsByStage, normalizeAiTestResult } from "@shared/aiTestEvidence";
 import { buildAiMentionSuggestion, runAiMentionCheck } from "./geoAiMentionCheck";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
@@ -100,6 +102,18 @@ import {
 import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare";
 import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import { runDailyAiCheck } from "./scheduledAiCheck";
+import { fetchWorkspaceSummaryMetrics } from "./workspaceSummary";
+import {
+  getCurrentUserId,
+  getProjectRowConn,
+  listAccessibleProjectIds,
+  requireAiResponseAccess,
+  requireAnalysisAccess,
+  requireArticleAccess,
+  requireMonitoringRecordAccess,
+  requireProjectAccess,
+  requireQuestionAccess,
+} from "./projectAccess";
 import {
   assetInputModes,
   assetSourceTypes,
@@ -255,13 +269,6 @@ const updateProjectStatus = async (projectId: number, status: typeof projectStat
   if (nextStatus !== current[0]?.status) {
     await db.update(projects).set({ status: nextStatus }).where(eq(projects.id, projectId));
   }
-};
-
-const getProjectOrThrow = async (projectId: number) => {
-  const db = await requireDb();
-  const result = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-  if (result.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "项目不存在" });
-  return result[0];
 };
 
 const getAssetLibraryContext = async (projectId: number): Promise<P12AssetLibraryContext> => {
@@ -434,7 +441,7 @@ function parseQuestionGeoMeta(targetKeyword: string | null | undefined): { inten
 }
 
 function buildEnterpriseInfoBlockForDiagnosis(
-  project: Awaited<ReturnType<typeof getProjectOrThrow>>,
+  project: Project,
   profile: (typeof enterpriseGeoProfiles.$inferSelect) | undefined,
 ): string {
   const resolved = resolveEnterpriseProfileForContent(profile ?? null);
@@ -609,7 +616,7 @@ const platformAuthorizationInput = z.object({
 });
 
 const geoAssetRouter = router({
-  summary: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+  summary: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
     const db = await requireDb();
     if (!input.projectId) {
       return {
@@ -627,7 +634,7 @@ const geoAssetRouter = router({
         counts: { assetSources: 0, usableAssets: 0, customerCases: 0, realCases: 0, competitors: 0, complianceRules: 0, styleProfiles: 0, publishStrategies: 0, platformAuthorizations: 0 },
       } as const;
     }
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const [profiles, sources, cases, competitors, rules, styles, strategies, authorizations] = await Promise.all([
       db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1),
       db.select().from(geoAssetSources).where(eq(geoAssetSources.projectId, input.projectId)).orderBy(desc(geoAssetSources.createdAt)),
@@ -670,9 +677,9 @@ const geoAssetRouter = router({
       platformAuthorizations: authorizations,
     } as const;
   }),
-  upsertProfile: protectedProcedure.input(enterpriseProfileInput).mutation(async ({ input }) => {
+  upsertProfile: protectedProcedure.input(enterpriseProfileInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const completionScore = calculateProfileCompletionScore(input);
     const existing = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
     const raw = { ...input, completionScore } as Record<string, unknown>;
@@ -684,9 +691,9 @@ const geoAssetRouter = router({
     const inserted = await db.insert(enterpriseGeoProfiles).values(values as never).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0, completionScore } as const;
   }),
-  addTextSource: protectedProcedure.input(assetTextInput).mutation(async ({ input }) => {
+  addTextSource: protectedProcedure.input(assetTextInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const structuredSummary = summarizeTextToStructuredSummary(input.contentDigest, input.title);
     const inserted = await db.insert(geoAssetSources).values({
       projectId: input.projectId,
@@ -704,9 +711,9 @@ const geoAssetRouter = router({
     }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
   }),
-  addUploadedSource: protectedProcedure.input(assetUploadInput).mutation(async ({ input }) => {
+  addUploadedSource: protectedProcedure.input(assetUploadInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const raw = Buffer.from(input.fileBase64, "base64");
     if (raw.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "上传文件为空" });
     const relKey = `geo-assets/${input.projectId}/${Date.now()}-${input.originalFileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
@@ -729,9 +736,9 @@ const geoAssetRouter = router({
     const inserted = await db.insert(geoAssetSources).values(record).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0, fileKey: stored.key, fileUrl: stored.url } as const;
   }),
-  createCustomerCase: protectedProcedure.input(customerCaseInput).mutation(async ({ input }) => {
+  createCustomerCase: protectedProcedure.input(customerCaseInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     try {
       validateCustomerCaseInput(input);
     } catch (error) {
@@ -744,9 +751,9 @@ const geoAssetRouter = router({
     }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
   }),
-  updateCustomerCase: protectedProcedure.input(customerCaseInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+  updateCustomerCase: protectedProcedure.input(customerCaseInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     try {
       validateCustomerCaseInput(input);
     } catch (error) {
@@ -760,15 +767,15 @@ const geoAssetRouter = router({
     }).where(eq(customerCases.id, id));
     return { success: true, id } as const;
   }),
-  createCompetitor: protectedProcedure.input(competitorInput).mutation(async ({ input }) => {
+  createCompetitor: protectedProcedure.input(competitorInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const inserted = await db.insert(competitorProfiles).values({ ...input, canReference: booleanToInt(input.canReference) }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
   }),
-  updateCompetitor: protectedProcedure.input(competitorInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+  updateCompetitor: protectedProcedure.input(competitorInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const { id, ...values } = input;
     await db.update(competitorProfiles).set({ ...values, canReference: booleanToInt(values.canReference) }).where(eq(competitorProfiles.id, id));
     return { success: true, id } as const;
@@ -780,9 +787,9 @@ const geoAssetRouter = router({
   updateComplianceRule: protectedProcedure.input(complianceRuleInput.extend({ id: z.number().int().positive() })).mutation(() => {
     throw new TRPCError({ code: "FORBIDDEN", message: "合规规则已迁移为系统统一配置，此入口已关闭。" });
   }),
-  createStyleProfile: protectedProcedure.input(contentStyleInput).mutation(async ({ input }) => {
+  createStyleProfile: protectedProcedure.input(contentStyleInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const inserted = await db.insert(contentStyleProfiles).values({ ...input, enabled: booleanToInt(input.enabled) }).$returningId();
     return { success: true, id: inserted[0]?.id ?? 0 } as const;
   }),
@@ -801,9 +808,9 @@ const geoAssetRouter = router({
   analyzeDocument: protectedProcedure.input(z.object({
     projectId: z.number().int().positive(),
     documentText: z.string().min(20, "资料内容过短，请补充后重试").max(50000, "资料内容过长，请分段上传"),
-  })).mutation(async ({ input }) => {
+  })).mutation(async ({ ctx, input }) => {
     const { analyzeEnterpriseProfileDocument } = await import("./enterpriseProfileAnalyze");
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     try {
       const analysis = await analyzeEnterpriseProfileDocument(input.documentText);
       return { success: true as const, analysis };
@@ -812,9 +819,9 @@ const geoAssetRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: msg });
     }
   }),
-  generateProfileMarketingCopy: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+  generateProfileMarketingCopy: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const rows = await db
       .select()
       .from(enterpriseGeoProfiles)
@@ -880,9 +887,9 @@ const geoAssetRouter = router({
     const parsed = parseLLMJson<{ oneLiner: string; keyPoints: string[]; keywords: string[] }>(response.choices[0]?.message.content);
     return { oneLiner: parsed.oneLiner.trim(), keyPoints: parsed.keyPoints.map(s => s.trim()).filter(Boolean), keywords: parsed.keywords.map(s => s.trim()).filter(Boolean) } as const;
   }),
-  evidencePack: protectedProcedure.input(z.object({ projectId: z.number().int().positive(), assetIds: z.array(z.number().int().positive()).min(1) })).query(async ({ input }) => {
+  evidencePack: protectedProcedure.input(z.object({ projectId: z.number().int().positive(), assetIds: z.array(z.number().int().positive()).min(1) })).query(async ({ ctx, input }) => {
     const db = await requireDb();
-    await getProjectOrThrow(input.projectId);
+    await requireProjectAccess(ctx, input.projectId);
     const sources = await db.select().from(geoAssetSources).where(eq(geoAssetSources.projectId, input.projectId));
     const selected = sources.filter(source => input.assetIds.includes(source.id));
     if (selected.length !== input.assetIds.length) {
@@ -910,8 +917,9 @@ const geoRouter = router({
   publishRecords: router({
     listWithStatus: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
 
         const records = await db
           .select()
@@ -940,14 +948,31 @@ const geoRouter = router({
       }),
   }),
 
-  clientDashboard: router({
-    /** 客户管理台聚合查询：一次性返回所有项目关键指标 */
-    listProjectsSummary: protectedProcedure.query(async () => {
-      const db = await requireDb();
-      const allProjects = await db.select().from(projects).orderBy(desc(projects.createdAt));
-      if (allProjects.length === 0) return [];
+  workspace: router({
+    summary: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const metrics = await fetchWorkspaceSummaryMetrics(db, input.projectId);
+        return metrics;
+      }),
+  }),
 
-      const projectIds = allProjects.map(p => p.id);
+  clientDashboard: router({
+    /** 客户管理台聚合查询：仅当前用户可访问项目 */
+    listProjectsSummary: protectedProcedure.query(async ({ ctx }) => {
+      const db = await requireDb();
+      const accessibleIds = await listAccessibleProjectIds(ctx);
+      if (accessibleIds.length === 0) return [];
+
+      const allProjects = await db
+        .select()
+        .from(projects)
+        .where(inArray(projects.id, accessibleIds))
+        .orderBy(desc(projects.createdAt));
+
+      const projectIds = accessibleIds;
       const [articleRows, publishRows, monitoringRows, analysisRows, scoreRows] = await Promise.all([
         db
           .select({ projectId: geoArticles.projectId })
@@ -1028,23 +1053,31 @@ const geoRouter = router({
   }),
 
   projects: router({
-    list: protectedProcedure.query(async () => {
+    list: protectedProcedure.query(async ({ ctx }) => {
       const db = await requireDb();
-      return db.select().from(projects).orderBy(desc(projects.createdAt));
+      const userId = getCurrentUserId(ctx);
+      return db
+        .select()
+        .from(projects)
+        .where(eq(projects.ownerUserId, userId))
+        .orderBy(desc(projects.createdAt));
     }),
-    create: protectedProcedure.input(projectInput).mutation(async ({ input }) => {
+    create: protectedProcedure.input(projectInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      await db.insert(projects).values({ ...input, status: "created" });
+      const ownerUserId = getCurrentUserId(ctx);
+      await db.insert(projects).values({ ...input, status: "created", ownerUserId });
       return { success: true } as const;
     }),
-    update: protectedProcedure.input(projectInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    update: protectedProcedure.input(projectInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireProjectAccess(ctx, input.id);
       const { id, ...values } = input;
       await db.update(projects).set(values).where(eq(projects.id, id));
       return { success: true } as const;
     }),
-    delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireProjectAccess(ctx, input.id);
       await db.delete(reports).where(eq(reports.projectId, input.id));
       await db.delete(contentTemplates).where(eq(contentTemplates.projectId, input.id));
       await db.delete(optimizationTasks).where(eq(optimizationTasks.projectId, input.id));
@@ -1058,49 +1091,59 @@ const geoRouter = router({
   }),
 
   questions: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       return db.select().from(questions).where(eq(questions.projectId, input.projectId)).orderBy(desc(questions.createdAt));
     }),
-    create: protectedProcedure.input(questionInput).mutation(async ({ input }) => {
+    create: protectedProcedure.input(questionInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireProjectAccess(ctx, input.projectId);
       await db.insert(questions).values({ ...input, targetKeyword: input.targetKeyword?.trim() || null, intentLevel: input.intentLevel ?? "高", businessValue: input.businessValue ?? 5, source: input.source ?? "manual", enabled: input.enabled ? 1 : 0 });
       await updateProjectStatus(input.projectId, "questions_ready");
       return { success: true } as const;
     }),
-    update: protectedProcedure.input(questionInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    update: protectedProcedure.input(questionInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       const { id, ...values } = input;
+      const ownedProjectId = await requireQuestionAccess(ctx, id);
+      if (values.projectId !== ownedProjectId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "无权将问题迁移到其它客户项目" });
+      }
       await db.update(questions).set({ ...values, targetKeyword: values.targetKeyword?.trim() || null, intentLevel: values.intentLevel ?? "高", businessValue: values.businessValue ?? 5, source: values.source ?? "manual", enabled: values.enabled ? 1 : 0 }).where(eq(questions.id, id));
       return { success: true } as const;
     }),
-    toggle: protectedProcedure.input(z.object({ id: z.number().int().positive(), enabled: z.boolean() })).mutation(async ({ input }) => {
+    toggle: protectedProcedure.input(z.object({ id: z.number().int().positive(), enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireQuestionAccess(ctx, input.id);
       await db.update(questions).set({ enabled: input.enabled ? 1 : 0 }).where(eq(questions.id, input.id));
       return { success: true } as const;
     }),
-    delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireQuestionAccess(ctx, input.id);
       await db.delete(questions).where(eq(questions.id, input.id));
       return { success: true } as const;
     }),
     batchAddSpecified: protectedProcedure.input(z.object({
       projectId: z.number().int().positive(),
       questions: z.array(z.string().min(1)).min(1),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ ctx, input }) => {
+      await requireProjectAccess(ctx, input.projectId);
       return insertSpecifiedQuestions(input.projectId, input.questions.map(questionText => ({ questionText })), "manual");
     }),
     importSpecifiedCsvRows: protectedProcedure.input(z.object({
       projectId: z.number().int().positive(),
       rows: z.array(manualQuestionImportRow).min(1),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ ctx, input }) => {
+      await requireProjectAccess(ctx, input.projectId);
       return insertSpecifiedQuestions(input.projectId, input.rows, "csv");
     }),
     /** 基于企业档案生成 5–10 条 AI 检索型目标问题，写入 questions（覆盖同项目历史 ai_generated 行）。 */
-    generateTargetQuestions: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+    generateTargetQuestions: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const project = await getProjectOrThrow(input.projectId);
+      const project = await requireProjectAccess(ctx, input.projectId);
       const existingRows = await db
         .select({ questionText: questions.questionText })
         .from(questions)
@@ -1163,9 +1206,9 @@ const geoRouter = router({
         hadPreviousQuestions: excludeQuestions.length > 0,
       } as const;
     }),
-    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const project = await getProjectOrThrow(input.projectId);
+      const project = await requireProjectAccess(ctx, input.projectId);
       const response = await invokeLLM({
         messages: [
           { role: "system", content: "你是企业 GEO / AI Visibility 诊断顾问。请只输出符合 JSON Schema 的中文结果。" },
@@ -1214,19 +1257,20 @@ const geoRouter = router({
   }),
 
   aiResponses: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       return db.select().from(aiResponses).where(eq(aiResponses.projectId, input.projectId)).orderBy(desc(aiResponses.createdAt));
     }),
-    create: protectedProcedure.input(aiResponseInput).mutation(async ({ input }) => {
+    create: protectedProcedure.input(aiResponseInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await db.insert(aiResponses).values({ ...input, questionId: input.questionId ?? null, checkedAt: new Date(input.checkedAt) });
       await syncManualQuestionsFromAiResponseImport(db, [{ projectId: input.projectId, questionText: input.questionText }]);
       await updateProjectStatus(input.projectId, "responses_imported");
       return { success: true } as const;
     }),
-    importCsvRows: protectedProcedure.input(z.object({ rows: z.array(aiResponseInput).min(1) })).mutation(async ({ input }) => {
+    importCsvRows: protectedProcedure.input(z.object({ rows: z.array(aiResponseInput).min(1) })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await db.insert(aiResponses).values(input.rows.map(row => ({ ...row, questionId: row.questionId ?? null, checkedAt: new Date(row.checkedAt) })));
       await syncManualQuestionsFromAiResponseImport(
@@ -1237,8 +1281,9 @@ const geoRouter = router({
       await Promise.all(projectIds.map(projectId => updateProjectStatus(projectId, "responses_imported")));
       return { success: true, count: input.rows.length } as const;
     }),
-    delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireAiResponseAccess(ctx, input.id);
       await db.delete(analysisResults).where(eq(analysisResults.aiResponseId, input.id));
       await db.delete(aiResponses).where(eq(aiResponses.id, input.id));
       return { success: true } as const;
@@ -1246,9 +1291,10 @@ const geoRouter = router({
   }),
 
   analysis: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       const rows = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId)).orderBy(desc(analysisResults.createdAt));
       const [responseRows, questionRows] = await Promise.all([
         db.select({ id: aiResponses.id, questionId: aiResponses.questionId, questionText: aiResponses.questionText }).from(aiResponses).where(eq(aiResponses.projectId, input.projectId)),
@@ -1256,9 +1302,9 @@ const geoRouter = router({
       ]);
       return attachQuestionTextToAnalyses(rows.map(resolveEffectiveAnalysisResult), responseRows, questionRows);
     }),
-    run: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+    run: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const project = await getProjectOrThrow(input.projectId);
+      const project = await requireProjectAccess(ctx, input.projectId);
       const profileRows = await db
         .select()
         .from(enterpriseGeoProfiles)
@@ -1499,8 +1545,9 @@ const geoRouter = router({
       await updateProjectStatus(input.projectId, "analysis_done");
       return { success: true, count: rows.length } as const;
     }),
-    saveManualReview: protectedProcedure.input(analysisManualReviewInput).mutation(async ({ input }) => {
+    saveManualReview: protectedProcedure.input(analysisManualReviewInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireAnalysisAccess(ctx, input.id);
       const manualOverrideJson = {
         mentionsEnterprise: input.mentionsEnterprise,
         recommendsEnterprise: input.recommendsEnterprise,
@@ -1522,8 +1569,9 @@ const geoRouter = router({
       }).where(eq(analysisResults.id, input.id));
       return { success: true } as const;
     }),
-    undoManualReview: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    undoManualReview: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireAnalysisAccess(ctx, input.id);
       await db.update(analysisResults).set({
         manualOverrideJson: null,
         manuallyReviewed: 0,
@@ -1535,9 +1583,10 @@ const geoRouter = router({
   }),
 
   scores: router({
-    latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return null;
+      await requireProjectAccess(ctx, input.projectId);
       // Fix: 问题4 — 同一项目多条历史评分时，按创建时间再按 id 取最新一条，避免偶发排序不稳定读到旧分。
       // 修复1：多取几行打日志，确认 where projectId 生效且首行即最新（若首行 projectId ≠ 请求 id 说明过滤异常）。
       const candidates = await db
@@ -1573,9 +1622,10 @@ const geoRouter = router({
       });
       return row;
     }),
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       return db
         .select({
           id: geoScores.id,
@@ -1588,7 +1638,7 @@ const geoRouter = router({
         .where(eq(geoScores.projectId, input.projectId))
         .orderBy(asc(geoScores.createdAt));
     }),
-    calculate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+    calculate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       if (analyses.length === 0) {
@@ -1603,14 +1653,15 @@ const geoRouter = router({
   }),
 
   tasks: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       return db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId)).orderBy(desc(optimizationTasks.createdAt));
     }),
-    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const project = await getProjectOrThrow(input.projectId);
+      const project = await requireProjectAccess(ctx, input.projectId);
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       if (analyses.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析，再生成优化任务" });
@@ -1626,7 +1677,7 @@ const geoRouter = router({
       status: z.enum(taskStatuses),
       publishedUrl: z.string().optional().nullable(),
       needRetest: z.boolean().optional().default(false),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await db.update(optimizationTasks).set({
         status: input.status,
@@ -1639,14 +1690,15 @@ const geoRouter = router({
   }),
 
   templates: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       return db.select().from(contentTemplates).where(eq(contentTemplates.projectId, input.projectId)).orderBy(desc(contentTemplates.createdAt));
     }),
-    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const project = await getProjectOrThrow(input.projectId);
+      const project = await requireProjectAccess(ctx, input.projectId);
       const tasks = await db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
       if (tasks.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先生成优化任务，再生成内容模板" });
@@ -1660,15 +1712,16 @@ const geoRouter = router({
   }),
 
   reports: router({
-    latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return null;
+      await requireProjectAccess(ctx, input.projectId);
       const result = await db.select().from(reports).where(eq(reports.projectId, input.projectId)).orderBy(desc(reports.createdAt)).limit(1);
       return result[0] ?? null;
     }),
-    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const project = await getProjectOrThrow(input.projectId);
+      const project = await requireProjectAccess(ctx, input.projectId);
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       const effectiveAnalyses = resolveEffectiveAnalysisResults(analyses);
       if (analyses.length === 0) {
@@ -1703,33 +1756,33 @@ const geoRouter = router({
     }),
     createShareLink: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
-        await getProjectOrThrow(input.projectId);
+        await requireProjectAccess(ctx, input.projectId);
         const shareToken = await getOrCreateShareTokenForProject(db, input.projectId);
         const sharePath = buildDeliveryReportPublicPath(shareToken);
         return { sharePath, shareToken } as const;
       }),
     disableShareLink: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
-        await getProjectOrThrow(input.projectId);
+        await requireProjectAccess(ctx, input.projectId);
         const result = await disableEnabledShareTokensForProject(db, input.projectId);
         return { success: true, disabled: result.disabled, count: result.count } as const;
       }),
     regenerateShareLink: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
-        await getProjectOrThrow(input.projectId);
+        await requireProjectAccess(ctx, input.projectId);
         const shareToken = await regenerateShareLinkForProject(db, input.projectId);
         const sharePath = buildDeliveryReportPublicPath(shareToken);
         return { success: true, sharePath } as const;
       }),
     publicShare: publicProcedure
       .input(z.object({ token: z.string().min(16).max(64) }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const db = await requireDb();
         const projectId = await resolveShareTokenProjectId(db, input.token);
         return buildDeliveryReportPublicSharePayload(db, projectId);
@@ -1742,20 +1795,20 @@ const geoRouter = router({
           resultIndex: z.number().int().min(0),
         }),
       )
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const db = await requireDb();
         return buildDeliveryReportPublicEvidencePayload(db, input.token, input.recordId, input.resultIndex);
       }),
   }),
 
   contentPlans: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
-      await getProjectOrThrow(input.projectId);
+      await requireProjectAccess(ctx, input.projectId);
       return db.select().from(contentPlans).where(eq(contentPlans.projectId, input.projectId)).orderBy(desc(contentPlans.createdAt));
     }),
-    latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) {
         return {
@@ -1770,7 +1823,7 @@ const geoRouter = router({
           linkedOptimizationTaskIds: [] as number[],
         } as const;
       }
-      await getProjectOrThrow(input.projectId);
+      await requireProjectAccess(ctx, input.projectId);
       const plans = await db.select().from(contentPlans).where(eq(contentPlans.projectId, input.projectId)).orderBy(desc(contentPlans.createdAt)).limit(1);
       const plan = plans[0] ?? null;
       if (!plan) {
@@ -1800,9 +1853,9 @@ const geoRouter = router({
         linkedOptimizationTaskIds: plan.linkedOptimizationTaskIds,
       } as const;
     }),
-    upsert: protectedProcedure.input(contentPlanInput).mutation(async ({ input }) => {
+    upsert: protectedProcedure.input(contentPlanInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      await getProjectOrThrow(input.projectId);
+      await requireProjectAccess(ctx, input.projectId);
 
       const selectedTasks = await db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
       const validTaskIds = new Set(selectedTasks.map(task => task.id));
@@ -1837,9 +1890,9 @@ const geoRouter = router({
       const inserted = await db.insert(contentPlans).values(values).$returningId();
       return { success: true, planId: inserted[0]?.id ?? 0 } as const;
     }),
-    addItem: protectedProcedure.input(contentPlanItemInput).mutation(async ({ input }) => {
+    addItem: protectedProcedure.input(contentPlanItemInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      await getProjectOrThrow(input.projectId);
+      await requireProjectAccess(ctx, input.projectId);
       const planRows = await db.select().from(contentPlans).where(eq(contentPlans.id, input.planId)).limit(1);
       const plan = planRows[0];
       if (!plan || plan.projectId !== input.projectId) {
@@ -1869,17 +1922,18 @@ const geoRouter = router({
 
   articles: router({
     topics: router({
-      list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+      list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
         const db = await requireDb();
         if (!input.projectId) return [];
+        await requireProjectAccess(ctx, input.projectId);
         return db.select().from(geoArticleTopics).where(eq(geoArticleTopics.projectId, input.projectId)).orderBy(desc(geoArticleTopics.createdAt));
       }),
       generate: protectedProcedure.input(z.object({
         projectId: z.number().int().positive(),
         generationCount: z.number().int().min(1).max(50).optional(),
-      })).mutation(async ({ input }) => {
+      })).mutation(async ({ ctx, input }) => {
         const db = await requireDb();
-        const project = await getProjectOrThrow(input.projectId);
+        const project = await requireProjectAccess(ctx, input.projectId);
         const tasks = await db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
         if (tasks.length === 0) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成内容诊断并生成优化任务，再准备本周内容。" });
@@ -1904,9 +1958,10 @@ const geoRouter = router({
         return { success: true, count: generated.length, topics: generated } as const;
       }),
     }),
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       // Fix: 问题3 — 排除旧格式「如何回答…」长标题占位文章（较按 topics 时间过滤更直观、可预期）。
       const rows = await db
         .select()
@@ -1948,8 +2003,17 @@ const geoRouter = router({
     }),
     lifecycleTimeline: protectedProcedure
       .input(z.object({ articleId: z.number().int().positive() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const db = await requireDb();
+        const articleRow = await db
+          .select({ projectId: geoArticles.projectId })
+          .from(geoArticles)
+          .where(eq(geoArticles.id, input.articleId))
+          .limit(1);
+        if (!articleRow[0]) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+        }
+        await requireProjectAccess(ctx, articleRow[0].projectId);
         const timeline = await getArticleLifecycleTimeline(db, input.articleId);
         if (!timeline) {
           throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
@@ -1962,9 +2026,10 @@ const geoRouter = router({
         });
         return { ...timeline, lifecycle };
       }),
-    latestQualityScores: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    latestQualityScores: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       const rows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.projectId, input.projectId)).orderBy(desc(geoArticleQualityScores.createdAt));
       // Fix: 问题1 — isPass 与「仅合规类阻断」一致，避免高分仍显示未通过。
       const hasComplianceBlock = (reasons: string[]) =>
@@ -1975,14 +2040,15 @@ const geoRouter = router({
         return { ...row, isPass };
       });
     }),
-    publishRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    publishRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       return db.select().from(geoPublishRecords).where(eq(geoPublishRecords.projectId, input.projectId)).orderBy(desc(geoPublishRecords.publishedAt));
     }),
-    createManualPublishRecord: protectedProcedure.input(manualPublishRecordInput).mutation(async ({ input }) => {
+    createManualPublishRecord: protectedProcedure.input(manualPublishRecordInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      await getProjectOrThrow(input.projectId);
+      await requireProjectAccess(ctx, input.projectId);
       const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
       if (!article || article.projectId !== input.projectId) {
@@ -2015,13 +2081,16 @@ const geoRouter = router({
       }).$returningId();
       return { success: true, id: inserted[0]?.id ?? 0 } as const;
     }),
-    updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+    updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      await getProjectOrThrow(input.projectId);
       const recordRows = await db.select().from(geoPublishRecords).where(eq(geoPublishRecords.id, input.id)).limit(1);
       const record = recordRows[0];
-      if (!record || record.projectId !== input.projectId || record.articleId !== input.articleId) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目和内容的发布记录" });
+      if (!record) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "未找到发布记录" });
+      }
+      await requireProjectAccess(ctx, record.projectId);
+      if (record.projectId !== input.projectId || record.articleId !== input.articleId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "发布记录与请求项目/内容不一致" });
       }
       const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
@@ -2046,9 +2115,10 @@ const geoRouter = router({
       }).where(eq(geoPublishRecords.id, input.id));
       return { success: true, id: input.id } as const;
     }),
-    inclusionMonitoringRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    inclusionMonitoringRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
+      await requireProjectAccess(ctx, input.projectId);
       const rows = await db
         .select()
         .from(geoInclusionMonitoringRecords)
@@ -2056,12 +2126,45 @@ const geoRouter = router({
         .orderBy(desc(geoInclusionMonitoringRecords.createdAt));
       return rows.map(mapInclusionMonitoringRecordForApi);
     }),
-    generate: protectedProcedure.input(z.object({ topicId: z.number().int().positive() })).mutation(async ({ input }) => {
+    generate: protectedProcedure
+      .input(
+        z
+          .object({
+            topicId: z.number().int().positive(),
+            targetPublishPlatform: z.enum(PUBLISH_PLATFORM_IDS).optional(),
+            contentStrategyType: z.enum(CONTENT_ASSET_TYPES).optional(),
+            publishIdentity: z.enum(PUBLISH_IDENTITIES).optional(),
+            recommendedAccountGroup: z.enum(ACCOUNT_GROUP_TYPES).optional(),
+            targetQuestion: z.string().trim().optional(),
+            geoEnhancementGoal: z.enum(GEO_ENHANCEMENT_GOAL_OPTIONS).optional(),
+            targetAiPlatforms: z.array(z.string().min(1)).optional(),
+          })
+          .superRefine((val, ctx) => {
+            const hasPlatform = Boolean(val.targetPublishPlatform);
+            if (!hasPlatform) return;
+            if (!val.contentStrategyType) {
+              ctx.addIssue({ code: "custom", message: "请选择内容类型", path: ["contentStrategyType"] });
+            }
+            if (!val.publishIdentity) {
+              ctx.addIssue({ code: "custom", message: "请选择账号身份", path: ["publishIdentity"] });
+            }
+            if (!val.targetQuestion?.trim()) {
+              ctx.addIssue({ code: "custom", message: "请填写目标问题", path: ["targetQuestion"] });
+            }
+            if (!val.geoEnhancementGoal) {
+              ctx.addIssue({ code: "custom", message: "请选择 GEO 增强目标", path: ["geoEnhancementGoal"] });
+            }
+            if (!val.targetAiPlatforms?.length) {
+              ctx.addIssue({ code: "custom", message: "请选择目标 AI 平台", path: ["targetAiPlatforms"] });
+            }
+          }),
+      )
+      .mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       const topicRows = await db.select().from(geoArticleTopics).where(eq(geoArticleTopics.id, input.topicId)).limit(1);
       const topic = topicRows[0];
       if (!topic) throw new TRPCError({ code: "NOT_FOUND", message: "文章选题不存在" });
-      const project = await getProjectOrThrow(topic.projectId);
+      const project = await requireProjectAccess(ctx, topic.projectId);
       const taskRows = topic.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, topic.optimizationTaskId)).limit(1) : [];
       const task = taskRows[0];
       if (!task) throw new TRPCError({ code: "BAD_REQUEST", message: "文章选题必须绑定优化任务，不能生成无来源文章" });
@@ -2076,6 +2179,23 @@ const geoRouter = router({
       const assetLibrary = await getAssetLibraryContext(topic.projectId);
       let draft;
       try {
+        const platformStrategy =
+          input.targetPublishPlatform &&
+          input.contentStrategyType &&
+          input.publishIdentity &&
+          input.targetQuestion?.trim() &&
+          input.geoEnhancementGoal &&
+          input.targetAiPlatforms?.length
+            ? {
+                targetPublishPlatform: input.targetPublishPlatform,
+                contentStrategyType: input.contentStrategyType,
+                publishIdentity: input.publishIdentity,
+                recommendedAccountGroup: input.recommendedAccountGroup ?? "official_group",
+                targetQuestion: input.targetQuestion.trim(),
+                geoEnhancementGoal: input.geoEnhancementGoal,
+                targetAiPlatforms: input.targetAiPlatforms as ("豆包" | "Kimi" | "DeepSeek")[],
+              }
+            : undefined;
         draft = await generateGeoArticleDraft({
           project,
           topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
@@ -2083,6 +2203,7 @@ const geoRouter = router({
           questions: questionScope.length > 0 ? questionScope : projectQuestions,
           analyses: analysisScope.length > 0 ? analysisScope : analysesWithQuestions,
           assetLibrary,
+          platformStrategy,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "GEO 文章生成失败";
@@ -2122,9 +2243,9 @@ const geoRouter = router({
           recommendedAccountGroup: z.enum(ACCOUNT_GROUP_TYPES).optional().nullable(),
         }),
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
-        await getProjectOrThrow(input.projectId);
+        await requireProjectAccess(ctx, input.projectId);
         const rows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
         const article = rows[0];
         if (!article || article.projectId !== input.projectId) {
@@ -2183,9 +2304,9 @@ const geoRouter = router({
           articleId: z.number().int().positive(),
         }),
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
-        await getProjectOrThrow(input.projectId);
+        await requireProjectAccess(ctx, input.projectId);
         const { result, modelName, reviewedAt } = await runContentQualityReview(db, input);
         const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
         return {
@@ -2196,11 +2317,9 @@ const geoRouter = router({
           article: updated[0] ?? null,
         } as const;
       }),
-    qualityCheck: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ input }) => {
+    qualityCheck: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
-      const article = articleRows[0];
-      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+      const { article } = await requireArticleAccess(ctx, input.articleId);
       if (!(article.status === "已生成" || article.status === "待质检" || article.status === "需人工审核" || article.status === "质检未通过")) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "当前状态的文章不能重新执行质量评分" });
       }
@@ -2212,12 +2331,10 @@ const geoRouter = router({
         finalStatus: qcResult.finalStatus,
       } as const;
     }),
-    optimizeVersion: protectedProcedure.input(z.object({ articleId: z.number().int().positive(), mode: z.enum(["增强版", "FAQ", "竞品对比", "AI 可引用片段", "移除无来源数据", "资料待补充表述", "案例采集模板"]), reason: z.string().optional().default("") })).mutation(async ({ input }) => {
+    optimizeVersion: protectedProcedure.input(z.object({ articleId: z.number().int().positive(), mode: z.enum(["增强版", "FAQ", "竞品对比", "AI 可引用片段", "移除无来源数据", "资料待补充表述", "案例采集模板"]), reason: z.string().optional().default("") })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
-      const article = articleRows[0];
-      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
-      const project = await getProjectOrThrow(article.projectId);
+      const { article, projectId } = await requireArticleAccess(ctx, input.articleId);
+      const project = await requireProjectAccess(ctx, projectId);
       const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, article.projectId));
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, article.projectId));
       const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, article.projectId));
@@ -2250,11 +2367,9 @@ const geoRouter = router({
       }).where(eq(geoArticles.id, article.id));
       return { success: true, versionCount: optimized.versions.length, quality: nextQuality } as const;
     }),
-    audit: protectedProcedure.input(z.object({ articleId: z.number().int().positive(), approved: z.boolean(), note: z.string().optional().default("") })).mutation(async ({ input }) => {
+    audit: protectedProcedure.input(z.object({ articleId: z.number().int().positive(), approved: z.boolean(), note: z.string().optional().default("") })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
-      const article = articleRows[0];
-      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+      const { article } = await requireArticleAccess(ctx, input.articleId);
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
       const consistency = article.consistencyCheck as { publishAllowed?: boolean; score?: number; riskLevel?: string; blockReasons?: string[] } | null;
@@ -2270,11 +2385,9 @@ const geoRouter = router({
       }
       return { success: true } as const;
     }),
-    publish: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ input }) => {
+    publish: protectedProcedure.input(z.object({ articleId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
-      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
-      const article = articleRows[0];
-      if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
+      const { article } = await requireArticleAccess(ctx, input.articleId);
       if (!canPublishArticle(article.status as ArticleStatus)) throw new TRPCError({ code: "BAD_REQUEST", message: "未审核通过的文章不能发布" });
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
@@ -2283,7 +2396,7 @@ const geoRouter = router({
       const prePublishCheck = evaluateAssetLibraryPrePublishCheck({
         content: `${article.title}
 ${article.markdownContent}`,
-        project: await getProjectOrThrow(article.projectId),
+        project: await requireProjectAccess(ctx, article.projectId),
         basis: article.generationBasis as Parameters<typeof evaluateAssetLibraryPrePublishCheck>[0]["basis"],
         assetLibrary,
       });
@@ -2319,22 +2432,25 @@ ${article.markdownContent}`,
     }),
     retestQueue: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
         const items = await listPostPublishRetestQueue(db, input.projectId);
         return { items, count: items.length } as const;
       }),
     rewritePool: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
         const items = await listRewritePool(db, input.projectId);
         return { items, count: items.length } as const;
       }),
     triggerReview: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive(), queueId: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
         try {
           return await triggerManualReview(db, input);
         } catch (e) {
@@ -2346,9 +2462,9 @@ ${article.markdownContent}`,
       }),
     generateRewriteSuggestion: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive(), articleId: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
-        await getProjectOrThrow(input.projectId);
+        await requireProjectAccess(ctx, input.projectId);
         try {
           const out = await generateNextContentSuggestion(db, input);
           return { success: true, ...out } as const;
@@ -2366,7 +2482,7 @@ ${article.markdownContent}`,
       if (!article || article.projectId !== input.projectId || !(article.status === "已发布" || article.status === "待复测")) {
         throw new TRPCError({ code: "NOT_FOUND", message: "内容不存在或尚未发布" });
       }
-      const project = await getProjectOrThrow(article.projectId);
+      const project = await getProjectRowConn(db, article.projectId);
       const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, article.projectId)).limit(1);
       const prof = profileRows[0];
       const projectForPublic = prof
@@ -2386,8 +2502,9 @@ ${article.markdownContent}`,
   inclusionMonitoring: router({
     backfill: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
 
         const publishRecords = await db.select().from(geoPublishRecords)
           .where(eq(geoPublishRecords.projectId, input.projectId));
@@ -2425,12 +2542,9 @@ ${article.markdownContent}`,
           testStage: z.enum(["before_publish", "after_publish", "manual_check"]).optional().default("manual_check"),
         }),
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
-
-        const projectRows = await db.select().from(projects).where(eq(projects.id, input.projectId)).limit(1);
-        const project = projectRows[0];
-        if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "项目不存在" });
+        const project = await requireProjectAccess(ctx, input.projectId);
 
         const profileRows = await db
           .select()
@@ -2568,15 +2682,15 @@ ${article.markdownContent}`,
           resultIndex: z.number().int().min(0),
         }),
       )
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const db = await requireDb();
+        await requireMonitoringRecordAccess(ctx, input.monitoringRecordId);
         const rows = await db
           .select()
           .from(geoInclusionMonitoringRecords)
           .where(eq(geoInclusionMonitoringRecords.id, input.monitoringRecordId))
           .limit(1);
-        const record = rows[0];
-        if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "监测记录不存在" });
+        const record = rows[0]!;
 
         const rawResults = record.aiTestResults ?? [];
         const raw = rawResults[input.resultIndex];
@@ -2599,15 +2713,15 @@ ${article.markdownContent}`,
       }),
     results: protectedProcedure
       .input(z.object({ recordId: z.number().int().positive() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const db = await requireDb();
+        await requireMonitoringRecordAccess(ctx, input.recordId);
         const rows = await db
           .select()
           .from(geoInclusionMonitoringRecords)
           .where(eq(geoInclusionMonitoringRecords.id, input.recordId))
           .limit(1);
-        const record = rows[0];
-        if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "监测记录不存在" });
+        const record = rows[0]!;
         return {
           aiMentionStatus: record.aiMentionMonitorStatus ?? "未检测",
           aiRecommendStatus: record.aiRecommendMonitorStatus ?? "未检测",

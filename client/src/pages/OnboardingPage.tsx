@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { BarChart3, Check, Circle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { getActiveProjectId, setActiveProjectId, buildProjectUrl } from "@/lib/activeProject";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -127,8 +128,9 @@ export default function OnboardingPage() {
   }, [copied]);
 
   async function ensureProjectId(name: string): Promise<number> {
-    const existing = projects[0]?.id;
-    if (existing) return existing;
+    if (projects.length > 0) {
+      throw new Error("系统已有客户项目，请前往客户管理台新建");
+    }
     await createProject.mutateAsync({
       enterpriseName: name.trim(),
       industry: "待补充",
@@ -141,8 +143,10 @@ export default function OnboardingPage() {
       coreKeywords: [],
     });
     const refreshed = await utils.geo.projects.list.fetch();
-    const created = refreshed[0];
+    const created =
+      refreshed.find(p => p.enterpriseName === name.trim()) ?? refreshed[refreshed.length - 1];
     if (!created?.id) throw new Error("创建项目失败，请重试");
+    setActiveProjectId(created.id);
     return created.id;
   }
 
@@ -212,6 +216,7 @@ export default function OnboardingPage() {
     setPipelineStep(4);
     setStepHint("");
     if (articleResult) setGeneratedArticle(articleResult);
+    setActiveProjectId(projectId);
     setPhase("result");
   }
 
@@ -231,6 +236,27 @@ export default function OnboardingPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
         加载中...
+      </div>
+    );
+  }
+
+  if (projects.length > 0) {
+    return (
+      <div
+        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 px-4 text-center text-slate-100"
+        data-testid="onboarding-has-projects"
+      >
+        <h1 className="text-xl font-semibold">已有客户项目</h1>
+        <p className="max-w-md text-sm leading-relaxed text-slate-400">
+          日常新增客户请前往客户管理台操作。本引导仅用于系统首次创建第一个客户项目。
+        </p>
+        <Button
+          className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+          data-testid="onboarding-go-clients"
+          onClick={() => setLocation("/clients")}
+        >
+          去客户管理台
+        </Button>
       </div>
     );
   }
@@ -386,7 +412,26 @@ export default function OnboardingPage() {
             <Button type="button" className="h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => void handleCopy()}>
               {copied ? "已复制 ✓" : "复制文章内容"}
             </Button>
-            <Button type="button" variant="outline" className="mt-3 h-12 w-full border-white/15 text-cyan-100" onClick={() => setLocation("/weekly")}>
+            <Button
+              type="button"
+              className="mt-3 h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+              data-testid="onboarding-go-profile"
+              onClick={() => {
+                const pid = getActiveProjectId();
+                setLocation(pid ? buildProjectUrl("/enterprise-profile", pid) : "/clients");
+              }}
+            >
+              继续 GEO 建档
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 h-12 w-full border-white/15 text-cyan-100"
+              onClick={() => {
+                const pid = getActiveProjectId();
+                setLocation(pid ? buildProjectUrl("/workspace", pid) : "/clients");
+              }}
+            >
               进入工作台
             </Button>
             <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
@@ -399,7 +444,10 @@ export default function OnboardingPage() {
           <>
             <h1 className="text-center text-xl font-semibold text-white">内容方向已分析完成，文章生成遇到了问题</h1>
             <p className="mt-3 text-center text-sm text-slate-400">你可以在「本周内容」页查看内容建议并手动生成</p>
-            <Button type="button" className="mt-8 h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => setLocation("/weekly")}>
+            <Button type="button" className="mt-8 h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => {
+              const pid = getActiveProjectId();
+              setLocation(pid ? buildProjectUrl("/weekly", pid) : "/clients");
+            }}>
               进入工作台
             </Button>
           </>

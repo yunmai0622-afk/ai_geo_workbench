@@ -1,7 +1,26 @@
 /** 项目级平台账号核验（发布前比对绑定昵称与浏览器登录昵称） */
 
-export const BINDING_PUBLISH_PLATFORMS = ["zhihu", "baijiahao", "toutiao", "sohu"] as const;
+export const BINDING_PUBLISH_PLATFORMS = ["zhihu", "sohu", "toutiao", "baijiahao", "netease"] as const;
 export type BindingPublishPlatform = (typeof BINDING_PUBLISH_PLATFORMS)[number];
+
+/** 矩阵 Tab 顺序（与 BINDING_PUBLISH_PLATFORMS 一致） */
+export const MATRIX_PUBLISH_PLATFORMS = BINDING_PUBLISH_PLATFORMS;
+
+export type PlatformPublishCapability = "supported" | "pending_verify" | "bind_only";
+
+export const PLATFORM_PUBLISH_CAPABILITY: Record<BindingPublishPlatform, PlatformPublishCapability> = {
+  zhihu: "supported",
+  sohu: "pending_verify",
+  toutiao: "pending_verify",
+  baijiahao: "pending_verify",
+  netease: "bind_only",
+};
+
+export function platformCapabilityHint(platform: BindingPublishPlatform): string | null {
+  if (platform === "netease") return "发布待接入";
+  if (PLATFORM_PUBLISH_CAPABILITY[platform] === "pending_verify") return null;
+  return null;
+}
 
 export const PLATFORM_ACCOUNT_VERIFICATION_STATUSES = [
   "unknown",
@@ -13,9 +32,10 @@ export type PlatformAccountVerificationStatus = (typeof PLATFORM_ACCOUNT_VERIFIC
 
 export const PUBLISH_PLATFORM_LABELS: Record<BindingPublishPlatform, string> = {
   zhihu: "知乎",
-  baijiahao: "百家号",
-  toutiao: "头条号",
   sohu: "搜狐号",
+  toutiao: "头条号",
+  baijiahao: "百家号",
+  netease: "网易号",
 };
 
 export function isBindingPublishPlatform(platform: string): platform is BindingPublishPlatform {

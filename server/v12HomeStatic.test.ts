@@ -15,7 +15,7 @@ describe("V1.0 客户主路径静态回归", () => {
 
   it("侧边栏展示客户主入口（含内容进展占位），并把旧路径作为兼容别名", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    for (const label of ["增长总览", "企业档案", "AI 内容诊断", "内容资产生产", "资产发布记录", "资产进展看板", "客户交付报告"]) {
+    for (const label of ["增长总览", "GEO 建档", "AI 内容诊断", "内容资产生产", "资产发布记录", "资产进展看板", "客户交付报告"]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
     expect(layoutSource).toContain('path: "/progress"');
@@ -46,10 +46,10 @@ describe("V1.0 客户主路径静态回归", () => {
 
   it("企业档案页为档案配置台结构并保留保存入口", () => {
     const assetCenterSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    for (const text of ["企业 AI 搜索档案", "品牌与业务", "客户画像与购买场景", "案例与信任素材", "保存品牌与业务", "保存客户画像"]) {
+    for (const text of ["企业 GEO 建档", "5 分钟基础建档", "AdvancedMaterialsSection", "保存基础建档"]) {
       expect(assetCenterSource).toContain(text);
     }
-    expect(assetCenterSource).toContain("档案完整度");
+    expect(readProjectFile("client/src/components/enterpriseProfile/GeoMaterialPreviewSection.tsx")).toContain("GEO 建档预览");
     expect(assetCenterSource).not.toContain("内容风格");
     expect(assetCenterSource).not.toContain("平台授权配置占位");
   });

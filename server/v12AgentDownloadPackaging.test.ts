@@ -14,7 +14,10 @@ describe("Agent-Client-Download-Packaging", () => {
   });
 
   it("Web binding section includes download card", () => {
-    expect(read("client/src/components/PlatformAccountBindingSection.tsx")).toContain("LocalAgentDownloadCard");
+    const publish =
+      read("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx") +
+      read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
+    expect(publish).toContain("LocalAgentDownloadCard");
     expect(read("client/src/components/LocalAgentDownloadCard.tsx")).toContain("download-mac-agent");
     expect(read("client/src/components/LocalAgentDownloadCard.tsx")).toContain("detect-local-agent");
     expect(read("client/src/components/LocalAgentDownloadCard.tsx")).toContain("checkLocalAgentHealth");

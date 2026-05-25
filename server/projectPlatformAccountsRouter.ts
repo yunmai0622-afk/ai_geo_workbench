@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { ACCOUNT_GROUP_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
+import { requireProjectAccess } from "./projectAccess";
 import {
   bindLocalAgentAccount,
   bindingPlatformZod,
@@ -52,8 +53,9 @@ const purposeUpdateSchema = z.object({
 export const projectPlatformAccountsRouter = router({
   list: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       return { accounts: await listProjectPlatformAccountsForProject(db, input.projectId) } as const;
     }),
 
@@ -64,8 +66,9 @@ export const projectPlatformAccountsRouter = router({
         z.object({ ...accountInputBase, platform: bindingPlatformZod }),
       ]),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       const row = await createProjectPlatformAccount(db, input);
       return { success: true, account: row } as const;
     }),
@@ -80,8 +83,9 @@ export const projectPlatformAccountsRouter = router({
         }),
       ]),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       const row = await updateProjectPlatformAccount(db, {
         ...input,
         purposeOnly: "purposeOnly" in input && input.purposeOnly === true ? true : undefined,
@@ -96,8 +100,9 @@ export const projectPlatformAccountsRouter = router({
         accountId: z.number().int().positive(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       return deleteProjectPlatformAccount(db, input);
     }),
 
@@ -109,8 +114,9 @@ export const projectPlatformAccountsRouter = router({
         enabled: z.boolean(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       const row = await togglePlatformAccountEnabled(db, input);
       return { success: true, account: row } as const;
     }),
@@ -118,8 +124,9 @@ export const projectPlatformAccountsRouter = router({
   /** @deprecated 兼容旧前端：按 platform+accountName upsert */
   upsert: protectedProcedure
     .input(z.object({ ...accountInputBase, platform: bindingPlatformZod }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       const row = await upsertProjectPlatformAccountRecord(db, input);
       return { success: true, account: row } as const;
     }),
@@ -127,8 +134,9 @@ export const projectPlatformAccountsRouter = router({
   /** @deprecated */
   disable: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive(), platform: bindingPlatformZod }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       const grouped = await listProjectPlatformAccountsForProject(db, input.projectId);
       const platformRow = grouped.find(g => g.platform === input.platform);
       const first = platformRow?.accounts[0];
@@ -140,8 +148,9 @@ export const projectPlatformAccountsRouter = router({
   /** @deprecated */
   enable: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive(), platform: bindingPlatformZod }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       const grouped = await listProjectPlatformAccountsForProject(db, input.projectId);
       const first = grouped.find(g => g.platform === input.platform)?.accounts[0];
       if (!first) {
@@ -161,8 +170,9 @@ export const projectPlatformAccountsRouter = router({
         verificationSource: z.enum(["plugin", "manual"]).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       return verifyPlatformAccountForProjectRecord(db, input);
     }),
 
@@ -181,8 +191,9 @@ export const projectPlatformAccountsRouter = router({
         isEnabled: z.boolean().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requireDbConn();
+      await requireProjectAccess(ctx, input.projectId);
       const row = await bindLocalAgentAccount(db, input);
       return { success: true, account: row } as const;
     }),

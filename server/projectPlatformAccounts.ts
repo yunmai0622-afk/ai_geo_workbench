@@ -75,6 +75,7 @@ export async function requireDbConn(): Promise<DbConn> {
   return db;
 }
 
+/** Agent / 插件内部：仅校验项目存在（不校验 Web 用户归属，任务创建已在 Web 侧 requireProjectAccess） */
 export async function getProjectOrThrowConn(db: DbConn, projectId: number) {
   const rows = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
   const project = rows[0];

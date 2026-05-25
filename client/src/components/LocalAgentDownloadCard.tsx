@@ -6,7 +6,7 @@ import { Download, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-/** 相对路径：本地 / 线上 Manus 均自动适配当前 origin */
+/** 相对路径：本地 / 线上部署均自动适配当前 origin */
 const MAC_DOWNLOAD_ZIP = "/downloads/geo-local-agent-mac.zip";
 
 type DownloadManifest = {
@@ -16,12 +16,26 @@ type DownloadManifest = {
   winSetupUrl?: string | null;
 };
 
+/** 优先 dmg：拖入「应用程序」后比 zip 更少触发「已损坏」误报 */
 function pickMacHref(manifest: DownloadManifest | null): string {
-  const zip = manifest?.macZipUrl;
   const dmg = manifest?.macDmgUrl;
-  if (zip && zip.startsWith("/downloads/")) return zip;
+  const zip = manifest?.macZipUrl;
   if (dmg && dmg.startsWith("/downloads/")) return dmg;
+  if (zip && zip.startsWith("/downloads/")) return zip;
   return MAC_DOWNLOAD_ZIP;
+}
+
+function pickMacZipHref(manifest: DownloadManifest | null): string | null {
+  const zip = manifest?.macZipUrl;
+  return zip?.startsWith("/downloads/") ? zip : null;
+}
+
+function pickWinHref(manifest: DownloadManifest | null): string | null {
+  const setup = manifest?.winSetupUrl;
+  const zip = manifest?.winZipUrl;
+  if (setup?.startsWith("/downloads/")) return setup;
+  if (zip?.startsWith("/downloads/")) return zip;
+  return null;
 }
 
 export function LocalAgentDownloadCard() {
@@ -57,7 +71,8 @@ export function LocalAgentDownloadCard() {
       });
   }, [refreshHealth]);
 
-  const winOffered = Boolean(manifest?.winSetupUrl || manifest?.winZipUrl);
+  const winHref = pickWinHref(manifest);
+  const winOffered = Boolean(winHref);
 
   const handleDetect = async () => {
     const h = await refreshHealth();
@@ -68,8 +83,9 @@ export function LocalAgentDownloadCard() {
     }
   };
 
-  const macLabel =
-    macHref.endsWith(".dmg") ? "下载 Mac 客户端 (.dmg)" : "下载 Mac 客户端";
+  const macIsDmg = macHref.endsWith(".dmg");
+  const macZipHref = pickMacZipHref(manifest);
+  const macLabel = macIsDmg ? "下载 Mac 客户端 (.dmg 推荐)" : "下载 Mac 客户端";
 
   return (
     <div
@@ -115,18 +131,9 @@ export function LocalAgentDownloadCard() {
             {macLabel}
           </a>
         </Button>
-        {winOffered ? (
+        {winOffered && winHref ? (
           <Button type="button" size="sm" variant="outline" className={aiOutlineBtn} asChild data-testid="download-win">
-            <a
-              href={
-                manifest?.winSetupUrl?.startsWith("/downloads/")
-                  ? manifest.winSetupUrl
-                  : manifest?.winZipUrl?.startsWith("/downloads/")
-                    ? manifest.winZipUrl!
-                    : "#"
-              }
-              download
-            >
+            <a href={winHref} download>
               下载 Windows 客户端
             </a>
           </Button>
@@ -154,6 +161,42 @@ export function LocalAgentDownloadCard() {
           {checking ? <Loader2 className="mr-1 size-3.5 animate-spin" /> : <RefreshCw className="mr-1 size-3.5" />}
           检测客户端
         </Button>
+      </div>
+
+      <div
+        className="mt-4 rounded-xl border border-amber-300/25 bg-amber-400/10 px-4 py-3 text-sm leading-relaxed text-amber-50"
+        data-testid="mac-install-gatekeeper-hint"
+      >
+        <p className="font-medium text-amber-100">Mac 首次打开若提示「已损坏，无法打开」</p>
+        <p className="mt-2 text-amber-50/90">
+          这是 macOS 对<strong className="font-semibold">未签名</strong>安装包的常见拦截，不是安装包损坏。请按下面任一方式处理后再启动：
+        </p>
+        <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-amber-50/90">
+          <li>
+            <strong>推荐</strong>：下载 <strong>.dmg</strong>，双击打开后将「GEO本地发布客户端」拖入「应用程序」，从启动台打开。
+          </li>
+          <li>
+            在「应用程序」中找到该 App，<strong>按住 Control 键点击 → 打开</strong>，在弹窗中选择「打开」。
+          </li>
+          <li>
+            系统设置 → 隐私与安全性 → 若出现「仍要打开」，点击允许。
+          </li>
+          <li>
+            终端执行（将路径换成你实际安装位置）：
+            <code className="mt-1 block rounded bg-black/30 px-2 py-1 text-xs text-amber-100">
+              xattr -cr &quot;/Applications/GEO本地发布客户端.app&quot;
+            </code>
+          </li>
+        </ol>
+        {macZipHref && macIsDmg ? (
+          <p className="mt-2 text-xs text-amber-100/80">
+            若必须使用 zip 便携包：
+            <a href={macZipHref} className="ml-1 underline" download>
+              下载 Mac zip 备用
+            </a>
+            （解压后同样可能需要「右键 → 打开」或上述 xattr 命令）。
+          </p>
+        ) : null}
       </div>
     </div>
   );

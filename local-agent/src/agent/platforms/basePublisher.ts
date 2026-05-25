@@ -1,6 +1,6 @@
 import type { Page } from "playwright";
 import { touchAccountOpened } from "../profileManager";
-import { updateAccount } from "../storage";
+import { updateAccount, type StoredPlatform } from "../storage";
 import { closeContext, getOpenContext, getOrLaunchContext } from "./browserSession";
 
 export type LocalPublishPlatform = "zhihu" | "sohu" | "baijiahao" | "toutiao";
@@ -93,7 +93,7 @@ export async function fillFirstSelector(
 }
 
 export abstract class BasePlatformPublisher {
-  abstract readonly platform: LocalPublishPlatform;
+  abstract readonly platform: StoredPlatform;
   abstract readonly urls: PlatformUrls;
 
   abstract detectAccount(page: Page): Promise<string | null>;

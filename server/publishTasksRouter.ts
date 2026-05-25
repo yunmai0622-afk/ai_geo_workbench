@@ -6,8 +6,8 @@ import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { geoArticleQualityScores, geoArticles, geoPublishRecords, publishTasks, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { buildCustomExtensionZip, resolveServerUrlFromRequest } from "./extensionDownload";
+import { getCurrentUserId, requireProjectAccessConn } from "./projectAccess";
 import {
-  getProjectOrThrowConn,
   requireDbConn,
   resolvePublishPlatformAccount,
   verifyPublishTaskAccount,
@@ -142,7 +142,8 @@ export const publishTasksRouter = router({
         });
       }
 
-      const project = await getProjectOrThrowConn(db, input.projectId);
+      const ownerUserId = getCurrentUserId(ctx);
+      const project = await requireProjectAccessConn(db, ownerUserId, input.projectId);
       const boundAccount = await resolvePublishPlatformAccount(db, {
         projectId: input.projectId,
         platform: input.platform,
@@ -342,8 +343,10 @@ export const publishTasksRouter = router({
         limit: z.number().int().min(1).max(50).optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await requireDb();
+      const ownerUserId = getCurrentUserId(ctx);
+      await requireProjectAccessConn(db, ownerUserId, input.projectId);
       const rows = await db
         .select({
           id: publishTasks.id,
@@ -376,8 +379,10 @@ export const publishTasksRouter = router({
         projectId: z.number().int().positive(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await requireDb();
+      const ownerUserId = getCurrentUserId(ctx);
+      await requireProjectAccessConn(db, ownerUserId, input.projectId);
       const rows = await db
         .select({
           id: publishTasks.id,

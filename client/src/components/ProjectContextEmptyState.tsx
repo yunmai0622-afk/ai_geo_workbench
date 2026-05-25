@@ -1,0 +1,37 @@
+import { Button } from "@/components/ui/button";
+import { Building2 } from "lucide-react";
+import { useLocation } from "wouter";
+
+type Props = {
+  title?: string;
+  description?: string;
+  testId?: string;
+};
+
+export default function ProjectContextEmptyState({
+  title = "请先选择客户项目",
+  description = "该功能必须基于一个企业项目运行，请先到客户管理台选择或新建客户项目。",
+  testId = "active-project-empty",
+}: Props) {
+  const [, setLocation] = useLocation();
+
+  return (
+    <div
+      className="flex min-h-[40vh] flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center"
+      data-testid={testId}
+    >
+      <Building2 className="h-12 w-12 text-slate-600" aria-hidden />
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
+        <p className="max-w-md text-sm leading-6 text-slate-400">{description}</p>
+      </div>
+      <Button
+        className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+        onClick={() => setLocation("/clients")}
+        data-testid="go-client-dashboard"
+      >
+        去客户管理台
+      </Button>
+    </div>
+  );
+}

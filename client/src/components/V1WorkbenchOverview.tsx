@@ -9,7 +9,10 @@ import {
   AiStatusBadge,
 } from "@/components/ai/ProductUi";
 import { monitoringEvidenceRows } from "@/lib/assetProgressDisplay";
-import { aiInput } from "@/lib/aiProductUi";
+import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
+import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
+import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -66,19 +69,11 @@ function SectionSkeleton({ className = "" }: { className?: string }) {
 
 export default function V1WorkbenchOverview() {
   const [, setLocation] = useLocation();
-  const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery();
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(() => projects[0]?.id);
+  const { projectsLoading, selectedProjectId, selectedProject, projectInput, enabled } = useActiveProjectSelection();
 
   useEffect(() => {
     document.title = "AI 搜索增长总览 - GEO 内容诊断与智能发布";
   }, []);
-
-  useEffect(() => {
-    if (!selectedProjectId && projects[0]?.id) setSelectedProjectId(projects[0].id);
-  }, [projects, selectedProjectId]);
-
-  const projectInput = useMemo(() => ({ projectId: selectedProjectId }), [selectedProjectId]);
-  const enabled = Boolean(selectedProjectId);
 
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
@@ -123,6 +118,14 @@ export default function V1WorkbenchOverview() {
         publishRecordsQuery.isLoading ||
         monitoringQuery.isLoading));
 
+  if (!enabled) {
+    return (
+      <AiPageShell>
+        <ProjectContextEmptyState />
+      </AiPageShell>
+    );
+  }
+
   return (
     <AiPageShell>
       <AiPageHero
@@ -131,19 +134,7 @@ export default function V1WorkbenchOverview() {
         badge="增长驾驶舱"
         meta={updatedLabel}
       >
-        <label className="text-xs text-slate-500">当前项目</label>
-        <select
-          value={selectedProjectId ?? ""}
-          onChange={e => setSelectedProjectId(Number(e.target.value) || undefined)}
-          className={`${aiInput} min-w-[220px]`}
-        >
-          <option value="">请选择项目</option>
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.enterpriseName}
-            </option>
-          ))}
-        </select>
+        <BusinessPageProjectHeader projectName={selectedProject?.enterpriseName} testId="workbench-project-header" />
       </AiPageHero>
 
       <AiSection title="核心状态">
@@ -169,21 +160,21 @@ export default function V1WorkbenchOverview() {
             title="生成内容资产"
             description={taskCount > 0 ? `已有 ${taskCount} 条内容方向，进入生产台批量生成。` : "先完成 AI 内容诊断，系统将给出可生成的资产方向。"}
             actionLabel={taskCount > 0 ? "进入内容资产生产" : "去完成内容诊断"}
-            onAction={() => setLocation(taskCount > 0 ? "/weekly" : "/ai-diagnosis")}
+            onAction={() => setLocation(buildProjectUrl(taskCount > 0 ? "/weekly" : "/ai-diagnosis", selectedProjectId))}
           />
           <AiActionCard
             title="完成后发布后复测"
             description="对已发布 7–14 天的资产执行 AI 复测，验证可见度变化。"
             actionLabel="进入收录监测"
             variant="outline"
-            onAction={() => setLocation("/inclusion-monitoring")}
+            onAction={() => setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}
           />
           <AiActionCard
             title="查看客户交付报告"
             description="汇总经营结论、实测结果与下一轮优化动作，用于客户演示。"
             actionLabel="打开交付报告"
             variant="outline"
-            onAction={() => setLocation("/delivery-reports")}
+            onAction={() => setLocation(buildProjectUrl("/delivery-reports", selectedProjectId))}
           />
         </div>
       </AiSection>

@@ -12,15 +12,15 @@ describe("C6-A enterprise profile AI intake", () => {
   const analyze = read("server/enterpriseProfileAnalyze.ts");
 
   it("renders AI document upload entry", () => {
-    expect(page).toContain("ProfileIntakePanel");
-    expect(page).toContain("上传企业资料");
+    expect(page).toContain("ProfileUploadAssistSection");
+    expect(panel).toContain("上传企业资料");
     expect(panel).toContain("AI 解析并填充档案");
     expect(panel).toContain("先上传企业资料");
     expect(panel).toContain("拖拽文件到此处");
   });
 
   it("industry pain point options change by industry", () => {
-    expect(page).toContain("getPainOptionsForIndustry");
+    expect(read("client/src/components/enterpriseProfile/CustomerScenarioSection.tsx")).toContain("getPainOptionsForIndustry");
     expect(page).toContain("ENTERPRISE_INDUSTRY_OPTIONS");
     expect(read("shared/enterpriseProfileIndustry.ts")).toContain("industryPainPointOptions");
   });
@@ -44,7 +44,7 @@ describe("C6-A enterprise profile AI intake", () => {
     expect(panel).not.toContain("rawAnswer");
     expect(panel).not.toMatch(/JSON\.stringify\(analysis/);
     expect(page).not.toContain("SYSTEM_PROMPT");
-    expect(page).toContain("AiFilledMark");
+    expect(page).toContain("aiFilledFields");
     expect(panel).toContain("AI 已填充");
   });
 });

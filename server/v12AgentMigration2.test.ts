@@ -48,10 +48,11 @@ describe("Agent-Migration-2 local agent publish main path", () => {
     expect(read("server/agentPublishTasks.ts")).toContain("completed 状态必须提供 publicUrl");
   });
 
-  it("PlatformAccountBindingSection marks legacy accounts without profile", () => {
-    expect(read("client/src/components/PlatformAccountBindingSection.tsx")).toContain(
-      "旧账号 · 需重新绑定本地客户端",
-    );
-    expect(read("client/src/components/PlatformAccountBindingSection.tsx")).not.toMatch(/一键授权|重载插件/);
+  it("legacy account hint remains in publish flow copy", () => {
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("旧账号需在企业档案重新绑定");
+    const matrix =
+      read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx") +
+      read("client/src/components/PlatformAccountBindingSection.tsx");
+    expect(matrix).not.toMatch(/一键授权|重载插件/);
   });
 });

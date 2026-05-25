@@ -112,7 +112,7 @@ fs.writeFileSync(
 
 ## Windows
 - 当前：**无线上发布**（manifest win 字段为 null，按钮 disabled「Windows 客户端即将支持」）
-- 仅在 \`GEO_AGENT_INCLUDE_WIN=1\` 打包复制时启用 Windows 下载链接
+- Windows 下载仅在 \`manifest.json\` 存在 winSetupUrl/winZipUrl 且对应文件存在时启用
 
 ## 检测客户端
 - 仍请求本机：\`http://127.0.0.1:39888/health\`（\`shared/localAgent.ts\`）

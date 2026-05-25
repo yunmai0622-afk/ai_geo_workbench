@@ -1,31 +1,42 @@
 import type { LocalPublishPlatform, LocalPublishTask, LocalPublishResult } from "./basePublisher";
 import { baijiahaoPublisher } from "./baijiahaoPublisher";
+import { neteasePublisher } from "./neteasePublisher";
 import { sohuPublisher } from "./sohuPublisher";
 import { toutiaoPublisher } from "./toutiaoPublisher";
 import { zhihuPublisher } from "./zhihuPublisher";
 import type { BasePlatformPublisher } from "./basePublisher";
+import type { StoredPlatform } from "../storage";
 
-const PUBLISHERS: Record<LocalPublishPlatform, BasePlatformPublisher> = {
+const BINDING_PUBLISHERS: Record<StoredPlatform, BasePlatformPublisher> = {
   zhihu: zhihuPublisher,
   sohu: sohuPublisher,
   baijiahao: baijiahaoPublisher,
   toutiao: toutiaoPublisher,
+  netease: neteasePublisher,
 };
 
-export const LOCAL_AGENT_PLATFORMS = Object.keys(PUBLISHERS) as LocalPublishPlatform[];
+/** 支持 Local Agent 绑定（含网易号 bind-only） */
+export const LOCAL_AGENT_BINDING_PLATFORMS = Object.keys(BINDING_PUBLISHERS) as StoredPlatform[];
+
+/** 支持自动/半自动发布的平台 */
+export const LOCAL_AGENT_PLATFORMS = ["zhihu", "sohu", "baijiahao", "toutiao"] as LocalPublishPlatform[];
+
+export function isBindingPlatform(platform: string): platform is StoredPlatform {
+  return (LOCAL_AGENT_BINDING_PLATFORMS as readonly string[]).includes(platform);
+}
 
 export function isLocalAgentPlatform(platform: string): platform is LocalPublishPlatform {
   return (LOCAL_AGENT_PLATFORMS as readonly string[]).includes(platform);
 }
 
 export function getPublisherForPlatform(platform: string): BasePlatformPublisher | null {
-  if (!isLocalAgentPlatform(platform)) return null;
-  return PUBLISHERS[platform];
+  if (!isBindingPlatform(platform)) return null;
+  return BINDING_PUBLISHERS[platform];
 }
 
 export async function publishWithPlatform(task: LocalPublishTask): Promise<LocalPublishResult> {
   const publisher = getPublisherForPlatform(task.platform);
-  if (!publisher) {
+  if (!publisher || !isLocalAgentPlatform(task.platform)) {
     return {
       status: "failed",
       errorType: "unsupported_platform",

@@ -8,15 +8,13 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("C5-D enterprise profile page product UI", () => {
   const page = read("client/src/pages/AssetCenter.tsx");
 
-  it("uses five-block profile console layout", () => {
-    expect(page).toContain("企业 AI 搜索档案");
-    expect(page).toContain("ProfileIntakePanel");
-    expect(page).toContain("上传企业资料");
-    expect(page).toContain("档案完成度");
-    expect(page).toContain("品牌与业务");
-    expect(page).toContain("客户画像与购买场景");
-    expect(page).toContain("案例与信任素材");
-    expect(page).toContain("完成企业档案，进入 AI 内容诊断");
+  it("uses simplified GEO onboarding layout with publish env on top", () => {
+    expect(page).toContain("企业 GEO 建档");
+    expect(page).toContain("FiveMinuteBasicOnboardingSection");
+    expect(page).toContain("ProfileUploadAssistSection");
+    expect(page).toContain("EnterprisePublishEnvironmentSection");
+    expect(page).toContain("AdvancedMaterialsSection");
+    expect(page).toContain("GeoMaterialPreviewSection");
     expect(page).toContain("AiPageShell");
     expect(page).not.toContain("Section 1 · 基本身份");
     expect(page).not.toContain("GeoStatusGuide");
@@ -25,9 +23,7 @@ describe("C5-D enterprise profile page product UI", () => {
   it("keeps save handlers unchanged", () => {
     expect(page).toContain("upsertProfile.mutateAsync");
     expect(page).toContain("createCustomerCase.mutateAsync");
-    expect(page).toContain("保存品牌与业务");
-    expect(page).toContain("保存客户画像");
-    expect(page).toContain("保存信任素材");
-    expect(page).toContain("PlatformAccountBindingSection");
+    expect(page).toContain("保存基础建档");
+    expect(page).toContain("EnterprisePublishEnvironmentSection");
   });
 });

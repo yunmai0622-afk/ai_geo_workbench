@@ -18,7 +18,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    for (const label of ["增长总览", "企业档案", "AI 内容诊断", "内容资产生产", "资产发布记录", "资产进展看板", "客户交付报告"]) {
+    for (const label of ["增长总览", "GEO 建档", "AI 内容诊断", "内容资产生产", "资产发布记录", "资产进展看板", "客户交付报告"]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
     for (const forbidden of ["总览", "内容生成", "内容发布", "收录监测", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心"]) {
@@ -59,22 +59,20 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(assetSource).toContain("AiPageShell");
   });
 
-  it("企业档案页呈现档案配置台结构与资料完整度", () => {
+  it("企业档案页呈现 5 分钟建档结构", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
     for (const text of [
-      "企业 AI 搜索档案",
-      "品牌与业务",
-      "客户画像与购买场景",
-      "案例与信任素材",
-      "保存品牌与业务",
-      "保存客户画像",
-      "档案完成度",
-      "发布账号绑定",
-      "完成企业档案，进入 AI 内容诊断",
+      "企业 GEO 建档",
+      "FiveMinuteBasicOnboardingSection",
+      "保存基础建档",
+      "AdvancedMaterialsSection",
+      "AdvancedMaterialsSection",
+      "EnterprisePublishEnvironmentSection",
+      "GeoMaterialPreviewSection",
     ]) {
       expect(assetSource).toContain(text);
     }
-    expect(assetSource).toContain("不得编造案例、数据、价格和效果承诺");
+    expect(readProjectFile("client/src/components/enterpriseProfile/GeoMaterialPreviewSection.tsx")).toContain("GEO 建档预览");
     expect(assetSource).not.toContain("Section 1 · 基本身份");
   });
 

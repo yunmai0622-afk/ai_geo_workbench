@@ -20,7 +20,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getLoginUrl, isLoginConfigured } from "@/const";
+import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, Brain, Building2, FileBarChart2, FileText, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -53,7 +55,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
     title: "增长总览",
     items: [
       { icon: Sparkles, label: "增长总览", desc: "驾驶舱与下一步", path: "/", aliases: ["/", "/flow"] },
-      { icon: Building2, label: "企业档案", desc: "品牌与客户画像", path: "/enterprise-profile", aliases: ["/enterprise-profile", "/assets", "/projects"] },
+      { icon: Building2, label: "GEO 建档", desc: "完善当前企业最小资料", path: "/enterprise-profile", aliases: ["/enterprise-profile", "/assets", "/projects"] },
     ],
   },
   {
@@ -166,12 +168,25 @@ type DashboardLayoutContentProps = {
 function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
+  const { activeProjectId } = useActiveProjectId({ syncUrl: false });
+  const { data: projects = [] } = trpc.geo.projects.list.useQuery();
+  const activeProject = projects.find(project => project.id === activeProjectId);
+  const projectName = activeProject?.enterpriseName;
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = allMenuItems.find(item => item.aliases.includes(location));
+  const pathname = location.split("?")[0] || location;
+  const activeMenuItem = allMenuItems.find(item => item.aliases.includes(pathname));
   const isMobile = useIsMobile();
+
+  const navigateWithProject = (path: string) => {
+    if (path === "/clients") {
+      setLocation(path);
+      return;
+    }
+    setLocation(buildProjectUrl(path, activeProjectId));
+  };
 
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);
@@ -233,12 +248,12 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                 {!isCollapsed ? <p className="ai-sidebar-group-label">{group.title}</p> : null}
                 <SidebarMenu className="px-0 py-0">
                   {group.items.map(item => {
-                    const isActive = item.aliases.includes(location);
+                    const isActive = item.aliases.includes(pathname);
                     return (
                       <SidebarMenuItem key={item.path}>
                         <SidebarMenuButton
                           isActive={isActive}
-                          onClick={() => setLocation(item.path)}
+                          onClick={() => navigateWithProject(item.path)}
                           tooltip={item.label}
                           className={`mb-1 h-auto min-h-[3.25rem] rounded-xl border border-transparent py-2.5 text-slate-400 transition-all hover:border-violet-400/15 hover:bg-white/[0.04] hover:text-cyan-50 ${
                             isActive ? "ai-sidebar-active-bar border-cyan-400/25 bg-gradient-to-r from-cyan-500/12 to-violet-500/10 text-cyan-50" : ""
@@ -298,6 +313,24 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </div>
           </div>
         )}
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-slate-950/70 px-4 py-2.5 text-sm text-slate-300 md:px-6"
+          data-testid="current-project-bar"
+        >
+          <span data-testid="current-project-label">
+            当前客户：{projectName ?? "未选择"}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/10"
+            data-testid="switch-client-button"
+            onClick={() => setLocation("/clients")}
+          >
+            切换客户
+          </Button>
+        </div>
         <main className="ai-app-canvas geo-grid-bg notranslate min-h-screen flex-1 overflow-x-hidden p-4 text-slate-100 md:p-6 lg:p-8" translate="no">
           {children}
         </main>

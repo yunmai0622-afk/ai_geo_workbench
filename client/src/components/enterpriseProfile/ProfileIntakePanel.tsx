@@ -328,7 +328,7 @@ export function ProfileIntakePanel({
   const missingFields = useMemo(() => fieldRows.filter(r => r.status === "missing").map(r => r.label), [fieldRows]);
 
   return (
-    <div id="profile-upload" className="scroll-mt-24 space-y-4">
+    <div className="scroll-mt-24 space-y-4" data-testid="profile-intake-panel">
       <AiSection title={sectionTitle} description={sectionDescription}>
         <div className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}>
           {enterpriseName.trim() ? (

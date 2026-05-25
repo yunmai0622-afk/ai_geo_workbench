@@ -21,6 +21,11 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
+import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
+import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
+import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
+import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
@@ -49,6 +54,12 @@ import {
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import { type resolveArticleLifecycleView } from "@shared/articleLifecycle";
 import { isLegacyAiGeneratedCoverUrl, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
+import {
+  buildDefaultPlatformStrategy,
+  getPlatformRule,
+  validatePlatformContentStrategy,
+  type PlatformContentStrategyInput,
+} from "@shared/platformContentRules";
 import {
   DEFAULT_WEEKLY_GENERATION_COUNT,
   MAX_WEEKLY_GENERATION_COUNT,
@@ -97,6 +108,7 @@ type ArticleRow = {
   lifecycleStatus?: string | null;
   lifecycleEvents?: unknown;
   publicPath?: string | null;
+  generationBasis?: Record<string, unknown> | null;
   lifecycle?: ReturnType<typeof resolveArticleLifecycleView>;
   postPublish?: {
     pendingReview?: boolean;
@@ -167,15 +179,7 @@ function isInThisWeek(createdAt: Date | string | null | undefined): boolean {
 }
 
 function useProjectSelection() {
-  const { data: projects = [] } = trpc.geo.projects.list.useQuery();
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>();
-
-  useEffect(() => {
-    if (!selectedProjectId && projects[0]?.id) setSelectedProjectId(projects[0].id);
-  }, [projects, selectedProjectId]);
-
-  const projectInput = useMemo(() => ({ projectId: selectedProjectId }), [selectedProjectId]);
-  return { projects: projects as ProjectOption[], selectedProjectId, setSelectedProjectId, projectInput, enabled: Boolean(selectedProjectId) };
+  return useActiveProjectSelection();
 }
 
 type ParsedTaskCard = {
@@ -282,9 +286,11 @@ function articleCoverPreviewSrc(article: ArticleRow): string | null {
 export default function WeeklyContentPage() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
-  const { projects, selectedProjectId, setSelectedProjectId, projectInput, enabled } = useProjectSelection();
+  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } = useProjectSelection();
 
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
+  const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
+  const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
   const topicsQuery = trpc.geo.articles.topics.list.useQuery(projectInput, { enabled });
   const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
   const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
@@ -321,6 +327,9 @@ export default function WeeklyContentPage() {
   const [regeneratingCoverIds, setRegeneratingCoverIds] = useState<Set<number>>(() => new Set());
   const [unsavedArticleIds, setUnsavedArticleIds] = useState<Set<number>>(() => new Set());
   const [selectedPublishAccountIds, setSelectedPublishAccountIds] = useState<Record<string, number>>({});
+  const [platformStrategy, setPlatformStrategy] = useState<PlatformContentStrategyInput>(() =>
+    buildDefaultPlatformStrategy(),
+  );
 
   type PlatformAccountItem = {
     id: number;
@@ -347,7 +356,6 @@ export default function WeeklyContentPage() {
     return h;
   }, []);
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
 
@@ -406,6 +414,30 @@ export default function WeeklyContentPage() {
   }, [publishArticle, selectedPlatforms, pickPublishAccount]);
 
   const tasks = (tasksQuery.data ?? []) as TaskRow[];
+  const targetQuestionOptions = useMemo(() => {
+    const fromQuestions = (questionsQuery.data ?? [])
+      .map((q: { questionText?: string }) => q.questionText?.trim())
+      .filter(Boolean) as string[];
+    const fromTasks = tasks.map(t => t.taskName?.trim()).filter(Boolean) as string[];
+    return Array.from(new Set([...fromQuestions, ...fromTasks]));
+  }, [questionsQuery.data, tasks]);
+
+  useEffect(() => {
+    if (!platformStrategy.targetQuestion.trim() && targetQuestionOptions[0]) {
+      setPlatformStrategy(prev => ({ ...prev, targetQuestion: targetQuestionOptions[0]! }));
+    }
+  }, [targetQuestionOptions, platformStrategy.targetQuestion]);
+
+  const platformStrategyError = useMemo(
+    () => validatePlatformContentStrategy(platformStrategy),
+    [platformStrategy],
+  );
+
+  const diagnosisGapPreview = useMemo(() => {
+    const rows = (analysisQuery.data ?? []) as Array<{ contentGap?: string | null }>;
+    const gaps = rows.map(r => r.contentGap?.trim()).filter(Boolean).slice(0, 2);
+    return gaps.length ? gaps.join("；") : null;
+  }, [analysisQuery.data]);
   const topics = (topicsQuery.data ?? []) as TopicRow[];
   const articles = (articlesQuery.data ?? []) as ArticleRow[];
   const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
@@ -475,9 +507,23 @@ export default function WeeklyContentPage() {
 
   const generateOne = useCallback(
     async (topicId: number) => {
+      const strategyErr = validatePlatformContentStrategy(platformStrategy);
+      if (strategyErr) {
+        toast.error(strategyErr);
+        return false;
+      }
       setGeneratingTopicIds(prev => new Set(prev).add(topicId));
       try {
-        await generateArticleMutation.mutateAsync({ topicId });
+        await generateArticleMutation.mutateAsync({
+          topicId,
+          targetPublishPlatform: platformStrategy.targetPublishPlatform,
+          contentStrategyType: platformStrategy.contentStrategyType,
+          publishIdentity: platformStrategy.publishIdentity,
+          recommendedAccountGroup: platformStrategy.recommendedAccountGroup,
+          targetQuestion: platformStrategy.targetQuestion.trim(),
+          geoEnhancementGoal: platformStrategy.geoEnhancementGoal,
+          targetAiPlatforms: [...platformStrategy.targetAiPlatforms],
+        });
         await invalidateArticles();
         return true;
       } catch {
@@ -491,7 +537,7 @@ export default function WeeklyContentPage() {
         });
       }
     },
-    [generateArticleMutation, invalidateArticles],
+    [generateArticleMutation, invalidateArticles, platformStrategy],
   );
 
   const handleGenerateOne = (topicId: number) => {
@@ -510,6 +556,10 @@ export default function WeeklyContentPage() {
 
   const handleWeeklyGenerate = async () => {
     if (!selectedProjectId) return;
+    if (platformStrategyError) {
+      toast.error(platformStrategyError);
+      return;
+    }
     const targetCount = resolveGenerationCount();
     if (targetCount == null) return;
 
@@ -783,7 +833,7 @@ export default function WeeklyContentPage() {
       toast.error(
         "未检测到本地发布客户端。请先下载安装并启动本地发布客户端，然后到企业档案绑定发布账号。",
       );
-      setLocation("/enterprise-profile#platform-accounts");
+      selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#platform-accounts");
       return;
     }
     for (const slug of Array.from(selectedPlatforms)) {
@@ -795,7 +845,7 @@ export default function WeeklyContentPage() {
           toast.error(
             `${publishBlockedNoLocalProfileMessage(slug)} 请先下载安装并启动本地发布客户端，然后到企业档案绑定发布账号。`,
           );
-          setLocation("/enterprise-profile#platform-accounts");
+          selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#platform-accounts");
           return;
         }
         if (allEnabled.some(a => a.sessionStatus !== "active")) {
@@ -840,30 +890,40 @@ export default function WeeklyContentPage() {
     }
   };
 
+  if (!enabled && !projectsLoading) {
+    return (
+      <AiPageShell>
+        <ProjectContextEmptyState />
+      </AiPageShell>
+    );
+  }
+
   return (
     <AiPageShell>
       <AiPageHero
         title="内容资产生产"
-        description="围绕目标问题批量生成内容资产，编辑确认标题、正文与封面后再发布到外部平台。"
+        description="基于当前企业资料生成平台化 GEO 内容。"
         badge="AI 内容资产编辑台"
       >
-        <label className="text-xs text-slate-500">当前项目</label>
-        <select
-          value={selectedProjectId ?? ""}
-          onChange={e => setSelectedProjectId(Number(e.target.value) || undefined)}
-          className={`${aiInput} min-w-[200px]`}
-        >
-          <option value="">请选择项目</option>
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.enterpriseName}
-            </option>
-          ))}
-        </select>
+        <BusinessPageProjectHeader projectName={selectedProject?.enterpriseName} testId="weekly-project-header" />
       </AiPageHero>
 
       {enabled && queriesReady && !showDiagnosisEmpty && !showDirectionEmpty && topics.length > 0 ? (
         <>
+          <PlatformContentStrategyPanel
+            value={platformStrategy}
+            onChange={setPlatformStrategy}
+            targetQuestionOptions={targetQuestionOptions}
+            disabled={anyGenerating}
+          />
+          {diagnosisGapPreview ? (
+            <p className="text-sm text-slate-400" data-testid="diagnosis-gap-preview">
+              AI 诊断内容缺口（将写入生成 Prompt）：{diagnosisGapPreview}
+            </p>
+          ) : null}
+          {platformStrategyError ? (
+            <p className="text-sm text-amber-200">{platformStrategyError}</p>
+          ) : null}
           <section className="ai-console-panel space-y-6 rounded-2xl border border-cyan-400/20 p-5 md:p-6">
             <div>
               <h2 className="text-lg font-semibold text-white">AI 内容资产生产控制台</h2>
@@ -923,7 +983,12 @@ export default function WeeklyContentPage() {
               type="button"
               variant="ai"
               className="h-12 w-full text-base disabled:opacity-50 sm:w-auto sm:min-w-[220px]"
-              disabled={anyGenerating || (countPreset === "custom" && Boolean(countError)) || tasks.length === 0}
+              disabled={
+                anyGenerating ||
+                (countPreset === "custom" && Boolean(countError)) ||
+                tasks.length === 0 ||
+                Boolean(platformStrategyError)
+              }
               onClick={() => void handleWeeklyGenerate()}
             >
               {batchBusy && batchState ? `正在生成 ${batchState.target} 篇内容…` : "生成内容资产"}
@@ -951,9 +1016,7 @@ export default function WeeklyContentPage() {
         </>
       ) : null}
 
-      {!enabled ? (
-        <p className="mt-10 text-sm text-slate-400">请先选择项目</p>
-      ) : tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
+      {tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
         <p className="mt-10 text-sm text-amber-100">暂时无法加载，请刷新重试</p>
       ) : !queriesReady || preparingTopics || generateTopicsMutation.isPending ? (
         <div className="mt-16 flex flex-col items-center gap-3 text-slate-300">
@@ -965,14 +1028,14 @@ export default function WeeklyContentPage() {
           title="当前暂无可生成内容任务"
           description="请先完成 AI 内容诊断，系统将基于品牌定位生成内容资产方向。"
           actionLabel="去完成内容诊断"
-          onAction={() => setLocation("/ai-diagnosis")}
+          onAction={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
         />
       ) : showDirectionEmpty ? (
         <AiEmptyState
           title="当前暂无可生成内容任务"
           description="请先完成 AI 内容诊断，系统将基于品牌定位生成内容资产方向。"
           actionLabel="去完成内容诊断"
-          onAction={() => setLocation("/ai-diagnosis")}
+          onAction={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
         />
       ) : topics.length === 0 ? (
         <p className="text-sm text-slate-400">暂无选题</p>
@@ -1021,6 +1084,21 @@ export default function WeeklyContentPage() {
                     {isGenerated && article ? (
                       <p className="mt-1 text-xs text-violet-200/90" data-testid="article-strategy-summary">
                         {formatArticleStrategySummary(article)}
+                        {(() => {
+                          const ps = article.generationBasis?.platformContentStrategy as
+                            | Record<string, unknown>
+                            | undefined;
+                          const label =
+                            typeof ps?.targetPublishPlatformLabel === "string"
+                              ? ps.targetPublishPlatformLabel
+                              : null;
+                          return label ? ` · 发布平台：${label}` : "";
+                        })()}
+                      </p>
+                    ) : null}
+                    {!article && (isPending || isGenerating) ? (
+                      <p className="mt-1 text-xs text-slate-500" data-testid="article-planned-platform">
+                        将按 {getPlatformRule(platformStrategy.targetPublishPlatform).label} 规则生成
                       </p>
                     ) : null}
                     {isGenerated && article ? (
@@ -1156,7 +1234,7 @@ export default function WeeklyContentPage() {
                               variant="outline"
                               size="sm"
                               className="border-white/15 text-slate-400"
-                              onClick={() => setLocation("/content-publishing")}
+                              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
                             >
                               标记已发布
                             </Button>
@@ -1216,7 +1294,7 @@ export default function WeeklyContentPage() {
                           variant="outline"
                           size="sm"
                           className="w-full border-white/15 text-slate-300"
-                          onClick={() => setLocation("/content-publishing")}
+                          onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
                         >
                           查看发布记录
                         </Button>
@@ -1427,7 +1505,7 @@ export default function WeeklyContentPage() {
                 className="w-full border-amber-400/30 text-amber-100"
                 onClick={() => {
                   setPublishDialogOpen(false);
-                  setLocation("/enterprise-profile#platform-accounts");
+                  selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#platform-accounts");
                 }}
               >
                 去绑定账号

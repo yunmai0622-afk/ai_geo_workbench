@@ -1,12 +1,15 @@
 {
-  "copiedAt": "2026-05-25T08:55:00.000Z",
-  "sourceDir": "local-agent/release",
+  "version": "1.0.0",
+  "copiedAt": "2026-05-25T09:56:00.615Z",
+  "sourceDir": "/Users/wangwenzhao/Documents/Codex/2026-05-11/ai-geo-codex-todo-md-todo/local-agent/release",
   "files": [
     "client/public/downloads/geo-local-agent-mac.dmg",
-    "client/public/downloads/geo-local-agent-mac.zip"
+    "client/public/downloads/geo-local-agent-mac.zip",
+    "client/public/downloads/geo-local-agent-win.zip",
+    "client/public/downloads/geo-local-agent-win.exe"
   ],
   "macDmgUrl": "/downloads/geo-local-agent-mac.dmg",
   "macZipUrl": "/downloads/geo-local-agent-mac.zip",
-  "winZipUrl": null,
-  "winSetupUrl": null
+  "winZipUrl": "/downloads/geo-local-agent-win.zip",
+  "winSetupUrl": "/downloads/geo-local-agent-win.exe"
 }

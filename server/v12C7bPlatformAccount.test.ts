@@ -45,8 +45,13 @@ describe("C7-B project platform account binding", () => {
   });
 
   it("asset center has platform binding section", () => {
-    expect(read("client/src/pages/AssetCenter.tsx")).toContain("PlatformAccountBindingSection");
-    expect(read("client/src/components/PlatformAccountBindingSection.tsx")).toContain("平台账号绑定");
+    expect(read("client/src/pages/AssetCenter.tsx")).toContain("EnterprisePublishEnvironmentSection");
+    expect(read("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx")).toContain(
+      "PlatformAccountBindingSection",
+    );
+    expect(read("client/src/components/platformAccounts/usePlatformAccountBinding.ts")).toContain(
+      "绑定${PUBLISH_PLATFORM_LABELS[selectedPlatform]}账号",
+    );
   });
 
   it("C7-B-Fix: migration and rollout hints", () => {
@@ -58,9 +63,11 @@ describe("C7-B project platform account binding", () => {
     expect(schema).toContain("project_platform_accounts");
     expect(schema).toContain("accountVerificationStatus");
 
-    const binding = read("client/src/components/PlatformAccountBindingSection.tsx");
-    expect(binding).toContain("本地客户端");
-    expect(binding).toContain("绑定发布账号");
+    const binding =
+      read("client/src/components/PlatformAccountBindingSection.tsx") +
+      read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
+    expect(binding).toContain("本地");
+    expect(binding).toContain("PlatformAccountMatrix");
     expect(binding).toContain("LOCAL_AGENT_BASE_URL");
     expect(binding).not.toContain("GEO_START_AUTH");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");

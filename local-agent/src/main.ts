@@ -132,7 +132,7 @@ ipcMain.handle("agent:createZhihuProfile", async () => {
 });
 
 ipcMain.handle("agent:createPlatformProfile", async (_e, platform: string) => {
-  const allowed: StoredPlatform[] = ["zhihu", "sohu", "baijiahao", "toutiao"];
+  const allowed: StoredPlatform[] = ["zhihu", "sohu", "baijiahao", "toutiao", "netease"];
   if (!allowed.includes(platform as StoredPlatform)) {
     return { ok: false, message: `不支持的平台: ${platform}` };
   }

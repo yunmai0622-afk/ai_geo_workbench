@@ -2,7 +2,7 @@ import http from "http";
 import { URL } from "url";
 import { AGENT_VERSION, loadOrCreateAgentMeta } from "./agentMeta";
 import { detectPlatformAccount, openLoginWindow } from "./platformActions";
-import { LOCAL_AGENT_PLATFORMS } from "./platforms/publisherFactory";
+import { LOCAL_AGENT_BINDING_PLATFORMS } from "./platforms/publisherFactory";
 import { createPlatformProfile } from "./profileManager";
 import { readAccounts } from "./storage";
 
@@ -52,7 +52,7 @@ export function startLocalAgentServer(): http.Server {
           version: AGENT_VERSION,
           platform: process.platform,
           startedAt: meta.lastStartedAt,
-          supportedPlatforms: LOCAL_AGENT_PLATFORMS,
+          supportedPlatforms: LOCAL_AGENT_BINDING_PLATFORMS,
         });
         return;
       }
@@ -72,11 +72,11 @@ export function startLocalAgentServer(): http.Server {
           accountRole?: string | null;
           accountGroup?: string | null;
         }>(req);
-        const platform = body.platform as (typeof LOCAL_AGENT_PLATFORMS)[number] | undefined;
-        if (!platform || !LOCAL_AGENT_PLATFORMS.includes(platform)) {
+        const platform = body.platform as (typeof LOCAL_AGENT_BINDING_PLATFORMS)[number] | undefined;
+        if (!platform || !LOCAL_AGENT_BINDING_PLATFORMS.includes(platform)) {
           sendJson(res, 400, {
             ok: false,
-            message: `platform 须为 ${LOCAL_AGENT_PLATFORMS.join(" / ")} 之一`,
+            message: `platform 须为 ${LOCAL_AGENT_BINDING_PLATFORMS.join(" / ")} 之一`,
           });
           return;
         }

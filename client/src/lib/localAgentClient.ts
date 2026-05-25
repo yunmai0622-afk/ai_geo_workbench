@@ -57,7 +57,7 @@ export async function checkLocalAgentHealth(): Promise<LocalAgentHealth | null> 
 }
 
 export async function createPlatformProfile(input: {
-  platform: "zhihu" | "sohu" | "baijiahao" | "toutiao";
+  platform: "zhihu" | "sohu" | "baijiahao" | "toutiao" | "netease";
   projectId: number;
   accountRole?: string | null;
   accountGroup?: string | null;

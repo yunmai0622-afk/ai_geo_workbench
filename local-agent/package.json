@@ -14,7 +14,7 @@
     "smoke:zhihu-detect": "npm run build && node scripts/zhihu_detect_smoke.mjs",
     "smoke:session-reuse": "npm run build && node scripts/session_reuse_smoke.mjs",
     "package:mac": "npm run build && electron-builder --mac dmg zip && node ../scripts/copy_local_agent_download.mjs",
-    "package:win": "npm run build && electron-builder --win nsis zip",
+    "package:win": "npm run build && electron-builder --win --x64 && node ../scripts/copy_local_agent_download.mjs",
     "copy-downloads": "node ../scripts/copy_local_agent_download.mjs",
     "postinstall": "node scripts/ensure-electron.mjs || true; playwright install chromium || true"
   },
@@ -37,12 +37,15 @@
       "dist/**/*",
       "package.json"
     ],
+    "afterPack": "scripts/electron-after-pack.cjs",
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
         "dmg",
         "zip"
-      ]
+      ],
+      "gatekeeperAssess": false,
+      "hardenedRuntime": false
     },
     "win": {
       "target": [
@@ -52,7 +55,10 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GEO本地发布客户端"
     }
   }
 }

@@ -44,16 +44,20 @@ describe("P2-B one-click auth account detect", () => {
     expect(weekly).toContain("checkLocalAgentHealth");
   });
 
-  it("PlatformAccountBindingSection uses local agent HTTP not extension auth", () => {
-    const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
-    expect(ui).toContain("绑定发布账号");
+  it("platform account matrix uses local agent HTTP not extension auth", () => {
+    const ui =
+      read("client/src/components/platformAccounts/usePlatformAccountBinding.ts") +
+      read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
+    expect(ui).toContain("bind-publish-account-");
     expect(ui).toContain("checkLocalAgentHealth");
     expect(ui).not.toContain("GEO_START_AUTH");
     expect(ui).not.toContain("一键授权");
   });
 
   it("Web bind flow opens confirm after local detect", () => {
-    const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
+    const ui =
+      read("client/src/components/platformAccounts/usePlatformAccountBinding.ts") +
+      read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
     expect(ui).toContain("detectLocalAgentAccount");
     expect(ui).toContain("bindLocalAgentAccount");
     expect(ui).toMatch(/我已完成登录，检测账号/);

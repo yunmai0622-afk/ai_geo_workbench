@@ -21,7 +21,12 @@ const sources = {
   guide: read('client/src/components/GeoStatusGuide.tsx'),
   assets:
     read('client/src/pages/AssetCenter.tsx') +
-    read('client/src/components/enterpriseProfile/ProfileIntakePanel.tsx'),
+    read('client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx') +
+    read('client/src/components/enterpriseProfile/ProfileUploadAssistSection.tsx') +
+    read('client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx') +
+    read('client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx') +
+    read('client/src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx') +
+    read('client/src/components/enterpriseProfile/GeoMaterialPreviewSection.tsx'),
 };
 
 const failures = [];
@@ -55,21 +60,19 @@ for (const item of ['当前阶段', '完成度', '下一步动作', '为什么�
   assertContains('状态引导条组件', sources.guide, item);
 }
 for (const item of [
-  '企业 AI 搜索档案',
-  '上传企业资料',
-  'AI 解析并填充档案',
-  '先上传企业资料',
+  '企业 GEO 建档',
+  '5 分钟基础建档',
+  '保存基础建档',
+  '资料上传与 AI 辅助解析',
   '先新建第一个企业项目',
-  '当前资料将应用到',
   '新增企业项目',
-  '品牌与业务',
-  '客户画像与购买场景',
-  '案例与信任素材',
-  '发布账号绑定',
-  '保存品牌与业务',
-  '保存客户画像',
-  '档案完成度',
-  '完成企业档案，进入 AI 内容诊断',
+  'EnterprisePublishEnvironmentSection',
+  '发布环境与账号绑定',
+  'FiveMinuteBasicOnboardingSection',
+  'ProfileUploadAssistSection',
+  'AdvancedMaterialsSection',
+  'CustomerCaseLibrarySection',
+  'GEO 建档预览',
 ]) {
   assertContains('企业档案页', sources.assets, item);
 }

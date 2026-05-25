@@ -10,11 +10,13 @@ describe("Profile UX enterprise archive console", () => {
   const panel = read("client/src/components/enterpriseProfile/ProfileIntakePanel.tsx");
 
   it("uses customer-facing archive title and intake copy", () => {
-    expect(page).toContain("企业 AI 搜索档案");
+    expect(page).toContain("企业 GEO 建档");
     expect(panel).toContain("先上传企业资料");
-    expect(page).toContain("客户画像与购买场景");
-    expect(page).toContain("案例与信任素材");
-    expect(page).toContain("发布账号绑定");
+    expect(page).toContain("FiveMinuteBasicOnboardingSection");
+    expect(page).toContain("AdvancedMaterialsSection");
+    expect(read("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx")).toContain(
+      "发布环境与账号绑定",
+    );
   });
 
   it("does not expose engineering section titles", () => {
@@ -23,9 +25,14 @@ describe("Profile UX enterprise archive console", () => {
     expect(page).not.toContain("Section 3");
   });
 
-  it("keeps platform binding and one-click auth", () => {
-    expect(page).toContain("PlatformAccountBindingSection");
-    expect(read("client/src/components/PlatformAccountBindingSection.tsx")).toContain("绑定发布账号");
+  it("keeps platform binding matrix without chrome plugin auth", () => {
+    expect(page).toContain("EnterprisePublishEnvironmentSection");
+    const matrix = read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
+    expect(matrix).toContain("平台账号矩阵");
+    expect(read("client/src/components/platformAccounts/usePlatformAccountBinding.ts")).toContain(
+      "绑定${PUBLISH_PLATFORM_LABELS[selectedPlatform]}账号",
+    );
+    expect(matrix).not.toMatch(/一键授权|Chrome\s*插件/);
   });
 
   it("does not add schema migration or new router procedures", () => {
@@ -35,6 +42,6 @@ describe("Profile UX enterprise archive console", () => {
   });
 
   it("keeps industry pain options linked", () => {
-    expect(page).toContain("getPainOptionsForIndustry");
+    expect(read("client/src/components/enterpriseProfile/CustomerScenarioSection.tsx")).toContain("getPainOptionsForIndustry");
   });
 });

@@ -16,14 +16,16 @@ describe("Agent-1 Web + local-agent account binding", () => {
   it("local-agent can create zhihu profile via HTTP", () => {
     const server = read("local-agent/src/agent/localServer.ts");
     expect(server).toContain('pathname === "/profiles/create"');
-    expect(server).toContain("LOCAL_AGENT_PLATFORMS");
+    expect(server).toContain("LOCAL_AGENT_BINDING_PLATFORMS");
     const storage = read("local-agent/src/agent/storage.ts");
     expect(storage).not.toMatch(/password|cookie/i);
   });
 
-  it("PlatformAccountBindingSection uses local agent not chrome plugin", () => {
-    const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
-    expect(ui).toContain("绑定发布账号");
+  it("platform account matrix uses local agent not chrome plugin", () => {
+    const ui =
+      read("client/src/components/platformAccounts/usePlatformAccountBinding.ts") +
+      read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
+    expect(ui).toContain("bind-publish-account-");
     expect(ui).toContain("checkLocalAgentHealth");
     expect(ui).toContain("LOCAL_AGENT_BASE_URL");
     expect(read("shared/localAgent.ts")).toContain("39888");

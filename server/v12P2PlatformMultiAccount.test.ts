@@ -108,9 +108,12 @@ describe("P2 platform multi-account binding & publish", () => {
   });
 
   it("multi-account binding UI lists accounts per platform", () => {
-    const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
-    expect(ui).toContain("绑定发布账号");
-    expect(ui).toContain("platformAccounts.bindLocalAgentAccount");
+    const ui =
+      read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx") +
+      read("client/src/components/platformAccounts/PlatformAccountTable.tsx") +
+      read("client/src/components/platformAccounts/usePlatformAccountBinding.ts");
+    expect(ui).toContain("bind-publish-account-");
+    expect(ui).toContain("bindLocalAgentAccount");
     expect(ui).toContain('data-testid="platform-account-row"');
   });
 

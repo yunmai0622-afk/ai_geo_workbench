@@ -7,7 +7,7 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("C6-B enterprise profile flow order", () => {
   const page = read("client/src/pages/AssetCenter.tsx");
-  const panel = read("client/src/components/enterpriseProfile/ProfileIntakePanel.tsx");
+  const upload = read("client/src/components/enterpriseProfile/ProfileUploadAssistSection.tsx");
 
   it("shows create project first when no projects", () => {
     expect(page).toContain("先新建第一个企业项目");
@@ -15,9 +15,9 @@ describe("C6-B enterprise profile flow order", () => {
     expect(page).toContain("hasSelectedProject");
   });
 
-  it("hides intake and forms without selected project", () => {
+  it("hides onboarding blocks without selected project", () => {
     expect(page).toContain("{hasSelectedProject ? (");
-    expect(page).toMatch(/hasSelectedProject \?[\s\S]*ProfileIntakePanel/);
+    expect(page).toMatch(/hasSelectedProject \?[\s\S]*FiveMinuteBasicOnboardingSection/);
   });
 
   it("places new project as secondary when projects exist", () => {
@@ -25,13 +25,15 @@ describe("C6-B enterprise profile flow order", () => {
     expect(page).toContain("<details");
   });
 
-  it("shows intake at top of profile console when project selected", () => {
-    expect(panel).toContain("当前资料将应用到");
-    expect(panel).toContain("先上传企业资料");
-    const intakeBlock = page.indexOf("<ProfileIntakePanel");
-    const brandBlock = page.indexOf('id="profile-brand"');
-    expect(intakeBlock).toBeGreaterThan(-1);
-    expect(brandBlock).toBeGreaterThan(intakeBlock);
+  it("shows publish env then basic onboarding when project selected", () => {
+    expect(upload).toContain("资料上传与 AI 辅助解析");
+    const publishBlock = page.indexOf("<EnterprisePublishEnvironmentSection");
+    const basicBlock = page.indexOf("<FiveMinuteBasicOnboardingSection");
+    const uploadBlock = page.indexOf("<ProfileUploadAssistSection");
+    expect(publishBlock).toBeGreaterThan(-1);
+    expect(basicBlock).toBeGreaterThan(-1);
+    expect(publishBlock).toBeLessThan(basicBlock);
+    expect(basicBlock).toBeLessThan(uploadBlock);
   });
 
   it("auto switches after create with hint message", () => {

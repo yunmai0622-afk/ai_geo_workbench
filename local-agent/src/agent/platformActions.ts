@@ -1,6 +1,6 @@
 import { getAccountByProfileId } from "./storage";
-import { getPublisherForPlatform, isLocalAgentPlatform } from "./platforms/publisherFactory";
-import type { LocalPublishPlatform } from "./platforms/basePublisher";
+import { getPublisherForPlatform, isBindingPlatform, isLocalAgentPlatform } from "./platforms/publisherFactory";
+import type { StoredPlatform } from "./storage";
 
 export type AgentStep =
   | "ok"
@@ -24,10 +24,10 @@ export type AgentResult<T = unknown> = {
   data?: T;
 };
 
-function resolvePlatform(profileId: string): LocalPublishPlatform | null {
+function resolvePlatform(profileId: string): StoredPlatform | null {
   const acc = getAccountByProfileId(profileId);
   if (!acc) return null;
-  return isLocalAgentPlatform(acc.platform) ? acc.platform : null;
+  return isBindingPlatform(acc.platform) ? acc.platform : null;
 }
 
 export async function openLoginWindow(profileId: string): Promise<AgentResult<{ url: string }>> {
@@ -154,13 +154,16 @@ export async function fillZhihuDraft(
     };
   }
   const platform = resolvePlatform(profileId);
-  const publisher = platform ? getPublisherForPlatform(platform) : null;
+  if (!platform || !isLocalAgentPlatform(platform)) {
+    return { ok: false, step: "write_page_not_found", message: "该平台暂不支持自动填稿" };
+  }
+  const publisher = getPublisherForPlatform(platform);
   if (!publisher) {
     return { ok: false, step: "write_page_not_found", message: "publisher 不可用" };
   }
   const outcome = await publisher.publish({
     taskId: 0,
-    platform: publisher.platform,
+    platform,
     localProfileId: profileId,
     expectedAccountName: "",
     title,

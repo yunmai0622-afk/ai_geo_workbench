@@ -39,9 +39,12 @@ GEO Web **企业档案 → 平台账号绑定** 顶部可下载：
 
 ### 1. 安装
 
-1. 双击 `.dmg`，将 **GEO本地发布客户端** 拖入「应用程序」。
-2. 首次打开若提示「无法验证开发者」：系统设置 → 隐私与安全性 → **仍要打开**（或右键 App → 打开）。
-3. 若 Gatekeeper 拦截：可对 App 执行 `xattr -cr "/Applications/GEO本地发布客户端.app"` 后重试（仅本机信任时使用）。
+1. **务必优先下载 `.dmg`**（网页主按钮已默认 dmg）。双击后将 **GEO本地发布客户端** 拖入「应用程序」，从启动台打开。
+2. 若提示 **「已损坏，无法打开」**：这是 macOS 对未签名安装包的常见拦截，**不是文件损坏**。任选其一：
+   - 在「应用程序」中 **Control + 点击** App → **打开** → 确认「打开」；
+   - 系统设置 → 隐私与安全性 → **仍要打开**；
+   - 终端：`xattr -cr "/Applications/GEO本地发布客户端.app"` 后再次双击。
+3. 若从 **zip** 解压运行：解压后对 `.app` 执行 `xattr -cr "/路径/GEO本地发布客户端.app"`，并尽量改用 dmg 安装到「应用程序」。
 
 ### 2. 启动与确认 39888
 
@@ -61,13 +64,60 @@ GEO Web **企业档案 → 平台账号绑定** 顶部可下载：
 
 1. 退出客户端（菜单退出或关闭窗口）。
 2. 删除 `/Applications/GEO本地发布客户端.app`。
-3. 可选删除本机数据（将清除登录态）：`local-agent` 目录下的 `data/`、`profiles/`（开发目录）或安装版在用户目录下的等价数据路径（见客户端设置说明）。
+3. 可选删除本机数据（将清除登录态）：开发版在 `local-agent/data/`、`profiles/`；**安装版**在 macOS `~/Library/Application Support/GEO本地发布客户端/`（含 `data/`、`profiles/`）。
 
 ### 5. 安全说明
 
 - **不保存平台密码**，`accounts.json` 无 password 字段。
 - **不上传 Cookie**；Cookie 仅在本机 Chromium Profile 目录。
 - Web 仅保存 `localAgentId`、`localProfileId` 等元数据。
+
+---
+
+## 安装 Windows 客户端
+
+GEO Web **企业档案 → 发布环境与账号绑定** 顶部可下载（需部署侧已复制 Windows 产物到 `client/public/downloads/`）：
+
+- `geo-local-agent-win.exe`（NSIS 安装包，推荐）
+- `geo-local-agent-win.zip`（便携 zip，备用）
+
+### 1. 下载与安装
+
+1. 在网页点击 **下载 Windows 客户端**（若按钮为灰色「即将支持」，说明当前环境尚未提供 Windows 安装包，请联系运营或在本机执行 `npm run package:win` 后复制产物）。
+2. 若下载为 `.exe`：双击运行安装向导，可按提示选择安装目录；安装完成后从开始菜单或桌面快捷方式启动 **GEO本地发布客户端**。
+3. 若下载为 `.zip`：解压到固定目录（路径勿含中文乱码更佳），双击目录内的 `GEO本地发布客户端.exe` 启动。
+
+### 2. Windows Defender / 安全提示
+
+当前 Windows 安装包**可能未做代码签名**。首次运行或安装时，系统可能提示「Windows 已保护你的电脑」或 SmartScreen 拦截：
+
+- 在确认来源为 GEO 运营团队提供的安装包后，可选择 **更多信息 → 仍要运行**（或安装程序中的等价选项）。
+- 这是未签名桌面应用的常见情况；**正式对外分发建议后续申请代码签名证书**，以减少误报。
+
+### 3. 启动与检测
+
+1. 启动客户端后，本机应监听 `http://127.0.0.1:39888`。
+2. 浏览器或 PowerShell：`curl http://127.0.0.1:39888/health` 应返回 `{"ok":true,"agentId":...}`。
+3. 回到 GEO Web 点击 **检测客户端**，应显示已连接。
+
+### 4. 绑定发布账号
+
+1. 在企业档案完成 **绑定发布账号**；首次绑定会为各平台打开**本机**登录窗口。
+2. 在弹出窗口中完成知乎 / 搜狐 / 百家号 / 头条登录；**不保存平台密码，不上传 Cookie**。
+3. 登录态仅保存在本机 Chromium Profile 目录。
+
+### 5. 开发者打包 Windows
+
+```bash
+cd local-agent
+npm run typecheck
+npm run build
+npm run package:win
+```
+
+- 在 macOS 上打 Windows 包需 electron-builder 拉取 NSIS 等依赖；若 **NSIS 失败但 zip 成功**，可仅发布 `geo-local-agent-win.zip`。
+- 若 **exe 与 zip 均失败**：不得在线上启用 Windows 下载按钮；查看终端日志（wine / nsis / 网络）后重试或在 Windows CI 上打包。
+- 成功后 `node ../scripts/copy_local_agent_download.mjs` 会复制到 `client/public/downloads/` 并更新 `manifest.json`。
 
 ---
 

@@ -6,13 +6,13 @@ const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("C5-F sidebar label alignment", () => {
-  it("shows 企业档案 in sidebar without changing route", () => {
+  it("shows GEO 建档 in sidebar without changing route", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     const profile = read("client/src/pages/AssetCenter.tsx");
-    expect(layout).toContain('label: "企业档案"');
-    expect(layout).toContain("品牌与客户画像");
+    expect(layout).toContain('label: "GEO 建档"');
+    expect(layout).toContain("完善当前企业最小资料");
     expect(layout).toContain('path: "/enterprise-profile"');
     expect(layout).not.toContain('label: "我的信息"');
-    expect(profile).toContain("企业 AI 搜索档案");
+    expect(profile).toContain("企业 GEO 建档");
   });
 });

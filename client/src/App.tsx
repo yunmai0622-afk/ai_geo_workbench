@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getActiveProjectId, buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import NotFound from "@/pages/NotFound";
 import { Redirect, Route, Switch, useLocation } from "wouter";
@@ -23,6 +24,7 @@ import { AiDiagnosisFlowPage, ContentPublishingFlowPage, DeliveryReportsFlowPage
 import WeeklyContentPage from "./pages/WeeklyContentPage";
 import ProgressPage from "./pages/ProgressPage";
 import ClientDashboardPage from "./pages/ClientDashboardPage";
+import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
 
 function profileHasBrand(profile: unknown): boolean {
   if (!profile || typeof profile !== "object") return false;
@@ -35,6 +37,7 @@ function PrivateRoutes() {
     <DashboardLayout>
       <Switch>
         <Route path="/clients" component={ClientDashboardPage} />
+        <Route path="/workspace" component={EnterpriseWorkspacePage} />
         <Route path="/" component={Home} />
         <Route path="/flow" component={GeoFlowWizardPage} />
         <Route path="/enterprise-profile" component={AssetCenterPage} />
@@ -72,21 +75,27 @@ function PrivateRoutes() {
   );
 }
 
-/** 登录后检查企业档案 brandName，未完成引导则进入 /onboarding */
+/** 登录后基于 activeProjectId 检查企业档案，未完成引导则进入建档页 */
 function AuthenticatedAppShell() {
   const [location] = useLocation();
   const { loading: authLoading, user } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, { enabled: Boolean(user) });
-  const projectId = projects[0]?.id;
-  const summaryQuery = trpc.geo.assetLibrary.summary.useQuery({ projectId }, { enabled: Boolean(user) && Boolean(projectId) });
+  const activeProjectId = typeof window !== "undefined" ? getActiveProjectId() : null;
+  const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(
+    { projectId: activeProjectId ?? 0 },
+    { enabled: Boolean(user) && Boolean(activeProjectId) },
+  );
 
   if (authLoading) {
     return <DashboardLayoutSkeleton />;
   }
 
-  const profileLoading = Boolean(user) && (projectsLoading || (Boolean(projectId) && summaryQuery.isLoading));
+  const pathname = location.split("?")[0] || location;
+  const profileLoading =
+    Boolean(user) &&
+    (projectsLoading || (Boolean(activeProjectId) && summaryQuery.isLoading));
 
-  if (profileLoading) {
+  if (profileLoading && pathname !== "/clients") {
     return (
       <DashboardLayout>
         <div className="flex min-h-[50vh] items-center justify-center text-slate-400">加载中...</div>
@@ -94,10 +103,25 @@ function AuthenticatedAppShell() {
     );
   }
 
-  const hasBrand = projectId ? profileHasBrand(summaryQuery.data?.profile) : false;
-
-  if (user && !hasBrand && location !== "/onboarding") {
+  if (user && projects.length === 0 && pathname !== "/onboarding") {
     return <Redirect to="/onboarding" />;
+  }
+
+  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/onboarding") {
+    return <Redirect to="/clients" />;
+  }
+
+  const hasBrand = activeProjectId ? profileHasBrand(summaryQuery.data?.profile) : false;
+
+  if (
+    user &&
+    activeProjectId &&
+    !hasBrand &&
+    pathname !== "/onboarding" &&
+    pathname !== "/enterprise-profile" &&
+    pathname !== "/clients"
+  ) {
+    return <Redirect to={buildProjectUrl("/enterprise-profile", activeProjectId)} />;
   }
 
   return <PrivateRoutes />;

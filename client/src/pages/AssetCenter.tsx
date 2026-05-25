@@ -1,19 +1,33 @@
 import { AiPageHero, AiPageShell, AiSection, AiStatusBadge } from "@/components/ai/ProductUi";
-import { AiFilledMark, ProfileIntakePanel, type ProfileApplyPatch } from "@/components/enterpriseProfile/ProfileIntakePanel";
-import { PlatformAccountBindingSection } from "@/components/PlatformAccountBindingSection";
+import { AdvancedMaterialsSection } from "@/components/enterpriseProfile/AdvancedMaterialsSection";
+import {
+  FiveMinuteBasicOnboardingSection,
+  type FiveMinuteBasicValues,
+} from "@/components/enterpriseProfile/FiveMinuteBasicOnboardingSection";
+import { EnterprisePublishEnvironmentSection } from "@/components/enterpriseProfile/EnterprisePublishEnvironmentSection";
+import { GeoMaterialPreviewSection } from "@/components/enterpriseProfile/GeoMaterialPreviewSection";
+import { ProfileUploadAssistSection } from "@/components/enterpriseProfile/ProfileUploadAssistSection";
+import type { ProfileApplyPatch } from "@/components/enterpriseProfile/ProfileIntakePanel";
+import {
+  parseFaqText,
+  serializeFaqItems,
+  type CaseDraft,
+  type FaqItem,
+  type SectionStatusTone,
+} from "@/components/enterpriseProfile/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { aiChipActive, aiChipIdle, aiGlassPanel, aiInput, aiOutlineBtn, aiPrimaryBtn } from "@/lib/aiProductUi";
+import { aiChipIdle, aiGlassPanel, aiInput, aiOutlineBtn, aiPrimaryBtn } from "@/lib/aiProductUi";
+import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
+import { useActiveProjectId } from "@/hooks/useActiveProject";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   ENTERPRISE_INDUSTRY_OPTIONS,
-  getPainOptionsForIndustry,
   resolveIndustryFromStored,
 } from "@shared/enterpriseProfileIndustry";
-import { Plus, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 type SummaryLike = {
@@ -50,16 +64,6 @@ function joinListField(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : [];
 }
 
-type CaseDraft = {
-  id?: number;
-  caseType: "真实案例" | "待补充案例线索";
-  customerBackground: string;
-  originalProblem: string;
-  executionProcess: string;
-  resultData: string;
-  allowPublic: boolean;
-};
-
 /** 与 `geo.assetLibrary.upsertProfile` 输入对齐的完整载荷（合并库内旧字段，避免空字段写坏 NOT NULL JSON） */
 function buildFullProfilePayload(
   projectId: number,
@@ -74,6 +78,7 @@ function buildFullProfilePayload(
     customerPains: string[];
     competitors: string[];
     oneLiner: string;
+    shortName?: string;
     keyPoints: string[];
     keywords: string[];
     hasCases?: boolean;
@@ -100,7 +105,7 @@ function buildFullProfilePayload(
   return {
     projectId,
     enterpriseName: brand,
-    shortName: leg("shortName"),
+    shortName: v.shortName?.trim() || leg("shortName"),
     officialWebsite: v.officialWebsite?.trim() || leg("officialWebsite"),
     industry: industryTag,
     region: v.region?.trim() || leg("region", "中国"),
@@ -141,22 +146,6 @@ function buildFullProfilePayload(
   };
 }
 
-function fieldHint(text: string) {
-  return <p className="text-xs leading-relaxed text-slate-500">{text}</p>;
-}
-
-function labelBlock(label: ReactNode, required: boolean | undefined, children: ReactNode) {
-  return (
-    <label className="block space-y-2 text-sm">
-      <span className="font-medium text-slate-100">
-        {label}
-        {required ? <span className="ml-1 text-amber-300/90">（必填）</span> : null}
-      </span>
-      {children}
-    </label>
-  );
-}
-
 function computeProfileSectionStatuses(params: {
   brandName: string;
   industryTagValue: string;
@@ -186,49 +175,54 @@ function computeProfileSectionStatuses(params: {
   } as const;
 }
 
-const CUSTOMER_TYPE_PRESETS = [
-  "知识付费老师",
-  "教培机构",
-  "咨询顾问",
-  "企业培训公司",
-  "本地生活商家",
-  "连锁门店",
-  "个人 IP",
-  "B2B 企业",
-] as const;
-
 const PROFILE_STEPS = [
-  { id: "profile-upload", label: "上传资料" },
-  { id: "profile-brand", label: "品牌与业务" },
-  { id: "profile-customer", label: "客户画像" },
-  { id: "profile-trust", label: "信任素材" },
-  { id: "platform-accounts", label: "发布账号" },
+  { id: "profile-publish-env", label: "发布环境" },
+  { id: "profile-basic-five-min", label: "5 分钟建档" },
+  { id: "profile-upload", label: "资料上传" },
+  { id: "profile-advanced", label: "高级补充" },
+  { id: "profile-geo-preview", label: "建档预览" },
 ] as const;
 
-const textareaClass = `${aiInput} min-h-[6rem] w-full max-w-none resize-y py-2`;
+function parseFitCustomersMeta(fit: string) {
+  const tags: string[] = [];
+  let industry = "";
+  let scale = "";
+  for (const part of fit.split("|").map(s => s.trim()).filter(Boolean)) {
+    if (part.startsWith("行业:")) industry = part.slice(3).trim();
+    else if (part.startsWith("规模:")) scale = part.slice(3).trim();
+    else tags.push(...part.split(/[、,，]/).map(s => s.trim()).filter(Boolean));
+  }
+  if (!industry && !scale && tags.length === 0 && fit.trim()) {
+    return { tags: fit.split(/[、,，]/).map(s => s.trim()).filter(Boolean), industry: "", scale: "" };
+  }
+  return { tags, industry, scale };
+}
+
+function buildFitCustomersValue(tags: string[], industry: string, scale: string) {
+  const base = tags.join("、");
+  const meta = [industry.trim() ? `行业:${industry.trim()}` : "", scale.trim() ? `规模:${scale.trim()}` : ""].filter(Boolean);
+  if (!meta.length) return base;
+  return base ? `${base}|${meta.join("|")}` : meta.join("|");
+}
 
 export default function AssetCenterPage() {
   const [, setLocation] = useLocation();
-  const searchString = typeof window !== "undefined" ? window.location.search : "";
   const utils = trpc.useUtils();
-  const { data: projects = [], isLoading: projectsLoading, error: projectsError, refetch: refetchProjects } = trpc.geo.projects.list.useQuery();
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>();
+  const { data: projects = [], isLoading: projectsLoading, error: projectsError } = trpc.geo.projects.list.useQuery();
+  const { activeProjectId } = useActiveProjectId();
+  const currentProjectId = useMemo(() => {
+    if (!activeProjectId || projectsLoading) return undefined;
+    return projects.some(p => p.id === activeProjectId) ? activeProjectId : undefined;
+  }, [activeProjectId, projects, projectsLoading]);
+  const currentProject = useMemo(
+    () => (currentProjectId ? projects.find(p => p.id === currentProjectId) : undefined),
+    [projects, currentProjectId],
+  );
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
 
-  const [projectForm, setProjectForm] = useState({
-    enterpriseName: "",
-    industry: "",
-    website: "",
-    region: "中国",
-    productIntro: "",
-    targetCustomers: "",
-    coreSellingPoints: "",
-    competitorNamesText: "",
-    coreKeywordsText: "",
-  });
-
   const [brandName, setBrandName] = useState("");
+  const [brandShortName, setBrandShortName] = useState("");
   const [industrySelect, setIndustrySelect] = useState<string>(ENTERPRISE_INDUSTRY_OPTIONS[0]);
   const [industryCustom, setIndustryCustom] = useState("");
   const [productDesc, setProductDesc] = useState("");
@@ -239,7 +233,6 @@ export default function AssetCenterPage() {
   const [painDraft, setPainDraft] = useState("");
   const [competitors, setCompetitors] = useState<string[]>([]);
   const [competitorDraft, setCompetitorDraft] = useState("");
-  const [section2Saved, setSection2Saved] = useState(false);
 
   const [oneLiner, setOneLiner] = useState("");
   const [keyPoints, setKeyPoints] = useState<string[]>([]);
@@ -258,51 +251,49 @@ export default function AssetCenterPage() {
   const [purchaseTriggerDraft, setPurchaseTriggerDraft] = useState("");
   const [commonQuestionsList, setCommonQuestionsList] = useState<string[]>([]);
   const [commonQuestionDraft, setCommonQuestionDraft] = useState("");
-  const [dataProofText, setDataProofText] = useState("");
+  const [customerIndustry, setCustomerIndustry] = useState("");
+  const [customerScale, setCustomerScale] = useState("");
+  const [decisionFocusList, setDecisionFocusList] = useState<string[]>([]);
+  const [decisionFocusDraft, setDecisionFocusDraft] = useState("");
+  const [objectionList, setObjectionList] = useState<string[]>([]);
+  const [objectionDraft, setObjectionDraft] = useState("");
+  const [serviceProcess, setServiceProcess] = useState("");
+  const [servicePriceRange, setServicePriceRange] = useState("");
+  const [unfitCustomers, setUnfitCustomers] = useState("");
+  const [competitorDifferenceText, setCompetitorDifferenceText] = useState("");
   const [authorityText, setAuthorityText] = useState("");
-  const [faqConcernText, setFaqConcernText] = useState("");
+  const [partnersText, setPartnersText] = useState("");
+  const [credentialsText, setCredentialsText] = useState("");
+  const [mediaText, setMediaText] = useState("");
+  const [reviewsText, setReviewsText] = useState("");
+  const [faqItems, setFaqItems] = useState<FaqItem[]>([]);
+  const publishEnvRef = useRef<HTMLDivElement>(null);
   const intakeSectionRef = useRef<HTMLDivElement>(null);
-  const brandSectionRef = useRef<HTMLDivElement>(null);
-  const customerSectionRef = useRef<HTMLDivElement>(null);
-  const trustSectionRef = useRef<HTMLDivElement>(null);
+  const basicSectionRef = useRef<HTMLDivElement>(null);
 
-  const createProject = trpc.geo.projects.create.useMutation();
   const upsertProfile = trpc.geo.assetLibrary.upsertProfile.useMutation();
   const createCustomerCase = trpc.geo.assetLibrary.createCustomerCase.useMutation();
   const updateCustomerCase = trpc.geo.assetLibrary.updateCustomerCase.useMutation();
-  const generateMarketing = trpc.geo.assetLibrary.generateProfileMarketingCopy.useMutation();
 
-  useEffect(() => {
-    const params = new URLSearchParams(searchString);
-    const fromUrl = params.get("projectId");
-    if (fromUrl) {
-      const id = Number.parseInt(fromUrl, 10);
-      if (!Number.isNaN(id) && projects.some(p => p.id === id)) {
-        setSelectedProjectId(id);
-        return;
-      }
-    }
-    if (!selectedProjectId && projects[0]?.id) setSelectedProjectId(projects[0].id);
-  }, [projects, selectedProjectId, searchString]);
-
-  const projectInput = useMemo(() => ({ projectId: selectedProjectId }), [selectedProjectId]);
-  const { data: summaryData, isLoading, isFetched, error: summaryError } = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled: Boolean(selectedProjectId) });
+  const projectInput = useMemo(() => ({ projectId: currentProjectId! }), [currentProjectId]);
+  const { data: summaryData, isLoading, isFetched, error: summaryError } = trpc.geo.assetLibrary.summary.useQuery(
+    projectInput,
+    { enabled: Boolean(currentProjectId) },
+  );
   const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
-    { projectId: selectedProjectId ?? 0 },
-    { enabled: Boolean(selectedProjectId) },
+    { projectId: currentProjectId! },
+    { enabled: Boolean(currentProjectId) },
   );
   const summary = summaryData as SummaryLike | undefined;
   const profile = summary?.profile ?? null;
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   const industryTagValue = industrySelect === "其他" ? industryCustom.trim() : industrySelect;
-  const painPresets = useMemo(() => [...getPainOptionsForIndustry(industryTagValue)], [industryTagValue]);
-
   const hydrateFromProfile = useCallback(() => {
     if (!summaryData) return;
     const p = (summaryData.profile ?? {}) as Record<string, unknown>;
-    const bn = textField(p.brandName) || textField(p.enterpriseName) || selectedProject?.enterpriseName || "";
+    const bn = textField(p.brandName) || textField(p.enterpriseName) || currentProject?.enterpriseName || "";
     setBrandName(bn);
+    setBrandShortName(textField(p.shortName));
     const it = textField(p.industryTag) || textField(p.industry);
     const resolved = resolveIndustryFromStored(it);
     setIndustrySelect(resolved.select);
@@ -330,15 +321,38 @@ export default function AssetCenterPage() {
     const cases = (summaryData.customerCases ?? []) as Array<Record<string, unknown>>;
     setOfficialWebsite(textField(p.officialWebsite));
     setRegion(textField(p.region) || "中国");
-    const fit = textField(p.fitCustomers);
-    setCustomerTypeTags(fit ? fit.split(/[、,，]/).map(s => s.trim()).filter(Boolean) : []);
+    const fitParsed = parseFitCustomersMeta(textField(p.fitCustomers));
+    setCustomerTypeTags(fitParsed.tags);
+    setCustomerIndustry(fitParsed.industry);
+    setCustomerScale(fitParsed.scale);
     setPurchaseTriggers(joinListField(p.purchaseDecisionFactors));
+    setDecisionFocusList(
+      textField(p.deliveryPlan)
+        ? textField(p.deliveryPlan)
+            .split(/\n/)
+            .map(s => s.trim())
+            .filter(Boolean)
+        : [],
+    );
+    setObjectionList(
+      textField(p.salesTalkTracks)
+        ? textField(p.salesTalkTracks)
+            .split(/\n/)
+            .map(s => s.trim())
+            .filter(Boolean)
+        : [],
+    );
     setCommonQuestionsList(joinListField(p.commonQuestions));
-    const proofParts = [textField(p.coreSellingPoints), textField(p.servicePriceRange)].filter(Boolean);
-    setDataProofText(proofParts.join("\n"));
-    const authParts = [textField(p.competitorDifference), textField(p.featureNotes), textField(p.salesTalkTracks)].filter(Boolean);
-    setAuthorityText(authParts.join("\n"));
-    setFaqConcernText(textField(p.commonObjections));
+    setServiceProcess(textField(p.serviceProcess));
+    setServicePriceRange(textField(p.servicePriceRange));
+    setUnfitCustomers(textField(p.unfitCustomers));
+    setCompetitorDifferenceText(textField(p.competitorDifference));
+    setAuthorityText(textField(p.featureNotes) || textField(p.coreSellingPoints));
+    setPartnersText(textField(p.fitCustomers));
+    setCredentialsText(textField(p.salesTalkTracks));
+    setMediaText("");
+    setReviewsText("");
+    setFaqItems(parseFaqText(textField(p.commonObjections)));
 
     setCaseRows(
       cases.map(c => ({
@@ -351,12 +365,11 @@ export default function AssetCenterPage() {
         allowPublic: boolField(c.allowPublic) ?? false,
       })),
     );
-  }, [summaryData, selectedProject]);
+  }, [summaryData, currentProject]);
 
   useEffect(() => {
-    setSection2Saved(false);
     setAiFilledFields(new Set());
-  }, [selectedProjectId]);
+  }, [currentProjectId]);
 
   function handleApplyAnalysis(patch: ProfileApplyPatch) {
     if (patch.brandName) setBrandName(patch.brandName);
@@ -398,8 +411,115 @@ export default function AssetCenterPage() {
     }
     setAiFilledFields(new Set(patch.aiFilledKeys));
     setMessage("AI 识别结果已填入表单，请核对各区块后点击保存。");
-    brandSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    basicSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  const fiveMinuteValues: FiveMinuteBasicValues = useMemo(
+    () => ({
+      brandName,
+      brandShortName,
+      industrySelect,
+      industryCustom,
+      oneLiner,
+      productDesc,
+      sellingPoint1: keyPoints[0] ?? "",
+      sellingPoint2: keyPoints[1] ?? "",
+      sellingPoint3: keyPoints[2] ?? "",
+      targetCustomer,
+      primaryPain: customerPains[0] ?? "",
+      commonNeed: purchaseTriggers[0] ?? "",
+      searchQuestion1: commonQuestionsList[0] ?? "",
+      searchQuestion2: commonQuestionsList[1] ?? "",
+      searchQuestion3: commonQuestionsList[2] ?? "",
+      basicCaseBrief: caseRows[0]?.customerBackground ?? "",
+      basicResultData: caseRows[0]?.resultData ?? "",
+    }),
+    [
+      brandName,
+      brandShortName,
+      industrySelect,
+      industryCustom,
+      oneLiner,
+      productDesc,
+      keyPoints,
+      targetCustomer,
+      customerPains,
+      purchaseTriggers,
+      commonQuestionsList,
+      caseRows,
+    ],
+  );
+
+  function applyFiveMinutePatch(patch: Partial<FiveMinuteBasicValues>) {
+    if (patch.brandName !== undefined) setBrandName(patch.brandName);
+    if (patch.brandShortName !== undefined) setBrandShortName(patch.brandShortName);
+    if (patch.industrySelect !== undefined) setIndustrySelect(patch.industrySelect);
+    if (patch.industryCustom !== undefined) setIndustryCustom(patch.industryCustom);
+    if (patch.oneLiner !== undefined) setOneLiner(patch.oneLiner);
+    if (patch.productDesc !== undefined) setProductDesc(patch.productDesc);
+    if (
+      patch.sellingPoint1 !== undefined ||
+      patch.sellingPoint2 !== undefined ||
+      patch.sellingPoint3 !== undefined
+    ) {
+      const next = [...keyPoints];
+      if (patch.sellingPoint1 !== undefined) next[0] = patch.sellingPoint1;
+      if (patch.sellingPoint2 !== undefined) next[1] = patch.sellingPoint2;
+      if (patch.sellingPoint3 !== undefined) next[2] = patch.sellingPoint3;
+      setKeyPoints(next.filter((_, i) => i < 3 || next[i]?.trim()));
+    }
+    if (patch.targetCustomer !== undefined) setTargetCustomer(patch.targetCustomer);
+    if (patch.primaryPain !== undefined) setCustomerPains(patch.primaryPain.trim() ? [patch.primaryPain] : []);
+    if (patch.commonNeed !== undefined) setPurchaseTriggers(patch.commonNeed.trim() ? [patch.commonNeed] : []);
+    if (
+      patch.searchQuestion1 !== undefined ||
+      patch.searchQuestion2 !== undefined ||
+      patch.searchQuestion3 !== undefined
+    ) {
+      const qs = [
+        patch.searchQuestion1 ?? commonQuestionsList[0] ?? "",
+        patch.searchQuestion2 ?? commonQuestionsList[1] ?? "",
+        patch.searchQuestion3 ?? commonQuestionsList[2] ?? "",
+        ...commonQuestionsList.slice(3),
+      ].filter((q, i) => i < 3 || q.trim());
+      setCommonQuestionsList(qs.slice(0, Math.max(3, qs.length)));
+    }
+    if (patch.basicCaseBrief !== undefined || patch.basicResultData !== undefined) {
+      setCaseRows(prev => {
+        const row = prev[0] ?? {
+          caseType: "待补充案例线索" as const,
+          customerBackground: "",
+          originalProblem: "",
+          executionProcess: "",
+          resultData: "",
+          allowPublic: false,
+        };
+        const updated = {
+          ...row,
+          ...(patch.basicCaseBrief !== undefined ? { customerBackground: patch.basicCaseBrief } : {}),
+          ...(patch.basicResultData !== undefined ? { resultData: patch.basicResultData } : {}),
+        };
+        if (prev.length === 0) return [updated];
+        return [updated, ...prev.slice(1)];
+      });
+      if (patch.basicCaseBrief?.trim() || patch.basicResultData?.trim()) setCasesChoice("has");
+    }
+  }
+
+  const trustMaterialCount = useMemo(() => {
+    let n = 0;
+    if (partnersText.trim()) n += 1;
+    if (credentialsText.trim()) n += 1;
+    if (mediaText.trim()) n += 1;
+    if (reviewsText.trim()) n += 1;
+    if (authorityText.trim()) n += 1;
+    return n;
+  }, [partnersText, credentialsText, mediaText, reviewsText, authorityText]);
+
+  const faqFilledCount = useMemo(
+    () => faqItems.filter(f => f.question.trim() && f.answer.trim()).length,
+    [faqItems],
+  );
 
   const enabledPlatformAccountCount = useMemo(() => {
     const groups = (platformAccountsQuery.data?.accounts ?? []) as Array<{ accounts: Array<{ isEnabled: boolean }> }>;
@@ -411,38 +531,23 @@ export default function AssetCenterPage() {
   };
 
   useEffect(() => {
-    if (typeof window === "undefined" || !selectedProjectId) return;
+    if (typeof window === "undefined" || !currentProjectId) return;
     const hash = window.location.hash.replace(/^#/, "");
-    if (hash === "platform-accounts") {
-      requestAnimationFrame(() => scrollToSection("platform-accounts"));
+    if (hash === "platform-accounts" || hash === "profile-publish-env") {
+      requestAnimationFrame(() => scrollToSection("profile-publish-env"));
     }
-  }, [selectedProjectId]);
-
-  const customerMissingCount = useMemo(() => {
-    let n = 0;
-    if (!targetCustomer.trim()) n += 1;
-    if (customerPains.length === 0) n += 1;
-    if (purchaseTriggers.length === 0) n += 1;
-    return n;
-  }, [targetCustomer, customerPains.length, purchaseTriggers.length]);
-
-  const profileGaps = useMemo(() => {
-    const gaps: string[] = [];
-    if (!brandName.trim() || !industryTagValue.trim() || !productDesc.trim()) gaps.push("品牌与产品信息");
-    if (!targetCustomer.trim() || customerPains.length === 0) gaps.push("目标客户画像 / 客户痛点");
-    if (boolField(profile?.hasCases) === undefined && casesChoice === "unset") gaps.push("案例与信任素材");
-    return gaps;
-  }, [brandName, industryTagValue, productDesc, targetCustomer, customerPains.length, profile?.hasCases, casesChoice]);
+  }, [currentProjectId]);
 
   useEffect(() => {
-    if (!selectedProjectId || !isFetched) return;
+    if (!currentProjectId || !isFetched) return;
     hydrateFromProfile();
-  }, [hydrateFromProfile, selectedProjectId, isFetched]);
+  }, [hydrateFromProfile, currentProjectId, isFetched]);
 
   const basePayload = useCallback(() => {
-    if (!selectedProjectId) throw new Error("请先选择项目");
-    return buildFullProfilePayload(selectedProjectId, profile, selectedProject, {
+    if (!currentProjectId) throw new Error("请先在客户管理台选择客户项目");
+    return buildFullProfilePayload(currentProjectId, profile, currentProject, {
       brandName,
+      shortName: brandShortName,
       industryTag: industryTagValue,
       productDesc,
       mainChannel,
@@ -454,20 +559,21 @@ export default function AssetCenterPage() {
       keywords,
       officialWebsite,
       region,
-      fitCustomers: customerTypeTags.join("、"),
+      fitCustomers: buildFitCustomersValue(customerTypeTags, customerIndustry, customerScale),
       purchaseDecisionFactors: purchaseTriggers,
       commonQuestions: commonQuestionsList,
-      coreSellingPoints: dataProofText,
-      servicePriceRange: "",
-      competitorDifference: authorityText,
-      featureNotes: "",
-      commonObjections: faqConcernText,
+      coreSellingPoints: keyPoints.join("；") || oneLiner,
+      servicePriceRange: servicePriceRange.trim(),
+      competitorDifference: competitorDifferenceText.trim(),
+      featureNotes: [partnersText, credentialsText, mediaText, reviewsText].filter(Boolean).join("\n"),
+      commonObjections: serializeFaqItems(faqItems),
     });
   }, [
-    selectedProjectId,
+    currentProjectId,
     profile,
-    selectedProject,
+    currentProject,
     brandName,
+    brandShortName,
     industryTagValue,
     productDesc,
     mainChannel,
@@ -480,12 +586,34 @@ export default function AssetCenterPage() {
     officialWebsite,
     region,
     customerTypeTags,
+    customerIndustry,
+    customerScale,
     purchaseTriggers,
+    decisionFocusList,
+    objectionList,
     commonQuestionsList,
-    dataProofText,
+    servicePriceRange,
+    competitorDifferenceText,
     authorityText,
-    faqConcernText,
+    partnersText,
+    credentialsText,
+    mediaText,
+    reviewsText,
+    faqItems,
+    keyPoints,
+    oneLiner,
   ]);
+
+  const basePayloadWithExtras = useCallback(() => {
+    const p = basePayload();
+    return {
+      ...p,
+      serviceProcess: serviceProcess.trim() || (typeof profile?.serviceProcess === "string" ? profile.serviceProcess : ""),
+      unfitCustomers: unfitCustomers.trim() || (typeof profile?.unfitCustomers === "string" ? profile.unfitCustomers : ""),
+      deliveryPlan: decisionFocusList.join("\n") || (typeof profile?.deliveryPlan === "string" ? profile.deliveryPlan : ""),
+      salesTalkTracks: objectionList.join("\n") || (typeof profile?.salesTalkTracks === "string" ? profile.salesTalkTracks : ""),
+    };
+  }, [basePayload, serviceProcess, unfitCustomers, decisionFocusList, objectionList, profile]);
 
   function toggleCustomerType(tag: string, on: boolean) {
     setCustomerTypeTags(prev => {
@@ -517,6 +645,20 @@ export default function AssetCenterPage() {
     setCommonQuestionDraft("");
   }
 
+  function addDecisionFocus() {
+    const t = decisionFocusDraft.trim();
+    if (!t || decisionFocusList.includes(t)) return;
+    setDecisionFocusList([...decisionFocusList, t]);
+    setDecisionFocusDraft("");
+  }
+
+  function addObjection() {
+    const t = objectionDraft.trim();
+    if (!t || objectionList.includes(t)) return;
+    setObjectionList([...objectionList, t]);
+    setObjectionDraft("");
+  }
+
   const completionPercent = useMemo(() => {
     const baseOk =
       brandName.trim().length > 0 &&
@@ -534,6 +676,7 @@ export default function AssetCenterPage() {
     return Math.min(100, basePart + s3 + aiPart);
   }, [
     brandName,
+    brandShortName,
     industryTagValue,
     productDesc,
     targetCustomer,
@@ -544,9 +687,6 @@ export default function AssetCenterPage() {
     keyPoints,
     keywords,
   ]);
-
-  const showAiCard =
-    section2Saved || (brandName.trim() && industryTagValue.trim() && productDesc.trim() && targetCustomer.trim() && customerPains.length > 0);
 
   const sectionStatuses = useMemo(
     () =>
@@ -572,22 +712,51 @@ export default function AssetCenterPage() {
     ],
   );
 
-  const diagnosisReady = completionPercent >= 60;
-  const nextActionLabel = diagnosisReady
-    ? "可进入 AI 内容诊断"
-    : "建议至少补齐品牌基础信息与目标客户画像";
+  const saveCustomerCaseRow = async (row: CaseDraft, idx: number) => {
+    const name = row.customerBackground.trim().slice(0, 60) || `案例 ${idx + 1}`;
+    const caseType = row.id ? row.caseType : ("待补充案例线索" as const);
+    const verificationStatus = caseType === "待补充案例线索" ? ("信息不足" as const) : ("待确认" as const);
+    const payload = {
+      projectId: currentProjectId!,
+      caseType,
+      customerName: name,
+      customerIndustry: "",
+      customerBackground: row.customerBackground.trim(),
+      originalProblem: row.originalProblem.trim(),
+      chosenReason: "",
+      usedProductService: "",
+      executionProcess: row.executionProcess.trim(),
+      resultData: row.resultData.trim(),
+      customerFeedback: "",
+      allowPublic: row.allowPublic,
+      publicVersion: "",
+      sensitiveNotes: "",
+      sourceAssetIds: [] as number[],
+      verificationStatus,
+    };
+    if (row.id) await updateCustomerCase.mutateAsync({ ...payload, id: row.id });
+    else {
+      const res = await createCustomerCase.mutateAsync(payload);
+      setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, id: res.id } : r)));
+    }
+    await upsertProfile.mutateAsync({ ...basePayloadWithExtras(), hasCases: true });
+  };
+
+  const trustStatus: SectionStatusTone =
+    faqItems.some(f => f.question.trim() && f.answer.trim()) || authorityText.trim()
+      ? "已完成"
+      : "待完善";
+
   const loading = projectsLoading || isLoading;
   const queryError = projectsError?.message || summaryError?.message;
   const saving =
-    createProject.isPending ||
     upsertProfile.isPending ||
     createCustomerCase.isPending ||
-    updateCustomerCase.isPending ||
-    generateMarketing.isPending;
+    updateCustomerCase.isPending;
 
   async function refreshSummary() {
-    if (!selectedProjectId) return;
-    await utils.geo.assetLibrary.summary.invalidate({ projectId: selectedProjectId });
+    if (!currentProjectId) return;
+    await utils.geo.assetLibrary.summary.invalidate({ projectId: currentProjectId });
   }
 
   async function runSave(label: string, fn: () => Promise<unknown>) {
@@ -625,102 +794,48 @@ export default function AssetCenterPage() {
     setCompetitorDraft("");
   }
 
-  async function handleCreateProject() {
-    const enterpriseName = projectForm.enterpriseName.trim();
-    if (!enterpriseName) {
-      setError("请填写企业名称");
-      return;
-    }
-    setMessage(undefined);
-    setError(undefined);
-    try {
-      await createProject.mutateAsync({
-        enterpriseName,
-        industry: projectForm.industry.trim() || "待补充",
-        website: projectForm.website.trim() || "https://",
-        region: projectForm.region.trim() || "中国",
-        productIntro: projectForm.productIntro.trim() || "待补充",
-        targetCustomers: projectForm.targetCustomers.trim() || "待补充",
-        coreSellingPoints: projectForm.coreSellingPoints.trim() || "待补充",
-        competitorNames: projectForm.competitorNamesText.split(/[、,，\n]/).map(s => s.trim()).filter(Boolean),
-        coreKeywords: projectForm.coreKeywordsText.split(/[、,，\n]/).map(s => s.trim()).filter(Boolean),
-      });
-      const refreshed = await refetchProjects();
-      const created = refreshed.data?.find(pr => pr.enterpriseName === enterpriseName) ?? refreshed.data?.[0];
-      if (created?.id) setSelectedProjectId(created.id);
-      setMessage("企业已创建，现在可以上传资料进行 AI 建档。");
-      intakeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "创建失败");
-    }
-  }
+  const profileEmptyDescription =
+    "企业 GEO 建档必须归属一个客户项目。请先在客户管理台新建或选择客户项目。";
 
-  const hasProjects = projects.length > 0;
-  const hasSelectedProject = Boolean(selectedProjectId);
-
-  const createProjectFields = (
-    <div className="grid gap-4 md:grid-cols-2">
-      <label className="space-y-2 text-sm text-slate-300">
-        <span className="font-medium text-slate-100">企业名称</span>
-        <Input
-          value={projectForm.enterpriseName}
-          onChange={e => setProjectForm(f => ({ ...f, enterpriseName: e.target.value }))}
-          className="border-white/10 bg-slate-950/70"
-          placeholder="客户企业或品牌全称"
+  if (!currentProjectId && !projectsLoading) {
+    return (
+      <AiPageShell className="pb-16">
+        <AiPageHero
+          title="企业 GEO 建档"
+          description="用 5 分钟完成基础建档，系统即可开始生成 GEO 内容；案例和信任素材可后续逐步补充。"
+          badge="企业建档"
         />
-      </label>
-      <label className="space-y-2 text-sm text-slate-300">
-        <span className="font-medium text-slate-100">行业</span>
-        <Input value={projectForm.industry} onChange={e => setProjectForm(f => ({ ...f, industry: e.target.value }))} className="border-white/10 bg-slate-950/70" placeholder="选填" />
-      </label>
-      <label className="space-y-2 text-sm text-slate-300">
-        <span className="font-medium text-slate-100">官网</span>
-        <Input value={projectForm.website} onChange={e => setProjectForm(f => ({ ...f, website: e.target.value }))} className="border-white/10 bg-slate-950/70" placeholder="https://" />
-      </label>
-      <label className="space-y-2 text-sm text-slate-300">
-        <span className="font-medium text-slate-100">地区</span>
-        <Input value={projectForm.region} onChange={e => setProjectForm(f => ({ ...f, region: e.target.value }))} className="border-white/10 bg-slate-950/70" />
-      </label>
-      <div className="flex justify-end md:col-span-2">
-        <Button disabled={saving || createProject.isPending} onClick={() => void handleCreateProject()} className={aiPrimaryBtn}>
-          {createProject.isPending ? "创建中…" : "创建企业项目"}
-        </Button>
-      </div>
-    </div>
-  );
+        <ProjectContextEmptyState description={profileEmptyDescription} testId="enterprise-profile-empty" />
+      </AiPageShell>
+    );
+  }
 
   return (
     <AiPageShell className="pb-16">
       <AiPageHero
-        title="企业 AI 搜索档案"
-        description="上传企业资料，AI 会自动识别品牌、业务、客户、案例和信任素材。你只需要确认和补充，系统会用这些信息生成内容、诊断问题和交付报告。"
-        badge="档案配置台"
+        title="企业 GEO 建档"
+        description="本页资料仅用于当前企业项目的 GEO 内容生成、发布账号绑定、AI 实测和交付报告。"
+        badge="企业建档"
       >
-        {hasSelectedProject ? (
-          <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto">
-            <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/10 px-4 py-3">
-              <p className="text-xs text-slate-500">当前企业</p>
-              <p className="mt-1 text-lg font-semibold text-white">{selectedProject?.enterpriseName}</p>
-            </div>
-            {hasProjects ? (
-              <select
-                disabled={loading}
-                value={selectedProjectId ?? ""}
-                onChange={e => setSelectedProjectId(Number(e.target.value) || undefined)}
-                className={cn(aiInput, "max-w-none text-sm")}
-                aria-label="切换企业"
-              >
-                {projects.map(pr => (
-                  <option key={pr.id} value={pr.id}>
-                    {pr.enterpriseName}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-          </div>
-        ) : (
-          <p className="max-w-md text-sm leading-relaxed text-slate-400">请先新建第一个企业项目，创建完成后即可从顶部上传资料开始配置。</p>
-        )}
+        <div
+          className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          data-testid="enterprise-profile-current-project-header"
+        >
+          <p className="text-sm text-slate-300" data-testid="enterprise-profile-current-project">
+            当前客户项目：
+            <span className="font-semibold text-white">{currentProject?.enterpriseName ?? "—"}</span>
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(aiOutlineBtn, "shrink-0")}
+            data-testid="enterprise-profile-switch-client"
+            onClick={() => setLocation("/clients")}
+          >
+            切换客户
+          </Button>
+        </div>
       </AiPageHero>
 
       {loading ? <p className="text-sm text-slate-400">正在加载…</p> : null}
@@ -728,31 +843,17 @@ export default function AssetCenterPage() {
       {message ? <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-3 text-sm text-emerald-100">{message}</div> : null}
       {error ? <div className="rounded-xl border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">{error}</div> : null}
 
-      {!hasProjects ? (
-        <AiSection title="先新建第一个企业项目" description="创建企业项目后，即可从顶部上传资料开始 AI 建档。">
-          <div className={cn(aiGlassPanel, "space-y-4 p-5 md:p-6")}>
-            <p className="text-sm text-amber-100/90">创建企业后可上传资料并自动建档，无需先填写完整表单。</p>
-            {createProjectFields}
-          </div>
-        </AiSection>
-      ) : (
-        <details className={cn(aiGlassPanel, "text-sm")}>
-          <summary className="cursor-pointer px-4 py-3 font-medium text-slate-400 hover:text-slate-200">新增企业项目</summary>
-          <div className="space-y-3 border-t border-white/8 px-4 pb-4 pt-3">
-            <p className="text-xs text-slate-500">为新的客户或品牌单独建立档案，创建后将自动切换。</p>
-            {createProjectFields}
-          </div>
-        </details>
-      )}
-
-      {hasSelectedProject ? (
+      {currentProjectId ? (
         <>
-          <nav className="sticky top-16 z-10 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur">
+          <nav
+            className="sticky top-16 z-10 flex gap-2 overflow-x-auto rounded-xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur"
+            data-testid="enterprise-profile-step-nav"
+          >
             {PROFILE_STEPS.map(step => (
               <button
                 key={step.id}
                 type="button"
-                className={cn(aiChipIdle, "px-3 py-1.5 text-xs")}
+                className={cn(aiChipIdle, "shrink-0 px-3 py-1.5 text-xs")}
                 onClick={() => scrollToSection(step.id)}
               >
                 {step.label}
@@ -760,10 +861,79 @@ export default function AssetCenterPage() {
             ))}
           </nav>
 
+          <div ref={publishEnvRef}>
+            <EnterprisePublishEnvironmentSection
+              projectId={currentProjectId!}
+              status={enabledPlatformAccountCount > 0 ? "已完成" : "待完善"}
+            />
+          </div>
+
+          <div ref={basicSectionRef}>
+            <FiveMinuteBasicOnboardingSection
+              values={fiveMinuteValues}
+              onChange={applyFiveMinutePatch}
+              saving={saving}
+              projectId={currentProjectId}
+              onSave={() =>
+                void runSave("基础建档", async () => {
+                  if (!brandName.trim()) throw new Error("请填写企业名称");
+                  if (!industryTagValue.trim()) throw new Error("请选择所属行业");
+                  if (!productDesc.trim()) throw new Error("请填写主营产品 / 服务");
+                  if (!fiveMinuteValues.sellingPoint1.trim()) throw new Error("请填写核心卖点 1");
+                  if (!targetCustomer.trim()) throw new Error("请填写目标客户");
+                  if (!fiveMinuteValues.primaryPain.trim()) throw new Error("请填写客户最大痛点");
+                  if (!fiveMinuteValues.searchQuestion1.trim()) throw new Error("请填写目标搜索问题 1");
+                  const kps = [
+                    fiveMinuteValues.sellingPoint1,
+                    fiveMinuteValues.sellingPoint2,
+                    fiveMinuteValues.sellingPoint3,
+                  ].filter(Boolean);
+                  setKeyPoints(kps);
+                  setCustomerPains(fiveMinuteValues.primaryPain.trim() ? [fiveMinuteValues.primaryPain] : []);
+                  setPurchaseTriggers(fiveMinuteValues.commonNeed.trim() ? [fiveMinuteValues.commonNeed] : []);
+                  setCommonQuestionsList(
+                    [
+                      fiveMinuteValues.searchQuestion1,
+                      fiveMinuteValues.searchQuestion2,
+                      fiveMinuteValues.searchQuestion3,
+                    ].filter(Boolean),
+                  );
+                  await upsertProfile.mutateAsync(basePayloadWithExtras());
+                  const brief = fiveMinuteValues.basicCaseBrief.trim();
+                  const result = fiveMinuteValues.basicResultData.trim();
+                  if (brief || result) {
+                    const row = caseRows[0] ?? {
+                      caseType: "待补充案例线索" as const,
+                      customerBackground: brief,
+                      originalProblem: "",
+                      executionProcess: "",
+                      resultData: result,
+                      allowPublic: false,
+                    };
+                    await saveCustomerCaseRow(
+                      {
+                        ...row,
+                        customerBackground: brief || row.customerBackground,
+                        resultData: result || row.resultData,
+                      },
+                      0,
+                    );
+                  }
+                })
+              }
+            />
+          </div>
+
+          {aiFilledFields.size > 0 ? (
+            <div className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
+              部分字段已由 AI 解析填入，请核对「5 分钟基础建档」后点击「保存基础建档」。
+            </div>
+          ) : null}
+
           <div ref={intakeSectionRef}>
-            <ProfileIntakePanel
-              projectId={selectedProjectId}
-              enterpriseName={selectedProject?.enterpriseName ?? ""}
+            <ProfileUploadAssistSection
+              projectId={currentProjectId}
+              enterpriseName={currentProject?.enterpriseName ?? ""}
               disabled={loading || saving}
               showPendingSaveHint={aiFilledFields.size > 0}
               current={{
@@ -780,770 +950,80 @@ export default function AssetCenterPage() {
             />
           </div>
 
-          <AiSection title="档案完成度" description={`整体完成度约 ${completionPercent}%，补齐后诊断与内容生成更准确。`}>
-            <div className="mb-4 h-2 overflow-hidden rounded-full border border-white/8 bg-slate-950/60">
-              <div className="h-full rounded-full bg-gradient-to-r from-cyan-500/80 to-violet-500/70 transition-all" style={{ width: `${completionPercent}%` }} />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {(
-                [
-                  {
-                    id: "profile-brand",
-                    title: "品牌与业务",
-                    done: sectionStatuses.brand.done,
-                    hint: sectionStatuses.brand.done ? "品牌信息已就绪" : "请补充名称、行业与主营业务",
-                  },
-                  {
-                    id: "profile-customer",
-                    title: "客户画像",
-                    done: sectionStatuses.customer.done && customerMissingCount === 0,
-                    hint: sectionStatuses.customer.done
-                      ? customerMissingCount > 0
-                        ? `待补充 ${customerMissingCount} 项`
-                        : "目标客户与痛点已填写"
-                      : "请填写客户是谁与核心痛点",
-                  },
-                  {
-                    id: "profile-trust",
-                    title: "信任素材",
-                    done: sectionStatuses.cases.done,
-                    hint: sectionStatuses.cases.hint,
-                  },
-                  {
-                    id: "platform-accounts",
-                    title: "发布账号",
-                    done: enabledPlatformAccountCount > 0,
-                    hint:
-                      enabledPlatformAccountCount > 0
-                        ? `已绑定 ${enabledPlatformAccountCount} 个启用账号`
-                        : "建议至少绑定一个发布账号",
-                  },
-                ] as const
-              ).map(card => (
-                <button
-                  key={card.id}
-                  type="button"
-                  className={cn(aiGlassPanel, "p-4 text-left transition hover:border-cyan-400/30")}
-                  onClick={() => scrollToSection(card.id)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-white">{card.title}</p>
-                    <AiStatusBadge tone={card.done ? "success" : "warning"}>{card.done ? "完成" : "待补充"}</AiStatusBadge>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500">{card.hint}</p>
-                </button>
-              ))}
-            </div>
-          </AiSection>
+          <AdvancedMaterialsSection
+            caseCount={caseRows.length}
+            trustCount={trustMaterialCount}
+            faqCount={faqFilledCount}
+            casesChoice={casesChoice}
+            onCasesChoice={setCasesChoice}
+            caseRows={caseRows}
+            onCaseRowsChange={setCaseRows}
+            onSaveCase={async (row, idx) => {
+              await runSave("客户案例", async () => {
+                await saveCustomerCaseRow(row, idx);
+              });
+            }}
+            onSaveChoiceNone={async () => {
+              await runSave("案例选择", async () => {
+                await upsertProfile.mutateAsync({ ...basePayloadWithExtras(), hasCases: false });
+              });
+            }}
+            onDeleteCase={idx => setCaseRows(rows => rows.filter((_, i) => i !== idx))}
+            caseStatus={sectionStatuses.cases.label === "已完成" ? "已完成" : "待完善"}
+            trustStatus={trustStatus}
+            saving={saving}
+            competitors={competitors}
+            competitorDraft={competitorDraft}
+            onCompetitorDraftChange={setCompetitorDraft}
+            onAddCompetitor={addCompetitor}
+            onRemoveCompetitor={c => setCompetitors(competitors.filter(x => x !== c))}
+            competitorDifferenceText={competitorDifferenceText}
+            onCompetitorDifferenceChange={setCompetitorDifferenceText}
+            unfitCustomers={unfitCustomers}
+            onUnfitCustomersChange={setUnfitCustomers}
+            authorityText={authorityText}
+            onAuthorityTextChange={setAuthorityText}
+            partnersText={partnersText}
+            onPartnersTextChange={setPartnersText}
+            credentialsText={credentialsText}
+            onCredentialsTextChange={setCredentialsText}
+            mediaText={mediaText}
+            onMediaTextChange={setMediaText}
+            reviewsText={reviewsText}
+            onReviewsTextChange={setReviewsText}
+            faqItems={faqItems}
+            onFaqItemsChange={setFaqItems}
+            onSaveTrust={() =>
+              void runSave("信任素材", async () => {
+                await upsertProfile.mutateAsync(basePayloadWithExtras());
+              })
+            }
+            onSaveCompetitor={() =>
+              void runSave("竞品差异", async () => {
+                await upsertProfile.mutateAsync(basePayloadWithExtras());
+              })
+            }
+          />
 
-          {aiFilledFields.size > 0 ? (
-            <div className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
-              部分字段已由 AI 填入，请核对各区块后点击对应「保存」按钮写入档案（不会自动保存）。
-            </div>
-          ) : null}
-
-          <div ref={brandSectionRef} id="profile-brand" className="scroll-mt-28">
-          <AiSection title="品牌与业务" description="用于让 AI 理解你是谁、做什么、适合在哪些场景被推荐。">
-            <div className="flex justify-end">
-              <AiStatusBadge tone={sectionStatuses.brand.done ? "success" : "warning"}>{sectionStatuses.brand.label}</AiStatusBadge>
-            </div>
-            <div className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}>
-              <div className="grid gap-5 md:grid-cols-2">
-                {labelBlock(
-                  <>
-                    企业/品牌名称
-                    <AiFilledMark show={aiFilledFields.has("brandName")} />
-                  </>,
-                  true,
-                  (
-                  <>
-                    <Input value={brandName} onChange={e => setBrandName(e.target.value)} className={cn(aiInput, "max-w-none")} />
-                    {fieldHint("用于在内容与诊断中识别你的品牌名称")}
-                  </>
-                ))}
-                {labelBlock(
-                  <>
-                    行业方向
-                    <AiFilledMark show={aiFilledFields.has("industry")} />
-                  </>,
-                  true,
-                  (
-                  <>
-                    <select value={industrySelect} onChange={e => setIndustrySelect(e.target.value)} className={cn(aiInput, "max-w-none")}>
-                      {ENTERPRISE_INDUSTRY_OPTIONS.map(o => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                    {fieldHint("帮助系统判断品类与竞争语境")}
-                  </>
-                ))}
-              </div>
-              {industrySelect === "其他" ? (
-                labelBlock("自定义行业", true, (
-                  <Input value={industryCustom} onChange={e => setIndustryCustom(e.target.value)} placeholder="请输入行业" className={cn(aiInput, "max-w-none")} />
-                ))
-              ) : null}
-              {labelBlock(
-                <>
-                  你主要卖什么
-                  <AiFilledMark show={aiFilledFields.has("productDesc")} />
-                </>,
-                true,
-                (
-                <>
-                  <textarea
-                    value={productDesc}
-                    maxLength={200}
-                    onChange={e => setProductDesc(e.target.value)}
-                    placeholder="描述你的产品或服务，200字以内"
-                    rows={4}
-                    className={textareaClass}
-                  />
-                  <span className="text-xs text-slate-500">{productDesc.length}/200</span>
-                  {fieldHint("一句话说清主营业务，影响内容方向与表达")}
-                </>
-              ))}
-              {labelBlock(
-                <>
-                  主要阵地
-                  <AiFilledMark show={aiFilledFields.has("mainChannel")} />
-                </>,
-                false,
-                (
-                <>
-                  <Input
-                    value={mainChannel}
-                    onChange={e => setMainChannel(e.target.value)}
-                    placeholder="官网/抖音号/公众号，任填一个"
-                    className={cn(aiInput, "max-w-none")}
-                  />
-                  {fieldHint("选填，用于判断内容分发渠道偏好")}
-                </>
-              ))}
-              {labelBlock("官网", false, (
-                <Input value={officialWebsite} onChange={e => setOfficialWebsite(e.target.value)} placeholder="https://" className={cn(aiInput, "max-w-none")} />
-              ))}
-              {labelBlock("地区", false, (
-                <Input value={region} onChange={e => setRegion(e.target.value)} className={cn(aiInput, "max-w-none")} />
-              ))}
-              <div className="flex justify-end border-t border-white/8 pt-4 md:col-span-2">
-                <Button
-                  className={aiPrimaryBtn}
-                  disabled={saving}
-                  onClick={() =>
-                    void runSave("基本身份", async () => {
-                      if (!brandName.trim()) throw new Error("请填写企业/品牌名称");
-                      if (!industryTagValue.trim()) throw new Error("请选择或填写行业方向");
-                      if (!productDesc.trim()) throw new Error("请填写你主要卖什么");
-                      await upsertProfile.mutateAsync(basePayload());
-                    })
-                  }
-                >
-                  保存品牌与业务
-                </Button>
-              </div>
-            </div>
-          </AiSection>
-          </div>
-
-          <div ref={customerSectionRef} id="profile-customer" className="scroll-mt-28">
-          <AiSection title="客户画像与购买场景" description="这些信息会决定系统生成哪些客户问题、内容选题和 AI 搜索测试问题。">
-            <div className="flex justify-end">
-              <AiStatusBadge tone={sectionStatuses.customer.done ? "success" : "warning"}>{sectionStatuses.customer.label}</AiStatusBadge>
-            </div>
-            <div className={cn(aiGlassPanel, "grid gap-6 p-5 md:grid-cols-2 md:p-6")}>
-              <div className="space-y-5">
-                <p className="text-sm font-medium text-cyan-200/90">目标客户画像</p>
-              {labelBlock(
-                <>
-                  目标客户是谁
-                  <AiFilledMark show={aiFilledFields.has("targetCustomer")} />
-                </>,
-                true,
-                (
-                <>
-                  <textarea
-                    value={targetCustomer}
-                    onChange={e => setTargetCustomer(e.target.value)}
-                    placeholder="例如：在抖音、视频号、小红书卖课的知识付费老师"
-                    rows={4}
-                    className={textareaClass}
-                  />
-                  {fieldHint("越具体，系统生成的问题和内容越贴近真实业务")}
-                </>
-              ))}
-              <div className="space-y-2 text-sm text-slate-300">
-                <span className="font-medium text-slate-100">客户类型标签</span>
-                <p className="text-xs text-slate-500">可多选，也可自定义补充。</p>
-                <div className="flex flex-wrap gap-2">
-                  {CUSTOMER_TYPE_PRESETS.map(tag => (
-                    <label key={tag} className={cn("cursor-pointer rounded-full border px-3 py-1 text-xs", customerTypeTags.includes(tag) ? aiChipActive : aiChipIdle)}>
-                      <input type="checkbox" className="sr-only" checked={customerTypeTags.includes(tag)} onChange={e => toggleCustomerType(tag, e.target.checked)} />
-                      {tag}
-                    </label>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {customerTypeTags
-                    .filter(t => !(CUSTOMER_TYPE_PRESETS as readonly string[]).includes(t))
-                    .map(t => (
-                      <span key={t} className="inline-flex items-center gap-1 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
-                        {t}
-                        <button type="button" className="text-slate-400 hover:text-white" onClick={() => setCustomerTypeTags(customerTypeTags.filter(x => x !== t))}>
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    value={customerTypeDraft}
-                    onChange={e => setCustomerTypeDraft(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addCustomCustomerType();
-                      }
-                    }}
-                    placeholder="自定义客户类型，回车添加"
-                    className="border-white/10 bg-slate-950/70"
-                  />
-                  <Button type="button" variant="outline" size="icon" className="border-white/15 shrink-0" onClick={addCustomCustomerType}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              </div>
-              <div className="space-y-5">
-                <p className="text-sm font-medium text-cyan-200/90">客户痛点与购买触发点</p>
-              <div className="space-y-2 text-sm text-slate-300">
-                <span className="font-medium text-slate-100">
-                  客户最大痛点（必填，至少 1 个）
-                  <AiFilledMark show={aiFilledFields.has("customerPains")} />
-                </span>
-                <p className="text-xs text-slate-500">选项随「行业方向」变化，请先在品牌区选择行业。</p>
-                <div className="flex flex-wrap gap-3 pt-1">
-                  {painPresets.map(p => (
-                    <label key={p} className="flex cursor-pointer items-center gap-2 text-slate-200">
-                      <input
-                        type="checkbox"
-                        checked={customerPains.includes(p)}
-                        onChange={e => togglePain(p, e.target.checked)}
-                        className="h-4 w-4 rounded border-white/20 bg-slate-950 text-cyan-400"
-                      />
-                      {p}
-                    </label>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {customerPains
-                    .filter(p => !painPresets.includes(p))
-                    .map(p => (
-                      <span key={p} className="inline-flex items-center gap-1 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
-                        {p}
-                        <button type="button" className="text-slate-400 hover:text-white" onClick={() => setCustomerPains(customerPains.filter(x => x !== p))}>
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <Input
-                    value={painDraft}
-                    onChange={e => setPainDraft(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addCustomPain();
-                      }
-                    }}
-                    placeholder="自定义痛点，回车添加"
-                    className="border-white/10 bg-slate-950/70"
-                  />
-                  <Button type="button" variant="outline" size="icon" className="border-white/15 shrink-0" onClick={addCustomPain}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm text-slate-300">
-                <span className="font-medium text-slate-100">购买触发点</span>
-                <p className="text-xs text-slate-500">客户通常在什么情况下会认真考虑购买。</p>
-                <div className="flex flex-wrap gap-2">
-                  {purchaseTriggers.map(t => (
-                    <span key={t} className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
-                      {t}
-                      <button type="button" className="text-slate-400 hover:text-white" onClick={() => setPurchaseTriggers(purchaseTriggers.filter(x => x !== t))}>
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    value={purchaseTriggerDraft}
-                    onChange={e => setPurchaseTriggerDraft(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addPurchaseTrigger();
-                      }
-                    }}
-                    placeholder="例如：课程卖不动、直播转化下降、团队服务不过来"
-                    className="border-white/10 bg-slate-950/70"
-                  />
-                  <Button type="button" variant="outline" size="icon" className="border-white/15 shrink-0" onClick={addPurchaseTrigger}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm text-slate-300">
-                <span className="font-medium text-slate-100">客户常问问题</span>
-                <div className="flex flex-wrap gap-2">
-                  {commonQuestionsList.map(q => (
-                    <span key={q} className="inline-flex items-center gap-1 rounded-full border border-violet-400/25 bg-violet-400/10 px-3 py-1 text-xs text-violet-100">
-                      {q}
-                      <button type="button" className="text-slate-400 hover:text-white" onClick={() => setCommonQuestionsList(commonQuestionsList.filter(x => x !== q))}>
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    value={commonQuestionDraft}
-                    onChange={e => setCommonQuestionDraft(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addCommonQuestion();
-                      }
-                    }}
-                    placeholder="例如：你们和小鹅通/有赞教育有什么区别？"
-                    className="border-white/10 bg-slate-950/70"
-                  />
-                  <Button type="button" variant="outline" size="icon" className="border-white/15 shrink-0" onClick={addCommonQuestion}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              </div>
-              <div className="space-y-2 text-sm text-slate-300 md:col-span-2">
-                <span className="font-medium text-slate-100">
-                  主要竞品（选填）
-                  <AiFilledMark show={aiFilledFields.has("competitors")} />
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {competitors.map(c => (
-                    <span key={c} className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 text-xs">
-                      {c}
-                      <button type="button" className="text-slate-400 hover:text-white" onClick={() => setCompetitors(competitors.filter(x => x !== c))}>
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <Input
-                  value={competitorDraft}
-                  onChange={e => setCompetitorDraft(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addCompetitor();
-                    }
-                  }}
-                  placeholder="输入竞品名称，回车添加"
-                  className="border-white/10 bg-slate-950/70"
-                />
-              </div>
-              <div className="flex justify-end border-t border-white/8 pt-4 md:col-span-2">
-                <Button
-                  className={aiPrimaryBtn}
-                  disabled={saving}
-                  onClick={() =>
-                    void runSave("客户画像", async () => {
-                      if (!targetCustomer.trim()) throw new Error("请填写目标客户");
-                      if (customerPains.length === 0) throw new Error("请至少选择一个痛点");
-                      await upsertProfile.mutateAsync(basePayload());
-                      setSection2Saved(true);
-                    })
-                  }
-                >
-                  保存客户画像
-                </Button>
-              </div>
-            </div>
-          </AiSection>
-          </div>
-
-          {showAiCard ? (
-            <AiSection title="AI 推荐表达" description="基于品牌与客户信息生成，可手动修改后保存。">
-              <div className={cn(aiGlassPanel, "space-y-4 p-5 md:p-6")}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <p className="text-sm text-slate-400">确认后将用于诊断与内容生成中的品牌表达。</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/15 text-cyan-100 shrink-0"
-                  disabled={generateMarketing.isPending}
-                  onClick={() => {
-                    void (async () => {
-                      setError(undefined);
-                      setMessage(undefined);
-                      try {
-                        if (!selectedProjectId) throw new Error("请先选择项目");
-                        const genInput = { projectId: selectedProjectId };
-                        const r = await generateMarketing.mutateAsync(genInput);
-                        const ol = typeof r.oneLiner === "string" ? r.oneLiner.trim() : "";
-                        const kp = Array.isArray(r.keyPoints) ? r.keyPoints.map(x => String(x).trim()).filter(Boolean) : [];
-                        const kw = Array.isArray(r.keywords) ? r.keywords.map(x => String(x).trim()).filter(Boolean) : [];
-                        setOneLiner(ol);
-                        setKeyPoints(kp);
-                        setKeywords(kw);
-                        setMessage("已重新生成，请确认后点击「保存 AI 生成内容」。");
-                        await refreshSummary();
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : "生成失败");
-                      }
-                    })();
-                  }}
-                >
-                  {generateMarketing.isPending ? "生成中…" : "重新生成"}
-                </Button>
-                </div>
-                <label className="space-y-2 text-sm text-slate-300">
-                  <span className="font-medium text-slate-100">一句话介绍</span>
-                  <Input value={oneLiner} onChange={e => setOneLiner(e.target.value)} className="border-white/10 bg-slate-950/70" />
-                </label>
-                <div className="space-y-2 text-sm text-slate-300">
-                  <span className="font-medium text-slate-100">核心卖点</span>
-                  <div className="flex flex-wrap gap-2">
-                    {keyPoints.map((k, i) => (
-                      <span key={`${k}-${i}`} className="inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-                        {k}
-                        <button type="button" onClick={() => setKeyPoints(keyPoints.filter((_, j) => j !== i))} className="text-slate-400 hover:text-white">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={keyPointDraft}
-                      onChange={e => setKeyPointDraft(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const t = keyPointDraft.trim();
-                          if (t) setKeyPoints([...keyPoints, t]);
-                          setKeyPointDraft("");
-                        }
-                      }}
-                      placeholder="回车添加卖点"
-                      className="border-white/10 bg-slate-950/70"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm text-slate-300">
-                  <span className="font-medium text-slate-100">核心关键词</span>
-                  <div className="flex flex-wrap gap-2">
-                    {keywords.map((k, i) => (
-                      <span key={`${k}-${i}`} className="inline-flex items-center gap-1 rounded-full border border-violet-400/25 bg-violet-400/10 px-3 py-1 text-xs text-violet-100">
-                        {k}
-                        <button type="button" onClick={() => setKeywords(keywords.filter((_, j) => j !== i))} className="text-slate-400 hover:text-white">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <Input
-                    value={keywordDraft}
-                    onChange={e => setKeywordDraft(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        const t = keywordDraft.trim();
-                        if (t) setKeywords([...keywords, t]);
-                        setKeywordDraft("");
-                      }
-                    }}
-                    placeholder="回车添加关键词"
-                    className="border-white/10 bg-slate-950/70"
-                  />
-                </div>
-                <div className="flex justify-end border-t border-white/8 pt-4">
-                  <Button
-                    className={aiPrimaryBtn}
-                    disabled={saving}
-                    onClick={() =>
-                      void runSave("AI 生成内容", async () => {
-                        await upsertProfile.mutateAsync(basePayload());
-                      })
-                    }
-                  >
-                    保存 AI 生成内容
-                  </Button>
-                </div>
-              </div>
-            </AiSection>
-          ) : null}
-
-          <div ref={trustSectionRef} id="profile-trust" className="scroll-mt-28">
-          <AiSection title="案例与信任素材" description="这些素材会用于生成案例文章、FAQ、竞品对比、种草内容和客户交付报告。">
-            <div className="flex justify-end">
-              <AiStatusBadge tone={sectionStatuses.cases.done ? "success" : "warning"}>{sectionStatuses.cases.label}</AiStatusBadge>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className={cn(aiGlassPanel, "space-y-4 p-5 lg:col-span-2")}>
-                <div>
-                  <p className="font-medium text-white">客户案例</p>
-                  <p className="mt-1 text-xs text-slate-500">填写真实服务过的客户案例，AI 会转化成可被搜索引用的内容。</p>
-                </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setCasesChoice("has")}
-                  className={casesChoice === "has" ? aiChipActive : aiChipIdle}
-                >
-                  <span className="font-medium">有客户案例 / 能公开</span>
-                  <p className="mt-1 text-xs opacity-80">填写并保存至少一条案例</p>
-                </button>
-                <button type="button" onClick={() => setCasesChoice("none")} className={casesChoice === "none" ? aiChipActive : aiChipIdle}>
-                  <span className="font-medium">暂时没有，跳过</span>
-                  <p className="mt-1 text-xs opacity-80">内容生成不引用具体案例</p>
-                </button>
-              </div>
-              {casesChoice === "none" ? (
-                <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm text-amber-50">
-                  内容生成时将不引用具体案例数据，可随时补充。
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      variant="outline"
-                      className="border-white/15"
-                      disabled={saving}
-                      onClick={() =>
-                        void runSave("案例选择", async () => {
-                          await upsertProfile.mutateAsync({ ...basePayload(), hasCases: false });
-                        })
-                      }
-                    >
-                      保存选择
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-              {casesChoice === "has" ? (
-                <div className="space-y-4">
-                  {caseRows.map((row, idx) => (
-                    <div key={row.id ?? `new-${idx}`} className="space-y-4 rounded-xl border border-white/8 bg-slate-950/40 p-4">
-                      <p className="text-sm font-medium text-cyan-200">案例 {idx + 1}</p>
-                      <label className="space-y-2 text-sm text-slate-300 block">
-                        <span className="font-medium text-slate-100">客户是谁</span>
-                        <textarea
-                          value={row.customerBackground}
-                          placeholder="客户背景、行业、规模等"
-                          onChange={e => {
-                            const v = e.target.value;
-                            setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, customerBackground: v } : r)));
-                          }}
-                          rows={3}
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm outline-none"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-slate-300 block">
-                        <span className="font-medium text-slate-100">客户遇到什么问题</span>
-                        <textarea
-                          value={row.originalProblem}
-                          onChange={e => {
-                            const v = e.target.value;
-                            setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, originalProblem: v } : r)));
-                          }}
-                          rows={2}
-                          placeholder="客户当时的核心困境"
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm outline-none"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-slate-300 block">
-                        <span className="font-medium text-slate-100">我们做了什么</span>
-                        <textarea
-                          value={row.executionProcess}
-                          onChange={e => {
-                            const v = e.target.value;
-                            setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, executionProcess: v } : r)));
-                          }}
-                          rows={3}
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm outline-none"
-                        />
-                      </label>
-                      <label className="space-y-2 text-sm text-slate-300 block">
-                        <span className="font-medium text-slate-100">结果或变化</span>
-                        <textarea
-                          value={row.resultData}
-                          onChange={e => {
-                            const v = e.target.value;
-                            setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, resultData: v } : r)));
-                          }}
-                          placeholder="直播转化率提升X%，收入提升X倍……"
-                          rows={2}
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm outline-none"
-                        />
-                      </label>
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-300">
-                          <Switch checked={row.allowPublic} onCheckedChange={c => setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, allowPublic: c } : r)))} />
-                          <span>是否允许公开引用</span>
-                        </div>
-                        <Button
-                          size="sm"
-                          className="bg-cyan-400 text-slate-950"
-                          disabled={saving}
-                          onClick={() =>
-                            void runSave("客户案例", async () => {
-                              const name = row.customerBackground.trim().slice(0, 60) || `案例 ${idx + 1}`;
-                              const caseType = row.id ? row.caseType : ("待补充案例线索" as const);
-                              const verificationStatus = caseType === "待补充案例线索" ? ("信息不足" as const) : ("待确认" as const);
-                              const payload = {
-                                projectId: selectedProjectId!,
-                                caseType,
-                                customerName: name,
-                                customerIndustry: "",
-                                customerBackground: row.customerBackground.trim(),
-                                originalProblem: row.originalProblem.trim(),
-                                chosenReason: "",
-                                usedProductService: "",
-                                executionProcess: row.executionProcess.trim(),
-                                resultData: row.resultData.trim(),
-                                customerFeedback: "",
-                                allowPublic: row.allowPublic,
-                                publicVersion: "",
-                                sensitiveNotes: "",
-                                sourceAssetIds: [] as number[],
-                                verificationStatus,
-                              };
-                              if (row.id) await updateCustomerCase.mutateAsync({ ...payload, id: row.id });
-                              else {
-                                const res = await createCustomerCase.mutateAsync(payload);
-                                setCaseRows(rows => rows.map((r, i) => (i === idx ? { ...r, id: res.id } : r)));
-                              }
-                              await upsertProfile.mutateAsync({ ...basePayload(), hasCases: true });
-                            })
-                          }
-                        >
-                          保存本条案例
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    className="border-white/15"
-                    onClick={() =>
-                      setCaseRows([
-                        ...caseRows,
-                        { caseType: "待补充案例线索", customerBackground: "", originalProblem: "", executionProcess: "", resultData: "", allowPublic: false },
-                      ])
-                    }
-                  >
-                    添加案例
-                  </Button>
-                </div>
-              ) : null}
-              </div>
-
-              <div className={cn(aiGlassPanel, "space-y-3 p-5")}>
-                <div>
-                  <p className="font-medium text-white">数据证明</p>
-                  <p className="mt-1 text-xs text-slate-500">填写能证明实力的数据，越具体越容易增强 AI 对品牌的信任判断。</p>
-                </div>
-                <textarea
-                  value={dataProofText}
-                  onChange={e => setDataProofText(e.target.value)}
-                  rows={5}
-                  placeholder="例如：服务 3000+ 知识付费老师；帮助客户直播转化率提升 30%"
-                  className={textareaClass}
-                />
-              </div>
-
-              <div className={cn(aiGlassPanel, "space-y-3 p-5")}>
-                <div>
-                  <p className="font-medium text-white">权威背书</p>
-                  <p className="mt-1 text-xs text-slate-500">合作品牌、媒体报道、资质认证、专家身份等。</p>
-                </div>
-                <textarea
-                  value={authorityText}
-                  onChange={e => setAuthorityText(e.target.value)}
-                  rows={5}
-                  placeholder="例如：与 XX 品牌合作；获 XX 媒体报道；XX 平台认证讲师"
-                  className={textareaClass}
-                />
-              </div>
-
-              <div className={cn(aiGlassPanel, "space-y-3 p-5 lg:col-span-2")}>
-                <div>
-                  <p className="font-medium text-white">客户疑虑与回答</p>
-                  <p className="mt-1 text-xs text-slate-500">客户最常问的问题，适合生成 FAQ 与 AI 搜索内容。</p>
-                </div>
-                <textarea
-                  value={faqConcernText}
-                  onChange={e => setFaqConcernText(e.target.value)}
-                  rows={5}
-                  placeholder={'客户疑虑：AI 生成内容会不会很假？\n回答：我们不是批量洗稿，而是基于企业资料、客户痛点与案例生成结构化内容。'}
-                  className={textareaClass}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button
-                className={aiPrimaryBtn}
-                disabled={saving}
-                onClick={() =>
-                  void runSave("信任素材", async () => {
-                    await upsertProfile.mutateAsync(basePayload());
-                  })
-                }
-              >
-                保存信任素材
-              </Button>
-            </div>
-          </AiSection>
-          </div>
-
-          <AiSection
-            id="platform-accounts"
-            title="发布账号绑定"
-            description="为不同平台、不同账号组绑定发布账号，后续发布时系统会按内容策略推荐对应账号组。"
-          >
-            <PlatformAccountBindingSection projectId={selectedProjectId!} />
-          </AiSection>
-
-          <section className={cn(aiGlassPanel, "space-y-4 p-6 md:p-8")}>
-            <div className="text-center md:text-left">
-              <p className="text-lg font-semibold text-white">
-                {diagnosisReady ? "企业档案已准备好，可以进入 AI 内容诊断" : "完成企业档案，进入 AI 内容诊断"}
-              </p>
-              {!diagnosisReady && profileGaps.length > 0 ? (
-                <p className="mt-2 text-sm text-amber-100/90">还缺：{profileGaps.join("、")}</p>
-              ) : null}
-              {diagnosisReady ? (
-                <p className="mt-2 text-sm text-slate-400">档案已达到可诊断门槛，可生成目标问题与内容缺口分析。</p>
-              ) : (
-                <p className="mt-2 text-sm text-amber-100/90">建议先上传资料 AI 解析，或手动补齐品牌基础信息与目标客户画像。</p>
-              )}
-            </div>
-            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-              <Button
-                className={cn(aiPrimaryBtn, "h-12 flex-1 sm:flex-none sm:px-10")}
-                disabled={!diagnosisReady}
-                onClick={() => setLocation("/ai-diagnosis")}
-              >
-                进入 AI 内容诊断
-              </Button>
-              <p className="text-center text-xs text-slate-500 sm:text-left">
-                档案完整度 {completionPercent}% · 保存品牌与业务与客户画像为必填 · 资料不足时不得编造案例、数据、价格和效果承诺
-              </p>
-            </div>
-          </section>
+          <GeoMaterialPreviewSection
+            model={{
+              brandName: brandName.trim() || currentProject?.enterpriseName || "",
+              industry: industryTagValue,
+              oneLiner: oneLiner.trim() || productDesc.trim().slice(0, 120),
+              productDesc: productDesc.trim(),
+              keyPoints: keyPoints.filter(Boolean),
+              targetCustomer: targetCustomer.trim(),
+              customerPains: customerPains.filter(Boolean),
+              searchQuestions: commonQuestionsList.filter(Boolean).slice(0, 3),
+              caseSnippets: caseRows
+                .filter(r => r.customerBackground.trim())
+                .map(r => `${r.customerBackground.slice(0, 24)}：${r.resultData.slice(0, 40) || "待补充结果"}`),
+              trustSummary: `客户案例 ${caseRows.length} 条 · 信任背书 ${trustMaterialCount} 项 · FAQ ${faqFilledCount} 条`,
+            }}
+            onGoProduction={() => {
+              if (currentProjectId) setLocation(buildProjectUrl("/weekly", currentProjectId));
+            }}
+          />
         </>
       ) : null}
     </AiPageShell>

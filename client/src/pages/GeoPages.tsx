@@ -1,10 +1,14 @@
 import { GeoStatusGuide } from "@/components/GeoStatusGuide";
+import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
+import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { AlertTriangle, Brain, FileBarChart2, FileText, RadioTower, Send, Target } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -27,25 +31,34 @@ const diagnosisDetail = (item: Row) => {
 };
 
 function useSelectedProject() {
-  const { data: projects = [] } = trpc.geo.projects.list.useQuery();
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>();
-  useEffect(() => {
-    if (!selectedProjectId && projects[0]?.id) setSelectedProjectId(projects[0].id);
-  }, [projects, selectedProjectId]);
-  const selectedProject = useMemo(() => projects.find(project => project.id === selectedProjectId), [projects, selectedProjectId]);
-  return { projects, selectedProject, selectedProjectId, setSelectedProjectId, input: projectInput(selectedProjectId), enabled: Boolean(selectedProjectId) };
-}
-
-function ProjectSelector({ projects, selectedProjectId, onChange }: { projects: Row[]; selectedProjectId?: number; onChange: (id?: number) => void }) {
-  return (
-    <select value={selectedProjectId ?? ""} onChange={event => onChange(Number(event.target.value) || undefined)} className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 md:max-w-md">
-      <option value="">请选择项目</option>
-      {projects.map(project => <option key={project.id} value={project.id}>{project.enterpriseName}</option>)}
-    </select>
+  const selection = useActiveProjectSelection();
+  const selectedProject = useMemo(
+    () => selection.projects.find(project => project.id === selection.selectedProjectId),
+    [selection.projects, selection.selectedProjectId],
   );
+  return {
+    selectedProject,
+    selectedProjectId: selection.selectedProjectId,
+    input: projectInput(selection.selectedProjectId),
+    enabled: selection.enabled,
+  };
 }
 
-function PageShell({ title, desc, guide, children }: { title: string; desc: string; guide: React.ComponentProps<typeof GeoStatusGuide>; children: React.ReactNode }) {
+function PageShell({
+  title,
+  desc,
+  guide,
+  enabled = true,
+  projectName,
+  children,
+}: {
+  title: string;
+  desc: string;
+  guide: React.ComponentProps<typeof GeoStatusGuide>;
+  enabled?: boolean;
+  projectName?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-cyan-300/15 bg-slate-950/70 p-6 text-slate-100 shadow-[0_0_34px_rgba(56,189,248,0.10)] backdrop-blur">
@@ -53,8 +66,9 @@ function PageShell({ title, desc, guide, children }: { title: string; desc: stri
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">{title}</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{desc}</p>
       </section>
+      {enabled ? <BusinessPageProjectHeader projectName={projectName} testId="geo-legacy-project-header" /> : null}
       <GeoStatusGuide {...guide} />
-      {children}
+      {!enabled ? <ProjectContextEmptyState /> : children}
     </div>
   );
 }
@@ -128,17 +142,19 @@ export function buildThirdPartyPublishGate(platformName: string, authorizations:
 
 export function ProjectsPage() {
   const [, setLocation] = useLocation();
-  const { projects, selectedProjectId, setSelectedProjectId } = useSelectedProject();
+  const { selectedProject, selectedProjectId, enabled } = useSelectedProject();
   return (
-    <PageShell title="企业档案" desc="企业档案已升级为「基本身份 / 你的客户 / 案例证明」结构。请从企业档案页补齐必填项后进入主流程。" guide={{ stage: "企业档案", completion: 20, nextAction: "打开企业档案完成 Section 1～3", why: "企业档案是后续诊断和内容生成的事实来源。", risk: "资料不足时不得编造效果承诺。", ctaLabel: "进入企业档案", ctaPath: "/enterprise-profile" }}>
-      <InfoCard title="当前项目" icon={Target}><div className="space-y-4"><ProjectSelector projects={projects as Row[]} selectedProjectId={selectedProjectId} onChange={setSelectedProjectId} /><Button onClick={() => setLocation("/enterprise-profile")} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">进入企业档案</Button></div></InfoCard>
+    <PageShell title="企业档案" desc="企业档案已升级为「基本身份 / 你的客户 / 案例证明」结构。请从企业档案页补齐必填项后进入主流程。" enabled={enabled} projectName={selectedProject?.enterpriseName} guide={{ stage: "企业档案", completion: 20, nextAction: "打开企业档案完成 Section 1～3", why: "企业档案是后续诊断和内容生成的事实来源。", risk: "资料不足时不得编造效果承诺。", ctaLabel: "进入企业档案", ctaPath: "/enterprise-profile" }}>
+      <InfoCard title="进入企业档案" icon={Target}>
+        <Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId))} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">进入企业档案</Button>
+      </InfoCard>
     </PageShell>
   );
 }
 
 export function QuestionsPage() {
   const utils = trpc.useUtils();
-  const { projects, selectedProjectId, setSelectedProjectId, input, enabled } = useSelectedProject();
+  const { selectedProject, selectedProjectId, input, enabled } = useSelectedProject();
   const questions = trpc.geo.questions.list.useQuery(input, { enabled });
   const responses = trpc.geo.aiResponses.list.useQuery(input, { enabled });
   const analyses = trpc.geo.analysis.list.useQuery(input, { enabled });
@@ -157,8 +173,7 @@ export function QuestionsPage() {
   const questionAnalyses = a.slice(0, 8).map(item => ({ item, detail: diagnosisDetail(item as Row) }));
   const next = q.length === 0 ? { label: "生成客户问题", action: () => selectedProjectId && generateQuestions.mutate({ projectId: selectedProjectId }) } : r.length === 0 ? { label: "导入 AI 回答", action: () => toast.info("请补充真实 AI 回答后再运行诊断") } : a.length === 0 ? { label: "生成诊断结果", action: () => selectedProjectId && runAnalysis.mutate({ projectId: selectedProjectId }) } : !score.data ? { label: "生成诊断评分", action: () => selectedProjectId && calculateScore.mutate({ projectId: selectedProjectId }) } : t.length === 0 ? { label: "生成下一步建议", action: () => selectedProjectId && generateTasks.mutate({ projectId: selectedProjectId }) } : { label: "进入内容生成", action: () => { window.location.href = "/content-generation"; } };
   return (
-    <PageShell title="内容诊断" desc="内容诊断页只展示客户问题、AI 回答、诊断结果、内容缺口、下一步建议五个区域，并保留一个主动作按钮。" guide={{ stage: "内容诊断", completion: a.length ? 58 : q.length ? 35 : 20, nextAction: next.label, why: "诊断结果决定内容写什么、补什么证据以及如何解释竞品差距。", risk: "样本量有限时不代表全网绝对排名。", ctaLabel: next.label, ctaPath: "/ai-diagnosis" }}>
-      <InfoCard title="项目选择" icon={Target}><ProjectSelector projects={projects as Row[]} selectedProjectId={selectedProjectId} onChange={setSelectedProjectId} /></InfoCard>
+    <PageShell title="内容诊断" desc="内容诊断页只展示客户问题、AI 回答、诊断结果、内容缺口、下一步建议五个区域，并保留一个主动作按钮。" enabled={enabled} projectName={selectedProject?.enterpriseName} guide={{ stage: "内容诊断", completion: a.length ? 58 : q.length ? 35 : 20, nextAction: next.label, why: "诊断结果决定内容写什么、补什么证据以及如何解释竞品差距。", risk: "样本量有限时不代表全网绝对排名。", ctaLabel: next.label, ctaPath: "/ai-diagnosis" }}>
       <div className="grid gap-4 lg:grid-cols-5">
         {[{ title: "客户问题", value: q.length, desc: q[0]?.questionText }, { title: "AI 回答", value: r.length, desc: r[0]?.aiPlatform }, { title: "诊断结果", value: a.length, desc: a[0]?.contentGap }, { title: "内容缺口", value: a.filter(item => item.contentGap).length, desc: a[0]?.optimizationSuggestion }, { title: "下一步建议", value: t.length, desc: t[0]?.taskName }].map(item => <div key={item.title} className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-slate-100"><p className="text-sm text-cyan-200">{item.title}</p><p className="mt-2 text-3xl font-semibold text-white">{item.value}</p><p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">{textValue(item.desc, "暂无数据")}</p></div>)}
       </div>
@@ -201,7 +216,7 @@ const recommendedTypes = ["竞品对比文章", "产品能力说明文章", "行
 export function ArticlesPage() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
-  const { projects, selectedProjectId, setSelectedProjectId, input, enabled } = useSelectedProject();
+  const { selectedProject, selectedProjectId, input, enabled } = useSelectedProject();
   const [location] = useLocation();
   const [selectedArticleId, setSelectedArticleId] = useState<number | undefined>();
   const isPublishing = location === "/content-publishing" || location === "/publish";
@@ -247,8 +262,10 @@ export function ArticlesPage() {
   if (isPublishing) {
     const guide = projectPublishSummary(articleStatuses.map(item => ({ status: item.status })), records.data?.length ?? 0);
     return (
-      <PageShell title="内容发布" desc="内容发布页只展示可发布内容和已发布内容；第三方平台素材放入折叠区，当前只生成素材不自动登录发布；未授权或授权失效的平台会被阻断到人工发布前一步。" guide={guide}>
-        <InfoCard title="项目选择" icon={Target}><div className="space-y-3"><ProjectSelector projects={projects as Row[]} selectedProjectId={selectedProjectId} onChange={setSelectedProjectId} /><Button onClick={() => setLocation("/enterprise-profile")} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">进入企业档案</Button></div></InfoCard>
+      <PageShell title="内容发布" desc="内容发布页只展示可发布内容和已发布内容；第三方平台素材放入折叠区，当前只生成素材不自动登录发布；未授权或授权失效的平台会被阻断到人工发布前一步。" enabled={enabled} projectName={selectedProject?.enterpriseName} guide={guide}>
+        <InfoCard title="企业资料" icon={Target}>
+          <Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId))} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">进入企业档案</Button>
+        </InfoCard>
         <div className="grid gap-4 lg:grid-cols-2">
           <InfoCard title="可发布内容" desc="通过准入检查" icon={Send}>
             <div className="space-y-3">
@@ -279,7 +296,7 @@ export function ArticlesPage() {
             {materialKeys.map(key => {
               const gate = buildThirdPartyPublishGate(key, platformAuthorizations);
               const materialText = String(selectedMaterials[key] ?? "");
-              return <details key={key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><summary className="cursor-pointer font-medium text-cyan-100">{key}</summary><div className={`mt-3 rounded-xl border p-3 ${gate.allowManualPublish ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100" : "border-amber-300/20 bg-amber-400/10 text-amber-50"}`}>{gate.allowManualPublish ? `可人工复制发布：${gate.status} · ${gate.accountAlias}` : gate.blockReason}</div><pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950/70 p-3 text-xs text-slate-300">{materialText}</pre><div className="mt-3 rounded-xl border border-white/10 bg-slate-950/40 p-3"><label className="text-xs font-medium text-slate-200">回填发布链接</label><input disabled={!gate.allowManualPublish} placeholder="人工发布后粘贴第三方平台公开链接；系统不会自动登录发布" className="mt-2 h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none disabled:cursor-not-allowed disabled:opacity-50" /><p className="mt-2 text-xs text-slate-400">标记已人工发布前，请确认素材已由人工复制到第三方平台并完成公开发布。</p></div><div className="mt-3 flex flex-wrap gap-2"><Button disabled={!gate.allowManualPublish} onClick={async () => { await navigator.clipboard?.writeText(materialText); toast.success("已复制素材，请到第三方平台后台人工粘贴发布。"); }} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50">复制素材</Button><Button disabled={!gate.allowManualPublish} onClick={() => toast.info("请在第三方平台后台人工粘贴素材并自行确认发布，系统不会代发。")} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">进入人工发布提示</Button><Button disabled={!gate.allowManualPublish} onClick={() => toast.info("已进入人工发布记录流程：请先回填发布链接，再由人工确认标记；当前不会调用第三方自动发布 API。")} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">标记已人工发布</Button><Button onClick={() => setLocation("/enterprise-profile")} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">配置授权</Button></div></details>;
+              return <details key={key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><summary className="cursor-pointer font-medium text-cyan-100">{key}</summary><div className={`mt-3 rounded-xl border p-3 ${gate.allowManualPublish ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100" : "border-amber-300/20 bg-amber-400/10 text-amber-50"}`}>{gate.allowManualPublish ? `可人工复制发布：${gate.status} · ${gate.accountAlias}` : gate.blockReason}</div><pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950/70 p-3 text-xs text-slate-300">{materialText}</pre><div className="mt-3 rounded-xl border border-white/10 bg-slate-950/40 p-3"><label className="text-xs font-medium text-slate-200">回填发布链接</label><input disabled={!gate.allowManualPublish} placeholder="人工发布后粘贴第三方平台公开链接；系统不会自动登录发布" className="mt-2 h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none disabled:cursor-not-allowed disabled:opacity-50" /><p className="mt-2 text-xs text-slate-400">标记已人工发布前，请确认素材已由人工复制到第三方平台并完成公开发布。</p></div><div className="mt-3 flex flex-wrap gap-2"><Button disabled={!gate.allowManualPublish} onClick={async () => { await navigator.clipboard?.writeText(materialText); toast.success("已复制素材，请到第三方平台后台人工粘贴发布。"); }} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50">复制素材</Button><Button disabled={!gate.allowManualPublish} onClick={() => toast.info("请在第三方平台后台人工粘贴素材并自行确认发布，系统不会代发。")} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">进入人工发布提示</Button><Button disabled={!gate.allowManualPublish} onClick={() => toast.info("已进入人工发布记录流程：请先回填发布链接，再由人工确认标记；当前不会调用第三方自动发布 API。")} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">标记已人工发布</Button><Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId))} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">配置授权</Button></div></details>;
             })}
           </div> : <p className="text-sm text-slate-400">请选择一篇文章查看第三方平台素材。</p>}
         </InfoCard>
@@ -288,8 +305,7 @@ export function ArticlesPage() {
   }
 
   return (
-    <PageShell title="内容生成" desc="内容生成页展示推荐选题、文章正文详情、质量准入和重新生成动作，确保文章有真实依据后再进入发布。" guide={{ stage: "内容生成", completion: (articles.data ?? []).length ? 70 : 55, nextAction: (topics.data ?? []).length ? "生成或检查推荐文章" : "生成三类推荐内容", why: "内容必须回应诊断缺口和客户高意向问题。", risk: "质量分、事实确认或合规检查未通过时禁止发布。", ctaLabel: (articles.data ?? []).length ? "进入内容发布" : "生成推荐内容", ctaPath: (articles.data ?? []).length ? "/content-publishing" : "/weekly" }}>
-      <InfoCard title="项目选择" icon={Target}><ProjectSelector projects={projects as Row[]} selectedProjectId={selectedProjectId} onChange={setSelectedProjectId} /></InfoCard>
+    <PageShell title="内容生成" desc="内容生成页展示推荐选题、文章正文详情、质量准入和重新生成动作，确保文章有真实依据后再进入发布。" enabled={enabled} projectName={selectedProject?.enterpriseName} guide={{ stage: "内容生成", completion: (articles.data ?? []).length ? 70 : 55, nextAction: (topics.data ?? []).length ? "生成或检查推荐文章" : "生成三类推荐内容", why: "内容必须回应诊断缺口和客户高意向问题。", risk: "质量分、事实确认或合规检查未通过时禁止发布。", ctaLabel: (articles.data ?? []).length ? "进入内容发布" : "生成推荐内容", ctaPath: (articles.data ?? []).length ? "/content-publishing" : "/weekly" }}>
       <div className="grid gap-4 lg:grid-cols-3">{recommendedTypes.map(type => <div key={type} className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-slate-100"><FileText className="h-5 w-5 text-cyan-200" /><h2 className="mt-3 text-lg font-semibold text-white">{type}</h2><p className="mt-2 text-sm leading-6 text-slate-400">围绕客户指定问题、诊断缺口和已确认企业资料生成，避免无来源内容。</p></div>)}</div>
       <InfoCard title="推荐选题" desc="先生成选题，再生成正文" icon={Brain}>
         <div className="space-y-3">
@@ -306,21 +322,20 @@ export function ArticlesPage() {
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="font-medium text-white">引用友好片段</p><div className="mt-2 space-y-2">{selectedSnippets.map((snippet, index) => <div key={index} className="rounded-xl bg-slate-950/50 p-3"><p className="text-cyan-100">{textValue(snippet.question, `片段 ${index + 1}`)}</p><p className="mt-1 text-slate-400">{textValue(snippet.answer)}</p></div>)}{selectedSnippets.length === 0 ? <p className="text-slate-400">暂无引用片段。</p> : null}</div></div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><p className="font-medium text-white">质量与一致性</p><p className="mt-2">质量评分：{selectedScore?.totalScore ?? "待评分"}</p><p className="mt-1">一致性评分：{(selectedArticle.consistencyCheck as Row | null)?.score ?? "待检查"}</p><p className="mt-1">发布阻断：{selectedCheck?.blockReasons.length ? selectedCheck.blockReasons.join("；") : "暂无"}</p></div>
           </div>
-          <div className="flex flex-wrap gap-2"><Button onClick={() => qualityCheck.mutate({ articleId: selectedArticle.id })} disabled={qualityCheck.isPending || !(selectedArticle.status === "已生成" || selectedArticle.status === "待质检" || selectedArticle.status === "需人工审核")} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">重新检查</Button><Button onClick={() => optimizeArticle.mutate({ articleId: selectedArticle.id, mode: "FAQ", reason: "用户在详情页要求补齐 FAQ 版本" })} disabled={optimizeArticle.isPending} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">生成 FAQ 优化版</Button><Button onClick={() => setLocation("/content-publishing")} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">进入发布页</Button></div>
+          <div className="flex flex-wrap gap-2"><Button onClick={() => qualityCheck.mutate({ articleId: selectedArticle.id })} disabled={qualityCheck.isPending || !(selectedArticle.status === "已生成" || selectedArticle.status === "待质检" || selectedArticle.status === "需人工审核")} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">重新检查</Button><Button onClick={() => optimizeArticle.mutate({ articleId: selectedArticle.id, mode: "FAQ", reason: "用户在详情页要求补齐 FAQ 版本" })} disabled={optimizeArticle.isPending} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">生成 FAQ 优化版</Button><Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">进入发布页</Button></div>
         </div>
       </InfoCard> : null}
-      <div className="flex gap-3"><Button onClick={() => selectedProjectId && generateTopics.mutate({ projectId: selectedProjectId })} disabled={!selectedProjectId || generateTopics.isPending} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">生成推荐选题</Button><Button onClick={() => setLocation("/content-publishing")} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">进入内容发布</Button></div>
+      <div className="flex gap-3"><Button onClick={() => selectedProjectId && generateTopics.mutate({ projectId: selectedProjectId })} disabled={!selectedProjectId || generateTopics.isPending} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">生成推荐选题</Button><Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} variant="outline" className="border-white/15 text-slate-100 hover:bg-white/10">进入内容发布</Button></div>
     </PageShell>
   );
 }
 
 export function MonitoringPage() {
-  const { projects, selectedProjectId, setSelectedProjectId, input, enabled } = useSelectedProject();
+  const { selectedProject, input, enabled } = useSelectedProject();
   const records = trpc.geo.articles.publishRecords.useQuery(input, { enabled });
   const rows = records.data ?? [];
   return (
-    <PageShell title="收录监测" desc="收录监测页只展示已发布内容监测卡片，显示收录、AI 提及、AI 推荐、最近检测时间和当前建议。" guide={{ stage: "收录监测", completion: rows.length ? 88 : 74, nextAction: rows.length ? "查看监测结果并准备报告" : "先发布内容后再监测", why: "发布后的监测结果决定是否复测和优化。", risk: "不承诺保证收录、保证排名或保证被 AI 推荐。", ctaLabel: rows.length ? "进入交付报告" : "进入内容发布", ctaPath: rows.length ? "/delivery-reports" : "/content-publishing" }}>
-      <InfoCard title="项目选择" icon={Target}><ProjectSelector projects={projects as Row[]} selectedProjectId={selectedProjectId} onChange={setSelectedProjectId} /></InfoCard>
+    <PageShell title="收录监测" desc="收录监测页只展示已发布内容监测卡片，显示收录、AI 提及、AI 推荐、最近检测时间和当前建议。" enabled={enabled} projectName={selectedProject?.enterpriseName} guide={{ stage: "收录监测", completion: rows.length ? 88 : 74, nextAction: rows.length ? "查看监测结果并准备报告" : "先发布内容后再监测", why: "发布后的监测结果决定是否复测和优化。", risk: "不承诺保证收录、保证排名或保证被 AI 推荐。", ctaLabel: rows.length ? "进入交付报告" : "进入内容发布", ctaPath: rows.length ? "/delivery-reports" : "/content-publishing" }}>
       <div className="grid gap-4 lg:grid-cols-2">{rows.map(record => <div key={record.id} className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-slate-100"><RadioTower className="h-5 w-5 text-cyan-200" /><h2 className="mt-3 font-semibold text-white">{record.publishUrl}</h2><div className="mt-3 grid gap-2 text-sm text-slate-300 sm:grid-cols-2"><span>收录：待检测</span><span>AI 提及：待检测</span><span>AI 推荐：待检测</span><span>最近检测时间：{record.publishedAt ? new Date(record.publishedAt).toLocaleString() : "待检测"}</span></div><p className="mt-3 text-sm leading-6 text-slate-400">当前建议：{record.needRetest ? "进入复测，观察是否被收录、被 AI 提及、被 AI 推荐。" : "保持监测，等待更多样本。"}</p></div>)}{rows.length === 0 ? <p className="text-sm text-slate-400">暂无已发布内容监测卡片。</p> : null}</div>
     </PageShell>
   );
@@ -328,13 +343,12 @@ export function MonitoringPage() {
 
 export function ReportsPage() {
   const utils = trpc.useUtils();
-  const { projects, selectedProjectId, setSelectedProjectId, input, enabled } = useSelectedProject();
+  const { selectedProject, selectedProjectId, input, enabled } = useSelectedProject();
   const report = trpc.geo.reports.latest.useQuery(input, { enabled });
   const generateReport = trpc.geo.reports.generate.useMutation({ onSuccess: async () => { toast.success("交付报告已生成"); await utils.geo.reports.latest.invalidate(); }, onError: error => toast.error(error.message) });
   const reportTypes = ["内容诊断报告", "内容生产报告", "发布监测报告", "复测优化报告"];
   return (
-    <PageShell title="交付报告" desc="交付报告页只展示 内容诊断报告、内容生产报告、发布监测报告、复测优化报告四类报告卡片，并保留风险说明。" guide={{ stage: "交付报告", completion: report.data ? 96 : 86, nextAction: report.data ? "查看并交付报告" : "生成交付报告", why: "报告把建档、诊断、内容、发布和监测串成客户可解释结果。", risk: "报告只能引用已确认事实，不承诺保证收录、排名或 AI 推荐。", ctaLabel: report.data ? "返回总览" : "生成交付报告", ctaPath: report.data ? "/" : "/delivery-reports" }}>
-      <InfoCard title="项目选择" icon={Target}><ProjectSelector projects={projects as Row[]} selectedProjectId={selectedProjectId} onChange={setSelectedProjectId} /></InfoCard>
+    <PageShell title="交付报告" desc="交付报告页只展示 内容诊断报告、内容生产报告、发布监测报告、复测优化报告四类报告卡片，并保留风险说明。" enabled={enabled} projectName={selectedProject?.enterpriseName} guide={{ stage: "交付报告", completion: report.data ? 96 : 86, nextAction: report.data ? "查看并交付报告" : "生成交付报告", why: "报告把建档、诊断、内容、发布和监测串成客户可解释结果。", risk: "报告只能引用已确认事实，不承诺保证收录、排名或 AI 推荐。", ctaLabel: report.data ? "返回总览" : "生成交付报告", ctaPath: report.data ? "/" : "/delivery-reports" }}>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{reportTypes.map(type => <div key={type} className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-slate-100"><FileBarChart2 className="h-5 w-5 text-cyan-200" /><h2 className="mt-3 font-semibold text-white">{type}</h2><p className="mt-2 text-sm leading-6 text-slate-400">{report.data ? "已有最新报告数据，可用于客户交付。" : "等待生成最新报告。"}</p></div>)}</div>
       <Card className="border-amber-300/15 bg-amber-400/10 text-amber-50"><CardHeader><CardTitle className="flex items-center gap-2 text-amber-50"><AlertTriangle className="h-5 w-5" /> 风险说明</CardTitle></CardHeader><CardContent className="space-y-2 text-sm leading-6"><p>不承诺保证收录、保证排名或保证被 AI 推荐。</p><p>样本量有限，不代表全网绝对排名；报告只引用已确认事实和系统内记录。</p></CardContent></Card>
       <Button onClick={() => selectedProjectId && generateReport.mutate({ projectId: selectedProjectId })} disabled={!selectedProjectId} className="bg-cyan-400 text-slate-950 hover:bg-cyan-300">生成交付报告</Button>

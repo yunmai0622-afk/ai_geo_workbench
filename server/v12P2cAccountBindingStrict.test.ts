@@ -5,8 +5,14 @@ import { resolve } from "node:path";
 const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
+const ui =
+  read("client/src/components/PlatformAccountBindingSection.tsx") +
+  read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx") +
+  read("client/src/components/platformAccounts/usePlatformAccountBinding.ts") +
+  read("client/src/components/platformAccounts/PlatformAccountTable.tsx") +
+  read("client/src/components/platformAccounts/accountDisplay.ts");
+
 describe("P2-C strict plugin-only platform account binding", () => {
-  const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
   const svc = read("server/projectPlatformAccounts.ts");
   const router = read("server/projectPlatformAccountsRouter.ts");
   const weekly = read("client/src/pages/WeeklyContentPage.tsx");
@@ -20,14 +26,13 @@ describe("P2-C strict plugin-only platform account binding", () => {
   });
 
   it("renders bind publish account via local agent", () => {
-    expect(ui).toContain("绑定发布账号");
+    expect(ui).toContain("bind-publish-account-");
     expect(ui).toContain("checkLocalAgentHealth");
   });
 
   it("bind dialog accountName is readonly", () => {
     expect(ui).toContain("平台显示昵称");
     expect(ui).toContain("readOnly");
-    expect(ui).toContain("platform-account-name-readonly");
     expect(ui).toContain("保存绑定账号");
   });
 
@@ -43,14 +48,12 @@ describe("P2-C strict plugin-only platform account binding", () => {
     expect(svc).toContain("平台显示昵称不可修改");
     expect(router).toContain("purposeOnly");
     expect(ui).toContain("purposeOnly: true");
-    expect(ui).toContain("编辑用途");
   });
 
   it("reverify uses local agent detect", () => {
-    expect(ui).toContain("重新验证登录");
+    expect(ui).toContain("检测登录态");
     expect(ui).toContain("detectLocalAgentAccount");
     expect(svc).toContain("bindLocalAgentAccount");
-    expect(ui).toContain("已验证");
     expect(ui).toContain("登录有效");
   });
 

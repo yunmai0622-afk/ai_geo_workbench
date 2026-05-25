@@ -18,10 +18,13 @@ import {
   recordPublicLink,
   type PublishRecordForDisplay,
 } from "@/lib/assetProgressDisplay";
-import { aiInput } from "@/lib/aiProductUi";
+import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
+import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
+import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 
 type ProjectOption = { id: number; enterpriseName: string };
@@ -58,20 +61,12 @@ function isInThisWeek(createdAt: Date | string | null | undefined): boolean {
 }
 
 function useProjectSelection() {
-  const { data: projects = [] } = trpc.geo.projects.list.useQuery();
-  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>();
-
-  useEffect(() => {
-    if (!selectedProjectId && projects[0]?.id) setSelectedProjectId(projects[0].id);
-  }, [projects, selectedProjectId]);
-
-  const projectInput = useMemo(() => ({ projectId: selectedProjectId }), [selectedProjectId]);
-  return { projects: projects as ProjectOption[], selectedProjectId, setSelectedProjectId, projectInput, enabled: Boolean(selectedProjectId) };
+  return useActiveProjectSelection();
 }
 
 export default function ProgressPage() {
   const [, setLocation] = useLocation();
-  const { projects, selectedProjectId, setSelectedProjectId, projectInput, enabled } = useProjectSelection();
+  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } = useProjectSelection();
 
   const scoresQuery = trpc.geo.scores.list.useQuery(projectInput, { enabled });
   const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
@@ -133,31 +128,25 @@ export default function ProgressPage() {
     tasksQuery.isError ||
     monitoringQuery.isError;
 
+  if (!enabled && !projectsLoading) {
+    return (
+      <AiPageShell>
+        <ProjectContextEmptyState />
+      </AiPageShell>
+    );
+  }
+
   return (
     <AiPageShell>
       <AiPageHero
         title="资产进展看板"
-        description="查看内容资产覆盖、发布节奏、AI 实测进展和下一轮建设重点。"
+        description="查看当前企业的 GEO 增长进展。"
         badge="进展看板"
       >
-        <label className="text-xs text-slate-500">当前项目</label>
-        <select
-          value={selectedProjectId ?? ""}
-          onChange={e => setSelectedProjectId(Number(e.target.value) || undefined)}
-          className={`${aiInput} min-w-[200px]`}
-        >
-          <option value="">请选择项目</option>
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.enterpriseName}
-            </option>
-          ))}
-        </select>
+        <BusinessPageProjectHeader projectName={selectedProject?.enterpriseName} testId="progress-project-header" />
       </AiPageHero>
 
-      {!enabled ? (
-        <p className="text-sm text-slate-400">请先选择项目</p>
-      ) : loadError ? (
+      {loadError ? (
         <p className="text-sm text-amber-100">暂时无法加载，请刷新重试</p>
       ) : loading ? (
         <p className="text-sm text-slate-400">加载中...</p>
@@ -244,13 +233,13 @@ export default function ProgressPage() {
               ))}
             </ul>
             <AiGlassPanel className="mt-4 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => setLocation("/weekly")}>
+              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}>
                 去生成本周内容
               </Button>
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => setLocation("/content-publishing")}>
+              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}>
                 查看发布记录
               </Button>
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => setLocation("/inclusion-monitoring")}>
+              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}>
                 去 AI 实测
               </Button>
             </AiGlassPanel>

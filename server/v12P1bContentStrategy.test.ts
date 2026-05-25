@@ -10,7 +10,7 @@ describe("P1-B content strategy", () => {
   it("project platform account supports accountGroup and accountRole", () => {
     expect(read("drizzle/schema.ts")).toContain("accountGroup");
     expect(read("server/projectPlatformAccounts.ts")).toContain("accountGroup:");
-    expect(read("client/src/components/PlatformAccountBindingSection.tsx")).toContain("所属账号组");
+    expect(read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx")).toContain("所属账号组");
   });
 
   it("updateGeneratedArticle saves contentStrategyType / publishIdentity / recommendedAccountGroup", () => {

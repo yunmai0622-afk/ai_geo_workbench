@@ -1,5 +1,13 @@
 import { invokeLLM } from "./_core/llm";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import {
+  buildPlatformContentStrategyMeta,
+  formatPlatformRulesForPrompt,
+  getPlatformRule,
+  getPlatformSpecificOutline,
+  isPublishPlatformId,
+  type PlatformContentStrategyInput,
+} from "@shared/platformContentRules";
 import { dedupeTargetQuestionRows } from "@shared/targetQuestionDedup";
 import { getSystemComplianceRulesForPrePublish, getSystemComplianceUsageLines, SYSTEM_PUBLISH_STRATEGY_LINES } from "./systemConfig";
 
@@ -17,7 +25,17 @@ export const p11ForbiddenPatterns = [
 
 export type ArticleType = (typeof articleTypes)[number];
 export type ArticleStatus = (typeof articleStatuses)[number];
-export type ThirdPartyMaterialKey = "GEO 内容页版" | "官网版" | "公众号长文版" | "知乎回答版" | "小红书笔记版" | "百家号/头条号版";
+export type ThirdPartyMaterialKey =
+  | "GEO 内容页版"
+  | "官网版"
+  | "公众号长文版"
+  | "知乎回答版"
+  | "小红书笔记版"
+  | "百家号/头条号版"
+  | "搜狐号版"
+  | "头条号版"
+  | "百家号版"
+  | "网易号版";
 
 export type P12GenerationBasisAuditItem = {
   key: "diagnosticBasis" | "enterpriseProfile" | "productService" | "customerCase" | "competitorProfile" | "complianceRule" | "contentStyle" | "publishStrategy";
@@ -42,6 +60,8 @@ export type P11GenerationBasis = {
   manualReviewConclusion: string;
   assetLibraryUsage?: P12AssetLibraryUsage;
   generationBasisAuditItems?: P12GenerationBasisAuditItem[];
+  /** Phase F：平台化内容策略（写入 generation_basis JSON，不改表结构） */
+  platformContentStrategy?: Record<string, unknown>;
 };
 
 export type P11CitableSnippet = {
@@ -360,11 +380,14 @@ export type P11ArticleDraft = {
   generationBasis: P11GenerationBasis;
   citableSnippets: P11CitableSnippet[];
   geoStructure: P11GeoStructure;
-  thirdPartyMaterials: Record<ThirdPartyMaterialKey, string>;
+  thirdPartyMaterials: Record<string, string>;
   factTraceability: P12FactTraceabilityItem[];
   consistencyCheck: P12ConsistencyCheckResult;
   optimizationVersions: P12OptimizationVersion[];
   status: "待质检";
+  contentStrategyType?: string | null;
+  publishIdentity?: string | null;
+  recommendedAccountGroup?: string | null;
 };
 
 export type P11QualityScore = {
@@ -1166,6 +1189,29 @@ function countCitableH3BlocksInContent(content: string): number {
 
 export function validateGeoCollectableStructure(content: string, snippets?: P11CitableSnippet[], basis?: P11GenerationBasis): string[] {
   const norm = content.replace(/\r\n/g, "\n").replace(/\u3000/g, " ");
+  if (basis?.platformContentStrategy) {
+    const missing: string[] = [];
+    if (!/(^|\n)#\s+(?!#)\S/m.test(norm)) missing.push("# 文章一级标题");
+    if (countMarkdownH2Lines(norm) < 4) missing.push("平台专属二级结构（至少 4 个小节）");
+    if (!/(^|\n)##(?!#)\s*(便于引用的要点|可引用要点|摘录要点|AI\s*可引用片段)(?=\s*(?:\n|$))/m.test(norm)) {
+      missing.push("## 便于引用的要点");
+    }
+    if (!/(^|\n)##(?!#)\s*平台适配说明(?=\s*(?:\n|$))/m.test(norm)) missing.push("## 平台适配说明");
+    if (!/(^|\n)##(?!#)\s*GEO\s*质量自检说明(?=\s*(?:\n|$))/m.test(norm)) missing.push("## GEO 质量自检说明");
+    const snippetCountFromDb = snippets && snippets.length >= 3 && snippets.length <= 5;
+    const snippetCountFromBody = countCitableH3BlocksInContent(norm) >= 3;
+    if (!snippetCountFromDb && !snippetCountFromBody) missing.push("3-5 段引用友好片段");
+    if (
+      !nonEmpty(basis.customerQuestion) ||
+      !nonEmpty(basis.contentGap) ||
+      !nonEmpty(basis.optimizationTask) ||
+      !nonEmpty(basis.notRecommendedReason) ||
+      !nonEmpty(basis.competitorGap)
+    ) {
+      missing.push("完整生成依据");
+    }
+    return missing;
+  }
   /** JS 的 \\b 不适用于中文「词边界」，二级标题行末校验改用行尾前瞻。 */
   const h2 = (title: RegExp) => new RegExp(`(^|\\n)##(?!#)\\s*(?:${title.source})(?=\\s*(?:\\n|$))`, "m");
   const sectionRules: Array<{ missingLabel: string; patterns: RegExp[] }> = [
@@ -1319,21 +1365,46 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
     "正文一级标题必须与下面这一行完全一致（含 # 与空格）：",
     `# ${topic.title}`,
     "",
-    "【文章框架要求】",
-    "二级标题请使用且仅使用以下精确文案（便于后续系统质检），括号内为写作提示：",
-    "## 问题与背景（说明这个问题为什么重要，目标读者会有共鸣）",
-    "## 根因分析（大多数人为什么解决不了这个问题）",
-    "## 解决思路（方法论层面的解法，不依赖特定工具）",
-    "## 具体方案",
-    `（在这部分自然提及品牌名「${brandName}」1-2 次，说明品牌如何帮助解决这个问题；可结合${brandProductLine}落地，不要堆叠硬广）`,
-    "## 执行步骤（可操作的步骤，读者可以直接用）",
-    "## 案例参考（脱敏的真实案例或场景模拟）",
-    "## 常见误区（帮读者避坑）",
-    "## 小结",
-    `（正文先一句话总结核心观点；最后一句固定格式：「${brandName}是${oneLiner}，如果你也面临类似问题，欢迎了解。」）`,
-    "## 便于引用的要点（3-5 组「### 问题」+ 段落式短答，便于检索与摘录）",
-    "## 更新说明",
-    "## 发布后如何自行核对效果",
+    ...((): string[] => {
+      const ps = basis.platformContentStrategy as Record<string, unknown> | undefined;
+      const platformId =
+        ps && typeof ps.targetPublishPlatform === "string" && isPublishPlatformId(ps.targetPublishPlatform)
+          ? ps.targetPublishPlatform
+          : null;
+      if (platformId && ps) {
+        return [
+          "【平台化内容策略 — 必须遵守】",
+          `目标发布平台：${getPlatformRule(platformId).label}（本篇仅此平台，禁止一稿多平台改写）`,
+          `内容类型：${typeof ps.contentTypeLabel === "string" ? ps.contentTypeLabel : ""}`,
+          `GEO 增强目标：${typeof ps.geoEnhancementGoal === "string" ? ps.geoEnhancementGoal : ""}`,
+          `目标 AI 平台（可见度检测语境）：${Array.isArray(ps.targetAiPlatforms) ? ps.targetAiPlatforms.join("、") : "豆包、Kimi、DeepSeek"}`,
+          formatPlatformRulesForPrompt(platformId),
+          "【文章框架要求 — 本平台专属二级标题】",
+          "二级标题请使用且仅使用以下精确文案（不得改用其它平台的标题序列）：",
+          getPlatformSpecificOutline(platformId, brandName),
+          `在正文合适位置自然提及品牌名「${brandName}」1-2 次；可结合${brandProductLine}落地，不要堆叠硬广。`,
+          "文末需包含「## 平台适配说明」小节，用 2-4 句说明本篇如何适配该平台（不要暴露内部字段名）。",
+          "文末需包含「## GEO 质量自检说明」小节，列出 3-5 条可人工核对的检查项（不作虚假承诺）。",
+        ];
+      }
+      return [
+        "【文章框架要求】",
+        "二级标题请使用且仅使用以下精确文案（便于后续系统质检），括号内为写作提示：",
+        "## 问题与背景（说明这个问题为什么重要，目标读者会有共鸣）",
+        "## 根因分析（大多数人为什么解决不了这个问题）",
+        "## 解决思路（方法论层面的解法，不依赖特定工具）",
+        "## 具体方案",
+        `（在这部分自然提及品牌名「${brandName}」1-2 次，说明品牌如何帮助解决这个问题；可结合${brandProductLine}落地，不要堆叠硬广）`,
+        "## 执行步骤（可操作的步骤，读者可以直接用）",
+        "## 案例参考（脱敏的真实案例或场景模拟）",
+        "## 常见误区（帮读者避坑）",
+        "## 小结",
+        `（正文先一句话总结核心观点；最后一句固定格式：「${brandName}是${oneLiner}，如果你也面临类似问题，欢迎了解。」）`,
+        "## 便于引用的要点（3-5 组「### 问题」+ 段落式短答，便于检索与摘录）",
+        "## 更新说明",
+        "## 发布后如何自行核对效果",
+      ];
+    })(),
     "文中请自然包含以下措辞各至少一次（可融入同一句或相邻句，便于机器质检）：不虚构案例、不承诺、绝对排名",
     "请避免 example.com 等演示域名；不作「保证收录/保证推荐/百分百」等承诺。",
     "",
@@ -1449,10 +1520,16 @@ export async function generateGeoArticleDraft(input: {
   questions: P11QuestionLike[];
   analyses: P11AnalysisLike[];
   assetLibrary?: P12AssetLibraryContext | null;
+  platformStrategy?: PlatformContentStrategyInput;
 }): Promise<P11ArticleDraft> {
   if (!input.topic.optimizationTaskId && !nonEmpty(input.topic.contentGap)) throw new Error("文章选题必须绑定任务或内容缺口。");
   const { project, topic, task } = input;
   const basis = buildGenerationBasis(input);
+  if (input.platformStrategy) {
+    const meta = buildPlatformContentStrategyMeta(input.platformStrategy);
+    basis.customerQuestion = input.platformStrategy.targetQuestion.trim();
+    basis.platformContentStrategy = meta as unknown as Record<string, unknown>;
+  }
   validateGenerationBasis(basis);
   const snippets = buildCitableSnippets({ project, basis }).slice(0, 5);
   const structure = buildGeoStructure({ project, basis, snippets, task });
@@ -1498,6 +1575,7 @@ export async function generateGeoArticleDraft(input: {
   const factTraceability = buildFactTraceability({ project, basis, content, assetLibrary: input.assetLibrary });
   const consistencyCheck = evaluateArticleConsistencyCheck({ content, project, basis, assetLibrary: input.assetLibrary, factTraceability });
   const articleMainTitle = truncateGeoArticleDbTitle(extractLeadingAtxH1TitleFromMarkdown(content) ?? topic.title);
+  const platformId = input.platformStrategy?.targetPublishPlatform;
   return {
     projectId: project.id,
     topicId: topic.id ?? 0,
@@ -1508,11 +1586,23 @@ export async function generateGeoArticleDraft(input: {
     generationBasis: basis,
     citableSnippets: snippets,
     geoStructure: structure,
-    thirdPartyMaterials: generateThirdPartyMaterials({ project, title: articleMainTitle, markdownContent: content, questions: input.questions, task, basis, snippets }),
+    thirdPartyMaterials: generateThirdPartyMaterials({
+      project,
+      title: articleMainTitle,
+      markdownContent: content,
+      questions: input.questions,
+      task,
+      basis,
+      snippets,
+      targetPublishPlatform: platformId,
+    }),
     factTraceability,
     consistencyCheck,
     optimizationVersions: [],
     status: "待质检",
+    contentStrategyType: input.platformStrategy?.contentStrategyType ?? null,
+    publishIdentity: input.platformStrategy?.publishIdentity ?? null,
+    recommendedAccountGroup: input.platformStrategy?.recommendedAccountGroup ?? null,
   };
 }
 
@@ -1629,10 +1719,26 @@ export function generateThirdPartyMaterials(input: {
   task: P11TaskLike;
   basis: P11GenerationBasis;
   snippets: P11CitableSnippet[];
-}): Record<ThirdPartyMaterialKey, string> {
+  targetPublishPlatform?: PlatformContentStrategyInput["targetPublishPlatform"];
+}): Record<string, string> {
   const question = input.basis.customerQuestion || input.questions[0]?.questionText || "客户在 AI 中如何选择同类服务？";
   const summary = `${input.project.enterpriseName}本轮 GEO 诊断显示，内容优化应围绕客户真实问题「${question}」、竞品推荐差距和可被 AI 引用的证据展开。`;
   const snippets = formatSnippets(input.snippets);
+  const platformNote =
+    "本篇按平台化策略单独生成，未提供其它平台的可复制正文；如需其它平台请重新选择目标平台后生成。";
+
+  if (input.targetPublishPlatform && isPublishPlatformId(input.targetPublishPlatform)) {
+    const rule = getPlatformRule(input.targetPublishPlatform);
+    const platformBody =
+      input.targetPublishPlatform === "zhihu"
+        ? `问题：${question}\n\n回答：${input.markdownContent}\n\n${platformNote}`
+        : `# ${input.title}\n\n${summary}\n\n## 正文\n\n${input.markdownContent}\n\n## 平台说明\n\n${platformNote}`;
+    return {
+      "GEO 内容页版": input.markdownContent,
+      [rule.materialKey]: platformBody,
+    };
+  }
+
   return {
     "GEO 内容页版": input.markdownContent,
     "官网版": input.markdownContent,

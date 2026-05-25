@@ -19,7 +19,13 @@ const files = fs.readdirSync(releaseDir);
 const dmg = files.find(f => f.endsWith(".dmg") && !f.endsWith(".blockmap"));
 const zipMac = files.find(f => f.endsWith("-mac.zip") && !f.endsWith(".blockmap"));
 const zipWin = files.find(f => f.endsWith("-win.zip") && !f.endsWith(".blockmap"));
-const exe = files.find(f => f.endsWith(".exe") && f.includes("Setup") && !f.endsWith(".blockmap"));
+const exeCandidates = files.filter(
+  f => f.endsWith(".exe") && !f.endsWith(".blockmap") && !f.toLowerCase().includes("uninstall"),
+);
+const exe =
+  exeCandidates.find(f => /setup/i.test(f)) ??
+  exeCandidates.find(f => !f.includes("portable")) ??
+  exeCandidates[0];
 
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
@@ -37,28 +43,27 @@ if (zipMac) {
   copied.push(dest);
 }
 
-/** Windows 安装包仅在 CI/Windows 环境打包后复制；默认不发布假链接 */
-const includeWin = process.env.GEO_AGENT_INCLUDE_WIN === "1";
-if (includeWin && zipWin) {
+if (zipWin) {
   const dest = path.join(outDir, "geo-local-agent-win.zip");
   fs.copyFileSync(path.join(releaseDir, zipWin), dest);
   copied.push(dest);
 }
 
-if (includeWin && exe) {
-  const dest = path.join(outDir, "geo-local-agent-win-setup.exe");
+if (exe) {
+  const dest = path.join(outDir, "geo-local-agent-win.exe");
   fs.copyFileSync(path.join(releaseDir, exe), dest);
   copied.push(dest);
 }
 
 const manifest = {
+  version: "1.0.0",
   copiedAt: new Date().toISOString(),
   sourceDir: releaseDir,
   files: copied.map(p => path.relative(root, p)),
   macDmgUrl: dmg ? "/downloads/geo-local-agent-mac.dmg" : null,
   macZipUrl: zipMac ? "/downloads/geo-local-agent-mac.zip" : null,
-  winZipUrl: includeWin && zipWin ? "/downloads/geo-local-agent-win.zip" : null,
-  winSetupUrl: includeWin && exe ? "/downloads/geo-local-agent-win-setup.exe" : null,
+  winZipUrl: zipWin ? "/downloads/geo-local-agent-win.zip" : null,
+  winSetupUrl: exe ? "/downloads/geo-local-agent-win.exe" : null,
 };
 
 fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2));

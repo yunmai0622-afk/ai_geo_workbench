@@ -4,10 +4,10 @@ import path from "path";
 import { readAgentConfig } from "./agentConfig";
 import { AGENT_VERSION, loadOrCreateAgentMeta } from "./agentMeta";
 import { listRecentTaskLogs } from "./taskLogStore";
+import { getAgentRoot } from "./agentPaths";
 import { DATA_DIR, getAccountsFilePath, readAccounts } from "./storage";
 
-const AGENT_ROOT = path.resolve(__dirname, "..", "..");
-const DIAGNOSTICS_DIR = path.join(AGENT_ROOT, "diagnostics");
+const DIAGNOSTICS_DIR = path.join(getAgentRoot(), "diagnostics");
 
 function copyFileSafe(src: string, dest: string) {
   if (fs.existsSync(src)) fs.copyFileSync(src, dest);

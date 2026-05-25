@@ -1,9 +1,10 @@
 import fs from "fs";
 import path from "path";
+import { getAgentRoot } from "./agentPaths";
 
 export type SessionStatus = "unknown" | "active" | "expired";
 
-export type StoredPlatform = "zhihu" | "sohu" | "baijiahao" | "toutiao";
+export type StoredPlatform = "zhihu" | "sohu" | "baijiahao" | "toutiao" | "netease";
 
 export type StoredAccount = {
   profileId: string;
@@ -26,7 +27,7 @@ export type AccountsFile = {
   accounts: StoredAccount[];
 };
 
-const AGENT_ROOT = path.resolve(__dirname, "..", "..");
+const AGENT_ROOT = getAgentRoot();
 export const DATA_DIR = path.join(AGENT_ROOT, "data");
 export const PROFILES_DIR = path.join(AGENT_ROOT, "profiles");
 const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");

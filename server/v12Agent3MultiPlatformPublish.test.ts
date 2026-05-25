@@ -52,17 +52,21 @@ describe("Agent-3 multi-platform local publish", () => {
     expect(read("server/agentPublishTasks.ts")).toContain('"toutiao"');
   });
 
-  it("PlatformAccountBindingSection supports four platforms", () => {
-    const ui = read("client/src/components/PlatformAccountBindingSection.tsx");
+  it("platform account matrix supports five binding platforms", () => {
+    const ui =
+      read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx") +
+      read("client/src/components/platformAccounts/usePlatformAccountBinding.ts");
     expect(ui).toContain("createPlatformProfile");
     expect(ui).not.toContain("本轮仅支持通过本地客户端绑定知乎");
-    expect(ui).toContain('bind-publish-account-${platform}');
+    expect(ui).toContain("bind-publish-account-");
+    expect(read("shared/platformAccountVerify.ts")).toContain("netease");
   });
 
-  it("local HTTP server accepts four platforms on create", () => {
+  it("local HTTP server accepts binding platforms on create", () => {
     const server = read("local-agent/src/agent/localServer.ts");
-    expect(server).toContain("LOCAL_AGENT_PLATFORMS");
+    expect(server).toContain("LOCAL_AGENT_BINDING_PLATFORMS");
     expect(server).not.toContain('body.platform !== "zhihu"');
+    expect(read("local-agent/src/agent/platforms/publisherFactory.ts")).toContain("netease");
   });
 
   it("zhihu legacy path preserved via platformActions", () => {
