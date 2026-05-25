@@ -441,3 +441,12 @@
 [2026-05-25T12:32:24.250Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
 [2026-05-25T12:32:25.365Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-05-25T12:33:28.024Z] 8:33:28 AM [vite] (client) hmr update /src/index.css
+[2026-05-25T12:37:24.250Z] [定时实测] 开始执行 2026-05-25T12:37:24.250Z
+[2026-05-25T12:37:25.133Z] [定时实测] 找到 1 条需要检测的记录
+[2026-05-25T12:40:42.331Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-05-25T12:43:56.903Z] [实测] DeepSeek 完成：提及 1/5，推荐 0/5
+[2026-05-25T12:43:58.596Z] [定时实测] 记录 330018 完成：提及=已提及
+[2026-05-25T12:44:00.597Z] [定时实测] 本次执行完成 2026-05-25T12:44:00.597Z
+[2026-05-25T13:27:00.374Z] 9:27:00 AM [vite] (client) hmr update /src/index.css
+[2026-05-25T13:27:00.374Z] 9:27:00 AM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
+[2026-05-25T13:27:40.909Z] 9:27:40 AM [vite] (client) hmr update /src/index.css
