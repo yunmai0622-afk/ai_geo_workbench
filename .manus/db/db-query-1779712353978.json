@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `projects` ADD COLUMN `ownerUserId` int NULL;\nCREATE INDEX `idx_projects_owner_user_id` ON `projects` (`ownerUserId`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `projects` ADD COLUMN `ownerUserId` int NULL;\nCREATE INDEX `idx_projects_owner_user_id` ON `projects` (`ownerUserId`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2352
+}
