@@ -1,5 +1,4 @@
-import { P0Card } from "@/components/geo/P0UiPrimitives";
-import { geoP0Surfaces } from "@/lib/geoP0Visual";
+import { Eye, AlertCircle } from "lucide-react";
 
 export type ProfileAiPreviewModel = {
   brandName: string;
@@ -16,46 +15,72 @@ type Props = {
   model: ProfileAiPreviewModel;
 };
 
-function line(value: string, fallback = "待补充") {
-  const t = value.trim();
-  return t || fallback;
+function filled(v: string): boolean {
+  return v.trim().length > 0;
 }
 
 export function ProfileAiUnderstandingPreview({ model }: Props) {
-  const keywordLine =
-    model.keywords.filter(Boolean).length > 0 ? model.keywords.filter(Boolean).join("、") : "待补充";
+  const fields = [
+    { label: "企业", value: model.brandName },
+    { label: "行业", value: model.industry },
+    { label: "一句话介绍", value: model.oneLiner },
+    { label: "核心产品/服务", value: model.productDesc },
+    { label: "目标客户", value: model.targetCustomer },
+    { label: "解决的问题", value: model.primaryPain },
+    { label: "核心优势", value: model.coreAdvantage },
+    { label: "推荐关键词", value: model.keywords.filter(Boolean).join("、") },
+  ];
+
+  const filledCount = fields.filter(f => filled(f.value)).length;
+  const missingFields = fields.filter(f => !filled(f.value));
+  const allFilled = missingFields.length === 0;
 
   return (
-    <P0Card testId="profile-ai-understanding-preview">
-      <p className={geoP0Surfaces.sectionTitle}>AI 理解预览</p>
-      <p className={`mt-1 ${geoP0Surfaces.muted}`}>保存后，系统将按以下理解生成诊断与内容，请核对是否准确。</p>
-      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2" data-testid="geo-onboarding-preview">
-        <PreviewRow label="企业" value={line(model.brandName)} />
-        <PreviewRow label="行业" value={line(model.industry)} />
-        <PreviewRow label="一句话" value={line(model.oneLiner)} className="sm:col-span-2" />
-        <PreviewRow label="产品 / 服务" value={line(model.productDesc)} className="sm:col-span-2" />
-        <PreviewRow label="目标客户" value={line(model.targetCustomer)} />
-        <PreviewRow label="解决的问题" value={line(model.primaryPain)} />
-        <PreviewRow label="核心优势" value={line(model.coreAdvantage)} className="sm:col-span-2" />
-        <PreviewRow label="推荐关键词" value={keywordLine} className="sm:col-span-2" />
+    <div
+      className="geo-card border-blue-100 bg-gradient-to-br from-blue-50/60 to-white p-6"
+      data-testid="profile-ai-understanding-preview"
+    >
+      {/* Header */}
+      <div className="mb-4 flex items-center gap-2">
+        <Eye className="h-4.5 w-4.5 text-blue-600" />
+        <h3 className="text-base font-bold text-gray-900">AI 当前会这样理解你的企业</h3>
+      </div>
+      <p className="mb-4 text-[13px] leading-relaxed text-gray-500">
+        保存后，系统将按以下理解生成诊断与内容。信息越完整，AI 推荐越精准。
+      </p>
+
+      {/* Preview content */}
+      <dl className="space-y-3 text-sm" data-testid="geo-onboarding-preview">
+        {fields.map(f => (
+          <div key={f.label} className="flex items-start gap-3">
+            <dt className="w-[90px] shrink-0 text-[12px] font-medium text-gray-400">{f.label}</dt>
+            <dd className={filled(f.value) ? "leading-relaxed text-gray-800" : "text-gray-300 italic"}>
+              {filled(f.value) ? f.value : "待补充"}
+            </dd>
+          </div>
+        ))}
       </dl>
-    </P0Card>
-  );
-}
 
-function PreviewRow({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <dt className="text-xs font-medium text-slate-500">{label}</dt>
-      <dd className="mt-0.5 leading-relaxed text-slate-800">{value}</dd>
+      {/* Completion hint */}
+      <div className="mt-5 rounded-lg border border-gray-100 bg-white/80 px-4 py-3">
+        {allFilled ? (
+          <p className="text-[13px] font-medium text-emerald-700">
+            核心信息已完整（{filledCount}/8），保存后即可开始 AI 实测诊断。
+          </p>
+        ) : (
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <div>
+              <p className="text-[13px] font-medium text-amber-700">
+                还有 {missingFields.length} 项未填写（{filledCount}/8）
+              </p>
+              <p className="mt-0.5 text-[12px] text-gray-500">
+                缺失：{missingFields.map(f => f.label).join("、")}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

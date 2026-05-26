@@ -1,4 +1,3 @@
-import { P0MetricTile } from "@/components/geo/P0UiPrimitives";
 import { AdvancedMaterialsSection } from "@/components/enterpriseProfile/AdvancedMaterialsSection";
 import {
   FiveMinuteBasicOnboardingSection,
@@ -18,7 +17,7 @@ import {
 } from "@/components/enterpriseProfile/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
+import { geoP0Brand } from "@/lib/geoP0Visual";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { buildProjectUrl } from "@/lib/activeProject";
@@ -29,6 +28,8 @@ import {
 } from "@shared/enterpriseProfileIndustry";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type SummaryLike = {
   profile?: Record<string, unknown> | null;
@@ -64,7 +65,7 @@ function joinListField(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : [];
 }
 
-/** 与 `geo.assetLibrary.upsertProfile` 输入对齐的完整载荷（合并库内旧字段，避免空字段写坏 NOT NULL JSON） */
+/** 与 `geo.assetLibrary.upsertProfile` 输入对齐的完整载荷 */
 function buildFullProfilePayload(
   projectId: number,
   profile: Record<string, unknown> | null | undefined,
@@ -144,35 +145,6 @@ function buildFullProfilePayload(
     keywords: v.keywords,
     ...(v.hasCases !== undefined ? { hasCases: v.hasCases } : {}),
   };
-}
-
-function computeProfileSectionStatuses(params: {
-  brandName: string;
-  industryTagValue: string;
-  productDesc: string;
-  targetCustomer: string;
-  customerPains: string[];
-  casesChoice: "unset" | "has" | "none";
-  profileHasCases: boolean | undefined;
-  customerCasesCount: number;
-}) {
-  const brandDone =
-    Boolean(params.brandName.trim()) && Boolean(params.industryTagValue.trim()) && Boolean(params.productDesc.trim());
-  const customerDone = Boolean(params.targetCustomer.trim()) && params.customerPains.length > 0;
-  let casesDone = false;
-  let casesHint = "待补充，补充后可提升内容可信度";
-  if (params.casesChoice === "none" || params.profileHasCases === false) {
-    casesDone = true;
-    casesHint = "已选择暂不填写案例";
-  } else if (params.profileHasCases === true && params.customerCasesCount > 0) {
-    casesDone = true;
-    casesHint = "已录入可引用案例";
-  }
-  return {
-    brand: { done: brandDone, label: brandDone ? "已完成" : "待补充", hint: "影响品牌与品类识别" },
-    customer: { done: customerDone, label: customerDone ? "已完成" : "待补充", hint: "影响目标问题与内容选题" },
-    cases: { done: casesDone, label: casesDone ? "已完成" : "待补充", hint: casesHint },
-  } as const;
 }
 
 function parseFitCustomersMeta(fit: string) {
@@ -645,29 +617,26 @@ export default function AssetCenterPage() {
     keywords,
   ]);
 
-  const sectionStatuses = useMemo(
-    () =>
-      computeProfileSectionStatuses({
-        brandName,
-        industryTagValue,
-        productDesc,
-        targetCustomer,
-        customerPains,
-        casesChoice,
-        profileHasCases: boolField(profile?.hasCases),
-        customerCasesCount: summary?.customerCases?.length ?? 0,
-      }),
-    [
-      brandName,
-      industryTagValue,
-      productDesc,
-      targetCustomer,
-      customerPains,
-      casesChoice,
-      profile?.hasCases,
-      summary?.customerCases?.length,
-    ],
-  );
+  const computeProfileSectionStatuses = useMemo(() => {
+    const brandDone =
+      Boolean(brandName.trim()) && Boolean(industryTagValue.trim()) && Boolean(productDesc.trim());
+    const customerDone = Boolean(targetCustomer.trim()) && customerPains.length > 0;
+    let casesDone = false;
+    let casesHint = "待补充，补充后可提升内容可信度";
+    const profileHasCases = boolField(profile?.hasCases);
+    if (casesChoice === "none" || profileHasCases === false) {
+      casesDone = true;
+      casesHint = "已选择暂不填写案例";
+    } else if (profileHasCases === true && (summary?.customerCases?.length ?? 0) > 0) {
+      casesDone = true;
+      casesHint = "已录入可引用案例";
+    }
+    return {
+      brand: { done: brandDone, label: brandDone ? "已完成" : "待补充", hint: "影响品牌与品类识别" },
+      customer: { done: customerDone, label: customerDone ? "已完成" : "待补充", hint: "影响目标问题与内容选题" },
+      cases: { done: casesDone, label: casesDone ? "已完成" : "待补充", hint: casesHint },
+    } as const;
+  }, [brandName, industryTagValue, productDesc, targetCustomer, customerPains, casesChoice, profile?.hasCases, summary?.customerCases?.length]);
 
   const saveCustomerCaseRow = async (row: CaseDraft, idx: number) => {
     const name = row.customerBackground.trim().slice(0, 60) || `案例 ${idx + 1}`;
@@ -751,9 +720,6 @@ export default function AssetCenterPage() {
     setCompetitorDraft("");
   }
 
-  const profileEmptyDescription =
-    "5 分钟 GEO 建档必须归属一个客户项目。请先在客户管理台新建或选择客户项目。";
-
   async function saveFiveMinuteAndStartDiagnosis() {
     if (!currentProjectId) return;
     setMessage(undefined);
@@ -771,20 +737,23 @@ export default function AssetCenterPage() {
       setKeyPoints([fiveMinuteValues.coreAdvantage.trim()]);
       await upsertProfile.mutateAsync(basePayloadWithExtras());
       await refreshSummary();
-      setMessage("GEO 建档已保存。");
+      setMessage("品牌资产建档已保存。");
       setLocation(buildProjectUrl("/ai-diagnosis", currentProjectId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存失败");
     }
   }
 
+  const profileEmptyDescription =
+    "品牌资产建档必须归属一个客户项目。请先在企业项目列表中新建或选择客户项目。";
+
   if (!currentProjectId && !projectsLoading) {
     return (
       <div className="space-y-6 pb-12" data-testid="enterprise-profile-page">
         <header className="space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">5 分钟 GEO 建档</h1>
-          <p className={geoP0Surfaces.muted}>
-            让 AI 理解企业是谁、卖什么、服务谁、凭什么被推荐。请先选择或新建客户项目。
+          <h1 className="text-2xl font-bold text-gray-900">品牌资产建档</h1>
+          <p className="text-sm text-gray-500">
+            用 5 分钟补齐 AI 理解企业所需的核心信息。请先选择或新建客户项目。
           </p>
         </header>
         <ProjectContextEmptyState description={profileEmptyDescription} testId="enterprise-profile-empty" />
@@ -794,14 +763,16 @@ export default function AssetCenterPage() {
 
   return (
     <div className="space-y-6 pb-12" data-testid="enterprise-profile-page">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-slate-900">5 分钟 GEO 建档</h1>
-        <p className={geoP0Surfaces.muted}>
-          让 AI 理解企业是谁、卖什么、服务谁、凭什么被推荐。填写核心字段后即可开始 AI 现状诊断。
+      {/* ═══ 页面标题 ═══ */}
+      <header className="space-y-1">
+        <h1 className="text-2xl font-bold text-gray-900">品牌资产建档</h1>
+        <p className="text-sm text-gray-500">
+          用 5 分钟补齐 AI 理解企业所需的核心信息，完成后即可开始 AI 实测诊断。
         </p>
       </header>
 
-      {loading ? <p className="text-sm text-slate-500">正在加载…</p> : null}
+      {/* ═══ 消息提示 ═══ */}
+      {loading ? <p className="text-sm text-gray-400">正在加载…</p> : null}
       {queryError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{queryError}</div>
       ) : null}
@@ -812,49 +783,86 @@ export default function AssetCenterPage() {
 
       {currentProjectId ? (
         <>
-          <P0MetricTile
-            label="建档完成度"
-            value={`${completionPercent}%`}
-            hint="基于 8 项核心建档字段计算"
-          />
-
-          <div ref={basicSectionRef}>
-            <FiveMinuteBasicOnboardingSection
-              values={fiveMinuteValues}
-              onChange={applyFiveMinutePatch}
-              keywords={keywords}
-              keywordDraft={keywordDraft}
-              onKeywordDraftChange={setKeywordDraft}
-              onAddKeyword={addKeyword}
-              onRemoveKeyword={removeKeyword}
-            />
+          {/* ═══ 建档完成度 ═══ */}
+          <div className="geo-card p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">建档完成度</p>
+                <p className="text-[12px] text-gray-400">基于 8 项核心建档字段计算</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-all"
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+                <span className="text-lg font-bold tabular-nums text-gray-900">{completionPercent}%</span>
+              </div>
+            </div>
+            {completionPercent === 100 ? (
+              <div className="mt-3 flex items-center gap-2 text-[13px] text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>核心信息已完整，可保存并开始 AI 实测诊断</span>
+              </div>
+            ) : null}
           </div>
 
-          <ProfileAiUnderstandingPreview model={aiPreviewModel} />
+          {/* ═══ 主体两栏：左核心字段 + 右 AI 预览 ═══ */}
+          <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+            {/* 左侧：核心字段 */}
+            <div className="space-y-6" ref={basicSectionRef}>
+              <FiveMinuteBasicOnboardingSection
+                values={fiveMinuteValues}
+                onChange={applyFiveMinutePatch}
+                keywords={keywords}
+                keywordDraft={keywordDraft}
+                onKeywordDraftChange={setKeywordDraft}
+                onAddKeyword={addKeyword}
+                onRemoveKeyword={removeKeyword}
+              />
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              className={geoP0Brand.primary}
-              disabled={saving || loading}
-              data-testid="save-profile-start-diagnosis"
-              onClick={() => void saveFiveMinuteAndStartDiagnosis()}
-            >
-              {saving ? "保存中…" : "保存并开始 AI 诊断"}
-            </Button>
+              {aiFilledFields.size > 0 ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                  部分字段已由 AI 解析填入，请核对核心建档字段后点击「保存并开始 AI 实测诊断」。
+                </div>
+              ) : null}
+
+              {/* 主按钮 */}
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  className={cn("rounded-xl px-6", geoP0Brand.primary)}
+                  disabled={saving || loading}
+                  data-testid="save-profile-start-diagnosis"
+                  onClick={() => void saveFiveMinuteAndStartDiagnosis()}
+                >
+                  {saving ? "保存中…" : "保存并开始 AI 实测诊断"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* 右侧：AI 理解预览（sticky） */}
+            <div className="hidden lg:block">
+              <div className="sticky top-24">
+                <ProfileAiUnderstandingPreview model={aiPreviewModel} />
+              </div>
+            </div>
           </div>
 
+          {/* 移动端 AI 预览 */}
+          <div className="lg:hidden">
+            <ProfileAiUnderstandingPreview model={aiPreviewModel} />
+          </div>
+
+          {/* ═══ 发布环境轻提示 ═══ */}
           <ProfilePublishEnvLightHint
             projectId={currentProjectId}
             configured={enabledPlatformAccountCount > 0}
           />
 
-          {aiFilledFields.size > 0 ? (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-              部分字段已由 AI 解析填入，请核对核心建档字段后点击「保存并开始 AI 诊断」。
-            </div>
-          ) : null}
-
+          {/* ═══ 资料上传辅助 ═══ */}
           <div ref={intakeSectionRef}>
             <ProfileUploadAssistSection
               projectId={currentProjectId}
@@ -875,6 +883,7 @@ export default function AssetCenterPage() {
             />
           </div>
 
+          {/* ═══ 高级素材（默认折叠） ═══ */}
           <AdvancedMaterialsSection
             caseCount={caseRows.length}
             trustCount={trustMaterialCount}
@@ -894,7 +903,7 @@ export default function AssetCenterPage() {
               });
             }}
             onDeleteCase={idx => setCaseRows(rows => rows.filter((_, i) => i !== idx))}
-            caseStatus={sectionStatuses.cases.label === "已完成" ? "已完成" : "待完善"}
+            caseStatus={computeProfileSectionStatuses.cases.label === "已完成" ? "已完成" : "待完善"}
             trustStatus={trustStatus}
             saving={saving}
             competitors={competitors}
@@ -930,11 +939,12 @@ export default function AssetCenterPage() {
             }
           />
 
-          <details className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="profile-publish-env-fold">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800 hover:text-blue-700">
+          {/* ═══ 发布环境配置（折叠） ═══ */}
+          <details className="geo-card" data-testid="profile-publish-env-fold">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-700 hover:text-blue-700">
               发布环境配置（可选）
             </summary>
-            <div ref={publishEnvRef} className="border-t border-slate-100 px-2 pb-4">
+            <div ref={publishEnvRef} className="border-t border-gray-100 px-2 pb-4">
               <EnterprisePublishEnvironmentSection
                 projectId={currentProjectId!}
                 status={enabledPlatformAccountCount > 0 ? "已完成" : "待完善"}
