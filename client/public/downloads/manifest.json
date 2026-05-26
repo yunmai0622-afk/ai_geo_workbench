@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "copiedAt": "2026-05-26T08:47:02.578Z",
+  "copiedAt": "2026-05-26T08:51:32.078Z",
   "files": [
     "client/public/downloads/geo-local-agent-mac.dmg",
     "client/public/downloads/geo-local-agent-mac.zip",
@@ -11,5 +11,5 @@
   "macDmgUrl": null,
   "winZipUrl": "/downloads/geo-local-agent-win.zip",
   "winSetupUrl": "/downloads/geo-local-agent-win.exe",
-  "macZipSha256": "6d4cb068fe3492af29bd5968e4d46dfb94fa755ab07440aa90b0b255aef90ea1"
+  "macZipSha256": "a1614792a0d411ade31e86eaf7f5cd20f6fbb179882f110793f1e853c63dd022"
 }
