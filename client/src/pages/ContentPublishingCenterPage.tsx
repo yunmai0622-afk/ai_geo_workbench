@@ -540,16 +540,7 @@ export function ContentPublishingCenterPage() {
               </div>
             </details>
 
-            <details className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="publish-chrome-legacy-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800">
-                旧版 Chrome 插件入口
-              </summary>
-              <div className="border-t border-slate-100 p-5">
-                <p className="text-sm text-slate-600">
-                  旧版 Chrome 插件入口，仅用于历史兼容。新项目建议使用 Local Agent。
-                </p>
-              </div>
-            </details>
+
           </div>
 
           <LocalAgentPublishStepsPanel projectId={selectedProjectId} />

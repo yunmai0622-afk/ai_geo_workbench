@@ -1,8 +1,6 @@
-import { AiStatusBadge } from "@/components/ai/ProductUi";
 import { Button } from "@/components/ui/button";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
-import { aiGlassPanel, aiOutlineBtn, aiPrimaryBtn } from "@/lib/aiProductUi";
-import { Download, Loader2, RefreshCw } from "lucide-react";
+import { Download, Loader2, RefreshCw, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -96,57 +94,62 @@ export function LocalAgentDownloadCard() {
 
   return (
     <div
-      className={`${aiGlassPanel} mb-4 border-cyan-400/20 p-4`}
+      className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
       data-testid="local-agent-download-card"
     >
+      {/* Header: title + status */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-white">本地发布客户端</h3>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
-            用于托管本机发布账号环境，自动接收 GEO 发布任务。不保存平台密码，不上传 Cookie。
+          <h3 className="text-base font-semibold text-gray-900">下载 GEO 本地发布客户端</h3>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-gray-600">
+            用于托管本机发布账号环境，自动接收 GEO Web 下发的发布任务。不保存平台密码，不上传 Cookie。
           </p>
         </div>
         {health ? (
-          <AiStatusBadge tone="success" data-testid="local-agent-connected">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" data-testid="local-agent-connected">
+            <CheckCircle2 className="size-3.5" />
             已连接
-          </AiStatusBadge>
+          </span>
         ) : (
-          <AiStatusBadge tone="warning" data-testid="local-agent-offline">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700" data-testid="local-agent-offline">
+            <AlertCircle className="size-3.5" />
             未连接
-          </AiStatusBadge>
+          </span>
         )}
       </div>
 
-      <p className="mt-3 text-sm text-slate-300">
+      {/* Connection detail */}
+      <p className="mt-3 text-sm text-gray-600">
         {health ? (
           <span data-testid="local-agent-health-detail">
-            客户端已连接 · <span className="text-cyan-200">{health.agentId}</span> · v{health.version}
+            客户端已连接 · v{health.version}
           </span>
         ) : (
           <span data-testid="local-agent-health-offline">
             {hasChecked
               ? "未检测到本地发布客户端，请下载安装并启动后重试"
-              : "未检测到本地发布客户端"}
+              : "正在检测客户端…"}
           </span>
         )}
       </p>
 
+      {/* Action buttons */}
       <div className="mt-4 flex flex-wrap gap-2">
         {macOffered && macHref ? (
-          <Button type="button" size="sm" className={aiPrimaryBtn} asChild data-testid="download-mac-agent">
+          <Button type="button" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" asChild data-testid="download-mac-agent">
             <a href={macHref} download>
-              <Download className="mr-1 size-3.5" />
+              <Download className="mr-1.5 size-3.5" />
               {macLabel}
             </a>
           </Button>
         ) : (
-          <Button type="button" size="sm" className={aiPrimaryBtn} disabled data-testid="download-mac-agent">
-            <Download className="mr-1 size-3.5" />
+          <Button type="button" size="sm" disabled data-testid="download-mac-agent">
+            <Download className="mr-1.5 size-3.5" />
             下载 Mac 客户端
           </Button>
         )}
         {winOffered && winHref ? (
-          <Button type="button" size="sm" variant="outline" className={aiOutlineBtn} asChild data-testid="download-win">
+          <Button type="button" size="sm" variant="outline" asChild data-testid="download-win">
             <a href={winHref} download>
               下载 Windows 客户端
             </a>
@@ -156,8 +159,8 @@ export function LocalAgentDownloadCard() {
             type="button"
             size="sm"
             variant="outline"
-            className={aiOutlineBtn}
             disabled
+            className="border-gray-200 text-gray-400"
             data-testid="download-win-soon"
           >
             Windows 客户端即将支持
@@ -167,50 +170,65 @@ export function LocalAgentDownloadCard() {
           type="button"
           size="sm"
           variant="outline"
-          className={aiOutlineBtn}
           data-testid="detect-local-agent"
           disabled={checking}
           onClick={() => void handleDetect()}
         >
-          {checking ? <Loader2 className="mr-1 size-3.5 animate-spin" /> : <RefreshCw className="mr-1 size-3.5" />}
+          {checking ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 size-3.5" />}
           检测客户端
         </Button>
       </div>
 
-      <div
-        className="mt-4 rounded-xl border border-amber-300/25 bg-amber-400/10 px-4 py-3 text-sm leading-relaxed text-amber-50"
-        data-testid="mac-install-gatekeeper-hint"
-      >
-        <p className="font-medium text-amber-100">Mac 首次打开若提示「已损坏，无法打开」</p>
-        <p className="mt-2 text-amber-50/90">
-          这是 macOS 对<strong className="font-semibold">未签名</strong>安装包的常见拦截，不是安装包损坏。请按下面任一方式处理后再启动：
-        </p>
-        <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-amber-50/90">
-          <li>
-            <strong>推荐</strong>：下载 <strong>zip</strong>，解压后将「GEO本地发布客户端」拖入「应用程序」，从启动台打开。
-          </li>
-          <li>
-            在「应用程序」中找到该 App，<strong>按住 Control 键点击 → 打开</strong>，在弹窗中选择「打开」。
-          </li>
-          <li>
-            系统设置 → 隐私与安全性 → 若出现「仍要打开」，点击允许。
-          </li>
-          <li>
-            终端执行（将路径换成你实际安装位置）：
-            <code className="mt-1 block rounded bg-black/30 px-2 py-1 text-xs text-amber-100">
-              xattr -cr &quot;/Applications/GEO本地发布客户端.app&quot;
-            </code>
-          </li>
-        </ol>
-        {macDmgHref && macIsZip ? (
-          <p className="mt-2 text-xs text-amber-100/80">
-            若需要 dmg 安装包：
-            <a href={macDmgHref} className="ml-1 underline" download>
-              下载 Mac dmg 备用
-            </a>
+      {/* Mac install help - collapsible */}
+      <details className="mt-4 rounded-lg border border-amber-200 bg-amber-50 text-sm" data-testid="mac-install-gatekeeper-hint">
+        <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 font-medium text-amber-800 [&::-webkit-details-marker]:hidden">
+          <ChevronDown className="size-4 transition-transform [[open]>&]:rotate-180" />
+          Mac 首次打开帮助
+        </summary>
+        <div className="border-t border-amber-200 px-4 pb-4 pt-3 text-amber-900">
+          <p className="font-medium">如果系统提示「已损坏，无法打开」</p>
+          <p className="mt-2 text-amber-800">
+            这是 macOS 对<strong className="font-semibold">未签名</strong>安装包的常见安全限制，不代表安装包损坏。请按以下方式处理：
           </p>
-        ) : null}
-      </div>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-amber-800">
+            <li>
+              解压 zip 后，将「GEO本地发布客户端」拖入「应用程序」文件夹。
+            </li>
+            <li>
+              在「应用程序」中找到该 App，<strong>按住 Control 键点击 → 打开</strong>，在弹窗中选择「打开」。
+            </li>
+            <li>
+              如仍无法打开，打开终端执行：
+              <code className="mt-1 block rounded border border-amber-300 bg-white px-2 py-1 text-xs text-gray-800">
+                xattr -cr &quot;/Applications/GEO本地发布客户端.app&quot;
+              </code>
+            </li>
+          </ol>
+          {macDmgHref && macIsZip ? (
+            <p className="mt-3 text-xs text-amber-700">
+              若需要 dmg 安装包：
+              <a href={macDmgHref} className="ml-1 font-medium underline" download>
+                下载 Mac dmg 备用
+              </a>
+            </p>
+          ) : null}
+        </div>
+      </details>
+
+      {/* Technical info - collapsed by default */}
+      {health ? (
+        <details className="mt-3 text-xs text-gray-500">
+          <summary className="cursor-pointer hover:text-gray-700 [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex items-center gap-1">
+              <ChevronDown className="size-3 transition-transform [[open]>&]:rotate-180" />
+              技术信息
+            </span>
+          </summary>
+          <div className="mt-1 rounded border border-gray-100 bg-gray-50 px-3 py-2 font-mono text-[11px] text-gray-500">
+            客户端 ID：{health.agentId} · 版本：v{health.version}
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }
