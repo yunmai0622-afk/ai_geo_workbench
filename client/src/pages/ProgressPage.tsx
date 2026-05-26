@@ -147,9 +147,9 @@ export default function ProgressPage() {
       </AiPageHero>
 
       {loadError ? (
-        <p className="text-sm text-amber-100">暂时无法加载，请刷新重试</p>
+        <p className="text-sm text-amber-700">暂时无法加载，请刷新重试</p>
       ) : loading ? (
-        <p className="text-sm text-slate-400">加载中...</p>
+        <p className="text-sm text-gray-500">加载中...</p>
       ) : (
         <>
           <AiSection title="资产进展总览">
@@ -186,13 +186,13 @@ export default function ProgressPage() {
 
           <AiSection title="平台覆盖">
             {platformRows.length === 0 ? (
-              <p className="text-sm text-slate-500">暂无平台覆盖数据</p>
+              <p className="text-sm text-gray-500">暂无平台覆盖数据</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {platformRows.map(row => (
                   <span
                     key={row.platform}
-                    className="rounded-2xl border border-violet-400/25 bg-violet-500/10 px-4 py-2 text-sm text-violet-100"
+                    className="rounded-2xl border border-violet-400/25 bg-violet-50 px-4 py-2 text-sm text-violet-700"
                   >
                     {row.platform}
                     <span className="ml-2 text-white">{row.count}</span>
@@ -227,19 +227,19 @@ export default function ProgressPage() {
           <AiSection title="下一轮资产建设重点">
             <ul className="grid gap-3 lg:grid-cols-3">
               {progressActions.map(line => (
-                <li key={line} className="ai-action-card p-4 text-sm leading-relaxed text-slate-300">
+                <li key={line} className="ai-action-card p-4 text-sm leading-relaxed text-gray-600">
                   {line}
                 </li>
               ))}
             </ul>
             <AiGlassPanel className="mt-4 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}>
+              <Button type="button" variant="outline" className="border-gray-200 text-blue-700" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}>
                 去生成本周内容
               </Button>
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}>
+              <Button type="button" variant="outline" className="border-gray-200 text-blue-700" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}>
                 查看发布记录
               </Button>
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}>
+              <Button type="button" variant="outline" className="border-gray-200 text-blue-700" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}>
                 去 AI 实测
               </Button>
             </AiGlassPanel>

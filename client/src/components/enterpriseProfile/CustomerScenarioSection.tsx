@@ -81,10 +81,10 @@ export function CustomerScenarioSection(props: Props) {
     >
       <div className="grid gap-4 lg:grid-cols-3">
         <div className={cn(aiGlassPanel, "space-y-4 p-4")} data-testid="customer-scenario-who">
-          <p className="text-sm font-medium text-cyan-200/90">客户是谁</p>
-          <p className="text-xs text-slate-500">越具体，生成的问题与内容越贴近真实业务。</p>
+          <p className="text-sm font-medium text-blue-600/90">客户是谁</p>
+          <p className="text-xs text-gray-500">越具体，生成的问题与内容越贴近真实业务。</p>
           <label className="block space-y-2 text-sm">
-            <span className="font-medium text-slate-100">
+            <span className="font-medium text-gray-900">
               目标客户类型
               <AiFilledMark show={props.aiFilledKeys.has("targetCustomer")} />
             </span>
@@ -97,7 +97,7 @@ export function CustomerScenarioSection(props: Props) {
             />
           </label>
           <div className="space-y-2 text-sm">
-            <span className="font-medium text-slate-100">客户类型标签</span>
+            <span className="font-medium text-gray-900">客户类型标签</span>
             <div className="flex flex-wrap gap-2">
               {CUSTOMER_TYPE_PRESETS.map(tag => (
                 <label key={tag} className={cn("cursor-pointer rounded-full border px-3 py-1 text-xs", props.customerTypeTags.includes(tag) ? aiChipActive : aiChipIdle)}>
@@ -112,35 +112,35 @@ export function CustomerScenarioSection(props: Props) {
                 onChange={e => props.onCustomerTypeDraftChange(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && (e.preventDefault(), props.onAddCustomCustomerType())}
                 placeholder="自定义类型，回车添加"
-                className="border-white/10 bg-slate-950/70"
+                className="border-gray-200 bg-white"
               />
-              <Button type="button" variant="outline" size="icon" className="shrink-0 border-white/15" onClick={props.onAddCustomCustomerType}>
+              <Button type="button" variant="outline" size="icon" className="shrink-0 border-gray-200" onClick={props.onAddCustomCustomerType}>
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
           </div>
           <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-100">客户行业</span>
-            <Input value={props.customerIndustry} onChange={e => props.onCustomerIndustryChange(e.target.value)} placeholder="例如：教育培训、企业服务" className="border-white/10 bg-slate-950/70" />
+            <span className="font-medium text-gray-900">客户行业</span>
+            <Input value={props.customerIndustry} onChange={e => props.onCustomerIndustryChange(e.target.value)} placeholder="例如：教育培训、企业服务" className="border-gray-200 bg-white" />
           </label>
           <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-100">客户规模</span>
-            <Input value={props.customerScale} onChange={e => props.onCustomerScaleChange(e.target.value)} placeholder="例如：年营收 500 万+、团队 20 人" className="border-white/10 bg-slate-950/70" />
+            <span className="font-medium text-gray-900">客户规模</span>
+            <Input value={props.customerScale} onChange={e => props.onCustomerScaleChange(e.target.value)} placeholder="例如：年营收 500 万+、团队 20 人" className="border-gray-200 bg-white" />
           </label>
         </div>
 
         <div className={cn(aiGlassPanel, "space-y-4 p-4")} data-testid="customer-scenario-why">
-          <p className="text-sm font-medium text-cyan-200/90">为什么需要你</p>
-          <p className="text-xs text-slate-500">痛点与购买触发点会进入选题与 FAQ 素材。</p>
+          <p className="text-sm font-medium text-blue-600/90">为什么需要你</p>
+          <p className="text-xs text-gray-500">痛点与购买触发点会进入选题与 FAQ 素材。</p>
           <div className="space-y-2 text-sm">
-            <span className="font-medium text-slate-100">
+            <span className="font-medium text-gray-900">
               核心痛点（至少 1 个）
               <AiFilledMark show={props.aiFilledKeys.has("customerPains")} />
             </span>
             <div className="flex flex-col gap-2">
               {painPresets.map(p => (
-                <label key={p} className="flex cursor-pointer items-center gap-2 text-slate-200">
-                  <input type="checkbox" checked={props.customerPains.includes(p)} onChange={e => props.onTogglePain(p, e.target.checked)} className="h-4 w-4 rounded border-white/20 bg-slate-950 text-cyan-400" />
+                <label key={p} className="flex cursor-pointer items-center gap-2 text-gray-700">
+                  <input type="checkbox" checked={props.customerPains.includes(p)} onChange={e => props.onTogglePain(p, e.target.checked)} className="h-4 w-4 rounded border-gray-200 bg-white text-blue-600" />
                   {p}
                 </label>
               ))}
@@ -151,9 +151,9 @@ export function CustomerScenarioSection(props: Props) {
                 onChange={e => props.onPainDraftChange(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && (e.preventDefault(), props.onAddCustomPain())}
                 placeholder="自定义痛点，回车添加"
-                className="border-white/10 bg-slate-950/70"
+                className="border-gray-200 bg-white"
               />
-              <Button type="button" variant="outline" size="icon" className="shrink-0 border-white/15" onClick={props.onAddCustomPain}>
+              <Button type="button" variant="outline" size="icon" className="shrink-0 border-gray-200" onClick={props.onAddCustomPain}>
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
@@ -179,8 +179,8 @@ export function CustomerScenarioSection(props: Props) {
         </div>
 
         <div className={cn(aiGlassPanel, "space-y-4 p-4")} data-testid="customer-scenario-search">
-          <p className="text-sm font-medium text-cyan-200/90">他会搜索什么</p>
-          <p className="text-xs text-slate-500">常见搜索问题用于 GEO 测试与内容选题，请逐条添加。</p>
+          <p className="text-sm font-medium text-blue-600/90">他会搜索什么</p>
+          <p className="text-xs text-gray-500">常见搜索问题用于 GEO 测试与内容选题，请逐条添加。</p>
           <QuestionListEditor
             label="常见搜索问题"
             items={props.commonQuestionsList}
@@ -223,11 +223,11 @@ function TagListEditor({
 }) {
   return (
     <div className="space-y-2 text-sm">
-      <span className="font-medium text-slate-100">{label}</span>
-      <p className="text-xs text-slate-500">{hint}</p>
+      <span className="font-medium text-gray-900">{label}</span>
+      <p className="text-xs text-gray-500">{hint}</p>
       <div className="flex flex-wrap gap-2">
         {items.map(t => (
-          <span key={t} className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
+          <span key={t} className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-xs text-amber-700">
             {t}
             <button type="button" onClick={() => onRemove(t)}>
               <X className="h-3 w-3" />
@@ -241,9 +241,9 @@ function TagListEditor({
           onChange={e => onDraftChange(e.target.value)}
           onKeyDown={e => e.key === "Enter" && (e.preventDefault(), onAdd())}
           placeholder="回车添加"
-          className="border-white/10 bg-slate-950/70"
+          className="border-gray-200 bg-white"
         />
-        <Button type="button" variant="outline" size="icon" className="shrink-0 border-white/15" onClick={onAdd}>
+        <Button type="button" variant="outline" size="icon" className="shrink-0 border-gray-200" onClick={onAdd}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -270,16 +270,16 @@ function QuestionListEditor({
 }) {
   return (
     <div className="space-y-2 text-sm" data-testid="common-questions-list">
-      <span className="font-medium text-slate-100">{label}</span>
-      {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+      <span className="font-medium text-gray-900">{label}</span>
+      {hint ? <p className="text-xs text-gray-500">{hint}</p> : null}
       <ul className="space-y-2">
         {items.length === 0 ? (
-          <li className="text-xs text-slate-500">暂无，点击下方添加。</li>
+          <li className="text-xs text-gray-500">暂无，点击下方添加。</li>
         ) : (
           items.map(q => (
-            <li key={q} className="flex items-start justify-between gap-2 rounded-lg border border-white/8 bg-slate-950/50 px-3 py-2 text-xs text-slate-200">
+            <li key={q} className="flex items-start justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700">
               <span className="flex-1">{q}</span>
-              <button type="button" className="text-slate-500 hover:text-white" onClick={() => onRemove(q)}>
+              <button type="button" className="text-gray-500 hover:text-white" onClick={() => onRemove(q)}>
                 <X className="h-3.5 w-3.5" />
               </button>
             </li>
@@ -292,9 +292,9 @@ function QuestionListEditor({
           onChange={e => onDraftChange(e.target.value)}
           onKeyDown={e => e.key === "Enter" && (e.preventDefault(), onAdd())}
           placeholder="输入后回车添加"
-          className="border-white/10 bg-slate-950/70"
+          className="border-gray-200 bg-white"
         />
-        <Button type="button" variant="outline" size="icon" className="shrink-0 border-white/15" onClick={onAdd}>
+        <Button type="button" variant="outline" size="icon" className="shrink-0 border-gray-200" onClick={onAdd}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>

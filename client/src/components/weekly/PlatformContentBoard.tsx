@@ -34,19 +34,19 @@ export function PlatformContentBoard({ rows, disabled, onGenerate, onView }: Pro
           const hasContent = counts.pendingConfirm + counts.ready + counts.published > 0;
           return (
             <P0Card key={def.key} testId={`weekly-platform-card-${def.key}`} className="flex flex-col">
-              <h3 className="text-base font-semibold text-slate-900">{def.label}</h3>
-              <p className="mt-1 text-xs text-slate-500">平台内容目标：{def.goal}</p>
-              <p className="mt-2 text-xs text-slate-600">
-                适合内容类型：<span className="text-slate-800">{def.contentTypes}</span>
+              <h3 className="text-base font-semibold text-gray-900">{def.label}</h3>
+              <p className="mt-1 text-xs text-gray-500">平台内容目标：{def.goal}</p>
+              <p className="mt-2 text-xs text-gray-600">
+                适合内容类型：<span className="text-gray-800">{def.contentTypes}</span>
               </p>
               {countsLine ? (
-                <p className="mt-3 text-xs font-medium text-slate-700" data-testid="weekly-platform-counts">
+                <p className="mt-3 text-xs font-medium text-gray-700" data-testid="weekly-platform-counts">
                   {countsLine}
                 </p>
               ) : (
-                <p className="mt-3 text-xs text-slate-400">暂无内容记录</p>
+                <p className="mt-3 text-xs text-gray-500">暂无内容记录</p>
               )}
-              <div className="mt-4 flex flex-1 flex-col gap-2 border-t border-slate-100 pt-4">
+              <div className="mt-4 flex flex-1 flex-col gap-2 border-t border-gray-100 pt-4">
                 <Button
                   type="button"
                   size="sm"

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
-import { aiInput } from "@/lib/aiProductUi";
+
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { trpc } from "@/lib/trpc";
 import {
@@ -235,10 +235,10 @@ export function ArticleAssetEditorSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col border-white/10 bg-slate-950 text-slate-100 sm:max-w-xl">
+      <SheetContent side="right" className="flex w-full flex-col border-gray-200 bg-white text-gray-900 sm:max-w-xl">
         <SheetHeader>
           <SheetTitle>编辑内容资产</SheetTitle>
-          <SheetDescription className="text-slate-400">
+          <SheetDescription className="text-gray-500">
             修改标题、正文与封面模板后请保存；发布到平台将使用此处保存的最新内容。
           </SheetDescription>
         </SheetHeader>
@@ -251,17 +251,17 @@ export function ArticleAssetEditorSheet({
             <Label htmlFor="asset-title">文章标题</Label>
             <input
               id="asset-title"
-              className={aiInput}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               value={title}
               onChange={e => setTitle(e.target.value)}
               maxLength={255}
             />
           </div>
 
-          <div className="space-y-3 rounded-lg border border-white/10 bg-slate-900/40 p-4">
+          <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
             <div>
-              <p className="text-sm font-medium text-white">内容策略</p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="text-sm font-medium text-gray-900">内容策略</p>
+              <p className="mt-1 text-xs text-gray-500">
                 用于区分这篇内容适合用什么口吻、什么身份、哪类账号发布。
               </p>
             </div>
@@ -269,7 +269,7 @@ export function ArticleAssetEditorSheet({
               <Label htmlFor="asset-strategy-type">内容类型</Label>
               <select
                 id="asset-strategy-type"
-                className={aiInput}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 value={contentStrategyType}
                 onChange={e => setContentStrategyType(e.target.value as ContentAssetType | "")}
                 data-testid="article-strategy-type"
@@ -286,7 +286,7 @@ export function ArticleAssetEditorSheet({
               <Label htmlFor="asset-publish-identity">发布身份</Label>
               <select
                 id="asset-publish-identity"
-                className={aiInput}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 value={publishIdentity}
                 onChange={e => setPublishIdentity(e.target.value as PublishIdentity | "")}
               >
@@ -301,7 +301,7 @@ export function ArticleAssetEditorSheet({
               <Label htmlFor="asset-account-group">推荐账号组</Label>
               <select
                 id="asset-account-group"
-                className={aiInput}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 value={recommendedAccountGroup}
                 onChange={e => setRecommendedAccountGroup(e.target.value as AccountGroupType | "")}
               >
@@ -318,7 +318,7 @@ export function ArticleAssetEditorSheet({
             <Label htmlFor="asset-content">文章正文</Label>
             <textarea
               id="asset-content"
-              className={`${aiInput} min-h-[220px] resize-y font-mono text-sm leading-relaxed`}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 min-h-[220px] resize-y font-mono leading-relaxed"
               value={content}
               onChange={e => setContent(e.target.value)}
             />
@@ -345,7 +345,7 @@ export function ArticleAssetEditorSheet({
             <Label htmlFor="asset-template">封面模板</Label>
             <select
               id="asset-template"
-              className={aiInput}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               value={template}
               onChange={e => setTemplate(normalizeArticleCoverTemplateId(e.target.value))}
             >
@@ -359,23 +359,23 @@ export function ArticleAssetEditorSheet({
 
           <div className="space-y-2">
             <Label>封面预览</Label>
-            <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/80">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
               {coverPreview ? (
                 <img src={coverPreview} alt="封面预览" className="aspect-video w-full object-cover" />
               ) : (
-                <div className="flex aspect-video items-center justify-center px-4 text-center text-sm text-slate-500">
+                <div className="flex aspect-video items-center justify-center px-4 text-center text-sm text-gray-500">
                   {coverError ? "封面生成失败，可重试" : "待生成封面"}
                 </div>
               )}
             </div>
             {isLegacyAiGeneratedCoverUrl(article?.coverImageUrl) && !coverBase64Draft ? (
-              <p className="text-xs text-amber-200/90">检测到旧版 AI 生图封面，建议重新生成模板封面以避免乱码。</p>
+              <p className="text-xs text-amber-600">检测到旧版 AI 生图封面，建议重新生成模板封面以避免乱码。</p>
             ) : null}
-            {coverError ? <p className="text-xs text-amber-200">{coverError}</p> : null}
+            {coverError ? <p className="text-xs text-amber-600">{coverError}</p> : null}
             <Button
               type="button"
               variant="outline"
-              className="border-white/15 text-slate-200"
+              className="border-gray-200 text-gray-700 hover:bg-gray-50"
               disabled={coverGenerating}
               onClick={() => void regenerateCover()}
             >
@@ -391,11 +391,11 @@ export function ArticleAssetEditorSheet({
           </div>
         </div>
 
-        <SheetFooter className="border-t border-white/10 pt-4">
-          <Button type="button" variant="outline" className="border-white/15" onClick={() => handleOpenChange(false)}>
+        <SheetFooter className="border-t border-gray-200 pt-4">
+          <Button type="button" variant="outline" className="border-gray-200 text-gray-700 hover:bg-gray-50" onClick={() => handleOpenChange(false)}>
             取消
           </Button>
-          <Button type="button" variant="ai" disabled={updateArticle.isPending} onClick={() => void handleSave()}>
+          <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={updateArticle.isPending} onClick={() => void handleSave()}>
             {updateArticle.isPending ? "保存中…" : "保存修改"}
           </Button>
         </SheetFooter>

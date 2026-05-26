@@ -55,8 +55,8 @@ function lineOrPending(parts: string[]): string[] {
 function PreviewBlock({ title, lines }: { title: string; lines: string[] }) {
   return (
     <div>
-      <p className="text-sm font-medium text-cyan-200">{title}</p>
-      <ul className="mt-2 space-y-1 text-sm text-slate-300">
+      <p className="text-sm font-medium text-blue-600">{title}</p>
+      <ul className="mt-2 space-y-1 text-sm text-gray-600">
         {lines.map((l, i) => (
           <li key={`${title}-${i}`} className="leading-relaxed">
             {l}

@@ -5,7 +5,7 @@ import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { CaseDraft, FaqItem, SectionStatusTone } from "./types";
 
-const textareaClass = "w-full min-h-[4rem] max-w-none resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100";
+const textareaClass = "w-full min-h-[4rem] max-w-none resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100";
 
 type Props = {
   caseCount: number;
@@ -58,13 +58,13 @@ function FoldGroup({
   children: ReactNode;
 }) {
   return (
-    <details className="rounded-lg border border-slate-200 bg-white text-sm" data-testid={testId}>
+    <details className="rounded-lg border border-gray-200 bg-white text-sm" data-testid={testId}>
       <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 font-medium text-gray-800 hover:text-gray-900 [&::-webkit-details-marker]:hidden">
         <ChevronDown className="size-4 text-gray-400 transition-transform [[open]>&]:rotate-180" />
         <span>{title}</span>
         <span className="ml-2 text-xs font-normal text-gray-500">{summary}</span>
       </summary>
-      <div className="space-y-4 border-t border-slate-100 px-4 pb-4 pt-3">{children}</div>
+      <div className="space-y-4 border-t border-gray-100 px-4 pb-4 pt-3">{children}</div>
     </details>
   );
 }
@@ -115,7 +115,7 @@ export function AdvancedMaterialsSection(props: Props) {
 
   return (
     <section
-      className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
       data-testid="advanced-materials-section"
     >
       <h3 className="text-base font-semibold text-gray-900">高级素材补充</h3>
@@ -123,12 +123,12 @@ export function AdvancedMaterialsSection(props: Props) {
         这些信息不是必填，但会提升内容可信度和 AI 引用概率。
       </p>
 
-      <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50 text-sm" data-testid="advanced-materials-collapsed">
+      <details className="mt-4 rounded-lg border border-gray-200 bg-gray-50 text-sm" data-testid="advanced-materials-collapsed">
         <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-gray-700 hover:text-gray-900 [&::-webkit-details-marker]:hidden">
           <ChevronDown className="size-4 text-gray-400 transition-transform [[open]>&]:rotate-180" />
           展开高级素材（案例 {caseCount} · 品牌与背书 {trustCount} · FAQ {faqCount}）
         </summary>
-        <div className="space-y-3 border-t border-slate-200 p-4">
+        <div className="space-y-3 border-t border-gray-200 p-4">
           <FoldGroup title="案例详情" summary={`${caseCount} 条`} testId="advanced-fold-cases">
             <CustomerCaseLibrarySection
               embedded
@@ -190,7 +190,7 @@ export function AdvancedMaterialsSection(props: Props) {
               <span className="text-gray-600">常被比较的竞品</span>
               <div className="flex flex-wrap gap-2">
                 {competitors.map(c => (
-                  <span key={c} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs text-gray-700">
+                  <span key={c} className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
                     {c}
                     <button type="button" className="text-gray-400 hover:text-red-500" onClick={() => onRemoveCompetitor(c)}>
                       ×
@@ -230,7 +230,7 @@ export function AdvancedMaterialsSection(props: Props) {
           <FoldGroup title="常见问答" summary={`${faqCount} 条`} testId="advanced-fold-faq">
             <div className="space-y-3">
               {faqItems.map((item, i) => (
-                <div key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                   <div className="flex justify-end">
                     <Button type="button" size="icon" variant="ghost" className="size-8 text-gray-400 hover:text-red-500" onClick={() => onFaqItemsChange(faqItems.filter((_, j) => j !== i))}>
                       <Trash2 className="size-4" />

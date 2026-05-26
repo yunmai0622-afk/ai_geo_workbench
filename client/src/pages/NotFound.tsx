@@ -21,13 +21,13 @@ export default function NotFound() {
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">404</h1>
 
-          <h2 className="text-xl font-semibold text-slate-700 mb-4">
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">
             页面不存在
           </h2>
 
-          <p className="text-slate-600 mb-8 leading-relaxed">
+          <p className="text-gray-600 mb-8 leading-relaxed">
             你访问的页面不存在。
             <br />
             该页面可能已移动、删除，或链接填写有误。

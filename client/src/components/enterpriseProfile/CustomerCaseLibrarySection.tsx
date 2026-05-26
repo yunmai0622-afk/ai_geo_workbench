@@ -148,7 +148,7 @@ export function CustomerCaseLibrarySection({
       {casesChoice === "has" ? (
         <div className="grid gap-3 md:grid-cols-2" data-testid="customer-case-library">
           {caseRows.length === 0 ? (
-            <p className="text-sm text-slate-500 md:col-span-2">暂无案例，点击「添加客户案例」开始录入。</p>
+            <p className="text-sm text-gray-500 md:col-span-2">暂无案例，点击「添加客户案例」开始录入。</p>
           ) : (
             caseRows.map((row, idx) => {
               const c = caseCompleteness(row);
@@ -159,13 +159,13 @@ export function CustomerCaseLibrarySection({
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium text-white">{title}</p>
-                      <p className="mt-1 line-clamp-2 text-xs text-slate-500">{row.originalProblem.trim() || "待补充客户原问题"}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-gray-500">{row.originalProblem.trim() || "待补充客户原问题"}</p>
                     </div>
                     <AiStatusBadge tone={score >= 4 ? "success" : "warning"}>
                       {score >= 4 ? "较完整" : "待完善"}
                     </AiStatusBadge>
                   </div>
-                  <ul className="grid grid-cols-2 gap-1 text-[11px] text-slate-500">
+                  <ul className="grid grid-cols-2 gap-1 text-[11px] text-gray-500">
                     <li className={c.hasCustomer ? "text-emerald-300/90" : ""}>有客户对象</li>
                     <li className={c.hasProblem ? "text-emerald-300/90" : ""}>有问题</li>
                     <li className={c.hasSolution ? "text-emerald-300/90" : ""}>有方案</li>
@@ -174,9 +174,9 @@ export function CustomerCaseLibrarySection({
                       {c.hasData ? "含具体数据" : "建议补充数字结果，例如提升比例、节省时间、成交金额"}
                     </li>
                   </ul>
-                  <p className="line-clamp-2 text-xs text-slate-400">{row.executionProcess.trim() || "—"}</p>
-                  <p className="text-xs text-cyan-200/90">{row.resultData.trim().slice(0, 80) || "—"}</p>
-                  <div className="mt-auto flex flex-wrap gap-2 border-t border-white/8 pt-3">
+                  <p className="line-clamp-2 text-xs text-gray-500">{row.executionProcess.trim() || "—"}</p>
+                  <p className="text-xs text-blue-600/90">{row.resultData.trim().slice(0, 80) || "—"}</p>
+                  <div className="mt-auto flex flex-wrap gap-2 border-t border-gray-200 pt-3">
                     <Button type="button" size="sm" variant="outline" className={aiOutlineBtn} onClick={() => openEdit(idx)}>
                       <Pencil className="mr-1 size-3 h-3" />
                       编辑
@@ -204,14 +204,14 @@ export function CustomerCaseLibrarySection({
       ) : null}
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-slate-950 text-slate-100 sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto border-gray-200 bg-white text-gray-900 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editIdx === null ? "添加客户案例" : "编辑客户案例"}</DialogTitle>
-            <DialogDescription className="text-slate-400">仅保留 6 项核心字段，保存后用于 GEO 内容与 AI 搜索引用。</DialogDescription>
+            <DialogDescription className="text-gray-500">仅保留 6 项核心字段，保存后用于 GEO 内容与 AI 搜索引用。</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2 text-sm" data-testid="customer-case-editor-fields">
             <label className="block space-y-1">
-              <span className="font-medium text-slate-100">1. 客户是谁？</span>
+              <span className="font-medium text-gray-900">1. 客户是谁？</span>
               <textarea
                 className={textareaClass}
                 rows={2}
@@ -221,7 +221,7 @@ export function CustomerCaseLibrarySection({
               />
             </label>
             <label className="block space-y-1">
-              <span className="font-medium text-slate-100">2. 客户原来遇到什么问题？</span>
+              <span className="font-medium text-gray-900">2. 客户原来遇到什么问题？</span>
               <textarea
                 className={textareaClass}
                 rows={2}
@@ -231,7 +231,7 @@ export function CustomerCaseLibrarySection({
               />
             </label>
             <label className="block space-y-1">
-              <span className="font-medium text-slate-100">3. 我们提供了什么方案？</span>
+              <span className="font-medium text-gray-900">3. 我们提供了什么方案？</span>
               <textarea
                 className={textareaClass}
                 rows={4}
@@ -241,7 +241,7 @@ export function CustomerCaseLibrarySection({
               />
             </label>
             <label className="block space-y-1">
-              <span className="font-medium text-slate-100">4. 最终产生了什么结果？</span>
+              <span className="font-medium text-gray-900">4. 最终产生了什么结果？</span>
               <textarea
                 className={textareaClass}
                 rows={2}

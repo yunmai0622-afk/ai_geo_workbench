@@ -40,36 +40,36 @@ export function PlatformAccountTechnicalDialog({ open, row, onOpenChange }: Prop
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md"
+        className="border-gray-200 bg-white text-gray-900 sm:max-w-md"
         data-testid="platform-account-technical-dialog"
       >
         <DialogHeader>
           <DialogTitle>账号详情</DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-gray-500">
             仅展示发布账号与登录状态，不包含密码或 Cookie。
           </DialogDescription>
         </DialogHeader>
         {row ? (
-          <dl className="space-y-2 text-sm text-slate-300">
+          <dl className="space-y-2 text-sm text-gray-600">
             <div>
-              <dt className="text-slate-500">账号名称</dt>
+              <dt className="text-gray-500">账号名称</dt>
               <dd>{displayAccountName(row)}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">平台</dt>
+              <dt className="text-gray-500">平台</dt>
               <dd>{PUBLISH_PLATFORM_LABELS[row.platform]}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">登录状态</dt>
+              <dt className="text-gray-500">登录状态</dt>
               <dd>{sessionStatusLabel(row.sessionStatus)}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">验证状态</dt>
+              <dt className="text-gray-500">验证状态</dt>
               <dd>{verificationStatusLabel(row.verificationStatus)}</dd>
             </div>
             {row.notes?.trim() ? (
               <div>
-                <dt className="text-slate-500">备注</dt>
+                <dt className="text-gray-500">备注</dt>
                 <dd>{row.notes.trim()}</dd>
               </div>
             ) : null}

@@ -58,7 +58,7 @@ function LifecycleTimelineBody({
       {events.map((ev, i) => (
         <li
           key={`${ev.at}-${ev.status}-${i}`}
-          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
           data-lifecycle-status={ev.status}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">

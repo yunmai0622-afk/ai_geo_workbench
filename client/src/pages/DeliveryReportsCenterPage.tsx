@@ -215,7 +215,7 @@ export function DeliveryReportsCenterPage() {
   return (
     <div className="space-y-8 pb-12" data-testid="delivery-report-page">
       {loading ? (
-        <div className="flex items-center gap-2 py-8 text-slate-500">
+        <div className="flex items-center gap-2 py-8 text-gray-500">
           <Spinner className="size-5 text-blue-600" />
           正在加载交付报告数据…
         </div>
@@ -223,26 +223,26 @@ export function DeliveryReportsCenterPage() {
 
       <div ref={reportRef} className="space-y-8 print:space-y-6">
         <header className="space-y-3" data-testid="delivery-report-hero">
-          <h1 className="text-2xl font-bold text-slate-900">{reportMeta.reportTitle}</h1>
-          <dl className="grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
+          <h1 className="text-2xl font-bold text-gray-900">{reportMeta.reportTitle}</h1>
+          <dl className="grid gap-2 text-sm text-gray-600 sm:grid-cols-3">
             <div>
-              <dt className="text-slate-500">报告周期</dt>
-              <dd className="font-medium text-slate-800">{reportMeta.reportPeriod}</dd>
+              <dt className="text-gray-500">报告周期</dt>
+              <dd className="font-medium text-gray-800">{reportMeta.reportPeriod}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">当前轮次</dt>
-              <dd className="font-medium text-slate-800">{reportMeta.reportRound}</dd>
+              <dt className="text-gray-500">当前轮次</dt>
+              <dd className="font-medium text-gray-800">{reportMeta.reportRound}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">AI 搜索可见度评分</dt>
-              <dd className="font-medium text-slate-800">{visibilityScoreDisplay(visibilityScore)}</dd>
+              <dt className="text-gray-500">AI 搜索可见度评分</dt>
+              <dd className="font-medium text-gray-800">{visibilityScoreDisplay(visibilityScore)}</dd>
             </div>
           </dl>
         </header>
 
         <P0Card testId="delivery-report-conclusion" className="border-sky-100 bg-sky-50/40">
           <p className={geoP0Surfaces.sectionTitle}>一句话经营结论</p>
-          <p className="mt-2 text-sm leading-relaxed text-slate-800">{reportMeta.conclusionLine}</p>
+          <p className="mt-2 text-sm leading-relaxed text-gray-800">{reportMeta.conclusionLine}</p>
         </P0Card>
 
         <section data-testid="delivery-report-core-metrics">
@@ -266,7 +266,7 @@ export function DeliveryReportsCenterPage() {
 
         <P0Card testId="delivery-report-next-actions">
           <p className={geoP0Surfaces.sectionTitle}>下一轮建议</p>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-gray-700">
             {nextSuggestions.map(line => (
               <li key={line}>{line}</li>
             ))}
@@ -303,11 +303,11 @@ export function DeliveryReportsCenterPage() {
 
         <P0Section title="本轮完成事项" description="基于本项目中已发生的真实业务动作汇总，不含模拟数据。">
           {completedItems.length === 0 ? (
-            <P0Card className="text-sm text-slate-500">暂无数据，完成对应步骤后展示。</P0Card>
+            <P0Card className="text-sm text-gray-500">暂无数据，完成对应步骤后展示。</P0Card>
           ) : (
-            <ul className="space-y-2 text-sm text-slate-700">
+            <ul className="space-y-2 text-sm text-gray-700">
               {completedItems.map(line => (
-                <li key={line} className="rounded-lg border border-slate-100 bg-white px-4 py-3">
+                <li key={line} className="rounded-lg border border-gray-100 bg-white px-4 py-3">
                   {line}
                 </li>
               ))}
@@ -317,15 +317,15 @@ export function DeliveryReportsCenterPage() {
 
         <P0Section title="AI 平台表现" description="来自收录监测中的 AI 搜索实测结果，按引擎汇总。">
           {!hasAiTestData ? (
-            <P0Card className="text-sm text-slate-500">{metricHint("--")}</P0Card>
+            <P0Card className="text-sm text-gray-500">{metricHint("--")}</P0Card>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2">
               {aiTestAggregate.byEngine
                 .filter(e => e.questionCount > 0)
                 .map(engine => (
-                  <li key={engine.engineName} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="font-medium text-slate-900">{engine.engineName}</p>
-                    <p className="mt-1 text-sm text-slate-600">
+                  <li key={engine.engineName} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <p className="font-medium text-gray-900">{engine.engineName}</p>
+                    <p className="mt-1 text-sm text-gray-600">
                       实测 {engine.questionCount} 题 · 提及率 {Math.round(engine.mentionRate * 100)}% · 推荐率{" "}
                       {Math.round(engine.recommendRate * 100)}%
                     </p>
@@ -337,16 +337,16 @@ export function DeliveryReportsCenterPage() {
 
         <P0Section title="内容发布证据" description="仅展示已登记的发布记录；公开链接须人工回填。">
           {publishedItems.length === 0 ? (
-            <P0Card className="text-sm text-slate-500">暂无发布记录</P0Card>
+            <P0Card className="text-sm text-gray-500">暂无发布记录</P0Card>
           ) : (
             <ul className="space-y-3">
               {publishedItems.map((item, index) => (
                 <li
                   key={`${item.title}-${item.platform}-${index}`}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
                 >
-                  <p className="font-medium text-slate-900">{item.title}</p>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="font-medium text-gray-900">{item.title}</p>
+                  <p className="mt-1 text-sm text-gray-600">
                     {item.platform}
                     {item.publishedAt ? ` · ${item.publishedAt}` : ""}
                   </p>
@@ -370,11 +370,11 @@ export function DeliveryReportsCenterPage() {
 
         <P0Section title="收录与复测结果" description="展示收录状态与复测队列概况，不承诺收录或排名。">
           {monitoringRows.length === 0 ? (
-            <P0Card className="text-sm text-slate-500">暂无收录监测记录，请先完成发布并进入收录监测。</P0Card>
+            <P0Card className="text-sm text-gray-500">暂无收录监测记录，请先完成发布并进入收录监测。</P0Card>
           ) : (
-            <ul className="space-y-2 text-sm text-slate-700">
+            <ul className="space-y-2 text-sm text-gray-700">
               {monitoringRows.slice(0, 8).map(row => (
-                <li key={row.id} className="rounded-lg border border-slate-100 bg-white px-4 py-3">
+                <li key={row.id} className="rounded-lg border border-gray-100 bg-white px-4 py-3">
                   {(row.articleTitle ?? "未命名内容").trim()} · {row.publishChannel ?? "—"} · 收录：
                   {(row.inclusionStatus ?? "").trim() || "未检测"}
                 </li>
@@ -389,41 +389,41 @@ export function DeliveryReportsCenterPage() {
         </P0Section>
 
         <P0Section title="当前问题" description="来自最新诊断与待办任务，不含技术字段。">
-          <P0Card className="space-y-2 text-sm text-slate-700">
+          <P0Card className="space-y-2 text-sm text-gray-700">
             <p>
-              <span className="text-slate-500">优先缺口：</span>
+              <span className="text-gray-500">优先缺口：</span>
               {maxProblemLine}
             </p>
             {tasks.length > 0 ? (
               <p>
-                <span className="text-slate-500">待处理优化任务：</span>
+                <span className="text-gray-500">待处理优化任务：</span>
                 {tasks.length} 项（含 P0{" "}
                 {tasks.filter(t => t.priority === "P0").length} 项）
               </p>
             ) : (
-              <p className="text-slate-500">暂无优化任务清单</p>
+              <p className="text-gray-500">暂无优化任务清单</p>
             )}
           </P0Card>
         </P0Section>
 
         <P0Section title="下一轮优化建议">
-          <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-700">
+          <ol className="list-decimal space-y-2 pl-5 text-sm text-gray-700">
             {nextSuggestions.map(line => (
               <li key={`next-${line}`}>{line}</li>
             ))}
           </ol>
-          <p className="mt-4 text-xs text-slate-500">
+          <p className="mt-4 text-xs text-gray-500">
             不承诺保证收录、排名或 AI 推荐；报告仅引用已确认事实与实测样本。
           </p>
         </P0Section>
       </div>
 
       {selectedProjectId ? (
-        <details className="rounded-xl border border-slate-200 bg-white shadow-sm print:hidden" data-testid="delivery-report-share-fold">
-          <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800">
+        <details className="rounded-xl border border-gray-200 bg-white shadow-sm print:hidden" data-testid="delivery-report-share-fold">
+          <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
             客户报告链接（对外分享）
           </summary>
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 p-5">
+          <div className="flex flex-wrap gap-2 border-t border-gray-100 p-5">
             <Button
               type="button"
               variant="outline"
@@ -487,11 +487,11 @@ export function DeliveryReportsCenterPage() {
         </details>
       ) : null}
 
-      <details className="rounded-xl border border-slate-200 bg-slate-100/80 shadow-sm print:hidden" data-testid="delivery-report-internal-fold">
-        <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-700">
+      <details className="rounded-xl border border-gray-200 bg-gray-100/80 shadow-sm print:hidden" data-testid="delivery-report-internal-fold">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-700">
           内部交付工作区（团队）
         </summary>
-        <div className="space-y-4 border-t border-slate-200 p-5 text-sm text-slate-600">
+        <div className="space-y-4 border-t border-gray-200 p-5 text-sm text-gray-600">
           <p>详细诊断条目、任务卡片与文章表格请在对应业务页查看，避免与客户报告首屏混排。</p>
           <div className="flex flex-wrap gap-2">
             <Button

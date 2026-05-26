@@ -53,41 +53,41 @@ export function WeeklyPlatformArticleCard({
                 ? "bg-amber-100 text-amber-800"
                 : model.statusTone === "info"
                   ? "bg-blue-100 text-blue-800"
-                  : "bg-slate-100 text-slate-600"
+                  : "bg-gray-100 text-gray-600"
           }`}
         >
           {model.statusLabel}
         </span>
-        <span className="text-xs text-slate-500" data-testid="weekly-card-platform">
+        <span className="text-xs text-gray-500" data-testid="weekly-card-platform">
           {platformLabel}
         </span>
       </div>
-      <h3 className="mt-2 line-clamp-2 text-base font-semibold text-slate-900">{model.title}</h3>
+      <h3 className="mt-2 line-clamp-2 text-base font-semibold text-gray-900">{model.title}</h3>
       {model.contentGoal ? (
-        <p className="mt-2 text-xs text-slate-600">
-          <span className="font-medium text-slate-500">内容目标：</span>
+        <p className="mt-2 text-xs text-gray-600">
+          <span className="font-medium text-gray-500">内容目标：</span>
           {model.contentGoal}
         </p>
       ) : null}
       {model.geoGap ? (
-        <p className="mt-1 text-xs text-slate-600" data-testid="weekly-card-geo-gap">
-          <span className="font-medium text-slate-500">对应 GEO 缺口：</span>
+        <p className="mt-1 text-xs text-gray-600" data-testid="weekly-card-geo-gap">
+          <span className="font-medium text-gray-500">对应 GEO 缺口：</span>
           {model.geoGap}
         </p>
       ) : null}
       {model.keywords && model.keywords.length > 0 ? (
-        <p className="mt-1 text-xs text-slate-600">
-          <span className="font-medium text-slate-500">关键词：</span>
+        <p className="mt-1 text-xs text-gray-600">
+          <span className="font-medium text-gray-500">关键词：</span>
           {model.keywords.join("、")}
         </p>
       ) : null}
       {model.strategySummary ? (
-        <p className="mt-2 text-xs text-slate-500" data-testid="article-strategy-summary">
+        <p className="mt-2 text-xs text-gray-500" data-testid="article-strategy-summary">
           {model.strategySummary}
         </p>
       ) : null}
       {model.qualityDisplay ? (
-        <p className="mt-2 text-sm text-slate-700" data-testid="weekly-card-quality">
+        <p className="mt-2 text-sm text-gray-700" data-testid="weekly-card-quality">
           质检分：{model.qualityDisplay}
         </p>
       ) : null}
@@ -101,7 +101,7 @@ export function WeeklyPlatformArticleCard({
           />
         </div>
       ) : null}
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={onView}>
           查看
         </Button>

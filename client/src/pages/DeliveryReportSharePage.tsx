@@ -52,7 +52,7 @@ function ShareLoginGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-600">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 text-gray-600">
         正在加载报告…
       </div>
     );
@@ -61,14 +61,14 @@ function ShareLoginGate({ children }: { children: ReactNode }) {
   if (!user) {
     const loginConfigured = isLoginConfigured();
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 text-slate-900">
-        <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 text-gray-900">
+        <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-lg">
           <div className="flex flex-col items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
               <BarChart3 className="h-7 w-7" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">登录后查看客户报告</h1>
-            <p className="max-w-sm text-sm leading-6 text-slate-600">
+            <p className="max-w-sm text-sm leading-6 text-gray-600">
               本页为登录后可访问的客户报告预览。对外分享请使用「复制客户报告链接」生成的匿名链接。
             </p>
           </div>
@@ -156,7 +156,7 @@ function DeliveryReportShareContent() {
 
   if (!enabled) {
     return (
-      <div className="mx-auto max-w-3xl bg-slate-100 px-6 py-16 text-slate-700">
+      <div className="mx-auto max-w-3xl bg-gray-100 px-6 py-16 text-gray-700">
         <p>报告链接无效，请向交付人员索取正确的客户报告链接。</p>
       </div>
     );

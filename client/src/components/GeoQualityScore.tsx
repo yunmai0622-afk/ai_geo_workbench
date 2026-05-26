@@ -31,9 +31,9 @@ type GeoQualityScoreProps = {
 
 function badgeClass(rec: GeoQualityRecommendation | null): string {
   if (rec === "publish") return "bg-emerald-500/15 text-emerald-200 border-emerald-400/30";
-  if (rec === "revise") return "bg-amber-500/15 text-amber-100 border-amber-400/30";
+  if (rec === "revise") return "bg-amber-500/15 text-amber-700 border-amber-400/30";
   if (rec === "reject") return "bg-red-500/15 text-red-200 border-red-400/30";
-  return "bg-slate-500/15 text-slate-300 border-white/10";
+  return "bg-gray-100 text-gray-600 border-gray-200";
 }
 
 function parseDetail(detail: unknown): GeoQualityReviewResult | null {
@@ -100,14 +100,14 @@ export function GeoQualityScore({
   };
 
   return (
-    <div className="space-y-4 rounded-xl border border-cyan-400/20 bg-slate-900/50 p-4" data-testid="geo-quality-panel">
+    <div className="space-y-4 rounded-xl border border-blue-200 bg-gray-50/50 p-4" data-testid="geo-quality-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-cyan-100">GEO 发布前质检</h3>
+        <h3 className="text-sm font-semibold text-blue-700">GEO 发布前质检</h3>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="border-cyan-400/30 text-cyan-100"
+          className="border-blue-200 text-blue-700"
           disabled={reviewMutation.isPending}
           data-testid="geo-quality-review-btn"
           onClick={() => void runReview()}
@@ -127,7 +127,7 @@ export function GeoQualityScore({
 
       {showStale ? (
         <p
-          className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
+          className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-700"
           data-testid="geo-quality-stale-hint"
         >
           {GEO_QUALITY_STALE_EDITOR_HINT}
@@ -139,7 +139,7 @@ export function GeoQualityScore({
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-2xl font-bold text-white" data-testid="geo-quality-total">
               {displayTotal}
-              <span className="text-base font-normal text-slate-400"> / 100</span>
+              <span className="text-base font-normal text-gray-500"> / 100</span>
             </span>
             <span
               className={`rounded-full border px-3 py-1 text-xs font-medium ${badgeClass(showStale ? null : displayRec)}`}
@@ -155,27 +155,27 @@ export function GeoQualityScore({
                 const pct = dim.max > 0 ? Math.round((dim.score / dim.max) * 100) : 0;
                 return (
                   <div key={key} className="space-y-1">
-                    <div className="flex justify-between text-xs text-slate-300">
+                    <div className="flex justify-between text-xs text-gray-600">
                       <span>{GEO_QUALITY_DIMENSION_META[key]?.label ?? key}</span>
                       <span>
                         {dim.score} / {dim.max}
                       </span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className="h-full rounded-full bg-cyan-500/80 transition-all"
+                        className="h-full rounded-full bg-blue-500 transition-all"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <p className="text-xs leading-relaxed text-slate-500">{dim.reason}</p>
+                    <p className="text-xs leading-relaxed text-gray-500">{dim.reason}</p>
                   </div>
                 );
               })}
 
               {result.suggestions.length > 0 ? (
-                <div className="space-y-2 border-t border-white/10 pt-3">
-                  <p className="text-xs font-medium text-slate-300">优化建议</p>
-                  <ul className="space-y-1 text-xs text-slate-400">
+                <div className="space-y-2 border-t border-gray-200 pt-3">
+                  <p className="text-xs font-medium text-gray-600">优化建议</p>
+                  <ul className="space-y-1 text-xs text-gray-500">
                     {result.suggestions.map((s, i) => (
                       <li key={i}>→ {s}</li>
                     ))}
@@ -185,12 +185,12 @@ export function GeoQualityScore({
             </div>
           ) : null}
 
-          <p className="text-xs text-slate-500" data-testid="geo-quality-model-hint">
+          <p className="text-xs text-gray-500" data-testid="geo-quality-model-hint">
             质检模型：{formatModelLabel(modelName)} · 仅供参考，以发布后实测结果为准
           </p>
         </div>
       ) : (
-        <p className="text-xs text-slate-500">尚未进行发布前质检，建议填写并保存正文后点击「重新质检」。</p>
+        <p className="text-xs text-gray-500">尚未进行发布前质检，建议填写并保存正文后点击「重新质检」。</p>
       )}
     </div>
   );

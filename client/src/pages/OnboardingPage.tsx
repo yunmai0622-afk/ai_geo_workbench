@@ -236,7 +236,7 @@ export default function OnboardingPage() {
 
   if (authLoading || projectsLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
+      <div className="flex min-h-screen items-center justify-center bg-white text-gray-600">
         加载中...
       </div>
     );
@@ -245,15 +245,15 @@ export default function OnboardingPage() {
   if (projects.length > 0) {
     return (
       <div
-        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 px-4 text-center text-slate-100"
+        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white px-4 text-center text-gray-900"
         data-testid="onboarding-has-projects"
       >
         <h1 className="text-xl font-semibold">已有客户项目</h1>
-        <p className="max-w-md text-sm leading-relaxed text-slate-400">
+        <p className="max-w-md text-sm leading-relaxed text-gray-500">
           日常新增客户请前往客户管理台操作。本引导仅用于系统首次创建第一个客户项目。
         </p>
         <Button
-          className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+          className="bg-blue-600 text-white hover:bg-blue-700"
           data-testid="onboarding-go-clients"
           onClick={() => setLocation("/clients")}
         >
@@ -266,17 +266,17 @@ export default function OnboardingPage() {
   if (!user) {
     const loginConfigured = isLoginConfigured();
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-slate-100">
-        <div className="w-full max-w-md rounded-3xl border border-cyan-300/15 bg-white/[0.04] p-8 text-center">
-          <BarChart3 className="mx-auto h-10 w-10 text-cyan-300" />
+      <div className="flex min-h-screen items-center justify-center bg-white px-4 text-gray-900">
+        <div className="w-full max-w-md rounded-3xl border border-blue-100 bg-gray-50 p-8 text-center">
+          <BarChart3 className="mx-auto h-10 w-10 text-blue-600" />
           <h1 className="mt-4 text-xl font-semibold">登录后继续</h1>
-          <p className="mt-2 text-sm text-slate-400">完成引导需要先登录</p>
+          <p className="mt-2 text-sm text-gray-500">完成引导需要先登录</p>
           {loginConfigured ? (
-            <Button className="mt-6 w-full bg-cyan-400 text-slate-950" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button className="mt-6 w-full bg-blue-600 text-white" onClick={() => { window.location.href = getLoginUrl(); }}>
               登录
             </Button>
           ) : (
-            <Button className="mt-6 w-full bg-cyan-400 text-slate-950" disabled={devLogin.isPending} onClick={() => devLogin.mutate()}>
+            <Button className="mt-6 w-full bg-blue-600 text-white" disabled={devLogin.isPending} onClick={() => devLogin.mutate()}>
               {devLogin.isPending ? "正在登录" : "本地开发登录"}
             </Button>
           )}
@@ -287,61 +287,61 @@ export default function OnboardingPage() {
 
   if (phase === "input") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12 text-slate-100">
+      <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12 text-gray-900">
         <div className="w-full max-w-[500px]">
-          <p className="text-center text-sm font-medium tracking-wide text-cyan-300/90">内容增长系统</p>
+          <p className="text-center text-sm font-medium tracking-wide text-blue-600/90">内容增长系统</p>
           <h1 className="mt-6 text-center text-[28px] font-semibold leading-tight text-white">让AI持续为你推荐精准客户</h1>
-          <p className="mt-3 text-center text-sm text-slate-400">填写3个信息，系统自动生成你的第一篇内容</p>
+          <p className="mt-3 text-center text-sm text-gray-500">填写3个信息，系统自动生成你的第一篇内容</p>
 
-          <div className="my-8 border-t border-white/10" />
+          <div className="my-8 border-t border-gray-200" />
 
           <div className="space-y-5">
             <label className="block space-y-2 text-sm">
-              <span className="text-slate-200">
+              <span className="text-gray-700">
                 你的品牌或名字 <span className="text-rose-400">*</span>
               </span>
               <Input
                 value={brandName}
                 onChange={e => setBrandName(e.target.value)}
                 placeholder="例如：张老师、海豚知道"
-                className="h-11 border-white/10 bg-slate-900/80"
+                className="h-11 border-gray-200 bg-gray-50"
               />
             </label>
             <label className="block space-y-2 text-sm">
-              <span className="text-slate-200">
+              <span className="text-gray-700">
                 你主要卖什么 <span className="text-rose-400">*</span>
               </span>
               <Input
                 value={productDesc}
                 onChange={e => setProductDesc(e.target.value)}
                 placeholder="例如：帮助知识付费老师提升直播转化率的AI经营系统"
-                className="h-11 border-white/10 bg-slate-900/80"
+                className="h-11 border-gray-200 bg-gray-50"
               />
             </label>
             <label className="block space-y-2 text-sm">
-              <span className="text-slate-200">
+              <span className="text-gray-700">
                 你的客户是谁 <span className="text-rose-400">*</span>
               </span>
               <Input
                 value={targetCustomer}
                 onChange={e => setTargetCustomer(e.target.value)}
                 placeholder="例如：有课程但转化率低的知识付费老师"
-                className="h-11 border-white/10 bg-slate-900/80"
+                className="h-11 border-gray-200 bg-gray-50"
               />
             </label>
           </div>
 
-          <div className="my-8 border-t border-white/10" />
+          <div className="my-8 border-t border-gray-200" />
 
           <Button
             type="button"
-            className="h-12 w-full rounded-xl bg-cyan-400 text-base font-medium text-slate-950 hover:bg-cyan-300 disabled:opacity-50"
+            className="h-12 w-full rounded-xl bg-blue-600 text-base font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             disabled={!canStart}
             onClick={() => void handleStart()}
           >
             开始分析，约8分钟 →
           </Button>
-          <p className="mt-4 text-center text-xs text-slate-500">预计完成时间：约8分钟，全程自动，无需等待</p>
+          <p className="mt-4 text-center text-xs text-gray-500">预计完成时间：约8分钟，全程自动，无需等待</p>
         </div>
       </div>
     );
@@ -349,7 +349,7 @@ export default function OnboardingPage() {
 
   if (phase === "processing") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12 text-slate-100">
+      <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12 text-gray-900">
         <div className="w-full max-w-[400px]">
           <h2 className="text-center text-xl font-semibold text-white">正在为你准备内容方向...</h2>
           {skipNote ? <p className="mt-2 text-center text-xs text-amber-200">{skipNote}</p> : null}
@@ -362,12 +362,12 @@ export default function OnboardingPage() {
                   {st === "done" ? (
                     <Check className="h-4 w-4 shrink-0 text-emerald-400" />
                   ) : st === "active" ? (
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center text-cyan-400">●</span>
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center text-blue-600">●</span>
                   ) : (
-                    <Circle className="h-4 w-4 shrink-0 text-slate-600" />
+                    <Circle className="h-4 w-4 shrink-0 text-gray-600" />
                   )}
-                  <span className={st === "pending" ? "text-slate-500" : "text-slate-200"}>{step.label}</span>
-                  <span className="ml-auto text-xs text-slate-500">
+                  <span className={st === "pending" ? "text-gray-500" : "text-gray-700"}>{step.label}</span>
+                  <span className="ml-auto text-xs text-gray-500">
                     {st === "done" ? "完成✓" : st === "active" ? "进行中..." : "待执行○"}
                   </span>
                 </li>
@@ -375,13 +375,13 @@ export default function OnboardingPage() {
             })}
           </ul>
 
-          <div className="mt-8 h-2 overflow-hidden rounded-full bg-slate-800">
+          <div className="mt-8 h-2 overflow-hidden rounded-full bg-gray-100">
             <div
-              className="h-full rounded-full bg-cyan-400 transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-blue-600 transition-all duration-500 ease-out"
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <p className="mt-3 text-center text-xs text-slate-500">{stepHint || "请稍候..."}</p>
+          <p className="mt-3 text-center text-xs text-gray-500">{stepHint || "请稍候..."}</p>
         </div>
       </div>
     );
@@ -391,32 +391,32 @@ export default function OnboardingPage() {
   const showScore = typeof generatedArticle?.qualityScore === "number";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12 text-slate-100">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12 text-gray-900">
       <div className="w-full max-w-[600px]">
         {hasArticle ? (
           <>
             <h1 className="text-center text-2xl font-semibold text-white">🎉 你的第一篇文章已准备好！</h1>
             {showScore ? (
-              <p className="mt-4 text-center text-sm text-slate-300">
+              <p className="mt-4 text-center text-sm text-gray-600">
                 质量评分：{generatedArticle!.qualityScore} 分{" "}
                 {generatedArticle!.passed ? <span className="text-emerald-400">✓ 通过</span> : <span className="text-amber-300">待优化</span>}
               </p>
             ) : null}
-            <div className="my-8 border-t border-white/10" />
-            <div className="rounded-2xl bg-slate-900 px-5 py-4">
+            <div className="my-8 border-t border-gray-200" />
+            <div className="rounded-2xl bg-gray-50 px-5 py-4">
               <h2 className="text-lg font-semibold leading-snug text-white">{generatedArticle?.title || "文章标题"}</h2>
             </div>
-            <div className="relative mt-4 overflow-hidden rounded-2xl bg-slate-800/80 px-5 py-4">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">{previewMarkdown(generatedArticle?.markdownContent ?? "")}</p>
+            <div className="relative mt-4 overflow-hidden rounded-2xl bg-gray-100 px-5 py-4">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">{previewMarkdown(generatedArticle?.markdownContent ?? "")}</p>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-800 to-transparent" />
             </div>
-            <div className="my-8 border-t border-white/10" />
-            <Button type="button" className="h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => void handleCopy()}>
+            <div className="my-8 border-t border-gray-200" />
+            <Button type="button" className="h-12 w-full bg-blue-600 text-white hover:bg-blue-700" onClick={() => void handleCopy()}>
               {copied ? "已复制 ✓" : "复制文章内容"}
             </Button>
             <Button
               type="button"
-              className="mt-3 h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+              className="mt-3 h-12 w-full bg-blue-600 text-white hover:bg-blue-700"
               data-testid="onboarding-go-profile"
               onClick={() => {
                 const pid = getActiveProjectId();
@@ -428,7 +428,7 @@ export default function OnboardingPage() {
             <Button
               type="button"
               variant="outline"
-              className="mt-3 h-12 w-full border-white/15 text-cyan-100"
+              className="mt-3 h-12 w-full border-gray-200 text-blue-700"
               onClick={() => {
                 const pid = getActiveProjectId();
                 setLocation(pid ? buildProjectUrl("/workspace", pid) : "/clients");
@@ -436,7 +436,7 @@ export default function OnboardingPage() {
             >
               进入工作台
             </Button>
-            <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
+            <p className="mt-6 text-center text-xs leading-relaxed text-gray-500">
               复制后粘贴到微信公众号、知乎、百家号等平台发布
               <br />
               发布后回到产品登记链接，系统会追踪你的内容进展
@@ -445,8 +445,8 @@ export default function OnboardingPage() {
         ) : (
           <>
             <h1 className="text-center text-xl font-semibold text-white">内容方向已分析完成，文章生成遇到了问题</h1>
-            <p className="mt-3 text-center text-sm text-slate-400">你可以在「本周内容」页查看内容建议并手动生成</p>
-            <Button type="button" className="mt-8 h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => {
+            <p className="mt-3 text-center text-sm text-gray-500">你可以在「本周内容」页查看内容建议并手动生成</p>
+            <Button type="button" className="mt-8 h-12 w-full bg-blue-600 text-white hover:bg-blue-700" onClick={() => {
               const pid = getActiveProjectId();
               setLocation(pid ? buildProjectUrl("/weekly", pid) : "/clients");
             }}>

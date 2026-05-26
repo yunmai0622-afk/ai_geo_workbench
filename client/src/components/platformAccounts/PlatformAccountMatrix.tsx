@@ -40,19 +40,19 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
     <div className="space-y-4" data-testid="platform-account-matrix">
       <div>
         <h3 className="text-base font-semibold text-white">平台账号矩阵</h3>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-gray-500">
           先安装本地发布客户端，再绑定各平台发布账号。系统通过本地客户端托管登录环境，不保存密码，不上传 Cookie。
         </p>
       </div>
 
       {showDownloadCard ? <LocalAgentDownloadCard /> : null}
 
-      <div className="rounded-xl border border-cyan-400/25 bg-cyan-500/10 px-4 py-3 text-sm leading-relaxed text-cyan-50">
+      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-700">
         请先启动本地客户端（{LOCAL_AGENT_BASE_URL}），再点击右上角「绑定{platformLabel}账号」。登录仅在本地 Agent 窗口完成。
       </div>
 
       {b.bindStatusText ? (
-        <p className="text-xs text-slate-400" data-testid="local-agent-bind-status">
+        <p className="text-xs text-gray-500" data-testid="local-agent-bind-status">
           {b.bindStatusText}
         </p>
       ) : null}
@@ -121,28 +121,28 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="platform-account-filters">
-            <span className="text-slate-500">登录状态</span>
+            <span className="text-gray-500">登录状态</span>
             {SESSION_FILTER_OPTIONS.map(o => (
               <button
                 key={o.value}
                 type="button"
                 className={cn(
                   "rounded-full border px-2.5 py-0.5 text-xs",
-                  b.sessionFilter === o.value ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-100" : "border-white/10 text-slate-400",
+                  b.sessionFilter === o.value ? "border-blue-300 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-500",
                 )}
                 onClick={() => b.setSessionFilter(o.value)}
               >
                 {o.label}
               </button>
             ))}
-            <span className="ml-2 text-slate-500">账号身份</span>
+            <span className="ml-2 text-gray-500">账号身份</span>
             {IDENTITY_FILTER_OPTIONS.map(o => (
               <button
                 key={o.value}
                 type="button"
                 className={cn(
                   "rounded-full border px-2.5 py-0.5 text-xs",
-                  b.identityFilter === o.value ? "border-violet-400/40 bg-violet-400/15 text-violet-100" : "border-white/10 text-slate-400",
+                  b.identityFilter === o.value ? "border-violet-400/40 bg-violet-400/15 text-violet-700" : "border-gray-200 text-gray-500",
                 )}
                 onClick={() => b.setIdentityFilter(o.value)}
               >
@@ -158,9 +158,9 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           </div>
 
           {b.filteredAccounts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-white/15 py-12 text-center" data-testid="platform-account-empty">
+            <div className="rounded-xl border border-dashed border-gray-200 py-12 text-center" data-testid="platform-account-empty">
               <p className="text-base font-medium text-white">暂无{platformLabel}账号</p>
-              <p className="mt-2 text-sm text-slate-500">绑定后可用于内容发布、状态追踪和复测任务。</p>
+              <p className="mt-2 text-sm text-gray-500">绑定后可用于内容发布、状态追踪和复测任务。</p>
               {isNetease ? (
                 <p className="mt-2 text-xs text-amber-200/90">网易号账号绑定已开放，自动发布能力待接入。</p>
               ) : null}
@@ -207,12 +207,12 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           if (!open) b.resetBindFlow();
         }}
       >
-        <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md">
+        <DialogContent className="border-gray-200 bg-white text-gray-900 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {b.isNewBindDialog ? b.bindLabel : `编辑${platformLabel}账号`}
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-gray-500">
               {b.isNewBindDialog
                 ? `已检测到账号：${b.formAccountName}。请选择身份与账号组后保存。Cookie 仅存于本机 Agent，不会上传服务器。`
                 : "可修改账号身份、账号组、备注与启用状态。"}
@@ -220,11 +220,11 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs text-slate-500">平台显示昵称</label>
+              <label className="text-xs text-gray-500">平台显示昵称</label>
               <Input className={cn(aiInput, "cursor-not-allowed opacity-80")} value={b.formAccountName} readOnly />
             </div>
             <div>
-              <label className="text-xs text-slate-500">账号身份</label>
+              <label className="text-xs text-gray-500">账号身份</label>
               <select className={aiInput} value={b.formAccountRole} onChange={e => b.setFormAccountRole(e.target.value)}>
                 <option value="">未设置</option>
                 {PUBLISH_IDENTITY_OPTIONS.map(o => (
@@ -235,7 +235,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500">所属账号组</label>
+              <label className="text-xs text-gray-500">所属账号组</label>
               <select className={aiInput} value={b.formAccountGroup} onChange={e => b.setFormAccountGroup(e.target.value)}>
                 <option value="">未设置</option>
                 {b.groupOptions.map(o => (
@@ -246,10 +246,10 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500">备注（可选）</label>
+              <label className="text-xs text-gray-500">备注（可选）</label>
               <Input className={aiInput} value={b.formNotes} onChange={e => b.setFormNotes(e.target.value)} />
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-gray-600">
               <input type="checkbox" checked={b.formEnabled} onChange={e => b.setFormEnabled(e.target.checked)} />
               启用该账号用于发布
             </label>

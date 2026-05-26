@@ -11,13 +11,13 @@ export function LocalAgentPublishStepsPanel({ projectId }: Props) {
   return (
     <P0Card testId="publish-center-steps-panel" className="lg:sticky lg:top-20">
       <p className={geoP0Surfaces.sectionTitle}>本地发布步骤</p>
-      <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+      <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-gray-700">
         {LOCAL_AGENT_PUBLISH_STEPS.map(step => (
           <li key={step}>{step}</li>
         ))}
       </ol>
       {projectId ? (
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-gray-500">
           完成回填后，可前往
           <button
             type="button"

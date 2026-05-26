@@ -19,9 +19,9 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
-        ai: "rounded-xl border-0 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 font-semibold text-slate-950 shadow-[0_0_24px_rgba(56,189,248,0.32)] hover:brightness-110",
+        ai: "rounded-xl border-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 font-semibold text-white shadow-md hover:brightness-110",
         aiOutline:
-          "rounded-xl border border-cyan-400/35 bg-white/[0.04] text-cyan-100 shadow-[0_0_16px_rgba(56,189,248,0.08)] hover:border-cyan-300/50 hover:bg-cyan-400/10 dark:bg-white/[0.04]",
+          "rounded-xl border border-blue-200 bg-gray-50 text-blue-700 shadow-sm hover:border-blue-300 hover:bg-blue-50 dark:bg-gray-50",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

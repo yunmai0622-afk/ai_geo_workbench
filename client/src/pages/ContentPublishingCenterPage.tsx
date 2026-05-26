@@ -363,7 +363,7 @@ export function ContentPublishingCenterPage() {
       </header>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-12 text-slate-500">
+        <div className="flex items-center gap-2 py-12 text-gray-500">
           <Spinner className="size-5 text-blue-600" />
           正在加载发布任务…
         </div>
@@ -392,19 +392,19 @@ export function ContentPublishingCenterPage() {
               onLinkDraftChange={(id, v) => setLinkDraftById(d => ({ ...d, [id]: v }))}
             />
 
-            <details className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="publish-retest-rewrite-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800">
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-retest-rewrite-fold">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
                 发布后复测 · 重写池
               </summary>
-              <div className="grid gap-4 border-t border-slate-100 p-5 lg:grid-cols-2">
+              <div className="grid gap-4 border-t border-gray-100 p-5 lg:grid-cols-2">
                 <div>
-                  <h3 className="text-sm font-medium text-slate-800">待复测队列</h3>
+                  <h3 className="text-sm font-medium text-gray-800">待复测队列</h3>
                   {(retestQueueQuery.data?.items ?? []).length === 0 ? (
-                    <p className="mt-2 text-sm text-slate-500">暂无待复测内容</p>
+                    <p className="mt-2 text-sm text-gray-500">暂无待复测内容</p>
                   ) : (
-                    <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                    <ul className="mt-2 space-y-2 text-sm text-gray-700">
                       {(retestQueueQuery.data?.items ?? []).map(item => (
-                        <li key={item.queueId ?? item.articleId} className="rounded-lg border border-slate-100 p-3">
+                        <li key={item.queueId ?? item.articleId} className="rounded-lg border border-gray-100 p-3">
                           <p className="font-medium">{item.title}</p>
                           {selectedProjectId && item.queueId ? (
                             <Button
@@ -429,18 +429,18 @@ export function ContentPublishingCenterPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-slate-800">重写池</h3>
+                  <h3 className="text-sm font-medium text-gray-800">重写池</h3>
                   {(rewritePoolQuery.data?.items ?? []).length === 0 ? (
-                    <p className="mt-2 text-sm text-slate-500">暂无待重写条目</p>
+                    <p className="mt-2 text-sm text-gray-500">暂无待重写条目</p>
                   ) : (
-                    <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                    <ul className="mt-2 space-y-2 text-sm text-gray-700">
                       {(rewritePoolQuery.data?.items ?? []).map(item => (
                         <li
                           key={`${item.articleId}-${item.poolId ?? 0}`}
-                          className="rounded-lg border border-slate-100 p-3"
+                          className="rounded-lg border border-gray-100 p-3"
                         >
                           <p className="font-medium">{item.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">{item.reason}</p>
+                          <p className="mt-1 text-xs text-gray-500">{item.reason}</p>
                         </li>
                       ))}
                     </ul>
@@ -449,14 +449,14 @@ export function ContentPublishingCenterPage() {
               </div>
             </details>
 
-            <details className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="publish-manual-register-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800">
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-manual-register-fold">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
                 人工登记发布记录（可选）
               </summary>
-              <div className="space-y-4 border-t border-slate-100 p-5 text-sm text-slate-600">
+              <div className="space-y-4 border-t border-gray-100 p-5 text-sm text-gray-600">
                 <p>若内容已在平台外发布，可在此登记公开链接，与 Local Agent 任务相互独立。每次仅登记一个平台。</p>
                 {publishableArticles.length === 0 ? (
-                  <p className="text-slate-500">
+                  <p className="text-gray-500">
                     暂无可选文章，请先在平台化内容生产完成质量检查（≥ {GEO_ARTICLE_MIN_PASS_SCORE} 分）。
                   </p>
                 ) : (
@@ -517,11 +517,11 @@ export function ContentPublishingCenterPage() {
                   </div>
                 )}
                 {publishRecords.length === 0 ? (
-                  <p className="text-slate-500">暂无发布记录</p>
+                  <p className="text-gray-500">暂无发布记录</p>
                 ) : (
                   <ul className="space-y-2">
                     {publishRecords.map(record => (
-                      <li key={record.id} className="rounded-lg border border-slate-100 px-3 py-2">
+                      <li key={record.id} className="rounded-lg border border-gray-100 px-3 py-2">
                         {articleById.get(record.articleId ?? 0)?.title ?? record.publishTitle ?? "无标题"} ·{" "}
                         {record.publishChannel ?? "—"} · {publishStatusLabel(record.publishStatus)}
                       </li>
@@ -531,11 +531,11 @@ export function ContentPublishingCenterPage() {
               </div>
             </details>
 
-            <details className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="publish-local-agent-download-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800">
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-local-agent-download-fold">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
                 下载 Local Agent
               </summary>
-              <div className="border-t border-slate-100 p-5">
+              <div className="border-t border-gray-100 p-5">
                 <LocalAgentDownloadCard />
               </div>
             </details>

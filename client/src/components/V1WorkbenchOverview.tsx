@@ -64,7 +64,7 @@ function truncate(s: string, max: number) {
 }
 
 function SectionSkeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-2xl bg-white/[0.06] ${className}`} aria-hidden />;
+  return <div className={`animate-pulse rounded-2xl bg-gray-50 ${className}`} aria-hidden />;
 }
 
 export default function V1WorkbenchOverview() {
@@ -185,25 +185,25 @@ export default function V1WorkbenchOverview() {
         className="pb-4"
       >
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="ai-glass-panel space-y-3">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm space-y-3">
             <p className="text-sm font-medium text-white">最近发布</p>
             {recentPublish.length === 0 ? (
-              <p className="text-sm text-slate-500">还没有发布记录，生成内容后登记平台链接。</p>
+              <p className="text-sm text-gray-500">还没有发布记录，生成内容后登记平台链接。</p>
             ) : (
               <ul className="space-y-2">
                 {recentPublish.map(r => (
-                  <li key={r.id} className="text-sm text-slate-300">
-                    <span className="text-slate-100">{truncate((r.publishTitle || "未命名").trim(), 28)}</span>
-                    <span className="text-slate-600"> · </span>
+                  <li key={r.id} className="text-sm text-gray-600">
+                    <span className="text-gray-900">{truncate((r.publishTitle || "未命名").trim(), 28)}</span>
+                    <span className="text-gray-600"> · </span>
                     {r.publishChannel ?? "—"}
-                    <span className="text-slate-600"> · </span>
-                    <span className="text-slate-500">{daysAgoLabel(r.publishedAt)}</span>
+                    <span className="text-gray-600"> · </span>
+                    <span className="text-gray-500">{daysAgoLabel(r.publishedAt)}</span>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-          <div className="ai-glass-panel space-y-3">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm space-y-3">
             <p className="text-sm font-medium text-white">诊断与实测</p>
             <div className="flex flex-wrap gap-2">
               <AiStatusBadge tone={latestScore ? "success" : "neutral"}>

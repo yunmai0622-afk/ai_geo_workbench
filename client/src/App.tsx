@@ -102,7 +102,7 @@ function AuthenticatedAppShell() {
   if (profileLoading && pathname !== "/clients") {
     return (
       <DashboardLayout>
-        <div className="flex min-h-[50vh] items-center justify-center text-slate-400">加载中...</div>
+        <div className="flex min-h-[50vh] items-center justify-center text-gray-500">加载中...</div>
       </DashboardLayout>
     );
   }

@@ -44,17 +44,17 @@ export function PlatformAccountCard({
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="font-medium text-white">{displayAccountName(row)}</p>
-              <p className="text-xs text-slate-500">{PUBLISH_PLATFORM_LABELS[row.platform]}</p>
+              <p className="text-xs text-gray-500">{PUBLISH_PLATFORM_LABELS[row.platform]}</p>
             </div>
             <AiStatusBadge tone={sessionTone(row.sessionStatus)}>{sessionLabel(row.sessionStatus)}</AiStatusBadge>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-gray-500">
             {getPublishIdentityLabel(row.accountRole) || "身份未设置"} · {getAccountGroupLabel(row.accountGroup) || "未分组"}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-gray-500">
             最近检测 {formatTime(row.lastSessionCheckedAt ?? row.lastVerifiedAt)} · 最近发布 {lastPublishDisplay(row)}
           </p>
-          {row.notes ? <p className="text-xs text-slate-500">备注：{row.notes}</p> : null}
+          {row.notes ? <p className="text-xs text-gray-500">备注：{row.notes}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" variant="outline" className={aiOutlineBtn} disabled={bindBusy} onClick={() => void onReverify(row)}>
               检测登录态

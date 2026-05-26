@@ -21,7 +21,7 @@ type Props = {
 export function ProfileUploadAssistSection(props: Props) {
   return (
     <div data-testid="profile-upload-assist">
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h3 className="text-base font-semibold text-gray-900">资料上传与 AI 辅助解析</h3>
         <p className="mt-1 text-sm text-gray-500">
           如果你已有企业介绍、产品资料、客户案例或销售话术，可以上传后让 AI 自动提取信息。
@@ -31,7 +31,7 @@ export function ProfileUploadAssistSection(props: Props) {
           {UPLOAD_CARDS.map(({ id, label, icon: Icon }) => (
             <div
               key={id}
-              className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-gray-700"
+              className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700"
               data-testid={`upload-card-${id}`}
             >
               <Icon className="size-5 shrink-0 text-blue-600" />
@@ -40,12 +40,12 @@ export function ProfileUploadAssistSection(props: Props) {
           ))}
         </div>
 
-        <details className="mt-4 rounded-lg border border-slate-200 bg-slate-50 text-sm" data-testid="profile-upload-intake-collapsed">
+        <details className="mt-4 rounded-lg border border-gray-200 bg-gray-50 text-sm" data-testid="profile-upload-intake-collapsed">
           <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 font-medium text-gray-800 [&::-webkit-details-marker]:hidden">
             <ChevronDown className="size-4 transition-transform [[open]>&]:rotate-180" />
             上传资料 · AI 解析并填入建档
           </summary>
-          <div className="border-t border-slate-200 px-4 pb-4 pt-3">
+          <div className="border-t border-gray-200 px-4 pb-4 pt-3">
             <ProfileIntakePanel
               {...props}
               sectionTitle=""

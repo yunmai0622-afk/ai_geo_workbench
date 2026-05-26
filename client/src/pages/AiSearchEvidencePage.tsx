@@ -23,7 +23,7 @@ export default function AiSearchEvidencePage() {
 
   if (!enabled) {
     return (
-      <div className="mx-auto max-w-3xl p-8 text-slate-300">
+      <div className="mx-auto max-w-3xl p-8 text-gray-600">
         <p>链接无效，请从交付报告或收录监测页重新进入。</p>
         <Button className="mt-4" variant="outline" onClick={() => setLocation("/delivery-reports")}>
           返回交付报告
@@ -33,12 +33,12 @@ export default function AiSearchEvidencePage() {
   }
 
   if (detailQuery.isLoading) {
-    return <div className="mx-auto max-w-3xl p-8 text-slate-400">正在加载 AI 搜索实测证据…</div>;
+    return <div className="mx-auto max-w-3xl p-8 text-gray-500">正在加载 AI 搜索实测证据…</div>;
   }
 
   if (detailQuery.isError || !item) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4 p-8 text-slate-300">
+      <div className="mx-auto max-w-3xl space-y-4 p-8 text-gray-600">
         <p>{detailQuery.error?.message ?? "未找到该条实测证据。"}</p>
         <Button variant="outline" onClick={() => setLocation("/inclusion-monitoring")}>
           返回收录监测
