@@ -5,6 +5,10 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import {
+  inspectMacZipArtifact,
+  isExternalMacZipUrl,
+} from "./lib/macAgentZipArtifact.mjs";
 
 const PHASE = "Agent-Mac-Static-Asset-Delivery-Fix";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -153,10 +157,23 @@ if (sourceRaw !== buildRaw) {
   ok("构建输出 manifest 与源 manifest 文本完全一致");
 }
 
+const distZipPath = path.join(root, "dist/public/downloads/geo-local-agent-mac.zip");
+if (isExternalMacZipUrl(buildManifest.macZipUrl)) {
+  ok("构建 manifest 使用外部 HTTPS macZipUrl，跳过 dist zip 体积校验");
+} else if (buildManifest.macZipUrl === EXPECTED_ZIP) {
+  const distZip = inspectMacZipArtifact(distZipPath);
+  if (!distZip.ok) {
+    fail(
+      `相对 macZipUrl 要求 dist 内有效 zip，但 ${path.relative(root, distZipPath)}：${distZip.reason ?? "无效"}`,
+    );
+  }
+  ok(`dist zip 有效（${((distZip.size ?? 0) / 1024 / 1024).toFixed(1)} MB）`);
+}
+
 report.conclusion =
-  "**通过（本地构建产物）**：`dist/public/downloads/manifest.json` 与源 manifest 的 macZipUrl/macDmgUrl 一致。大文件 zip 需 AGENT_MAC_ZIP_URL 或运维上传后做线上验收。";
+  "**通过（本地构建产物）**：manifest 与 dist zip 已对齐。Git 部署须 AGENT_MAC_ZIP_URL 或构建机生成 zip 后随 dist 发布。";
 report.risks.push(
-  "Git 部署不含 .gitignore 的 zip；相对路径 /downloads/*.zip 在 Manus 上可能 SPA fallback 返回 HTML。",
+  "Manus 从 Git 构建时 *.zip 不入库；未配置 AGENT_MAC_ZIP_URL 时勿使用相对 /downloads/*.zip 对外承诺可下载。",
 );
 writeReport();
 console.log(`\n=== ${PHASE} build output acceptance PASSED ===\n`);

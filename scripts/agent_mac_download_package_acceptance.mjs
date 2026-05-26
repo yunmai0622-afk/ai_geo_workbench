@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
+import { inspectMacZipArtifact, isHtmlPayload } from "./lib/macAgentZipArtifact.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const downloadsDir = path.join(root, "client/public/downloads");
@@ -39,9 +40,11 @@ if (fs.existsSync(macZip)) ok("geo-local-agent-mac.zip exists");
 else fail("missing geo-local-agent-mac.zip");
 
 if (fs.existsSync(macZip)) {
-  const size = fs.statSync(macZip).size;
-  if (size > MIN_ZIP_BYTES) ok(`zip size ${(size / 1024 / 1024).toFixed(1)}MB > 50MB`);
-  else fail(`zip too small: ${size} bytes`);
+  const inspected = inspectMacZipArtifact(macZip);
+  if (inspected.ok) ok(`zip size ${((inspected.size ?? 0) / 1024 / 1024).toFixed(1)}MB > 50MB`);
+  else fail(inspected.reason ?? `zip invalid (${inspected.size} bytes)`);
+  if (isHtmlPayload(macZip)) fail("zip 内容为 HTML 假文件");
+  else ok("zip 不是 HTML 假文件");
 }
 
 const unzip = spawnSync("unzip", ["-t", macZip], { encoding: "utf-8" });
@@ -60,6 +63,23 @@ if (manifest.macZipUrl === "/downloads/geo-local-agent-mac.zip") {
 if (manifest.macDmgUrl == null) ok("manifest.macDmgUrl is null (dmg hidden)");
 else fail(`manifest.macDmgUrl should be null, got ${manifest.macDmgUrl}`);
 
+if (manifest.sourceDir) fail(`manifest must not contain sourceDir: ${manifest.sourceDir}`);
+else ok("manifest has no sourceDir");
+
+if (JSON.stringify(manifest).includes("/Users/")) fail("manifest contains local absolute path");
+else ok("manifest has no /Users/ local path");
+
+const copyScript = fs.readFileSync(path.join(root, "scripts/copy_local_agent_download.mjs"), "utf-8");
+if (copyScript.includes("inspectMacZipArtifact") && copyScript.includes("finalizeRelativeMacZip")) {
+  ok("copy script validates zip artifact");
+} else {
+  fail("copy script missing zip artifact validation");
+}
+
+const viteTs = fs.readFileSync(path.join(root, "server/_core/vite.ts"), "utf-8");
+if (viteTs.includes("registerDownloadArtifactGuard")) ok("serveStatic blocks SPA HTML fake zip");
+else fail("vite.ts missing download artifact guard");
+
 if (card.includes("isMacZipDownloadUrl") && card.includes("http://") && card.includes("https://")) {
   ok("LocalAgentDownloadCard supports absolute macZipUrl");
 } else {
@@ -73,7 +93,6 @@ if (pickFn.includes("isMacZipDownloadUrl(zip)")) {
   fail("pickMacHref must prefer zip via isMacZipDownloadUrl");
 }
 
-const copyScript = fs.readFileSync(path.join(root, "scripts/copy_local_agent_download.mjs"), "utf-8");
 if (copyScript.includes("AGENT_MAC_ZIP_URL") && copyScript.includes("macDmgUrl: null")) {
   ok("copy_local_agent_download supports AGENT_MAC_ZIP_URL and macDmgUrl null");
 } else {

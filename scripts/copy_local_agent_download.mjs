@@ -9,12 +9,18 @@ import fs from "fs";
 import path from "path";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
+import {
+  assertValidMacZipArtifact,
+  inspectMacZipArtifact,
+  isExternalMacZipUrl,
+} from "./lib/macAgentZipArtifact.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const releaseDir = path.join(root, "local-agent/release");
 const localAgentPkgPath = path.join(root, "local-agent/package.json");
 const outDir = path.join(root, "client/public/downloads");
 const manifestPath = path.join(outDir, "manifest.json");
+const macZipDest = path.join(outDir, "geo-local-agent-mac.zip");
 
 const DEFAULT_MAC_ZIP = "/downloads/geo-local-agent-mac.zip";
 const externalMacZip = process.env.AGENT_MAC_ZIP_URL?.trim() || null;
@@ -104,6 +110,14 @@ function packageMacAppZip(appPath, destZip) {
   }
 }
 
+function macZipManifestExtras(zipPath) {
+  const size = assertValidMacZipArtifact(zipPath);
+  return {
+    macZipSha256: sha256File(zipPath),
+    macZipSizeBytes: size,
+  };
+}
+
 function writeManifest(copied, extras = {}) {
   const prev = readExistingManifest();
   const manifest = {
@@ -125,13 +139,39 @@ function writeManifest(copied, extras = {}) {
   return manifest;
 }
 
-if (!fs.existsSync(releaseDir)) {
-  writeManifest([]);
-  console.log(
-    externalMacZip
-      ? "[copy] 无 local-agent/release，已按 AGENT_MAC_ZIP_URL 更新 manifest"
-      : "[copy] 无 local-agent/release，已保留/写入默认 manifest（相对 macZipUrl）",
+function failMissingMacZip(message) {
+  console.error(`[copy] ${message}`);
+  console.error(
+    "[copy] 修复：cd local-agent && npm run package:mac；或设置 AGENT_MAC_ZIP_URL=https://.../geo-local-agent-mac.zip",
   );
+  process.exit(1);
+}
+
+function finalizeRelativeMacZip(copied, manifestExtras) {
+  if (isExternalMacZipUrl(macZipUrl)) {
+    writeManifest(copied, manifestExtras);
+    return;
+  }
+  const inspect = inspectMacZipArtifact(macZipDest);
+  if (!inspect.ok) {
+    failMissingMacZip(
+      `相对路径 ${macZipUrl} 需要有效 zip，但 ${path.relative(root, macZipDest)}：${inspect.reason}`,
+    );
+  }
+  const extras = {
+    ...manifestExtras,
+    ...macZipManifestExtras(macZipDest),
+  };
+  writeManifest(copied, extras);
+}
+
+if (!fs.existsSync(releaseDir)) {
+  if (isExternalMacZipUrl(macZipUrl)) {
+    writeManifest([]);
+    console.log("[copy] 无 local-agent/release，已按 AGENT_MAC_ZIP_URL 更新 manifest");
+    process.exit(0);
+  }
+  finalizeRelativeMacZip([], {});
   process.exit(0);
 }
 
@@ -159,18 +199,18 @@ if (dmg) {
 
 const macApp = findMacAppBundle(releaseDir);
 if (macApp && !externalMacZip) {
-  const dest = path.join(outDir, "geo-local-agent-mac.zip");
-  packageMacAppZip(macApp, dest);
-  copied.push(dest);
-  manifestExtras.macZipSha256 = sha256File(dest);
-  console.log(`[copy] ditto zip from ${path.relative(root, macApp)} sha256=${manifestExtras.macZipSha256}`);
+  packageMacAppZip(macApp, macZipDest);
+  copied.push(macZipDest);
+  Object.assign(manifestExtras, macZipManifestExtras(macZipDest));
+  console.log(
+    `[copy] ditto zip from ${path.relative(root, macApp)} sha256=${manifestExtras.macZipSha256}`,
+  );
 } else if (!externalMacZip) {
   const zipMac = files.find(f => f.endsWith("-mac.zip") && !f.endsWith(".blockmap"));
   if (zipMac) {
-    const dest = path.join(outDir, "geo-local-agent-mac.zip");
-    fs.copyFileSync(path.join(releaseDir, zipMac), dest);
-    copied.push(dest);
-    manifestExtras.macZipSha256 = sha256File(dest);
+    fs.copyFileSync(path.join(releaseDir, zipMac), macZipDest);
+    copied.push(macZipDest);
+    Object.assign(manifestExtras, macZipManifestExtras(macZipDest));
     console.warn("[copy] 未找到 .app，回退复制 electron-builder zip");
   }
 }
@@ -187,9 +227,8 @@ if (exe) {
   copied.push(dest);
 }
 
-writeManifest(copied, manifestExtras);
+finalizeRelativeMacZip(copied, manifestExtras);
 
 if (!dmg && !macApp && !externalMacZip && !manifestExtras.macZipSha256) {
-  console.error("未找到 Mac .app / .dmg，且未设置 AGENT_MAC_ZIP_URL");
-  process.exit(1);
+  failMissingMacZip("未找到 Mac .app / .dmg，且未设置 AGENT_MAC_ZIP_URL");
 }
