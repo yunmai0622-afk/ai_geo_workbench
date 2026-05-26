@@ -11,9 +11,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
-import GeoFlowWizardPage from "./pages/GeoFlowWizard";
 import AssetCenterPage from "./pages/AssetCenter";
-import DemoGeoPage from "./pages/DemoGeo";
 import OnboardingPage from "./pages/OnboardingPage";
 import AiSearchEvidencePage from "./pages/AiSearchEvidencePage";
 import DeliveryReportPublicEvidencePage from "./pages/DeliveryReportPublicEvidencePage";
@@ -43,7 +41,9 @@ function PrivateRoutes() {
         <Route path="/home">
           <Redirect to="/clients" />
         </Route>
-        <Route path="/flow" component={GeoFlowWizardPage} />
+        <Route path="/flow">
+          <Redirect to="/workspace" />
+        </Route>
         <Route path="/enterprise-profile" component={AssetCenterPage} />
         <Route path="/asset-center">
           <Redirect to="/enterprise-profile#platform-accounts" />
@@ -135,8 +135,12 @@ function AuthenticatedAppShell() {
 function Router() {
   return (
     <Switch>
-      <Route path="/demo" component={DemoGeoPage} />
-      <Route path="/demo/geo" component={DemoGeoPage} />
+      <Route path="/demo">
+        <Redirect to="/clients" />
+      </Route>
+      <Route path="/demo/geo">
+        <Redirect to="/clients" />
+      </Route>
       <Route path="/geo/content/:projectId/:articleId" component={GeoPublicContentPage} />
       <Route path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex" component={DeliveryReportPublicEvidencePage} />
       <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />

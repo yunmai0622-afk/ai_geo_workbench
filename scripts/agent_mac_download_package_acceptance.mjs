@@ -70,7 +70,10 @@ if (JSON.stringify(manifest).includes("/Users/")) fail("manifest contains local 
 else ok("manifest has no /Users/ local path");
 
 const copyScript = fs.readFileSync(path.join(root, "scripts/copy_local_agent_download.mjs"), "utf-8");
-if (copyScript.includes("inspectMacZipArtifact") && copyScript.includes("finalizeRelativeMacZip")) {
+if (
+  copyScript.includes("inspectMacZipArtifact") &&
+  (copyScript.includes("assertValidMacZipArtifact") || copyScript.includes("finalizeRelativeMacZip"))
+) {
   ok("copy script validates zip artifact");
 } else {
   fail("copy script missing zip artifact validation");

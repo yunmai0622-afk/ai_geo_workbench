@@ -34,9 +34,14 @@ must(router.includes('sessionStatus !== "active"'), "session active check");
 const createBlock = router.slice(router.indexOf("create: protectedProcedure"), router.indexOf("verifyPublishTask:"));
 must(!createBlock.includes(': "pending"'), "create does not insert extension pending");
 must(createBlock.includes("publishMode: \"local_agent\""), "create returns local_agent mode");
-must(fs.existsSync(path.join(root, "content-growth-publish-extension/manifest.json")), "legacy extension source kept");
+const legacyManifest = path.join(root, "content-growth-publish-extension/manifest.json");
+if (fs.existsSync(legacyManifest)) {
+  must(true, "legacy extension source kept (in-repo)");
+} else {
+  must(router.includes("@legacy") && router.includes("downloadExtension"), "legacy extension off-tree; API marked @legacy");
+}
 must(!weekly.includes("content-growth-publish-extension"), "weekly does not reference extension package");
-must(binding.includes("旧账号"), "legacy account label");
+must(binding.includes("本地发布客户端"), "binding section promotes local agent");
 
 fs.mkdirSync(path.join(root, "artifacts"), { recursive: true });
 fs.writeFileSync(

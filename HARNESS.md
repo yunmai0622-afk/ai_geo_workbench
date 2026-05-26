@@ -279,12 +279,14 @@ V1.0 必须至少支持：
 
 当前已通过的工程验收：
 
-1. `corepack pnpm accept:p0:enterprise-profile`
-2. `corepack pnpm accept:p0:ai-diagnosis`
-3. `corepack pnpm accept:p0:content-generation`
-4. `corepack pnpm check`
-5. `corepack pnpm test`
-6. `corepack pnpm build`
+1. `pnpm accept:v1:sellable:static`（推荐 CI / 合并前默认闸门）
+2. `pnpm accept:v1:sellable:runtime`（需 `DATABASE_URL`，含 P0 真实链路）
+3. `pnpm accept:p0:enterprise-profile`
+4. `pnpm accept:p0:ai-diagnosis`
+5. `pnpm accept:p0:content-generation`
+6. `pnpm check`
+7. `pnpm test`
+8. `pnpm build`
 
 这些验收说明当前后端真实链路可用，但不代表新的 V1.0 内容增长闭环已经全部完成。新的 V1.0 还必须补齐内容生产计划、反同质化、平台矩阵、人工确认发布、发布记录和报告引用。
 
@@ -343,7 +345,10 @@ V1.0 必须至少支持：
 ### Phase 9：`accept:v1:sellable` 全链路验收脚本
 
 - 目标：验证从建档到发布记录再到报告的最小闭环。
-- 完成标准：脚本从零创建项目，走企业档案、资料来源、AI 回答、诊断、评分、任务、内容计划、文章、质检、反同质化、人工确认发布、发布记录、报告，并断言没有触碰 V1.0 禁止范围。
+- 完成标准：
+  - **静态（必跑）**：`pnpm accept:v1:sellable:static`
+  - **运行时（有 DB 环境）**：`pnpm accept:v1:sellable:runtime`（含 `p0_real_chain_acceptance` 与 `accept:p0:*` 子集）
+  - **总入口**：`pnpm accept:v1:sellable`
 - 禁止扩展：mock 数据、跳过真实 LLM、跳过真实 DB、跳过人工确认边界。
 
 ### Phase 10：部署与销售交付收口
@@ -416,3 +421,66 @@ V1.0 必须至少支持：
 12. 模拟登录、验证码处理、绕过平台风控。
 13. 未经用户确认跨 Phase 修复。
 14. 以 UI 美化替代主链路闭环。
+
+## 十五、GEO V1 状态机统一口径
+
+本仓库存在两套状态表达，**不得混用为两个并行产品**：
+
+| 维度 | HARNESS S0–S12 | Workspace 8 阶段（`shared/workspaceStateMachine.ts`） |
+| --- | --- | --- |
+| 用途 | 文档级可售卖闭环、Codex Phase 验收对照 | 客户工作台当前阶段、阻断、CTA |
+| 驱动 | 人工按 HARNESS 推进 Phase | `geo.workspace.summary` + `resolveWorkspaceStage()` |
+| 展示入口 | 各业务页 `GeoStatusGuide`（页内推算完成度） | `/workspace` 项目工作台 |
+
+### Workspace 8 阶段（产品表达 + 运行状态）
+
+| 阶段 ID | 客户文案 | 含义 |
+| --- | --- | --- |
+| `bind_publish_env` | 待绑定发布环境 | Local Agent / 平台账号未就绪 |
+| `complete_geo_profile` | 待完成品牌建档 | P0 建档必填未齐 |
+| `ai_diagnosis` | 待 AI 现状诊断 | 无诊断/评分 |
+| `generate_content` | 待生成内容 | 无文章资产 |
+| `publish_content` | 待发布 | 有内容无发布记录/任务 |
+| `retest_queue` | 待收录监测 | 已发布待监测或复测队列未清 |
+| `optimize` | 待优化 | 重写池/低质分/提及率偏低 |
+| `delivery_report` | 可生成报告 | 可进入交付报告 |
+
+### S0–S12 ↔ Workspace 映射（指导测试，非一一强制）
+
+| HARNESS | 客户路径摘要 | 主要 Workspace 阶段 |
+| --- | --- | --- |
+| S0 | 项目未创建 | （无项目，停留在 `/clients`） |
+| S1 | 企业档案/资料 | `complete_geo_profile` / `bind_publish_env` |
+| S2–S4 | AI 回答 → 诊断 → 任务 | `ai_diagnosis` |
+| S5–S7 | 内容计划 → 生成 → 质检 | `generate_content` |
+| S8–S10 | 平台确认 → 发布 → 发布记录 | `publish_content` |
+| S11–S12 | 报告 → 交付完成 | `delivery_report`（监测/优化穿插 `retest_queue`、`optimize`） |
+
+### 冲突时以谁为准
+
+1. **客户「当前阶段 / 下一步 / 阻断」**：以 **`/workspace` + `resolveWorkspaceStage()`** 为准。
+2. **工程 Phase / 可售卖闭环是否完成**：以 **HARNESS.md Phase 1–10 + `pnpm accept:v1:sellable`** 为准。
+3. **单页 `GeoStatusGuide`**：仅作页内引导；与 workspace 不一致时，以 workspace 为准并修页面文案。
+
+### 页面客户化表达
+
+- 禁止向客户展示：`taskId`、`rawAnswer`、`provider`、`schema`、`pending_agent` 等工程字段（见 `scripts/c1f_browser_delivery_acceptance.mjs` 禁词表）。
+- 收录监测阶段用中文标签（如「人工复测」），不用枚举英文名做主标题。
+
+## 十六、GEO V1 最小 CI 验收矩阵
+
+| 层级 | 命令 / 脚本 | 何时跑 | 说明 |
+| --- | --- | --- | --- |
+| 编译 | `pnpm check` | 每次 PR / 合并前 | TypeScript |
+| 构建 | `pnpm build` | 每次 PR / 合并前 | 含 `postbuild`：Mac/Win zip manifest 硬验收 |
+| 单测 | `pnpm test` | 每次 PR / 合并前 | Vitest |
+| **静态可售卖** | **`pnpm accept:v1:sellable:static`** | **CI 默认闸门** | check + build + test + workspace 状态机 + UI 静态 + Chrome 插件负向 + Agent 包体 |
+| 运行时链路 | `pnpm accept:v1:sellable:runtime` | 有 `DATABASE_URL` 的环境 | P0 真实 DB 链路 + `accept:p0:*` 子集 |
+| 总入口 | `pnpm accept:v1:sellable` | 发布前 / 里程碑 | static **且** runtime（无 DB 时 runtime 自动 SKIP） |
+| Local Agent 包体 | `agent_mac_zip_artifact_hard_acceptance` | 已含于 `pnpm build` postbuild | zip/exe 体积与 manifest |
+| 旧 Chrome 插件 | `agent_migration_no_chrome_plugin_acceptance` | 已含于 static | 主 UI 不得恢复插件入口 |
+| 工程字段 | `c1f_browser_delivery_acceptance.mjs` | **需** `pnpm dev` + Playwright | 非默认 static，部署后或联调跑 |
+| 真实全链路 | `p0_real_chain_acceptance.ts` | 已含于 runtime | 需 DB + LLM |
+| 线上产物 | 部署后 curl `manifest.json` 与各平台 zip | 生产发布 | 验证 CDN/静态资源非 HTML 占位 |
+
+**禁止**：用跳过 `accept:v1:sellable:static` 代替修复失败项。

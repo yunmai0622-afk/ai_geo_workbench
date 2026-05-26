@@ -38,10 +38,11 @@ describe("工作台 Flow 页（与首页同组件）", () => {
   const renderHtml = () => renderToStaticMarkup(React.createElement(GeoFlowWizardPage));
   const readProjectFile = (relativePath: string) => readFileSync(resolve(__dirname, "..", relativePath), "utf-8");
 
-  it("将 /flow 注册为受保护路由，确保客户试跑向导可访问", () => {
+  it("将 /flow 重定向到 /workspace，避免与项目工作台重复", () => {
     const appSource = readProjectFile("client/src/App.tsx");
-    expect(appSource).toContain('import GeoFlowWizardPage from "./pages/GeoFlowWizard";');
-    expect(appSource).toContain('<Route path="/flow" component={GeoFlowWizardPage} />');
+    expect(appSource).toContain('<Route path="/flow">');
+    expect(appSource).toMatch(/path="\/flow"[\s\S]*<Redirect\s+to="\/workspace"/);
+    expect(appSource).not.toContain('<Route path="/flow" component={GeoFlowWizardPage} />');
   });
 
   it("/flow 页面展示增长总览驾驶舱", () => {
