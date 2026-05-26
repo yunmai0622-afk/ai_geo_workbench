@@ -563,10 +563,10 @@
 - [x] 项目内顶部栏视觉优化（Phase A）
 - [x] 右侧下一步面板视觉优化（Phase A）
 - [x] DashboardLayout 左侧导航配色/字体/间距轻微对齐（Phase A）
-- [ ] /enterprise-profile 页面视觉改造
-- [ ] /weekly 页面视觉改造
-- [ ] /content-publishing 页面视觉改造
-- [ ] /delivery-reports 页面视觉改造
+- [x] /enterprise-profile 页面视觉改造（Phase D1 完成）
+- [x] /weekly 页面视觉改造（Phase D3 内容生产页保持暗色，后续 P1 统一）
+- [x] /content-publishing 页面视觉改造（Phase E1 完成）
+- [x] /delivery-reports 页面视觉改造（Phase E3 完成）
 
 ## Phase A 二次视觉验收修改
 
