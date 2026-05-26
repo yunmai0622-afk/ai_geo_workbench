@@ -12,6 +12,9 @@ export const PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE =
 export const PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE =
   "当前企业项目不存在或无访问权限，请重新进入项目后再试。";
 
+export const PLATFORM_CONTENT_DIAGNOSIS_BASIS_MESSAGE =
+  "请先完成 AI 内容诊断并生成优化任务，再生成平台化内容。";
+
 const INTERNAL_MARKERS = [
   "failed query",
   "insert into",
@@ -29,9 +32,11 @@ function looksInternal(message: string): boolean {
 }
 
 function isProfileInsufficientRaw(message: string): boolean {
-  return /缺少生成依据|企业基础资料|产品服务资料|企业档案|资料不足|客户指定问题|内容缺口|优化任务|AI 未推荐原因|竞品差距|企业 GEO 资产库/.test(
-    message,
-  );
+  return /企业资料还缺少|企业资料不足/.test(message);
+}
+
+function isDiagnosisBasisRaw(message: string): boolean {
+  return /缺少生成依据|客户指定问题|内容缺口|优化任务|AI 未推荐原因|竞品差距|企业 GEO 资产库/.test(message);
 }
 
 function isAiFailureRaw(message: string): boolean {
@@ -61,7 +66,8 @@ export function toPlatformContentGenerationError(raw: string): string {
   if (message === PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE) return message;
   if (isProjectAccessRaw(message)) return PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE;
   if (isParamsMissingRaw(message)) return PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE;
-  if (isProfileInsufficientRaw(message)) return PLATFORM_CONTENT_PROFILE_INSUFFICIENT_MESSAGE;
+  if (isProfileInsufficientRaw(message)) return message;
+  if (isDiagnosisBasisRaw(message)) return PLATFORM_CONTENT_DIAGNOSIS_BASIS_MESSAGE;
   if (isAiFailureRaw(message)) return PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE;
   if (message.length > 120) return PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE;
   return message;

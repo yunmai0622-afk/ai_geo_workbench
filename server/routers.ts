@@ -71,6 +71,7 @@ import {
   generateGeoArticleTopics,
   generateTargetQuestions as llmGenerateTargetSearchQuestions,
   GEO_ARTICLE_MIN_PASS_SCORE,
+  mergeProjectWithEnterpriseProfile,
   parseOptimizationTaskCard,
   resolveEnterpriseProfileForContent,
   scoreGeoArticleQuality,
@@ -691,12 +692,29 @@ const geoAssetRouter = router({
     const existing = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
     const raw = { ...input, completionScore } as Record<string, unknown>;
     const values = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) as typeof raw;
+    let profileId = existing[0]?.id ?? 0;
     if (existing[0]) {
       await db.update(enterpriseGeoProfiles).set(values).where(eq(enterpriseGeoProfiles.id, existing[0].id));
-      return { success: true, id: existing[0].id, completionScore } as const;
+    } else {
+      const inserted = await db.insert(enterpriseGeoProfiles).values(values as never).$returningId();
+      profileId = inserted[0]?.id ?? 0;
     }
-    const inserted = await db.insert(enterpriseGeoProfiles).values(values as never).$returningId();
-    return { success: true, id: inserted[0]?.id ?? 0, completionScore } as const;
+    const productIntro = String(input.productDesc ?? input.productServiceIntro ?? input.oneLiner ?? input.productIntro ?? "").trim();
+    const targetCustomers = String(input.targetCustomer ?? input.targetCustomers ?? "").trim();
+    const coreSellingPoints = String(
+      input.coreSellingPoints?.trim() || input.keyPoints?.join("；") || input.oneLiner?.trim() || "",
+    ).trim();
+    await db
+      .update(projects)
+      .set({
+        enterpriseName: input.enterpriseName,
+        industry: input.industry?.trim() || input.industryTag?.trim() || undefined,
+        productIntro: productIntro || undefined,
+        targetCustomers: targetCustomers || undefined,
+        coreSellingPoints: coreSellingPoints || undefined,
+      })
+      .where(eq(projects.id, input.projectId));
+    return { success: true, id: profileId, completionScore } as const;
   }),
   addTextSource: protectedProcedure.input(assetTextInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
@@ -2180,7 +2198,7 @@ const geoRouter = router({
       const topicRows = await db.select().from(geoArticleTopics).where(eq(geoArticleTopics.id, input.topicId)).limit(1);
       const topic = topicRows[0];
       if (!topic) throw new TRPCError({ code: "NOT_FOUND", message: "文章选题不存在" });
-      const project = await requireProjectAccess(ctx, topic.projectId);
+      const projectRow = await requireProjectAccess(ctx, topic.projectId);
       const taskRows = topic.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, topic.optimizationTaskId)).limit(1) : [];
       const task = taskRows[0];
       if (!task) throw new TRPCError({ code: "BAD_REQUEST", message: "文章选题必须绑定优化任务，不能生成无来源文章" });
@@ -2193,6 +2211,7 @@ const geoRouter = router({
       const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
       const analysisScope = analysesWithQuestions.filter(analysis => sourceAnalysisIds.includes(analysis.id));
       const assetLibrary = await getAssetLibraryContext(topic.projectId);
+      const project = mergeProjectWithEnterpriseProfile(projectRow, assetLibrary.profile ?? null);
       let draft;
       try {
         const platformStrategy =
@@ -2213,7 +2232,7 @@ const geoRouter = router({
               }
             : undefined;
         assertPlatformContentStrategyParams(platformStrategy);
-        assertEnterpriseProfileForPlatformGeneration(project, assetLibrary, platformStrategy);
+        assertEnterpriseProfileForPlatformGeneration(projectRow, assetLibrary, platformStrategy);
         draft = await generateGeoArticleDraft({
           project,
           topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },

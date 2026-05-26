@@ -195,6 +195,39 @@ export function withResolvedEnterpriseProfile(ctx: P12AssetLibraryContext): P12A
   return { ...ctx, resolvedEnterpriseProfile: resolveEnterpriseProfileForContent(ctx.profile ?? null) };
 }
 
+/** 生成前将企业档案 V2 字段合并进 projects 行，避免仅更新 enterprise_geo_profiles 时 projects 仍为空 */
+export function mergeProjectWithEnterpriseProfile(
+  project: P11ProjectLike,
+  profile: Record<string, unknown> | null | undefined,
+): P11ProjectLike {
+  const resolved = resolveEnterpriseProfileForContent(profile);
+  const pick = (...parts: Array<string | undefined | null>) => {
+    for (const part of parts) {
+      const t = valueText(part);
+      if (t && t !== "待补充") return t;
+    }
+    return "";
+  };
+  const industry =
+    pick(project.industry, valueText(profile?.industryTag), valueText(profile?.industry)) || project.industry;
+  const productIntro = pick(project.productIntro, resolved.productDesc, resolved.oneLiner) || project.productIntro;
+  const targetCustomers = pick(project.targetCustomers, resolved.targetCustomer) || project.targetCustomers;
+  const enterpriseName = pick(project.enterpriseName, resolved.brandName) || project.enterpriseName;
+  const coreSellingPoints =
+    pick(project.coreSellingPoints, resolved.keyPoints.join("；"), resolved.oneLiner) || project.coreSellingPoints;
+  const coreKeywords =
+    project.coreKeywords.length > 0 ? project.coreKeywords : resolved.keywords.length > 0 ? resolved.keywords : project.coreKeywords;
+  return {
+    ...project,
+    enterpriseName,
+    industry,
+    productIntro,
+    targetCustomers,
+    coreSellingPoints,
+    coreKeywords,
+  };
+}
+
 export type P12PrePublishCheck = {
   enterprisePositioningConsistent: boolean;
   productDescriptionConsistent: boolean;

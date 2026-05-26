@@ -45,8 +45,8 @@ const tasks: P11TaskLike[] = [
 
 describe("platform content generation errors (P0)", () => {
   it("maps profile, params, and AI failures to customer messages", () => {
-    expect(toPlatformContentGenerationError("缺少生成依据：竞品差距")).toBe(
-      PLATFORM_CONTENT_PROFILE_INSUFFICIENT_MESSAGE,
+    expect(toPlatformContentGenerationError("企业资料还缺少：产品服务。请先完善后再生成。")).toContain(
+      "企业资料还缺少",
     );
     expect(toPlatformContentGenerationError("请填写目标问题")).toBe(PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE);
     expect(toPlatformContentGenerationError("LLM invoke failed: 503")).toBe(PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE);
@@ -57,7 +57,7 @@ describe("platform content generation errors (P0)", () => {
     expect(() => assertPlatformContentStrategyParams(partial)).toThrow(PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE);
   });
 
-  it("rejects insufficient enterprise profile", () => {
+  it("rejects insufficient enterprise profile with specific labels", () => {
     const strategy = buildDefaultPlatformStrategy({ targetQuestion: "如何选型？" });
     expect(() =>
       assertEnterpriseProfileForPlatformGeneration(
@@ -65,7 +65,7 @@ describe("platform content generation errors (P0)", () => {
         { profile: null },
         strategy,
       ),
-    ).toThrow(PLATFORM_CONTENT_PROFILE_INSUFFICIENT_MESSAGE);
+    ).toThrow(/企业资料还缺少/);
   });
 
   it("accepts platform targetQuestion when DB has no questions after enrich", () => {
