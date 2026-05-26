@@ -19,4 +19,11 @@ describe("Agent-Mac-Zip-Artifact-Guard", () => {
     expect(copy).toContain("macZipSizeBytes");
     expect(copy).not.toContain("sourceDir");
   });
+
+  it("copy script validates Windows zip and setup exe", () => {
+    const copy = read("scripts/copy_local_agent_download.mjs");
+    expect(copy).toContain("winZipSha256");
+    expect(copy).toContain("winSetupSha256");
+    expect(copy).toContain("AGENT_WIN_ZIP_URL");
+  });
 });

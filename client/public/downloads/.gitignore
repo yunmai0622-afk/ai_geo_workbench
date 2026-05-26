@@ -3,3 +3,5 @@
 *.exe
 !manifest.json
 !geo-local-agent-mac.zip
+!geo-local-agent-win.zip
+!geo-local-agent-win.exe

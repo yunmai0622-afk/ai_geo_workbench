@@ -7,8 +7,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import {
   inspectMacZipArtifact,
-  isExternalMacZipUrl,
-} from "./lib/macAgentZipArtifact.mjs";
+  inspectWinExeArtifact,
+  inspectWinZipArtifact,
+  isExternalDownloadUrl,
+} from "./lib/localAgentDownloadArtifact.mjs";
 
 const PHASE = "Agent-Mac-Static-Asset-Delivery-Fix";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -157,23 +159,50 @@ if (sourceRaw !== buildRaw) {
   ok("构建输出 manifest 与源 manifest 文本完全一致");
 }
 
-const distZipPath = path.join(root, "dist/public/downloads/geo-local-agent-mac.zip");
-if (isExternalMacZipUrl(buildManifest.macZipUrl)) {
-  ok("构建 manifest 使用外部 HTTPS macZipUrl，跳过 dist zip 体积校验");
-} else if (buildManifest.macZipUrl === EXPECTED_ZIP) {
-  const distZip = inspectMacZipArtifact(distZipPath);
-  if (!distZip.ok) {
+const distArtifacts = [
+  {
+    label: "Mac zip",
+    url: buildManifest.macZipUrl,
+    expected: EXPECTED_ZIP,
+    path: path.join(root, "dist/public/downloads/geo-local-agent-mac.zip"),
+    inspect: inspectMacZipArtifact,
+  },
+  {
+    label: "Win zip",
+    url: buildManifest.winZipUrl,
+    expected: "/downloads/geo-local-agent-win.zip",
+    path: path.join(root, "dist/public/downloads/geo-local-agent-win.zip"),
+    inspect: inspectWinZipArtifact,
+  },
+  {
+    label: "Win setup",
+    url: buildManifest.winSetupUrl,
+    expected: "/downloads/geo-local-agent-win.exe",
+    path: path.join(root, "dist/public/downloads/geo-local-agent-win.exe"),
+    inspect: inspectWinExeArtifact,
+  },
+];
+
+for (const item of distArtifacts) {
+  if (!item.url) continue;
+  if (isExternalDownloadUrl(item.url)) {
+    ok(`${item.label} 使用外部 HTTPS，跳过 dist 体积校验`);
+    continue;
+  }
+  if (item.url !== item.expected) continue;
+  const dist = item.inspect(item.path);
+  if (!dist.ok) {
     fail(
-      `相对 macZipUrl 要求 dist 内有效 zip，但 ${path.relative(root, distZipPath)}：${distZip.reason ?? "无效"}`,
+      `相对 ${item.url} 要求 dist 内有效文件，但 ${path.relative(root, item.path)}：${dist.reason ?? "无效"}`,
     );
   }
-  ok(`dist zip 有效（${((distZip.size ?? 0) / 1024 / 1024).toFixed(1)} MB）`);
+  ok(`dist ${item.label} 有效（${((dist.size ?? 0) / 1024 / 1024).toFixed(1)} MB）`);
 }
 
 report.conclusion =
-  "**通过（本地构建产物）**：manifest 与 dist zip 已对齐。Git 部署须 AGENT_MAC_ZIP_URL 或构建机生成 zip 后随 dist 发布。";
+  "**通过（本地构建产物）**：manifest 与 dist Mac/Windows 安装包已对齐。大文件经 Git LFS 或 AGENT_*_URL 发布。";
 report.risks.push(
-  "Manus 从 Git 构建时 *.zip 不入库；未配置 AGENT_MAC_ZIP_URL 时勿使用相对 /downloads/*.zip 对外承诺可下载。",
+  "部署环境须启用 Git LFS pull，否则 /downloads 下大文件可能仅为指针或 404。",
 );
 writeReport();
 console.log(`\n=== ${PHASE} build output acceptance PASSED ===\n`);

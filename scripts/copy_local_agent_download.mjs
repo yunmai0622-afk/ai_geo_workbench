@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * 将 local-agent/release 打包产物复制到 client/public/downloads/
- * Mac zip 使用 ditto 从 .app 打包，保留 bundle 权限与资源分叉。
- * 支持 AGENT_MAC_ZIP_URL：线上大文件不入 Git 时，manifest 指向外部真实 zip URL。
+ * Mac zip 使用 ditto 从 .app 打包；Windows 复制 electron-builder zip/nsis。
+ * 支持 AGENT_*_URL：大文件可走外部 HTTPS，manifest 写入 sha256/size。
  */
 import crypto from "crypto";
 import fs from "fs";
@@ -11,9 +11,13 @@ import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 import {
   assertValidMacZipArtifact,
+  assertValidWinExeArtifact,
+  assertValidWinZipArtifact,
   inspectMacZipArtifact,
-  isExternalMacZipUrl,
-} from "./lib/macAgentZipArtifact.mjs";
+  inspectWinExeArtifact,
+  inspectWinZipArtifact,
+  isExternalDownloadUrl,
+} from "./lib/localAgentDownloadArtifact.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const releaseDir = path.join(root, "local-agent/release");
@@ -21,10 +25,20 @@ const localAgentPkgPath = path.join(root, "local-agent/package.json");
 const outDir = path.join(root, "client/public/downloads");
 const manifestPath = path.join(outDir, "manifest.json");
 const macZipDest = path.join(outDir, "geo-local-agent-mac.zip");
+const winZipDest = path.join(outDir, "geo-local-agent-win.zip");
+const winExeDest = path.join(outDir, "geo-local-agent-win.exe");
 
 const DEFAULT_MAC_ZIP = "/downloads/geo-local-agent-mac.zip";
+const DEFAULT_WIN_ZIP = "/downloads/geo-local-agent-win.zip";
+const DEFAULT_WIN_SETUP = "/downloads/geo-local-agent-win.exe";
+
 const externalMacZip = process.env.AGENT_MAC_ZIP_URL?.trim() || null;
+const externalWinZip = process.env.AGENT_WIN_ZIP_URL?.trim() || null;
+const externalWinSetup = process.env.AGENT_WIN_SETUP_URL?.trim() || null;
+
 const macZipUrl = externalMacZip || DEFAULT_MAC_ZIP;
+const winZipUrl = externalWinZip || DEFAULT_WIN_ZIP;
+const winSetupUrl = externalWinSetup || DEFAULT_WIN_SETUP;
 
 function readAgentVersion() {
   try {
@@ -66,7 +80,6 @@ function findMacAppBundle(baseDir) {
   return null;
 }
 
-/** 打包前：清隔离、可执行权限、ad-hoc 签名 */
 function prepareMacAppForZip(appPath) {
   spawnSync("xattr", ["-cr", appPath], { stdio: "inherit" });
   const macOsDir = path.join(appPath, "Contents/MacOS");
@@ -96,7 +109,6 @@ function prepareMacAppForZip(appPath) {
   }
 }
 
-/** 使用 ditto 生成 zip：解压后第一层即为 .app */
 function packageMacAppZip(appPath, destZip) {
   prepareMacAppForZip(appPath);
   if (fs.existsSync(destZip)) fs.unlinkSync(destZip);
@@ -112,10 +124,17 @@ function packageMacAppZip(appPath, destZip) {
 
 function macZipManifestExtras(zipPath) {
   const size = assertValidMacZipArtifact(zipPath);
-  return {
-    macZipSha256: sha256File(zipPath),
-    macZipSizeBytes: size,
-  };
+  return { macZipSha256: sha256File(zipPath), macZipSizeBytes: size };
+}
+
+function winZipManifestExtras(zipPath) {
+  const size = assertValidWinZipArtifact(zipPath);
+  return { winZipSha256: sha256File(zipPath), winZipSizeBytes: size };
+}
+
+function winExeManifestExtras(exePath) {
+  const size = assertValidWinExeArtifact(exePath);
+  return { winSetupSha256: sha256File(exePath), winSetupSizeBytes: size };
 }
 
 function writeManifest(copied, extras = {}) {
@@ -126,52 +145,64 @@ function writeManifest(copied, extras = {}) {
     files: copied.length ? copied.map(p => path.relative(root, p)) : prev.files ?? [],
     macZipUrl,
     macDmgUrl: null,
-    winZipUrl: prev.winZipUrl ?? null,
-    winSetupUrl: prev.winSetupUrl ?? null,
+    winZipUrl,
+    winSetupUrl,
     ...extras,
   };
-  if (externalMacZip) {
-    manifest.macZipExternal = true;
-  }
+  if (externalMacZip) manifest.macZipExternal = true;
+  if (externalWinZip) manifest.winZipExternal = true;
+  if (externalWinSetup) manifest.winSetupExternal = true;
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
   console.log(JSON.stringify(manifest, null, 2));
   return manifest;
 }
 
-function failMissingMacZip(message) {
+function failArtifacts(message) {
   console.error(`[copy] ${message}`);
   console.error(
-    "[copy] 修复：cd local-agent && npm run package:mac；或设置 AGENT_MAC_ZIP_URL=https://.../geo-local-agent-mac.zip",
+    "[copy] 修复：cd local-agent && npm run package:mac / package:win；或设置 AGENT_MAC_ZIP_URL / AGENT_WIN_ZIP_URL / AGENT_WIN_SETUP_URL",
   );
   process.exit(1);
 }
 
-function finalizeRelativeMacZip(copied, manifestExtras) {
-  if (isExternalMacZipUrl(macZipUrl)) {
-    writeManifest(copied, manifestExtras);
-    return;
+function finalizeArtifacts(copied, manifestExtras) {
+  const extras = { ...manifestExtras };
+
+  if (!isExternalDownloadUrl(macZipUrl)) {
+    const mac = inspectMacZipArtifact(macZipDest);
+    if (!mac.ok) {
+      failArtifacts(`Mac ${macZipUrl} 需要有效 zip：${mac.reason}`);
+    }
+    Object.assign(extras, macZipManifestExtras(macZipDest));
   }
-  const inspect = inspectMacZipArtifact(macZipDest);
-  if (!inspect.ok) {
-    failMissingMacZip(
-      `相对路径 ${macZipUrl} 需要有效 zip，但 ${path.relative(root, macZipDest)}：${inspect.reason}`,
-    );
+
+  if (!isExternalDownloadUrl(winZipUrl)) {
+    const winZ = inspectWinZipArtifact(winZipDest);
+    if (!winZ.ok) {
+      failArtifacts(`Windows ${winZipUrl} 需要有效 zip：${winZ.reason}`);
+    }
+    Object.assign(extras, winZipManifestExtras(winZipDest));
   }
-  const extras = {
-    ...manifestExtras,
-    ...macZipManifestExtras(macZipDest),
-  };
+
+  if (!isExternalDownloadUrl(winSetupUrl)) {
+    const winE = inspectWinExeArtifact(winExeDest);
+    if (!winE.ok) {
+      failArtifacts(`Windows ${winSetupUrl} 需要有效 exe：${winE.reason}`);
+    }
+    Object.assign(extras, winExeManifestExtras(winExeDest));
+  }
+
   writeManifest(copied, extras);
 }
 
 if (!fs.existsSync(releaseDir)) {
-  if (isExternalMacZipUrl(macZipUrl)) {
-    writeManifest([]);
-    console.log("[copy] 无 local-agent/release，已按 AGENT_MAC_ZIP_URL 更新 manifest");
+  if (isExternalDownloadUrl(macZipUrl) || isExternalDownloadUrl(winZipUrl) || isExternalDownloadUrl(winSetupUrl)) {
+    writeManifest([], {});
+    console.log("[copy] 无 local-agent/release，已按 AGENT_*_URL 更新 manifest");
     process.exit(0);
   }
-  finalizeRelativeMacZip([], {});
+  finalizeArtifacts([], {});
   process.exit(0);
 }
 
@@ -201,34 +232,38 @@ const macApp = findMacAppBundle(releaseDir);
 if (macApp && !externalMacZip) {
   packageMacAppZip(macApp, macZipDest);
   copied.push(macZipDest);
-  Object.assign(manifestExtras, macZipManifestExtras(macZipDest));
-  console.log(
-    `[copy] ditto zip from ${path.relative(root, macApp)} sha256=${manifestExtras.macZipSha256}`,
-  );
+  console.log(`[copy] ditto mac zip from ${path.relative(root, macApp)}`);
 } else if (!externalMacZip) {
   const zipMac = files.find(f => f.endsWith("-mac.zip") && !f.endsWith(".blockmap"));
   if (zipMac) {
     fs.copyFileSync(path.join(releaseDir, zipMac), macZipDest);
     copied.push(macZipDest);
-    Object.assign(manifestExtras, macZipManifestExtras(macZipDest));
-    console.warn("[copy] 未找到 .app，回退复制 electron-builder zip");
+    console.warn("[copy] 未找到 .app，回退复制 electron-builder mac zip");
   }
 }
 
-if (zipWin) {
-  const dest = path.join(outDir, "geo-local-agent-win.zip");
-  fs.copyFileSync(path.join(releaseDir, zipWin), dest);
-  copied.push(dest);
+if (zipWin && !externalWinZip) {
+  fs.copyFileSync(path.join(releaseDir, zipWin), winZipDest);
+  copied.push(winZipDest);
+  console.log(`[copy] win zip from ${zipWin}`);
 }
 
-if (exe) {
-  const dest = path.join(outDir, "geo-local-agent-win.exe");
-  fs.copyFileSync(path.join(releaseDir, exe), dest);
-  copied.push(dest);
+if (exe && !externalWinSetup) {
+  fs.copyFileSync(path.join(releaseDir, exe), winExeDest);
+  copied.push(winExeDest);
+  console.log(`[copy] win setup from ${exe}`);
 }
 
-finalizeRelativeMacZip(copied, manifestExtras);
+finalizeArtifacts(copied, manifestExtras);
 
-if (!dmg && !macApp && !externalMacZip && !manifestExtras.macZipSha256) {
-  failMissingMacZip("未找到 Mac .app / .dmg，且未设置 AGENT_MAC_ZIP_URL");
+if (
+  !dmg &&
+  !macApp &&
+  !zipWin &&
+  !exe &&
+  !isExternalDownloadUrl(macZipUrl) &&
+  !isExternalDownloadUrl(winZipUrl) &&
+  !isExternalDownloadUrl(winSetupUrl)
+) {
+  failArtifacts("未找到任何 release 产物，且未设置 AGENT_*_URL");
 }

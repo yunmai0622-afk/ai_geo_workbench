@@ -4,7 +4,9 @@
  */
 import fs from "fs";
 import path from "path";
+import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
+import { inspectWinExeArtifact, inspectWinZipArtifact, isHtmlPayload } from "./lib/localAgentDownloadArtifact.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = rel => fs.readFileSync(path.join(root, rel), "utf-8");
@@ -39,16 +41,42 @@ const winZip = manifest.winZipUrl;
 if (winSetup || winZip) ok("manifest has Windows download URL");
 else fail("manifest missing winSetupUrl and winZipUrl");
 
-if (winSetup) {
-  const p = path.join(root, "client/public", winSetup.replace(/^\//, ""));
-  if (fs.existsSync(p) && fs.statSync(p).size > 1_000_000) ok(`winSetup file exists: ${winSetup}`);
-  else fail(`winSetupUrl points to missing file: ${winSetup}`);
+const copyScript = read("scripts/copy_local_agent_download.mjs");
+if (copyScript.includes("winZipSha256") && copyScript.includes("AGENT_WIN_ZIP_URL")) {
+  ok("copy script validates Windows artifacts");
+} else {
+  fail("copy script missing Windows sha256 / AGENT_WIN_ZIP_URL");
 }
 
-if (winZip) {
+if (manifest.sourceDir) fail("manifest has sourceDir");
+else ok("manifest has no sourceDir");
+
+if (winSetup?.startsWith("/downloads/")) {
+  const p = path.join(root, "client/public", winSetup.replace(/^\//, ""));
+  const inspected = inspectWinExeArtifact(p);
+  if (inspected.ok) ok(`winSetup valid (${((inspected.size ?? 0) / 1024 / 1024).toFixed(1)} MB)`);
+  else fail(`winSetup invalid: ${inspected.reason}`);
+  if (isHtmlPayload(p)) fail("winSetup is HTML fake file");
+  if (manifest.winSetupSha256) ok("manifest has winSetupSha256");
+} else if (winSetup) {
+  ok("winSetup uses external URL");
+}
+
+if (winZip?.startsWith("/downloads/")) {
   const p = path.join(root, "client/public", winZip.replace(/^\//, ""));
-  if (fs.existsSync(p) && fs.statSync(p).size > 1_000_000) ok(`winZip file exists: ${winZip}`);
-  else fail(`winZipUrl points to missing file: ${winZip}`);
+  const inspected = inspectWinZipArtifact(p);
+  if (inspected.ok) ok(`winZip valid (${((inspected.size ?? 0) / 1024 / 1024).toFixed(1)} MB)`);
+  else fail(`winZip invalid: ${inspected.reason}`);
+  if (isHtmlPayload(p)) fail("winZip is HTML fake file");
+  const unzip = spawnSync("unzip", ["-t", p], { encoding: "utf-8" });
+  if (unzip.status === 0 && /No errors detected/i.test(unzip.stdout + unzip.stderr)) {
+    ok("winZip unzip -t passed");
+  } else {
+    fail("winZip unzip -t failed");
+  }
+  if (manifest.winZipSha256) ok("manifest has winZipSha256");
+} else if (winZip) {
+  ok("winZip uses external URL");
 }
 
 if (card.includes("pickWinHref") && card.includes("下载 Windows 客户端") && card.includes("winOffered")) {
@@ -70,8 +98,14 @@ else fail("file:// in download card");
 if (!/下载 Chrome 插件|browser-extension\.zip|重载插件/.test(mainUi)) ok("Chrome extension not main download");
 else fail("Chrome extension main entry");
 
-if (card.includes("下载 Mac 客户端") && card.includes("/downloads/geo-local-agent-mac")) ok("Mac download preserved");
-else fail("Mac download missing");
+if (
+  card.includes("下载 Mac 客户端") &&
+  (card.includes("geo-local-agent-mac") || card.includes("pickMacHref") || card.includes("macZipUrl"))
+) {
+  ok("Mac download preserved");
+} else {
+  fail("Mac download missing");
+}
 
 if (
   fs.readFileSync(path.join(root, "shared/localAgent.ts"), "utf-8").includes("127.0.0.1:39888") &&
