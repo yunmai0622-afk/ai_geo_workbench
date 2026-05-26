@@ -20,7 +20,7 @@ import {
 } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { toUserFacingCreateProjectError } from "@shared/userFacingMutationErrors";
-import { ArrowRight, Building2, Loader2, Plus, Search } from "lucide-react";
+import { ArrowRight, Building2, FolderKanban, Loader2, Plus, Search, Clock, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -50,6 +50,22 @@ function normalizeIndustryRegion(industry: string, region: string): { industry?:
   };
 }
 
+/* ─── 总览统计卡片 ─── */
+function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="geo-card flex items-center gap-3.5 px-5 py-4">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+        {icon}
+      </div>
+      <div>
+        <p className="text-[13px] font-medium text-gray-500">{label}</p>
+        <p className="text-xl font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── 项目卡片 ─── */
 function ProjectCard({
   project,
   onEnter,
@@ -64,53 +80,56 @@ function ProjectCard({
 
   return (
     <article
-      className="geo-card-interactive flex min-h-[220px] flex-col p-5 sm:p-6"
+      className="geo-card-interactive flex flex-col justify-between p-5"
       data-testid="client-project-card"
       onClick={() => onEnter(project.id)}
     >
-      {/* 企业名 + 行业城市 */}
-      <div className="mb-4">
+      {/* 顶部：企业名 + 阶段 */}
+      <div className="mb-3 flex items-start justify-between gap-2">
         <h3 className="truncate text-[15px] font-semibold text-gray-900">{project.enterpriseName}</h3>
-        <p className="mt-0.5 text-[13px] text-gray-500">{displayRegionIndustry(industry, region)}</p>
+        <span className={cn(stageBadgeClass(stageLabel), "shrink-0")}>{stageLabel}</span>
       </div>
 
-      {/* 阶段标签 + GEO 评分 */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span>
-        <span className="text-xl font-bold tabular-nums tracking-tight text-gray-900">
-          GEO {geoScore}
-        </span>
+      {/* 行业 / 地区 */}
+      <p className="mb-3 text-[13px] text-gray-500">{displayRegionIndustry(industry, region)}</p>
+
+      {/* AI 搜索可见度评分 */}
+      <div className="mb-3 rounded-lg bg-gray-50 px-3.5 py-2.5">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">AI 搜索可见度</p>
+        <p className="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-gray-900">{geoScore}</p>
       </div>
 
       {/* 内容统计 */}
       {showContentStats ? (
-        <p className="mt-3 text-[13px] text-gray-500">
+        <p className="mb-2 text-[13px] text-gray-500">
           内容 {project.articleCount} 篇 · 已发布 {project.publishCount} 次
         </p>
       ) : null}
 
       {/* 下一步动作 */}
-      <p className="mt-3 line-clamp-2 flex-1 text-sm leading-relaxed text-gray-600">
-        <span className="text-gray-400">下一步：</span>
+      <p className="mb-4 line-clamp-2 text-[13px] leading-relaxed text-gray-600">
+        <span className="font-medium text-gray-400">下一步：</span>
         {nextStep}
       </p>
 
-      {/* 进入工作台 CTA */}
-      <button
-        type="button"
-        className={cn(
-          "mt-4 inline-flex items-center gap-1 text-sm transition-all",
-          geoP0Brand.link,
-        )}
-        data-testid="enter-workspace-button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEnter(project.id);
-        }}
-      >
-        进入工作台
-        <ArrowRight className="h-3.5 w-3.5" />
-      </button>
+      {/* 底部 CTA */}
+      <div className="mt-auto flex justify-end">
+        <button
+          type="button"
+          className={cn(
+            "inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all",
+            "bg-blue-50 text-blue-700 hover:bg-blue-100",
+          )}
+          data-testid="enter-workspace-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEnter(project.id);
+          }}
+        >
+          进入工作台
+          <ArrowRight className="h-3 w-3" />
+        </button>
+      </div>
     </article>
   );
 }
@@ -143,6 +162,17 @@ export default function ClientDashboardPage() {
     if (!q) return true;
     return p.enterpriseName.toLowerCase().includes(q);
   });
+
+  // 总览统计
+  const totalProjects = projects.length;
+  const inProgressCount = projects.filter(p => {
+    const { stageLabel } = deriveClientProjectCardDisplay(p);
+    return stageLabel !== "待建档" && stageLabel !== "报告已生成";
+  }).length;
+  const pendingCount = projects.filter(p => {
+    const { stageLabel } = deriveClientProjectCardDisplay(p);
+    return stageLabel === "待建档";
+  }).length;
 
   const handleEnter = (projectId: number) => {
     setActiveProjectId(projectId);
@@ -186,19 +216,19 @@ export default function ClientDashboardPage() {
   }
 
   return (
-    <div className="space-y-6" data-testid="client-dashboard-page">
+    <div className="mx-auto max-w-[1280px] space-y-6" data-testid="client-dashboard-page">
       <ClientsHubTopBar />
 
-      {/* 标题区 + 新建按钮 */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      {/* 标题区：左标题 + 右按钮 */}
+      <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className={geoTypography.pageTitle}>我的客户项目</h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-gray-500">
+          <h1 className={geoTypography.pageTitle}>客户项目</h1>
+          <p className="max-w-xl text-sm leading-relaxed text-gray-500">
             管理企业的 GEO 建档、AI 诊断、内容发布、收录监测与交付报告
           </p>
         </div>
         <Button
-          className={cn("shrink-0 rounded-xl px-5", geoP0Brand.primary)}
+          className={cn("shrink-0 rounded-xl px-5 py-2.5", geoP0Brand.primary)}
           data-testid="create-client-project-button"
           onClick={() => setCreateOpen(true)}
         >
@@ -207,8 +237,27 @@ export default function ClientDashboardPage() {
         </Button>
       </div>
 
+      {/* 总览卡片 */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <SummaryCard
+          icon={<FolderKanban className="h-5 w-5 text-blue-600" />}
+          label="客户项目"
+          value={totalProjects > 0 ? String(totalProjects) : "--"}
+        />
+        <SummaryCard
+          icon={<Clock className="h-5 w-5 text-blue-600" />}
+          label="进行中"
+          value={inProgressCount > 0 ? String(inProgressCount) : "--"}
+        />
+        <SummaryCard
+          icon={<AlertCircle className="h-5 w-5 text-blue-600" />}
+          label="待处理"
+          value={pendingCount > 0 ? String(pendingCount) : "--"}
+        />
+      </div>
+
       {/* 搜索栏 */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full max-w-[400px]">
         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
           placeholder="搜索企业名称…"
@@ -221,12 +270,12 @@ export default function ClientDashboardPage() {
 
       {/* 卡片网格 / 加载 / 空状态 */}
       {isLoading ? (
-        <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="flex min-h-[30vh] items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </div>
       ) : filtered.length === 0 ? (
         <div
-          className="geo-empty-state flex min-h-[30vh] flex-col items-center justify-center gap-5 px-6 py-16"
+          className="geo-empty-state flex min-h-[28vh] flex-col items-center justify-center gap-4 px-6 py-12"
           data-testid={projects.length === 0 ? "client-dashboard-empty" : "client-dashboard-search-empty"}
         >
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
@@ -254,7 +303,7 @@ export default function ClientDashboardPage() {
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(project => (
             <ProjectCard key={project.id} project={project} onEnter={handleEnter} />
           ))}

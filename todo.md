@@ -567,3 +567,20 @@
 - [ ] /weekly 页面视觉改造
 - [ ] /content-publishing 页面视觉改造
 - [ ] /delivery-reports 页面视觉改造
+
+## Phase A 二次视觉验收修改
+
+- [x] /clients 重做：顶部左右结构（标题+按钮）
+- [x] /clients 重做：增加 3 个轻量总览卡片（客户项目/进行中/待处理）
+- [x] /clients 重做：搜索框宽度 360-420px
+- [x] /clients 重做：项目卡片 3 列网格紧凑布局
+- [x] /clients 重做：卡片内部结构（企业名+阶段+行业地区+GEO可见度评分+内容统计+下一步+进入工作台）
+- [x] /clients 重做：GEO 分改为"AI 搜索可见度：--"
+- [x] /clients 重做：卡片 hover 效果 + 间距 20-24px + 最大宽度 1200-1280px
+- [x] /workspace 重做：恢复三栏结构（左导航240+中间主内容+右侧面板300）
+- [x] /workspace 重做：企业增长状态总览区（左大卡+右小卡）
+- [x] /workspace 重做：主链路进度流程推进器视觉增强
+- [x] /workspace 重做：快捷入口增加功能说明文案
+- [x] /workspace 重做：CTA 与阶段一致
+- [x] 右侧面板重做：顾问卡结构（下一步建议+为什么+处理后阶段+CTA+风险+最近结果）
+- [x] 验收：pnpm check + pnpm build + 截图

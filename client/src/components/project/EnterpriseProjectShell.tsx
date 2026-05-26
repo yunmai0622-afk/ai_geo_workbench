@@ -70,16 +70,21 @@ export function EnterpriseProjectShell({ children }: Props) {
         projectId={selectedProjectId}
         loading={summaryQuery.isLoading && Boolean(selectedProjectId)}
       />
-      <div className="flex flex-col gap-6 pt-6 lg:flex-row lg:items-start">
+      {/* 三栏：左导航(DashboardLayout) + 中间主内容 + 右侧面板(300px固定) */}
+      <div className="flex gap-6 pt-6">
         <div className="min-w-0 flex-1">{children}</div>
-        <ProjectNextActionPanel
-          projectId={selectedProjectId}
-          stage={resolution?.currentStage ?? null}
-          blockerReason={resolution?.blockerReasons[0] ?? null}
-          riskHints={resolution?.riskHints ?? []}
-          recentItems={recentItems}
-          loading={summaryQuery.isLoading && Boolean(selectedProjectId)}
-        />
+        <div className="hidden shrink-0 lg:block" style={{ width: 300 }}>
+          <div className="sticky top-6">
+            <ProjectNextActionPanel
+              projectId={selectedProjectId}
+              stage={resolution?.currentStage ?? null}
+              blockerReason={resolution?.blockerReasons[0] ?? null}
+              riskHints={resolution?.riskHints ?? []}
+              recentItems={recentItems}
+              loading={summaryQuery.isLoading && Boolean(selectedProjectId)}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
