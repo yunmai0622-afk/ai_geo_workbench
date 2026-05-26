@@ -20,7 +20,7 @@ describe("C6-C delivery report light customer view", () => {
     expect(sharePage).toContain("reportNumberSuffix={projectId}");
     expect(customerView).toContain('variant?: "dark" | "light"');
     expect(customerView).toContain("DeliveryReportCustomerLightView");
-    expect(flow).toContain("DeliveryReportCustomerView");
+    expect(flow).toContain("DeliveryReportsCenterPage");
     expect(flow).not.toContain('variant="light"');
 
     for (const text of [

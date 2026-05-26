@@ -44,11 +44,46 @@ assertContains('首页', sources.home, '最近发布');
 assertContains('首页', sources.home, '品牌提及率');
 assertContains('首页', sources.home, 'AiPageShell');
 
-for (const item of ['增长总览', '企业档案', 'AI 内容诊断', '内容资产生产', '资产发布记录', '资产进展看板', '客户交付报告']) {
+for (const item of [
+  '客户管理台',
+  '企业工作台',
+  'GEO 建档',
+  'AI 现状诊断',
+  '平台化内容生产',
+  '发布中心',
+  '收录监测',
+  '交付报告',
+]) {
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
 }
 assertContains('左侧导航', sources.layout, 'AI 搜索增长系统');
-for (const item of ['总览', '内容生成', '内容发布', '收录监测', '内容策略', '平台优先级', '事实溯源', '一致性检查', '发布前检查', '第三方素材', 'AI 可引用片段', '内容增长流水线', '报告中心', 'AI训练', '账号管理', 'AI创作', '自动化发布', '收录排名', '付费投稿']) {
+assertContains('左侧导航', sources.layout, 'path: "/workspace"');
+for (const item of [
+  '总览',
+  '内容生成',
+  '内容发布',
+  '内容策略',
+  '平台优先级',
+  '事实溯源',
+  '一致性检查',
+  '发布前检查',
+  '第三方素材',
+  'AI 可引用片段',
+  '内容增长流水线',
+  '报告中心',
+  'AI训练',
+  '账号管理',
+  'AI创作',
+  '自动化发布',
+  '收录排名',
+  '付费投稿',
+  '资产进展看板',
+  'AI 内容诊断',
+  '内容资产生产',
+  '资产发布记录',
+  '客户交付报告',
+  '企业档案',
+]) {
   assertNotContains('左侧一级菜单', sources.layout, `label: "${item}"`);
 }
 
@@ -60,23 +95,32 @@ for (const item of ['当前阶段', '完成度', '下一步动作', '为什么�
   assertContains('状态引导条组件', sources.guide, item);
 }
 for (const item of [
-  '企业 GEO 建档',
-  '5 分钟基础建档',
-  '保存基础建档',
-  '资料上传与 AI 辅助解析',
-  '先新建第一个企业项目',
-  '新增企业项目',
-  'EnterprisePublishEnvironmentSection',
-  '发布环境与账号绑定',
+  '5 分钟 GEO 建档',
+  '保存并开始 AI 诊断',
   'FiveMinuteBasicOnboardingSection',
+  'ProfileAiUnderstandingPreview',
   'ProfileUploadAssistSection',
   'AdvancedMaterialsSection',
-  'CustomerCaseLibrarySection',
-  'GEO 建档预览',
+  'EnterprisePublishEnvironmentSection',
+  'enterprise-profile-page',
 ]) {
   assertContains('企业档案页', sources.assets, item);
 }
 assertNotContains('企业档案页', sources.assets, 'Section 1 · 基本身份');
+for (const item of ['先新建第一个企业项目', '新增企业项目', 'geo.projects.create', 'handleCreateProject']) {
+  assertNotContains('企业档案页', sources.assets, item);
+}
+assertContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), '客户项目');
+assertContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), '新建客户项目');
+for (const forbidden of ['ownerUserId', 'taskId', 'projectId=', 'data-testid="project-id"']) {
+  assertNotContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), forbidden);
+}
+assertContains('企业项目壳层', read('client/src/components/DashboardLayout.tsx'), 'EnterpriseProjectShell');
+assertContains('/clients 独立布局', read('client/src/components/DashboardLayout.tsx'), 'clients-hub-main');
+assertContains('/clients 独立布局', read('client/src/components/DashboardLayout.tsx'), 'isClientsHub');
+assertNotContains('/clients 隐藏侧栏', read('client/src/components/DashboardLayout.tsx'), 'label: "资产进展看板"');
+assertContains('企业项目壳层', read('client/src/components/project/ProjectWorkspaceTopBar.tsx'), 'project-workspace-top-bar');
+assertContains('企业项目壳层', read('client/src/components/project/ProjectNextActionPanel.tsx'), 'project-next-action-panel');
 for (const item of [
   'AI 内容诊断',
   '内容诊断',
@@ -105,41 +149,57 @@ for (const item of WEEKLY_CONTENT_PAGE_SOURCE_SEGMENT_MARKERS) {
 }
 assertContains('App 路由', sources.app, 'WeeklyContentPage');
 assertContains('App 路由', sources.app, 'path="/weekly"');
-for (const item of ['发布记录', '新建发布记录', '发布记录列表', '发布资产概览', '选择文章', '选择平台（多选）', '保存链接', 'createManualPublishRecord', 'updateManualPublishRecord', 'publishRecords']) {
-  assertContains('发布记录页', sources.flow, item);
+const publishPage =
+  read('client/src/pages/ContentPublishingCenterPage.tsx') +
+  read('client/src/components/publishing/PublishTaskColumnBoard.tsx') +
+  read('client/src/components/publishing/LocalAgentStatusCard.tsx');
+for (const item of [
+  '发布中心',
+  'publish-center-page',
+  'local-agent-status-card',
+  'publish-task-columns',
+  'createManualPublishRecord',
+  'updateManualPublishRecord',
+  '旧版 Chrome 插件入口，仅用于历史兼容',
+]) {
+  assertContains('发布中心页', publishPage, item);
 }
-for (const item of ['连接发布平台', '可由交付人员配置', '风险边界', '支持方式']) {
-  assertNotContains('发布记录页', sources.flow, item);
+for (const item of ['连接发布平台', '可由交付人员配置', '风险边界', '支持方式', 'browser-extension.zip', '下载 Chrome 插件']) {
+  assertNotContains('发布中心页', publishPage, item);
 }
 for (const item of ['已发布内容监测卡片', '收录', 'AI 提及', 'AI 推荐', '最近检测时间', '当前建议', '监测结果来自有限样本']) {
   assertContains('收录监测页', sources.flow, item);
 }
-const deliveryReportPages = sources.flow + sources.customerView;
-for (const item of ['DeliveryReportCustomerView', '内容诊断结果', '优化任务清单', '已生成内容']) {
-  assertContains('交付报告页', sources.flow, item);
+const deliveryReportPage =
+  read('client/src/pages/DeliveryReportsCenterPage.tsx') +
+  read('client/src/lib/deliveryReportProductDisplay.ts');
+const deliveryReportPages = deliveryReportPage + sources.customerView;
+for (const item of [
+  'GEO 增长交付报告',
+  'delivery-report-page',
+  '一句话经营结论',
+  '本轮完成事项',
+  '内容发布证据',
+  '生成下一轮内容计划',
+]) {
+  assertContains('交付报告页', deliveryReportPage, item);
 }
-for (const item of ['AI 搜索可见度评分', '不承诺保证收录、排名或 AI 推荐']) {
+for (const item of ['不承诺保证收录、排名或 AI 推荐', '当前数据不足，完成发布后复测后将生成本轮 GEO 增长结论。']) {
   assertContains('交付报告页', deliveryReportPages, item);
 }
 assertContains('App 路由', sources.app, 'path="/delivery-reports/share/:projectId"');
 assertContains('App 路由', sources.app, 'path="/delivery-reports/public/:token"');
 assertContains('App 路由', sources.app, 'path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex"');
-for (const item of ['复制客户报告链接', '重新生成客户报告链接', '禁用客户报告链接', 'createShareLink', 'disableShareLink', 'regenerateShareLink', 'sharePath']) {
-  assertContains('交付报告页', sources.flow, item);
+for (const item of ['复制客户报告链接', 'createShareLink', 'disableShareLink', 'regenerateShareLink', 'sharePath', 'delivery-report-share-fold']) {
+  assertContains('交付报告页', deliveryReportPage, item);
 }
-assertContains('交付报告页', sources.flow, '新的客户报告链接已生成并复制');
-assertContains('交付报告页', sources.flow, '客户报告链接已禁用，原链接将无法访问');
-assertContains('交付报告页', sources.flow, '确定要禁用当前客户报告链接吗？');
-assertContains('交付报告页', sources.flow, '确定要重新生成客户报告链接吗？');
-assertContains('交付报告页', sources.flow, 'window.confirm');
-assertContains('交付报告页', sources.flow, '客户报告链接已复制。该链接长期有效，请仅发送给对应客户');
+assertContains('交付报告页', deliveryReportPage, '确定要禁用当前客户报告链接吗？');
+assertContains('交付报告页', deliveryReportPage, '确定要重新生成客户报告链接吗？');
+assertContains('交付报告页', deliveryReportPage, 'window.confirm');
 const copyToastLine =
-  sources.flow.match(/toast\.success\("客户报告链接已复制[^"]*"\)/)?.[0] ?? '';
+  deliveryReportPage.match(/toast\.success\("客户报告链接已复制[^"]*"\)/)?.[0] ?? '';
 if (!copyToastLine) failures.push('交付报告页 缺少：复制链接成功 toast');
-for (const item of ['长期有效', '仅发送给对应客户']) {
-  assertContains('复制链接成功提示', copyToastLine, item);
-}
-for (const forbidden of ['shareToken', 'projectId', 'migration', 'rawAnswer']) {
+for (const forbidden of ['shareToken', 'migration', 'rawAnswer']) {
   assertNotContains('复制链接成功提示', copyToastLine, forbidden);
 }
 assertContains('部署说明', read('HARNESS.md'), '0019_delivery_report_share_tokens');
@@ -159,6 +219,37 @@ for (const item of ['AI 搜索可见度评分', '经营结论', '本轮报告摘
 assertContains('匿名分享类型', read('shared/deliveryReportPublicShare.ts'), 'publishedContent');
 for (const item of ['rawAnswer', 'taskId', 'provider', 'mock', 'schema', 'testStage', 'aiTestResults']) {
   assertNotContains('客户查看页', sources.publicShare + sources.customerView, item);
+}
+
+const globalScanPages = {
+  clients: read('client/src/pages/ClientDashboardPage.tsx'),
+  workspace: read('client/src/pages/EnterpriseWorkspacePage.tsx'),
+  profile: read('client/src/pages/AssetCenter.tsx'),
+  weekly: sources.weekly,
+  publish: publishPage,
+  delivery: deliveryReportPage,
+};
+for (const [name, source] of Object.entries(globalScanPages)) {
+  for (const forbidden of [
+    'ownerUserId',
+    'rawAnswer',
+    'provider',
+    'adapter',
+    'mock',
+    'JSON.stringify',
+    'workspaceStage',
+    '下载 Chrome 插件',
+    'browser-extension.zip',
+    '任务 #',
+    '当前企业：',
+    'BusinessPageProjectHeader',
+    'localProfileId?.slice',
+    'localAgentId?.slice',
+    '>projectId<',
+    'data-testid="project-id"',
+  ]) {
+    assertNotContains(`全局扫描 ${name}`, source, forbidden);
+  }
 }
 
 const placeholderPattern = /\b(Lorem|Ipsum|TODO placeholder|Coming Soon|coming soon|Untitled|New Project|Dashboard)\b/;

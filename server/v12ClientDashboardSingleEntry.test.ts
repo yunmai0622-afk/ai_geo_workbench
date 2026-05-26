@@ -25,11 +25,10 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(src).not.toContain("创建企业项目");
     expect(src).not.toContain("新增企业项目");
     expect(src).not.toContain("创建企业");
-    expect(src).toContain("当前客户项目");
-    expect(src).toContain("切换客户");
     expect(src).not.toMatch(/<select[\s\S]*切换企业/);
     expect(src).toContain("enterprise-profile-empty");
-    expect(src).toContain("企业 GEO 建档必须归属一个客户项目");
+    expect(src).toContain("5 分钟 GEO 建档必须归属一个客户项目");
+    expect(src).toContain("客户管理台");
   });
 
   it("Onboarding 仅无项目时引导，已有项目去客户管理台", () => {
@@ -41,12 +40,14 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(onboarding).toContain('buildProjectUrl("/enterprise-profile"');
     const app = read("client/src/App.tsx");
     expect(app).toContain('pathname !== "/clients"');
+    expect(app).toMatch(/projects\.length === 0[\s\S]{0,120}Redirect to="\/clients"/);
+    expect(app).toMatch(/path="\/onboarding"[\s\S]*Redirect to="\/clients"/);
   });
 
   it("DashboardLayout 侧栏为 GEO 建档", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     expect(layout).toContain('label: "GEO 建档"');
-    expect(layout).toContain("完善当前企业最小资料");
+    expect(layout).toContain("完善企业基础资料");
     expect(layout).not.toContain('label: "企业档案"');
   });
 

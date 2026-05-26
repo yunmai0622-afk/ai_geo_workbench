@@ -124,10 +124,10 @@ export function AdvancedMaterialsSection(props: Props) {
     >
       <details className={cn(aiGlassPanel, "text-sm")} data-testid="advanced-materials-collapsed">
         <summary className="cursor-pointer px-4 py-3 text-slate-300 hover:text-white">
-          展开高级素材（客户案例 {caseCount} 条 · 信任背书 {trustCount} 条 · FAQ {faqCount} 条）
+          展开高级素材（案例 {caseCount} · 品牌与背书 {trustCount} · FAQ {faqCount}）
         </summary>
         <div className="space-y-3 border-t border-white/8 p-4">
-          <FoldGroup title="客户案例库" summary={`${caseCount} 条`} testId="advanced-fold-cases">
+          <FoldGroup title="案例详情" summary={`${caseCount} 条`} testId="advanced-fold-cases">
             <CustomerCaseLibrarySection
               embedded
               status={caseStatus}
@@ -142,31 +142,44 @@ export function AdvancedMaterialsSection(props: Props) {
             />
           </FoldGroup>
 
-          <FoldGroup title="信任背书" summary={`${trustCount} 条`} testId="advanced-fold-trust">
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="block space-y-1 text-sm">
-                <span className="text-slate-400">合作客户</span>
-                <Input className={aiInput} value={partnersText} onChange={e => onPartnersTextChange(e.target.value)} />
-              </label>
-              <label className="block space-y-1 text-sm">
-                <span className="text-slate-400">资质认证</span>
-                <Input className={aiInput} value={credentialsText} onChange={e => onCredentialsTextChange(e.target.value)} />
-              </label>
-              <label className="block space-y-1 text-sm">
-                <span className="text-slate-400">媒体报道</span>
-                <Input className={aiInput} value={mediaText} onChange={e => onMediaTextChange(e.target.value)} />
-              </label>
-              <label className="block space-y-1 text-sm">
-                <span className="text-slate-400">客户评价</span>
-                <Input className={aiInput} value={reviewsText} onChange={e => onReviewsTextChange(e.target.value)} />
-              </label>
-              <label className="block space-y-1 text-sm md:col-span-2">
-                <span className="text-slate-400">权威背书说明</span>
-                <textarea className={textareaClass} value={authorityText} onChange={e => onAuthorityTextChange(e.target.value)} />
-              </label>
-            </div>
+          <FoldGroup title="品牌故事" summary={authorityText.trim() ? "已填写" : "待补充"} testId="advanced-fold-brand-story">
+            <label className="block space-y-1 text-sm md:col-span-2">
+              <span className="text-slate-400">品牌故事与定位说明</span>
+              <textarea className={textareaClass} value={authorityText} onChange={e => onAuthorityTextChange(e.target.value)} />
+            </label>
             <Button type="button" size="sm" className={aiPrimaryBtn} disabled={saving} onClick={onSaveTrust}>
-              保存信任背书
+              保存品牌故事
+            </Button>
+          </FoldGroup>
+
+          <FoldGroup title="团队介绍" summary={partnersText.trim() ? "已填写" : "待补充"} testId="advanced-fold-team">
+            <label className="block space-y-1 text-sm">
+              <span className="text-slate-400">团队 / 合作客户</span>
+              <Input className={aiInput} value={partnersText} onChange={e => onPartnersTextChange(e.target.value)} />
+            </label>
+          </FoldGroup>
+
+          <FoldGroup title="资质证书" summary={credentialsText.trim() ? "已填写" : "待补充"} testId="advanced-fold-credentials">
+            <label className="block space-y-1 text-sm">
+              <span className="text-slate-400">资质证书</span>
+              <Input className={aiInput} value={credentialsText} onChange={e => onCredentialsTextChange(e.target.value)} />
+            </label>
+          </FoldGroup>
+
+          <FoldGroup title="媒体报道" summary={mediaText.trim() ? "已填写" : "待补充"} testId="advanced-fold-media">
+            <label className="block space-y-1 text-sm">
+              <span className="text-slate-400">媒体报道</span>
+              <Input className={aiInput} value={mediaText} onChange={e => onMediaTextChange(e.target.value)} />
+            </label>
+          </FoldGroup>
+
+          <FoldGroup title="客户评价" summary={reviewsText.trim() ? "已填写" : "待补充"} testId="advanced-fold-reviews">
+            <label className="block space-y-1 text-sm">
+              <span className="text-slate-400">客户评价</span>
+              <Input className={aiInput} value={reviewsText} onChange={e => onReviewsTextChange(e.target.value)} />
+            </label>
+            <Button type="button" size="sm" className={aiPrimaryBtn} disabled={saving} onClick={onSaveTrust}>
+              保存客户评价与媒体报道
             </Button>
           </FoldGroup>
 
@@ -212,7 +225,7 @@ export function AdvancedMaterialsSection(props: Props) {
             </Button>
           </FoldGroup>
 
-          <FoldGroup title="常见疑虑 FAQ" summary={`${faqCount} 条`} testId="advanced-fold-faq">
+          <FoldGroup title="常见问答" summary={`${faqCount} 条`} testId="advanced-fold-faq">
             <div className="space-y-3">
               {faqItems.map((item, i) => (
                 <div key={item.id} className="rounded-lg border border-white/10 p-3">

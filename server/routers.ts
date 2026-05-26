@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { CREATE_PROJECT_FAILED_USER_MESSAGE } from "@shared/userFacingMutationErrors";
+import { ensureProjectsOwnerUserIdColumnOnce } from "./ensureProjectsOwnerUserId";
 import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
 import { and, asc, desc, eq, inArray, like, not } from "drizzle-orm";
 import { z } from "zod";
@@ -1063,9 +1065,18 @@ const geoRouter = router({
         .orderBy(desc(projects.createdAt));
     }),
     create: protectedProcedure.input(projectInput).mutation(async ({ ctx, input }) => {
+      await ensureProjectsOwnerUserIdColumnOnce();
       const db = await requireDb();
       const ownerUserId = getCurrentUserId(ctx);
-      await db.insert(projects).values({ ...input, status: "created", ownerUserId });
+      try {
+        await db.insert(projects).values({ ...input, ownerUserId });
+      } catch (err) {
+        console.error("[geo.projects.create]", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: CREATE_PROJECT_FAILED_USER_MESSAGE,
+        });
+      }
       return { success: true } as const;
     }),
     update: protectedProcedure.input(projectInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {

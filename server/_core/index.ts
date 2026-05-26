@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startDailyAiCheckScheduler } from "../scheduledAiCheck";
 import { ensureGeoQualityColumns } from "../ensureGeoQualityColumns";
+import { ensureProjectsOwnerUserIdColumn } from "../ensureProjectsOwnerUserId";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,7 +32,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  await ensureGeoQualityColumns();
+  await Promise.all([ensureGeoQualityColumns(), ensureProjectsOwnerUserIdColumn()]);
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

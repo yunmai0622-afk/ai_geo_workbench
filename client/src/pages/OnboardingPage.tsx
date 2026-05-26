@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getActiveProjectId, setActiveProjectId, buildProjectUrl } from "@/lib/activeProject";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { toUserFacingCreateProjectError } from "@shared/userFacingMutationErrors";
 
 type Phase = "input" | "processing" | "result";
 type StepStatus = "pending" | "active" | "done";
@@ -173,7 +174,8 @@ export default function OnboardingPage() {
     try {
       projectId = await ensureProjectId(brandName);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "无法创建项目");
+      console.error("[legacy-onboarding-create-project]", err);
+      toast.error(toUserFacingCreateProjectError(err));
       setPhase("input");
       return;
     }

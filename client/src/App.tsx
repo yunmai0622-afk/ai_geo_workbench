@@ -10,7 +10,6 @@ import { Redirect, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
-import Home from "./pages/Home";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
 import GeoFlowWizardPage from "./pages/GeoFlowWizard";
 import AssetCenterPage from "./pages/AssetCenter";
@@ -38,7 +37,12 @@ function PrivateRoutes() {
       <Switch>
         <Route path="/clients" component={ClientDashboardPage} />
         <Route path="/workspace" component={EnterpriseWorkspacePage} />
-        <Route path="/" component={Home} />
+        <Route path="/">
+          <Redirect to="/clients" />
+        </Route>
+        <Route path="/home">
+          <Redirect to="/clients" />
+        </Route>
         <Route path="/flow" component={GeoFlowWizardPage} />
         <Route path="/enterprise-profile" component={AssetCenterPage} />
         <Route path="/asset-center">
@@ -103,11 +107,12 @@ function AuthenticatedAppShell() {
     );
   }
 
-  if (user && projects.length === 0 && pathname !== "/onboarding") {
-    return <Redirect to="/onboarding" />;
+  // P0：/clients 为唯一新建/选项目入口；无项目时仍允许进入客户项目管理台空状态
+  if (user && projects.length === 0 && pathname !== "/clients" && !pathname.startsWith("/legacy/")) {
+    return <Redirect to="/clients" />;
   }
 
-  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/onboarding") {
+  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 
@@ -117,9 +122,9 @@ function AuthenticatedAppShell() {
     user &&
     activeProjectId &&
     !hasBrand &&
-    pathname !== "/onboarding" &&
     pathname !== "/enterprise-profile" &&
-    pathname !== "/clients"
+    pathname !== "/clients" &&
+    !pathname.startsWith("/legacy/")
   ) {
     return <Redirect to={buildProjectUrl("/enterprise-profile", activeProjectId)} />;
   }
@@ -136,7 +141,10 @@ function Router() {
       <Route path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex" component={DeliveryReportPublicEvidencePage} />
       <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />
       <Route path="/delivery-reports/share/:projectId" component={DeliveryReportSharePage} />
-      <Route path="/onboarding" component={OnboardingPage} />
+      <Route path="/onboarding">
+        <Redirect to="/clients" />
+      </Route>
+      <Route path="/legacy/onboarding" component={OnboardingPage} />
       <Route component={AuthenticatedAppShell} />
     </Switch>
   );

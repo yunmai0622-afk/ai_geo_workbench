@@ -20,8 +20,10 @@ describe("P1-B content strategy", () => {
   });
 
   it("article card renders strategy labels", () => {
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("formatArticleStrategySummary");
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("article-strategy-summary");
+    const weekly = read("client/src/pages/WeeklyContentPage.tsx");
+    const card = read("client/src/components/weekly/WeeklyPlatformArticleCard.tsx");
+    expect(weekly).toContain("formatArticleStrategySummary");
+    expect(card).toContain("article-strategy-summary");
   });
 
   it("account group mismatch shows warning", () => {

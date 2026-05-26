@@ -36,9 +36,9 @@ describe("P1-A client dashboard", () => {
     expect(dashboardIdx).toBeLessThan(projectsIdx);
   });
 
-  it("ClientDashboardPage contains 客户项目管理台", () => {
+  it("ClientDashboardPage contains 客户项目", () => {
     const page = read("client/src/pages/ClientDashboardPage.tsx");
-    expect(page).toContain("客户项目管理台");
+    expect(page).toContain("客户项目");
     expect(page).toContain("进入工作台");
     expect(page).toContain("client-dashboard-search");
   });
@@ -47,6 +47,6 @@ describe("P1-A client dashboard", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     expect(layout).toContain("客户管理台");
     expect(layout).toContain("/clients");
-    expect(layout).toContain("代理商");
+    expect(layout).toContain("项目");
   });
 });

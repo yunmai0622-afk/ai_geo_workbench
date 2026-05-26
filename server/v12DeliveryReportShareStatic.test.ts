@@ -13,6 +13,8 @@ describe("delivery report share page renders customer-facing sections", () => {
     const customerViewSource = readProjectFile("client/src/components/DeliveryReportCustomerView.tsx");
     const lightViewSource = readProjectFile("client/src/components/DeliveryReportCustomerLightView.tsx");
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
+    const reportPageSource = readProjectFile("client/src/pages/DeliveryReportsCenterPage.tsx");
+    const reportUiSource = flowSource + reportPageSource;
     const routerSource = readProjectFile("server/routers.ts");
     const serverShareSource = readProjectFile("server/deliveryReportPublicShare.ts");
 
@@ -25,32 +27,29 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(routerBlock.indexOf('path="/delivery-reports/public/:token"')).toBeLessThan(
       routerBlock.indexOf("<Route component={AuthenticatedAppShell}"),
     );
-    expect(flowSource).toContain("复制客户报告链接");
-    expect(flowSource).toContain("客户报告链接已复制。该链接长期有效，请仅发送给对应客户");
-    expect(flowSource).toContain("长期有效");
-    expect(flowSource).toContain("仅发送给对应客户");
-    const copyToastLine = flowSource.match(/toast\.success\("客户报告链接已复制[^"]*"\)/)?.[0] ?? "";
+    expect(reportPageSource).toContain("复制客户报告链接");
+    expect(reportPageSource).toContain("客户报告链接已复制");
+    const copyToastLine = reportPageSource.match(/toast\.success\("客户报告链接已复制[^"]*"\)/)?.[0] ?? "";
     expect(copyToastLine.length).toBeGreaterThan(0);
     for (const forbidden of ["shareToken", "projectId", "migration"]) {
       expect(copyToastLine).not.toContain(forbidden);
     }
     expect(readProjectFile("HARNESS.md")).toContain("0019_delivery_report_share_tokens");
     expect(readProjectFile("HARNESS.md")).toContain("pnpm db:push");
-    expect(flowSource).toContain("createShareLink");
-    expect(flowSource).toContain("disableShareLink");
-    expect(flowSource).toContain("regenerateShareLink");
-    expect(flowSource).toContain("重新生成客户报告链接");
-    expect(flowSource).toContain("禁用客户报告链接");
-    expect(flowSource).toContain("新的客户报告链接已生成并复制");
-    expect(flowSource).toContain("客户报告链接已禁用，原链接将无法访问");
-    expect(flowSource).toContain("当前暂无可禁用的客户报告链接");
-    expect(flowSource).toContain("确定要禁用当前客户报告链接吗？");
-    expect(flowSource).toContain("禁用后，客户将无法通过原链接查看报告和证据");
-    expect(flowSource).toContain("确定要重新生成客户报告链接吗？");
-    expect(flowSource).toContain("重新生成后，旧链接将立即失效");
-    expect(flowSource).toContain("window.confirm");
-    expect(flowSource).toContain("sharePath");
-    expect(flowSource).not.toContain("buildDeliveryReportSharePath");
+    expect(reportPageSource).toContain("createShareLink");
+    expect(reportPageSource).toContain("disableShareLink");
+    expect(reportPageSource).toContain("regenerateShareLink");
+    expect(reportPageSource).toContain("重新生成链接");
+    expect(reportPageSource).toContain("禁用链接");
+    expect(reportPageSource).toContain("新链接已生成并复制");
+    expect(reportPageSource).toContain("客户报告链接已禁用");
+    expect(reportPageSource).toContain("确定要禁用当前客户报告链接吗？");
+    expect(reportPageSource).toContain("禁用后，客户将无法通过原链接查看报告和证据");
+    expect(reportPageSource).toContain("确定要重新生成客户报告链接吗？");
+    expect(reportPageSource).toContain("重新生成后，旧链接将立即失效");
+    expect(reportPageSource).toContain("window.confirm");
+    expect(reportPageSource).toContain("sharePath");
+    expect(reportUiSource).not.toContain("buildDeliveryReportSharePath");
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("/delivery-reports/public/");
     expect(routerSource).toContain("createShareLink");
     expect(routerSource).toContain("publicShare");
@@ -86,7 +85,7 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(lightViewSource + publicSource).toContain(
       "暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以建立可追溯的可见度基线。",
     );
-    expect(flowSource).toContain("DeliveryReportCustomerView");
+    expect(flowSource).toContain("DeliveryReportsCenterPage");
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain(
       "报告链接无效或已失效，请联系服务人员重新获取",
     );

@@ -16,11 +16,17 @@ type DownloadManifest = {
   winSetupUrl?: string | null;
 };
 
-/** 优先 zip：避免线上 dmg 传输损坏；仅 manifest 暴露 dmg 时才回退 */
+function isMacZipDownloadUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  if (url.startsWith("http://") || url.startsWith("https://")) return true;
+  return url.startsWith("/downloads/");
+}
+
+/** 优先 zip：支持相对路径或 AGENT_MAC_ZIP_URL 写入的绝对 URL */
 function pickMacHref(manifest: DownloadManifest | null): string | null {
   const zip = manifest?.macZipUrl;
   const dmg = manifest?.macDmgUrl;
-  if (zip?.startsWith("/downloads/")) return zip;
+  if (isMacZipDownloadUrl(zip)) return zip;
   if (dmg?.startsWith("/downloads/")) return dmg;
   return null;
 }
@@ -84,7 +90,7 @@ export function LocalAgentDownloadCard() {
   };
 
   const macOffered = Boolean(macHref);
-  const macIsZip = Boolean(macHref?.endsWith(".zip"));
+  const macIsZip = Boolean(macHref && /\.zip(\?|$)/i.test(macHref));
   const macDmgHref = pickMacDmgHref(manifest);
   const macLabel = macIsZip ? "下载 Mac 客户端（推荐）" : "下载 Mac 客户端";
 

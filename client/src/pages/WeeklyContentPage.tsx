@@ -1,11 +1,4 @@
-import {
-  AiEmptyState,
-  AiMetricCard,
-  AiPageHero,
-  AiPageShell,
-  AiSection,
-  AiStatusBadge,
-} from "@/components/ai/ProductUi";
+import { AiStatusBadge } from "@/components/ai/ProductUi";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { Button } from "@/components/ui/button";
@@ -22,8 +15,23 @@ import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
-import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
+import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
+import {
+  WeeklyPlatformArticleCard,
+  resolveQualityDisplay,
+  type WeeklyArticleCardModel,
+} from "@/components/weekly/WeeklyPlatformArticleCard";
+import { P0Card } from "@/components/geo/P0UiPrimitives";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
+import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
+import {
+  WEEKLY_PLATFORM_DEFS,
+  matchTopicToPlatform,
+  normalizeWeeklyPlatformKey,
+  resolvePublishSlugForWeeklyPlatform,
+  type PlatformContentCounts,
+  type WeeklyPlatformKey,
+} from "@/lib/weeklyPlatformBoard";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
@@ -433,11 +441,15 @@ export default function WeeklyContentPage() {
     [platformStrategy],
   );
 
-  const diagnosisGapPreview = useMemo(() => {
+  const latestDiagnosisGap = useMemo(() => {
     const rows = (analysisQuery.data ?? []) as Array<{ contentGap?: string | null }>;
-    const gaps = rows.map(r => r.contentGap?.trim()).filter(Boolean).slice(0, 2);
-    return gaps.length ? gaps.join("；") : null;
+    return rows.map(r => r.contentGap?.trim()).find(Boolean) ?? null;
   }, [analysisQuery.data]);
+
+  const hasDiagnosisData = useMemo(() => {
+    if (tasks.length > 0) return true;
+    return Boolean(latestDiagnosisGap);
+  }, [tasks.length, latestDiagnosisGap]);
   const topics = (topicsQuery.data ?? []) as TopicRow[];
   const articles = (articlesQuery.data ?? []) as ArticleRow[];
   const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
@@ -461,10 +473,16 @@ export default function WeeklyContentPage() {
     [topics, articleByTopicId],
   );
 
-  const queriesReady = enabled && !tasksQuery.isLoading && !topicsQuery.isLoading;
-  const bothEmpty = queriesReady && tasks.length === 0 && topics.length === 0;
-  const showDiagnosisEmpty = bothEmpty;
-  const showDirectionEmpty = queriesReady && topics.length === 0 && tasks.length > 0 && !preparingTopics && !generateTopicsMutation.isPending;
+  const queriesReady =
+    enabled && !tasksQuery.isLoading && !topicsQuery.isLoading && !analysisQuery.isLoading;
+  const showDiagnosisEmpty = queriesReady && !hasDiagnosisData;
+  const showDirectionEmpty =
+    queriesReady &&
+    hasDiagnosisData &&
+    topics.length === 0 &&
+    tasks.length > 0 &&
+    !preparingTopics &&
+    !generateTopicsMutation.isPending;
 
   useEffect(() => {
     autoTopicsTriggeredRef.current = false;
@@ -632,12 +650,73 @@ export default function WeeklyContentPage() {
     return Number(countPreset);
   }, [batchState, countPreset, customCount]);
 
-  function assetNextStepHint(status: "pending" | "generating" | "generated" | "published", pass: boolean): string {
-    if (status === "pending") return "等待生成，可单独生成或批量生成";
-    if (status === "generating") return "正在生成正文，请稍候";
-    if (status === "published") return "已发布，可在发布记录补充公开链接";
-    return pass ? "可复制内容并发布到外部平台" : "建议优化质量分后再发布";
-  }
+  const platformBoardRows = useMemo((): PlatformBoardRow[] => {
+    return WEEKLY_PLATFORM_DEFS.map(def => {
+      const counts: PlatformContentCounts = {
+        pending: 0,
+        pendingConfirm: 0,
+        ready: 0,
+        published: 0,
+      };
+      for (const topic of topics) {
+        const task = tasks.find(t => t.id === topic.optimizationTaskId);
+        const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
+        const article = articleByTopicId.get(topic.id);
+        const platformKey = article
+          ? normalizeWeeklyPlatformKey(article.targetPlatform)
+          : normalizeWeeklyPlatformKey(card?.recommendedPlatform?.[0]);
+        if (platformKey !== def.key) continue;
+        if (!article) {
+          counts.pending += 1;
+          continue;
+        }
+        const q = scoresByArticleId.get(article.id);
+        const pass = qualityPasses(article, q);
+        if (article.status === "已发布") counts.published += 1;
+        else if (pass) counts.ready += 1;
+        else counts.pendingConfirm += 1;
+      }
+      return { def, counts };
+    });
+  }, [topics, tasks, articleByTopicId, scoresByArticleId]);
+
+  const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
+    return articles
+      .filter(a => typeof a.topicId === "number")
+      .map(a => {
+        const topic = topics.find(t => t.id === a.topicId);
+        const task = topic ? tasks.find(t => t.id === topic.optimizationTaskId) : undefined;
+        const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
+        const q = scoresByArticleId.get(a.id);
+        const pass = qualityPasses(a, q);
+        const published = a.status === "已发布";
+        const ps = a.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
+        const keywords = Array.isArray(ps?.targetAiPlatforms)
+          ? (ps.targetAiPlatforms as string[]).filter(x => typeof x === "string")
+          : [];
+        return {
+          id: a.id,
+          title: a.title ?? topic?.title ?? "未命名内容",
+          targetPlatform:
+            typeof ps?.targetPublishPlatformLabel === "string"
+              ? ps.targetPublishPlatformLabel
+              : a.targetPlatform,
+          contentGoal:
+            typeof platformStrategy.geoEnhancementGoal === "string"
+              ? platformStrategy.geoEnhancementGoal
+              : null,
+          geoGap: latestDiagnosisGap ?? card?.keyPoints?.[0] ?? topic?.businessReason?.slice(0, 120) ?? null,
+          keywords,
+          statusLabel: published ? "已发布" : pass ? "可发布" : "待确认",
+          statusTone: published ? "success" : pass ? "info" : "warning",
+          qualityDisplay: resolveQualityDisplay(a),
+          strategySummary: formatArticleStrategySummary(a),
+          lifecycle: a.lifecycle,
+          postPublish: a.postPublish,
+          article: a as Record<string, unknown>,
+        };
+      });
+  }, [articles, topics, tasks, scoresByArticleId, latestDiagnosisGap, platformStrategy.geoEnhancementGoal]);
 
   const toggleExpand = (topicId: number) => {
     setExpandedTopicIds(prev => {
@@ -688,10 +767,36 @@ export default function WeeklyContentPage() {
       toast.message("内容有优化空间，确认后可继续发布");
     }
     setPublishArticle(article);
-    setSelectedPlatforms(new Set());
+    const publishSlug = resolvePublishSlugForWeeklyPlatform(normalizeWeeklyPlatformKey(article.targetPlatform));
+    setSelectedPlatforms(publishSlug ? new Set([publishSlug]) : new Set());
     setSelectedPublishAccountIds({});
     void refreshLocalAgentHealth();
     setPublishDialogOpen(true);
+  };
+
+  const handlePlatformGenerate = (platformKey: WeeklyPlatformKey) => {
+    const publishId = resolvePublishSlugForWeeklyPlatform(platformKey);
+    if (publishId) {
+      setPlatformStrategy(prev => ({ ...prev, targetPublishPlatform: publishId }));
+    }
+    const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === platformKey)!;
+    const pending = topics.find(t => {
+      if (articleByTopicId.has(t.id)) return false;
+      const task = tasks.find(row => row.id === t.optimizationTaskId);
+      const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
+      return matchTopicToPlatform(card?.recommendedPlatform ?? [], def.label);
+    });
+    if (!pending) {
+      toast.message(`${def.label} 暂无待生成方向，请先完成 AI 诊断或切换平台`);
+      return;
+    }
+    void generateOne(pending.id);
+  };
+
+  const handlePlatformView = (platformKey: WeeklyPlatformKey) => {
+    const hit = articles.find(a => normalizeWeeklyPlatformKey(a.targetPlatform) === platformKey);
+    if (hit) openEditor(hit);
+    else toast.message("该平台暂无已生成内容，请先点击「生成本轮平台化内容」");
   };
 
   useEffect(() => {
@@ -892,420 +997,128 @@ export default function WeeklyContentPage() {
 
   if (!enabled && !projectsLoading) {
     return (
-      <AiPageShell>
+      <div data-testid="weekly-platform-content-page">
         <ProjectContextEmptyState />
-      </AiPageShell>
+      </div>
     );
   }
 
+  const publishDialogSlug =
+    publishArticle && selectedPlatforms.size === 1 ? Array.from(selectedPlatforms)[0]! : null;
+
   return (
-    <AiPageShell>
-      <AiPageHero
-        title="内容资产生产"
-        description="基于当前企业资料生成平台化 GEO 内容。"
-        badge="AI 内容资产编辑台"
-      >
-        <BusinessPageProjectHeader projectName={selectedProject?.enterpriseName} testId="weekly-project-header" />
-      </AiPageHero>
-
-      {enabled && queriesReady && !showDiagnosisEmpty && !showDirectionEmpty && topics.length > 0 ? (
-        <>
-          <PlatformContentStrategyPanel
-            value={platformStrategy}
-            onChange={setPlatformStrategy}
-            targetQuestionOptions={targetQuestionOptions}
-            disabled={anyGenerating}
-          />
-          {diagnosisGapPreview ? (
-            <p className="text-sm text-slate-400" data-testid="diagnosis-gap-preview">
-              AI 诊断内容缺口（将写入生成 Prompt）：{diagnosisGapPreview}
-            </p>
-          ) : null}
-          {platformStrategyError ? (
-            <p className="text-sm text-amber-200">{platformStrategyError}</p>
-          ) : null}
-          <section className="ai-console-panel space-y-6 rounded-2xl border border-cyan-400/20 p-5 md:p-6">
-            <div>
-              <h2 className="text-lg font-semibold text-white">AI 内容资产生产控制台</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                选择生成数量，系统将围绕目标问题批量生成可发布的 AI 搜索资产。
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AiMetricCard label="当前任务方向数" value={String(tasks.length)} accent="violet" />
-              <AiMetricCard label="本周已生成篇数" value={String(weeklyArticles.length)} accent="cyan" />
-            </div>
-            <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">生成数量</p>
-              <div className="ai-segmented" role="group" aria-label="生成数量">
-                {(["7", "14", "21", "custom"] as const).map(key => (
-                  <button
-                    key={key}
-                    type="button"
-                    disabled={anyGenerating}
-                    data-active={countPreset === key}
-                    onClick={() => {
-                      setCountPreset(key);
-                      setCountError(null);
-                    }}
-                    className="ai-segmented-item"
-                  >
-                    {key === "custom" ? "自定义" : `${key} 篇`}
-                  </button>
-                ))}
-              </div>
-              {countPreset === "custom" ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    type="number"
-                    min={1}
-                    max={MAX_WEEKLY_GENERATION_COUNT}
-                    value={customCount}
-                    disabled={anyGenerating}
-                    onChange={e => {
-                      setCustomCount(e.target.value);
-                      setCountError(weeklyGenerationCountClientError(e.target.value));
-                    }}
-                    className={`${aiInput} max-w-[8rem]`}
-                    placeholder="1-50"
-                  />
-                  {countError ? <p className="text-xs text-amber-200">{countError}</p> : null}
-                </div>
-              ) : null}
-            </div>
-            {batchBusy && batchState ? (
-              <p className="text-sm text-cyan-100">
-                正在生成 {batchState.target} 篇内容（{batchState.current}/{batchState.total}）… 预计还需约 {estMinutesRemaining}{" "}
-                分钟
-              </p>
-            ) : null}
-            <Button
-              type="button"
-              variant="ai"
-              className="h-12 w-full text-base disabled:opacity-50 sm:w-auto sm:min-w-[220px]"
-              disabled={
-                anyGenerating ||
-                (countPreset === "custom" && Boolean(countError)) ||
-                tasks.length === 0 ||
-                Boolean(platformStrategyError)
-              }
-              onClick={() => void handleWeeklyGenerate()}
-            >
-              {batchBusy && batchState ? `正在生成 ${batchState.target} 篇内容…` : "生成内容资产"}
-            </Button>
-          </section>
-
-          <AiSection title="本轮生产进度">
-            {batchDone ? (
-              <div className="flex items-center gap-3 rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-                <span className="text-emerald-300">✓</span>
-                <span>本轮内容资产已生成完成</span>
-              </div>
-            ) : null}
-            <div className="ai-progress-strip">
-              <AiMetricCard
-                label="本轮目标"
-                value={displayTargetCount != null ? `${displayTargetCount} 篇` : "—"}
-                accent="cyan"
-              />
-              <AiMetricCard label="已生成" value={`${generatedAssetCount} 篇`} accent="violet" />
-              <AiMetricCard label="已发布" value={`${publishedAssetCount} 篇`} accent="emerald" />
-              <AiMetricCard label="待发布" value={`${pendingPublishCount} 篇`} accent="amber" />
-            </div>
-          </AiSection>
-        </>
-      ) : null}
+    <div className="space-y-8 pb-12" data-testid="weekly-platform-content-page">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-bold text-slate-900">平台化内容生产</h1>
+        <p className={geoP0Surfaces.muted}>
+          补齐企业在 AI 搜索中的品牌识别、内容引用与推荐缺口；各平台独立生成，不支持一稿多发。
+        </p>
+      </header>
 
       {tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
-        <p className="mt-10 text-sm text-amber-100">暂时无法加载，请刷新重试</p>
+        <p className="text-sm text-red-700">暂时无法加载，请刷新重试</p>
       ) : !queriesReady || preparingTopics || generateTopicsMutation.isPending ? (
-        <div className="mt-16 flex flex-col items-center gap-3 text-slate-300">
-          <Spinner className="size-6 text-cyan-400" />
-          <p className="text-sm">正在准备本周内容建议...</p>
+        <div className="flex flex-col items-center gap-3 py-16 text-slate-500">
+          <Spinner className="size-6 text-blue-600" />
+          <p className="text-sm">正在加载平台化内容生产数据…</p>
         </div>
       ) : showDiagnosisEmpty ? (
-        <AiEmptyState
-          title="当前暂无可生成内容任务"
-          description="请先完成 AI 内容诊断，系统将基于品牌定位生成内容资产方向。"
-          actionLabel="去完成内容诊断"
-          onAction={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
-        />
-      ) : showDirectionEmpty ? (
-        <AiEmptyState
-          title="当前暂无可生成内容任务"
-          description="请先完成 AI 内容诊断，系统将基于品牌定位生成内容资产方向。"
-          actionLabel="去完成内容诊断"
-          onAction={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
-        />
-      ) : topics.length === 0 ? (
-        <p className="text-sm text-slate-400">暂无选题</p>
+        <P0Card testId="weekly-no-diagnosis">
+          <p className="text-sm leading-relaxed text-slate-700">
+            暂无 AI 诊断结果。
+            <br />
+            建议先完成 AI 现状诊断，再根据缺口生成平台化内容。
+          </p>
+          <Button
+            type="button"
+            className={`mt-4 ${geoP0Brand.primary}`}
+            data-testid="weekly-go-ai-diagnosis"
+            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
+          >
+            去 AI 现状诊断
+          </Button>
+        </P0Card>
       ) : (
-        <AiSection title="内容资产卡片区" description={`覆盖 ${sceneCount} 个问题场景 · 共 ${topics.length} 篇资产方向`}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {topics.map(topic => {
-              const meta = topicMeta(topic, tasks);
-              const article = articleByTopicId.get(topic.id);
-              const isGenerating = generatingTopicIds.has(topic.id);
-              const isPublished = article?.status === "已发布";
-              const isGenerated = Boolean(article) && !isPublished;
-              const isPending = !article && !isGenerating;
-              const q = article ? scoresByArticleId.get(article.id) : undefined;
-              const pass = article ? qualityPasses(article, q) : false;
-              const expanded = expandedTopicIds.has(topic.id);
-              const borderColor = contentTypeBorderColor(meta.contentType);
-              const targetQuestion = meta.keyPoints[0] ?? topic.businessReason?.slice(0, 80) ?? "待关联目标问题";
-              const statusKey = isPublished
-                ? "published"
-                : isGenerating
-                  ? "generating"
-                  : isGenerated
-                    ? "generated"
-                    : "pending";
-              const statusLabel = isPublished ? "已发布" : isGenerating ? "生成中" : isGenerated ? "待发布" : "待生成";
-              const statusTone = isPublished ? "success" : isGenerating ? "info" : isGenerated ? (pass ? "info" : "warning") : "neutral";
+        <>
+          <P0Card testId="weekly-round-goal">
+            <p className={geoP0Surfaces.sectionTitle}>本轮内容目标</p>
+            <p className="mt-2 text-sm text-slate-800">
+              {platformStrategy.geoEnhancementGoal || "覆盖目标搜索问题，提升品牌提及与 AI 推荐概率"}
+            </p>
+            {platformStrategy.targetQuestion.trim() ? (
+              <p className="mt-2 text-sm text-slate-600">
+                <span className="font-medium text-slate-500">关联问题：</span>
+                {platformStrategy.targetQuestion.trim()}
+              </p>
+            ) : null}
+          </P0Card>
 
-              return (
-                <article
-                  key={topic.id}
-                  className={`ai-asset-card flex flex-col overflow-hidden ${isPublished ? "opacity-80" : ""}`}
-                  style={{ borderLeftWidth: 4, borderLeftColor: borderColor }}
-                >
-                  <div className="border-b border-white/8 bg-slate-950/40 px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <AiStatusBadge tone={statusTone}>{statusLabel}</AiStatusBadge>
-                      <span className="text-xs text-slate-500">{meta.contentType}</span>
-                    </div>
-                    <h3 className={`mt-2 line-clamp-2 text-base font-semibold leading-snug ${isPublished ? "text-slate-400" : "text-white"}`}>
-                      {article?.title ?? topic.title}
-                    </h3>
-                    {isGenerated && article && formatGeoQualitySummary(article) ? (
-                      <p className="mt-1 text-xs text-cyan-100/90">{formatGeoQualitySummary(article)}</p>
-                    ) : null}
-                    {isGenerated && article ? (
-                      <p className="mt-1 text-xs text-violet-200/90" data-testid="article-strategy-summary">
-                        {formatArticleStrategySummary(article)}
-                        {(() => {
-                          const ps = article.generationBasis?.platformContentStrategy as
-                            | Record<string, unknown>
-                            | undefined;
-                          const label =
-                            typeof ps?.targetPublishPlatformLabel === "string"
-                              ? ps.targetPublishPlatformLabel
-                              : null;
-                          return label ? ` · 发布平台：${label}` : "";
-                        })()}
-                      </p>
-                    ) : null}
-                    {!article && (isPending || isGenerating) ? (
-                      <p className="mt-1 text-xs text-slate-500" data-testid="article-planned-platform">
-                        将按 {getPlatformRule(platformStrategy.targetPublishPlatform).label} 规则生成
-                      </p>
-                    ) : null}
-                    {isGenerated && article ? (
-                      <div className="mt-2">
-                        <ArticleLifecyclePanel articleId={article.id} article={article} lifecycle={article.lifecycle} compact />
-                      </div>
-                    ) : null}
-                    {isGenerated && article && (article.postPublish?.pendingReview || article.postPublish?.needsRewrite) ? (
-                      <div className="mt-2 flex flex-wrap gap-2" data-testid="article-post-publish-badges">
-                        {article.postPublish?.pendingReview ? (
-                          <span
-                            className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-100"
-                            data-testid="badge-pending-review"
-                          >
-                            待复测
-                          </span>
-                        ) : null}
-                        {article.postPublish?.needsRewrite ? (
-                          <span
-                            className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-100"
-                            data-testid="badge-needs-rewrite"
-                          >
-                            需重写
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
+          <P0Card testId="weekly-strategy-source">
+            <p className={geoP0Surfaces.sectionTitle}>内容策略来源</p>
+            <p className="mt-2 text-sm text-slate-700">最近一次 AI 诊断</p>
+            {latestDiagnosisGap ? (
+              <p className="mt-2 text-sm text-slate-600" data-testid="diagnosis-gap-preview">
+                {latestDiagnosisGap}
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">诊断任务已就绪，缺口说明将随诊断结果展示</p>
+            )}
+          </P0Card>
 
-                  {isGenerated && article ? (
-                    <div className="relative border-b border-white/8 bg-slate-900/50">
-                      {articleCoverPreviewSrc(article) ? (
-                        <img
-                          src={articleCoverPreviewSrc(article)!}
-                          alt=""
-                          className="aspect-video w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex aspect-video flex-col items-center justify-center gap-2 px-4 text-center text-xs text-slate-500">
-                          {isLegacyAiGeneratedCoverUrl(article.coverImageUrl) && !article.coverTemplate ? (
-                            <span className="text-amber-200/80">旧版封面已隐藏，请重新生成模板封面</span>
-                          ) : regeneratingCoverIds.has(article.id) ? (
-                            <>
-                              <Spinner className="size-5 text-cyan-400" />
-                              <span>正在生成封面…</span>
-                            </>
-                          ) : (
-                            <span>待生成封面</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
+          {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
 
-                  <div className="flex flex-1 flex-col gap-3 px-4 py-3">
-                    {isGenerated && article ? (
-                      <p className="text-[10px] text-slate-500">
-                        内容类型 · {mapContentTypeLabel(article.contentType ?? meta.contentType)}
-                      </p>
-                    ) : null}
-                    <div>
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">目标问题</p>
-                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{targetQuestion}</p>
-                    </div>
-                    {isGenerated && q ? (
-                      <p className="text-sm">
-                        <span className="text-slate-500">内容评分 </span>
-                        <span className={`font-semibold ${pass ? "text-emerald-300" : "text-amber-200"}`}>{q.totalScore} 分</span>
-                        <span className="text-slate-600"> · </span>
-                        <span className="text-xs text-slate-500">{pass ? "质量通过" : "建议优化"}</span>
-                      </p>
-                    ) : null}
-                    <p className="text-xs text-cyan-200/80">{assetNextStepHint(statusKey, pass)}</p>
+          <PlatformContentBoard
+            rows={platformBoardRows}
+            disabled={anyGenerating}
+            onGenerate={handlePlatformGenerate}
+            onView={handlePlatformView}
+          />
 
-                    <div className="mt-auto space-y-2 border-t border-white/8 pt-3">
-                      {isPending ? (
-                        <Button
-                          type="button"
-                          variant="ai"
-                          className="w-full"
-                          disabled={anyGenerating}
-                          onClick={() => handleGenerateOne(topic.id)}
-                        >
-                          生成这篇文章
-                        </Button>
-                      ) : null}
-                      {isGenerating ? (
-                        <div className="flex items-center justify-center gap-2 py-2 text-sm text-slate-400">
-                          <Spinner className="size-4 text-cyan-400" />
-                          生成中...
-                        </div>
-                      ) : null}
-                      {isGenerated && article ? (
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap gap-2">
-                            <Button type="button" variant="ai" size="sm" className="w-full sm:w-auto" onClick={() => openEditor(article)}>
-                              编辑内容
-                            </Button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="border-white/15 text-slate-200"
-                              onClick={() => void copyText("标题", article.title ?? topic.title)}
-                            >
-                              复制标题
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="border-white/15 text-slate-200"
-                              onClick={() => void copyText("正文", article.markdownContent ?? "")}
-                            >
-                              复制正文
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="border-white/15 text-slate-200"
-                              disabled={regeneratingCoverIds.has(article.id) || updateGeneratedArticle.isPending}
-                              onClick={() => void handleRegenerateCover(article)}
-                            >
-                              {regeneratingCoverIds.has(article.id) ? "生成中…" : "重新生成封面"}
-                            </Button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="border-white/15 text-slate-400"
-                              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
-                            >
-                              标记已发布
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ai"
-                              size="sm"
-                              disabled={createPublishTask.isPending || shouldBlockPublishForGeoQuality(article)}
-                              onClick={() => openPublishDialog(article)}
-                            >
-                              发布到平台
-                            </Button>
-                            {article.postPublish?.needsRewrite ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="border-amber-400/30 text-amber-100"
-                                data-testid="btn-generate-rewrite-suggestion"
-                                disabled={generateRewriteSuggestion.isPending || !selectedProjectId}
-                                onClick={() => {
-                                  if (!selectedProjectId) return;
-                                  void generateRewriteSuggestion
-                                    .mutateAsync({ projectId: selectedProjectId, articleId: article.id })
-                                    .then(res => {
-                                      setSuggestionDialog({
-                                        open: true,
-                                        text: res.suggestionText,
-                                        articleTitle: article.title ?? "内容资产",
-                                      });
-                                      void utils.geo.articles.list.invalidate();
-                                      void utils.geo.articles.rewritePool.invalidate();
-                                    })
-                                    .catch(e => toast.error(e instanceof Error ? e.message : "生成建议失败"));
-                                }}
-                              >
-                                {generateRewriteSuggestion.isPending ? "生成中…" : "生成新版内容建议"}
-                              </Button>
-                            ) : null}
-                          </div>
-                          {expanded ? (
-                            <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-500">{previewText(article.markdownContent)}</p>
-                          ) : (
-                            <button
-                              type="button"
-                              className="text-xs text-slate-500 hover:text-cyan-200"
-                              onClick={() => toggleExpand(topic.id)}
-                            >
-                              展开正文预览
-                            </button>
-                          )}
-                        </div>
-                      ) : null}
-                      {isPublished ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full border-white/15 text-slate-300"
-                          onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
-                        >
-                          查看发布记录
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </AiSection>
+          {showDirectionEmpty ? (
+            <P0Card>
+              <p className="text-sm text-slate-700">正在根据 AI 诊断准备内容方向，请稍候…</p>
+            </P0Card>
+          ) : null}
+
+          {contentCardModels.length > 0 ? (
+            <section className="space-y-4" data-testid="weekly-content-cards">
+              <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
+              <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {contentCardModels.map(model => {
+                  const article = articles.find(a => a.id === model.id);
+                  const topicId = article?.topicId;
+                  return (
+                    <WeeklyPlatformArticleCard
+                      key={model.id}
+                      model={model}
+                      disabled={anyGenerating}
+                      onView={() => article && openEditor(article)}
+                      onRegenerate={() => {
+                        if (typeof topicId === "number") void generateOne(topicId);
+                      }}
+                      onEnqueuePublish={() => article && openPublishDialog(article)}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          <details className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800">
+              内容策略细项（可选，按单平台调整）
+            </summary>
+            <div className="border-t border-slate-100 p-4">
+              <PlatformContentStrategyPanel
+                value={platformStrategy}
+                onChange={setPlatformStrategy}
+                targetQuestionOptions={targetQuestionOptions}
+                disabled={anyGenerating}
+              />
+            </div>
+          </details>
+        </>
       )}
 
       {enabled ? (
@@ -1358,16 +1171,15 @@ export default function WeeklyContentPage() {
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
         <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md" data-testid="publish-to-platform-dialog">
           <DialogHeader>
-            <DialogTitle>发布到平台</DialogTitle>
+            <DialogTitle>加入发布队列</DialogTitle>
             <DialogDescription className="text-slate-400">
-              {publishArticle?.title ?? "当前文章"} · 将使用已保存的最新标题、正文与封面（如有）
+              {publishArticle?.title ?? "当前文章"} · 各平台内容独立，本篇不支持一稿多发
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <div className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-50">
-              <p>当前企业：{projectName}</p>
               <p className="mt-2 text-xs text-cyan-100/80">
-                任务将发送至本地 GEO 发布客户端（{LOCAL_AGENT_BASE_URL}），由本机已绑定的平台账号环境执行填稿。
+                任务将发送至本地 GEO 发布客户端，由本篇对应平台账号执行填稿。
               </p>
               <p className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                 客户端状态：
@@ -1409,7 +1221,8 @@ export default function WeeklyContentPage() {
             ))}
           </div>
           <div className="space-y-3 py-2">
-            {PUBLISH_PLATFORMS.map(p => {
+            {publishDialogSlug ? (
+              PUBLISH_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
               const readyAccounts = isBindingPublishPlatform(p.slug) ? getPublishReadyAccountsForPlatform(p.slug) : [];
               const legacyAccounts = isBindingPublishPlatform(p.slug)
                 ? getAllEnabledAccountsForPlatform(p.slug).filter(
@@ -1417,29 +1230,17 @@ export default function WeeklyContentPage() {
                   )
                 : [];
               const picked = isBindingPublishPlatform(p.slug) ? pickPublishAccount(p.slug) : null;
-              const needsPick = selectedPlatforms.has(p.slug) && readyAccounts.length > 1 && !picked;
+              const needsPick = readyAccounts.length > 1 && !picked;
               return (
-                <label key={p.slug} className="flex cursor-pointer flex-col gap-2 rounded-lg border border-white/10 px-3 py-2 hover:bg-white/5">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-cyan-400"
-                      checked={selectedPlatforms.has(p.slug)}
-                      onChange={() => togglePlatform(p.slug)}
-                    />
-                    <span className="text-sm font-medium">{p.label}</span>
-                  </div>
-                  {selectedPlatforms.has(p.slug) && isBindingPublishPlatform(p.slug) ? (
-                    <div className="space-y-2 pl-7">
+                <div key={p.slug} className="flex flex-col gap-2 rounded-lg border border-white/10 px-3 py-2">
+                  <span className="text-sm font-medium">{p.label}</span>
+                  {isBindingPublishPlatform(p.slug) ? (
+                    <div className="space-y-2">
                       {readyAccounts.length === 0 ? (
                         <span className="text-xs text-amber-200">无可发布账号（需绑定本地环境且登录有效）</span>
                       ) : readyAccounts.length === 1 ? (
                         <span className="text-xs text-slate-500">
-                          发布账号：{readyAccounts[0]!.accountName}
-                          {readyAccounts[0]!.localProfileId
-                            ? ` · ${readyAccounts[0]!.localProfileId.slice(0, 20)}`
-                            : ""}
-                          · 登录有效
+                          发布账号：{readyAccounts[0]!.accountName} · 登录有效
                         </span>
                       ) : (
                         <>
@@ -1458,15 +1259,13 @@ export default function WeeklyContentPage() {
                             <option value="">请选择账号</option>
                             {readyAccounts.map(a => (
                               <option key={a.id} value={a.id}>
-                                {a.accountName} · {a.localProfileId?.slice(0, 16) ?? "—"}
+                                {a.accountName}
                               </option>
                             ))}
                           </select>
                           {picked ? (
                             <span className="text-xs text-slate-500">
-                              profile：{picked.localProfileId} · 身份：
-                              {getPublishIdentityLabel(picked.accountRole) || "未设置"} · 账号组：
-                              {getAccountGroupLabel(picked.accountGroup) || "未设置"}
+                              已选账号：{picked.accountName}
                             </span>
                           ) : null}
                         </>
@@ -1491,9 +1290,12 @@ export default function WeeklyContentPage() {
                             : "无需绑定平台账号"}
                     </span>
                   )}
-                </label>
+                </div>
               );
-            })}
+            })
+            ) : (
+              <p className="text-sm text-slate-400">暂未识别本篇发布平台</p>
+            )}
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             {Array.from(selectedPlatforms).some(
@@ -1521,12 +1323,12 @@ export default function WeeklyContentPage() {
                 disabled={createPublishTask.isPending || selectedPlatforms.size === 0}
                 onClick={() => void handleConfirmPublish()}
               >
-                {createPublishTask.isPending ? "提交中..." : "发布到平台"}
+                {createPublishTask.isPending ? "提交中..." : "确认加入队列"}
               </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AiPageShell>
+    </div>
   );
 }

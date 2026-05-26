@@ -13,7 +13,7 @@ import { useLocation } from "wouter";
 
 export type ProjectOption = { id: number; enterpriseName: string };
 
-const PATHS_SKIP_URL_SYNC = new Set(["/clients", "/onboarding"]);
+const PATHS_SKIP_URL_SYNC = new Set(["/clients"]);
 
 export function useActiveProjectSelection() {
   const [location, setLocation] = useLocation();

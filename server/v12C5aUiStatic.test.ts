@@ -17,10 +17,11 @@ describe("C5-A global product UI overhaul", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     expect(layout).toContain("让品牌被 AI 看见、理解和推荐");
     expect(layout).toContain("增长总览");
-    expect(layout).toContain("内容资产生产");
-    expect(layout).toContain("资产发布记录");
-    expect(layout).toContain("资产进展看板");
-    expect(layout).toContain("客户交付报告");
+    expect(layout).toContain("企业工作台");
+    expect(layout).toContain("平台化内容生产");
+    expect(layout).toContain("发布中心");
+    expect(layout).toContain("收录监测");
+    expect(layout).toContain("交付报告");
   });
 
   it("main pages use cockpit layout structure", () => {

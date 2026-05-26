@@ -1,11 +1,12 @@
-import { AiPageHero, AiPageShell, AiSection, AiStatusBadge } from "@/components/ai/ProductUi";
+import { P0MetricTile } from "@/components/geo/P0UiPrimitives";
 import { AdvancedMaterialsSection } from "@/components/enterpriseProfile/AdvancedMaterialsSection";
 import {
   FiveMinuteBasicOnboardingSection,
   type FiveMinuteBasicValues,
 } from "@/components/enterpriseProfile/FiveMinuteBasicOnboardingSection";
 import { EnterprisePublishEnvironmentSection } from "@/components/enterpriseProfile/EnterprisePublishEnvironmentSection";
-import { GeoMaterialPreviewSection } from "@/components/enterpriseProfile/GeoMaterialPreviewSection";
+import { ProfileAiUnderstandingPreview } from "@/components/enterpriseProfile/ProfileAiUnderstandingPreview";
+import { ProfilePublishEnvLightHint } from "@/components/enterpriseProfile/ProfilePublishEnvLightHint";
 import { ProfileUploadAssistSection } from "@/components/enterpriseProfile/ProfileUploadAssistSection";
 import type { ProfileApplyPatch } from "@/components/enterpriseProfile/ProfileIntakePanel";
 import {
@@ -17,12 +18,11 @@ import {
 } from "@/components/enterpriseProfile/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { aiChipIdle, aiGlassPanel, aiInput, aiOutlineBtn, aiPrimaryBtn } from "@/lib/aiProductUi";
+import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import {
   ENTERPRISE_INDUSTRY_OPTIONS,
   resolveIndustryFromStored,
@@ -174,14 +174,6 @@ function computeProfileSectionStatuses(params: {
     cases: { done: casesDone, label: casesDone ? "已完成" : "待补充", hint: casesHint },
   } as const;
 }
-
-const PROFILE_STEPS = [
-  { id: "profile-publish-env", label: "发布环境" },
-  { id: "profile-basic-five-min", label: "5 分钟建档" },
-  { id: "profile-upload", label: "资料上传" },
-  { id: "profile-advanced", label: "高级补充" },
-  { id: "profile-geo-preview", label: "建档预览" },
-] as const;
 
 function parseFitCustomersMeta(fit: string) {
   const tags: string[] = [];
@@ -417,93 +409,63 @@ export default function AssetCenterPage() {
   const fiveMinuteValues: FiveMinuteBasicValues = useMemo(
     () => ({
       brandName,
-      brandShortName,
       industrySelect,
       industryCustom,
       oneLiner,
       productDesc,
-      sellingPoint1: keyPoints[0] ?? "",
-      sellingPoint2: keyPoints[1] ?? "",
-      sellingPoint3: keyPoints[2] ?? "",
       targetCustomer,
       primaryPain: customerPains[0] ?? "",
-      commonNeed: purchaseTriggers[0] ?? "",
-      searchQuestion1: commonQuestionsList[0] ?? "",
-      searchQuestion2: commonQuestionsList[1] ?? "",
-      searchQuestion3: commonQuestionsList[2] ?? "",
-      basicCaseBrief: caseRows[0]?.customerBackground ?? "",
-      basicResultData: caseRows[0]?.resultData ?? "",
+      coreAdvantage: keyPoints[0] ?? "",
+    }),
+    [brandName, industrySelect, industryCustom, oneLiner, productDesc, targetCustomer, customerPains, keyPoints],
+  );
+
+  const aiPreviewModel = useMemo(
+    () => ({
+      brandName: brandName.trim() || currentProject?.enterpriseName || "",
+      industry: industryTagValue,
+      oneLiner: oneLiner.trim(),
+      productDesc: productDesc.trim(),
+      targetCustomer: targetCustomer.trim(),
+      primaryPain: customerPains[0]?.trim() ?? "",
+      coreAdvantage: keyPoints[0]?.trim() ?? "",
+      keywords: keywords.filter(Boolean),
     }),
     [
       brandName,
-      brandShortName,
-      industrySelect,
-      industryCustom,
+      currentProject?.enterpriseName,
+      industryTagValue,
       oneLiner,
       productDesc,
-      keyPoints,
       targetCustomer,
       customerPains,
-      purchaseTriggers,
-      commonQuestionsList,
-      caseRows,
+      keyPoints,
+      keywords,
     ],
   );
 
   function applyFiveMinutePatch(patch: Partial<FiveMinuteBasicValues>) {
     if (patch.brandName !== undefined) setBrandName(patch.brandName);
-    if (patch.brandShortName !== undefined) setBrandShortName(patch.brandShortName);
     if (patch.industrySelect !== undefined) setIndustrySelect(patch.industrySelect);
     if (patch.industryCustom !== undefined) setIndustryCustom(patch.industryCustom);
     if (patch.oneLiner !== undefined) setOneLiner(patch.oneLiner);
     if (patch.productDesc !== undefined) setProductDesc(patch.productDesc);
-    if (
-      patch.sellingPoint1 !== undefined ||
-      patch.sellingPoint2 !== undefined ||
-      patch.sellingPoint3 !== undefined
-    ) {
-      const next = [...keyPoints];
-      if (patch.sellingPoint1 !== undefined) next[0] = patch.sellingPoint1;
-      if (patch.sellingPoint2 !== undefined) next[1] = patch.sellingPoint2;
-      if (patch.sellingPoint3 !== undefined) next[2] = patch.sellingPoint3;
-      setKeyPoints(next.filter((_, i) => i < 3 || next[i]?.trim()));
-    }
     if (patch.targetCustomer !== undefined) setTargetCustomer(patch.targetCustomer);
     if (patch.primaryPain !== undefined) setCustomerPains(patch.primaryPain.trim() ? [patch.primaryPain] : []);
-    if (patch.commonNeed !== undefined) setPurchaseTriggers(patch.commonNeed.trim() ? [patch.commonNeed] : []);
-    if (
-      patch.searchQuestion1 !== undefined ||
-      patch.searchQuestion2 !== undefined ||
-      patch.searchQuestion3 !== undefined
-    ) {
-      const qs = [
-        patch.searchQuestion1 ?? commonQuestionsList[0] ?? "",
-        patch.searchQuestion2 ?? commonQuestionsList[1] ?? "",
-        patch.searchQuestion3 ?? commonQuestionsList[2] ?? "",
-        ...commonQuestionsList.slice(3),
-      ].filter((q, i) => i < 3 || q.trim());
-      setCommonQuestionsList(qs.slice(0, Math.max(3, qs.length)));
+    if (patch.coreAdvantage !== undefined) {
+      setKeyPoints(patch.coreAdvantage.trim() ? [patch.coreAdvantage] : []);
     }
-    if (patch.basicCaseBrief !== undefined || patch.basicResultData !== undefined) {
-      setCaseRows(prev => {
-        const row = prev[0] ?? {
-          caseType: "待补充案例线索" as const,
-          customerBackground: "",
-          originalProblem: "",
-          executionProcess: "",
-          resultData: "",
-          allowPublic: false,
-        };
-        const updated = {
-          ...row,
-          ...(patch.basicCaseBrief !== undefined ? { customerBackground: patch.basicCaseBrief } : {}),
-          ...(patch.basicResultData !== undefined ? { resultData: patch.basicResultData } : {}),
-        };
-        if (prev.length === 0) return [updated];
-        return [updated, ...prev.slice(1)];
-      });
-      if (patch.basicCaseBrief?.trim() || patch.basicResultData?.trim()) setCasesChoice("has");
-    }
+  }
+
+  function addKeyword() {
+    const t = keywordDraft.trim();
+    if (!t || keywords.includes(t)) return;
+    setKeywords([...keywords, t]);
+    setKeywordDraft("");
+  }
+
+  function removeKeyword(k: string) {
+    setKeywords(keywords.filter(x => x !== k));
   }
 
   const trustMaterialCount = useMemo(() => {
@@ -660,30 +622,25 @@ export default function AssetCenterPage() {
   }
 
   const completionPercent = useMemo(() => {
-    const baseOk =
-      brandName.trim().length > 0 &&
-      industryTagValue.trim().length > 0 &&
-      productDesc.trim().length > 0 &&
-      targetCustomer.trim().length > 0 &&
-      customerPains.length > 0;
-    const basePart = baseOk ? 60 : 0;
-    const hc = boolField(profile?.hasCases);
-    let s3 = 0;
-    if (hc === false) s3 = 20;
-    else if (hc === true && (summary?.customerCases?.length ?? 0) > 0) s3 = 20;
-    const aiOk = oneLiner.trim().length > 0 && keyPoints.length > 0 && keywords.length > 0;
-    const aiPart = aiOk ? 20 : 0;
-    return Math.min(100, basePart + s3 + aiPart);
+    const checks = [
+      brandName.trim().length > 0,
+      industryTagValue.trim().length > 0,
+      oneLiner.trim().length > 0,
+      productDesc.trim().length > 0,
+      targetCustomer.trim().length > 0,
+      customerPains.some(p => p.trim().length > 0),
+      keyPoints.some(k => k.trim().length > 0),
+      keywords.length > 0,
+    ];
+    const done = checks.filter(Boolean).length;
+    return Math.round((done / checks.length) * 100);
   }, [
     brandName,
-    brandShortName,
     industryTagValue,
+    oneLiner,
     productDesc,
     targetCustomer,
     customerPains,
-    profile?.hasCases,
-    summary?.customerCases?.length,
-    oneLiner,
     keyPoints,
     keywords,
   ]);
@@ -795,138 +752,106 @@ export default function AssetCenterPage() {
   }
 
   const profileEmptyDescription =
-    "企业 GEO 建档必须归属一个客户项目。请先在客户管理台新建或选择客户项目。";
+    "5 分钟 GEO 建档必须归属一个客户项目。请先在客户管理台新建或选择客户项目。";
+
+  async function saveFiveMinuteAndStartDiagnosis() {
+    if (!currentProjectId) return;
+    setMessage(undefined);
+    setError(undefined);
+    try {
+      if (!brandName.trim()) throw new Error("请填写企业名称");
+      if (!industryTagValue.trim()) throw new Error("请选择所属行业");
+      if (!oneLiner.trim()) throw new Error("请填写一句话介绍");
+      if (!productDesc.trim()) throw new Error("请填写核心产品 / 服务");
+      if (!targetCustomer.trim()) throw new Error("请填写目标客户");
+      if (!fiveMinuteValues.primaryPain.trim()) throw new Error("请填写主要解决的问题");
+      if (!fiveMinuteValues.coreAdvantage.trim()) throw new Error("请填写核心优势");
+      if (keywords.length === 0) throw new Error("请至少添加一个希望被 AI 推荐的关键词");
+      setCustomerPains([fiveMinuteValues.primaryPain.trim()]);
+      setKeyPoints([fiveMinuteValues.coreAdvantage.trim()]);
+      await upsertProfile.mutateAsync(basePayloadWithExtras());
+      await refreshSummary();
+      setMessage("GEO 建档已保存。");
+      setLocation(buildProjectUrl("/ai-diagnosis", currentProjectId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存失败");
+    }
+  }
 
   if (!currentProjectId && !projectsLoading) {
     return (
-      <AiPageShell className="pb-16">
-        <AiPageHero
-          title="企业 GEO 建档"
-          description="用 5 分钟完成基础建档，系统即可开始生成 GEO 内容；案例和信任素材可后续逐步补充。"
-          badge="企业建档"
-        />
+      <div className="space-y-6 pb-12" data-testid="enterprise-profile-page">
+        <header className="space-y-2">
+          <h1 className="text-2xl font-bold text-slate-900">5 分钟 GEO 建档</h1>
+          <p className={geoP0Surfaces.muted}>
+            让 AI 理解企业是谁、卖什么、服务谁、凭什么被推荐。请先选择或新建客户项目。
+          </p>
+        </header>
         <ProjectContextEmptyState description={profileEmptyDescription} testId="enterprise-profile-empty" />
-      </AiPageShell>
+      </div>
     );
   }
 
   return (
-    <AiPageShell className="pb-16">
-      <AiPageHero
-        title="企业 GEO 建档"
-        description="本页资料仅用于当前企业项目的 GEO 内容生成、发布账号绑定、AI 实测和交付报告。"
-        badge="企业建档"
-      >
-        <div
-          className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-          data-testid="enterprise-profile-current-project-header"
-        >
-          <p className="text-sm text-slate-300" data-testid="enterprise-profile-current-project">
-            当前客户项目：
-            <span className="font-semibold text-white">{currentProject?.enterpriseName ?? "—"}</span>
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(aiOutlineBtn, "shrink-0")}
-            data-testid="enterprise-profile-switch-client"
-            onClick={() => setLocation("/clients")}
-          >
-            切换客户
-          </Button>
-        </div>
-      </AiPageHero>
+    <div className="space-y-6 pb-12" data-testid="enterprise-profile-page">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-bold text-slate-900">5 分钟 GEO 建档</h1>
+        <p className={geoP0Surfaces.muted}>
+          让 AI 理解企业是谁、卖什么、服务谁、凭什么被推荐。填写核心字段后即可开始 AI 现状诊断。
+        </p>
+      </header>
 
-      {loading ? <p className="text-sm text-slate-400">正在加载…</p> : null}
-      {queryError ? <div className="rounded-xl border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">{queryError}</div> : null}
-      {message ? <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-3 text-sm text-emerald-100">{message}</div> : null}
-      {error ? <div className="rounded-xl border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">{error}</div> : null}
+      {loading ? <p className="text-sm text-slate-500">正在加载…</p> : null}
+      {queryError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{queryError}</div>
+      ) : null}
+      {message ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{message}</div>
+      ) : null}
+      {error ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div> : null}
 
       {currentProjectId ? (
         <>
-          <nav
-            className="sticky top-16 z-10 flex gap-2 overflow-x-auto rounded-xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur"
-            data-testid="enterprise-profile-step-nav"
-          >
-            {PROFILE_STEPS.map(step => (
-              <button
-                key={step.id}
-                type="button"
-                className={cn(aiChipIdle, "shrink-0 px-3 py-1.5 text-xs")}
-                onClick={() => scrollToSection(step.id)}
-              >
-                {step.label}
-              </button>
-            ))}
-          </nav>
-
-          <div ref={publishEnvRef}>
-            <EnterprisePublishEnvironmentSection
-              projectId={currentProjectId!}
-              status={enabledPlatformAccountCount > 0 ? "已完成" : "待完善"}
-            />
-          </div>
+          <P0MetricTile
+            label="建档完成度"
+            value={`${completionPercent}%`}
+            hint="基于 8 项核心建档字段计算"
+          />
 
           <div ref={basicSectionRef}>
             <FiveMinuteBasicOnboardingSection
               values={fiveMinuteValues}
               onChange={applyFiveMinutePatch}
-              saving={saving}
-              projectId={currentProjectId}
-              onSave={() =>
-                void runSave("基础建档", async () => {
-                  if (!brandName.trim()) throw new Error("请填写企业名称");
-                  if (!industryTagValue.trim()) throw new Error("请选择所属行业");
-                  if (!productDesc.trim()) throw new Error("请填写主营产品 / 服务");
-                  if (!fiveMinuteValues.sellingPoint1.trim()) throw new Error("请填写核心卖点 1");
-                  if (!targetCustomer.trim()) throw new Error("请填写目标客户");
-                  if (!fiveMinuteValues.primaryPain.trim()) throw new Error("请填写客户最大痛点");
-                  if (!fiveMinuteValues.searchQuestion1.trim()) throw new Error("请填写目标搜索问题 1");
-                  const kps = [
-                    fiveMinuteValues.sellingPoint1,
-                    fiveMinuteValues.sellingPoint2,
-                    fiveMinuteValues.sellingPoint3,
-                  ].filter(Boolean);
-                  setKeyPoints(kps);
-                  setCustomerPains(fiveMinuteValues.primaryPain.trim() ? [fiveMinuteValues.primaryPain] : []);
-                  setPurchaseTriggers(fiveMinuteValues.commonNeed.trim() ? [fiveMinuteValues.commonNeed] : []);
-                  setCommonQuestionsList(
-                    [
-                      fiveMinuteValues.searchQuestion1,
-                      fiveMinuteValues.searchQuestion2,
-                      fiveMinuteValues.searchQuestion3,
-                    ].filter(Boolean),
-                  );
-                  await upsertProfile.mutateAsync(basePayloadWithExtras());
-                  const brief = fiveMinuteValues.basicCaseBrief.trim();
-                  const result = fiveMinuteValues.basicResultData.trim();
-                  if (brief || result) {
-                    const row = caseRows[0] ?? {
-                      caseType: "待补充案例线索" as const,
-                      customerBackground: brief,
-                      originalProblem: "",
-                      executionProcess: "",
-                      resultData: result,
-                      allowPublic: false,
-                    };
-                    await saveCustomerCaseRow(
-                      {
-                        ...row,
-                        customerBackground: brief || row.customerBackground,
-                        resultData: result || row.resultData,
-                      },
-                      0,
-                    );
-                  }
-                })
-              }
+              keywords={keywords}
+              keywordDraft={keywordDraft}
+              onKeywordDraftChange={setKeywordDraft}
+              onAddKeyword={addKeyword}
+              onRemoveKeyword={removeKeyword}
             />
           </div>
 
+          <ProfileAiUnderstandingPreview model={aiPreviewModel} />
+
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              className={geoP0Brand.primary}
+              disabled={saving || loading}
+              data-testid="save-profile-start-diagnosis"
+              onClick={() => void saveFiveMinuteAndStartDiagnosis()}
+            >
+              {saving ? "保存中…" : "保存并开始 AI 诊断"}
+            </Button>
+          </div>
+
+          <ProfilePublishEnvLightHint
+            projectId={currentProjectId}
+            configured={enabledPlatformAccountCount > 0}
+          />
+
           {aiFilledFields.size > 0 ? (
-            <div className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-50">
-              部分字段已由 AI 解析填入，请核对「5 分钟基础建档」后点击「保存基础建档」。
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+              部分字段已由 AI 解析填入，请核对核心建档字段后点击「保存并开始 AI 诊断」。
             </div>
           ) : null}
 
@@ -1005,27 +930,19 @@ export default function AssetCenterPage() {
             }
           />
 
-          <GeoMaterialPreviewSection
-            model={{
-              brandName: brandName.trim() || currentProject?.enterpriseName || "",
-              industry: industryTagValue,
-              oneLiner: oneLiner.trim() || productDesc.trim().slice(0, 120),
-              productDesc: productDesc.trim(),
-              keyPoints: keyPoints.filter(Boolean),
-              targetCustomer: targetCustomer.trim(),
-              customerPains: customerPains.filter(Boolean),
-              searchQuestions: commonQuestionsList.filter(Boolean).slice(0, 3),
-              caseSnippets: caseRows
-                .filter(r => r.customerBackground.trim())
-                .map(r => `${r.customerBackground.slice(0, 24)}：${r.resultData.slice(0, 40) || "待补充结果"}`),
-              trustSummary: `客户案例 ${caseRows.length} 条 · 信任背书 ${trustMaterialCount} 项 · FAQ ${faqFilledCount} 条`,
-            }}
-            onGoProduction={() => {
-              if (currentProjectId) setLocation(buildProjectUrl("/weekly", currentProjectId));
-            }}
-          />
+          <details className="rounded-xl border border-slate-200 bg-white shadow-sm" data-testid="profile-publish-env-fold">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800 hover:text-blue-700">
+              发布环境配置（可选）
+            </summary>
+            <div ref={publishEnvRef} className="border-t border-slate-100 px-2 pb-4">
+              <EnterprisePublishEnvironmentSection
+                projectId={currentProjectId!}
+                status={enabledPlatformAccountCount > 0 ? "已完成" : "待完善"}
+              />
+            </div>
+          </details>
         </>
       ) : null}
-    </AiPageShell>
+    </div>
   );
 }

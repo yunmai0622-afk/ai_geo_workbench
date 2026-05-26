@@ -60,17 +60,24 @@ if (manifest.macZipUrl === "/downloads/geo-local-agent-mac.zip") {
 if (manifest.macDmgUrl == null) ok("manifest.macDmgUrl is null (dmg hidden)");
 else fail(`manifest.macDmgUrl should be null, got ${manifest.macDmgUrl}`);
 
-const pickFn = card.match(/function pickMacHref[\s\S]*?^}/m)?.[0] ?? "";
-if (pickFn.includes("macZipUrl") && pickFn.includes("macDmgUrl")) {
-  const zipBranch = pickFn.indexOf("if (zip?.startsWith");
-  const dmgBranch = pickFn.indexOf("if (dmg?.startsWith");
-  if (zipBranch >= 0 && dmgBranch >= 0 && zipBranch < dmgBranch) {
-    ok("LocalAgentDownloadCard prefers macZipUrl over macDmgUrl");
-  } else {
-    fail("pickMacHref: zip branch must precede dmg branch");
-  }
+if (card.includes("isMacZipDownloadUrl") && card.includes("http://") && card.includes("https://")) {
+  ok("LocalAgentDownloadCard supports absolute macZipUrl");
 } else {
-  fail("card missing zip-first pickMacHref logic");
+  fail("LocalAgentDownloadCard missing absolute URL support");
+}
+
+const pickFn = card.match(/function pickMacHref[\s\S]*?^}/m)?.[0] ?? "";
+if (pickFn.includes("isMacZipDownloadUrl(zip)")) {
+  ok("LocalAgentDownloadCard pickMacHref uses isMacZipDownloadUrl first");
+} else {
+  fail("pickMacHref must prefer zip via isMacZipDownloadUrl");
+}
+
+const copyScript = fs.readFileSync(path.join(root, "scripts/copy_local_agent_download.mjs"), "utf-8");
+if (copyScript.includes("AGENT_MAC_ZIP_URL") && copyScript.includes("macDmgUrl: null")) {
+  ok("copy_local_agent_download supports AGENT_MAC_ZIP_URL and macDmgUrl null");
+} else {
+  fail("copy script missing AGENT_MAC_ZIP_URL or macDmgUrl null");
 }
 
 if (card.includes("下载 Mac 客户端（推荐）")) ok('Mac button copy contains "推荐"');

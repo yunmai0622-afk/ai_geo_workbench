@@ -66,7 +66,7 @@ export function PlatformAccountCard({
               编辑
             </Button>
             <Button type="button" size="sm" variant="outline" className={aiOutlineBtn} onClick={() => onTechnical(row)}>
-              技术信息
+              账号详情
             </Button>
             <Button type="button" size="sm" variant="outline" className="border-red-400/30 text-red-200" onClick={() => void onDelete(row.id)}>
               删除

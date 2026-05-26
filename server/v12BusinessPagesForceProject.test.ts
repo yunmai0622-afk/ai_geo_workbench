@@ -31,10 +31,15 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     assertNoProjectDropdown(weekly, "weekly");
     expect(weekly).not.toContain("projects[0]");
-    expect(weekly).toContain("BusinessPageProjectHeader");
-    expect(weekly).toContain("基于当前企业资料生成平台化 GEO 内容");
+    expect(weekly).not.toContain("BusinessPageProjectHeader");
+    expect(read("client/src/components/DashboardLayout.tsx")).toContain("EnterpriseProjectShell");
+    expect(weekly).toContain("平台化内容生产");
+    expect(weekly).toContain("生成本轮平台化内容");
+    expect(weekly).not.toContain("生成内容资产");
+    expect(weekly).not.toMatch(/批量生成/);
+    expect(weekly).toContain("不支持一稿多发");
     expect(weekly).toMatch(/if \(!enabled && !projectsLoading\)/);
-    expect(weekly).toContain('buildProjectUrl("/content-publishing"');
+    expect(weekly).toContain('buildProjectUrl("/ai-diagnosis"');
     expect(weekly).toContain('buildProjectUrl("/ai-diagnosis"');
   });
 
@@ -43,21 +48,27 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(v12).toContain("AiDiagnosisFlowPage");
     expect(v12).toContain("检测当前企业在豆包、Kimi、DeepSeek");
     expect(v12).toContain('buildProjectUrl("/weekly"');
-    expect(v12).toContain("diagnosis-project-header");
+    expect(v12).not.toContain("diagnosis-project-header");
     assertNoProjectDropdown(v12, "v12");
   });
 
   it("发布中心 / 收录监测 / 交付报告只服务当前 project", () => {
     const v12 = read("client/src/pages/V12FlowPages.tsx");
+    const publish = read("client/src/pages/ContentPublishingCenterPage.tsx");
     expect(v12).toContain("ContentPublishingFlowPage");
     expect(v12).toContain("InclusionMonitoringFlowPage");
     expect(v12).toContain("DeliveryReportsFlowPage");
-    expect(v12).toContain("查看当前企业的发布任务、复测队列和重写池");
+    expect(publish).toContain("发布中心");
+    expect(publish).toContain("Local Agent 本地发布任务中心");
+    expect(publish).toContain("publish-retest-rewrite-fold");
     expect(v12).toContain("跟踪当前企业内容的收录与 AI 实测结果");
-    expect(v12).toContain("生成当前企业的 GEO 交付报告");
-    expect(v12).toContain('buildProjectUrl("/content-publishing"');
+    const report =
+      read("client/src/pages/DeliveryReportsCenterPage.tsx") +
+      read("client/src/lib/deliveryReportProductDisplay.ts");
+    expect(report).toContain("GEO 增长交付报告");
+    expect(v12 + report).toContain('buildProjectUrl("/content-publishing"');
     expect(v12).toContain('buildProjectUrl("/delivery-reports"');
-    expect(v12).toContain('buildProjectUrl("/inclusion-monitoring"');
+    expect(report).toContain('buildProjectUrl("/inclusion-monitoring"');
   });
 
   it("进展看板只使用 activeProjectId", () => {

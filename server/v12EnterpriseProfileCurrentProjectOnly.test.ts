@@ -25,12 +25,11 @@ describe("GEO-V1-D 企业 GEO 建档只服务当前 project", () => {
     expect(asset).toMatch(/if \(!currentProjectId && !projectsLoading\)/);
   });
 
-  it("顶部展示当前客户项目与切换客户", () => {
+  it("不在页内重复展示当前客户项目大块头", () => {
     const asset = read("client/src/pages/AssetCenter.tsx");
-    expect(asset).toContain("当前客户项目：");
-    expect(asset).toContain("enterprise-profile-switch-client");
-    expect(asset).toContain('setLocation("/clients")');
-    expect(asset).toContain("本页资料仅用于当前企业项目的 GEO 内容生成");
+    expect(asset).not.toContain("enterprise-profile-current-project-header");
+    expect(asset).not.toContain("enterprise-profile-switch-client");
+    expect(asset).not.toContain("当前客户项目：");
   });
 
   it("写操作与查询均绑定 currentProjectId", () => {
@@ -39,7 +38,7 @@ describe("GEO-V1-D 企业 GEO 建档只服务当前 project", () => {
     expect(asset).toContain("createCustomerCase");
     expect(asset).toContain("updateCustomerCase");
     expect(asset).toContain("projectId: currentProjectId");
-    expect(asset).toContain("buildProjectUrl(\"/weekly\"");
+    expect(asset).toContain("buildProjectUrl(\"/ai-diagnosis\"");
   });
 
   it("发布账号区只接收当前 projectId", () => {
@@ -52,10 +51,10 @@ describe("GEO-V1-D 企业 GEO 建档只服务当前 project", () => {
     expect(asset).toContain("projectId={currentProjectId!}");
   });
 
-  it("子组件 generateTargetQuestions 依赖 projectId", () => {
-    const basic = read("client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx");
-    expect(basic).toContain("generateTargetQuestions");
-    expect(basic).toContain("if (!projectId)");
+  it("建档页仍绑定 currentProjectId 查询与保存", () => {
+    const asset = read("client/src/pages/AssetCenter.tsx");
+    expect(asset).toContain("enabled: Boolean(currentProjectId)");
+    expect(asset).toContain("projectId: currentProjectId");
   });
 
   it("无 Chrome 插件主文案、不改 schema", () => {

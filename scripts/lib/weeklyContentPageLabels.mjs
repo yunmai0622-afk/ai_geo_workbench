@@ -1,19 +1,16 @@
-/** C5-B 内容资产生产页（/weekly）当前产品文案，供验收脚本共用 */
+/** 平台化内容生产页（/weekly）当前产品文案，供验收脚本共用 */
 
-export const WEEKLY_CONTENT_PAGE_WAIT = "AI 内容资产生产控制台";
-
-/** 源码与页面均存在的固定文案 */
 export const WEEKLY_CONTENT_PAGE_LABELS = [
-  "AI 内容资产生产控制台",
-  "生成内容资产",
-  "生成数量",
-  "自定义",
+  "平台化内容生产",
+  "生成本轮平台化内容",
+  "不支持一稿多发",
+  "weekly-platform-content-page",
+  "去 AI 现状诊断",
 ];
 
-/** WeeklyContentPage.tsx 中 segmented 数量选项（源码形态） */
 export const WEEKLY_CONTENT_PAGE_SOURCE_SEGMENT_MARKERS = [
-  '["7", "14", "21", "custom"]',
-  "${key} 篇",
+  "PlatformContentBoard",
+  "WeeklyPlatformArticleCard",
 ];
 
 /** 浏览器渲染后的 segmented 文案（Playwright 全链路验收） */

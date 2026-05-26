@@ -18,32 +18,27 @@ const FORBIDDEN_UI = [
   "JSON",
 ] as const;
 
-function slicePublishPage(flow: string): string {
-  const start = flow.indexOf("export function ContentPublishingFlowPage");
-  const end = flow.indexOf("export function InclusionMonitoringFlowPage");
-  if (start < 0 || end < 0) return flow;
-  return flow.slice(start, end);
-}
-
 describe("C4-B publish records and progress value display", () => {
   const progress = read("client/src/pages/ProgressPage.tsx");
-  const flow = read("client/src/pages/V12FlowPages.tsx");
-  const publishSection = slicePublishPage(flow);
+  const publishSection =
+    read("client/src/pages/ContentPublishingCenterPage.tsx") +
+    read("client/src/components/publishing/PublishTaskColumnBoard.tsx") +
+    read("client/src/components/publishing/LocalAgentStatusCard.tsx") +
+    read("client/src/components/publishing/LocalAgentPublishStepsPanel.tsx");
 
-  it("publish records render as AI search asset records", () => {
+  it("publish center renders Local Agent task board", () => {
     for (const text of [
-      "资产发布记录",
-      "发布资产概览",
-      "平台分布",
-      "发布记录列表",
-      "下一步发布动作",
-      "查看文章",
-      "retestHintForRecord",
+      "发布中心",
+      "publish-task-columns",
+      "local-agent-status-card",
+      "publish-center-steps-panel",
+      "updateManualPublishRecord",
+      "createManualPublishRecord",
     ]) {
       expect(publishSection).toContain(text);
     }
-    expect(publishSection).toContain("aiMetricCard");
     expect(publishSection).not.toContain("aiDataTable");
+    expect(publishSection).not.toContain("资产发布记录");
   });
 
   it("progress page renders AI search asset progress", () => {
@@ -63,15 +58,15 @@ describe("C4-B publish records and progress value display", () => {
     expect(progress).toContain("aggregateAiTestEvidence");
   });
 
-  it("publish and progress pages do not expose internal field labels", () => {
+  it("publish and progress pages do not expose internal field labels in customer copy", () => {
     const progressForbidden = ["articleId", "recordId", "publicUrl", "rawAnswer", "provider", "mock", "schema", "aiTestResults", "JSON"] as const;
     for (const token of progressForbidden) {
       expect(progress).not.toContain(token);
     }
     for (const token of FORBIDDEN_UI) {
-      expect(publishSection).not.toContain(`"${token}"`);
-      expect(publishSection).not.toContain(`'${token}'`);
       expect(publishSection).not.toContain(`>${token}<`);
     }
+    expect(publishSection).not.toContain("localProfileId");
+    expect(publishSection).not.toContain("agentLog");
   });
 });

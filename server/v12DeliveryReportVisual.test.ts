@@ -35,7 +35,8 @@ describe("delivery report visual hierarchy (C3-A / C3-B)", () => {
       expect(customerView).toContain(text);
     }
     expect(displayLib).toMatch(/join\(" \/ "\)/);
-    expect(flow).toContain("DeliveryReportCustomerView");
+    expect(flow).toContain("DeliveryReportsCenterPage");
+    expect(readProjectFile("client/src/pages/DeliveryReportsCenterPage.tsx")).toContain("delivery-report-page");
     expect(share).toContain("visibilityScore");
     expect(share).toContain("publishedItems");
   });

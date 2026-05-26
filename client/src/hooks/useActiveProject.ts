@@ -27,7 +27,7 @@ export function useActiveProjectId(options?: { syncUrl?: boolean }) {
     if (options?.syncUrl === false) return;
     if (urlProjectId) return;
     if (!storedId) return;
-    if (pathname === "/clients" || pathname === "/onboarding") return;
+    if (pathname === "/clients" || pathname.startsWith("/legacy/")) return;
     const target = buildProjectUrl(pathname, storedId);
     const current = `${pathname}${search}`;
     if (current !== target) setLocation(target);

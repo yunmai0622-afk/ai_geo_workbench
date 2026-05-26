@@ -48,13 +48,11 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath =
-    process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
+  // 固定从项目根 dist/public 提供静态资源，避免 bundled 后 import.meta.dirname 歧义导致读到旧目录
+  const distPath = path.resolve(process.cwd(), "dist", "public");
   if (!fs.existsSync(distPath)) {
     console.error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
+      `Could not find the build directory: ${distPath}, make sure to run pnpm build first`
     );
   }
 

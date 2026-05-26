@@ -9,13 +9,10 @@ describe("weekly content page configurable generation (C4-A)", () => {
   const page = read("client/src/pages/WeeklyContentPage.tsx");
   const routers = read("server/routers.ts");
 
-  it("renders generation count options", () => {
-    for (const text of ["生成数量", "自定义", "生成内容资产", "正在生成", "篇内容", "AI 内容资产生产控制台"]) {
-      expect(page).toContain(text);
-    }
-    expect(page).toContain('["7", "14", "21", "custom"]');
-    expect(page).toContain("${key} 篇");
+  it("still supports per-topic generation API", () => {
+    expect(page).toContain("generateArticleMutation");
     expect(page).toMatch(/generationCount:\s*targetCount/);
+    expect(read("client/src/components/weekly/PlatformContentBoard.tsx")).toContain("weekly-generate-");
   });
 
   it("router accepts generationCount with 1-50 bounds", () => {

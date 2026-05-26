@@ -11,7 +11,7 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     const app = read("client/src/App.tsx");
     expect(app).toContain('path="/workspace"');
     expect(app).toContain("EnterpriseWorkspacePage");
-    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toContain("企业工作台");
+    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toMatch(/企业.*驾驶舱|企业工作台/);
   });
 
   it("无 activeProjectId 显示 ProjectContextEmptyState", () => {
@@ -24,9 +24,9 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("有 projectId 显示当前客户项目与阶段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("BusinessPageProjectHeader");
     expect(page).toContain("workspace-current-stage");
-    expect(page).toContain("当前阶段");
+    expect(read("client/src/components/project/EnterpriseProjectShell.tsx")).toContain("ProjectWorkspaceTopBar");
+    expect(page).toMatch(/当前.*阶段/);
     expect(page).toContain("workspace-blocker-reasons");
   });
 
@@ -58,9 +58,11 @@ describe("GEO-V1-C 企业工作台状态机", () => {
   it("展示进度指标且不暴露工程字段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     expect(page).toContain("workspace-progress-metrics");
-    for (const label of ["建档完成度", "绑定账号数", "内容资产数", "已发布数", "待复测数", "需重写数", "AI 实测数", "GEO 分数"]) {
+    for (const label of ["建档完成度", "内容资产", "已发布", "待复测", "AI 实测", "GEO 评分", "P0MetricTile"]) {
       expect(page).toContain(label);
     }
+    expect(page).toContain("workspace-progress-metrics");
+    expect(page).toContain("COCKPIT_PIPELINE_STEPS");
     expect(page).not.toContain("localAgentId");
     expect(page).not.toContain("rawJson");
     expect(page).not.toContain("profileId");

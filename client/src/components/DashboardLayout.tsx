@@ -27,8 +27,13 @@ import { trpc } from "@/lib/trpc";
 import { BarChart3, Brain, Building2, FileBarChart2, FileText, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { geoP0Surfaces } from "@/lib/geoP0Visual";
+import { cn } from "@/lib/utils";
+import { EnterpriseProjectShell } from "./project/EnterpriseProjectShell";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+
+const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients"]);
 
 type MenuItem = {
   icon: typeof Sparkles;
@@ -40,12 +45,12 @@ type MenuItem = {
 
 const navGroups: { title: string; items: MenuItem[] }[] = [
   {
-    title: "代理商",
+    title: "项目",
     items: [
       {
         icon: Users2,
         label: "客户管理台",
-        desc: "所有客户项目总览",
+        desc: "新建与选择企业项目",
         path: "/clients",
         aliases: ["/clients"],
       },
@@ -54,27 +59,71 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
   {
     title: "增长总览",
     items: [
-      { icon: Sparkles, label: "增长总览", desc: "驾驶舱与下一步", path: "/", aliases: ["/", "/flow"] },
-      { icon: Building2, label: "GEO 建档", desc: "完善当前企业最小资料", path: "/enterprise-profile", aliases: ["/enterprise-profile", "/assets", "/projects"] },
+      {
+        icon: Sparkles,
+        label: "企业工作台",
+        desc: "当前企业 GEO 增长驾驶舱",
+        path: "/workspace",
+        aliases: ["/workspace", "/flow"],
+      },
     ],
   },
   {
-    title: "内容资产",
+    title: "GEO 执行",
     items: [
-      { icon: Brain, label: "AI 内容诊断", desc: "缺口与内容方向", path: "/ai-diagnosis", aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"] },
-      { icon: FileText, label: "内容资产生产", desc: "批量生成搜索资产", path: "/weekly", aliases: ["/weekly", "/content-generation", "/articles"] },
+      {
+        icon: Building2,
+        label: "GEO 建档",
+        desc: "完善企业基础资料",
+        path: "/enterprise-profile",
+        aliases: ["/enterprise-profile", "/assets", "/projects"],
+      },
+      {
+        icon: Brain,
+        label: "AI 现状诊断",
+        desc: "缺口与内容方向",
+        path: "/ai-diagnosis",
+        aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"],
+      },
+      {
+        icon: FileText,
+        label: "平台化内容生产",
+        desc: "生成本轮平台化内容",
+        path: "/weekly",
+        aliases: ["/weekly", "/content-generation", "/articles"],
+      },
     ],
   },
   {
     title: "发布与复测",
     items: [
-      { icon: Send, label: "资产发布记录", desc: "平台链接与复测", path: "/content-publishing", aliases: ["/content-publishing", "/publish", "/inclusion-monitoring", "/monitoring"] },
-      { icon: LineChart, label: "资产进展看板", desc: "漏斗与实测进展", path: "/progress", aliases: ["/progress"] },
+      {
+        icon: Send,
+        label: "发布中心",
+        desc: "登记发布与任务跟进",
+        path: "/content-publishing",
+        aliases: ["/content-publishing", "/publish"],
+      },
+      {
+        icon: LineChart,
+        label: "收录监测",
+        desc: "AI 实测与收录表现",
+        path: "/inclusion-monitoring",
+        aliases: ["/inclusion-monitoring", "/monitoring"],
+      },
     ],
   },
   {
     title: "客户交付",
-    items: [{ icon: FileBarChart2, label: "客户交付报告", desc: "可售卖的交付物", path: "/delivery-reports", aliases: ["/delivery-reports", "/reports"] }],
+    items: [
+      {
+        icon: FileBarChart2,
+        label: "交付报告",
+        desc: "面向客户的交付物",
+        path: "/delivery-reports",
+        aliases: ["/delivery-reports", "/reports"],
+      },
+    ],
   },
 ];
 
@@ -179,6 +228,8 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const pathname = location.split("?")[0] || location;
   const activeMenuItem = allMenuItems.find(item => item.aliases.includes(pathname));
   const isMobile = useIsMobile();
+  const useProjectShell = !PATHS_WITHOUT_PROJECT_SHELL.has(pathname);
+  const isClientsHub = pathname === "/clients";
 
   const navigateWithProject = (path: string) => {
     if (path === "/clients") {
@@ -218,121 +269,138 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
 
   return (
     <>
-      <div className="relative" ref={sidebarRef}>
-        <Sidebar
-          collapsible="icon"
-          className="border-r border-violet-500/10 bg-slate-950/90 text-slate-100 backdrop-blur-xl"
-          disableTransition={isResizing}
-        >
-          <SidebarHeader className="h-[5.5rem] justify-center border-b border-white/10 bg-gradient-to-r from-cyan-500/8 via-transparent to-violet-500/10">
-            <div className="flex w-full items-center gap-3 px-2 transition-all">
-              <button
-                onClick={toggleSidebar}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/20 to-violet-600/20 text-cyan-200 shadow-[0_0_20px_rgba(56,189,248,0.15)] transition hover:border-cyan-300/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
-                aria-label="Toggle navigation"
-              >
-                <PanelLeft className="h-4 w-4" />
-              </button>
-              {!isCollapsed ? (
-                <div className="min-w-0">
-                  <span className="block truncate text-sm font-bold tracking-tight text-white">AI 搜索增长系统</span>
-                  <span className="block truncate text-[11px] leading-snug text-slate-400">让品牌被 AI 看见、理解和推荐</span>
-                </div>
-              ) : null}
-            </div>
-          </SidebarHeader>
-
-          <SidebarContent className="gap-0 bg-transparent">
-            {navGroups.map(group => (
-              <div key={group.title} className="px-2 py-2">
-                {!isCollapsed ? <p className="ai-sidebar-group-label">{group.title}</p> : null}
-                <SidebarMenu className="px-0 py-0">
-                  {group.items.map(item => {
-                    const isActive = item.aliases.includes(pathname);
-                    return (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          onClick={() => navigateWithProject(item.path)}
-                          tooltip={item.label}
-                          className={`mb-1 h-auto min-h-[3.25rem] rounded-xl border border-transparent py-2.5 text-slate-400 transition-all hover:border-violet-400/15 hover:bg-white/[0.04] hover:text-cyan-50 ${
-                            isActive ? "ai-sidebar-active-bar border-cyan-400/25 bg-gradient-to-r from-cyan-500/12 to-violet-500/10 text-cyan-50" : ""
-                          }`}
-                        >
-                          <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-cyan-300" : "text-slate-500"}`} />
-                          <span className="flex min-w-0 flex-col items-start gap-0.5 leading-tight">
-                            <span className="text-sm font-medium">{item.label}</span>
-                            <span className="text-[10px] font-normal text-slate-500">{item.desc}</span>
-                          </span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </div>
-            ))}
-          </SidebarContent>
-
-          <SidebarFooter className="border-t border-white/10 p-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2 text-left transition-colors hover:bg-cyan-400/10 group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
-                  <Avatar className="h-9 w-9 shrink-0 border border-cyan-300/20">
-                    <AvatarFallback className="bg-cyan-400/10 text-xs font-medium text-cyan-100">
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                    <p className="truncate text-sm font-medium leading-none text-white">{user?.name || "-"}</p>
-                    <p className="mt-1.5 truncate text-xs text-slate-500">{user?.email || "-"}</p>
-                  </div>
+      {!isClientsHub ? (
+        <div className="relative" ref={sidebarRef}>
+          <Sidebar
+            collapsible="icon"
+            className={cn("border-r", geoP0Surfaces.sidebar)}
+            disableTransition={isResizing}
+          >
+            <SidebarHeader className="h-16 justify-center border-b border-slate-200 bg-white">
+              <div className="flex w-full items-center gap-3 px-2 transition-all">
+                <button
+                  onClick={toggleSidebar}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  aria-label="Toggle navigation"
+                >
+                  <PanelLeft className="h-4 w-4" />
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>退出登录</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarFooter>
-        </Sidebar>
-        <div
-          className={`absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-cyan-400/25 ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => { if (!isCollapsed) setIsResizing(true); }}
-          style={{ zIndex: 50 }}
-        />
-      </div>
+                {!isCollapsed ? (
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm font-bold text-slate-900">GEO 增长工作台</span>
+                    <span className="block truncate text-[11px] text-slate-500">AI 搜索增长系统</span>
+                  </div>
+                ) : null}
+              </div>
+            </SidebarHeader>
 
-      <SidebarInset>
-        {isMobile && (
-          <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/10 bg-slate-950/95 px-2 text-slate-100 backdrop-blur supports-[backdrop-filter]:backdrop-blur">
+            <SidebarContent className="gap-0 bg-white">
+              {navGroups.map(group => (
+                <div key={group.title} className="px-2 py-2">
+                  {!isCollapsed ? (
+                    <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      {group.title}
+                    </p>
+                  ) : null}
+                  <SidebarMenu className="px-0 py-0">
+                    {group.items.map(item => {
+                      const isActive = item.aliases.includes(pathname);
+                      return (
+                        <SidebarMenuItem key={item.path}>
+                          <SidebarMenuButton
+                            isActive={isActive}
+                            onClick={() => navigateWithProject(item.path)}
+                            tooltip={item.label}
+                            className={cn(
+                              "mb-0.5 h-10 rounded-lg border border-transparent py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                              isActive &&
+                                "border-blue-100 bg-blue-50 font-medium text-blue-800 shadow-none before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-blue-600 before:content-['']",
+                            )}
+                          >
+                            <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-blue-600" : "text-slate-400")} />
+                            {!isCollapsed ? (
+                              <span className="truncate text-sm">{item.label}</span>
+                            ) : null}
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </div>
+              ))}
+            </SidebarContent>
+
+            <SidebarFooter className="border-t border-slate-200 bg-white p-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-2 py-2 text-left hover:bg-slate-50 group-data-[collapsible=icon]:justify-center">
+                    <Avatar className="h-8 w-8 border border-slate-200">
+                      <AvatarFallback className="bg-blue-50 text-xs font-medium text-blue-700">
+                        {user?.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+                      <p className="truncate text-sm font-medium text-slate-800">{user?.name || "-"}</p>
+                      <p className="truncate text-xs text-slate-500">{user?.email || "-"}</p>
+                    </div>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>退出登录</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarFooter>
+          </Sidebar>
+          <div
+            className={`absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-200 ${isCollapsed ? "hidden" : ""}`}
+            onMouseDown={() => {
+              if (!isCollapsed) setIsResizing(true);
+            }}
+            style={{ zIndex: 50 }}
+          />
+        </div>
+      ) : null}
+
+      <SidebarInset className={isClientsHub ? "w-full max-w-none" : undefined}>
+        {isMobile && !isClientsHub ? (
+          <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-2">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-slate-900" />
-              <span className="tracking-tight text-white">{activeMenuItem?.label ?? "菜单"}</span>
+              <SidebarTrigger className="h-9 w-9" />
+              <span className="text-slate-900">{activeMenuItem?.label ?? "菜单"}</span>
             </div>
           </div>
-        )}
-        <div
-          className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-slate-950/70 px-4 py-2.5 text-sm text-slate-300 md:px-6"
-          data-testid="current-project-bar"
-        >
-          <span data-testid="current-project-label">
-            当前客户：{projectName ?? "未选择"}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/10"
-            data-testid="switch-client-button"
-            onClick={() => setLocation("/clients")}
+        ) : null}
+        {!useProjectShell && !isClientsHub ? (
+          <div
+            className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600 md:px-6"
+            data-testid="current-project-bar"
           >
-            切换客户
-          </Button>
-        </div>
-        <main className="ai-app-canvas geo-grid-bg notranslate min-h-screen flex-1 overflow-x-hidden p-4 text-slate-100 md:p-6 lg:p-8" translate="no">
-          {children}
+            <span data-testid="current-project-label">当前客户：{projectName ?? "未选择"}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="switch-client-button"
+              onClick={() => setLocation("/clients")}
+            >
+              切换客户
+            </Button>
+          </div>
+        ) : null}
+        <main
+          className={cn(
+            "notranslate min-h-screen flex-1 overflow-x-hidden",
+            isClientsHub
+              ? cn("mx-auto w-full max-w-[1400px]", geoP0Surfaces.pageClients, "p-4 md:p-6 lg:p-8")
+              : cn(geoP0Surfaces.pageProject, "p-4 md:p-6 lg:p-8"),
+          )}
+          translate="no"
+          data-testid={isClientsHub ? "clients-hub-main" : "project-main"}
+        >
+          {useProjectShell ? <EnterpriseProjectShell>{children}</EnterpriseProjectShell> : children}
         </main>
       </SidebarInset>
     </>

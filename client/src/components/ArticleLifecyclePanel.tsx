@@ -70,7 +70,6 @@ function LifecycleTimelineBody({
           {ev.message ? <p className="mt-1 text-xs text-slate-400">{ev.message}</p> : null}
           <p className="mt-1 text-[10px] text-slate-600">
             来源：{ev.source}
-            {ev.taskId != null ? ` · 任务 #${ev.taskId}` : ""}
             {ev.platform ? ` · ${ev.platform}` : ""}
           </p>
         </li>
