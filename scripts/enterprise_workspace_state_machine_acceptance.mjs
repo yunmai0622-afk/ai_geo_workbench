@@ -43,11 +43,11 @@ if (workspace.includes("ProjectContextEmptyState") && workspace.includes("worksp
 const sm = read("shared/workspaceStateMachine.ts");
 const stageLabels = [
   "待绑定发布环境",
-  "待完成 GEO 建档",
+  "待完成品牌建档",
   "待 AI 现状诊断",
   "待生成内容",
   "待发布",
-  "待复测",
+  "待收录监测",
   "待优化",
   "可生成报告",
 ];
