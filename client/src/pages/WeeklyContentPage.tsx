@@ -1135,7 +1135,7 @@ export default function WeeklyContentPage() {
         <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm" data-testid="local-agent-publish-hint">
           <p className="font-medium text-gray-800">本地发布客户端</p>
           <p className="mt-1 text-xs text-gray-500">
-            发布任务将发送至本机 GEO 本地发布客户端。请保持客户端运行并开启轮询；任务状态为「等待本地客户端处理」时表示已入队。
+            发布任务将发送至本机 GEO 本地发布客户端。请保持客户端运行并接收发布任务；任务状态为「等待本地客户端处理」时表示已入队。
           </p>
           {localAgentOnline === false ? (
             <p className="mt-2 text-xs text-amber-600">当前未检测到客户端在线，发布将被阻断。</p>
