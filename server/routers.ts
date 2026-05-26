@@ -90,6 +90,11 @@ import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import { GEO_ENHANCEMENT_GOAL_OPTIONS, PUBLISH_PLATFORM_IDS } from "@shared/platformContentRules";
+import { toPlatformContentGenerationError } from "@shared/platformContentGenerationErrors";
+import {
+  assertEnterpriseProfileForPlatformGeneration,
+  assertPlatformContentStrategyParams,
+} from "./platformContentGenerationPreconditions";
 import { mergeAiTestResultsByStage, normalizeAiTestResult } from "@shared/aiTestEvidence";
 import { buildAiMentionSuggestion, runAiMentionCheck } from "./geoAiMentionCheck";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
@@ -2207,6 +2212,8 @@ const geoRouter = router({
                 targetAiPlatforms: input.targetAiPlatforms as ("豆包" | "Kimi" | "DeepSeek")[],
               }
             : undefined;
+        assertPlatformContentStrategyParams(platformStrategy);
+        assertEnterpriseProfileForPlatformGeneration(project, assetLibrary, platformStrategy);
         draft = await generateGeoArticleDraft({
           project,
           topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
@@ -2217,8 +2224,11 @@ const geoRouter = router({
           platformStrategy,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "GEO 文章生成失败";
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+        const raw = error instanceof Error ? error.message : "GEO 文章生成失败";
+        const message = toPlatformContentGenerationError(raw);
+        const isClientError =
+          /企业资料不足|请选择目标|不存在或无访问权限|文章选题不存在|必须绑定优化任务|请先完成/.test(message);
+        throw new TRPCError({ code: isClientError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message });
       }
       const inserted = await db.insert(geoArticles).values(draft).$returningId();
       const articleId = inserted[0]?.id ?? 0;
