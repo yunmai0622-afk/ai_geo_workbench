@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import AdmZip from "adm-zip";
 import { buildCustomExtensionZip } from "./extensionDownload";
+import { hasLegacyChromeExtensionSource } from "./legacyExtensionTestGuard";
 
-describe("buildCustomExtensionZip", () => {
+const describeLegacy = hasLegacyChromeExtensionSource() ? describe : describe.skip;
+
+describeLegacy("buildCustomExtensionZip", () => {
   it("injects auto config into background.js", () => {
     const buf = buildCustomExtensionZip("https://example.com", "testapikey12345678");
     const zip = new AdmZip(buf);

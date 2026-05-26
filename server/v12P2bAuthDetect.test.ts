@@ -1,40 +1,73 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { hasLegacyChromeExtensionSource } from "./legacyExtensionTestGuard";
 
 const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
+const describeLegacy = hasLegacyChromeExtensionSource() ? describe : describe.skip;
+
 describe("P2-B one-click auth account detect", () => {
-  it("manifest contains authBridge content script", () => {
-    const manifest = read("content-growth-publish-extension/manifest.json");
-    expect(manifest).toContain("content-scripts/authBridge.js");
-    expect(manifest).toContain("http://localhost/*");
-    expect(manifest).toContain("https://*.manus.space/*");
-    expect(manifest).toContain("https://geo.jixingzhijian.com/*");
-  });
+  describeLegacy("legacy chrome extension", () => {
+    it("manifest contains authBridge content script", () => {
+      const manifest = read("content-growth-publish-extension/manifest.json");
+      expect(manifest).toContain("content-scripts/authBridge.js");
+      expect(manifest).toContain("http://localhost/*");
+      expect(manifest).toContain("https://*.manus.space/*");
+      expect(manifest).toContain("https://geo.jixingzhijian.com/*");
+    });
 
-  it("authBridge file exists", () => {
-    expect(existsSync(resolve(root, "content-growth-publish-extension/content-scripts/authBridge.js"))).toBe(true);
-    const bridge = read("content-growth-publish-extension/content-scripts/authBridge.js");
-    const manifest = read("content-growth-publish-extension/manifest.json");
-    expect(bridge).toContain("GEO_START_AUTH");
-    expect(bridge).toContain("GEO_AUTH_RESULT");
-    expect(bridge).toContain("[authBridge] injected");
-    expect(bridge).toMatch(/\[\^\/\]\+\\.manus\\.space/);
-    expect(bridge).toContain("window.location.origin");
-    expect(manifest).toMatch(/"version": "1\.2\.4"/);
-    expect(manifest).toContain("https://*.zhihu.com/*");
-  });
+    it("authBridge file exists", () => {
+      const bridge = read("content-growth-publish-extension/content-scripts/authBridge.js");
+      const manifest = read("content-growth-publish-extension/manifest.json");
+      expect(bridge).toContain("GEO_START_AUTH");
+      expect(bridge).toContain("GEO_AUTH_RESULT");
+      expect(bridge).toContain("[authBridge] injected");
+      expect(bridge).toMatch(/\[\^\/\]\+\\.manus\\.space/);
+      expect(bridge).toContain("window.location.origin");
+      expect(manifest).toMatch(/"version": "1\.2\.4"/);
+      expect(manifest).toContain("https://*.zhihu.com/*");
+    });
 
-  it("background contains startAuthDetect handler", () => {
-    const bg = read("content-growth-publish-extension/background.js");
-    expect(bg).toContain('message.action === "startAuthDetect"');
-    expect(bg).toContain("handleStartAuthDetect");
-    expect(bg).toContain("AUTH_HOME_URLS");
-    expect(bg).toContain("authDetectResult");
-    expect(bg).toContain("isWebAppUrl");
-    expect(bg).toMatch(/\[\^\/\]\+\\.manus\\.space/);
+    it("background contains startAuthDetect handler", () => {
+      const bg = read("content-growth-publish-extension/background.js");
+      expect(bg).toContain('message.action === "startAuthDetect"');
+      expect(bg).toContain("handleStartAuthDetect");
+      expect(bg).toContain("AUTH_HOME_URLS");
+      expect(bg).toContain("authDetectResult");
+      expect(bg).toContain("isWebAppUrl");
+      expect(bg).toMatch(/\[\^\/\]\+\\.manus\\.space/);
+    });
+
+    it("legacy browser-extension.zip not exposed in main UI", () => {
+      const ui = [
+        read("client/src/pages/WeeklyContentPage.tsx"),
+        read("client/src/components/LocalAgentDownloadCard.tsx"),
+        read("client/src/components/PlatformAccountBindingSection.tsx"),
+      ].join("\n");
+      expect(ui).not.toContain("browser-extension");
+      expect(read("content-growth-publish-extension/README_LEGACY.md")).toContain("Local Agent");
+    });
+
+    it("accountDetect still supports four binding platforms", () => {
+      const detect = read("content-growth-publish-extension/content-scripts/accountDetect.js");
+      for (const p of ["zhihu", "baijiahao", "toutiao", "sohu"]) {
+        expect(detect).toContain(`case "${p}"`);
+      }
+      expect(detect).toContain("detectedAccountName");
+      expect(detect).toContain("[accountDetect] detectAccount request");
+      expect(detect).toContain('console.log("[accountDetect] candidate"');
+      expect(detect).toContain("detect zhihu start");
+      expect(detect).toContain("img[alt]");
+      expect(detect).toContain('a[href*="/people/"]');
+      expect(detect).toContain("success: true");
+    });
+
+    it("background logs 授权助手 startAuthDetect", () => {
+      const bg = read("content-growth-publish-extension/background.js");
+      expect(bg).toContain("[授权助手] startAuthDetect");
+    });
   });
 
   it("WeeklyContentPage uses local agent publish path not extension UI", () => {
@@ -68,35 +101,5 @@ describe("P2-B one-click auth account detect", () => {
     expect(router).not.toContain("startAuthDetect");
     const schema = read("drizzle/schema.ts");
     expect(schema).not.toContain("authBridge");
-  });
-
-  it("legacy browser-extension.zip not exposed in main UI", () => {
-    const ui = [
-      read("client/src/pages/WeeklyContentPage.tsx"),
-      read("client/src/components/LocalAgentDownloadCard.tsx"),
-      read("client/src/components/PlatformAccountBindingSection.tsx"),
-    ].join("\n");
-    expect(ui).not.toContain("browser-extension");
-    expect(existsSync(resolve(root, "content-growth-publish-extension/README_LEGACY.md"))).toBe(true);
-  });
-
-  it("accountDetect still supports four binding platforms", () => {
-    const detect = read("content-growth-publish-extension/content-scripts/accountDetect.js");
-    for (const p of ["zhihu", "baijiahao", "toutiao", "sohu"]) {
-      expect(detect).toContain(`case "${p}"`);
-    }
-    expect(detect).toContain("detectedAccountName");
-    expect(detect).toContain("[accountDetect] detectAccount request");
-    expect(detect).toContain('console.log("[accountDetect] candidate"');
-    expect(detect).toContain("detect zhihu start");
-    expect(detect).toContain("img[alt]");
-    expect(detect).toContain('a[href*="/people/"]');
-    expect(detect).toContain("detectedAccountName");
-    expect(detect).toContain("success: true");
-  });
-
-  it("background logs 授权助手 startAuthDetect", () => {
-    const bg = read("content-growth-publish-extension/background.js");
-    expect(bg).toContain("[授权助手] startAuthDetect");
   });
 });

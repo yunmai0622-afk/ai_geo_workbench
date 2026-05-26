@@ -35,13 +35,12 @@ vi.mock("@/lib/trpc", () => ({
 import GeoFlowWizardPage from "../client/src/pages/GeoFlowWizard";
 
 describe("工作台 Flow 页（与首页同组件）", () => {
-  const renderHtml = () => renderToStaticMarkup(React.createElement(GeoFlowWizardPage));
   const readProjectFile = (relativePath: string) => readFileSync(resolve(__dirname, "..", relativePath), "utf-8");
 
   it("将 /flow 注册为受保护路由，确保客户试跑向导可访问", () => {
     const appSource = readProjectFile("client/src/App.tsx");
-    expect(appSource).toContain('import GeoFlowWizardPage from "./pages/GeoFlowWizard";');
-    expect(appSource).toContain('<Route path="/flow" component={GeoFlowWizardPage} />');
+    expect(appSource).toContain('path="/flow"');
+    expect(appSource).toMatch(/path="\/flow"[\s\S]*Redirect to="\/workspace"/);
   });
 
   it("/flow 页面展示增长总览驾驶舱", () => {
@@ -50,7 +49,8 @@ describe("工作台 Flow 页（与首页同组件）", () => {
     expect(source).toContain("核心状态");
     expect(source).toContain("生成内容资产");
     expect(source).toContain("品牌提及率");
-    expect(source).toContain("当前项目");
+    expect(source).toContain("BusinessPageProjectHeader");
+    expect(source).toContain("selectedProject");
   });
 
   it("展示行动卡与最近进展区块", () => {

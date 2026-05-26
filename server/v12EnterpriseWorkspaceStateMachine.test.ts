@@ -11,7 +11,7 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     const app = read("client/src/App.tsx");
     expect(app).toContain('path="/workspace"');
     expect(app).toContain("EnterpriseWorkspacePage");
-    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toMatch(/企业.*驾驶舱|企业工作台/);
+    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toContain("项目工作台");
   });
 
   it("无 activeProjectId 显示 ProjectContextEmptyState", () => {
@@ -24,25 +24,25 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("有 projectId 显示当前客户项目与阶段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("workspace-current-stage");
-    expect(read("client/src/components/project/EnterpriseProjectShell.tsx")).toContain("ProjectWorkspaceTopBar");
-    expect(page).toMatch(/当前.*阶段/);
-    expect(page).toContain("workspace-blocker-reasons");
+    expect(page).toContain("workspace-header-card");
+    expect(page).toContain("workspace-enterprise-name");
+    expect(page).toContain("selectedProject?.enterpriseName");
+    expect(page).toContain("CUSTOMER_STAGE_LABELS");
   });
 
   it("状态机阶段文案齐全", () => {
-    const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
+    const sm = read("shared/workspaceStateMachine.ts");
     for (const label of [
       "待绑定发布环境",
-      "待完成 GEO 建档",
+      "待完成品牌建档",
       "待 AI 现状诊断",
       "待生成内容",
       "待发布",
-      "待复测",
+      "待收录监测",
       "待优化",
       "可生成报告",
     ]) {
-      expect(page + read("shared/workspaceStateMachine.ts")).toContain(label);
+      expect(sm).toContain(label);
     }
     expect(WORKSPACE_STAGES.length).toBe(8);
   });
@@ -57,12 +57,11 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("展示进度指标且不暴露工程字段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("workspace-progress-metrics");
-    for (const label of ["建档完成度", "内容资产", "已发布", "待复测", "AI 实测", "GEO 评分", "P0MetricTile"]) {
+    expect(page).toContain("workspace-header-card");
+    for (const label of ["品牌提及率", "内容资产", "GEO 分", "发布记录"]) {
       expect(page).toContain(label);
     }
-    expect(page).toContain("workspace-progress-metrics");
-    expect(page).toContain("COCKPIT_PIPELINE_STEPS");
+    expect(page).toContain("EIGHT_STEP_PIPELINE");
     expect(page).not.toContain("localAgentId");
     expect(page).not.toContain("rawJson");
     expect(page).not.toContain("profileId");

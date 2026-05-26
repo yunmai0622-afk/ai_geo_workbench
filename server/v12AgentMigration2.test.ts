@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { hasLegacyChromeExtensionSource } from "./legacyExtensionTestGuard";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
@@ -30,10 +31,12 @@ describe("Agent-Migration-2 local agent publish main path", () => {
   });
 
   it("extension package exists but weekly does not import extension path", () => {
-    expect(read("content-growth-publish-extension/manifest.json")).toContain("manifest_version");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weekly).not.toContain("content-growth-publish-extension");
     expect(weekly).not.toContain("verifyTaskAccountBeforePublish");
+    if (hasLegacyChromeExtensionSource()) {
+      expect(read("content-growth-publish-extension/manifest.json")).toContain("manifest_version");
+    }
   });
 
   it("C7-A C8-A publish guards preserved", () => {

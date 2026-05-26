@@ -11,7 +11,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
-import GeoFlowWizardPage from "./pages/GeoFlowWizard";
 import AssetCenterPage from "./pages/AssetCenter";
 import DemoGeoPage from "./pages/DemoGeo";
 import OnboardingPage from "./pages/OnboardingPage";
@@ -43,7 +42,9 @@ function PrivateRoutes() {
         <Route path="/home">
           <Redirect to="/clients" />
         </Route>
-        <Route path="/flow" component={GeoFlowWizardPage} />
+        <Route path="/flow">
+          <Redirect to="/workspace" />
+        </Route>
         <Route path="/enterprise-profile" component={AssetCenterPage} />
         <Route path="/asset-center">
           <Redirect to="/enterprise-profile#platform-accounts" />

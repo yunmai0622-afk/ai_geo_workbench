@@ -13,9 +13,10 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("C7-A article asset editor and template cover", () => {
   it("generated article renders cover preview on weekly page", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
+    const editor = read("client/src/components/ArticleAssetEditorSheet.tsx");
     expect(weekly).toContain("articleCoverPreviewSrc");
-    expect(weekly).toContain("aspect-video");
-    expect(weekly).toContain("待生成封面");
+    expect(editor).toContain("aspect-video");
+    expect(editor).toContain("待生成封面");
   });
 
   it("cover template renders chinese title without mojibake", () => {

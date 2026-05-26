@@ -13,7 +13,7 @@ describe("C3-D global AI product UI", () => {
     expect(css).toContain("ai-glass-card");
     expect(css).toContain("ai-metric-card");
     expect(layout).toContain("AI 搜索增长系统");
-    expect(layout).toContain("ai-app-canvas");
+    expect(layout).toContain("geoP0Surfaces.pageProject");
   });
 
   it("uses AiPageHeader on primary pages", () => {
@@ -25,9 +25,8 @@ describe("C3-D global AI product UI", () => {
     ].join("\n");
     for (const text of [
       "AI 搜索增长总览",
-      "AI 内容诊断",
-      "内容资产生产",
-      "资产发布记录",
+      "内容诊断",
+      "平台化内容资产",
       "资产进展看板",
       "客户交付报告",
     ]) {
@@ -44,10 +43,9 @@ describe("C3-D global AI product UI", () => {
   });
 
   it("C3-D-Fix weakens internal delivery zone on report page", () => {
-    const flow = read("client/src/pages/V12FlowPages.tsx");
-    expect(flow).toContain("内部交付工作区");
-    expect(flow).toContain('variant="ai"');
-    expect(flow).not.toContain("bg-slate-900");
-    expect(flow).not.toContain("bg-cyan-400 text-slate-950");
+    const report = read("client/src/pages/DeliveryReportsCenterPage.tsx");
+    expect(report).toContain("内部交付工作区");
+    expect(report).not.toContain("bg-slate-900");
+    expect(report).not.toContain("bg-cyan-400 text-slate-950");
   });
 });

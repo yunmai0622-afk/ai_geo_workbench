@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readEnterpriseProfileUi } from "./enterpriseProfileTestBlob";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -7,36 +8,38 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("C6-B enterprise profile flow order", () => {
   const page = read("client/src/pages/AssetCenter.tsx");
-  const upload = read("client/src/components/enterpriseProfile/ProfileUploadAssistSection.tsx");
+  const profileUi = readEnterpriseProfileUi();
 
   it("shows create project first when no projects", () => {
-    expect(page).toContain("先新建第一个企业项目");
-    expect(page).toContain("hasProjects");
-    expect(page).toContain("hasSelectedProject");
+    expect(page).toContain("ProjectContextEmptyState");
+    expect(page).toContain("enterprise-profile-empty");
+    expect(page).toMatch(/if \(!currentProjectId && !projectsLoading\)/);
+    expect(page).toContain("选择或新建客户项目");
   });
 
   it("hides onboarding blocks without selected project", () => {
-    expect(page).toContain("{hasSelectedProject ? (");
-    expect(page).toMatch(/hasSelectedProject \?[\s\S]*FiveMinuteBasicOnboardingSection/);
+    expect(page).toMatch(/if \(!currentProjectId && !projectsLoading\)/);
+    expect(page).toMatch(/currentProjectId \? \(/);
+    expect(profileUi).toContain("FiveMinuteBasicOnboardingSection");
   });
 
   it("places new project as secondary when projects exist", () => {
-    expect(page).toContain("新增企业项目");
-    expect(page).toContain("<details");
+    expect(read("client/src/pages/ClientDashboardPage.tsx")).toContain("新建企业项目");
+    expect(read("client/src/pages/OnboardingPage.tsx")).toContain("已有客户项目");
   });
 
-  it("shows publish env then basic onboarding when project selected", () => {
-    expect(upload).toContain("资料上传与 AI 辅助解析");
-    const publishBlock = page.indexOf("<EnterprisePublishEnvironmentSection");
+  it("shows publish env hint then basic onboarding when project selected", () => {
+    expect(profileUi).toContain("ProfilePublishEnvLightHint");
     const basicBlock = page.indexOf("<FiveMinuteBasicOnboardingSection");
+    const hintBlock = page.indexOf("<ProfilePublishEnvLightHint");
     const uploadBlock = page.indexOf("<ProfileUploadAssistSection");
-    expect(publishBlock).toBeGreaterThan(-1);
     expect(basicBlock).toBeGreaterThan(-1);
-    expect(publishBlock).toBeLessThan(basicBlock);
+    expect(hintBlock).toBeGreaterThan(-1);
+    expect(basicBlock).toBeLessThan(hintBlock);
     expect(basicBlock).toBeLessThan(uploadBlock);
   });
 
   it("auto switches after create with hint message", () => {
-    expect(page).toContain("企业已创建，现在可以上传资料进行 AI 建档");
+    expect(page).toContain("品牌资产建档已保存");
   });
 });

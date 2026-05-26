@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readEnterpriseProfileUi } from "./enterpriseProfileTestBlob";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -7,9 +8,9 @@ const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRo
 
 describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
   const asset = readProjectFile("client/src/pages/AssetCenter.tsx");
+  const profileUi = readEnterpriseProfileUi();
   const publishEnv = readProjectFile("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx");
   const caseLib = readProjectFile("client/src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx");
-  const geoPreview = readProjectFile("client/src/components/enterpriseProfile/GeoMaterialPreviewSection.tsx");
   const binding =
     readProjectFile("client/src/components/PlatformAccountBindingSection.tsx") +
     readProjectFile("client/src/components/platformAccounts/PlatformAccountMatrix.tsx") +
@@ -18,12 +19,12 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
   const downloadCard = readProjectFile("client/src/components/LocalAgentDownloadCard.tsx");
 
   it("页面标题与首屏 5 分钟建档", () => {
-    expect(asset).toContain("5 分钟 GEO 建档");
+    expect(profileUi).toContain("品牌资产建档");
     expect(asset).toContain("ProfilePublishEnvLightHint");
-    expect(asset.indexOf("<FiveMinuteBasicOnboardingSection")).toBeLessThan(
-      asset.indexOf("<EnterprisePublishEnvironmentSection"),
+    expect(asset.indexOf("<FiveMinuteBasicOnboardingSection")).toBeGreaterThan(-1);
+    expect(publishEnv.indexOf("LocalAgentDownloadCard")).toBeLessThan(
+      publishEnv.indexOf("PlatformAccountBindingSection"),
     );
-    expect(publishEnv.indexOf("LocalAgentDownloadCard")).toBeLessThan(publishEnv.indexOf("PlatformAccountBindingSection"));
   });
 
   it("本地客户端下载与账号绑定文案", () => {
@@ -48,7 +49,7 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
     ]) {
       expect(basic).toContain(text);
     }
-    expect(asset).toContain("保存并开始 AI 诊断");
+    expect(asset).toContain("保存并开始 AI 实测诊断");
     expect(asset).not.toContain("保存企业基础信息");
   });
 
@@ -62,7 +63,7 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
 
   it("AI 理解预览", () => {
     expect(readProjectFile("client/src/components/enterpriseProfile/ProfileAiUnderstandingPreview.tsx")).toContain(
-      "AI 理解预览",
+      "AI 当前会这样理解你的企业",
     );
     expect(asset).not.toContain("GeoMaterialPreviewSection");
   });

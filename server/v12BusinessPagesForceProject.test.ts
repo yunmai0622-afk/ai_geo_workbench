@@ -33,7 +33,7 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(weekly).not.toContain("projects[0]");
     expect(weekly).not.toContain("BusinessPageProjectHeader");
     expect(read("client/src/components/DashboardLayout.tsx")).toContain("EnterpriseProjectShell");
-    expect(weekly).toContain("平台化内容生产");
+    expect(weekly).toContain("平台化内容资产");
     expect(weekly).toContain("生成本轮平台化内容");
     expect(weekly).not.toContain("生成内容资产");
     expect(weekly).not.toMatch(/批量生成/);
@@ -46,7 +46,7 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
   it("AI 诊断页只使用 activeProjectId", () => {
     const v12 = read("client/src/pages/V12FlowPages.tsx");
     expect(v12).toContain("AiDiagnosisFlowPage");
-    expect(v12).toContain("检测当前企业在豆包、Kimi、DeepSeek");
+    expect(v12).toContain("检测企业在豆包、Kimi、DeepSeek");
     expect(v12).toContain('buildProjectUrl("/weekly"');
     expect(v12).not.toContain("diagnosis-project-header");
     assertNoProjectDropdown(v12, "v12");
@@ -54,14 +54,17 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
 
   it("发布中心 / 收录监测 / 交付报告只服务当前 project", () => {
     const v12 = read("client/src/pages/V12FlowPages.tsx");
-    const publish = read("client/src/pages/ContentPublishingCenterPage.tsx");
+    const publish =
+      read("client/src/pages/ContentPublishingCenterPage.tsx") +
+      read("client/src/components/publishing/LocalAgentStatusCard.tsx") +
+      read("client/src/components/publishing/PublishTaskColumnBoard.tsx");
     expect(v12).toContain("ContentPublishingFlowPage");
     expect(v12).toContain("InclusionMonitoringFlowPage");
     expect(v12).toContain("DeliveryReportsFlowPage");
-    expect(publish).toContain("发布中心");
-    expect(publish).toContain("Local Agent 本地发布任务中心");
+    expect(publish).toContain("平台适配发布");
+    expect(publish).toContain("local-agent-status-card");
     expect(publish).toContain("publish-retest-rewrite-fold");
-    expect(v12).toContain("跟踪当前企业内容的收录与 AI 实测结果");
+    expect(v12).toContain("跟踪已发布内容的收录状态与 AI 搜索实测结果");
     const report =
       read("client/src/pages/DeliveryReportsCenterPage.tsx") +
       read("client/src/lib/deliveryReportProductDisplay.ts");

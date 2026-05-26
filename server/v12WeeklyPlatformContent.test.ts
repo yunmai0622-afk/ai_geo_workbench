@@ -11,7 +11,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
 
   it("首屏平台化内容生产结构", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("平台化内容生产");
+    expect(weekly).toContain("平台化内容资产");
     expect(weekly).not.toContain("当前企业：");
     expect(weekly).toContain("weekly-round-goal");
     expect(weekly).toContain("weekly-strategy-source");
@@ -21,8 +21,8 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
 
   it("无诊断空状态", () => {
     expect(weekly).toContain("weekly-no-diagnosis");
-    expect(weekly).toContain("暂无 AI 诊断结果");
-    expect(weekly).toContain("去 AI 现状诊断");
+    expect(weekly).toContain("暂无 AI 实测诊断结果");
+    expect(weekly).toContain("去 AI 实测诊断");
   });
 
   it("平台看板与禁止一稿多发", () => {

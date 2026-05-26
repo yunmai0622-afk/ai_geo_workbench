@@ -4,9 +4,6 @@ import { Download, Loader2, RefreshCw, CheckCircle2, AlertCircle, ChevronDown } 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-/** 相对路径：本地 / 线上部署均自动适配当前 origin */
-const MAC_DOWNLOAD_ZIP = "/downloads/geo-local-agent-mac.zip";
-
 type DownloadManifest = {
   macDmgUrl?: string | null;
   macZipUrl?: string | null;
@@ -15,17 +12,28 @@ type DownloadManifest = {
 };
 
 function isValidDownloadUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
+  if (!url?.trim()) return false;
   if (url.startsWith("http://") || url.startsWith("https://")) return true;
   return url.startsWith("/downloads/");
+}
+
+/** Mac zip：相对路径或绝对 HTTPS URL，禁止把 dmg/html 404 当 zip */
+export function isMacZipDownloadUrl(url: string | null | undefined): url is string {
+  if (!isValidDownloadUrl(url)) return false;
+  return /\.zip(\?|$)/i.test(url);
+}
+
+function isMacDmgDownloadUrl(url: string | null | undefined): url is string {
+  if (!isValidDownloadUrl(url)) return false;
+  return /\.dmg(\?|$)/i.test(url);
 }
 
 /** 优先 zip：支持相对路径或外部绝对 URL */
 function pickMacHref(manifest: DownloadManifest | null): string | null {
   const zip = manifest?.macZipUrl;
+  if (isMacZipDownloadUrl(zip)) return zip;
   const dmg = manifest?.macDmgUrl;
-  if (isValidDownloadUrl(zip)) return zip;
-  if (isValidDownloadUrl(dmg)) return dmg;
+  if (isMacDmgDownloadUrl(dmg)) return dmg;
   return null;
 }
 
@@ -47,7 +55,7 @@ export function LocalAgentDownloadCard() {
   const [checking, setChecking] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
-  const [macHref, setMacHref] = useState<string | null>(MAC_DOWNLOAD_ZIP);
+  const [macHref, setMacHref] = useState<string | null>(null);
 
   const refreshHealth = useCallback(async () => {
     setChecking(true);
@@ -67,11 +75,11 @@ export function LocalAgentDownloadCard() {
       .then(r => (r.ok ? r.json() : null))
       .then((m: DownloadManifest | null) => {
         setManifest(m);
-        setMacHref(pickMacHref(m) ?? MAC_DOWNLOAD_ZIP);
+        setMacHref(pickMacHref(m));
       })
       .catch(() => {
         setManifest(null);
-        setMacHref(MAC_DOWNLOAD_ZIP);
+        setMacHref(null);
       });
   }, [refreshHealth]);
 
@@ -145,7 +153,7 @@ export function LocalAgentDownloadCard() {
         ) : (
           <Button type="button" size="sm" disabled data-testid="download-mac-agent">
             <Download className="mr-1.5 size-3.5" />
-            下载 Mac 客户端
+            安装包暂未配置
           </Button>
         )}
         {winOffered && winHref ? (

@@ -26,9 +26,11 @@ describe("GEO-P0-C — 复测队列与重写池", () => {
   });
 
   it("frontend shows pending review and rewrite badges", () => {
-    const page = read("client/src/pages/WeeklyContentPage.tsx");
-    expect(page).toContain("badge-pending-review");
-    expect(page).toContain("badge-needs-rewrite");
-    expect(page).toContain("生成新版内容建议");
+    const weekly = read("client/src/pages/WeeklyContentPage.tsx");
+    const publish = read("client/src/pages/ContentPublishingCenterPage.tsx");
+    expect(weekly).toContain("新版内容建议");
+    expect(publish).toContain("geo.articles.retestQueue");
+    expect(publish).toContain("geo.articles.rewritePool");
+    expect(publish).toContain("待复测队列");
   });
 });

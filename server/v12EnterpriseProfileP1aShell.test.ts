@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readEnterpriseProfileUi } from "./enterpriseProfileTestBlob";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -7,15 +8,15 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("GEO-V1-UI-P1-A Profile-Shell-Compatibility", () => {
   const asset = read("client/src/pages/AssetCenter.tsx");
+  const profileUi = readEnterpriseProfileUi();
   const basic = read("client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx");
 
   it("5 分钟建档首屏与主按钮", () => {
-    expect(asset).toContain("5 分钟 GEO 建档");
-    expect(asset).toContain("让 AI 理解企业是谁、卖什么、服务谁、凭什么被推荐");
+    expect(profileUi).toContain("品牌资产建档");
     expect(asset).toContain("建档完成度");
     expect(asset).toContain("ProfileAiUnderstandingPreview");
     expect(asset).toContain("save-profile-start-diagnosis");
-    expect(asset).toContain("保存并开始 AI 诊断");
+    expect(asset).toContain("保存并开始 AI 实测诊断");
     expect(asset).toContain('buildProjectUrl("/ai-diagnosis"');
   });
 
@@ -47,7 +48,7 @@ describe("GEO-V1-UI-P1-A Profile-Shell-Compatibility", () => {
     const hint = read("client/src/components/enterpriseProfile/ProfilePublishEnvLightHint.tsx");
     expect(asset).toContain("ProfilePublishEnvLightHint");
     expect(hint).toContain("发布环境未配置不影响建档");
-    expect(hint).toContain("稍后去发布中心");
+    expect(hint).toContain("平台适配发布");
     expect(read("client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx")).toContain(
       "advanced-materials-collapsed",
     );

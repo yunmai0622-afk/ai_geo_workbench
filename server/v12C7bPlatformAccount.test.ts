@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { matchPlatformAccountNames } from "@shared/platformAccountVerify";
+import { hasLegacyChromeExtensionSource } from "./legacyExtensionTestGuard";
 
 const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
+
+const describeLegacy = hasLegacyChromeExtensionSource() ? describe : describe.skip;
 
 describe("C7-B project platform account binding", () => {
   it("scopes accounts by projectId in schema and routers", () => {
@@ -21,15 +24,17 @@ describe("C7-B project platform account binding", () => {
   });
 
   it("publish confirm shows project and expected account", () => {
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("当前企业：");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("selectedProject?.enterpriseName");
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toMatch(/发布账号：|选择发布账号/);
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("发布到平台");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("加入发布队列");
   });
 
-  it("extension verifies account before publish", () => {
-    expect(read("content-growth-publish-extension/background.js")).toContain("verifyTaskAccountBeforePublish");
-    expect(read("content-growth-publish-extension/content-scripts/accountDetect.js")).toContain("detectZhihuAccountName");
-    expect(read("content-growth-publish-extension/background.js")).toContain("[发布核验]");
+  describeLegacy("legacy extension verification", () => {
+    it("extension verifies account before publish", () => {
+      expect(read("content-growth-publish-extension/background.js")).toContain("verifyTaskAccountBeforePublish");
+      expect(read("content-growth-publish-extension/content-scripts/accountDetect.js")).toContain("detectZhihuAccountName");
+      expect(read("content-growth-publish-extension/background.js")).toContain("[发布核验]");
+    });
   });
 
   it("account verification blocks mismatched account", () => {
@@ -45,13 +50,13 @@ describe("C7-B project platform account binding", () => {
   });
 
   it("asset center has platform binding section", () => {
-    expect(read("client/src/pages/AssetCenter.tsx")).toContain("EnterprisePublishEnvironmentSection");
     expect(read("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx")).toContain(
       "PlatformAccountBindingSection",
     );
     expect(read("client/src/components/platformAccounts/usePlatformAccountBinding.ts")).toContain(
       "绑定${PUBLISH_PLATFORM_LABELS[selectedPlatform]}账号",
     );
+    expect(read("client/src/pages/AssetCenter.tsx")).toContain("ProfilePublishEnvLightHint");
   });
 
   it("C7-B-Fix: migration and rollout hints", () => {
