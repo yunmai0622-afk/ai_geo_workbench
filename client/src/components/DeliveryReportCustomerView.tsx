@@ -36,6 +36,7 @@ export type DeliveryReportCustomerViewProps = {
   embedded?: boolean;
   /** 客户对外报告使用浅色白标；内部效果报告保持深色 */
   variant?: "dark" | "light";
+  /** @default light — 客户交付报告默认浅色 */
   /** 仅用于展示报告编号后缀，不向客户展示该字段名 */
   reportNumberSuffix?: number;
   reportNumberSeed?: string;
@@ -76,8 +77,9 @@ function ReportSection({
 }
 
 export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProps) {
-  if (props.variant === "light") {
-    return <DeliveryReportCustomerLightView {...props} />;
+  const variant = props.variant ?? "light";
+  if (variant === "light") {
+    return <DeliveryReportCustomerLightView {...props} variant="light" />;
   }
 
   const {
