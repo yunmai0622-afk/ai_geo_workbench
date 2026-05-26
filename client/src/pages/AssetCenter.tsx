@@ -3,7 +3,6 @@ import {
   FiveMinuteBasicOnboardingSection,
   type FiveMinuteBasicValues,
 } from "@/components/enterpriseProfile/FiveMinuteBasicOnboardingSection";
-import { EnterprisePublishEnvironmentSection } from "@/components/enterpriseProfile/EnterprisePublishEnvironmentSection";
 import { ProfileAiUnderstandingPreview } from "@/components/enterpriseProfile/ProfileAiUnderstandingPreview";
 import { ProfilePublishEnvLightHint } from "@/components/enterpriseProfile/ProfilePublishEnvLightHint";
 import { ProfileUploadAssistSection } from "@/components/enterpriseProfile/ProfileUploadAssistSection";
@@ -231,7 +230,7 @@ export default function AssetCenterPage() {
   const [mediaText, setMediaText] = useState("");
   const [reviewsText, setReviewsText] = useState("");
   const [faqItems, setFaqItems] = useState<FaqItem[]>([]);
-  const publishEnvRef = useRef<HTMLDivElement>(null);
+  // publishEnvRef removed - publish env config moved to /content-publishing
   const intakeSectionRef = useRef<HTMLDivElement>(null);
   const basicSectionRef = useRef<HTMLDivElement>(null);
 
@@ -939,18 +938,7 @@ export default function AssetCenterPage() {
             }
           />
 
-          {/* ═══ 发布环境配置（折叠） ═══ */}
-          <details className="geo-card" data-testid="profile-publish-env-fold">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-700 hover:text-blue-700">
-              发布环境配置（可选）
-            </summary>
-            <div ref={publishEnvRef} className="border-t border-gray-100 px-2 pb-4">
-              <EnterprisePublishEnvironmentSection
-                projectId={currentProjectId!}
-                status={enabledPlatformAccountCount > 0 ? "已完成" : "待完善"}
-              />
-            </div>
-          </details>
+          {/* 发布环境配置已移至 /content-publishing，此处只做轻提示 */}
         </>
       ) : null}
     </div>
