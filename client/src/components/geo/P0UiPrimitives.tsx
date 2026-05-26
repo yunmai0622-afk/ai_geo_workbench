@@ -28,9 +28,9 @@ export function P0Section({ title, description, children }: { title: string; des
 export function P0MetricTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className={cn(geoP0Surfaces.card, "p-4")}>
-      <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-gray-400">{hint}</p> : null}
     </div>
   );
 }
@@ -54,7 +54,7 @@ export function P0QuickLinkCard({
         active ? "border-blue-300 bg-blue-50/80 ring-1 ring-blue-200" : "hover:border-blue-200",
       )}
     >
-      <span className="text-sm font-semibold text-slate-900">{title}</span>
+      <span className="text-sm font-semibold text-gray-900">{title}</span>
       <span className="mt-1 text-xs text-blue-600">打开 →</span>
     </button>
   );

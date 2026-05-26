@@ -472,3 +472,49 @@
 [2026-05-26T02:37:34.929Z] c[OAuth] Initialized with baseURL: https://api.manus.im
 [2026-05-26T02:37:39.827Z] Server running on http://localhost:3000/
 [2026-05-26T02:37:39.828Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-26T02:39:22.800Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-26T02:39:27.316Z] 10:39:27 PM [vite] (client) ✨ new dependencies optimized: @radix-ui/react-select
+[2026-05-26T02:39:27.317Z] 10:39:27 PM [vite] (client) ✨ optimized dependencies changed. reloading
+[2026-05-26T02:42:39.827Z] [定时实测] 开始执行 2026-05-26T02:42:39.827Z
+[2026-05-26T02:42:41.093Z] [定时实测] 找到 5 条需要检测的记录
+[2026-05-26T02:46:05.404Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-26T02:46:48.118Z] 10:46:48 PM [vite] (client) page reload index.html
+[2026-05-26T02:47:53.473Z] 10:47:53 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T02:48:56.322Z] 10:48:56 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-05-26T02:49:19.892Z] [实测] DeepSeek 完成：提及 1/5，推荐 0/5
+[2026-05-26T02:49:20.363Z] [定时实测] 记录 210001 完成：提及=已提及
+[2026-05-26T02:49:46.782Z] 10:49:46 PM [vite] (client) hmr update /src/index.css, /src/components/DashboardLayout.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/AssetCenter.tsx, /src/pages/WeeklyContentPage.tsx, /src/components/clients/ClientsHubTopBar.tsx, /src/components/geo/P0UiPrimitives.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/enterpriseProfile/ProfileAiUnderstandingPreview.tsx, /src/components/enterpriseProfile/ProfilePublishEnvLightHint.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/pages/DeliveryReportsCenterPage.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/publishing/LocalAgentPublishStepsPanel.tsx, /src/components/publishing/LocalAgentStatusCard.tsx, /src/components/publishing/PublishTaskColumnBoard.tsx
+[2026-05-26T02:49:47.714Z] 10:49:47 PM [vite] (client) hmr invalidate /src/components/weekly/WeeklyPlatformArticleCard.tsx Could not Fast Refresh ("resolveQualityDisplay" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-26T02:49:47.715Z] 10:49:47 PM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx
+[2026-05-26T02:52:41.630Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-26T02:55:59.587Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-26T02:56:00.055Z] [定时实测] 记录 240001 完成：提及=已提及
+[2026-05-26T02:59:08.851Z] 10:59:08 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T02:59:23.650Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-05-26T02:59:32.837Z] 10:59:32 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T02:59:49.993Z] 10:59:49 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T03:00:06.341Z] 11:00:06 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T03:00:15.430Z] 11:00:15 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T03:00:25.849Z] 11:00:25 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T03:00:52.936Z] 11:00:52 PM [vite] (client) hmr update /src/index.css, /src/components/DashboardLayout.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/AssetCenter.tsx, /src/pages/WeeklyContentPage.tsx, /src/components/clients/ClientsHubTopBar.tsx, /src/components/geo/P0UiPrimitives.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/enterpriseProfile/ProfileAiUnderstandingPreview.tsx, /src/components/enterpriseProfile/ProfilePublishEnvLightHint.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/pages/DeliveryReportsCenterPage.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/publishing/LocalAgentPublishStepsPanel.tsx, /src/components/publishing/LocalAgentStatusCard.tsx, /src/components/publishing/PublishTaskColumnBoard.tsx
+[2026-05-26T03:03:01.259Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-26T03:03:03.214Z] [定时实测] 记录 270001 完成：提及=已提及
+[2026-05-26T03:06:32.878Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-05-26T03:07:33.293Z] 11:07:33 PM [vite] (client) hmr update /src/index.css, /src/components/clients/ClientsHubTopBar.tsx
+[2026-05-26T03:09:47.009Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-05-26T03:09:47.462Z] [定时实测] 记录 270002 完成：提及=已提及
+[2026-05-26T03:09:51.922Z] 11:09:51 PM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-05-26T03:11:29.526Z] 11:11:29 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-05-26T03:11:49.526Z] 11:11:49 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-05-26T03:12:01.617Z] 11:12:01 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-05-26T03:12:53.222Z] 11:12:53 PM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-26T03:12:59.381Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-05-26T03:13:37.984Z] 11:13:37 PM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectNextActionPanel.tsx
+[2026-05-26T03:15:39.335Z] 11:15:39 PM [vite] (client) hmr update /src/index.css, /src/components/geo/P0UiPrimitives.tsx
+[2026-05-26T03:16:14.249Z] [实测] DeepSeek 完成：提及 1/5，推荐 0/5
+[2026-05-26T03:16:14.698Z] [定时实测] 记录 300001 完成：提及=已提及
+[2026-05-26T03:16:16.699Z] [定时实测] 本次执行完成 2026-05-26T03:16:16.699Z
+[2026-05-26T03:17:24.877Z] 11:17:24 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-05-26T03:17:38.601Z] 11:17:38 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-05-26T03:18:22.294Z] 11:18:22 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T03:19:12.588Z] 11:19:12 PM [vite] (client) hmr update /src/index.css

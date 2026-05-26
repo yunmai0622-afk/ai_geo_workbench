@@ -3,7 +3,7 @@ import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
-import { geoP0Brand, stageBadgeClass } from "@/lib/geoP0Visual";
+import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import {
   COCKPIT_PIPELINE_STEPS,
@@ -109,52 +109,55 @@ export default function EnterpriseWorkspacePage() {
 
   return (
     <div className="space-y-8" data-testid="workspace-page">
+      {/* 页面标题 */}
       <div className="space-y-1">
-        <p className="text-sm text-slate-500">企业 GEO 增长驾驶舱</p>
-        <h1 className="text-2xl font-bold text-slate-900" data-testid="workspace-enterprise-name">
+        <p className="text-sm text-gray-400">企业 GEO 增长驾驶舱</p>
+        <h1 className={cn(geoTypography.pageTitle)} data-testid="workspace-enterprise-name">
           {selectedProject?.enterpriseName ?? "当前企业"}
         </h1>
       </div>
 
       {summaryQuery.isLoading ? (
-        <p className="text-sm text-slate-500">加载驾驶舱数据…</p>
+        <p className="text-sm text-gray-400">加载驾驶舱数据…</p>
       ) : summaryQuery.isError ? (
         <p className="text-sm text-red-600">暂时无法加载驾驶舱，请刷新重试。</p>
       ) : profileZero && selectedProjectId ? (
-        <P0Card testId="workspace-profile-zero" className="text-center">
-          <p className="text-sm leading-relaxed text-slate-700">
+        <P0Card testId="workspace-profile-zero" className="text-center py-12">
+          <p className="text-sm leading-relaxed text-gray-600">
             请先完成 5 分钟 GEO 建档，让系统了解您的企业。
           </p>
           <Button
             type="button"
-            className={cn("mt-4", geoP0Brand.primary)}
+            className={cn("mt-4 rounded-xl", geoP0Brand.primary)}
             onClick={() => setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId))}
           >
             去建档
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </P0Card>
       ) : stage && metrics && selectedProjectId ? (
         <>
+          {/* 当前阶段大卡 */}
           <P0Card
             testId="workspace-current-stage"
-            className="bg-gradient-to-r from-blue-50/80 to-white space-y-4"
+            className="bg-gradient-to-br from-blue-50/60 via-white to-white space-y-5 border-blue-100/60"
           >
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">当前 GEO 阶段</p>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">当前 GEO 阶段</p>
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
-                  <span className="text-3xl font-bold tabular-nums text-slate-900">
+                  <span className="text-3xl font-bold tabular-nums tracking-tight text-gray-900">
                     GEO {formatGeoScore(metrics.geoScore)}
                   </span>
                 </div>
-                <p className="text-sm text-slate-700" data-testid="workspace-blocker-reasons">
+                <p className="max-w-lg text-sm leading-relaxed text-gray-600" data-testid="workspace-blocker-reasons">
                   {resolution.blockerReasons[0] ?? stage.blockerHint}
                 </p>
               </div>
               <Button
                 type="button"
-                className={geoP0Brand.primary}
+                className={cn("shrink-0 rounded-xl px-5", geoP0Brand.primary)}
                 data-testid="workspace-primary-cta"
                 onClick={() => setLocation(workspaceCtaUrl(selectedProjectId, stage))}
               >
@@ -164,6 +167,7 @@ export default function EnterpriseWorkspacePage() {
             </div>
           </P0Card>
 
+          {/* 主链路进度 */}
           <P0Section title="GEO 主链路进度">
             <div data-testid="workspace-pipeline" className="flex flex-wrap items-center gap-1">
               {COCKPIT_PIPELINE_STEPS.map((label, index) => {
@@ -178,18 +182,18 @@ export default function EnterpriseWorkspacePage() {
                     <div className="flex flex-col items-center gap-1.5 px-1">
                       <span
                         className={cn(
-                          "flex h-3 w-3 rounded-full border-2",
+                          "flex h-3.5 w-3.5 rounded-full border-2 transition-all",
                           active
-                            ? "border-blue-600 bg-blue-600 ring-4 ring-blue-100"
+                            ? "border-blue-600 bg-blue-600 ring-4 ring-blue-100 shadow-sm shadow-blue-600/30"
                             : done
                               ? "border-emerald-500 bg-emerald-500"
-                              : "border-slate-300 bg-white",
+                              : "border-gray-300 bg-white",
                         )}
                       />
                       <span
                         className={cn(
                           "text-xs font-medium",
-                          active ? "text-blue-700" : done ? "text-emerald-700" : "text-slate-400",
+                          active ? "text-blue-700" : done ? "text-emerald-700" : "text-gray-400",
                         )}
                       >
                         {label}
@@ -197,7 +201,7 @@ export default function EnterpriseWorkspacePage() {
                     </div>
                     {index < COCKPIT_PIPELINE_STEPS.length - 1 ? (
                       <div
-                        className={cn("mb-4 h-0.5 w-6 sm:w-10", done ? "bg-emerald-300" : "bg-slate-200")}
+                        className={cn("mb-4 h-0.5 w-6 rounded-full sm:w-10", done ? "bg-emerald-300" : "bg-gray-200")}
                         aria-hidden
                       />
                     ) : null}
@@ -207,6 +211,7 @@ export default function EnterpriseWorkspacePage() {
             </div>
           </P0Section>
 
+          {/* 关键指标 */}
           {metricCards.length > 0 ? (
             <P0Section title="关键指标" description="仅展示当前企业的真实数据。">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="workspace-progress-metrics">
@@ -216,11 +221,12 @@ export default function EnterpriseWorkspacePage() {
               </div>
             </P0Section>
           ) : (
-            <p className="text-sm text-slate-500" data-testid="workspace-metrics-empty">
+            <p className="text-sm text-gray-400" data-testid="workspace-metrics-empty">
               暂无数据，完成对应步骤后展示
             </p>
           )}
 
+          {/* 快捷入口 */}
           <P0Section title="快捷入口">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {QUICK_LINKS.map(link => {

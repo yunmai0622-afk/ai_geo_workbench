@@ -549,3 +549,21 @@
 - [x] 重新打包 browser-extension.zip
 - [x] 修复首页 SEO：添加关键词、H2 标题、优化 title 长度（30-60字符）、添加 meta description（50-160字符）
 - [x] 在管理面板中增加插件版本信息模块，显示当前版本号和最近更新日志
+
+## GEO V1.0 UI 视觉规范与页面改造
+
+- [x] 全局视觉规范：引入 Inter + Noto Sans SC 字体
+- [x] 全局视觉规范：统一 index.css 主题变量（浅色专业 SaaS 方向）
+- [x] 全局视觉规范：定义 geo-card / geo-card-elevated / geo-card-interactive 卡片层级
+- [x] 全局视觉规范：定义按钮规范（主操作/次操作/幽灵按钮）
+- [x] 全局视觉规范：定义间距系统（section-gap / card-gap / inner-gap）
+- [x] 全局视觉规范：保留旧 dark 模式深色组件样式（兼容旧页面），新增浅色专业风格
+- [x] /clients 页面视觉改造（Phase A）
+- [x] /workspace 页面视觉改造（Phase A）
+- [x] 项目内顶部栏视觉优化（Phase A）
+- [x] 右侧下一步面板视觉优化（Phase A）
+- [x] DashboardLayout 左侧导航配色/字体/间距轻微对齐（Phase A）
+- [ ] /enterprise-profile 页面视觉改造
+- [ ] /weekly 页面视觉改造
+- [ ] /content-publishing 页面视觉改造
+- [ ] /delivery-reports 页面视觉改造

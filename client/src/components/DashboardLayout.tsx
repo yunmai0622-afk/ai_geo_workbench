@@ -276,19 +276,19 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             className={cn("border-r", geoP0Surfaces.sidebar)}
             disableTransition={isResizing}
           >
-            <SidebarHeader className="h-16 justify-center border-b border-slate-200 bg-white">
+            <SidebarHeader className="h-16 justify-center border-b border-gray-200 bg-white">
               <div className="flex w-full items-center gap-3 px-2 transition-all">
                 <button
                   onClick={toggleSidebar}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   aria-label="Toggle navigation"
                 >
                   <PanelLeft className="h-4 w-4" />
                 </button>
                 {!isCollapsed ? (
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-bold text-slate-900">GEO 增长工作台</span>
-                    <span className="block truncate text-[11px] text-slate-500">AI 搜索增长系统</span>
+                    <span className="block truncate text-sm font-bold text-gray-900">GEO 增长工作台</span>
+                    <span className="block truncate text-[11px] text-gray-400">AI 搜索增长系统</span>
                   </div>
                 ) : null}
               </div>
@@ -298,7 +298,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
               {navGroups.map(group => (
                 <div key={group.title} className="px-2 py-2">
                   {!isCollapsed ? (
-                    <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                       {group.title}
                     </p>
                   ) : null}
@@ -312,12 +312,12 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                             onClick={() => navigateWithProject(item.path)}
                             tooltip={item.label}
                             className={cn(
-                              "mb-0.5 h-10 rounded-lg border border-transparent py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                              "mb-0.5 h-10 rounded-lg border border-transparent py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900",
                               isActive &&
                                 "border-blue-100 bg-blue-50 font-medium text-blue-800 shadow-none before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-blue-600 before:content-['']",
                             )}
                           >
-                            <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-blue-600" : "text-slate-400")} />
+                            <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-blue-600" : "text-gray-400")} />
                             {!isCollapsed ? (
                               <span className="truncate text-sm">{item.label}</span>
                             ) : null}
@@ -330,18 +330,18 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
               ))}
             </SidebarContent>
 
-            <SidebarFooter className="border-t border-slate-200 bg-white p-3">
+            <SidebarFooter className="border-t border-gray-200 bg-white p-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-2 py-2 text-left hover:bg-slate-50 group-data-[collapsible=icon]:justify-center">
-                    <Avatar className="h-8 w-8 border border-slate-200">
-                      <AvatarFallback className="bg-blue-50 text-xs font-medium text-blue-700">
+                  <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 px-2 py-2 text-left hover:bg-gray-50 group-data-[collapsible=icon]:justify-center">
+                    <Avatar className="h-8 w-8 border border-gray-100">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-50 to-blue-100 text-xs font-semibold text-blue-700">
                         {user?.name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                      <p className="truncate text-sm font-medium text-slate-800">{user?.name || "-"}</p>
-                      <p className="truncate text-xs text-slate-500">{user?.email || "-"}</p>
+                      <p className="truncate text-sm font-medium text-gray-800">{user?.name || "-"}</p>
+                      <p className="truncate text-xs text-gray-500">{user?.email || "-"}</p>
                     </div>
                   </button>
                 </DropdownMenuTrigger>
@@ -366,7 +366,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
 
       <SidebarInset className={isClientsHub ? "w-full max-w-none" : undefined}>
         {isMobile && !isClientsHub ? (
-          <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-2">
+          <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-2">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9" />
               <span className="text-slate-900">{activeMenuItem?.label ?? "菜单"}</span>
@@ -375,7 +375,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
         ) : null}
         {!useProjectShell && !isClientsHub ? (
           <div
-            className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600 md:px-6"
+            className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-600 md:px-6"
             data-testid="current-project-bar"
           >
             <span data-testid="current-project-label">当前客户：{projectName ?? "未选择"}</span>

@@ -1,6 +1,6 @@
 import { ClientsHubTopBar } from "@/components/clients/ClientsHubTopBar";
 import { Button } from "@/components/ui/button";
-import { geoP0Brand, geoP0Surfaces, stageBadgeClass } from "@/lib/geoP0Visual";
+import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -60,37 +60,56 @@ function ProjectCard({
   const { industry, region } = normalizeIndustryRegion(project.industry, project.region);
   const { stageLabel, nextStep } = deriveClientProjectCardDisplay(project);
   const showContentStats = project.articleCount > 0 || project.publishCount > 0;
+  const geoScore = formatGeoScore(project.latestGeoScore);
 
   return (
     <article
-      className={cn(geoP0Surfaces.card, "flex min-h-[220px] flex-col p-5")}
+      className="geo-card-interactive flex min-h-[220px] flex-col p-5 sm:p-6"
       data-testid="client-project-card"
+      onClick={() => onEnter(project.id)}
     >
-      <div>
-        <h3 className="truncate text-base font-semibold text-slate-900">{project.enterpriseName}</h3>
-        <p className="mt-0.5 text-[13px] text-slate-500">{displayRegionIndustry(industry, region)}</p>
+      {/* 企业名 + 行业城市 */}
+      <div className="mb-4">
+        <h3 className="truncate text-[15px] font-semibold text-gray-900">{project.enterpriseName}</h3>
+        <p className="mt-0.5 text-[13px] text-gray-500">{displayRegionIndustry(industry, region)}</p>
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+
+      {/* 阶段标签 + GEO 评分 */}
+      <div className="flex flex-wrap items-center gap-3">
         <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span>
-        <span className="text-xl font-bold tabular-nums text-slate-900">GEO {formatGeoScore(project.latestGeoScore)}</span>
+        <span className="text-xl font-bold tabular-nums tracking-tight text-gray-900">
+          GEO {geoScore}
+        </span>
       </div>
+
+      {/* 内容统计 */}
       {showContentStats ? (
-        <p className="mt-2 text-[13px] text-slate-500">
+        <p className="mt-3 text-[13px] text-gray-500">
           内容 {project.articleCount} 篇 · 已发布 {project.publishCount} 次
         </p>
       ) : null}
-      <p className="mt-3 line-clamp-2 flex-1 text-sm text-slate-600">
-        <span className="text-slate-500">下一步动作：</span>
+
+      {/* 下一步动作 */}
+      <p className="mt-3 line-clamp-2 flex-1 text-sm leading-relaxed text-gray-600">
+        <span className="text-gray-400">下一步：</span>
         {nextStep}
       </p>
+
+      {/* 进入工作台 CTA */}
       <button
         type="button"
-        className={cn("mt-4 inline-flex items-center text-sm", geoP0Brand.link)}
+        className={cn(
+          "mt-4 inline-flex items-center gap-1 text-sm transition-all",
+          geoP0Brand.link,
+        )}
         data-testid="enter-workspace-button"
-        onClick={() => onEnter(project.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onEnter(project.id);
+        }}
       >
         进入工作台
-        <ArrowRight className="ml-1 h-3.5 w-3.5" />
+        <ArrowRight className="h-3.5 w-3.5" />
       </button>
     </article>
   );
@@ -170,15 +189,16 @@ export default function ClientDashboardPage() {
     <div className="space-y-6" data-testid="client-dashboard-page">
       <ClientsHubTopBar />
 
+      {/* 标题区 + 新建按钮 */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">客户项目</h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
+          <h1 className={geoTypography.pageTitle}>我的客户项目</h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-gray-500">
             管理企业的 GEO 建档、AI 诊断、内容发布、收录监测与交付报告
           </p>
         </div>
         <Button
-          className={cn("shrink-0", geoP0Brand.primary)}
+          className={cn("shrink-0 rounded-xl px-5", geoP0Brand.primary)}
           data-testid="create-client-project-button"
           onClick={() => setCreateOpen(true)}
         >
@@ -187,40 +207,44 @@ export default function ClientDashboardPage() {
         </Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+      {/* 搜索栏 */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <Input
-          placeholder="搜索企业名称"
+          placeholder="搜索企业名称…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="pl-9"
+          className="rounded-xl border-gray-200 bg-white pl-10 shadow-sm transition-shadow focus:shadow-md"
           data-testid="client-dashboard-search"
         />
       </div>
 
+      {/* 卡片网格 / 加载 / 空状态 */}
       {isLoading ? (
         <div className="flex min-h-[40vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </div>
       ) : filtered.length === 0 ? (
         <div
-          className={cn(geoP0Surfaces.card, "flex min-h-[30vh] flex-col items-center justify-center gap-4 px-6 py-12 text-center")}
+          className="geo-empty-state flex min-h-[30vh] flex-col items-center justify-center gap-5 px-6 py-16"
           data-testid={projects.length === 0 ? "client-dashboard-empty" : "client-dashboard-search-empty"}
         >
-          <Building2 className="h-10 w-10 text-slate-300" />
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold text-slate-900">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
+            <Building2 className="h-7 w-7 text-gray-400" />
+          </div>
+          <div className="space-y-2 text-center">
+            <h2 className="text-lg font-semibold text-gray-900">
               {search ? "没有匹配的企业项目" : "还没有客户项目"}
             </h2>
-            <p className="max-w-md text-sm leading-relaxed text-slate-600">
+            <p className="max-w-md text-sm leading-relaxed text-gray-500">
               {search
                 ? "请调整搜索关键词，或新建客户项目。"
-                : "创建第一个企业项目，开始 GEO 增长之旅。"}
+                : "创建第一个企业项目，开始 GEO 增长之旅。只需填写企业名称和行业，即可在 5 分钟内完成建档。"}
             </p>
           </div>
           {!search ? (
             <Button
-              className={geoP0Brand.primary}
+              className={cn("rounded-xl px-5", geoP0Brand.primary)}
               data-testid="create-client-project-empty-button"
               onClick={() => setCreateOpen(true)}
             >
@@ -230,73 +254,85 @@ export default function ClientDashboardPage() {
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map(project => (
             <ProjectCard key={project.id} project={project} onEnter={handleEnter} />
           ))}
         </div>
       )}
 
+      {/* 新建客户项目弹窗 */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="border-slate-200 bg-white text-slate-900" data-testid="create-client-project-dialog">
+        <DialogContent
+          className="rounded-2xl border-gray-200 bg-white text-gray-900 shadow-xl sm:max-w-md"
+          data-testid="create-client-project-dialog"
+        >
           <DialogHeader>
-            <DialogTitle>新建客户项目</DialogTitle>
-            <DialogDescription className="text-slate-600">
+            <DialogTitle className="text-lg font-bold text-gray-900">新建客户项目</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
               仅填写基础信息即可创建；详细企业资料请在 GEO 建档页完善。
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="create-enterprise-name">企业名称</Label>
+              <Label htmlFor="create-enterprise-name" className="text-sm font-medium text-gray-700">
+                企业名称
+              </Label>
               <Input
                 id="create-enterprise-name"
                 data-testid="create-enterprise-name"
                 value={createForm.enterpriseName}
                 onChange={e => setCreateForm(f => ({ ...f, enterpriseName: e.target.value }))}
                 placeholder="客户企业或品牌全称"
-                className="border-slate-200 bg-white"
+                className="rounded-xl border-gray-200 bg-white"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="create-industry">所属行业（选填）</Label>
+              <Label htmlFor="create-industry" className="text-sm font-medium text-gray-700">
+                所属行业（选填）
+              </Label>
               <Input
                 id="create-industry"
                 data-testid="create-industry"
                 value={createForm.industry}
                 onChange={e => setCreateForm(f => ({ ...f, industry: e.target.value }))}
                 placeholder="例如：企业服务、制造业"
-                className="border-slate-200 bg-white"
+                className="rounded-xl border-gray-200 bg-white"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="create-website">官网 / 主页链接（选填）</Label>
+              <Label htmlFor="create-website" className="text-sm font-medium text-gray-700">
+                官网 / 主页链接（选填）
+              </Label>
               <Input
                 id="create-website"
                 data-testid="create-website"
                 value={createForm.website}
                 onChange={e => setCreateForm(f => ({ ...f, website: e.target.value }))}
                 placeholder="https://"
-                className="border-slate-200 bg-white"
+                className="rounded-xl border-gray-200 bg-white"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="create-one-liner">一句话介绍（选填）</Label>
+              <Label htmlFor="create-one-liner" className="text-sm font-medium text-gray-700">
+                一句话介绍（选填）
+              </Label>
               <Input
                 id="create-one-liner"
                 data-testid="create-one-liner"
                 value={createForm.oneLiner}
                 onChange={e => setCreateForm(f => ({ ...f, oneLiner: e.target.value }))}
                 placeholder="简要说明企业做什么"
-                className="border-slate-200 bg-white"
+                className="rounded-xl border-gray-200 bg-white"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setCreateOpen(false)} className="rounded-xl">
               取消
             </Button>
             <Button
-              className={geoP0Brand.primary}
+              className={cn("rounded-xl", geoP0Brand.primary)}
               data-testid="create-client-project-submit"
               disabled={createProject.isPending}
               onClick={() => void handleCreateProject()}

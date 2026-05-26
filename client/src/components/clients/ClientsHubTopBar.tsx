@@ -7,34 +7,52 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
-import { LogOut } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 
-/** /clients 专用：56px 白底顶栏，不展示企业项目信息 */
+/**
+ * /clients 专用顶部栏
+ * 规范：56px 白底，左侧系统名称（16px 深色加粗），右侧用户头像+下拉
+ * 不显示企业信息、阶段、评分
+ */
 export function ClientsHubTopBar() {
   const { user, logout } = useAuth();
   return (
     <header
-      className={`-mx-4 -mt-4 mb-6 flex items-center justify-between px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8 ${geoP0Surfaces.topBar}`}
+      className={`-mx-4 -mt-4 mb-8 flex items-center justify-between px-6 md:-mx-6 lg:-mx-8 lg:px-8 ${geoP0Surfaces.topBar}`}
       data-testid="clients-hub-top-bar"
     >
-      <p className="text-base font-bold text-slate-900">GEO 增长工作台</p>
+      {/* 左侧：品牌标识 */}
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shadow-sm shadow-blue-600/20">
+          <span className="text-sm font-bold text-white">G</span>
+        </div>
+        <div>
+          <p className="text-[15px] font-bold tracking-tight text-gray-900">GEO 增长工作台</p>
+          <p className="text-[11px] text-gray-400">AI 搜索增长系统</p>
+        </div>
+      </div>
+
+      {/* 右侧：用户信息 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 hover:bg-slate-50"
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 transition-all hover:border-gray-300 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             data-testid="clients-hub-user-menu"
           >
-            <Avatar className="h-8 w-8 border border-slate-200">
-              <AvatarFallback className="bg-blue-50 text-xs font-medium text-blue-700">
+            <Avatar className="h-7 w-7 border border-gray-100">
+              <AvatarFallback className="bg-gradient-to-br from-blue-50 to-blue-100 text-xs font-semibold text-blue-700">
                 {user?.name?.charAt(0).toUpperCase() ?? "U"}
               </AvatarFallback>
             </Avatar>
-            <span className="hidden max-w-[140px] truncate text-sm text-slate-700 sm:inline">{user?.name ?? "用户"}</span>
+            <span className="hidden max-w-[120px] truncate text-sm font-medium text-gray-700 sm:inline">
+              {user?.name ?? "用户"}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+        <DropdownMenuContent align="end" className="w-48 rounded-xl border-gray-200 shadow-lg">
+          <DropdownMenuItem onClick={logout} className="cursor-pointer rounded-lg text-destructive focus:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />
             退出登录
           </DropdownMenuItem>
