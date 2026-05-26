@@ -14,6 +14,25 @@ exports.default = async function afterPack(context) {
     const appPath = path.join(context.appOutDir, name);
     try {
       execSync(`xattr -cr ${JSON.stringify(appPath)}`, { stdio: "inherit" });
+      const macOsDir = path.join(appPath, "Contents/MacOS");
+      if (fs.existsSync(macOsDir)) {
+        for (const entry of fs.readdirSync(macOsDir)) {
+          const p = path.join(macOsDir, entry);
+          if (fs.statSync(p).isFile()) fs.chmodSync(p, 0o755);
+        }
+      }
+      const frameworksDir = path.join(appPath, "Contents/Frameworks");
+      if (fs.existsSync(frameworksDir)) {
+        for (const entry of fs.readdirSync(frameworksDir, { withFileTypes: true })) {
+          if (!entry.isDirectory() || !entry.name.endsWith(".app")) continue;
+          const helperMacOs = path.join(frameworksDir, entry.name, "Contents/MacOS");
+          if (!fs.existsSync(helperMacOs)) continue;
+          for (const h of fs.readdirSync(helperMacOs)) {
+            const hp = path.join(helperMacOs, h);
+            if (fs.statSync(hp).isFile()) fs.chmodSync(hp, 0o755);
+          }
+        }
+      }
       execSync(`codesign --force --deep --sign - ${JSON.stringify(appPath)}`, { stdio: "inherit" });
       console.log("[afterPack] ad-hoc signed:", appPath);
     } catch (err) {
