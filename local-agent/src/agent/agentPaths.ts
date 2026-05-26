@@ -1,3 +1,4 @@
+import os from "os";
 import path from "path";
 import { app } from "electron";
 
@@ -6,7 +7,12 @@ import { app } from "electron";
  */
 export function getAgentRoot(): string {
   if (app.isPackaged) {
-    return app.getPath("userData");
+    try {
+      return app.getPath("userData");
+    } catch (err) {
+      console.warn("[agent] app.getPath(userData) 失败，使用 homedir 回退:", err);
+      return path.join(os.homedir(), "Library", "Application Support", "GEO本地发布客户端");
+    }
   }
   return path.resolve(__dirname, "..", "..");
 }

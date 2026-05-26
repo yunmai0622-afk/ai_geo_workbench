@@ -33,35 +33,150 @@ import { resolveGeoWebUrl, type GeoWebNavigationTarget } from "./agent/geoWebNav
 
 let mainWindow: BrowserWindow | null = null;
 let httpServer: ReturnType<typeof startLocalAgentServer> | null = null;
+let revealFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+const FALLBACK_LOAD_ERROR_HTML = `<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8" /><title>GEO 本地发布客户端</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:48px;color:#0f172a;line-height:1.6}
+h1{font-size:20px}p{color:#475569}</style></head><body>
+<h1>客户端界面加载失败</h1>
+<p>请重新打开应用，或联系技术支持。可在「高级诊断」导出日志（若菜单可用）。</p>
+</body></html>`;
 
 function broadcastState() {
   mainWindow?.webContents.send("agent:state-changed");
 }
 
+function resolvePackagedFile(...segments: string[]): string {
+  const candidates = [
+    path.join(__dirname, ...segments),
+    path.join(app.getAppPath(), "dist", ...segments),
+  ];
+  if (app.isPackaged) {
+    candidates.push(path.join(process.resourcesPath, "app.asar", "dist", ...segments));
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return candidates[0]!;
+}
+
+function clearRevealFallbackTimer() {
+  if (revealFallbackTimer) {
+    clearTimeout(revealFallbackTimer);
+    revealFallbackTimer = null;
+  }
+}
+
+function revealMainWindow(win: BrowserWindow) {
+  if (win.isDestroyed()) return;
+  clearRevealFallbackTimer();
+  if (win.isMinimized()) win.restore();
+  if (!win.isVisible()) win.show();
+  win.focus();
+  if (process.platform === "darwin") {
+    app.dock?.show();
+    app.focus({ steal: true });
+  }
+}
+
+function scheduleRevealFallback(win: BrowserWindow) {
+  clearRevealFallbackTimer();
+  revealFallbackTimer = setTimeout(() => {
+    if (win.isDestroyed()) return;
+    if (!win.isVisible()) {
+      console.warn("[electron] ready-to-show 超时，强制显示主窗口");
+      revealMainWindow(win);
+    }
+  }, 2000);
+}
+
+function attachWindowDiagnostics(win: BrowserWindow) {
+  const wc = win.webContents;
+  wc.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    console.error("[electron] did-fail-load", { errorCode, errorDescription, validatedURL });
+    if (win.isDestroyed()) return;
+    void win
+      .loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(FALLBACK_LOAD_ERROR_HTML)}`)
+      .catch(err => console.error("[electron] fallback html failed:", err));
+    revealMainWindow(win);
+  });
+  wc.on("render-process-gone", (_event, details) => {
+    console.error("[electron] render-process-gone", details);
+  });
+  wc.on("unresponsive", () => {
+    console.error("[electron] renderer unresponsive");
+  });
+  wc.on("responsive", () => {
+    console.log("[electron] renderer responsive");
+  });
+}
+
+async function loadMainRenderer(win: BrowserWindow) {
+  const htmlPath = resolvePackagedFile("renderer", "index.html");
+  const preloadPath = resolvePackagedFile("preload.js");
+  console.log("[electron] load renderer", { htmlPath, preloadPath, packaged: app.isPackaged });
+  if (!fs.existsSync(htmlPath)) {
+    console.error("[electron] renderer index missing:", htmlPath);
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(FALLBACK_LOAD_ERROR_HTML)}`);
+    return;
+  }
+  try {
+    await win.loadFile(htmlPath);
+  } catch (err) {
+    console.error("[electron] loadFile failed:", htmlPath, err);
+    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(FALLBACK_LOAD_ERROR_HTML)}`);
+  }
+}
+
 function createWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    revealMainWindow(mainWindow);
+    return;
+  }
+
+  const preloadPath = resolvePackagedFile("preload.js");
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 900,
+    width: 1180,
+    height: 760,
+    minWidth: 960,
     minHeight: 640,
-    show: true,
+    show: false,
+    center: true,
     title: "GEO 本地发布客户端",
+    backgroundColor: "#ffffff",
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
   });
 
-  const htmlPath = path.join(__dirname, "renderer", "index.html");
-  void mainWindow.loadFile(htmlPath).catch(err => {
-    console.error("[electron] 加载界面失败:", htmlPath, err);
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+    clearRevealFallbackTimer();
   });
 
+  attachWindowDiagnostics(mainWindow);
+  scheduleRevealFallback(mainWindow);
+
   mainWindow.once("ready-to-show", () => {
-    mainWindow?.show();
-    mainWindow?.focus();
+    if (mainWindow && !mainWindow.isDestroyed()) revealMainWindow(mainWindow);
   });
+
+  void loadMainRenderer(mainWindow).catch(err => {
+    console.error("[electron] loadMainRenderer error:", err);
+    if (mainWindow && !mainWindow.isDestroyed()) revealMainWindow(mainWindow);
+  });
+}
+
+function ensureMainWindowVisible() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    revealMainWindow(mainWindow);
+    return;
+  }
+  createWindow();
 }
 
 function startHttpServerSafely() {
@@ -82,20 +197,28 @@ function startHttpServerSafely() {
   return server;
 }
 
+app.on("activate", () => {
+  ensureMainWindowVisible();
+});
+
 app.whenReady().then(() => {
-  setLocalHttpStartupError(null);
-  httpServer = startHttpServerSafely();
-  readAgentConfig();
-  setWorkerLogger((line, isErr) => {
-    console.log(isErr ? `[ERR] ${line}` : line);
-    mainWindow?.webContents.send("agent:log-line", { line, isErr: Boolean(isErr) });
-  });
-  resumePollingIfEnabled();
   createWindow();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  try {
+    setLocalHttpStartupError(null);
+    httpServer = startHttpServerSafely();
+    readAgentConfig();
+    setWorkerLogger((line, isErr) => {
+      console.log(isErr ? `[ERR] ${line}` : line);
+      mainWindow?.webContents.send("agent:log-line", { line, isErr: Boolean(isErr) });
+    });
+    resumePollingIfEnabled();
+  } catch (err) {
+    console.error("[electron] 后台服务初始化失败（主窗口仍应可见）:", err);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      revealMainWindow(mainWindow);
+    }
+  }
 });
 
 app.on("window-all-closed", () => {

@@ -70,6 +70,20 @@ if (!server.includes("/health") || !server.includes("39888")) {
   console.error("missing local HTTP server");
   process.exit(1);
 }
+
+for (const needle of [
+  "ensureMainWindowVisible",
+  "ready-to-show",
+  "did-fail-load",
+  'app.on("activate"',
+  "resolvePackagedFile",
+  "show: false",
+]) {
+  if (!main.includes(needle)) {
+    console.error("main.ts missing window lifecycle:", needle);
+    process.exit(1);
+  }
+}
 const publisher = fs.readFileSync(path.join(root, "src/agent/platforms/basePublisher.ts"), "utf-8");
 if (!publisher.includes("cover_upload_skipped")) {
   console.error("missing cover_upload_skipped log");
