@@ -748,3 +748,5 @@
 [2026-05-26T10:35:29.708Z] 6:35:29 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
 [2026-05-26T10:35:29.709Z] 6:35:29 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
 [2026-05-26T10:35:29.900Z] 6:35:29 AM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
+[2026-05-26T10:36:47.763Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-05-26T10:37:11.944Z] 6:37:11 AM [vite] (client) hmr update /src/index.css
