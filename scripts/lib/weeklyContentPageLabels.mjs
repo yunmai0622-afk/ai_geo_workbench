@@ -2,7 +2,7 @@
 
 export const WEEKLY_CONTENT_PAGE_LABELS = [
   "平台化内容资产",
-  "生成本轮平台化内容",
+  "生成该平台内容",
   "不支持一稿多发",
   "weekly-platform-content-page",
   "去 AI 实测诊断",

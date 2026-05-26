@@ -238,7 +238,7 @@ export function ArticleAssetEditorSheet({
       <SheetContent side="right" className="flex w-full flex-col border-gray-200 bg-white text-gray-900 sm:max-w-xl">
         <SheetHeader>
           <SheetTitle>编辑内容资产</SheetTitle>
-          <SheetDescription className="text-slate-400">
+          <SheetDescription className="text-gray-400">
             修改标题、正文与封面模板后请保存；发布到平台将使用此处保存的最新内容。
           </SheetDescription>
         </SheetHeader>
@@ -261,7 +261,7 @@ export function ArticleAssetEditorSheet({
           <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/40 p-4">
             <div>
               <p className="text-sm font-medium text-white">内容策略</p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-gray-500">
                 用于区分这篇内容适合用什么口吻、什么身份、哪类账号发布。
               </p>
             </div>
@@ -363,7 +363,7 @@ export function ArticleAssetEditorSheet({
               {coverPreview ? (
                 <img src={coverPreview} alt="封面预览" className="aspect-video w-full object-cover" />
               ) : (
-                <div className="flex aspect-video items-center justify-center px-4 text-center text-sm text-slate-500">
+                <div className="flex aspect-video items-center justify-center px-4 text-center text-sm text-gray-500">
                   {coverError ? "封面生成失败，可重试" : "待生成封面"}
                 </div>
               )}

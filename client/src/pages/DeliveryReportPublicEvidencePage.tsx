@@ -30,7 +30,7 @@ export default function DeliveryReportPublicEvidencePage() {
   }
 
   if (evidenceQuery.isLoading) {
-    return <div className="min-h-screen bg-white px-4 py-10 text-slate-400">正在加载 AI 搜索实测证据…</div>;
+    return <div className="min-h-screen bg-white px-4 py-10 text-gray-400">正在加载 AI 搜索实测证据…</div>;
   }
 
   if (evidenceQuery.isError || !evidenceQuery.data) {

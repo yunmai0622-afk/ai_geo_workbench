@@ -33,7 +33,7 @@ export default function AiSearchEvidencePage() {
   }
 
   if (detailQuery.isLoading) {
-    return <div className="mx-auto max-w-3xl p-8 text-slate-400">正在加载 AI 搜索实测证据…</div>;
+    return <div className="mx-auto max-w-3xl p-8 text-gray-400">正在加载 AI 搜索实测证据…</div>;
   }
 
   if (detailQuery.isError || !item) {

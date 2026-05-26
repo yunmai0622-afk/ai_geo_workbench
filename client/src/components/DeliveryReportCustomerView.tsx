@@ -68,7 +68,7 @@ function ReportSection({
     <section className="space-y-5">
       <div className="space-y-2">
         <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">{title}</h2>
-        {description ? <p className="max-w-3xl text-sm leading-relaxed text-slate-400">{description}</p> : null}
+        {description ? <p className="max-w-3xl text-sm leading-relaxed text-gray-400">{description}</p> : null}
       </div>
       {children}
     </section>
@@ -177,7 +177,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
         {/* 区块 1：经营结论区 */}
         <header className="ai-report-cover ai-glass-card space-y-6 p-6 sm:p-8">
           <p className="text-xs uppercase tracking-wide text-blue-600">GEO 内容效果交付报告</p>
-          <div className="space-y-2 text-sm text-slate-400">
+          <div className="space-y-2 text-sm text-gray-400">
             <p>
               {enterpriseName !== brandName ? `${enterpriseName} · ` : ""}
               {reportGeneratedAt ? `报告生成于 ${reportGeneratedAt.toLocaleString()}` : "报告生成时间待更新"}
@@ -200,8 +200,8 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
                 ) : null}
               </span>
             </p>
-            <p className="text-sm leading-relaxed text-slate-400">{heroSummary}</p>
-            <p className="text-sm leading-relaxed text-slate-500">{engineSubtitle}</p>
+            <p className="text-sm leading-relaxed text-gray-400">{heroSummary}</p>
+            <p className="text-sm leading-relaxed text-gray-500">{engineSubtitle}</p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -228,13 +228,13 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
         </div>
 
         {loading ? (
-          <p className="text-sm text-slate-400">正在加载报告内容…</p>
+          <p className="text-sm text-gray-400">正在加载报告内容…</p>
         ) : (
           <>
             {/* 区块 2：AI 搜索实测结果 */}
             <ReportSection title="AI 搜索实测结果">
               {aiTestAggregate.questionCount === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-slate-400">
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-400">
                   暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以生成可追溯的品牌可见度结果。
                   {showMonitoringCta && onGoMonitoring ? (
                     <Button variant="ai" className="mt-4 h-11 w-full sm:w-auto" onClick={onGoMonitoring}>
@@ -257,9 +257,9 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
                   ) : null}
 
                   <div className="space-y-2 rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">分引擎结果</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">分引擎结果</p>
                     {aiTestAggregate.byEngine.length === 0 ? (
-                      <p className="text-sm text-slate-400">暂无分引擎数据</p>
+                      <p className="text-sm text-gray-400">暂无分引擎数据</p>
                     ) : (
                       <ul className="divide-y divide-white/5">
                         {aiTestAggregate.byEngine.map(engine => (
@@ -268,7 +268,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
                             className="flex flex-col gap-2 py-3 text-sm first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                           >
                             <span className="font-medium text-white">{engine.engineName}</span>
-                            <span className="text-slate-400">
+                            <span className="text-gray-400">
                               提及率 {Math.round(engine.mentionRate * 100)}% · 推荐率 {Math.round(engine.recommendRate * 100)}% · 实测{" "}
                               {engine.questionCount} 题
                             </span>
@@ -289,7 +289,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
                       查看完整证据
                     </Button>
                     {aiTestAggregate.keySamples.length === 0 ? (
-                      <span className="text-sm text-slate-500">暂无证据</span>
+                      <span className="text-sm text-gray-500">暂无证据</span>
                     ) : null}
                   </div>
                 </div>
@@ -305,7 +305,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
                 <div className="overflow-hidden rounded-2xl border border-gray-100 bg-gray-50">
                   <table className="w-full table-fixed border-collapse text-left text-sm">
                     <thead>
-                      <tr className="border-b border-gray-100 bg-white text-xs text-slate-500">
+                      <tr className="border-b border-gray-100 bg-white text-xs text-gray-500">
                         <th className="w-[28%] px-3 py-3 font-medium sm:px-4">指标</th>
                         <th className="w-[24%] px-3 py-3 font-medium sm:px-4">发布前</th>
                         <th className="w-[24%] px-3 py-3 font-medium sm:px-4">发布后</th>
@@ -373,7 +373,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
               description="以下内容用于增强品牌在目标问题、品类词和场景词下的可识别度，后续将用于发布后复测。"
             >
               {publishedItems.length === 0 ? (
-                <p className="text-sm text-slate-400">本轮暂无发布记录</p>
+                <p className="text-sm text-gray-400">本轮暂无发布记录</p>
               ) : (
                 <ul className="space-y-4">
                   {publishedItems.map((item, index) => (
@@ -382,7 +382,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
                       className="rounded-2xl border border-blue-400/10 bg-gradient-to-r from-slate-950/80 to-slate-900/40 p-4 sm:p-5"
                     >
                       <p className="font-medium leading-snug text-white sm:text-base">{item.title}</p>
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-400">
                         {item.platform ? (
                           <span className="rounded-full border border-gray-200 bg-white/5 px-2.5 py-1 text-gray-600">
                             {item.platform}
@@ -418,7 +418,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
                     >
                       <div className="min-w-0 text-sm text-gray-600">
                         <p className="line-clamp-2 font-medium text-white">{sample.question}</p>
-                        <p className="mt-1 text-xs text-slate-500">{sample.engineName}</p>
+                        <p className="mt-1 text-xs text-gray-500">{sample.engineName}</p>
                       </div>
                       {showEvidenceLinks && onNavigateEvidence ? (
                         <Button
@@ -445,7 +445,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
             {/* 区块 5：下一轮优化动作 */}
             <ReportSection title="下一轮优化动作">
               {actionLines.length === 0 ? (
-                <p className="text-sm text-slate-400">暂无明确优化动作，建议完成更多 AI 实测后再更新报告。</p>
+                <p className="text-sm text-gray-400">暂无明确优化动作，建议完成更多 AI 实测后再更新报告。</p>
               ) : (
                 <ul className="grid grid-cols-1 gap-3 sm:gap-4">
                   {actionLines.map((line, i) => (
@@ -465,7 +465,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
               )}
             </ReportSection>
 
-            <p className="text-[11px] leading-relaxed text-slate-600">
+            <p className="text-[11px] leading-relaxed text-gray-600">
               说明：样本量有限，不代表全网绝对排名；不承诺保证收录、排名或 AI 推荐；对外材料须以已确认事实为准。
             </p>
           </>

@@ -11,7 +11,7 @@ describe("C5-B content production page product UI", () => {
   it("uses platform production first screen", () => {
     expect(page).toContain("平台化内容生产");
     expect(page).toContain("PlatformContentBoard");
-    expect(page).toContain("生成本轮平台化内容");
+    expect(page).toContain("生成该平台内容");
     expect(page).not.toMatch(/AI 内容资产生产控制台|生成内容资产|ai-segmented/);
   });
 

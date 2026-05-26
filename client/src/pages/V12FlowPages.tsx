@@ -229,7 +229,7 @@ function InfoCard({ title, desc, value }: { title: string; desc: string; value?:
     <div className="ai-metric-card text-gray-900">
       <p className="text-xs font-medium uppercase tracking-wide text-blue-600/80">{title}</p>
       {value ? <p className="ai-metric-value mt-2 text-white">{value}</p> : null}
-      <p className="mt-2 text-sm leading-6 text-slate-400">{desc}</p>
+      <p className="mt-2 text-sm leading-6 text-gray-400">{desc}</p>
     </div>
   );
 }
@@ -1763,44 +1763,44 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">1. 配置本周内容生产计划</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">保存后会写入数据库，刷新页面仍可读回，用于后续复盘本周选题、文章和质量检查结果。</p>
+                <p className="mt-2 text-sm leading-6 text-gray-400">保存后会写入数据库，刷新页面仍可读回，用于后续复盘本周选题、文章和质量检查结果。</p>
               </div>
               <span className={`rounded-full border px-3 py-1 text-xs ${planConfigured ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100" : "border-amber-300/20 bg-amber-400/10 text-amber-100"}`}>{planConfigured ? "内容计划已保存" : "内容计划待保存"}</span>
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.7fr_0.5fr]">
               <label className="space-y-2 text-sm text-gray-600">
                 <span className="font-medium text-gray-900">计划名称</span>
-                <span className="block text-xs text-slate-500">给本周内容计划起一个名字，方便后续复盘。示例：5月第2周 内容计划</span>
+                <span className="block text-xs text-gray-500">给本周内容计划起一个名字，方便后续复盘。示例：5月第2周 内容计划</span>
                 <input value={contentPlan.name} onChange={event => setContentPlan(plan => ({ ...plan, name: event.target.value }))} className={aiInput} />
               </label>
               <label className="space-y-2 text-sm text-gray-600">
                 <span className="font-medium text-gray-900">周期开始日期</span>
-                <span className="block text-xs text-slate-500">选择本周内容计划的开始时间。</span>
+                <span className="block text-xs text-gray-500">选择本周内容计划的开始时间。</span>
                 <input type="date" value={contentPlan.weekStart} onChange={event => setContentPlan(plan => ({ ...plan, weekStart: event.target.value }))} className={aiInput} />
               </label>
               <label className="space-y-2 text-sm text-gray-600">
                 <span className="font-medium text-gray-900">本周计划生成篇数</span>
-                <span className="block text-xs text-slate-500">建议 3-5 篇，不建议一次生成过多。</span>
+                <span className="block text-xs text-gray-500">建议 3-5 篇，不建议一次生成过多。</span>
                 <input type="number" min={1} max={10} value={contentPlan.weeklyCount} onChange={event => setContentPlan(plan => ({ ...plan, weeklyCount: Number(event.target.value) || 1 }))} className={aiInput} />
               </label>
             </div>
             <div className="mt-5">
               <p className="text-sm font-medium text-white">目标发布平台</p>
-              <p className="mt-1 text-sm text-slate-400">选择本周内容将优先适配的平台。本页只配置内容计划，不连接平台、不发布。</p>
+              <p className="mt-1 text-sm text-gray-400">选择本周内容将优先适配的平台。本页只配置内容计划，不连接平台、不发布。</p>
               <div className="mt-3 grid gap-3 lg:grid-cols-3">
                 {platformMatrix.map(platform => (
                   <button key={platform.name} type="button" onClick={() => togglePlanValue("targetPlatforms", platform.name)} className={contentPlan.targetPlatforms.includes(platform.name) ? aiChipActive : aiChipIdle}>
                     <p className="font-medium text-white">{platformDisplayName(platform.name)}</p>
                     <p className="mt-1 text-blue-600">{platform.priority}</p>
                     <p className="mt-1">{platform.capability}</p>
-                    <p className="mt-2 text-slate-400">{platform.geoValue}</p>
+                    <p className="mt-2 text-gray-400">{platform.geoValue}</p>
                   </button>
                 ))}
               </div>
             </div>
             <div className="mt-5">
               <p className="text-sm font-medium text-white">内容类型</p>
-              <p className="mt-1 text-sm text-slate-400">选择本周要补齐的内容资产类型，让内容围绕诊断缺口和优化任务展开。</p>
+              <p className="mt-1 text-sm text-gray-400">选择本周要补齐的内容资产类型，让内容围绕诊断缺口和优化任务展开。</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {contentTypeOptions.map(type => (
                   <button key={type} type="button" onClick={() => togglePlanValue("contentTypes", type)} className={`rounded-full border px-3 py-2 text-sm ${contentPlan.contentTypes.includes(type) ? "border-blue-300 bg-blue-50 text-blue-800" : "border-gray-200 bg-white text-gray-600 hover:bg-white/[0.06]"}`}>{type}</button>
@@ -1808,7 +1808,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               </div>
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-slate-400">{latestPlan ? `已保存计划：${latestPlan.planName}。内容计划明细 ${contentPlanItems.length} 条。` : "保存计划后才能生成本周内容选题。"}</p>
+              <p className="text-sm text-gray-400">{latestPlan ? `已保存计划：${latestPlan.planName}。内容计划明细 ${contentPlanItems.length} 条。` : "保存计划后才能生成本周内容选题。"}</p>
               <Button onClick={handleSaveContentPlan} disabled={!selectedProjectId || !planFormComplete || savingPlan} variant="ai">{savingPlan ? "正在保存内容计划" : latestPlan ? "更新内容计划" : "保存内容计划"}</Button>
             </div>
           </section>
@@ -1817,7 +1817,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">2. 选择优化任务进入内容计划</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">可以选择一个或多个任务进入本周计划；生成文章时会选择其中一个任务对应的选题。</p>
+                <p className="mt-2 text-sm leading-6 text-gray-400">可以选择一个或多个任务进入本周计划；生成文章时会选择其中一个任务对应的选题。</p>
               </div>
               <Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))} variant="outline" className="border-gray-200 text-blue-700 hover:bg-white/10">查看 内容诊断</Button>
             </div>
@@ -1827,13 +1827,13 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 <button key={task.id} type="button" onClick={() => togglePlanTask(task.id)} className={contentPlan.taskIds.includes(task.id) ? aiChipActive : aiChipIdle}>
                   <p className="font-medium text-white">{contentPlan.taskIds.includes(task.id) ? "已纳入计划：" : ""}{task.taskName}</p>
                   <p className="mt-1 text-blue-600">{task.taskType || "内容任务"} · {task.priority || "优先级未标注"}</p>
-                  <p className="mt-2 text-slate-400">{task.generationReason || "该任务来自 内容诊断后的内容缺口判断。"}</p>
+                  <p className="mt-2 text-gray-400">{task.generationReason || "该任务来自 内容诊断后的内容缺口判断。"}</p>
                   {card ? (
                     <div className="mt-2 space-y-1 rounded-xl border border-gray-200 bg-gray-50 p-3 text-left text-xs text-gray-600">
-                      <p><span className="text-slate-500">建议标题</span><span className="mt-0.5 block text-sm text-blue-700">《{card.articleTitle}》</span></p>
-                      <p><span className="text-slate-500">核心论点</span><span className="mt-0.5 block">{card.keyPoints.join("；")}</span></p>
-                      <p><span className="text-slate-500">关键词</span><span className="mt-0.5 block">{card.targetKeywords.join("、")}</span></p>
-                      <p><span className="text-slate-500">平台</span><span className="mt-0.5 block">{card.recommendedPlatform.join("、")}</span></p>
+                      <p><span className="text-gray-500">建议标题</span><span className="mt-0.5 block text-sm text-blue-700">《{card.articleTitle}》</span></p>
+                      <p><span className="text-gray-500">核心论点</span><span className="mt-0.5 block">{card.keyPoints.join("；")}</span></p>
+                      <p><span className="text-gray-500">关键词</span><span className="mt-0.5 block">{card.targetKeywords.join("、")}</span></p>
+                      <p><span className="text-gray-500">平台</span><span className="mt-0.5 block">{card.recommendedPlatform.join("、")}</span></p>
                     </div>
                   ) : null}
                 </button>
@@ -1845,7 +1845,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">3. 生成并选择本周内容选题</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">选题与优化任务一一对应，标题与类型来自任务卡片。点击按钮从任务同步选题列表。重复风险仅为轻量规则提示。</p>
+                <p className="mt-2 text-sm leading-6 text-gray-400">选题与优化任务一一对应，标题与类型来自任务卡片。点击按钮从任务同步选题列表。重复风险仅为轻量规则提示。</p>
               </div>
               <Button onClick={handleGenerateTopics} disabled={!pageReady || generatingTopics || contentGenerating} variant="ai">{generatingTopics ? "正在生成本周内容选题" : "生成本周内容选题"}</Button>
             </div>
@@ -1867,7 +1867,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                     return (
                       <button key={topic.id} type="button" onClick={() => setSelectedTopicId(topic.id)} className={selectedTopicId === topic.id ? aiChipActive : aiChipIdle}>
                         <p className="font-medium text-white">{topic.title}</p>
-                        <p className="mt-2 text-slate-400">优化任务：{taskForTopic?.taskName ?? "—"}</p>
+                        <p className="mt-2 text-gray-400">优化任务：{taskForTopic?.taskName ?? "—"}</p>
                         {topicCard?.keyPoints?.length ? (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {topicCard.keyPoints.map((kp, i) => (
@@ -1875,9 +1875,9 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                             ))}
                           </div>
                         ) : null}
-                        <p className="mt-2 text-xs text-slate-500">目标关键词：{topicCard?.targetKeywords?.length ? topicCard.targetKeywords.join("、") : "—"}</p>
-                        <p className="mt-1 text-xs text-slate-500">推荐平台：{platformLine}</p>
-                        <p className="mt-1 text-xs text-slate-500">内容类型：{contentTypeLine}</p>
+                        <p className="mt-2 text-xs text-gray-500">目标关键词：{topicCard?.targetKeywords?.length ? topicCard.targetKeywords.join("、") : "—"}</p>
+                        <p className="mt-1 text-xs text-gray-500">推荐平台：{platformLine}</p>
+                        <p className="mt-1 text-xs text-gray-500">内容类型：{contentTypeLine}</p>
                         <p className="mt-2 text-xs text-amber-100">重复风险提示：{topicRepeatHint(topic, topics)}</p>
                       </button>
                     );
@@ -1891,7 +1891,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">4. 生成内容</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">可针对当前选中选题生成 1 篇，或按当前选题列表顺序串行生成全部；每篇完成后自动质量检查，结果在下方列表与质量检查区实时更新。</p>
+                <p className="mt-2 text-sm leading-6 text-gray-400">可针对当前选中选题生成 1 篇，或按当前选题列表顺序串行生成全部；每篇完成后自动质量检查，结果在下方列表与质量检查区实时更新。</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -1927,8 +1927,8 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             })()}
             {articlesSorted.length > 0 ? (
               <div className={`mt-4 p-4 ${aiSubPanel}`}>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">已生成文章</p>
-                <p className="mt-1 text-xs text-slate-400">按生成时间倒序；点击一行可查看正文与下方质量检查详情。</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">已生成文章</p>
+                <p className="mt-1 text-xs text-gray-400">按生成时间倒序；点击一行可查看正文与下方质量检查详情。</p>
                 <ul className="mt-3 divide-y divide-white/10">
                   {articlesSorted.map(article => {
                     const q = scores.find(s => s.articleId === article.id);
@@ -1949,7 +1949,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                           <span className="min-w-0 flex-1 font-medium text-white">
                             #{article.id} · {article.title || "无标题"}
                           </span>
-                          <span className="shrink-0 text-xs text-slate-400">质量 {scoreLabel}</span>
+                          <span className="shrink-0 text-xs text-gray-400">质量 {scoreLabel}</span>
                           <Badge
                             variant="outline"
                             className={
@@ -1973,14 +1973,14 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <p className="text-sm text-blue-600">文章 #{selectedArticle.id} · {cyclePick(contentPlan.targetPlatforms, 0, "目标平台待确认")} · {cyclePick(contentPlan.contentTypes, 0, selectedArticle.articleType || "内容")}</p>
-                      <p className="mt-2 text-xs text-slate-500">模型原标题：{articleRowFromList?.title ?? selectedArticle.title}</p>
+                      <p className="mt-2 text-xs text-gray-500">模型原标题：{articleRowFromList?.title ?? selectedArticle.title}</p>
                     </div>
                     <span className="rounded-full border border-gray-200 bg-white/[0.04] px-3 py-1 text-xs text-gray-700">{selectedArticle.status || (selectedQuality ? "已检查" : "生成中")}</span>
                   </div>
                   <div className="mt-5 space-y-4">
                     <div className="ai-glass-panel p-4">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">发布标题</p>
-                      <p className="mt-1 text-xs text-slate-500">已按企业简称处理工商全称，可直接微调后复制。</p>
+                      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">发布标题</p>
+                      <p className="mt-1 text-xs text-gray-500">已按企业简称处理工商全称，可直接微调后复制。</p>
                       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
                         <input
                           value={publishTitleEdit}
@@ -2002,8 +2002,8 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                     <div className="ai-glass-panel p-4">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">正文（Markdown）</p>
-                          <p className="mt-1 text-xs text-slate-500">完整正文，复制后到平台编辑器粘贴。</p>
+                          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">正文（Markdown）</p>
+                          <p className="mt-1 text-xs text-gray-500">完整正文，复制后到平台编辑器粘贴。</p>
                         </div>
                         <Button
                           type="button"
@@ -2021,7 +2021,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                         aria-label="文章 Markdown 正文"
                       />
                     </div>
-                    <p className="text-center text-sm text-slate-400">复制后前往对应平台粘贴发布</p>
+                    <p className="text-center text-sm text-gray-400">复制后前往对应平台粘贴发布</p>
                   </div>
                   <div className="mt-5 grid gap-3 md:grid-cols-2">
                     <div className="ai-glass-panel p-4 text-sm leading-6 text-gray-600">
@@ -2057,7 +2057,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <h2 className="font-semibold text-white">5. 文章质量检查</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">生成文章后会自动完成质量检查与差异度检查；下方展示分数、合规阻断（如有）与发布前可优化建议。</p>
+                <p className="mt-2 text-sm leading-6 text-gray-400">生成文章后会自动完成质量检查与差异度检查；下方展示分数、合规阻断（如有）与发布前可优化建议。</p>
               </div>
               {canReQualityCheck ? (
                 <Button onClick={handleQualityReview} disabled={!selectedArticle || checkingQuality || generatingTopics || contentGenerating} variant="outline" className="border-gray-200 text-blue-700 hover:bg-white/10">{checkingQuality ? "重新检查中…" : "重新检查"}</Button>

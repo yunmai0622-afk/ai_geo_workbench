@@ -93,15 +93,15 @@ export function TrustMaterialSection({
           </Button>
         </div>
         {faqItems.length === 0 ? (
-          <p className="text-sm text-slate-500">暂无 FAQ，点击添加常见客户问题与标准回答。</p>
+          <p className="text-sm text-gray-500">暂无 FAQ，点击添加常见客户问题与标准回答。</p>
         ) : (
           faqItems.map((item, idx) => (
             <div key={item.id} className={cn(aiGlassPanel, "space-y-2 p-4")}>
               <div className="flex justify-between gap-2">
-                <span className="text-xs text-slate-500">FAQ {idx + 1}</span>
+                <span className="text-xs text-gray-500">FAQ {idx + 1}</span>
                 <button
                   type="button"
-                  className="text-slate-500 hover:text-red-300"
+                  className="text-gray-500 hover:text-red-300"
                   onClick={() => onFaqItemsChange(faqItems.filter((_, i) => i !== idx))}
                 >
                   <Trash2 className="size-4" />

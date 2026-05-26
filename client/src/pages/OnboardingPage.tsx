@@ -249,7 +249,7 @@ export default function OnboardingPage() {
         data-testid="onboarding-has-projects"
       >
         <h1 className="text-xl font-semibold">已有客户项目</h1>
-        <p className="max-w-md text-sm leading-relaxed text-slate-400">
+        <p className="max-w-md text-sm leading-relaxed text-gray-400">
           日常新增客户请前往客户管理台操作。本引导仅用于系统首次创建第一个客户项目。
         </p>
         <Button
@@ -270,7 +270,7 @@ export default function OnboardingPage() {
         <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white/[0.04] p-8 text-center">
           <BarChart3 className="mx-auto h-10 w-10 text-blue-600" />
           <h1 className="mt-4 text-xl font-semibold">登录后继续</h1>
-          <p className="mt-2 text-sm text-slate-400">完成引导需要先登录</p>
+          <p className="mt-2 text-sm text-gray-400">完成引导需要先登录</p>
           {loginConfigured ? (
             <Button className="mt-6 w-full bg-blue-600 text-white" onClick={() => { window.location.href = getLoginUrl(); }}>
               登录
@@ -291,7 +291,7 @@ export default function OnboardingPage() {
         <div className="w-full max-w-[500px]">
           <p className="text-center text-sm font-medium tracking-wide text-blue-600/90">内容增长系统</p>
           <h1 className="mt-6 text-center text-[28px] font-semibold leading-tight text-white">让AI持续为你推荐精准客户</h1>
-          <p className="mt-3 text-center text-sm text-slate-400">填写3个信息，系统自动生成你的第一篇内容</p>
+          <p className="mt-3 text-center text-sm text-gray-400">填写3个信息，系统自动生成你的第一篇内容</p>
 
           <div className="my-8 border-t border-gray-200" />
 
@@ -341,7 +341,7 @@ export default function OnboardingPage() {
           >
             开始分析，约8分钟 →
           </Button>
-          <p className="mt-4 text-center text-xs text-slate-500">预计完成时间：约8分钟，全程自动，无需等待</p>
+          <p className="mt-4 text-center text-xs text-gray-500">预计完成时间：约8分钟，全程自动，无需等待</p>
         </div>
       </div>
     );
@@ -364,10 +364,10 @@ export default function OnboardingPage() {
                   ) : st === "active" ? (
                     <span className="flex h-4 w-4 shrink-0 items-center justify-center text-blue-600">●</span>
                   ) : (
-                    <Circle className="h-4 w-4 shrink-0 text-slate-600" />
+                    <Circle className="h-4 w-4 shrink-0 text-gray-600" />
                   )}
-                  <span className={st === "pending" ? "text-slate-500" : "text-gray-700"}>{step.label}</span>
-                  <span className="ml-auto text-xs text-slate-500">
+                  <span className={st === "pending" ? "text-gray-500" : "text-gray-700"}>{step.label}</span>
+                  <span className="ml-auto text-xs text-gray-500">
                     {st === "done" ? "完成✓" : st === "active" ? "进行中..." : "待执行○"}
                   </span>
                 </li>
@@ -381,7 +381,7 @@ export default function OnboardingPage() {
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <p className="mt-3 text-center text-xs text-slate-500">{stepHint || "请稍候..."}</p>
+          <p className="mt-3 text-center text-xs text-gray-500">{stepHint || "请稍候..."}</p>
         </div>
       </div>
     );
@@ -436,7 +436,7 @@ export default function OnboardingPage() {
             >
               进入工作台
             </Button>
-            <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
+            <p className="mt-6 text-center text-xs leading-relaxed text-gray-500">
               复制后粘贴到微信公众号、知乎、百家号等平台发布
               <br />
               发布后回到产品登记链接，系统会追踪你的内容进展
@@ -445,7 +445,7 @@ export default function OnboardingPage() {
         ) : (
           <>
             <h1 className="text-center text-xl font-semibold text-white">内容方向已分析完成，文章生成遇到了问题</h1>
-            <p className="mt-3 text-center text-sm text-slate-400">你可以在「本周内容」页查看内容建议并手动生成</p>
+            <p className="mt-3 text-center text-sm text-gray-400">你可以在「本周内容」页查看内容建议并手动生成</p>
             <Button type="button" className="mt-8 h-12 w-full bg-blue-600 text-white hover:bg-blue-700" onClick={() => {
               const pid = getActiveProjectId();
               setLocation(pid ? buildProjectUrl("/weekly", pid) : "/clients");

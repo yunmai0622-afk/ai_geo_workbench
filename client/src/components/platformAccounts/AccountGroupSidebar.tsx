@@ -17,7 +17,7 @@ export function AccountGroupSidebar({ selectedGroup, groupCounts, onSelect, onAd
       className="w-full shrink-0 space-y-2 lg:w-[220px]"
       data-testid="platform-account-group-sidebar"
     >
-      <p className="text-xs font-medium text-slate-500">账号组</p>
+      <p className="text-xs font-medium text-gray-500">账号组</p>
       <nav className="flex flex-row flex-wrap gap-2 lg:flex-col lg:gap-1">
         {SIDEBAR_GROUPS.map(({ key, label }) => (
           <button

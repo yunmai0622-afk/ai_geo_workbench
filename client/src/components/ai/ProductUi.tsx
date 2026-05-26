@@ -45,8 +45,8 @@ export function AiPageHero({
             </span>
           ) : null}
           <h1 className="ai-hero-title text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
-          <p className="max-w-2xl text-base leading-relaxed text-slate-400">{description}</p>
-          {meta ? <div className="text-sm text-slate-500">{meta}</div> : null}
+          <p className="max-w-2xl text-base leading-relaxed text-gray-400">{description}</p>
+          {meta ? <div className="text-sm text-gray-500">{meta}</div> : null}
         </div>
         {children ? <div className="flex shrink-0 flex-col gap-2 sm:min-w-[220px] sm:items-end">{children}</div> : null}
       </div>
@@ -72,7 +72,7 @@ export function AiSection({
       {title ? (
         <div className="space-y-1.5">
           <h2 className="text-lg font-semibold tracking-tight text-white sm:text-xl">{title}</h2>
-          {description ? <p className="max-w-3xl text-sm text-slate-400">{description}</p> : null}
+          {description ? <p className="max-w-3xl text-sm text-gray-400">{description}</p> : null}
         </div>
       ) : null}
       {children}
@@ -105,9 +105,9 @@ export function AiMetricCard({
     <div className={cn("ai-metric-card relative overflow-hidden", className)}>
       <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-80", accentRing)} />
       <div className="relative">
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</p>
         <p className="ai-metric-value mt-3 text-white">{value}</p>
-        {hint ? <p className="mt-2 text-xs leading-relaxed text-slate-500">{hint}</p> : null}
+        {hint ? <p className="mt-2 text-xs leading-relaxed text-gray-500">{hint}</p> : null}
       </div>
     </div>
   );
@@ -134,7 +134,7 @@ export function AiActionCard({
     <div className={cn("ai-action-card flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center", className)}>
       <div className="min-w-0 space-y-1.5">
         <p className="font-semibold text-white">{title}</p>
-        <p className="text-sm leading-relaxed text-slate-400">{description}</p>
+        <p className="text-sm leading-relaxed text-gray-400">{description}</p>
       </div>
       <Button
         type="button"
@@ -180,7 +180,7 @@ export function AiAssetCard({
     >
       {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
       <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-snug text-white">{title}</h3>
-      {subtitle ? <p className="mt-2 text-xs leading-relaxed text-slate-500">{subtitle}</p> : null}
+      {subtitle ? <p className="mt-2 text-xs leading-relaxed text-gray-500">{subtitle}</p> : null}
       {footer ? <div className="mt-4 border-t border-gray-200 pt-4">{footer}</div> : null}
     </Comp>
   );
@@ -223,7 +223,7 @@ export function AiEmptyState({
         ◇
       </div>
       <p className="text-lg font-semibold text-white">{title}</p>
-      <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-400">{description}</p>
+      <p className="mt-2 max-w-md text-sm leading-relaxed text-gray-400">{description}</p>
       {actionLabel && onAction ? (
         <Button type="button" variant="ai" className="mt-8" onClick={onAction}>
           {actionLabel}
@@ -287,7 +287,7 @@ export function AiStepRail({
         >
           <p className="text-xs font-semibold uppercase tracking-wider text-blue-600/80">Step {i + 1}</p>
           <p className="mt-2 font-medium text-white">{step.title}</p>
-          <p className="mt-1 text-xs text-slate-500">{step.desc}</p>
+          <p className="mt-1 text-xs text-gray-500">{step.desc}</p>
         </div>
       ))}
     </div>

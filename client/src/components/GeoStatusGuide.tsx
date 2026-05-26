@@ -34,7 +34,7 @@ export function GeoStatusGuide({ stage, completion, nextAction, why, risk, ctaLa
               <p className="mt-2 text-sm leading-6 text-gray-700">{nextAction}</p>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="flex items-center gap-2 text-xs font-medium text-violet-200"><Sparkles className="h-4 w-4" /> 为什么要做</p>
+              <p className="flex items-center gap-2 text-xs font-medium text-blue-600"><Sparkles className="h-4 w-4" /> 为什么要做</p>
               <p className="mt-2 text-sm leading-6 text-gray-700">{why}</p>
             </div>
             <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">

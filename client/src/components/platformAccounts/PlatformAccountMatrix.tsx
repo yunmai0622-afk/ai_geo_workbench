@@ -121,7 +121,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="platform-account-filters">
-            <span className="text-slate-500">登录状态</span>
+            <span className="text-gray-500">登录状态</span>
             {SESSION_FILTER_OPTIONS.map(o => (
               <button
                 key={o.value}
@@ -135,7 +135,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
                 {o.label}
               </button>
             ))}
-            <span className="ml-2 text-slate-500">账号身份</span>
+            <span className="ml-2 text-gray-500">账号身份</span>
             {IDENTITY_FILTER_OPTIONS.map(o => (
               <button
                 key={o.value}
@@ -160,7 +160,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           {b.filteredAccounts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 py-12 text-center" data-testid="platform-account-empty">
               <p className="text-base font-medium text-white">暂无{platformLabel}账号</p>
-              <p className="mt-2 text-sm text-slate-500">绑定后可用于内容发布、状态追踪和复测任务。</p>
+              <p className="mt-2 text-sm text-gray-500">绑定后可用于内容发布、状态追踪和复测任务。</p>
               {isNetease ? (
                 <p className="mt-2 text-xs text-amber-200/90">网易号账号绑定已开放，自动发布能力待接入。</p>
               ) : null}
@@ -220,11 +220,11 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs text-slate-500">平台显示昵称</label>
+              <label className="text-xs text-gray-500">平台显示昵称</label>
               <Input className={cn(aiInput, "cursor-not-allowed opacity-80")} value={b.formAccountName} readOnly />
             </div>
             <div>
-              <label className="text-xs text-slate-500">账号身份</label>
+              <label className="text-xs text-gray-500">账号身份</label>
               <select className={aiInput} value={b.formAccountRole} onChange={e => b.setFormAccountRole(e.target.value)}>
                 <option value="">未设置</option>
                 {PUBLISH_IDENTITY_OPTIONS.map(o => (
@@ -235,7 +235,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500">所属账号组</label>
+              <label className="text-xs text-gray-500">所属账号组</label>
               <select className={aiInput} value={b.formAccountGroup} onChange={e => b.setFormAccountGroup(e.target.value)}>
                 <option value="">未设置</option>
                 {b.groupOptions.map(o => (
@@ -246,7 +246,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500">备注（可选）</label>
+              <label className="text-xs text-gray-500">备注（可选）</label>
               <Input className={aiInput} value={b.formNotes} onChange={e => b.setFormNotes(e.target.value)} />
             </div>
             <label className="flex items-center gap-2 text-sm text-gray-600">

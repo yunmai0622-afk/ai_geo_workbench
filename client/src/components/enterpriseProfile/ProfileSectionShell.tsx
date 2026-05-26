@@ -40,7 +40,7 @@ export function ProfileSectionShell({
       <AiSection title={title} description={description}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            {hint ? <p className="text-xs leading-relaxed text-slate-500">{hint}</p> : null}
+            {hint ? <p className="text-xs leading-relaxed text-gray-500">{hint}</p> : null}
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <AiStatusBadge tone={statusTone(status)} data-section-status={status}>

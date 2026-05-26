@@ -343,7 +343,7 @@ export function ProfileIntakePanel({
           ) : null}
           <div className="flex flex-wrap gap-2">
             {DOC_TYPE_HINTS.map(t => (
-              <span key={t} className="rounded-full border border-gray-200 bg-white/[0.04] px-2.5 py-1 text-[11px] text-slate-400">
+              <span key={t} className="rounded-full border border-gray-200 bg-white/[0.04] px-2.5 py-1 text-[11px] text-gray-400">
                 {t}
               </span>
             ))}
@@ -366,7 +366,7 @@ export function ProfileIntakePanel({
           >
             <FileUp className="h-8 w-8 text-blue-600" />
             <p className="text-sm font-medium text-white">拖拽文件到此处，或点击上传</p>
-            <p className="text-xs text-slate-500">P0 支持 .txt / .md；Word / PDF 即将支持</p>
+            <p className="text-xs text-gray-500">P0 支持 .txt / .md；Word / PDF 即将支持</p>
             {fileName ? <p className="text-xs text-blue-600/90">已选文件：{fileName}</p> : null}
           </div>
           <input
@@ -391,7 +391,7 @@ export function ProfileIntakePanel({
               className={cn(aiInput, "min-h-[10rem] w-full max-w-none resize-y py-2")}
               disabled={disabled}
             />
-            <span className="text-xs text-slate-500">{docText.trim().length} 字</span>
+            <span className="text-xs text-gray-500">{docText.trim().length} 字</span>
           </label>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -434,7 +434,7 @@ export function ProfileIntakePanel({
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-gray-600">{row.preview}</p>
                   {applyMode === "selected" ? (
-                    <label className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                    <label className="mt-2 flex items-center gap-2 text-xs text-gray-400">
                       <input
                         type="checkbox"
                         checked={selectedFields[row.key]}
@@ -470,7 +470,7 @@ export function ProfileIntakePanel({
               </label>
             </div>
             {missingFields.length > 0 ? (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-slate-400">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-400">
                 <p className="font-medium text-gray-600">未识别字段（请手动补充）</p>
                 <p className="mt-1">{missingFields.join("、")}</p>
               </div>

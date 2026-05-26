@@ -149,7 +149,7 @@ export default function ProgressPage() {
       {loadError ? (
         <p className="text-sm text-amber-100">暂时无法加载，请刷新重试</p>
       ) : loading ? (
-        <p className="text-sm text-slate-400">加载中...</p>
+        <p className="text-sm text-gray-400">加载中...</p>
       ) : (
         <>
           <AiSection title="资产进展总览">
@@ -186,7 +186,7 @@ export default function ProgressPage() {
 
           <AiSection title="平台覆盖">
             {platformRows.length === 0 ? (
-              <p className="text-sm text-slate-500">暂无平台覆盖数据</p>
+              <p className="text-sm text-gray-500">暂无平台覆盖数据</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {platformRows.map(row => (
@@ -196,7 +196,7 @@ export default function ProgressPage() {
                   >
                     {row.platform}
                     <span className="ml-2 text-white">{row.count}</span>
-                    <span className="text-violet-300/80"> 篇</span>
+                    <span className="text-gray-500"> 篇</span>
                   </span>
                 ))}
               </div>

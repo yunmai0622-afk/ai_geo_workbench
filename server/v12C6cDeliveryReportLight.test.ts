@@ -36,9 +36,9 @@ describe("C6-C delivery report light customer view", () => {
       expect(lightView + lightLib).toContain(text);
     }
 
-    expect(lightView).toContain("bg-slate-100");
+    expect(lightView).toContain("bg-gray-100");
     expect(lightView).not.toContain("ai-app-canvas");
     expect(customerView).toContain("ai-app-canvas");
-    expect(publicPage).toContain("bg-slate-100");
+    expect(publicPage).toContain("bg-gray-100");
   });
 });

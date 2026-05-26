@@ -51,37 +51,37 @@ export function PublishTaskColumnBoard({
       {(["pending", "active", "done"] as const).map(col => (
         <section key={col} data-testid={COLUMN_META[col].testId} className="space-y-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">{COLUMN_META[col].title}</h2>
-            <p className="text-xs text-slate-500">{COLUMN_META[col].description}</p>
+            <h2 className="text-sm font-semibold text-gray-900">{COLUMN_META[col].title}</h2>
+            <p className="text-xs text-gray-500">{COLUMN_META[col].description}</p>
           </div>
           {columns[col].length === 0 ? (
-            <P0Card className="text-sm text-slate-500">暂无数据</P0Card>
+            <P0Card className="text-sm text-gray-500">暂无数据</P0Card>
           ) : (
             columns[col].map(card => (
               <P0Card key={card.key} testId={`publish-task-card-${card.key}`} className="space-y-2">
-                <p className="font-medium text-slate-900 line-clamp-2">{card.title}</p>
-                <p className="text-xs text-slate-600">
-                  <span className="text-slate-500">平台：</span>
+                <p className="font-medium text-gray-900 line-clamp-2">{card.title}</p>
+                <p className="text-xs text-gray-600">
+                  <span className="text-gray-500">平台：</span>
                   {card.platform}
                 </p>
-                <p className="text-xs text-slate-600">
-                  <span className="text-slate-500">账号：</span>
+                <p className="text-xs text-gray-600">
+                  <span className="text-gray-500">账号：</span>
                   {card.accountLabel}
                 </p>
                 {card.contentGoal ? (
-                  <p className="text-xs text-slate-600">
-                    <span className="text-slate-500">内容目标：</span>
+                  <p className="text-xs text-gray-600">
+                    <span className="text-gray-500">内容目标：</span>
                     {card.contentGoal}
                   </p>
                 ) : null}
                 {card.geoGap ? (
-                  <p className="text-xs text-slate-600">
-                    <span className="text-slate-500">GEO 缺口：</span>
+                  <p className="text-xs text-gray-600">
+                    <span className="text-gray-500">GEO 缺口：</span>
                     {card.geoGap}
                   </p>
                 ) : null}
-                <p className="text-xs font-medium text-slate-700">状态：{card.statusLabel}</p>
-                <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                <p className="text-xs font-medium text-gray-700">状态：{card.statusLabel}</p>
+                <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
                   <Button
                     type="button"
                     size="sm"

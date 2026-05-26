@@ -39,11 +39,11 @@ export function AiSearchEvidenceView({
           以下内容为系统对主流 AI 搜索引擎的真实提问与回答记录，可用于复查品牌提及、推荐与竞品对比情况。
         </p>
         {evidence.brandName ? (
-          <p className="mt-2 text-sm text-slate-500">
-            <span className="text-slate-500">品牌：</span>
+          <p className="mt-2 text-sm text-gray-500">
+            <span className="text-gray-500">品牌：</span>
             {evidence.brandName}
             {evidence.enterpriseName && evidence.enterpriseName !== evidence.brandName ? (
-              <span className="text-slate-600"> · {evidence.enterpriseName}</span>
+              <span className="text-gray-600"> · {evidence.enterpriseName}</span>
             ) : null}
           </p>
         ) : null}
@@ -56,43 +56,43 @@ export function AiSearchEvidenceView({
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
           <p>
-            <span className="text-slate-500">测试引擎：</span>
+            <span className="text-gray-500">测试引擎：</span>
             {evidence.engineName}
           </p>
           <p>
-            <span className="text-slate-500">测试时间：</span>
+            <span className="text-gray-500">测试时间：</span>
             {new Date(evidence.testedAt).toLocaleString()}
           </p>
           <p>
-            <span className="text-slate-500">测试阶段：</span>
+            <span className="text-gray-500">测试阶段：</span>
             {evidence.stageLabel}
           </p>
           <p>
-            <span className="text-slate-500">是否提及品牌：</span>
+            <span className="text-gray-500">是否提及品牌：</span>
             {boolLabel(evidence.mentionedBrand)}
           </p>
           <p>
-            <span className="text-slate-500">是否推荐品牌：</span>
+            <span className="text-gray-500">是否推荐品牌：</span>
             {boolLabel(evidence.recommendedBrand)}
           </p>
           <p>
-            <span className="text-slate-500">品牌排名：</span>
+            <span className="text-gray-500">品牌排名：</span>
             {evidence.brandRank ?? "未识别"}
           </p>
           <p>
-            <span className="text-slate-500">情感倾向：</span>
+            <span className="text-gray-500">情感倾向：</span>
             {sentimentLabelCn(evidence.sentiment)}
           </p>
           <p>
-            <span className="text-slate-500">竞品提及数量：</span>
+            <span className="text-gray-500">竞品提及数量：</span>
             {competitorMentionCount}
           </p>
           <p>
-            <span className="text-slate-500">引用来源数量：</span>
+            <span className="text-gray-500">引用来源数量：</span>
             {evidence.citedUrls.length}
           </p>
           <p className="sm:col-span-2 lg:col-span-3">
-            <span className="text-slate-500">测试问题：</span>
+            <span className="text-gray-500">测试问题：</span>
             {evidence.question}
           </p>
           {evidence.evidenceSummary ? (
@@ -141,7 +141,7 @@ export function AiSearchEvidenceView({
                 {c.mentioned ? (
                   <>
                     <p className="text-gray-500">出现排名：{c.rank ?? "未识别"}</p>
-                    {c.context ? <p className="mt-2 text-slate-500">相关片段：{c.context}</p> : null}
+                    {c.context ? <p className="mt-2 text-gray-500">相关片段：{c.context}</p> : null}
                   </>
                 ) : null}
               </div>

@@ -70,7 +70,7 @@ export default function DemoGeoPage() {
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-sm font-bold text-blue-700 shadow-lg shadow-blue-500/10">内容增长系统</span>
             <span>
               <span className="block text-sm font-semibold text-white">V1.2 外部只读 Demo</span>
-              <span className="block text-xs text-slate-400">{demoProject.shortName} 样板项目</span>
+              <span className="block text-xs text-gray-400">{demoProject.shortName} 样板项目</span>
             </span>
           </a>
           <nav className="flex gap-2 overflow-x-auto text-xs text-gray-600 md:text-sm">
@@ -173,7 +173,7 @@ export default function DemoGeoPage() {
                 </div>
                 <p className="mt-4 text-sm leading-6 text-gray-600"><span className="text-blue-600">AI 回答：</span>{item.answer}</p>
                 <div className="mt-4 grid gap-3 text-xs leading-5 text-gray-600 md:grid-cols-2">
-                  <p><span className="text-violet-200">语义分析：</span>{item.analysis}</p>
+                  <p><span className="text-blue-600">语义分析：</span>{item.analysis}</p>
                   <p><span className="text-amber-200">内容缺口：</span>{item.gap}</p>
                   <p><span className="text-blue-200">竞品差距：</span>{item.competitorGap}</p>
                   <p><span className="text-emerald-200">人工修订样本：</span>{item.manualRevision}</p>
@@ -191,7 +191,7 @@ export default function DemoGeoPage() {
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-600/80">{article.type}</p>
                     <h3 className="mt-3 text-xl font-semibold text-white">{article.title}</h3>
-                    <p className="mt-2 text-sm text-slate-400">{article.status}</p>
+                    <p className="mt-2 text-sm text-gray-400">{article.status}</p>
                   </div>
                   <StatusBadge tone={article.qualityScore >= 95 ? "emerald" : "violet"}>内容质量评分 {article.qualityScore}/100</StatusBadge>
                 </div>
@@ -230,7 +230,7 @@ export default function DemoGeoPage() {
                   </div>
                 </div>
                 <div className="mt-5 rounded-3xl border border-blue-200 bg-blue-50/50 p-4">
-                  <h4 className="font-semibold text-violet-100">AI 可引用片段</h4>
+                  <h4 className="font-semibold text-blue-700">AI 可引用片段</h4>
                   <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
                     {article.aiQuotableSnippets.map((snippet) => <li key={snippet}>“{snippet}”</li>)}
                   </ul>
@@ -247,7 +247,7 @@ export default function DemoGeoPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-white">{record.title}</h3>
-                    <p className="mt-2 text-sm text-slate-400">{record.channel}｜质量评分 {record.qualityScore}/100</p>
+                    <p className="mt-2 text-sm text-gray-400">{record.channel}｜质量评分 {record.qualityScore}/100</p>
                     <p className="mt-3 text-sm leading-6 text-gray-600">{record.notes}</p>
                   </div>
                   <StatusBadge tone="emerald">{record.status}</StatusBadge>
@@ -305,7 +305,7 @@ export default function DemoGeoPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
             {disabledOperations.map((operation) => (
-              <button key={operation} disabled title="Demo 演示模式仅支持查看，不支持修改。" className="cursor-not-allowed rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm text-slate-500 opacity-75">
+              <button key={operation} disabled title="Demo 演示模式仅支持查看，不支持修改。" className="cursor-not-allowed rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm text-gray-500 opacity-75">
                 {operation}
               </button>
             ))}

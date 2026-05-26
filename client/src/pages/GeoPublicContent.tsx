@@ -376,7 +376,7 @@ export default function GeoPublicContentPage() {
           {oneLinerText ? <p className="mt-3 max-w-3xl text-base leading-7 text-gray-600">{normalizeText(oneLinerText)}</p> : null}
           <h1 className={`max-w-4xl text-3xl font-semibold tracking-tight text-white md:text-5xl ${oneLinerText ? "mt-3" : "mt-5"}`}>{normalizeText(article.title)}</h1>
           <div className="mt-7 grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-gray-200 bg-white/[0.06] p-4"><p className="text-xs text-slate-400">文章类型</p><p className="mt-2 font-semibold text-white">{article.articleType}</p></div>
+            <div className="rounded-2xl border border-gray-200 bg-white/[0.06] p-4"><p className="text-xs text-gray-400">文章类型</p><p className="mt-2 font-semibold text-white">{article.articleType}</p></div>
             <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4"><p className="text-xs text-emerald-100/80">发布状态</p><p className="mt-2 font-semibold text-emerald-100">{article.status}</p></div>
             <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4"><p className="text-xs text-gray-500">质量评分</p><p className="mt-2 font-semibold text-gray-900">{qualityScore ? `${qualityScore.totalScore} / 100` : "已审核发布"}</p></div>
             <div className="rounded-2xl border border-sky-300/20 bg-sky-300/10 p-4"><p className="text-xs text-sky-100/80">发布时间 / 更新时间</p><p className="mt-2 text-sm font-semibold leading-6 text-sky-100">{createdAt}<br />{updatedAt}</p></div>
@@ -448,7 +448,7 @@ export default function GeoPublicContentPage() {
             className="group rounded-3xl border border-gray-200 bg-white/[0.035] p-5 text-gray-600 open:bg-white/[0.055]"
             onToggle={event => setAuditExpanded(event.currentTarget.open)}
           >
-            <summary className="cursor-pointer list-none text-lg font-semibold text-white marker:hidden">查看生成依据与事实溯源 <span className="ml-2 text-sm font-normal text-slate-400">默认折叠，仅在需要核验时展开</span></summary>
+            <summary className="cursor-pointer list-none text-lg font-semibold text-white marker:hidden">查看生成依据与事实溯源 <span className="ml-2 text-sm font-normal text-gray-400">默认折叠，仅在需要核验时展开</span></summary>
             {auditExpanded ? (
               <div className="mt-5 space-y-5">
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
@@ -456,7 +456,7 @@ export default function GeoPublicContentPage() {
                   <dl className="mt-4 space-y-3">
                     {basisRows.map(([label, value]) => (
                       <div key={label} className="rounded-2xl border border-gray-200 bg-white/[0.035] p-4">
-                        <dt className="text-xs font-medium text-slate-400">{label}</dt>
+                        <dt className="text-xs font-medium text-gray-400">{label}</dt>
                         <dd className="mt-2 text-sm leading-7 text-gray-600">{value}</dd>
                       </div>
                     ))}
@@ -465,11 +465,11 @@ export default function GeoPublicContentPage() {
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
                     <h3 className="font-semibold text-gray-900">事实溯源摘要</h3>
-                    <div className="mt-3 space-y-3">{traceRows.length ? traceRows.map(([label, value]) => <p key={label} className="text-sm leading-7 text-gray-600"><b>{label}：</b>{value}</p>) : <p className="text-sm text-slate-400">暂无额外事实溯源记录。</p>}</div>
+                    <div className="mt-3 space-y-3">{traceRows.length ? traceRows.map(([label, value]) => <p key={label} className="text-sm leading-7 text-gray-600"><b>{label}：</b>{value}</p>) : <p className="text-sm text-gray-400">暂无额外事实溯源记录。</p>}</div>
                   </div>
                   <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
                     <h3 className="font-semibold text-gray-900">一致性检查摘要</h3>
-                    <div className="mt-3 space-y-3">{consistencyRows.length ? consistencyRows.map(([label, value]) => <p key={label} className="text-sm leading-7 text-gray-600"><b>{label}：</b>{value}</p>) : <p className="text-sm text-slate-400">暂无额外一致性检查记录。</p>}</div>
+                    <div className="mt-3 space-y-3">{consistencyRows.length ? consistencyRows.map(([label, value]) => <p key={label} className="text-sm leading-7 text-gray-600"><b>{label}：</b>{value}</p>) : <p className="text-sm text-gray-400">暂无额外一致性检查记录。</p>}</div>
                   </div>
                 </div>
               </div>

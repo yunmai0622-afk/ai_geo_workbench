@@ -37,7 +37,7 @@ export default function DeliveryReportPublicPage() {
 
   if (!enabled) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-6 text-center text-slate-700">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-6 text-center text-gray-700">
         <p>{DELIVERY_REPORT_SHARE_INVALID_MESSAGE}</p>
       </div>
     );
@@ -63,7 +63,7 @@ export default function DeliveryReportPublicPage() {
 
   if (shareQuery.isError || !shareQuery.data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-6 text-center text-slate-700">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-6 text-center text-gray-700">
         <p>{shareQuery.error?.message ?? DELIVERY_REPORT_SHARE_INVALID_MESSAGE}</p>
       </div>
     );

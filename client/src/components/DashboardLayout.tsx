@@ -369,7 +369,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
           <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-2">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9" />
-              <span className="text-slate-900">{activeMenuItem?.label ?? "菜单"}</span>
+              <span className="text-gray-900">{activeMenuItem?.label ?? "菜单"}</span>
             </div>
           </div>
         ) : null}

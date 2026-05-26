@@ -82,7 +82,7 @@ export function CustomerScenarioSection(props: Props) {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className={cn(aiGlassPanel, "space-y-4 p-4")} data-testid="customer-scenario-who">
           <p className="text-sm font-medium text-blue-600/90">客户是谁</p>
-          <p className="text-xs text-slate-500">越具体，生成的问题与内容越贴近真实业务。</p>
+          <p className="text-xs text-gray-500">越具体，生成的问题与内容越贴近真实业务。</p>
           <label className="block space-y-2 text-sm">
             <span className="font-medium text-gray-900">
               目标客户类型
@@ -131,7 +131,7 @@ export function CustomerScenarioSection(props: Props) {
 
         <div className={cn(aiGlassPanel, "space-y-4 p-4")} data-testid="customer-scenario-why">
           <p className="text-sm font-medium text-blue-600/90">为什么需要你</p>
-          <p className="text-xs text-slate-500">痛点与购买触发点会进入选题与 FAQ 素材。</p>
+          <p className="text-xs text-gray-500">痛点与购买触发点会进入选题与 FAQ 素材。</p>
           <div className="space-y-2 text-sm">
             <span className="font-medium text-gray-900">
               核心痛点（至少 1 个）
@@ -180,7 +180,7 @@ export function CustomerScenarioSection(props: Props) {
 
         <div className={cn(aiGlassPanel, "space-y-4 p-4")} data-testid="customer-scenario-search">
           <p className="text-sm font-medium text-blue-600/90">他会搜索什么</p>
-          <p className="text-xs text-slate-500">常见搜索问题用于 GEO 测试与内容选题，请逐条添加。</p>
+          <p className="text-xs text-gray-500">常见搜索问题用于 GEO 测试与内容选题，请逐条添加。</p>
           <QuestionListEditor
             label="常见搜索问题"
             items={props.commonQuestionsList}
@@ -224,7 +224,7 @@ function TagListEditor({
   return (
     <div className="space-y-2 text-sm">
       <span className="font-medium text-gray-900">{label}</span>
-      <p className="text-xs text-slate-500">{hint}</p>
+      <p className="text-xs text-gray-500">{hint}</p>
       <div className="flex flex-wrap gap-2">
         {items.map(t => (
           <span key={t} className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
@@ -271,15 +271,15 @@ function QuestionListEditor({
   return (
     <div className="space-y-2 text-sm" data-testid="common-questions-list">
       <span className="font-medium text-gray-900">{label}</span>
-      {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+      {hint ? <p className="text-xs text-gray-500">{hint}</p> : null}
       <ul className="space-y-2">
         {items.length === 0 ? (
-          <li className="text-xs text-slate-500">暂无，点击下方添加。</li>
+          <li className="text-xs text-gray-500">暂无，点击下方添加。</li>
         ) : (
           items.map(q => (
             <li key={q} className="flex items-start justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700">
               <span className="flex-1">{q}</span>
-              <button type="button" className="text-slate-500 hover:text-white" onClick={() => onRemove(q)}>
+              <button type="button" className="text-gray-500 hover:text-white" onClick={() => onRemove(q)}>
                 <X className="h-3.5 w-3.5" />
               </button>
             </li>

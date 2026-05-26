@@ -1030,7 +1030,7 @@ export default function WeeklyContentPage() {
       {tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
         <p className="text-sm text-red-700">暂时无法加载，请刷新重试</p>
       ) : !queriesReady || preparingTopics || generateTopicsMutation.isPending ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-slate-500">
+        <div className="flex flex-col items-center gap-3 py-16 text-gray-500">
           <Spinner className="size-6 text-blue-600" />
           <p className="text-sm">正在加载平台化内容生产数据…</p>
         </div>
@@ -1052,12 +1052,12 @@ export default function WeeklyContentPage() {
         <>
           <P0Card testId="weekly-round-goal">
             <p className={geoP0Surfaces.sectionTitle}>本轮内容目标</p>
-            <p className="mt-2 text-sm text-slate-800">
+            <p className="mt-2 text-sm text-gray-800">
               {platformStrategy.geoEnhancementGoal || "覆盖目标搜索问题，提升品牌提及与 AI 推荐概率"}
             </p>
             {platformStrategy.targetQuestion.trim() ? (
-              <p className="mt-2 text-sm text-slate-600">
-                <span className="font-medium text-slate-500">关联问题：</span>
+              <p className="mt-2 text-sm text-gray-600">
+                <span className="font-medium text-gray-500">关联问题：</span>
                 {platformStrategy.targetQuestion.trim()}
               </p>
             ) : null}
@@ -1065,13 +1065,13 @@ export default function WeeklyContentPage() {
 
           <P0Card testId="weekly-strategy-source">
             <p className={geoP0Surfaces.sectionTitle}>内容策略来源</p>
-            <p className="mt-2 text-sm text-slate-700">最近一次 AI 诊断</p>
+            <p className="mt-2 text-sm text-gray-700">最近一次 AI 诊断</p>
             {latestDiagnosisGap ? (
-              <p className="mt-2 text-sm text-slate-600" data-testid="diagnosis-gap-preview">
+              <p className="mt-2 text-sm text-gray-600" data-testid="diagnosis-gap-preview">
                 {latestDiagnosisGap}
               </p>
             ) : (
-              <p className="mt-2 text-sm text-slate-500">诊断任务已就绪，缺口说明将随诊断结果展示</p>
+              <p className="mt-2 text-sm text-gray-500">诊断任务已就绪，缺口说明将随诊断结果展示</p>
             )}
           </P0Card>
 
@@ -1086,7 +1086,7 @@ export default function WeeklyContentPage() {
 
           {showDirectionEmpty ? (
             <P0Card>
-              <p className="text-sm text-slate-700">正在根据 AI 诊断准备内容方向，请稍候…</p>
+              <p className="text-sm text-gray-700">正在根据 AI 诊断准备内容方向，请稍候…</p>
             </P0Card>
           ) : null}
 
@@ -1115,11 +1115,11 @@ export default function WeeklyContentPage() {
             </section>
           ) : null}
 
-          <details className="rounded-xl border border-slate-200 bg-white shadow-sm">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-slate-800">
+          <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
               内容策略细项（可选，按单平台调整）
             </summary>
-            <div className="border-t border-slate-100 p-4">
+            <div className="border-t border-gray-100 p-4">
               <PlatformContentStrategyPanel
                 value={platformStrategy}
                 onChange={setPlatformStrategy}

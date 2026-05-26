@@ -40,7 +40,7 @@ export function PlatformAccountTable({
     <div className="hidden overflow-x-auto md:block" data-testid="platform-account-table">
       <table className="w-full min-w-[960px] text-left text-sm">
         <thead>
-          <tr className="border-b border-gray-200 text-xs text-slate-500">
+          <tr className="border-b border-gray-200 text-xs text-gray-500">
             <th className="px-2 py-2 w-8">
               <input type="checkbox" className="rounded border-gray-300" aria-label="全选" disabled />
             </th>
@@ -62,15 +62,15 @@ export function PlatformAccountTable({
                 <input type="checkbox" className="rounded border-gray-300" aria-label={`选择 ${row.accountName}`} />
               </td>
               <td className="px-2 py-3 font-medium text-white">{displayAccountName(row)}</td>
-              <td className="px-2 py-3 text-slate-400">{PUBLISH_PLATFORM_LABELS[row.platform]}</td>
+              <td className="px-2 py-3 text-gray-400">{PUBLISH_PLATFORM_LABELS[row.platform]}</td>
               <td className="px-2 py-3">
                 <AiStatusBadge tone={sessionTone(row.sessionStatus)}>{sessionLabel(row.sessionStatus)}</AiStatusBadge>
               </td>
-              <td className="px-2 py-3 text-slate-400">{getPublishIdentityLabel(row.accountRole) || "—"}</td>
-              <td className="px-2 py-3 text-slate-400">{getAccountGroupLabel(row.accountGroup) || "未分组"}</td>
-              <td className="px-2 py-3 text-xs text-slate-500">{formatTime(row.lastSessionCheckedAt ?? row.lastVerifiedAt)}</td>
-              <td className="px-2 py-3 text-xs text-slate-500">{lastPublishDisplay(row)}</td>
-              <td className="max-w-[120px] truncate px-2 py-3 text-xs text-slate-500">{row.notes || "—"}</td>
+              <td className="px-2 py-3 text-gray-400">{getPublishIdentityLabel(row.accountRole) || "—"}</td>
+              <td className="px-2 py-3 text-gray-400">{getAccountGroupLabel(row.accountGroup) || "未分组"}</td>
+              <td className="px-2 py-3 text-xs text-gray-500">{formatTime(row.lastSessionCheckedAt ?? row.lastVerifiedAt)}</td>
+              <td className="px-2 py-3 text-xs text-gray-500">{lastPublishDisplay(row)}</td>
+              <td className="max-w-[120px] truncate px-2 py-3 text-xs text-gray-500">{row.notes || "—"}</td>
               <td className="px-2 py-3">
                 <div className="flex flex-wrap gap-1">
                   <Button type="button" size="sm" variant="outline" className={aiOutlineBtn} disabled={bindBusy} onClick={() => void onReverify(row)}>
