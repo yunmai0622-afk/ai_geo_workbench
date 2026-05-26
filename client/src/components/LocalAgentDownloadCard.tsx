@@ -14,31 +14,31 @@ type DownloadManifest = {
   winSetupUrl?: string | null;
 };
 
-function isMacZipDownloadUrl(url: string | null | undefined): url is string {
+function isValidDownloadUrl(url: string | null | undefined): url is string {
   if (!url) return false;
   if (url.startsWith("http://") || url.startsWith("https://")) return true;
   return url.startsWith("/downloads/");
 }
 
-/** 优先 zip：支持相对路径或 AGENT_MAC_ZIP_URL 写入的绝对 URL */
+/** 优先 zip：支持相对路径或外部绝对 URL */
 function pickMacHref(manifest: DownloadManifest | null): string | null {
   const zip = manifest?.macZipUrl;
   const dmg = manifest?.macDmgUrl;
-  if (isMacZipDownloadUrl(zip)) return zip;
-  if (dmg?.startsWith("/downloads/")) return dmg;
+  if (isValidDownloadUrl(zip)) return zip;
+  if (isValidDownloadUrl(dmg)) return dmg;
   return null;
 }
 
 function pickMacDmgHref(manifest: DownloadManifest | null): string | null {
   const dmg = manifest?.macDmgUrl;
-  return dmg?.startsWith("/downloads/") ? dmg : null;
+  return isValidDownloadUrl(dmg) ? dmg : null;
 }
 
 function pickWinHref(manifest: DownloadManifest | null): string | null {
   const setup = manifest?.winSetupUrl;
   const zip = manifest?.winZipUrl;
-  if (setup?.startsWith("/downloads/")) return setup;
-  if (zip?.startsWith("/downloads/")) return zip;
+  if (isValidDownloadUrl(setup)) return setup;
+  if (isValidDownloadUrl(zip)) return zip;
   return null;
 }
 
