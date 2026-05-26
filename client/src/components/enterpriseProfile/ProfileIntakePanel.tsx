@@ -339,18 +339,18 @@ export function ProfileIntakePanel({
             <p className="text-sm text-amber-100">请先创建或选择企业项目，再上传资料进行 AI 建档。</p>
           )}
           {showPendingSaveHint ? (
-            <p className="text-xs text-cyan-200/90">已应用到表单的内容尚未保存，请在下方档案确认区点击对应「保存」按钮。</p>
+            <p className="text-xs text-blue-600/90">已应用到表单的内容尚未保存，请在下方档案确认区点击对应「保存」按钮。</p>
           ) : null}
           <div className="flex flex-wrap gap-2">
             {DOC_TYPE_HINTS.map(t => (
-              <span key={t} className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-slate-400">
+              <span key={t} className="rounded-full border border-gray-200 bg-white/[0.04] px-2.5 py-1 text-[11px] text-slate-400">
                 {t}
               </span>
             ))}
           </div>
           <div
             className={cn(
-              "flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-400/30 bg-cyan-500/5 px-4 py-8 text-center transition hover:border-cyan-400/50",
+              "flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-blue-400/30 bg-blue-50 px-4 py-8 text-center transition hover:border-blue-400/50",
               disabled && "pointer-events-none opacity-50",
             )}
             onClick={() => fileRef.current?.click()}
@@ -364,10 +364,10 @@ export function ProfileIntakePanel({
               if (f) void handleFile(f);
             }}
           >
-            <FileUp className="h-8 w-8 text-cyan-300/80" />
+            <FileUp className="h-8 w-8 text-blue-600" />
             <p className="text-sm font-medium text-white">拖拽文件到此处，或点击上传</p>
             <p className="text-xs text-slate-500">P0 支持 .txt / .md；Word / PDF 即将支持</p>
-            {fileName ? <p className="text-xs text-cyan-200/90">已选文件：{fileName}</p> : null}
+            {fileName ? <p className="text-xs text-blue-600/90">已选文件：{fileName}</p> : null}
           </div>
           <input
             ref={fileRef}
@@ -382,7 +382,7 @@ export function ProfileIntakePanel({
           />
           {fileNotice ? <p className="text-xs text-amber-100/90">{fileNotice}</p> : null}
           <label className="block space-y-2 text-sm">
-            <span className="font-medium text-slate-100">或粘贴企业资料全文</span>
+            <span className="font-medium text-gray-900">或粘贴企业资料全文</span>
             <textarea
               value={docText}
               onChange={e => setDocText(e.target.value)}
@@ -423,7 +423,7 @@ export function ProfileIntakePanel({
             ) : null}
             <div className="space-y-3">
               {fieldRows.map(row => (
-                <div key={row.key} className="rounded-xl border border-white/8 bg-slate-950/40 px-4 py-3">
+                <div key={row.key} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-medium text-white">{row.label}</p>
                     <AiStatusBadge
@@ -432,7 +432,7 @@ export function ProfileIntakePanel({
                       {row.status === "fill" ? "将填充" : row.status === "overwrite" ? "已有内容，将覆盖" : "未识别"}
                     </AiStatusBadge>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-300">{row.preview}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-gray-600">{row.preview}</p>
                   {applyMode === "selected" ? (
                     <label className="mt-2 flex items-center gap-2 text-xs text-slate-400">
                       <input
@@ -447,8 +447,8 @@ export function ProfileIntakePanel({
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap items-center gap-4 border-t border-white/8 pt-4 text-sm">
-              <label className="flex items-center gap-2 text-slate-300">
+            <div className="flex flex-wrap items-center gap-4 border-t border-gray-200 pt-4 text-sm">
+              <label className="flex items-center gap-2 text-gray-600">
                 <input
                   type="radio"
                   checked={applyMode === "empty"}
@@ -456,7 +456,7 @@ export function ProfileIntakePanel({
                 />
                 只应用空字段（默认）
               </label>
-              <label className="flex items-center gap-2 text-slate-300">
+              <label className="flex items-center gap-2 text-gray-600">
                 <input
                   type="radio"
                   checked={applyMode === "selected"}
@@ -470,8 +470,8 @@ export function ProfileIntakePanel({
               </label>
             </div>
             {missingFields.length > 0 ? (
-              <div className="rounded-xl border border-white/8 bg-slate-950/40 px-4 py-3 text-xs text-slate-400">
-                <p className="font-medium text-slate-300">未识别字段（请手动补充）</p>
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-slate-400">
+                <p className="font-medium text-gray-600">未识别字段（请手动补充）</p>
                 <p className="mt-1">{missingFields.join("、")}</p>
               </div>
             ) : null}
@@ -492,5 +492,5 @@ export function ProfileIntakePanel({
 
 export function AiFilledMark({ show }: { show: boolean }) {
   if (!show) return null;
-  return <span className="ml-2 text-[10px] font-normal text-cyan-300/90">AI 已填充</span>;
+  return <span className="ml-2 text-[10px] font-normal text-blue-600/90">AI 已填充</span>;
 }

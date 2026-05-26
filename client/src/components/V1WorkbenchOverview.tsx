@@ -192,8 +192,8 @@ export default function V1WorkbenchOverview() {
             ) : (
               <ul className="space-y-2">
                 {recentPublish.map(r => (
-                  <li key={r.id} className="text-sm text-slate-300">
-                    <span className="text-slate-100">{truncate((r.publishTitle || "未命名").trim(), 28)}</span>
+                  <li key={r.id} className="text-sm text-gray-600">
+                    <span className="text-gray-900">{truncate((r.publishTitle || "未命名").trim(), 28)}</span>
                     <span className="text-slate-600"> · </span>
                     {r.publishChannel ?? "—"}
                     <span className="text-slate-600"> · </span>

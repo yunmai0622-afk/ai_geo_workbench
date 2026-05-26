@@ -62,16 +62,18 @@
 
       <!-- ===== 账号环境 ===== -->
       <section id="panel-accounts" class="panel" role="tabpanel" hidden>
-        <div class="panel-intro">
-          <p>在这里管理本机的平台登录环境。每个账号独立隔离，登录态保存在本机，不上传密码或 Cookie。</p>
+        <div class="accounts-layout">
+          <!-- 左侧：平台选择区 -->
+          <aside class="accounts-sidebar">
+            <h3 class="sidebar-title">发布平台</h3>
+            <ul id="platform-list" class="platform-list"></ul>
+          </aside>
+          <!-- 右侧：账号管理区 -->
+          <div class="accounts-main">
+            <div id="accounts-main-header" class="accounts-main-header"></div>
+            <div id="accounts-main-content" class="accounts-main-content"></div>
+          </div>
         </div>
-        <div class="btn-row">
-          <button type="button" data-create="zhihu" class="btn-create">+ 知乎</button>
-          <button type="button" data-create="sohu" class="btn-create">+ 搜狐号</button>
-          <button type="button" data-create="baijiahao" class="btn-create">+ 百家号</button>
-          <button type="button" data-create="toutiao" class="btn-create">+ 头条号</button>
-        </div>
-        <div id="accounts-root"></div>
       </section>
 
       <!-- ===== 发布任务 ===== -->

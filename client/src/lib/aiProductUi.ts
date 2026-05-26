@@ -1,21 +1,21 @@
-/** C3-D 全局 AI 产品视觉 class 约定（仅展示层） */
-export const aiAppCanvas = "ai-app-canvas geo-grid-bg relative min-h-full overflow-x-hidden";
-export const aiGlassCard = "ai-glass-card";
-export const aiGlassPanel = "ai-glass-panel";
-export const aiMetricCard = "ai-metric-card";
-export const aiPageShell = "ai-page-shell mx-auto w-full max-w-[90rem] space-y-10 pb-20";
+/** 全局 AI 产品视觉 class 约定 — 浅色版 */
+export const aiAppCanvas = "relative min-h-full overflow-x-hidden bg-gray-50";
+export const aiGlassCard = "rounded-2xl border border-gray-200 bg-white shadow-sm";
+export const aiGlassPanel = "rounded-2xl border border-gray-200 bg-white shadow-sm";
+export const aiMetricCard = "rounded-xl border border-gray-200 bg-white p-4 shadow-sm";
+export const aiPageShell = "mx-auto w-full max-w-[90rem] space-y-10 pb-20";
 export const aiPrimaryBtn =
-  "rounded-xl bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 font-semibold text-slate-950 shadow-[0_0_24px_rgba(56,189,248,0.35)] hover:brightness-110 disabled:opacity-45";
+  "rounded-xl bg-blue-600 font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-45";
 export const aiOutlineBtn =
-  "rounded-xl border border-cyan-400/35 bg-white/[0.04] text-cyan-100 shadow-[0_0_18px_rgba(56,189,248,0.08)] hover:border-cyan-300/50 hover:bg-cyan-400/10";
+  "rounded-xl border border-blue-200 bg-white text-blue-700 shadow-sm hover:border-blue-300 hover:bg-blue-50";
 export const aiDangerBtn =
-  "rounded-xl border border-red-400/35 bg-red-500/10 text-red-100 hover:bg-red-500/20";
+  "rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100";
 export const aiInput =
-  "h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm text-slate-100 outline-none transition focus-visible:border-cyan-400/40 focus-visible:ring-2 focus-visible:ring-cyan-400/30 md:max-w-md";
-export const aiDataTable = "ai-data-table w-full min-w-0 border-collapse text-left text-sm";
-export const aiSubPanel = "ai-glass-panel border-white/8 bg-slate-950/40";
-export const aiListRow = "rounded-xl border border-white/8 bg-slate-950/35 px-3 py-2.5 text-sm text-slate-300";
+  "h-10 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition focus-visible:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-200 md:max-w-md";
+export const aiDataTable = "w-full min-w-0 border-collapse text-left text-sm";
+export const aiSubPanel = "rounded-2xl border border-gray-200 bg-gray-50 shadow-sm";
+export const aiListRow = "rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700";
 export const aiInternalZone =
-  "mt-10 rounded-2xl border border-violet-500/12 bg-gradient-to-b from-slate-950/55 to-slate-950/25 p-4 md:p-6";
-export const aiChipIdle = "rounded-2xl border border-white/10 bg-slate-950/35 p-4 text-left text-sm text-slate-300 transition hover:border-cyan-400/25 hover:bg-cyan-500/5";
-export const aiChipActive = "rounded-2xl border border-cyan-400/40 bg-cyan-500/10 p-4 text-left text-sm text-cyan-50 shadow-[0_0_20px_rgba(56,189,248,0.08)]";
+  "mt-10 rounded-2xl border border-gray-200 bg-gray-50 p-4 md:p-6";
+export const aiChipIdle = "rounded-2xl border border-gray-200 bg-white p-4 text-left text-sm text-gray-600 transition hover:border-blue-300 hover:bg-blue-50";
+export const aiChipActive = "rounded-2xl border border-blue-400 bg-blue-50 p-4 text-left text-sm text-blue-800 shadow-sm";

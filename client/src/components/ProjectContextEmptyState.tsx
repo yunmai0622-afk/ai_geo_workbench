@@ -17,12 +17,12 @@ export default function ProjectContextEmptyState({
 
   return (
     <div
-      className="flex min-h-[40vh] flex-col items-center justify-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center"
+      className="flex min-h-[40vh] flex-col items-center justify-center gap-4 rounded-2xl border border-gray-200 bg-white/[0.03] px-6 py-12 text-center"
       data-testid={testId}
     >
       <Building2 className="h-12 w-12 text-slate-600" aria-hidden />
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
         <p className="max-w-md text-sm leading-6 text-slate-400">{description}</p>
       </div>
       <Button

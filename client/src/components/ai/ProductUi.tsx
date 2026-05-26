@@ -13,9 +13,9 @@ export function AiPageShell({
   auxiliary?: ReactNode;
 }) {
   return (
-    <div className={cn("ai-page-shell mx-auto w-full max-w-[90rem] space-y-10 pb-20 pt-1 text-slate-100", className)}>
+    <div className={cn("ai-page-shell mx-auto w-full max-w-[90rem] space-y-10 pb-20 pt-1 text-gray-900", className)}>
       {children}
-      {auxiliary ? <aside className="ai-page-auxiliary space-y-6 border-t border-white/8 pt-10">{auxiliary}</aside> : null}
+      {auxiliary ? <aside className="ai-page-auxiliary space-y-6 border-t border-gray-200 pt-10">{auxiliary}</aside> : null}
     </div>
   );
 }
@@ -139,7 +139,7 @@ export function AiActionCard({
       <Button
         type="button"
         variant={variant === "primary" ? "ai" : "outline"}
-        className={cn("shrink-0", variant === "outline" && "border-white/15 text-cyan-100")}
+        className={cn("shrink-0", variant === "outline" && "border-gray-200 text-blue-700")}
         disabled={disabled}
         onClick={onAction}
       >
@@ -172,8 +172,8 @@ export function AiAssetCard({
       type={onClick ? "button" : undefined}
       onClick={onClick}
       className={cn(
-        "ai-asset-card flex w-full flex-col rounded-2xl border border-white/10 bg-slate-950/50 p-5 text-left transition",
-        onClick && "cursor-pointer hover:border-cyan-400/25 hover:shadow-[0_0_32px_rgba(56,189,248,0.1)]",
+        "ai-asset-card flex w-full flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left transition",
+        onClick && "cursor-pointer hover:border-blue-400/25 hover:shadow-[0_0_32px_rgba(56,189,248,0.1)]",
         className,
       )}
       style={accentColor ? { borderLeftWidth: 4, borderLeftColor: accentColor } : undefined}
@@ -181,7 +181,7 @@ export function AiAssetCard({
       {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
       <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-snug text-white">{title}</h3>
       {subtitle ? <p className="mt-2 text-xs leading-relaxed text-slate-500">{subtitle}</p> : null}
-      {footer ? <div className="mt-4 border-t border-white/8 pt-4">{footer}</div> : null}
+      {footer ? <div className="mt-4 border-t border-gray-200 pt-4">{footer}</div> : null}
     </Comp>
   );
 }
@@ -196,8 +196,8 @@ export function AiStatusBadge({
   const tones = {
     success: "border-emerald-400/35 bg-emerald-500/10 text-emerald-100",
     warning: "border-amber-400/35 bg-amber-500/10 text-amber-100",
-    info: "border-cyan-400/35 bg-cyan-500/10 text-cyan-100",
-    neutral: "border-white/12 bg-slate-950/60 text-slate-300",
+    info: "border-blue-200 bg-blue-50 text-blue-700",
+    neutral: "border-gray-200 bg-white text-gray-600",
   };
   return (
     <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium", tones[tone])}>
@@ -219,7 +219,7 @@ export function AiEmptyState({
 }) {
   return (
     <div className="ai-empty-state flex flex-col items-center px-6 py-14 text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-2xl text-cyan-200">
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-200 bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-2xl text-blue-600">
         ◇
       </div>
       <p className="text-lg font-semibold text-white">{title}</p>
@@ -244,10 +244,10 @@ export function AiFunnelRail({ stages }: { stages: FunnelStage[] }) {
     <div className="ai-funnel-rail grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {stages.map((stage, index) => (
         <div key={stage.label} className="ai-funnel-step relative flex flex-col gap-2 p-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-400/35 bg-cyan-500/10 text-sm font-bold text-cyan-100">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-sm font-bold text-blue-700">
             {index + 1}
           </span>
-          <p className="text-sm font-medium text-slate-300">{stage.label}</p>
+          <p className="text-sm font-medium text-gray-600">{stage.label}</p>
           <p className="text-lg font-semibold text-white">{stage.value}</p>
           {index < stages.length - 1 ? (
             <span className="ai-funnel-connector hidden lg:block" aria-hidden />
@@ -260,7 +260,7 @@ export function AiFunnelRail({ stages }: { stages: FunnelStage[] }) {
 
 export function AiConsolePanel({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("ai-console-panel rounded-2xl border border-cyan-400/20 bg-gradient-to-b from-slate-950/80 to-slate-900/40 p-5 shadow-[0_0_40px_rgba(56,189,248,0.08)]", className)}>
+    <div className={cn("ai-console-panel rounded-2xl border border-blue-200 bg-gradient-to-b from-slate-950/80 to-slate-900/40 p-5 shadow-[0_0_40px_rgba(56,189,248,0.08)]", className)}>
       {children}
     </div>
   );
@@ -281,11 +281,11 @@ export function AiStepRail({
           className={cn(
             "rounded-2xl border p-4 transition",
             i <= activeIndex
-              ? "border-cyan-400/30 bg-cyan-500/8 shadow-[0_0_24px_rgba(56,189,248,0.1)]"
-              : "border-white/8 bg-slate-950/40",
+              ? "border-blue-400/30 bg-cyan-500/8 shadow-[0_0_24px_rgba(56,189,248,0.1)]"
+              : "border-gray-200 bg-gray-50",
           )}
         >
-          <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200/80">Step {i + 1}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-blue-600/80">Step {i + 1}</p>
           <p className="mt-2 font-medium text-white">{step.title}</p>
           <p className="mt-1 text-xs text-slate-500">{step.desc}</p>
         </div>

@@ -763,3 +763,168 @@ th {
   text-align: center;
   padding: 24px 12px;
 }
+
+/* ===== Accounts Left-Right Layout ===== */
+.accounts-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  min-height: 400px;
+}
+
+.accounts-sidebar {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 16px 0;
+}
+
+.sidebar-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 16px;
+  margin: 0 0 12px;
+}
+
+.platform-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.platform-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.12s ease;
+}
+
+.platform-item:hover {
+  background: #334155;
+}
+
+.platform-item.active {
+  background: #172554;
+  border-left-color: #1d4ed8;
+}
+
+.platform-item-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.platform-item-count {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.platform-item-status {
+  font-size: 0.68rem;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.platform-item-status.status-unbound {
+  color: #64748b;
+}
+
+.platform-item-status.status-bound {
+  color: #6ee7b7;
+}
+
+.platform-item-status.status-relogin {
+  color: #fcd34d;
+}
+
+.accounts-main {
+  min-width: 0;
+}
+
+.accounts-main-header {
+  margin-bottom: 16px;
+}
+
+.accounts-main-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.accounts-main-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.accounts-main-desc {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.btn-create-right {
+  border: 1px solid #1d4ed8;
+  background: #1d4ed8;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.btn-create-right:hover {
+  background: #2563eb;
+}
+
+.accounts-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  background: #0f172a;
+  border-radius: 12px;
+  border: 1px dashed #334155;
+}
+
+.accounts-empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0 0 8px;
+}
+
+.accounts-empty-desc {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.danger-btn {
+  border-color: #7f1d1d;
+  background: transparent;
+  color: #fca5a5;
+}
+
+.danger-btn:hover {
+  background: #7f1d1d;
+  color: #ffffff;
+}
+
+/* Responsive: stack on narrow windows */
+@media (max-width: 640px) {
+  .accounts-layout {
+    grid-template-columns: 1fr;
+  }
+}

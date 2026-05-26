@@ -226,8 +226,8 @@ function useProjectSelection() {
 
 function InfoCard({ title, desc, value }: { title: string; desc: string; value?: string }) {
   return (
-    <div className="ai-metric-card text-slate-100">
-      <p className="text-xs font-medium uppercase tracking-wide text-cyan-200/80">{title}</p>
+    <div className="ai-metric-card text-gray-900">
+      <p className="text-xs font-medium uppercase tracking-wide text-blue-600/80">{title}</p>
       {value ? <p className="ai-metric-value mt-2 text-white">{value}</p> : null}
       <p className="mt-2 text-sm leading-6 text-slate-400">{desc}</p>
     </div>
@@ -236,7 +236,7 @@ function InfoCard({ title, desc, value }: { title: string; desc: string; value?:
 
 function EmptyStep({ title, description }: { title: string; description: string }) {
   return (
-    <div className="ai-glass-panel border border-dashed border-white/15 p-6 text-sm leading-6 text-slate-300">
+    <div className="ai-glass-panel border border-dashed border-gray-200 p-6 text-sm leading-6 text-gray-600">
       <p className="font-semibold text-white">{title}</p>
       <p className="mt-2">{description}</p>
     </div>
@@ -253,7 +253,7 @@ function articleGate(article: ArticleLike, qualityScore?: number | null) {
   if (article.status === "已发布" || article.publishStatus === "已发布") return { label: "已发布", reason: "已进入公开内容页，可进入收录监测。", tone: "text-emerald-200" };
   if (score >= GEO_ARTICLE_MIN_PASS_SCORE || article.status === "审核通过") return { label: "允许发布", reason: "质量评分和人工状态满足发布准入。", tone: "text-emerald-200" };
   if (score > 0) return { label: "暂不可发布", reason: `质量评分低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分，需要先优化。`, tone: "text-amber-200" };
-  return { label: "待检查", reason: "缺少质量评分，暂不进入发布队列。", tone: "text-slate-300" };
+  return { label: "待检查", reason: "缺少质量评分，暂不进入发布队列。", tone: "text-gray-600" };
 }
 
 function toAbsoluteUrl(path?: string | null) {
@@ -1735,17 +1735,17 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   }
 
   return (
-    <div className="space-y-6 text-slate-100">
+    <div className="space-y-6 text-gray-900">
       <GeoStatusGuide stage="内容生产计划" completion={reviewPassed ? 88 : reviewComplete ? 80 : contentComplete ? 72 : topics.length > 0 ? 58 : planConfigured ? 44 : hasTasks ? 32 : 18} nextAction={reviewPassed ? "进入发布记录，连接内容发布渠道" : reviewComplete ? "查看质量检查结果并确认是否发布" : contentComplete ? "等待质量检查结果" : topics.length > 0 ? "选择选题并生成 1 篇内容" : planConfigured ? "生成本周内容选题" : "保存本周内容生产计划"} why="根据 内容诊断结果和优化任务，制定本周内容计划，并生成可用于发布前质量检查的内容资产。" risk="本页不做平台授权、不发布、不写发布记录。" ctaLabel="进入发布记录" ctaPath="/content-publishing" />
-      <Card className="border-white/10 bg-white/[0.04] text-slate-100">
+      <Card className="border-gray-200 bg-white/[0.04] text-gray-900">
         <CardHeader>
           <CardTitle className="text-white">内容生产计划</CardTitle>
-          <CardDescription className="text-cyan-200">本步骤用于根据 内容诊断结果和优化任务，制定本周内容计划，并生成可用于发布前质量检查的内容资产。</CardDescription>
+          <CardDescription className="text-blue-600">本步骤用于根据 内容诊断结果和优化任务，制定本周内容计划，并生成可用于发布前质量检查的内容资产。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <BusinessPageProjectHeader projectName={selectedProject?.enterpriseName} testId="content-gen-project-header" />
           <ActionState message={message} error={error || pageError} />
-          {pageLoading ? <div className="rounded-2xl border border-white/8 bg-slate-950/35 p-4 text-sm text-slate-300">正在读取项目、企业资料、诊断结果、优化任务、内容计划、选题、文章和已有质量分...</div> : null}
+          {pageLoading ? <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600">正在读取项目、企业资料、诊断结果、优化任务、内容计划、选题、文章和已有质量分...</div> : null}
           {projects.length === 0 ? <EmptyStep title="暂无项目" description="请先在客户管理台新建或选择客户项目，再完成内容诊断后生成内容。" /> : null}
           {selectedProjectId && !hasProfile && !assetSummaryQuery.isLoading ? <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">当前项目还没有企业档案。内容计划需要企业定位、产品与客户信息；请先在「企业档案」完成 Section 1 / 2 等必填项并保存。</div> : null}
           {selectedProjectId && !hasDiagnosis && !analysisQuery.isLoading ? <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50">当前项目还没有 内容诊断结果。内容必须基于诊断缺口生成，请先进入内容诊断生成目标问题并运行诊断。</div> : null}
@@ -1768,18 +1768,18 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               <span className={`rounded-full border px-3 py-1 text-xs ${planConfigured ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100" : "border-amber-300/20 bg-amber-400/10 text-amber-100"}`}>{planConfigured ? "内容计划已保存" : "内容计划待保存"}</span>
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.7fr_0.5fr]">
-              <label className="space-y-2 text-sm text-slate-300">
-                <span className="font-medium text-slate-100">计划名称</span>
+              <label className="space-y-2 text-sm text-gray-600">
+                <span className="font-medium text-gray-900">计划名称</span>
                 <span className="block text-xs text-slate-500">给本周内容计划起一个名字，方便后续复盘。示例：5月第2周 内容计划</span>
                 <input value={contentPlan.name} onChange={event => setContentPlan(plan => ({ ...plan, name: event.target.value }))} className={aiInput} />
               </label>
-              <label className="space-y-2 text-sm text-slate-300">
-                <span className="font-medium text-slate-100">周期开始日期</span>
+              <label className="space-y-2 text-sm text-gray-600">
+                <span className="font-medium text-gray-900">周期开始日期</span>
                 <span className="block text-xs text-slate-500">选择本周内容计划的开始时间。</span>
                 <input type="date" value={contentPlan.weekStart} onChange={event => setContentPlan(plan => ({ ...plan, weekStart: event.target.value }))} className={aiInput} />
               </label>
-              <label className="space-y-2 text-sm text-slate-300">
-                <span className="font-medium text-slate-100">本周计划生成篇数</span>
+              <label className="space-y-2 text-sm text-gray-600">
+                <span className="font-medium text-gray-900">本周计划生成篇数</span>
                 <span className="block text-xs text-slate-500">建议 3-5 篇，不建议一次生成过多。</span>
                 <input type="number" min={1} max={10} value={contentPlan.weeklyCount} onChange={event => setContentPlan(plan => ({ ...plan, weeklyCount: Number(event.target.value) || 1 }))} className={aiInput} />
               </label>
@@ -1791,7 +1791,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 {platformMatrix.map(platform => (
                   <button key={platform.name} type="button" onClick={() => togglePlanValue("targetPlatforms", platform.name)} className={contentPlan.targetPlatforms.includes(platform.name) ? aiChipActive : aiChipIdle}>
                     <p className="font-medium text-white">{platformDisplayName(platform.name)}</p>
-                    <p className="mt-1 text-cyan-200">{platform.priority}</p>
+                    <p className="mt-1 text-blue-600">{platform.priority}</p>
                     <p className="mt-1">{platform.capability}</p>
                     <p className="mt-2 text-slate-400">{platform.geoValue}</p>
                   </button>
@@ -1803,7 +1803,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               <p className="mt-1 text-sm text-slate-400">选择本周要补齐的内容资产类型，让内容围绕诊断缺口和优化任务展开。</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {contentTypeOptions.map(type => (
-                  <button key={type} type="button" onClick={() => togglePlanValue("contentTypes", type)} className={`rounded-full border px-3 py-2 text-sm ${contentPlan.contentTypes.includes(type) ? "border-cyan-300/50 bg-cyan-400/10 text-cyan-50" : "border-white/8 bg-slate-950/35 text-slate-300 hover:bg-white/[0.06]"}`}>{type}</button>
+                  <button key={type} type="button" onClick={() => togglePlanValue("contentTypes", type)} className={`rounded-full border px-3 py-2 text-sm ${contentPlan.contentTypes.includes(type) ? "border-blue-300 bg-blue-50 text-blue-800" : "border-gray-200 bg-white text-gray-600 hover:bg-white/[0.06]"}`}>{type}</button>
                 ))}
               </div>
             </div>
@@ -1819,18 +1819,18 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 <h2 className="font-semibold text-white">2. 选择优化任务进入内容计划</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-400">可以选择一个或多个任务进入本周计划；生成文章时会选择其中一个任务对应的选题。</p>
               </div>
-              <Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))} variant="outline" className="border-white/15 text-cyan-100 hover:bg-white/10">查看 内容诊断</Button>
+              <Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))} variant="outline" className="border-gray-200 text-blue-700 hover:bg-white/10">查看 内容诊断</Button>
             </div>
             {tasks.length === 0 ? <EmptyStep title="暂无优化任务" description="完成 内容诊断并生成任务后，才能基于任务生成内容。" /> : <div className="mt-4 grid gap-3 lg:grid-cols-2">{tasks.map(task => {
               const card = parseGeoTaskCard(task.executionSuggestion);
               return (
                 <button key={task.id} type="button" onClick={() => togglePlanTask(task.id)} className={contentPlan.taskIds.includes(task.id) ? aiChipActive : aiChipIdle}>
                   <p className="font-medium text-white">{contentPlan.taskIds.includes(task.id) ? "已纳入计划：" : ""}{task.taskName}</p>
-                  <p className="mt-1 text-cyan-200">{task.taskType || "内容任务"} · {task.priority || "优先级未标注"}</p>
+                  <p className="mt-1 text-blue-600">{task.taskType || "内容任务"} · {task.priority || "优先级未标注"}</p>
                   <p className="mt-2 text-slate-400">{task.generationReason || "该任务来自 内容诊断后的内容缺口判断。"}</p>
                   {card ? (
-                    <div className="mt-2 space-y-1 rounded-xl border border-white/10 bg-slate-950/40 p-3 text-left text-xs text-slate-300">
-                      <p><span className="text-slate-500">建议标题</span><span className="mt-0.5 block text-sm text-cyan-100">《{card.articleTitle}》</span></p>
+                    <div className="mt-2 space-y-1 rounded-xl border border-gray-200 bg-gray-50 p-3 text-left text-xs text-gray-600">
+                      <p><span className="text-slate-500">建议标题</span><span className="mt-0.5 block text-sm text-blue-700">《{card.articleTitle}》</span></p>
                       <p><span className="text-slate-500">核心论点</span><span className="mt-0.5 block">{card.keyPoints.join("；")}</span></p>
                       <p><span className="text-slate-500">关键词</span><span className="mt-0.5 block">{card.targetKeywords.join("、")}</span></p>
                       <p><span className="text-slate-500">平台</span><span className="mt-0.5 block">{card.recommendedPlatform.join("、")}</span></p>
@@ -1871,7 +1871,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                         {topicCard?.keyPoints?.length ? (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {topicCard.keyPoints.map((kp, i) => (
-                              <span key={i} className="rounded-full border border-white/10 bg-slate-950/50 px-2 py-0.5 text-xs text-cyan-100">{kp}</span>
+                              <span key={i} className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-blue-700">{kp}</span>
                             ))}
                           </div>
                         ) : null}
@@ -1905,7 +1905,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                   onClick={() => void handleGenerateAllArticles()}
                   disabled={visibleTopics.length === 0 || generatingTopics || contentGenerating || checkingQuality}
                   variant="outline"
-                  className="border-white/15 text-cyan-100 hover:bg-white/10"
+                  className="border-gray-200 text-blue-700 hover:bg-white/10"
                 >
                   {batchGeneratingAll && batchProgress
                     ? `生成中（${batchProgress.current}/${batchProgress.total}）…`
@@ -1917,7 +1917,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               const stTask = tasks.find(t => t.id === selectedTopic.optimizationTaskId);
               const stCard = parseGeoTaskCard(stTask?.executionSuggestion ?? null);
               return (
-                <div className="mt-4 rounded-2xl border border-white/8 bg-slate-950/35 p-4 text-sm leading-6 text-slate-300">
+                <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 text-sm leading-6 text-gray-600">
                   <p className="font-medium text-white">当前选题：{selectedTopic.title}</p>
                   <p className="mt-1">优化任务：{stTask?.taskName ?? "—"}</p>
                   <p className="mt-1">推荐平台：{stCard?.recommendedPlatform?.length ? stCard.recommendedPlatform.join("、") : "—"}</p>
@@ -1944,7 +1944,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                               if (article.topicId != null) setSelectedTopicId(article.topicId);
                             });
                           }}
-                          className={`flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left text-sm transition hover:bg-white/[0.04] ${selectedArticleId === article.id ? "text-cyan-100" : "text-slate-200"}`}
+                          className={`flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left text-sm transition hover:bg-white/[0.04] ${selectedArticleId === article.id ? "text-blue-700" : "text-gray-700"}`}
                         >
                           <span className="min-w-0 flex-1 font-medium text-white">
                             #{article.id} · {article.title || "无标题"}
@@ -1969,13 +1969,13 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             ) : null}
             {!selectedArticle ? <EmptyStep title="暂无已生成文章" description="生成后会在这里展示发布标题、Markdown 正文、生成依据和下一步检查状态。" /> : (
               <div className="mt-4 space-y-4">
-                <div className="rounded-3xl border border-white/8 bg-slate-950/35 p-5">
+                <div className="rounded-3xl border border-gray-200 bg-white p-5">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <p className="text-sm text-cyan-200">文章 #{selectedArticle.id} · {cyclePick(contentPlan.targetPlatforms, 0, "目标平台待确认")} · {cyclePick(contentPlan.contentTypes, 0, selectedArticle.articleType || "内容")}</p>
+                      <p className="text-sm text-blue-600">文章 #{selectedArticle.id} · {cyclePick(contentPlan.targetPlatforms, 0, "目标平台待确认")} · {cyclePick(contentPlan.contentTypes, 0, selectedArticle.articleType || "内容")}</p>
                       <p className="mt-2 text-xs text-slate-500">模型原标题：{articleRowFromList?.title ?? selectedArticle.title}</p>
                     </div>
-                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-200">{selectedArticle.status || (selectedQuality ? "已检查" : "生成中")}</span>
+                    <span className="rounded-full border border-gray-200 bg-white/[0.04] px-3 py-1 text-xs text-gray-700">{selectedArticle.status || (selectedQuality ? "已检查" : "生成中")}</span>
                   </div>
                   <div className="mt-5 space-y-4">
                     <div className="ai-glass-panel p-4">
@@ -1992,7 +1992,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                         <Button
                           type="button"
                           variant="outline"
-                          className="shrink-0 border-white/15 text-cyan-100 hover:bg-white/10 sm:w-28"
+                          className="shrink-0 border-gray-200 text-blue-700 hover:bg-white/10 sm:w-28"
                           onClick={() => void copyPublishField(publishTitleEdit, "title")}
                         >
                           {copyFeedback === "title" ? "已复制" : "复制标题"}
@@ -2008,7 +2008,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                         <Button
                           type="button"
                           variant="outline"
-                          className="shrink-0 border-white/15 text-cyan-100 hover:bg-white/10 sm:w-28"
+                          className="shrink-0 border-gray-200 text-blue-700 hover:bg-white/10 sm:w-28"
                           onClick={() => void copyPublishField(publishBodyMarkdown, "body")}
                         >
                           {copyFeedback === "body" ? "已复制" : "复制正文"}
@@ -2017,33 +2017,33 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                       <textarea
                         readOnly
                         value={publishBodyMarkdown}
-                        className={`mt-3 max-h-[520px] min-h-[240px] w-full resize-y p-3 font-mono text-sm leading-6 text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/30 ${aiInput}`}
+                        className={`mt-3 max-h-[520px] min-h-[240px] w-full resize-y p-3 font-mono text-sm leading-6 text-gray-700 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/30 ${aiInput}`}
                         aria-label="文章 Markdown 正文"
                       />
                     </div>
                     <p className="text-center text-sm text-slate-400">复制后前往对应平台粘贴发布</p>
                   </div>
                   <div className="mt-5 grid gap-3 md:grid-cols-2">
-                    <div className="ai-glass-panel p-4 text-sm leading-6 text-slate-300">
+                    <div className="ai-glass-panel p-4 text-sm leading-6 text-gray-600">
                       <p className="font-medium text-white">优化任务</p>
                       <p className="mt-2">{textValue(basis.optimizationTask ?? selectedTask?.taskName)}</p>
                     </div>
-                    <div className="ai-glass-panel p-4 text-sm leading-6 text-slate-300">
+                    <div className="ai-glass-panel p-4 text-sm leading-6 text-gray-600">
                       <p className="font-medium text-white">目标问题</p>
                       <p className="mt-2">{textValue(basis.customerQuestion)}</p>
                     </div>
-                    <div className="ai-glass-panel p-4 text-sm leading-6 text-slate-300">
+                    <div className="ai-glass-panel p-4 text-sm leading-6 text-gray-600">
                       <p className="font-medium text-white">本周计划归属</p>
                       <p className="mt-2">计划：{contentPlan.name || "未命名计划"}</p>
                       <p className="mt-1">目标平台：{cyclePick(contentPlan.targetPlatforms, 0, "未选择目标平台")}</p>
                       <p className="mt-1">内容类型：{cyclePick(contentPlan.contentTypes, 0, selectedArticle.articleType || "内容")}</p>
                     </div>
-                    <div className="ai-glass-panel p-4 text-sm leading-6 text-slate-300">
+                    <div className="ai-glass-panel p-4 text-sm leading-6 text-gray-600">
                       <p className="font-medium text-white">企业资料依据</p>
                       {enterpriseMaterials.length > 0 ? <ul className="mt-2 list-disc space-y-1 pl-5">{enterpriseMaterials.slice(0, 4).map((item, index) => <li key={index}>{textValue(item.name ?? item.title ?? item.sourceName, "企业资料")}：{textValue(item.summary ?? item.content ?? item.evidence, "已纳入生成依据")}</li>)}</ul> : assetSources.length > 0 ? <ul className="mt-2 list-disc space-y-1 pl-5">{assetSources.slice(0, 4).map((source, index) => <li key={index}>{source.title || source.sourceType || `资料来源 ${index + 1}`}</li>)}</ul> : <p className="mt-2">企业资料依据较少，发布前建议补充来源和案例。</p>}
                     </div>
                   </div>
-                  <div className="mt-5 grid gap-3 text-sm text-slate-300 md:grid-cols-3">
+                  <div className="mt-5 grid gap-3 text-sm text-gray-600 md:grid-cols-3">
                     <span className="ai-glass-panel px-4 py-3">质量状态：{selectedQuality ? `${selectedQuality.totalScore} 分` : "生成后自动质量检查"}</span>
                     <span className="ai-glass-panel px-4 py-3">差异度：{selectedArticle ? duplicateRiskLabel(antiDuplication.similarityRisk) : "待检查"}</span>
                     <span className="ai-glass-panel px-4 py-3">发布准备：{reviewPassed ? "可进入人工确认" : reviewComplete ? "需修订或复核" : "待生成"}</span>
@@ -2060,13 +2060,13 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 <p className="mt-2 text-sm leading-6 text-slate-400">生成文章后会自动完成质量检查与差异度检查；下方展示分数、合规阻断（如有）与发布前可优化建议。</p>
               </div>
               {canReQualityCheck ? (
-                <Button onClick={handleQualityReview} disabled={!selectedArticle || checkingQuality || generatingTopics || contentGenerating} variant="outline" className="border-white/15 text-cyan-100 hover:bg-white/10">{checkingQuality ? "重新检查中…" : "重新检查"}</Button>
+                <Button onClick={handleQualityReview} disabled={!selectedArticle || checkingQuality || generatingTopics || contentGenerating} variant="outline" className="border-gray-200 text-blue-700 hover:bg-white/10">{checkingQuality ? "重新检查中…" : "重新检查"}</Button>
               ) : null}
             </div>
             {!selectedArticle ? <EmptyStep title="文章为空" description="请先生成 1 篇文章，系统会自动完成质量检查并在此展示结果。" /> : null}
             {selectedArticle && !selectedQuality && !contentGenerating ? <EmptyStep title="等待质量检查结果" description="文章已生成，正在等待质量检查结果回写；若长时间无结果，可点击「重新检查」。" /> : null}
             {contentGenerating ? (
-              <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm leading-6 text-cyan-50">
+              <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-800">
                 {batchGeneratingAll && batchProgress
                   ? `正在批量生成：第 ${batchProgress.current} / ${batchProgress.total} 篇（串行执行生成与质量检查）…`
                   : "正在生成正文并执行 质量检查…"}
@@ -2074,7 +2074,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             ) : null}
             {selectedQuality ? <div className="mt-4 space-y-4">
               <div className={`rounded-3xl border p-5 ${reviewBlocked ? "border-amber-300/20 bg-amber-400/10 text-amber-50" : "border-emerald-300/20 bg-emerald-400/10 text-emerald-50"}`}>
-                <p className="text-sm text-cyan-100">质量总分</p>
+                <p className="text-sm text-blue-700">质量总分</p>
                 <p className="mt-2 text-4xl font-semibold text-white">{selectedQuality.totalScore}</p>
                 <p className="mt-3 text-sm leading-6">
                   {qualityBlocked
@@ -2096,7 +2096,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 <InfoCard title="平台适配性" value={String(selectedQuality.complianceScore ?? "未记录")} desc={`目标平台：${cyclePick(contentPlan.targetPlatforms, 0, "未选择目标平台")}。检查基础格式和合规边界。`} />
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-3xl border border-white/8 bg-slate-950/35 p-5 text-sm leading-6 text-slate-300">
+                <div className="rounded-3xl border border-gray-200 bg-white p-5 text-sm leading-6 text-gray-600">
                   <h3 className="font-semibold text-white">阻断原因（仅合规）</h3>
                   {qualityBlocked && stringList(selectedQuality.blockReasons).length > 0 ? (
                     <ul className="mt-3 list-disc space-y-1 pl-5">{stringList(selectedQuality.blockReasons).map((reason, index) => <li key={index}>{reason}</li>)}</ul>
@@ -2104,7 +2104,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                     <p className="mt-3 text-emerald-100">未发现合规类阻断。</p>
                   )}
                 </div>
-                <div className="rounded-3xl border border-white/8 bg-slate-950/35 p-5 text-sm leading-6 text-slate-300">
+                <div className="rounded-3xl border border-gray-200 bg-white p-5 text-sm leading-6 text-gray-600">
                   <h3 className="font-semibold text-white">发布前可优化的建议（非必须）</h3>
                   <ul className="mt-3 list-disc space-y-1 pl-5">
                   {stringList((selectedQuality as any).optimizationSuggestions ?? []).map((suggestion, index) => <li key={`s-${index}`}>{suggestion}</li>)}
@@ -2114,7 +2114,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                   </ul>
                 </div>
               </div>
-              <div className="rounded-3xl border border-white/8 bg-slate-950/35 p-5 text-sm leading-6 text-slate-300">
+              <div className="rounded-3xl border border-gray-200 bg-white p-5 text-sm leading-6 text-gray-600">
                 <h3 className="font-semibold text-white">与历史文章差异度</h3>
                 <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <p>标题是否重复：{antiDuplication.titleRepeated ? "是" : "否"}</p>
@@ -2124,7 +2124,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                   <p>同一优化任务下是否连续相似：{antiDuplication.sameTaskRepeated ? "是" : "否"}</p>
                   <p>同周是否重复覆盖同一问题：{antiDuplication.sameWeekRepeated ? "是" : "否"}</p>
                 </div>
-                <p className="mt-3 text-cyan-100">内容重复风险：{duplicateRiskStatus(antiDuplication.similarityRisk)}（轻量规则，不作为合规阻断）。</p>
+                <p className="mt-3 text-blue-700">内容重复风险：{duplicateRiskStatus(antiDuplication.similarityRisk)}（轻量规则，不作为合规阻断）。</p>
                 <p className="mt-2">差异化角度建议：{antiDuplication.differentiationAngle}</p>
                 {antiDuplication.similarArticles.length > 0 ? <div className="mt-3"><p className="font-medium text-white">相似历史文章</p><ul className="mt-2 list-disc space-y-1 pl-5">{antiDuplication.similarArticles.map(item => <li key={item.id}>{item.title}</li>)}</ul></div> : <p className="mt-3 text-emerald-100">未发现明显相似历史文章。</p>}
                 <p className="mt-3 text-amber-100">差异度结果当前为轻量规则计算，未写入数据库；不是复杂语义向量相似度。</p>
@@ -2134,7 +2134,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
 
           {reviewPassed ? <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">内容已完成生成和 质量检查（达到参考分或已通过）。下一步：进入发布记录，连接内容发布渠道，并进行人工确认发布。</div> : reviewComplete && selectedQuality && !qualityBlocked ? <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm text-amber-50">内容已生成；当前为「建议修订后发布，也可直接发布」。可按下方建议优化，或进入发布记录人工复核。</div> : reviewComplete && qualityBlocked ? <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm text-amber-50">需要修改：请先处理合规类问题后再继续发布流程。</div> : contentComplete ? <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">内容已生成。系统正在或即将完成质量检查，请稍候查看结果。</div> : null}
           <div className="flex flex-wrap justify-end gap-3">
-            <Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} disabled={!reviewComplete} variant="outline" className="border-white/15 text-cyan-100 hover:bg-white/10">进入发布记录</Button>
+            <Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} disabled={!reviewComplete} variant="outline" className="border-gray-200 text-blue-700 hover:bg-white/10">进入发布记录</Button>
           </div>
         </CardContent>
       </Card>

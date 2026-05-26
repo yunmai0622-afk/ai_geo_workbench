@@ -83,11 +83,11 @@ const RISK_NOTICE = "本文不承诺保证排名、保证收录或保证被 AI �
 
 function PublicEmpty({ title, description }: { title: string; description: string }) {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#1d2b6f_0,#08111f_42%,#020617_100%)] px-4 py-16 text-slate-100">
-      <div className="mx-auto max-w-2xl rounded-3xl border border-cyan-300/20 bg-slate-950/80 p-8 text-center shadow-[0_0_40px_rgba(79,70,229,0.25)] backdrop-blur">
-        <p className="text-xs font-semibold tracking-[0.2em] text-cyan-300">公开内容</p>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#1d2b6f_0,#08111f_42%,#020617_100%)] px-4 py-16 text-gray-900">
+      <div className="mx-auto max-w-2xl rounded-3xl border border-blue-200 bg-white/80 p-8 text-center shadow-[0_0_40px_rgba(79,70,229,0.25)] backdrop-blur">
+        <p className="text-xs font-semibold tracking-[0.2em] text-blue-600">公开内容</p>
         <h1 className="mt-4 text-2xl font-semibold text-white">{title}</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-300">{description}</p>
+        <p className="mt-3 text-sm leading-6 text-gray-600">{description}</p>
       </div>
     </div>
   );
@@ -334,9 +334,9 @@ function safeJsonRows(value: unknown): Array<[string, string]> {
 function renderParagraph(text: string, index: number) {
   const ordered = text.match(/^\d+[.、]\s*(.+)$/);
   if (ordered) {
-    return <li key={index} className="ml-5 list-decimal text-slate-200/90">{ordered[1]}</li>;
+    return <li key={index} className="ml-5 list-decimal text-gray-700/90">{ordered[1]}</li>;
   }
-  return <p key={index} className="text-base leading-8 text-slate-200/90">{text}</p>;
+  return <p key={index} className="text-base leading-8 text-gray-700/90">{text}</p>;
 }
 
 export default function GeoPublicContentPage() {
@@ -365,18 +365,18 @@ export default function GeoPublicContentPage() {
   const createdAt = new Date(article.createdAt).toLocaleString();
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_8%_0%,rgba(79,70,229,0.45),transparent_30%),radial-gradient(circle_at_92%_12%,rgba(6,182,212,0.24),transparent_28%),linear-gradient(180deg,#020617_0%,#08111f_48%,#020617_100%)] text-slate-100">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_8%_0%,rgba(79,70,229,0.45),transparent_30%),radial-gradient(circle_at_92%_12%,rgba(6,182,212,0.24),transparent_28%),linear-gradient(180deg,#020617_0%,#08111f_48%,#020617_100%)] text-gray-900">
       <div className="mx-auto max-w-6xl px-4 py-10 md:py-14">
-        <header className="relative overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-slate-950/75 p-7 shadow-[0_0_60px_rgba(79,70,229,0.28)] backdrop-blur md:p-10">
+        <header className="relative overflow-hidden rounded-[2rem] border border-blue-200 bg-white/75 p-7 shadow-[0_0_60px_rgba(79,70,229,0.28)] backdrop-blur md:p-10">
           <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
-          <div className="flex flex-wrap items-center gap-3 text-xs font-medium uppercase tracking-[0.26em] text-cyan-200">
+          <div className="flex flex-wrap items-center gap-3 text-xs font-medium uppercase tracking-[0.26em] text-blue-600">
             <span>{displayEnterprise}</span>
-            <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[11px] tracking-normal text-cyan-100">公开内容页</span>
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] tracking-normal text-blue-700">公开内容页</span>
           </div>
-          {oneLinerText ? <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">{normalizeText(oneLinerText)}</p> : null}
+          {oneLinerText ? <p className="mt-3 max-w-3xl text-base leading-7 text-gray-600">{normalizeText(oneLinerText)}</p> : null}
           <h1 className={`max-w-4xl text-3xl font-semibold tracking-tight text-white md:text-5xl ${oneLinerText ? "mt-3" : "mt-5"}`}>{normalizeText(article.title)}</h1>
           <div className="mt-7 grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><p className="text-xs text-slate-400">文章类型</p><p className="mt-2 font-semibold text-white">{article.articleType}</p></div>
+            <div className="rounded-2xl border border-gray-200 bg-white/[0.06] p-4"><p className="text-xs text-slate-400">文章类型</p><p className="mt-2 font-semibold text-white">{article.articleType}</p></div>
             <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4"><p className="text-xs text-emerald-100/80">发布状态</p><p className="mt-2 font-semibold text-emerald-100">{article.status}</p></div>
             <div className="rounded-2xl border border-violet-300/20 bg-violet-300/10 p-4"><p className="text-xs text-violet-100/80">质量评分</p><p className="mt-2 font-semibold text-violet-100">{qualityScore ? `${qualityScore.totalScore} / 100` : "已审核发布"}</p></div>
             <div className="rounded-2xl border border-sky-300/20 bg-sky-300/10 p-4"><p className="text-xs text-sky-100/80">发布时间 / 更新时间</p><p className="mt-2 text-sm font-semibold leading-6 text-sky-100">{createdAt}<br />{updatedAt}</p></div>
@@ -384,24 +384,24 @@ export default function GeoPublicContentPage() {
           <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm leading-6 text-amber-100">风险提示：{RISK_NOTICE}</div>
         </header>
 
-        <article className="mt-8 rounded-[2rem] border border-white/10 bg-slate-950/72 p-6 shadow-[0_0_45px_rgba(15,23,42,0.45)] backdrop-blur md:p-10">
-          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+        <article className="mt-8 rounded-[2rem] border border-gray-200 bg-white/72 p-6 shadow-[0_0_45px_rgba(15,23,42,0.45)] backdrop-blur md:p-10">
+          <div className="flex items-center justify-between gap-4 border-b border-gray-200 pb-5">
             <div>
-              <p className="text-xs font-semibold tracking-[0.22em] text-cyan-300">公开内容</p>
+              <p className="text-xs font-semibold tracking-[0.22em] text-blue-600">公开内容</p>
               <h2 className="mt-2 text-2xl font-semibold text-white">文章正文</h2>
             </div>
-            <span className="hidden rounded-full border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs text-cyan-100 md:inline-flex">公开阅读版</span>
+            <span className="hidden rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs text-blue-700 md:inline-flex">公开阅读版</span>
           </div>
           <div className="mt-8 space-y-9">
             {formalSections.map(section => (
-              <section key={section.title} className="rounded-3xl border border-white/8 bg-white/[0.035] p-5 md:p-6">
+              <section key={section.title} className="rounded-3xl border border-gray-200 bg-white/[0.035] p-5 md:p-6">
                 <h3 className="text-xl font-semibold text-white">{section.title}</h3>
                 {section.faq ? (
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
                     {section.faq.map((item, index) => (
-                      <div key={`${item.question}-${index}`} className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.055] p-4">
-                        <p className="font-semibold leading-6 text-cyan-100">{item.question}</p>
-                        <p className="mt-2 text-sm leading-7 text-slate-300">{item.answer}</p>
+                      <div key={`${item.question}-${index}`} className="rounded-2xl border border-gray-200 bg-cyan-300/[0.055] p-4">
+                        <p className="font-semibold leading-6 text-blue-700">{item.question}</p>
+                        <p className="mt-2 text-sm leading-7 text-gray-600">{item.answer}</p>
                       </div>
                     ))}
                   </div>
@@ -413,63 +413,63 @@ export default function GeoPublicContentPage() {
           </div>
         </article>
 
-        <section className="mt-8 rounded-[2rem] border border-cyan-300/15 bg-cyan-300/[0.055] p-6 shadow-[0_0_35px_rgba(6,182,212,0.12)] md:p-8">
+        <section className="mt-8 rounded-[2rem] border border-gray-200 bg-cyan-300/[0.055] p-6 shadow-[0_0_35px_rgba(6,182,212,0.12)] md:p-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold tracking-[0.22em] text-cyan-300">可引用短答案</p>
+              <p className="text-xs font-semibold tracking-[0.22em] text-blue-600">可引用短答案</p>
               <h2 className="mt-2 text-2xl font-semibold text-white">AI 可引用摘要</h2>
             </div>
-            <p className="max-w-xl text-sm leading-6 text-slate-300">短答案用于帮助搜索引擎与生成式 AI 理解文章结论，避免重复整段 FAQ。</p>
+            <p className="max-w-xl text-sm leading-6 text-gray-600">短答案用于帮助搜索引擎与生成式 AI 理解文章结论，避免重复整段 FAQ。</p>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {snippets.map((item, index) => (
-              <div key={`${item.question}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-                <p className="text-sm font-semibold leading-6 text-cyan-100">{item.question}</p>
-                <p className="mt-3 text-sm leading-7 text-slate-300">{makeShortAnswer(item.answer ?? "")}</p>
+              <div key={`${item.question}-${index}`} className="rounded-2xl border border-gray-200 bg-white p-5">
+                <p className="text-sm font-semibold leading-6 text-blue-700">{item.question}</p>
+                <p className="mt-3 text-sm leading-7 text-gray-600">{makeShortAnswer(item.answer ?? "")}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="mt-8 rounded-[2rem] border border-violet-300/15 bg-slate-950/60 p-6 md:p-8">
+        <section className="mt-8 rounded-[2rem] border border-violet-300/15 bg-white p-6 md:p-8">
           <h2 className="text-2xl font-semibold text-white">企业实体信息</h2>
           <div className="mt-5 grid gap-3 text-sm md:grid-cols-2">
-            <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"><b className="text-slate-100">企业/品牌名称：</b><span className="text-slate-300">{displayEnterprise}</span></p>
-            <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"><b className="text-slate-100">行业：</b><span className="text-slate-300">{project.industry}</span></p>
-            <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"><b className="text-slate-100">官网：</b><span className="text-slate-300">{project.website}</span></p>
-            <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"><b className="text-slate-100">目标客户：</b><span className="text-slate-300">{displayTargetCustomers}</span></p>
-            {displayProductDesc ? <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 md:col-span-2"><b className="text-slate-100">产品与服务：</b><span className="text-slate-300">{displayProductDesc}</span></p> : null}
-            <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 md:col-span-2"><b className="text-slate-100">核心卖点：</b><span className="text-slate-300">{project.coreSellingPoints}</span></p>
+            <p className="rounded-2xl border border-gray-200 bg-white/[0.04] p-4"><b className="text-gray-900">企业/品牌名称：</b><span className="text-gray-600">{displayEnterprise}</span></p>
+            <p className="rounded-2xl border border-gray-200 bg-white/[0.04] p-4"><b className="text-gray-900">行业：</b><span className="text-gray-600">{project.industry}</span></p>
+            <p className="rounded-2xl border border-gray-200 bg-white/[0.04] p-4"><b className="text-gray-900">官网：</b><span className="text-gray-600">{project.website}</span></p>
+            <p className="rounded-2xl border border-gray-200 bg-white/[0.04] p-4"><b className="text-gray-900">目标客户：</b><span className="text-gray-600">{displayTargetCustomers}</span></p>
+            {displayProductDesc ? <p className="rounded-2xl border border-gray-200 bg-white/[0.04] p-4 md:col-span-2"><b className="text-gray-900">产品与服务：</b><span className="text-gray-600">{displayProductDesc}</span></p> : null}
+            <p className="rounded-2xl border border-gray-200 bg-white/[0.04] p-4 md:col-span-2"><b className="text-gray-900">核心卖点：</b><span className="text-gray-600">{project.coreSellingPoints}</span></p>
           </div>
         </section>
 
         <section className="mt-8 space-y-4">
           <details
-            className="group rounded-3xl border border-white/10 bg-white/[0.035] p-5 text-slate-300 open:bg-white/[0.055]"
+            className="group rounded-3xl border border-gray-200 bg-white/[0.035] p-5 text-gray-600 open:bg-white/[0.055]"
             onToggle={event => setAuditExpanded(event.currentTarget.open)}
           >
             <summary className="cursor-pointer list-none text-lg font-semibold text-white marker:hidden">查看生成依据与事实溯源 <span className="ml-2 text-sm font-normal text-slate-400">默认折叠，仅在需要核验时展开</span></summary>
             {auditExpanded ? (
               <div className="mt-5 space-y-5">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                  <h3 className="font-semibold text-slate-100">8 项生成依据</h3>
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                  <h3 className="font-semibold text-gray-900">8 项生成依据</h3>
                   <dl className="mt-4 space-y-3">
                     {basisRows.map(([label, value]) => (
-                      <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                      <div key={label} className="rounded-2xl border border-gray-200 bg-white/[0.035] p-4">
                         <dt className="text-xs font-medium text-slate-400">{label}</dt>
-                        <dd className="mt-2 text-sm leading-7 text-slate-300">{value}</dd>
+                        <dd className="mt-2 text-sm leading-7 text-gray-600">{value}</dd>
                       </div>
                     ))}
                   </dl>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                    <h3 className="font-semibold text-slate-100">事实溯源摘要</h3>
-                    <div className="mt-3 space-y-3">{traceRows.length ? traceRows.map(([label, value]) => <p key={label} className="text-sm leading-7 text-slate-300"><b>{label}：</b>{value}</p>) : <p className="text-sm text-slate-400">暂无额外事实溯源记录。</p>}</div>
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                    <h3 className="font-semibold text-gray-900">事实溯源摘要</h3>
+                    <div className="mt-3 space-y-3">{traceRows.length ? traceRows.map(([label, value]) => <p key={label} className="text-sm leading-7 text-gray-600"><b>{label}：</b>{value}</p>) : <p className="text-sm text-slate-400">暂无额外事实溯源记录。</p>}</div>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
-                    <h3 className="font-semibold text-slate-100">一致性检查摘要</h3>
-                    <div className="mt-3 space-y-3">{consistencyRows.length ? consistencyRows.map(([label, value]) => <p key={label} className="text-sm leading-7 text-slate-300"><b>{label}：</b>{value}</p>) : <p className="text-sm text-slate-400">暂无额外一致性检查记录。</p>}</div>
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                    <h3 className="font-semibold text-gray-900">一致性检查摘要</h3>
+                    <div className="mt-3 space-y-3">{consistencyRows.length ? consistencyRows.map(([label, value]) => <p key={label} className="text-sm leading-7 text-gray-600"><b>{label}：</b>{value}</p>) : <p className="text-sm text-slate-400">暂无额外一致性检查记录。</p>}</div>
                   </div>
                 </div>
               </div>

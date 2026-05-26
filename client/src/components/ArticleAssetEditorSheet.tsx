@@ -235,7 +235,7 @@ export function ArticleAssetEditorSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col border-white/10 bg-slate-950 text-slate-100 sm:max-w-xl">
+      <SheetContent side="right" className="flex w-full flex-col border-gray-200 bg-white text-gray-900 sm:max-w-xl">
         <SheetHeader>
           <SheetTitle>编辑内容资产</SheetTitle>
           <SheetDescription className="text-slate-400">
@@ -258,7 +258,7 @@ export function ArticleAssetEditorSheet({
             />
           </div>
 
-          <div className="space-y-3 rounded-lg border border-white/10 bg-slate-900/40 p-4">
+          <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/40 p-4">
             <div>
               <p className="text-sm font-medium text-white">内容策略</p>
               <p className="mt-1 text-xs text-slate-500">
@@ -359,7 +359,7 @@ export function ArticleAssetEditorSheet({
 
           <div className="space-y-2">
             <Label>封面预览</Label>
-            <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/80">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
               {coverPreview ? (
                 <img src={coverPreview} alt="封面预览" className="aspect-video w-full object-cover" />
               ) : (
@@ -375,7 +375,7 @@ export function ArticleAssetEditorSheet({
             <Button
               type="button"
               variant="outline"
-              className="border-white/15 text-slate-200"
+              className="border-gray-200 text-gray-700"
               disabled={coverGenerating}
               onClick={() => void regenerateCover()}
             >
@@ -391,8 +391,8 @@ export function ArticleAssetEditorSheet({
           </div>
         </div>
 
-        <SheetFooter className="border-t border-white/10 pt-4">
-          <Button type="button" variant="outline" className="border-white/15" onClick={() => handleOpenChange(false)}>
+        <SheetFooter className="border-t border-gray-200 pt-4">
+          <Button type="button" variant="outline" className="border-gray-200" onClick={() => handleOpenChange(false)}>
             取消
           </Button>
           <Button type="button" variant="ai" disabled={updateArticle.isPending} onClick={() => void handleSave()}>

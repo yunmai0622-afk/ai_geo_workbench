@@ -47,7 +47,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
 
       {showDownloadCard ? <LocalAgentDownloadCard /> : null}
 
-      <div className="rounded-xl border border-cyan-400/25 bg-cyan-500/10 px-4 py-3 text-sm leading-relaxed text-cyan-50">
+      <div className="rounded-xl border border-blue-400/25 bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-800">
         请先启动本地客户端（{LOCAL_AGENT_BASE_URL}），再点击右上角「绑定{platformLabel}账号」。登录仅在本地 Agent 窗口完成。
       </div>
 
@@ -128,7 +128,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
                 type="button"
                 className={cn(
                   "rounded-full border px-2.5 py-0.5 text-xs",
-                  b.sessionFilter === o.value ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-100" : "border-white/10 text-slate-400",
+                  b.sessionFilter === o.value ? "border-blue-400 bg-cyan-400/15 text-blue-700" : "border-gray-200 text-slate-400",
                 )}
                 onClick={() => b.setSessionFilter(o.value)}
               >
@@ -142,7 +142,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
                 type="button"
                 className={cn(
                   "rounded-full border px-2.5 py-0.5 text-xs",
-                  b.identityFilter === o.value ? "border-violet-400/40 bg-violet-400/15 text-violet-100" : "border-white/10 text-slate-400",
+                  b.identityFilter === o.value ? "border-violet-400/40 bg-violet-400/15 text-violet-100" : "border-gray-200 text-slate-400",
                 )}
                 onClick={() => b.setIdentityFilter(o.value)}
               >
@@ -158,7 +158,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           </div>
 
           {b.filteredAccounts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-white/15 py-12 text-center" data-testid="platform-account-empty">
+            <div className="rounded-xl border border-dashed border-gray-200 py-12 text-center" data-testid="platform-account-empty">
               <p className="text-base font-medium text-white">暂无{platformLabel}账号</p>
               <p className="mt-2 text-sm text-slate-500">绑定后可用于内容发布、状态追踪和复测任务。</p>
               {isNetease ? (
@@ -207,7 +207,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
           if (!open) b.resetBindFlow();
         }}
       >
-        <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md">
+        <DialogContent className="border-gray-200 bg-white text-gray-900 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {b.isNewBindDialog ? b.bindLabel : `编辑${platformLabel}账号`}
@@ -249,7 +249,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
               <label className="text-xs text-slate-500">备注（可选）</label>
               <Input className={aiInput} value={b.formNotes} onChange={e => b.setFormNotes(e.target.value)} />
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-gray-600">
               <input type="checkbox" checked={b.formEnabled} onChange={e => b.setFormEnabled(e.target.checked)} />
               启用该账号用于发布
             </label>

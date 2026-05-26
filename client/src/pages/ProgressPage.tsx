@@ -227,19 +227,19 @@ export default function ProgressPage() {
           <AiSection title="下一轮资产建设重点">
             <ul className="grid gap-3 lg:grid-cols-3">
               {progressActions.map(line => (
-                <li key={line} className="ai-action-card p-4 text-sm leading-relaxed text-slate-300">
+                <li key={line} className="ai-action-card p-4 text-sm leading-relaxed text-gray-600">
                   {line}
                 </li>
               ))}
             </ul>
             <AiGlassPanel className="mt-4 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}>
+              <Button type="button" variant="outline" className="border-gray-200 text-blue-700" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}>
                 去生成本周内容
               </Button>
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}>
+              <Button type="button" variant="outline" className="border-gray-200 text-blue-700" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}>
                 查看发布记录
               </Button>
-              <Button type="button" variant="outline" className="border-white/15 text-cyan-100" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}>
+              <Button type="button" variant="outline" className="border-gray-200 text-blue-700" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}>
                 去 AI 实测
               </Button>
             </AiGlassPanel>

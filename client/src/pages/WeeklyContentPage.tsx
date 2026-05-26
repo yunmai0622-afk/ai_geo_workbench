@@ -611,7 +611,7 @@ export default function WeeklyContentPage() {
       }
       const planned = topicResult?.count ?? targetCount;
       if (done === 0) {
-        toast.error("本次未能成功生成内容，请稍后重试");
+        toast.error("本次生成未成功，请检查客户资料是否完整后重试");
       } else if (done < planned) {
         toast.success(`本次实际生成 ${done} 篇内容（目标 ${planned} 篇）`);
       } else {
@@ -796,7 +796,7 @@ export default function WeeklyContentPage() {
   const handlePlatformView = (platformKey: WeeklyPlatformKey) => {
     const hit = articles.find(a => normalizeWeeklyPlatformKey(a.targetPlatform) === platformKey);
     if (hit) openEditor(hit);
-    else toast.message("该平台暂无已生成内容，请先点击「生成本轮平台化内容」");
+    else toast.message("该平台暂无已生成内容，请先点击「生成该平台内容」");
   };
 
   useEffect(() => {

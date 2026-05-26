@@ -88,7 +88,7 @@ export function ProductPositioningSection({
               }
             }}
             placeholder="回车添加卖点"
-            className="border-white/10 bg-slate-950/70"
+            className="border-gray-200 bg-white"
           />
         </div>
         <div className={cn(aiGlassPanel, "space-y-2 p-4")}>
@@ -99,7 +99,7 @@ export function ProductPositioningSection({
         <div className={cn(aiGlassPanel, "space-y-2 p-4")}>
           <p className="text-sm font-medium text-white">价格区间</p>
           <p className="text-xs text-slate-500">可写区间或起步价，避免空泛「面议」。</p>
-          <Input value={servicePriceRange} onChange={e => onServicePriceRangeChange(e.target.value)} placeholder="例如：¥3,000–¥30,000 / 月" className="border-white/10 bg-slate-950/70" />
+          <Input value={servicePriceRange} onChange={e => onServicePriceRangeChange(e.target.value)} placeholder="例如：¥3,000–¥30,000 / 月" className="border-gray-200 bg-white" />
         </div>
         <div className={cn(aiGlassPanel, "space-y-2 p-4 md:col-span-2")}>
           <p className="text-sm font-medium text-white">竞品差异</p>

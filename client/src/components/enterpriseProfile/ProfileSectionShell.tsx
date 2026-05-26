@@ -51,7 +51,7 @@ export function ProfileSectionShell({
         </div>
         {children}
         {saveLabel && onSave ? (
-          <div className="mt-6 flex justify-end border-t border-white/8 pt-4">
+          <div className="mt-6 flex justify-end border-t border-gray-200 pt-4">
             <Button className={aiPrimaryBtn} disabled={saving} onClick={onSave}>
               {saving ? "保存中…" : saveLabel}
             </Button>

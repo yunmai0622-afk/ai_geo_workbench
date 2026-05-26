@@ -33,7 +33,7 @@ function badgeClass(rec: GeoQualityRecommendation | null): string {
   if (rec === "publish") return "bg-emerald-500/15 text-emerald-200 border-emerald-400/30";
   if (rec === "revise") return "bg-amber-500/15 text-amber-100 border-amber-400/30";
   if (rec === "reject") return "bg-red-500/15 text-red-200 border-red-400/30";
-  return "bg-slate-500/15 text-slate-300 border-white/10";
+  return "bg-slate-500/15 text-gray-600 border-gray-200";
 }
 
 function parseDetail(detail: unknown): GeoQualityReviewResult | null {
@@ -100,14 +100,14 @@ export function GeoQualityScore({
   };
 
   return (
-    <div className="space-y-4 rounded-xl border border-cyan-400/20 bg-slate-900/50 p-4" data-testid="geo-quality-panel">
+    <div className="space-y-4 rounded-xl border border-blue-200 bg-gray-50 p-4" data-testid="geo-quality-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-cyan-100">GEO 发布前质检</h3>
+        <h3 className="text-sm font-semibold text-blue-700">GEO 发布前质检</h3>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="border-cyan-400/30 text-cyan-100"
+          className="border-blue-400/30 text-blue-700"
           disabled={reviewMutation.isPending}
           data-testid="geo-quality-review-btn"
           onClick={() => void runReview()}
@@ -155,7 +155,7 @@ export function GeoQualityScore({
                 const pct = dim.max > 0 ? Math.round((dim.score / dim.max) * 100) : 0;
                 return (
                   <div key={key} className="space-y-1">
-                    <div className="flex justify-between text-xs text-slate-300">
+                    <div className="flex justify-between text-xs text-gray-600">
                       <span>{GEO_QUALITY_DIMENSION_META[key]?.label ?? key}</span>
                       <span>
                         {dim.score} / {dim.max}
@@ -173,8 +173,8 @@ export function GeoQualityScore({
               })}
 
               {result.suggestions.length > 0 ? (
-                <div className="space-y-2 border-t border-white/10 pt-3">
-                  <p className="text-xs font-medium text-slate-300">优化建议</p>
+                <div className="space-y-2 border-t border-gray-200 pt-3">
+                  <p className="text-xs font-medium text-gray-600">优化建议</p>
                   <ul className="space-y-1 text-xs text-slate-400">
                     {result.suggestions.map((s, i) => (
                       <li key={i}>→ {s}</li>

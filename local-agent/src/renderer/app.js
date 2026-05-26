@@ -284,103 +284,121 @@ function renderDiagnostics() {
   if (setData) setData.value = d.dataDir;
 }
 
-/* ===== Render: Accounts ===== */
+/* ===== Render: Accounts (Left-Right Layout) ===== */
+let selectedPlatform = "zhihu";
+
 function renderAccounts() {
-  const root = $("#accounts-root");
-  root.innerHTML = "";
-  const localAgentId = dashboard.config.localAgentId ?? "";
   const order = ["zhihu", "sohu", "baijiahao", "toutiao"];
+  // Render left sidebar
+  const platformListEl = $("#platform-list");
+  if (!platformListEl) return;
+  platformListEl.innerHTML = "";
   for (const platform of order) {
     const list = dashboard.accounts.filter((a) => a.platform === platform);
-    const block = document.createElement("section");
-    block.className = "platform-block";
-    block.innerHTML = `<h3>${PLATFORM_LABELS[platform]}</h3>`;
-    if (list.length === 0) {
-      block.innerHTML += `<p class="account-empty">暂无${PLATFORM_LABELS[platform]}账号环境，请点击上方「+ ${PLATFORM_LABELS[platform]}」创建。</p>`;
-    } else {
-      for (const acc of list) {
-        const card = document.createElement("div");
-        card.className = "account-card";
-        const title = escapeHtml(accountCardTitle(acc));
-        const lastErr = techLastError(acc);
-        const profilePath = acc.profilePath ? escapeHtml(acc.profilePath) : "";
-        card.innerHTML = `
-          <div class="acc-head">
-            <div class="acc-title-wrap">
-              <span class="acc-kicker">账号昵称</span>
-              <strong class="acc-title ${acc.accountName ? "" : "warn-text"}">${title}</strong>
-            </div>
-            ${sessionBadge(acc)}
-          </div>
-          <dl class="acc-meta-grid">
-            <div class="acc-meta-row"><dt>平台</dt><dd>${PLATFORM_LABELS[platform] ?? platform}</dd></div>
-            <div class="acc-meta-row"><dt>登录状态</dt><dd>${sessionStatusLabel(acc.sessionStatus)}</dd></div>
-            <div class="acc-meta-row"><dt>最近检测</dt><dd>${fmtDateShort(acc.lastCheckedAt)}</dd></div>
-            <div class="acc-meta-row"><dt>最近发布</dt><dd>${fmtDateShort(acc.lastPublishAt)}</dd></div>
-          </dl>
-          <p class="acc-security-hint">该账号登录态保存在本机，不保存密码，不上传 Cookie。</p>
-          <details class="acc-tech-details">
-            <summary>▶ 技术信息</summary>
-            <dl class="acc-tech-grid">
-              <div class="acc-meta-row"><dt>profileId</dt><dd><code>${escapeHtml(acc.profileId)}</code></dd></div>
-              ${
-                profilePath
-                  ? `<div class="acc-meta-row"><dt>本地路径</dt><dd><code class="tech-path">${profilePath}</code><span class="tech-note">仅本机路径，不上传服务端</span></dd></div>`
-                  : ""
-              }
-              ${
-                localAgentId
-                  ? `<div class="acc-meta-row"><dt>设备标识</dt><dd><code>${escapeHtml(localAgentId)}</code></dd></div>`
-                  : ""
-              }
-              ${
-                lastErr
-                  ? `<div class="acc-meta-row"><dt>最近错误</dt><dd class="tech-error">${escapeHtml(lastErr)}</dd></div>`
-                  : ""
-              }
-            </dl>
-          </details>
-          <div class="btn-row compact acc-actions"></div>
-        `;
-        const actions = card.querySelector(".acc-actions");
-        const mk = (label, fn) => {
-          const b = document.createElement("button");
-          b.type = "button";
-          b.textContent = label;
-          b.onclick = () => void fn();
-          actions.appendChild(b);
-        };
-        mk("打开登录", async () => {
-          const r = await window.agentApi.openLoginWindow(acc.profileId);
-          appendLiveLog(r.message, !r.ok);
-          await refresh();
-        });
-        mk("检测账号", async () => {
-          const r = await window.agentApi.detectAccount(acc.profileId);
-          const detail = r.ok ? r.message : `${r.message}`;
-          appendLiveLog(detail, !r.ok);
-          await refresh();
-        });
-        mk("发布页", async () => {
-          appendLiveLog(`正在打开发布页（${accountCardTitle(acc)}）…`, false);
-          const r = await window.agentApi.openWritePage(acc.profileId, "accounts_publish_page_button");
-          appendLiveLog(formatOpenWriteResult(r, accountCardTitle(acc)), openWriteIsError(r));
-        });
-        mk("重新登录", async () => {
-          const r = await window.agentApi.markRelogin(acc.profileId);
-          appendLiveLog(r.message, false);
-          await refresh();
-        });
-        mk("删除环境", async () => {
-          if (!confirm(`确定删除「${accountCardTitle(acc)}」的本地环境？\n删除后需重新登录该平台。`)) return;
-          const r = await window.agentApi.deleteProfile(acc.profileId);
-          appendLiveLog(r.message, !r.ok);
-          await refresh();
-        });
-        block.appendChild(card);
-      }
+    const count = list.length;
+    const hasActive = list.some((a) => a.sessionStatus === "active");
+    let statusText = "未绑定";
+    let statusClass = "status-unbound";
+    if (count > 0 && hasActive) {
+      statusText = "已绑定";
+      statusClass = "status-bound";
+    } else if (count > 0 && !hasActive) {
+      statusText = "需重新登录";
+      statusClass = "status-relogin";
     }
-    root.appendChild(block);
+    const li = document.createElement("li");
+    li.className = `platform-item ${platform === selectedPlatform ? "active" : ""}`;
+    li.setAttribute("data-platform", platform);
+    li.innerHTML = `
+      <span class="platform-item-name">${PLATFORM_LABELS[platform]}</span>
+      <span class="platform-item-count">${count} 个账号</span>
+      <span class="platform-item-status ${statusClass}">${statusText}</span>
+    `;
+    li.onclick = () => {
+      selectedPlatform = platform;
+      renderAccounts();
+    };
+    platformListEl.appendChild(li);
+  }
+
+  // Render right side
+  renderAccountsMain();
+}
+
+function renderAccountsMain() {
+  const headerEl = $("#accounts-main-header");
+  const contentEl = $("#accounts-main-content");
+  if (!headerEl || !contentEl) return;
+
+  const platform = selectedPlatform;
+  const label = PLATFORM_LABELS[platform] ?? platform;
+  const list = dashboard.accounts.filter((a) => a.platform === platform);
+
+  headerEl.innerHTML = `
+    <div class="accounts-main-title-row">
+      <div>
+        <h3 class="accounts-main-title">${label}账号环境</h3>
+        <p class="accounts-main-desc">在这里管理本机${label}登录环境。登录状态仅保存在本机，不上传密码或 Cookie。</p>
+      </div>
+      <button type="button" data-create="${platform}" class="btn-create-right" onclick="void window.agentApi.createPlatformProfile('${platform}').then(r => { appendLiveLog(r.message || '已创建', !r.ok); refresh(); })">创建${label}账号环境</button>
+    </div>
+  `;
+
+  contentEl.innerHTML = "";
+  if (list.length === 0) {
+    contentEl.innerHTML = `
+      <div class="accounts-empty-state">
+        <p class="accounts-empty-title">暂无${label}账号环境</p>
+        <p class="accounts-empty-desc">请点击上方按钮创建${label}账号环境，并在打开的浏览器窗口中完成登录。</p>
+      </div>
+    `;
+    return;
+  }
+
+  for (const acc of list) {
+    const card = document.createElement("div");
+    card.className = "account-card";
+    const title = escapeHtml(accountCardTitle(acc));
+    card.innerHTML = `
+      <div class="acc-head">
+        <div class="acc-title-wrap">
+          <strong class="acc-title ${acc.accountName ? "" : "warn-text"}">${title}</strong>
+        </div>
+        ${sessionBadge(acc)}
+      </div>
+      <dl class="acc-meta-grid">
+        <div class="acc-meta-row"><dt>登录状态</dt><dd>${sessionStatusLabel(acc.sessionStatus)}</dd></div>
+        <div class="acc-meta-row"><dt>最近检测</dt><dd>${fmtDateShort(acc.lastCheckedAt)}</dd></div>
+        <div class="acc-meta-row"><dt>最近发布</dt><dd>${fmtDateShort(acc.lastPublishAt)}</dd></div>
+      </dl>
+      <div class="btn-row compact acc-actions"></div>
+    `;
+    const actions = card.querySelector(".acc-actions");
+    const mk = (label, cls, fn) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      if (cls) b.className = cls;
+      b.onclick = () => void fn();
+      actions.appendChild(b);
+    };
+    mk("打开账号环境", "primary", async () => {
+      const r = await window.agentApi.openLoginWindow(acc.profileId);
+      appendLiveLog(r.message, !r.ok);
+      await refresh();
+    });
+    mk("重新检测", "", async () => {
+      const r = await window.agentApi.detectAccount(acc.profileId);
+      appendLiveLog(r.ok ? r.message : r.message, !r.ok);
+      await refresh();
+    });
+    mk("删除", "danger-btn", async () => {
+      if (!confirm(`确定删除「${accountCardTitle(acc)}」的本地环境？\n删除后需重新登录该平台。`)) return;
+      const r = await window.agentApi.deleteProfile(acc.profileId);
+      appendLiveLog(r.message, !r.ok);
+      await refresh();
+    });
+    contentEl.appendChild(card);
   }
 }
 
@@ -533,13 +551,7 @@ if (btnPollOnce) {
     });
 }
 
-document.querySelectorAll("[data-create]").forEach((btn) => {
-  btn.onclick = () =>
-    void window.agentApi.createPlatformProfile(btn.getAttribute("data-create")).then((r) => {
-      appendLiveLog(r.message ?? "已创建", !r.ok);
-      refresh();
-    });
-});
+// data-create buttons now use inline onclick in renderAccountsMain()
 
 const logSelect = $("#log-task-select");
 if (logSelect) {

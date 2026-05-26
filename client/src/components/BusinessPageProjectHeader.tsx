@@ -17,7 +17,7 @@ export function BusinessPageProjectHeader({ projectName, testId = "business-page
       className={cn("flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between")}
       data-testid={testId}
     >
-      <p className="text-sm text-slate-300" data-testid="business-page-current-project">
+      <p className="text-sm text-gray-600" data-testid="business-page-current-project">
         当前客户项目：<span className="font-semibold text-white">{projectName ?? "—"}</span>
       </p>
       <Button

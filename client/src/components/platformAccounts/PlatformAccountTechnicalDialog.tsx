@@ -40,7 +40,7 @@ export function PlatformAccountTechnicalDialog({ open, row, onOpenChange }: Prop
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md"
+        className="border-gray-200 bg-white text-gray-900 sm:max-w-md"
         data-testid="platform-account-technical-dialog"
       >
         <DialogHeader>
@@ -50,7 +50,7 @@ export function PlatformAccountTechnicalDialog({ open, row, onOpenChange }: Prop
           </DialogDescription>
         </DialogHeader>
         {row ? (
-          <dl className="space-y-2 text-sm text-slate-300">
+          <dl className="space-y-2 text-sm text-gray-600">
             <div>
               <dt className="text-slate-500">账号名称</dt>
               <dd>{displayAccountName(row)}</dd>

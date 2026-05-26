@@ -17,11 +17,11 @@ export function GeoStatusGuide({ stage, completion, nextAction, why, risk, ctaLa
   const safeCompletion = Math.min(100, Math.max(0, completion));
 
   return (
-    <section className="geo-status-guide ai-glass-card border-cyan-300/20 p-5 text-slate-100 md:p-6">
+    <section className="geo-status-guide ai-glass-card border-gray-200 p-5 text-gray-900 md:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-100">
+            <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
               <CircleDotDashed className="h-3.5 w-3.5" /> 当前阶段：{stage}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">
@@ -29,17 +29,17 @@ export function GeoStatusGuide({ stage, completion, nextAction, why, risk, ctaLa
             </span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-              <p className="flex items-center gap-2 text-xs font-medium text-cyan-200"><ArrowRight className="h-4 w-4" /> 下一步动作</p>
-              <p className="mt-2 text-sm leading-6 text-slate-200">{nextAction}</p>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="flex items-center gap-2 text-xs font-medium text-blue-600"><ArrowRight className="h-4 w-4" /> 下一步动作</p>
+              <p className="mt-2 text-sm leading-6 text-gray-700">{nextAction}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
               <p className="flex items-center gap-2 text-xs font-medium text-violet-200"><Sparkles className="h-4 w-4" /> 为什么要做</p>
-              <p className="mt-2 text-sm leading-6 text-slate-200">{why}</p>
+              <p className="mt-2 text-sm leading-6 text-gray-700">{why}</p>
             </div>
             <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
               <p className="flex items-center gap-2 text-xs font-medium text-amber-200"><AlertTriangle className="h-4 w-4" /> 风险提醒</p>
-              <p className="mt-2 text-sm leading-6 text-slate-200">{risk}</p>
+              <p className="mt-2 text-sm leading-6 text-gray-700">{risk}</p>
             </div>
           </div>
         </div>

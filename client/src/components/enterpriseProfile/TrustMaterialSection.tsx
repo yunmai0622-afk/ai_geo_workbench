@@ -108,7 +108,7 @@ export function TrustMaterialSection({
                 </button>
               </div>
               <Input
-                className="border-white/10 bg-slate-950/70"
+                className="border-gray-200 bg-white"
                 placeholder="客户常问的问题"
                 value={item.question}
                 onChange={e => {
