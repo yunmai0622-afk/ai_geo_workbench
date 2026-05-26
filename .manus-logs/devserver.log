@@ -450,3 +450,25 @@
 [2026-05-25T13:27:00.374Z] 9:27:00 AM [vite] (client) hmr update /src/index.css
 [2026-05-25T13:27:00.374Z] 9:27:00 AM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
 [2026-05-25T13:27:40.909Z] 9:27:40 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T02:37:32.887Z] 10:37:32 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T02:37:32.888Z] 10:37:32 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-05-26T02:37:32.888Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/components/ArticleLifecyclePanel.tsx
+[2026-05-26T02:37:32.889Z] 10:37:32 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-05-26T02:37:32.890Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
+[2026-05-26T02:37:32.890Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/AdvancedMaterialsSection.tsx
+[2026-05-26T02:37:32.890Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx
+[2026-05-26T02:37:32.891Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PlatformAccountCard.tsx
+[2026-05-26T02:37:32.891Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PlatformAccountTable.tsx
+[2026-05-26T02:37:32.891Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PlatformAccountTechnicalDialog.tsx
+[2026-05-26T02:37:32.898Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/components/DashboardLayout.tsx, /src/pages/AssetCenter.tsx
+[2026-05-26T02:37:32.899Z] 10:37:32 PM [vite] (client) hmr update /src/index.css, /src/pages/ProgressPage.tsx, /src/pages/GeoPages.tsx, /src/pages/WeeklyContentPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/V12FlowPages.tsx, /src/components/V1WorkbenchOverview.tsx
+[2026-05-26T02:37:32.900Z] 10:37:32 PM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-05-26T02:37:32.901Z] 10:37:32 PM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-05-26T02:37:32.901Z] 10:37:32 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-05-26T02:37:32.901Z] 10:37:32 PM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/index.css
+[2026-05-26T02:37:32.902Z] 10:37:32 PM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-26T02:37:32.902Z] 10:37:32 PM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-26T02:37:32.992Z] 10:37:32 PM [tsx] change in ./server/_core/vite.ts Restarting...
+[2026-05-26T02:37:34.929Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-26T02:37:39.827Z] Server running on http://localhost:3000/
+[2026-05-26T02:37:39.828Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
