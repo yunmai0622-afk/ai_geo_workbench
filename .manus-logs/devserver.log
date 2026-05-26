@@ -531,3 +531,33 @@
 [2026-05-26T03:53:33.983Z] 11:53:33 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
 [2026-05-26T03:54:00.591Z] 11:54:00 PM [vite] (client) hmr update /src/index.css
 [2026-05-26T03:55:57.731Z] 11:55:57 PM [vite] (client) hmr update /src/index.css
+[2026-05-26T04:00:11.805Z] 12:00:11 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-05-26T04:00:29.115Z] 12:00:29 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-05-26T04:04:03.788Z] 12:04:03 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-26T04:04:03.888Z] 12:04:03 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-05-26T04:04:05.464Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-26T04:04:10.111Z] Server running on http://localhost:3000/
+[2026-05-26T04:04:10.112Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-26T04:04:11.204Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-26T04:04:17.172Z] 12:04:17 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/project/ProjectNextActionPanel.tsx
+[2026-05-26T04:04:17.242Z] 12:04:17 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-05-26T04:04:19.185Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-26T04:04:24.103Z] Server running on http://localhost:3000/
+[2026-05-26T04:04:24.104Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-26T04:04:24.822Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-26T04:04:26.859Z] 12:04:26 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-05-26T04:04:28.883Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-26T04:04:33.756Z] Server running on http://localhost:3000/
+[2026-05-26T04:04:33.756Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-26T04:04:34.243Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-26T04:04:38.865Z] 12:04:38 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-26T04:04:38.941Z] 12:04:38 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-05-26T04:04:41.074Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-26T04:04:46.027Z] Server running on http://localhost:3000/
+[2026-05-26T04:04:46.029Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-26T04:04:46.586Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-26T04:04:58.770Z] 12:04:58 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/ClientDashboardPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-26T04:05:06.106Z] 12:05:06 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/ClientDashboardPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-26T04:05:30.870Z] 12:05:30 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectNextActionPanel.tsx
+[2026-05-26T04:05:55.771Z] 12:05:55 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T04:06:41.817Z] 12:06:41 AM [vite] (client) hmr update /src/index.css

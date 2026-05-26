@@ -73,7 +73,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
     items: [
       {
         icon: Building2,
-        label: "品牌资产库",
+        label: "品牌资产建档",
         desc: "补齐企业被 AI 理解的基础信息",
         path: "/enterprise-profile",
         aliases: ["/enterprise-profile", "/assets", "/projects"],
@@ -87,7 +87,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
       },
       {
         icon: FileText,
-        label: "内容资产",
+        label: "平台化内容资产",
         desc: "围绕 AI 引用逻辑生成品牌内容",
         path: "/weekly",
         aliases: ["/weekly", "/content-generation", "/articles"],

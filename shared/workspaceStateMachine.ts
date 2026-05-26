@@ -33,23 +33,23 @@ export const WORKSPACE_STAGES: WorkspaceStageDefinition[] = [
   },
   {
     id: "complete_geo_profile",
-    label: "待完成 GEO 建档",
+    label: "待完成品牌建档",
     blockerHint: "企业 P0 建档必填信息尚未补齐，内容生成缺少可靠依据。",
-    ctaLabel: "去完成 5 分钟建档",
+    ctaLabel: "继续完成品牌建档",
     ctaPath: "/enterprise-profile",
   },
   {
     id: "ai_diagnosis",
     label: "待 AI 现状诊断",
     blockerHint: "尚未完成 AI 内容诊断，系统无法给出内容方向与缺口。",
-    ctaLabel: "开始 AI 诊断",
+    ctaLabel: "开始 AI 实测诊断",
     ctaPath: "/ai-diagnosis",
   },
   {
     id: "generate_content",
     label: "待生成内容",
     blockerHint: "当前项目尚无内容资产，请先围绕诊断结论生成文章。",
-    ctaLabel: "去生成内容",
+    ctaLabel: "生成平台化内容资产",
     ctaPath: "/weekly",
   },
   {
@@ -61,10 +61,10 @@ export const WORKSPACE_STAGES: WorkspaceStageDefinition[] = [
   },
   {
     id: "retest_queue",
-    label: "待复测",
-    blockerHint: "已有发布记录，复测队列中仍有待处理项。",
-    ctaLabel: "查看复测队列",
-    ctaPath: "/content-publishing",
+    label: "待收录监测",
+    blockerHint: "已有发布记录，需要检查内容是否被 AI 平台收录和引用。",
+    ctaLabel: "去收录监测",
+    ctaPath: "/inclusion-monitoring",
   },
   {
     id: "optimize",
@@ -166,11 +166,8 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
 
   let currentStageId: WorkspaceStageId;
 
-  if (!publishEnvReady) {
-    currentStageId = "bind_publish_env";
-    if (input.localAgentOnline === false) blockerReasons.push("本地发布客户端未连接。");
-    if (input.boundPublishAccountCount === 0) blockerReasons.push("尚未绑定可发布的平台账号。");
-  } else if (!input.p0ProfileComplete) {
+  // 阶段优先级：建档 → 诊断 → 内容 → 发布环境 → 发布 → 监测 → 复测 → 报告
+  if (!input.p0ProfileComplete) {
     currentStageId = "complete_geo_profile";
     blockerReasons.push("企业 P0 建档必填信息不完整。");
   } else if (!input.hasAnalysis && !input.hasGeoScore) {
@@ -179,9 +176,16 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
   } else if (input.articleCount === 0) {
     currentStageId = "generate_content";
     blockerReasons.push("当前项目尚无内容资产。");
+  } else if (!publishEnvReady) {
+    currentStageId = "bind_publish_env";
+    if (input.localAgentOnline === false) blockerReasons.push("本地发布客户端未连接。");
+    if (input.boundPublishAccountCount === 0) blockerReasons.push("尚未绑定可发布的平台账号。");
   } else if (input.publishRecordCount === 0 && input.publishTaskCount === 0) {
     currentStageId = "publish_content";
     blockerReasons.push("已有内容资产，但尚无发布记录或发布任务。");
+  } else if (input.publishRecordCount > 0 && input.monitoringRecordCount === 0) {
+    currentStageId = "retest_queue";
+    blockerReasons.push("已有发布记录，但尚未进行收录监测。");
   } else if (input.retestPendingCount > 0) {
     currentStageId = "retest_queue";
     blockerReasons.push(`复测队列仍有 ${input.retestPendingCount} 条待处理。`);

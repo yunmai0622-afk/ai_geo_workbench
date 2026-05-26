@@ -330,7 +330,16 @@ export default function ClientDashboardPage() {
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          className={cn(
+            "grid gap-5",
+            filtered.length === 1
+              ? "grid-cols-1 max-w-[560px]"
+              : filtered.length === 2
+                ? "grid-cols-1 sm:grid-cols-2 max-w-[1080px]"
+                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+          )}
+        >
           {filtered.map(project => (
             <ProjectCard key={project.id} project={project} onEnter={handleEnter} />
           ))}

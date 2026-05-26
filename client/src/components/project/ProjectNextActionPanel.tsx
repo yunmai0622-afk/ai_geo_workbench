@@ -38,7 +38,7 @@ export function ProjectNextActionPanel({
   const [, setLocation] = useLocation();
 
   // 推断下一阶段名称
-  const STAGE_ORDER = ["待建档", "待诊断", "待生产", "待发布", "待复测", "优化中", "报告已生成"];
+  const STAGE_ORDER = ["待建档", "待诊断", "待生产", "待绑定发布", "待发布", "待监测", "优化中", "报告已生成"];
   const currentLabel = stage ? CUSTOMER_STAGE_LABELS[stage.id] : null;
   const currentIdx = currentLabel ? STAGE_ORDER.indexOf(currentLabel) : -1;
   const nextStageName =

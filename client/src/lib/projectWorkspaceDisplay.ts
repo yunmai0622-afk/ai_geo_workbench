@@ -2,12 +2,12 @@ import type { WorkspaceStageId } from "@shared/workspaceStateMachine";
 
 /** 客户可读阶段（不暴露内部枚举名） */
 export const CUSTOMER_STAGE_LABELS: Record<WorkspaceStageId, string> = {
-  bind_publish_env: "待发布",
+  bind_publish_env: "待绑定发布",
   complete_geo_profile: "待建档",
   ai_diagnosis: "待诊断",
   generate_content: "待生产",
   publish_content: "待发布",
-  retest_queue: "待复测",
+  retest_queue: "待监测",
   optimize: "优化中",
   delivery_report: "报告已生成",
 };
@@ -21,7 +21,7 @@ export function cockpitPipelineIndex(stageId: WorkspaceStageId): number {
     ai_diagnosis: 1,
     generate_content: 2,
     publish_content: 3,
-    retest_queue: 5,
+    retest_queue: 4,
     optimize: 5,
     delivery_report: 6,
   };
