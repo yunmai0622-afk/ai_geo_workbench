@@ -1,4 +1,3 @@
-import { aiGlassPanel, aiInput, aiOutlineBtn } from "@/lib/aiProductUi";
 import { cn } from "@/lib/utils";
 import {
   AI_SEARCH_PLATFORM_OPTIONS,
@@ -26,6 +25,9 @@ type Props = {
   disabled?: boolean;
 };
 
+const selectClass = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100";
+const inputClass = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100";
+
 export default function PlatformContentStrategyPanel({
   value,
   onChange,
@@ -36,22 +38,22 @@ export default function PlatformContentStrategyPanel({
 
   return (
     <section
-      className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}
+      className="space-y-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm md:p-6"
       data-testid="platform-content-strategy-panel"
     >
       <div>
-        <h2 className="text-lg font-semibold text-white">平台化内容策略</h2>
-        <p className="mt-1 text-sm text-slate-400">
-          基于 AI 诊断缺口，为<strong className="font-normal text-slate-200">单一发布平台</strong>
+        <h2 className="text-lg font-semibold text-gray-900">平台化内容策略</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          基于 AI 诊断缺口，为<strong className="font-medium text-gray-700">单一发布平台</strong>
           生成专属结构与正文；不同平台不会共用同一套稿件。
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block space-y-1.5 text-sm" data-testid="platform-target-publish-platform">
-          <span className="font-medium text-slate-200">目标发布平台</span>
+          <span className="font-medium text-gray-700">目标发布平台</span>
           <select
-            className={aiInput}
+            className={selectClass}
             disabled={disabled}
             value={value.targetPublishPlatform}
             onChange={e => onChange({ ...value, targetPublishPlatform: e.target.value as PublishPlatformId })}
@@ -65,9 +67,9 @@ export default function PlatformContentStrategyPanel({
         </label>
 
         <label className="block space-y-1.5 text-sm" data-testid="platform-content-type">
-          <span className="font-medium text-slate-200">内容类型</span>
+          <span className="font-medium text-gray-700">内容类型</span>
           <select
-            className={aiInput}
+            className={selectClass}
             disabled={disabled}
             value={value.contentStrategyType}
             onChange={e =>
@@ -83,9 +85,9 @@ export default function PlatformContentStrategyPanel({
         </label>
 
         <label className="block space-y-1.5 text-sm" data-testid="platform-publish-identity">
-          <span className="font-medium text-slate-200">账号身份</span>
+          <span className="font-medium text-gray-700">账号身份</span>
           <select
-            className={aiInput}
+            className={selectClass}
             disabled={disabled}
             value={value.publishIdentity}
             onChange={e => onChange({ ...value, publishIdentity: e.target.value as PublishIdentity })}
@@ -99,9 +101,9 @@ export default function PlatformContentStrategyPanel({
         </label>
 
         <label className="block space-y-1.5 text-sm" data-testid="platform-account-group">
-          <span className="font-medium text-slate-200">推荐账号组</span>
+          <span className="font-medium text-gray-700">推荐账号组</span>
           <select
-            className={aiInput}
+            className={selectClass}
             disabled={disabled}
             value={value.recommendedAccountGroup}
             onChange={e =>
@@ -117,10 +119,10 @@ export default function PlatformContentStrategyPanel({
         </label>
 
         <label className="block space-y-1.5 text-sm md:col-span-2" data-testid="platform-target-question">
-          <span className="font-medium text-slate-200">目标问题</span>
+          <span className="font-medium text-gray-700">目标问题</span>
           {targetQuestionOptions.length > 0 ? (
             <select
-              className={aiInput}
+              className={selectClass}
               disabled={disabled}
               value={value.targetQuestion}
               onChange={e => onChange({ ...value, targetQuestion: e.target.value })}
@@ -134,7 +136,7 @@ export default function PlatformContentStrategyPanel({
             </select>
           ) : (
             <input
-              className={aiInput}
+              className={inputClass}
               disabled={disabled}
               value={value.targetQuestion}
               onChange={e => onChange({ ...value, targetQuestion: e.target.value })}
@@ -144,9 +146,9 @@ export default function PlatformContentStrategyPanel({
         </label>
 
         <label className="block space-y-1.5 text-sm" data-testid="platform-geo-enhancement-goal">
-          <span className="font-medium text-slate-200">GEO 增强目标</span>
+          <span className="font-medium text-gray-700">GEO 增强目标</span>
           <select
-            className={aiInput}
+            className={selectClass}
             disabled={disabled}
             value={value.geoEnhancementGoal}
             onChange={e => onChange({ ...value, geoEnhancementGoal: e.target.value as GeoEnhancementGoal })}
@@ -160,7 +162,7 @@ export default function PlatformContentStrategyPanel({
         </label>
 
         <fieldset className="space-y-2 md:col-span-2" data-testid="platform-target-ai-platforms">
-          <legend className="text-sm font-medium text-slate-200">目标 AI 平台（可见度语境）</legend>
+          <legend className="text-sm font-medium text-gray-700">目标 AI 平台（可见度语境）</legend>
           <div className="flex flex-wrap gap-3">
             {AI_SEARCH_PLATFORM_OPTIONS.map(platform => {
               const checked = value.targetAiPlatforms.includes(platform);
@@ -168,14 +170,14 @@ export default function PlatformContentStrategyPanel({
                 <label
                   key={platform}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm",
-                    checked ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-100" : "border-white/10 text-slate-400",
+                    "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition",
+                    checked ? "border-blue-400 bg-blue-50 text-blue-800" : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300",
                     disabled && "cursor-not-allowed opacity-50",
                   )}
                 >
                   <input
                     type="checkbox"
-                    className="accent-cyan-400"
+                    className="accent-blue-600"
                     disabled={disabled}
                     checked={checked}
                     onChange={() => {
@@ -193,11 +195,11 @@ export default function PlatformContentStrategyPanel({
         </fieldset>
       </div>
 
-      <details className="rounded-xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
-        <summary className="cursor-pointer font-medium text-cyan-100" data-testid="platform-rules-summary">
+      <details className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+        <summary className="cursor-pointer font-medium text-gray-800" data-testid="platform-rules-summary">
           {rule.label} 内容规则（生成时将写入 Prompt）
         </summary>
-        <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-slate-400">
+        <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-gray-600">
           {formatPlatformRulesForPrompt(value.targetPublishPlatform)}
         </pre>
       </details>
