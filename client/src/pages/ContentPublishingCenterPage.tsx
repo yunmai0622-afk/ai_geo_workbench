@@ -356,9 +356,9 @@ export function ContentPublishingCenterPage() {
   return (
     <div className="space-y-6 pb-12" data-testid="publish-center-page">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-slate-900">发布中心</h1>
-        <p className={geoP0Surfaces.muted}>
-          Local Agent 本地发布任务中心：按平台独立发布，需人工确认，不支持自动发布或一稿多发。
+        <h1 className="text-2xl font-bold text-gray-900">平台适配发布</h1>
+        <p className="text-sm text-gray-500">
+          通过 Local Agent 在本地完成发布，降低登录、验证码和平台风控风险。按平台独立发布，需人工确认，不支持自动发布或一稿多发。
         </p>
       </header>
 

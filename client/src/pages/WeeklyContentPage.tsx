@@ -1009,9 +1009,9 @@ export default function WeeklyContentPage() {
   return (
     <div className="space-y-8 pb-12" data-testid="weekly-platform-content-page">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-slate-900">平台化内容生产</h1>
-        <p className={geoP0Surfaces.muted}>
-          补齐企业在 AI 搜索中的品牌识别、内容引用与推荐缺口；各平台独立生成，不支持一稿多发。
+        <h1 className="text-2xl font-bold text-gray-900">平台化内容资产</h1>
+        <p className="text-sm text-gray-500">
+          根据 AI 实测缺口，按平台生成可发布、可监测、可复测的 GEO 内容资产。各平台独立生成，不支持一稿多发。
         </p>
       </header>
 
@@ -1024,18 +1024,16 @@ export default function WeeklyContentPage() {
         </div>
       ) : showDiagnosisEmpty ? (
         <P0Card testId="weekly-no-diagnosis">
-          <p className="text-sm leading-relaxed text-slate-700">
-            暂无 AI 诊断结果。
-            <br />
-            建议先完成 AI 现状诊断，再根据缺口生成平台化内容。
+          <p className="text-sm leading-relaxed text-gray-700">
+            暂无 AI 实测诊断结果。建议先完成 AI 实测诊断，再根据缺口生成平台化内容资产。
           </p>
           <Button
             type="button"
-            className={`mt-4 ${geoP0Brand.primary}`}
+            className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
             data-testid="weekly-go-ai-diagnosis"
             onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
           >
-            去 AI 现状诊断
+            去 AI 实测诊断
           </Button>
         </P0Card>
       ) : (
@@ -1122,13 +1120,13 @@ export default function WeeklyContentPage() {
       )}
 
       {enabled ? (
-        <div className="ai-glass-panel border-cyan-400/15 px-4 py-3 text-sm" data-testid="local-agent-publish-hint">
-          <p className="font-medium text-cyan-100">本地发布客户端</p>
-          <p className="mt-1 text-xs text-slate-400">
-            发布任务将发送至本机 GEO 本地发布客户端（{LOCAL_AGENT_BASE_URL}）。请保持客户端运行并开启轮询；任务状态为「等待本地客户端处理」时表示已入队。
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm" data-testid="local-agent-publish-hint">
+          <p className="font-medium text-gray-800">本地发布客户端</p>
+          <p className="mt-1 text-xs text-gray-500">
+            发布任务将发送至本机 GEO 本地发布客户端。请保持客户端运行并开启轮询；任务状态为「等待本地客户端处理」时表示已入队。
           </p>
           {localAgentOnline === false ? (
-            <p className="mt-2 text-xs text-amber-200">当前未检测到客户端在线，发布将被阻断。</p>
+            <p className="mt-2 text-xs text-amber-600">当前未检测到客户端在线，发布将被阻断。</p>
           ) : null}
         </div>
       ) : null}
@@ -1152,12 +1150,12 @@ export default function WeeklyContentPage() {
       ) : null}
 
       <Dialog open={suggestionDialog.open} onOpenChange={open => setSuggestionDialog(s => ({ ...s, open }))}>
-        <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-lg">
+        <DialogContent className="border-gray-200 bg-white text-gray-900 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>新版内容建议</DialogTitle>
-            <DialogDescription className="text-slate-400">{suggestionDialog.articleTitle}</DialogDescription>
+            <DialogDescription className="text-gray-500">{suggestionDialog.articleTitle}</DialogDescription>
           </DialogHeader>
-          <pre className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-200">
+          <pre className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
             {suggestionDialog.text}
           </pre>
           <DialogFooter>
@@ -1169,16 +1167,16 @@ export default function WeeklyContentPage() {
       </Dialog>
 
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-        <DialogContent className="border-white/10 bg-slate-950 text-slate-100 sm:max-w-md" data-testid="publish-to-platform-dialog">
+        <DialogContent className="border-gray-200 bg-white text-gray-900 sm:max-w-md" data-testid="publish-to-platform-dialog">
           <DialogHeader>
             <DialogTitle>加入发布队列</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-gray-500">
               {publishArticle?.title ?? "当前文章"} · 各平台内容独立，本篇不支持一稿多发
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <div className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-50">
-              <p className="mt-2 text-xs text-cyan-100/80">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              <p className="mt-2 text-xs text-blue-700">
                 任务将发送至本地 GEO 发布客户端，由本篇对应平台账号执行填稿。
               </p>
               <p className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -1188,31 +1186,31 @@ export default function WeeklyContentPage() {
                 ) : localAgentOnline === false ? (
                   <AiStatusBadge tone="warning">未连接</AiStatusBadge>
                 ) : (
-                  <span className="text-slate-400">检测中…</span>
+                  <span className="text-gray-400">检测中…</span>
                 )}
               </p>
             </div>
             {publishArticle && !hasGeoQualityReview(publishArticle) ? (
-              <p className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 当前内容尚未进行发布前质检，建议先质检后发布。
               </p>
             ) : null}
             {publishArticle && isGeoQualityScoreStale(publishArticle) ? (
-              <p className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 {GEO_QUALITY_STALE_PUBLISH_HINT}
               </p>
             ) : null}
             {publishArticle &&
             !isGeoQualityScoreStale(publishArticle) &&
             publishArticle.geoQualityRecommendation === "revise" ? (
-              <p className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 内容有优化空间，确认后可继续发布。
               </p>
             ) : null}
             {publishAccountGroupWarnings.map(w => (
               <p
                 key={w.slug}
-                className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-100"
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800"
                 data-testid="account-group-mismatch-hint"
               >
                 <span className="font-medium">{w.platformLabel}：</span>
@@ -1232,21 +1230,21 @@ export default function WeeklyContentPage() {
               const picked = isBindingPublishPlatform(p.slug) ? pickPublishAccount(p.slug) : null;
               const needsPick = readyAccounts.length > 1 && !picked;
               return (
-                <div key={p.slug} className="flex flex-col gap-2 rounded-lg border border-white/10 px-3 py-2">
+                <div key={p.slug} className="flex flex-col gap-2 rounded-lg border border-gray-200 px-3 py-2">
                   <span className="text-sm font-medium">{p.label}</span>
                   {isBindingPublishPlatform(p.slug) ? (
                     <div className="space-y-2">
                       {readyAccounts.length === 0 ? (
-                        <span className="text-xs text-amber-200">无可发布账号（需绑定本地环境且登录有效）</span>
+                        <span className="text-xs text-amber-600">无可发布账号（需绑定本地环境且登录有效）</span>
                       ) : readyAccounts.length === 1 ? (
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-gray-600">
                           发布账号：{readyAccounts[0]!.accountName} · 登录有效
                         </span>
                       ) : (
                         <>
-                          <span className="text-xs text-slate-400">选择发布账号（必选）</span>
+                          <span className="text-xs text-gray-500">选择发布账号（必选）</span>
                           <select
-                            className={aiInput}
+                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
                             value={selectedPublishAccountIds[p.slug] ?? ""}
                             onChange={e =>
                               setSelectedPublishAccountIds(prev => ({
@@ -1264,23 +1262,23 @@ export default function WeeklyContentPage() {
                             ))}
                           </select>
                           {picked ? (
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-gray-600">
                               已选账号：{picked.accountName}
                             </span>
                           ) : null}
                         </>
                       )}
                       {legacyAccounts.length > 0 ? (
-                        <p className="text-xs text-amber-200/90">
+                        <p className="text-xs text-amber-600">
                           {legacyAccounts.length} 个旧账号需在企业档案重新绑定本地客户端后方可发布。
                         </p>
                       ) : null}
                       {needsPick ? (
-                        <span className="text-xs text-red-300">该平台有多个可发布账号，请选择后再发布</span>
+                        <span className="text-xs text-red-600">该平台有多个可发布账号，请选择后再发布</span>
                       ) : null}
                     </div>
                   ) : (
-                    <span className="pl-7 text-xs text-slate-500">
+                    <span className="pl-7 text-xs text-gray-500">
                       {isBindingPublishPlatform(p.slug) && readyAccounts.length === 1
                         ? `可发布账号：${readyAccounts[0]!.accountName}`
                         : isBindingPublishPlatform(p.slug) && readyAccounts.length > 1
@@ -1294,7 +1292,7 @@ export default function WeeklyContentPage() {
               );
             })
             ) : (
-              <p className="text-sm text-slate-400">暂未识别本篇发布平台</p>
+              <p className="text-sm text-gray-400">暂未识别本篇发布平台</p>
             )}
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
@@ -1304,7 +1302,7 @@ export default function WeeklyContentPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full border-amber-400/30 text-amber-100"
+                className="w-full border-amber-500 text-amber-700"
                 onClick={() => {
                   setPublishDialogOpen(false);
                   selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#platform-accounts");
@@ -1314,12 +1312,12 @@ export default function WeeklyContentPage() {
               </Button>
             ) : null}
             <div className="flex w-full gap-2">
-              <Button type="button" variant="outline" className="flex-1 border-white/15" onClick={() => setPublishDialogOpen(false)}>
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setPublishDialogOpen(false)}>
                 取消
               </Button>
               <Button
                 type="button"
-                className="flex-1 bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
                 disabled={createPublishTask.isPending || selectedPlatforms.size === 0}
                 onClick={() => void handleConfirmPublish()}
               >

@@ -576,3 +576,13 @@
 [2026-05-26T04:21:46.718Z] 12:21:46 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
 [2026-05-26T04:22:09.649Z] 12:22:09 AM [vite] (client) hmr update /src/index.css
 [2026-05-26T04:22:54.338Z] 12:22:54 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T04:36:42.346Z] 12:36:42 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-26T04:36:43.249Z] 12:36:43 AM [vite] (client) hmr invalidate /src/pages/V12FlowPages.tsx Could not Fast Refresh ("buildPublishDisplayTitle" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-26T04:36:43.251Z] 12:36:43 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-26T04:37:08.589Z] 12:37:08 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T04:37:25.771Z] [geo.scores.latest] { requestedProjectId: 30001, returned: null, sameProjectTop3: [] }
+[2026-05-26T04:42:24.313Z] 12:42:24 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-26T04:42:52.322Z] 12:42:52 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T04:44:20.465Z] 12:44:20 AM [vite] (client) hmr update /src/index.css, /src/pages/ContentPublishingCenterPage.tsx
+[2026-05-26T04:45:35.564Z] 12:45:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T04:46:23.474Z] 12:46:23 AM [vite] (client) hmr update /src/index.css
