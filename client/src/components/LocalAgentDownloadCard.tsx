@@ -4,9 +4,6 @@ import { Download, Loader2, RefreshCw, CheckCircle2, AlertCircle, ChevronDown } 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-/** 相对路径：本地 / 线上部署均自动适配当前 origin */
-const MAC_DOWNLOAD_ZIP = "/downloads/geo-local-agent-mac.zip";
-
 type DownloadManifest = {
   macDmgUrl?: string | null;
   macZipUrl?: string | null;
@@ -47,7 +44,8 @@ export function LocalAgentDownloadCard() {
   const [checking, setChecking] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
-  const [macHref, setMacHref] = useState<string | null>(MAC_DOWNLOAD_ZIP);
+  const [macHref, setMacHref] = useState<string | null>(null);
+  const [manifestLoaded, setManifestLoaded] = useState(false);
 
   const refreshHealth = useCallback(async () => {
     setChecking(true);
@@ -67,12 +65,13 @@ export function LocalAgentDownloadCard() {
       .then(r => (r.ok ? r.json() : null))
       .then((m: DownloadManifest | null) => {
         setManifest(m);
-        setMacHref(pickMacHref(m) ?? MAC_DOWNLOAD_ZIP);
+        setMacHref(pickMacHref(m));
       })
       .catch(() => {
         setManifest(null);
-        setMacHref(MAC_DOWNLOAD_ZIP);
-      });
+        setMacHref(null);
+      })
+      .finally(() => setManifestLoaded(true));
   }, [refreshHealth]);
 
   const winHref = pickWinHref(manifest);
@@ -148,6 +147,11 @@ export function LocalAgentDownloadCard() {
             下载 Mac 客户端
           </Button>
         )}
+        {manifestLoaded && !macOffered ? (
+          <p className="w-full text-xs text-amber-700" data-testid="mac-agent-download-unconfigured">
+            安装包暂未配置，请联系管理员上传 Local Agent 安装包。
+          </p>
+        ) : null}
         {winOffered && winHref ? (
           <Button type="button" size="sm" variant="outline" asChild data-testid="download-win">
             <a href={winHref} download>
