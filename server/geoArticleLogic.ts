@@ -1084,7 +1084,38 @@ export function buildGenerationBasis(input: { project: P11ProjectLike; topic: P1
     assetLibraryUsage: buildAssetLibraryUsage(input.assetLibrary),
   };
   basis.generationBasisAuditItems = buildGenerationBasisAuditItems(basis);
-  validateGenerationBasis(basis);
+  return basis;
+}
+
+/** 平台化生成前补齐可推导字段，避免「有策略面板但 DB 无指定问题 / 无竞品」导致校验失败 */
+export function enrichGenerationBasisForDraft(
+  basis: P11GenerationBasis,
+  input: {
+    project: P11ProjectLike;
+    topic: P11TopicDraft & { id?: number };
+    task: P11TaskLike;
+    platformStrategy?: PlatformContentStrategyInput;
+  },
+): P11GenerationBasis {
+  if (input.platformStrategy?.targetQuestion?.trim()) {
+    basis.customerQuestion = input.platformStrategy.targetQuestion.trim();
+  }
+  if (!nonEmpty(basis.contentGap)) {
+    basis.contentGap =
+      compactTexts([input.topic.contentGap, input.task.generationReason, input.task.taskName]).join("；") ||
+      "待从 AI 诊断结果补齐内容缺口说明";
+  }
+  if (!nonEmpty(basis.notRecommendedReason)) {
+    basis.notRecommendedReason =
+      compactTexts([input.task.generationReason, "当前 AI 回答未充分覆盖本企业可公开资料"]).join("；");
+  }
+  if (!nonEmpty(basis.competitorGap)) {
+    basis.competitorGap =
+      basis.competitorNames.length > 0
+        ? `${basis.competitorNames.slice(0, 3).join("、")}在 AI 回答中更易被提及；建议补充竞品公开资料后再做深度对比。`
+        : `当前暂未配置竞品信息，本篇不对具体竞品作价值评判，仅说明${input.project.enterpriseName}的服务边界与适用场景。`;
+  }
+  basis.generationBasisAuditItems = buildGenerationBasisAuditItems(basis);
   return basis;
 }
 
@@ -1524,12 +1555,12 @@ export async function generateGeoArticleDraft(input: {
 }): Promise<P11ArticleDraft> {
   if (!input.topic.optimizationTaskId && !nonEmpty(input.topic.contentGap)) throw new Error("文章选题必须绑定任务或内容缺口。");
   const { project, topic, task } = input;
-  const basis = buildGenerationBasis(input);
+  let basis = buildGenerationBasis(input);
   if (input.platformStrategy) {
     const meta = buildPlatformContentStrategyMeta(input.platformStrategy);
-    basis.customerQuestion = input.platformStrategy.targetQuestion.trim();
     basis.platformContentStrategy = meta as unknown as Record<string, unknown>;
   }
+  basis = enrichGenerationBasisForDraft(basis, { project, topic, task, platformStrategy: input.platformStrategy });
   validateGenerationBasis(basis);
   const snippets = buildCitableSnippets({ project, basis }).slice(0, 5);
   const structure = buildGeoStructure({ project, basis, snippets, task });

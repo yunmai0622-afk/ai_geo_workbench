@@ -76,8 +76,20 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { TRPCClientError } from "@trpc/client";
+import { toPlatformContentGenerationError } from "@shared/platformContentGenerationErrors";
 
 type ProjectOption = { id: number; enterpriseName: string };
+
+function readGenerateArticleError(err: unknown): string {
+  if (err instanceof TRPCClientError) {
+    return toPlatformContentGenerationError(err.message);
+  }
+  if (err instanceof Error) {
+    return toPlatformContentGenerationError(err.message);
+  }
+  return toPlatformContentGenerationError("");
+}
 
 type TopicRow = {
   id: number;
@@ -544,8 +556,8 @@ export default function WeeklyContentPage() {
         });
         await invalidateArticles();
         return true;
-      } catch {
-        toast.error("生成遇到问题，已跳过，继续生成下一篇");
+      } catch (err) {
+        toast.error(readGenerateArticleError(err));
         return false;
       } finally {
         setGeneratingTopicIds(prev => {
