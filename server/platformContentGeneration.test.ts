@@ -10,10 +10,15 @@ import {
   assertEnterpriseProfileForPlatformGeneration,
   assertPlatformContentStrategyParams,
 } from "./platformContentGenerationPreconditions";
+import { buildPlatformContentStrategyMeta } from "@shared/platformContentRules";
 import {
+  buildAssetLibraryUsage,
+  buildGenerationBasis,
+  buildGeoArticleBodyFromTemplate,
   enrichGenerationBasisForDraft,
   generateGeoArticleTopics,
   validateGenerationBasis,
+  validateGeoCollectableStructure,
   type P11ProjectLike,
   type P11TaskLike,
 } from "./geoArticleLogic";
@@ -101,5 +106,47 @@ describe("platform content generation errors (P0)", () => {
     expect(basis.customerQuestion).toBe(strategy.targetQuestion);
     expect(basis.competitorGap.length).toBeGreaterThan(0);
     expect(() => validateGenerationBasis(basis)).not.toThrow();
+  });
+
+  it("test-template body includes platform GEO sections when platform strategy is set", () => {
+    const strategy = buildDefaultPlatformStrategy({
+      targetPublishPlatform: "zhihu",
+      targetQuestion: "知识付费平台怎么选？",
+    });
+    const [topic] = generateGeoArticleTopics({ project, tasks });
+    let basis = buildGenerationBasis({ project, topic, task: tasks[0], questions: [], analyses: [] });
+    basis.platformContentStrategy = buildPlatformContentStrategyMeta(strategy) as unknown as Record<string, unknown>;
+    basis = enrichGenerationBasisForDraft(basis, { project, topic, task: tasks[0], platformStrategy: strategy });
+    const body = buildGeoArticleBodyFromTemplate({
+      project,
+      topic,
+      task: tasks[0],
+      basis,
+      structure: {
+        summary: "摘要",
+        actionGuide: "行动",
+        unsuitableCustomers: "不适合",
+        suitableCustomers: "适合",
+        conclusion: "结论",
+        updatedAt: "2026-05-26",
+      },
+      snippets: [
+        { question: "Q1", answer: "A1" },
+        { question: "Q2", answer: "A2" },
+        { question: "Q3", answer: "A3" },
+      ],
+      evidence: { questionsText: "", gaps: "", reasons: "", competitors: [] },
+      assetUsage: buildAssetLibraryUsage(null),
+      assetLibrary: null,
+      enterpriseEvidenceText: "企业资料",
+      competitorEvidenceText: "竞品资料",
+      wovenReasons: "原因",
+      wovenGaps: "缺口",
+      materialDigest: "材料",
+      evidenceGapText: "待核验",
+    });
+    expect(body).toMatch(/## 平台适配说明/);
+    expect(body).toMatch(/## GEO 质量自检说明/);
+    expect(validateGeoCollectableStructure(body, undefined, basis)).toEqual([]);
   });
 });

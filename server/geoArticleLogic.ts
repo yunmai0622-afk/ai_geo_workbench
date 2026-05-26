@@ -1355,7 +1355,7 @@ export function buildGeoArticleBodyFromTemplate(ctx: GeoArticleTemplateBodyConte
 
   const summaryBody = `${structure.conclusion}`;
 
-  return [
+  const sections = [
     `# ${topic.title}`,
     paragraph("问题与背景", problemBody),
     paragraph("根因分析", rootCauseBody),
@@ -1371,7 +1371,31 @@ export function buildGeoArticleBodyFromTemplate(ctx: GeoArticleTemplateBodyConte
       "发布后如何自行核对效果",
       `若您在内容上线后希望感性了解信息是否更清晰，可以尝试隔一段时间、用相同的一类问题再问一次大模型或再次检索相关关键词，并把回答截图留存对比——这既不是效果承诺，也不能替代正式的商业尽调，更像是一种自我校准阅读习惯的小动作。也欢迎您直接对照 ${project.enterpriseName} 官网（${project.website}）与公开发布的产品/服务说明、案例或白皮书完成复测式核对。`,
     ),
-  ].join("\n\n");
+  ];
+  if (basis.platformContentStrategy) {
+    const meta = basis.platformContentStrategy as {
+      targetPublishPlatformLabel?: string;
+      geoQualitySelfCheckOutline?: string;
+    };
+    const platformLabel = meta.targetPublishPlatformLabel?.trim() || "目标发布平台";
+    sections.push(
+      paragraph(
+        "平台适配说明",
+        `本篇按${platformLabel}的信息密度与叙述习惯组织段落，结论前置、依据可核对，避免照搬其它渠道话术；品牌与产品表述以企业公开资料为准。`,
+      ),
+      paragraph(
+        "GEO 质量自检说明",
+        [
+          "1. 核对标题与正文一级标题是否一致，且未出现绝对效果承诺。",
+          "2. 核对品牌名、产品服务描述是否与官网及企业档案一致。",
+          `3. 核对「便于引用的要点」是否覆盖目标问题：${basis.customerQuestion || "（见上文）"}。`,
+          "4. 核对案例与数据是否有公开来源或「待补充」标注。",
+          meta.geoQualitySelfCheckOutline?.trim() || "5. 发布前由业务负责人完成人工终审。",
+        ].join("\n"),
+      ),
+    );
+  }
+  return sections.join("\n\n");
 }
 
 const GEO_ARTICLE_DRAFT_SYSTEM_PROMPT = `你是一位专注于知识付费与内容创业领域的资深内容创作者。
