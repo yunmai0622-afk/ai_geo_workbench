@@ -44,7 +44,7 @@ export function PlatformContentBoard({ rows, disabled, onGenerate, onView }: Pro
                   {countsLine}
                 </p>
               ) : (
-                <p className="mt-3 text-xs text-slate-400">暂无内容记录</p>
+                <p className="mt-3 text-xs text-gray-400">暂无内容记录</p>
               )}
               <div className="mt-4 flex flex-1 flex-col gap-2 border-t border-slate-100 pt-4">
                 <Button

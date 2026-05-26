@@ -998,3 +998,4 @@
 [2026-05-26T11:57:46.559Z] 7:57:46 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx
 [2026-05-26T11:57:48.137Z] 7:57:48 AM [vite] (client) hmr invalidate /src/pages/GeoPages.tsx Could not Fast Refresh ("buildPublishCheckSummary" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
 [2026-05-26T11:57:48.138Z] 7:57:48 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-26T11:59:34.798Z] 7:59:34 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/PlatformContentBoard.tsx
