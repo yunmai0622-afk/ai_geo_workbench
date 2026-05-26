@@ -163,19 +163,19 @@ export default function DashboardLayout({
   if (!user) {
     const loginConfigured = isLoginConfigured();
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-        <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-cyan-300/15 bg-white/[0.04] p-8 text-center shadow-[0_0_42px_rgba(56,189,248,0.14)]">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-gray-900">
+        <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
           <div className="flex flex-col items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-200">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
               <BarChart3 className="h-7 w-7" />
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">登录后继续</h1>
-            <p className="max-w-sm text-sm leading-6 text-slate-400">
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">登录后继续</h1>
+            <p className="max-w-sm text-sm leading-6 text-gray-600">
               登录后可按增长总览、内容诊断、资产生产、发布记录与客户交付报告推进项目。
             </p>
           </div>
           {loginConfigured ? (
-            <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300">
+            <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full">
               登录
             </Button>
           ) : (
