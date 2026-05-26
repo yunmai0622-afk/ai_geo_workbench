@@ -2,3 +2,4 @@
 *.dmg
 *.exe
 !manifest.json
+!geo-local-agent-mac.zip
