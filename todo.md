@@ -615,3 +615,27 @@
 - [x] 建档完成度展示
 - [x] 不改保存逻辑、不改数据库、不改接口
 - [x] 验收：pnpm check + pnpm build + 截图
+
+## Phase E2：收录监测 /inclusion-monitoring 视觉重做
+
+- [x] 页面标题改为"收录监测"+副标题（跟踪已发布内容的收录状态与 AI 搜索实测结果）
+- [x] 收录概览卡（监测记录数/已完成实测/发布记录数/待检测）使用 -- 占位
+- [x] 操作区：补录监测记录 + 前往平台适配发布按钮
+- [x] 空状态浅色卡片（RadioTower 图标+文案）
+- [x] 监测记录列表改为浅色白卡片（圆角+border+shadow-sm）
+- [x] 状态指标三列（收录状态/AI 提及/AI 推荐）使用 gray-50 底色小卡
+- [x] 当前建议使用 amber-50 提示条
+- [x] 测试阶段 select 改为浅色输入框
+- [x] 实测明细区改为 gray-50 底色+白色子卡片
+- [x] 下一步建议区浅色白卡
+- [x] 未选项目空状态改为浅色居中卡（去除 AiPageShell）
+- [x] 不改业务逻辑、不改接口、不改数据库
+- [x] 验收：pnpm check + pnpm build 通过
+
+## Phase E3：交付报告 /delivery-reports 视觉重做
+
+- [x] 确认页面主体已使用 P0Card/P0MetricTile/P0Section + geoP0Brand 浅色体系
+- [x] 未选项目空状态改为浅色居中卡（FileText 图标+引导文案+CTA），去除 ProjectContextEmptyState 暗色组件
+- [x] 无暗色 class 残留（ai-glass/AiPageShell/bg-slate-950/text-slate-100/text-cyan-200/border-white 等均无）
+- [x] 不改业务逻辑、不改接口、不改数据库
+- [x] 验收：pnpm check + pnpm build 通过

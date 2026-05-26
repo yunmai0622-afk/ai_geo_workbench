@@ -1,5 +1,5 @@
 import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
-import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
+import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
@@ -201,8 +201,13 @@ export function DeliveryReportsCenterPage() {
 
   if (!enabled && !projectsLoading) {
     return (
-      <div data-testid="delivery-report-page">
-        <ProjectContextEmptyState />
+      <div className="min-h-[60vh] flex items-center justify-center" data-testid="delivery-report-page">
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center max-w-md shadow-sm">
+          <FileText className="mx-auto h-10 w-10 text-blue-600" />
+          <h2 className="mt-4 text-lg font-semibold text-gray-900">交付报告</h2>
+          <p className="mt-2 text-sm text-gray-500">请先选择一个企业项目，再查看交付报告。</p>
+          <Button className="mt-5 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setLocation("/clients")}>前往企业项目</Button>
+        </div>
       </div>
     );
   }

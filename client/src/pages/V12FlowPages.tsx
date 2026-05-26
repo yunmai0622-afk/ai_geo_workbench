@@ -2288,202 +2288,265 @@ export function InclusionMonitoringFlowPage() {
 
   if (!enabled && !projectsLoading) {
     return (
-      <AiPageShell>
-        <ProjectContextEmptyState />
-      </AiPageShell>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center max-w-md shadow-sm">
+          <RadioTower className="mx-auto h-10 w-10 text-blue-600" />
+          <h2 className="mt-4 text-lg font-semibold text-gray-900">收录监测</h2>
+          <p className="mt-2 text-sm text-gray-500">请先选择一个企业项目，再查看收录监测状态。</p>
+          <Button className="mt-5 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setLocation("/clients")}>前往企业项目</Button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6 text-slate-100">
-      <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4 md:p-5">
-        <h1 className="text-xl font-semibold text-white">收录监测</h1>
-        <p className="mt-2 text-sm text-slate-400">跟踪当前企业内容的收录与 AI 实测结果。</p>
-      </section>
-      <GeoStatusGuide
-        stage="收录监测"
-        completion={records.length > 0 ? 90 : 62}
-        nextAction="生成客户报告"
-        why="收录监测页展示已发布内容的收录、AI 提及与推荐状态；可一键对豆包、DeepSeek、Kimi 做真实可见度实测。"
-        risk="监测结果来自有限样本，不代表全网绝对排名。"
-        ctaLabel="生成客户报告"
-        ctaPath="/delivery-reports"
-      />
-      <Card className="border-white/10 bg-white/[0.04] text-slate-100">
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="text-white">监测记录</CardTitle>
-            <CardDescription className="text-cyan-200">
-              已发布内容监测卡片；选择测试阶段后点击「立即实测」，将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。
-            </CardDescription>
-          </div>
+    <div className="space-y-6 pb-12">
+      {/* --- 页面标题区 --- */}
+      <header className="space-y-2">
+        <h1 className="text-2xl font-bold text-gray-900">收录监测</h1>
+        <p className="text-sm text-gray-500">
+          跟踪已发布内容的收录状态与 AI 搜索实测结果。完成平台适配发布并回填公开链接后，系统会开始收录监测。
+        </p>
+      </header>
+
+      {/* --- 收录概览卡 --- */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">监测记录数</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{records.length > 0 ? records.length : "--"}</p>
+          <p className="mt-1 text-xs text-gray-400">已创建的监测卡片</p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">已完成实测</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{records.filter(r => r.lastAiTestedAt).length > 0 ? records.filter(r => r.lastAiTestedAt).length : "--"}</p>
+          <p className="mt-1 text-xs text-gray-400">已执行 AI 搜索实测</p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">发布记录数</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{publishRecordCount > 0 ? publishRecordCount : "--"}</p>
+          <p className="mt-1 text-xs text-gray-400">含人工登记与 Agent 发布</p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">待检测</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{records.filter(r => !r.lastAiTestedAt).length > 0 ? records.filter(r => !r.lastAiTestedAt).length : "--"}</p>
+          <p className="mt-1 text-xs text-gray-400">尚未执行 AI 实测</p>
+        </div>
+      </div>
+
+      {/* --- 操作区：补录 + 前往发布 --- */}
+      {selectedProjectId && publishRecordCount > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+            disabled={backfillMonitoring.isPending}
+            onClick={() => backfillMonitoring.mutate({ projectId: selectedProjectId })}
+          >
+            {backfillMonitoring.isPending ? "补录中…" : "补录监测记录"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="border-gray-200 text-gray-700 hover:bg-gray-50"
+            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
+          >
+            前往平台适配发布
+          </Button>
+        </div>
+      ) : null}
+
+      {/* --- 空状态 --- */}
+      {records.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
+          <RadioTower className="mx-auto h-10 w-10 text-gray-300" />
+          <p className="mt-4 text-sm font-medium text-gray-700">暂无可监测内容</p>
+          <p className="mt-1 text-xs text-gray-500">
+            {publishRecordCount > 0
+              ? `当前项目已有 ${publishRecordCount} 条发布记录，可点击「补录监测记录」为已发布内容创建监测卡片。`
+              : "完成平台适配发布并回填公开链接后，系统会开始收录监测。"}
+          </p>
           {selectedProjectId && publishRecordCount > 0 ? (
             <Button
               type="button"
-              size="sm"
-              variant="aiOutline"
-              className="shrink-0"
+              className="mt-5 bg-blue-600 hover:bg-blue-700 text-white"
               disabled={backfillMonitoring.isPending}
               onClick={() => backfillMonitoring.mutate({ projectId: selectedProjectId })}
             >
-              {backfillMonitoring.isPending ? "补录中…" : "补录监测记录"}
+              {backfillMonitoring.isPending ? "补录中…" : "为已有发布记录补录监测"}
             </Button>
           ) : null}
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {records.length === 0 ? (
-            <div className="space-y-4">
-              <EmptyStep
-                title="暂无收录监测记录"
-                description={
-                  publishRecordCount > 0
-                    ? `当前项目已有 ${publishRecordCount} 条发布记录（含人工登记），可一键为尚未关联的发布记录补录监测卡片。`
-                    : "请先完成内容发布，发布成功后会自动创建未检测监测记录。"
-                }
-              />
-              {selectedProjectId && publishRecordCount > 0 ? (
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    variant="ai"
-                    disabled={backfillMonitoring.isPending}
-                    onClick={() => backfillMonitoring.mutate({ projectId: selectedProjectId })}
-                  >
-                    {backfillMonitoring.isPending ? "补录中…" : "为已有发布记录补录监测"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-white/15 text-slate-100 hover:bg-white/10"
-                    onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
-                  >
-                    前往内容发布
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {records.map(record => (
-                <div id={`monitoring-record-${record.id}`} key={record.id} className="ai-glass-panel p-5 md:p-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-white">文章 ID：{record.articleId}</p>
+        </div>
+      ) : (
+        /* --- 监测记录列表 --- */
+        <div className="space-y-4">
+          <h2 className="text-base font-semibold text-gray-900">监测记录</h2>
+          <p className="text-xs text-gray-500">选择测试阶段后点击「立即实测」，将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。</p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {records.map(record => (
+              <div
+                id={`monitoring-record-${record.id}`}
+                key={record.id}
+                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">文章 #{record.articleId}</p>
+                    {toAbsoluteUrl(record.publicUrl) ? (
                       <a
-                        className="mt-2 inline-block text-sm text-cyan-200 underline"
+                        className="mt-1 inline-block text-sm text-blue-600 hover:underline truncate max-w-full"
                         href={toAbsoluteUrl(record.publicUrl)}
                         target="_blank"
                         rel="noreferrer"
                       >
-                        公开链接：{toAbsoluteUrl(record.publicUrl)}
+                        查看公开链接
                       </a>
-                      <p className="mt-2 text-sm text-slate-400">
-                        最近检测时间：
-                        {formatTime(record.lastCheckedAt) === "未记录" ? "未检测" : formatTime(record.lastCheckedAt)}
+                    ) : (
+                      <p className="mt-1 text-sm text-gray-400">公开链接未回填</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-400">
+                      最近检测：{formatTime(record.lastCheckedAt) === "未记录" ? "未检测" : formatTime(record.lastCheckedAt)}
+                    </p>
+                    {record.lastAiTestedAt ? (
+                      <p className="mt-0.5 text-xs text-gray-400">
+                        AI 实测：{formatTime(record.lastAiTestedAt)}
                       </p>
-                      {record.lastAiTestedAt ? (
-                        <p className="mt-1 text-sm text-slate-500">
-                          AI 实测：{formatTime(record.lastAiTestedAt)}
-                        </p>
-                      ) : null}
-                    </div>
-                    <RadioTower className="h-5 w-5 shrink-0 text-cyan-200" />
+                    ) : null}
                   </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <InfoCard title="收录状态" desc={record.inclusionStatus || "未检测"} />
-                    <InfoCard title="AI 提及状态" desc={record.aiMentionStatus || "未检测"} />
-                    <InfoCard title="AI 推荐状态" desc={record.aiRecommendStatus || "未检测"} />
-                  </div>
-                  <p className="mt-4 text-sm text-amber-100">
-                    当前建议：{record.currentSuggestion ?? "保持监测并更新客户报告。"}
-                  </p>
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-                    <label className="flex min-w-[10rem] flex-col gap-1.5 text-sm text-slate-300">
-                      <span className="font-medium text-slate-100">测试阶段</span>
-                      <select
-                        value={selectedTestStage}
-                        onChange={e => setSelectedTestStage(e.target.value as AiTestStage)}
-                        disabled={runCheck.isPending}
-                        className={`${aiInput} h-9`}
-                      >
-                        {MONITORING_TEST_STAGE_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ai"
-                      disabled={!selectedProjectId || runCheck.isPending}
-                      onClick={() => {
-                        if (!selectedProjectId) return;
-                        setRunningRecordId(record.id);
-                        runCheck.mutate({
-                          projectId: selectedProjectId,
-                          recordId: record.id,
-                          engines: ["doubao", "deepseek", "kimi"],
-                          testStage: selectedTestStage,
-                        });
-                      }}
-                    >
-                      {runCheck.isPending && runningRecordId === record.id ? "实测中…" : "立即实测"}
-                    </Button>
-                  </div>
-                  {record.aiTestResults && record.aiTestResults.length > 0 ? (
-                    <div className={`mt-4 space-y-2 p-3 ${aiSubPanel}`}>
-                      <p className="text-xs font-medium text-cyan-200">实测明细</p>
-                      {record.aiTestResults.map((r, i) => (
-                        <div
-                          key={`${r.engine}-${i}`}
-                          className={`rounded-xl px-3 py-2 text-xs text-slate-300 ${aiListRow}`}
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-medium text-white">{r.engineName ?? r.engine}</span>
-                              <span className="text-slate-500">{(r.mentionedBrand ?? r.mentionsBrand) ? "提及" : "未提及"}</span>
-                              <span className="text-slate-500">{(r.recommendedBrand ?? r.recommendsBrand) ? "推荐" : "-"}</span>
-                              {r.sentiment ? (
-                                <span className="text-slate-500">{sentimentLabelCn(r.sentiment as "positive" | "neutral" | "negative")}</span>
-                              ) : null}
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-cyan-300 hover:bg-cyan-400/10 hover:text-cyan-200"
-                              onClick={() => setLocation(buildEvidenceDetailPath(record.id, i))}
-                            >
-                              查看证据
-                            </Button>
-                          </div>
-                          <p className="mt-1 line-clamp-2 text-slate-400">{r.question}</p>
-                          {!(r.mentionedBrand ?? r.mentionsBrand) && isAiTestMissReason(r.missReason) ? (
-                            <p className="mt-2 text-xs leading-relaxed text-amber-100/90">
-                              未提及原因：{missReasonLabelCn(r.missReason)}
-                            </p>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
+                  <RadioTower className="h-5 w-5 shrink-0 text-blue-500" />
                 </div>
-              ))}
-            </div>
-          )}
-          <div className="flex justify-end">
-            <Button
-              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/delivery-reports", selectedProjectId))}
-              disabled={records.length === 0}
-              variant="ai"
-            >
-              进入交付报告
-            </Button>
+
+                {/* 状态指标 */}
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                    <p className="text-[11px] font-medium text-gray-500">收录状态</p>
+                    <p className="mt-0.5 text-sm font-medium text-gray-900">{record.inclusionStatus || "未检测"}</p>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                    <p className="text-[11px] font-medium text-gray-500">AI 提及</p>
+                    <p className="mt-0.5 text-sm font-medium text-gray-900">{record.aiMentionStatus || "未检测"}</p>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                    <p className="text-[11px] font-medium text-gray-500">AI 推荐</p>
+                    <p className="mt-0.5 text-sm font-medium text-gray-900">{record.aiRecommendStatus || "未检测"}</p>
+                  </div>
+                </div>
+
+                {/* 当前建议 */}
+                <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                  建议：{record.currentSuggestion ?? "保持监测并更新客户报告。"}
+                </p>
+
+                {/* 测试阶段 + 实测按钮 */}
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                  <label className="flex min-w-[10rem] flex-col gap-1.5 text-sm text-gray-700">
+                    <span className="text-xs font-medium text-gray-500">测试阶段</span>
+                    <select
+                      value={selectedTestStage}
+                      onChange={e => setSelectedTestStage(e.target.value as AiTestStage)}
+                      disabled={runCheck.isPending}
+                      className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                    >
+                      {MONITORING_TEST_STAGE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    disabled={!selectedProjectId || runCheck.isPending}
+                    onClick={() => {
+                      if (!selectedProjectId) return;
+                      setRunningRecordId(record.id);
+                      runCheck.mutate({
+                        projectId: selectedProjectId,
+                        recordId: record.id,
+                        engines: ["doubao", "deepseek", "kimi"],
+                        testStage: selectedTestStage,
+                      });
+                    }}
+                  >
+                    {runCheck.isPending && runningRecordId === record.id ? "实测中…" : "立即实测"}
+                  </Button>
+                </div>
+
+                {/* 实测明细 */}
+                {record.aiTestResults && record.aiTestResults.length > 0 ? (
+                  <div className="mt-4 space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                    <p className="text-xs font-medium text-gray-600">实测明细</p>
+                    {record.aiTestResults.map((r, i) => (
+                      <div
+                        key={`${r.engine}-${i}`}
+                        className="rounded-lg bg-white border border-gray-100 px-3 py-2 text-xs text-gray-700"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-gray-900">{r.engineName ?? r.engine}</span>
+                            <span className={`${(r.mentionedBrand ?? r.mentionsBrand) ? "text-emerald-600" : "text-gray-400"}`}>
+                              {(r.mentionedBrand ?? r.mentionsBrand) ? "提及" : "未提及"}
+                            </span>
+                            <span className={`${(r.recommendedBrand ?? r.recommendsBrand) ? "text-blue-600" : "text-gray-400"}`}>
+                              {(r.recommendedBrand ?? r.recommendsBrand) ? "推荐" : "—"}
+                            </span>
+                            {r.sentiment ? (
+                              <span className="text-gray-500">{sentimentLabelCn(r.sentiment as "positive" | "neutral" | "negative")}</span>
+                            ) : null}
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                            onClick={() => setLocation(buildEvidenceDetailPath(record.id, i))}
+                          >
+                            查看证据
+                          </Button>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-gray-500">{r.question}</p>
+                        {!(r.mentionedBrand ?? r.mentionsBrand) && isAiTestMissReason(r.missReason) ? (
+                          <p className="mt-2 text-xs leading-relaxed text-amber-700">
+                            未提及原因：{missReasonLabelCn(r.missReason)}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
+
+      {/* --- 下一步建议 --- */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900">下一步建议</h2>
+        <ul className="mt-3 space-y-2 text-sm text-gray-700">
+          {records.length === 0 ? (
+            <li className="text-gray-500">完成平台适配发布并回填公开链接后，可在此执行 AI 搜索实测。</li>
+          ) : records.filter(r => !r.lastAiTestedAt).length > 0 ? (
+            <li>对 {records.filter(r => !r.lastAiTestedAt).length} 条未实测记录执行 AI 搜索实测，获取品牌提及与推荐状态。</li>
+          ) : (
+            <li>所有记录已完成实测，可进入交付报告查看汇总结果。</li>
+          )}
+          <li className="text-xs text-gray-400">监测结果来自有限样本，不代表全网绝对排名。</li>
+        </ul>
+        <div className="mt-4 flex justify-end">
+          <Button
+            type="button"
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/delivery-reports", selectedProjectId))}
+            disabled={records.length === 0}
+          >
+            进入交付报告
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
