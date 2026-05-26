@@ -598,3 +598,35 @@
 [2026-05-26T05:00:10.419Z] 1:00:10 AM [vite] (client) hmr update /src/index.css
 [2026-05-26T05:00:59.930Z] 1:00:59 AM [vite] (client) hmr update /src/index.css
 [2026-05-26T05:02:44.322Z] 1:02:44 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T08:16:23.293Z] 4:16:23 AM [vite] (client) page reload index.html
+[2026-05-26T08:16:23.294Z] 4:16:23 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T08:16:23.295Z] 4:16:23 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T08:16:23.295Z] 4:16:23 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-05-26T08:16:23.296Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/ArticleLifecyclePanel.tsx
+[2026-05-26T08:16:23.297Z] 4:16:23 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-05-26T08:16:23.298Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
+[2026-05-26T08:16:23.298Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/AdvancedMaterialsSection.tsx
+[2026-05-26T08:16:23.299Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx
+[2026-05-26T08:16:23.300Z] 4:16:23 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T08:16:23.301Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx
+[2026-05-26T08:16:23.301Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/GeoMaterialPreviewSection.tsx
+[2026-05-26T08:16:23.304Z] 4:16:23 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T08:16:23.306Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/ProfileIntakePanel.tsx
+[2026-05-26T08:16:23.307Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/ProfileSectionShell.tsx
+[2026-05-26T08:16:23.307Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/ProfileUploadAssistSection.tsx
+[2026-05-26T08:16:23.308Z] 4:16:23 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T08:16:23.308Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PlatformAccountCard.tsx
+[2026-05-26T08:16:23.308Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PlatformAccountTable.tsx
+[2026-05-26T08:16:23.309Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PlatformAccountTechnicalDialog.tsx
+[2026-05-26T08:16:23.309Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/components/DashboardLayout.tsx, /src/pages/AssetCenter.tsx
+[2026-05-26T08:16:23.310Z] 4:16:23 AM [vite] (client) hmr update /src/index.css, /src/pages/GeoPages.tsx, /src/pages/ProgressPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/WeeklyContentPage.tsx, /src/pages/V12FlowPages.tsx, /src/components/V1WorkbenchOverview.tsx
+[2026-05-26T08:16:23.310Z] 4:16:23 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T08:16:23.310Z] 4:16:23 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-05-26T08:16:23.311Z] 4:16:23 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-05-26T08:16:23.311Z] 4:16:23 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-05-26T08:16:23.313Z] 4:16:23 AM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/index.css
+[2026-05-26T08:16:23.314Z] 4:16:23 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-26T08:16:23.315Z] 4:16:23 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-26T08:16:23.316Z] 4:16:23 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx
+[2026-05-26T08:16:23.408Z] 4:16:23 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-05-26T08:16:25.234Z] c[OAuth] Initialized with baseURL: https://api.manus.im
