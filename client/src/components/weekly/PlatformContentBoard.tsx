@@ -55,7 +55,7 @@ export function PlatformContentBoard({ rows, disabled, onGenerate, onView }: Pro
                   data-testid={`weekly-generate-${def.key}`}
                   onClick={() => onGenerate(def.key)}
                 >
-                  生成本轮平台化内容
+                  生成该平台内容
                 </Button>
                 {hasContent ? (
                   <Button

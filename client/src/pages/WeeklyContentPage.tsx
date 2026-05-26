@@ -808,7 +808,7 @@ export default function WeeklyContentPage() {
   const handlePlatformView = (platformKey: WeeklyPlatformKey) => {
     const hit = articles.find(a => normalizeWeeklyPlatformKey(a.targetPlatform) === platformKey);
     if (hit) openEditor(hit);
-    else toast.message("该平台暂无已生成内容，请先点击「生成本轮平台化内容」");
+    else toast.message("该平台暂无已生成内容，请先点击「生成该平台内容」");
   };
 
   useEffect(() => {

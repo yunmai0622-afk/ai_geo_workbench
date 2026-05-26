@@ -30,7 +30,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
     for (const label of ["小红书", "知乎", "搜狐号", "网易号", "公众号", "其他平台"]) {
       expect(defs).toContain(label);
     }
-    expect(board).toContain("生成本轮平台化内容");
+    expect(board).toContain("生成该平台内容");
     expect(board).toContain("不支持一稿多发");
     expect(weekly).toContain("不支持一稿多发");
     expect(weekly).not.toMatch(/批量生成|生成内容资产|生成数量/);
