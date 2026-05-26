@@ -9,13 +9,12 @@ describe("C5-D enterprise profile page product UI", () => {
   const page = read("client/src/pages/AssetCenter.tsx");
 
   it("uses simplified GEO onboarding layout with publish env on top", () => {
-    expect(page).toContain("企业 GEO 建档");
+    expect(page).toContain("品牌资产建档");
     expect(page).toContain("FiveMinuteBasicOnboardingSection");
     expect(page).toContain("ProfileUploadAssistSection");
-    expect(page).toContain("EnterprisePublishEnvironmentSection");
+    expect(page).toContain("ProfilePublishEnvLightHint");
     expect(page).toContain("AdvancedMaterialsSection");
-    expect(page).toContain("GeoMaterialPreviewSection");
-    expect(page).toContain("AiPageShell");
+    expect(page).toContain("ProfileAiUnderstandingPreview");
     expect(page).not.toContain("Section 1 · 基本身份");
     expect(page).not.toContain("GeoStatusGuide");
   });
@@ -23,7 +22,7 @@ describe("C5-D enterprise profile page product UI", () => {
   it("keeps save handlers unchanged", () => {
     expect(page).toContain("upsertProfile.mutateAsync");
     expect(page).toContain("createCustomerCase.mutateAsync");
-    expect(page).toContain("保存基础建档");
-    expect(page).toContain("EnterprisePublishEnvironmentSection");
+    expect(page).toContain("saveFiveMinuteAndStartDiagnosis");
+    expect(page).toContain("ProfilePublishEnvLightHint");
   });
 });

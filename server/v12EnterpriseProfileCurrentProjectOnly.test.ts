@@ -47,8 +47,8 @@ describe("GEO-V1-D 企业 GEO 建档只服务当前 project", () => {
     const asset = read("client/src/pages/AssetCenter.tsx");
     expect(publish).toContain("PlatformAccountBindingSection");
     expect(binding).toContain("projectId: number");
-    expect(asset).toContain("EnterprisePublishEnvironmentSection");
-    expect(asset).toContain("projectId={currentProjectId!}");
+    expect(asset).toContain("ProfilePublishEnvLightHint");
+    expect(asset).toContain("projectId={currentProjectId}");
   });
 
   it("建档页仍绑定 currentProjectId 查询与保存", () => {

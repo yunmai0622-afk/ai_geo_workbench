@@ -19,12 +19,12 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
   it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
     for (const label of [
-      "客户管理台",
-      "企业工作台",
-      "GEO 建档",
-      "AI 现状诊断",
-      "平台化内容生产",
-      "发布中心",
+      "企业项目",
+      "项目工作台",
+      "品牌资产建档",
+      "AI 实测诊断",
+      "平台化内容资产",
+      "平台适配发布",
       "收录监测",
       "交付报告",
     ]) {
@@ -72,11 +72,11 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
   it("企业档案页呈现 5 分钟建档结构", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
     for (const text of [
-      "5 分钟 GEO 建档",
+      "用 5 分钟补齐",
       "FiveMinuteBasicOnboardingSection",
       "ProfileAiUnderstandingPreview",
       "AdvancedMaterialsSection",
-      "保存并开始 AI 诊断",
+      "保存并开始 AI 实测诊断",
     ]) {
       expect(assetSource).toContain(text);
     }
@@ -120,7 +120,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
   it("发布中心页保留人工登记与列表，不出现平台授权配置字段", () => {
     const publishSource = readProjectFile("client/src/pages/ContentPublishingCenterPage.tsx");
     for (const text of [
-      "发布中心",
+      "平台适配发布",
       "人工登记发布记录",
       "createManualPublishRecord",
       "updateManualPublishRecord",
@@ -143,9 +143,9 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(publishSource).not.toContain("publishTasks.create");
   });
 
-  it("收录监测页展示已发布内容监测卡片和有限样本风险", () => {
+  it("收录监测页展示监测记录和有限样本风险", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of ["收录监测", "已发布内容监测卡片", "收录", "AI 提及", "AI 推荐", "最近检测时间", "当前建议", "监测结果来自有限样本"]) {
+    for (const text of ["收录监测", "监测记录", "收录", "收录状态", "当前建议", "监测结果来自有限样本"]) {
       expect(flowSource).toContain(text);
     }
   });

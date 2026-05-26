@@ -26,9 +26,9 @@ describe("Phase C — 发布后复测队列与重写池", () => {
   });
 
   it("content publishing page shows queues", () => {
-    const ui = read("client/src/pages/V12FlowPages.tsx");
-    expect(ui).toContain("geo.articles.retestQueue");
-    expect(ui).toContain("geo.articles.rewritePool");
-    expect(ui).toContain("发布后复测队列");
+    const ui = read("client/src/pages/ContentPublishingCenterPage.tsx");
+    expect(ui).toContain("retestQueueQuery");
+    expect(ui).toContain("rewritePoolQuery");
+    expect(ui).toContain("publish-retest-rewrite-fold");
   });
 });

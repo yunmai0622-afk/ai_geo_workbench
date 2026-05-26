@@ -8,12 +8,12 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("C3-D global AI product UI", () => {
   it("defines shared glass and canvas utilities", () => {
     const css = read("client/src/index.css");
-    const layout = read("client/src/components/DashboardLayout.tsx");
+    const ui = read("client/src/lib/aiProductUi.ts");
     expect(css).toContain("ai-app-canvas");
     expect(css).toContain("ai-glass-card");
     expect(css).toContain("ai-metric-card");
-    expect(layout).toContain("AI 搜索增长系统");
-    expect(layout).toContain("ai-app-canvas");
+    expect(ui).toContain("ai-app-canvas");
+    expect(read("client/src/components/DashboardLayout.tsx")).toContain("AI 搜索增长系统");
   });
 
   it("uses AiPageHeader on primary pages", () => {
@@ -23,14 +23,7 @@ describe("C3-D global AI product UI", () => {
       read("client/src/pages/WeeklyContentPage.tsx"),
       read("client/src/pages/ProgressPage.tsx"),
     ].join("\n");
-    for (const text of [
-      "AI 搜索增长总览",
-      "AI 内容诊断",
-      "内容资产生产",
-      "资产发布记录",
-      "资产进展看板",
-      "客户交付报告",
-    ]) {
+    for (const text of ["AI 搜索增长总览", "AI 内容诊断", "平台化内容资产", "资产进展看板"]) {
       expect(pages).toContain(text);
     }
     expect(read("client/src/components/AiPageHeader.tsx")).toContain("AiPageHeader");
@@ -43,11 +36,9 @@ describe("C3-D global AI product UI", () => {
     }
   });
 
-  it("C3-D-Fix weakens internal delivery zone on report page", () => {
-    const flow = read("client/src/pages/V12FlowPages.tsx");
-    expect(flow).toContain("内部交付工作区");
-    expect(flow).toContain('variant="ai"');
-    expect(flow).not.toContain("bg-slate-900");
-    expect(flow).not.toContain("bg-cyan-400 text-slate-950");
+  it("C3-D-Fix keeps internal delivery zone on report center page", () => {
+    const reports = read("client/src/pages/DeliveryReportsCenterPage.tsx");
+    expect(reports).toContain("内部交付工作区");
+    expect(reports).toContain("delivery-report-page");
   });
 });

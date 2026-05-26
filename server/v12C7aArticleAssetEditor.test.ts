@@ -14,8 +14,8 @@ describe("C7-A article asset editor and template cover", () => {
   it("generated article renders cover preview on weekly page", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weekly).toContain("articleCoverPreviewSrc");
-    expect(weekly).toContain("aspect-video");
-    expect(weekly).toContain("待生成封面");
+    expect(weekly).toContain("WeeklyPlatformArticleCard");
+    expect(weekly).toContain("ArticleAssetEditorSheet");
   });
 
   it("cover template renders chinese title without mojibake", () => {

@@ -16,12 +16,12 @@ describe("V1.0 客户主路径静态回归", () => {
   it("侧边栏展示客户主入口（含内容进展占位），并把旧路径作为兼容别名", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
     for (const label of [
-      "客户管理台",
-      "企业工作台",
-      "GEO 建档",
-      "AI 现状诊断",
-      "平台化内容生产",
-      "发布中心",
+      "企业项目",
+      "项目工作台",
+      "品牌资产建档",
+      "AI 实测诊断",
+      "平台化内容资产",
+      "平台适配发布",
       "收录监测",
       "交付报告",
     ]) {
@@ -55,7 +55,7 @@ describe("V1.0 客户主路径静态回归", () => {
 
   it("企业档案页为档案配置台结构并保留保存入口", () => {
     const assetCenterSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    for (const text of ["5 分钟 GEO 建档", "FiveMinuteBasicOnboardingSection", "保存并开始 AI 诊断", "AdvancedMaterialsSection"]) {
+    for (const text of ["用 5 分钟补齐", "FiveMinuteBasicOnboardingSection", "保存并开始 AI 实测诊断", "AdvancedMaterialsSection"]) {
       expect(assetCenterSource).toContain(text);
     }
     expect(assetCenterSource).toContain("ProfileAiUnderstandingPreview");

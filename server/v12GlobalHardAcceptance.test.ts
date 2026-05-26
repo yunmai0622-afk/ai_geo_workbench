@@ -50,8 +50,10 @@ describe("Phase5 global hard acceptance scan (static)", () => {
     expect(sources.publish).toContain("一稿多发");
   });
 
-  it("publish chrome entry is folded only", () => {
-    expect(sources.publish).toContain("publish-chrome-legacy-fold");
+  it("publish page has no legacy Chrome extension entry", () => {
+    expect(sources.publish).not.toContain("publish-chrome-legacy-fold");
+    expect(sources.publish).not.toContain("旧版 Chrome 插件入口");
+    expect(sources.publish).toContain("publish-local-agent-download-fold");
     expect(sources.publish).not.toContain("downloadExtension");
   });
 

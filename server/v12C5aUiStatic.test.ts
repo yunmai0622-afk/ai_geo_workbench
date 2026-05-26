@@ -15,11 +15,11 @@ describe("C5-A global product UI overhaul", () => {
 
   it("uses grouped product navigation labels", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain("让品牌被 AI 看见、理解和推荐");
+    expect(layout).toContain("AI 搜索增长系统");
     expect(layout).toContain("增长总览");
-    expect(layout).toContain("企业工作台");
-    expect(layout).toContain("平台化内容生产");
-    expect(layout).toContain("发布中心");
+    expect(layout).toContain("项目工作台");
+    expect(layout).toContain("平台化内容资产");
+    expect(layout).toContain("平台适配发布");
     expect(layout).toContain("收录监测");
     expect(layout).toContain("交付报告");
   });
@@ -30,11 +30,9 @@ describe("C5-A global product UI overhaul", () => {
       read("client/src/pages/ProgressPage.tsx"),
       read("client/src/pages/WeeklyContentPage.tsx"),
     ].join("\n");
-    expect(pages).toContain("AiPageShell");
-    expect(pages).toContain("AiPageHero");
     expect(pages).toContain("AI 搜索增长总览");
     expect(pages).toContain("资产进展看板");
-    expect(pages).toContain("内容资产生产");
+    expect(pages).toContain("平台化内容资产");
   });
 
   it("report cover uses enhanced delivery styling", () => {

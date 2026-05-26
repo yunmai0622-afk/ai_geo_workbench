@@ -62,6 +62,6 @@ describe("Agent-2 Web publish task + local agent loop", () => {
   it("publish status labels include agent states", () => {
     expect(read("shared/publishTaskErrors.ts")).toContain("pending_agent");
     expect(read("shared/publishTaskErrors.ts")).toContain("manual_required");
-    expect(read("client/src/pages/V12FlowPages.tsx")).toContain("listRecentByProject");
+    expect(read("client/src/pages/ContentPublishingCenterPage.tsx")).toContain("listRecentByProject");
   });
 });

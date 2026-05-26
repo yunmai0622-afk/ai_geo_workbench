@@ -10,7 +10,7 @@ describe("Profile UX enterprise archive console", () => {
   const panel = read("client/src/components/enterpriseProfile/ProfileIntakePanel.tsx");
 
   it("uses customer-facing archive title and intake copy", () => {
-    expect(page).toContain("企业 GEO 建档");
+    expect(page).toContain("品牌资产建档");
     expect(panel).toContain("先上传企业资料");
     expect(page).toContain("FiveMinuteBasicOnboardingSection");
     expect(page).toContain("AdvancedMaterialsSection");
@@ -26,7 +26,7 @@ describe("Profile UX enterprise archive console", () => {
   });
 
   it("keeps platform binding matrix without chrome plugin auth", () => {
-    expect(page).toContain("EnterprisePublishEnvironmentSection");
+    expect(page).toContain("ProfilePublishEnvLightHint");
     const matrix = read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
     expect(matrix).toContain("平台账号矩阵");
     expect(read("client/src/components/platformAccounts/usePlatformAccountBinding.ts")).toContain(

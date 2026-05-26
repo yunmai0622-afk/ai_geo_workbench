@@ -50,7 +50,7 @@ describe("工作台 Flow 页（与首页同组件）", () => {
     expect(source).toContain("核心状态");
     expect(source).toContain("生成内容资产");
     expect(source).toContain("品牌提及率");
-    expect(source).toContain("当前项目");
+    expect(source).toMatch(/selectedProject|enterpriseName|海豚知道/);
   });
 
   it("展示行动卡与最近进展区块", () => {

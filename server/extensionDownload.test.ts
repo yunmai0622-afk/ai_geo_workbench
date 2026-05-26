@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import AdmZip from "adm-zip";
 import { buildCustomExtensionZip } from "./extensionDownload";
 
-describe("buildCustomExtensionZip", () => {
+const legacyZipPath = join(process.cwd(), "client/public/browser-extension.zip");
+
+describe.skipIf(!existsSync(legacyZipPath))("buildCustomExtensionZip", () => {
   it("injects auto config into background.js", () => {
     const buf = buildCustomExtensionZip("https://example.com", "testapikey12345678");
     const zip = new AdmZip(buf);

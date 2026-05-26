@@ -8,10 +8,10 @@ const read = (rel: string) => readFileSync(resolve(projectRoot, rel), "utf-8");
 describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
   it("ClientDashboardPage 有新建客户项目与弹窗", () => {
     const src = read("client/src/pages/ClientDashboardPage.tsx");
-    expect(src).toContain("新建客户项目");
+    expect(src).toContain("新建企业项目");
     expect(src).toContain("create-client-project-dialog");
     expect(src).toContain("create-client-project-button");
-    expect(src).toContain("还没有客户项目");
+    expect(src).toContain("还没有企业项目");
     expect(src).toContain("buildProjectUrl(\"/enterprise-profile\"");
     expect(src).toContain("setActiveProjectId(created.id)");
     expect(src).not.toContain('setLocation("/onboarding")');
@@ -27,7 +27,7 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(src).not.toContain("创建企业");
     expect(src).not.toMatch(/<select[\s\S]*切换企业/);
     expect(src).toContain("enterprise-profile-empty");
-    expect(src).toContain("5 分钟 GEO 建档必须归属一个客户项目");
+    expect(src).toContain("品牌资产建档必须归属一个客户项目");
     expect(src).toContain("客户管理台");
   });
 
@@ -46,8 +46,8 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
 
   it("DashboardLayout 侧栏为 GEO 建档", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain('label: "GEO 建档"');
-    expect(layout).toContain("完善企业基础资料");
+    expect(layout).toContain('label: "品牌资产建档"');
+    expect(layout).toContain("补齐企业被 AI 理解的基础信息");
     expect(layout).not.toContain('label: "企业档案"');
   });
 

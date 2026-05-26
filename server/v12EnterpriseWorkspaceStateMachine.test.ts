@@ -11,7 +11,8 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     const app = read("client/src/App.tsx");
     expect(app).toContain('path="/workspace"');
     expect(app).toContain("EnterpriseWorkspacePage");
-    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toMatch(/企业.*驾驶舱|企业工作台/);
+    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toContain("workspace-page");
+    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toContain("EIGHT_STEP_PIPELINE");
   });
 
   it("无 activeProjectId 显示 ProjectContextEmptyState", () => {
@@ -22,27 +23,27 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(page).toContain("useActiveProjectSelection");
   });
 
-  it("有 projectId 显示当前客户项目与阶段", () => {
+  it("有 projectId 显示当前企业项目与阶段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("workspace-current-stage");
+    expect(page).toContain("workspace-header-card");
     expect(read("client/src/components/project/EnterpriseProjectShell.tsx")).toContain("ProjectWorkspaceTopBar");
-    expect(page).toMatch(/当前.*阶段/);
-    expect(page).toContain("workspace-blocker-reasons");
+    expect(page).toContain("workspace-pipeline-section");
+    expect(page).toContain("workspace-primary-cta");
   });
 
   it("状态机阶段文案齐全", () => {
-    const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
+    const shared = read("shared/workspaceStateMachine.ts");
     for (const label of [
       "待绑定发布环境",
-      "待完成 GEO 建档",
+      "待完成品牌建档",
       "待 AI 现状诊断",
       "待生成内容",
       "待发布",
-      "待复测",
+      "待收录监测",
       "待优化",
       "可生成报告",
     ]) {
-      expect(page + read("shared/workspaceStateMachine.ts")).toContain(label);
+      expect(shared).toContain(label);
     }
     expect(WORKSPACE_STAGES.length).toBe(8);
   });
@@ -57,12 +58,9 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("展示进度指标且不暴露工程字段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("workspace-progress-metrics");
-    for (const label of ["建档完成度", "内容资产", "已发布", "待复测", "AI 实测", "GEO 评分", "P0MetricTile"]) {
-      expect(page).toContain(label);
-    }
-    expect(page).toContain("workspace-progress-metrics");
-    expect(page).toContain("COCKPIT_PIPELINE_STEPS");
+    expect(page).toContain("GEO 分");
+    expect(page).toContain("geo.workspace.summary");
+    expect(page).toContain("formatGeoScore");
     expect(page).not.toContain("localAgentId");
     expect(page).not.toContain("rawJson");
     expect(page).not.toContain("profileId");

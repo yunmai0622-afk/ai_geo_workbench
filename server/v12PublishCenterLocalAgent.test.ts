@@ -24,8 +24,8 @@ describe("Phase3 publish center Local Agent UI", () => {
   it("first screen highlights Local Agent task center", () => {
     for (const text of [
       "publish-center-page",
-      "发布中心",
-      "Local Agent 本地发布任务中心",
+      "平台适配发布",
+      "Local Agent 状态",
       "local-agent-status-card",
       "publish-task-columns",
       "publish-column-pending",
@@ -43,9 +43,10 @@ describe("Phase3 publish center Local Agent UI", () => {
     expect(publishUi).toContain("填写公开链接");
   });
 
-  it("chrome extension and retest pools are folded, not first-screen heroes", () => {
-    expect(page).toContain("publish-chrome-legacy-fold");
-    expect(page).toContain("旧版 Chrome 插件入口，仅用于历史兼容。新项目建议使用 Local Agent。");
+  it("legacy Chrome extension removed; Local Agent download folded", () => {
+    expect(page).not.toContain("publish-chrome-legacy-fold");
+    expect(page).not.toContain("旧版 Chrome 插件入口");
+    expect(page).toContain("publish-local-agent-download-fold");
     expect(page).toContain("publish-retest-rewrite-fold");
     expect(page).not.toContain("AiPageHero");
     expect(page).not.toContain("资产发布记录");

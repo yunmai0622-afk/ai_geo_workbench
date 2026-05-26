@@ -8,7 +8,7 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("Enterprise-Profile-Simplify-V1", () => {
   it("uses simplified page structure", () => {
     const asset = read("client/src/pages/AssetCenter.tsx");
-    expect(asset).toContain("5 分钟 GEO 建档");
+    expect(asset).toContain("用 5 分钟补齐");
     expect(asset).toContain("FiveMinuteBasicOnboardingSection");
     expect(asset).toContain("ProfileUploadAssistSection");
     expect(asset).toContain("AdvancedMaterialsSection");
@@ -18,7 +18,7 @@ describe("Enterprise-Profile-Simplify-V1", () => {
 
   it("five minute onboarding has bounded P0 fields", () => {
     const basic = read("client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx");
-    expect(read("client/src/pages/AssetCenter.tsx")).toContain("保存并开始 AI 诊断");
+    expect(read("client/src/pages/AssetCenter.tsx")).toContain("保存并开始 AI 实测诊断");
     const count = (basic.match(/testId="p0-field-/g) ?? []).length;
     expect(count).toBeLessThanOrEqual(10);
     expect(count).toBeGreaterThanOrEqual(8);
@@ -32,7 +32,7 @@ describe("Enterprise-Profile-Simplify-V1", () => {
 
   it("AI 理解预览在首屏", () => {
     expect(read("client/src/components/enterpriseProfile/ProfileAiUnderstandingPreview.tsx")).toContain(
-      "AI 理解预览",
+      "AI 当前会这样理解你的企业",
     );
   });
 });

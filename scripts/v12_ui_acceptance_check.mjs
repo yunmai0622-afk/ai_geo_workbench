@@ -45,12 +45,12 @@ assertContains('首页', sources.home, '品牌提及率');
 assertContains('首页', sources.home, 'AiPageShell');
 
 for (const item of [
-  '客户管理台',
-  '企业工作台',
-  'GEO 建档',
-  'AI 现状诊断',
-  '平台化内容生产',
-  '发布中心',
+  '企业项目',
+  '项目工作台',
+  '品牌资产建档',
+  'AI 实测诊断',
+  '平台化内容资产',
+  '平台适配发布',
   '收录监测',
   '交付报告',
 ]) {
@@ -95,13 +95,13 @@ for (const item of ['当前阶段', '完成度', '下一步动作', '为什么�
   assertContains('状态引导条组件', sources.guide, item);
 }
 for (const item of [
-  '5 分钟 GEO 建档',
-  '保存并开始 AI 诊断',
+  '用 5 分钟补齐',
+  '保存并开始 AI 实测诊断',
   'FiveMinuteBasicOnboardingSection',
   'ProfileAiUnderstandingPreview',
   'ProfileUploadAssistSection',
   'AdvancedMaterialsSection',
-  'EnterprisePublishEnvironmentSection',
+  'ProfilePublishEnvLightHint',
   'enterprise-profile-page',
 ]) {
   assertContains('企业档案页', sources.assets, item);
@@ -110,8 +110,8 @@ assertNotContains('企业档案页', sources.assets, 'Section 1 · 基本身份'
 for (const item of ['先新建第一个企业项目', '新增企业项目', 'geo.projects.create', 'handleCreateProject']) {
   assertNotContains('企业档案页', sources.assets, item);
 }
-assertContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), '客户项目');
-assertContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), '新建客户项目');
+assertContains('企业项目管理页', read('client/src/pages/ClientDashboardPage.tsx'), '企业项目');
+assertContains('企业项目管理页', read('client/src/pages/ClientDashboardPage.tsx'), '新建企业项目');
 for (const forbidden of ['ownerUserId', 'taskId', 'projectId=', 'data-testid="project-id"']) {
   assertNotContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), forbidden);
 }
@@ -154,20 +154,20 @@ const publishPage =
   read('client/src/components/publishing/PublishTaskColumnBoard.tsx') +
   read('client/src/components/publishing/LocalAgentStatusCard.tsx');
 for (const item of [
-  '发布中心',
+  '平台适配发布',
   'publish-center-page',
   'local-agent-status-card',
   'publish-task-columns',
   'createManualPublishRecord',
   'updateManualPublishRecord',
-  '旧版 Chrome 插件入口，仅用于历史兼容',
+  'publish-local-agent-download-fold',
 ]) {
   assertContains('发布中心页', publishPage, item);
 }
-for (const item of ['连接发布平台', '可由交付人员配置', '风险边界', '支持方式', 'browser-extension.zip', '下载 Chrome 插件']) {
+for (const item of ['publish-chrome-legacy-fold', '旧版 Chrome 插件入口', '下载 Chrome 插件', '连接发布平台', '可由交付人员配置', '风险边界', '支持方式', 'browser-extension.zip']) {
   assertNotContains('发布中心页', publishPage, item);
 }
-for (const item of ['已发布内容监测卡片', '收录', 'AI 提及', 'AI 推荐', '最近检测时间', '当前建议', '监测结果来自有限样本']) {
+for (const item of ['监测记录', '收录', '收录状态', '当前建议', '监测结果来自有限样本', '监测记录数']) {
   assertContains('收录监测页', sources.flow, item);
 }
 const deliveryReportPage =

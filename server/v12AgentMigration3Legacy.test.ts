@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { hasLegacyChromeExtensionSource } from "./legacyExtensionTestGuard";
 
 const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
@@ -25,12 +26,15 @@ describe("Agent-Migration-3 legacy cleanup", () => {
     const blob = mainUiFiles.map(read).join("\n");
     expect(blob).toContain("本地发布客户端");
     expect(blob).toContain("检测客户端");
-    expect(read("client/src/components/LocalAgentDownloadCard.tsx")).toContain("geo-local-agent-mac");
+    expect(read("client/src/components/LocalAgentDownloadCard.tsx")).toContain("/downloads/manifest.json");
   });
 
-  it("README_LEGACY exists and extension source kept", () => {
-    expect(existsSync(resolve(root, "content-growth-publish-extension/README_LEGACY.md"))).toBe(true);
-    expect(existsSync(resolve(root, "content-growth-publish-extension/manifest.json"))).toBe(true);
+  it("legacy extension off-tree or README kept for rollback", () => {
+    if (!hasLegacyChromeExtensionSource()) {
+      expect(read("server/publishTasksRouter.ts")).toContain("@legacy");
+      expect(read("server/publishTasksRouter.ts")).toContain("downloadExtension");
+      return;
+    }
     expect(read("content-growth-publish-extension/README_LEGACY.md")).toContain("Local Agent");
   });
 

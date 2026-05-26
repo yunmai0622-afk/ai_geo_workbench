@@ -10,12 +10,12 @@ describe("GEO-V1-UI-P1-A Profile-Shell-Compatibility", () => {
   const basic = read("client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx");
 
   it("5 分钟建档首屏与主按钮", () => {
-    expect(asset).toContain("5 分钟 GEO 建档");
-    expect(asset).toContain("让 AI 理解企业是谁、卖什么、服务谁、凭什么被推荐");
+    expect(asset).toContain("用 5 分钟补齐");
+    expect(asset).toContain("用 5 分钟补齐 AI 理解企业所需的核心信息");
     expect(asset).toContain("建档完成度");
     expect(asset).toContain("ProfileAiUnderstandingPreview");
     expect(asset).toContain("save-profile-start-diagnosis");
-    expect(asset).toContain("保存并开始 AI 诊断");
+    expect(asset).toContain("保存并开始 AI 实测诊断");
     expect(asset).toContain('buildProjectUrl("/ai-diagnosis"');
   });
 
@@ -47,7 +47,7 @@ describe("GEO-V1-UI-P1-A Profile-Shell-Compatibility", () => {
     const hint = read("client/src/components/enterpriseProfile/ProfilePublishEnvLightHint.tsx");
     expect(asset).toContain("ProfilePublishEnvLightHint");
     expect(hint).toContain("发布环境未配置不影响建档");
-    expect(hint).toContain("稍后去发布中心");
+    expect(hint).toContain("稍后去平台适配发布");
     expect(read("client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx")).toContain(
       "advanced-materials-collapsed",
     );

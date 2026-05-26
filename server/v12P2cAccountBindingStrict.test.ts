@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { hasLegacyChromeExtensionSource } from "./legacyExtensionTestGuard";
 
 const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
@@ -58,9 +59,11 @@ describe("P2-C strict plugin-only platform account binding", () => {
   });
 
   it("C7-B publish verification still exists", () => {
-    expect(weekly).toContain("发布到平台");
+    expect(weekly).toContain("加入发布队列");
     expect(svc).toContain("verifyPublishTaskAccount");
-    expect(read("content-growth-publish-extension/background.js")).toContain("verifyTaskAccountBeforePublish");
+    if (hasLegacyChromeExtensionSource()) {
+      expect(read("content-growth-publish-extension/background.js")).toContain("verifyTaskAccountBeforePublish");
+    }
   });
 
   it("does not save cookie or password", () => {

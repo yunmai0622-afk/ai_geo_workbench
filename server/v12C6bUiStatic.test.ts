@@ -9,34 +9,35 @@ describe("C6-B enterprise profile flow order", () => {
   const page = read("client/src/pages/AssetCenter.tsx");
   const upload = read("client/src/components/enterpriseProfile/ProfileUploadAssistSection.tsx");
 
-  it("shows create project first when no projects", () => {
-    expect(page).toContain("先新建第一个企业项目");
-    expect(page).toContain("hasProjects");
-    expect(page).toContain("hasSelectedProject");
+  it("shows empty state when no project selected", () => {
+    expect(page).toContain("ProjectContextEmptyState");
+    expect(page).toContain("enterprise-profile-empty");
+    expect(page).toContain("useActiveProjectId");
   });
 
-  it("hides onboarding blocks without selected project", () => {
-    expect(page).toContain("{hasSelectedProject ? (");
-    expect(page).toMatch(/hasSelectedProject \?[\s\S]*FiveMinuteBasicOnboardingSection/);
+  it("shows onboarding blocks only with selected project", () => {
+    expect(page).toContain("FiveMinuteBasicOnboardingSection");
+    expect(page).toMatch(/selectedProject|currentProjectId/);
   });
 
-  it("places new project as secondary when projects exist", () => {
-    expect(page).toContain("新增企业项目");
-    expect(page).toContain("<details");
+  it("create project lives on clients hub not profile page", () => {
+    expect(page).not.toContain("handleCreateProject");
+    expect(read("client/src/pages/ClientDashboardPage.tsx")).toContain("新建企业项目");
   });
 
-  it("shows publish env then basic onboarding when project selected", () => {
+  it("shows publish env hint before upload assist when project selected", () => {
     expect(upload).toContain("资料上传与 AI 辅助解析");
-    const publishBlock = page.indexOf("<EnterprisePublishEnvironmentSection");
-    const basicBlock = page.indexOf("<FiveMinuteBasicOnboardingSection");
-    const uploadBlock = page.indexOf("<ProfileUploadAssistSection");
-    expect(publishBlock).toBeGreaterThan(-1);
+    const hintBlock = page.indexOf("ProfilePublishEnvLightHint");
+    const basicBlock = page.indexOf("FiveMinuteBasicOnboardingSection");
+    const uploadBlock = page.indexOf("ProfileUploadAssistSection");
+    expect(hintBlock).toBeGreaterThan(-1);
     expect(basicBlock).toBeGreaterThan(-1);
-    expect(publishBlock).toBeLessThan(basicBlock);
+    expect(hintBlock).toBeLessThan(uploadBlock);
     expect(basicBlock).toBeLessThan(uploadBlock);
   });
 
-  it("auto switches after create with hint message", () => {
-    expect(page).toContain("企业已创建，现在可以上传资料进行 AI 建档");
+  it("save profile starts diagnosis flow", () => {
+    expect(page).toContain("saveFiveMinuteAndStartDiagnosis");
+    expect(page).toContain("保存并开始 AI 实测诊断");
   });
 });
