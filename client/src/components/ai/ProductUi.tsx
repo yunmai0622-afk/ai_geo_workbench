@@ -40,7 +40,7 @@ export function AiPageHero({
       <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0 flex-1 space-y-4">
           {badge ? (
-            <span className="ai-hero-badge inline-flex items-center rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold tracking-wide text-violet-100">
+            <span className="ai-hero-badge inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold tracking-wide text-blue-700">
               {badge}
             </span>
           ) : null}
@@ -281,7 +281,7 @@ export function AiStepRail({
           className={cn(
             "rounded-2xl border p-4 transition",
             i <= activeIndex
-              ? "border-blue-400/30 bg-cyan-500/8 shadow-[0_0_24px_rgba(56,189,248,0.1)]"
+              ? "border-blue-200 bg-blue-50 shadow-sm"
               : "border-gray-200 bg-gray-50",
           )}
         >

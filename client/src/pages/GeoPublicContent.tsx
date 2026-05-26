@@ -378,7 +378,7 @@ export default function GeoPublicContentPage() {
           <div className="mt-7 grid gap-4 md:grid-cols-4">
             <div className="rounded-2xl border border-gray-200 bg-white/[0.06] p-4"><p className="text-xs text-slate-400">文章类型</p><p className="mt-2 font-semibold text-white">{article.articleType}</p></div>
             <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4"><p className="text-xs text-emerald-100/80">发布状态</p><p className="mt-2 font-semibold text-emerald-100">{article.status}</p></div>
-            <div className="rounded-2xl border border-violet-300/20 bg-violet-300/10 p-4"><p className="text-xs text-violet-100/80">质量评分</p><p className="mt-2 font-semibold text-violet-100">{qualityScore ? `${qualityScore.totalScore} / 100` : "已审核发布"}</p></div>
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4"><p className="text-xs text-gray-500">质量评分</p><p className="mt-2 font-semibold text-gray-900">{qualityScore ? `${qualityScore.totalScore} / 100` : "已审核发布"}</p></div>
             <div className="rounded-2xl border border-sky-300/20 bg-sky-300/10 p-4"><p className="text-xs text-sky-100/80">发布时间 / 更新时间</p><p className="mt-2 text-sm font-semibold leading-6 text-sky-100">{createdAt}<br />{updatedAt}</p></div>
           </div>
           <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm leading-6 text-amber-100">风险提示：{RISK_NOTICE}</div>
@@ -399,7 +399,7 @@ export default function GeoPublicContentPage() {
                 {section.faq ? (
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
                     {section.faq.map((item, index) => (
-                      <div key={`${item.question}-${index}`} className="rounded-2xl border border-gray-200 bg-cyan-300/[0.055] p-4">
+                      <div key={`${item.question}-${index}`} className="rounded-2xl border border-gray-200 bg-blue-50/50 p-4">
                         <p className="font-semibold leading-6 text-blue-700">{item.question}</p>
                         <p className="mt-2 text-sm leading-7 text-gray-600">{item.answer}</p>
                       </div>
@@ -413,7 +413,7 @@ export default function GeoPublicContentPage() {
           </div>
         </article>
 
-        <section className="mt-8 rounded-[2rem] border border-gray-200 bg-cyan-300/[0.055] p-6 shadow-[0_0_35px_rgba(6,182,212,0.12)] md:p-8">
+        <section className="mt-8 rounded-[2rem] border border-gray-200 bg-blue-50/50 p-6 shadow-sm md:p-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold tracking-[0.22em] text-blue-600">可引用短答案</p>

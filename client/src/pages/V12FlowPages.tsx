@@ -443,7 +443,7 @@ function taskStatusLabelCn(status: string | undefined) {
 function priorityBadgeClass(p: string | undefined) {
   if (p === "P0") return "border-rose-500/50 bg-rose-950/60 text-rose-100";
   if (p === "P1") return "border-amber-500/50 bg-amber-950/50 text-amber-100";
-  return "border-violet-500/30 bg-violet-950/40 text-violet-100";
+  return "border-blue-300 bg-blue-50 text-blue-700";
 }
 
 function customerErrorMessage(value?: string) {

@@ -40,7 +40,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
     <div className="space-y-4" data-testid="platform-account-matrix">
       <div>
         <h3 className="text-base font-semibold text-white">平台账号矩阵</h3>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-gray-400">
           先安装本地发布客户端，再绑定各平台发布账号。系统通过本地客户端托管登录环境，不保存密码，不上传 Cookie。
         </p>
       </div>
@@ -52,7 +52,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
       </div>
 
       {b.bindStatusText ? (
-        <p className="text-xs text-slate-400" data-testid="local-agent-bind-status">
+        <p className="text-xs text-gray-400" data-testid="local-agent-bind-status">
           {b.bindStatusText}
         </p>
       ) : null}
@@ -128,7 +128,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
                 type="button"
                 className={cn(
                   "rounded-full border px-2.5 py-0.5 text-xs",
-                  b.sessionFilter === o.value ? "border-blue-400 bg-cyan-400/15 text-blue-700" : "border-gray-200 text-slate-400",
+                  b.sessionFilter === o.value ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-400",
                 )}
                 onClick={() => b.setSessionFilter(o.value)}
               >
@@ -142,7 +142,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
                 type="button"
                 className={cn(
                   "rounded-full border px-2.5 py-0.5 text-xs",
-                  b.identityFilter === o.value ? "border-violet-400/40 bg-violet-400/15 text-violet-100" : "border-gray-200 text-slate-400",
+                  b.identityFilter === o.value ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-400",
                 )}
                 onClick={() => b.setIdentityFilter(o.value)}
               >
@@ -212,7 +212,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
             <DialogTitle>
               {b.isNewBindDialog ? b.bindLabel : `编辑${platformLabel}账号`}
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-gray-400">
               {b.isNewBindDialog
                 ? `已检测到账号：${b.formAccountName}。请选择身份与账号组后保存。Cookie 仅存于本机 Agent，不会上传服务器。`
                 : "可修改账号身份、账号组、备注与启用状态。"}

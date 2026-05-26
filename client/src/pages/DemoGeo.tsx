@@ -22,7 +22,7 @@ type SectionProps = {
 
 const toneClasses = {
   cyan: "border-blue-200 bg-blue-50 text-blue-700 shadow-cyan-500/10",
-  violet: "border-violet-300/20 bg-violet-400/10 text-violet-100 shadow-violet-500/10",
+  violet: "border-blue-200 bg-blue-50 text-blue-700 shadow-sm",
   emerald: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100 shadow-emerald-500/10",
   amber: "border-amber-300/20 bg-amber-400/10 text-amber-100 shadow-amber-500/10",
   blue: "border-blue-300/20 bg-blue-400/10 text-blue-100 shadow-blue-500/10",
@@ -58,8 +58,8 @@ export default function DemoGeoPage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#040816] text-gray-900">
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute left-[-12%] top-[-18%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/20 blur-3xl" />
-        <div className="absolute right-[-10%] top-[12%] h-[36rem] w-[36rem] rounded-full bg-violet-600/20 blur-3xl" />
+        <div className="absolute left-[-12%] top-[-18%] h-[32rem] w-[32rem] rounded-full bg-blue-200/30 blur-3xl" />
+        <div className="absolute right-[-10%] top-[12%] h-[36rem] w-[36rem] rounded-full bg-blue-300/20 blur-3xl" />
         <div className="absolute bottom-[-18%] left-[24%] h-[34rem] w-[34rem] rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(80,120,255,0.16),transparent_35%),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:auto,48px_48px,48px_48px]" />
       </div>
@@ -196,7 +196,7 @@ export default function DemoGeoPage() {
                   <StatusBadge tone={article.qualityScore >= 95 ? "emerald" : "violet"}>内容质量评分 {article.qualityScore}/100</StatusBadge>
                 </div>
                 <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                  <div className="rounded-3xl border border-gray-200 bg-cyan-400/5 p-4">
+                  <div className="rounded-3xl border border-gray-200 bg-blue-50/50 p-4">
                     <h4 className="font-semibold text-blue-700">8 项生成依据</h4>
                     <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-gray-600">
                       {article.generatedBasis.map((basis) => <li key={basis}>{basis}</li>)}
@@ -229,7 +229,7 @@ export default function DemoGeoPage() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-5 rounded-3xl border border-violet-300/15 bg-violet-400/5 p-4">
+                <div className="mt-5 rounded-3xl border border-blue-200 bg-blue-50/50 p-4">
                   <h4 className="font-semibold text-violet-100">AI 可引用片段</h4>
                   <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
                     {article.aiQuotableSnippets.map((snippet) => <li key={snippet}>“{snippet}”</li>)}
@@ -252,7 +252,7 @@ export default function DemoGeoPage() {
                   </div>
                   <StatusBadge tone="emerald">{record.status}</StatusBadge>
                 </div>
-                <div className="mt-4 rounded-2xl border border-gray-200 bg-cyan-400/5 p-4 text-sm leading-6 text-gray-600">
+                <div className="mt-4 rounded-2xl border border-gray-200 bg-blue-50/50 p-4 text-sm leading-6 text-gray-600">
                   <p className="text-blue-700">发布链接可访问：</p>
                   <a className="mt-2 inline-flex break-all text-blue-600 underline decoration-cyan-300/40 underline-offset-4 hover:text-blue-700" href={record.publicPath}>{record.publicPath}</a>
                 </div>

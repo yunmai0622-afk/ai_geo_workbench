@@ -161,9 +161,9 @@ export function GeoQualityScore({
                         {dim.score} / {dim.max}
                       </span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
                       <div
-                        className="h-full rounded-full bg-cyan-500/80 transition-all"
+                        className="h-full rounded-full bg-blue-500 transition-all"
                         style={{ width: `${pct}%` }}
                       />
                     </div>

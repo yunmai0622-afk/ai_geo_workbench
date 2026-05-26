@@ -218,7 +218,7 @@ export function DeliveryReportCustomerView(props: DeliveryReportCustomerViewProp
           <ul className="mt-4 space-y-3">
             {summaryLines.map((line, i) => (
               <li key={i} className="flex gap-3 text-sm leading-relaxed text-gray-600 sm:text-base">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 text-xs font-semibold text-blue-600">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600">
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">{line}</span>

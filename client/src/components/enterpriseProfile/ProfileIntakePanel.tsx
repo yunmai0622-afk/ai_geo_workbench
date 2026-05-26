@@ -332,7 +332,7 @@ export function ProfileIntakePanel({
       <AiSection title={sectionTitle} description={sectionDescription}>
         <div className={cn(aiGlassPanel, "space-y-5 p-5 md:p-6")}>
           {enterpriseName.trim() ? (
-            <p className="rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-2.5 text-sm text-violet-100">
+            <p className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-700">
               当前资料将应用到：<span className="font-semibold text-white">{enterpriseName}</span>
             </p>
           ) : (

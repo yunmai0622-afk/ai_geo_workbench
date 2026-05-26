@@ -102,7 +102,7 @@ export function stageBadgeClass(stageLabel: string): string {
     待诊断: `${base} bg-blue-50 text-blue-700 border border-blue-200`,
     待生产: `${base} bg-blue-50 text-blue-700 border border-blue-200`,
     待发布: `${base} bg-amber-50 text-amber-700 border border-amber-200`,
-    待复测: `${base} bg-violet-50 text-violet-700 border border-violet-200`,
+    待复测: `${base} bg-blue-50 text-blue-700 border border-blue-200`,
     优化中: `${base} bg-emerald-50 text-emerald-700 border border-emerald-200`,
     "报告已生成": `${base} bg-blue-50 text-blue-700 border border-blue-200`,
   };

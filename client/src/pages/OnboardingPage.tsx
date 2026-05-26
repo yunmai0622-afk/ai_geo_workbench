@@ -253,7 +253,7 @@ export default function OnboardingPage() {
           日常新增客户请前往客户管理台操作。本引导仅用于系统首次创建第一个客户项目。
         </p>
         <Button
-          className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+          className="bg-blue-600 text-white hover:bg-blue-700"
           data-testid="onboarding-go-clients"
           onClick={() => setLocation("/clients")}
         >
@@ -272,11 +272,11 @@ export default function OnboardingPage() {
           <h1 className="mt-4 text-xl font-semibold">登录后继续</h1>
           <p className="mt-2 text-sm text-slate-400">完成引导需要先登录</p>
           {loginConfigured ? (
-            <Button className="mt-6 w-full bg-cyan-400 text-slate-950" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button className="mt-6 w-full bg-blue-600 text-white" onClick={() => { window.location.href = getLoginUrl(); }}>
               登录
             </Button>
           ) : (
-            <Button className="mt-6 w-full bg-cyan-400 text-slate-950" disabled={devLogin.isPending} onClick={() => devLogin.mutate()}>
+            <Button className="mt-6 w-full bg-blue-600 text-white" disabled={devLogin.isPending} onClick={() => devLogin.mutate()}>
               {devLogin.isPending ? "正在登录" : "本地开发登录"}
             </Button>
           )}
@@ -335,7 +335,7 @@ export default function OnboardingPage() {
 
           <Button
             type="button"
-            className="h-12 w-full rounded-xl bg-cyan-400 text-base font-medium text-slate-950 hover:bg-cyan-300 disabled:opacity-50"
+            className="h-12 w-full rounded-xl bg-blue-600 text-base font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             disabled={!canStart}
             onClick={() => void handleStart()}
           >
@@ -375,9 +375,9 @@ export default function OnboardingPage() {
             })}
           </ul>
 
-          <div className="mt-8 h-2 overflow-hidden rounded-full bg-slate-800">
+          <div className="mt-8 h-2 overflow-hidden rounded-full bg-gray-200">
             <div
-              className="h-full rounded-full bg-cyan-400 transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-blue-600 transition-all duration-500 ease-out"
               style={{ width: `${progressPct}%` }}
             />
           </div>
@@ -406,17 +406,17 @@ export default function OnboardingPage() {
             <div className="rounded-2xl bg-gray-50 px-5 py-4">
               <h2 className="text-lg font-semibold leading-snug text-white">{generatedArticle?.title || "文章标题"}</h2>
             </div>
-            <div className="relative mt-4 overflow-hidden rounded-2xl bg-slate-800/80 px-5 py-4">
+            <div className="relative mt-4 overflow-hidden rounded-2xl bg-gray-100 px-5 py-4">
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600">{previewMarkdown(generatedArticle?.markdownContent ?? "")}</p>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-800 to-transparent" />
             </div>
             <div className="my-8 border-t border-gray-200" />
-            <Button type="button" className="h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => void handleCopy()}>
+            <Button type="button" className="h-12 w-full bg-blue-600 text-white hover:bg-blue-700" onClick={() => void handleCopy()}>
               {copied ? "已复制 ✓" : "复制文章内容"}
             </Button>
             <Button
               type="button"
-              className="mt-3 h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+              className="mt-3 h-12 w-full bg-blue-600 text-white hover:bg-blue-700"
               data-testid="onboarding-go-profile"
               onClick={() => {
                 const pid = getActiveProjectId();
@@ -446,7 +446,7 @@ export default function OnboardingPage() {
           <>
             <h1 className="text-center text-xl font-semibold text-white">内容方向已分析完成，文章生成遇到了问题</h1>
             <p className="mt-3 text-center text-sm text-slate-400">你可以在「本周内容」页查看内容建议并手动生成</p>
-            <Button type="button" className="mt-8 h-12 w-full bg-cyan-400 text-slate-950 hover:bg-cyan-300" onClick={() => {
+            <Button type="button" className="mt-8 h-12 w-full bg-blue-600 text-white hover:bg-blue-700" onClick={() => {
               const pid = getActiveProjectId();
               setLocation(pid ? buildProjectUrl("/weekly", pid) : "/clients");
             }}>

@@ -49,7 +49,7 @@ export function GeoStatusGuide({ stage, completion, nextAction, why, risk, ctaLa
           </Button>
         ) : null}
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200">
         <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400" style={{ width: `${safeCompletion}%` }} />
       </div>
     </section>
