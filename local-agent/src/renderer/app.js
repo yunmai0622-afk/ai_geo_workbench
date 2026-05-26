@@ -1,8 +1,10 @@
 const PLATFORM_LABELS = {
   zhihu: "知乎",
+  xiaohongshu: "小红书",
   sohu: "搜狐号",
   baijiahao: "百家号",
   toutiao: "头条号",
+  wechat: "公众号",
 };
 
 const STATUS_LABELS = {
@@ -258,7 +260,7 @@ function renderDiagnostics() {
   }
 
   const serverMsg = connOk
-    ? `GEO 服务端连接正常 · 最近轮询 ${fmtTime(d.polling.lastPollAt)}`
+    ? `GEO 服务端连接正常 · 最近同步 ${fmtTime(d.polling.lastPollAt)}`
     : `GEO 服务端连接异常：${d.serverError ?? "未知"}`;
   const diagServer = $("#diag-server-conn");
   if (diagServer) {
@@ -288,7 +290,7 @@ function renderDiagnostics() {
 let selectedPlatform = "zhihu";
 
 function renderAccounts() {
-  const order = ["zhihu", "sohu", "baijiahao", "toutiao"];
+  const order = ["zhihu", "xiaohongshu", "sohu", "baijiahao", "toutiao", "wechat"];
   // Render left sidebar
   const platformListEl = $("#platform-list");
   if (!platformListEl) return;

@@ -952,3 +952,49 @@
 [2026-05-26T11:42:35.789Z] 7:42:35 AM [vite] (client) hmr invalidate /src/components/weekly/WeeklyPlatformArticleCard.tsx Could not Fast Refresh ("resolveQualityDisplay" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
 [2026-05-26T11:42:35.791Z] 7:42:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx
 [2026-05-26T11:43:48.055Z] 7:43:48 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.779Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.780Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/AiSearchEvidenceView.tsx
+[2026-05-26T11:57:35.780Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/ArticleAssetEditorSheet.tsx
+[2026-05-26T11:57:35.781Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/BusinessPageProjectHeader.tsx
+[2026-05-26T11:57:35.781Z] 7:57:35 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-05-26T11:57:35.784Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerView.tsx
+[2026-05-26T11:57:35.785Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/GeoQualityScore.tsx
+[2026-05-26T11:57:35.785Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/GeoStatusGuide.tsx
+[2026-05-26T11:57:35.785Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/PlatformContentStrategyPanel.tsx
+[2026-05-26T11:57:35.786Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/ProjectContextEmptyState.tsx
+[2026-05-26T11:57:35.786Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.786Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/ai/ProductUi.tsx
+[2026-05-26T11:57:35.787Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx
+[2026-05-26T11:57:35.787Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.787Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.788Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.788Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/ProfileIntakePanel.tsx
+[2026-05-26T11:57:35.789Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/ProfileSectionShell.tsx
+[2026-05-26T11:57:35.789Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.789Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.790Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.790Z] 7:57:35 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T11:57:35.791Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/ui/button.tsx
+[2026-05-26T11:57:35.791Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/PlatformContentBoard.tsx
+[2026-05-26T11:57:35.792Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/pages/V12FlowPages.tsx, /src/components/BusinessPageProjectHeader.tsx, /src/components/ArticleAssetEditorSheet.tsx, /src/components/PlatformContentStrategyPanel.tsx, /src/components/enterpriseProfile/ProfileIntakePanel.tsx, /src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx, /src/components/enterpriseProfile/ProfileSectionShell.tsx
+[2026-05-26T11:57:35.792Z] 7:57:35 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/DashboardLayout.tsx, /src/pages/AssetCenter.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/WeeklyContentPage.tsx, /src/components/geo/P0UiPrimitives.tsx, /src/components/enterpriseProfile/ProfilePublishEnvLightHint.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/components/clients/ClientsHubTopBar.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/pages/DeliveryReportsCenterPage.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/publishing/LocalAgentPublishStepsPanel.tsx, /src/components/publishing/LocalAgentStatusCard.tsx, /src/components/publishing/PublishTaskColumnBoard.tsx
+[2026-05-26T11:57:35.792Z] 7:57:35 AM [vite] (client) hmr update /src/pages/AiSearchEvidencePage.tsx, /src/index.css
+[2026-05-26T11:57:35.793Z] 7:57:35 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicEvidencePage.tsx, /src/index.css
+[2026-05-26T11:57:35.793Z] 7:57:35 AM [vite] (client) hmr update /src/pages/DemoGeo.tsx, /src/index.css
+[2026-05-26T11:57:35.793Z] 7:57:35 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-05-26T11:57:35.794Z] 7:57:35 AM [vite] (client) hmr update /src/pages/GeoPublicContent.tsx, /src/index.css
+[2026-05-26T11:57:35.795Z] 7:57:35 AM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/index.css
+[2026-05-26T11:57:35.796Z] 7:57:35 AM [vite] (client) hmr update /src/pages/ProgressPage.tsx, /src/index.css
+[2026-05-26T11:57:35.801Z] 7:57:35 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-26T11:57:35.801Z] 7:57:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-26T11:57:39.333Z] 7:57:39 AM [vite] (client) hmr invalidate /src/components/GeoStatusGuide.tsx Could not Fast Refresh ("pageGuides" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-26T11:57:39.334Z] 7:57:39 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/pages/V12FlowPages.tsx
+[2026-05-26T11:57:41.787Z] 7:57:41 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-26T11:57:43.721Z] 7:57:43 AM [vite] (client) hmr invalidate /src/components/ui/button.tsx Could not Fast Refresh ("buttonVariants" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-26T11:57:43.722Z] 7:57:43 AM [vite] (client) hmr update /src/pages/DeliveryReportSharePage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/OnboardingPage.tsx, /src/pages/NotFound.tsx, /src/pages/ProgressPage.tsx, /src/components/DashboardLayout.tsx, /src/pages/AssetCenter.tsx, /src/pages/AiSearchEvidencePage.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/WeeklyContentPage.tsx, /src/pages/GeoPages.tsx, /src/pages/V12FlowPages.tsx, /src/components/AiSearchEvidenceView.tsx, /src/components/DeliveryReportCustomerView.tsx, /src/components/ProjectContextEmptyState.tsx, /src/components/BusinessPageProjectHeader.tsx, /src/components/ui/sidebar.tsx, /src/components/ArticleAssetEditorSheet.tsx, /src/components/GeoStatusGuide.tsx, /src/components/enterpriseProfile/ProfilePublishEnvLightHint.tsx, /src/components/ai/ProductUi.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/components/enterpriseProfile/AdvancedMaterialsSection.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/pages/DeliveryReportsCenterPage.tsx, /src/components/DeliveryReportCustomerLightView.tsx, /src/components/GeoQualityScore.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/ArticleLifecyclePanel.tsx, /src/components/enterpriseProfile/ProfileIntakePanel.tsx, /src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx, /src/components/LocalAgentDownloadCard.tsx, /src/components/publishing/LocalAgentStatusCard.tsx, /src/components/publishing/PublishTaskColumnBoard.tsx, /src/components/enterpriseProfile/ProfileSectionShell.tsx
+[2026-05-26T11:57:45.479Z] 7:57:45 AM [vite] (client) hmr invalidate /src/pages/V12FlowPages.tsx Could not Fast Refresh ("buildPublishDisplayTitle" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-26T11:57:45.480Z] 7:57:45 AM [vite] (client) hmr update /src/App.tsx
+[2026-05-26T11:57:46.554Z] 7:57:46 AM [vite] (client) hmr invalidate /src/components/weekly/WeeklyPlatformArticleCard.tsx Could not Fast Refresh ("resolveQualityDisplay" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-26T11:57:46.559Z] 7:57:46 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx
+[2026-05-26T11:57:48.137Z] 7:57:48 AM [vite] (client) hmr invalidate /src/pages/GeoPages.tsx Could not Fast Refresh ("buildPublishCheckSummary" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2026-05-26T11:57:48.138Z] 7:57:48 AM [vite] (client) hmr update /src/App.tsx
