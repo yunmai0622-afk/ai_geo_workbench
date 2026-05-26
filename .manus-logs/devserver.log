@@ -630,3 +630,12 @@
 [2026-05-26T08:16:23.316Z] 4:16:23 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx
 [2026-05-26T08:16:23.408Z] 4:16:23 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
 [2026-05-26T08:16:25.234Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-26T09:05:36.850Z] 5:05:36 AM [vite] (client) hmr update /src/index.css, /src/pages/ContentPublishingCenterPage.tsx
+[2026-05-26T09:06:55.032Z] 5:06:55 AM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
+[2026-05-26T09:07:44.732Z] 5:07:44 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/ProfileUploadAssistSection.tsx
+[2026-05-26T09:08:50.940Z] 5:08:50 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/AdvancedMaterialsSection.tsx
+[2026-05-26T09:10:01.947Z] 5:10:01 AM [vite] (client) hmr update /src/index.css, /src/components/ArticleLifecyclePanel.tsx
+[2026-05-26T09:10:30.544Z] 5:10:30 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T09:11:12.100Z] 5:11:12 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T09:15:32.938Z] 5:15:32 AM [vite] (client) hmr update /src/index.css
+[2026-05-26T09:16:20.997Z] 5:16:20 AM [vite] (client) hmr update /src/index.css
