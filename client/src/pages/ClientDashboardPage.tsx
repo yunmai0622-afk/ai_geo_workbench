@@ -20,8 +20,8 @@ import {
 } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { toUserFacingCreateProjectError } from "@shared/userFacingMutationErrors";
-import { ArrowRight, Building2, FolderKanban, Loader2, Plus, Search, Clock, AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { AlertTriangle, ArrowRight, Building2, Loader2, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -41,28 +41,35 @@ type ProjectSummary = {
   latestGeoScore: number | null;
 };
 
-function normalizeIndustryRegion(industry: string, region: string): { industry?: string; region?: string } {
-  const ind = industry?.trim();
-  const reg = region?.trim();
-  return {
-    industry: ind && ind !== "待补充" ? ind : undefined,
-    region: reg && reg !== "待补充" && reg !== "中国" ? reg : reg === "中国" ? "中国" : undefined,
-  };
-}
+/* ─── 状态筛选标签 ─── */
+const STATUS_FILTERS = [
+  { key: "all", label: "全部" },
+  { key: "profiling", label: "建档中" },
+  { key: "diagnosing", label: "诊断中" },
+  { key: "optimizing", label: "优化中" },
+  { key: "retesting", label: "待复测" },
+  { key: "reported", label: "已出报告" },
+] as const;
 
-/* ─── 总览统计卡片 ─── */
-function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="geo-card flex items-center gap-3.5 px-5 py-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-        {icon}
-      </div>
-      <div>
-        <p className="text-[13px] font-medium text-gray-500">{label}</p>
-        <p className="text-xl font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
-      </div>
-    </div>
-  );
+type FilterKey = (typeof STATUS_FILTERS)[number]["key"];
+
+function matchFilter(project: ProjectSummary, filter: FilterKey): boolean {
+  if (filter === "all") return true;
+  const { stageLabel } = deriveClientProjectCardDisplay(project);
+  switch (filter) {
+    case "profiling":
+      return stageLabel === "待建档";
+    case "diagnosing":
+      return stageLabel === "待诊断";
+    case "optimizing":
+      return stageLabel === "待生产" || stageLabel === "待发布" || stageLabel === "优化中";
+    case "retesting":
+      return stageLabel === "待复测";
+    case "reported":
+      return stageLabel === "报告已生成";
+    default:
+      return true;
+  }
 }
 
 /* ─── 项目卡片 ─── */
@@ -73,10 +80,24 @@ function ProjectCard({
   project: ProjectSummary;
   onEnter: (id: number) => void;
 }) {
-  const { industry, region } = normalizeIndustryRegion(project.industry, project.region);
   const { stageLabel, nextStep } = deriveClientProjectCardDisplay(project);
-  const showContentStats = project.articleCount > 0 || project.publishCount > 0;
   const geoScore = formatGeoScore(project.latestGeoScore);
+  const regionIndustry = displayRegionIndustry(
+    project.industry?.trim() && project.industry !== "待补充" ? project.industry : null,
+    project.region?.trim() && project.region !== "待补充" ? project.region : null,
+  );
+
+  // 品牌提及率/推荐率 - 从 aiTestCount 推断是否有实测数据
+  const hasTestData = project.aiTestCount > 0;
+  const lastTestDate = project.lastDiagnosisAt
+    ? new Date(project.lastDiagnosisAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric" })
+    : null;
+
+  // 风险判断（轻量）
+  const risks: string[] = [];
+  if (stageLabel === "待建档") risks.push("建档未完成");
+  if (project.articleCount === 0 && stageLabel !== "待建档" && stageLabel !== "待诊断")
+    risks.push("无内容资产");
 
   return (
     <article
@@ -85,25 +106,41 @@ function ProjectCard({
       onClick={() => onEnter(project.id)}
     >
       {/* 顶部：企业名 + 阶段 */}
-      <div className="mb-3 flex items-start justify-between gap-2">
+      <div className="mb-2 flex items-start justify-between gap-2">
         <h3 className="truncate text-[15px] font-semibold text-gray-900">{project.enterpriseName}</h3>
         <span className={cn(stageBadgeClass(stageLabel), "shrink-0")}>{stageLabel}</span>
       </div>
 
       {/* 行业 / 地区 */}
-      <p className="mb-3 text-[13px] text-gray-500">{displayRegionIndustry(industry, region)}</p>
+      <p className="mb-3 text-[13px] text-gray-500">{regionIndustry}</p>
 
-      {/* AI 搜索可见度评分 */}
-      <div className="mb-3 rounded-lg bg-gray-50 px-3.5 py-2.5">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">AI 搜索可见度</p>
-        <p className="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-gray-900">{geoScore}</p>
+      {/* 指标区 */}
+      <div className="mb-3 grid grid-cols-3 gap-2 rounded-lg bg-gray-50 px-3 py-2.5">
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">GEO 分</p>
+          <p className="text-sm font-bold tabular-nums text-gray-900">{geoScore}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">提及率</p>
+          <p className="text-sm font-bold tabular-nums text-gray-900">{hasTestData ? "—" : "--"}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">推荐率</p>
+          <p className="text-sm font-bold tabular-nums text-gray-900">{hasTestData ? "—" : "--"}</p>
+        </div>
       </div>
 
-      {/* 内容统计 */}
-      {showContentStats ? (
-        <p className="mb-2 text-[13px] text-gray-500">
-          内容 {project.articleCount} 篇 · 已发布 {project.publishCount} 次
-        </p>
+      {/* 最近实测时间 */}
+      <p className="mb-2 text-[12px] text-gray-400">
+        最近实测：{lastTestDate ?? "暂无"}
+      </p>
+
+      {/* 风险 */}
+      {risks.length > 0 ? (
+        <div className="mb-2 flex items-center gap-1.5 text-[12px] text-amber-700">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          <span>{risks.join("；")}</span>
+        </div>
       ) : null}
 
       {/* 下一步动作 */}
@@ -116,10 +153,7 @@ function ProjectCard({
       <div className="mt-auto flex justify-end">
         <button
           type="button"
-          className={cn(
-            "inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all",
-            "bg-blue-50 text-blue-700 hover:bg-blue-100",
-          )}
+          className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-[13px] font-medium text-blue-700 transition-all hover:bg-blue-100"
           data-testid="enter-workspace-button"
           onClick={(e) => {
             e.stopPropagation();
@@ -150,6 +184,7 @@ const emptyCreateForm = (): CreateProjectForm => ({
 
 export default function ClientDashboardPage() {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<FilterKey>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateProjectForm>(emptyCreateForm);
   const [, setLocation] = useLocation();
@@ -157,22 +192,14 @@ export default function ClientDashboardPage() {
   const { data: projects = [], isLoading } = trpc.geo.clientDashboard.listProjectsSummary.useQuery();
   const createProject = trpc.geo.projects.create.useMutation();
 
-  const filtered = projects.filter(p => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return p.enterpriseName.toLowerCase().includes(q);
-  });
-
-  // 总览统计
-  const totalProjects = projects.length;
-  const inProgressCount = projects.filter(p => {
-    const { stageLabel } = deriveClientProjectCardDisplay(p);
-    return stageLabel !== "待建档" && stageLabel !== "报告已生成";
-  }).length;
-  const pendingCount = projects.filter(p => {
-    const { stageLabel } = deriveClientProjectCardDisplay(p);
-    return stageLabel === "待建档";
-  }).length;
+  const filtered = useMemo(() => {
+    return projects.filter(p => {
+      const q = search.trim().toLowerCase();
+      const matchesSearch = !q || p.enterpriseName.toLowerCase().includes(q);
+      const matchesStatus = matchFilter(p, statusFilter);
+      return matchesSearch && matchesStatus;
+    });
+  }, [projects, search, statusFilter]);
 
   const handleEnter = (projectId: number) => {
     setActiveProjectId(projectId);
@@ -207,7 +234,7 @@ export default function ClientDashboardPage() {
       setActiveProjectId(created.id);
       setCreateOpen(false);
       setCreateForm(emptyCreateForm());
-      toast.success("客户项目已创建，请继续完成 GEO 建档");
+      toast.success("企业项目已创建，请继续完成品牌资料建档");
       setLocation(buildProjectUrl("/enterprise-profile", created.id));
     } catch (err) {
       console.error("[create-client-project]", err);
@@ -222,9 +249,9 @@ export default function ClientDashboardPage() {
       {/* 标题区：左标题 + 右按钮 */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className={geoTypography.pageTitle}>客户项目</h1>
-          <p className="max-w-xl text-sm leading-relaxed text-gray-500">
-            管理企业的 GEO 建档、AI 诊断、内容发布、收录监测与交付报告
+          <h1 className={geoTypography.pageTitle}>企业项目</h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-gray-500">
+            管理每个企业的 AI 搜索可见性、内容资产、监测进展与交付报告
           </p>
         </div>
         <Button
@@ -233,39 +260,39 @@ export default function ClientDashboardPage() {
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="mr-1.5 h-4 w-4" />
-          新建客户项目
+          新建企业项目
         </Button>
       </div>
 
-      {/* 总览卡片 */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <SummaryCard
-          icon={<FolderKanban className="h-5 w-5 text-blue-600" />}
-          label="客户项目"
-          value={totalProjects > 0 ? String(totalProjects) : "--"}
-        />
-        <SummaryCard
-          icon={<Clock className="h-5 w-5 text-blue-600" />}
-          label="进行中"
-          value={inProgressCount > 0 ? String(inProgressCount) : "--"}
-        />
-        <SummaryCard
-          icon={<AlertCircle className="h-5 w-5 text-blue-600" />}
-          label="待处理"
-          value={pendingCount > 0 ? String(pendingCount) : "--"}
-        />
-      </div>
-
-      {/* 搜索栏 */}
-      <div className="relative w-full max-w-[400px]">
-        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="搜索企业名称…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="rounded-xl border-gray-200 bg-white pl-10 shadow-sm transition-shadow focus:shadow-md"
-          data-testid="client-dashboard-search"
-        />
+      {/* 搜索 + 状态筛选 */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-[380px]">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="搜索企业名称…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="rounded-xl border-gray-200 bg-white pl-10 shadow-sm transition-shadow focus:shadow-md"
+            data-testid="client-dashboard-search"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {STATUS_FILTERS.map(f => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setStatusFilter(f.key)}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all",
+                statusFilter === f.key
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-blue-200 hover:text-blue-700",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 卡片网格 / 加载 / 空状态 */}
@@ -283,22 +310,22 @@ export default function ClientDashboardPage() {
           </div>
           <div className="space-y-2 text-center">
             <h2 className="text-lg font-semibold text-gray-900">
-              {search ? "没有匹配的企业项目" : "还没有客户项目"}
+              {search || statusFilter !== "all" ? "没有匹配的企业项目" : "还没有企业项目"}
             </h2>
             <p className="max-w-md text-sm leading-relaxed text-gray-500">
-              {search
-                ? "请调整搜索关键词，或新建客户项目。"
-                : "创建第一个企业项目，开始 GEO 增长之旅。只需填写企业名称和行业，即可在 5 分钟内完成建档。"}
+              {search || statusFilter !== "all"
+                ? "请调整搜索条件或筛选状态。"
+                : "请先创建一个企业项目，完成基础资料建档后，即可发起 AI 搜索可见性诊断。"}
             </p>
           </div>
-          {!search ? (
+          {!search && statusFilter === "all" ? (
             <Button
               className={cn("rounded-xl px-5", geoP0Brand.primary)}
               data-testid="create-client-project-empty-button"
               onClick={() => setCreateOpen(true)}
             >
               <Plus className="mr-1.5 h-4 w-4" />
-              新建客户项目
+              新建企业项目
             </Button>
           ) : null}
         </div>
@@ -310,16 +337,16 @@ export default function ClientDashboardPage() {
         </div>
       )}
 
-      {/* 新建客户项目弹窗 */}
+      {/* 新建企业项目弹窗 */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent
           className="rounded-2xl border-gray-200 bg-white text-gray-900 shadow-xl sm:max-w-md"
           data-testid="create-client-project-dialog"
         >
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-gray-900">新建客户项目</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-gray-900">新建企业项目</DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
-              仅填写基础信息即可创建；详细企业资料请在 GEO 建档页完善。
+              仅填写基础信息即可创建；详细品牌资料请在建档页完善。
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
@@ -386,7 +413,7 @@ export default function ClientDashboardPage() {
               disabled={createProject.isPending}
               onClick={() => void handleCreateProject()}
             >
-              {createProject.isPending ? "创建中…" : "创建并去 GEO 建档"}
+              {createProject.isPending ? "创建中…" : "创建并去建档"}
             </Button>
           </DialogFooter>
         </DialogContent>

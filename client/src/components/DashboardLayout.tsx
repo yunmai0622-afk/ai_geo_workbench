@@ -49,8 +49,8 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
     items: [
       {
         icon: Users2,
-        label: "客户管理台",
-        desc: "新建与选择企业项目",
+        label: "企业项目",
+        desc: "管理企业 AI 搜索可见性项目",
         path: "/clients",
         aliases: ["/clients"],
       },
@@ -61,8 +61,8 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
     items: [
       {
         icon: Sparkles,
-        label: "企业工作台",
-        desc: "当前企业 GEO 增长驾驶舱",
+        label: "项目工作台",
+        desc: "当前企业的交付作战台",
         path: "/workspace",
         aliases: ["/workspace", "/flow"],
       },
@@ -73,41 +73,41 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
     items: [
       {
         icon: Building2,
-        label: "GEO 建档",
-        desc: "完善企业基础资料",
+        label: "品牌资产库",
+        desc: "补齐企业被 AI 理解的基础信息",
         path: "/enterprise-profile",
         aliases: ["/enterprise-profile", "/assets", "/projects"],
       },
       {
         icon: Brain,
-        label: "AI 现状诊断",
-        desc: "缺口与内容方向",
+        label: "AI 实测诊断",
+        desc: "检测品牌在 AI 平台中的提及与推荐",
         path: "/ai-diagnosis",
         aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"],
       },
       {
         icon: FileText,
-        label: "平台化内容生产",
-        desc: "生成本轮平台化内容",
+        label: "内容资产",
+        desc: "围绕 AI 引用逻辑生成品牌内容",
         path: "/weekly",
         aliases: ["/weekly", "/content-generation", "/articles"],
       },
     ],
   },
   {
-    title: "发布与复测",
+    title: "发布与监测",
     items: [
       {
         icon: Send,
-        label: "发布中心",
-        desc: "登记发布与任务跟进",
+        label: "平台适配发布",
+        desc: "适配不同平台规则并执行发布",
         path: "/content-publishing",
         aliases: ["/content-publishing", "/publish"],
       },
       {
         icon: LineChart,
         label: "收录监测",
-        desc: "AI 实测与收录表现",
+        desc: "检查内容是否被 AI 平台收录和引用",
         path: "/inclusion-monitoring",
         aliases: ["/inclusion-monitoring", "/monitoring"],
       },
@@ -119,7 +119,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
       {
         icon: FileBarChart2,
         label: "交付报告",
-        desc: "面向客户的交付物",
+        desc: "生成客户可读的增长交付报告",
         path: "/delivery-reports",
         aliases: ["/delivery-reports", "/reports"],
       },

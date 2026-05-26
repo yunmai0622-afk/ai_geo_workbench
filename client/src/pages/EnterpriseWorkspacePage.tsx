@@ -6,26 +6,83 @@ import { buildProjectUrl } from "@/lib/activeProject";
 import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import {
-  COCKPIT_PIPELINE_STEPS,
   CUSTOMER_STAGE_LABELS,
-  cockpitPipelineIndex,
   formatGeoScore,
 } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
-const QUICK_LINKS = [
-  { label: "GEO 建档", path: "/enterprise-profile", desc: "补齐企业被 AI 理解的基础信息" },
-  { label: "AI 现状诊断", path: "/ai-diagnosis", desc: "检测品牌在 AI 平台中的提及与推荐" },
-  { label: "平台化内容生产", path: "/weekly", desc: "按平台生成 GEO 内容任务" },
-  { label: "发布中心", path: "/content-publishing", desc: "通过 Local Agent 执行发布" },
-  { label: "收录监测", path: "/inclusion-monitoring", desc: "检查内容是否被识别" },
-  { label: "交付报告", path: "/delivery-reports", desc: "生成客户可读报告" },
+/**
+ * 8 步主链路定义（对齐用户规范）
+ * 每步对应一个阶段卡片
+ */
+const EIGHT_STEP_PIPELINE = [
+  {
+    step: 1,
+    name: "企业资料建档",
+    desc: "补齐企业被 AI 理解的基础信息与品牌资产",
+    path: "/enterprise-profile",
+    stageIds: ["bind_publish_env", "complete_geo_profile"] as string[],
+  },
+  {
+    step: 2,
+    name: "AI 搜索现状实测",
+    desc: "在多个 AI 平台中检测企业是否被提及和推荐",
+    path: "/ai-diagnosis",
+    stageIds: ["ai_diagnosis"] as string[],
+  },
+  {
+    step: 3,
+    name: "品牌资产补全",
+    desc: "基于诊断结果补全差异化资料与可信证据",
+    path: "/enterprise-profile",
+    stageIds: [] as string[],
+  },
+  {
+    step: 4,
+    name: "内容资产生成",
+    desc: "围绕 AI 引用逻辑生成品牌认知内容",
+    path: "/weekly",
+    stageIds: ["generate_content"] as string[],
+  },
+  {
+    step: 5,
+    name: "平台适配发布",
+    desc: "将内容适配不同平台规则并执行发布",
+    path: "/content-publishing",
+    stageIds: ["publish_content"] as string[],
+  },
+  {
+    step: 6,
+    name: "收录与引用监测",
+    desc: "检查内容是否被 AI 平台收录和引用",
+    path: "/inclusion-monitoring",
+    stageIds: ["retest_queue"] as string[],
+  },
+  {
+    step: 7,
+    name: "GEO 评分与竞品对比",
+    desc: "评估品牌可见性变化与竞品差距",
+    path: "/ai-diagnosis",
+    stageIds: ["optimize"] as string[],
+  },
+  {
+    step: 8,
+    name: "交付报告与下一轮优化",
+    desc: "生成客户可读报告，规划下一轮增长动作",
+    path: "/delivery-reports",
+    stageIds: ["delivery_report"] as string[],
+  },
 ] as const;
+
+function getActiveStepIndex(stageId: string): number {
+  const idx = EIGHT_STEP_PIPELINE.findIndex(s => s.stageIds.includes(stageId));
+  return idx >= 0 ? idx : 0;
+}
 
 export default function EnterpriseWorkspacePage() {
   const [, setLocation] = useLocation();
@@ -38,7 +95,7 @@ export default function EnterpriseWorkspacePage() {
   );
 
   useEffect(() => {
-    document.title = "企业 GEO 增长驾驶舱";
+    document.title = "项目工作台";
   }, []);
 
   useEffect(() => {
@@ -62,28 +119,7 @@ export default function EnterpriseWorkspacePage() {
   const metrics = summaryQuery.data;
   const stage = resolution?.currentStage;
   const stageLabel = stage ? CUSTOMER_STAGE_LABELS[stage.id] : null;
-  const pipelineActive = stage ? cockpitPipelineIndex(stage.id) : 0;
-  const monitoringActive =
-    Boolean(metrics && metrics.monitoringRecordCount > 0 && pipelineActive >= 3);
-
-  const profileZero = metrics?.profileCompletionPercent === 0;
-
-  // 确定主 CTA：如果 P0 建档未完成，优先引导去建档
-  const primaryCtaLabel = useMemo(() => {
-    if (!stage || !metrics) return null;
-    if (!metrics.p0ProfileComplete && stage.id === "bind_publish_env") {
-      return "继续完成 GEO 建档";
-    }
-    return stage.ctaLabel;
-  }, [stage, metrics]);
-
-  const primaryCtaUrl = useMemo(() => {
-    if (!stage || !selectedProjectId) return null;
-    if (!metrics?.p0ProfileComplete && stage.id === "bind_publish_env") {
-      return buildProjectUrl("/enterprise-profile", selectedProjectId);
-    }
-    return workspaceCtaUrl(selectedProjectId, stage);
-  }, [stage, selectedProjectId, metrics]);
+  const activeStepIdx = stage ? getActiveStepIndex(stage.id) : 0;
 
   if (!enabled && !projectsLoading) {
     return (
@@ -95,22 +131,143 @@ export default function EnterpriseWorkspacePage() {
 
   return (
     <div className="space-y-7" data-testid="workspace-page">
-      {/* 页面标题 */}
-      <div className="space-y-1">
-        <p className="text-[13px] font-medium text-gray-400">企业 GEO 增长驾驶舱</p>
-        <h1 className={cn(geoTypography.pageTitle)} data-testid="workspace-enterprise-name">
-          {selectedProject?.enterpriseName ?? "当前企业"}
-        </h1>
-      </div>
-
       {summaryQuery.isLoading ? (
-        <p className="text-sm text-gray-400">加载驾驶舱数据…</p>
+        <p className="text-sm text-gray-400">加载工作台数据…</p>
       ) : summaryQuery.isError ? (
-        <p className="text-sm text-red-600">暂时无法加载驾驶舱，请刷新重试。</p>
-      ) : profileZero && selectedProjectId ? (
+        <p className="text-sm text-red-600">暂时无法加载工作台，请刷新重试。</p>
+      ) : stage && metrics && selectedProjectId ? (
+        <>
+          {/* ═══ 顶部指标区 ═══ */}
+          <section className="geo-card p-6" data-testid="workspace-header-card">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[12px] font-medium text-gray-400">项目工作台</p>
+                <h1 className={cn(geoTypography.pageTitle, "mt-0.5")} data-testid="workspace-enterprise-name">
+                  {selectedProject?.enterpriseName ?? "当前企业"}
+                </h1>
+              </div>
+              {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
+            </div>
+
+            {/* 指标行 */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+              <MetricCell label="GEO 分" value={formatGeoScore(metrics.geoScore)} />
+              <MetricCell
+                label="品牌提及率"
+                value={
+                  metrics.brandMentionRate != null && metrics.aiTestResultCount > 0
+                    ? `${Math.round(metrics.brandMentionRate * 100)}%`
+                    : "--"
+                }
+              />
+              <MetricCell label="推荐率" value="--" />
+              <MetricCell
+                label="最近实测"
+                value={
+                  metrics.aiTestResultCount > 0 ? `${metrics.aiTestResultCount} 条` : "暂无"
+                }
+              />
+              <MetricCell
+                label="内容资产"
+                value={metrics.articleCount > 0 ? `${metrics.articleCount} 篇` : "--"}
+              />
+              <MetricCell
+                label="发布记录"
+                value={metrics.publishRecordCount > 0 ? `${metrics.publishRecordCount} 次` : "--"}
+              />
+            </div>
+
+            {/* 风险 + 主 CTA */}
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+              {resolution.riskHints.length > 0 ? (
+                <div className="flex items-center gap-2 text-[13px] text-amber-700">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>{resolution.riskHints[0]}</span>
+                </div>
+              ) : (
+                <span className="text-[13px] text-gray-400">{resolution.blockerReasons[0]}</span>
+              )}
+              <Button
+                type="button"
+                className={cn("rounded-xl px-5", geoP0Brand.primary)}
+                data-testid="workspace-primary-cta"
+                onClick={() => setLocation(workspaceCtaUrl(selectedProjectId, stage))}
+              >
+                {stage.ctaLabel}
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            </div>
+          </section>
+
+          {/* ═══ 8 步流程卡 ═══ */}
+          <section className="space-y-4" data-testid="workspace-pipeline-section">
+            <h2 className={geoTypography.sectionTitle}>增长主链路</h2>
+            <p className="text-sm text-gray-500">
+              客户一眼知道：我现在在哪一步，下一步该干什么，为什么做这个。
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {EIGHT_STEP_PIPELINE.map((step, idx) => {
+                const isCurrent = idx === activeStepIdx;
+                const isDone = idx < activeStepIdx;
+                return (
+                  <button
+                    key={step.step}
+                    type="button"
+                    onClick={() => setLocation(buildProjectUrl(step.path, selectedProjectId))}
+                    className={cn(
+                      "geo-card flex flex-col items-start p-4 text-left transition-all",
+                      isCurrent
+                        ? "border-blue-300 bg-blue-50/80 ring-1 ring-blue-200 shadow-md"
+                        : isDone
+                          ? "border-emerald-200 bg-emerald-50/40"
+                          : "hover:border-blue-200 hover:shadow-sm",
+                    )}
+                    data-testid={`pipeline-step-${step.step}`}
+                  >
+                    {/* 步骤编号 */}
+                    <div className="mb-2 flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                          isCurrent
+                            ? "bg-blue-600 text-white"
+                            : isDone
+                              ? "bg-emerald-500 text-white"
+                              : "border border-gray-300 bg-white text-gray-400",
+                        )}
+                      >
+                        {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.step}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-sm font-semibold",
+                          isCurrent ? "text-blue-800" : isDone ? "text-emerald-800" : "text-gray-700",
+                        )}
+                      >
+                        {step.name}
+                      </span>
+                    </div>
+                    {/* 说明 */}
+                    <p className="line-clamp-2 text-[12px] leading-relaxed text-gray-500">{step.desc}</p>
+                    {/* 状态 */}
+                    <span
+                      className={cn(
+                        "mt-2 text-[11px] font-medium",
+                        isCurrent ? "text-blue-600" : isDone ? "text-emerald-600" : "text-gray-400",
+                      )}
+                    >
+                      {isCurrent ? "当前阶段 →" : isDone ? "已完成" : "待进入"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </>
+      ) : metrics === undefined && selectedProjectId ? (
         <P0Card testId="workspace-profile-zero" className="py-12 text-center">
           <p className="text-sm leading-relaxed text-gray-600">
-            请先完成 5 分钟 GEO 建档，让系统了解您的企业。
+            请先完成品牌资料建档，让系统了解您的企业。
           </p>
           <Button
             type="button"
@@ -121,159 +278,15 @@ export default function EnterpriseWorkspacePage() {
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </P0Card>
-      ) : stage && metrics && selectedProjectId ? (
-        <>
-          {/* ═══ 企业增长状态总览区 ═══ */}
-          <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
-            {/* 左大卡：当前阶段 + 主 CTA */}
-            <div className="geo-card space-y-4 bg-gradient-to-br from-blue-50/60 via-white to-white p-6">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">当前 GEO 阶段</p>
-              <div className="flex flex-wrap items-center gap-3">
-                {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
-              </div>
-              <div className="rounded-lg bg-white/80 px-4 py-3">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">AI 搜索可见度评分</p>
-                <p className="mt-0.5 text-2xl font-bold tabular-nums tracking-tight text-gray-900">
-                  {formatGeoScore(metrics.geoScore)}
-                </p>
-              </div>
-              <p className="text-sm leading-relaxed text-gray-600" data-testid="workspace-blocker-reasons">
-                {resolution.blockerReasons[0] ?? stage.blockerHint}
-              </p>
-              {primaryCtaLabel && primaryCtaUrl ? (
-                <Button
-                  type="button"
-                  className={cn("rounded-xl px-5", geoP0Brand.primary)}
-                  data-testid="workspace-primary-cta"
-                  onClick={() => setLocation(primaryCtaUrl)}
-                >
-                  {primaryCtaLabel}
-                  <ArrowRight className="ml-2 size-4" />
-                </Button>
-              ) : null}
-            </div>
-
-            {/* 右小卡：关键指标 */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-              <MiniMetric
-                label="建档完成度"
-                value={metrics.profileCompletionPercent > 0 ? `${metrics.profileCompletionPercent}%` : "--"}
-              />
-              <MiniMetric
-                label="内容资产"
-                value={metrics.articleCount > 0 ? `${metrics.articleCount} 篇` : "--"}
-              />
-              <MiniMetric
-                label="发布记录"
-                value={metrics.publishRecordCount > 0 ? `${metrics.publishRecordCount} 次` : "--"}
-              />
-              <MiniMetric
-                label="AI 实测"
-                value={
-                  metrics.aiTestResultCount > 0
-                    ? metrics.brandMentionRate != null
-                      ? `提及率 ${Math.round(metrics.brandMentionRate * 100)}%`
-                      : `${metrics.aiTestResultCount} 条`
-                    : "--"
-                }
-              />
-            </div>
-          </div>
-
-          {/* ═══ 主链路进度推进器 ═══ */}
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-900">GEO 主链路进度</h2>
-            <div data-testid="workspace-pipeline" className="flex items-center gap-0 overflow-x-auto pb-1">
-              {COCKPIT_PIPELINE_STEPS.map((label, index) => {
-                const monitoringStep = index === 4;
-                const done =
-                  index < pipelineActive || (monitoringStep && monitoringActive && pipelineActive >= 3);
-                const active =
-                  index === pipelineActive ||
-                  (monitoringStep && monitoringActive && pipelineActive >= 3 && index >= pipelineActive);
-                return (
-                  <div key={label} className="flex items-center">
-                    <div className="flex flex-col items-center gap-1.5">
-                      <span
-                        className={cn(
-                          "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
-                          active
-                            ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-4 ring-blue-100"
-                            : done
-                              ? "bg-emerald-500 text-white"
-                              : "border-2 border-gray-300 bg-white text-gray-400",
-                        )}
-                      >
-                        {done ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
-                      </span>
-                      <span
-                        className={cn(
-                          "whitespace-nowrap text-xs font-medium",
-                          active ? "text-blue-700" : done ? "text-emerald-700" : "text-gray-400",
-                        )}
-                      >
-                        {label}
-                      </span>
-                    </div>
-                    {index < COCKPIT_PIPELINE_STEPS.length - 1 ? (
-                      <div
-                        className={cn(
-                          "mx-1 mb-5 h-0.5 w-8 rounded-full sm:w-12",
-                          done ? "bg-emerald-300" : "bg-gray-200",
-                        )}
-                        aria-hidden
-                      />
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* ═══ 快捷入口 ═══ */}
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-900">下一步可进入的功能</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {QUICK_LINKS.map(link => {
-                const highlight =
-                  (link.path === "/enterprise-profile" &&
-                    (stage.id === "complete_geo_profile" || stage.id === "bind_publish_env")) ||
-                  (link.path === "/ai-diagnosis" && stage.id === "ai_diagnosis") ||
-                  (link.path === "/weekly" && stage.id === "generate_content") ||
-                  (link.path === "/content-publishing" &&
-                    (stage.id === "publish_content" || stage.id === "retest_queue")) ||
-                  (link.path === "/inclusion-monitoring" && monitoringActive) ||
-                  (link.path === "/delivery-reports" && stage.id === "delivery_report");
-                return (
-                  <button
-                    key={link.path}
-                    type="button"
-                    onClick={() => setLocation(buildProjectUrl(link.path, selectedProjectId))}
-                    className={cn(
-                      "geo-card flex flex-col items-start p-4 text-left transition-all",
-                      highlight
-                        ? "border-blue-300 bg-blue-50/80 ring-1 ring-blue-200"
-                        : "hover:border-blue-200 hover:shadow-md",
-                    )}
-                  >
-                    <span className="text-sm font-semibold text-gray-900">{link.label}</span>
-                    <span className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-gray-500">{link.desc}</span>
-                    <span className="mt-2 text-xs font-medium text-blue-600">打开 →</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        </>
       ) : null}
     </div>
   );
 }
 
-/* ─── 小指标卡片 ─── */
-function MiniMetric({ label, value }: { label: string; value: string }) {
+/* ─── 小指标单元格 ─── */
+function MetricCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="geo-card px-4 py-3">
+    <div>
       <p className="text-[11px] font-medium text-gray-400">{label}</p>
       <p className="mt-0.5 text-base font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
     </div>
