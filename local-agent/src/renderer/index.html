@@ -65,13 +65,10 @@
         <div class="panel-intro">
           <p>在这里管理本机的平台登录环境。每个账号独立隔离，登录态保存在本机，不上传密码或 Cookie。</p>
         </div>
-        <div class="btn-row">
-          <button type="button" data-create="zhihu" class="btn-create">+ 知乎</button>
-          <button type="button" data-create="sohu" class="btn-create">+ 搜狐号</button>
-          <button type="button" data-create="baijiahao" class="btn-create">+ 百家号</button>
-          <button type="button" data-create="toutiao" class="btn-create">+ 头条号</button>
+        <div class="accounts-workspace">
+          <nav id="accounts-platform-nav" class="accounts-platform-nav" aria-label="发布平台列表"></nav>
+          <div id="accounts-detail" class="accounts-detail"></div>
         </div>
-        <div id="accounts-root"></div>
       </section>
 
       <!-- ===== 发布任务 ===== -->
@@ -114,8 +111,8 @@
           <p id="diag-server-conn" class="conn-line"></p>
           <div class="btn-row compact">
             <button type="button" id="btn-test-conn" class="primary">测试服务端连接</button>
-            <button type="button" id="btn-start-poll">开始轮询</button>
-            <button type="button" id="btn-stop-poll">停止轮询</button>
+            <button type="button" id="btn-start-poll">开始自动接收任务</button>
+            <button type="button" id="btn-stop-poll">停止自动接收</button>
           </div>
         </div>
 
