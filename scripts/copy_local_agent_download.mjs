@@ -18,7 +18,13 @@ const manifestPath = path.join(outDir, "manifest.json");
 
 const DEFAULT_MAC_ZIP = "/downloads/geo-local-agent-mac.zip";
 const externalMacZip = process.env.AGENT_MAC_ZIP_URL?.trim() || null;
-const macZipUrl = externalMacZip || DEFAULT_MAC_ZIP;
+
+function resolveMacZipUrl(prev = {}) {
+  if (externalMacZip) return externalMacZip;
+  const prevUrl = typeof prev.macZipUrl === "string" ? prev.macZipUrl.trim() : "";
+  if (/^https?:\/\//i.test(prevUrl)) return prevUrl;
+  return DEFAULT_MAC_ZIP;
+}
 
 function readAgentVersion() {
   try {
@@ -106,18 +112,27 @@ function packageMacAppZip(appPath, destZip) {
 
 function writeManifest(copied, extras = {}) {
   const prev = readExistingManifest();
+  const macZipUrl = extras.macZipUrl ?? resolveMacZipUrl(prev);
   const manifest = {
     version: readAgentVersion(),
     copiedAt: new Date().toISOString(),
-    files: copied.length ? copied.map(p => path.relative(root, p)) : prev.files ?? [],
     macZipUrl,
     macDmgUrl: null,
     winZipUrl: prev.winZipUrl ?? null,
     winSetupUrl: prev.winSetupUrl ?? null,
+    macZipSha256: extras.macZipSha256 ?? prev.macZipSha256 ?? null,
+    macZipSizeBytes: extras.macZipSizeBytes ?? prev.macZipSizeBytes ?? null,
     ...extras,
   };
-  if (externalMacZip) {
+  const finalMacZipUrl = manifest.macZipUrl;
+  if (
+    Boolean(externalMacZip) ||
+    (/^https?:\/\//i.test(finalMacZipUrl) && finalMacZipUrl !== DEFAULT_MAC_ZIP)
+  ) {
     manifest.macZipExternal = true;
+  }
+  if (copied.length) {
+    manifest.files = copied.map(p => path.relative(root, p));
   }
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
@@ -126,10 +141,12 @@ function writeManifest(copied, extras = {}) {
 }
 
 if (!fs.existsSync(releaseDir)) {
+  const prev = readExistingManifest();
+  const macZipUrl = resolveMacZipUrl(prev);
   writeManifest([]);
   console.log(
-    externalMacZip
-      ? "[copy] 无 local-agent/release，已按 AGENT_MAC_ZIP_URL 更新 manifest"
+    externalMacZip || /^https?:\/\//i.test(macZipUrl)
+      ? `[copy] 无 local-agent/release，已保留/写入外部 macZipUrl：${macZipUrl}`
       : "[copy] 无 local-agent/release，已保留/写入默认 manifest（相对 macZipUrl）",
   );
   process.exit(0);
@@ -158,19 +175,37 @@ if (dmg) {
 }
 
 const macApp = findMacAppBundle(releaseDir);
+const prevBeforeCopy = readExistingManifest();
+const keepCommittedHttpsMacZip =
+  !externalMacZip && /^https?:\/\//i.test(String(prevBeforeCopy.macZipUrl ?? ""));
+
 if (macApp && !externalMacZip) {
   const dest = path.join(outDir, "geo-local-agent-mac.zip");
   packageMacAppZip(macApp, dest);
   copied.push(dest);
-  manifestExtras.macZipSha256 = sha256File(dest);
-  console.log(`[copy] ditto zip from ${path.relative(root, macApp)} sha256=${manifestExtras.macZipSha256}`);
+  if (!keepCommittedHttpsMacZip) {
+    manifestExtras.macZipUrl = DEFAULT_MAC_ZIP;
+    manifestExtras.macZipSha256 = sha256File(dest);
+    manifestExtras.macZipSizeBytes = fs.statSync(dest).size;
+  }
+  if (!keepCommittedHttpsMacZip) {
+    console.log(`[copy] ditto zip from ${path.relative(root, macApp)} sha256=${manifestExtras.macZipSha256}`);
+  } else {
+    console.log(
+      `[copy] ditto zip -> ${path.relative(root, dest)}（保留 manifest HTTPS macZipUrl，供本地验收）`,
+    );
+  }
 } else if (!externalMacZip) {
   const zipMac = files.find(f => f.endsWith("-mac.zip") && !f.endsWith(".blockmap"));
   if (zipMac) {
     const dest = path.join(outDir, "geo-local-agent-mac.zip");
     fs.copyFileSync(path.join(releaseDir, zipMac), dest);
     copied.push(dest);
-    manifestExtras.macZipSha256 = sha256File(dest);
+    if (!keepCommittedHttpsMacZip) {
+      manifestExtras.macZipUrl = DEFAULT_MAC_ZIP;
+      manifestExtras.macZipSha256 = sha256File(dest);
+      manifestExtras.macZipSizeBytes = fs.statSync(dest).size;
+    }
     console.warn("[copy] 未找到 .app，回退复制 electron-builder zip");
   }
 }

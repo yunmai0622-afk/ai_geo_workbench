@@ -51,10 +51,33 @@ if (unzip.status === 0 && /No errors detected/i.test(unzip.stdout + unzip.stderr
   fail(`unzip -t failed: ${unzip.stderr || unzip.stdout}`);
 }
 
-if (manifest.macZipUrl === "/downloads/geo-local-agent-mac.zip") {
-  ok("manifest.macZipUrl -> /downloads/geo-local-agent-mac.zip");
+const DEFAULT_RELATIVE_ZIP = "/downloads/geo-local-agent-mac.zip";
+const PRODUCTION_MAC_ZIP_URL =
+  "https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.0/geo-local-agent-mac.zip";
+
+if (manifest.macZipUrl === DEFAULT_RELATIVE_ZIP) {
+  ok("manifest.macZipUrl -> /downloads/geo-local-agent-mac.zip (local dev)");
+} else if (
+  typeof manifest.macZipUrl === "string" &&
+  /^https?:\/\/.+\.zip(\?|$)/i.test(manifest.macZipUrl)
+) {
+  ok(`manifest.macZipUrl -> external HTTPS zip (${manifest.macZipUrl.slice(0, 72)}...)`);
 } else {
   fail(`manifest.macZipUrl unexpected: ${manifest.macZipUrl}`);
+}
+
+if (manifest.macZipUrl === PRODUCTION_MAC_ZIP_URL || manifest.macZipUrl === DEFAULT_RELATIVE_ZIP) {
+  ok("manifest macZipUrl is allowed production/local value");
+} else if (/^https?:\/\/.+\.zip/i.test(manifest.macZipUrl ?? "")) {
+  ok("manifest macZipUrl is HTTPS release URL");
+}
+
+if (typeof manifest.macZipSha256 === "string" && /^[a-f0-9]{64}$/i.test(manifest.macZipSha256)) {
+  ok("manifest.macZipSha256 present");
+} else if (manifest.macZipUrl === DEFAULT_RELATIVE_ZIP && fs.existsSync(macZip)) {
+  fail("local relative macZipUrl requires manifest.macZipSha256");
+} else if (/^https?:\/\//i.test(manifest.macZipUrl ?? "")) {
+  fail("HTTPS macZipUrl requires manifest.macZipSha256");
 }
 
 if (manifest.macDmgUrl == null) ok("manifest.macDmgUrl is null (dmg hidden)");

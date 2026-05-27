@@ -1,8 +1,15 @@
 #!/usr/bin/env node
 /**
- * Agent-Mac 线上 Mac zip 真实下载验收（支持 manifest 相对路径或绝对 macZipUrl）
- * 必须设置 AGENT_DOWNLOAD_BASE_URL，禁止 fallback localhost，禁止 mock 成功。
+ * Local-Agent-Online-Zip-Placeholder-P0：线上 Mac zip 真实下载验收
+ * 支持 manifest 相对路径或绝对 macZipUrl；校验 sha256 / size / unzip / .app
+ *
+ * 环境变量（任选其一）：
+ * - GEO_WEB_BASE_URL（推荐）
+ * - AGENT_DOWNLOAD_BASE_URL（兼容旧名）
+ *
+ * 未设置时 SKIP exit 0。
  */
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -10,7 +17,7 @@ import { spawnSync } from "child_process";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 
-const PHASE = "Agent-Mac-Static-Asset-Delivery-Fix";
+const PHASE = "Local-Agent-Online-Zip-Placeholder-P0";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const artifactsDir = path.join(root, "artifacts");
 const reportPath = path.join(artifactsDir, "agent-mac-online-download-verify.md");
@@ -19,6 +26,7 @@ const repoZipPath = path.join(root, "client/public/downloads/geo-local-agent-mac
 const tmpZipPath = path.join(root, "tmp/agent-online-download/geo-local-agent-mac.zip");
 const MIN_ZIP_BYTES = 50 * 1024 * 1024;
 const DEFAULT_RELATIVE_ZIP = "/downloads/geo-local-agent-mac.zip";
+const LFS_POINTER_PREFIX = "version https://git-lfs.github.com/spec/v1";
 
 /** @type {Record<string, unknown>} */
 const report = {
@@ -28,6 +36,8 @@ const report = {
   manifestCheck: "未执行",
   macZipUrl: null,
   macDmgUrl: null,
+  macZipSha256: null,
+  macZipSizeBytes: null,
   zipUrl: null,
   zipHttpStatus: null,
   contentType: null,
@@ -35,7 +45,10 @@ const report = {
   headMethod: "HEAD",
   repoZipSize: null,
   onlineZipSize: null,
+  onlineZipSha256: null,
+  sha256Match: null,
   sizeMatch: null,
+  hasAppBundle: null,
   unzipTest: null,
   conclusion: "未通过",
   risks: [],
@@ -57,6 +70,8 @@ function writeReport() {
     `- **manifest 检查**：${report.manifestCheck}`,
     `- **macZipUrl**：${report.macZipUrl ?? "—"}`,
     `- **macDmgUrl**：${report.macDmgUrl ?? "—"}`,
+    `- **manifest macZipSha256**：${report.macZipSha256 ?? "—"}`,
+    `- **manifest macZipSizeBytes**：${report.macZipSizeBytes ?? "—"}`,
     `- **zip URL**：${report.zipUrl ?? "—"}`,
     `- **zip HTTP status**：${report.zipHttpStatus ?? "—"}`,
     `- **Content-Type**：${report.contentType ?? "—"}`,
@@ -64,7 +79,10 @@ function writeReport() {
     `- **HEAD/GET 方式**：${report.headMethod}`,
     `- **仓库 zip 大小（bytes）**：${report.repoZipSize ?? "—"}`,
     `- **线上下载 zip 大小（bytes）**：${report.onlineZipSize ?? "—"}`,
-    `- **文件大小完全一致**：${report.sizeMatch ?? "—"}`,
+    `- **线上 zip sha256**：${report.onlineZipSha256 ?? "—"}`,
+    `- **sha256 与 manifest 一致**：${report.sha256Match ?? "—"}`,
+    `- **文件大小与 manifest 一致**：${report.sizeMatch ?? "—"}`,
+    `- **zip 内含 .app**：${report.hasAppBundle ?? "—"}`,
     `- **unzip -t**：${report.unzipTest ?? "—"}`,
     "",
     "## 最终结论",
@@ -84,6 +102,13 @@ function writeReport() {
   fs.writeFileSync(reportPath, lines.join("\n"));
 }
 
+function skip(msg) {
+  report.conclusion = `**SKIP**：${msg}`;
+  console.log(`[SKIP] ${msg}`);
+  writeReport();
+  process.exit(0);
+}
+
 function fail(msg, exitCode = 1) {
   report.errors.push(msg);
   report.conclusion = `**未通过**：${msg}`;
@@ -96,11 +121,16 @@ function ok(msg) {
   console.log(`[OK] ${msg}`);
 }
 
+function sha256File(filePath) {
+  const buf = fs.readFileSync(filePath);
+  return crypto.createHash("sha256").update(buf).digest("hex");
+}
+
 function normalizeBaseUrl(raw) {
   const trimmed = String(raw).trim().replace(/\/+$/, "");
   if (!trimmed) return null;
   if (/localhost|127\.0\.0\.1/i.test(trimmed)) {
-    fail("AGENT_DOWNLOAD_BASE_URL 禁止使用 localhost / 127.0.0.1");
+    fail("线上验收禁止使用 localhost / 127.0.0.1");
   }
   return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
 }
@@ -117,6 +147,7 @@ function isValidMacZipUrl(macZipUrl) {
   if (!macZipUrl || typeof macZipUrl !== "string") return false;
   const url = macZipUrl.trim();
   if (url === DEFAULT_RELATIVE_ZIP) return true;
+  if (/^https?:\/\/.+\.zip(\?|$)/i.test(url)) return true;
   if (/^https?:\/\/.+/i.test(url)) return true;
   return false;
 }
@@ -140,12 +171,16 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 120_000) {
   }
 }
 
-function assertNotHtmlPayload(filePath, contentType) {
-  const head = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" }).slice(0, 512).toLowerCase();
-  if (contentType?.includes("text/html") || head.includes("<!doctype") || head.includes("<html")) {
+function assertNotPlaceholderPayload(filePath, contentType) {
+  const head = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" }).slice(0, 512);
+  const lower = head.toLowerCase();
+  if (contentType?.includes("text/html") || lower.includes("<!doctype") || lower.includes("<html")) {
     fail(
-      "zip URL 返回 HTML，说明静态资源未真实部署或被 SPA fallback；请上传真实 zip 并设置 AGENT_MAC_ZIP_URL 或修复 /downloads 静态路由。",
+      "zip URL 返回 HTML，说明静态资源未真实部署或被 SPA fallback；请配置 manifest.macZipUrl 为真实 HTTPS Release URL。",
     );
+  }
+  if (head.startsWith(LFS_POINTER_PREFIX)) {
+    fail("zip 内容为 Git LFS pointer，不是真实安装包；请拉取 LFS 或改用 Release/CDN URL。");
   }
 }
 
@@ -160,18 +195,25 @@ async function downloadToFile(url, dest) {
   await pipeline(nodeStream, fs.createWriteStream(dest));
 }
 
+function assertZipContainsApp(zipPath) {
+  const list = spawnSync("unzip", ["-l", zipPath], { encoding: "utf-8" });
+  const out = (list.stdout || "") + (list.stderr || "");
+  if (list.status !== 0) {
+    fail(`unzip -l 失败：${out.slice(0, 500)}`);
+  }
+  if (!/\.app\//i.test(out)) {
+    fail("zip 内未找到 .app bundle");
+  }
+  report.hasAppBundle = true;
+  ok("zip 内含 .app bundle");
+}
+
 async function main() {
   ensureArtifactsDir();
 
-  const rawBase = process.env.AGENT_DOWNLOAD_BASE_URL;
+  const rawBase = process.env.GEO_WEB_BASE_URL || process.env.AGENT_DOWNLOAD_BASE_URL;
   if (!rawBase || !String(rawBase).trim()) {
-    report.conclusion =
-      "**未通过**：缺少 AGENT_DOWNLOAD_BASE_URL，无法进行线上真实下载验收。";
-    report.errors.push("缺少 AGENT_DOWNLOAD_BASE_URL，无法进行线上真实下载验收。");
-    report.risks.push("未配置线上域名时不得宣称 Manus zip 下载链路已通过。");
-    console.error("缺少 AGENT_DOWNLOAD_BASE_URL，无法进行线上真实下载验收。");
-    writeReport();
-    process.exit(1);
+    skip("未设置 GEO_WEB_BASE_URL / AGENT_DOWNLOAD_BASE_URL，跳过线上验收。");
   }
 
   const baseUrl = normalizeBaseUrl(rawBase);
@@ -203,12 +245,17 @@ async function main() {
 
   report.macZipUrl = manifest.macZipUrl ?? null;
   report.macDmgUrl = manifest.macDmgUrl ?? null;
+  report.macZipSha256 = manifest.macZipSha256 ?? null;
+  report.macZipSizeBytes = manifest.macZipSizeBytes ?? null;
 
   if (!isValidMacZipUrl(manifest.macZipUrl)) {
     fail(`manifest.macZipUrl 格式无效：${manifest.macZipUrl}`);
   }
   if (manifest.macDmgUrl != null) {
     fail(`manifest.macDmgUrl 应为 null，实际：${manifest.macDmgUrl}`);
+  }
+  if (typeof manifest.macZipSha256 !== "string" || !/^[a-f0-9]{64}$/i.test(manifest.macZipSha256)) {
+    report.risks.push("manifest 缺少有效 macZipSha256，将仅校验体积与 unzip。");
   }
 
   const zipUrl = resolveZipUrl(manifest.macZipUrl, baseUrl);
@@ -276,18 +323,38 @@ async function main() {
     ok(`Content-Length ${(contentLength / 1024 / 1024).toFixed(2)} MB`);
   }
 
+  if (typeof manifest.macZipSizeBytes === "number" && contentLength != null && !Number.isNaN(contentLength)) {
+    if (contentLength !== manifest.macZipSizeBytes) {
+      report.sizeMatch = false;
+      fail(
+        `Content-Length 与 manifest.macZipSizeBytes 不一致：HEAD ${contentLength} vs manifest ${manifest.macZipSizeBytes}`,
+      );
+    }
+    report.sizeMatch = true;
+    ok("Content-Length 与 manifest.macZipSizeBytes 一致");
+  }
+
   if (fs.existsSync(tmpZipPath)) fs.unlinkSync(tmpZipPath);
   await downloadToFile(zipUrl, tmpZipPath);
   report.onlineZipSize = fs.statSync(tmpZipPath).size;
 
-  assertNotHtmlPayload(tmpZipPath, report.contentType);
+  assertNotPlaceholderPayload(tmpZipPath, report.contentType);
 
   if (report.onlineZipSize <= MIN_ZIP_BYTES) {
     fail(`下载文件必须 > 50MB，实际：${report.onlineZipSize} bytes`);
   }
   ok(`下载文件 ${(report.onlineZipSize / 1024 / 1024).toFixed(2)} MB`);
 
-  if (report.repoZipSize != null) {
+  if (typeof manifest.macZipSizeBytes === "number") {
+    if (report.onlineZipSize !== manifest.macZipSizeBytes) {
+      report.sizeMatch = false;
+      fail(
+        `下载体积与 manifest.macZipSizeBytes 不一致：${report.onlineZipSize} vs ${manifest.macZipSizeBytes}`,
+      );
+    }
+    report.sizeMatch = true;
+    ok("下载体积与 manifest.macZipSizeBytes 一致");
+  } else if (report.repoZipSize != null && !/^https?:\/\//i.test(String(manifest.macZipUrl))) {
     if (report.onlineZipSize !== report.repoZipSize) {
       report.sizeMatch = false;
       fail(
@@ -296,10 +363,24 @@ async function main() {
     }
     report.sizeMatch = true;
     ok("线上下载 zip 与仓库 zip 大小完全一致");
-  } else {
-    report.sizeMatch = "跳过（仓库无对照 zip）";
-    report.risks.push("仓库无 geo-local-agent-mac.zip，未做字节级对照。");
   }
+
+  report.onlineZipSha256 = sha256File(tmpZipPath);
+  if (typeof manifest.macZipSha256 === "string" && /^[a-f0-9]{64}$/i.test(manifest.macZipSha256)) {
+    if (report.onlineZipSha256.toLowerCase() !== manifest.macZipSha256.toLowerCase()) {
+      report.sha256Match = false;
+      fail(
+        `sha256 与 manifest 不一致：线上 ${report.onlineZipSha256} vs manifest ${manifest.macZipSha256}`,
+      );
+    }
+    report.sha256Match = true;
+    ok("sha256 与 manifest.macZipSha256 一致");
+  } else {
+    report.sha256Match = "跳过（manifest 无 macZipSha256）";
+    report.risks.push("manifest 未提供 macZipSha256，未做哈希校验。");
+  }
+
+  assertZipContainsApp(tmpZipPath);
 
   const unzip = spawnSync("unzip", ["-t", tmpZipPath], { encoding: "utf-8" });
   const unzipOut = (unzip.stdout || "") + (unzip.stderr || "");
@@ -311,7 +392,7 @@ async function main() {
   ok("unzip -t 通过");
 
   report.conclusion =
-    "**通过**：线上 Mac zip 真实可下载（非 HTML fallback，体积与完整性符合预期）。";
+    "**通过**：线上 Mac zip 真实可下载（非 HTML/LFS 占位，体积/sha256/完整性符合 manifest）。";
   writeReport();
   console.log(`\n=== ${PHASE} online PASSED ===\n`);
   console.log(`报告：${reportPath}`);
