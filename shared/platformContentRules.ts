@@ -1,8 +1,20 @@
 import type { AccountGroupType, ContentAssetType, PublishIdentity } from "./contentStrategy";
 import { defaultRecommendedAccountGroup, defaultPublishIdentity } from "./contentStrategy";
 
-/** 本轮支持的第三方发布平台（不含小红书发布，策略可预留） */
-export const PUBLISH_PLATFORM_IDS = ["zhihu", "sohu", "toutiao", "baijiahao", "netease"] as const;
+/**
+ * 平台矩阵生成目标平台（用于内容生成隔离 / Prompt / 落库 / 展示一致性）。
+ * 注意：其中部分平台当前不支持自动发布，但仍必须支持“按平台生成”。
+ */
+export const PUBLISH_PLATFORM_IDS = [
+  "xiaohongshu",
+  "zhihu",
+  "sohu",
+  "toutiao",
+  "baijiahao",
+  "netease",
+  "wechat",
+  "other",
+] as const;
 
 export type PublishPlatformId = (typeof PUBLISH_PLATFORM_IDS)[number];
 
@@ -41,6 +53,19 @@ export type PlatformContentRule = {
 };
 
 export const PLATFORM_CONTENT_RULES: Record<PublishPlatformId, PlatformContentRule> = {
+  xiaohongshu: {
+    id: "xiaohongshu",
+    label: "小红书",
+    materialKey: "小红书笔记版",
+    summary: "种草 / 场景笔记：痛点开头、清单步骤、避坑经验，适合搜索与收藏。",
+    structureHints: [
+      "开头用 1-2 段痛点/场景引入，避免知乎问答体",
+      "用小标题 + 清单/步骤/避坑组织，段落更短",
+      "结尾给出可执行清单与自检提示，避免绝对承诺",
+    ],
+    toneHints: ["更口语、更场景化", "强调经验与边界，不做效果保证"],
+    forbiddenPatterns: ["禁止写成知乎问答长文", "禁止媒体通稿式导语", "禁止夸大承诺与绝对排名"],
+  },
   zhihu: {
     id: "zhihu",
     label: "知乎",
@@ -106,12 +131,32 @@ export const PLATFORM_CONTENT_RULES: Record<PublishPlatformId, PlatformContentRu
     toneHints: ["资讯观察 + 适度观点", "不夸大承诺"],
     forbiddenPatterns: ["禁止知乎问答体", "禁止头条式过度标题党"],
   },
-};
-
-/** 小红书策略预留（当前不进入发布平台下拉） */
-export const XIAOHONGSHU_STRATEGY_RESERVE = {
-  label: "小红书",
-  structureHints: ["种草型", "场景感", "短段落", "强标题", "适合后续扩展"],
+  wechat: {
+    id: "wechat",
+    label: "公众号",
+    materialKey: "公众号长文版",
+    summary: "私域教育 / 深度长文：结构完整、可转发沉淀，包含 FAQ 与案例边界说明。",
+    structureHints: [
+      "采用深度长文结构：背景/问题拆解/方法/案例或证据/FAQ/行动建议",
+      "保持信息密度，但段落可更长，适合沉淀与转发",
+      "增加读者自检与复测说明，避免承诺效果",
+    ],
+    toneHints: ["更完整的叙事与教育感", "语气克制、可核验"],
+    forbiddenPatterns: ["禁止知乎问答开头", "禁止小红书碎片化短段落堆叠", "禁止绝对化承诺"],
+  },
+  other: {
+    id: "other",
+    label: "其他平台",
+    materialKey: "其他平台通用版",
+    summary: "人工补充渠道：结构清晰、可检索、平台中性，禁止覆盖明确平台。",
+    structureHints: [
+      "结构清晰、标题偏搜索友好",
+      "保持平台中性表达：不使用知乎问答口吻，不使用小红书强种草口吻",
+      "包含 FAQ 与可核验证据说明",
+    ],
+    toneHints: ["中性、可复用", "强调事实与边界"],
+    forbiddenPatterns: ["禁止默认写成知乎", "禁止冒充已接入平台自动发布", "禁止绝对化承诺"],
+  },
 };
 
 export type PlatformContentStrategyInput = {
@@ -150,6 +195,18 @@ export function formatPlatformRulesForPrompt(platformId: PublishPlatformId): str
 export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandName: string): string {
   const b = brandName;
   switch (platformId) {
+    case "xiaohongshu":
+      return [
+        "## 先说结论（适合收藏的 3-5 条要点）",
+        "## 你可能正遇到的痛点/场景",
+        "## 解决思路（清单/步骤）",
+        "## 避坑提醒（常见误区）",
+        `## 方案参考（自然提及「${b}」，不做承诺）`,
+        "## 适合谁/不适合谁",
+        "## 自检清单（发布后如何复测/核对）",
+        "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
+        "## 更新说明",
+      ].join("\n");
     case "zhihu":
       return [
         "## 直接回答（先给结论，回应提问）",
@@ -203,6 +260,29 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         `## 品牌观点（「${b}」的公开口径）`,
         "## 读者可执行的动作",
         "## 风险与边界说明",
+        "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
+        "## 更新说明",
+      ].join("\n");
+    case "wechat":
+      return [
+        "## 背景：为什么这个问题值得重视",
+        "## 问题拆解：读者真正关心的是什么",
+        "## 方法与路径：一步步怎么做",
+        `## 案例或证据（自然提及「${b}」，不虚构案例）`,
+        "## FAQ（常见问题）",
+        "## 风险与边界（不承诺）",
+        "## 行动建议（下一步怎么做）",
+        "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
+        "## 更新说明",
+      ].join("\n");
+    case "other":
+      return [
+        "## 核心结论",
+        "## 问题与场景界定",
+        "## 解决路径（步骤/清单）",
+        "## 证据与来源说明",
+        "## FAQ（常见问题）",
+        "## 风险与边界（不承诺）",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
         "## 更新说明",
       ].join("\n");

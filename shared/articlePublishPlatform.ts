@@ -10,13 +10,19 @@ import {
   type PublishPlatformId,
 } from "./platformContentRules";
 /** 与 weeklyPlatformBoard.WEEKLY_PLATFORM_DEFS 对齐 */
-export type WeeklyPlatformKey = "xiaohongshu" | "zhihu" | "sohu" | "netease" | "wechat" | "other";
+export type WeeklyPlatformKey =
+  | "xiaohongshu"
+  | "zhihu"
+  | "sohu"
+  | "netease"
+  | "wechat"
+  | "baijiahao"
+  | "toutiao"
+  | "other";
 
 /** 文章发布平台解析结果（生成 → 列表 → 弹窗 → 发布队列 → Local Agent 共用） */
 export type ArticlePublishPlatformSlug =
   | PublishPlatformId
-  | "xiaohongshu"
-  | "wechat"
   | "unknown";
 
 export type ResolvedArticlePublishPlatform = {
@@ -45,17 +51,18 @@ export type ArticlePublishPlatformSource = {
 const LOCAL_AGENT_AUTO_PUBLISH_PLATFORMS = new Set<BindingPublishPlatform>(["zhihu", "sohu", "toutiao", "baijiahao"]);
 
 function weeklyKeyFromPublishId(id: PublishPlatformId): WeeklyPlatformKey {
+  if (id === "xiaohongshu") return "xiaohongshu";
+  if (id === "wechat") return "wechat";
   if (id === "netease") return "netease";
   if (id === "zhihu") return "zhihu";
   if (id === "sohu") return "sohu";
-  if (id === "toutiao" || id === "baijiahao") return "other";
+  if (id === "toutiao") return "toutiao";
+  if (id === "baijiahao") return "baijiahao";
   return "other";
 }
 
 function labelForSlug(slug: ArticlePublishPlatformSlug): string {
   if (slug === "unknown") return "未知平台";
-  if (slug === "xiaohongshu") return "小红书";
-  if (slug === "wechat") return "公众号";
   if (isPublishPlatformId(slug)) return getPlatformRule(slug).label;
   return slug;
 }
@@ -83,6 +90,9 @@ export function normalizePublishPlatform(input: string | null | undefined): Reso
   }
   if (lower.includes("公众号") || lower.includes("微信") || lower === "wechat") {
     return finalizeResolved("wechat");
+  }
+  if (lower === "other" || lower.includes("其他平台")) {
+    return finalizeResolved("other");
   }
   if (isPublishPlatformId(lower)) {
     return finalizeResolved(lower);
@@ -147,14 +157,32 @@ function finalizeResolved(slug: Exclude<ArticlePublishPlatformSlug, "unknown">):
       queueBlockedReason: "本篇内容识别为「公众号」，请使用资产发布记录人工登记发布结果。",
     };
   }
+  if (slug === "other") {
+    return {
+      slug,
+      label,
+      weeklyPlatformKey: "other",
+      publishQueueSlug: null,
+      supportedByLocalAgent: false,
+      recognized: true,
+      queueBlockedReason:
+        "本篇内容识别为「其他平台」。请按实际渠道人工发布或在策略中选择明确平台后重新生成。",
+    };
+  }
   const publishId = slug as PublishPlatformId;
   const weeklyPlatformKey = weeklyKeyFromPublishId(publishId);
-  const publishQueueSlug: BindingPublishPlatform | null = isBindingPublishPlatform(publishId) ? publishId : null;
-  const supportedByLocalAgent = LOCAL_AGENT_AUTO_PUBLISH_PLATFORMS.has(publishId);
+  const binding = isBindingPublishPlatform(publishId as unknown as BindingPublishPlatform)
+    ? (publishId as unknown as BindingPublishPlatform)
+    : null;
+  const publishQueueSlug: BindingPublishPlatform | null = binding;
+  const supportedByLocalAgent = binding ? LOCAL_AGENT_AUTO_PUBLISH_PLATFORMS.has(binding) : false;
   let queueBlockedReason: string | null = null;
   if (publishId === "netease") {
     queueBlockedReason =
       "本篇内容识别为「网易号」，当前本地客户端暂不支持自动发布，请先选择人工发布或后续接入。";
+  } else if (publishId === "other") {
+    queueBlockedReason =
+      "本篇内容识别为「其他平台」。请按实际渠道人工发布或在策略中选择明确平台后重新生成。";
   } else if (!supportedByLocalAgent && publishQueueSlug) {
     queueBlockedReason = `本篇内容识别为「${label}」，当前本地客户端发布能力待验证，请确认账号绑定后再试。`;
   }
@@ -162,7 +190,7 @@ function finalizeResolved(slug: Exclude<ArticlePublishPlatformSlug, "unknown">):
     slug: publishId,
     label,
     weeklyPlatformKey,
-    publishQueueSlug,
+    publishQueueSlug: publishId === "wechat" ? "wechat" : publishQueueSlug,
     supportedByLocalAgent,
     recognized: true,
     queueBlockedReason,

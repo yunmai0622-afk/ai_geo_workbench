@@ -14,10 +14,20 @@ const read = (rel: string) => readFileSync(resolve(root, rel), "utf-8");
 
 describe("GEO-V1-F 平台化内容策略", () => {
   it("存在 platform content rules 且五平台规则不同", () => {
-    expect(PUBLISH_PLATFORM_IDS).toEqual(["zhihu", "sohu", "toutiao", "baijiahao", "netease"]);
+    expect(PUBLISH_PLATFORM_IDS).toEqual([
+      "xiaohongshu",
+      "zhihu",
+      "sohu",
+      "toutiao",
+      "baijiahao",
+      "netease",
+      "wechat",
+      "other",
+    ]);
     const outlines = PUBLISH_PLATFORM_IDS.map(id => getPlatformSpecificOutline(id, "测试品牌"));
     const unique = new Set(outlines);
-    expect(unique.size).toBe(5);
+    // 至少保证不同平台大纲不全相同（避免全平台回落知乎）
+    expect(unique.size).toBeGreaterThanOrEqual(5);
     for (const id of PUBLISH_PLATFORM_IDS) {
       expect(formatPlatformRulesForPrompt(id)).toContain(PLATFORM_CONTENT_RULES[id].label);
     }

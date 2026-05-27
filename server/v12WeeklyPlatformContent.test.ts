@@ -27,7 +27,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
 
   it("平台看板与禁止一稿多发", () => {
     const defs = read("client/src/lib/weeklyPlatformBoard.ts");
-    for (const label of ["小红书", "知乎", "搜狐号", "网易号", "公众号", "其他平台"]) {
+    for (const label of ["小红书", "知乎", "百家号", "头条号", "搜狐号", "网易号", "公众号", "其他平台"]) {
       expect(defs).toContain(label);
     }
     expect(board).toContain("生成该平台内容");
