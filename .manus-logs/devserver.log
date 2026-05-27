@@ -2558,3 +2558,16 @@
 [2026-05-27T02:57:36.257Z] [定时实测] 本次执行完成 2026-05-27T02:57:36.256Z
 [2026-05-27T03:10:29.526Z] 11:10:29 PM [vite] (client) hmr update /src/index.css
 [2026-05-27T03:11:20.573Z] 11:11:20 PM [vite] (client) hmr update /src/index.css
+[2026-05-27T03:41:53.346Z] 11:41:53 PM [vite] (client) hmr update /src/index.css
+[2026-05-27T03:41:53.347Z] 11:41:53 PM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/WeeklyContentPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/components/LocalAgentDownloadCard.tsx
+[2026-05-27T03:41:53.349Z] 11:41:53 PM [vite] (client) hmr update /src/index.css, /src/pages/WeeklyContentPage.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx
+[2026-05-27T03:41:53.349Z] 11:41:53 PM [vite] (client) hmr update /src/index.css, /src/pages/ContentPublishingCenterPage.tsx
+[2026-05-27T03:41:53.351Z] 11:41:53 PM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-27T03:41:53.355Z] 11:41:53 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-27T03:41:53.356Z] 11:41:53 PM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx
+[2026-05-27T03:41:53.449Z] 11:41:53 PM [tsx] change in ./shared/platformContentGenerationErrors.ts Restarting...
+[2026-05-27T03:41:55.222Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-27T03:42:00.069Z] Server running on http://localhost:3000/
+[2026-05-27T03:42:00.070Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-27T03:42:01.090Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-27T03:42:29.167Z] 11:42:29 PM [vite] (client) hmr update /src/index.css
