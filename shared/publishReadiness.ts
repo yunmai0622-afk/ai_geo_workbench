@@ -19,6 +19,14 @@ import {
   PUBLISH_PLATFORM_LABELS,
   type BindingPublishPlatform,
 } from "./platformAccountVerify";
+type LocalAgentAccountStatusEntry = {
+  platform: string;
+  profileId: string;
+  displayName: string | null;
+  displayNameVerified: boolean;
+  loginStatus: "valid" | "invalid" | "unknown";
+  lastCheckedAt: string;
+};
 
 export type PublishReadinessBlockingCode =
   | "PROJECT_INACCESSIBLE"
@@ -33,6 +41,7 @@ export type PublishReadinessBlockingCode =
   | "QUALITY_UNKNOWN"
   | "LOCAL_AGENT_DISCONNECTED"
   | "PLATFORM_ACCOUNT_UNBOUND"
+  | "ACCOUNT_STATUS_NOT_SYNCED"
   | null;
 
 export type PublishReadinessNextActionTarget =
@@ -77,6 +86,8 @@ export type PublishReadinessInput = {
   requestedPlatform?: BindingPublishPlatform | null;
   /** 服务端跳过 Local Agent 在线检测 */
   skipLocalAgentConnectionCheck?: boolean;
+  /** 本地客户端已检测为 valid、但尚未写入 Web 的账号摘要（由 Web 拉取 /accounts 后传入） */
+  localAgentAccountSnapshot?: LocalAgentAccountStatusEntry[];
 };
 
 export type PublishReadinessResult = {
@@ -123,6 +134,10 @@ function platformUnsupportedMessage(label: string): string {
 
 function platformAccountUnboundMessage(label: string): string {
   return `尚未绑定「${label}」发布账号。请在本地发布客户端的「账号环境」中创建并登录${label}账号。`;
+}
+
+function accountStatusNotSyncedMessage(label: string): string {
+  return `本地客户端已连接，但尚未同步到「${label}」账号状态。请在客户端点击重新检测，或在 Web 点击刷新账号状态。`;
 }
 
 function resolveQualityBlock(
@@ -172,6 +187,16 @@ function countReadyAccountsForPlatform(
   platform: BindingPublishPlatform,
 ): number {
   return (accounts ?? []).filter(a => a.platform === platform && isPublishReadyPlatformAccount(a)).length;
+}
+
+function filterValidLocalAgentPlatforms(entries: LocalAgentAccountStatusEntry[]): BindingPublishPlatform[] {
+  const out = new Set<BindingPublishPlatform>();
+  for (const row of entries) {
+    if (row.loginStatus !== "valid") continue;
+    if (!isBindingPublishPlatform(row.platform)) continue;
+    out.add(row.platform);
+  }
+  return Array.from(out);
 }
 
 function blocked(
@@ -358,8 +383,36 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
 
   const readyCount = countReadyAccountsForPlatform(input.platformAccounts, publishSlug);
   if (readyCount === 0) {
-    debugReasons.push(`platformAccount:unbound:${publishSlug}`);
     const label = PUBLISH_PLATFORM_LABELS[publishSlug] ?? platformLabel;
+    if (input.localAgentConnected === true && Array.isArray(input.localAgentAccountSnapshot) && input.localAgentAccountSnapshot.length === 0) {
+      debugReasons.push(`platformAccount:not_synced_empty:${publishSlug}`);
+      return blocked({
+        blockingCode: "ACCOUNT_STATUS_NOT_SYNCED",
+        message: accountStatusNotSyncedMessage(label),
+        nextActionLabel: "刷新账号状态",
+        nextActionTarget: "refresh_agent_status",
+        platform,
+        platformLabel: label,
+        debugReasons,
+        resolvedPlatform: resolved,
+      });
+    }
+    const localValidPlatforms = filterValidLocalAgentPlatforms(input.localAgentAccountSnapshot ?? []);
+    const localHasValid = localValidPlatforms.includes(publishSlug);
+    if (input.localAgentConnected === true && localHasValid) {
+      debugReasons.push(`platformAccount:not_synced:${publishSlug}`);
+      return blocked({
+        blockingCode: "ACCOUNT_STATUS_NOT_SYNCED",
+        message: accountStatusNotSyncedMessage(label),
+        nextActionLabel: "刷新账号状态",
+        nextActionTarget: "refresh_agent_status",
+        platform,
+        platformLabel: label,
+        debugReasons,
+        resolvedPlatform: resolved,
+      });
+    }
+    debugReasons.push(`platformAccount:unbound:${publishSlug}`);
     return blocked({
       blockingCode: "PLATFORM_ACCOUNT_UNBOUND",
       message: platformAccountUnboundMessage(label),

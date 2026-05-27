@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
-import { checkLocalAgentHealth, focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
+import {
+  checkLocalAgentHealth,
+  focusLocalAgentAccountsTab,
+  listLocalAgentAccountSnapshots,
+} from "@/lib/localAgentClient";
 import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
 import {
@@ -97,6 +101,7 @@ import {
   PLATFORM_CONTENT_PROGRESS_STAGES,
   type AiTaskProgressErrorCategory,
 } from "@shared/aiTaskProgress";
+import { type LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync";
 
 type ProjectOption = { id: number; enterpriseName: string };
 
@@ -396,6 +401,7 @@ export default function WeeklyContentPage() {
   );
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
+  const [localAgentAccountSnapshot, setLocalAgentAccountSnapshot] = useState<LocalAgentAccountStatusEntry[]>([]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
   const [regeneratingCoverIds, setRegeneratingCoverIds] = useState<Set<number>>(() => new Set());
@@ -422,6 +428,16 @@ export default function WeeklyContentPage() {
   const refreshLocalAgentHealth = useCallback(async () => {
     const h = await checkLocalAgentHealth();
     setLocalAgentOnline(h?.ok ?? false);
+    if (h?.ok) {
+      try {
+        const snapshot = await listLocalAgentAccountSnapshots();
+        setLocalAgentAccountSnapshot(snapshot);
+      } catch {
+        setLocalAgentAccountSnapshot([]);
+      }
+    } else {
+      setLocalAgentAccountSnapshot([]);
+    }
     return h;
   }, []);
 
@@ -536,6 +552,7 @@ export default function WeeklyContentPage() {
       diagnosisReady: hasDiagnosisData,
       localAgentConnected: localAgentOnline,
       platformAccounts: flattenPlatformAccounts(platformAccountGroups),
+      localAgentAccountSnapshot,
     }),
     [
       selectedProjectId,
@@ -544,6 +561,7 @@ export default function WeeklyContentPage() {
       hasDiagnosisData,
       localAgentOnline,
       platformAccountGroups,
+      localAgentAccountSnapshot,
     ],
   );
 
@@ -1506,16 +1524,33 @@ export default function WeeklyContentPage() {
           </div>
           <div className="space-y-3 py-2">
             {activePublishReadiness?.resolvedPlatform?.recognized ? (
-              <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
-                发布平台：<span className="font-medium">{activePublishReadiness.platformLabel}</span>
-                {!getArticlePublishPlatform({
-                  generationBasis: publishArticle?.generationBasis ?? null,
-                  targetPlatform: publishArticle?.targetPlatform,
-                  publishPlatform: publishArticle?.publishPlatform,
-                }).recognized && manualPublishPlatform ? (
-                  <span className="ml-1 text-xs text-amber-700">（手动指定）</span>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
+                  发布平台：<span className="font-medium">{activePublishReadiness.platformLabel}</span>
+                  {!getArticlePublishPlatform({
+                    generationBasis: publishArticle?.generationBasis ?? null,
+                    targetPlatform: publishArticle?.targetPlatform,
+                    publishPlatform: publishArticle?.publishPlatform,
+                  }).recognized && manualPublishPlatform ? (
+                    <span className="ml-1 text-xs text-amber-700">（手动指定）</span>
+                  ) : null}
+                </p>
+                {publishDialogSlug && isBindingPublishPlatform(publishDialogSlug) ? (
+                  (() => {
+                    const rows = getPublishReadyAccountsForPlatform(publishDialogSlug);
+                    const picked = pickPublishAccount(publishDialogSlug);
+                    if (rows.length === 0) return null;
+                    return (
+                      <p className="text-xs text-gray-600" data-testid="publish-dialog-account-status">
+                        账号状态：已绑定
+                        <span className="ml-2">
+                          账号名称：{picked?.accountName ?? rows[0]?.accountName ?? "昵称待识别"}
+                        </span>
+                      </p>
+                    );
+                  })()
                 ) : null}
-              </p>
+              </div>
             ) : (
               <div className="space-y-2" data-testid="publish-dialog-platform-unknown">
                 <p className="text-sm text-amber-800">
@@ -1640,6 +1675,17 @@ export default function WeeklyContentPage() {
                 }}
               >
                 {activePublishReadiness.nextActionLabel}
+              </Button>
+            ) : null}
+            {activePublishReadiness?.blockingCode === "ACCOUNT_STATUS_NOT_SYNCED" ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-blue-500 text-blue-700"
+                data-testid="publish-readiness-refresh-status"
+                onClick={() => void refreshLocalAgentHealth()}
+              >
+                刷新账号状态
               </Button>
             ) : null}
             <div className="flex w-full gap-2">

@@ -14,6 +14,10 @@ import {
   upsertProjectPlatformAccountRecord,
   verifyPlatformAccountForProjectRecord,
 } from "./projectPlatformAccounts";
+import {
+  localAgentAccountStatusPayloadSchema,
+  syncLocalAgentAccountStatuses,
+} from "./localAgentAccountSync";
 
 const accountGroupZod = z.enum(ACCOUNT_GROUP_TYPES).optional().nullable();
 const accountRoleZod = z.enum(PUBLISH_IDENTITIES).optional().nullable();
@@ -196,5 +200,15 @@ export const projectPlatformAccountsRouter = router({
       await requireProjectAccess(ctx, input.projectId);
       const row = await bindLocalAgentAccount(db, input);
       return { success: true, account: row } as const;
+    }),
+
+  syncLocalAgentSnapshot: protectedProcedure
+    .input(localAgentAccountStatusPayloadSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!input.projectId) {
+        throw new Error("缺少 projectId");
+      }
+      await requireProjectAccess(ctx, input.projectId);
+      return syncLocalAgentAccountStatuses(ctx.user!.id, input);
     }),
 });

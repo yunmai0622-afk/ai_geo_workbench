@@ -9,6 +9,7 @@ const plugins = [react(), tailwindcss(), jsxLocPlugin()];
 export default defineConfig({
   plugins,
   resolve: {
+    extensions: [".mjs", ".ts", ".tsx", ".js", ".jsx", ".json"],
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),

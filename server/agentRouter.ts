@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
+import { assertAgentApiKeyUser, readAgentApiKeyFromRequest } from "./agentAuth";
 import { claimAgentTask, listAgentTasksForClient, pollAgentTasks, reportAgentTaskResult } from "./agentPublishTasks";
+import {
+  localAgentAccountStatusPayloadSchema,
+  syncLocalAgentAccountStatuses,
+} from "./localAgentAccountSync";
 import { requireDbConn } from "./projectPlatformAccounts";
 
 export const agentRouter = router({
@@ -57,5 +62,12 @@ export const agentRouter = router({
     .mutation(async ({ input }) => {
       const db = await requireDbConn();
       return reportAgentTaskResult(db, input);
+    }),
+
+  syncAccountStatuses: publicProcedure
+    .input(localAgentAccountStatusPayloadSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = await assertAgentApiKeyUser(readAgentApiKeyFromRequest(ctx.req));
+      return syncLocalAgentAccountStatuses(user.id, input);
     }),
 });

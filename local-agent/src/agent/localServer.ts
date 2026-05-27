@@ -2,6 +2,7 @@ import http from "http";
 import { URL } from "url";
 import { AGENT_VERSION, loadOrCreateAgentMeta } from "./agentMeta";
 import { detectPlatformAccount, openLoginWindow } from "./platformActions";
+import { syncAccountAfterDetect } from "./accountSync";
 import { LOCAL_AGENT_BINDING_PLATFORMS } from "./platforms/publisherFactory";
 import { createPlatformProfile } from "./profileManager";
 import { readAccounts } from "./storage";
@@ -159,6 +160,9 @@ export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Serve
           platform: acc?.platform ?? null,
           accountName: result.data?.accountName ?? null,
           sessionStatus: "active",
+        });
+        void syncAccountAfterDetect(profileId).catch(err => {
+          console.warn("[local-agent] account status sync failed", err instanceof Error ? err.message : err);
         });
         return;
       }

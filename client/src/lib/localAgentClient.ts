@@ -1,4 +1,5 @@
 import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
+import { type LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync";
 
 export type LocalAgentHealth = {
   ok: boolean;
@@ -23,6 +24,22 @@ export type DetectAccountResponse = {
   errorType?: string;
   message?: string;
 };
+
+export type LocalAgentAccountSnapshotRow = {
+  profileId: string;
+  platform: string;
+  projectId?: number | null;
+  accountName: string | null;
+  displayNameVerified?: boolean;
+  sessionStatus: "unknown" | "active" | "expired";
+  lastCheckedAt: string | null;
+};
+
+function mapStoredSessionToLoginStatus(sessionStatus: string | null | undefined): "valid" | "invalid" | "unknown" {
+  if (sessionStatus === "active") return "valid";
+  if (sessionStatus === "expired") return "invalid";
+  return "unknown";
+}
 
 async function agentFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${LOCAL_AGENT_BASE_URL}${path}`, {
@@ -108,4 +125,18 @@ export async function detectLocalAgentAccount(profileId: string): Promise<Detect
     if (data && data.ok === false) return data;
     throw e;
   }
+}
+
+export async function listLocalAgentAccountSnapshots(): Promise<LocalAgentAccountStatusEntry[]> {
+  const data = await agentFetch<{ accounts: LocalAgentAccountSnapshotRow[] }>("/accounts", {
+    method: "GET",
+  });
+  return (data.accounts ?? []).map(acc => ({
+    platform: acc.platform,
+    profileId: acc.profileId,
+    displayName: acc.accountName ?? null,
+    displayNameVerified: Boolean(acc.accountName?.trim()) && (acc.displayNameVerified ?? true),
+    loginStatus: mapStoredSessionToLoginStatus(acc.sessionStatus),
+    lastCheckedAt: acc.lastCheckedAt ?? new Date().toISOString(),
+  }));
 }

@@ -28,6 +28,7 @@ import {
   openLoginWindow,
   openPlatformWritePage,
 } from "./agent/platformActions";
+import { syncAccountAfterDetect, syncKnownProjectAccountStatuses } from "./agent/accountSync";
 import { readAccounts } from "./agent/storage";
 import { resolveGeoWebUrl, type GeoWebNavigationTarget } from "./agent/geoWebNavigation";
 
@@ -221,6 +222,7 @@ app.whenReady().then(() => {
       mainWindow?.webContents.send("agent:log-line", { line, isErr: Boolean(isErr) });
     });
     resumePollingIfEnabled();
+    void syncKnownProjectAccountStatuses();
   } catch (err) {
     console.error("[electron] 后台服务初始化失败（主窗口仍应可见）:", err);
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -298,6 +300,9 @@ ipcMain.handle("agent:openLoginWindow", async (_e, profileId: string) => {
 
 ipcMain.handle("agent:detectAccount", async (_e, profileId: string) => {
   const result = await detectPlatformAccount(profileId);
+  void syncAccountAfterDetect(profileId).catch(err => {
+    console.warn("[local-agent] account status sync failed", err instanceof Error ? err.message : err);
+  });
   broadcastState();
   return result;
 });

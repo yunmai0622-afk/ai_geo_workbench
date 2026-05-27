@@ -64,6 +64,39 @@ describe("publishReadiness evaluatePublishReadiness", () => {
     expect(r.nextActionTarget).toBe("open_local_agent_accounts");
   });
 
+  it("agent connected + local snapshot valid but web not synced → ACCOUNT_STATUS_NOT_SYNCED", () => {
+    const r = evaluatePublishReadiness({
+      ...baseContext,
+      article: zhihuArticle(),
+      platformAccounts: [],
+      localAgentAccountSnapshot: [
+        {
+          platform: "zhihu",
+          profileId: "zhihu_1",
+          displayName: "昵称待识别",
+          displayNameVerified: false,
+          loginStatus: "valid",
+          lastCheckedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    expect(r.ready).toBe(false);
+    expect(r.blockingCode).toBe("ACCOUNT_STATUS_NOT_SYNCED");
+    expect(r.nextActionTarget).toBe("refresh_agent_status");
+    expect(r.message).toMatch(/尚未同步/);
+  });
+
+  it("agent connected + snapshot empty + web unbound → ACCOUNT_STATUS_NOT_SYNCED", () => {
+    const r = evaluatePublishReadiness({
+      ...baseContext,
+      article: zhihuArticle(),
+      platformAccounts: [],
+      localAgentAccountSnapshot: [],
+    });
+    expect(r.ready).toBe(false);
+    expect(r.blockingCode).toBe("ACCOUNT_STATUS_NOT_SYNCED");
+  });
+
   it("unknown platform → PLATFORM_UNKNOWN", () => {
     const r = evaluatePublishReadiness({
       ...baseContext,
