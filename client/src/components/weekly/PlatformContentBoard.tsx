@@ -11,6 +11,8 @@ import {
 export type PlatformBoardRow = {
   def: WeeklyPlatformDef;
   counts: PlatformContentCounts;
+  platformRole: string;
+  platformGenerationGoal: string;
 };
 
 type Props = {
@@ -33,20 +35,27 @@ export function PlatformContentBoard({
   return (
     <section className="space-y-4" data-testid="weekly-platform-board">
       <div className="space-y-1">
-        <h2 className={geoP0Surfaces.sectionTitle}>平台内容看板</h2>
+        <h2 className={geoP0Surfaces.sectionTitle}>平台内容矩阵</h2>
         <p className={geoP0Surfaces.muted}>
-          不同平台独立生成，不支持一稿多发。请按平台分别生成本轮 GEO 内容。
+          各平台围绕同一轮 GEO 内容任务独立生成，不支持一稿多发。请按平台分别生成本轮内容资产。
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map(({ def, counts }) => {
+        {rows.map(({ def, counts, platformRole, platformGenerationGoal }) => {
           const countsLine = formatCountsLine(counts);
           const hasContent = counts.pendingConfirm + counts.ready + counts.published > 0;
           return (
             <P0Card key={def.key} testId={`weekly-platform-card-${def.key}`} className="flex flex-col">
               <h3 className="text-base font-semibold text-gray-900">{def.label}</h3>
-              <p className="mt-1 text-xs text-gray-500">平台内容目标：{def.goal}</p>
               <p className="mt-2 text-xs text-gray-600">
+                <span className="font-medium text-gray-500">平台内容角色：</span>
+                <span data-testid="weekly-platform-role">{platformRole}</span>
+              </p>
+              <p className="mt-2 text-xs text-gray-600">
+                <span className="font-medium text-gray-500">本平台生成目标：</span>
+                <span data-testid="weekly-platform-generation-goal">{platformGenerationGoal}</span>
+              </p>
+              <p className="mt-2 text-xs text-gray-500">
                 适合内容类型：<span className="text-gray-800">{def.contentTypes}</span>
               </p>
               {countsLine ? (

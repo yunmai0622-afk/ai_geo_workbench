@@ -7,6 +7,7 @@ import {
   getPlatformRule,
   getPlatformSpecificOutline,
   isPublishPlatformId,
+  type GeoContentTaskGenerationTrace,
   type PlatformContentStrategyInput,
 } from "@shared/platformContentRules";
 import { dedupeTargetQuestionRows } from "@shared/targetQuestionDedup";
@@ -1669,12 +1670,13 @@ export async function generateGeoArticleDraft(input: {
   analyses: P11AnalysisLike[];
   assetLibrary?: P12AssetLibraryContext | null;
   platformStrategy?: PlatformContentStrategyInput;
+  geoContentTaskTrace?: GeoContentTaskGenerationTrace;
 }): Promise<P11ArticleDraft> {
   if (!input.topic.optimizationTaskId && !nonEmpty(input.topic.contentGap)) throw new Error("文章选题必须绑定任务或内容缺口。");
   const { project, topic, task } = input;
   let basis = buildGenerationBasis(input);
   if (input.platformStrategy) {
-    const meta = buildPlatformContentStrategyMeta(input.platformStrategy);
+    const meta = buildPlatformContentStrategyMeta(input.platformStrategy, input.geoContentTaskTrace);
     basis.platformContentStrategy = meta as unknown as Record<string, unknown>;
   }
   basis = enrichGenerationBasisForDraft(basis, { project, topic, task, platformStrategy: input.platformStrategy });

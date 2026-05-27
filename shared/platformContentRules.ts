@@ -392,15 +392,29 @@ export function validatePlatformContentStrategy(input: PlatformContentStrategyIn
   return null;
 }
 
+/** 平台化生成时写入 generation_basis.platformContentStrategy 的可追溯字段（不改表结构） */
+export type GeoContentTaskGenerationTrace = {
+  contentTaskId?: number;
+  diagnosisFinding?: string;
+  geoGap?: string;
+  platformRuleSummary?: string;
+};
+
 export type PlatformContentStrategyMeta = PlatformContentStrategyInput & {
   targetPublishPlatformLabel: string;
   contentTypeLabel: string;
   platformRulesSummary: string;
   platformAdaptationNotes: string;
   geoQualitySelfCheckOutline: string;
+  contentTaskId?: number;
+  diagnosisFinding?: string;
+  geoGap?: string;
 };
 
-export function buildPlatformContentStrategyMeta(input: PlatformContentStrategyInput): PlatformContentStrategyMeta {
+export function buildPlatformContentStrategyMeta(
+  input: PlatformContentStrategyInput,
+  trace?: GeoContentTaskGenerationTrace,
+): PlatformContentStrategyMeta {
   const rule = getPlatformRule(input.targetPublishPlatform);
   const typeLabel =
     PLATFORM_CONTENT_TYPE_OPTIONS.find(o => o.strategyType === input.contentStrategyType)?.label ??
@@ -409,12 +423,15 @@ export function buildPlatformContentStrategyMeta(input: PlatformContentStrategyI
     ...input,
     targetPublishPlatformLabel: rule.label,
     contentTypeLabel: typeLabel,
-    platformRulesSummary: rule.summary,
+    platformRulesSummary: trace?.platformRuleSummary?.trim() || rule.summary,
     platformAdaptationNotes: [
       `本篇仅适配${rule.label}，采用该平台专属结构，不得与其它平台共用同一套正文。`,
       ...rule.structureHints,
     ].join(" "),
     geoQualitySelfCheckOutline:
       "生成后将自动运行 GEO 质量检查；请确认目标问题覆盖、品牌提及、可引用片段与合规表述。",
+    ...(trace?.contentTaskId != null ? { contentTaskId: trace.contentTaskId } : {}),
+    ...(trace?.diagnosisFinding?.trim() ? { diagnosisFinding: trace.diagnosisFinding.trim() } : {}),
+    ...(trace?.geoGap?.trim() ? { geoGap: trace.geoGap.trim() } : {}),
   };
 }

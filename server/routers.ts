@@ -102,6 +102,8 @@ import {
   getDefaultTargetAiPlatforms,
   normalizeTargetAiPlatforms,
 } from "@shared/platformContentRules";
+import { formatPlatformRuleSummaryForGeneration } from "@shared/geoContentTaskSource";
+import type { GeoContentTaskGenerationTrace } from "@shared/platformContentRules";
 import {
   PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
   PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
@@ -2246,6 +2248,9 @@ const geoRouter = router({
             targetQuestion: z.string().trim().optional(),
             geoEnhancementGoal: z.enum(GEO_ENHANCEMENT_GOAL_OPTIONS).optional(),
             targetAiPlatforms: z.array(z.string().min(1)).optional(),
+            contentTaskId: z.number().int().positive().optional(),
+            diagnosisFinding: z.string().trim().max(4000).optional(),
+            geoGap: z.string().trim().max(4000).optional(),
           })
           .superRefine((val, ctx) => {
             const hasPlatform = Boolean(val.targetPublishPlatform);
@@ -2343,6 +2348,23 @@ const geoRouter = router({
             : undefined;
         assertPlatformContentStrategyParams(platformStrategy);
         assertEnterpriseProfileForPlatformGeneration(projectRow, assetLibrary, platformStrategy);
+        let geoContentTaskTrace: GeoContentTaskGenerationTrace | undefined;
+        if (platformStrategy) {
+          const hasTrace =
+            input.contentTaskId != null ||
+            Boolean(input.diagnosisFinding?.trim()) ||
+            Boolean(input.geoGap?.trim());
+          if (hasTrace) {
+            geoContentTaskTrace = {
+              contentTaskId: input.contentTaskId ?? task.id,
+              diagnosisFinding: input.diagnosisFinding?.trim(),
+              geoGap: input.geoGap?.trim(),
+              platformRuleSummary: formatPlatformRuleSummaryForGeneration(
+                platformStrategy.targetPublishPlatform,
+              ),
+            };
+          }
+        }
         draft = await generateGeoArticleDraft({
           project,
           topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
@@ -2351,6 +2373,7 @@ const geoRouter = router({
           analyses: analysisScope.length > 0 ? analysisScope : analysesWithQuestions,
           assetLibrary,
           platformStrategy,
+          geoContentTaskTrace,
         });
       } catch (error) {
         const raw = error instanceof Error ? error.message : "GEO 文章生成失败";

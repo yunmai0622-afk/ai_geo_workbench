@@ -19,6 +19,7 @@ import {
 } from "@/lib/localAgentClient";
 import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
+import { GeoContentTaskPanels } from "@/components/weekly/GeoContentTaskPanels";
 import {
   WeeklyPlatformArticleCard,
   resolveQualityDisplay,
@@ -96,6 +97,15 @@ import { TRPCClientError } from "@trpc/client";
 import { toPlatformContentGenerationError, PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE } from "@shared/platformContentGenerationErrors";
 import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
 import {
+  GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE,
+  buildGeoContentTaskDisplayName,
+  buildWeeklyPlatformGenerationGoal,
+  getWeeklyPlatformContentRole,
+  hasGeoDiagnosisSourceData,
+  parseGeoOptimizationTaskCard,
+  resolveGeoContentTaskSource,
+} from "@shared/geoContentTaskSource";
+import {
   PLATFORM_CONTENT_PROGRESS_HINT_30S,
   PLATFORM_CONTENT_PROGRESS_HINT_60S,
   PLATFORM_CONTENT_PROGRESS_STAGES,
@@ -157,7 +167,16 @@ type TopicRow = {
 type TaskRow = {
   id: number;
   taskName?: string | null;
+  priority?: string | null;
+  generationReason?: string | null;
   executionSuggestion?: string | null;
+  expectedImpact?: string | null;
+};
+
+type AnalysisRow = {
+  contentGap?: string | null;
+  notRecommendedReason?: string | null;
+  questionText?: string | null;
 };
 
 type ArticleRow = {
@@ -204,7 +223,6 @@ type QualityScoreRow = {
   blocked?: number | boolean | null;
 };
 
-const GEO_TASK_CARD_MARK = "__GEO_TASK_CARD__";
 const PUBLISH_QUEUE_PLATFORMS = BINDING_PUBLISH_PLATFORMS.map(slug => ({
   slug,
   label: PUBLISH_PLATFORM_LABELS[slug],
@@ -251,38 +269,6 @@ function useProjectSelection() {
   return useActiveProjectSelection();
 }
 
-type ParsedTaskCard = {
-  articleTitle: string;
-  keyPoints: string[];
-  recommendedPlatform: string[];
-  contentType: string;
-};
-
-function parseGeoTaskCard(executionSuggestion?: string | null): ParsedTaskCard | null {
-  if (!executionSuggestion?.includes(GEO_TASK_CARD_MARK)) return null;
-  const parts = executionSuggestion.split(`${GEO_TASK_CARD_MARK}\n`);
-  const jsonPart = parts[1]?.trim();
-  if (!jsonPart) return null;
-  try {
-    const j = JSON.parse(jsonPart) as Record<string, unknown>;
-    const keyPoints = Array.isArray(j.keyPoints)
-      ? j.keyPoints.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim())
-      : [];
-    const recommendedPlatform = Array.isArray(j.recommendedPlatform)
-      ? j.recommendedPlatform.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim())
-      : [];
-    const contentType = typeof j.contentType === "string" ? j.contentType.trim() : "";
-    return {
-      articleTitle: typeof j.articleTitle === "string" ? j.articleTitle : "",
-      keyPoints,
-      recommendedPlatform,
-      contentType,
-    };
-  } catch {
-    return null;
-  }
-}
-
 function parseKeyPointsFromBusinessReason(reason?: string | null): string[] {
   if (!reason) return [];
   const m = reason.match(/核心论点：([^；]+)/);
@@ -296,7 +282,7 @@ function parseKeyPointsFromBusinessReason(reason?: string | null): string[] {
 
 function topicMeta(topic: TopicRow, tasks: TaskRow[]) {
   const task = tasks.find(t => t.id === topic.optimizationTaskId);
-  const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
+  const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
   const rawType = (card?.contentType || topic.articleType || "其他").trim() || "其他";
   const contentType = mapContentTypeLabel(rawType);
   const keyPoints =
@@ -420,6 +406,7 @@ export default function WeeklyContentPage() {
   const [platformStrategy, setPlatformStrategy] = useState<PlatformContentStrategyInput>(() =>
     buildDefaultPlatformStrategy(),
   );
+  const [selectedContentTaskId, setSelectedContentTaskId] = useState<number | null>(null);
   const [generatingPlatformKey, setGeneratingPlatformKey] = useState<WeeklyPlatformKey | null>(null);
   const [platformProgressLabelKey, setPlatformProgressLabelKey] = useState<WeeklyPlatformKey | null>(null);
   const [platformProgressErrorCategory, setPlatformProgressErrorCategory] = useState<
@@ -555,19 +542,50 @@ export default function WeeklyContentPage() {
   }, [publishArticle, selectedPlatforms, pickPublishAccount]);
 
   const tasks = (tasksQuery.data ?? []) as TaskRow[];
+  const analyses = (analysisQuery.data ?? []) as AnalysisRow[];
+  const geoContentTaskSource = useMemo(
+    () =>
+      resolveGeoContentTaskSource({
+        tasks,
+        analyses,
+        questions: questionsQuery.data ?? [],
+        selectedTaskId: selectedContentTaskId,
+        preferredTargetQuestion: platformStrategy.targetQuestion,
+      }),
+    [tasks, analyses, questionsQuery.data, selectedContentTaskId, platformStrategy.targetQuestion],
+  );
+
+  const contentTaskOptions = useMemo(
+    () =>
+      tasks.map(t => {
+        const card = parseGeoOptimizationTaskCard(t.executionSuggestion);
+        const scene = card?.articleTitle?.trim() || t.taskName?.trim() || `任务 ${t.id}`;
+        return { id: t.id, label: buildGeoContentTaskDisplayName(scene) };
+      }),
+    [tasks],
+  );
+
   const targetQuestionOptions = useMemo(() => {
+    const fromSource = geoContentTaskSource?.linkedQuestion?.trim();
     const fromQuestions = (questionsQuery.data ?? [])
       .map((q: { questionText?: string }) => q.questionText?.trim())
       .filter(Boolean) as string[];
     const fromTasks = tasks.map(t => t.taskName?.trim()).filter(Boolean) as string[];
-    return Array.from(new Set([...fromQuestions, ...fromTasks]));
-  }, [questionsQuery.data, tasks]);
+    return Array.from(new Set([fromSource, ...fromQuestions, ...fromTasks].filter(Boolean) as string[]));
+  }, [questionsQuery.data, tasks, geoContentTaskSource?.linkedQuestion]);
 
   useEffect(() => {
+    const linked = geoContentTaskSource?.linkedQuestion?.trim();
+    if (linked) {
+      setPlatformStrategy(prev =>
+        prev.targetQuestion.trim() === linked ? prev : { ...prev, targetQuestion: linked },
+      );
+      return;
+    }
     if (!platformStrategy.targetQuestion.trim() && targetQuestionOptions[0]) {
       setPlatformStrategy(prev => ({ ...prev, targetQuestion: targetQuestionOptions[0]! }));
     }
-  }, [targetQuestionOptions, platformStrategy.targetQuestion]);
+  }, [geoContentTaskSource?.linkedQuestion, targetQuestionOptions, platformStrategy.targetQuestion]);
 
   const platformStrategyError = useMemo(
     () => validatePlatformContentStrategy(platformStrategy),
@@ -575,15 +593,14 @@ export default function WeeklyContentPage() {
   );
 
   const latestDiagnosisGap = useMemo(() => {
-    const rows = (analysisQuery.data ?? []) as Array<{ contentGap?: string | null }>;
-    return rows.map(r => r.contentGap?.trim()).find(Boolean) ?? null;
-  }, [analysisQuery.data]);
+    if (geoContentTaskSource?.contentGaps[0]) return geoContentTaskSource.contentGaps[0]!;
+    return analyses.map(r => r.contentGap?.trim()).find(Boolean) ?? null;
+  }, [geoContentTaskSource?.contentGaps, analyses]);
 
-  const hasDiagnosisData = useMemo(() => {
-    if ((analysisQuery.data ?? []).length > 0) return true;
-    if (tasks.length > 0) return true;
-    return Boolean(latestDiagnosisGap);
-  }, [analysisQuery.data, tasks.length, latestDiagnosisGap]);
+  const hasDiagnosisData = useMemo(
+    () => hasGeoDiagnosisSourceData(tasks, analyses),
+    [tasks, analyses],
+  );
 
   const enterpriseProfileReady = useMemo(() => {
     if (assetSummaryQuery.isFetched && enterpriseProfileRecord) {
@@ -693,6 +710,7 @@ export default function WeeklyContentPage() {
     setGeneratingTopicIds(new Set());
     setExpandedTopicIds(new Set());
     setBatchState(null);
+    setSelectedContentTaskId(null);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -762,6 +780,9 @@ export default function WeeklyContentPage() {
           targetQuestion: effectiveStrategy.targetQuestion.trim(),
           geoEnhancementGoal: effectiveStrategy.geoEnhancementGoal,
           targetAiPlatforms: [...effectiveStrategy.targetAiPlatforms],
+          contentTaskId: geoContentTaskSource?.contentTaskId ?? undefined,
+          diagnosisFinding: geoContentTaskSource?.diagnosisFinding,
+          geoGap: geoContentTaskSource?.geoGapSummary,
         });
         await invalidateArticles();
         return true;
@@ -780,7 +801,7 @@ export default function WeeklyContentPage() {
         });
       }
     },
-    [generateArticleMutation, invalidateArticles, platformStrategy],
+    [generateArticleMutation, invalidateArticles, platformStrategy, geoContentTaskSource],
   );
 
   const handleGenerateOne = (topicId: number) => {
@@ -876,6 +897,8 @@ export default function WeeklyContentPage() {
   }, [batchState, countPreset, customCount]);
 
   const platformBoardRows = useMemo((): PlatformBoardRow[] => {
+    const linkedQuestion = geoContentTaskSource?.linkedQuestion ?? platformStrategy.targetQuestion;
+    const sceneLabel = geoContentTaskSource?.sceneLabel ?? "";
     return WEEKLY_PLATFORM_DEFS.map(def => {
       const counts: PlatformContentCounts = {
         pending: 0,
@@ -885,7 +908,7 @@ export default function WeeklyContentPage() {
       };
       for (const topic of topics) {
         const task = tasks.find(t => t.id === topic.optimizationTaskId);
-        const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
+        const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         const article = articleByTopicId.get(topic.id);
         const platformKey = article
           ? getArticlePublishPlatform({
@@ -905,9 +928,22 @@ export default function WeeklyContentPage() {
         else if (pass) counts.ready += 1;
         else counts.pendingConfirm += 1;
       }
-      return { def, counts };
+      return {
+        def,
+        counts,
+        platformRole: getWeeklyPlatformContentRole(def.key),
+        platformGenerationGoal: buildWeeklyPlatformGenerationGoal(def.key, linkedQuestion, sceneLabel),
+      };
     });
-  }, [topics, tasks, articleByTopicId, scoresByArticleId]);
+  }, [
+    topics,
+    tasks,
+    articleByTopicId,
+    scoresByArticleId,
+    geoContentTaskSource?.linkedQuestion,
+    geoContentTaskSource?.sceneLabel,
+    platformStrategy.targetQuestion,
+  ]);
 
   const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
     return articles
@@ -915,7 +951,7 @@ export default function WeeklyContentPage() {
       .map(a => {
         const topic = topics.find(t => t.id === a.topicId);
         const task = topic ? tasks.find(t => t.id === topic.optimizationTaskId) : undefined;
-        const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
+        const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         const q = scoresByArticleId.get(a.id);
         const pass = qualityPasses(a, q);
         const published = a.status === "已发布";
@@ -938,11 +974,13 @@ export default function WeeklyContentPage() {
           targetPlatform: platformResolved.recognized ? platformResolved.label : a.targetPlatform,
           publishBlockHint: publishReadiness.ready ? null : publishReadiness.message,
           publishNextActionLabel: publishReadiness.ready ? null : publishReadiness.nextActionLabel,
-          contentGoal:
-            typeof platformStrategy.geoEnhancementGoal === "string"
-              ? platformStrategy.geoEnhancementGoal
-              : null,
-          geoGap: latestDiagnosisGap ?? card?.keyPoints?.[0] ?? topic?.businessReason?.slice(0, 120) ?? null,
+          contentGoal: geoContentTaskSource?.taskDisplayName ?? null,
+          geoGap:
+            geoContentTaskSource?.geoGapSummary ??
+            latestDiagnosisGap ??
+            card?.keyPoints?.[0] ??
+            topic?.businessReason?.slice(0, 120) ??
+            null,
           keywords,
           statusLabel: published ? "已发布" : pass ? "可发布" : "待确认",
           statusTone: published ? "success" : pass ? "info" : "warning",
@@ -953,7 +991,7 @@ export default function WeeklyContentPage() {
           article: a as Record<string, unknown>,
         };
       });
-  }, [articles, topics, tasks, scoresByArticleId, latestDiagnosisGap, platformStrategy.geoEnhancementGoal, publishBaseContext]);
+  }, [articles, topics, tasks, scoresByArticleId, latestDiagnosisGap, geoContentTaskSource, publishBaseContext]);
 
   const toggleExpand = (topicId: number) => {
     setExpandedTopicIds(prev => {
@@ -1025,15 +1063,17 @@ export default function WeeklyContentPage() {
   const findPendingTopicForPlatform = useCallback(
     (platformKey: WeeklyPlatformKey, topicRows: TopicRow[]) => {
       const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === platformKey)!;
+      const activeTaskId = geoContentTaskSource?.contentTaskId;
       return topicRows.find(t => {
         if (articleByTopicId.has(t.id)) return false;
         if (!isTopicBoundToProjectTasks(t, taskIdSet)) return false;
+        if (activeTaskId != null && t.optimizationTaskId !== activeTaskId) return false;
         const task = tasks.find(row => row.id === t.optimizationTaskId);
-        const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
+        const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         return matchTopicToPlatform(card?.recommendedPlatform ?? [], def.label);
       });
     },
-    [articleByTopicId, taskIdSet, tasks],
+    [articleByTopicId, taskIdSet, tasks, geoContentTaskSource?.contentTaskId],
   );
 
   const handlePlatformGenerate = async (platformKey: WeeklyPlatformKey) => {
@@ -1410,8 +1450,8 @@ export default function WeeklyContentPage() {
         </div>
       ) : showDiagnosisEmpty ? (
         <P0Card testId="weekly-no-diagnosis">
-          <p className="text-sm leading-relaxed text-gray-700">
-            暂无 AI 实测诊断结果。建议先完成 AI 实测诊断，再根据缺口生成平台化内容资产。
+          <p className="text-sm leading-relaxed text-gray-700" data-testid="weekly-no-diagnosis-message">
+            {GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE}
           </p>
           <Button
             type="button"
@@ -1424,30 +1464,14 @@ export default function WeeklyContentPage() {
         </P0Card>
       ) : (
         <>
-          <P0Card testId="weekly-round-goal">
-            <p className={geoP0Surfaces.sectionTitle}>本轮内容目标</p>
-            <p className="mt-2 text-sm text-gray-800">
-              {platformStrategy.geoEnhancementGoal || "覆盖目标搜索问题，提升品牌提及与 AI 推荐概率"}
-            </p>
-            {platformStrategy.targetQuestion.trim() ? (
-              <p className="mt-2 text-sm text-gray-600">
-                <span className="font-medium text-gray-500">关联问题：</span>
-                {platformStrategy.targetQuestion.trim()}
-              </p>
-            ) : null}
-          </P0Card>
-
-          <P0Card testId="weekly-strategy-source">
-            <p className={geoP0Surfaces.sectionTitle}>内容策略来源</p>
-            <p className="mt-2 text-sm text-gray-700">最近一次 AI 诊断</p>
-            {latestDiagnosisGap ? (
-              <p className="mt-2 text-sm text-gray-600" data-testid="diagnosis-gap-preview">
-                {latestDiagnosisGap}
-              </p>
-            ) : (
-              <p className="mt-2 text-sm text-gray-500">诊断任务已就绪，缺口说明将随诊断结果展示</p>
-            )}
-          </P0Card>
+          {geoContentTaskSource ? (
+            <GeoContentTaskPanels
+              source={geoContentTaskSource}
+              taskOptions={contentTaskOptions}
+              selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
+              onSelectTaskId={id => setSelectedContentTaskId(id)}
+            />
+          ) : null}
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
 
