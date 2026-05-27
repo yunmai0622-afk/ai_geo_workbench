@@ -14,23 +14,34 @@ import {
 } from "./projectPlatformAccounts";
 import { buildPublishCoverImageUrl, parseDataUrlCover } from "@shared/publishCoverPayload";
 import {
+  BINDING_PUBLISH_PLATFORMS,
   isBindingPublishPlatform,
   PUBLISH_PLATFORM_LABELS,
   publishBlockedNoLocalProfileMessage,
   publishBlockedSessionExpiredMessage,
   publishMustSelectAccountMessage,
 } from "@shared/platformAccountVerify";
+import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getContentQualityGateStatus } from "@shared/contentQualityGate";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 
-const publishPlatformSlugEnum = z.enum(["zhihu", "toutiao", "sohu", "baijiahao", "wechat"]);
+const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
-const PLATFORM_TO_PUBLISH_CHANNEL: Record<z.infer<typeof publishPlatformSlugEnum>, "知乎" | "头条号" | "搜狐号" | "百家号" | "微信公众号"> = {
+type PublishChannelLabel =
+  | "知乎"
+  | "头条号"
+  | "搜狐号"
+  | "百家号"
+  | "网易号"
+  | "微信公众号";
+
+const PLATFORM_TO_PUBLISH_CHANNEL: Record<z.infer<typeof publishPlatformSlugEnum>, PublishChannelLabel> = {
   zhihu: "知乎",
   toutiao: "头条号",
   sohu: "搜狐号",
   baijiahao: "百家号",
+  netease: "网易号",
   wechat: "微信公众号",
 };
 
@@ -132,6 +143,26 @@ export const publishTasksRouter = router({
           code: "BAD_REQUEST",
           message: "微信公众号请使用资产发布记录人工登记发布结果",
         });
+      }
+
+      if (input.platform === "netease") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "网易号当前本地客户端暂不支持自动发布，请使用人工发布登记",
+        });
+      }
+
+      const articlePlatform = getArticlePublishPlatform({
+        generationBasis: article.generationBasis ?? null,
+      });
+      if (
+        articlePlatform.recognized &&
+        articlePlatform.publishQueueSlug &&
+        articlePlatform.publishQueueSlug !== input.platform
+      ) {
+        console.warn(
+          `[publishTasks.create] platform mismatch article=${input.articleId} expected=${articlePlatform.publishQueueSlug} got=${input.platform}`,
+        );
       }
 
       if (!isBindingPublishPlatform(input.platform)) {

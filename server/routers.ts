@@ -90,6 +90,7 @@ import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
+import { resolveArticleListPublishFields } from "@shared/articlePublishPlatform";
 import { GEO_ENHANCEMENT_GOAL_OPTIONS, PUBLISH_PLATFORM_IDS } from "@shared/platformContentRules";
 import {
   PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
@@ -2040,12 +2041,20 @@ const geoRouter = router({
       return uniqueRows.map(article => {
         const task = article.optimizationTaskId ? taskById.get(article.optimizationTaskId) : undefined;
         const card = task ? parseOptimizationTaskCard(task.executionSuggestion) : null;
-        const targetPlatform = card?.recommendedPlatform?.length ? card.recommendedPlatform.join("、") : "";
+        const taskRecommendedPlatform = card?.recommendedPlatform?.length
+          ? card.recommendedPlatform.join("、")
+          : "";
+        const publishFields = resolveArticleListPublishFields({
+          generationBasis: article.generationBasis ?? null,
+          taskRecommendedPlatform: taskRecommendedPlatform || null,
+          articleType: article.articleType,
+        });
         const contentType = (card?.contentType && card.contentType.trim()) || article.articleType;
         const lifecycle = resolveArticleLifecycleView(article);
         return {
           ...article,
-          targetPlatform: targetPlatform || null,
+          targetPlatform: publishFields.targetPlatform,
+          publishPlatform: publishFields.publishPlatform,
           contentType,
           lifecycle,
           postPublish: {

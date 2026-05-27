@@ -1,7 +1,8 @@
 import type { PublishPlatformId } from "@shared/platformContentRules";
 import { PLATFORM_CONTENT_RULES, XIAOHONGSHU_STRATEGY_RESERVE } from "@shared/platformContentRules";
+import { normalizePublishPlatform, type WeeklyPlatformKey } from "@shared/articlePublishPlatform";
 
-export type WeeklyPlatformKey = "xiaohongshu" | "zhihu" | "sohu" | "netease" | "wechat" | "other";
+export type { WeeklyPlatformKey };
 
 export type WeeklyPlatformDef = {
   key: WeeklyPlatformKey;
@@ -64,16 +65,7 @@ export type PlatformContentCounts = {
 };
 
 export function normalizeWeeklyPlatformKey(raw: string | null | undefined): WeeklyPlatformKey {
-  const t = (raw ?? "").trim().toLowerCase();
-  if (!t) return "other";
-  if (t.includes("小红书") || t.includes("xiaohongshu")) return "xiaohongshu";
-  if (t.includes("知乎") || t === "zhihu") return "zhihu";
-  if (t.includes("搜狐") || t === "sohu") return "sohu";
-  if (t.includes("网易") || t === "netease") return "netease";
-  if (t.includes("公众号") || t.includes("微信") || t === "wechat") return "wechat";
-  if (t.includes("头条") || t === "toutiao") return "other";
-  if (t.includes("百家") || t === "baijiahao") return "other";
-  return "other";
+  return normalizePublishPlatform(raw).weeklyPlatformKey;
 }
 
 export function platformLabelFromPublishId(id: PublishPlatformId): string {

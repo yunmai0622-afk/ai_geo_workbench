@@ -37,12 +37,19 @@ import { trpc } from "@/lib/trpc";
 import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import {
+  BINDING_PUBLISH_PLATFORMS,
   isBindingPublishPlatform,
+  PUBLISH_PLATFORM_LABELS,
   publishBlockedNoAccountMessage,
   publishBlockedNoLocalProfileMessage,
   publishBlockedSessionExpiredMessage,
   publishMustSelectAccountMessage,
+  type BindingPublishPlatform,
 } from "@shared/platformAccountVerify";
+import {
+  getArticlePublishPlatform,
+  type ResolvedArticlePublishPlatform,
+} from "@shared/articlePublishPlatform";
 import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
 import { getContentQualityGateStatus } from "@shared/contentQualityGate";
 import { getGeoQualityLabel, type GeoQualityRecommendation } from "@shared/geoQualityReview";
@@ -115,6 +122,7 @@ type ArticleRow = {
   status?: string | null;
   createdAt?: Date | string | null;
   targetPlatform?: string | null;
+  publishPlatform?: string | null;
   contentType?: string | null;
   coverTemplate?: string | null;
   coverBase64?: string | null;
@@ -151,12 +159,10 @@ type QualityScoreRow = {
 };
 
 const GEO_TASK_CARD_MARK = "__GEO_TASK_CARD__";
-const PUBLISH_PLATFORMS = [
-  { slug: "zhihu" as const, label: "知乎" },
-  { slug: "toutiao" as const, label: "头条号" },
-  { slug: "sohu" as const, label: "搜狐号" },
-  { slug: "baijiahao" as const, label: "百家号" },
-];
+const PUBLISH_QUEUE_PLATFORMS = BINDING_PUBLISH_PLATFORMS.map(slug => ({
+  slug,
+  label: PUBLISH_PLATFORM_LABELS[slug],
+}));
 
 const publishTaskStatusLabel = publishTaskStatusCustomerLabel;
 
@@ -337,6 +343,9 @@ export default function WeeklyContentPage() {
   const [countError, setCountError] = useState<string | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishArticle, setPublishArticle] = useState<ArticleRow | null>(null);
+  const [publishPlatformResolved, setPublishPlatformResolved] = useState<ResolvedArticlePublishPlatform | null>(
+    null,
+  );
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -423,7 +432,7 @@ export default function WeeklyContentPage() {
       const boundLabel = getAccountGroupLabel(row.accountGroup) || "未设置账号组";
       out.push({
         slug,
-        platformLabel: PUBLISH_PLATFORMS.find(p => p.slug === slug)?.label ?? slug,
+        platformLabel: PUBLISH_QUEUE_PLATFORMS.find(p => p.slug === slug)?.label ?? slug,
         message: ACCOUNT_GROUP_MISMATCH_HINT(recLabel, boundLabel),
       });
     }
@@ -692,7 +701,11 @@ export default function WeeklyContentPage() {
         const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
         const article = articleByTopicId.get(topic.id);
         const platformKey = article
-          ? normalizeWeeklyPlatformKey(article.targetPlatform)
+          ? getArticlePublishPlatform({
+              generationBasis: article.generationBasis ?? null,
+              targetPlatform: article.targetPlatform,
+              publishPlatform: article.publishPlatform,
+            }).weeklyPlatformKey
           : normalizeWeeklyPlatformKey(card?.recommendedPlatform?.[0]);
         if (platformKey !== def.key) continue;
         if (!article) {
@@ -723,13 +736,15 @@ export default function WeeklyContentPage() {
         const keywords = Array.isArray(ps?.targetAiPlatforms)
           ? (ps.targetAiPlatforms as string[]).filter(x => typeof x === "string")
           : [];
+        const platformResolved = getArticlePublishPlatform({
+          generationBasis: a.generationBasis ?? null,
+          targetPlatform: a.targetPlatform,
+          publishPlatform: a.publishPlatform,
+        });
         return {
           id: a.id,
           title: a.title ?? topic?.title ?? "未命名内容",
-          targetPlatform:
-            typeof ps?.targetPublishPlatformLabel === "string"
-              ? ps.targetPublishPlatformLabel
-              : a.targetPlatform,
+          targetPlatform: platformResolved.recognized ? platformResolved.label : a.targetPlatform,
           contentGoal:
             typeof platformStrategy.geoEnhancementGoal === "string"
               ? platformStrategy.geoEnhancementGoal
@@ -796,7 +811,16 @@ export default function WeeklyContentPage() {
       toast.message("内容有优化空间，确认后可继续发布");
     }
     setPublishArticle(article);
-    const publishSlug = resolvePublishSlugForWeeklyPlatform(normalizeWeeklyPlatformKey(article.targetPlatform));
+    const resolved = getArticlePublishPlatform({
+      generationBasis: article.generationBasis ?? null,
+      targetPlatform: article.targetPlatform,
+      publishPlatform: article.publishPlatform,
+    });
+    setPublishPlatformResolved(resolved);
+    const publishSlug =
+      resolved.publishQueueSlug && resolved.supportedByLocalAgent && !resolved.queueBlockedReason
+        ? resolved.publishQueueSlug
+        : null;
     setSelectedPlatforms(publishSlug ? new Set([publishSlug]) : new Set());
     setSelectedPublishAccountIds({});
     void refreshLocalAgentHealth();
@@ -846,7 +870,14 @@ export default function WeeklyContentPage() {
   };
 
   const handlePlatformView = (platformKey: WeeklyPlatformKey) => {
-    const hit = articles.find(a => normalizeWeeklyPlatformKey(a.targetPlatform) === platformKey);
+    const hit = articles.find(
+      a =>
+        getArticlePublishPlatform({
+          generationBasis: a.generationBasis ?? null,
+          targetPlatform: a.targetPlatform,
+          publishPlatform: a.publishPlatform,
+        }).weeklyPlatformKey === platformKey,
+    );
     if (hit) openEditor(hit);
     else toast.message("该平台暂无已生成内容，请先点击「生成该平台内容」");
   };
@@ -980,6 +1011,10 @@ export default function WeeklyContentPage() {
       toast.error("请至少选择一个发布平台");
       return;
     }
+    if (publishPlatformResolved?.queueBlockedReason) {
+      toast.error(publishPlatformResolved.queueBlockedReason);
+      return;
+    }
     if (blockPublishIfUnsaved(publishArticle.id)) return;
     if (blockPublishIfQualityReject(publishArticle)) return;
     if (isGeoQualityScoreStale(publishArticle)) {
@@ -1033,7 +1068,7 @@ export default function WeeklyContentPage() {
         const picked = pickPublishAccount(slug)!;
         const res = await createPublishTask.mutateAsync({
           articleId,
-          platform: slug as (typeof PUBLISH_PLATFORMS)[number]["slug"],
+          platform: slug as BindingPublishPlatform,
           projectId: selectedProjectId,
           platformAccountId: picked.id,
         });
@@ -1061,7 +1096,11 @@ export default function WeeklyContentPage() {
   }
 
   const publishDialogSlug =
-    publishArticle && selectedPlatforms.size === 1 ? Array.from(selectedPlatforms)[0]! : null;
+    publishPlatformResolved?.publishQueueSlug &&
+    publishPlatformResolved.supportedByLocalAgent &&
+    !publishPlatformResolved.queueBlockedReason
+      ? publishPlatformResolved.publishQueueSlug
+      : null;
 
   return (
     <div className="space-y-8 pb-12" data-testid="weekly-platform-content-page">
@@ -1283,8 +1322,26 @@ export default function WeeklyContentPage() {
             ))}
           </div>
           <div className="space-y-3 py-2">
+            {publishPlatformResolved?.recognized ? (
+              <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
+                发布平台：<span className="font-medium">{publishPlatformResolved.label}</span>
+              </p>
+            ) : (
+              <p className="text-sm text-gray-400" data-testid="publish-dialog-platform-unknown">
+                {publishPlatformResolved?.queueBlockedReason ??
+                  "暂未识别本篇发布平台。请返回内容策略中选择平台后重新生成，或手动指定发布平台。"}
+              </p>
+            )}
+            {publishPlatformResolved?.recognized && publishPlatformResolved.queueBlockedReason ? (
+              <p
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+                data-testid="publish-dialog-platform-blocked"
+              >
+                {publishPlatformResolved.queueBlockedReason}
+              </p>
+            ) : null}
             {publishDialogSlug ? (
-              PUBLISH_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
+              PUBLISH_QUEUE_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
               const readyAccounts = isBindingPublishPlatform(p.slug) ? getPublishReadyAccountsForPlatform(p.slug) : [];
               const legacyAccounts = isBindingPublishPlatform(p.slug)
                 ? getAllEnabledAccountsForPlatform(p.slug).filter(
@@ -1355,9 +1412,7 @@ export default function WeeklyContentPage() {
                 </div>
               );
             })
-            ) : (
-              <p className="text-sm text-gray-400">暂未识别本篇发布平台</p>
-            )}
+            ) : null}
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             {Array.from(selectedPlatforms).some(
