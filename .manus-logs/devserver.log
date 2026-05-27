@@ -2546,3 +2546,10 @@
 [2026-05-27T02:26:37.986Z] 10:26:37 PM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
 [2026-05-27T02:26:37.987Z] 10:26:37 PM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx
 [2026-05-27T02:27:28.085Z] 10:27:28 PM [vite] (client) hmr update /src/index.css
+[2026-05-27T02:52:29.291Z] 10:52:29 PM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-27T02:52:29.392Z] 10:52:29 PM [tsx] change in ./server/publishTasksRouter.ts Restarting...
+[2026-05-27T02:52:31.142Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-27T02:52:36.028Z] Server running on http://localhost:3000/
+[2026-05-27T02:52:36.051Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-27T02:52:37.047Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-27T02:53:05.376Z] 10:53:05 PM [vite] (client) hmr update /src/index.css
