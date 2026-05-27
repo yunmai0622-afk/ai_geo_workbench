@@ -2601,3 +2601,18 @@
 [2026-05-27T04:47:49.621Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
 [2026-05-27T04:47:51.299Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-05-27T04:48:20.507Z] 12:48:20 AM [vite] (client) hmr update /src/index.css
+[2026-05-27T04:52:49.622Z] [定时实测] 开始执行 2026-05-27T04:52:49.622Z
+[2026-05-27T04:52:49.850Z] [定时实测] 找到 0 条需要检测的记录
+[2026-05-27T04:52:49.851Z] [定时实测] 本次执行完成 2026-05-27T04:52:49.850Z
+[2026-05-27T05:14:41.429Z] 1:14:41 AM [vite] (client) hmr update /src/index.css
+[2026-05-27T05:14:41.429Z] 1:14:41 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-05-27T05:14:41.430Z] 1:14:41 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-05-27T05:14:41.432Z] 1:14:41 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-27T05:14:41.433Z] 1:14:41 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-27T05:14:41.435Z] 1:14:41 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-27T05:14:41.532Z] 1:14:41 AM [tsx] change in ./shared/publishReadiness.ts Restarting...
+[2026-05-27T05:14:43.275Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-27T05:14:48.043Z] Server running on http://localhost:3000/
+[2026-05-27T05:14:48.044Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-27T05:14:50.030Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-27T05:15:36.985Z] 1:15:36 AM [vite] (client) hmr update /src/index.css
