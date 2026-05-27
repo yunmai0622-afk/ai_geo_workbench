@@ -77,7 +77,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
-import { toPlatformContentGenerationError } from "@shared/platformContentGenerationErrors";
+import { toPlatformContentGenerationError, PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE } from "@shared/platformContentGenerationErrors";
+import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
 
 type ProjectOption = { id: number; enterpriseName: string };
 
@@ -459,10 +460,15 @@ export default function WeeklyContentPage() {
   }, [analysisQuery.data]);
 
   const hasDiagnosisData = useMemo(() => {
+    if ((analysisQuery.data ?? []).length > 0) return true;
     if (tasks.length > 0) return true;
     return Boolean(latestDiagnosisGap);
-  }, [tasks.length, latestDiagnosisGap]);
+  }, [analysisQuery.data, tasks.length, latestDiagnosisGap]);
+
   const topics = (topicsQuery.data ?? []) as TopicRow[];
+  const taskIdSet = useMemo(() => taskIdSetFromList(tasks.map(t => t.id)), [tasks]);
+  const staleTopicCount = useMemo(() => countStaleTopics(topics, taskIdSet), [topics, taskIdSet]);
+  const hasStaleTopics = staleTopicCount > 0;
   const articles = (articlesQuery.data ?? []) as ArticleRow[];
   const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
 
@@ -507,7 +513,8 @@ export default function WeeklyContentPage() {
   useEffect(() => {
     if (!enabled || !queriesReady) return;
     if (autoTopicsTriggeredRef.current) return;
-    if (topics.length > 0 || tasks.length === 0) return;
+    if (tasks.length === 0) return;
+    if (topics.length > 0 && !hasStaleTopics) return;
 
     autoTopicsTriggeredRef.current = true;
     setPreparingTopics(true);
@@ -516,13 +523,22 @@ export default function WeeklyContentPage() {
       .then(async () => {
         await topicsQuery.refetch();
       })
-      .catch(() => {
-        toast.error("准备内容建议失败，请稍后重试");
+      .catch(err => {
+        toast.error(readGenerateArticleError(err));
       })
       .finally(() => {
         setPreparingTopics(false);
       });
-  }, [enabled, queriesReady, topics.length, tasks.length, selectedProjectId, generateTopicsMutation, topicsQuery]);
+  }, [
+    enabled,
+    queriesReady,
+    topics.length,
+    tasks.length,
+    hasStaleTopics,
+    selectedProjectId,
+    generateTopicsMutation,
+    topicsQuery,
+  ]);
 
   const invalidateArticles = useCallback(async () => {
     if (!selectedProjectId) return;
@@ -786,20 +802,43 @@ export default function WeeklyContentPage() {
     setPublishDialogOpen(true);
   };
 
-  const handlePlatformGenerate = (platformKey: WeeklyPlatformKey) => {
+  const findPendingTopicForPlatform = useCallback(
+    (platformKey: WeeklyPlatformKey, topicRows: TopicRow[]) => {
+      const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === platformKey)!;
+      return topicRows.find(t => {
+        if (articleByTopicId.has(t.id)) return false;
+        if (!isTopicBoundToProjectTasks(t, taskIdSet)) return false;
+        const task = tasks.find(row => row.id === t.optimizationTaskId);
+        const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
+        return matchTopicToPlatform(card?.recommendedPlatform ?? [], def.label);
+      });
+    },
+    [articleByTopicId, taskIdSet, tasks],
+  );
+
+  const handlePlatformGenerate = async (platformKey: WeeklyPlatformKey) => {
     const publishId = resolvePublishSlugForWeeklyPlatform(platformKey);
     if (publishId) {
       setPlatformStrategy(prev => ({ ...prev, targetPublishPlatform: publishId }));
     }
-    const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === platformKey)!;
-    const pending = topics.find(t => {
-      if (articleByTopicId.has(t.id)) return false;
-      const task = tasks.find(row => row.id === t.optimizationTaskId);
-      const card = parseGeoTaskCard(task?.executionSuggestion ?? null);
-      return matchTopicToPlatform(card?.recommendedPlatform ?? [], def.label);
-    });
+    let topicRows = topics;
+    let pending = findPendingTopicForPlatform(platformKey, topicRows);
+    if (!pending && tasks.length > 0) {
+      try {
+        await generateTopicsMutation.mutateAsync({
+          projectId: selectedProjectId!,
+          generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
+        });
+        const refetch = await topicsQuery.refetch();
+        topicRows = (refetch.data ?? []) as TopicRow[];
+        pending = findPendingTopicForPlatform(platformKey, topicRows);
+      } catch (err) {
+        toast.error(readGenerateArticleError(err));
+        return;
+      }
+    }
     if (!pending) {
-      toast.message(`${def.label} 暂无待生成方向，请先完成 AI 诊断或切换平台`);
+      toast.error(PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE);
       return;
     }
     void generateOne(pending.id);

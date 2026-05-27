@@ -91,7 +91,12 @@ import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import { GEO_ENHANCEMENT_GOAL_OPTIONS, PUBLISH_PLATFORM_IDS } from "@shared/platformContentRules";
-import { toPlatformContentGenerationError } from "@shared/platformContentGenerationErrors";
+import {
+  PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
+  PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
+  PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
+  toPlatformContentGenerationError,
+} from "@shared/platformContentGenerationErrors";
 import {
   assertEnterpriseProfileForPlatformGeneration,
   assertPlatformContentStrategyParams,
@@ -1698,9 +1703,10 @@ const geoRouter = router({
       const project = await requireProjectAccess(ctx, input.projectId);
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       if (analyses.length === 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析，再生成优化任务" });
+        throw new TRPCError({ code: "BAD_REQUEST", message: PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE });
       }
       const generated = await generateOptimizationTasks(project, resolveEffectiveAnalysisResults(analyses));
+      await db.delete(geoArticleTopics).where(eq(geoArticleTopics.projectId, input.projectId));
       await db.delete(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
       await db.insert(optimizationTasks).values(generated.map(task => ({ ...task, projectId: input.projectId })));
       await updateProjectStatus(input.projectId, "tasks_ready");
@@ -1970,7 +1976,18 @@ const geoRouter = router({
         const project = await requireProjectAccess(ctx, input.projectId);
         const tasks = await db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId));
         if (tasks.length === 0) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成内容诊断并生成优化任务，再准备本周内容。" });
+          const analyses = await db
+            .select({ id: analysisResults.id })
+            .from(analysisResults)
+            .where(eq(analysisResults.projectId, input.projectId))
+            .limit(1);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              analyses.length === 0
+                ? PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE
+                : PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
+          });
         }
         const generationCount = input.generationCount ?? 7;
         const generated = generateGeoArticleTopics({
@@ -2201,7 +2218,9 @@ const geoRouter = router({
       const projectRow = await requireProjectAccess(ctx, topic.projectId);
       const taskRows = topic.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, topic.optimizationTaskId)).limit(1) : [];
       const task = taskRows[0];
-      if (!task) throw new TRPCError({ code: "BAD_REQUEST", message: "文章选题必须绑定优化任务，不能生成无来源文章" });
+      if (!task || task.projectId !== topic.projectId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE });
+      }
       const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, topic.projectId));
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, topic.projectId));
       const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, topic.projectId));
@@ -2246,7 +2265,9 @@ const geoRouter = router({
         const raw = error instanceof Error ? error.message : "GEO 文章生成失败";
         const message = toPlatformContentGenerationError(raw);
         const isClientError =
-          /企业资料不足|请选择目标|不存在或无访问权限|文章选题不存在|必须绑定优化任务|请先完成/.test(message);
+          /企业资料不足|企业资料还缺少|生成依据还缺少|请选择目标|不存在或无访问权限|文章选题不存在|未绑定优化任务|内容选题|请先完成 AI 实测诊断|还没有生成内容优化任务|当前平台暂无/.test(
+            message,
+          );
         throw new TRPCError({ code: isClientError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message });
       }
       const inserted = await db.insert(geoArticles).values(draft).$returningId();

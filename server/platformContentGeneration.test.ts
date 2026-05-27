@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE,
+  PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
+  PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
   PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE,
   PLATFORM_CONTENT_PROFILE_INSUFFICIENT_MESSAGE,
+  PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
   toPlatformContentGenerationError,
 } from "@shared/platformContentGenerationErrors";
 import { buildDefaultPlatformStrategy } from "@shared/platformContentRules";
@@ -49,12 +52,22 @@ const tasks: P11TaskLike[] = [
 ];
 
 describe("platform content generation errors (P0)", () => {
-  it("maps profile, params, and AI failures to customer messages", () => {
+  it("maps profile, params, diagnosis gate, and AI failures to customer messages", () => {
     expect(toPlatformContentGenerationError("企业资料还缺少：产品服务。请先完善后再生成。")).toContain(
       "企业资料还缺少",
     );
     expect(toPlatformContentGenerationError("请填写目标问题")).toBe(PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE);
     expect(toPlatformContentGenerationError("LLM invoke failed: 503")).toBe(PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE);
+    expect(toPlatformContentGenerationError("请先完成 AI 语义分析，再生成优化任务")).toBe(
+      PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
+    );
+    expect(toPlatformContentGenerationError("请先生成优化任务，再生成内容模板")).toBe(
+      PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
+    );
+    expect(toPlatformContentGenerationError("文章选题必须绑定优化任务，不能生成无来源文章")).toBe(
+      PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
+    );
+    expect(toPlatformContentGenerationError("缺少生成依据：竞品差距")).toContain("生成依据还缺少");
   });
 
   it("rejects missing platform params", () => {

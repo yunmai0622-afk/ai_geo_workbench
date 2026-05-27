@@ -74,8 +74,9 @@ describe("platform content profile readiness (P0)", () => {
     ).toThrow(/企业资料还缺少/);
   });
 
-  it("does not treat diagnosis basis errors as generic profile insufficient", () => {
-    expect(toPlatformContentGenerationError("缺少生成依据：竞品差距")).toContain("AI 内容诊断");
+  it("maps generation basis errors to specific missing labels", () => {
+    expect(toPlatformContentGenerationError("缺少生成依据：竞品差距")).toContain("生成依据还缺少");
+    expect(toPlatformContentGenerationError("缺少生成依据：竞品差距")).not.toContain("AI 内容诊断并生成优化任务");
   });
 
   it("mergeProjectWithEnterpriseProfile fills projects row from profile", () => {
