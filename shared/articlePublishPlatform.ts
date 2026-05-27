@@ -36,6 +36,8 @@ export type ResolvedArticlePublishPlatform = {
 export type ArticlePublishPlatformSource = {
   targetPlatform?: string | null;
   publishPlatform?: string | null;
+  /** 优化任务卡片推荐平台（列表接口已合并进 targetPlatform，读档/审计可单独传入） */
+  taskRecommendedPlatform?: string | null;
   generationBasis?: Record<string, unknown> | null;
   lifecycle?: { platform?: string | null } | null;
 };
@@ -186,6 +188,7 @@ export function getArticlePublishPlatform(article: ArticlePublishPlatformSource)
     readPlatformFromGenerationBasis(article.generationBasis),
     article.publishPlatform,
     article.targetPlatform,
+    article.taskRecommendedPlatform,
     typeof article.lifecycle?.platform === "string" ? article.lifecycle.platform : null,
   ];
   for (const c of candidates) {
@@ -193,6 +196,19 @@ export function getArticlePublishPlatform(article: ArticlePublishPlatformSource)
     if (resolved.recognized) return resolved;
   }
   return normalizePublishPlatform(null);
+}
+
+/** 旧文章无平台字段时，允许用发布队列入参平台兜底（不修改库表） */
+export function resolveEffectiveArticlePublishPlatform(
+  article: ArticlePublishPlatformSource,
+  requestedPlatform?: BindingPublishPlatform | null,
+): ResolvedArticlePublishPlatform {
+  const fromArticle = getArticlePublishPlatform(article);
+  if (fromArticle.recognized) return fromArticle;
+  if (requestedPlatform && isBindingPublishPlatform(requestedPlatform)) {
+    return normalizePublishPlatform(requestedPlatform);
+  }
+  return fromArticle;
 }
 
 export function resolveArticleListPublishFields(input: {

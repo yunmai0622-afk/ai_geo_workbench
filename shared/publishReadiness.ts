@@ -1,5 +1,6 @@
 import {
   getArticlePublishPlatform,
+  resolveEffectiveArticlePublishPlatform,
   type ArticlePublishPlatformSlug,
   type ArticlePublishPlatformSource,
   type ResolvedArticlePublishPlatform,
@@ -97,7 +98,7 @@ const MESSAGES = {
   diagnosisRequired: "请先完成 AI 实测诊断并生成优化任务。",
   articleMissing: "请先生成平台内容。",
   platformUnknown:
-    "暂未识别本篇发布平台。请返回内容策略中选择平台后重新生成，或手动指定发布平台。",
+    "暂未识别本篇发布平台。请在下方手动选择发布平台，或返回内容策略重新生成带平台标记的内容。",
   qualityMissing: "当前内容尚未进行发布前质检，请先质检后发布。",
   qualityFailed: "当前内容未通过发布前质检，请先修改并重新质检。",
   qualityStale: "当前内容编辑后尚未重新质检，请重新质检后发布。",
@@ -269,7 +270,10 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
     });
   }
 
-  const resolved = getArticlePublishPlatform(input.article as ArticlePublishPlatformSource);
+  const resolved = resolveEffectiveArticlePublishPlatform(
+    input.article as ArticlePublishPlatformSource,
+    input.requestedPlatform ?? null,
+  );
   const platform = resolved.slug;
   const platformLabel = resolved.label;
 
@@ -278,8 +282,8 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
     return blocked({
       blockingCode: "PLATFORM_UNKNOWN",
       message: resolved.queueBlockedReason ?? MESSAGES.platformUnknown,
-      nextActionLabel: "返回内容策略",
-      nextActionTarget: "generate_content",
+      nextActionLabel: "手动指定发布平台",
+      nextActionTarget: null,
       platform,
       platformLabel,
       debugReasons,

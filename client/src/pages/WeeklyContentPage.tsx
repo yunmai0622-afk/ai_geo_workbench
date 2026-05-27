@@ -48,6 +48,7 @@ import {
 } from "@shared/platformAccountVerify";
 import {
   getArticlePublishPlatform,
+  resolveEffectiveArticlePublishPlatform,
   type ResolvedArticlePublishPlatform,
 } from "@shared/articlePublishPlatform";
 import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
@@ -380,6 +381,7 @@ export default function WeeklyContentPage() {
   const [countError, setCountError] = useState<string | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishArticle, setPublishArticle] = useState<ArticleRow | null>(null);
+  const [manualPublishPlatform, setManualPublishPlatform] = useState<BindingPublishPlatform | "">("");
   const [publishPlatformResolved, setPublishPlatformResolved] = useState<ResolvedArticlePublishPlatform | null>(
     null,
   );
@@ -531,11 +533,16 @@ export default function WeeklyContentPage() {
 
   const activePublishReadiness = useMemo(() => {
     if (!publishArticle) return null;
+    const requestedPlatform =
+      manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
+        ? manualPublishPlatform
+        : null;
     return evaluatePublishReadiness({
       ...publishBaseContext,
       article: publishArticle,
+      requestedPlatform,
     });
-  }, [publishArticle, publishBaseContext]);
+  }, [publishArticle, publishBaseContext, manualPublishPlatform]);
 
   const topics = (topicsQuery.data ?? []) as TopicRow[];
   const taskIdSet = useMemo(() => taskIdSetFromList(tasks.map(t => t.id)), [tasks]);
@@ -879,6 +886,7 @@ export default function WeeklyContentPage() {
       toast.message("内容有优化空间，确认后可继续发布");
     }
     setPublishArticle(article);
+    setManualPublishPlatform("");
     const resolved = getArticlePublishPlatform({
       generationBasis: article.generationBasis ?? null,
       targetPlatform: article.targetPlatform,
@@ -1151,12 +1159,43 @@ export default function WeeklyContentPage() {
     );
   }
 
-  const publishDialogSlug =
-    publishPlatformResolved?.publishQueueSlug &&
-    publishPlatformResolved.supportedByLocalAgent &&
-    !publishPlatformResolved.queueBlockedReason
-      ? publishPlatformResolved.publishQueueSlug
-      : null;
+  const effectivePublishResolved = useMemo(() => {
+    if (!publishArticle) return publishPlatformResolved;
+    const requested =
+      manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
+        ? manualPublishPlatform
+        : null;
+    return resolveEffectiveArticlePublishPlatform(
+      {
+        generationBasis: publishArticle.generationBasis ?? null,
+        targetPlatform: publishArticle.targetPlatform,
+        publishPlatform: publishArticle.publishPlatform,
+      },
+      requested,
+    );
+  }, [publishArticle, publishPlatformResolved, manualPublishPlatform]);
+
+  const publishDialogSlug = useMemo(() => {
+    const resolved = effectivePublishResolved ?? activePublishReadiness?.resolvedPlatform ?? null;
+    if (
+      resolved?.publishQueueSlug &&
+      resolved.supportedByLocalAgent &&
+      !resolved.queueBlockedReason
+    ) {
+      return resolved.publishQueueSlug;
+    }
+    if (manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)) {
+      return manualPublishPlatform;
+    }
+    return null;
+  }, [effectivePublishResolved, activePublishReadiness?.resolvedPlatform, manualPublishPlatform]);
+
+  useEffect(() => {
+    if (!publishDialogOpen) return;
+    if (publishDialogSlug) {
+      setSelectedPlatforms(new Set([publishDialogSlug]));
+    }
+  }, [publishDialogOpen, publishDialogSlug]);
 
   return (
     <div className="space-y-8 pb-12" data-testid="weekly-platform-content-page">
@@ -1375,12 +1414,46 @@ export default function WeeklyContentPage() {
             {activePublishReadiness?.resolvedPlatform?.recognized ? (
               <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
                 发布平台：<span className="font-medium">{activePublishReadiness.platformLabel}</span>
+                {!getArticlePublishPlatform({
+                  generationBasis: publishArticle?.generationBasis ?? null,
+                  targetPlatform: publishArticle?.targetPlatform,
+                  publishPlatform: publishArticle?.publishPlatform,
+                }).recognized && manualPublishPlatform ? (
+                  <span className="ml-1 text-xs text-amber-700">（手动指定）</span>
+                ) : null}
               </p>
             ) : (
-              <p className="text-sm text-gray-400" data-testid="publish-dialog-platform-unknown">
-                {activePublishReadiness?.message ??
-                  "暂未识别本篇发布平台。请返回内容策略中选择平台后重新生成，或手动指定发布平台。"}
-              </p>
+              <div className="space-y-2" data-testid="publish-dialog-platform-unknown">
+                <p className="text-sm text-amber-800">
+                  本篇为历史内容或未写入发布平台，无法自动识别。请手动选择发布平台后继续：
+                </p>
+                <label className="block text-xs font-medium text-gray-600" htmlFor="manual-publish-platform">
+                  手动指定发布平台
+                </label>
+                <select
+                  id="manual-publish-platform"
+                  className={aiInput}
+                  value={manualPublishPlatform}
+                  onChange={e => setManualPublishPlatform(e.target.value as BindingPublishPlatform | "")}
+                  data-testid="manual-publish-platform-select"
+                >
+                  <option value="">请选择</option>
+                  {PUBLISH_QUEUE_PLATFORMS.map(p => (
+                    <option key={p.slug} value={p.slug}>
+                      {p.label}
+                    </option>
+                  ))}
+                  <option value="" disabled>
+                    — 以下平台请人工发布 —
+                  </option>
+                  <option value="xiaohongshu" disabled>
+                    小红书（本地客户端暂不支持自动发布）
+                  </option>
+                  <option value="wechat" disabled>
+                    公众号（请使用资产发布记录人工登记）
+                  </option>
+                </select>
+              </div>
             )}
             {publishDialogSlug ? (
               PUBLISH_QUEUE_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {

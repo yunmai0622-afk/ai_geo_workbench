@@ -71,7 +71,18 @@ describe("publishReadiness evaluatePublishReadiness", () => {
       platformAccounts: [zhihuReadyAccount],
     });
     expect(r.blockingCode).toBe("PLATFORM_UNKNOWN");
-    expect(r.message).toMatch(/暂未识别本篇发布平台/);
+    expect(r.message).toMatch(/暂未识别本篇发布平台|手动选择发布平台/);
+  });
+
+  it("legacy article + requestedPlatform zhihu → not PLATFORM_UNKNOWN", () => {
+    const r = evaluatePublishReadiness({
+      ...baseContext,
+      article: { id: 99, generationBasis: {} },
+      requestedPlatform: "zhihu",
+      platformAccounts: [zhihuReadyAccount],
+    });
+    expect(r.blockingCode).not.toBe("PLATFORM_UNKNOWN");
+    expect(r.platformLabel).toMatch(/知乎/);
   });
 
   it("xiaohongshu → PLATFORM_UNSUPPORTED", () => {
