@@ -1,3 +1,4 @@
+import { formatTargetAiVisibilityReportSection } from "@shared/platformContentRules";
 import { invokeLLM } from "./_core/llm";
 
 export const generatedQuestionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
@@ -918,6 +919,8 @@ ${rawScoreSummary}
 本轮问题库覆盖情况为：**${coverageStats.totalQuestions} 条问题**，其中 **${coverageStats.aiGeneratedQuestions} 条 AI 生成问题**、**${coverageStats.specifiedQuestions} 条客户指定问题**。${specifiedQuestionBusinessMeaning} 本轮总共分析了 **${sampleCount} 条 AI 回答**。其中，${project.enterpriseName} 被提及 **${mentioned} 次**，被推荐 **${recommended} 次**，在竞品对比中体现胜出 **${wins} 次**。出现 ${project.enterpriseName} 的问题包括：${mentionQuestions.length > 0 ? mentionQuestions.join("；") : "当前报告生成上下文未取得逐题文本，需在后续复测中保留问题与分析映射。"} 被推荐的问题包括：${recommendedQuestions.length > 0 ? recommendedQuestions.join("；") : "本轮推荐样本较少，需优先提升推荐依据。"}
 
 更值得关注的是缺席问题。${absentHighIntentQuestions.length > 0 ? `在这些高意向问题中，${project.enterpriseName} 没有被提及：${absentHighIntentQuestions.join("；")}。` : "本轮未捕捉到明确的高意向缺席题目文本，但从提及率看仍存在可见度不足。"} 这些问题往往对应客户选型、购买和竞品比较，如果品牌缺席，意味着客户在 AI 搜索中可能直接进入竞品列表或通用平台推荐列表。
+
+${formatTargetAiVisibilityReportSection()}
 
 ## 5. AI 推荐与竞品对比
 ${competitorAnalysis} 从分析结果看，竞品被推荐的主要原因通常是公开资料更完整、产品能力更容易被 AI 归类、已有市场认知更强，或在知识付费平台、课程交付、私域经营等通用场景中语料更多。${competitorAnalysisItems.length > 0 ? `本轮与竞品相关的分析依据包括：${competitorAnalysisItems.join("；")}。` : "本轮竞品推荐原因样本有限，后续复测应继续观察竞品被推荐的具体理由。"}

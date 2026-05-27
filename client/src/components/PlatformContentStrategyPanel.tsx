@@ -2,11 +2,14 @@ import { aiGlassPanel, aiInput } from "@/lib/aiProductUi";
 import { cn } from "@/lib/utils";
 import {
   AI_SEARCH_PLATFORM_OPTIONS,
+  AI_VISIBILITY_TARGET_REGISTRY,
   GEO_ENHANCEMENT_GOAL_OPTIONS,
   PLATFORM_CONTENT_RULES,
   PLATFORM_CONTENT_TYPE_OPTIONS,
   PUBLISH_PLATFORM_IDS,
+  aiVisibilityTargetStatusLabel,
   formatPlatformRulesForPrompt,
+  getAiVisibilityTargetByLabel,
   type PlatformContentStrategyInput,
   type PublishPlatformId,
 } from "@shared/platformContentRules";
@@ -160,10 +163,16 @@ export default function PlatformContentStrategyPanel({
         </label>
 
         <fieldset className="space-y-2 md:col-span-2" data-testid="platform-target-ai-platforms">
-          <legend className="text-sm font-medium text-gray-700">目标 AI 平台（可见度语境）</legend>
+          <legend className="text-sm font-medium text-gray-700">目标 AI 平台（可见度增强）</legend>
+          <p className="text-xs leading-relaxed text-gray-500">
+            选择希望提升品牌可见度的 AI 平台。系统会围绕这些平台的搜索/问答场景组织问题、关键词和内容资产。
+            未真实实测的平台不会显示为已实测。
+          </p>
           <div className="flex flex-wrap gap-3">
             {AI_SEARCH_PLATFORM_OPTIONS.map(platform => {
               const checked = value.targetAiPlatforms.includes(platform);
+              const meta = getAiVisibilityTargetByLabel(platform);
+              const status = meta?.status ?? "enhancement";
               return (
                 <label
                   key={platform}
@@ -185,21 +194,50 @@ export default function PlatformContentStrategyPanel({
                       onChange({ ...value, targetAiPlatforms: next as AiSearchPlatform[] });
                     }}
                   />
-                  {platform}
+                  <span>
+                    {platform}
+                    <span className="ml-1 text-xs text-gray-400">
+                      ({aiVisibilityTargetStatusLabel(status)})
+                    </span>
+                  </span>
                 </label>
               );
             })}
           </div>
+          <p className="text-xs text-gray-400">
+            可选扩展（未接入实测）：
+            {AI_VISIBILITY_TARGET_REGISTRY.filter(p => p.status === "not_connected")
+              .map(p => p.label)
+              .join("、")}
+          </p>
         </fieldset>
       </div>
 
-      <details className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+      <details className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600" open>
         <summary className="cursor-pointer font-medium text-gray-800" data-testid="platform-rules-summary">
           {rule.label} 内容规则（生成时将写入 Prompt）
         </summary>
         <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-gray-500">
           {formatPlatformRulesForPrompt(value.targetPublishPlatform)}
         </pre>
+      </details>
+
+      <details className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+        <summary className="cursor-pointer font-medium text-gray-800" data-testid="all-platform-rules-overview">
+          全平台内容规则一览（8 个发布平台）
+        </summary>
+        <ul className="mt-3 space-y-3 text-xs leading-relaxed text-gray-600">
+          {PUBLISH_PLATFORM_IDS.map(id => {
+            const r = PLATFORM_CONTENT_RULES[id];
+            return (
+              <li key={id} className="rounded-lg border border-gray-100 bg-white px-3 py-2">
+                <p className="font-medium text-gray-800">{r.label}</p>
+                <p className="mt-1 text-gray-500">{r.positioning}</p>
+                <p className="mt-1 text-gray-400">标题：{r.titleRules.join("；")}</p>
+              </li>
+            );
+          })}
+        </ul>
       </details>
     </section>
   );

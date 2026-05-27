@@ -95,7 +95,15 @@ import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import { resolveArticleListPublishFields } from "@shared/articlePublishPlatform";
-import { GEO_ENHANCEMENT_GOAL_OPTIONS, PUBLISH_PLATFORM_IDS } from "@shared/platformContentRules";
+import {
+  GEO_ENHANCEMENT_GOAL_OPTIONS,
+  PUBLISH_PLATFORM_IDS,
+  formatTargetAiPlatformsForPrompt,
+  getDefaultTargetAiPlatforms,
+  normalizeTargetAiPlatforms,
+} from "@shared/platformContentRules";
+import { formatPlatformRuleSummaryForGeneration } from "@shared/geoContentTaskSource";
+import type { GeoContentTaskGenerationTrace } from "@shared/platformContentRules";
 import {
   PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
   PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
@@ -1411,7 +1419,8 @@ const geoRouter = router({
 - 不要以「竞品对比」作为内容建议方向
 - 内容建议应该是「帮客户解决问题」的视角，不是「证明自己比竞品强」的视角
 - 建议标题应该是客户会主动搜索的标题，不是品牌宣传标题
-- 「是否易提及」和「是否易推荐」必须独立判断，不要两个布尔值长期雷同（在合理解释前提下）`;
+- 「是否易提及」和「是否易推荐」必须独立判断，不要两个布尔值长期雷同（在合理解释前提下）
+- 结合用户选定的目标 AI 平台判断品牌可见度与内容缺口；不得将「可见度增强目标」平台伪装为已完成真实检测`;
 
         const platformItemSchema = {
           type: "string",
@@ -1448,6 +1457,8 @@ const geoRouter = router({
                   content: [
                     "企业信息：",
                     enterpriseInfo,
+                    "",
+                    formatTargetAiPlatformsForPrompt(getDefaultTargetAiPlatforms()),
                     "",
                     `客户问题：${q.questionText}`,
                     `用户意图：${intentLabel}`,
@@ -2237,6 +2248,9 @@ const geoRouter = router({
             targetQuestion: z.string().trim().optional(),
             geoEnhancementGoal: z.enum(GEO_ENHANCEMENT_GOAL_OPTIONS).optional(),
             targetAiPlatforms: z.array(z.string().min(1)).optional(),
+            contentTaskId: z.number().int().positive().optional(),
+            diagnosisFinding: z.string().trim().max(4000).optional(),
+            geoGap: z.string().trim().max(4000).optional(),
           })
           .superRefine((val, ctx) => {
             const hasPlatform = Boolean(val.targetPublishPlatform);
@@ -2329,11 +2343,28 @@ const geoRouter = router({
                 recommendedAccountGroup: input.recommendedAccountGroup ?? "official_group",
                 targetQuestion: input.targetQuestion.trim(),
                 geoEnhancementGoal: input.geoEnhancementGoal,
-                targetAiPlatforms: input.targetAiPlatforms as ("豆包" | "Kimi" | "DeepSeek")[],
+                targetAiPlatforms: normalizeTargetAiPlatforms(input.targetAiPlatforms),
               }
             : undefined;
         assertPlatformContentStrategyParams(platformStrategy);
         assertEnterpriseProfileForPlatformGeneration(projectRow, assetLibrary, platformStrategy);
+        let geoContentTaskTrace: GeoContentTaskGenerationTrace | undefined;
+        if (platformStrategy) {
+          const hasTrace =
+            input.contentTaskId != null ||
+            Boolean(input.diagnosisFinding?.trim()) ||
+            Boolean(input.geoGap?.trim());
+          if (hasTrace) {
+            geoContentTaskTrace = {
+              contentTaskId: input.contentTaskId ?? task.id,
+              diagnosisFinding: input.diagnosisFinding?.trim(),
+              geoGap: input.geoGap?.trim(),
+              platformRuleSummary: formatPlatformRuleSummaryForGeneration(
+                platformStrategy.targetPublishPlatform,
+              ),
+            };
+          }
+        }
         draft = await generateGeoArticleDraft({
           project,
           topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
@@ -2342,6 +2373,7 @@ const geoRouter = router({
           analyses: analysisScope.length > 0 ? analysisScope : analysesWithQuestions,
           assetLibrary,
           platformStrategy,
+          geoContentTaskTrace,
         });
       } catch (error) {
         const raw = error instanceof Error ? error.message : "GEO 文章生成失败";

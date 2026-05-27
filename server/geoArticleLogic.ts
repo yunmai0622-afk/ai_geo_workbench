@@ -3,9 +3,11 @@ import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import {
   buildPlatformContentStrategyMeta,
   formatPlatformRulesForPrompt,
+  formatTargetAiPlatformsForPrompt,
   getPlatformRule,
   getPlatformSpecificOutline,
   isPublishPlatformId,
+  type GeoContentTaskGenerationTrace,
   type PlatformContentStrategyInput,
 } from "@shared/platformContentRules";
 import { dedupeTargetQuestionRows } from "@shared/targetQuestionDedup";
@@ -1521,8 +1523,11 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
           `目标发布平台：${getPlatformRule(platformId).label}（本篇仅此平台，禁止一稿多平台改写）`,
           `内容类型：${typeof ps.contentTypeLabel === "string" ? ps.contentTypeLabel : ""}`,
           `GEO 增强目标：${typeof ps.geoEnhancementGoal === "string" ? ps.geoEnhancementGoal : ""}`,
-          `目标 AI 平台（可见度检测语境）：${Array.isArray(ps.targetAiPlatforms) ? ps.targetAiPlatforms.join("、") : "豆包、Kimi、DeepSeek"}`,
+          formatTargetAiPlatformsForPrompt(
+            Array.isArray(ps.targetAiPlatforms) ? (ps.targetAiPlatforms as string[]) : [],
+          ),
           formatPlatformRulesForPrompt(platformId),
+          "禁止一稿多平台改写；禁止将其它平台文体套用到本篇。",
           "【文章框架要求 — 本平台专属二级标题】",
           "二级标题请使用且仅使用以下精确文案（不得改用其它平台的标题序列）：",
           getPlatformSpecificOutline(platformId, brandName),
@@ -1665,12 +1670,13 @@ export async function generateGeoArticleDraft(input: {
   analyses: P11AnalysisLike[];
   assetLibrary?: P12AssetLibraryContext | null;
   platformStrategy?: PlatformContentStrategyInput;
+  geoContentTaskTrace?: GeoContentTaskGenerationTrace;
 }): Promise<P11ArticleDraft> {
   if (!input.topic.optimizationTaskId && !nonEmpty(input.topic.contentGap)) throw new Error("文章选题必须绑定任务或内容缺口。");
   const { project, topic, task } = input;
   let basis = buildGenerationBasis(input);
   if (input.platformStrategy) {
-    const meta = buildPlatformContentStrategyMeta(input.platformStrategy);
+    const meta = buildPlatformContentStrategyMeta(input.platformStrategy, input.geoContentTaskTrace);
     basis.platformContentStrategy = meta as unknown as Record<string, unknown>;
   }
   basis = enrichGenerationBasisForDraft(basis, { project, topic, task, platformStrategy: input.platformStrategy });

@@ -1,5 +1,28 @@
 import type { AccountGroupType, ContentAssetType, PublishIdentity } from "./contentStrategy";
 import { defaultRecommendedAccountGroup, defaultPublishIdentity } from "./contentStrategy";
+import {
+  AI_SEARCH_PLATFORM_OPTIONS,
+  formatTargetAiPlatformsForPrompt,
+  formatTargetAiVisibilityReportSection,
+  getDefaultTargetAiPlatforms,
+  normalizeTargetAiPlatforms,
+  type AiSearchPlatform,
+} from "./aiVisibilityTargets";
+
+export {
+  AI_SEARCH_PLATFORM_OPTIONS,
+  formatTargetAiPlatformsForPrompt,
+  formatTargetAiVisibilityReportSection,
+  getDefaultTargetAiPlatforms,
+  normalizeTargetAiPlatforms,
+  type AiSearchPlatform,
+};
+export {
+  AI_VISIBILITY_TARGET_REGISTRY,
+  aiVisibilityTargetStatusLabel,
+  getAiVisibilityTargetByLabel,
+  type AiVisibilityTargetStatus,
+} from "./aiVisibilityTargets";
 
 /**
  * 平台矩阵生成目标平台（用于内容生成隔离 / Prompt / 落库 / 展示一致性）。
@@ -17,10 +40,6 @@ export const PUBLISH_PLATFORM_IDS = [
 ] as const;
 
 export type PublishPlatformId = (typeof PUBLISH_PLATFORM_IDS)[number];
-
-export const AI_SEARCH_PLATFORM_OPTIONS = ["豆包", "Kimi", "DeepSeek"] as const;
-
-export type AiSearchPlatform = (typeof AI_SEARCH_PLATFORM_OPTIONS)[number];
 
 export const PLATFORM_CONTENT_TYPE_OPTIONS = [
   { value: "problem_solution", label: "问题回答型", strategyType: "problem_solution" as ContentAssetType },
@@ -47,116 +66,166 @@ export type PlatformContentRule = {
   label: string;
   materialKey: string;
   summary: string;
-  structureHints: string[];
-  toneHints: string[];
+  positioning: string;
+  suitableContentTypes: string[];
+  titleRules: string[];
+  bodyStructure: string[];
+  expressionStyle: string[];
+  geoFocus: string[];
   forbiddenPatterns: string[];
+  qualityCheckFocus: string[];
+  /** @deprecated 与 bodyStructure 同步 */
+  structureHints: string[];
+  /** @deprecated 与 expressionStyle 同步 */
+  toneHints: string[];
 };
 
+function definePlatformRule(
+  rule: Omit<PlatformContentRule, "structureHints" | "toneHints">,
+): PlatformContentRule {
+  return {
+    ...rule,
+    structureHints: rule.bodyStructure,
+    toneHints: rule.expressionStyle,
+  };
+}
+
 export const PLATFORM_CONTENT_RULES: Record<PublishPlatformId, PlatformContentRule> = {
-  xiaohongshu: {
+  xiaohongshu: definePlatformRule({
     id: "xiaohongshu",
     label: "小红书",
     materialKey: "小红书笔记版",
-    summary: "种草 / 场景笔记：痛点开头、清单步骤、避坑经验，适合搜索与收藏。",
-    structureHints: [
-      "开头用 1-2 段痛点/场景引入，避免知乎问答体",
-      "用小标题 + 清单/步骤/避坑组织，段落更短",
-      "结尾给出可执行清单与自检提示，避免绝对承诺",
+    summary: "生活方式 / 经验分享 / 种草 / 场景化搜索内容。",
+    positioning: "生活方式、经验分享、种草、场景化搜索。",
+    suitableContentTypes: ["痛点解决", "避坑清单", "实操步骤", "经验总结", "案例复盘"],
+    titleRules: ["口语化、场景化、结果导向", "可带痛点与收益，避免通稿式标题"],
+    bodyStructure: [
+      "开头 1-2 段场景/痛点引入",
+      "中间用小标题、清单、步骤组织",
+      "结尾给可执行建议与收藏/自检提示",
     ],
-    toneHints: ["更口语、更场景化", "强调经验与边界，不做效果保证"],
-    forbiddenPatterns: ["禁止写成知乎问答长文", "禁止媒体通稿式导语", "禁止夸大承诺与绝对排名"],
-  },
-  zhihu: {
+    expressionStyle: ["更口语、更具体、更场景化", "强调经验与边界，不做效果保证"],
+    geoFocus: ["覆盖用户真实搜索问题", "覆盖关键词、场景词、痛点词与解决方案词"],
+    forbiddenPatterns: [
+      "禁止知乎长问答口吻",
+      "禁止媒体通稿导语",
+      "禁止空泛宣传",
+      "禁止过度承诺与绝对排名",
+    ],
+    qualityCheckFocus: ["是否有场景引入", "是否有清单/步骤", "是否避免问答体", "是否无绝对承诺"],
+  }),
+  zhihu: definePlatformRule({
     id: "zhihu",
     label: "知乎",
     materialKey: "知乎回答版",
-    summary: "问题回答型：结构清楚、观点可信，适合长文与经验分享。",
-    structureHints: [
-      "开篇直接回应提问，避免媒体通稿式导语",
-      "用「回答要点 / 判断依据 / 实操建议 / 案例或数据 / 小结」组织，而非资讯稿五段式",
-      "每个小节要有可核验论据，可引用公开数据或脱敏案例",
+    summary: "问题搜索、专业回答、经验论证、认知型内容。",
+    positioning: "问题搜索、专业回答、经验论证、认知型内容。",
+    suitableContentTypes: ["问题回答", "方法论", "行业分析", "经验分享", "案例拆解"],
+    titleRules: ["使用明确问题句或强问题导向标题", "标题应像用户会主动搜索的问题"],
+    bodyStructure: [
+      "先给结论",
+      "再拆问题",
+      "再给原因、方法、案例",
+      "最后总结行动建议",
     ],
-    toneHints: ["第一人称经验或第三方观察者均可，但避免官腔通稿", "允许适度口语化，保持专业可信"],
-    forbiddenPatterns: ["禁止只改标题不改结构", "禁止写成搜狐号式品牌通稿"],
-  },
-  sohu: {
+    expressionStyle: ["专业、理性、有论证", "允许适度口语，避免官腔通稿"],
+    geoFocus: ["覆盖目标问题与长尾问题", "覆盖专业术语与场景化问法", "提高 AI 引用概率"],
+    forbiddenPatterns: ["禁止小红书种草口吻", "禁止标题党", "禁止只有观点没有论证"],
+    qualityCheckFocus: ["开篇是否直接回应提问", "是否有论据/案例", "是否非种草体"],
+  }),
+  sohu: definePlatformRule({
     id: "sohu",
     label: "搜狐号",
     materialKey: "搜狐号版",
-    summary: "品牌稿 / 行业分析型：标题正式，结构偏媒体稿，强调品牌实体与行业价值。",
-    structureHints: [
-      "标题偏正式、信息完整，突出行业与品牌实体",
-      "采用「行业背景 / 品牌定位 / 能力拆解 / 客户价值 / 趋势判断」媒体稿结构",
-      "避免知乎问答体、避免种草口语",
-    ],
-    toneHints: ["客观媒体叙述", "强调行业价值与品牌可信度"],
-    forbiddenPatterns: ["禁止使用知乎问答开头", "禁止小红书式短段落堆叠"],
-  },
-  toutiao: {
-    id: "toutiao",
-    label: "头条号",
-    materialKey: "头条号版",
-    summary: "大众化表达、信息密度高，标题明确，适合知识科普与观点内容。",
-    structureHints: [
-      "标题直接点出读者收益或结论",
-      "短段落 + 小标题，信息密度高，前 200 字给出核心观点",
-      "用「核心观点 / 背景 / 方法 / 注意事项 / 总结」科普结构",
-    ],
-    toneHints: ["大众化、易扫读", "避免过长学术化段落"],
-    forbiddenPatterns: ["禁止照搬知乎长问答结构", "禁止搜狐式过度正式通稿"],
-  },
-  baijiahao: {
-    id: "baijiahao",
-    label: "百家号",
-    materialKey: "百家号版",
-    summary: "搜索友好：结构清晰、品牌实体明确，强调问答覆盖与可信来源。",
-    structureHints: [
-      "H2 标题尽量贴近搜索问法",
-      "显式写出品牌实体、服务边界、适用人群",
-      "包含 FAQ 式小节，标注信息来源或核对方式",
-    ],
-    toneHints: ["克制、可检索", "强调可信来源与可验证表述"],
-    forbiddenPatterns: ["禁止仅换标题的同质化正文", "禁止缺少品牌实体说明"],
-  },
-  netease: {
+    summary: "媒体稿、品牌背书、搜索收录、行业认知。",
+    positioning: "媒体稿、品牌背书、搜索收录、行业认知。",
+    suitableContentTypes: ["行业稿", "品牌稿", "趋势分析", "企业观点", "解决方案文章"],
+    titleRules: ["正式、完整、搜索友好", "突出行业与品牌价值"],
+    bodyStructure: ["行业背景", "问题现状", "解决方案", "企业/品牌能力", "总结"],
+    expressionStyle: ["客观、正式、媒体化", "强调行业价值与品牌可信度"],
+    geoFocus: ["强化企业主体与行业关键词", "强化解决方案词与品牌可信度"],
+    forbiddenPatterns: ["禁止知乎问答体", "禁止小红书口语化", "禁止过度营销"],
+    qualityCheckFocus: ["是否媒体稿结构", "是否突出品牌实体", "是否无问答开头"],
+  }),
+  netease: definePlatformRule({
     id: "netease",
     label: "网易号",
     materialKey: "网易号版",
-    summary: "资讯型 / 观点型：行业趋势 + 品牌观点，适合观察稿。",
-    structureHints: [
-      "以行业趋势或现象切入，再落到品牌观点",
-      "采用「趋势观察 / 原因分析 / 方案讨论 / 品牌观点 / 读者行动」结构",
-      "避免纯问答体或种草笔记体",
-    ],
-    toneHints: ["资讯观察 + 适度观点", "不夸大承诺"],
-    forbiddenPatterns: ["禁止知乎问答体", "禁止头条式过度标题党"],
-  },
-  wechat: {
+    summary: "资讯观察、观点表达、行业分析、内容分发。",
+    positioning: "资讯观察、观点表达、行业分析、内容分发。",
+    suitableContentTypes: ["行业观察", "趋势判断", "观点稿", "品牌故事"],
+    titleRules: ["观点明确，有信息量", "适合推荐流点击"],
+    bodyStructure: ["现象引入", "观点判断", "案例/数据支撑", "方法建议", "总结"],
+    expressionStyle: ["信息密度高", "有观点但不过度营销"],
+    geoFocus: ["增强行业语境与实体关系", "强化品牌与解决方案关联"],
+    forbiddenPatterns: ["禁止流水账", "禁止软广味过重", "禁止无结论"],
+    qualityCheckFocus: ["是否有明确观点", "是否有现象-观点-支撑链", "是否非问答体"],
+  }),
+  wechat: definePlatformRule({
     id: "wechat",
     label: "公众号",
     materialKey: "公众号长文版",
-    summary: "私域教育 / 深度长文：结构完整、可转发沉淀，包含 FAQ 与案例边界说明。",
-    structureHints: [
-      "采用深度长文结构：背景/问题拆解/方法/案例或证据/FAQ/行动建议",
-      "保持信息密度，但段落可更长，适合沉淀与转发",
-      "增加读者自检与复测说明，避免承诺效果",
+    summary: "私域沉淀、深度教育、服务转化、长期信任。",
+    positioning: "私域沉淀、深度教育、服务转化、长期信任。",
+    suitableContentTypes: ["深度长文", "案例复盘", "FAQ", "客户教育", "产品方法论"],
+    titleRules: ["清晰、有价值感", "适合转发和收藏"],
+    bodyStructure: [
+      "开头建立问题共鸣",
+      "中段系统拆解",
+      "加入案例/方法/清单",
+      "结尾引导咨询或下一步行动",
     ],
-    toneHints: ["更完整的叙事与教育感", "语气克制、可核验"],
-    forbiddenPatterns: ["禁止知乎问答开头", "禁止小红书碎片化短段落堆叠", "禁止绝对化承诺"],
-  },
-  other: {
+    expressionStyle: ["稳重、可信、有陪伴感", "克制、可核验"],
+    geoFocus: ["沉淀企业方法论与服务能力", "沉淀客户场景与品牌可信资产"],
+    forbiddenPatterns: ["禁止短平快碎片化", "禁止过度标题党", "禁止无转化路径"],
+    qualityCheckFocus: ["是否深度长文结构", "是否有 FAQ/案例", "是否有行动建议"],
+  }),
+  baijiahao: definePlatformRule({
+    id: "baijiahao",
+    label: "百家号",
+    materialKey: "百家号版",
+    summary: "百度搜索生态、关键词收录、问答搜索匹配。",
+    positioning: "百度搜索生态、关键词收录、问答搜索匹配。",
+    suitableContentTypes: ["搜索型文章", "问题解决", "行业知识", "品牌百科型内容"],
+    titleRules: ["关键词明确，适合百度搜索", "标题贴近搜索问法"],
+    bodyStructure: ["问题定义", "原因分析", "解决方案", "品牌/企业能力", "常见问题补充"],
+    expressionStyle: ["清晰、标准、搜索友好", "强调可信来源"],
+    geoFocus: ["加强百度搜索关键词与问答词", "加强实体词与品牌词覆盖"],
+    forbiddenPatterns: ["禁止语义过散", "禁止标题不含核心关键词", "禁止内容过短"],
+    qualityCheckFocus: ["标题是否含核心词", "是否有 FAQ", "是否写明品牌实体"],
+  }),
+  toutiao: definePlatformRule({
+    id: "toutiao",
+    label: "头条号",
+    materialKey: "头条号版",
+    summary: "推荐流、搜索、热点观点、信息分发。",
+    positioning: "推荐流、搜索、热点观点、信息分发。",
+    suitableContentTypes: ["观点稿", "问题解释", "清单型内容", "行业判断"],
+    titleRules: ["观点明确，信息密度高", "适合推荐点击"],
+    bodyStructure: ["现象/问题开头", "核心观点", "原因拆解", "解决建议", "总结"],
+    expressionStyle: ["直接、有观点、有信息量", "短段落、易扫读"],
+    geoFocus: ["覆盖用户关心的问题", "覆盖行业词、场景词与解决方案词"],
+    forbiddenPatterns: ["禁止空泛", "禁止无观点", "禁止过度营销"],
+    qualityCheckFocus: ["前段是否给出核心观点", "是否有明确立场", "是否非通稿体"],
+  }),
+  other: definePlatformRule({
     id: "other",
     label: "其他平台",
     materialKey: "其他平台通用版",
-    summary: "人工补充渠道：结构清晰、可检索、平台中性，禁止覆盖明确平台。",
-    structureHints: [
-      "结构清晰、标题偏搜索友好",
-      "保持平台中性表达：不使用知乎问答口吻，不使用小红书强种草口吻",
-      "包含 FAQ 与可核验证据说明",
+    summary: "人工补充渠道、非标准平台、客户自定义场景。",
+    positioning: "人工补充渠道、非标准平台、客户自定义平台。",
+    suitableContentTypes: ["按客户指定场景生成", "通用问题解决", "品牌能力说明"],
+    titleRules: ["默认使用搜索友好标题", "点明问题与收益"],
+    bodyStructure: ["问题背景", "解决方案", "品牌能力", "总结建议"],
+    expressionStyle: ["通用、稳健、可迁移", "平台中性"],
+    geoFocus: ["覆盖目标关键词、品牌词、产品词、问题词"],
+    forbiddenPatterns: [
+      "禁止覆盖用户已选明确平台规则",
+      "若用户选择了明确平台，不得落到 other 风格",
+      "禁止绝对化承诺",
     ],
-    toneHints: ["中性、可复用", "强调事实与边界"],
-    forbiddenPatterns: ["禁止默认写成知乎", "禁止冒充已接入平台自动发布", "禁止绝对化承诺"],
-  },
+    qualityCheckFocus: ["是否平台中性", "是否有问题-方案-能力结构", "是否可检索"],
+  }),
 };
 
 export type PlatformContentStrategyInput = {
@@ -180,14 +249,23 @@ export function getPlatformRule(platformId: PublishPlatformId): PlatformContentR
 export function formatPlatformRulesForPrompt(platformId: PublishPlatformId): string {
   const rule = getPlatformRule(platformId);
   return [
-    `平台：${rule.label}`,
-    rule.summary,
-    "结构要求：",
-    ...rule.structureHints.map(h => `- ${h}`),
-    "表达要求：",
-    ...rule.toneHints.map(h => `- ${h}`),
-    "禁止：",
+    `【当前发布平台内容规则 — ${rule.label}】`,
+    `平台定位：${rule.positioning}`,
+    "适合内容类型：",
+    ...rule.suitableContentTypes.map(h => `- ${h}`),
+    "标题规则：",
+    ...rule.titleRules.map(h => `- ${h}`),
+    "正文结构：",
+    ...rule.bodyStructure.map(h => `- ${h}`),
+    "表达风格：",
+    ...rule.expressionStyle.map(h => `- ${h}`),
+    "GEO 强化重点：",
+    ...rule.geoFocus.map(h => `- ${h}`),
+    "禁止事项：",
     ...rule.forbiddenPatterns.map(h => `- ${h}`),
+    "质检重点：",
+    ...rule.qualityCheckFocus.map(h => `- ${h}`),
+    "硬性要求：本篇仅适配该平台，禁止一稿多发；禁止串用其它平台文体（如知乎问答体、小红书种草体、搜狐通稿体）。",
   ].join("\n");
 }
 
@@ -300,8 +378,8 @@ export function buildDefaultPlatformStrategy(partial?: Partial<PlatformContentSt
     targetQuestion: partial?.targetQuestion?.trim() ?? "",
     geoEnhancementGoal: partial?.geoEnhancementGoal ?? "覆盖目标问题",
     targetAiPlatforms: partial?.targetAiPlatforms?.length
-      ? partial.targetAiPlatforms
-      : [...AI_SEARCH_PLATFORM_OPTIONS],
+      ? normalizeTargetAiPlatforms(partial.targetAiPlatforms)
+      : getDefaultTargetAiPlatforms(),
   };
 }
 
@@ -309,9 +387,18 @@ export function validatePlatformContentStrategy(input: PlatformContentStrategyIn
   if (!isPublishPlatformId(input.targetPublishPlatform)) return "请选择目标发布平台";
   if (!input.targetQuestion.trim()) return "请填写目标问题";
   if (!GEO_ENHANCEMENT_GOAL_OPTIONS.includes(input.geoEnhancementGoal)) return "请选择 GEO 增强目标";
-  if (!input.targetAiPlatforms.length) return "请至少选择一个目标 AI 平台";
+  const normalized = normalizeTargetAiPlatforms(input.targetAiPlatforms);
+  if (!normalized.length) return "请至少选择一个目标 AI 平台";
   return null;
 }
+
+/** 平台化生成时写入 generation_basis.platformContentStrategy 的可追溯字段（不改表结构） */
+export type GeoContentTaskGenerationTrace = {
+  contentTaskId?: number;
+  diagnosisFinding?: string;
+  geoGap?: string;
+  platformRuleSummary?: string;
+};
 
 export type PlatformContentStrategyMeta = PlatformContentStrategyInput & {
   targetPublishPlatformLabel: string;
@@ -319,9 +406,15 @@ export type PlatformContentStrategyMeta = PlatformContentStrategyInput & {
   platformRulesSummary: string;
   platformAdaptationNotes: string;
   geoQualitySelfCheckOutline: string;
+  contentTaskId?: number;
+  diagnosisFinding?: string;
+  geoGap?: string;
 };
 
-export function buildPlatformContentStrategyMeta(input: PlatformContentStrategyInput): PlatformContentStrategyMeta {
+export function buildPlatformContentStrategyMeta(
+  input: PlatformContentStrategyInput,
+  trace?: GeoContentTaskGenerationTrace,
+): PlatformContentStrategyMeta {
   const rule = getPlatformRule(input.targetPublishPlatform);
   const typeLabel =
     PLATFORM_CONTENT_TYPE_OPTIONS.find(o => o.strategyType === input.contentStrategyType)?.label ??
@@ -330,12 +423,15 @@ export function buildPlatformContentStrategyMeta(input: PlatformContentStrategyI
     ...input,
     targetPublishPlatformLabel: rule.label,
     contentTypeLabel: typeLabel,
-    platformRulesSummary: rule.summary,
+    platformRulesSummary: trace?.platformRuleSummary?.trim() || rule.summary,
     platformAdaptationNotes: [
       `本篇仅适配${rule.label}，采用该平台专属结构，不得与其它平台共用同一套正文。`,
       ...rule.structureHints,
     ].join(" "),
     geoQualitySelfCheckOutline:
       "生成后将自动运行 GEO 质量检查；请确认目标问题覆盖、品牌提及、可引用片段与合规表述。",
+    ...(trace?.contentTaskId != null ? { contentTaskId: trace.contentTaskId } : {}),
+    ...(trace?.diagnosisFinding?.trim() ? { diagnosisFinding: trace.diagnosisFinding.trim() } : {}),
+    ...(trace?.geoGap?.trim() ? { geoGap: trace.geoGap.trim() } : {}),
   };
 }
