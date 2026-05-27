@@ -2621,3 +2621,12 @@
 [2026-05-27T05:19:48.271Z] [定时实测] 本次执行完成 2026-05-27T05:19:48.269Z
 [2026-05-27T06:27:28.511Z] 2:27:28 AM [vite] (client) hmr update /src/index.css
 [2026-05-27T06:28:26.682Z] 2:28:26 AM [vite] (client) hmr update /src/index.css
+[2026-05-27T07:10:31.124Z] 3:10:31 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-27T07:10:31.128Z] 3:10:31 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-27T07:10:31.129Z] 3:10:31 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-27T07:10:31.226Z] 3:10:31 AM [tsx] change in ./shared/articlePublishPlatform.ts Restarting...
+[2026-05-27T07:10:33.045Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-27T07:10:37.796Z] Server running on http://localhost:3000/
+[2026-05-27T07:10:37.796Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-27T07:10:39.344Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-27T07:11:54.188Z] 3:11:54 AM [vite] (client) hmr update /src/index.css
