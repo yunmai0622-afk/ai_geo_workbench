@@ -1,4 +1,3 @@
-import { AiStatusBadge } from "@/components/ai/ProductUi";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { Button } from "@/components/ui/button";
@@ -45,6 +44,7 @@ import {
   publishMustSelectAccountMessage,
 } from "@shared/platformAccountVerify";
 import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
+import { getContentQualityGateStatus } from "@shared/contentQualityGate";
 import { getGeoQualityLabel, type GeoQualityRecommendation } from "@shared/geoQualityReview";
 import {
   GEO_QUALITY_STALE_PUBLISH_HINT,
@@ -142,10 +142,6 @@ function formatGeoQualitySummary(article: ArticleRow): string | null {
   const label = getGeoQualityLabel(article.geoQualityRecommendation as GeoQualityRecommendation);
   const stale = isGeoQualityScoreStale(article) ? " · 待重新质检" : "";
   return `GEO 质量：${article.geoQualityScore} 分 · ${label}${stale}`;
-}
-
-function hasGeoQualityReview(article: ArticleRow): boolean {
-  return article.geoQualityScore != null && article.geoQualityRecommendation != null;
 }
 
 type QualityScoreRow = {
@@ -678,6 +674,11 @@ export default function WeeklyContentPage() {
     return Number(countPreset);
   }, [batchState, countPreset, customCount]);
 
+  const publishQualityGate = useMemo(
+    () => (publishArticle ? getContentQualityGateStatus(publishArticle) : null),
+    [publishArticle],
+  );
+
   const platformBoardRows = useMemo((): PlatformBoardRow[] => {
     return WEEKLY_PLATFORM_DEFS.map(def => {
       const counts: PlatformContentCounts = {
@@ -1017,6 +1018,11 @@ export default function WeeklyContentPage() {
         return;
       }
     }
+    const publishGate = getContentQualityGateStatus(publishArticle);
+    if (!publishGate.passed) {
+      toast.error(publishGate.message);
+      return;
+    }
     if (!articleCoverPreviewSrc(publishArticle)) {
       toast.message("当前文章暂无封面，将先发布正文；可在「编辑内容」中生成封面后重试");
     }
@@ -1230,20 +1236,27 @@ export default function WeeklyContentPage() {
               <p className="mt-2 text-xs text-blue-700">
                 任务将发送至本地 GEO 发布客户端，由本篇对应平台账号执行填稿。
               </p>
-              <p className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-blue-800">
                 客户端状态：
                 {localAgentOnline === true ? (
-                  <AiStatusBadge tone="success">已连接</AiStatusBadge>
+                  <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                    已连接
+                  </span>
                 ) : localAgentOnline === false ? (
-                  <AiStatusBadge tone="warning">未连接</AiStatusBadge>
+                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    未连接
+                  </span>
                 ) : (
-                  <span className="text-gray-400">检测中…</span>
+                  <span className="text-gray-500">检测中…</span>
                 )}
               </p>
             </div>
-            {publishArticle && !hasGeoQualityReview(publishArticle) ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                当前内容尚未进行发布前质检，建议先质检后发布。
+            {publishQualityGate && !publishQualityGate.passed ? (
+              <p
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+                data-testid="publish-quality-gate-hint"
+              >
+                {publishQualityGate.message}
               </p>
             ) : null}
             {publishArticle && isGeoQualityScoreStale(publishArticle) ? (
@@ -1369,7 +1382,11 @@ export default function WeeklyContentPage() {
               <Button
                 type="button"
                 className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
-                disabled={createPublishTask.isPending || selectedPlatforms.size === 0}
+                disabled={
+                  createPublishTask.isPending ||
+                  selectedPlatforms.size === 0 ||
+                  (publishQualityGate != null && !publishQualityGate.passed)
+                }
                 onClick={() => void handleConfirmPublish()}
               >
                 {createPublishTask.isPending ? "提交中..." : "确认加入队列"}

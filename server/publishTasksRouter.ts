@@ -21,6 +21,7 @@ import {
   publishMustSelectAccountMessage,
 } from "@shared/platformAccountVerify";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { getContentQualityGateStatus } from "@shared/contentQualityGate";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 
 const publishPlatformSlugEnum = z.enum(["zhihu", "toutiao", "sohu", "baijiahao", "wechat"]);
@@ -119,6 +120,11 @@ export const publishTasksRouter = router({
       const article = articleRows[0];
       if (!article || article.projectId !== input.projectId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+      }
+
+      const qualityGate = getContentQualityGateStatus(article);
+      if (!qualityGate.passed) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: qualityGate.message });
       }
 
       if (input.platform === "wechat") {
