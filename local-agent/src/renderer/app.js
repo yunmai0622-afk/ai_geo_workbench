@@ -7,6 +7,10 @@ const PLATFORM_LABELS = {
   wechat: "公众号",
 };
 
+/** 与 BINDING_PUBLISH_PLATFORMS 对齐 */
+const CREATABLE_PLATFORMS = new Set(["zhihu", "sohu", "baijiahao", "toutiao", "netease"]);
+const PENDING_PLATFORMS = new Set(["xiaohongshu", "wechat"]);
+
 const STATUS_LABELS = {
   pending_agent: "等待处理",
   agent_processing: "处理中",
@@ -311,10 +315,14 @@ function renderAccounts() {
     const li = document.createElement("li");
     li.className = `platform-item ${platform === selectedPlatform ? "active" : ""}`;
     li.setAttribute("data-platform", platform);
+    const pendingTag = PENDING_PLATFORMS.has(platform)
+      ? '<span class="platform-item-pending">暂未接入</span>'
+      : "";
     li.innerHTML = `
       <span class="platform-item-name">${PLATFORM_LABELS[platform]}</span>
       <span class="platform-item-count">${count} 个账号</span>
       <span class="platform-item-status ${statusClass}">${statusText}</span>
+      ${pendingTag}
     `;
     li.onclick = () => {
       selectedPlatform = platform;
@@ -335,16 +343,29 @@ function renderAccountsMain() {
   const platform = selectedPlatform;
   const label = PLATFORM_LABELS[platform] ?? platform;
   const list = dashboard.accounts.filter((a) => a.platform === platform);
+  const canCreate = CREATABLE_PLATFORMS.has(platform);
+  const isPending = PENDING_PLATFORMS.has(platform);
 
   headerEl.innerHTML = `
     <div class="accounts-main-title-row">
       <div>
         <h3 class="accounts-main-title">${label}账号环境</h3>
         <p class="accounts-main-desc">在这里管理本机${label}登录环境。登录状态仅保存在本机，不上传密码或 Cookie。</p>
+        ${
+          isPending
+            ? `<p class="accounts-main-desc warn-text">平台「${label}」暂未接入账号环境创建。</p>`
+            : ""
+        }
       </div>
-      <button type="button" data-create="${platform}" class="btn-create-right" onclick="void window.agentApi.createPlatformProfile('${platform}').then(r => { appendLiveLog(r.message || '已创建', !r.ok); refresh(); })">创建${label}账号环境</button>
+      <button type="button" data-create="${platform}" class="btn-create-right" ${
+        canCreate ? "" : "disabled"
+      }>创建${label}账号环境</button>
     </div>
   `;
+  const createBtn = headerEl.querySelector(".btn-create-right");
+  if (createBtn && canCreate) {
+    createBtn.onclick = () => void handleCreatePlatformProfile(platform);
+  }
 
   contentEl.innerHTML = "";
   if (list.length === 0) {
@@ -509,6 +530,11 @@ async function refresh() {
 }
 
 /* ===== Tabs ===== */
+function switchToTab(tabId) {
+  const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  if (btn) btn.click();
+}
+
 function initTabs() {
   document.querySelectorAll(".tab").forEach((btn) => {
     btn.onclick = () => {
@@ -526,6 +552,30 @@ function initTabs() {
       }
     };
   });
+}
+
+async function handleCreatePlatformProfile(platform) {
+  if (!window.agentApi?.createPlatformProfile) {
+    appendLiveLog("客户端 API 未就绪，请重启本地发布客户端", true);
+    return;
+  }
+  const label = PLATFORM_LABELS[platform] ?? platform;
+  if (PENDING_PLATFORMS.has(platform)) {
+    appendLiveLog(`平台「${label}」暂未接入账号环境创建，请等待后续版本`, true);
+    return;
+  }
+  if (!CREATABLE_PLATFORMS.has(platform)) {
+    appendLiveLog(`不支持的平台：${label}`, true);
+    return;
+  }
+  appendLiveLog(`正在创建${label}账号环境…`, false);
+  try {
+    const r = await window.agentApi.createPlatformProfile(platform);
+    appendLiveLog(r.message || (r.ok ? "已创建账号环境" : "创建失败"), !r.ok);
+    await refresh();
+  } catch (e) {
+    appendLiveLog(`创建账号环境失败：${e instanceof Error ? e.message : String(e)}`, true);
+  }
 }
 
 /* ===== Event bindings ===== */
@@ -626,11 +676,23 @@ function bindOpenGeoWeb(buttonId, target, label) {
 }
 
 bindOpenGeoWeb("btn-open-geo-publish", "publishRecords", "发布记录");
-bindOpenGeoWeb("btn-open-geo-bind", "platformAccounts", "绑定发布账号");
+const btnOpenGeoBind = document.getElementById("btn-open-geo-bind");
+if (btnOpenGeoBind) {
+  const labelEl = btnOpenGeoBind.querySelector(".action-label");
+  if (labelEl) labelEl.textContent = "配置账号环境";
+  const descEl = btnOpenGeoBind.querySelector(".action-desc");
+  if (descEl) descEl.textContent = "在本机创建平台登录环境（不上传 Cookie）";
+  btnOpenGeoBind.onclick = () => switchToTab("accounts");
+}
 bindOpenGeoWeb("btn-open-geo-weekly", "contentProduction", "内容生产");
 bindOpenGeoWeb("btn-tasks-open-geo-publish", "publishRecords", "发布记录");
 
 initTabs();
+if (window.agentApi.onFocusTab) {
+  window.agentApi.onFocusTab((tab) => {
+    if (tab === "accounts") switchToTab("accounts");
+  });
+}
 window.agentApi.onStateChanged(() => refresh());
 window.agentApi.onLogLine(({ line, isErr }) => appendLiveLog(line, isErr));
 refresh();

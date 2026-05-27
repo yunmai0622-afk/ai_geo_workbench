@@ -839,6 +839,13 @@ th {
   color: #6ee7b7;
 }
 
+.platform-item-pending {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #b45309;
+}
+
 .platform-item-status.status-relogin {
   color: #fcd34d;
 }

@@ -1,4 +1,5 @@
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
+import { workspacePublishAccountRiskHint } from "./localAgentAccountBinding";
 
 export const WORKSPACE_STAGE_IDS = [
   "bind_publish_env",
@@ -146,7 +147,9 @@ export function isP0GeoProfileComplete(profile: Record<string, unknown> | null |
 
 export function buildWorkspaceRiskHints(input: WorkspaceStageResolutionInput): string[] {
   const hints: string[] = [];
-  if (input.boundPublishAccountCount === 0) hints.push("尚未绑定可发布的平台账号。");
+  if (input.boundPublishAccountCount === 0) {
+    hints.push(workspacePublishAccountRiskHint(input.localAgentOnline));
+  }
   if (input.localAgentOnline === false) hints.push("本地发布客户端未连接，发布任务无法下发。");
   if (!input.p0ProfileComplete) hints.push("GEO 建档 P0 必填项未完成。");
   if (input.expiredSessionAccountCount > 0) hints.push(`有 ${input.expiredSessionAccountCount} 个账号登录状态失效，请重新登录。`);
@@ -179,7 +182,9 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
   } else if (!publishEnvReady) {
     currentStageId = "bind_publish_env";
     if (input.localAgentOnline === false) blockerReasons.push("本地发布客户端未连接。");
-    if (input.boundPublishAccountCount === 0) blockerReasons.push("尚未绑定可发布的平台账号。");
+    if (input.boundPublishAccountCount === 0) {
+      blockerReasons.push(workspacePublishAccountRiskHint(input.localAgentOnline));
+    }
   } else if (input.publishRecordCount === 0 && input.publishTaskCount === 0) {
     currentStageId = "publish_content";
     blockerReasons.push("已有内容资产，但尚无发布记录或发布任务。");

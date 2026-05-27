@@ -1,5 +1,6 @@
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
+import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
 import { PublishTaskColumnBoard } from "@/components/publishing/PublishTaskColumnBoard";
@@ -166,12 +167,15 @@ export function ContentPublishingCenterPage() {
     try {
       const h = await checkLocalAgentHealth();
       setLocalAgentOnline(h?.ok ?? false);
+      if (selectedProjectId) {
+        await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
+      }
     } catch {
       setLocalAgentOnline(false);
     } finally {
       setCheckingAgent(false);
     }
-  }, []);
+  }, [selectedProjectId, utils.geo.platformAccounts.list]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -377,6 +381,13 @@ export function ContentPublishingCenterPage() {
                 boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
                 pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
               }}
+              checking={checkingAgent}
+              onRefresh={() => void refreshAgentHealth()}
+            />
+
+            <LocalAccountBindingGuideCard
+              localAgentOnline={localAgentOnline}
+              boundPlatformCount={boundPlatformCount}
               checking={checkingAgent}
               onRefresh={() => void refreshAgentHealth()}
             />

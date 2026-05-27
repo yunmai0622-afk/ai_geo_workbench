@@ -86,6 +86,17 @@ export async function openLocalAgentLogin(profileId: string): Promise<{ ok: bool
   return agentFetch(`/profiles/${encodeURIComponent(profileId)}/open-login`, { method: "POST" });
 }
 
+export async function focusLocalAgentAccountsTab(): Promise<{ ok: boolean; message: string }> {
+  try {
+    return await agentFetch<{ ok: boolean; message: string }>("/ui/focus-accounts", { method: "POST" });
+  } catch (e) {
+    return {
+      ok: false,
+      message: e instanceof Error ? e.message : "无法连接本地发布客户端",
+    };
+  }
+}
+
 export async function detectLocalAgentAccount(profileId: string): Promise<DetectAccountResponse> {
   try {
     return await agentFetch<DetectAccountResponse>(

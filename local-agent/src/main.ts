@@ -179,8 +179,16 @@ function ensureMainWindowVisible() {
   createWindow();
 }
 
+function focusAccountsTabInRenderer() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  revealMainWindow(mainWindow);
+  mainWindow.webContents.send("agent:focus-tab", "accounts");
+}
+
 function startHttpServerSafely() {
-  const server = startLocalAgentServer();
+  const server = startLocalAgentServer({
+    onFocusAccountsTab: focusAccountsTabInRenderer,
+  });
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
       setLocalHttpStartupError(
@@ -257,11 +265,27 @@ ipcMain.handle("agent:createZhihuProfile", async () => {
 ipcMain.handle("agent:createPlatformProfile", async (_e, platform: string) => {
   const allowed: StoredPlatform[] = ["zhihu", "sohu", "baijiahao", "toutiao", "netease"];
   if (!allowed.includes(platform as StoredPlatform)) {
-    return { ok: false, message: `不支持的平台: ${platform}` };
+    const pendingMsg =
+      platform === "xiaohongshu" || platform === "wechat"
+        ? `平台「${platform}」暂未接入账号环境创建，当前支持：知乎、搜狐号、百家号、头条号、网易号`
+        : `不支持的平台: ${platform}`;
+    return { ok: false, message: pendingMsg };
   }
-  const account = createPlatformProfile(platform as StoredPlatform);
-  broadcastState();
-  return { ok: true, account };
+  try {
+    const account = createPlatformProfile(platform as StoredPlatform);
+    const login = await openLoginWindow(account.profileId);
+    broadcastState();
+    return {
+      ok: login.ok,
+      account,
+      message: login.ok
+        ? "已创建账号环境，正在打开登录页，请在浏览器中完成登录"
+        : `已创建账号环境，但打开浏览器失败：${login.message}`,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, message: `创建账号环境失败：${message}` };
+  }
 });
 
 ipcMain.handle("agent:listAccounts", async () => readAccounts());

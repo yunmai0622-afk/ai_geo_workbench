@@ -28,7 +28,11 @@ async function readJsonBody<T>(req: http.IncomingMessage): Promise<T> {
   return JSON.parse(raw) as T;
 }
 
-export function startLocalAgentServer(): http.Server {
+export type LocalAgentServerHooks = {
+  onFocusAccountsTab?: () => void;
+};
+
+export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Server {
   const server = http.createServer(async (req, res) => {
     if (!req.url || !req.method) {
       sendJson(res, 400, { ok: false, message: "bad_request" });
@@ -44,6 +48,12 @@ export function startLocalAgentServer(): http.Server {
     const pathname = url.pathname;
 
     try {
+      if (req.method === "POST" && pathname === "/ui/focus-accounts") {
+        hooks?.onFocusAccountsTab?.();
+        sendJson(res, 200, { ok: true, message: "已切换到账号环境" });
+        return;
+      }
+
       if (req.method === "GET" && pathname === "/health") {
         const meta = loadOrCreateAgentMeta();
         sendJson(res, 200, {
@@ -85,10 +95,15 @@ export function startLocalAgentServer(): http.Server {
           accountRole: body.accountRole ?? null,
           accountGroup: body.accountGroup ?? null,
         });
-        sendJson(res, 200, {
+        const login = await openLoginWindow(account.profileId);
+        sendJson(res, login.ok ? 200 : 400, {
+          ok: login.ok,
           profileId: account.profileId,
           platform: account.platform,
           sessionStatus: account.sessionStatus,
+          message: login.ok
+            ? "已创建账号环境，正在打开登录页，请在浏览器中完成登录"
+            : `已创建账号环境，但打开浏览器失败：${login.message}`,
         });
         return;
       }

@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld("agentApi", {
     ipcRenderer.on("agent:state-changed", handler);
     return () => ipcRenderer.removeListener("agent:state-changed", handler);
   },
+  onFocusTab: (cb: (tab: string) => void) => {
+    const handler = (_: unknown, tab: string) => cb(tab);
+    ipcRenderer.on("agent:focus-tab", handler);
+    return () => ipcRenderer.removeListener("agent:focus-tab", handler);
+  },
   onLogLine: (cb: (payload: { line: string; isErr: boolean }) => void) => {
     const handler = (_: unknown, payload: { line: string; isErr: boolean }) => cb(payload);
     ipcRenderer.on("agent:log-line", handler);
