@@ -22,6 +22,8 @@ export type WeeklyArticleCardModel = {
   lifecycle?: ReturnType<typeof resolveArticleLifecycleView>;
   postPublish?: { pendingReview?: boolean; needsRewrite?: boolean };
   article: Record<string, unknown>;
+  publishBlockHint?: string | null;
+  publishNextActionLabel?: string | null;
 };
 
 type Props = {
@@ -100,6 +102,14 @@ export function WeeklyPlatformArticleCard({
             compact
           />
         </div>
+      ) : null}
+      {model.publishBlockHint ? (
+        <p className="mt-3 text-xs text-amber-800" data-testid="weekly-card-publish-readiness">
+          {model.publishBlockHint}
+          {model.publishNextActionLabel ? (
+            <span className="mt-1 block font-medium">下一步：{model.publishNextActionLabel}</span>
+          ) : null}
+        </p>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={onView}>

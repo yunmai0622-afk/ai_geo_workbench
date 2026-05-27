@@ -1,4 +1,5 @@
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
+import { buildWorkspacePublishRiskHints } from "./publishReadiness";
 import { workspacePublishAccountRiskHint } from "./localAgentAccountBinding";
 
 export const WORKSPACE_STAGE_IDS = [
@@ -146,12 +147,14 @@ export function isP0GeoProfileComplete(profile: Record<string, unknown> | null |
 }
 
 export function buildWorkspaceRiskHints(input: WorkspaceStageResolutionInput): string[] {
-  const hints: string[] = [];
-  if (input.boundPublishAccountCount === 0) {
-    hints.push(workspacePublishAccountRiskHint(input.localAgentOnline));
+  const hints: string[] = buildWorkspacePublishRiskHints({
+    p0ProfileComplete: input.p0ProfileComplete,
+    boundPublishAccountCount: input.boundPublishAccountCount,
+    localAgentOnline: input.localAgentOnline,
+  });
+  if (input.localAgentOnline === false && input.boundPublishAccountCount > 0) {
+    hints.push("本地发布客户端未连接，发布任务无法下发。");
   }
-  if (input.localAgentOnline === false) hints.push("本地发布客户端未连接，发布任务无法下发。");
-  if (!input.p0ProfileComplete) hints.push("GEO 建档 P0 必填项未完成。");
   if (input.expiredSessionAccountCount > 0) hints.push(`有 ${input.expiredSessionAccountCount} 个账号登录状态失效，请重新登录。`);
   if (input.rewriteOpenCount > 0) hints.push(`重写池有 ${input.rewriteOpenCount} 条待处理内容。`);
   if (input.retestPendingCount > 0) hints.push(`复测队列有 ${input.retestPendingCount} 条待处理。`);

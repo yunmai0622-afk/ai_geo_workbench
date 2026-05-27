@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
-import { checkLocalAgentHealth } from "@/lib/localAgentClient";
+import { checkLocalAgentHealth, focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
 import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
 import {
@@ -51,7 +51,7 @@ import {
   type ResolvedArticlePublishPlatform,
 } from "@shared/articlePublishPlatform";
 import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
-import { getContentQualityGateStatus } from "@shared/contentQualityGate";
+import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
 import { getGeoQualityLabel, type GeoQualityRecommendation } from "@shared/geoQualityReview";
 import {
   GEO_QUALITY_STALE_PUBLISH_HINT,
@@ -88,6 +88,33 @@ import { toPlatformContentGenerationError, PLATFORM_CONTENT_NO_PLATFORM_TASK_MES
 import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
 
 type ProjectOption = { id: number; enterpriseName: string };
+
+function flattenPlatformAccounts(
+  groups: Array<{ platform: string; accounts: PlatformAccountItem[] }>,
+): PublishReadyAccountRow[] {
+  return groups.flatMap(g =>
+    g.accounts.map(a => ({
+      platform: g.platform,
+      accountName: a.accountName,
+      isEnabled: a.isEnabled,
+      localProfileId: a.localProfileId,
+      localAgentId: a.localAgentId,
+      sessionStatus: a.sessionStatus,
+    })),
+  );
+}
+
+type PlatformAccountItem = {
+  id: number;
+  accountName: string;
+  accountGroup: string | null;
+  accountRole: string | null;
+  isEnabled: boolean;
+  localAgentId: string | null;
+  localProfileId: string | null;
+  sessionStatus: string | null;
+  verificationStatus: string;
+};
 
 function readGenerateArticleError(err: unknown): string {
   if (err instanceof TRPCClientError) {
@@ -320,6 +347,10 @@ export default function WeeklyContentPage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
 
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
@@ -356,18 +387,6 @@ export default function WeeklyContentPage() {
   const [platformStrategy, setPlatformStrategy] = useState<PlatformContentStrategyInput>(() =>
     buildDefaultPlatformStrategy(),
   );
-
-  type PlatformAccountItem = {
-    id: number;
-    accountName: string;
-    accountGroup: string | null;
-    accountRole: string | null;
-    isEnabled: boolean;
-    localAgentId: string | null;
-    localProfileId: string | null;
-    sessionStatus: string | null;
-    verificationStatus: string;
-  };
 
   const isPublishReadyAccount = (a: PlatformAccountItem) =>
     a.isEnabled &&
@@ -469,6 +488,31 @@ export default function WeeklyContentPage() {
     if (tasks.length > 0) return true;
     return Boolean(latestDiagnosisGap);
   }, [analysisQuery.data, tasks.length, latestDiagnosisGap]);
+
+  const publishBaseContext = useMemo(
+    () => ({
+      projectAccessible: Boolean(selectedProjectId),
+      enterpriseProfileReady: workspaceSummaryQuery.data?.p0ProfileComplete ?? true,
+      diagnosisReady: hasDiagnosisData,
+      localAgentConnected: localAgentOnline,
+      platformAccounts: flattenPlatformAccounts(platformAccountGroups),
+    }),
+    [
+      selectedProjectId,
+      workspaceSummaryQuery.data?.p0ProfileComplete,
+      hasDiagnosisData,
+      localAgentOnline,
+      platformAccountGroups,
+    ],
+  );
+
+  const activePublishReadiness = useMemo(() => {
+    if (!publishArticle) return null;
+    return evaluatePublishReadiness({
+      ...publishBaseContext,
+      article: publishArticle,
+    });
+  }, [publishArticle, publishBaseContext]);
 
   const topics = (topicsQuery.data ?? []) as TopicRow[];
   const taskIdSet = useMemo(() => taskIdSetFromList(tasks.map(t => t.id)), [tasks]);
@@ -683,11 +727,6 @@ export default function WeeklyContentPage() {
     return Number(countPreset);
   }, [batchState, countPreset, customCount]);
 
-  const publishQualityGate = useMemo(
-    () => (publishArticle ? getContentQualityGateStatus(publishArticle) : null),
-    [publishArticle],
-  );
-
   const platformBoardRows = useMemo((): PlatformBoardRow[] => {
     return WEEKLY_PLATFORM_DEFS.map(def => {
       const counts: PlatformContentCounts = {
@@ -741,10 +780,16 @@ export default function WeeklyContentPage() {
           targetPlatform: a.targetPlatform,
           publishPlatform: a.publishPlatform,
         });
+        const publishReadiness = evaluatePublishReadiness({
+          ...publishBaseContext,
+          article: a,
+        });
         return {
           id: a.id,
           title: a.title ?? topic?.title ?? "未命名内容",
           targetPlatform: platformResolved.recognized ? platformResolved.label : a.targetPlatform,
+          publishBlockHint: publishReadiness.ready ? null : publishReadiness.message,
+          publishNextActionLabel: publishReadiness.ready ? null : publishReadiness.nextActionLabel,
           contentGoal:
             typeof platformStrategy.geoEnhancementGoal === "string"
               ? platformStrategy.geoEnhancementGoal
@@ -760,7 +805,7 @@ export default function WeeklyContentPage() {
           article: a as Record<string, unknown>,
         };
       });
-  }, [articles, topics, tasks, scoresByArticleId, latestDiagnosisGap, platformStrategy.geoEnhancementGoal]);
+  }, [articles, topics, tasks, scoresByArticleId, latestDiagnosisGap, platformStrategy.geoEnhancementGoal, publishBaseContext]);
 
   const toggleExpand = (topicId: number) => {
     setExpandedTopicIds(prev => {
@@ -1011,23 +1056,16 @@ export default function WeeklyContentPage() {
       toast.error("请至少选择一个发布平台");
       return;
     }
-    if (publishPlatformResolved?.queueBlockedReason) {
-      toast.error(publishPlatformResolved.queueBlockedReason);
-      return;
-    }
     if (blockPublishIfUnsaved(publishArticle.id)) return;
     if (blockPublishIfQualityReject(publishArticle)) return;
-    if (isGeoQualityScoreStale(publishArticle)) {
-      toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
-    }
-    const health = await refreshLocalAgentHealth();
-    if (!health?.ok) {
-      toast.error(
-        "未检测到本地发布客户端。请先下载安装并启动本地发布客户端，然后到企业档案绑定发布账号。",
-      );
-      selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#platform-accounts");
+    const readiness =
+      activePublishReadiness ??
+      evaluatePublishReadiness({ ...publishBaseContext, article: publishArticle });
+    if (!readiness.ready) {
+      toast.error(readiness.message);
       return;
     }
+    await refreshLocalAgentHealth();
     for (const slug of Array.from(selectedPlatforms)) {
       if (!isBindingPublishPlatform(slug)) continue;
       const ready = getPublishReadyAccountsForPlatform(slug);
@@ -1052,11 +1090,6 @@ export default function WeeklyContentPage() {
         toast.error(publishMustSelectAccountMessage(slug));
         return;
       }
-    }
-    const publishGate = getContentQualityGateStatus(publishArticle);
-    if (!publishGate.passed) {
-      toast.error(publishGate.message);
-      return;
     }
     if (!articleCoverPreviewSrc(publishArticle)) {
       toast.message("当前文章暂无封面，将先发布正文；可在「编辑内容」中生成封面后重试");
@@ -1290,22 +1323,16 @@ export default function WeeklyContentPage() {
                 )}
               </p>
             </div>
-            {publishQualityGate && !publishQualityGate.passed ? (
+            {activePublishReadiness && !activePublishReadiness.ready ? (
               <p
                 className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-                data-testid="publish-quality-gate-hint"
+                data-testid="publish-readiness-block"
               >
-                {publishQualityGate.message}
+                {activePublishReadiness.message}
               </p>
             ) : null}
-            {publishArticle && isGeoQualityScoreStale(publishArticle) ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {GEO_QUALITY_STALE_PUBLISH_HINT}
-              </p>
-            ) : null}
-            {publishArticle &&
-            !isGeoQualityScoreStale(publishArticle) &&
-            publishArticle.geoQualityRecommendation === "revise" ? (
+            {activePublishReadiness?.ready &&
+            publishArticle?.geoQualityRecommendation === "revise" ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 内容有优化空间，确认后可继续发布。
               </p>
@@ -1322,24 +1349,16 @@ export default function WeeklyContentPage() {
             ))}
           </div>
           <div className="space-y-3 py-2">
-            {publishPlatformResolved?.recognized ? (
+            {activePublishReadiness?.resolvedPlatform?.recognized ? (
               <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
-                发布平台：<span className="font-medium">{publishPlatformResolved.label}</span>
+                发布平台：<span className="font-medium">{activePublishReadiness.platformLabel}</span>
               </p>
             ) : (
               <p className="text-sm text-gray-400" data-testid="publish-dialog-platform-unknown">
-                {publishPlatformResolved?.queueBlockedReason ??
+                {activePublishReadiness?.message ??
                   "暂未识别本篇发布平台。请返回内容策略中选择平台后重新生成，或手动指定发布平台。"}
               </p>
             )}
-            {publishPlatformResolved?.recognized && publishPlatformResolved.queueBlockedReason ? (
-              <p
-                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-                data-testid="publish-dialog-platform-blocked"
-              >
-                {publishPlatformResolved.queueBlockedReason}
-              </p>
-            ) : null}
             {publishDialogSlug ? (
               PUBLISH_QUEUE_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
               const readyAccounts = isBindingPublishPlatform(p.slug) ? getPublishReadyAccountsForPlatform(p.slug) : [];
@@ -1415,19 +1434,22 @@ export default function WeeklyContentPage() {
             ) : null}
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
-            {Array.from(selectedPlatforms).some(
-              slug => isBindingPublishPlatform(slug) && getPublishReadyAccountsForPlatform(slug).length === 0,
-            ) ? (
+            {activePublishReadiness?.blockingCode === "PLATFORM_ACCOUNT_UNBOUND" ? (
               <Button
                 type="button"
                 variant="outline"
                 className="w-full border-amber-500 text-amber-700"
+                data-testid="publish-readiness-open-accounts"
                 onClick={() => {
-                  setPublishDialogOpen(false);
-                  selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#platform-accounts");
+                  void focusLocalAgentAccountsTab()
+                    .then(r => {
+                      if (r.ok) toast.success("已切换到本地客户端「账号环境」");
+                      else toast.error(r.message || "请手动打开本地客户端");
+                    })
+                    .catch(() => toast.message("请在本机打开 GEO 本地发布客户端"));
                 }}
               >
-                去绑定账号
+                {activePublishReadiness.nextActionLabel}
               </Button>
             ) : null}
             <div className="flex w-full gap-2">
@@ -1440,7 +1462,7 @@ export default function WeeklyContentPage() {
                 disabled={
                   createPublishTask.isPending ||
                   selectedPlatforms.size === 0 ||
-                  (publishQualityGate != null && !publishQualityGate.passed)
+                  (activePublishReadiness != null && !activePublishReadiness.ready)
                 }
                 onClick={() => void handleConfirmPublish()}
               >

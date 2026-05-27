@@ -20,7 +20,8 @@ describe("C7-B project platform account binding", () => {
   it("blocks publish when no platform account bound", () => {
     expect(read("server/projectPlatformAccounts.ts")).toContain("publishBlockedNoAccountMessage");
     expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("publishBlockedNoAccountMessage");
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("去绑定账号");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("publish-readiness-open-accounts");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("focusLocalAgentAccountsTab");
   });
 
   it("publish confirm shows project and expected account", () => {

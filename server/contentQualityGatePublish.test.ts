@@ -77,16 +77,16 @@ describe("contentQualityGate publish integration", () => {
     expect(gate.reason).toBe("passed");
   });
 
-  it("publishTasksRouter uses shared gate", () => {
+  it("publishTasksRouter uses unified publish readiness", () => {
     const router = read("server/publishTasksRouter.ts");
-    expect(router).toContain("getContentQualityGateStatus");
-    expect(router).toContain("qualityGate.message");
+    expect(router).toContain("evaluatePublishReadiness");
+    expect(router).toContain("assertPublishReadinessForCreate");
   });
 
-  it("WeeklyContentPage uses shared gate for dialog", () => {
+  it("WeeklyContentPage uses unified publish readiness for dialog", () => {
     const page = read("client/src/pages/WeeklyContentPage.tsx");
-    expect(page).toContain("getContentQualityGateStatus");
-    expect(page).toContain("publish-quality-gate-hint");
+    expect(page).toContain("evaluatePublishReadiness");
+    expect(page).toContain("publish-readiness-block");
     expect(page).toContain("border-green-200 bg-green-50");
     expect(page).toContain("text-green-700");
     expect(page).not.toContain("AiStatusBadge tone=\"success\"");

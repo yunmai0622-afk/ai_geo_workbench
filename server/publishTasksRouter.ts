@@ -3,7 +3,14 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
-import { geoArticleQualityScores, geoArticles, geoPublishRecords, publishTasks, users } from "../drizzle/schema";
+import {
+  geoArticleQualityScores,
+  geoArticles,
+  geoPublishRecords,
+  projectPlatformAccounts,
+  publishTasks,
+  users,
+} from "../drizzle/schema";
 import { getDb } from "./db";
 import { buildCustomExtensionZip, resolveServerUrlFromRequest } from "./extensionDownload";
 import { getCurrentUserId, requireProjectAccessConn } from "./projectAccess";
@@ -23,8 +30,10 @@ import {
 } from "@shared/platformAccountVerify";
 import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getContentQualityGateStatus } from "@shared/contentQualityGate";
+import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
+import { isP0GeoProfileComplete } from "@shared/workspaceStateMachine";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
+import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/schema";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -77,6 +86,47 @@ function resolveCoverImageUrl(raw: string | null | undefined, origin: string): s
 }
 
 /** 服务端代理下载封面，避免插件跨域 Failed to fetch */
+async function assertPublishReadinessForCreate(
+  db: Awaited<ReturnType<typeof requireDbConn>>,
+  input: {
+    projectId: number;
+    article: typeof geoArticles.$inferSelect;
+    platform: z.infer<typeof publishPlatformSlugEnum>;
+  },
+) {
+  const [profileRows, analysisRows, scoreRows, accountRows] = await Promise.all([
+    db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1),
+    db.select({ id: analysisResults.id }).from(analysisResults).where(eq(analysisResults.projectId, input.projectId)).limit(1),
+    db.select({ id: geoScores.id }).from(geoScores).where(eq(geoScores.projectId, input.projectId)).limit(1),
+    db.select().from(projectPlatformAccounts).where(eq(projectPlatformAccounts.projectId, input.projectId)),
+  ]);
+  const profileRecord = (profileRows[0] ?? null) as Record<string, unknown> | null;
+  const platformAccounts: PublishReadyAccountRow[] = accountRows.map(row => ({
+    platform: row.platform,
+    accountName: row.accountName,
+    isEnabled: row.isEnabled,
+    localProfileId: row.localProfileId,
+    localAgentId: row.localAgentId,
+    sessionStatus: row.sessionStatus,
+  }));
+  const readiness = evaluatePublishReadiness({
+    projectAccessible: true,
+    enterpriseProfileReady: isP0GeoProfileComplete(profileRecord),
+    diagnosisReady: analysisRows.length > 0 || scoreRows.length > 0,
+    article: {
+      ...input.article,
+      generationBasis: (input.article.generationBasis ?? null) as Record<string, unknown> | null,
+    },
+    platformAccounts,
+    requestedPlatform: isBindingPublishPlatform(input.platform) ? input.platform : null,
+    skipLocalAgentConnectionCheck: true,
+  });
+  if (!readiness.ready) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: readiness.message });
+  }
+  return readiness;
+}
+
 async function attachCoverImagePayload(coverImageUrl: string | null, origin: string) {
   const resolvedUrl = resolveCoverImageUrl(coverImageUrl, origin);
   if (!resolvedUrl) {
@@ -133,24 +183,11 @@ export const publishTasksRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
       }
 
-      const qualityGate = getContentQualityGateStatus(article);
-      if (!qualityGate.passed) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: qualityGate.message });
-      }
-
-      if (input.platform === "wechat") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "微信公众号请使用资产发布记录人工登记发布结果",
-        });
-      }
-
-      if (input.platform === "netease") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "网易号当前本地客户端暂不支持自动发布，请使用人工发布登记",
-        });
-      }
+      await assertPublishReadinessForCreate(db, {
+        projectId: input.projectId,
+        article,
+        platform: input.platform,
+      });
 
       const articlePlatform = getArticlePublishPlatform({
         generationBasis: article.generationBasis ?? null,
