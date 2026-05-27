@@ -5,6 +5,7 @@ import {
   formatCountsLine,
   type PlatformContentCounts,
   type WeeklyPlatformDef,
+  type WeeklyPlatformKey,
 } from "@/lib/weeklyPlatformBoard";
 
 export type PlatformBoardRow = {
@@ -14,12 +15,21 @@ export type PlatformBoardRow = {
 
 type Props = {
   rows: PlatformBoardRow[];
-  disabled?: boolean;
+  /** 批量生成等全局忙碌：禁用全部平台按钮 */
+  boardBusy?: boolean;
+  /** 当前正在生成的平台（仅禁用该平台「生成」按钮） */
+  generatingPlatformKey?: WeeklyPlatformKey | null;
   onGenerate: (key: WeeklyPlatformDef["key"]) => void;
   onView: (key: WeeklyPlatformDef["key"]) => void;
 };
 
-export function PlatformContentBoard({ rows, disabled, onGenerate, onView }: Props) {
+export function PlatformContentBoard({
+  rows,
+  boardBusy = false,
+  generatingPlatformKey = null,
+  onGenerate,
+  onView,
+}: Props) {
   return (
     <section className="space-y-4" data-testid="weekly-platform-board">
       <div className="space-y-1">
@@ -51,11 +61,11 @@ export function PlatformContentBoard({ rows, disabled, onGenerate, onView }: Pro
                   type="button"
                   size="sm"
                   className={geoP0Brand.primary}
-                  disabled={disabled}
+                  disabled={boardBusy || generatingPlatformKey === def.key}
                   data-testid={`weekly-generate-${def.key}`}
                   onClick={() => onGenerate(def.key)}
                 >
-                  生成该平台内容
+                  {generatingPlatformKey === def.key ? "生成中…" : "生成该平台内容"}
                 </Button>
                 {hasContent ? (
                   <Button
@@ -63,7 +73,7 @@ export function PlatformContentBoard({ rows, disabled, onGenerate, onView }: Pro
                     size="sm"
                     variant="outline"
                     className={geoP0Brand.primaryOutline}
-                    disabled={disabled}
+                    disabled={boardBusy}
                     data-testid={`weekly-view-${def.key}`}
                     onClick={() => onView(def.key)}
                   >

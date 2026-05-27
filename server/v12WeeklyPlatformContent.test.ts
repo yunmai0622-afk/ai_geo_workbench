@@ -31,8 +31,11 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
       expect(defs).toContain(label);
     }
     expect(board).toContain("生成该平台内容");
+    expect(board).toContain("generatingPlatformKey === def.key");
     expect(board).toContain("不支持一稿多发");
     expect(weekly).toContain("不支持一稿多发");
+    expect(weekly).toContain("platform-content-progress");
+    expect(weekly).toContain("PLATFORM_CONTENT_PROGRESS_HINT_30S");
     expect(weekly).not.toMatch(/批量生成|生成内容资产|生成数量/);
   });
 

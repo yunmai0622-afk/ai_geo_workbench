@@ -32,7 +32,17 @@ import {
   mapPublishRecordsToItems,
   resolveDeliveryReportVisibilityScore,
 } from "@/lib/deliveryReportDisplay";
+import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
+import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
+import { mapGeoDiagnosisErrorCategory } from "@/lib/aiTaskProgressErrors";
 import { Button } from "@/components/ui/button";
+import { TRPCClientError } from "@trpc/client";
+import {
+  AI_DIAGNOSIS_PROGRESS_HINT_30S,
+  AI_DIAGNOSIS_PROGRESS_HINT_60S,
+  AI_DIAGNOSIS_PROGRESS_STAGES,
+  type AiTaskProgressErrorCategory,
+} from "@shared/aiTaskProgress";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
@@ -808,7 +818,10 @@ export function AiDiagnosisFlowPage() {
   const generateTasks = trpc.geo.tasks.generate.useMutation();
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
-  const [progress, setProgress] = useState<string>();
+  const [diagnosisProgressErrorCategory, setDiagnosisProgressErrorCategory] = useState<
+    AiTaskProgressErrorCategory | undefined
+  >();
+  const diagnosisProgress = useAiTaskStagedProgress({ stages: AI_DIAGNOSIS_PROGRESS_STAGES });
   const questions = questionsQuery.data ?? [];
   const analyses = analysisQuery.data ?? [];
   const tasks = tasksQuery.data ?? [];
@@ -846,7 +859,7 @@ export function AiDiagnosisFlowPage() {
     scoreQuery.data && typeof scoreQuery.data.totalScore === "number" ? `${scoreQuery.data.totalScore} 分` : "暂无数据";
   const stepActiveIndex = complete ? 3 : analyses.length > 0 ? 2 : targetQuestions.length > 0 ? 1 : hasProfile ? 0 : 0;
   const diagnoseBtnLabel = running
-    ? "正在运行内容诊断"
+    ? "正在运行 AI 实测诊断"
     : analyses.length > 0
       ? "重新诊断"
       : "开始 AI 内容诊断";
@@ -854,20 +867,38 @@ export function AiDiagnosisFlowPage() {
   const visibleQuestionCards = questionsExpanded ? questionCardsAll : questionCardsPreview;
 
   async function executeDiagnosisPipeline(projectId: number) {
-    setProgress("正在基于企业信息与目标问题生成诊断…");
-    await runAnalysis.mutateAsync({ projectId });
-    setProgress("诊断结果已生成，正在计算 内容覆盖评分...");
-    await calculateScore.mutateAsync({ projectId });
-    setProgress("内容覆盖评分已生成，正在整理优化任务...");
-    await generateTasks.mutateAsync({ projectId });
-    await Promise.all([
-      utils.geo.questions.list.invalidate({ projectId }),
-      utils.geo.analysis.list.invalidate({ projectId }),
-      utils.geo.scores.latest.invalidate({ projectId }),
-      utils.geo.tasks.list.invalidate({ projectId }),
-    ]);
-    setProgress(undefined);
-    setMessage("内容诊断已完成。下一步：进入内容生产，根据优化任务生成本周内容计划。");
+    setDiagnosisProgressErrorCategory(undefined);
+    diagnosisProgress.reset();
+    diagnosisProgress.start();
+    try {
+      diagnosisProgress.setStage(10);
+      diagnosisProgress.setStage(20);
+      diagnosisProgress.setStage(35);
+      diagnosisProgress.setStage(55);
+      diagnosisProgress.allowOptimisticUpTo(90);
+      await runAnalysis.mutateAsync({ projectId });
+      diagnosisProgress.setStage(70);
+      diagnosisProgress.allowOptimisticUpTo(92);
+      await calculateScore.mutateAsync({ projectId });
+      diagnosisProgress.setStage(85);
+      await generateTasks.mutateAsync({ projectId });
+      diagnosisProgress.setStage(95);
+      await Promise.all([
+        utils.geo.questions.list.invalidate({ projectId }),
+        utils.geo.analysis.list.invalidate({ projectId }),
+        utils.geo.scores.latest.invalidate({ projectId }),
+        utils.geo.tasks.list.invalidate({ projectId }),
+      ]);
+      diagnosisProgress.complete();
+      setMessage("内容诊断已完成。下一步：进入内容生产，根据优化任务生成本周内容计划。");
+      window.setTimeout(() => diagnosisProgress.reset(), 5000);
+    } catch (err) {
+      const raw =
+        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "运行内容诊断失败";
+      setDiagnosisProgressErrorCategory(mapGeoDiagnosisErrorCategory(raw));
+      diagnosisProgress.fail();
+      throw err;
+    }
   }
 
   async function handleGenerateTargetQuestions() {
@@ -896,8 +927,15 @@ export function AiDiagnosisFlowPage() {
       try {
         await executeDiagnosisPipeline(selectedProjectId);
       } catch (diagErr) {
-        setProgress(undefined);
-        setError(customerErrorMessage(diagErr instanceof Error ? diagErr.message : "运行内容诊断失败"));
+        const raw =
+          diagErr instanceof TRPCClientError
+            ? diagErr.message
+            : diagErr instanceof Error
+              ? diagErr.message
+              : "运行内容诊断失败";
+        setDiagnosisProgressErrorCategory(mapGeoDiagnosisErrorCategory(raw));
+        diagnosisProgress.fail();
+        setError(customerErrorMessage(raw));
         setMessage(`${genHint} 但自动诊断未完成，请点击「运行内容诊断」重试。`);
       }
     } catch (err) {
@@ -920,8 +958,13 @@ export function AiDiagnosisFlowPage() {
     try {
       await executeDiagnosisPipeline(selectedProjectId);
     } catch (err) {
-      setProgress(undefined);
-      setError(customerErrorMessage(err instanceof Error ? err.message : "运行内容诊断失败"));
+      const raw =
+        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "运行内容诊断失败";
+      if (diagnosisProgress.status === "idle") {
+        setDiagnosisProgressErrorCategory(mapGeoDiagnosisErrorCategory(raw));
+        diagnosisProgress.fail();
+      }
+      setError(customerErrorMessage(raw));
     }
   }
 
@@ -1025,10 +1068,23 @@ export function AiDiagnosisFlowPage() {
         </div>
       )}
 
-      {/* --- 进度提示 --- */}
-      {progress && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{progress}</div>
-      )}
+      {/* --- AI 实测诊断进度 --- */}
+      {diagnosisProgress.status !== "idle" ? (
+        <AiTaskProgressCard
+          testId="ai-diagnosis-progress"
+          title="正在运行 AI 实测诊断"
+          stepLabel={diagnosisProgress.stepLabel}
+          percent={diagnosisProgress.percent}
+          elapsedSec={diagnosisProgress.elapsedSec}
+          hint30s={AI_DIAGNOSIS_PROGRESS_HINT_30S}
+          hint60s={AI_DIAGNOSIS_PROGRESS_HINT_60S}
+          status={
+            diagnosisProgress.isFailed ? "failed" : diagnosisProgress.isSuccess ? "success" : "running"
+          }
+          errorCategory={diagnosisProgressErrorCategory}
+          errorMessage={error}
+        />
+      ) : null}
 
       {/* --- 建档未完成提醒 --- */}
       {selectedProjectId && !hasProfile && !assetSummaryQuery.isLoading && (

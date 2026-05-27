@@ -20,7 +20,10 @@ import {
   resolveQualityDisplay,
   type WeeklyArticleCardModel,
 } from "@/components/weekly/WeeklyPlatformArticleCard";
+import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
+import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
+import { mapPlatformContentErrorCategory } from "@/lib/aiTaskProgressErrors";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import {
@@ -88,6 +91,12 @@ import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
 import { toPlatformContentGenerationError, PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE } from "@shared/platformContentGenerationErrors";
 import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
+import {
+  PLATFORM_CONTENT_PROGRESS_HINT_30S,
+  PLATFORM_CONTENT_PROGRESS_HINT_60S,
+  PLATFORM_CONTENT_PROGRESS_STAGES,
+  type AiTaskProgressErrorCategory,
+} from "@shared/aiTaskProgress";
 
 type ProjectOption = { id: number; enterpriseName: string };
 
@@ -395,6 +404,13 @@ export default function WeeklyContentPage() {
   const [platformStrategy, setPlatformStrategy] = useState<PlatformContentStrategyInput>(() =>
     buildDefaultPlatformStrategy(),
   );
+  const [generatingPlatformKey, setGeneratingPlatformKey] = useState<WeeklyPlatformKey | null>(null);
+  const [platformProgressLabelKey, setPlatformProgressLabelKey] = useState<WeeklyPlatformKey | null>(null);
+  const [platformProgressErrorCategory, setPlatformProgressErrorCategory] = useState<
+    AiTaskProgressErrorCategory | undefined
+  >();
+  const [platformProgressErrorMessage, setPlatformProgressErrorMessage] = useState<string>();
+  const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
 
   const isPublishReadyAccount = (a: PlatformAccountItem) =>
     a.isEnabled &&
@@ -631,12 +647,19 @@ export default function WeeklyContentPage() {
   }, [selectedProjectId, utils, articlesQuery, scoresQuery]);
 
   const generateOne = useCallback(
-    async (topicId: number, strategyOverride?: Partial<PlatformContentStrategyInput>) => {
+    async (
+      topicId: number,
+      strategyOverride?: Partial<PlatformContentStrategyInput>,
+      options?: { silentToast?: boolean },
+    ) => {
       const effectiveStrategy = { ...platformStrategy, ...strategyOverride };
       const strategyErr = validatePlatformContentStrategy(effectiveStrategy);
       if (strategyErr) {
-        toast.error(strategyErr);
-        return false;
+        if (!options?.silentToast) {
+          toast.error(strategyErr);
+          return false;
+        }
+        throw new Error(strategyErr);
       }
       setGeneratingTopicIds(prev => new Set(prev).add(topicId));
       try {
@@ -653,8 +676,12 @@ export default function WeeklyContentPage() {
         await invalidateArticles();
         return true;
       } catch (err) {
-        toast.error(readGenerateArticleError(err));
-        return false;
+        const msg = readGenerateArticleError(err);
+        if (!options?.silentToast) {
+          toast.error(msg);
+          return false;
+        }
+        throw err instanceof Error ? err : new Error(msg);
       } finally {
         setGeneratingTopicIds(prev => {
           const next = new Set(prev);
@@ -929,10 +956,21 @@ export default function WeeklyContentPage() {
       strategyOverride.contentStrategyType = "seeding";
       setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
     }
-    let topicRows = topics;
-    let pending = findPendingTopicForPlatform(platformKey, topicRows);
-    if (!pending && tasks.length > 0) {
-      try {
+
+    setGeneratingPlatformKey(platformKey);
+    setPlatformProgressLabelKey(platformKey);
+    setPlatformProgressErrorCategory(undefined);
+    setPlatformProgressErrorMessage(undefined);
+    platformContentProgress.reset();
+    platformContentProgress.start();
+
+    try {
+      platformContentProgress.setStage(10);
+      platformContentProgress.setStage(25);
+
+      let topicRows = topics;
+      let pending = findPendingTopicForPlatform(platformKey, topicRows);
+      if (!pending && tasks.length > 0) {
         await generateTopicsMutation.mutateAsync({
           projectId: selectedProjectId!,
           generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
@@ -940,17 +978,44 @@ export default function WeeklyContentPage() {
         const refetch = await topicsQuery.refetch();
         topicRows = (refetch.data ?? []) as TopicRow[];
         pending = findPendingTopicForPlatform(platformKey, topicRows);
-      } catch (err) {
-        toast.error(readGenerateArticleError(err));
+      }
+      if (!pending) {
+        const msg = PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE;
+        setPlatformProgressErrorCategory("unknown");
+        setPlatformProgressErrorMessage(msg);
+        platformContentProgress.fail();
+        toast.error(msg);
         return;
       }
+
+      platformContentProgress.setStage(40);
+      platformContentProgress.allowOptimisticUpTo(80);
+      const ok = await generateOne(pending.id, strategyOverride, { silentToast: true });
+      if (!ok) {
+        throw new Error("内容生成失败，请稍后重试");
+      }
+      platformContentProgress.setStage(90);
+      platformContentProgress.complete();
+      toast.success("内容已生成并保存。");
+      window.setTimeout(() => platformContentProgress.reset(), 5000);
+    } catch (err) {
+      const raw =
+        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "";
+      const msg = readGenerateArticleError(err);
+      setPlatformProgressErrorCategory(mapPlatformContentErrorCategory(raw || msg));
+      setPlatformProgressErrorMessage(msg);
+      platformContentProgress.fail();
+      toast.error(msg);
+    } finally {
+      setGeneratingPlatformKey(null);
     }
-    if (!pending) {
-      toast.error(PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE);
-      return;
-    }
-    void generateOne(pending.id, strategyOverride);
   };
+
+  const activePlatformProgressLabel = useMemo(() => {
+    const key = platformProgressLabelKey ?? generatingPlatformKey;
+    if (!key) return null;
+    return WEEKLY_PLATFORM_DEFS.find(d => d.key === key)?.label ?? null;
+  }, [platformProgressLabelKey, generatingPlatformKey]);
 
   const handlePlatformView = (platformKey: WeeklyPlatformKey) => {
     const hit = articles.find(
@@ -1263,10 +1328,32 @@ export default function WeeklyContentPage() {
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
 
+          {platformContentProgress.status !== "idle" && activePlatformProgressLabel ? (
+            <AiTaskProgressCard
+              testId="platform-content-progress"
+              title={`正在生成${activePlatformProgressLabel}内容`}
+              stepLabel={platformContentProgress.stepLabel}
+              percent={platformContentProgress.percent}
+              elapsedSec={platformContentProgress.elapsedSec}
+              hint30s={PLATFORM_CONTENT_PROGRESS_HINT_30S}
+              hint60s={PLATFORM_CONTENT_PROGRESS_HINT_60S}
+              status={
+                platformContentProgress.isFailed
+                  ? "failed"
+                  : platformContentProgress.isSuccess
+                    ? "success"
+                    : "running"
+              }
+              errorCategory={platformProgressErrorCategory}
+              errorMessage={platformProgressErrorMessage}
+            />
+          ) : null}
+
           <PlatformContentBoard
             rows={platformBoardRows}
-            disabled={anyGenerating}
-            onGenerate={handlePlatformGenerate}
+            boardBusy={batchBusy}
+            generatingPlatformKey={generatingPlatformKey}
+            onGenerate={key => void handlePlatformGenerate(key)}
             onView={handlePlatformView}
           />
 

@@ -124,6 +124,7 @@ import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare
 import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import { runDailyAiCheck } from "./scheduledAiCheck";
 import { fetchWorkspaceSummaryMetrics } from "./workspaceSummary";
+import { buildGeoTaskDurationLogBase, logGeoAnalysisRunDuration, logGeoArticlesGenerateDuration } from "./geoTaskDurationLog";
 import {
   getCurrentUserId,
   getProjectRowConn,
@@ -1350,6 +1351,16 @@ const geoRouter = router({
       return attachQuestionTextToAnalyses(rows.map(resolveEffectiveAnalysisResult), responseRows, questionRows);
     }),
     run: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const startedAtMs = Date.now();
+      const durationBase = () => buildGeoTaskDurationLogBase(startedAtMs);
+      const logDuration = (success: boolean, errorCode: string | null) => {
+        logGeoAnalysisRunDuration({
+          ...durationBase(),
+          projectId: input.projectId,
+          success,
+          errorCode,
+        });
+      };
       const db = await requireDb();
       const project = await requireProjectAccess(ctx, input.projectId);
       const profileRows = await db
@@ -1367,6 +1378,7 @@ const geoRouter = router({
         .sort((a, b) => (b.businessValue ?? 0) - (a.businessValue ?? 0))
         .slice(0, 10);
       if (diagnosisQuestions.length === 0) {
+        logDuration(false, "DIAGNOSIS_DATA_MISSING");
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "请先在 AI 诊断页点击「重新生成」，或添加「指定问题」类型问题，再运行诊断。",
@@ -1376,6 +1388,7 @@ const geoRouter = router({
       const llmPre = assertLlmConfiguredForDiagnosis();
       if (llmPre) {
         console.error("[geo.analysis.run]", llmPre.serverLog);
+        logDuration(false, llmPre.code);
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: llmPre.userMessage });
       }
 
@@ -1487,6 +1500,7 @@ const geoRouter = router({
             const raw = err instanceof Error ? err.message : String(err);
             const classified = classifyGeoDiagnosisLlmError(raw);
             console.error("[geo.analysis.run]", classified.code, classified.serverLog);
+            logDuration(false, classified.code);
             throw new TRPCError({
               code: classified.code === "LLM_NOT_CONFIGURED" ? "PRECONDITION_FAILED" : "INTERNAL_SERVER_ERROR",
               message: classified.userMessage,
@@ -1607,6 +1621,7 @@ const geoRouter = router({
 
       await db.insert(analysisResults).values(rows);
       await updateProjectStatus(input.projectId, "analysis_done");
+      logDuration(true, null);
       return { success: true, count: rows.length } as const;
     }),
     saveManualReview: protectedProcedure.input(analysisManualReviewInput).mutation(async ({ ctx, input }) => {
@@ -2244,6 +2259,17 @@ const geoRouter = router({
           }),
       )
       .mutation(async ({ ctx, input }) => {
+      const startedAtMs = Date.now();
+      const durationBase = () => buildGeoTaskDurationLogBase(startedAtMs);
+      const logDuration = (projectId: number, success: boolean, errorCode: string | null) => {
+        logGeoArticlesGenerateDuration({
+          ...durationBase(),
+          projectId,
+          platform: input.targetPublishPlatform ?? null,
+          success,
+          errorCode,
+        });
+      };
       const db = await requireDb();
       const topicRows = await db.select().from(geoArticleTopics).where(eq(geoArticleTopics.id, input.topicId)).limit(1);
       const topic = topicRows[0];
@@ -2252,17 +2278,20 @@ const geoRouter = router({
       const taskRows = topic.optimizationTaskId ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, topic.optimizationTaskId)).limit(1) : [];
       const task = taskRows[0];
       if (!task || task.projectId !== topic.projectId) {
+        logDuration(topic.projectId, false, "TOPIC_UNBOUND");
         throw new TRPCError({ code: "BAD_REQUEST", message: PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE });
       }
-      const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, topic.projectId));
-      const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, topic.projectId));
-      const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, topic.projectId));
+      const [projectQuestions, analyses, responses, assetLibrary] = await Promise.all([
+        db.select().from(questions).where(eq(questions.projectId, topic.projectId)),
+        db.select().from(analysisResults).where(eq(analysisResults.projectId, topic.projectId)),
+        db.select().from(aiResponses).where(eq(aiResponses.projectId, topic.projectId)),
+        getAssetLibraryContext(topic.projectId),
+      ]);
       const sourceQuestionIds = Array.isArray(topic.sourceQuestionIds) ? topic.sourceQuestionIds : [];
       const sourceAnalysisIds = Array.isArray(topic.sourceAnalysisIds) ? topic.sourceAnalysisIds : [];
       const questionScope = projectQuestions.filter(question => sourceQuestionIds.includes(question.id));
       const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
       const analysisScope = analysesWithQuestions.filter(analysis => sourceAnalysisIds.includes(analysis.id));
-      const assetLibrary = await getAssetLibraryContext(topic.projectId);
       const project = mergeProjectWithEnterpriseProfile(projectRow, assetLibrary.profile ?? null);
       if (process.env.GEO_ARTICLE_BODY !== "test-template") {
         const llmEnv = diagnoseLlmProviderEnv();
@@ -2277,6 +2306,7 @@ const geoRouter = router({
               llmModel: llmEnv.model,
             },
           );
+          logDuration(topic.projectId, false, "not_configured");
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: PLATFORM_CONTENT_AI_NOT_CONFIGURED_MESSAGE,
@@ -2340,6 +2370,7 @@ const geoRouter = router({
           /企业资料不足|企业资料还缺少|生成依据还缺少|生成的内容未通过 GEO 结构校验|请选择目标|不存在或无访问权限|文章选题不存在|未绑定优化任务|内容选题|请先完成 AI 实测诊断|还没有生成内容优化任务|当前平台暂无/.test(
             message,
           );
+        logDuration(topic.projectId, false, llmClassified.code !== "not_llm_error" ? llmClassified.code : "GENERATION_FAILED");
         throw new TRPCError({ code: isClientError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message });
       }
       const inserted = await db.insert(geoArticles).values(draft).$returningId();
@@ -2352,6 +2383,7 @@ const geoRouter = router({
       });
       await db.update(geoArticleTopics).set({ status: "已生成" }).where(eq(geoArticleTopics.id, topic.id));
       const qcResult = await runGeoArticleQualityCheckFlow(db, articleId);
+      logDuration(topic.projectId, true, null);
       return {
         success: true,
         articleId,
