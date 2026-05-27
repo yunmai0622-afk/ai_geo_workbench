@@ -11,6 +11,12 @@ describe("zhihuNicknameDenylist", () => {
     expect(isBlockedZhihuDisplayName("广告")).toBe(true);
   });
 
+  it("blocks tab/stat labels like 专栏0", () => {
+    expect(isBlockedZhihuDisplayName("专栏0")).toBe(true);
+    expect(isBlockedZhihuDisplayName("回答3")).toBe(true);
+    expect(isBlockedZhihuDisplayName("文章5")).toBe(true);
+  });
+
   it("legacy accountName 广告 without verified → displayName null", () => {
     const fields = resolveLocalAgentDisplayNameFields({
       accountName: "广告",

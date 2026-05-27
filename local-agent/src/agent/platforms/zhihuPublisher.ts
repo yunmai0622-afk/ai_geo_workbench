@@ -19,11 +19,14 @@ import {
   finishWritePageLog,
   startWritePageLog,
 } from "../writePageLogStore";
+import { isBlockedZhihuNickname } from "../zhihuAccountDisplay";
 import {
-  isBlockedZhihuNickname,
-  pickZhihuVerifiedNickname,
-  type ZhihuNicknameCandidate,
-} from "../zhihuAccountDisplay";
+  buildZhihuProfileUrl,
+  collectZhihuIdentitySignalsInBrowser,
+  resolveZhihuIdentityFromSignals,
+  type ZhihuIdentityResolution,
+  type ZhihuLoginStatus,
+} from "../zhihuIdentityResolver";
 
 /** 知乎正式写作页（唯一优先入口） */
 export const ZHIHU_WRITE_TARGET_URL = "https://zhuanlan.zhihu.com/write";
@@ -442,17 +445,22 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     }
   }
 
-  /** 在页面内收集昵称候选（返回给主进程打日志） */
-  async collectAccountCandidates(
+  private mapIdentitySourceForStorage(
+    source: ZhihuIdentityResolution["displayNameSource"],
+  ): "platform_dom" | "profile_name" | "unknown" {
+    if (source === "profile_header" || source === "document_title") return "profile_name";
+    if (source === "viewer_state" || source === "user_menu") return "platform_dom";
+    return "unknown";
+  }
+
+  /** 仅从可信身份源解析知乎昵称（会先尝试打开个人主页） */
+  async resolveZhihuIdentity(
     page: Page,
+    loginStatus: ZhihuLoginStatus,
     profileId?: string,
-  ): Promise<{
-    name: string | null;
-    candidates: ZhihuDetectCandidate[];
-    pick: ReturnType<typeof pickZhihuVerifiedNickname>;
-  }> {
+  ): Promise<ZhihuIdentityResolution> {
     const url = page.url();
-    console.log("[agent-zhihu] detect start", { profileId, url });
+    console.log("[agent-zhihu] identity resolve start", { profileId, url });
 
     try {
       const userEntry = page
@@ -463,123 +471,60 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       await userEntry.hover({ timeout: 3000 }).catch(() => undefined);
       await page.waitForTimeout(600);
     } catch {
-      /* 用户菜单展开失败不阻断检测 */
+      /* 用户菜单展开失败不阻断 */
     }
 
-    const result = await page.evaluate(skipPattern => {
-      const SKIP_RE = new RegExp(skipPattern, "i");
-      function pickText(text: string | null | undefined): string | null {
-        const t = (text ?? "").trim();
-        if (!t || t.length < 2 || t.length > 30) return null;
-        if (SKIP_RE.test(t)) return null;
-        if (/^https?:\/\//i.test(t)) return null;
-        if (/点击打开|的主页|个人主页/.test(t)) return null;
-        return t;
+    let browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
+    const slug = browserSignals.profileSlug;
+    if (slug) {
+      const profileUrl = buildZhihuProfileUrl(slug)!;
+      if (!page.url().includes(`/people/${slug}`)) {
+        console.log("[agent-zhihu] navigate profile for header", { profileId, profileUrl });
+        await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+        await page.waitForTimeout(1500);
+        await page
+          .locator('.ProfileHeader h1, [class*="ProfileHeader"] h1')
+          .first()
+          .waitFor({ state: "visible", timeout: 8000 })
+          .catch(() => undefined);
+        browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
       }
-      function push(
-        list: ZhihuDetectCandidate[],
-        priority: number,
-        source: string,
-        selector: string,
-        text: string | null | undefined,
-      ) {
-        const t = pickText(text);
-        if (t) list.push({ priority, source, selector, text: t });
-      }
-
-      const candidates: ZhihuDetectCandidate[] = [];
-      const header =
-        document.querySelector("header") ??
-        document.querySelector(".AppHeader") ??
-        document.querySelector('[class*="AppHeader"]');
-
-      if (header) {
-        for (const a of Array.from(header.querySelectorAll('a[href*="/people/"]'))) {
-          const href = a.getAttribute("href") ?? "";
-          if (!/\/people\/[^/?#]+/.test(href)) continue;
-          const text = (a.textContent ?? "").trim();
-          if (/开通|机构号|机构|登录|注册/.test(text)) continue;
-          push(candidates, 0, "header profile link", 'header a[href*="/people/"]', text);
-          push(candidates, 0, "header profile title", 'header a[href*="/people/"]', a.getAttribute("title"));
-        }
-        for (const el of Array.from(
-          header.querySelectorAll('[class*="UserName"], [class*="user-name"], .AppHeader-userInfo'),
-        )) {
-          push(candidates, 0, "header user block", "header UserName", el.textContent);
-        }
-      }
-
-      try {
-        const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> }).__INITIAL_STATE__;
-        const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
-        if (viewer && typeof viewer === "object") {
-          const v = viewer as Record<string, unknown>;
-          const name =
-            (typeof v.name === "string" && v.name) ||
-            (typeof v.username === "string" && v.username) ||
-            (typeof v.fullname === "string" && v.fullname) ||
-            null;
-          push(candidates, 1, "initial_state viewer", "window.__INITIAL_STATE__", name);
-        }
-      } catch {
-        /* ignore */
-      }
-      for (const a of Array.from(document.querySelectorAll('a[href*="/people/"]'))) {
-        const href = a.getAttribute("href") ?? "";
-        if (!/\/people\/[^/?#]+/.test(href)) continue;
-        const text = (a.textContent ?? "").trim();
-        if (/开通|机构号|机构/.test(text)) continue;
-        push(candidates, 2, "profile link", 'a[href*="/people/"]', text);
-        push(candidates, 2, "profile link title", 'a[href*="/people/"]', a.getAttribute("title"));
-      }
-      for (const a of Array.from(document.querySelectorAll('a[href*="/org/"]'))) {
-        push(candidates, 2, "org link", 'a[href*="/org/"]', a.textContent);
-      }
-      if (header) {
-        for (const a of Array.from(header.querySelectorAll('a[href*="/org/"]'))) {
-          push(candidates, 2, "header org link", 'header a[href*="/org/"]', a.textContent);
-        }
-      }
-      for (const el of Array.from(
-        document.querySelectorAll(
-          '[class*="UserName"], [class*="user-name"], [class*="ProfileMenu"], .AppHeader-userInfo, .AppHeader-profileEntry',
-        ),
-      )) {
-        push(candidates, 2, "header user block", "UserName/header", el.textContent);
-      }
-      for (const el of Array.from(document.querySelectorAll("[title], [aria-label]"))) {
-        push(candidates, 5, "title", "[title]", el.getAttribute("title"));
-        push(candidates, 5, "aria-label", "[aria-label]", el.getAttribute("aria-label"));
-      }
-      for (const btn of Array.from(document.querySelectorAll("button, [role='button']"))) {
-        push(candidates, 6, "button", "button", btn.textContent);
-      }
-
-      candidates.sort((a, b) => a.priority - b.priority || a.text.localeCompare(b.text));
-      const seen = new Set<string>();
-      const deduped: ZhihuDetectCandidate[] = [];
-      for (const c of candidates) {
-        const key = c.text.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        deduped.push(c);
-      }
-      return { candidates: deduped.slice(0, 30) };
-    }, SKIP_PATTERN.source);
-
-    const pick = pickZhihuVerifiedNickname(result.candidates as ZhihuNicknameCandidate[]);
-
-    for (const c of result.candidates.slice(0, 12)) {
-      console.log("[agent-zhihu] candidate", {
-        source: c.source,
-        selector: c.selector,
-        text: c.text,
-      });
     }
-    if (!pick.displayName) {
-      console.warn("[agent-zhihu] detect failed", { reason: "no_verified_nickname", url, pick });
+
+    const identity = resolveZhihuIdentityFromSignals({
+      pageUrl: browserSignals.pageUrl,
+      documentTitle: browserSignals.documentTitle,
+      loginStatus,
+      profileHeaderTitle: browserSignals.profileHeaderTitle,
+      viewerStateName: browserSignals.viewerStateName,
+      userMenuName: browserSignals.userMenuName,
+    });
+
+    if (identity.rejectedCandidates.length > 0) {
+      for (const r of identity.rejectedCandidates.slice(0, 12)) {
+        console.log("[agent-zhihu] rejected nickname", r);
+      }
     }
-    return { name: pick.displayName, candidates: result.candidates, pick };
+    console.log("[agent-zhihu] identity resolved", {
+      profileId,
+      profileSlug: identity.profileSlug,
+      displayName: identity.displayName,
+      displayNameSource: identity.displayNameSource,
+      displayNameVerified: identity.displayNameVerified,
+    });
+    return identity;
+  }
+
+  /** @deprecated 使用 resolveZhihuIdentity */
+  async collectAccountCandidates(
+    page: Page,
+    profileId?: string,
+  ): Promise<{
+    name: string | null;
+    identity: ZhihuIdentityResolution;
+  }> {
+    const identity = await this.resolveZhihuIdentity(page, "valid", profileId);
+    return { name: identity.displayName, identity };
   }
 
   async detectAccount(page: Page, profileId?: string): Promise<string | null> {
@@ -739,19 +684,15 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         return { ok: false, accountName: null, message: msg, errorType: "login_required" };
       }
 
-      const collected = await this.collectAccountCandidates(page, profileId);
-      const { name, candidates, pick } = collected as {
-        name: string | null;
-        candidates: ZhihuDetectCandidate[];
-        pick: ReturnType<typeof pickZhihuVerifiedNickname>;
-      };
+      const identity = await this.resolveZhihuIdentity(page, "valid", profileId);
+      const name = identity.displayName;
       const now = new Date().toISOString();
 
-      if (!name || isBlockedZhihuNickname(name)) {
+      if (!name || !identity.displayNameVerified || isBlockedZhihuNickname(name)) {
         const reason =
           name && isBlockedZhihuNickname(name)
-            ? "已登录，但暂未识别真实昵称（过滤了广告/导航等非昵称文案）"
-            : pick.message;
+            ? "已登录，但暂未识别真实昵称（已过滤 tab/导航/统计等非昵称文案）"
+            : "已登录，但暂未识别真实昵称。可点击「重新检测」刷新；不影响发布。";
         updateAccount(profileId, {
           accountName: null,
           displayNameVerified: false,
@@ -762,8 +703,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         });
         console.warn("[agent-zhihu] nickname pending", {
           url: page.url(),
-          candidateCount: candidates.length,
-          pick,
+          identity,
         });
         return {
           ok: true,
@@ -775,13 +715,13 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       updateAccount(profileId, {
         accountName: name,
         displayNameVerified: true,
-        displayNameSource: pick.displayNameSource,
+        displayNameSource: this.mapIdentitySourceForStorage(identity.displayNameSource),
         sessionStatus: "active",
         lastCheckedAt: now,
-        lastDetectMessage: pick.message,
+        lastDetectMessage: `检测成功：${name}`,
       });
       console.log("[agent-zhihu] detect success", { profileId, accountName: name });
-      return { ok: true, accountName: name, message: pick.message };
+      return { ok: true, accountName: name, message: `检测成功：${name}` };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       const isContextLost = /closed|Target page|context or browser/i.test(msg);

@@ -25,12 +25,12 @@ describe("zhihuAccountDisplay", () => {
     expect(pick.displayName).toBeNull();
   });
 
-  it("可信 profile link 提取成功", () => {
+  it("legacy pick no longer accepts untrusted profile link scan", () => {
     const pick = pickZhihuVerifiedNickname([
       { priority: 2, source: "profile link", text: "真实用户昵称" },
     ]);
-    expect(pick.displayNameVerified).toBe(true);
-    expect(pick.displayName).toBe("真实用户昵称");
+    expect(pick.displayNameVerified).toBe(false);
+    expect(pick.displayName).toBeNull();
   });
 
   it("登录有效但昵称未识别时不显示假名", () => {

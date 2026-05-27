@@ -15,16 +15,30 @@ export const ZHIHU_NICKNAME_DENYLIST = [
   "登录",
   "设置",
   "博丽灵梦",
+  "动态",
+  "回答",
+  "视频",
+  "提问",
+  "文章",
+  "专栏",
+  "想法",
+  "收藏",
+  "划线",
 ] as const;
 
 const BLOCKED_NICKNAME_RE =
   /^(博丽灵梦|知乎用户|知乎网友|游客|新用户|默认用户|用户\d*|User\d*)$/i;
+
+/** tab / 统计：专栏0、回答3、文章5 */
+const TAB_STAT_LABEL_RE =
+  /^(动态|回答|视频|提问|文章|专栏|想法|收藏|划线)(\s*\d+|\d+)?$/i;
 
 export function isBlockedZhihuDisplayName(text: string | null | undefined): boolean {
   const t = (text ?? "").trim();
   if (!t || t.length < 2) return true;
   if (BLOCKED_NICKNAME_RE.test(t)) return true;
   if (/^https?:\/\//i.test(t)) return true;
+  if (TAB_STAT_LABEL_RE.test(t)) return true;
   const lower = t.toLowerCase();
   for (const word of ZHIHU_NICKNAME_DENYLIST) {
     if (t === word || lower === word.toLowerCase()) return true;
