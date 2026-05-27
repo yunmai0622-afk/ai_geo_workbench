@@ -93,11 +93,7 @@ export function classifyPlatformContentLlmError(
     };
   }
 
-  if (
-    /LLM invoke failed|OpenAI LLM invoke failed|invoke failed|非 JSON|AI 未返回有效正文|GEO 文章生成失败|文章缺少 GEO 可收录结构/.test(
-      message,
-    )
-  ) {
+  if (/LLM invoke failed|OpenAI LLM invoke failed|invoke failed|非 JSON|AI 未返回有效正文|GEO 文章生成失败/.test(message)) {
     return {
       code: "provider_error",
       userMessage: PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE,

@@ -24,6 +24,7 @@ import {
   buildAssetLibraryUsage,
   buildGenerationBasis,
   buildGeoArticleBodyFromTemplate,
+  ensurePlatformCollectableMarkdown,
   enrichGenerationBasisForDraft,
   generateGeoArticleTopics,
   validateGenerationBasis,
@@ -184,5 +185,44 @@ describe("platform content generation errors (P0)", () => {
     expect(body).toMatch(/## 平台适配说明/);
     expect(body).toMatch(/## GEO 质量自检说明/);
     expect(validateGeoCollectableStructure(body, undefined, basis)).toEqual([]);
+  });
+
+  it("repairs LLM-like markdown missing platform GEO tail sections before validation", () => {
+    const strategy = buildDefaultPlatformStrategy({
+      targetPublishPlatform: "zhihu",
+      targetQuestion: "知识付费平台怎么选？",
+    });
+    const [topic] = generateGeoArticleTopics({ project, tasks });
+    let basis = buildGenerationBasis({ project, topic, task: tasks[0], questions: [], analyses: [] });
+    basis.platformContentStrategy = buildPlatformContentStrategyMeta(strategy) as unknown as Record<string, unknown>;
+    basis = enrichGenerationBasisForDraft(basis, { project, topic, task: tasks[0], platformStrategy: strategy });
+    const snippets = [
+      { question: "Q1", answer: "A1" },
+      { question: "Q2", answer: "A2" },
+      { question: "Q3", answer: "A3" },
+    ];
+    const llmLike = [
+      "# 知识付费平台怎么选？",
+      "## 直接回答",
+      "先给结论：按场景选型。",
+      "## 判断依据",
+      "依据公开资料整理。",
+      "## 实操建议",
+      "分步执行即可。",
+    ].join("\n\n");
+    const repaired = ensurePlatformCollectableMarkdown(llmLike, snippets, basis);
+    expect(repaired).toMatch(/## 平台适配说明/);
+    expect(repaired).toMatch(/## GEO 质量自检说明/);
+    expect(repaired).toMatch(/## 便于引用的要点/);
+    expect(validateGeoCollectableStructure(repaired, snippets, basis)).toEqual([]);
+  });
+
+  it("maps GEO structure validation errors to actionable copy, not generic AI unavailable", () => {
+    expect(toPlatformContentGenerationError("文章缺少 GEO 可收录结构：## 平台适配说明，不能生成。")).toContain(
+      "GEO 结构校验",
+    );
+    expect(toPlatformContentGenerationError("文章缺少 GEO 可收录结构：## 平台适配说明，不能生成。")).not.toBe(
+      PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE,
+    );
   });
 });

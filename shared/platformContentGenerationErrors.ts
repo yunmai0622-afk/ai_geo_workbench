@@ -103,6 +103,14 @@ function mapDiagnosisGateRaw(message: string): string | null {
   return null;
 }
 
+function mapGeoStructureValidationRaw(message: string): string | null {
+  if (!/文章缺少 GEO 可收录结构/.test(message)) return null;
+  const detail = message.replace(/^文章缺少 GEO 可收录结构：/, "").replace(/，不能生成。$/, "").trim();
+  return detail
+    ? `生成的内容未通过 GEO 结构校验（${detail}）。请稍后重试，或调整目标问题后再次生成。`
+    : "生成的内容未通过 GEO 结构校验。请稍后重试，或调整目标问题后再次生成。";
+}
+
 function mapGenerationBasisRaw(message: string): string | null {
   const match = message.match(/^缺少生成依据：([^，]+)/);
   if (!match) return null;
@@ -137,6 +145,9 @@ export function toPlatformContentGenerationError(raw: string): string {
 
   const basisMessage = mapGenerationBasisRaw(message);
   if (basisMessage) return basisMessage;
+
+  const structureMessage = mapGeoStructureValidationRaw(message);
+  if (structureMessage) return structureMessage;
 
   const llmClassified = classifyPlatformContentLlmError(message);
   if (llmClassified.userMessage) return llmClassified.userMessage;

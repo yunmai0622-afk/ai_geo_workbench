@@ -631,8 +631,9 @@ export default function WeeklyContentPage() {
   }, [selectedProjectId, utils, articlesQuery, scoresQuery]);
 
   const generateOne = useCallback(
-    async (topicId: number) => {
-      const strategyErr = validatePlatformContentStrategy(platformStrategy);
+    async (topicId: number, strategyOverride?: Partial<PlatformContentStrategyInput>) => {
+      const effectiveStrategy = { ...platformStrategy, ...strategyOverride };
+      const strategyErr = validatePlatformContentStrategy(effectiveStrategy);
       if (strategyErr) {
         toast.error(strategyErr);
         return false;
@@ -641,13 +642,13 @@ export default function WeeklyContentPage() {
       try {
         await generateArticleMutation.mutateAsync({
           topicId,
-          targetPublishPlatform: platformStrategy.targetPublishPlatform,
-          contentStrategyType: platformStrategy.contentStrategyType,
-          publishIdentity: platformStrategy.publishIdentity,
-          recommendedAccountGroup: platformStrategy.recommendedAccountGroup,
-          targetQuestion: platformStrategy.targetQuestion.trim(),
-          geoEnhancementGoal: platformStrategy.geoEnhancementGoal,
-          targetAiPlatforms: [...platformStrategy.targetAiPlatforms],
+          targetPublishPlatform: effectiveStrategy.targetPublishPlatform,
+          contentStrategyType: effectiveStrategy.contentStrategyType,
+          publishIdentity: effectiveStrategy.publishIdentity,
+          recommendedAccountGroup: effectiveStrategy.recommendedAccountGroup,
+          targetQuestion: effectiveStrategy.targetQuestion.trim(),
+          geoEnhancementGoal: effectiveStrategy.geoEnhancementGoal,
+          targetAiPlatforms: [...effectiveStrategy.targetAiPlatforms],
         });
         await invalidateArticles();
         return true;
@@ -919,8 +920,14 @@ export default function WeeklyContentPage() {
 
   const handlePlatformGenerate = async (platformKey: WeeklyPlatformKey) => {
     const publishId = resolvePublishSlugForWeeklyPlatform(platformKey);
+    const strategyOverride: Partial<PlatformContentStrategyInput> = {};
     if (publishId) {
+      strategyOverride.targetPublishPlatform = publishId;
       setPlatformStrategy(prev => ({ ...prev, targetPublishPlatform: publishId }));
+    }
+    if (platformKey === "xiaohongshu") {
+      strategyOverride.contentStrategyType = "seeding";
+      setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
     }
     let topicRows = topics;
     let pending = findPendingTopicForPlatform(platformKey, topicRows);
@@ -942,7 +949,7 @@ export default function WeeklyContentPage() {
       toast.error(PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE);
       return;
     }
-    void generateOne(pending.id);
+    void generateOne(pending.id, strategyOverride);
   };
 
   const handlePlatformView = (platformKey: WeeklyPlatformKey) => {

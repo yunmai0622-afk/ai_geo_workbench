@@ -1215,6 +1215,62 @@ function formatSnippets(snippets: P11CitableSnippet[]) {
   return snippets.map(snippet => `### ${snippet.question}\n\n${snippet.answer}`).join("\n\n");
 }
 
+function markdownHasH2Section(content: string, title: string): boolean {
+  const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|\\n)##(?!#)\\s*${escaped}(?=\\s*(?:\\n|$))`, "m").test(content.replace(/\r\n/g, "\n"));
+}
+
+/** LLM 正文常漏写平台化 GEO 尾部结构；在校验前补齐真实可收录小节，避免误报 AI 不可用。 */
+export function ensurePlatformCollectableMarkdown(
+  content: string,
+  snippets: P11CitableSnippet[],
+  basis: P11GenerationBasis,
+): string {
+  if (!basis.platformContentStrategy) return content;
+
+  let next = content.replace(/\r\n/g, "\n").trim();
+  const meta = basis.platformContentStrategy as {
+    targetPublishPlatformLabel?: string;
+    geoQualitySelfCheckOutline?: string;
+  };
+  const platformLabel = meta.targetPublishPlatformLabel?.trim() || "目标发布平台";
+
+  if (!/(^|\n)#\s+(?!#)\S/m.test(next) && nonEmpty(basis.customerQuestion)) {
+    next = `# ${basis.customerQuestion}\n\n${next}`;
+  }
+
+  const hasSnippetSection =
+    markdownHasH2Section(next, "便于引用的要点") ||
+    markdownHasH2Section(next, "可引用要点") ||
+    markdownHasH2Section(next, "摘录要点") ||
+    markdownHasH2Section(next, "AI 可引用片段");
+  if (!hasSnippetSection && snippets.length > 0) {
+    next += `\n\n## 便于引用的要点\n\n${formatSnippets(snippets)}`;
+  }
+
+  if (!markdownHasH2Section(next, "平台适配说明")) {
+    next += `\n\n## 平台适配说明\n\n本篇按${platformLabel}的信息密度与叙述习惯组织段落，结论前置、依据可核对，避免照搬其它渠道话术；品牌与产品表述以企业公开资料为准。`;
+  }
+
+  if (!markdownHasH2Section(next, "GEO 质量自检说明")) {
+    next += `\n\n## GEO 质量自检说明\n\n1. 核对标题与正文一级标题是否一致，且未出现绝对效果承诺。\n2. 核对品牌名、产品服务描述是否与官网及企业档案一致。\n3. 核对「便于引用的要点」是否覆盖目标问题：${basis.customerQuestion || "（见上文）"}。\n4. 核对案例与数据是否有公开来源或「待补充」标注。\n${meta.geoQualitySelfCheckOutline?.trim() || "5. 发布前由业务负责人完成人工终审。"}`;
+  }
+
+  while (countMarkdownH2Lines(next) < 4) {
+    if (!markdownHasH2Section(next, "补充说明")) {
+      next += "\n\n## 补充说明\n\n以下内容根据企业诊断结果与公开资料整理，供读者快速把握要点与适用边界。";
+      continue;
+    }
+    if (!markdownHasH2Section(next, "延伸阅读")) {
+      next += "\n\n## 延伸阅读\n\n建议结合企业官网、产品说明与最新公开信息进一步核验文中事实。";
+      continue;
+    }
+    break;
+  }
+
+  return next.trim();
+}
+
 /** 正文是否覆盖资产库/项目中的某条表述（支持改写：多窗口 + 关键词子串）。 */
 function corpusReflectsSignal(content: string, signal: string, maxWindow: number): boolean {
   const t = signal.trim();
@@ -1657,6 +1713,8 @@ export async function generateGeoArticleDraft(input: {
   } else {
     content = await invokeLlmForGeoArticleDraftMarkdown(buildGeoArticleDraftUserMaterial(templateCtx));
   }
+
+  content = ensurePlatformCollectableMarkdown(content, snippets, basis);
 
   const missingStructure = validateGeoCollectableStructure(content, snippets, basis);
   if (missingStructure.length > 0) throw new Error(`文章缺少 GEO 可收录结构：${missingStructure.join("、")}，不能生成。`);

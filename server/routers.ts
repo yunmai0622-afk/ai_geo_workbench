@@ -2337,7 +2337,7 @@ const geoRouter = router({
         }
         const message = llmClassified.userMessage ?? toPlatformContentGenerationError(raw);
         const isClientError =
-          /企业资料不足|企业资料还缺少|生成依据还缺少|请选择目标|不存在或无访问权限|文章选题不存在|未绑定优化任务|内容选题|请先完成 AI 实测诊断|还没有生成内容优化任务|当前平台暂无/.test(
+          /企业资料不足|企业资料还缺少|生成依据还缺少|生成的内容未通过 GEO 结构校验|请选择目标|不存在或无访问权限|文章选题不存在|未绑定优化任务|内容选题|请先完成 AI 实测诊断|还没有生成内容优化任务|当前平台暂无/.test(
             message,
           );
         throw new TRPCError({ code: isClientError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message });
