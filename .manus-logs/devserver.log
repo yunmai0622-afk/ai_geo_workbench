@@ -2630,3 +2630,34 @@
 [2026-05-27T07:10:37.796Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
 [2026-05-27T07:10:39.344Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-05-27T07:11:54.188Z] 3:11:54 AM [vite] (client) hmr update /src/index.css
+[2026-05-27T07:15:37.797Z] [定时实测] 开始执行 2026-05-27T07:15:37.796Z
+[2026-05-27T07:15:38.029Z] [定时实测] 找到 0 条需要检测的记录
+[2026-05-27T07:15:38.030Z] [定时实测] 本次执行完成 2026-05-27T07:15:38.028Z
+[2026-05-27T07:19:04.214Z] Dev server process group stopped
+[2026-05-27T07:19:04.219Z] ELIFECYCLE  Command failed.
+[2026-05-27T07:19:04.298Z] Dev server exited with code -15
+[2026-05-27T07:19:07.259Z] Starting dev server with command: pnpm run dev
+[2026-05-27T07:19:08.184Z] 
+[2026-05-27T07:19:08.185Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-27T07:19:08.186Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-27T07:19:08.186Z] 
+[2026-05-27T07:19:10.129Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-27T07:19:14.779Z] Server running on http://localhost:3000/
+[2026-05-27T07:19:14.781Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-27T07:19:16.906Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-27T07:24:14.780Z] [定时实测] 开始执行 2026-05-27T07:24:14.780Z
+[2026-05-27T07:24:15.003Z] [定时实测] 找到 0 条需要检测的记录
+[2026-05-27T07:24:15.004Z] [定时实测] 本次执行完成 2026-05-27T07:24:15.003Z
+[2026-05-27T07:26:26.360Z] Dev server process group stopped
+[2026-05-27T07:26:26.363Z] ELIFECYCLE  Command failed.
+[2026-05-27T07:26:26.412Z] Dev server exited with code -15
+[2026-05-27T07:26:29.391Z] Starting dev server with command: pnpm run dev
+[2026-05-27T07:26:30.252Z] 
+[2026-05-27T07:26:30.253Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-27T07:26:30.253Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-27T07:26:30.254Z] 
+[2026-05-27T07:26:32.100Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-27T07:26:36.826Z] Server running on http://localhost:3000/
+[2026-05-27T07:26:36.828Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-27T07:26:40.259Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-27T07:27:25.841Z] 3:27:25 AM [vite] (client) hmr update /src/index.css
