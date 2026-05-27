@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "node scripts/ensure-electron.mjs && npm run build && electron .",
     "dev:electron": "node scripts/ensure-electron.mjs && electron .",
-    "build": "tsc -p tsconfig.json && node scripts/copy-renderer.mjs",
+    "build": "node scripts/sync-server-url-module.mjs && tsc -p tsconfig.json && node scripts/copy-renderer.mjs && node scripts/write-geo-web-default.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node scripts/validate-poc.mjs",
     "smoke:zhihu-detect": "npm run build && node scripts/zhihu_detect_smoke.mjs",

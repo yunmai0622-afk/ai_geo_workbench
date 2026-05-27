@@ -112,8 +112,16 @@ else fail("card still recommends dmg by default");
 if (!/https?:\/\/localhost[^\s"']*\/downloads/.test(card)) ok("no hardcoded localhost download URL");
 else fail("hardcoded localhost download URL");
 
-if (!/manus\.space/i.test(card + fs.readFileSync(manifestPath, "utf-8"))) ok("no hardcoded manus.space");
-else fail("hardcoded manus.space");
+const manifestText = fs.readFileSync(manifestPath, "utf-8");
+if (!/manus\.space/i.test(card)) ok("no hardcoded manus.space in download card");
+else fail("hardcoded manus.space in download card");
+if (/geoWebBaseUrl/i.test(manifestText) && /manus\.space/i.test(manifestText)) {
+  ok("manifest geoWebBaseUrl may reference production host");
+} else if (!/manus\.space/i.test(manifestText)) {
+  ok("manifest has no hardcoded manus.space");
+} else {
+  fail("manifest references manus.space without geoWebBaseUrl field");
+}
 
 if (!/file:\/\//i.test(card)) ok("no file:// download links");
 else fail("file:// in card");

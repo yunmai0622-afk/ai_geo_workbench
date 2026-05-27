@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("agentApi", {
   getPollingState: () => ipcRenderer.invoke("agent:getPollingState"),
   getConfig: () => ipcRenderer.invoke("agent:getConfig"),
   saveConfig: (patch: Record<string, unknown>) => ipcRenderer.invoke("agent:saveConfig", patch),
+  resetServerUrlToOnline: () => ipcRenderer.invoke("agent:saveConfig", { resetServerUrlToOnline: true }),
   testServerConnection: () => ipcRenderer.invoke("agent:testServerConnection"),
   pollOnce: () => ipcRenderer.invoke("agent:pollOnce"),
   startPolling: () => ipcRenderer.invoke("agent:startPolling"),

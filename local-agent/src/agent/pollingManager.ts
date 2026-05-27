@@ -1,4 +1,5 @@
 import { readAgentConfig, writeAgentConfig } from "./agentConfig";
+import { formatGeoServerConnectionError } from "./localAgentServerUrl";
 import { pruneOldTaskLogs } from "./taskLogStore";
 import { pollTasks, type PollTaskItem } from "./taskClient";
 import { runPublishTask } from "./publishWorker";
@@ -75,11 +76,14 @@ export async function pollOnce(): Promise<{ processed: number; message: string }
       tasks = res.tasks.slice(0, cfg.maxTasksPerCycle);
       setConnectionResult(true, null);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setConnectionResult(false, msg);
-      log(`连接服务端失败：${msg}`, true);
-      state.lastCycleMessage = msg;
-      return { processed: 0, message: msg };
+      const { userMessage, diagnosticDetail } = formatGeoServerConnectionError(e, cfg.serverUrl);
+      setConnectionResult(false, userMessage);
+      log(`连接服务端失败：${userMessage}`, true);
+      if (diagnosticDetail !== userMessage) {
+        log(`[诊断] ${diagnosticDetail}`, true);
+      }
+      state.lastCycleMessage = userMessage;
+      return { processed: 0, message: userMessage };
     }
 
     if (tasks.length === 0) {

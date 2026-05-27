@@ -307,6 +307,9 @@ ipcMain.handle("agent:getConfig", async () => {
 ipcMain.handle("agent:saveConfig", async (_e, patch: Record<string, unknown>) => {
   const next = writeAgentConfig({
     serverUrl: typeof patch.serverUrl === "string" ? patch.serverUrl : undefined,
+    serverUrlUserConfigured:
+      typeof patch.serverUrlUserConfigured === "boolean" ? patch.serverUrlUserConfigured : undefined,
+    resetServerUrlToOnline: patch.resetServerUrlToOnline === true,
     agentApiKey: typeof patch.agentApiKey === "string" ? patch.agentApiKey : undefined,
     pollIntervalSeconds:
       typeof patch.pollIntervalSeconds === "number" ? patch.pollIntervalSeconds : undefined,

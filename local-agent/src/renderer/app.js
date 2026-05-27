@@ -534,6 +534,9 @@ if (btnTestConn) {
   btnTestConn.onclick = () =>
     void window.agentApi.testServerConnection().then((r) => {
       appendLiveLog(r.message, !r.ok);
+      if (r.diagnosticDetail && r.diagnosticDetail !== r.message) {
+        appendLiveLog(`[诊断] ${r.diagnosticDetail}`, true);
+      }
       refresh();
     });
 }
@@ -577,6 +580,7 @@ if (btnSaveSettings) {
     void window.agentApi
       .saveConfig({
         serverUrl: ($("#set-server-url") || {}).value?.trim() ?? "",
+        serverUrlUserConfigured: true,
         agentApiKey: ($("#set-api-key") || {}).value ?? "",
         pollIntervalSeconds: Number(($("#set-poll-sec") || {}).value ?? 30),
         maxTasksPerCycle: Number(($("#set-max-tasks") || {}).value ?? 1),
@@ -588,6 +592,16 @@ if (btnSaveSettings) {
         if (msg) msg.textContent = "设置已保存";
         refresh();
       });
+}
+
+const btnResetServerOnline = $("#btn-reset-server-online");
+if (btnResetServerOnline) {
+  btnResetServerOnline.onclick = () =>
+    void window.agentApi.resetServerUrlToOnline().then(() => {
+      const msg = $("#settings-msg");
+      if (msg) msg.textContent = "已恢复为线上 GEO 服务地址";
+      refresh();
+    });
 }
 
 const btnOpenData = $("#btn-open-data");

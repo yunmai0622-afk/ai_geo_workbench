@@ -17,6 +17,7 @@ const outDir = path.join(root, "client/public/downloads");
 const manifestPath = path.join(outDir, "manifest.json");
 
 const DEFAULT_MAC_ZIP = "/downloads/geo-local-agent-mac.zip";
+const DEFAULT_GEO_WEB_BASE_URL = "https://aigeoworkb-kzxhj9uy.manus.space";
 const externalMacZip = process.env.AGENT_MAC_ZIP_URL?.trim() || null;
 
 function resolveMacZipUrl(prev = {}) {
@@ -116,6 +117,7 @@ function writeManifest(copied, extras = {}) {
   const manifest = {
     version: readAgentVersion(),
     copiedAt: new Date().toISOString(),
+    geoWebBaseUrl: prev.geoWebBaseUrl ?? DEFAULT_GEO_WEB_BASE_URL,
     macZipUrl,
     macDmgUrl: null,
     winZipUrl: prev.winZipUrl ?? null,
@@ -179,14 +181,14 @@ const prevBeforeCopy = readExistingManifest();
 const keepCommittedHttpsMacZip =
   !externalMacZip && /^https?:\/\//i.test(String(prevBeforeCopy.macZipUrl ?? ""));
 
-if (macApp && !externalMacZip) {
+  if (macApp && !externalMacZip) {
   const dest = path.join(outDir, "geo-local-agent-mac.zip");
   packageMacAppZip(macApp, dest);
   copied.push(dest);
+  manifestExtras.macZipSha256 = sha256File(dest);
+  manifestExtras.macZipSizeBytes = fs.statSync(dest).size;
   if (!keepCommittedHttpsMacZip) {
     manifestExtras.macZipUrl = DEFAULT_MAC_ZIP;
-    manifestExtras.macZipSha256 = sha256File(dest);
-    manifestExtras.macZipSizeBytes = fs.statSync(dest).size;
   }
   if (!keepCommittedHttpsMacZip) {
     console.log(`[copy] ditto zip from ${path.relative(root, macApp)} sha256=${manifestExtras.macZipSha256}`);

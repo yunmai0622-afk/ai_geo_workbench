@@ -6,6 +6,7 @@ import { getLocalHttpStartupError } from "./localHttpState";
 import { getPollingState } from "./pollingManager";
 import { listRecentTaskLogs } from "./taskLogStore";
 import { DATA_DIR, readAccounts } from "./storage";
+import { formatGeoServerConnectionError } from "./localAgentServerUrl";
 import { listAgentTasks, testServerConnection } from "./taskClient";
 
 const LOCAL_HTTP_BASE = `http://${LOCAL_AGENT_HOST}:${LOCAL_AGENT_PORT}`;
@@ -68,7 +69,7 @@ export async function buildDashboard() {
   try {
     serverTasks = await listAgentTasks(cfg.localAgentId, 50);
   } catch (e) {
-    serverError = e instanceof Error ? e.message : String(e);
+    serverError = formatGeoServerConnectionError(e, cfg.serverUrl).userMessage;
   }
 
   const pendingCount =

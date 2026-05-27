@@ -1,4 +1,11 @@
 import { readAgentConfig } from "./agentConfig";
+import { formatGeoServerConnectionError } from "./localAgentServerUrl";
+
+function rethrowFriendly(error: unknown): never {
+  const { serverUrl } = readAgentConfig();
+  const { userMessage } = formatGeoServerConnectionError(error, serverUrl);
+  throw new Error(userMessage);
+}
 
 export type PollTaskItem = {
   taskId: number;
@@ -30,35 +37,43 @@ async function trpcQuery<T>(procedure: string, input: unknown): Promise<T> {
   const { serverUrl, agentApiKey } = readAgentConfig();
   const q = encodeURIComponent(JSON.stringify({ json: input }));
   const url = `${serverUrl}/api/trpc/${procedure}?input=${q}`;
-  const res = await fetch(url, { headers: headers(agentApiKey) });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`连接失败 HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}`);
+  try {
+    const res = await fetch(url, { headers: headers(agentApiKey) });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`连接失败 HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}`);
+    }
+    const body = (await res.json()) as TrpcJsonEnvelope<T>;
+    if (body.error?.json?.message) throw new Error(body.error.json.message);
+    const data = body.result?.data?.json;
+    if (data === undefined) throw new Error("服务端返回格式异常");
+    return data;
+  } catch (e) {
+    rethrowFriendly(e);
   }
-  const body = (await res.json()) as TrpcJsonEnvelope<T>;
-  if (body.error?.json?.message) throw new Error(body.error.json.message);
-  const data = body.result?.data?.json;
-  if (data === undefined) throw new Error("服务端返回格式异常");
-  return data;
 }
 
 async function trpcMutation<T>(procedure: string, input: unknown): Promise<T> {
   const { serverUrl, agentApiKey } = readAgentConfig();
   const url = `${serverUrl}/api/trpc/${procedure}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: headers(agentApiKey),
-    body: JSON.stringify({ json: input }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`请求失败 HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}`);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: headers(agentApiKey),
+      body: JSON.stringify({ json: input }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`请求失败 HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}`);
+    }
+    const body = (await res.json()) as TrpcJsonEnvelope<T>;
+    if (body.error?.json?.message) throw new Error(body.error.json.message);
+    const data = body.result?.data?.json;
+    if (data === undefined) throw new Error("服务端返回格式异常");
+    return data;
+  } catch (e) {
+    rethrowFriendly(e);
   }
-  const body = (await res.json()) as TrpcJsonEnvelope<T>;
-  if (body.error?.json?.message) throw new Error(body.error.json.message);
-  const data = body.result?.data?.json;
-  if (data === undefined) throw new Error("服务端返回格式异常");
-  return data;
 }
 
 export async function pollTasks(localAgentId: string): Promise<{ tasks: PollTaskItem[] }> {
@@ -112,12 +127,21 @@ export async function listAgentTasks(
   return trpcQuery("agent.listTasks", { localAgentId, limit });
 }
 
-export async function testServerConnection(): Promise<{ ok: boolean; message: string }> {
+export async function testServerConnection(): Promise<{
+  ok: boolean;
+  message: string;
+  diagnosticDetail?: string;
+}> {
   const cfg = readAgentConfig();
   try {
     await pollTasks(cfg.localAgentId);
     return { ok: true, message: `已连接 ${cfg.serverUrl}` };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    const { userMessage, diagnosticDetail } = formatGeoServerConnectionError(e, cfg.serverUrl);
+    return {
+      ok: false,
+      message: userMessage,
+      diagnosticDetail: diagnosticDetail !== userMessage ? diagnosticDetail : undefined,
+    };
   }
 }
