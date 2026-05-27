@@ -1,5 +1,7 @@
 /** 项目级平台账号核验（发布前比对绑定昵称与浏览器登录昵称） */
 
+import { isPendingAccountDisplayName } from "./localAgentAccountSync";
+
 export const BINDING_PUBLISH_PLATFORMS = ["zhihu", "sohu", "toutiao", "baijiahao", "netease"] as const;
 export type BindingPublishPlatform = (typeof BINDING_PUBLISH_PLATFORMS)[number];
 
@@ -60,6 +62,16 @@ export function matchPlatformAccountNames(
 ): AccountMatchResult {
   const expected = expectedAccountName.trim();
   const detected = detectedAccountName?.trim() ?? "";
+
+  if (isPendingAccountDisplayName(expected)) {
+    return {
+      matched: true,
+      status: "matched",
+      expectedAccountName: expected,
+      detectedAccountName: detected || null,
+      message: "账号已登录有效，昵称待识别不影响发布",
+    };
+  }
 
   if (!expected) {
     return {

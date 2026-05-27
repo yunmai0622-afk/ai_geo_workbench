@@ -30,6 +30,15 @@ export type LocalAgentAccountStatusPayload = {
 
 export const LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME = "昵称待识别";
 
+/** Web/DB 占位昵称：不参与发布前昵称一致性阻断 */
+export function isPendingAccountDisplayName(name: string | null | undefined): boolean {
+  const t = (name ?? "").trim();
+  if (!t) return false;
+  if (t === LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME) return true;
+  if (t.endsWith("（昵称待识别）")) return true;
+  return false;
+}
+
 export function mapStoredSessionToLoginStatus(sessionStatus: string | null | undefined): LocalAgentAccountLoginStatus {
   if (sessionStatus === "active") return "valid";
   if (sessionStatus === "expired") return "invalid";

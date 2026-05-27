@@ -2,6 +2,8 @@ import type { Page } from "playwright";
 import {
   accountNamesMatch,
   BasePlatformPublisher,
+  isPendingPublishAccountName,
+  shouldBlockPublishForAccountNameMismatch,
   fillFirstSelector,
   isLoginUrl,
   stepLog,
@@ -451,6 +453,18 @@ export class ZhihuPublisher extends BasePlatformPublisher {
   }> {
     const url = page.url();
     console.log("[agent-zhihu] detect start", { profileId, url });
+
+    try {
+      const userEntry = page
+        .locator(
+          'header a[href*="/people/"], header [class*="Avatar"], .AppHeader-userInfo, [class*="ProfileMenu"]',
+        )
+        .first();
+      await userEntry.hover({ timeout: 3000 }).catch(() => undefined);
+      await page.waitForTimeout(600);
+    } catch {
+      /* 用户菜单展开失败不阻断检测 */
+    }
 
     const result = await page.evaluate(skipPattern => {
       const SKIP_RE = new RegExp(skipPattern, "i");
@@ -1029,15 +1043,20 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       }
 
       if (!name) {
-        return {
-          status: "failed",
-          errorType: "account_not_detected",
-          errorMessage: "未能检测到知乎昵称，请先检测账号",
-          logs,
-        };
+        if (stored?.sessionStatus === "active") {
+          name = task.expectedAccountName?.trim() || "昵称待识别";
+          logs.push(stepLog("detect_account", "ok", "已登录，昵称待识别，继续填稿"));
+        } else {
+          return {
+            status: "failed",
+            errorType: "account_not_detected",
+            errorMessage: "未能检测到知乎昵称，请先检测账号",
+            logs,
+          };
+        }
       }
 
-      if (task.expectedAccountName && !accountNamesMatch(task.expectedAccountName, name)) {
+      if (shouldBlockPublishForAccountNameMismatch(task.expectedAccountName, name)) {
         logs.push(stepLog("detect_account", "failed", "账号不一致"));
         return {
           status: "failed",
@@ -1045,6 +1064,15 @@ export class ZhihuPublisher extends BasePlatformPublisher {
           errorMessage: `当前登录账号 ${pageName ?? name}，与任务账号 ${task.expectedAccountName} 不一致`,
           logs,
         };
+      }
+      if (
+        isPendingPublishAccountName(task.expectedAccountName) &&
+        name &&
+        !accountNamesMatch(task.expectedAccountName, name)
+      ) {
+        logs.push(
+          stepLog("detect_account", "ok", "昵称待识别：已跳过昵称比对，按登录有效继续发布"),
+        );
       }
 
       updateAccount(profileId, {

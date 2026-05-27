@@ -406,6 +406,12 @@ export default function WeeklyContentPage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
   const [localAgentAccountSnapshot, setLocalAgentAccountSnapshot] = useState<LocalAgentAccountStatusEntry[]>([]);
+  /** 发布弹窗内冻结的 Agent 状态，避免打开期间反复 sync/invalidate 导致抖动 */
+  const [publishDialogAgentOnline, setPublishDialogAgentOnline] = useState<boolean | null>(null);
+  const [publishDialogAccountSnapshot, setPublishDialogAccountSnapshot] = useState<
+    LocalAgentAccountStatusEntry[]
+  >([]);
+  const publishDialogPlatformsInitRef = useRef(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
   const [regeneratingCoverIds, setRegeneratingCoverIds] = useState<Set<number>>(() => new Set());
@@ -429,33 +435,67 @@ export default function WeeklyContentPage() {
     Boolean(a.localAgentId?.trim()) &&
     a.sessionStatus === "active";
 
-  const refreshLocalAgentHealth = useCallback(async () => {
+  const readLocalAgentSnapshot = useCallback(async () => {
     const h = await checkLocalAgentHealth();
-    setLocalAgentOnline(h?.ok ?? false);
-    if (h?.ok) {
-      try {
-        const snapshot = await listLocalAgentAccountSnapshots();
-        setLocalAgentAccountSnapshot(snapshot);
-        if (selectedProjectId && snapshot.length > 0) {
-          try {
-            await syncLocalAgentSnapshot.mutateAsync({
-              agentId: h.agentId,
-              projectId: selectedProjectId,
-              accounts: snapshot,
-            });
-            await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
-          } catch (err) {
-            console.warn("[weekly] sync local agent account snapshot failed", err);
-          }
-        }
-      } catch {
-        setLocalAgentAccountSnapshot([]);
-      }
-    } else {
-      setLocalAgentAccountSnapshot([]);
+    const online = h?.ok ?? false;
+    if (!online) {
+      return { health: h, online: false, snapshot: [] as LocalAgentAccountStatusEntry[] };
     }
-    return h;
-  }, [selectedProjectId, syncLocalAgentSnapshot, utils.geo.platformAccounts.list]);
+    try {
+      const snapshot = await listLocalAgentAccountSnapshots();
+      return { health: h, online: true, snapshot };
+    } catch {
+      return { health: h, online: true, snapshot: [] as LocalAgentAccountStatusEntry[] };
+    }
+  }, []);
+
+  const applyGlobalAgentSnapshot = useCallback((online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
+    setLocalAgentOnline(online);
+    setLocalAgentAccountSnapshot(snapshot);
+  }, []);
+
+  const applyPublishDialogAgentSnapshot = useCallback(
+    (online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
+      setPublishDialogAgentOnline(online);
+      setPublishDialogAccountSnapshot(snapshot);
+    },
+    [],
+  );
+
+  /** 仅读取本地 Agent 快照，不触发 Web 同步（避免弹窗抖动） */
+  const hydratePublishDialogAgent = useCallback(
+    async (options?: { syncToWeb?: boolean }) => {
+      const { health, online, snapshot } = await readLocalAgentSnapshot();
+      applyPublishDialogAgentSnapshot(online, snapshot);
+      applyGlobalAgentSnapshot(online, snapshot);
+      if (options?.syncToWeb && online && selectedProjectId && health && snapshot.length > 0) {
+        try {
+          await syncLocalAgentSnapshot.mutateAsync({
+            agentId: health.agentId,
+            projectId: selectedProjectId,
+            accounts: snapshot,
+          });
+          await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
+        } catch (err) {
+          console.warn("[weekly] sync local agent account snapshot failed", err);
+        }
+      }
+      return health;
+    },
+    [
+      readLocalAgentSnapshot,
+      applyPublishDialogAgentSnapshot,
+      applyGlobalAgentSnapshot,
+      selectedProjectId,
+      syncLocalAgentSnapshot,
+      utils.geo.platformAccounts.list,
+    ],
+  );
+
+  const refreshLocalAgentHealth = useCallback(
+    () => hydratePublishDialogAgent({ syncToWeb: true }),
+    [hydratePublishDialogAgent],
+  );
 
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
@@ -581,18 +621,34 @@ export default function WeeklyContentPage() {
     ],
   );
 
+  const publishDialogReadinessContext = useMemo(
+    () => ({
+      ...publishBaseContext,
+      localAgentConnected: publishDialogAgentOnline,
+      localAgentAccountSnapshot: publishDialogAccountSnapshot,
+    }),
+    [publishBaseContext, publishDialogAgentOnline, publishDialogAccountSnapshot],
+  );
+
   const activePublishReadiness = useMemo(() => {
     if (!publishArticle) return null;
     const requestedPlatform =
       manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
         ? manualPublishPlatform
         : null;
+    const ctx = publishDialogOpen ? publishDialogReadinessContext : publishBaseContext;
     return evaluatePublishReadiness({
-      ...publishBaseContext,
+      ...ctx,
       article: publishArticle,
       requestedPlatform,
     });
-  }, [publishArticle, publishBaseContext, manualPublishPlatform]);
+  }, [
+    publishArticle,
+    publishBaseContext,
+    publishDialogReadinessContext,
+    publishDialogOpen,
+    manualPublishPlatform,
+  ]);
 
   const topics = (topicsQuery.data ?? []) as TopicRow[];
   const taskIdSet = useMemo(() => taskIdSetFromList(tasks.map(t => t.id)), [tasks]);
@@ -961,7 +1017,8 @@ export default function WeeklyContentPage() {
         : null;
     setSelectedPlatforms(publishSlug ? new Set([publishSlug]) : new Set());
     setSelectedPublishAccountIds({});
-    void refreshLocalAgentHealth();
+    publishDialogPlatformsInitRef.current = true;
+    void hydratePublishDialogAgent({ syncToWeb: false });
     setPublishDialogOpen(true);
   };
 
@@ -1063,11 +1120,6 @@ export default function WeeklyContentPage() {
     if (hit) openEditor(hit);
     else toast.message("该平台暂无已生成内容，请先点击「生成该平台内容」");
   };
-
-  useEffect(() => {
-    if (!publishDialogOpen) return;
-    void refreshLocalAgentHealth();
-  }, [publishDialogOpen, refreshLocalAgentHealth]);
 
   const handleRegenerateCover = async (article: ArticleRow) => {
     if (!selectedProjectId) return;
@@ -1197,16 +1249,39 @@ export default function WeeklyContentPage() {
     if (blockPublishIfQualityReject(publishArticle)) return;
     const readiness =
       activePublishReadiness ??
-      evaluatePublishReadiness({ ...publishBaseContext, article: publishArticle });
+      evaluatePublishReadiness({
+        ...publishDialogReadinessContext,
+        article: publishArticle,
+      });
     if (!readiness.ready) {
       toast.error(readiness.message);
       return;
     }
-    await refreshLocalAgentHealth();
+    await hydratePublishDialogAgent({ syncToWeb: true });
+    const freshAccountGroups = selectedProjectId
+      ? (((await utils.geo.platformAccounts.list.fetch({ projectId: selectedProjectId }))?.accounts ??
+          []) as Array<{ platform: string; accounts: PlatformAccountItem[] }>)
+      : platformAccountGroups;
+    const getReadyAccountsFresh = (slug: string) => {
+      const group = freshAccountGroups.find(g => g.platform === slug);
+      return (group?.accounts ?? []).filter(isPublishReadyAccount) as PlatformAccountItem[];
+    };
+    const getAllEnabledFresh = (slug: string) => {
+      const group = freshAccountGroups.find(g => g.platform === slug);
+      return (group?.accounts ?? []).filter(a => a.isEnabled) as PlatformAccountItem[];
+    };
+    const pickPublishAccountFresh = (slug: string): PlatformAccountItem | null => {
+      const ready = getReadyAccountsFresh(slug);
+      if (ready.length === 0) return null;
+      const selectedId = selectedPublishAccountIds[slug];
+      if (selectedId) return ready.find(a => a.id === selectedId) ?? null;
+      if (ready.length === 1) return ready[0]!;
+      return null;
+    };
     for (const slug of Array.from(selectedPlatforms)) {
       if (!isBindingPublishPlatform(slug)) continue;
-      const ready = getPublishReadyAccountsForPlatform(slug);
-      const allEnabled = getAllEnabledAccountsForPlatform(slug).filter(a => a.isEnabled);
+      const ready = getReadyAccountsFresh(slug);
+      const allEnabled = getAllEnabledFresh(slug).filter(a => a.isEnabled);
       if (ready.length === 0) {
         if (allEnabled.some(a => !a.localProfileId?.trim() || !a.localAgentId?.trim())) {
           toast.error(
@@ -1222,7 +1297,7 @@ export default function WeeklyContentPage() {
         toast.error(publishBlockedNoAccountMessage(slug));
         return;
       }
-      const picked = pickPublishAccount(slug);
+      const picked = pickPublishAccountFresh(slug);
       if (!picked) {
         toast.error(publishMustSelectAccountMessage(slug));
         return;
@@ -1235,7 +1310,7 @@ export default function WeeklyContentPage() {
     const taskIds: number[] = [];
     try {
       for (const slug of Array.from(selectedPlatforms)) {
-        const picked = pickPublishAccount(slug)!;
+        const picked = pickPublishAccountFresh(slug)!;
         const res = await createPublishTask.mutateAsync({
           articleId,
           platform: slug as BindingPublishPlatform,
@@ -1296,9 +1371,23 @@ export default function WeeklyContentPage() {
     return null;
   }, [effectivePublishResolved, activePublishReadiness?.resolvedPlatform, manualPublishPlatform]);
 
+  const publishDialogNicknamePendingHint = useMemo(() => {
+    if (!publishDialogSlug) return false;
+    const localEntry = publishDialogAccountSnapshot.find(
+      e => e.platform === publishDialogSlug && e.loginStatus === "valid",
+    );
+    if (localEntry && !localEntry.displayNameVerified) return true;
+    const rows = getPublishReadyAccountsForPlatform(publishDialogSlug);
+    return rows.some(a => a.accountName === LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME);
+  }, [publishDialogAccountSnapshot, publishDialogSlug, getPublishReadyAccountsForPlatform]);
+
   useEffect(() => {
-    if (!publishDialogOpen) return;
-    if (publishDialogSlug) {
+    if (!publishDialogOpen) {
+      publishDialogPlatformsInitRef.current = false;
+      return;
+    }
+    if (!publishDialogPlatformsInitRef.current && publishDialogSlug) {
+      publishDialogPlatformsInitRef.current = true;
       setSelectedPlatforms(new Set([publishDialogSlug]));
     }
   }, [publishDialogOpen, publishDialogSlug]);
@@ -1500,11 +1589,11 @@ export default function WeeklyContentPage() {
               </p>
               <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-blue-800">
                 客户端状态：
-                {localAgentOnline === true ? (
+                {publishDialogAgentOnline === true ? (
                   <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
                     已连接
                   </span>
-                ) : localAgentOnline === false ? (
+                ) : publishDialogAgentOnline === false ? (
                   <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                     未连接
                   </span>
@@ -1525,6 +1614,14 @@ export default function WeeklyContentPage() {
             publishArticle?.geoQualityRecommendation === "revise" ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 内容有优化空间，确认后可继续发布。
+              </p>
+            ) : null}
+            {publishDialogNicknamePendingHint ? (
+              <p
+                className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900"
+                data-testid="publish-dialog-nickname-pending-hint"
+              >
+                当前账号已登录有效，但暂未识别真实昵称。可继续发布，或点击重新检测刷新昵称。
               </p>
             ) : null}
             {publishAccountGroupWarnings.map(w => (
@@ -1555,7 +1652,7 @@ export default function WeeklyContentPage() {
                   (() => {
                     const rows = getPublishReadyAccountsForPlatform(publishDialogSlug);
                     const picked = pickPublishAccount(publishDialogSlug);
-                    const localEntry = localAgentAccountSnapshot.find(
+                    const localEntry = publishDialogAccountSnapshot.find(
                       e => e.platform === publishDialogSlug && e.loginStatus === "valid",
                     );
                     if (rows.length === 0 && !localEntry) return null;
@@ -1706,7 +1803,7 @@ export default function WeeklyContentPage() {
                 variant="outline"
                 className="w-full border-blue-500 text-blue-700"
                 data-testid="publish-readiness-refresh-status"
-                onClick={() => void refreshLocalAgentHealth()}
+                onClick={() => void hydratePublishDialogAgent({ syncToWeb: true })}
               >
                 刷新账号状态
               </Button>

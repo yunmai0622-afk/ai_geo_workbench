@@ -61,6 +61,24 @@ export function accountNamesMatch(expected: string, detected: string): boolean {
   return a.includes(b) || b.includes(a);
 }
 
+/** 占位昵称（待识别）不参与发布前昵称一致性阻断 */
+export function isPendingPublishAccountName(name: string | null | undefined): boolean {
+  const t = (name ?? "").trim();
+  if (!t) return false;
+  if (t === "昵称待识别") return true;
+  return t.endsWith("（昵称待识别）");
+}
+
+export function shouldBlockPublishForAccountNameMismatch(
+  expected: string | null | undefined,
+  detected: string | null | undefined,
+): boolean {
+  if (!expected?.trim()) return false;
+  if (isPendingPublishAccountName(expected)) return false;
+  if (!detected?.trim()) return false;
+  return !accountNamesMatch(expected, detected);
+}
+
 export function isLoginUrl(url: string, pattern: RegExp): boolean {
   return pattern.test(url) || /signin|sign_in|passport|login/i.test(url);
 }
@@ -253,7 +271,7 @@ export abstract class BasePlatformPublisher {
         };
       }
 
-      if (task.expectedAccountName && !accountNamesMatch(task.expectedAccountName, detected)) {
+      if (shouldBlockPublishForAccountNameMismatch(task.expectedAccountName, detected)) {
         logs.push(stepLog("detect_account", "failed", "账号不一致"));
         return {
           status: "failed",
@@ -261,6 +279,19 @@ export abstract class BasePlatformPublisher {
           errorMessage: `当前登录账号 ${detected}，与任务账号 ${task.expectedAccountName} 不一致`,
           logs,
         };
+      }
+      if (
+        isPendingPublishAccountName(task.expectedAccountName) &&
+        detected &&
+        !accountNamesMatch(task.expectedAccountName, detected)
+      ) {
+        logs.push(
+          stepLog(
+            "detect_account",
+            "ok",
+            "昵称待识别：已跳过昵称比对，按登录有效继续发布",
+          ),
+        );
       }
 
       if (!this.urls.writeUrl) {
