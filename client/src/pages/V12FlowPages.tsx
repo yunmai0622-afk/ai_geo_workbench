@@ -57,6 +57,7 @@ const MONITORING_TEST_STAGE_DONE_LABEL: Record<AiTestStage, string> = {
   after_publish: "发布后复测",
 };
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { classifyGeoDiagnosisLlmError } from "@shared/geoDiagnosisLlmErrors";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Brain, ChevronDown, FileBarChart2, FileText, HelpCircle, RadioTower, Send, ShieldCheck } from "lucide-react";
@@ -448,9 +449,12 @@ function priorityBadgeClass(p: string | undefined) {
 
 function customerErrorMessage(value?: string) {
   if (!value) return undefined;
-  if (/timeout|timed out|UND_ERR|fetch failed|network|ECONN|ETIMEDOUT/i.test(value)) return "内容诊断失败，可能是模型服务超时或网络暂时异常。请稍后重试。";
-  if (/Internal Server Error|TRPCError|unexpected|TypeError/i.test(value)) return "内容诊断暂时无法完成，可能是上游服务异常。请稍后重试，或联系交付人员查看服务状态。";
+  const classified = classifyGeoDiagnosisLlmError(value);
+  if (classified.code !== "NOT_LLM_ERROR") return classified.userMessage;
   if (/目标客户问题|指定问题/.test(value)) return "请先在下方点击「重新生成」，或手动添加「指定问题」类型问题，再运行诊断。";
+  if (/Internal Server Error|TRPCError|unexpected|TypeError/i.test(value)) {
+    return "内容诊断暂时无法完成，可能是上游服务异常。请稍后重试，或联系交付人员查看服务状态。";
+  }
   return value;
 }
 

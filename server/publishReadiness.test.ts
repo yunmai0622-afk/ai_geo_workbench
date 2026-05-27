@@ -145,6 +145,18 @@ describe("publishReadiness evaluatePublishReadiness", () => {
     expect(r.message).not.toMatch(/GEO 建档 P0 必填未完成/);
   });
 
+  it("profile incomplete 列出缺失 P0 字段", () => {
+    const r = evaluatePublishReadiness({
+      ...baseContext,
+      enterpriseProfileReady: false,
+      enterpriseProfile: { brandName: "仅企业名" },
+      article: zhihuArticle(),
+    });
+    expect(r.blockingCode).toBe("PROFILE_INCOMPLETE");
+    expect(r.message).toContain("所属行业");
+    expect(r.message).toContain("关键词");
+  });
+
   it("diagnosis required → DIAGNOSIS_REQUIRED", () => {
     const r = evaluatePublishReadiness({
       ...baseContext,

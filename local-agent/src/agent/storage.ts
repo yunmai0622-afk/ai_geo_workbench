@@ -13,6 +13,8 @@ export type StoredAccount = {
   accountRole?: string | null;
   accountGroup?: string | null;
   accountName: string | null;
+  displayNameVerified?: boolean;
+  displayNameSource?: "platform_dom" | "profile_name" | "unknown";
   profilePath: string;
   sessionStatus: SessionStatus;
   createdAt: string;

@@ -1,6 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { CREATE_PROJECT_FAILED_USER_MESSAGE } from "@shared/userFacingMutationErrors";
+import {
+  assertLlmConfiguredForDiagnosis,
+  classifyGeoDiagnosisLlmError,
+} from "@shared/geoDiagnosisLlmErrors";
 import { ensureProjectsOwnerUserIdColumnOnce } from "./ensureProjectsOwnerUserId";
 import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
 import { and, asc, desc, eq, inArray, like, not } from "drizzle-orm";
@@ -1369,6 +1373,12 @@ const geoRouter = router({
         });
       }
 
+      const llmPre = assertLlmConfiguredForDiagnosis();
+      if (llmPre) {
+        console.error("[geo.analysis.run]", llmPre.serverLog);
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: llmPre.userMessage });
+      }
+
       await db.delete(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       await db.delete(aiResponses).where(
         and(eq(aiResponses.projectId, input.projectId), like(aiResponses.rawAnswer, `${GEO_SYNTHETIC_AI_RESPONSE_PREFIX}%`)),
@@ -1413,64 +1423,75 @@ const geoRouter = router({
           const disadvantagedLabel = questionDisadvantaged ? "是" : "否";
           const intentLabel = questionIntent || "（未标注，请结合问题文本推断）";
 
-          const llm = await invokeLLM({
-            max_tokens: 4096,
-            timeout_ms: 120000,
-            messages: [
-              { role: "system", content: diagnosisSystemPrompt },
-              {
-                role: "user",
-                content: [
-                  "企业信息：",
-                  enterpriseInfo,
-                  "",
-                  `客户问题：${q.questionText}`,
-                  `用户意图：${intentLabel}`,
-                  `该问题是否为内容覆盖薄弱场景：${disadvantagedLabel}`,
-                  "",
-                  "若「内容覆盖薄弱场景」为「是」，easyToRecommend 原则上应为 false，除非有明确公开证据表明内容仍易被引用来回答该问题。",
-                  "",
-                  "请分析并输出以下字段（以 JSON 对象给出，字段名与 Schema 一致）：",
-                  "- easyToMention：该企业是否容易在AI回答中被提及（布尔）",
-                  "- easyToRecommend：该企业内容是否容易被AI引用来回答这个问题（布尔）",
-                  "- contentGap：当前内容缺口，具体指出缺什么类型的内容（2-3句话）",
-                  "- suggestedTitle：建议创作的内容标题（客户会主动搜索的标题，不含品牌名，不是竞品对比）",
-                  "- coreTheses：支撑该标题的2条核心论点，从客户收益角度表达（字符串数组，长度2）",
-                  "- recommendedPlatforms：推荐发布平台（从知乎/小红书/百家号/头条号/微信公众号/官网中选1-2个）",
-                  "- strongestCompetitor：在这个问题场景下，哪类内容/方案最容易被AI优先引用（不一定是具体品牌；一句话）",
-                ].join("\n"),
-              },
-            ],
-            response_format: {
-              type: "json_schema",
-              json_schema: {
-                name: "geo_analysis_result_v12",
-                strict: true,
-                schema: {
-                  type: "object",
-                  properties: {
-                    easyToMention: { type: "boolean" },
-                    easyToRecommend: { type: "boolean" },
-                    contentGap: { type: "string" },
-                    suggestedTitle: { type: "string" },
-                    coreTheses: { type: "array", minItems: 2, maxItems: 2, items: { type: "string" } },
-                    recommendedPlatforms: { type: "array", minItems: 1, maxItems: 2, items: platformItemSchema },
-                    strongestCompetitor: { type: "string" },
+          let llm;
+          try {
+            llm = await invokeLLM({
+              max_tokens: 4096,
+              timeout_ms: 120000,
+              messages: [
+                { role: "system", content: diagnosisSystemPrompt },
+                {
+                  role: "user",
+                  content: [
+                    "企业信息：",
+                    enterpriseInfo,
+                    "",
+                    `客户问题：${q.questionText}`,
+                    `用户意图：${intentLabel}`,
+                    `该问题是否为内容覆盖薄弱场景：${disadvantagedLabel}`,
+                    "",
+                    "若「内容覆盖薄弱场景」为「是」，easyToRecommend 原则上应为 false，除非有明确公开证据表明内容仍易被引用来回答该问题。",
+                    "",
+                    "请分析并输出以下字段（以 JSON 对象给出，字段名与 Schema 一致）：",
+                    "- easyToMention：该企业是否容易在AI回答中被提及（布尔）",
+                    "- easyToRecommend：该企业内容是否容易被AI引用来回答这个问题（布尔）",
+                    "- contentGap：当前内容缺口，具体指出缺什么类型的内容（2-3句话）",
+                    "- suggestedTitle：建议创作的内容标题（客户会主动搜索的标题，不含品牌名，不是竞品对比）",
+                    "- coreTheses：支撑该标题的2条核心论点，从客户收益角度表达（字符串数组，长度2）",
+                    "- recommendedPlatforms：推荐发布平台（从知乎/小红书/百家号/头条号/微信公众号/官网中选1-2个）",
+                    "- strongestCompetitor：在这个问题场景下，哪类内容/方案最容易被AI优先引用（不一定是具体品牌；一句话）",
+                  ].join("\n"),
+                },
+              ],
+              response_format: {
+                type: "json_schema",
+                json_schema: {
+                  name: "geo_analysis_result_v12",
+                  strict: true,
+                  schema: {
+                    type: "object",
+                    properties: {
+                      easyToMention: { type: "boolean" },
+                      easyToRecommend: { type: "boolean" },
+                      contentGap: { type: "string" },
+                      suggestedTitle: { type: "string" },
+                      coreTheses: { type: "array", minItems: 2, maxItems: 2, items: { type: "string" } },
+                      recommendedPlatforms: { type: "array", minItems: 1, maxItems: 2, items: platformItemSchema },
+                      strongestCompetitor: { type: "string" },
+                    },
+                    required: [
+                      "easyToMention",
+                      "easyToRecommend",
+                      "contentGap",
+                      "suggestedTitle",
+                      "coreTheses",
+                      "recommendedPlatforms",
+                      "strongestCompetitor",
+                    ],
+                    additionalProperties: false,
                   },
-                  required: [
-                    "easyToMention",
-                    "easyToRecommend",
-                    "contentGap",
-                    "suggestedTitle",
-                    "coreTheses",
-                    "recommendedPlatforms",
-                    "strongestCompetitor",
-                  ],
-                  additionalProperties: false,
                 },
               },
-            },
-          });
+            });
+          } catch (err) {
+            const raw = err instanceof Error ? err.message : String(err);
+            const classified = classifyGeoDiagnosisLlmError(raw);
+            console.error("[geo.analysis.run]", classified.code, classified.serverLog);
+            throw new TRPCError({
+              code: classified.code === "LLM_NOT_CONFIGURED" ? "PRECONDITION_FAILED" : "INTERNAL_SERVER_ERROR",
+              message: classified.userMessage,
+            });
+          }
           const parsed = parseLLMJson<{
             easyToMention: boolean;
             easyToRecommend: boolean;

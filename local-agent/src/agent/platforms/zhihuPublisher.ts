@@ -17,6 +17,7 @@ import {
   finishWritePageLog,
   startWritePageLog,
 } from "../writePageLogStore";
+import { pickZhihuVerifiedNickname, type ZhihuNicknameCandidate } from "../zhihuAccountDisplay";
 
 /** 知乎正式写作页（唯一优先入口） */
 export const ZHIHU_WRITE_TARGET_URL = "https://zhuanlan.zhihu.com/write";
@@ -439,7 +440,11 @@ export class ZhihuPublisher extends BasePlatformPublisher {
   async collectAccountCandidates(
     page: Page,
     profileId?: string,
-  ): Promise<{ name: string | null; candidates: ZhihuDetectCandidate[] }> {
+  ): Promise<{
+    name: string | null;
+    candidates: ZhihuDetectCandidate[];
+    pick: ReturnType<typeof pickZhihuVerifiedNickname>;
+  }> {
     const url = page.url();
     console.log("[agent-zhihu] detect start", { profileId, url });
 
@@ -541,8 +546,10 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         seen.add(key);
         deduped.push(c);
       }
-      return { name: deduped[0]?.text ?? null, candidates: deduped.slice(0, 30) };
+      return { candidates: deduped.slice(0, 30) };
     }, SKIP_PATTERN.source);
+
+    const pick = pickZhihuVerifiedNickname(result.candidates as ZhihuNicknameCandidate[]);
 
     for (const c of result.candidates.slice(0, 12)) {
       console.log("[agent-zhihu] candidate", {
@@ -551,10 +558,10 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         text: c.text,
       });
     }
-    if (!result.name) {
-      console.warn("[agent-zhihu] detect failed", { reason: "no_candidate", url });
+    if (!pick.displayName) {
+      console.warn("[agent-zhihu] detect failed", { reason: "no_verified_nickname", url, pick });
     }
-    return result;
+    return { name: pick.displayName, candidates: result.candidates, pick };
   }
 
   async detectAccount(page: Page, profileId?: string): Promise<string | null> {
@@ -714,41 +721,46 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         return { ok: false, accountName: null, message: msg, errorType: "login_required" };
       }
 
-      const { name, candidates } = await this.collectAccountCandidates(page, profileId);
+      const collected = await this.collectAccountCandidates(page, profileId);
+      const { name, candidates, pick } = collected as {
+        name: string | null;
+        candidates: ZhihuDetectCandidate[];
+        pick: ReturnType<typeof pickZhihuVerifiedNickname>;
+      };
       const now = new Date().toISOString();
 
       if (!name) {
-        const reason =
-          candidates.length === 0
-            ? "未找到知乎头像/昵称元素，请确认窗口已登录并在首页"
-            : "未检测到有效昵称，请确认知乎窗口已登录";
+        const reason = pick.message;
         updateAccount(profileId, {
           accountName: null,
-          sessionStatus: "unknown",
+          displayNameVerified: false,
+          displayNameSource: "unknown",
+          sessionStatus: "active",
           lastCheckedAt: now,
           lastDetectMessage: reason,
         });
-        console.warn("[agent-zhihu] detect failed", {
-          reason: "account_not_detected",
+        console.warn("[agent-zhihu] nickname pending", {
           url: page.url(),
           candidateCount: candidates.length,
+          pick,
         });
         return {
-          ok: false,
+          ok: true,
           accountName: null,
           message: reason,
-          errorType: "account_not_detected",
         };
       }
 
       updateAccount(profileId, {
         accountName: name,
+        displayNameVerified: true,
+        displayNameSource: pick.displayNameSource,
         sessionStatus: "active",
         lastCheckedAt: now,
-        lastDetectMessage: `检测成功：${name}`,
+        lastDetectMessage: pick.message,
       });
       console.log("[agent-zhihu] detect success", { profileId, accountName: name });
-      return { ok: true, accountName: name, message: `检测到账号：${name}` };
+      return { ok: true, accountName: name, message: pick.message };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       const isContextLost = /closed|Target page|context or browser/i.test(msg);

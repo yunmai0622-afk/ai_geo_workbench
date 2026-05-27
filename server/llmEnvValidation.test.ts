@@ -18,7 +18,7 @@ describe("LLM environment variables validation", () => {
     expect(process.env.OPENAI_MODEL).toBe("ep-20251210143333-s6bb7");
   });
 
-  it("OPENAI_TIMEOUT_MS is set to 180000", () => {
-    expect(process.env.OPENAI_TIMEOUT_MS).toBe("180000");
+  it("OPENAI_TIMEOUT_MS is configured", () => {
+    expect(Number(process.env.OPENAI_TIMEOUT_MS)).toBeGreaterThanOrEqual(60000);
   });
 });

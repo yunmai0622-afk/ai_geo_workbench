@@ -1,4 +1,5 @@
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
+import { isP0GeoProfileCompleteFromRecord } from "./geoProfileP0Readiness";
 import { buildWorkspacePublishRiskHints } from "./publishReadiness";
 import { workspacePublishAccountRiskHint } from "./localAgentAccountBinding";
 
@@ -122,28 +123,9 @@ function stageById(id: WorkspaceStageId): WorkspaceStageDefinition {
   return WORKSPACE_STAGES.find(s => s.id === id) ?? WORKSPACE_STAGES[0]!;
 }
 
-function parseLines(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
-  if (typeof value === "string") return value.split(/\n+/).map(s => s.trim()).filter(Boolean);
-  return [];
-}
-
-/** 与 5 分钟建档 P0 保存门槛对齐的最小完整性 */
+/** 与品牌资产建档页 5 分钟 P0 保存门槛对齐 */
 export function isP0GeoProfileComplete(profile: Record<string, unknown> | null | undefined): boolean {
-  if (!profile) return false;
-  const brand = String(profile.brandName ?? profile.enterpriseName ?? "").trim();
-  if (!brand) return false;
-  const points = [
-    ...parseLines(profile.keyPoints),
-    ...parseLines(profile.coreSellingPoints),
-  ];
-  if (!points[0]) return false;
-  const pains = parseLines(profile.customerPains);
-  const primaryPain = pains[0] ?? String(profile.targetCustomer ?? profile.targetCustomers ?? "").trim();
-  if (!primaryPain) return false;
-  const questions = parseLines(profile.commonQuestions);
-  if (!questions[0]) return false;
-  return true;
+  return isP0GeoProfileCompleteFromRecord(profile);
 }
 
 export function buildWorkspaceRiskHints(input: WorkspaceStageResolutionInput): string[] {

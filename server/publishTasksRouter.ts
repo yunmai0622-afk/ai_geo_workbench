@@ -31,7 +31,7 @@ import {
 import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
-import { isP0GeoProfileComplete } from "@shared/workspaceStateMachine";
+import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/schema";
 
@@ -111,7 +111,8 @@ async function assertPublishReadinessForCreate(
   }));
   const readiness = evaluatePublishReadiness({
     projectAccessible: true,
-    enterpriseProfileReady: isP0GeoProfileComplete(profileRecord),
+    enterpriseProfileReady: isP0GeoProfileCompleteFromRecord(profileRecord),
+    enterpriseProfile: profileRecord,
     diagnosisReady: analysisRows.length > 0 || scoreRows.length > 0,
     article: {
       ...input.article,

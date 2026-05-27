@@ -122,9 +122,13 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(
       isP0GeoProfileComplete({
         brandName: "测试品牌",
-        keyPoints: ["卖点"],
-        customerPains: ["痛点"],
-        commonQuestions: ["问题1"],
+        industryTag: "软件",
+        oneLiner: "一句话介绍",
+        productDesc: "核心产品",
+        targetCustomer: "中小企业",
+        customerPains: ["获客难"],
+        keyPoints: ["交付快"],
+        keywords: ["GEO"],
       }),
     ).toBe(true);
   });

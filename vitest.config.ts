@@ -1,5 +1,8 @@
+import { config as loadEnv } from "dotenv";
 import { defineConfig } from "vitest/config";
 import path from "path";
+
+loadEnv({ path: path.resolve(import.meta.dirname, ".env") });
 
 const templateRoot = path.resolve(import.meta.dirname);
 

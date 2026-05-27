@@ -681,7 +681,10 @@ export default function AssetCenterPage() {
 
   async function refreshSummary() {
     if (!currentProjectId) return;
-    await utils.geo.assetLibrary.summary.invalidate({ projectId: currentProjectId });
+    await Promise.all([
+      utils.geo.assetLibrary.summary.invalidate({ projectId: currentProjectId }),
+      utils.geo.workspace.summary.invalidate({ projectId: currentProjectId }),
+    ]);
   }
 
   async function runSave(label: string, fn: () => Promise<unknown>) {

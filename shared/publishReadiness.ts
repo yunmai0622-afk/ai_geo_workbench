@@ -10,6 +10,10 @@ import {
 } from "./contentQualityGate";
 import { isGeoQualityScoreStale } from "./geoQualityStale";
 import {
+  formatGeoProfileIncompleteMessage,
+  evaluateGeoProfileP0Readiness,
+} from "./geoProfileP0Readiness";
+import {
   isBindingPublishPlatform,
   PUBLISH_PLATFORM_LABELS,
   type BindingPublishPlatform,
@@ -61,6 +65,8 @@ export type PublishReadinessArticle = ContentQualityGateArticle &
 export type PublishReadinessInput = {
   projectAccessible?: boolean;
   enterpriseProfileReady?: boolean;
+  /** 企业档案原始记录（用于 PROFILE_INCOMPLETE 缺失项文案） */
+  enterpriseProfile?: Record<string, unknown> | null;
   diagnosisReady?: boolean;
   article?: PublishReadinessArticle | null;
   localAgentConnected?: boolean | null;
@@ -87,6 +93,7 @@ export type PublishReadinessResult = {
 const MESSAGES = {
   projectInaccessible: "当前企业项目不存在或无访问权限，请重新进入项目后再试。",
   profileIncomplete: "企业建档未完成，请先补全品牌资产建档。",
+  /** 由 formatGeoProfileIncompleteMessage 动态生成 */
   diagnosisRequired: "请先完成 AI 实测诊断并生成优化任务。",
   articleMissing: "请先生成平台内容。",
   platformUnknown:
@@ -223,10 +230,11 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
   }
 
   if (input.enterpriseProfileReady === false) {
-    debugReasons.push("enterpriseProfileReady=false");
+    const p0 = evaluateGeoProfileP0Readiness(input.enterpriseProfile ?? null);
+    debugReasons.push("enterpriseProfileReady=false", ...p0.missingLabels.map(l => `missing:${l}`));
     return blocked({
       blockingCode: "PROFILE_INCOMPLETE",
-      message: MESSAGES.profileIncomplete,
+      message: formatGeoProfileIncompleteMessage(p0.missingLabels),
       nextActionLabel: "补全品牌建档",
       nextActionTarget: "go_profile",
       platform: emptyPlatform,

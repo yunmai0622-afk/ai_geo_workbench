@@ -51,6 +51,7 @@ import {
   type ResolvedArticlePublishPlatform,
 } from "@shared/articlePublishPlatform";
 import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
+import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
 import { getGeoQualityLabel, type GeoQualityRecommendation } from "@shared/geoQualityReview";
 import {
@@ -351,6 +352,11 @@ export default function WeeklyContentPage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
+  const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const enterpriseProfileRecord = assetSummaryQuery.data?.profile as Record<string, unknown> | undefined;
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
 
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
@@ -489,17 +495,34 @@ export default function WeeklyContentPage() {
     return Boolean(latestDiagnosisGap);
   }, [analysisQuery.data, tasks.length, latestDiagnosisGap]);
 
+  const enterpriseProfileReady = useMemo(() => {
+    if (assetSummaryQuery.isFetched && enterpriseProfileRecord) {
+      return isP0GeoProfileCompleteFromRecord(enterpriseProfileRecord);
+    }
+    if (workspaceSummaryQuery.isFetched) {
+      return workspaceSummaryQuery.data?.p0ProfileComplete ?? false;
+    }
+    return true;
+  }, [
+    assetSummaryQuery.isFetched,
+    enterpriseProfileRecord,
+    workspaceSummaryQuery.isFetched,
+    workspaceSummaryQuery.data?.p0ProfileComplete,
+  ]);
+
   const publishBaseContext = useMemo(
     () => ({
       projectAccessible: Boolean(selectedProjectId),
-      enterpriseProfileReady: workspaceSummaryQuery.data?.p0ProfileComplete ?? true,
+      enterpriseProfileReady,
+      enterpriseProfile: enterpriseProfileRecord ?? null,
       diagnosisReady: hasDiagnosisData,
       localAgentConnected: localAgentOnline,
       platformAccounts: flattenPlatformAccounts(platformAccountGroups),
     }),
     [
       selectedProjectId,
-      workspaceSummaryQuery.data?.p0ProfileComplete,
+      enterpriseProfileReady,
+      enterpriseProfileRecord,
       hasDiagnosisData,
       localAgentOnline,
       platformAccountGroups,
