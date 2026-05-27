@@ -9,6 +9,7 @@ import {
   projects,
   publishTasks,
   questions,
+  testRounds,
 } from "../drizzle/schema";
 import type { TrpcContext } from "./_core/context";
 import { getDb } from "./db";
@@ -195,4 +196,16 @@ export async function requirePublishTaskAccessConn(
   if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "发布任务不存在" });
   await requireProjectAccessConn(db, getCurrentUserId(ctx), rows[0].projectId);
   return { projectId: rows[0].projectId, task: rows[0] };
+}
+
+/** 反查检测轮次归属后校验项目访问权 */
+export async function requireTestRoundAccess(
+  ctx: TrpcContext,
+  roundId: string,
+): Promise<{ projectId: number; round: typeof testRounds.$inferSelect }> {
+  const db = await requireDbConn();
+  const rows = await db.select().from(testRounds).where(eq(testRounds.id, roundId)).limit(1);
+  if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "检测轮次不存在" });
+  await requireProjectAccess(ctx, rows[0].projectId);
+  return { projectId: rows[0].projectId, round: rows[0] };
 }

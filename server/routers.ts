@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { GEO_SYNTHETIC_AI_RESPONSE_PREFIX, isSyntheticGeoRawAnswer } from "@shared/geoSyntheticResponse";
 import { CREATE_PROJECT_FAILED_USER_MESSAGE } from "@shared/userFacingMutationErrors";
 import {
   assertLlmConfiguredForDiagnosis,
@@ -19,8 +21,6 @@ import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 
-/** 无真实平台原始回答时的占位 `ai_responses.rawAnswer` 前缀，可安全批量清理。 */
-const GEO_SYNTHETIC_AI_RESPONSE_PREFIX = "【系统自动】";
 import {
   aiResponses,
   analysisResults,
@@ -45,6 +45,9 @@ import {
   projects,
   questions,
   reports,
+  aiTestRuns,
+  retestComparisons,
+  testRounds,
   type Project,
 } from "../drizzle/schema";
 import {
@@ -143,6 +146,7 @@ import {
   requireMonitoringRecordAccess,
   requireProjectAccess,
   requireQuestionAccess,
+  requireTestRoundAccess,
 } from "./projectAccess";
 import {
   assetInputModes,
@@ -2925,6 +2929,203 @@ ${article.markdownContent}`,
           aiTestResults: record.aiTestResults ?? [],
           lastAiTestedAt: record.lastAiTestedAt,
         } as const;
+      }),
+  }),
+
+  testRounds: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          roundType: z.enum(["T0_BASELINE", "T1_RETEST", "T2_RETEST", "T3_RETEST"]),
+          roundName: z.string().min(1).max(255),
+          status: z.enum(["pending", "running", "completed", "failed"]).optional().default("pending"),
+          platforms: z.array(z.string().min(1)).min(1),
+          questionsCount: z.number().int().min(0).optional().default(0),
+          runsPerQuestion: z.number().int().min(1).optional().default(3),
+          startedAt: z.string().datetime().optional().nullable(),
+          finishedAt: z.string().datetime().optional().nullable(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const id = randomUUID();
+        await db.insert(testRounds).values({
+          id,
+          projectId: input.projectId,
+          roundType: input.roundType,
+          roundName: input.roundName,
+          status: input.status,
+          platforms: input.platforms,
+          questionsCount: input.questionsCount,
+          runsPerQuestion: input.runsPerQuestion,
+          startedAt: input.startedAt ? new Date(input.startedAt) : null,
+          finishedAt: input.finishedAt ? new Date(input.finishedAt) : null,
+        });
+        return { success: true, id } as const;
+      }),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        return db
+          .select()
+          .from(testRounds)
+          .where(eq(testRounds.projectId, input.projectId))
+          .orderBy(desc(testRounds.createdAt));
+      }),
+    get: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), id: z.string().uuid() }))
+      .query(async ({ ctx, input }) => {
+        await requireProjectAccess(ctx, input.projectId);
+        const { round } = await requireTestRoundAccess(ctx, input.id);
+        if (round.projectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
+        }
+        return round;
+      }),
+  }),
+
+  aiTestRuns: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          roundId: z.string().uuid(),
+          questionId: z.number().int().positive(),
+          platform: z.string().min(1).max(64),
+          runIndex: z.number().int().min(1),
+          testedAt: z.string().datetime(),
+          rawAnswer: z.string().min(1),
+          mentionedCompany: z.boolean().default(false),
+          recommendedCompany: z.boolean().default(false),
+          descriptionAccurate: z.boolean().nullable().optional(),
+          competitorMentioned: z.boolean().default(false),
+          competitorNames: z.array(z.string()).default([]),
+          hasSourceLinks: z.boolean().default(false),
+          sourceLinks: z.array(z.string()).nullable().optional(),
+          suspectedContentClues: z.string().nullable().optional(),
+          manualNote: z.string().nullable().optional(),
+          screenshotUrl: z.string().max(2000).nullable().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        if (isSyntheticGeoRawAnswer(input.rawAnswer)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "实测回答须为真实平台原文，不可写入系统占位内容",
+          });
+        }
+        const { round } = await requireTestRoundAccess(ctx, input.roundId);
+        if (round.projectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
+        }
+        const questionProjectId = await requireQuestionAccess(ctx, input.questionId);
+        if (questionProjectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "问题不属于当前项目" });
+        }
+        const id = randomUUID();
+        await db.insert(aiTestRuns).values({
+          id,
+          projectId: input.projectId,
+          roundId: input.roundId,
+          questionId: input.questionId,
+          platform: input.platform,
+          runIndex: input.runIndex,
+          testedAt: new Date(input.testedAt),
+          rawAnswer: input.rawAnswer,
+          mentionedCompany: input.mentionedCompany,
+          recommendedCompany: input.recommendedCompany,
+          descriptionAccurate: input.descriptionAccurate ?? null,
+          competitorMentioned: input.competitorMentioned,
+          competitorNames: input.competitorNames,
+          hasSourceLinks: input.hasSourceLinks,
+          sourceLinks: input.sourceLinks ?? null,
+          suspectedContentClues: input.suspectedContentClues ?? null,
+          manualNote: input.manualNote ?? null,
+          screenshotUrl: input.screenshotUrl ?? null,
+        });
+        return { success: true, id } as const;
+      }),
+    listByRound: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), roundId: z.string().uuid() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const { round } = await requireTestRoundAccess(ctx, input.roundId);
+        if (round.projectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
+        }
+        return db
+          .select()
+          .from(aiTestRuns)
+          .where(and(eq(aiTestRuns.roundId, input.roundId), eq(aiTestRuns.projectId, input.projectId)))
+          .orderBy(desc(aiTestRuns.testedAt), desc(aiTestRuns.runIndex));
+      }),
+  }),
+
+  retestComparisons: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          baseRoundId: z.string().uuid(),
+          compareRoundId: z.string().uuid(),
+          questionType: z.string().min(1).max(64),
+          platform: z.string().min(1).max(64),
+          baseMentionCount: z.number().int().min(0).default(0),
+          compareMentionCount: z.number().int().min(0).default(0),
+          baseRecommendCount: z.number().int().min(0).default(0),
+          compareRecommendCount: z.number().int().min(0).default(0),
+          baseCompetitorCount: z.number().int().min(0).default(0),
+          compareCompetitorCount: z.number().int().min(0).default(0),
+          changeDirection: z.enum(["up", "flat", "down", "unknown"]),
+          systemConclusion: z.string().min(1),
+          confidenceLevel: z.enum(["high", "medium", "low", "observe_more"]),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const base = await requireTestRoundAccess(ctx, input.baseRoundId);
+        const compare = await requireTestRoundAccess(ctx, input.compareRoundId);
+        if (base.round.projectId !== input.projectId || compare.round.projectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "对比轮次不属于当前项目" });
+        }
+        const id = randomUUID();
+        await db.insert(retestComparisons).values({
+          id,
+          projectId: input.projectId,
+          baseRoundId: input.baseRoundId,
+          compareRoundId: input.compareRoundId,
+          questionType: input.questionType,
+          platform: input.platform,
+          baseMentionCount: input.baseMentionCount,
+          compareMentionCount: input.compareMentionCount,
+          baseRecommendCount: input.baseRecommendCount,
+          compareRecommendCount: input.compareRecommendCount,
+          baseCompetitorCount: input.baseCompetitorCount,
+          compareCompetitorCount: input.compareCompetitorCount,
+          changeDirection: input.changeDirection,
+          systemConclusion: input.systemConclusion,
+          confidenceLevel: input.confidenceLevel,
+        });
+        return { success: true, id } as const;
+      }),
+    listByProject: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        return db
+          .select()
+          .from(retestComparisons)
+          .where(eq(retestComparisons.projectId, input.projectId))
+          .orderBy(desc(retestComparisons.createdAt));
       }),
   }),
 
