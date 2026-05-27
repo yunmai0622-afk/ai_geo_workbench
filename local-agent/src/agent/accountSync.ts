@@ -22,6 +22,14 @@ function mapStoredSessionToLoginStatus(sessionStatus: string | null | undefined)
   return "unknown";
 }
 
+function isBlockedDisplayName(text: string | null | undefined): boolean {
+  const t = (text ?? "").trim();
+  if (!t || t.length < 2) return true;
+  const deny = ["广告", "知乎", "首页", "推荐", "热榜", "关注", "会员", "创作中心", "私信", "通知", "用户", "账号", "登录", "设置", "博丽灵梦"];
+  if (deny.includes(t)) return true;
+  return /^https?:\/\//i.test(t);
+}
+
 function mapLocalStoredAccountToStatusEntry(account: {
   platform: string;
   profileId: string;
@@ -30,11 +38,12 @@ function mapLocalStoredAccountToStatusEntry(account: {
   sessionStatus?: string | null;
   lastCheckedAt?: string | null;
 }): LocalAgentAccountStatusEntry {
+  const verified = account.displayNameVerified === true && Boolean(account.accountName?.trim()) && !isBlockedDisplayName(account.accountName);
   return {
     platform: account.platform,
     profileId: account.profileId,
-    displayName: account.accountName ?? null,
-    displayNameVerified: Boolean(account.accountName?.trim()) && (account.displayNameVerified ?? true),
+    displayName: verified ? account.accountName!.trim() : null,
+    displayNameVerified: verified,
     loginStatus: mapStoredSessionToLoginStatus(account.sessionStatus),
     lastCheckedAt: account.lastCheckedAt ?? new Date().toISOString(),
   };

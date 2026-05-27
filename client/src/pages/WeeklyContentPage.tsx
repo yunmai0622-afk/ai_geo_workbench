@@ -101,7 +101,10 @@ import {
   PLATFORM_CONTENT_PROGRESS_STAGES,
   type AiTaskProgressErrorCategory,
 } from "@shared/aiTaskProgress";
-import { type LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync";
+import {
+  LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME,
+  type LocalAgentAccountStatusEntry,
+} from "@shared/localAgentAccountSync";
 
 type ProjectOption = { id: number; enterpriseName: string };
 
@@ -377,6 +380,7 @@ export default function WeeklyContentPage() {
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
+  const syncLocalAgentSnapshot = trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
   const updateGeneratedArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
   const generateRewriteSuggestion = trpc.geo.articles.generateRewriteSuggestion.useMutation();
   const [suggestionDialog, setSuggestionDialog] = useState<{ open: boolean; text: string; articleTitle: string }>({
@@ -432,6 +436,18 @@ export default function WeeklyContentPage() {
       try {
         const snapshot = await listLocalAgentAccountSnapshots();
         setLocalAgentAccountSnapshot(snapshot);
+        if (selectedProjectId && snapshot.length > 0) {
+          try {
+            await syncLocalAgentSnapshot.mutateAsync({
+              agentId: h.agentId,
+              projectId: selectedProjectId,
+              accounts: snapshot,
+            });
+            await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
+          } catch (err) {
+            console.warn("[weekly] sync local agent account snapshot failed", err);
+          }
+        }
       } catch {
         setLocalAgentAccountSnapshot([]);
       }
@@ -439,7 +455,7 @@ export default function WeeklyContentPage() {
       setLocalAgentAccountSnapshot([]);
     }
     return h;
-  }, []);
+  }, [selectedProjectId, syncLocalAgentSnapshot, utils.geo.platformAccounts.list]);
 
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
@@ -1539,13 +1555,20 @@ export default function WeeklyContentPage() {
                   (() => {
                     const rows = getPublishReadyAccountsForPlatform(publishDialogSlug);
                     const picked = pickPublishAccount(publishDialogSlug);
-                    if (rows.length === 0) return null;
+                    const localEntry = localAgentAccountSnapshot.find(
+                      e => e.platform === publishDialogSlug && e.loginStatus === "valid",
+                    );
+                    if (rows.length === 0 && !localEntry) return null;
+                    const accountNameLabel =
+                      picked?.accountName ??
+                      rows[0]?.accountName ??
+                      (localEntry?.displayNameVerified && localEntry.displayName
+                        ? localEntry.displayName
+                        : LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME);
                     return (
                       <p className="text-xs text-gray-600" data-testid="publish-dialog-account-status">
                         账号状态：已绑定
-                        <span className="ml-2">
-                          账号名称：{picked?.accountName ?? rows[0]?.accountName ?? "昵称待识别"}
-                        </span>
+                        <span className="ml-2">账号名称：{accountNameLabel}</span>
                       </p>
                     );
                   })()

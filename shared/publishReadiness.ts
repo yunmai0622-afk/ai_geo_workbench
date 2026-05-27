@@ -382,8 +382,14 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
   }
 
   const readyCount = countReadyAccountsForPlatform(input.platformAccounts, publishSlug);
+  const localValidPlatforms = filterValidLocalAgentPlatforms(input.localAgentAccountSnapshot ?? []);
+  const localHasValid = localValidPlatforms.includes(publishSlug);
   if (readyCount === 0) {
     const label = PUBLISH_PLATFORM_LABELS[publishSlug] ?? platformLabel;
+    if (input.localAgentConnected === true && localHasValid) {
+      debugReasons.push(`platformAccount:local_valid:${publishSlug}`);
+      return readyResult(platform, label, resolved, debugReasons);
+    }
     if (input.localAgentConnected === true && Array.isArray(input.localAgentAccountSnapshot) && input.localAgentAccountSnapshot.length === 0) {
       debugReasons.push(`platformAccount:not_synced_empty:${publishSlug}`);
       return blocked({
@@ -397,9 +403,7 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
         resolvedPlatform: resolved,
       });
     }
-    const localValidPlatforms = filterValidLocalAgentPlatforms(input.localAgentAccountSnapshot ?? []);
-    const localHasValid = localValidPlatforms.includes(publishSlug);
-    if (input.localAgentConnected === true && localHasValid) {
+    if (input.localAgentConnected === true && (input.localAgentAccountSnapshot?.length ?? 0) > 0 && !localHasValid) {
       debugReasons.push(`platformAccount:not_synced:${publishSlug}`);
       return blocked({
         blockingCode: "ACCOUNT_STATUS_NOT_SYNCED",

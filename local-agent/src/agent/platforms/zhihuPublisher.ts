@@ -17,7 +17,11 @@ import {
   finishWritePageLog,
   startWritePageLog,
 } from "../writePageLogStore";
-import { pickZhihuVerifiedNickname, type ZhihuNicknameCandidate } from "../zhihuAccountDisplay";
+import {
+  isBlockedZhihuNickname,
+  pickZhihuVerifiedNickname,
+  type ZhihuNicknameCandidate,
+} from "../zhihuAccountDisplay";
 
 /** 知乎正式写作页（唯一优先入口） */
 export const ZHIHU_WRITE_TARGET_URL = "https://zhuanlan.zhihu.com/write";
@@ -31,7 +35,7 @@ export const ZHIHU_WRITE_URL_CANDIDATES = [
 export const ZHIHU_WRITE_HOME_FALLBACK = "https://www.zhihu.com/";
 
 const SKIP_PATTERN =
-  /知乎|logo|头像|搜索|首页|消息|设置|登录|注册|创作中心|写文章|写回答|发布|关注|推荐|机构号|开通|适老化|无障碍|验证码|回到顶部|获取短信|获取语音|中国\s*\+?86|点击打开|的主页|个人主页/i;
+  /知乎|logo|头像|搜索|首页|消息|设置|登录|注册|创作中心|写文章|写回答|发布|关注|推荐|热榜|机构号|开通|适老化|无障碍|验证码|回到顶部|获取短信|获取语音|中国\s*\+?86|点击打开|的主页|个人主页|广告|私信|通知|会员|用户|账号/i;
 
 export type ZhihuDetectCandidate = {
   priority: number;
@@ -476,9 +480,6 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         document.querySelector('[class*="AppHeader"]');
 
       if (header) {
-        for (const img of Array.from(header.querySelectorAll("img[alt]"))) {
-          push(candidates, 0, "header img[alt]", "header img[alt]", img.getAttribute("alt"));
-        }
         for (const a of Array.from(header.querySelectorAll('a[href*="/people/"]'))) {
           const href = a.getAttribute("href") ?? "";
           if (!/\/people\/[^/?#]+/.test(href)) continue;
@@ -494,17 +495,20 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         }
       }
 
-      for (const img of Array.from(document.querySelectorAll("img[alt]"))) {
-        push(candidates, 1, "img[alt]", "img[alt]", img.getAttribute("alt"));
-      }
-      for (const img of Array.from(document.querySelectorAll("header img[alt]"))) {
-        push(candidates, 1, "header img[alt]", "header img[alt]", img.getAttribute("alt"));
-      }
-      for (const el of Array.from(document.querySelectorAll('[class*="Avatar"][alt]'))) {
-        push(candidates, 1, "Avatar[alt]", '[class*="Avatar"][alt]', el.getAttribute("alt"));
-      }
-      for (const img of Array.from(document.querySelectorAll('[class*="Avatar"] img[alt]'))) {
-        push(candidates, 1, "Avatar img[alt]", '[class*="Avatar"] img[alt]', img.getAttribute("alt"));
+      try {
+        const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> }).__INITIAL_STATE__;
+        const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
+        if (viewer && typeof viewer === "object") {
+          const v = viewer as Record<string, unknown>;
+          const name =
+            (typeof v.name === "string" && v.name) ||
+            (typeof v.username === "string" && v.username) ||
+            (typeof v.fullname === "string" && v.fullname) ||
+            null;
+          push(candidates, 1, "initial_state viewer", "window.__INITIAL_STATE__", name);
+        }
+      } catch {
+        /* ignore */
       }
       for (const a of Array.from(document.querySelectorAll('a[href*="/people/"]'))) {
         const href = a.getAttribute("href") ?? "";
@@ -729,8 +733,11 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       };
       const now = new Date().toISOString();
 
-      if (!name) {
-        const reason = pick.message;
+      if (!name || isBlockedZhihuNickname(name)) {
+        const reason =
+          name && isBlockedZhihuNickname(name)
+            ? "已登录，但暂未识别真实昵称（过滤了广告/导航等非昵称文案）"
+            : pick.message;
         updateAccount(profileId, {
           accountName: null,
           displayNameVerified: false,

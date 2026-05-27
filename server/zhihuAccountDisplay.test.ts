@@ -15,6 +15,16 @@ describe("zhihuAccountDisplay", () => {
     expect(pick.displayName).toBeNull();
   });
 
+  it("候选昵称为广告 → 不视为已验证昵称", () => {
+    expect(isBlockedZhihuNickname("广告")).toBe(true);
+    const pick = pickZhihuVerifiedNickname([
+      { priority: 0, source: "header img[alt]", text: "广告" },
+      { priority: 2, source: "profile link", text: "广告" },
+    ]);
+    expect(pick.displayNameVerified).toBe(false);
+    expect(pick.displayName).toBeNull();
+  });
+
   it("可信 profile link 提取成功", () => {
     const pick = pickZhihuVerifiedNickname([
       { priority: 2, source: "profile link", text: "真实用户昵称" },

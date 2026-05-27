@@ -1,3 +1,5 @@
+import { resolveLocalAgentDisplayNameFields } from "./zhihuNicknameDenylist";
+
 export type LocalAgentAccountLoginStatus = "valid" | "invalid" | "unknown";
 export type LocalAgentSyncBindingPlatform = "zhihu" | "sohu" | "toutiao" | "baijiahao" | "netease";
 const LOCAL_AGENT_SYNC_BINDING_PLATFORMS: LocalAgentSyncBindingPlatform[] = [
@@ -64,11 +66,12 @@ export function mapLocalStoredAccountToStatusEntry(account: {
   sessionStatus?: string | null;
   lastCheckedAt?: string | null;
 }): LocalAgentAccountStatusEntry {
+  const { displayName, displayNameVerified } = resolveLocalAgentDisplayNameFields(account);
   return {
     platform: account.platform,
     profileId: account.profileId,
-    displayName: account.accountName ?? null,
-    displayNameVerified: Boolean(account.accountName?.trim()) && (account.displayNameVerified ?? true),
+    displayName,
+    displayNameVerified,
     loginStatus: mapStoredSessionToLoginStatus(account.sessionStatus),
     lastCheckedAt: account.lastCheckedAt ?? new Date().toISOString(),
   };

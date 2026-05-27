@@ -27,6 +27,7 @@ describe("Local agent account sync to web P0", () => {
   it("publish readiness supports ACCOUNT_STATUS_NOT_SYNCED", () => {
     const readiness = read("shared/publishReadiness.ts");
     expect(readiness).toContain("ACCOUNT_STATUS_NOT_SYNCED");
+    expect(readiness).toContain("platformAccount:local_valid");
     expect(readiness).toContain("尚未同步到「");
   });
 

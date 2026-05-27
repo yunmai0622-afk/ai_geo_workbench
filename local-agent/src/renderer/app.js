@@ -57,7 +57,7 @@ function accountCardTitle(acc) {
     if (acc.sessionStatus === "active") return "知乎账号（昵称待识别）";
     return "未检测到账号昵称";
   }
-  if (acc.accountName && acc.displayNameVerified !== false) return acc.accountName;
+  if (acc.accountName && acc.displayNameVerified === true) return acc.accountName;
   if (acc.sessionStatus === "active") return `${acc.platform || "平台"}账号（昵称待识别）`;
   return "未检测到账号昵称";
 }
