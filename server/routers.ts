@@ -96,7 +96,10 @@ import {
   PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
   PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
   toPlatformContentGenerationError,
+  PLATFORM_CONTENT_AI_NOT_CONFIGURED_MESSAGE,
 } from "@shared/platformContentGenerationErrors";
+import { classifyPlatformContentLlmError } from "@shared/platformContentLlmErrors";
+import { diagnoseLlmProviderEnv, formatMissingLlmEnvServerLog } from "@shared/llmEnvDiagnostics";
 import {
   assertEnterpriseProfileForPlatformGeneration,
   assertPlatformContentStrategyParams,
@@ -2231,6 +2234,25 @@ const geoRouter = router({
       const analysisScope = analysesWithQuestions.filter(analysis => sourceAnalysisIds.includes(analysis.id));
       const assetLibrary = await getAssetLibraryContext(topic.projectId);
       const project = mergeProjectWithEnterpriseProfile(projectRow, assetLibrary.profile ?? null);
+      if (process.env.GEO_ARTICLE_BODY !== "test-template") {
+        const llmEnv = diagnoseLlmProviderEnv();
+        if (!llmEnv.configured) {
+          console.error(
+            "[geo.articles.generate]",
+            formatMissingLlmEnvServerLog(llmEnv.missingEnvVars),
+            {
+              topicId: input.topicId,
+              projectId: topic.projectId,
+              llmProvider: llmEnv.provider,
+              llmModel: llmEnv.model,
+            },
+          );
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: PLATFORM_CONTENT_AI_NOT_CONFIGURED_MESSAGE,
+          });
+        }
+      }
       let draft;
       try {
         const platformStrategy =
@@ -2263,7 +2285,27 @@ const geoRouter = router({
         });
       } catch (error) {
         const raw = error instanceof Error ? error.message : "GEO 文章生成失败";
-        const message = toPlatformContentGenerationError(raw);
+        const llmEnv = diagnoseLlmProviderEnv();
+        const llmClassified = classifyPlatformContentLlmError(raw, llmEnv);
+        if (llmClassified.serverLog) {
+          console.error(
+            "[geo.articles.generate]",
+            llmClassified.serverLog,
+            {
+              topicId: input.topicId,
+              projectId: topic.projectId,
+              targetPublishPlatform: input.targetPublishPlatform ?? null,
+              contentStrategyType: input.contentStrategyType ?? null,
+              targetQuestion: input.targetQuestion?.trim() ? "[set]" : null,
+              errorCode: llmClassified.code,
+              llmProvider: llmEnv.provider,
+              llmModel: llmEnv.model,
+              missingEnvVars: llmEnv.missingEnvVars,
+            },
+            raw ? { rawError: raw.slice(0, 2000) } : {},
+          );
+        }
+        const message = llmClassified.userMessage ?? toPlatformContentGenerationError(raw);
         const isClientError =
           /企业资料不足|企业资料还缺少|生成依据还缺少|请选择目标|不存在或无访问权限|文章选题不存在|未绑定优化任务|内容选题|请先完成 AI 实测诊断|还没有生成内容优化任务|当前平台暂无/.test(
             message,

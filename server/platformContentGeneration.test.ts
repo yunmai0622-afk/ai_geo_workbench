@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE,
+  PLATFORM_CONTENT_AI_AUTH_FAILED_MESSAGE,
+  PLATFORM_CONTENT_AI_NOT_CONFIGURED_MESSAGE,
+  PLATFORM_CONTENT_AI_RATE_LIMIT_MESSAGE,
+  PLATFORM_CONTENT_AI_TIMEOUT_MESSAGE,
   PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
   PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
   PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE,
@@ -8,6 +12,8 @@ import {
   PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
   toPlatformContentGenerationError,
 } from "@shared/platformContentGenerationErrors";
+import { classifyPlatformContentLlmError } from "@shared/platformContentLlmErrors";
+import { diagnoseLlmProviderEnv } from "@shared/llmEnvDiagnostics";
 import { buildDefaultPlatformStrategy } from "@shared/platformContentRules";
 import {
   assertEnterpriseProfileForPlatformGeneration,
@@ -58,6 +64,23 @@ describe("platform content generation errors (P0)", () => {
     );
     expect(toPlatformContentGenerationError("请填写目标问题")).toBe(PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE);
     expect(toPlatformContentGenerationError("LLM invoke failed: 503")).toBe(PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE);
+    expect(toPlatformContentGenerationError("OPENAI_API_KEY is not configured")).toBe(
+      PLATFORM_CONTENT_AI_NOT_CONFIGURED_MESSAGE,
+    );
+    expect(toPlatformContentGenerationError("OpenAI LLM invoke failed: status=401 Unauthorized")).toBe(
+      PLATFORM_CONTENT_AI_AUTH_FAILED_MESSAGE,
+    );
+    expect(toPlatformContentGenerationError("LLM invoke failed: 429 Too Many Requests")).toBe(
+      PLATFORM_CONTENT_AI_RATE_LIMIT_MESSAGE,
+    );
+    expect(toPlatformContentGenerationError("OpenAI request timed out after 180000ms")).toBe(
+      PLATFORM_CONTENT_AI_TIMEOUT_MESSAGE,
+    );
+    expect(classifyPlatformContentLlmError("OPENAI_API_KEY is not configured").code).toBe("not_configured");
+    expect(classifyPlatformContentLlmError("status=403").code).toBe("auth_failed");
+    expect(classifyPlatformContentLlmError("429 rate limit").code).toBe("rate_limit");
+    expect(classifyPlatformContentLlmError("OPENAI_TIMEOUT").code).toBe("timeout");
+    expect(diagnoseLlmProviderEnv().provider).toBeTruthy();
     expect(toPlatformContentGenerationError("请先完成 AI 语义分析，再生成优化任务")).toBe(
       PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
     );

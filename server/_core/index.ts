@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { startDailyAiCheckScheduler } from "../scheduledAiCheck";
 import { ensureGeoQualityColumns } from "../ensureGeoQualityColumns";
 import { ensureProjectsOwnerUserIdColumn } from "../ensureProjectsOwnerUserId";
+import { diagnoseLlmProviderEnv, formatMissingLlmEnvServerLog } from "../../shared/llmEnvDiagnostics";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -33,6 +34,12 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   await Promise.all([ensureGeoQualityColumns(), ensureProjectsOwnerUserIdColumn()]);
+  const llmEnv = diagnoseLlmProviderEnv();
+  if (!llmEnv.configured) {
+    console.warn(
+      `[startup] ${formatMissingLlmEnvServerLog(llmEnv.missingEnvVars)} (provider=${llmEnv.provider}, model=${llmEnv.model})`,
+    );
+  }
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

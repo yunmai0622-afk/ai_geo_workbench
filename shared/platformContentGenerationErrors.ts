@@ -1,5 +1,7 @@
 /** 平台化内容生成 — 用户可见错误文案（禁止透出 SQL / 堆栈 / 内部字段） */
 
+import { classifyPlatformContentLlmError } from "./platformContentLlmErrors";
+import { diagnoseLlmProviderEnv } from "./llmEnvDiagnostics";
 import {
   PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
   PLATFORM_CONTENT_NO_OPTIMIZATION_TASKS_MESSAGE,
@@ -21,6 +23,13 @@ export const PLATFORM_CONTENT_PROFILE_INSUFFICIENT_MESSAGE =
 
 export const PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE =
   "请选择目标平台和内容类型后再生成。";
+
+export {
+  PLATFORM_CONTENT_AI_NOT_CONFIGURED_MESSAGE,
+  PLATFORM_CONTENT_AI_AUTH_FAILED_MESSAGE,
+  PLATFORM_CONTENT_AI_RATE_LIMIT_MESSAGE,
+  PLATFORM_CONTENT_AI_TIMEOUT_MESSAGE,
+} from "./platformContentLlmErrors";
 
 export const PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE =
   "AI 内容生成服务暂时不可用，请稍后重试。";
@@ -53,9 +62,7 @@ function isProfileInsufficientRaw(message: string): boolean {
 }
 
 function isAiFailureRaw(message: string): boolean {
-  return /LLM|invoke failed|network failure|timed out|timeout|OPENAI|非 JSON|AI 未返回|GEO 文章生成失败|文章缺少 GEO 可收录结构/.test(
-    message,
-  );
+  return classifyPlatformContentLlmError(message).code !== "not_llm_error";
 }
 
 function isParamsMissingRaw(message: string): boolean {
@@ -109,7 +116,13 @@ function mapGenerationBasisRaw(message: string): string | null {
 /** 将服务端/逻辑层原始错误映射为客户可读提示 */
 export function toPlatformContentGenerationError(raw: string): string {
   const message = raw.trim();
-  if (!message) return PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE;
+  if (!message) {
+    const env = diagnoseLlmProviderEnv();
+    if (!env.configured) {
+      return classifyPlatformContentLlmError("", env).userMessage ?? PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE;
+    }
+    return PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE;
+  }
   if (looksInternal(message)) return PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE;
   if (message === PLATFORM_CONTENT_PROFILE_INSUFFICIENT_MESSAGE) return message;
   if (message === PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE) return message;
@@ -124,6 +137,9 @@ export function toPlatformContentGenerationError(raw: string): string {
 
   const basisMessage = mapGenerationBasisRaw(message);
   if (basisMessage) return basisMessage;
+
+  const llmClassified = classifyPlatformContentLlmError(message);
+  if (llmClassified.userMessage) return llmClassified.userMessage;
 
   if (isAiFailureRaw(message)) return PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE;
   if (message.length > 120) return PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE;
