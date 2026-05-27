@@ -27,6 +27,15 @@ function resolveMacZipUrl(prev = {}) {
   return DEFAULT_MAC_ZIP;
 }
 
+/** 外链 Release 模式：不得用本地 ditto zip 的 sha/size 覆盖 manifest */
+function shouldPreserveExternalMacManifest(prev = {}) {
+  if (externalMacZip) return true;
+  const prevUrl = typeof prev.macZipUrl === "string" ? prev.macZipUrl.trim() : "";
+  if (prev.macZipExternal === true && /^https?:\/\//i.test(prevUrl)) return true;
+  if (/^https?:\/\//i.test(prevUrl) && prevUrl !== DEFAULT_MAC_ZIP) return true;
+  return false;
+}
+
 function readAgentVersion() {
   try {
     const pkg = JSON.parse(fs.readFileSync(localAgentPkgPath, "utf-8"));
@@ -113,7 +122,15 @@ function packageMacAppZip(appPath, destZip) {
 
 function writeManifest(copied, extras = {}) {
   const prev = readExistingManifest();
-  const macZipUrl = extras.macZipUrl ?? resolveMacZipUrl(prev);
+  const preserveExternalMac = shouldPreserveExternalMacManifest(prev);
+  const safeExtras = { ...extras };
+  if (preserveExternalMac) {
+    delete safeExtras.macZipSha256;
+    delete safeExtras.macZipSizeBytes;
+    delete safeExtras.macZipUrl;
+    delete safeExtras.macZipExternal;
+  }
+  const macZipUrl = safeExtras.macZipUrl ?? resolveMacZipUrl(prev);
   const manifest = {
     version: readAgentVersion(),
     copiedAt: new Date().toISOString(),
@@ -122,9 +139,13 @@ function writeManifest(copied, extras = {}) {
     macDmgUrl: null,
     winZipUrl: prev.winZipUrl ?? null,
     winSetupUrl: prev.winSetupUrl ?? null,
-    macZipSha256: extras.macZipSha256 ?? prev.macZipSha256 ?? null,
-    macZipSizeBytes: extras.macZipSizeBytes ?? prev.macZipSizeBytes ?? null,
-    ...extras,
+    macZipSha256: preserveExternalMac
+      ? (prev.macZipSha256 ?? safeExtras.macZipSha256 ?? null)
+      : (safeExtras.macZipSha256 ?? prev.macZipSha256 ?? null),
+    macZipSizeBytes: preserveExternalMac
+      ? (prev.macZipSizeBytes ?? safeExtras.macZipSizeBytes ?? null)
+      : (safeExtras.macZipSizeBytes ?? prev.macZipSizeBytes ?? null),
+    ...safeExtras,
   };
   const finalMacZipUrl = manifest.macZipUrl;
   if (
@@ -178,23 +199,22 @@ if (dmg) {
 
 const macApp = findMacAppBundle(releaseDir);
 const prevBeforeCopy = readExistingManifest();
-const keepCommittedHttpsMacZip =
-  !externalMacZip && /^https?:\/\//i.test(String(prevBeforeCopy.macZipUrl ?? ""));
+const preserveExternalMac = shouldPreserveExternalMacManifest(prevBeforeCopy);
 
-  if (macApp && !externalMacZip) {
+if (macApp && !externalMacZip) {
   const dest = path.join(outDir, "geo-local-agent-mac.zip");
   packageMacAppZip(macApp, dest);
   copied.push(dest);
-  manifestExtras.macZipSha256 = sha256File(dest);
-  manifestExtras.macZipSizeBytes = fs.statSync(dest).size;
-  if (!keepCommittedHttpsMacZip) {
+  const localSha = sha256File(dest);
+  const localSize = fs.statSync(dest).size;
+  if (!preserveExternalMac) {
+    manifestExtras.macZipSha256 = localSha;
+    manifestExtras.macZipSizeBytes = localSize;
     manifestExtras.macZipUrl = DEFAULT_MAC_ZIP;
-  }
-  if (!keepCommittedHttpsMacZip) {
-    console.log(`[copy] ditto zip from ${path.relative(root, macApp)} sha256=${manifestExtras.macZipSha256}`);
+    console.log(`[copy] ditto zip from ${path.relative(root, macApp)} sha256=${localSha}`);
   } else {
     console.log(
-      `[copy] ditto zip -> ${path.relative(root, dest)}（保留 manifest HTTPS macZipUrl，供本地验收）`,
+      `[copy] ditto zip -> ${path.relative(root, dest)}（保留外链 manifest macZipUrl/sha256/size；本地 sha256=${localSha}）`,
     );
   }
 } else if (!externalMacZip) {
@@ -203,7 +223,7 @@ const keepCommittedHttpsMacZip =
     const dest = path.join(outDir, "geo-local-agent-mac.zip");
     fs.copyFileSync(path.join(releaseDir, zipMac), dest);
     copied.push(dest);
-    if (!keepCommittedHttpsMacZip) {
+    if (!preserveExternalMac) {
       manifestExtras.macZipUrl = DEFAULT_MAC_ZIP;
       manifestExtras.macZipSha256 = sha256File(dest);
       manifestExtras.macZipSizeBytes = fs.statSync(dest).size;

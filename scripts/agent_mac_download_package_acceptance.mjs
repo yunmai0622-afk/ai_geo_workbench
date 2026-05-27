@@ -102,6 +102,15 @@ if (copyScript.includes("AGENT_MAC_ZIP_URL") && copyScript.includes("macDmgUrl: 
 } else {
   fail("copy script missing AGENT_MAC_ZIP_URL or macDmgUrl null");
 }
+if (
+  copyScript.includes("shouldPreserveExternalMacManifest") &&
+  copyScript.includes("preserveExternalMac") &&
+  copyScript.includes("delete safeExtras.macZipSha256")
+) {
+  ok("copy_local_agent_download preserves external Release manifest hash on prebuild");
+} else {
+  fail("copy script must preserve HTTPS external macZipSha256 during prebuild");
+}
 
 if (card.includes("下载 Mac 客户端（推荐）")) ok('Mac button copy contains "推荐"');
 else fail('Mac button missing "下载 Mac 客户端（推荐）"');
