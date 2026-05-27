@@ -2576,3 +2576,16 @@
 [2026-05-27T03:47:00.298Z] [定时实测] 本次执行完成 2026-05-27T03:47:00.297Z
 [2026-05-27T04:12:48.246Z] 12:12:48 AM [vite] (client) hmr update /src/index.css
 [2026-05-27T04:13:30.826Z] 12:13:30 AM [vite] (client) hmr update /src/index.css
+[2026-05-27T04:29:00.282Z] Dev server process group stopped
+[2026-05-27T04:29:00.284Z] ELIFECYCLE  Command failed.
+[2026-05-27T04:29:00.330Z] Dev server exited with code -15
+[2026-05-27T04:29:03.311Z] Starting dev server with command: pnpm run dev
+[2026-05-27T04:29:04.129Z] 
+[2026-05-27T04:29:04.130Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-27T04:29:04.131Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-27T04:29:04.131Z] 
+[2026-05-27T04:29:05.766Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-27T04:29:10.606Z] Server running on http://localhost:3000/
+[2026-05-27T04:29:10.607Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-27T04:29:12.465Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-27T04:29:47.702Z] 12:29:47 AM [vite] (client) hmr update /src/index.css
