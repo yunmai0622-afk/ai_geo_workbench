@@ -800,6 +800,33 @@ export const retestComparisons = mysqlTable("retest_comparisons", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** GEO V1.1 Phase 2：有效动作库（长期护城河，需人工确认效果等级） */
+export const effectiveActions = mysqlTable("effective_actions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  /** FK → projects.id */
+  projectId: int("projectId").notNull(),
+  industry: varchar("industry", { length: 255 }).notNull(),
+  customerType: varchar("customerType", { length: 255 }).notNull(),
+  questionType: varchar("questionType", { length: 64 }).notNull(),
+  actionType: varchar("actionType", { length: 64 }).notNull(),
+  actionName: varchar("actionName", { length: 255 }).notNull(),
+  platform: varchar("platform", { length: 64 }).notNull(),
+  publishedUrl: varchar("publishedUrl", { length: 2000 }),
+  executedAt: timestamp("executedAt").notNull(),
+  /** FK → test_rounds.id */
+  baseRoundId: varchar("baseRoundId", { length: 36 }),
+  /** FK → test_rounds.id */
+  compareRoundId: varchar("compareRoundId", { length: 36 }),
+  baseMentionCount: int("baseMentionCount"),
+  compareMentionCount: int("compareMentionCount"),
+  changeDirection: varchar("changeDirection", { length: 32 }),
+  effectLevel: varchar("effectLevel", { length: 64 }).notNull(),
+  manualConclusion: text("manualConclusion"),
+  applicableCondition: text("applicableCondition"),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Project = typeof projects.$inferSelect;
@@ -858,3 +885,5 @@ export type AiTestRun = typeof aiTestRuns.$inferSelect;
 export type InsertAiTestRun = typeof aiTestRuns.$inferInsert;
 export type RetestComparison = typeof retestComparisons.$inferSelect;
 export type InsertRetestComparison = typeof retestComparisons.$inferInsert;
+export type EffectiveAction = typeof effectiveActions.$inferSelect;
+export type InsertEffectiveAction = typeof effectiveActions.$inferInsert;
