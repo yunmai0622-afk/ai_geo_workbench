@@ -18,6 +18,8 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, upsertUser } from "./db";
+import { loginEmailUser, registerEmailUser } from "./emailAuth";
+import { setUserSessionCookie } from "./authSession";
 import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
@@ -3280,6 +3282,39 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    register: publicProcedure
+      .input(
+        z.object({
+          email: z.string().trim().email("请输入有效的邮箱地址"),
+          password: z.string().min(8, "密码至少需要 8 位"),
+          confirmPassword: z.string().min(8, "请确认密码"),
+          name: z.string().trim().min(1, "请填写姓名").max(120),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (input.password !== input.confirmPassword) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "两次输入的密码不一致" });
+        }
+        const user = await registerEmailUser({
+          email: input.email,
+          password: input.password,
+          name: input.name,
+        });
+        await setUserSessionCookie(ctx, user);
+        return { success: true as const };
+      }),
+    loginWithEmail: publicProcedure
+      .input(
+        z.object({
+          email: z.string().trim().email("请输入有效的邮箱地址"),
+          password: z.string().min(1, "请输入密码"),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const user = await loginEmailUser({ email: input.email, password: input.password });
+        await setUserSessionCookie(ctx, user);
+        return { success: true as const };
+      }),
     devLogin: publicProcedure.mutation(async ({ ctx }) => {
       if (process.env.NODE_ENV === "production") {
         throw new TRPCError({ code: "FORBIDDEN", message: "本地开发登录不能在生产环境使用" });

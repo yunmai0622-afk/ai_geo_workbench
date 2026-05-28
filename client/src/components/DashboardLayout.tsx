@@ -20,6 +20,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getLoginUrl, isLoginConfigured } from "@/const";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Link } from "wouter";
+import { TRPCClientError } from "@trpc/client";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
@@ -151,6 +155,17 @@ export default function DashboardLayout({
       window.location.reload();
     },
   });
+  const [emailLogin, setEmailLogin] = useState({ email: "", password: "" });
+  const [emailLoginError, setEmailLoginError] = useState<string | null>(null);
+  const loginWithEmail = trpc.auth.loginWithEmail.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+      window.location.href = "/clients";
+    },
+    onError: err => {
+      setEmailLoginError(err instanceof TRPCClientError ? err.message : "登录失败，请稍后重试");
+    },
+  });
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -176,7 +191,7 @@ export default function DashboardLayout({
           </div>
           {loginConfigured ? (
             <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-blue-600 text-white hover:bg-blue-700">
-              登录
+              使用 OAuth 登录
             </Button>
           ) : (
             <div className="w-full space-y-3">
@@ -189,6 +204,59 @@ export default function DashboardLayout({
               {devLogin.error ? <p className="text-sm leading-6 text-red-600">{devLogin.error.message}</p> : null}
             </div>
           )}
+
+          <div className="w-full space-y-3 border-t border-gray-100 pt-6 text-left">
+            <p className="text-center text-xs font-medium uppercase tracking-wide text-gray-400">或使用邮箱登录</p>
+            <form
+              className="space-y-3"
+              data-testid="email-login-form"
+              onSubmit={e => {
+                e.preventDefault();
+                setEmailLoginError(null);
+                loginWithEmail.mutate(emailLogin);
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="login-email">邮箱</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={emailLogin.email}
+                  onChange={e => setEmailLogin(s => ({ ...s, email: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="login-password">密码</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={emailLogin.password}
+                  onChange={e => setEmailLogin(s => ({ ...s, password: e.target.value }))}
+                />
+              </div>
+              {emailLoginError ? <p className="text-sm text-red-600">{emailLoginError}</p> : null}
+              <Button
+                type="submit"
+                variant="outline"
+                size="lg"
+                className="w-full"
+                disabled={loginWithEmail.isPending}
+              >
+                {loginWithEmail.isPending ? "登录中…" : "邮箱登录"}
+              </Button>
+            </form>
+          </div>
+
+          <p className="text-sm text-gray-500">
+            还没有账号？{" "}
+            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700">
+              立即注册
+            </Link>
+          </p>
         </div>
       </div>
     );

@@ -197,6 +197,13 @@
       "when": 1780600000000,
       "tag": "0033_v11_phase2_effective_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1780700000000,
+      "tag": "0035_users_email_password",
+      "breakpoints": true
     }
   ]
 }

@@ -23,6 +23,7 @@ import WeeklyContentPage from "./pages/WeeklyContentPage";
 import ProgressPage from "./pages/ProgressPage";
 import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
+import RegisterPage from "./pages/RegisterPage";
 
 function profileHasBrand(profile: unknown): boolean {
   if (!profile || typeof profile !== "object") return false;
@@ -142,6 +143,7 @@ function Router() {
       <Route path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex" component={DeliveryReportPublicEvidencePage} />
       <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />
       <Route path="/delivery-reports/share/:projectId" component={DeliveryReportSharePage} />
+      <Route path="/register" component={RegisterPage} />
       <Route path="/onboarding">
         <Redirect to="/clients" />
       </Route>
