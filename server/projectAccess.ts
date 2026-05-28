@@ -83,11 +83,23 @@ export async function requireProjectAccessConn(
   return rows[0];
 }
 
-/** Agent / 插件等无登录 ctx：仅确认项目存在（不校验 owner） */
-export async function getProjectRowConn(db: DbConn, projectId: number): Promise<Project> {
+/**
+ * Agent / 插件等无 Web session 时加载项目行。
+ * - 传入 `userId`：必须 `project.ownerUserId === userId`，否则 FORBIDDEN（防 IDOR）。
+ * - 不传 `userId`（纯 localAgentId / 公开只读等）：仅确认项目存在。
+ *   风险：调用方须用其它机制约束访问范围（如 task.localAgentId、文章已发布状态）。
+ */
+export async function getProjectRowConn(
+  db: DbConn,
+  projectId: number,
+  userId?: number,
+): Promise<Project> {
   const rows = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
   if (!rows[0]) {
     throw new TRPCError({ code: "NOT_FOUND", message: "企业项目不存在" });
+  }
+  if (userId != null && rows[0].ownerUserId !== userId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: PROJECT_ACCESS_FORBIDDEN_MSG });
   }
   return rows[0];
 }

@@ -6,6 +6,7 @@ import {
   localAgentAccountStatusPayloadSchema,
   syncLocalAgentAccountStatuses,
 } from "./localAgentAccountSync";
+import { getProjectRowConn } from "./projectAccess";
 import { requireDbConn } from "./projectPlatformAccounts";
 
 export const agentRouter = router({
@@ -68,6 +69,10 @@ export const agentRouter = router({
     .input(localAgentAccountStatusPayloadSchema)
     .mutation(async ({ ctx, input }) => {
       const user = await assertAgentApiKeyUser(readAgentApiKeyFromRequest(ctx.req));
+      if (input.projectId) {
+        const db = await requireDbConn();
+        await getProjectRowConn(db, input.projectId, user.id);
+      }
       return syncLocalAgentAccountStatuses(user.id, input);
     }),
 });

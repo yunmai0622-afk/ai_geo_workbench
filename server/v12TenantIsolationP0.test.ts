@@ -1,11 +1,15 @@
+import { TRPCError } from "@trpc/server";
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import type { Project } from "../drizzle/schema";
 import {
   getCurrentUserId,
+  getProjectRowConn,
   listAccessibleProjectIds,
   PROJECT_ACCESS_FORBIDDEN_MSG,
   requireProjectAccess,
+  type DbConn,
 } from "./projectAccess";
 import type { TrpcContext } from "./_core/context";
 import type { User } from "../drizzle/schema";
@@ -90,6 +94,35 @@ describe("GEO-V1-H Tenant Isolation P0", () => {
     const agent = read("server/agentRouter.ts");
     expect(agent).toContain("publicProcedure");
     expect(agent).not.toContain("requireProjectAccess");
+  });
+
+  it("Agent syncAccountStatuses 在 API key 场景用 getProjectRowConn 校验 project owner", () => {
+    const agent = read("server/agentRouter.ts");
+    expect(agent).toContain("getProjectRowConn");
+    expect(agent).toMatch(/getProjectRowConn\(db,\s*input\.projectId,\s*user\.id\)/);
+  });
+
+  it("getProjectRowConn：用户 A 的 userId + 用户 B 的 projectId 应 FORBIDDEN", async () => {
+    const projectB = {
+      id: 9001,
+      ownerUserId: 2,
+      enterpriseName: "Tenant B",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as Project;
+    const db = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => [projectB],
+          }),
+        }),
+      }),
+    } as unknown as DbConn;
+
+    await expect(getProjectRowConn(db, projectB.id, 1)).rejects.toSatisfy((err: unknown) => {
+      return err instanceof TRPCError && err.code === "FORBIDDEN" && err.message === PROJECT_ACCESS_FORBIDDEN_MSG;
+    });
   });
 
   it("publishTasks 状态枚举未改", () => {
