@@ -2674,9 +2674,9 @@
 [2026-05-27T10:59:37.659Z] 6:59:37 AM [vite] (client) hmr update /src/pages/ContentPublishingCenterPage.tsx
 [2026-05-27T11:00:02.295Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
 [2026-05-27T11:00:25.751Z] 7:00:25 AM [vite] (client) hmr update /src/index.css
-[2026-05-27T12:37:37.636Z] c[OAuth] Initialized with baseURL: https://api.manus.im
-[2026-05-27T12:37:42.446Z] 8:37:42 AM [vite] (client) Re-optimizing dependencies because vite config has changed
-[2026-05-27T12:37:42.473Z] Server running on http://localhost:3000/
-[2026-05-27T12:37:42.474Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
-[2026-05-27T12:42:42.475Z] [定时实测] 开始执行 2026-05-27T12:42:42.474Z
-[2026-05-27T12:42:45.142Z] [定时实测] 找到 4 条需要检测的记录
+[2026-05-28T03:53:51.072Z] 11:53:51 PM [tsx] change in ./server/projectAccess.ts Restarting...
+[2026-05-28T03:53:53.050Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-28T03:53:57.723Z] 11:53:57 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+[2026-05-28T03:53:57.748Z] Server running on http://localhost:3000/
+[2026-05-28T03:53:57.749Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-28T03:55:56.092Z] 11:55:56 PM [tsx] unlink in ./shared/geoSyntheticResponse.ts Restarting...
