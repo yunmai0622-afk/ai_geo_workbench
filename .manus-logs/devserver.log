@@ -2680,3 +2680,17 @@
 [2026-05-28T03:53:57.748Z] Server running on http://localhost:3000/
 [2026-05-28T03:53:57.749Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
 [2026-05-28T03:55:56.092Z] 11:55:56 PM [tsx] unlink in ./shared/geoSyntheticResponse.ts Restarting...
+[2026-05-28T05:29:52.024Z] 1:29:52 AM [vite] (client) hmr update /src/index.css
+[2026-05-28T05:29:52.025Z] 1:29:52 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-05-28T05:29:52.026Z] 1:29:52 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-05-28T05:29:52.027Z] 1:29:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-05-28T05:29:52.028Z] 1:29:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectNextActionPanel.tsx
+[2026-05-28T05:29:52.029Z] 1:29:52 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-05-28T05:29:52.033Z] 1:29:52 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-28T05:29:52.118Z] 1:29:52 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-05-28T05:29:52.120Z] 1:29:52 AM [vite] (client) page reload src/lib/workspaceHomeDisplay.ts
+[2026-05-28T05:29:52.121Z] 1:29:52 AM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+[2026-05-28T05:29:52.121Z] 1:29:52 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-28T05:29:52.122Z] 1:29:52 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/workspaceMainChain.ts
+[2026-05-28T05:29:52.246Z] 1:29:52 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Restarting...
+[2026-05-28T05:29:54.055Z] c[OAuth] Initialized with baseURL: https://api.manus.im
