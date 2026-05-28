@@ -1,5 +1,6 @@
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
+import type { MainChainNextAction } from "@/lib/workspaceHomeDisplay";
 import { workspaceCtaUrl, type WorkspaceStageDefinition } from "@shared/workspaceStateMachine";
 import { AlertTriangle, ArrowRight, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
@@ -13,6 +14,7 @@ type RecentItem = {
 type Props = {
   projectId?: number;
   stage?: WorkspaceStageDefinition | null;
+  mainChainNextAction?: MainChainNextAction | null;
   blockerReason?: string | null;
   riskHints?: string[];
   recentItems?: RecentItem[];
@@ -30,6 +32,7 @@ type Props = {
 export function ProjectNextActionPanel({
   projectId,
   stage,
+  mainChainNextAction,
   blockerReason,
   riskHints = [],
   recentItems = [],
@@ -37,14 +40,19 @@ export function ProjectNextActionPanel({
 }: Props) {
   const [, setLocation] = useLocation();
 
-  // 推断下一阶段名称
   const STAGE_ORDER = ["待建档", "待诊断", "待生产", "待绑定发布", "待发布", "待监测", "优化中", "报告已生成"];
   const currentLabel = stage ? CUSTOMER_STAGE_LABELS[stage.id] : null;
   const currentIdx = currentLabel ? STAGE_ORDER.indexOf(currentLabel) : -1;
-  const nextStageName =
+  const fallbackNextStageName =
     currentIdx >= 0 && currentIdx < STAGE_ORDER.length - 1
       ? STAGE_ORDER[currentIdx + 1]
       : "持续优化";
+
+  const ctaLabel = mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
+  const reason = mainChainNextAction?.reason ?? blockerReason ?? stage?.blockerHint;
+  const nextStageName = mainChainNextAction?.nextStageName ?? fallbackNextStageName;
+  const ctaPath =
+    mainChainNextAction?.ctaPath ?? (stage && projectId ? workspaceCtaUrl(projectId, stage) : null);
 
   return (
     <aside
@@ -61,26 +69,18 @@ export function ProjectNextActionPanel({
         </div>
         {loading ? (
           <p className="text-sm text-gray-400">加载建议中…</p>
-        ) : stage && projectId ? (
+        ) : ctaLabel && projectId && ctaPath ? (
           <div className="space-y-3">
-            {/* 当前最应该处理什么 */}
-            <p className="text-[13px] font-medium leading-relaxed text-gray-800">
-              {stage.ctaLabel}
-            </p>
+            <p className="text-[13px] font-medium leading-relaxed text-gray-800">{ctaLabel}</p>
 
-            {/* 为什么要做 */}
-            {blockerReason || stage.blockerHint ? (
-              <p className="text-[12px] leading-relaxed text-gray-600">
-                原因：{blockerReason ?? stage.blockerHint}
-              </p>
+            {reason ? (
+              <p className="text-[12px] leading-relaxed text-gray-600">原因：{reason}</p>
             ) : null}
 
-            {/* 做完会进入哪个阶段 */}
             <p className="text-[12px] text-gray-500">
               完成后进入：<span className="font-medium text-blue-700">{nextStageName}</span>
             </p>
 
-            {/* CTA */}
             <button
               type="button"
               className={cn(
@@ -88,9 +88,9 @@ export function ProjectNextActionPanel({
                 geoP0Brand.primary,
               )}
               data-testid="next-action-primary-button"
-              onClick={() => setLocation(workspaceCtaUrl(projectId, stage))}
+              onClick={() => setLocation(ctaPath)}
             >
-              {stage.ctaLabel}
+              {ctaLabel}
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
