@@ -21,6 +21,7 @@ import { getDb, upsertUser } from "./db";
 import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
+import { effectiveActionsRouter } from "./effectiveActionsRouter";
 
 import {
   aiResponses,
@@ -99,6 +100,7 @@ import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
+import { calculateRetestComparison } from "./geoRetestCalculator";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import { resolveArticleListPublishFields } from "@shared/articlePublishPlatform";
 import {
@@ -3189,6 +3191,8 @@ ${article.markdownContent}`,
       }),
   }),
 
+  effectiveActions: effectiveActionsRouter,
+
   retestComparisons: router({
     create: protectedProcedure
       .input(
@@ -3247,6 +3251,18 @@ ${article.markdownContent}`,
           .from(retestComparisons)
           .where(eq(retestComparisons.projectId, input.projectId))
           .orderBy(desc(retestComparisons.createdAt));
+      }),
+    calculate: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          baseRoundId: z.string().uuid(),
+          compareRoundId: z.string().uuid(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireProjectAccess(ctx, input.projectId);
+        return calculateRetestComparison(input.baseRoundId, input.compareRoundId, input.projectId);
       }),
   }),
 
