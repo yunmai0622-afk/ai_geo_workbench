@@ -749,27 +749,38 @@ export const roundQuestions = mysqlTable(
 );
 
 /** GEO V1.1：结构化 AI 实测记录（禁止写入合成占位 rawAnswer） */
-export const aiTestRuns = mysqlTable("ai_test_runs", {
-  id: varchar("id", { length: 36 }).primaryKey(),
-  projectId: int("projectId").notNull(),
-  roundId: varchar("roundId", { length: 36 }).notNull(),
-  questionId: int("questionId").notNull(),
-  platform: varchar("platform", { length: 64 }).notNull(),
-  runIndex: int("runIndex").notNull(),
-  testedAt: timestamp("testedAt").notNull(),
-  rawAnswer: text("rawAnswer").notNull(),
-  mentionedCompany: boolean("mentionedCompany").default(false).notNull(),
-  recommendedCompany: boolean("recommendedCompany").default(false).notNull(),
-  descriptionAccurate: boolean("descriptionAccurate"),
-  competitorMentioned: boolean("competitorMentioned").default(false).notNull(),
-  competitorNames: json("competitorNames").$type<string[]>().notNull(),
-  hasSourceLinks: boolean("hasSourceLinks").default(false).notNull(),
-  sourceLinks: json("sourceLinks").$type<string[] | null>(),
-  suspectedContentClues: text("suspectedContentClues"),
-  manualNote: text("manualNote"),
-  screenshotUrl: varchar("screenshotUrl", { length: 2000 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const aiTestRuns = mysqlTable(
+  "ai_test_runs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: int("projectId").notNull(),
+    roundId: varchar("roundId", { length: 36 }).notNull(),
+    questionId: int("questionId").notNull(),
+    platform: varchar("platform", { length: 64 }).notNull(),
+    runIndex: int("runIndex").notNull(),
+    testedAt: timestamp("testedAt").notNull(),
+    rawAnswer: text("rawAnswer").notNull(),
+    mentionedCompany: boolean("mentionedCompany").default(false).notNull(),
+    recommendedCompany: boolean("recommendedCompany").default(false).notNull(),
+    descriptionAccurate: boolean("descriptionAccurate"),
+    competitorMentioned: boolean("competitorMentioned").default(false).notNull(),
+    competitorNames: json("competitorNames").$type<string[]>().notNull(),
+    hasSourceLinks: boolean("hasSourceLinks").default(false).notNull(),
+    sourceLinks: json("sourceLinks").$type<string[] | null>(),
+    suspectedContentClues: text("suspectedContentClues"),
+    manualNote: text("manualNote"),
+    screenshotUrl: varchar("screenshotUrl", { length: 2000 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    roundQuestionPlatformRunUnique: uniqueIndex("ai_test_runs_round_question_platform_run_unique").on(
+      table.roundId,
+      table.questionId,
+      table.platform,
+      table.runIndex,
+    ),
+  }),
+);
 
 /** GEO V1.1：轮次间对比快照（客户可读结论，不暴露工程字段） */
 export const retestChangeDirectionEnum = mysqlEnum("changeDirection", ["up", "flat", "down", "unknown"]);

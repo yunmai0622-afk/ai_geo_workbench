@@ -248,26 +248,34 @@ export async function executeT0Run(
   }
 }
 
-function buildT0TaskQueue(round: TestRound, boundQuestionIds: number[]): T0RunTask[] {
-  const platforms = round.platforms ?? [];
-  const runsPerQuestion = round.runsPerQuestion ?? 3;
-  const tasks: T0RunTask[] = [];
-  for (const questionId of boundQuestionIds) {
-    for (const platform of platforms) {
-      for (let runIndex = 1; runIndex <= runsPerQuestion; runIndex += 1) {
-        tasks.push({ questionId, platform, runIndex });
-      }
-    }
-  }
-  return tasks;
-}
-
-export type StartT0ExecutionResult = {
+export type StartT0ExecutionSuccess = {
   roundId: string;
   completedRuns: number;
   failedRuns: number;
   failures: Array<{ questionId: number; platform: string; runIndex: number; error: string }>;
 };
+
+export type StartT0ExecutionResult =
+  | StartT0ExecutionSuccess
+  | { error: "ROUND_ALREADY_STARTED" };
+
+function recordT0RunOutcome(
+  result: ExecuteT0RunResult,
+  task: T0RunTask,
+  state: Pick<StartT0ExecutionSuccess, "completedRuns" | "failedRuns" | "failures">,
+): void {
+  if (result.ok) {
+    state.completedRuns += 1;
+    return;
+  }
+  state.failedRuns += 1;
+  state.failures.push({
+    questionId: task.questionId,
+    platform: task.platform,
+    runIndex: task.runIndex,
+    error: result.error,
+  });
+}
 
 export async function startT0Execution(db: DbConn, roundId: string): Promise<StartT0ExecutionResult> {
   const roundRows = await db.select().from(testRounds).where(eq(testRounds.id, roundId)).limit(1);
@@ -277,12 +285,6 @@ export async function startT0Execution(db: DbConn, roundId: string): Promise<Sta
   }
   if (round.roundType !== "T0_BASELINE") {
     throw new TRPCError({ code: "BAD_REQUEST", message: "仅 T0 基线轮次可执行此操作" });
-  }
-  if (round.status !== "pending") {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `当前轮次状态为 ${round.status}，仅 pending 状态可开始执行`,
-    });
   }
 
   const boundRows = await db
@@ -295,36 +297,55 @@ export async function startT0Execution(db: DbConn, roundId: string): Promise<Sta
   }
 
   const startedAt = new Date();
-  await db
+  const lockResult = await db
     .update(testRounds)
     .set({ status: "running", startedAt })
-    .where(eq(testRounds.id, roundId));
+    .where(and(eq(testRounds.id, roundId), eq(testRounds.status, "pending")));
+  const affectedRows =
+    typeof lockResult === "object" && lockResult !== null && "affectedRows" in lockResult
+      ? Number((lockResult as { affectedRows: number }).affectedRows)
+      : 0;
+  if (affectedRows === 0) {
+    return { error: "ROUND_ALREADY_STARTED" };
+  }
 
-  const tasks = buildT0TaskQueue(round, boundQuestionIds);
+  const platforms = round.platforms ?? [];
+  const runsPerQuestion = round.runsPerQuestion ?? 3;
   let completedRuns = 0;
   let failedRuns = 0;
-  const failures: StartT0ExecutionResult["failures"] = [];
+  const failures: StartT0ExecutionSuccess["failures"] = [];
+  const state = { completedRuns, failedRuns, failures };
 
-  for (const task of tasks) {
-    const result = await executeT0Run(db, {
-      projectId: round.projectId,
-      roundId,
-      questionId: task.questionId,
-      platform: task.platform,
-      runIndex: task.runIndex,
-    });
-    if (result.ok) {
-      completedRuns += 1;
-    } else {
-      failedRuns += 1;
-      failures.push({
-        questionId: task.questionId,
-        platform: task.platform,
-        runIndex: task.runIndex,
-        error: result.error,
-      });
+  for (const questionId of boundQuestionIds) {
+    for (let runIndex = 1; runIndex <= runsPerQuestion; runIndex += 1) {
+      const platformResults = await Promise.allSettled(
+        platforms.map(platform =>
+          executeT0Run(db, {
+            projectId: round.projectId,
+            roundId,
+            questionId,
+            platform,
+            runIndex,
+          }),
+        ),
+      );
+
+      for (let i = 0; i < platforms.length; i += 1) {
+        const platform = platforms[i]!;
+        const task: T0RunTask = { questionId, platform, runIndex };
+        const settled = platformResults[i]!;
+        if (settled.status === "rejected") {
+          const message = settled.reason instanceof Error ? settled.reason.message : String(settled.reason);
+          recordT0RunOutcome({ ok: false, error: message }, task, state);
+        } else {
+          recordT0RunOutcome(settled.value, task, state);
+        }
+      }
     }
   }
+
+  completedRuns = state.completedRuns;
+  failedRuns = state.failedRuns;
 
   const finishedAt = new Date();
   const finalStatus = failedRuns > 0 && completedRuns === 0 ? "failed" : "completed";
@@ -333,5 +354,5 @@ export async function startT0Execution(db: DbConn, roundId: string): Promise<Sta
     .set({ status: finalStatus, finishedAt })
     .where(eq(testRounds.id, roundId));
 
-  return { roundId, completedRuns, failedRuns, failures };
+  return { roundId, completedRuns, failedRuns, failures: state.failures };
 }
