@@ -2,7 +2,7 @@ import { formatTargetAiVisibilityReportSection } from "@shared/platformContentRu
 import { invokeLLM } from "./_core/llm";
 
 export const generatedQuestionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
-export const questionTypes = [...generatedQuestionTypes, "指定问题"] as const;
+export const questionTypes = [...generatedQuestionTypes, "指定问题", "scenario_need", "long_tail_conversion"] as const;
 export const questionSources = ["ai_generated", "manual", "csv"] as const;
 export const questionSourceLabels: Record<(typeof questionSources)[number], string> = { ai_generated: "AI 生成", manual: "手动指定", csv: "CSV 导入" };
 export const aiPlatforms = ["ChatGPT", "DeepSeek", "豆包", "Kimi", "通义", "文心", "Perplexity", "其他"] as const;

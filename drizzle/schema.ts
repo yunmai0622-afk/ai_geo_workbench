@@ -32,6 +32,8 @@ export const questionTypeEnum = mysqlEnum("questionType", [
   "价格选型",
   "高意向成交",
   "指定问题",
+  "scenario_need",
+  "long_tail_conversion",
 ]);
 
 export const questionSourceEnum = mysqlEnum("source", ["ai_generated", "manual", "csv"]);
@@ -732,6 +734,20 @@ export const testRounds = mysqlTable("test_rounds", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** GEO V1.1：检测轮次与问题关联（不复制 questionText） */
+export const roundQuestions = mysqlTable(
+  "round_questions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    roundId: varchar("roundId", { length: 36 }).notNull(),
+    questionId: int("questionId").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    roundQuestionUnique: uniqueIndex("round_questions_round_question_unique").on(table.roundId, table.questionId),
+  }),
+);
+
 /** GEO V1.1：结构化 AI 实测记录（禁止写入合成占位 rawAnswer） */
 export const aiTestRuns = mysqlTable("ai_test_runs", {
   id: varchar("id", { length: 36 }).primaryKey(),
@@ -836,6 +852,8 @@ export type ProjectPlatformAccount = typeof projectPlatformAccounts.$inferSelect
 export type InsertProjectPlatformAccount = typeof projectPlatformAccounts.$inferInsert;
 export type TestRound = typeof testRounds.$inferSelect;
 export type InsertTestRound = typeof testRounds.$inferInsert;
+export type RoundQuestion = typeof roundQuestions.$inferSelect;
+export type InsertRoundQuestion = typeof roundQuestions.$inferInsert;
 export type AiTestRun = typeof aiTestRuns.$inferSelect;
 export type InsertAiTestRun = typeof aiTestRuns.$inferInsert;
 export type RetestComparison = typeof retestComparisons.$inferSelect;

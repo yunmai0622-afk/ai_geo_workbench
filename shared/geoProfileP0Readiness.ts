@@ -2,6 +2,8 @@
  * 品牌资产建档 P0 必填口径 — 与 AssetCenter「5 分钟建档」保存校验对齐
  */
 
+import { extractProfileForQuestionGeneration } from "./geoProfileQuestionMapping";
+
 function parseLines(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
   if (typeof value === "string") return value.split(/\n+/).map(s => s.trim()).filter(Boolean);
@@ -105,4 +107,33 @@ export function formatGeoProfileIncompleteMessage(missingLabels: string[]): stri
     return "企业建档未完成，请先补全品牌资产建档。";
   }
   return `企业建档还缺少：${missingLabels.join("、")}。请先在「品牌资产建档」补全后再发布。`;
+}
+
+export type T0ProfileReadiness = {
+  ready: boolean;
+  missingLabels: string[];
+};
+
+/** T0 基线检测入口：比 P0 建档更严，竞品经 geoProfileQuestionMapping 统一读取 */
+export function evaluateProfileReadinessForT0(input: {
+  profile: Record<string, unknown> | null | undefined;
+  project?: {
+    enterpriseName?: string | null;
+    industry?: string | null;
+    productIntro?: string | null;
+    targetCustomers?: string | null;
+    competitorNames?: string[] | null;
+  } | null;
+}): T0ProfileReadiness {
+  const mapped = extractProfileForQuestionGeneration(input);
+  const missingLabels: string[] = [];
+
+  if (!mapped.brandName.trim()) missingLabels.push("企业名称");
+  if (!mapped.industryTag.trim()) missingLabels.push("所属行业");
+  if (!mapped.productDesc.trim()) missingLabels.push("核心产品/服务");
+  if (!mapped.targetCustomer.trim()) missingLabels.push("目标客户");
+  if (mapped.customerPains.length === 0) missingLabels.push("主要解决的问题");
+  if (mapped.competitors.length === 0) missingLabels.push("竞品");
+
+  return { ready: missingLabels.length === 0, missingLabels };
 }
