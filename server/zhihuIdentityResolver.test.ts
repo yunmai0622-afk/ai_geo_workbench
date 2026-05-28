@@ -48,6 +48,7 @@ function validSignals(
     loginStatus: "valid" as const,
     profileHeaderTitle: null,
     viewerStateName: null,
+    viewerStateSlug: null,
     userMenuName: null,
     ...partial,
   };
@@ -63,34 +64,65 @@ describe("zhihuIdentityResolver trusted sources", () => {
     expect(r.displayNameSource).toBe("profile_header");
   });
 
-  it("document.title 蒙科恰 - 知乎 → verified document_title", () => {
+  it("document.title alone on profile page is not used", () => {
     const r = resolveZhihuIdentityFromSignals(validSignals());
-    expect(r.displayName).toBe("蒙科恰");
-    expect(r.displayNameVerified).toBe(true);
-    expect(r.displayNameSource).toBe("document_title");
+    expect(r.displayName).toBeNull();
   });
 
-  it("viewer state 蒙科恰 → verified viewer_state", () => {
+  it("misleading document.title on profile page is ignored without header", () => {
+    const r = resolveZhihuIdentityFromSignals(
+      validSignals({ documentTitle: "Azul - 知乎", profileHeaderTitle: null }),
+    );
+    expect(r.displayName).toBeNull();
+  });
+
+  it("viewer state 蒙科恰 → verified viewer_state when urlToken matches slug", () => {
     const r = resolveZhihuIdentityFromSignals(
       validSignals({
         documentTitle: "知乎",
         profileHeaderTitle: null,
         viewerStateName: "蒙科恰",
+        viewerStateSlug: "meng-ke-ke-61",
       }),
     );
     expect(r.displayName).toBe("蒙科恰");
     expect(r.displayNameSource).toBe("viewer_state");
   });
 
-  it("user menu 蒙科恰 → verified user_menu", () => {
+  it("viewer state is ignored when urlToken does not match profile slug", () => {
+    const r = resolveZhihuIdentityFromSignals(
+      validSignals({
+        profileHeaderTitle: null,
+        viewerStateName: "蒙科恰",
+        viewerStateSlug: "other-user",
+      }),
+    );
+    expect(r.displayName).toBeNull();
+  });
+
+  it("user menu is not used as nickname source", () => {
     const r = resolveZhihuIdentityFromSignals(
       validSignals({
         documentTitle: "知乎",
         userMenuName: "蒙科恰",
+        profileHeaderTitle: null,
       }),
     );
+    expect(r.displayName).toBeNull();
+  });
+
+  it("non-profile page uses viewer_state only when slug matches", () => {
+    const r = resolveZhihuIdentityFromSignals({
+      pageUrl: "https://www.zhihu.com/",
+      documentTitle: "某文章 - 知乎",
+      loginStatus: "valid",
+      profileHeaderTitle: null,
+      viewerStateName: "蒙科恰",
+      viewerStateSlug: "meng-ke-ke-61",
+      userMenuName: "Azul",
+    });
     expect(r.displayName).toBe("蒙科恰");
-    expect(r.displayNameSource).toBe("user_menu");
+    expect(r.displayNameSource).toBe("viewer_state");
   });
 
   it.each(["专栏0", "回答3", "文章5", "广告", "博丽灵梦"])(
@@ -106,13 +138,16 @@ describe("zhihuIdentityResolver trusted sources", () => {
     expect(getZhihuNicknameRejectionReason("编辑个人资料", "candidate")).not.toBeNull();
   });
 
-  it("document.title 专栏 - 知乎 is not a nickname", () => {
+  it("document.title 专栏 - 知乎 is not used for nickname", () => {
     expect(parseZhihuDocumentTitle("专栏 - 知乎")).toBe("专栏");
     const r = resolveZhihuIdentityFromSignals(
       validSignals({ documentTitle: "专栏 - 知乎", profileHeaderTitle: null, viewerStateName: null }),
     );
     expect(r.displayName).toBeNull();
-    expect(r.rejectedCandidates.some(c => c.value === "专栏")).toBe(true);
+  });
+
+  it.each(["专栏0", "专栏 0", "回答 3"])("rejects tab label with optional space %s", value => {
+    expect(getZhihuNicknameRejectionReason(value, "candidate")).not.toBeNull();
   });
 
   it("valid login + no trusted nickname → displayName null, verified false", () => {
@@ -122,6 +157,7 @@ describe("zhihuIdentityResolver trusted sources", () => {
       loginStatus: "valid",
       profileHeaderTitle: null,
       viewerStateName: null,
+      viewerStateSlug: null,
       userMenuName: null,
     });
     expect(r.displayName).toBeNull();
@@ -216,6 +252,8 @@ describe("zhihuIdentityResolver publish gate wiring", () => {
     const src = read("local-agent/src/agent/platforms/zhihuPublisher.ts");
     expect(src).toContain("resolveZhihuIdentity");
     expect(src).toContain("collectZhihuIdentitySignalsInBrowser");
+    expect(src).toContain("collectLoginProfileSlugInBrowser");
+    expect(src).toContain("waitForStableProfileHeaderH1");
     expect(src).not.toContain('querySelectorAll("button, [role=\'button\']")');
     expect(src).not.toContain('querySelectorAll("[title], [aria-label]")');
   });

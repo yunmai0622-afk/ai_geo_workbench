@@ -29,6 +29,7 @@ export type ZhihuIdentitySignals = {
   loginStatus: ZhihuLoginStatus;
   profileHeaderTitle: string | null;
   viewerStateName: string | null;
+  viewerStateSlug: string | null;
   userMenuName: string | null;
 };
 
@@ -151,31 +152,40 @@ export function resolveZhihuIdentityFromSignals(
   signals: ZhihuIdentitySignals,
 ): ZhihuIdentityResolution {
   const rejected: ZhihuIdentityRejected[] = [];
-  const profileSlug =
-    extractProfileSlugFromUrl(signals.pageUrl) ??
-    null;
+  const urlSlug = extractProfileSlugFromUrl(signals.pageUrl);
+  const profileSlug = urlSlug ?? signals.viewerStateSlug ?? null;
   const profileUrl = buildZhihuProfileUrl(profileSlug);
 
-  const onProfilePage = Boolean(profileSlug && /\/people\//i.test(signals.pageUrl));
+  const onProfilePage = Boolean(urlSlug && /\/people\//i.test(signals.pageUrl));
+
+  const viewerStateTrusted =
+    Boolean(
+      profileSlug &&
+        signals.viewerStateSlug &&
+        signals.viewerStateSlug === profileSlug &&
+        signals.viewerStateName,
+    );
 
   const attempts: Array<{
     value: string | null | undefined;
     source: ZhihuDisplayNameSource;
     enabled: boolean;
-  }> = [
-    {
-      value: signals.profileHeaderTitle,
-      source: "profile_header",
-      enabled: onProfilePage,
-    },
-    {
-      value: parseZhihuDocumentTitle(signals.documentTitle),
-      source: "document_title",
-      enabled: true,
-    },
-    { value: signals.viewerStateName, source: "viewer_state", enabled: true },
-    { value: signals.userMenuName, source: "user_menu", enabled: true },
-  ];
+  }> = onProfilePage
+    ? [
+        { value: signals.profileHeaderTitle, source: "profile_header", enabled: true },
+        {
+          value: viewerStateTrusted ? signals.viewerStateName : null,
+          source: "viewer_state",
+          enabled: viewerStateTrusted,
+        },
+      ]
+    : [
+        {
+          value: viewerStateTrusted ? signals.viewerStateName : null,
+          source: "viewer_state",
+          enabled: viewerStateTrusted,
+        },
+      ];
 
   for (const { value, source, enabled } of attempts) {
     if (!enabled) continue;
@@ -209,9 +219,46 @@ export type ZhihuIdentityBrowserSignals = {
   documentTitle: string;
   profileHeaderTitle: string | null;
   viewerStateName: string | null;
+  viewerStateSlug: string | null;
   userMenuName: string | null;
   profileSlug: string | null;
 };
+
+export type ZhihuLoginProfileSlug = {
+  slug: string | null;
+  source: "viewer_state" | "header_link" | "none";
+};
+
+/** Playwright page.evaluate：解析当前登录用户 slug（urlToken 优先） */
+export function collectLoginProfileSlugInBrowser(): ZhihuLoginProfileSlug {
+  try {
+    const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> })
+      .__INITIAL_STATE__;
+    const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
+    if (viewer && typeof viewer === "object") {
+      const v = viewer as Record<string, unknown>;
+      const urlToken =
+        (typeof v.urlToken === "string" && v.urlToken) ||
+        (typeof v.id === "string" && v.id) ||
+        null;
+      if (urlToken?.trim()) {
+        return { slug: urlToken.trim(), source: "viewer_state" };
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  const header = document.querySelector("header") ?? document.body;
+  for (const a of Array.from(header.querySelectorAll('a[href*="/people/"]'))) {
+    const href = a.getAttribute("href") ?? "";
+    const mm = href.match(/\/people\/([^/?#]+)/i);
+    if (!mm) continue;
+    const text = (a.textContent ?? "").trim();
+    if (/开通|机构|登录|注册/.test(text)) continue;
+    return { slug: mm[1], source: "header_link" };
+  }
+  return { slug: null, source: "none" };
+}
 
 /** Playwright page.evaluate 专用：逻辑须自包含，不可引用模块常量 */
 export function collectZhihuIdentitySignalsInBrowser(): ZhihuIdentityBrowserSignals {
@@ -221,43 +268,39 @@ export function collectZhihuIdentitySignalsInBrowser(): ZhihuIdentityBrowserSign
     const s = (t ?? "").replace(/\s+/g, " ").trim();
     if (!s || s.length < 2 || s.length > 40) return null;
     if (NAV_SKIP.test(s)) return null;
-    if (/^(专栏|回答|文章|收藏|想法|动态|视频|提问)\d+$/i.test(s)) return null;
+    if (/^(专栏|回答|文章|收藏|想法|动态|视频|提问)\s*\d+$/i.test(s)) return null;
     return s;
   }
   function profileHeaderTitle(): string | null {
     if (!/\/people\/[^/?#]+/i.test(location.pathname)) return null;
+    const h1 =
+      document.querySelector(".ProfileHeader h1") ??
+      document.querySelector('[class*="ProfileHeader"] h1');
+    if (!h1) return null;
     const skip =
       "nav,[role=tablist],[class*=Tabs],[class*=Tab],button,[role=button],footer,[class*=Nav]";
-    const roots = [
-      document.querySelector(".ProfileHeader"),
-      document.querySelector('[class*="ProfileHeader"]'),
-      document.querySelector("main"),
-    ].filter(Boolean) as Element[];
-    for (const root of roots) {
-      for (const sel of ["h1", '[class*="ProfileHeader-name"]', '[class*="UserName"]']) {
-        const el = root.querySelector(sel);
-        if (!el || el.closest(skip)) continue;
-        const t = clean(el.textContent);
-        if (t) return t;
-      }
-    }
-    return null;
+    if (h1.closest(skip)) return null;
+    return clean(h1.textContent);
   }
-  function viewerStateName(): string | null {
+  function viewerStateBundle(): { name: string | null; slug: string | null } {
     try {
       const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> })
         .__INITIAL_STATE__;
       const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
-      if (!viewer || typeof viewer !== "object") return null;
+      if (!viewer || typeof viewer !== "object") return { name: null, slug: null };
       const v = viewer as Record<string, unknown>;
       const name =
         (typeof v.name === "string" && v.name) ||
         (typeof v.username === "string" && v.username) ||
         (typeof v.fullname === "string" && v.fullname) ||
         null;
-      return clean(name);
+      const slug =
+        (typeof v.urlToken === "string" && v.urlToken) ||
+        (typeof v.id === "string" && v.id) ||
+        null;
+      return { name: clean(name), slug: slug?.trim() || null };
     } catch {
-      return null;
+      return { name: null, slug: null };
     }
   }
   function userMenuName(): string | null {
@@ -288,11 +331,13 @@ export function collectZhihuIdentitySignalsInBrowser(): ZhihuIdentityBrowserSign
     }
     return null;
   }
+  const viewer = viewerStateBundle();
   return {
     pageUrl: location.href,
     documentTitle: document.title || "",
     profileHeaderTitle: profileHeaderTitle(),
-    viewerStateName: viewerStateName(),
+    viewerStateName: viewer.name,
+    viewerStateSlug: viewer.slug,
     userMenuName: userMenuName(),
     profileSlug: profileSlugFromDom(),
   };
