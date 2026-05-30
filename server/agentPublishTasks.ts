@@ -1,3 +1,4 @@
+import { parseDataUrlCover } from "../shared/publishCoverPayload";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { publishTasks } from "../drizzle/schema";
@@ -39,20 +40,31 @@ export async function pollAgentTasks(db: DbConn, localAgentId: string, limit = 3
 
   const tasks = rows
     .filter(r => AGENT_POLL_PLATFORMS.has(r.platform) && r.localProfileId)
-    .map(r => ({
-      taskId: r.id,
-      projectId: r.projectId,
-      articleId: r.articleId,
-      platform: r.platform,
-      platformAccountId: r.platformAccountId,
-      expectedAccountName: r.expectedAccountName,
-      localProfileId: r.localProfileId!,
-      title: r.articleTitle,
-      content: r.articleContent,
-      coverBase64: undefined as string | undefined,
-      coverImageUrl: r.coverImageUrl,
-      action: "publish" as const,
-    }));
+    .map(r => {
+      let coverBase64: string | undefined;
+      let coverImageUrl = r.coverImageUrl ?? null;
+      if (coverImageUrl?.startsWith("data:")) {
+        const parsed = parseDataUrlCover(coverImageUrl);
+        if (parsed) {
+          coverBase64 = parsed.coverImageBase64;
+          coverImageUrl = parsed.coverImageUrl;
+        }
+      }
+      return {
+        taskId: r.id,
+        projectId: r.projectId,
+        articleId: r.articleId,
+        platform: r.platform,
+        platformAccountId: r.platformAccountId,
+        expectedAccountName: r.expectedAccountName,
+        localProfileId: r.localProfileId!,
+        title: r.articleTitle,
+        content: r.articleContent,
+        coverBase64,
+        coverImageUrl,
+        action: "publish" as const,
+      };
+    });
 
   return { tasks };
 }
