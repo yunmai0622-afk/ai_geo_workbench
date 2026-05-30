@@ -2898,3 +2898,22 @@
 [2026-05-30T09:42:44.654Z] 5:42:44 AM [vite] (client) hmr update /src/index.css, /src/pages/ContentPublishingCenterPage.tsx
 [2026-05-30T09:42:44.659Z] 5:42:44 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/components/publishing/LocalAgentPublishStepsPanel.tsx
 [2026-05-30T09:43:25.598Z] 5:43:25 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T09:44:33.481Z] [实测] 豆包 完成：提及 0/5，推荐 0/5
+[2026-05-30T09:47:40.667Z] [实测] DeepSeek 完成：提及 0/5，推荐 0/5
+[2026-05-30T09:47:41.108Z] [定时实测] 记录 360001 完成：提及=未提及
+[2026-05-30T09:50:55.714Z] [实测] 豆包 完成：提及 0/5，推荐 0/5
+[2026-05-30T09:53:54.832Z] [实测] DeepSeek 完成：提及 0/5，推荐 0/5
+[2026-05-30T09:53:56.612Z] [定时实测] 记录 360002 完成：提及=未提及
+[2026-05-30T09:55:04.485Z] Dev server process group stopped
+[2026-05-30T09:55:04.488Z] ELIFECYCLE  Command failed.
+[2026-05-30T09:55:04.534Z] Dev server exited with code -15
+[2026-05-30T09:55:07.518Z] Starting dev server with command: pnpm run dev
+[2026-05-30T09:55:08.363Z] 
+[2026-05-30T09:55:08.364Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-05-30T09:55:08.364Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-05-30T09:55:08.365Z] 
+[2026-05-30T09:55:10.187Z] [OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-30T09:55:15.010Z] Server running on http://localhost:3000/
+[2026-05-30T09:55:15.013Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-30T09:55:17.027Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-30T09:55:39.717Z] 5:55:39 AM [vite] (client) hmr update /src/index.css
