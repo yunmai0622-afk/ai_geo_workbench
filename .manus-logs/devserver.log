@@ -2722,3 +2722,24 @@
 [2026-05-30T07:17:57.200Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-05-30T07:18:17.683Z] 3:18:17 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T07:18:52.770Z] 3:18:52 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T07:56:20.577Z] c
+[2026-05-30T07:56:20.578Z] node:internal/modules/run_main:122
+[2026-05-30T07:56:20.579Z] triggerUncaughtException(
+[2026-05-30T07:56:20.579Z] ^
+[2026-05-30T07:56:20.580Z] Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@shared/geoProfileQuestionMapping' imported from /home/ubuntu/ai_geo_workbench/server/geoT0Executor.ts
+[2026-05-30T07:56:20.580Z] at packageResolve (node:internal/modules/esm/resolve:857:9)
+[2026-05-30T07:56:20.581Z] at moduleResolve (node:internal/modules/esm/resolve:926:18)
+[2026-05-30T07:56:20.582Z] at defaultResolve (node:internal/modules/esm/resolve:1056:11)
+[2026-05-30T07:56:20.582Z] at nextResolve (node:internal/modules/esm/hooks:748:28)
+[2026-05-30T07:56:20.582Z] at resolveBase (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780127780163:2:3744)
+[2026-05-30T07:56:20.583Z] at resolveDirectory (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780127780163:2:4243)
+[2026-05-30T07:56:20.583Z] at resolveTsPaths (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780127780163:2:4984)
+[2026-05-30T07:56:20.584Z] at async resolve (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780127780163:2:5355)
+[2026-05-30T07:56:20.584Z] at async nextResolve (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T07:56:20.584Z] at async Hooks.resolve (node:internal/modules/esm/hooks:240:24) {
+[2026-05-30T07:56:20.585Z] code: 'ERR_MODULE_NOT_FOUND'
+[2026-05-30T07:56:20.585Z] }
+[2026-05-30T07:56:20.586Z] 
+[2026-05-30T07:56:20.586Z] Node.js v22.13.0
+[2026-05-30T07:56:20.732Z] 3:56:20 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Rerunning...
+[2026-05-30T07:56:22.620Z] c[OAuth] Initialized with baseURL: https://api.manus.im
