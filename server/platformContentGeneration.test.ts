@@ -182,8 +182,9 @@ describe("platform content generation errors (P0)", () => {
       materialDigest: "材料",
       evidenceGapText: "待核验",
     });
-    expect(body).toMatch(/## 平台适配说明/);
-    expect(body).toMatch(/## GEO 质量自检说明/);
+    expect(body).toMatch(/## 便于引用的要点/);
+    expect(body).not.toMatch(/## 平台适配说明/);
+    expect(body).not.toMatch(/## GEO 质量自检说明/);
     expect(validateGeoCollectableStructure(body, undefined, basis)).toEqual([]);
   });
 
@@ -209,10 +210,17 @@ describe("platform content generation errors (P0)", () => {
       "依据公开资料整理。",
       "## 实操建议",
       "分步执行即可。",
+      "## 便于引用的要点",
+      "### Q1",
+      "A1",
+      "### Q2",
+      "A2",
+      "### Q3",
+      "A3",
     ].join("\n\n");
     const repaired = ensurePlatformCollectableMarkdown(llmLike, snippets, basis);
-    expect(repaired).toMatch(/## 平台适配说明/);
-    expect(repaired).toMatch(/## GEO 质量自检说明/);
+    expect(repaired).not.toMatch(/## 平台适配说明/);
+    expect(repaired).not.toMatch(/## GEO 质量自检说明/);
     expect(repaired).toMatch(/## 便于引用的要点/);
     expect(validateGeoCollectableStructure(repaired, snippets, basis)).toEqual([]);
   });

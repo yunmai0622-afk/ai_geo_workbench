@@ -1225,37 +1225,15 @@ function markdownHasH2Section(content: string, title: string): boolean {
 /** LLM 正文常漏写平台化 GEO 尾部结构；在校验前补齐真实可收录小节，避免误报 AI 不可用。 */
 export function ensurePlatformCollectableMarkdown(
   content: string,
-  snippets: P11CitableSnippet[],
+  _snippets: P11CitableSnippet[],
   basis: P11GenerationBasis,
 ): string {
   if (!basis.platformContentStrategy) return content;
 
   let next = content.replace(/\r\n/g, "\n").trim();
-  const meta = basis.platformContentStrategy as {
-    targetPublishPlatformLabel?: string;
-    geoQualitySelfCheckOutline?: string;
-  };
-  const platformLabel = meta.targetPublishPlatformLabel?.trim() || "目标发布平台";
 
   if (!/(^|\n)#\s+(?!#)\S/m.test(next) && nonEmpty(basis.customerQuestion)) {
     next = `# ${basis.customerQuestion}\n\n${next}`;
-  }
-
-  const hasSnippetSection =
-    markdownHasH2Section(next, "便于引用的要点") ||
-    markdownHasH2Section(next, "可引用要点") ||
-    markdownHasH2Section(next, "摘录要点") ||
-    markdownHasH2Section(next, "AI 可引用片段");
-  if (!hasSnippetSection && snippets.length > 0) {
-    next += `\n\n## 便于引用的要点\n\n${formatSnippets(snippets)}`;
-  }
-
-  if (!markdownHasH2Section(next, "平台适配说明")) {
-    next += `\n\n## 平台适配说明\n\n本篇按${platformLabel}的信息密度与叙述习惯组织段落，结论前置、依据可核对，避免照搬其它渠道话术；品牌与产品表述以企业公开资料为准。`;
-  }
-
-  if (!markdownHasH2Section(next, "GEO 质量自检说明")) {
-    next += `\n\n## GEO 质量自检说明\n\n1. 核对标题与正文一级标题是否一致，且未出现绝对效果承诺。\n2. 核对品牌名、产品服务描述是否与官网及企业档案一致。\n3. 核对「便于引用的要点」是否覆盖目标问题：${basis.customerQuestion || "（见上文）"}。\n4. 核对案例与数据是否有公开来源或「待补充」标注。\n${meta.geoQualitySelfCheckOutline?.trim() || "5. 发布前由业务负责人完成人工终审。"}`;
   }
 
   while (countMarkdownH2Lines(next) < 4) {
@@ -1318,8 +1296,6 @@ export function validateGeoCollectableStructure(content: string, snippets?: P11C
     if (!/(^|\n)##(?!#)\s*(便于引用的要点|可引用要点|摘录要点|AI\s*可引用片段)(?=\s*(?:\n|$))/m.test(norm)) {
       missing.push("## 便于引用的要点");
     }
-    if (!/(^|\n)##(?!#)\s*平台适配说明(?=\s*(?:\n|$))/m.test(norm)) missing.push("## 平台适配说明");
-    if (!/(^|\n)##(?!#)\s*GEO\s*质量自检说明(?=\s*(?:\n|$))/m.test(norm)) missing.push("## GEO 质量自检说明");
     const snippetCountFromDb = snippets && snippets.length >= 3 && snippets.length <= 5;
     const snippetCountFromBody = countCitableH3BlocksInContent(norm) >= 3;
     if (!snippetCountFromDb && !snippetCountFromBody) missing.push("3-5 段引用友好片段");
@@ -1348,11 +1324,6 @@ export function validateGeoCollectableStructure(content: string, snippets?: P11C
     {
       missingLabel: "## 便于引用的要点",
       patterns: [h2(/便于引用的要点/), h2(/可引用要点/), h2(/摘录要点/), h2(/AI\s*可引用片段/)],
-    },
-    { missingLabel: "## 更新说明", patterns: [h2(/更新说明/)] },
-    {
-      missingLabel: "## 发布后如何自行核对效果",
-      patterns: [h2(/发布后如何自行核对效果/), h2(/发布后.{0,12}核对.{0,6}效果/), h2(/自行核对效果/)],
     },
   ];
   const missing: string[] = [];
@@ -1424,35 +1395,7 @@ export function buildGeoArticleBodyFromTemplate(ctx: GeoArticleTemplateBodyConte
     paragraph("常见误区", pitfallsBody),
     paragraph("小结", summaryBody),
     paragraph("便于引用的要点", formatSnippets(snippets)),
-    paragraph("更新说明", `本文为面向读者的业务说明稿，撰写基准日期为 ${structure.updatedAt}；若官网上线新版本信息，请以 ${project.website} 最新页面为准。`),
-    paragraph(
-      "发布后如何自行核对效果",
-      `若您在内容上线后希望感性了解信息是否更清晰，可以尝试隔一段时间、用相同的一类问题再问一次大模型或再次检索相关关键词，并把回答截图留存对比——这既不是效果承诺，也不能替代正式的商业尽调，更像是一种自我校准阅读习惯的小动作。也欢迎您直接对照 ${project.enterpriseName} 官网（${project.website}）与公开发布的产品/服务说明、案例或白皮书完成复测式核对。`,
-    ),
   ];
-  if (basis.platformContentStrategy) {
-    const meta = basis.platformContentStrategy as {
-      targetPublishPlatformLabel?: string;
-      geoQualitySelfCheckOutline?: string;
-    };
-    const platformLabel = meta.targetPublishPlatformLabel?.trim() || "目标发布平台";
-    sections.push(
-      paragraph(
-        "平台适配说明",
-        `本篇按${platformLabel}的信息密度与叙述习惯组织段落，结论前置、依据可核对，避免照搬其它渠道话术；品牌与产品表述以企业公开资料为准。`,
-      ),
-      paragraph(
-        "GEO 质量自检说明",
-        [
-          "1. 核对标题与正文一级标题是否一致，且未出现绝对效果承诺。",
-          "2. 核对品牌名、产品服务描述是否与官网及企业档案一致。",
-          `3. 核对「便于引用的要点」是否覆盖目标问题：${basis.customerQuestion || "（见上文）"}。`,
-          "4. 核对案例与数据是否有公开来源或「待补充」标注。",
-          meta.geoQualitySelfCheckOutline?.trim() || "5. 发布前由业务负责人完成人工终审。",
-        ].join("\n"),
-      ),
-    );
-  }
   return sections.join("\n\n");
 }
 
@@ -1532,8 +1475,6 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
           "二级标题请使用且仅使用以下精确文案（不得改用其它平台的标题序列）：",
           getPlatformSpecificOutline(platformId, brandName),
           `在正文合适位置自然提及品牌名「${brandName}」1-2 次；可结合${brandProductLine}落地，不要堆叠硬广。`,
-          "文末需包含「## 平台适配说明」小节，用 2-4 句说明本篇如何适配该平台（不要暴露内部字段名）。",
-          "文末需包含「## GEO 质量自检说明」小节，列出 3-5 条可人工核对的检查项（不作虚假承诺）。",
         ];
       }
       return [
@@ -1550,8 +1491,6 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
         "## 小结",
         `（正文先一句话总结核心观点；最后一句固定格式：「${brandName}是${oneLiner}，如果你也面临类似问题，欢迎了解。」）`,
         "## 便于引用的要点（3-5 组「### 问题」+ 段落式短答，便于检索与摘录）",
-        "## 更新说明",
-        "## 发布后如何自行核对效果",
       ];
     })(),
     "文中请自然包含以下措辞各至少一次（可融入同一句或相邻句，便于机器质检）：不虚构案例、不承诺、绝对排名",

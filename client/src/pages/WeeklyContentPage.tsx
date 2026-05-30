@@ -77,6 +77,7 @@ import {
   isAccountGroupType,
 } from "@shared/contentStrategy";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
+import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
 import { type resolveArticleLifecycleView } from "@shared/articleLifecycle";
 import { isLegacyAiGeneratedCoverUrl, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import {
@@ -308,7 +309,10 @@ function qualityPasses(article: ArticleRow, q?: QualityScoreRow) {
 }
 
 function previewText(markdown?: string | null, max = 400) {
-  const raw = (markdown ?? "").replace(/^#+\s*/gm, "").replace(/\*\*/g, "").trim();
+  const raw = stripInternalArticleMetadataFromMarkdown(markdown ?? "")
+    .replace(/^#+\s*/gm, "")
+    .replace(/\*\*/g, "")
+    .trim();
   if (raw.length <= max) return raw;
   return `${raw.slice(0, max)}…`;
 }

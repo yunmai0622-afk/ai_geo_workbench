@@ -259,9 +259,10 @@ describe("P1.1 GEO article generation", () => {
     expect(draft.markdownContent).toContain("## 案例参考");
     expect(draft.markdownContent).toContain("## 常见误区");
     expect(draft.markdownContent).toContain("## 小结");
-    expect(draft.markdownContent).toContain("## 更新说明");
-    expect(draft.markdownContent).toContain("## 发布后如何自行核对效果");
     expect(draft.markdownContent).toContain("## 便于引用的要点");
+    expect(draft.markdownContent).not.toContain("## 更新说明");
+    expect(draft.markdownContent).not.toContain("## 发布后如何自行核对效果");
+    expect(draft.markdownContent).not.toContain("## 平台适配说明");
     expect(score.blocked).toBe(false);
     expect(score.optimizationSuggestions.length).toBeGreaterThan(0);
     expect(score.reviewSummary).toContain("发布前可优化的建议");
