@@ -58,7 +58,7 @@ export async function reportPublishOutcome(input: {
     lastPublishAt: new Date().toISOString(),
   };
   if (outcome.status === "session_expired") accountPatch.sessionStatus = "expired";
-  if (outcome.status === "manual_required" || outcome.status === "draft_saved") {
+  if (outcome.status === "manual_required" || outcome.status === "draft_saved" || outcome.status === "completed") {
     accountPatch.sessionStatus = "active";
   }
   updateAccount(task.localProfileId, accountPatch);
@@ -123,7 +123,8 @@ export async function runPublishTask(task: PollTaskItem, localAgentId: string): 
     title: task.title,
     content: task.content,
     coverImageUrl: task.coverImageUrl,
-    action: task.action,
+    coverBase64: task.coverBase64,
+    action: task.action === "save_draft" ? "save_draft" : "publish",
   };
 
   const outcome = await publishWithPlatform(publishTask);

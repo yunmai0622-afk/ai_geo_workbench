@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { GEO_SYNTHETIC_AI_RESPONSE_PREFIX, isSyntheticGeoRawAnswer } from "@shared/geoSyntheticResponse";
+import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionMapping";
 import { CREATE_PROJECT_FAILED_USER_MESSAGE } from "@shared/userFacingMutationErrors";
 import {
   assertLlmConfiguredForDiagnosis,
@@ -17,9 +18,12 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, upsertUser } from "./db";
+import { loginEmailUser, registerEmailUser } from "./emailAuth";
+import { setUserSessionCookie } from "./authSession";
 import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
+import { effectiveActionsRouter } from "./effectiveActionsRouter";
 
 import {
   aiResponses,
@@ -47,6 +51,7 @@ import {
   reports,
   aiTestRuns,
   retestComparisons,
+  roundQuestions,
   testRounds,
   type Project,
 } from "../drizzle/schema";
@@ -96,6 +101,8 @@ import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkfl
 import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
+import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
+import { calculateRetestComparison } from "./geoRetestCalculator";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import { resolveArticleListPublishFields } from "@shared/articlePublishPlatform";
 import {
@@ -1224,20 +1231,20 @@ const geoRouter = router({
         .orderBy(desc(enterpriseGeoProfiles.updatedAt))
         .limit(1);
       const ep = profileRows[0];
-      const resolved = resolveEnterpriseProfileForContent(ep ?? null);
-      const painFromProfile = ep?.customerPains?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim());
-      const customerPains = painFromProfile?.length ? painFromProfile.join("；") : resolved.customerPains.join("；") || "（档案未填客户痛点，请结合行业常识推演）";
-      const compArr = ep?.competitors?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim()) ?? [];
-      const competitors = compArr.length > 0 ? compArr.join("、") : project.competitorNames.join("、") || "（未填）";
-      const keyPointsFromEp = ep?.keyPoints?.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map(x => x.trim()).join("；");
-      const keyPointsStr = keyPointsFromEp && keyPointsFromEp.length > 0
-        ? keyPointsFromEp
-        : (resolved.keyPoints.join("；") || project.coreSellingPoints);
+      const mapped = extractProfileForQuestionGeneration({
+        profile: (ep ?? null) as Record<string, unknown> | null,
+        project,
+      });
+      const customerPains = mapped.customerPains.length
+        ? mapped.customerPains.join("；")
+        : "（档案未填客户痛点，请结合行业常识推演）";
+      const competitors = mapped.competitors.length > 0 ? mapped.competitors.join("、") : "（未填）";
+      const keyPointsStr = mapped.keyPoints.join("；") || project.coreSellingPoints;
       const generatedPack = await llmGenerateTargetSearchQuestions({
-        brandName: (ep?.brandName?.trim() || resolved.brandName || project.enterpriseName).trim(),
-        industryTag: (ep?.industryTag?.trim() || project.industry).trim(),
-        productDesc: (ep?.productDesc?.trim() || resolved.productDesc || project.productIntro).trim(),
-        targetCustomer: (ep?.targetCustomer?.trim() || resolved.targetCustomer || project.targetCustomers).trim(),
+        brandName: (mapped.brandName || project.enterpriseName).trim(),
+        industryTag: (mapped.industryTag || project.industry).trim(),
+        productDesc: (mapped.productDesc || project.productIntro).trim(),
+        targetCustomer: (mapped.targetCustomer || project.targetCustomers).trim(),
         customerPains,
         competitors,
         keyPoints: keyPointsStr,
@@ -2986,6 +2993,130 @@ ${article.markdownContent}`,
         }
         return round;
       }),
+    createT0WithQuestions: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          roundName: z.string().min(1).max(255).optional().default("T0 基线检测"),
+          platforms: z.array(z.string().min(1)).min(1),
+          runsPerQuestion: z.number().int().min(1).optional().default(3),
+          questionIds: z.array(z.number().int().positive()).optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const result = await createT0RoundWithQuestions(db, {
+          projectId: input.projectId,
+          roundName: input.roundName,
+          platforms: input.platforms,
+          runsPerQuestion: input.runsPerQuestion,
+          questionIds: input.questionIds,
+        });
+        return {
+          success: true,
+          round: result.round,
+          boundQuestionCount: result.boundQuestionCount,
+        } as const;
+      }),
+    startT0Execution: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), roundId: z.string().uuid() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const { round } = await requireTestRoundAccess(ctx, input.roundId);
+        if (round.projectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
+        }
+        const summary = await startT0Execution(db, input.roundId);
+        if ("error" in summary) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "该检测轮次已开始执行，请勿重复启动",
+          });
+        }
+        return { success: true, ...summary } as const;
+      }),
+  }),
+
+  roundQuestions: router({
+    bindQuestions: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          roundId: z.string().uuid(),
+          questionIds: z.array(z.number().int().positive()).min(1),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const { round } = await requireTestRoundAccess(ctx, input.roundId);
+        if (round.projectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
+        }
+        const rows = await db
+          .select({ id: questions.id })
+          .from(questions)
+          .where(and(eq(questions.projectId, input.projectId), inArray(questions.id, input.questionIds)));
+        if (rows.length !== input.questionIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "部分问题不存在或不属于当前项目" });
+        }
+        const existing = await db
+          .select({ questionId: roundQuestions.questionId })
+          .from(roundQuestions)
+          .where(eq(roundQuestions.roundId, input.roundId));
+        const existingSet = new Set(existing.map(r => r.questionId));
+        const toInsert = input.questionIds.filter(id => !existingSet.has(id));
+        if (toInsert.length > 0) {
+          await db.insert(roundQuestions).values(
+            toInsert.map(questionId => ({
+              id: randomUUID(),
+              roundId: input.roundId,
+              questionId,
+            })),
+          );
+        }
+        const countRows = await db
+          .select({ questionId: roundQuestions.questionId })
+          .from(roundQuestions)
+          .where(eq(roundQuestions.roundId, input.roundId));
+        await db
+          .update(testRounds)
+          .set({ questionsCount: countRows.length })
+          .where(eq(testRounds.id, input.roundId));
+        return { success: true, boundCount: countRows.length, addedCount: toInsert.length } as const;
+      }),
+    listByRound: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), roundId: z.string().uuid() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const { round } = await requireTestRoundAccess(ctx, input.roundId);
+        if (round.projectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
+        }
+        const links = await db
+          .select()
+          .from(roundQuestions)
+          .where(eq(roundQuestions.roundId, input.roundId))
+          .orderBy(roundQuestions.createdAt);
+        if (links.length === 0) return [];
+        const qRows = await db
+          .select()
+          .from(questions)
+          .where(
+            inArray(
+              questions.id,
+              links.map(l => l.questionId),
+            ),
+          );
+        const qMap = new Map(qRows.map(q => [q.id, q]));
+        return links.map(link => ({
+          ...link,
+          question: qMap.get(link.questionId) ?? null,
+        }));
+      }),
   }),
 
   aiTestRuns: router({
@@ -3068,6 +3199,8 @@ ${article.markdownContent}`,
       }),
   }),
 
+  effectiveActions: effectiveActionsRouter,
+
   retestComparisons: router({
     create: protectedProcedure
       .input(
@@ -3127,6 +3260,18 @@ ${article.markdownContent}`,
           .where(eq(retestComparisons.projectId, input.projectId))
           .orderBy(desc(retestComparisons.createdAt));
       }),
+    calculate: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          baseRoundId: z.string().uuid(),
+          compareRoundId: z.string().uuid(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireProjectAccess(ctx, input.projectId);
+        return calculateRetestComparison(input.baseRoundId, input.compareRoundId, input.projectId);
+      }),
   }),
 
   platformAccounts: projectPlatformAccountsRouter,
@@ -3137,6 +3282,39 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    register: publicProcedure
+      .input(
+        z.object({
+          email: z.string().trim().email("请输入有效的邮箱地址"),
+          password: z.string().min(8, "密码至少需要 8 位"),
+          confirmPassword: z.string().min(8, "请确认密码"),
+          name: z.string().trim().min(1, "请填写姓名").max(120),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (input.password !== input.confirmPassword) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "两次输入的密码不一致" });
+        }
+        const user = await registerEmailUser({
+          email: input.email,
+          password: input.password,
+          name: input.name,
+        });
+        await setUserSessionCookie(ctx, user);
+        return { success: true as const };
+      }),
+    loginWithEmail: publicProcedure
+      .input(
+        z.object({
+          email: z.string().trim().email("请输入有效的邮箱地址"),
+          password: z.string().min(1, "请输入密码"),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const user = await loginEmailUser({ email: input.email, password: input.password });
+        await setUserSessionCookie(ctx, user);
+        return { success: true as const };
+      }),
     devLogin: publicProcedure.mutation(async ({ ctx }) => {
       if (process.env.NODE_ENV === "production") {
         throw new TRPCError({ code: "FORBIDDEN", message: "本地开发登录不能在生产环境使用" });

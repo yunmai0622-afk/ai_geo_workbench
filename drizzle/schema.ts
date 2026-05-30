@@ -15,6 +15,8 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  /** scrypt 哈希，仅邮箱注册用户使用 */
+  passwordHash: varchar("passwordHash", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   /** 浏览器发布插件 API 密钥 */
@@ -32,6 +34,8 @@ export const questionTypeEnum = mysqlEnum("questionType", [
   "价格选型",
   "高意向成交",
   "指定问题",
+  "scenario_need",
+  "long_tail_conversion",
 ]);
 
 export const questionSourceEnum = mysqlEnum("source", ["ai_generated", "manual", "csv"]);
@@ -615,7 +619,7 @@ export const publishTasks = mysqlTable("publish_tasks", {
   accountVerificationStatus: varchar("accountVerificationStatus", { length: 32 }).default("pending"),
   articleTitle: text("articleTitle").notNull(),
   articleContent: text("articleContent").notNull(),
-  coverImageUrl: varchar("coverImageUrl", { length: 2000 }),
+  coverImageUrl: text("coverImageUrl"),
   resultUrl: varchar("resultUrl", { length: 500 }),
   draftUrl: varchar("draftUrl", { length: 500 }),
   publishedUrl: varchar("publishedUrl", { length: 500 }),
@@ -732,28 +736,53 @@ export const testRounds = mysqlTable("test_rounds", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** GEO V1.1：检测轮次与问题关联（不复制 questionText） */
+export const roundQuestions = mysqlTable(
+  "round_questions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    roundId: varchar("roundId", { length: 36 }).notNull(),
+    questionId: int("questionId").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    roundQuestionUnique: uniqueIndex("round_questions_round_question_unique").on(table.roundId, table.questionId),
+  }),
+);
+
 /** GEO V1.1：结构化 AI 实测记录（禁止写入合成占位 rawAnswer） */
-export const aiTestRuns = mysqlTable("ai_test_runs", {
-  id: varchar("id", { length: 36 }).primaryKey(),
-  projectId: int("projectId").notNull(),
-  roundId: varchar("roundId", { length: 36 }).notNull(),
-  questionId: int("questionId").notNull(),
-  platform: varchar("platform", { length: 64 }).notNull(),
-  runIndex: int("runIndex").notNull(),
-  testedAt: timestamp("testedAt").notNull(),
-  rawAnswer: text("rawAnswer").notNull(),
-  mentionedCompany: boolean("mentionedCompany").default(false).notNull(),
-  recommendedCompany: boolean("recommendedCompany").default(false).notNull(),
-  descriptionAccurate: boolean("descriptionAccurate"),
-  competitorMentioned: boolean("competitorMentioned").default(false).notNull(),
-  competitorNames: json("competitorNames").$type<string[]>().notNull(),
-  hasSourceLinks: boolean("hasSourceLinks").default(false).notNull(),
-  sourceLinks: json("sourceLinks").$type<string[] | null>(),
-  suspectedContentClues: text("suspectedContentClues"),
-  manualNote: text("manualNote"),
-  screenshotUrl: varchar("screenshotUrl", { length: 2000 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const aiTestRuns = mysqlTable(
+  "ai_test_runs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: int("projectId").notNull(),
+    roundId: varchar("roundId", { length: 36 }).notNull(),
+    questionId: int("questionId").notNull(),
+    platform: varchar("platform", { length: 64 }).notNull(),
+    runIndex: int("runIndex").notNull(),
+    testedAt: timestamp("testedAt").notNull(),
+    rawAnswer: text("rawAnswer").notNull(),
+    mentionedCompany: boolean("mentionedCompany").default(false).notNull(),
+    recommendedCompany: boolean("recommendedCompany").default(false).notNull(),
+    descriptionAccurate: boolean("descriptionAccurate"),
+    competitorMentioned: boolean("competitorMentioned").default(false).notNull(),
+    competitorNames: json("competitorNames").$type<string[]>().notNull(),
+    hasSourceLinks: boolean("hasSourceLinks").default(false).notNull(),
+    sourceLinks: json("sourceLinks").$type<string[] | null>(),
+    suspectedContentClues: text("suspectedContentClues"),
+    manualNote: text("manualNote"),
+    screenshotUrl: varchar("screenshotUrl", { length: 2000 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    roundQuestionPlatformRunUnique: uniqueIndex("ai_test_runs_round_question_platform_run_unique").on(
+      table.roundId,
+      table.questionId,
+      table.platform,
+      table.runIndex,
+    ),
+  }),
+);
 
 /** GEO V1.1：轮次间对比快照（客户可读结论，不暴露工程字段） */
 export const retestChangeDirectionEnum = mysqlEnum("changeDirection", ["up", "flat", "down", "unknown"]);
@@ -781,6 +810,33 @@ export const retestComparisons = mysqlTable("retest_comparisons", {
   changeDirection: retestChangeDirectionEnum.notNull(),
   systemConclusion: text("systemConclusion").notNull(),
   confidenceLevel: retestConfidenceLevelEnum.notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/** GEO V1.1 Phase 2：有效动作库（长期护城河，需人工确认效果等级） */
+export const effectiveActions = mysqlTable("effective_actions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  /** FK → projects.id */
+  projectId: int("projectId").notNull(),
+  industry: varchar("industry", { length: 255 }).notNull(),
+  customerType: varchar("customerType", { length: 255 }).notNull(),
+  questionType: varchar("questionType", { length: 64 }).notNull(),
+  actionType: varchar("actionType", { length: 64 }).notNull(),
+  actionName: varchar("actionName", { length: 255 }).notNull(),
+  platform: varchar("platform", { length: 64 }).notNull(),
+  publishedUrl: varchar("publishedUrl", { length: 2000 }),
+  executedAt: timestamp("executedAt").notNull(),
+  /** FK → test_rounds.id */
+  baseRoundId: varchar("baseRoundId", { length: 36 }),
+  /** FK → test_rounds.id */
+  compareRoundId: varchar("compareRoundId", { length: 36 }),
+  baseMentionCount: int("baseMentionCount"),
+  compareMentionCount: int("compareMentionCount"),
+  changeDirection: varchar("changeDirection", { length: 32 }),
+  effectLevel: varchar("effectLevel", { length: 64 }).notNull(),
+  manualConclusion: text("manualConclusion"),
+  applicableCondition: text("applicableCondition"),
+  note: text("note"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -836,7 +892,11 @@ export type ProjectPlatformAccount = typeof projectPlatformAccounts.$inferSelect
 export type InsertProjectPlatformAccount = typeof projectPlatformAccounts.$inferInsert;
 export type TestRound = typeof testRounds.$inferSelect;
 export type InsertTestRound = typeof testRounds.$inferInsert;
+export type RoundQuestion = typeof roundQuestions.$inferSelect;
+export type InsertRoundQuestion = typeof roundQuestions.$inferInsert;
 export type AiTestRun = typeof aiTestRuns.$inferSelect;
 export type InsertAiTestRun = typeof aiTestRuns.$inferInsert;
 export type RetestComparison = typeof retestComparisons.$inferSelect;
 export type InsertRetestComparison = typeof retestComparisons.$inferInsert;
+export type EffectiveAction = typeof effectiveActions.$inferSelect;
+export type InsertEffectiveAction = typeof effectiveActions.$inferInsert;

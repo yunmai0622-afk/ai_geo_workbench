@@ -81,7 +81,19 @@ const ENGINE_CONFIG: Record<
   },
 };
 
-async function askEngine(engine: AiEngine, question: string): Promise<string | null> {
+export function normalizePlatformToAiEngine(platform: string): AiEngine | null {
+  const key = platform.trim().toLowerCase();
+  if (key === "doubao" || key === "豆包") return "doubao";
+  if (key === "deepseek") return "deepseek";
+  if (key === "kimi") return "kimi";
+  return null;
+}
+
+export function getAiEngineDisplayName(engine: AiEngine): string {
+  return ENGINE_CONFIG[engine].name;
+}
+
+export async function askEngine(engine: AiEngine, question: string): Promise<string | null> {
   const config = ENGINE_CONFIG[engine];
   const apiKey = config.apiKey;
 

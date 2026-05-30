@@ -139,20 +139,29 @@
 
         <!-- 高级设置 -->
         <div class="diag-section">
-          <h3>高级设置</h3>
+          <h3>设置</h3>
           <form id="settings-form" class="form-grid">
-            <label>GEO 服务地址 <input type="text" id="set-server-url" /></label>
-            <label>API 密钥（可选） <input type="password" id="set-api-key" autocomplete="off" /></label>
-            <label>设备标识（只读） <input type="text" id="set-agent-id" readonly /></label>
-            <label>轮询间隔（秒） <input type="number" id="set-poll-sec" min="5" max="300" /></label>
-            <label>每轮最多处理任务数 <input type="number" id="set-max-tasks" min="1" max="3" /></label>
-            <label>日志保留天数 <input type="number" id="set-log-days" min="1" max="90" /></label>
             <label class="check"><input type="checkbox" id="set-auto-poll" /> 启动后自动开始接收任务</label>
             <label>数据目录 <input type="text" id="set-data-dir" readonly /></label>
           </form>
+          <details class="dev-config-panel">
+            <summary>高级配置（技术人员专用）</summary>
+            <div class="dev-config-body">
+              <form id="settings-form-dev" class="form-grid">
+                <label>GEO 服务地址 <input type="text" id="set-server-url" /></label>
+                <label>API 密钥（可选） <input type="password" id="set-api-key" autocomplete="off" /></label>
+                <label>设备标识（只读） <input type="text" id="set-agent-id" readonly /></label>
+                <label>轮询间隔（秒） <input type="number" id="set-poll-sec" min="5" max="300" /></label>
+                <label>每轮最多处理任务数 <input type="number" id="set-max-tasks" min="1" max="3" /></label>
+                <label>日志保留天数 <input type="number" id="set-log-days" min="1" max="90" /></label>
+              </form>
+              <div class="btn-row compact">
+                <button type="button" id="btn-reset-server-online" class="secondary">使用线上 GEO 服务地址</button>
+              </div>
+            </div>
+          </details>
           <div class="btn-row">
             <button type="button" id="btn-save-settings" class="primary">保存设置</button>
-            <button type="button" id="btn-reset-server-online" class="secondary">使用线上 GEO 服务地址</button>
             <button type="button" id="btn-open-data">打开数据目录</button>
             <button type="button" id="btn-export-diag">导出诊断包</button>
           </div>

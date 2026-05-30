@@ -225,6 +225,28 @@ export const publishTasksRouter = router({
         platformAccountId: input.platformAccountId,
       });
 
+      const rawCoverBase64 = article.coverBase64?.trim() ?? "";
+      const rawCoverImageUrl = article.coverImageUrl?.trim() ?? "";
+      if (!rawCoverBase64 && !rawCoverImageUrl) {
+        console.warn(
+          `[封面图] 文章 ${input.articleId} 暂无 coverBase64/coverImageUrl，任务将仅含正文`,
+        );
+      } else if (rawCoverBase64) {
+        try {
+          const payload = rawCoverBase64.startsWith("data:")
+            ? (rawCoverBase64.replace(/^data:[^;]+;base64,/, "") ?? "")
+            : rawCoverBase64;
+          const coverBytes = Buffer.from(payload, "base64").length;
+          if (coverBytes > 100 * 1024) {
+            console.warn(
+              `[封面图] 文章 ${input.articleId} coverBase64 约 ${coverBytes} bytes，超过 100KB，仍写入任务`,
+            );
+          }
+        } catch {
+          console.warn(`[封面图] 文章 ${input.articleId} coverBase64 无法解码，仍尝试写入任务`);
+        }
+      }
+
       const coverImageUrl = buildPublishCoverImageUrl(article.coverBase64, article.coverImageUrl);
 
       if (!boundAccount.localAgentId?.trim() || !boundAccount.localProfileId?.trim()) {

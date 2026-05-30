@@ -1,3 +1,6 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import type { Page } from "playwright";
 import {
   accountNamesMatch,
@@ -22,9 +25,15 @@ import {
 import { isBlockedZhihuNickname } from "../zhihuAccountDisplay";
 import {
   buildZhihuProfileUrl,
+  collectLoginProfileSlugInBrowser,
+  collectProfileHeaderDebugInBrowser,
+  collectProfileSlugFromSettingsPageInBrowser,
+  collectProfileSlugFromUserMenuInBrowser,
+  collectViewerSlugFromInitialStateInBrowser,
   collectZhihuIdentitySignalsInBrowser,
   resolveZhihuIdentityFromSignals,
   type ZhihuIdentityResolution,
+  type ZhihuLoginProfileSlug,
   type ZhihuLoginStatus,
 } from "../zhihuIdentityResolver";
 
@@ -453,42 +462,468 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     return "unknown";
   }
 
-  /** 仅从可信身份源解析知乎昵称（会先尝试打开个人主页） */
+  private parseCoverPayload(task: LocalPublishTask): { buffer: Buffer; ext: string } | null {
+    const decodeBase64 = (raw: string, mime?: string): { buffer: Buffer; ext: string } | null => {
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      const dataMatch = /^data:([^;]+);base64,(.+)$/i.exec(trimmed);
+      const b64 = dataMatch?.[2] ?? trimmed;
+      const mimeType = dataMatch?.[1] ?? mime ?? "image/png";
+      try {
+        const buffer = Buffer.from(b64, "base64");
+        if (!buffer.length) return null;
+        const ext = mimeType.includes("jpeg") || mimeType.includes("jpg") ? ".jpg" : ".png";
+        return { buffer, ext };
+      } catch {
+        return null;
+      }
+    };
+
+    if (task.coverBase64?.trim()) {
+      return decodeBase64(task.coverBase64.trim());
+    }
+    if (task.coverImageUrl?.trim()) {
+      const url = task.coverImageUrl.trim();
+      if (url.startsWith("data:")) return decodeBase64(url);
+    }
+    return null;
+  }
+
+  private async resolveCoverTempFile(
+    task: LocalPublishTask,
+  ): Promise<{ filePath: string; cleanup: () => void } | null> {
+    const parsed = this.parseCoverPayload(task);
+    if (parsed) {
+      const filePath = path.join(os.tmpdir(), `geo-zhihu-cover-${Date.now()}${parsed.ext}`);
+      fs.writeFileSync(filePath, parsed.buffer);
+      return { filePath, cleanup: () => fs.unlink(filePath, () => undefined) };
+    }
+
+    const url = task.coverImageUrl?.trim();
+    if (!url || url.startsWith("data:") || !/^https?:\/\//i.test(url)) return null;
+    try {
+      const res = await fetch(url, { redirect: "follow" });
+      if (!res.ok) return null;
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (!buffer.length) return null;
+      const ct = res.headers.get("content-type") ?? "";
+      const ext = ct.includes("jpeg") || ct.includes("jpg") ? ".jpg" : ".png";
+      const filePath = path.join(os.tmpdir(), `geo-zhihu-cover-${Date.now()}${ext}`);
+      fs.writeFileSync(filePath, buffer);
+      return { filePath, cleanup: () => fs.unlink(filePath, () => undefined) };
+    } catch {
+      return null;
+    }
+  }
+
+  /** 上传专栏写作页封面；失败不阻断后续发布 */
+  private async uploadZhihuCover(
+    page: Page,
+    task: LocalPublishTask,
+  ): Promise<{ ok: boolean; message: string; selector?: string }> {
+    const resolved = await this.resolveCoverTempFile(task);
+    if (!resolved) {
+      return { ok: false, message: "no_cover_payload" };
+    }
+
+    const fileInputSelectors = [
+      'input[type="file"][accept*="image"]',
+      '[class*="Cover"] input[type="file"]',
+      '[class*="cover"] input[type="file"]',
+      'input[type="file"]',
+    ];
+
+    try {
+      const triggerSelectors = [
+        page.getByRole("button", { name: /上传封面|添加封面|更换封面|封面图/i }),
+        page.locator('[class*="Cover"]').filter({ hasText: /上传封面|添加封面|封面/i }),
+        page.getByText(/上传封面图片/i),
+      ];
+      for (const trigger of triggerSelectors) {
+        if (await trigger.first().isVisible({ timeout: 800 }).catch(() => false)) {
+          await trigger.first().click({ timeout: 3000 }).catch(() => undefined);
+          await page.waitForTimeout(600);
+          break;
+        }
+      }
+
+      for (const selector of fileInputSelectors) {
+        const input = page.locator(selector).first();
+        if ((await input.count()) === 0) continue;
+        try {
+          await input.setInputFiles(resolved.filePath, { timeout: 8000 });
+          const previewVisible = await page
+            .waitForFunction(
+              () => {
+                const imgs = Array.from(
+                  document.querySelectorAll(
+                    '[class*="Cover"] img, [class*="cover"] img, img[class*="Cover"], img[class*="cover"]',
+                  ),
+                );
+                for (const img of imgs) {
+                  const src = img.getAttribute("src") ?? "";
+                  if (src && !/^data:image\/svg/i.test(src) && src.length > 20) return true;
+                }
+                return Boolean(
+                  document.querySelector(
+                    '[class*="CoverPreview"], [class*="cover-preview"], [class*="Cover"] [style*="background-image"]',
+                  ),
+                );
+              },
+              { timeout: 15000 },
+            )
+            .catch(() => null);
+          if (previewVisible) {
+            return { ok: true, message: "cover_preview_visible", selector };
+          }
+          await page.waitForTimeout(1500);
+          return { ok: true, message: "cover_file_set", selector };
+        } catch {
+          /* try next selector */
+        }
+      }
+      return { ok: false, message: "cover_input_not_found" };
+    } finally {
+      resolved.cleanup();
+    }
+  }
+
+  private extractZhihuArticlePublicUrl(url: string): string | null {
+    const match =
+      url.match(/https?:\/\/zhuanlan\.zhihu\.com\/p\/\d+/i) ??
+      url.match(/https?:\/\/www\.zhihu\.com\/p\/\d+/i);
+    return match ? match[0] : null;
+  }
+
+  /** 写作页顶部工具栏：点击「发布」（排除草稿/预览等） */
+  private async clickZhihuWritePagePublishButton(page: Page): Promise<boolean> {
+    const publishExact = /^发布$|^立即发布$/;
+    const skip = /草稿|预览|取消|删除|保存|设置/i;
+
+    const toolbarScopes = [
+      page.locator('[class*="Toolbar"]').first(),
+      page.locator('[class*="Topbar"]').first(),
+      page.locator('[class*="PublishPanel"]').first(),
+      page.locator("header").first(),
+    ];
+
+    for (const scope of toolbarScopes) {
+      if (!(await scope.isVisible({ timeout: 600 }).catch(() => false))) continue;
+      const buttons = scope.getByRole("button");
+      const count = await buttons.count().catch(() => 0);
+      for (let i = 0; i < count; i += 1) {
+        const btn = buttons.nth(i);
+        if (!(await btn.isVisible({ timeout: 600 }).catch(() => false))) continue;
+        const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+        if (!publishExact.test(text) || skip.test(text)) continue;
+        if (await btn.isDisabled().catch(() => false)) continue;
+        await btn.click({ timeout: 5000 });
+        return true;
+      }
+    }
+
+    const buttons = page.getByRole("button");
+    for (let i = 0; i < (await buttons.count()); i += 1) {
+      const btn = buttons.nth(i);
+      if (!(await btn.isVisible({ timeout: 600 }).catch(() => false))) continue;
+      const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+      if (!publishExact.test(text) || skip.test(text)) continue;
+      if (await btn.isDisabled().catch(() => false)) continue;
+      await btn.click({ timeout: 5000 });
+      return true;
+    }
+    return false;
+  }
+
+  /** 发布前「发布设置」等中间弹窗：点「确认发布」或「发布」 */
+  private async confirmZhihuPublishSettingsIfPresent(page: Page): Promise<void> {
+    const dialog = page
+      .locator('[role="dialog"], [class*="Modal"]')
+      .filter({ hasText: /发布设置|定时发布|原创声明|确认发布/i })
+      .first();
+    if (!(await dialog.isVisible({ timeout: 3000 }).catch(() => false))) return;
+
+    const confirm = dialog
+      .getByRole("button", { name: /^确认发布$|^发布$|^立即发布$/ })
+      .or(dialog.locator("button").filter({ hasText: /^确认发布$|^发布$/ }))
+      .first();
+    if (await confirm.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await confirm.click({ timeout: 5000 }).catch(() => undefined);
+      await page.waitForTimeout(800);
+    }
+  }
+
+  /** 等待「发布成功」弹窗（含「感谢你的第X篇创作」） */
+  private async waitForZhihuPublishSuccessDialog(page: Page, timeoutMs = 15000): Promise<boolean> {
+    const success = page.getByText(/发布成功|感谢你的第.+篇创作/);
+    try {
+      await success.first().waitFor({ state: "visible", timeout: timeoutMs });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** 关闭发布成功弹窗（可选） */
+  private async dismissZhihuPublishSuccessDialog(page: Page): Promise<void> {
+    const dialog = page
+      .locator('[role="dialog"], [class*="Modal"]')
+      .filter({ hasText: /发布成功|感谢你的第.+篇创作|转发到想法/i })
+      .first();
+    if (!(await dialog.isVisible({ timeout: 2000 }).catch(() => false))) return;
+
+    const closeCandidates = [
+      dialog.locator('button[aria-label*="关闭"], button[aria-label*="Close"]'),
+      dialog.locator('[class*="Close"], [class*="close"]').locator("button, svg").first(),
+      dialog.getByRole("button", { name: /^关闭$|^×$/ }),
+    ];
+    for (const loc of closeCandidates) {
+      if (await loc.first().isVisible({ timeout: 800 }).catch(() => false)) {
+        await loc.first().click({ timeout: 3000 }).catch(() => undefined);
+        return;
+      }
+    }
+  }
+
+  /**
+   * 知乎专栏真实发布流程：
+   * 1. 点写作页右上角「发布」
+   * 2. 如有「发布设置」弹窗则确认
+   * 3. 等「发布成功」弹窗（背景 URL 已变为 /p/{id}）
+   * 4. 从 page.url() 提取 publicUrl
+   */
+  private async attemptPublishArticle(page: Page): Promise<{
+    published: boolean;
+    publicUrl?: string;
+    errorType?: string;
+    message?: string;
+  }> {
+    const errorPattern =
+      /发布失败|请上传封面|请添加封面|缺少封面|内容不符合|违规|审核未通过|再试一次|操作失败/i;
+
+    await page.waitForTimeout(800);
+
+    const clicked = await this.clickZhihuWritePagePublishButton(page);
+    if (!clicked) {
+      return {
+        published: false,
+        errorType: "publish_button_not_found",
+        message: "未找到知乎写作页顶部「发布」按钮",
+      };
+    }
+
+    await page.waitForTimeout(800);
+    await this.confirmZhihuPublishSettingsIfPresent(page);
+
+    const successDialogVisible = await this.waitForZhihuPublishSuccessDialog(page, 15000);
+    if (!successDialogVisible) {
+      const body = await page.locator("body").innerText().catch(() => "");
+      if (errorPattern.test(body)) {
+        const errLine =
+          body
+            .split("\n")
+            .map(line => line.trim())
+            .find(line => errorPattern.test(line)) ?? "发布失败";
+        return {
+          published: false,
+          errorType: "publish_failed",
+          message: errLine.slice(0, 240),
+        };
+      }
+      const fallbackUrl = this.extractZhihuArticlePublicUrl(page.url());
+      if (fallbackUrl) {
+        return {
+          published: true,
+          publicUrl: fallbackUrl,
+          message: "url_redirect_without_success_dialog",
+        };
+      }
+      return {
+        published: false,
+        errorType: "publish_failed",
+        message: "等待「发布成功」弹窗超时（15秒）",
+      };
+    }
+
+    let publicUrl = this.extractZhihuArticlePublicUrl(page.url());
+    if (!publicUrl) {
+      for (let i = 0; i < 6; i += 1) {
+        await page.waitForTimeout(500);
+        publicUrl = this.extractZhihuArticlePublicUrl(page.url());
+        if (publicUrl) break;
+      }
+    }
+
+    await this.dismissZhihuPublishSuccessDialog(page);
+
+    if (!publicUrl) {
+      return {
+        published: false,
+        errorType: "publish_failed",
+        message: "发布成功弹窗已出现，但未从页面 URL 提取到 zhuanlan.zhihu.com/p/{id}",
+      };
+    }
+
+    return {
+      published: true,
+      publicUrl,
+      message: "publish_success_dialog",
+    };
+  }
+
+  /**
+   * 等待个人页 ProfileHeader 昵称非空且连续 500ms 不变；超时仅打日志，不抛错。
+   */
+  private async waitForStableProfileHeaderH1(page: Page, profileId?: string): Promise<string | null> {
+    const stableMs = 500;
+    try {
+      const handle = await page.waitForFunction(
+        ({ stableMs: ms }) => {
+          const skip =
+            "nav,[role=tablist],[class*=Tabs],[class*=Tab],button,[role=button],footer,[class*=Nav]";
+          const nameEl =
+            document.querySelector(".ProfileHeader-name") ??
+            document.querySelector('[class*="ProfileHeader-name"]');
+          const h1 =
+            document.querySelector(".ProfileHeader h1") ??
+            document.querySelector(".ProfileHeader-title") ??
+            document.querySelector('[class*="ProfileHeader"] h1');
+          const el =
+            nameEl && !nameEl.closest(skip)
+              ? nameEl
+              : h1 && !h1.closest(skip)
+                ? h1
+                : null;
+          if (!el) return null;
+          const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+          if (!text || text.length < 2) return null;
+          const w = window as unknown as {
+            __zhihuProfileH1Stable?: { text: string; since: number };
+          };
+          const now = Date.now();
+          if (!w.__zhihuProfileH1Stable || w.__zhihuProfileH1Stable.text !== text) {
+            w.__zhihuProfileH1Stable = { text, since: now };
+            return null;
+          }
+          if (now - w.__zhihuProfileH1Stable.since < ms) return null;
+          return text;
+        },
+        { stableMs },
+        { timeout: 10000 },
+      );
+      return (await handle.jsonValue()) as string | null;
+    } catch (e) {
+      console.warn("[agent-zhihu] profile header name wait timeout", {
+        profileId,
+        url: page.url(),
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return null;
+    }
+  }
+
+  /** 多步解析登录用户 slug（pathname → 菜单 hover → settings → 首页延迟 state） */
+  private async resolveLoginProfileSlug(page: Page, profileId?: string): Promise<ZhihuLoginProfileSlug> {
+    const ZHIHU_HOME = "https://www.zhihu.com/";
+    const ZHIHU_SETTINGS_PROFILE = "https://www.zhihu.com/settings/profile";
+
+    let pick = await page.evaluate(collectLoginProfileSlugInBrowser);
+    if (pick.slug) return pick;
+
+    try {
+      const avatar = page
+        .locator(
+          'header [class*="Avatar"], header a[href*="/people/"], .AppHeader-userInfo, [class*="ProfileMenu"], [class*="AppHeader-userInfo"]',
+        )
+        .first();
+      await avatar.hover({ timeout: 4000 }).catch(() => undefined);
+      await page.waitForTimeout(200);
+      pick = await page.evaluate(collectProfileSlugFromUserMenuInBrowser);
+      if (pick.slug) return pick;
+    } catch {
+      /* hover 失败继续下一步 */
+    }
+
+    try {
+      console.log("[agent-zhihu] slug resolve via settings/profile", { profileId });
+      await page.goto(ZHIHU_SETTINGS_PROFILE, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForTimeout(1500);
+      pick = await page.evaluate(collectProfileSlugFromSettingsPageInBrowser);
+      if (pick.slug) return pick;
+    } catch (e) {
+      console.warn("[agent-zhihu] settings/profile slug resolve failed", {
+        profileId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+
+    try {
+      console.log("[agent-zhihu] slug resolve via home delayed state", { profileId });
+      await page.goto(ZHIHU_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await this.waitForZhihuSession(page, 12000);
+      await page.waitForTimeout(3000);
+      pick = await page.evaluate(collectViewerSlugFromInitialStateInBrowser);
+      if (pick.slug) return pick;
+    } catch (e) {
+      console.warn("[agent-zhihu] home delayed slug resolve failed", {
+        profileId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+
+    return { slug: null, source: "none" };
+  }
+
+  /** 仅从可信身份源解析知乎昵称（强制打开个人主页后读取 ProfileHeader h1） */
   async resolveZhihuIdentity(
     page: Page,
     loginStatus: ZhihuLoginStatus,
     profileId?: string,
-  ): Promise<ZhihuIdentityResolution> {
+  ): Promise<{
+    identity: ZhihuIdentityResolution;
+    debug: {
+      slug: string | null;
+      slugSource: string;
+      navigatedUrl: string | null;
+      h1Found: boolean;
+      nameElFound: boolean;
+      displayName: string | null;
+      displayNameSource: string;
+    };
+  }> {
     const url = page.url();
     console.log("[agent-zhihu] identity resolve start", { profileId, url });
 
-    try {
-      const userEntry = page
-        .locator(
-          'header a[href*="/people/"], header [class*="Avatar"], .AppHeader-userInfo, [class*="ProfileMenu"]',
-        )
-        .first();
-      await userEntry.hover({ timeout: 3000 }).catch(() => undefined);
-      await page.waitForTimeout(600);
-    } catch {
-      /* 用户菜单展开失败不阻断 */
-    }
+    await this.waitForZhihuSession(page, 12000);
+    await page.waitForTimeout(800);
+
+    const slugPick = await this.resolveLoginProfileSlug(page, profileId);
 
     let browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
-    const slug = browserSignals.profileSlug;
+    const slug = slugPick.slug ?? browserSignals.profileSlug ?? browserSignals.viewerStateSlug;
+    let navigatedProfileUrl: string | null = null;
+    let profileHeaderDebug = await page.evaluate(collectProfileHeaderDebugInBrowser);
+
     if (slug) {
       const profileUrl = buildZhihuProfileUrl(slug)!;
-      if (!page.url().includes(`/people/${slug}`)) {
-        console.log("[agent-zhihu] navigate profile for header", { profileId, profileUrl });
-        await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
-        await page.waitForTimeout(1500);
-        await page
-          .locator('.ProfileHeader h1, [class*="ProfileHeader"] h1')
-          .first()
-          .waitFor({ state: "visible", timeout: 8000 })
-          .catch(() => undefined);
-        browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
+      navigatedProfileUrl = profileUrl;
+      console.log("[agent-zhihu] navigate profile for detect", {
+        profileId,
+        profileUrl,
+        slug,
+        slugSource: slugPick.source,
+      });
+      await page.waitForTimeout(1000);
+      await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForTimeout(1500);
+      const stableH1 = await this.waitForStableProfileHeaderH1(page, profileId);
+      browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
+      profileHeaderDebug = await page.evaluate(collectProfileHeaderDebugInBrowser);
+      if (stableH1 && !browserSignals.profileHeaderTitle) {
+        browserSignals = { ...browserSignals, profileHeaderTitle: stableH1 };
       }
+    } else {
+      console.warn("[agent-zhihu] profile slug not found before detect", { profileId, url: page.url() });
     }
 
     const identity = resolveZhihuIdentityFromSignals({
@@ -497,7 +932,25 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       loginStatus,
       profileHeaderTitle: browserSignals.profileHeaderTitle,
       viewerStateName: browserSignals.viewerStateName,
+      viewerStateSlug: browserSignals.viewerStateSlug,
       userMenuName: browserSignals.userMenuName,
+    });
+
+    console.log("[agent-zhihu] identity debug", {
+      profileId,
+      slug,
+      slugSource: slugPick.source,
+      navigatedProfileUrl,
+      pageUrl: browserSignals.pageUrl,
+      h1Found: profileHeaderDebug.h1Found,
+      h1Text: profileHeaderDebug.h1Text,
+      nameElFound: profileHeaderDebug.nameElFound,
+      nameElText: profileHeaderDebug.nameElText,
+      pickedProfileHeaderText: profileHeaderDebug.pickedText,
+      profileHeaderTitle: browserSignals.profileHeaderTitle,
+      viewerStateName: browserSignals.viewerStateName,
+      viewerStateSlug: browserSignals.viewerStateSlug,
+      displayNameSource: identity.displayNameSource,
     });
 
     if (identity.rejectedCandidates.length > 0) {
@@ -512,7 +965,18 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       displayNameSource: identity.displayNameSource,
       displayNameVerified: identity.displayNameVerified,
     });
-    return identity;
+    return {
+      identity,
+      debug: {
+        slug,
+        slugSource: slugPick.source,
+        navigatedUrl: navigatedProfileUrl,
+        h1Found: profileHeaderDebug.h1Found,
+        nameElFound: profileHeaderDebug.nameElFound,
+        displayName: identity.displayName,
+        displayNameSource: identity.displayNameSource,
+      },
+    };
   }
 
   /** @deprecated 使用 resolveZhihuIdentity */
@@ -523,7 +987,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     name: string | null;
     identity: ZhihuIdentityResolution;
   }> {
-    const identity = await this.resolveZhihuIdentity(page, "valid", profileId);
+    const { identity } = await this.resolveZhihuIdentity(page, "valid", profileId);
     return { name: identity.displayName, identity };
   }
 
@@ -684,7 +1148,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         return { ok: false, accountName: null, message: msg, errorType: "login_required" };
       }
 
-      const identity = await this.resolveZhihuIdentity(page, "valid", profileId);
+      const { identity } = await this.resolveZhihuIdentity(page, "valid", profileId);
       const name = identity.displayName;
       const now = new Date().toISOString();
 
@@ -861,6 +1325,86 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     return fillFirstSelector(page, this.contentSelectors(), content, true);
   }
 
+  private async zhihuEditorHasContent(page: Page): Promise<boolean> {
+    for (const sel of [...this.titleSelectors(), ...this.contentSelectors()]) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count()) === 0) continue;
+      const value = await loc.inputValue().catch(() => "");
+      const text = (value || (await loc.innerText().catch(() => ""))).replace(/\s+/g, " ").trim();
+      if (text.length >= 2) return true;
+    }
+    return false;
+  }
+
+  /** 知乎专栏写作页草稿保存检测（覆盖 basePublisher 的窄匹配逻辑） */
+  protected override async attemptSaveDraft(page: Page): Promise<{
+    saved: boolean;
+    draftUrl?: string;
+    message?: string;
+  }> {
+    const DRAFT_BTN = /保存草稿|存草稿|保存为草稿|暂存/i;
+    const SAVE_HINT = /保存于\s*\d{1,2}:\d{2}|自动保存|已保存/;
+
+    const buttons = page.getByRole("button").filter({ hasText: DRAFT_BTN });
+    for (let i = 0; i < (await buttons.count()); i += 1) {
+      try {
+        const btn = buttons.nth(i);
+        if (await btn.isVisible({ timeout: 1200 })) {
+          await btn.click({ timeout: 5000 });
+          break;
+        }
+      } catch {
+        /* next */
+      }
+    }
+
+    let draftApiOk = false;
+    const onResponse = (response: { url: () => string; status: () => number }) => {
+      if (response.status() !== 200) return;
+      const url = response.url();
+      if (/\/api\/v4\/articles|\/draft/i.test(url)) draftApiOk = true;
+    };
+    page.on("response", onResponse);
+
+    try {
+      const pollDeadline = Date.now() + 12000;
+      while (Date.now() < pollDeadline) {
+        const url = page.url();
+        if (/\/p\/\d+/i.test(url)) {
+          return {
+            saved: true,
+            draftUrl: url.split("?")[0],
+            message: "url_contains_article_id",
+          };
+        }
+
+        const body = await page.locator("body").innerText().catch(() => "");
+        if (SAVE_HINT.test(body)) {
+          return { saved: true, draftUrl: url, message: "save_timestamp_or_autosave_hint" };
+        }
+
+        if (draftApiOk) {
+          return { saved: true, draftUrl: url, message: "draft_or_articles_api_200" };
+        }
+
+        await page.waitForTimeout(500);
+      }
+
+      await page.waitForTimeout(3000);
+      if (await this.zhihuEditorHasContent(page)) {
+        return {
+          saved: true,
+          draftUrl: page.url(),
+          message: "editor_content_present_after_wait",
+        };
+      }
+
+      return { saved: false, message: "manual_required_no_save_evidence" };
+    } finally {
+      page.off("response", onResponse);
+    }
+  }
+
   protected async gotoZhihuWritePage(page: Page): Promise<{ ok: boolean; url: string; errorType?: ZhihuWritePageErrorType }> {
     const targetUrl = ZHIHU_WRITE_TARGET_URL;
     let response: Awaited<ReturnType<Page["goto"]>> = null;
@@ -934,6 +1478,8 @@ export class ZhihuPublisher extends BasePlatformPublisher {
   override async publish(task: LocalPublishTask): Promise<LocalPublishResult> {
     const logs: PublishStepLog[] = [];
     const profileId = task.localProfileId;
+    const publishAction = task.action === "save_draft" ? "save_draft" : "publish";
+    logs.push(stepLog("publish_action", "ok", publishAction));
 
     try {
       const context = await getOrLaunchContext(profileId, false);
@@ -968,7 +1514,23 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       }
 
       const stored = getAccountByProfileId(profileId);
-      const { name: pageName } = await this.collectAccountCandidates(page, profileId);
+      const { identity, debug } = await this.resolveZhihuIdentity(page, "valid", profileId);
+      logs.push(
+        stepLog(
+          "identity_debug",
+          debug.slug ? "ok" : "failed",
+          JSON.stringify({
+            slug: debug.slug,
+            slugSource: debug.slugSource,
+            navigatedUrl: debug.navigatedUrl,
+            h1Found: debug.h1Found,
+            nameElFound: debug.nameElFound,
+            displayName: debug.displayName,
+            displayNameSource: debug.displayNameSource,
+          }),
+        ),
+      );
+      const pageName = identity.displayName;
       let name = pageName;
       if (
         stored?.accountName &&
@@ -1093,23 +1655,52 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         };
       }
 
-      logs.push(stepLog("upload_cover", "skipped", "cover_upload_skipped"));
+      const coverResult = await this.uploadZhihuCover(page, task);
+      logs.push(stepLog("upload_cover", coverResult.ok ? "ok" : "skipped", coverResult.message, coverResult.selector));
 
-      const save = await this.attemptSaveDraft(page);
-      logs.push(stepLog("save_draft", save.saved ? "ok" : "skipped", save.message));
-
-      if (save.saved && save.draftUrl) {
+      if (publishAction === "save_draft") {
+        const save = await this.attemptSaveDraft(page);
+        logs.push(stepLog("save_draft", save.saved ? "ok" : "skipped", save.message));
+        if (save.saved && save.draftUrl) {
+          return {
+            status: "draft_saved",
+            draftUrl: save.draftUrl,
+            logs,
+          };
+        }
         return {
-          status: "draft_saved",
-          draftUrl: save.draftUrl,
+          status: "manual_required",
+          errorType: "manual_confirm",
+          errorMessage: "已填入标题和正文，未检测到草稿保存证据，请在浏览器窗口人工确认保存",
+          logs,
+        };
+      }
+
+      const publishResult = await this.attemptPublishArticle(page);
+      logs.push(
+        stepLog(
+          "publish_article",
+          publishResult.published ? "ok" : "failed",
+          publishResult.message,
+        ),
+      );
+
+      if (publishResult.published && publishResult.publicUrl) {
+        console.log("[agent-zhihu] publish success", {
+          profileId,
+          publicUrl: publishResult.publicUrl,
+        });
+        return {
+          status: "completed",
+          publicUrl: publishResult.publicUrl,
           logs,
         };
       }
 
       return {
-        status: "manual_required",
-        errorType: "manual_confirm",
-        errorMessage: "已填入标题和正文，未检测到草稿保存证据，请在浏览器窗口人工确认保存",
+        status: "failed",
+        errorType: publishResult.errorType ?? "publish_failed",
+        errorMessage: publishResult.message ?? "知乎发布失败",
         logs,
       };
     } catch (e) {

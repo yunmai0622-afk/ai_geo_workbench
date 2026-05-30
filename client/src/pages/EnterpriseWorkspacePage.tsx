@@ -2,6 +2,7 @@ import { P0Card } from "@/components/geo/P0UiPrimitives";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
@@ -117,9 +118,14 @@ export default function EnterpriseWorkspacePage() {
   }, [summaryQuery.data, selectedProjectId, localAgentOnline]);
 
   const metrics = summaryQuery.data;
+  const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, metrics);
   const stage = resolution?.currentStage;
   const stageLabel = stage ? CUSTOMER_STAGE_LABELS[stage.id] : null;
   const activeStepIdx = stage ? getActiveStepIndex(stage.id) : 0;
+  const headerCtaPath =
+    homeDisplay.mainChainNextAction?.ctaPath ??
+    (stage && selectedProjectId ? workspaceCtaUrl(selectedProjectId, stage) : null);
+  const headerCtaLabel = homeDisplay.mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
 
   if (!enabled && !projectsLoading) {
     return (
@@ -152,21 +158,9 @@ export default function EnterpriseWorkspacePage() {
             {/* 指标行 */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
               <MetricCell label="GEO 分" value={formatGeoScore(metrics.geoScore)} />
-              <MetricCell
-                label="品牌提及率"
-                value={
-                  metrics.brandMentionRate != null && metrics.aiTestResultCount > 0
-                    ? `${Math.round(metrics.brandMentionRate * 100)}%`
-                    : "--"
-                }
-              />
-              <MetricCell label="推荐率" value="--" />
-              <MetricCell
-                label="最近实测"
-                value={
-                  metrics.aiTestResultCount > 0 ? `${metrics.aiTestResultCount} 条` : "暂无"
-                }
-              />
+              <MetricCell label="品牌提及率" value={homeDisplay.brandMentionRateText} />
+              <MetricCell label="推荐率" value={homeDisplay.recommendRateText} />
+              <MetricCell label="最近实测" value={homeDisplay.lastAiTestLabel} />
               <MetricCell
                 label="内容资产"
                 value={metrics.articleCount > 0 ? `${metrics.articleCount} 篇` : "--"}
@@ -187,15 +181,17 @@ export default function EnterpriseWorkspacePage() {
               ) : (
                 <span className="text-[13px] text-gray-400">{resolution.blockerReasons[0]}</span>
               )}
-              <Button
-                type="button"
-                className={cn("rounded-xl px-5", geoP0Brand.primary)}
-                data-testid="workspace-primary-cta"
-                onClick={() => setLocation(workspaceCtaUrl(selectedProjectId, stage))}
-              >
-                {stage.ctaLabel}
-                <ArrowRight className="ml-2 size-4" />
-              </Button>
+              {headerCtaPath && headerCtaLabel ? (
+                <Button
+                  type="button"
+                  className={cn("rounded-xl px-5", geoP0Brand.primary)}
+                  data-testid="workspace-primary-cta"
+                  onClick={() => setLocation(headerCtaPath)}
+                >
+                  {headerCtaLabel}
+                  <ArrowRight className="ml-2 size-4" />
+                </Button>
+              ) : null}
             </div>
           </section>
 

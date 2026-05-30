@@ -1,4 +1,5 @@
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
@@ -36,6 +37,8 @@ export function EnterpriseProjectShell({ children }: Props) {
     if (!m || !selectedProjectId) return null;
     return resolveWorkspaceStage({ ...m, localAgentOnline });
   }, [summaryQuery.data, selectedProjectId, localAgentOnline]);
+
+  const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, summaryQuery.data);
 
   const recentItems = useMemo(() => {
     const m = summaryQuery.data;
@@ -78,10 +81,11 @@ export function EnterpriseProjectShell({ children }: Props) {
             <ProjectNextActionPanel
               projectId={selectedProjectId}
               stage={resolution?.currentStage ?? null}
+              mainChainNextAction={homeDisplay.mainChainNextAction}
               blockerReason={resolution?.blockerReasons[0] ?? null}
               riskHints={resolution?.riskHints ?? []}
               recentItems={recentItems}
-              loading={summaryQuery.isLoading && Boolean(selectedProjectId)}
+              loading={(summaryQuery.isLoading || homeDisplay.loading) && Boolean(selectedProjectId)}
             />
           </div>
         </div>

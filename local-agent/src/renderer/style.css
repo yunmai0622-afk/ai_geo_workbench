@@ -649,6 +649,38 @@ th {
   color: #e2e8f0;
 }
 
+.dev-config-panel {
+  margin: 12px 0 14px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.dev-config-panel > summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  list-style: none;
+}
+
+.dev-config-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dev-config-panel > summary::before {
+  content: "▸ ";
+}
+
+.dev-config-panel[open] > summary::before {
+  content: "▾ ";
+}
+
+.dev-config-body {
+  padding: 0 12px 12px;
+  border-top: 1px solid #334155;
+}
+
 .conn-line {
   font-size: 0.82rem;
   margin: 0 0 8px;
