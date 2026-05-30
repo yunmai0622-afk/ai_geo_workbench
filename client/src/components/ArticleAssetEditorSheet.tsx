@@ -203,14 +203,31 @@ export function ArticleAssetEditorSheet({
       return;
     }
     try {
+      let coverBase64ToSave = coverBase64Draft;
+      if (title.trim()) {
+        console.log("[cover] 开始生成封面");
+        const rendered = await renderArticleCoverPng({
+          template,
+          title: title.trim(),
+          brandName,
+        });
+        console.log("[cover] 封面生成结果:", rendered.coverBase64?.substring(0, 50), "length=", rendered.coverBase64?.length ?? 0);
+        if (!rendered.coverBase64?.trim()) {
+          throw new Error("封面导出为空，请重试或点击「重新生成封面」");
+        }
+        coverBase64ToSave = rendered.coverBase64;
+        setCoverBase64Draft(rendered.coverBase64);
+        setCoverPreview(rendered.dataUrl);
+      }
+      console.log("[cover] 提交保存 coverBase64 length=", coverBase64ToSave?.length ?? 0);
       const saved = await updateArticle.mutateAsync({
         projectId,
         articleId: article.id,
         title: title.trim(),
         content: content.trim(),
         coverTemplate: template,
-        coverBase64: coverBase64Draft,
-        coverImageUrl: coverBase64Draft ? null : article.coverImageUrl,
+        coverBase64: coverBase64ToSave,
+        coverImageUrl: coverBase64ToSave ? null : article.coverImageUrl,
         contentStrategyType: contentStrategyType || null,
         publishIdentity: publishIdentity || null,
         recommendedAccountGroup: recommendedAccountGroup || null,
@@ -223,13 +240,18 @@ export function ArticleAssetEditorSheet({
         title,
         content,
         coverTemplate: template,
-        coverBase64: coverBase64Draft,
+        coverBase64: coverBase64ToSave,
       });
       onDirtyChange?.(article.id, false);
       onSaved?.();
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "保存失败");
+      console.error("[cover] 保存失败", e);
+      const msg = e instanceof Error ? e.message : "保存失败";
+      if (msg.includes("封面")) {
+        setCoverError(msg);
+      }
+      toast.error(msg);
     }
   };
 
