@@ -197,29 +197,45 @@ export function ArticleAssetEditorSheet({
   };
 
   const handleSave = async () => {
-    if (!article) return;
+    console.log("[cover-debug] handleSave 开始执行", {
+      articleId: article?.id ?? null,
+      hasTitle: Boolean(title.trim()),
+      hasContent: Boolean(content.trim()),
+    });
+    if (!article) {
+      console.warn("[cover-debug] 提前返回: 无 article");
+      return;
+    }
     if (!title.trim() || !content.trim()) {
+      console.warn("[cover-debug] 提前返回: 标题或正文为空");
       toast.error("标题和正文不能为空");
       return;
     }
     try {
       let coverBase64ToSave = coverBase64Draft;
-      if (title.trim()) {
-        console.log("[cover] 开始生成封面");
-        const rendered = await renderArticleCoverPng({
+      console.log("[cover-debug] 准备调用 renderArticleCoverPng", {
+        template,
+        titlePreview: title.trim().slice(0, 40),
+        brandName,
+      });
+      try {
+        const png = await renderArticleCoverPng({
           template,
           title: title.trim(),
           brandName,
         });
-        console.log("[cover] 封面生成结果:", rendered.coverBase64?.substring(0, 50), "length=", rendered.coverBase64?.length ?? 0);
-        if (!rendered.coverBase64?.trim()) {
+        console.log("[cover-debug] 生成结果长度:", png?.coverBase64?.length ?? 0);
+        if (!png?.coverBase64?.trim()) {
           throw new Error("封面导出为空，请重试或点击「重新生成封面」");
         }
-        coverBase64ToSave = rendered.coverBase64;
-        setCoverBase64Draft(rendered.coverBase64);
-        setCoverPreview(rendered.dataUrl);
+        coverBase64ToSave = png.coverBase64;
+        setCoverBase64Draft(png.coverBase64);
+        setCoverPreview(png.dataUrl);
+      } catch (e) {
+        console.error("[cover-debug] 生成失败:", e);
+        throw e;
       }
-      console.log("[cover] 提交保存 coverBase64 length=", coverBase64ToSave?.length ?? 0);
+      console.log("[cover-debug] 提交保存 coverBase64 length=", coverBase64ToSave?.length ?? 0);
       const saved = await updateArticle.mutateAsync({
         projectId,
         articleId: article.id,
@@ -246,7 +262,7 @@ export function ArticleAssetEditorSheet({
       onSaved?.();
       onOpenChange(false);
     } catch (e) {
-      console.error("[cover] 保存失败", e);
+      console.error("[cover-debug] 保存失败", e);
       const msg = e instanceof Error ? e.message : "保存失败";
       if (msg.includes("封面")) {
         setCoverError(msg);
