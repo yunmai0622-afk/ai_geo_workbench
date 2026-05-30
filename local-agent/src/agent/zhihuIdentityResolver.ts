@@ -245,33 +245,13 @@ export type ZhihuProfileHeaderDebug = {
   pickedText: string | null;
 };
 
-function readViewerSlugFromState(): { slug: string | null; source: ZhihuLoginProfileSlug["source"] } {
-  try {
-    const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> })
-      .__INITIAL_STATE__;
-    const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
-    if (viewer && typeof viewer === "object") {
-      const v = viewer as Record<string, unknown>;
-      const urlToken =
-        (typeof v.urlToken === "string" && v.urlToken) ||
-        (typeof v.id === "string" && v.id) ||
-        null;
-      if (urlToken?.trim()) {
-        return { slug: urlToken.trim(), source: "viewer_state" };
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const dataEl =
-      document.querySelector('#data[data-state]') ??
-      document.querySelector('[data-state]');
-    const raw = dataEl?.getAttribute("data-state");
-    if (raw) {
-      const state = JSON.parse(raw) as Record<string, unknown>;
-      const viewer = state.viewer ?? state.currentUser ?? state.user;
+/** Playwright page.evaluate：解析当前登录用户 slug（urlToken 优先；须自包含，不可引用模块级函数） */
+export function collectLoginProfileSlugInBrowser(): ZhihuLoginProfileSlug {
+  function readViewerSlugFromState(): { slug: string | null; source: ZhihuLoginProfileSlug["source"] } {
+    try {
+      const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> })
+        .__INITIAL_STATE__;
+      const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
       if (viewer && typeof viewer === "object") {
         const v = viewer as Record<string, unknown>;
         const urlToken =
@@ -279,33 +259,51 @@ function readViewerSlugFromState(): { slug: string | null; source: ZhihuLoginPro
           (typeof v.id === "string" && v.id) ||
           null;
         if (urlToken?.trim()) {
-          return { slug: urlToken.trim(), source: "data_state" };
+          return { slug: urlToken.trim(), source: "viewer_state" };
         }
       }
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
+    try {
+      const dataEl =
+        document.querySelector('#data[data-state]') ??
+        document.querySelector('[data-state]');
+      const raw = dataEl?.getAttribute("data-state");
+      if (raw) {
+        const state = JSON.parse(raw) as Record<string, unknown>;
+        const viewer = state.viewer ?? state.currentUser ?? state.user;
+        if (viewer && typeof viewer === "object") {
+          const v = viewer as Record<string, unknown>;
+          const urlToken =
+            (typeof v.urlToken === "string" && v.urlToken) ||
+            (typeof v.id === "string" && v.id) ||
+            null;
+          if (urlToken?.trim()) {
+            return { slug: urlToken.trim(), source: "data_state" };
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return { slug: null, source: "none" };
   }
 
-  return { slug: null, source: "none" };
-}
-
-function readPeopleSlugFromAnchors(scopes: ParentNode[]): ZhihuLoginProfileSlug {
-  for (const scope of scopes) {
-    for (const a of Array.from(scope.querySelectorAll('a[href*="/people/"]'))) {
-      const href = a.getAttribute("href") ?? "";
-      const mm = href.match(/\/people\/([^/?#]+)/i);
-      if (!mm) continue;
-      const text = (a.textContent ?? "").trim();
-      if (/开通|机构|登录|注册|机构号/.test(text)) continue;
-      return { slug: mm[1], source: "header_link" };
+  function readPeopleSlugFromAnchors(scopes: ParentNode[]): ZhihuLoginProfileSlug {
+    for (const scope of scopes) {
+      for (const a of Array.from(scope.querySelectorAll('a[href*="/people/"]'))) {
+        const href = a.getAttribute("href") ?? "";
+        const mm = href.match(/\/people\/([^/?#]+)/i);
+        if (!mm) continue;
+        const text = (a.textContent ?? "").trim();
+        if (/开通|机构|登录|注册|机构号/.test(text)) continue;
+        return { slug: mm[1], source: "header_link" };
+      }
     }
+    return { slug: null, source: "none" };
   }
-  return { slug: null, source: "none" };
-}
 
-/** Playwright page.evaluate：解析当前登录用户 slug（urlToken 优先） */
-export function collectLoginProfileSlugInBrowser(): ZhihuLoginProfileSlug {
   const pathMatch = location.pathname.match(/\/people\/([^/?#]+)/i);
   if (pathMatch?.[1]) {
     return { slug: pathMatch[1], source: "pathname" };
@@ -322,6 +320,20 @@ export function collectLoginProfileSlugInBrowser(): ZhihuLoginProfileSlug {
 
 /** Playwright page.evaluate：用户菜单展开后从下拉区读取 slug */
 export function collectProfileSlugFromUserMenuInBrowser(): ZhihuLoginProfileSlug {
+  function readPeopleSlugFromAnchors(scopes: ParentNode[]): ZhihuLoginProfileSlug {
+    for (const scope of scopes) {
+      for (const a of Array.from(scope.querySelectorAll('a[href*="/people/"]'))) {
+        const href = a.getAttribute("href") ?? "";
+        const mm = href.match(/\/people\/([^/?#]+)/i);
+        if (!mm) continue;
+        const text = (a.textContent ?? "").trim();
+        if (/开通|机构|登录|注册|机构号/.test(text)) continue;
+        return { slug: mm[1], source: "header_link" };
+      }
+    }
+    return { slug: null, source: "none" };
+  }
+
   const pathMatch = location.pathname.match(/\/people\/([^/?#]+)/i);
   if (pathMatch?.[1]) {
     return { slug: pathMatch[1], source: "pathname" };
@@ -346,6 +358,63 @@ export function collectProfileSlugFromUserMenuInBrowser(): ZhihuLoginProfileSlug
 
 /** Playwright page.evaluate：settings/profile 页读取 slug */
 export function collectProfileSlugFromSettingsPageInBrowser(): ZhihuLoginProfileSlug {
+  function readViewerSlugFromState(): { slug: string | null; source: ZhihuLoginProfileSlug["source"] } {
+    try {
+      const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> })
+        .__INITIAL_STATE__;
+      const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
+      if (viewer && typeof viewer === "object") {
+        const v = viewer as Record<string, unknown>;
+        const urlToken =
+          (typeof v.urlToken === "string" && v.urlToken) ||
+          (typeof v.id === "string" && v.id) ||
+          null;
+        if (urlToken?.trim()) {
+          return { slug: urlToken.trim(), source: "viewer_state" };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      const dataEl =
+        document.querySelector('#data[data-state]') ??
+        document.querySelector('[data-state]');
+      const raw = dataEl?.getAttribute("data-state");
+      if (raw) {
+        const state = JSON.parse(raw) as Record<string, unknown>;
+        const viewer = state.viewer ?? state.currentUser ?? state.user;
+        if (viewer && typeof viewer === "object") {
+          const v = viewer as Record<string, unknown>;
+          const urlToken =
+            (typeof v.urlToken === "string" && v.urlToken) ||
+            (typeof v.id === "string" && v.id) ||
+            null;
+          if (urlToken?.trim()) {
+            return { slug: urlToken.trim(), source: "data_state" };
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return { slug: null, source: "none" };
+  }
+
+  function readPeopleSlugFromAnchors(scopes: ParentNode[]): ZhihuLoginProfileSlug {
+    for (const scope of scopes) {
+      for (const a of Array.from(scope.querySelectorAll('a[href*="/people/"]'))) {
+        const href = a.getAttribute("href") ?? "";
+        const mm = href.match(/\/people\/([^/?#]+)/i);
+        if (!mm) continue;
+        const text = (a.textContent ?? "").trim();
+        if (/开通|机构|登录|注册|机构号/.test(text)) continue;
+        return { slug: mm[1], source: "header_link" };
+      }
+    }
+    return { slug: null, source: "none" };
+  }
+
   const pathMatch = location.pathname.match(/\/people\/([^/?#]+)/i);
   if (pathMatch?.[1]) {
     return { slug: pathMatch[1], source: "pathname" };
@@ -370,6 +439,49 @@ export function collectProfileSlugFromSettingsPageInBrowser(): ZhihuLoginProfile
 
 /** Playwright page.evaluate：仅读 __INITIAL_STATE__ / data-state（首页延迟后使用） */
 export function collectViewerSlugFromInitialStateInBrowser(): ZhihuLoginProfileSlug {
+  function readViewerSlugFromState(): { slug: string | null; source: ZhihuLoginProfileSlug["source"] } {
+    try {
+      const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> })
+        .__INITIAL_STATE__;
+      const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
+      if (viewer && typeof viewer === "object") {
+        const v = viewer as Record<string, unknown>;
+        const urlToken =
+          (typeof v.urlToken === "string" && v.urlToken) ||
+          (typeof v.id === "string" && v.id) ||
+          null;
+        if (urlToken?.trim()) {
+          return { slug: urlToken.trim(), source: "viewer_state" };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      const dataEl =
+        document.querySelector('#data[data-state]') ??
+        document.querySelector('[data-state]');
+      const raw = dataEl?.getAttribute("data-state");
+      if (raw) {
+        const state = JSON.parse(raw) as Record<string, unknown>;
+        const viewer = state.viewer ?? state.currentUser ?? state.user;
+        if (viewer && typeof viewer === "object") {
+          const v = viewer as Record<string, unknown>;
+          const urlToken =
+            (typeof v.urlToken === "string" && v.urlToken) ||
+            (typeof v.id === "string" && v.id) ||
+            null;
+          if (urlToken?.trim()) {
+            return { slug: urlToken.trim(), source: "data_state" };
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return { slug: null, source: "none" };
+  }
+
   const fromState = readViewerSlugFromState();
   if (fromState.slug) {
     return { slug: fromState.slug, source: "home_delayed_state" };
