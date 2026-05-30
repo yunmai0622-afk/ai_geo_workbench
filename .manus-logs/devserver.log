@@ -2647,3 +2647,18 @@
 [2026-05-30T05:56:03.406Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-05-30T05:56:23.150Z] 1:56:23 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T05:56:57.418Z] 1:56:57 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T06:05:20.604Z] 2:05:20 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T06:05:20.605Z] 2:05:20 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T06:05:20.607Z] 2:05:20 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-05-30T06:05:20.609Z] 2:05:20 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-05-30T06:05:20.613Z] 2:05:20 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-05-30T06:05:20.614Z] 2:05:20 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectNextActionPanel.tsx
+[2026-05-30T06:05:20.614Z] 2:05:20 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-05-30T06:05:20.621Z] 2:05:20 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-30T06:05:20.693Z] 2:05:20 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-05-30T06:05:20.694Z] 2:05:20 AM [vite] (client) page reload src/lib/workspaceHomeDisplay.ts
+[2026-05-30T06:05:20.694Z] 2:05:20 AM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+[2026-05-30T06:05:20.695Z] 2:05:20 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-30T06:05:20.695Z] 2:05:20 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/workspaceMainChain.ts
+[2026-05-30T06:05:20.793Z] 2:05:20 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Restarting...
+[2026-05-30T06:05:22.680Z] c[OAuth] Initialized with baseURL: https://api.manus.im
