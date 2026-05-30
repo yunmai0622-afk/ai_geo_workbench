@@ -2793,3 +2793,10 @@
 [2026-05-30T08:24:55.241Z] Node.js v22.13.0
 [2026-05-30T08:24:55.408Z] 4:24:55 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Rerunning...
 [2026-05-30T08:24:57.186Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-30T08:25:01.996Z] Server running on http://localhost:3000/
+[2026-05-30T08:25:01.997Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-30T08:25:54.303Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-30T08:26:21.004Z] 4:26:21 AM [tsx] change in ./server/agentPublishTasks.ts Restarting...
+[2026-05-30T08:26:22.745Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-30T08:26:27.542Z] Server running on http://localhost:3000/
+[2026-05-30T08:26:27.543Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
