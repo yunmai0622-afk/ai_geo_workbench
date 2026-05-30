@@ -588,100 +588,136 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     }
   }
 
-  /** 点击专栏写作页「发布」并等待文章 URL */
+  private extractZhihuArticlePublicUrl(url: string): string | null {
+    const match =
+      url.match(/https?:\/\/zhuanlan\.zhihu\.com\/p\/\d+/i) ??
+      url.match(/https?:\/\/www\.zhihu\.com\/p\/\d+/i);
+    return match ? match[0] : null;
+  }
+
+  /** 写作页顶部工具栏：点击「发布」（排除草稿/预览等） */
+  private async clickZhihuWritePagePublishButton(page: Page): Promise<boolean> {
+    const publishExact = /^发布$|^立即发布$/;
+    const skip = /草稿|预览|取消|删除|保存|设置/i;
+
+    const toolbarScopes = [
+      page.locator('[class*="Toolbar"]').first(),
+      page.locator('[class*="Topbar"]').first(),
+      page.locator('[class*="PublishPanel"]').first(),
+      page.locator("header").first(),
+    ];
+
+    for (const scope of toolbarScopes) {
+      if (!(await scope.isVisible({ timeout: 600 }).catch(() => false))) continue;
+      const buttons = scope.getByRole("button");
+      const count = await buttons.count().catch(() => 0);
+      for (let i = 0; i < count; i += 1) {
+        const btn = buttons.nth(i);
+        if (!(await btn.isVisible({ timeout: 600 }).catch(() => false))) continue;
+        const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+        if (!publishExact.test(text) || skip.test(text)) continue;
+        if (await btn.isDisabled().catch(() => false)) continue;
+        await btn.click({ timeout: 5000 });
+        return true;
+      }
+    }
+
+    const buttons = page.getByRole("button");
+    for (let i = 0; i < (await buttons.count()); i += 1) {
+      const btn = buttons.nth(i);
+      if (!(await btn.isVisible({ timeout: 600 }).catch(() => false))) continue;
+      const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+      if (!publishExact.test(text) || skip.test(text)) continue;
+      if (await btn.isDisabled().catch(() => false)) continue;
+      await btn.click({ timeout: 5000 });
+      return true;
+    }
+    return false;
+  }
+
+  /** 发布前「发布设置」等中间弹窗：点「确认发布」或「发布」 */
+  private async confirmZhihuPublishSettingsIfPresent(page: Page): Promise<void> {
+    const dialog = page
+      .locator('[role="dialog"], [class*="Modal"]')
+      .filter({ hasText: /发布设置|定时发布|原创声明|确认发布/i })
+      .first();
+    if (!(await dialog.isVisible({ timeout: 3000 }).catch(() => false))) return;
+
+    const confirm = dialog
+      .getByRole("button", { name: /^确认发布$|^发布$|^立即发布$/ })
+      .or(dialog.locator("button").filter({ hasText: /^确认发布$|^发布$/ }))
+      .first();
+    if (await confirm.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await confirm.click({ timeout: 5000 }).catch(() => undefined);
+      await page.waitForTimeout(800);
+    }
+  }
+
+  /** 等待「发布成功」弹窗（含「感谢你的第X篇创作」） */
+  private async waitForZhihuPublishSuccessDialog(page: Page, timeoutMs = 15000): Promise<boolean> {
+    const success = page.getByText(/发布成功|感谢你的第.+篇创作/);
+    try {
+      await success.first().waitFor({ state: "visible", timeout: timeoutMs });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** 关闭发布成功弹窗（可选） */
+  private async dismissZhihuPublishSuccessDialog(page: Page): Promise<void> {
+    const dialog = page
+      .locator('[role="dialog"], [class*="Modal"]')
+      .filter({ hasText: /发布成功|感谢你的第.+篇创作|转发到想法/i })
+      .first();
+    if (!(await dialog.isVisible({ timeout: 2000 }).catch(() => false))) return;
+
+    const closeCandidates = [
+      dialog.locator('button[aria-label*="关闭"], button[aria-label*="Close"]'),
+      dialog.locator('[class*="Close"], [class*="close"]').locator("button, svg").first(),
+      dialog.getByRole("button", { name: /^关闭$|^×$/ }),
+    ];
+    for (const loc of closeCandidates) {
+      if (await loc.first().isVisible({ timeout: 800 }).catch(() => false)) {
+        await loc.first().click({ timeout: 3000 }).catch(() => undefined);
+        return;
+      }
+    }
+  }
+
+  /**
+   * 知乎专栏真实发布流程：
+   * 1. 点写作页右上角「发布」
+   * 2. 如有「发布设置」弹窗则确认
+   * 3. 等「发布成功」弹窗（背景 URL 已变为 /p/{id}）
+   * 4. 从 page.url() 提取 publicUrl
+   */
   private async attemptPublishArticle(page: Page): Promise<{
     published: boolean;
     publicUrl?: string;
     errorType?: string;
     message?: string;
   }> {
-    const beforeUrl = page.url();
-    const publishLabel = /^发布$|^立即发布$/;
     const errorPattern =
-      /发布失败|请上传封面|请添加封面|缺少封面|内容不符合|违规|审核未通过|再试一次|操作失败|错误/i;
-    const successPattern = /发布成功|已发布|文章已发布|发表成功/i;
+      /发布失败|请上传封面|请添加封面|缺少封面|内容不符合|违规|审核未通过|再试一次|操作失败/i;
 
     await page.waitForTimeout(800);
 
-    const publishButtonSelectors = [
-      '.PublishPanel-stepTwoButton',
-      '[class*="PublishPanel"] button',
-      '[class*="Publish"] button[class*="Button"]',
-      'button[class*="Publish"]',
-      'header button',
-      '[class*="Toolbar"] button',
-      '[class*="Topbar"] button',
-    ];
-
-    let clicked = false;
-    for (const selector of publishButtonSelectors) {
-      const loc = page.locator(selector).filter({ hasText: publishLabel });
-      const count = await loc.count().catch(() => 0);
-      for (let i = 0; i < count; i += 1) {
-        const btn = loc.nth(i);
-        if (!(await btn.isVisible({ timeout: 800 }).catch(() => false))) continue;
-        const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
-        if (!publishLabel.test(text)) continue;
-        if (/草稿|预览|取消|删除|保存/i.test(text)) continue;
-        if (await btn.isDisabled().catch(() => false)) continue;
-        await btn.click({ timeout: 5000 });
-        clicked = true;
-        break;
-      }
-      if (clicked) break;
-    }
-
-    if (!clicked) {
-      const buttons = page.getByRole("button");
-      for (let i = 0; i < (await buttons.count()); i += 1) {
-        const btn = buttons.nth(i);
-        if (!(await btn.isVisible({ timeout: 800 }).catch(() => false))) continue;
-        const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
-        if (!publishLabel.test(text)) continue;
-        if (/草稿|预览|取消|删除|保存/i.test(text)) continue;
-        if (await btn.isDisabled().catch(() => false)) continue;
-        await btn.click({ timeout: 5000 });
-        clicked = true;
-        break;
-      }
-    }
-
+    const clicked = await this.clickZhihuWritePagePublishButton(page);
     if (!clicked) {
       return {
         published: false,
         errorType: "publish_button_not_found",
-        message: "未找到知乎写作页发布按钮",
+        message: "未找到知乎写作页顶部「发布」按钮",
       };
     }
 
-    await page.waitForTimeout(1200);
-    const confirmCandidates = [
-      page.getByRole("button", { name: /确认发布|继续发布|^发布$/ }).last(),
-      page
-        .locator('[class*="Modal"] button, [role="dialog"] button')
-        .filter({ hasText: /^确认发布$|^发布$/ })
-        .first(),
-    ];
-    for (const confirm of confirmCandidates) {
-      if (await confirm.isVisible({ timeout: 2500 }).catch(() => false)) {
-        await confirm.click({ timeout: 5000 }).catch(() => undefined);
-        await page.waitForTimeout(1200);
-        break;
-      }
-    }
+    await page.waitForTimeout(800);
+    await this.confirmZhihuPublishSettingsIfPresent(page);
 
-    const extractArticleUrl = (url: string): string | null => {
-      const match =
-        url.match(/https?:\/\/zhuanlan\.zhihu\.com\/p\/\d+/i) ??
-        url.match(/https?:\/\/www\.zhihu\.com\/p\/\d+/i);
-      return match ? match[0] : null;
-    };
-
-    const deadline = Date.now() + 60000;
-    while (Date.now() < deadline) {
-      const url = page.url();
+    const successDialogVisible = await this.waitForZhihuPublishSuccessDialog(page, 15000);
+    if (!successDialogVisible) {
       const body = await page.locator("body").innerText().catch(() => "");
-
       if (errorPattern.test(body)) {
         const errLine =
           body
@@ -694,46 +730,44 @@ export class ZhihuPublisher extends BasePlatformPublisher {
           message: errLine.slice(0, 240),
         };
       }
-
-      const articleUrl = extractArticleUrl(url);
-      if (articleUrl && !/\/draft/i.test(url)) {
+      const fallbackUrl = this.extractZhihuArticlePublicUrl(page.url());
+      if (fallbackUrl) {
         return {
           published: true,
-          publicUrl: articleUrl,
-          message: "redirect_to_article",
+          publicUrl: fallbackUrl,
+          message: "url_redirect_without_success_dialog",
         };
       }
+      return {
+        published: false,
+        errorType: "publish_failed",
+        message: "等待「发布成功」弹窗超时（15秒）",
+      };
+    }
 
-      if (successPattern.test(body)) {
-        const href = await page
-          .locator('a[href*="/p/"]')
-          .first()
-          .getAttribute("href")
-          .catch(() => null);
-        if (href) {
-          const publicUrl = href.startsWith("http")
-            ? href.split("?")[0]
-            : `https://zhuanlan.zhihu.com${href.startsWith("/") ? href : `/${href}`}`.split("?")[0];
-          if (/\/p\/\d+/i.test(publicUrl)) {
-            return { published: true, publicUrl, message: "success_toast_with_link" };
-          }
-        }
+    let publicUrl = this.extractZhihuArticlePublicUrl(page.url());
+    if (!publicUrl) {
+      for (let i = 0; i < 6; i += 1) {
+        await page.waitForTimeout(500);
+        publicUrl = this.extractZhihuArticlePublicUrl(page.url());
+        if (publicUrl) break;
       }
+    }
 
-      if (url !== beforeUrl) {
-        const changedArticleUrl = extractArticleUrl(url);
-        if (changedArticleUrl) {
-          return { published: true, publicUrl: changedArticleUrl, message: "url_changed_to_article" };
-        }
-      }
+    await this.dismissZhihuPublishSuccessDialog(page);
 
-      await page.waitForTimeout(1000);
+    if (!publicUrl) {
+      return {
+        published: false,
+        errorType: "publish_failed",
+        message: "发布成功弹窗已出现，但未从页面 URL 提取到 zhuanlan.zhihu.com/p/{id}",
+      };
     }
 
     return {
-      published: false,
-      errorType: "publish_failed",
-      message: "等待发布成功确认超时",
+      published: true,
+      publicUrl,
+      message: "publish_success_dialog",
     };
   }
 
