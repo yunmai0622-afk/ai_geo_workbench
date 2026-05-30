@@ -2695,3 +2695,25 @@
 [2026-05-30T06:24:35.636Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-05-30T06:24:56.903Z] 2:24:56 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T06:25:30.690Z] 2:25:30 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T07:16:59.696Z] c
+[2026-05-30T07:16:59.697Z] node:internal/modules/run_main:122
+[2026-05-30T07:16:59.698Z] triggerUncaughtException(
+[2026-05-30T07:16:59.698Z] ^
+[2026-05-30T07:16:59.699Z] Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/ai_geo_workbench/server/effectiveActions' imported from /home/ubuntu/ai_geo_workbench/server/effectiveActionsRouter.ts
+[2026-05-30T07:16:59.699Z] at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+[2026-05-30T07:16:59.699Z] at moduleResolve (node:internal/modules/esm/resolve:932:10)
+[2026-05-30T07:16:59.700Z] at defaultResolve (node:internal/modules/esm/resolve:1056:11)
+[2026-05-30T07:16:59.700Z] at nextResolve (node:internal/modules/esm/hooks:748:28)
+[2026-05-30T07:16:59.700Z] at resolveBase (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780125419281:2:3744)
+[2026-05-30T07:16:59.701Z] at async resolveDirectory (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780125419281:2:4237)
+[2026-05-30T07:16:59.701Z] at async resolve (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780125419281:2:5355)
+[2026-05-30T07:16:59.701Z] at async nextResolve (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T07:16:59.702Z] at async Hooks.resolve (node:internal/modules/esm/hooks:240:24)
+[2026-05-30T07:16:59.702Z] at async handleMessage (node:internal/modules/esm/worker:199:18) {
+[2026-05-30T07:16:59.702Z] code: 'ERR_MODULE_NOT_FOUND',
+[2026-05-30T07:16:59.703Z] url: 'file:///home/ubuntu/ai_geo_workbench/server/effectiveActions'
+[2026-05-30T07:16:59.703Z] }
+[2026-05-30T07:16:59.704Z] 
+[2026-05-30T07:16:59.704Z] Node.js v22.13.0
+[2026-05-30T07:16:59.834Z] 3:16:59 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Rerunning...
+[2026-05-30T07:17:01.583Z] c[OAuth] Initialized with baseURL: https://api.manus.im
