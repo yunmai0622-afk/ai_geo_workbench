@@ -22,7 +22,7 @@
       <button type="button" class="tab active" data-tab="overview">总览</button>
       <button type="button" class="tab" data-tab="accounts">账号环境</button>
       <button type="button" class="tab" data-tab="tasks">发布任务</button>
-      <button type="button" class="tab" data-tab="diagnostics">高级诊断</button>
+      <button type="button" class="tab" data-tab="diagnostics">诊断与日志</button>
     </nav>
 
     <main class="tab-panels">
@@ -103,10 +103,10 @@
         </div>
       </section>
 
-      <!-- ===== 高级诊断 ===== -->
+      <!-- ===== 诊断与日志 ===== -->
       <section id="panel-diagnostics" class="panel" role="tabpanel" hidden>
         <div class="panel-intro">
-          <p>此面板包含技术诊断信息和高级设置，通常无需手动操作。如遇到问题，可在此查看详细日志或调整配置。</p>
+          <p>查看连接状态与发布任务执行记录。如遇发布失败，请先在此查看步骤说明；需要技术支持时可复制日志发给交付同学。</p>
         </div>
 
         <!-- 连接诊断 -->
@@ -121,20 +121,26 @@
           </div>
         </div>
 
-        <!-- 实时日志 -->
+        <!-- 任务日志（客户可读） -->
         <div class="diag-section">
-          <h3>实时输出</h3>
-          <pre id="live-log" class="live-log"></pre>
-        </div>
-
-        <!-- 任务日志 -->
-        <div class="diag-section">
-          <h3>任务执行日志</h3>
+          <h3>任务执行记录</h3>
+          <p class="diag-hint">选择一条发布任务，查看逐步执行说明（已隐藏内部调试信息）。</p>
           <div class="btn-row compact">
-            <button type="button" id="btn-copy-logs">复制当前日志</button>
+            <button type="button" id="btn-copy-logs">复制日志（含技术详情）</button>
           </div>
           <label class="log-select-label">选择任务 <select id="log-task-select"></select></label>
-          <pre id="log-detail" class="log-detail"></pre>
+          <pre id="log-detail" class="log-detail log-detail-customer"></pre>
+          <details class="log-raw-fold">
+            <summary>查看原始技术日志</summary>
+            <pre id="log-detail-raw" class="log-detail log-detail-raw"></pre>
+          </details>
+        </div>
+
+        <!-- 实时日志（技术人员） -->
+        <div class="diag-section">
+          <h3>实时输出</h3>
+          <p class="diag-hint muted">客户端运行时的简要输出，一般无需关注。</p>
+          <pre id="live-log" class="live-log"></pre>
         </div>
 
         <!-- 高级设置 -->
@@ -170,6 +176,7 @@
       </section>
     </main>
 
+    <script src="publishTaskLogDisplay.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -23,6 +23,9 @@ const STATUS_LABELS = {
 
 let dashboard = null;
 let selectedLogTaskId = null;
+let selectedLogDetail = null;
+
+const TaskLogDisplay = () => globalThis.PublishTaskLogDisplay ?? {};
 
 function $(sel) {
   return document.querySelector(sel);
@@ -49,6 +52,11 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function taskFinalStatusLabel(status) {
+  const labels = TaskLogDisplay().FINAL_STATUS_LABELS ?? {};
+  return labels[status] ?? STATUS_LABELS[status] ?? status ?? "进行中";
 }
 
 function accountCardTitle(acc) {
@@ -231,9 +239,12 @@ function renderOverview() {
   const actEl = $("#recent-activity");
   const activities = [];
   if (d.recentFailure) {
+    const errHint = TaskLogDisplay().customerizeTaskError
+      ? TaskLogDisplay().customerizeTaskError(d.recentFailure.message)
+      : d.recentFailure.message;
     activities.push({
       time: d.recentFailure.createdAt || d.recentFailure.updatedAt,
-      text: `${PLATFORM_LABELS[d.recentFailure.platform] ?? d.recentFailure.platform} · ${STATUS_LABELS[d.recentFailure.status] ?? d.recentFailure.status}${d.recentFailure.message ? " · " + d.recentFailure.message : ""}`,
+      text: `${PLATFORM_LABELS[d.recentFailure.platform] ?? d.recentFailure.platform} · ${taskFinalStatusLabel(d.recentFailure.status)}${errHint ? " · " + errHint : ""}`,
     });
   }
   if (d.polling?.lastPollAt) {
@@ -462,7 +473,7 @@ function renderTasks() {
       b.onclick = () => void fn();
       cell.appendChild(b);
     };
-    mk("日志", () => {
+    mk("执行记录", () => {
       selectedLogTaskId = t.id;
       document.querySelector('.tab[data-tab="diagnostics"]').click();
       renderLogDetail(t.id);
@@ -497,7 +508,7 @@ function renderLogSelect() {
   for (const log of dashboard.localTaskLogs) {
     const opt = document.createElement("option");
     opt.value = String(log.taskId);
-    opt.textContent = `#${log.taskId} ${PLATFORM_LABELS[log.platform] ?? log.platform} · ${log.finalStatus ?? "进行中"}`;
+    opt.textContent = `#${log.taskId} ${PLATFORM_LABELS[log.platform] ?? log.platform} · ${taskFinalStatusLabel(log.finalStatus)}`;
     sel.appendChild(opt);
   }
   if (prev) sel.value = String(prev);
@@ -509,15 +520,25 @@ async function renderLogDetail(taskId) {
   if (sel) sel.value = String(taskId);
   const log = await window.agentApi.getTaskLog(taskId);
   const logDetail = $("#log-detail");
+  const logDetailRaw = $("#log-detail-raw");
+  selectedLogDetail = log;
   if (!logDetail) return;
   if (!log) {
-    logDetail.textContent = "本地无该任务日志";
+    selectedLogDetail = null;
+    logDetail.textContent = "本地无该任务记录";
+    if (logDetailRaw) logDetailRaw.textContent = "";
     return;
   }
-  const lines = log.logs
-    .map((l) => `${fmtTime(l.createdAt)}  ${l.step}  [${l.status}]  ${l.message ?? ""}`)
-    .join("\n");
-  logDetail.textContent = `任务 #${log.taskId} ${PLATFORM_LABELS[log.platform] ?? log.platform} ${log.finalStatus ?? ""}\n${log.errorMessage ?? ""}\n\n${lines}`;
+  const platformLabel = PLATFORM_LABELS[log.platform] ?? log.platform ?? "平台";
+  const display = TaskLogDisplay();
+  logDetail.textContent = display.formatPublishTaskLogsForCustomer
+    ? display.formatPublishTaskLogsForCustomer(log, platformLabel)
+    : `任务 #${log.taskId}`;
+  if (logDetailRaw) {
+    logDetailRaw.textContent = display.formatPublishTaskLogsRaw
+      ? display.formatPublishTaskLogsRaw(log)
+      : "";
+  }
 }
 
 /* ===== Main refresh ===== */
@@ -626,8 +647,16 @@ if (logSelect) {
 const btnCopyLogs = $("#btn-copy-logs");
 if (btnCopyLogs) {
   btnCopyLogs.onclick = () => {
-    const text = ($("#log-detail") || {}).textContent || "";
-    navigator.clipboard.writeText(text).then(() => appendLiveLog("已复制日志到剪贴板", false));
+    if (!selectedLogDetail) {
+      appendLiveLog("请先选择一条任务", true);
+      return;
+    }
+    const platformLabel = PLATFORM_LABELS[selectedLogDetail.platform] ?? selectedLogDetail.platform ?? "平台";
+    const display = TaskLogDisplay();
+    const text = display.formatPublishTaskLogCopyText
+      ? display.formatPublishTaskLogCopyText(selectedLogDetail, platformLabel)
+      : ($("#log-detail") || {}).textContent || "";
+    navigator.clipboard.writeText(text).then(() => appendLiveLog("已复制日志（含客户说明与技术详情）", false));
   };
 }
 

@@ -19,6 +19,7 @@ const required = [
   "src/agent/taskLogStore.ts",
   "src/agent/dashboard.ts",
   "src/renderer/app.js",
+  "src/renderer/publishTaskLogDisplay.js",
   "src/agent/platforms/zhihuPublisher.ts",
   "src/agent/platforms/publisherFactory.ts",
   "src/agent/platformActions.ts",
