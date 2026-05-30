@@ -2668,3 +2668,25 @@
 [2026-05-30T06:06:44.814Z] 2:06:44 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T06:06:44.816Z] 2:06:44 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T06:07:18.504Z] 2:07:18 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T06:23:40.098Z] c
+[2026-05-30T06:23:40.099Z] node:internal/modules/run_main:122
+[2026-05-30T06:23:40.099Z] triggerUncaughtException(
+[2026-05-30T06:23:40.099Z] ^
+[2026-05-30T06:23:40.100Z] Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/ai_geo_workbench/server/passwordAuth' imported from /home/ubuntu/ai_geo_workbench/server/emailAuth.ts
+[2026-05-30T06:23:40.100Z] at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+[2026-05-30T06:23:40.100Z] at moduleResolve (node:internal/modules/esm/resolve:932:10)
+[2026-05-30T06:23:40.101Z] at defaultResolve (node:internal/modules/esm/resolve:1056:11)
+[2026-05-30T06:23:40.101Z] at nextResolve (node:internal/modules/esm/hooks:748:28)
+[2026-05-30T06:23:40.101Z] at resolveBase (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780122219727:2:3744)
+[2026-05-30T06:23:40.102Z] at async resolveDirectory (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780122219727:2:4237)
+[2026-05-30T06:23:40.102Z] at async resolve (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780122219727:2:5355)
+[2026-05-30T06:23:40.102Z] at async nextResolve (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T06:23:40.103Z] at async Hooks.resolve (node:internal/modules/esm/hooks:240:24)
+[2026-05-30T06:23:40.103Z] at async handleMessage (node:internal/modules/esm/worker:199:18) {
+[2026-05-30T06:23:40.103Z] code: 'ERR_MODULE_NOT_FOUND',
+[2026-05-30T06:23:40.104Z] url: 'file:///home/ubuntu/ai_geo_workbench/server/passwordAuth'
+[2026-05-30T06:23:40.104Z] }
+[2026-05-30T06:23:40.104Z] 
+[2026-05-30T06:23:40.105Z] Node.js v22.13.0
+[2026-05-30T06:23:40.293Z] 2:23:40 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Rerunning...
+[2026-05-30T06:23:41.933Z] c[OAuth] Initialized with baseURL: https://api.manus.im
