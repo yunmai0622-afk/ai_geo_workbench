@@ -2800,3 +2800,26 @@
 [2026-05-30T08:26:22.745Z] c[OAuth] Initialized with baseURL: https://api.manus.im
 [2026-05-30T08:26:27.542Z] Server running on http://localhost:3000/
 [2026-05-30T08:26:27.543Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-30T08:36:33.409Z] c
+[2026-05-30T08:36:33.410Z] node:internal/modules/run_main:122
+[2026-05-30T08:36:33.411Z] triggerUncaughtException(
+[2026-05-30T08:36:33.411Z] ^
+[2026-05-30T08:36:33.412Z] Error: ENOENT: no such file or directory, open '/home/ubuntu/ai_geo_workbench/shared/geoProfileQuestionMapping.ts'
+[2026-05-30T08:36:33.412Z] at async open (node:internal/fs/promises:638:25)
+[2026-05-30T08:36:33.412Z] at async readFile (node:internal/fs/promises:1242:14)
+[2026-05-30T08:36:33.413Z] at async getSource (node:internal/modules/esm/load:42:14)
+[2026-05-30T08:36:33.413Z] at async defaultLoad (node:internal/modules/esm/load:114:34)
+[2026-05-30T08:36:33.413Z] at async nextLoad (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T08:36:33.414Z] at async load (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780130193105:2:1771)
+[2026-05-30T08:36:33.414Z] at async nextLoad (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T08:36:33.414Z] at async Hooks.load (node:internal/modules/esm/hooks:385:20)
+[2026-05-30T08:36:33.415Z] at async handleMessage (node:internal/modules/esm/worker:199:18) {
+[2026-05-30T08:36:33.415Z] errno: -2,
+[2026-05-30T08:36:33.415Z] code: 'ENOENT',
+[2026-05-30T08:36:33.416Z] syscall: 'open',
+[2026-05-30T08:36:33.416Z] path: '/home/ubuntu/ai_geo_workbench/shared/geoProfileQuestionMapping.ts'
+[2026-05-30T08:36:33.416Z] }
+[2026-05-30T08:36:33.417Z] 
+[2026-05-30T08:36:33.417Z] Node.js v22.13.0
+[2026-05-30T08:36:33.593Z] 4:36:33 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Rerunning...
+[2026-05-30T08:36:35.258Z] c[OAuth] Initialized with baseURL: https://api.manus.im
