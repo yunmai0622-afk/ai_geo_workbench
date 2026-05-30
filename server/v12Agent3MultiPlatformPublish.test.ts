@@ -50,6 +50,15 @@ describe("Agent-3 multi-platform local publish", () => {
     expect(read("server/agentPublishTasks.ts")).toContain('"sohu"');
     expect(read("server/agentPublishTasks.ts")).toContain('"baijiahao"');
     expect(read("server/agentPublishTasks.ts")).toContain('"toutiao"');
+    expect(read("server/agentPublishTasks.ts")).toContain('action: "publish"');
+  });
+
+  it("zhihu publisher uploads cover and clicks publish", () => {
+    const zhihu = read("local-agent/src/agent/platforms/zhihuPublisher.ts");
+    expect(zhihu).toContain("uploadZhihuCover");
+    expect(zhihu).toContain("attemptPublishArticle");
+    expect(zhihu).toContain('"publish_article"');
+    expect(zhihu).toContain('status: "completed"');
   });
 
   it("platform account matrix supports five binding platforms", () => {

@@ -1,3 +1,6 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import type { Page } from "playwright";
 import {
   accountNamesMatch,
@@ -453,6 +456,242 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     if (source === "profile_header" || source === "document_title") return "profile_name";
     if (source === "viewer_state" || source === "user_menu") return "platform_dom";
     return "unknown";
+  }
+
+  private parseCoverPayload(task: LocalPublishTask): { buffer: Buffer; ext: string } | null {
+    const decodeBase64 = (raw: string, mime?: string): { buffer: Buffer; ext: string } | null => {
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      const dataMatch = /^data:([^;]+);base64,(.+)$/i.exec(trimmed);
+      const b64 = dataMatch?.[2] ?? trimmed;
+      const mimeType = dataMatch?.[1] ?? mime ?? "image/png";
+      try {
+        const buffer = Buffer.from(b64, "base64");
+        if (!buffer.length) return null;
+        const ext = mimeType.includes("jpeg") || mimeType.includes("jpg") ? ".jpg" : ".png";
+        return { buffer, ext };
+      } catch {
+        return null;
+      }
+    };
+
+    if (task.coverBase64?.trim()) {
+      return decodeBase64(task.coverBase64.trim());
+    }
+    if (task.coverImageUrl?.trim()) {
+      const url = task.coverImageUrl.trim();
+      if (url.startsWith("data:")) return decodeBase64(url);
+    }
+    return null;
+  }
+
+  private async resolveCoverTempFile(
+    task: LocalPublishTask,
+  ): Promise<{ filePath: string; cleanup: () => void } | null> {
+    const parsed = this.parseCoverPayload(task);
+    if (parsed) {
+      const filePath = path.join(os.tmpdir(), `geo-zhihu-cover-${Date.now()}${parsed.ext}`);
+      fs.writeFileSync(filePath, parsed.buffer);
+      return { filePath, cleanup: () => fs.unlink(filePath, () => undefined) };
+    }
+
+    const url = task.coverImageUrl?.trim();
+    if (!url || url.startsWith("data:") || !/^https?:\/\//i.test(url)) return null;
+    try {
+      const res = await fetch(url, { redirect: "follow" });
+      if (!res.ok) return null;
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (!buffer.length) return null;
+      const ct = res.headers.get("content-type") ?? "";
+      const ext = ct.includes("jpeg") || ct.includes("jpg") ? ".jpg" : ".png";
+      const filePath = path.join(os.tmpdir(), `geo-zhihu-cover-${Date.now()}${ext}`);
+      fs.writeFileSync(filePath, buffer);
+      return { filePath, cleanup: () => fs.unlink(filePath, () => undefined) };
+    } catch {
+      return null;
+    }
+  }
+
+  /** 上传专栏写作页封面；失败不阻断后续发布 */
+  private async uploadZhihuCover(
+    page: Page,
+    task: LocalPublishTask,
+  ): Promise<{ ok: boolean; message: string; selector?: string }> {
+    const resolved = await this.resolveCoverTempFile(task);
+    if (!resolved) {
+      return { ok: false, message: "no_cover_payload" };
+    }
+
+    const fileInputSelectors = [
+      'input[type="file"][accept*="image"]',
+      '[class*="Cover"] input[type="file"]',
+      '[class*="cover"] input[type="file"]',
+      'input[type="file"]',
+    ];
+
+    try {
+      const triggerSelectors = [
+        page.getByRole("button", { name: /上传封面|添加封面|更换封面|封面图/i }),
+        page.locator('[class*="Cover"]').filter({ hasText: /上传封面|添加封面|封面/i }),
+        page.getByText(/上传封面图片/i),
+      ];
+      for (const trigger of triggerSelectors) {
+        if (await trigger.first().isVisible({ timeout: 800 }).catch(() => false)) {
+          await trigger.first().click({ timeout: 3000 }).catch(() => undefined);
+          await page.waitForTimeout(600);
+          break;
+        }
+      }
+
+      for (const selector of fileInputSelectors) {
+        const input = page.locator(selector).first();
+        if ((await input.count()) === 0) continue;
+        try {
+          await input.setInputFiles(resolved.filePath, { timeout: 8000 });
+          const previewVisible = await page
+            .waitForFunction(
+              () => {
+                const imgs = Array.from(
+                  document.querySelectorAll(
+                    '[class*="Cover"] img, [class*="cover"] img, img[class*="Cover"], img[class*="cover"]',
+                  ),
+                );
+                for (const img of imgs) {
+                  const src = img.getAttribute("src") ?? "";
+                  if (src && !/^data:image\/svg/i.test(src) && src.length > 20) return true;
+                }
+                return Boolean(
+                  document.querySelector(
+                    '[class*="CoverPreview"], [class*="cover-preview"], [class*="Cover"] [style*="background-image"]',
+                  ),
+                );
+              },
+              { timeout: 15000 },
+            )
+            .catch(() => null);
+          if (previewVisible) {
+            return { ok: true, message: "cover_preview_visible", selector };
+          }
+          await page.waitForTimeout(1500);
+          return { ok: true, message: "cover_file_set", selector };
+        } catch {
+          /* try next selector */
+        }
+      }
+      return { ok: false, message: "cover_input_not_found" };
+    } finally {
+      resolved.cleanup();
+    }
+  }
+
+  /** 点击专栏写作页「发布」并等待文章 URL */
+  private async attemptPublishArticle(page: Page): Promise<{
+    published: boolean;
+    publicUrl?: string;
+    errorType?: string;
+    message?: string;
+  }> {
+    const beforeUrl = page.url();
+    const publishPattern = /^发布$|^立即发布$|^确认发布$/;
+    const errorPattern =
+      /发布失败|请上传封面|请添加封面|缺少封面|内容不符合|违规|审核未通过|再试一次|操作失败|错误/i;
+    const successPattern = /发布成功|已发布|文章已发布|发表成功/i;
+
+    const buttons = page.getByRole("button");
+    let clicked = false;
+    for (let i = 0; i < (await buttons.count()); i += 1) {
+      const btn = buttons.nth(i);
+      if (!(await btn.isVisible({ timeout: 800 }).catch(() => false))) continue;
+      const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+      if (!publishPattern.test(text)) continue;
+      if (/草稿|预览|取消|删除|保存/i.test(text)) continue;
+      await btn.click({ timeout: 5000 });
+      clicked = true;
+      break;
+    }
+
+    if (!clicked) {
+      const fallback = page
+        .locator('button[class*="Publish"], button[class*="publish"], a[class*="Publish"]')
+        .filter({ hasText: /^发布$/ });
+      if (await fallback.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+        await fallback.first().click({ timeout: 5000 });
+        clicked = true;
+      }
+    }
+
+    if (!clicked) {
+      return {
+        published: false,
+        errorType: "publish_button_not_found",
+        message: "未找到知乎写作页发布按钮",
+      };
+    }
+
+    await page.waitForTimeout(1200);
+    const confirm = page.getByRole("button", { name: /确认发布|继续发布|^发布$/ }).last();
+    if (await confirm.isVisible({ timeout: 2500 }).catch(() => false)) {
+      await confirm.click({ timeout: 5000 }).catch(() => undefined);
+      await page.waitForTimeout(1200);
+    }
+
+    const deadline = Date.now() + 45000;
+    while (Date.now() < deadline) {
+      const url = page.url();
+      const body = await page.locator("body").innerText().catch(() => "");
+
+      if (errorPattern.test(body)) {
+        const errLine =
+          body
+            .split("\n")
+            .map(line => line.trim())
+            .find(line => errorPattern.test(line)) ?? "发布失败";
+        return {
+          published: false,
+          errorType: "publish_failed",
+          message: errLine.slice(0, 240),
+        };
+      }
+
+      const articleMatch =
+        url.match(/https?:\/\/zhuanlan\.zhihu\.com\/p\/\d+/i) ??
+        url.match(/https?:\/\/www\.zhihu\.com\/p\/\d+/i);
+      if (articleMatch) {
+        return {
+          published: true,
+          publicUrl: articleMatch[0],
+          message: "redirect_to_article",
+        };
+      }
+
+      if (successPattern.test(body)) {
+        const href = await page
+          .locator('a[href*="/p/"]')
+          .first()
+          .getAttribute("href")
+          .catch(() => null);
+        if (href) {
+          const publicUrl = href.startsWith("http")
+            ? href.split("?")[0]
+            : `https://zhuanlan.zhihu.com${href.startsWith("/") ? href : `/${href}`}`.split("?")[0];
+          if (/\/p\/\d+/i.test(publicUrl)) {
+            return { published: true, publicUrl, message: "success_toast_with_link" };
+          }
+        }
+      }
+
+      if (url !== beforeUrl && /\/p\/\d+/i.test(url)) {
+        return { published: true, publicUrl: url.split("?")[0], message: "url_changed_to_article" };
+      }
+
+      await page.waitForTimeout(1000);
+    }
+
+    return {
+      published: false,
+      errorType: "publish_failed",
+      message: "等待发布成功确认超时",
+    };
   }
 
   /**
@@ -1176,23 +1415,52 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         };
       }
 
-      logs.push(stepLog("upload_cover", "skipped", "cover_upload_skipped"));
+      const coverResult = await this.uploadZhihuCover(page, task);
+      logs.push(stepLog("upload_cover", coverResult.ok ? "ok" : "skipped", coverResult.message, coverResult.selector));
 
-      const save = await this.attemptSaveDraft(page);
-      logs.push(stepLog("save_draft", save.saved ? "ok" : "skipped", save.message));
-
-      if (save.saved && save.draftUrl) {
+      if (task.action === "save_draft") {
+        const save = await this.attemptSaveDraft(page);
+        logs.push(stepLog("save_draft", save.saved ? "ok" : "skipped", save.message));
+        if (save.saved && save.draftUrl) {
+          return {
+            status: "draft_saved",
+            draftUrl: save.draftUrl,
+            logs,
+          };
+        }
         return {
-          status: "draft_saved",
-          draftUrl: save.draftUrl,
+          status: "manual_required",
+          errorType: "manual_confirm",
+          errorMessage: "已填入标题和正文，未检测到草稿保存证据，请在浏览器窗口人工确认保存",
+          logs,
+        };
+      }
+
+      const publishResult = await this.attemptPublishArticle(page);
+      logs.push(
+        stepLog(
+          "publish_article",
+          publishResult.published ? "ok" : "failed",
+          publishResult.message,
+        ),
+      );
+
+      if (publishResult.published && publishResult.publicUrl) {
+        console.log("[agent-zhihu] publish success", {
+          profileId,
+          publicUrl: publishResult.publicUrl,
+        });
+        return {
+          status: "completed",
+          publicUrl: publishResult.publicUrl,
           logs,
         };
       }
 
       return {
-        status: "manual_required",
-        errorType: "manual_confirm",
-        errorMessage: "已填入标题和正文，未检测到草稿保存证据，请在浏览器窗口人工确认保存",
+        status: "failed",
+        errorType: publishResult.errorType ?? "publish_failed",
+        errorMessage: publishResult.message ?? "知乎发布失败",
         logs,
       };
     } catch (e) {
