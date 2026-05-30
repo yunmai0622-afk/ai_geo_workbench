@@ -750,7 +750,18 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     page: Page,
     loginStatus: ZhihuLoginStatus,
     profileId?: string,
-  ): Promise<ZhihuIdentityResolution> {
+  ): Promise<{
+    identity: ZhihuIdentityResolution;
+    debug: {
+      slug: string | null;
+      slugSource: string;
+      navigatedUrl: string | null;
+      h1Found: boolean;
+      nameElFound: boolean;
+      displayName: string | null;
+      displayNameSource: string;
+    };
+  }> {
     const url = page.url();
     console.log("[agent-zhihu] identity resolve start", { profileId, url });
 
@@ -834,7 +845,18 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       displayNameSource: identity.displayNameSource,
       displayNameVerified: identity.displayNameVerified,
     });
-    return identity;
+    return {
+      identity,
+      debug: {
+        slug,
+        slugSource: slugPick.source,
+        navigatedUrl: navigatedProfileUrl,
+        h1Found: profileHeaderDebug.h1Found,
+        nameElFound: profileHeaderDebug.nameElFound,
+        displayName: identity.displayName,
+        displayNameSource: identity.displayNameSource,
+      },
+    };
   }
 
   /** @deprecated 使用 resolveZhihuIdentity */
@@ -845,7 +867,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     name: string | null;
     identity: ZhihuIdentityResolution;
   }> {
-    const identity = await this.resolveZhihuIdentity(page, "valid", profileId);
+    const { identity } = await this.resolveZhihuIdentity(page, "valid", profileId);
     return { name: identity.displayName, identity };
   }
 
@@ -1006,7 +1028,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         return { ok: false, accountName: null, message: msg, errorType: "login_required" };
       }
 
-      const identity = await this.resolveZhihuIdentity(page, "valid", profileId);
+      const { identity } = await this.resolveZhihuIdentity(page, "valid", profileId);
       const name = identity.displayName;
       const now = new Date().toISOString();
 
@@ -1183,6 +1205,86 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     return fillFirstSelector(page, this.contentSelectors(), content, true);
   }
 
+  private async zhihuEditorHasContent(page: Page): Promise<boolean> {
+    for (const sel of [...this.titleSelectors(), ...this.contentSelectors()]) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count()) === 0) continue;
+      const value = await loc.inputValue().catch(() => "");
+      const text = (value || (await loc.innerText().catch(() => ""))).replace(/\s+/g, " ").trim();
+      if (text.length >= 2) return true;
+    }
+    return false;
+  }
+
+  /** 知乎专栏写作页草稿保存检测（覆盖 basePublisher 的窄匹配逻辑） */
+  protected override async attemptSaveDraft(page: Page): Promise<{
+    saved: boolean;
+    draftUrl?: string;
+    message?: string;
+  }> {
+    const DRAFT_BTN = /保存草稿|存草稿|保存为草稿|暂存/i;
+    const SAVE_HINT = /保存于\s*\d{1,2}:\d{2}|自动保存|已保存/;
+
+    const buttons = page.getByRole("button").filter({ hasText: DRAFT_BTN });
+    for (let i = 0; i < (await buttons.count()); i += 1) {
+      try {
+        const btn = buttons.nth(i);
+        if (await btn.isVisible({ timeout: 1200 })) {
+          await btn.click({ timeout: 5000 });
+          break;
+        }
+      } catch {
+        /* next */
+      }
+    }
+
+    let draftApiOk = false;
+    const onResponse = (response: { url: () => string; status: () => number }) => {
+      if (response.status() !== 200) return;
+      const url = response.url();
+      if (/\/api\/v4\/articles|\/draft/i.test(url)) draftApiOk = true;
+    };
+    page.on("response", onResponse);
+
+    try {
+      const pollDeadline = Date.now() + 12000;
+      while (Date.now() < pollDeadline) {
+        const url = page.url();
+        if (/\/p\/\d+/i.test(url)) {
+          return {
+            saved: true,
+            draftUrl: url.split("?")[0],
+            message: "url_contains_article_id",
+          };
+        }
+
+        const body = await page.locator("body").innerText().catch(() => "");
+        if (SAVE_HINT.test(body)) {
+          return { saved: true, draftUrl: url, message: "save_timestamp_or_autosave_hint" };
+        }
+
+        if (draftApiOk) {
+          return { saved: true, draftUrl: url, message: "draft_or_articles_api_200" };
+        }
+
+        await page.waitForTimeout(500);
+      }
+
+      await page.waitForTimeout(3000);
+      if (await this.zhihuEditorHasContent(page)) {
+        return {
+          saved: true,
+          draftUrl: page.url(),
+          message: "editor_content_present_after_wait",
+        };
+      }
+
+      return { saved: false, message: "manual_required_no_save_evidence" };
+    } finally {
+      page.off("response", onResponse);
+    }
+  }
+
   protected async gotoZhihuWritePage(page: Page): Promise<{ ok: boolean; url: string; errorType?: ZhihuWritePageErrorType }> {
     const targetUrl = ZHIHU_WRITE_TARGET_URL;
     let response: Awaited<ReturnType<Page["goto"]>> = null;
@@ -1290,7 +1392,23 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       }
 
       const stored = getAccountByProfileId(profileId);
-      const { name: pageName } = await this.collectAccountCandidates(page, profileId);
+      const { identity, debug } = await this.resolveZhihuIdentity(page, "valid", profileId);
+      logs.push(
+        stepLog(
+          "identity_debug",
+          debug.slug ? "ok" : "failed",
+          JSON.stringify({
+            slug: debug.slug,
+            slugSource: debug.slugSource,
+            navigatedUrl: debug.navigatedUrl,
+            h1Found: debug.h1Found,
+            nameElFound: debug.nameElFound,
+            displayName: debug.displayName,
+            displayNameSource: debug.displayNameSource,
+          }),
+        ),
+      );
+      const pageName = identity.displayName;
       let name = pageName;
       if (
         stored?.accountName &&

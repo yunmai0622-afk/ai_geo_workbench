@@ -619,7 +619,7 @@ export const publishTasks = mysqlTable("publish_tasks", {
   accountVerificationStatus: varchar("accountVerificationStatus", { length: 32 }).default("pending"),
   articleTitle: text("articleTitle").notNull(),
   articleContent: text("articleContent").notNull(),
-  coverImageUrl: varchar("coverImageUrl", { length: 2000 }),
+  coverImageUrl: text("coverImageUrl"),
   resultUrl: varchar("resultUrl", { length: 500 }),
   draftUrl: varchar("draftUrl", { length: 500 }),
   publishedUrl: varchar("publishedUrl", { length: 500 }),

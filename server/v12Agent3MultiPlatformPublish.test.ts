@@ -59,6 +59,8 @@ describe("Agent-3 multi-platform local publish", () => {
     expect(zhihu).toContain("attemptPublishArticle");
     expect(zhihu).toContain('"publish_article"');
     expect(zhihu).toContain('status: "completed"');
+    expect(zhihu).toContain("override async attemptSaveDraft");
+    expect(zhihu).toContain("save_timestamp_or_autosave_hint");
   });
 
   it("platform account matrix supports five binding platforms", () => {
