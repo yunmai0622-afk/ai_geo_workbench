@@ -596,31 +596,53 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     message?: string;
   }> {
     const beforeUrl = page.url();
-    const publishPattern = /^发布$|^立即发布$|^确认发布$/;
+    const publishLabel = /^发布$|^立即发布$/;
     const errorPattern =
       /发布失败|请上传封面|请添加封面|缺少封面|内容不符合|违规|审核未通过|再试一次|操作失败|错误/i;
     const successPattern = /发布成功|已发布|文章已发布|发表成功/i;
 
-    const buttons = page.getByRole("button");
+    await page.waitForTimeout(800);
+
+    const publishButtonSelectors = [
+      '.PublishPanel-stepTwoButton',
+      '[class*="PublishPanel"] button',
+      '[class*="Publish"] button[class*="Button"]',
+      'button[class*="Publish"]',
+      'header button',
+      '[class*="Toolbar"] button',
+      '[class*="Topbar"] button',
+    ];
+
     let clicked = false;
-    for (let i = 0; i < (await buttons.count()); i += 1) {
-      const btn = buttons.nth(i);
-      if (!(await btn.isVisible({ timeout: 800 }).catch(() => false))) continue;
-      const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
-      if (!publishPattern.test(text)) continue;
-      if (/草稿|预览|取消|删除|保存/i.test(text)) continue;
-      await btn.click({ timeout: 5000 });
-      clicked = true;
-      break;
+    for (const selector of publishButtonSelectors) {
+      const loc = page.locator(selector).filter({ hasText: publishLabel });
+      const count = await loc.count().catch(() => 0);
+      for (let i = 0; i < count; i += 1) {
+        const btn = loc.nth(i);
+        if (!(await btn.isVisible({ timeout: 800 }).catch(() => false))) continue;
+        const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+        if (!publishLabel.test(text)) continue;
+        if (/草稿|预览|取消|删除|保存/i.test(text)) continue;
+        if (await btn.isDisabled().catch(() => false)) continue;
+        await btn.click({ timeout: 5000 });
+        clicked = true;
+        break;
+      }
+      if (clicked) break;
     }
 
     if (!clicked) {
-      const fallback = page
-        .locator('button[class*="Publish"], button[class*="publish"], a[class*="Publish"]')
-        .filter({ hasText: /^发布$/ });
-      if (await fallback.first().isVisible({ timeout: 2000 }).catch(() => false)) {
-        await fallback.first().click({ timeout: 5000 });
+      const buttons = page.getByRole("button");
+      for (let i = 0; i < (await buttons.count()); i += 1) {
+        const btn = buttons.nth(i);
+        if (!(await btn.isVisible({ timeout: 800 }).catch(() => false))) continue;
+        const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+        if (!publishLabel.test(text)) continue;
+        if (/草稿|预览|取消|删除|保存/i.test(text)) continue;
+        if (await btn.isDisabled().catch(() => false)) continue;
+        await btn.click({ timeout: 5000 });
         clicked = true;
+        break;
       }
     }
 
@@ -633,13 +655,29 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     }
 
     await page.waitForTimeout(1200);
-    const confirm = page.getByRole("button", { name: /确认发布|继续发布|^发布$/ }).last();
-    if (await confirm.isVisible({ timeout: 2500 }).catch(() => false)) {
-      await confirm.click({ timeout: 5000 }).catch(() => undefined);
-      await page.waitForTimeout(1200);
+    const confirmCandidates = [
+      page.getByRole("button", { name: /确认发布|继续发布|^发布$/ }).last(),
+      page
+        .locator('[class*="Modal"] button, [role="dialog"] button')
+        .filter({ hasText: /^确认发布$|^发布$/ })
+        .first(),
+    ];
+    for (const confirm of confirmCandidates) {
+      if (await confirm.isVisible({ timeout: 2500 }).catch(() => false)) {
+        await confirm.click({ timeout: 5000 }).catch(() => undefined);
+        await page.waitForTimeout(1200);
+        break;
+      }
     }
 
-    const deadline = Date.now() + 45000;
+    const extractArticleUrl = (url: string): string | null => {
+      const match =
+        url.match(/https?:\/\/zhuanlan\.zhihu\.com\/p\/\d+/i) ??
+        url.match(/https?:\/\/www\.zhihu\.com\/p\/\d+/i);
+      return match ? match[0] : null;
+    };
+
+    const deadline = Date.now() + 60000;
     while (Date.now() < deadline) {
       const url = page.url();
       const body = await page.locator("body").innerText().catch(() => "");
@@ -657,13 +695,11 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         };
       }
 
-      const articleMatch =
-        url.match(/https?:\/\/zhuanlan\.zhihu\.com\/p\/\d+/i) ??
-        url.match(/https?:\/\/www\.zhihu\.com\/p\/\d+/i);
-      if (articleMatch) {
+      const articleUrl = extractArticleUrl(url);
+      if (articleUrl && !/\/draft/i.test(url)) {
         return {
           published: true,
-          publicUrl: articleMatch[0],
+          publicUrl: articleUrl,
           message: "redirect_to_article",
         };
       }
@@ -684,8 +720,11 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         }
       }
 
-      if (url !== beforeUrl && /\/p\/\d+/i.test(url)) {
-        return { published: true, publicUrl: url.split("?")[0], message: "url_changed_to_article" };
+      if (url !== beforeUrl) {
+        const changedArticleUrl = extractArticleUrl(url);
+        if (changedArticleUrl) {
+          return { published: true, publicUrl: changedArticleUrl, message: "url_changed_to_article" };
+        }
       }
 
       await page.waitForTimeout(1000);
@@ -1405,6 +1444,8 @@ export class ZhihuPublisher extends BasePlatformPublisher {
   override async publish(task: LocalPublishTask): Promise<LocalPublishResult> {
     const logs: PublishStepLog[] = [];
     const profileId = task.localProfileId;
+    const publishAction = task.action === "save_draft" ? "save_draft" : "publish";
+    logs.push(stepLog("publish_action", "ok", publishAction));
 
     try {
       const context = await getOrLaunchContext(profileId, false);
@@ -1583,7 +1624,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       const coverResult = await this.uploadZhihuCover(page, task);
       logs.push(stepLog("upload_cover", coverResult.ok ? "ok" : "skipped", coverResult.message, coverResult.selector));
 
-      if (task.action === "save_draft") {
+      if (publishAction === "save_draft") {
         const save = await this.attemptSaveDraft(page);
         logs.push(stepLog("save_draft", save.saved ? "ok" : "skipped", save.message));
         if (save.saved && save.draftUrl) {

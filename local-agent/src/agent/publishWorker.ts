@@ -124,7 +124,7 @@ export async function runPublishTask(task: PollTaskItem, localAgentId: string): 
     content: task.content,
     coverImageUrl: task.coverImageUrl,
     coverBase64: task.coverBase64,
-    action: task.action,
+    action: task.action === "save_draft" ? "save_draft" : "publish",
   };
 
   const outcome = await publishWithPlatform(publishTask);
