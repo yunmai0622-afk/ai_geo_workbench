@@ -51,7 +51,7 @@ export async function pollAgentTasks(db: DbConn, localAgentId: string, limit = 3
       content: r.articleContent,
       coverBase64: undefined as string | undefined,
       coverImageUrl: r.coverImageUrl,
-      action: "save_draft" as const,
+      action: "publish" as const,
     }));
 
   return { tasks };
