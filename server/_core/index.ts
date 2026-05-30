@@ -52,7 +52,7 @@ async function startServer() {
 
   // Redirect /downloads/geo-local-agent-mac.zip to GitHub Release (file too large for static serving)
   app.get("/downloads/geo-local-agent-mac.zip", (_req, res) => {
-    res.redirect(302, "https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.2/geo-local-agent-mac.zip");
+    res.redirect(302, "https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.3/geo-local-agent-mac.zip");
   });
 
   // tRPC API

@@ -2589,3 +2589,4 @@
 [2026-05-30T05:14:20.156Z] 1:14:20 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/workspaceMainChain.ts
 [2026-05-30T05:14:21.481Z] 1:14:21 AM [vite] (client) Pre-transform error: Failed to load url /@fs/home/ubuntu/ai_geo_workbench/shared/geoProfileQuestionMapping.ts (resolved id: /home/ubuntu/ai_geo_workbench/shared/geoProfileQuestionMapping.ts) in /home/ubuntu/ai_geo_workbench/shared/geoProfileP0Readiness.ts. Does the file exist?
 [2026-05-30T05:14:23.430Z] 1:14:23 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T05:15:35.892Z] 1:15:35 AM [vite] (client) hmr update /src/index.css
