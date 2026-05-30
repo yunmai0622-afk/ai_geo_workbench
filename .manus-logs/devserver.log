@@ -2642,3 +2642,7 @@
 [2026-05-30T05:55:07.747Z] Node.js v22.13.0
 [2026-05-30T05:55:07.906Z] 1:55:07 AM [tsx] unlink in ./server/passwordAuth.ts Rerunning...
 [2026-05-30T05:55:09.593Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-30T05:55:14.277Z] Server running on http://localhost:3000/
+[2026-05-30T05:55:14.278Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-30T05:56:03.406Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-30T05:56:23.150Z] 1:56:23 AM [vite] (client) hmr update /src/index.css
