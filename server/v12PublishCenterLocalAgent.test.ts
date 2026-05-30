@@ -35,9 +35,9 @@ describe("Phase3 publish center Local Agent UI", () => {
     ]) {
       expect(publishUi).toContain(text);
     }
-    expect(publishUi).toContain("待发布");
-    expect(publishUi).toContain("发布中 / 待确认");
-    expect(publishUi).toContain("已发布 / 待填链接");
+    expect(publishUi).toContain("待处理");
+    expect(publishUi).toContain("处理中 / 需确认");
+    expect(publishUi).toContain("已完成");
     expect(publishUi).toContain("预览内容");
     expect(publishUi).toContain("开始本地发布");
     expect(publishUi).toContain("填写公开链接");

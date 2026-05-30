@@ -104,37 +104,69 @@ export function parsePublishTaskErrorMessage(
   };
 }
 
+/** Agent / 发布任务失败原因 → 客户可读文案（不暴露技术细节） */
+export function customerMessageForAgentPublishFailure(
+  raw: string | null | undefined,
+  errorType?: string | null,
+): string | null {
+  if (!raw?.trim() && !errorType?.trim()) return null;
+  const combined = `${errorType ?? ""} ${raw ?? ""}`.toLowerCase();
+
+  if (combined.includes("profile_not_found")) {
+    return "账号环境未找到，请重新绑定账号";
+  }
+  if (combined.includes("account_mismatch")) {
+    return "登录账号与绑定账号不一致";
+  }
+  if (combined.includes("title_input_not_found")) {
+    return "未找到标题输入框，请重试";
+  }
+  if (
+    combined.includes("locator.count") ||
+    combined.includes("target page") ||
+    combined.includes("browser has been closed") ||
+    combined.includes("page_context_lost")
+  ) {
+    return "发布过程中断，请重试";
+  }
+
+  const parsed = parsePublishTaskErrorMessage(raw);
+  if (parsed && parsed.errorType !== "unknown") {
+    return parsed.customerMessage;
+  }
+
+  if (raw?.includes("账号不匹配") || raw?.includes("account_mismatch")) {
+    return "登录账号与绑定账号不一致";
+  }
+  if (raw?.includes("尚未绑定") || raw?.includes("profile_not_found")) {
+    return "账号环境未找到，请重新绑定账号";
+  }
+
+  return "发布失败，请重试或联系支持";
+}
+
 export function publishTaskStatusCustomerLabel(input: {
   status: string;
   accountVerificationStatus?: string | null;
   errorMessage?: string | null;
   agentErrorMessage?: string | null;
 }): string {
-  if (input.status === "draft_saved") return "已保存草稿";
-  if (input.status === "completed") return "已发布";
-  if (input.status === "processing") return "发布中";
-  if (input.status === "pending_agent") return "等待本地客户端处理";
-  if (input.status === "agent_processing") return "本地客户端处理中";
-  if (input.status === "session_expired") return "登录失效";
+  if (input.status === "pending") return "待发布";
+  if (input.status === "pending_agent") return "等待客户端处理";
+  if (input.status === "copied") return "已复制";
   if (input.status === "manual_required") return "需人工确认";
-  if (input.status === "pending") return "待处理（历史插件任务）";
+  if (input.status === "draft_saved") return "草稿已保存，请在平台确认发布";
+  if (input.status === "completed") return "已发布";
+  if (input.status === "failed") return "发布失败";
+  if (input.status === "processing") return "发布中";
+  if (input.status === "agent_processing") return "客户端处理中";
+  if (input.status === "session_expired") return "登录失效，请重新绑定";
 
   const av = input.accountVerificationStatus;
   if (av === "matched") return "账号核验通过";
-  if (av === "mismatched") return "账号不匹配";
+  if (av === "mismatched") return "登录账号与绑定账号不一致";
   if (av === "login_required") return "需要登录";
   if (av === "unknown") return "无法识别账号";
-
-  if (input.status === "failed") {
-    const raw = input.agentErrorMessage ?? input.errorMessage;
-    const parsed = parsePublishTaskErrorMessage(raw);
-    if (parsed) return parsed.customerMessage;
-    const msg = input.errorMessage ?? "";
-    if (msg.includes("账号不匹配")) return "账号不匹配";
-    if (msg.includes("无法识别")) return "无法识别账号";
-    if (msg.includes("尚未绑定")) return "未绑定账号";
-    return "发布失败";
-  }
 
   return input.status;
 }

@@ -1,4 +1,8 @@
-import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
+import {
+  customerMessageForAgentPublishFailure,
+  publishTaskStatusCustomerLabel,
+} from "@shared/publishTaskErrors";
+import { isBindingPublishPlatform, PUBLISH_PLATFORM_LABELS } from "@shared/platformAccountVerify";
 
 export type PublishColumnId = "pending" | "active" | "done";
 
@@ -8,29 +12,101 @@ export type PublishTaskCardModel = {
   recordId?: number;
   articleId?: number | null;
   title: string;
-  platform: string;
+  platformLabel: string;
   accountLabel: string;
   contentGoal: string | null;
   geoGap: string | null;
+  statusRaw: string;
   statusLabel: string;
+  statusBadgeClass: string;
+  errorMessage: string | null;
   column: PublishColumnId;
   isAbnormal: boolean;
   previewUrl: string | null;
+  draftUrl: string | null;
+  publishedUrl: string | null;
+  timeLabel: string | null;
   linkDraft?: string;
 };
 
+const EXTRA_PLATFORM_LABELS: Record<string, string> = {
+  xiaohongshu: "小红书",
+  wechat: "微信公众号",
+  weixin: "微信公众号",
+};
+
+export function publishPlatformCustomerLabel(platform: string): string {
+  const trimmed = platform.trim();
+  if (!trimmed) return "未标注平台";
+  if (isBindingPublishPlatform(trimmed)) return PUBLISH_PLATFORM_LABELS[trimmed];
+  return EXTRA_PLATFORM_LABELS[trimmed.toLowerCase()] ?? trimmed;
+}
+
+export function publishTaskStatusBadgeClass(status: string): string {
+  switch (status) {
+    case "pending":
+    case "pending_agent":
+      return "bg-slate-100 text-slate-700 border-slate-200";
+    case "copied":
+      return "bg-blue-50 text-blue-700 border-blue-200";
+    case "manual_required":
+      return "bg-amber-50 text-amber-800 border-amber-200";
+    case "draft_saved":
+      return "bg-sky-50 text-sky-800 border-sky-200";
+    case "completed":
+    case "published":
+    case "link_backfilled":
+      return "bg-emerald-50 text-emerald-800 border-emerald-200";
+    case "failed":
+    case "publish_failed":
+      return "bg-red-50 text-red-800 border-red-200";
+    case "agent_processing":
+    case "processing":
+      return "bg-indigo-50 text-indigo-800 border-indigo-200";
+    case "session_expired":
+      return "bg-orange-50 text-orange-800 border-orange-200";
+    default:
+      return "bg-gray-100 text-gray-700 border-gray-200";
+  }
+}
+
 export function classifyPublishTaskColumn(status: string): PublishColumnId {
-  if (status === "pending_agent" || status === "pending") return "pending";
+  if (status === "pending" || status === "pending_agent" || status === "copied") {
+    return "pending";
+  }
+  if (status === "manual_required" || status === "draft_saved") {
+    return "active";
+  }
+  if (status === "completed" || status === "failed") {
+    return "done";
+  }
   if (
     status === "agent_processing" ||
     status === "processing" ||
-    status === "manual_required" ||
-    status === "draft_saved"
+    status === "session_expired"
   ) {
     return "active";
   }
-  if (status === "failed" || status === "session_expired") return "active";
   return "done";
+}
+
+function formatTaskTime(value?: Date | string | number | null): string | null {
+  if (value == null) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString("zh-CN", { dateStyle: "short", timeStyle: "short" });
+}
+
+function resolveTaskTimeLabel(task: {
+  agentFinishedAt?: Date | string | number | null;
+  agentPickedAt?: Date | string | number | null;
+  createdAt?: Date | string | number | null;
+}): string | null {
+  return (
+    formatTaskTime(task.agentFinishedAt) ??
+    formatTaskTime(task.agentPickedAt) ??
+    formatTaskTime(task.createdAt)
+  );
 }
 
 export function mapAgentTaskToCard(
@@ -41,30 +117,47 @@ export function mapAgentTaskToCard(
     platform: string;
     status: string;
     expectedAccountName: string | null;
+    agentErrorType?: string | null;
     agentErrorMessage?: string | null;
     draftUrl?: string | null;
     resultUrl?: string | null;
+    agentFinishedAt?: Date | string | number | null;
+    agentPickedAt?: Date | string | number | null;
+    createdAt?: Date | string | number | null;
   },
   contentGoal?: string | null,
 ): PublishTaskCardModel {
   const column = classifyPublishTaskColumn(task.status);
   const isAbnormal = task.status === "failed" || task.status === "session_expired";
+  const draftUrl = task.draftUrl?.trim() || null;
+  const publishedUrl = task.resultUrl?.trim() || null;
+  const errorMessage =
+    task.status === "failed"
+      ? customerMessageForAgentPublishFailure(task.agentErrorMessage, task.agentErrorType)
+      : null;
+
   return {
     key: `task-${task.id}`,
     taskId: task.id,
     articleId: task.articleId,
     title: task.articleTitle?.trim() || "未命名内容",
-    platform: task.platform,
+    platformLabel: publishPlatformCustomerLabel(task.platform),
     accountLabel: task.expectedAccountName?.trim() || "未绑定账号",
     contentGoal: contentGoal ?? null,
     geoGap: null,
+    statusRaw: task.status,
     statusLabel: publishTaskStatusCustomerLabel({
       status: task.status,
       agentErrorMessage: task.agentErrorMessage,
     }),
-    column: isAbnormal ? "active" : column,
+    statusBadgeClass: publishTaskStatusBadgeClass(task.status),
+    errorMessage,
+    column,
     isAbnormal,
-    previewUrl: task.draftUrl ?? task.resultUrl ?? null,
+    previewUrl: draftUrl ?? publishedUrl ?? null,
+    draftUrl,
+    publishedUrl: task.status === "completed" ? publishedUrl : null,
+    timeLabel: resolveTaskTimeLabel(task),
   };
 }
 
@@ -77,30 +170,41 @@ export function mapManualRecordToCard(
     publishStatus?: string | null;
     publishUrl?: string | null;
     publicUrl?: string | null;
+    publishedAt?: Date | string | number | null;
   },
   articleTitle?: string | null,
 ): PublishTaskCardModel | null {
   const link = (record.publishUrl ?? record.publicUrl ?? "").trim();
+  const status = record.publishStatus ?? "";
   const pendingLink =
-    record.publishStatus === "pending_human_publish" ||
-    record.publishStatus === "manual_publish_needed" ||
-    (!link && record.publishStatus !== "publish_failed");
-  if (!pendingLink && record.publishStatus !== "link_backfilled" && record.publishStatus !== "published") {
+    status === "pending_human_publish" ||
+    status === "manual_publish_needed" ||
+    (!link && status !== "publish_failed");
+  if (!pendingLink && status !== "link_backfilled" && status !== "published") {
     return null;
   }
+
+  const manualStatus = link ? "link_backfilled" : "pending_human_publish";
+
   return {
     key: `record-${record.id}`,
     recordId: record.id,
     articleId: record.articleId,
     title: articleTitle?.trim() || record.publishTitle?.trim() || "发布记录",
-    platform: record.publishChannel?.trim() || "未标注平台",
+    platformLabel: publishPlatformCustomerLabel(record.publishChannel?.trim() || "未标注平台"),
     accountLabel: "人工登记",
     contentGoal: null,
     geoGap: null,
+    statusRaw: manualStatus,
     statusLabel: link ? "已填写公开链接" : "待填写公开链接",
+    statusBadgeClass: publishTaskStatusBadgeClass(manualStatus),
+    errorMessage: status === "publish_failed" ? "发布失败，请重试或联系支持" : null,
     column: "done",
-    isAbnormal: record.publishStatus === "publish_failed",
+    isAbnormal: status === "publish_failed",
     previewUrl: link || null,
+    draftUrl: null,
+    publishedUrl: link || null,
+    timeLabel: formatTaskTime(record.publishedAt),
     linkDraft: link,
   };
 }

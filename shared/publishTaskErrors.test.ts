@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPublishErrorPayload,
+  customerMessageForAgentPublishFailure,
   customerMessageForPublishError,
   parsePublishTaskErrorMessage,
   publishTaskStatusCustomerLabel,
@@ -29,6 +30,29 @@ describe("publishTaskErrors", () => {
   });
 
   it("shows draft_saved status label", () => {
-    expect(publishTaskStatusCustomerLabel({ status: "draft_saved" })).toBe("已保存草稿");
+    expect(publishTaskStatusCustomerLabel({ status: "draft_saved" })).toBe(
+      "草稿已保存，请在平台确认发布",
+    );
+  });
+
+  it("maps agent failure messages for customers", () => {
+    expect(
+      customerMessageForAgentPublishFailure("profile_not_found: zhihu_xxx", "profile_not_found"),
+    ).toBe("账号环境未找到，请重新绑定账号");
+    expect(customerMessageForAgentPublishFailure("account_mismatch", null)).toBe(
+      "登录账号与绑定账号不一致",
+    );
+    expect(customerMessageForAgentPublishFailure("title_input_not_found", null)).toBe(
+      "未找到标题输入框，请重试",
+    );
+    expect(
+      customerMessageForAgentPublishFailure(
+        "publish_flow [failed] locator.count: Target page, context or browser has been closed",
+        null,
+      ),
+    ).toBe("发布过程中断，请重试");
+    expect(customerMessageForAgentPublishFailure("something weird", null)).toBe(
+      "发布失败，请重试或联系支持",
+    );
   });
 });

@@ -74,9 +74,13 @@ type AgentTaskRow = {
   platform: string;
   status: string;
   expectedAccountName: string | null;
+  agentErrorType?: string | null;
   agentErrorMessage?: string | null;
   draftUrl?: string | null;
   resultUrl?: string | null;
+  agentFinishedAt?: Date | string | number | null;
+  agentPickedAt?: Date | string | number | null;
+  createdAt?: Date | string | number | null;
 };
 
 function articleLatestQuality(articleId: number | undefined, scores: QualityScoreRow[]) {
@@ -309,7 +313,7 @@ export function ContentPublishingCenterPage() {
   }
 
   function markAbnormal(card: PublishTaskCardModel) {
-    toast.error(card.statusLabel || "发布异常，请查看状态说明或联系交付同学");
+    toast.error(card.errorMessage || card.statusLabel || "发布异常，请查看状态说明或联系交付同学");
   }
 
   async function handleSaveManualRecord() {
