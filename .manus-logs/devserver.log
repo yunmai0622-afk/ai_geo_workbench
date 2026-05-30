@@ -2591,3 +2591,26 @@
 [2026-05-30T05:14:23.430Z] 1:14:23 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T05:15:35.892Z] 1:15:35 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T05:16:09.996Z] 1:16:09 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T05:21:40.461Z] c
+[2026-05-30T05:21:40.461Z] node:internal/modules/run_main:122
+[2026-05-30T05:21:40.462Z] triggerUncaughtException(
+[2026-05-30T05:21:40.462Z] ^
+[2026-05-30T05:21:40.463Z] Error: ENOENT: no such file or directory, open '/home/ubuntu/ai_geo_workbench/server/passwordAuth.ts'
+[2026-05-30T05:21:40.463Z] at async open (node:internal/fs/promises:638:25)
+[2026-05-30T05:21:40.463Z] at async readFile (node:internal/fs/promises:1242:14)
+[2026-05-30T05:21:40.464Z] at async getSource (node:internal/modules/esm/load:42:14)
+[2026-05-30T05:21:40.464Z] at async defaultLoad (node:internal/modules/esm/load:114:34)
+[2026-05-30T05:21:40.464Z] at async nextLoad (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T05:21:40.465Z] at async load (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780118499944:2:1771)
+[2026-05-30T05:21:40.465Z] at async nextLoad (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T05:21:40.466Z] at async Hooks.load (node:internal/modules/esm/hooks:385:20)
+[2026-05-30T05:21:40.467Z] at async handleMessage (node:internal/modules/esm/worker:199:18) {
+[2026-05-30T05:21:40.467Z] errno: -2,
+[2026-05-30T05:21:40.467Z] code: 'ENOENT',
+[2026-05-30T05:21:40.468Z] syscall: 'open',
+[2026-05-30T05:21:40.468Z] path: '/home/ubuntu/ai_geo_workbench/server/passwordAuth.ts'
+[2026-05-30T05:21:40.468Z] }
+[2026-05-30T05:21:40.469Z] 
+[2026-05-30T05:21:40.469Z] Node.js v22.13.0
+[2026-05-30T05:21:40.603Z] 1:21:40 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Rerunning...
+[2026-05-30T05:21:42.251Z] c[OAuth] Initialized with baseURL: https://api.manus.im
