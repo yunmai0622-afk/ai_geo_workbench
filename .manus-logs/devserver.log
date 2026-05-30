@@ -2868,3 +2868,11 @@
 [2026-05-30T08:46:00.868Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-05-30T08:49:29.556Z] 4:49:29 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T08:49:33.059Z] 4:49:33 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T09:08:57.687Z] 5:08:57 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T09:08:57.688Z] 5:08:57 AM [vite] (client) hmr update /src/index.css, /src/components/ArticleAssetEditorSheet.tsx
+[2026-05-30T09:08:57.689Z] 5:08:57 AM [vite] (client) hmr update /src/index.css, /src/pages/WeeklyContentPage.tsx, /src/components/ArticleAssetEditorSheet.tsx
+[2026-05-30T09:08:57.690Z] 5:08:57 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-05-30T09:08:57.694Z] 5:08:57 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/PlatformContentStrategyPanel.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-05-30T09:08:57.783Z] 5:08:57 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/ArticleAssetEditorSheet.tsx
+[2026-05-30T09:08:57.795Z] 5:08:57 AM [tsx] change in ./shared/platformContentRules.ts Restarting...
+[2026-05-30T09:08:59.552Z] c[OAuth] Initialized with baseURL: https://api.manus.im
