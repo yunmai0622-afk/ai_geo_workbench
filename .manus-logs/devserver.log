@@ -2665,3 +2665,6 @@
 [2026-05-30T06:05:27.554Z] Server running on http://localhost:3000/
 [2026-05-30T06:05:27.555Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
 [2026-05-30T06:06:17.145Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-05-30T06:06:44.814Z] 2:06:44 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T06:06:44.816Z] 2:06:44 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T06:07:18.504Z] 2:07:18 AM [vite] (client) hmr update /src/index.css
