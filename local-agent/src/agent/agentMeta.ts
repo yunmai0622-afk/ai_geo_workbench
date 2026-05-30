@@ -1,3 +1,4 @@
+import { app } from "electron";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -11,7 +12,7 @@ export type AgentMetaFile = {
 };
 
 const AGENT_JSON = path.join(DATA_DIR, "agent.json");
-export const AGENT_VERSION = "1.0.0";
+export const AGENT_VERSION = app.getVersion();
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
