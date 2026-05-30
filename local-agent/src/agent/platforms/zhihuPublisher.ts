@@ -27,9 +27,13 @@ import {
   buildZhihuProfileUrl,
   collectLoginProfileSlugInBrowser,
   collectProfileHeaderDebugInBrowser,
+  collectProfileSlugFromSettingsPageInBrowser,
+  collectProfileSlugFromUserMenuInBrowser,
+  collectViewerSlugFromInitialStateInBrowser,
   collectZhihuIdentitySignalsInBrowser,
   resolveZhihuIdentityFromSignals,
   type ZhihuIdentityResolution,
+  type ZhihuLoginProfileSlug,
   type ZhihuLoginStatus,
 } from "../zhihuIdentityResolver";
 
@@ -745,6 +749,58 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     }
   }
 
+  /** 多步解析登录用户 slug（pathname → 菜单 hover → settings → 首页延迟 state） */
+  private async resolveLoginProfileSlug(page: Page, profileId?: string): Promise<ZhihuLoginProfileSlug> {
+    const ZHIHU_HOME = "https://www.zhihu.com/";
+    const ZHIHU_SETTINGS_PROFILE = "https://www.zhihu.com/settings/profile";
+
+    let pick = await page.evaluate(collectLoginProfileSlugInBrowser);
+    if (pick.slug) return pick;
+
+    try {
+      const avatar = page
+        .locator(
+          'header [class*="Avatar"], header a[href*="/people/"], .AppHeader-userInfo, [class*="ProfileMenu"], [class*="AppHeader-userInfo"]',
+        )
+        .first();
+      await avatar.hover({ timeout: 4000 }).catch(() => undefined);
+      await page.waitForTimeout(200);
+      pick = await page.evaluate(collectProfileSlugFromUserMenuInBrowser);
+      if (pick.slug) return pick;
+    } catch {
+      /* hover 失败继续下一步 */
+    }
+
+    try {
+      console.log("[agent-zhihu] slug resolve via settings/profile", { profileId });
+      await page.goto(ZHIHU_SETTINGS_PROFILE, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForTimeout(1500);
+      pick = await page.evaluate(collectProfileSlugFromSettingsPageInBrowser);
+      if (pick.slug) return pick;
+    } catch (e) {
+      console.warn("[agent-zhihu] settings/profile slug resolve failed", {
+        profileId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+
+    try {
+      console.log("[agent-zhihu] slug resolve via home delayed state", { profileId });
+      await page.goto(ZHIHU_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await this.waitForZhihuSession(page, 12000);
+      await page.waitForTimeout(3000);
+      pick = await page.evaluate(collectViewerSlugFromInitialStateInBrowser);
+      if (pick.slug) return pick;
+    } catch (e) {
+      console.warn("[agent-zhihu] home delayed slug resolve failed", {
+        profileId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+
+    return { slug: null, source: "none" };
+  }
+
   /** 仅从可信身份源解析知乎昵称（强制打开个人主页后读取 ProfileHeader h1） */
   async resolveZhihuIdentity(
     page: Page,
@@ -765,21 +821,10 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     const url = page.url();
     console.log("[agent-zhihu] identity resolve start", { profileId, url });
 
-    let slugPick = await page.evaluate(collectLoginProfileSlugInBrowser);
-    if (!slugPick.slug) {
-      try {
-        const userEntry = page
-          .locator(
-            'header a[href*="/people/"], header [class*="Avatar"], .AppHeader-userInfo, [class*="ProfileMenu"]',
-          )
-          .first();
-        await userEntry.hover({ timeout: 3000 }).catch(() => undefined);
-        await page.waitForTimeout(600);
-        slugPick = await page.evaluate(collectLoginProfileSlugInBrowser);
-      } catch {
-        /* 用户菜单展开失败不阻断 */
-      }
-    }
+    await this.waitForZhihuSession(page, 12000);
+    await page.waitForTimeout(800);
+
+    const slugPick = await this.resolveLoginProfileSlug(page, profileId);
 
     let browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
     const slug = slugPick.slug ?? browserSignals.profileSlug ?? browserSignals.viewerStateSlug;
@@ -795,7 +840,9 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         slug,
         slugSource: slugPick.source,
       });
+      await page.waitForTimeout(1000);
       await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForTimeout(1500);
       const stableH1 = await this.waitForStableProfileHeaderH1(page, profileId);
       browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
       profileHeaderDebug = await page.evaluate(collectProfileHeaderDebugInBrowser);
