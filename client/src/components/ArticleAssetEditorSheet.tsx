@@ -14,6 +14,7 @@ import {
   isArticleAssetDraftDirty,
   type ArticleAssetDraftSnapshot,
 } from "@shared/articleAssetDraft";
+import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
 import {
   ACCOUNT_GROUP_OPTIONS,
   CONTENT_ASSET_TYPE_OPTIONS,
@@ -112,15 +113,16 @@ export function ArticleAssetEditorSheet({
   }), []);
 
   const resetFromArticle = useCallback((a: EditableArticleAsset) => {
+    const cleanedContent = stripInternalArticleMetadataFromMarkdown(a.markdownContent ?? "");
     setTitle(a.title ?? "");
-    setContent(a.markdownContent ?? "");
+    setContent(cleanedContent);
     setTemplate(normalizeArticleCoverTemplateId(a.coverTemplate));
     setCoverPreview(coverPreviewFromFields(a.coverBase64, a.coverImageUrl));
     setCoverBase64Draft(a.coverBase64 ?? null);
     setCoverError(null);
     savedSnapshot.current = buildArticleAssetSnapshot({
       title: a.title,
-      content: a.markdownContent,
+      content: cleanedContent,
       coverTemplate: a.coverTemplate,
       coverBase64: a.coverBase64,
     });

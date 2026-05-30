@@ -283,7 +283,6 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         "## 适合谁/不适合谁",
         "## 自检清单（发布后如何复测/核对）",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
-        "## 更新说明",
       ].join("\n");
     case "zhihu":
       return [
@@ -294,8 +293,6 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         "## 常见误区",
         "## 小结",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
-        "## 更新说明",
-        "## 发布后如何自行核对效果",
       ].join("\n");
     case "sohu":
       return [
@@ -306,7 +303,6 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         "## 行业趋势判断",
         "## 客观小结（不作排名承诺）",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
-        "## 更新说明",
       ].join("\n");
     case "toutiao":
       return [
@@ -317,7 +313,6 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         "## 注意事项",
         "## 总结",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
-        "## 更新说明",
       ].join("\n");
     case "baijiahao":
       return [
@@ -328,7 +323,6 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         "## 常见问答（FAQ）",
         "## 选择建议（客观、不承诺排名）",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
-        "## 更新说明",
       ].join("\n");
     case "netease":
       return [
@@ -339,7 +333,6 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         "## 读者可执行的动作",
         "## 风险与边界说明",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
-        "## 更新说明",
       ].join("\n");
     case "wechat":
       return [
@@ -351,7 +344,6 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         "## 风险与边界（不承诺）",
         "## 行动建议（下一步怎么做）",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
-        "## 更新说明",
       ].join("\n");
     case "other":
       return [
@@ -362,7 +354,6 @@ export function getPlatformSpecificOutline(platformId: PublishPlatformId, brandN
         "## FAQ（常见问题）",
         "## 风险与边界（不承诺）",
         "## 便于引用的要点（3-5 组 ### 问题 + 短答）",
-        "## 更新说明",
       ].join("\n");
     default:
       return getPlatformSpecificOutline("zhihu", brandName);
