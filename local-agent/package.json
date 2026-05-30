@@ -1,6 +1,6 @@
 {
   "name": "geo-local-publish-agent",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "private": true,
   "description": "GEO 本地发布客户端 — 代运营多平台草稿发布",
   "main": "dist/main.js",

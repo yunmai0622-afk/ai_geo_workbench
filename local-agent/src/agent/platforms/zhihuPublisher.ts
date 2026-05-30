@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import type { Page } from "playwright";
+import type { BrowserContext, Page } from "playwright";
 import {
   accountNamesMatch,
   BasePlatformPublisher,
@@ -1475,6 +1475,53 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     return { ok: false, url: homeUrl, errorType: "write_page_not_found" };
   }
 
+  /** 填稿/发布前确保 page 未关闭，且仍在写作页或文章页；必要时恢复 tab 或重新打开写作页 */
+  private async ensurePublishWritePage(
+    context: BrowserContext,
+    page: Page,
+    logs: PublishStepLog[],
+    phase: string,
+  ): Promise<{ page: Page; ok: boolean; errorMessage?: string }> {
+    let active = page;
+
+    if (active.isClosed()) {
+      logs.push(stepLog("publish_page", "failed", `${phase}: page_closed`));
+      const recovered = context.pages().find(p => !p.isClosed());
+      if (recovered) {
+        active = recovered;
+        logs.push(stepLog("publish_page", "ok", `${phase}: recovered_open_tab`));
+      } else {
+        active = await context.newPage();
+        logs.push(stepLog("publish_page", "ok", `${phase}: opened_new_tab`));
+      }
+    }
+
+    if (active.isClosed()) {
+      return { page: active, ok: false, errorMessage: "浏览器页面已关闭且无法恢复" };
+    }
+
+    const url = active.url();
+    const onWrite = this.writeUrlReady(url);
+    const onArticle = /zhuanlan\.zhihu\.com\/p\/\d+/i.test(url) || /zhihu\.com\/p\/\d+/i.test(url);
+
+    if (!onWrite && !onArticle) {
+      logs.push(stepLog("publish_page", "skipped", `${phase}: left_write_page ${url}`));
+      const nav = await this.gotoZhihuWritePage(active);
+      if (!nav.ok) {
+        return { page: active, ok: false, errorMessage: `无法回到写作页（${nav.url}）` };
+      }
+      logs.push(stepLog("publish_page", "ok", `${phase}: back_to_write ${nav.url}`));
+    } else {
+      logs.push(stepLog("publish_page", "ok", `${phase}: ${url.split("?")[0]}`));
+    }
+
+    if (active.isClosed()) {
+      return { page: active, ok: false, errorMessage: "恢复写作页后页面仍已关闭" };
+    }
+
+    return { page: active, ok: true };
+  }
+
   override async publish(task: LocalPublishTask): Promise<LocalPublishResult> {
     const logs: PublishStepLog[] = [];
     const profileId = task.localProfileId;
@@ -1483,7 +1530,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
 
     try {
       const context = await getOrLaunchContext(profileId, false);
-      const page = context.pages().find(p => !p.isClosed()) ?? (await context.newPage());
+      let page = context.pages().find(p => !p.isClosed()) ?? (await context.newPage());
 
       logs.push(stepLog("open_home", "ok", this.urls.homeUrl));
       await page.goto(this.urls.homeUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -1637,6 +1684,17 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         };
       }
 
+      const beforeContent = await this.ensurePublishWritePage(context, page, logs, "before_fill_content");
+      if (!beforeContent.ok) {
+        return {
+          status: "failed",
+          errorType: "page_context_lost",
+          errorMessage: beforeContent.errorMessage ?? "填正文前写作页不可用",
+          logs,
+        };
+      }
+      page = beforeContent.page;
+
       const contentFill = await this.fillZhihuContent(page, task.content);
       logs.push(
         stepLog(
@@ -1654,6 +1712,17 @@ export class ZhihuPublisher extends BasePlatformPublisher {
           logs,
         };
       }
+
+      const beforePublishFlow = await this.ensurePublishWritePage(context, page, logs, "before_publish_flow");
+      if (!beforePublishFlow.ok) {
+        return {
+          status: "failed",
+          errorType: "page_context_lost",
+          errorMessage: beforePublishFlow.errorMessage ?? "发布前写作页不可用",
+          logs,
+        };
+      }
+      page = beforePublishFlow.page;
 
       const coverResult = await this.uploadZhihuCover(page, task);
       logs.push(stepLog("upload_cover", coverResult.ok ? "ok" : "skipped", coverResult.message, coverResult.selector));
