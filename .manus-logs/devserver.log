@@ -2662,3 +2662,6 @@
 [2026-05-30T06:05:20.695Z] 2:05:20 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/workspaceMainChain.ts
 [2026-05-30T06:05:20.793Z] 2:05:20 AM [tsx] unlink in ./shared/geoProfileQuestionMapping.ts Restarting...
 [2026-05-30T06:05:22.680Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-05-30T06:05:27.554Z] Server running on http://localhost:3000/
+[2026-05-30T06:05:27.555Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-05-30T06:06:17.145Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
