@@ -2619,3 +2619,26 @@
 [2026-05-30T05:22:35.203Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-05-30T05:22:56.150Z] 1:22:56 AM [vite] (client) hmr update /src/index.css
 [2026-05-30T05:23:30.227Z] 1:23:30 AM [vite] (client) hmr update /src/index.css
+[2026-05-30T05:55:07.740Z] c
+[2026-05-30T05:55:07.741Z] node:internal/modules/run_main:122
+[2026-05-30T05:55:07.741Z] triggerUncaughtException(
+[2026-05-30T05:55:07.741Z] ^
+[2026-05-30T05:55:07.742Z] Error: ENOENT: no such file or directory, open '/home/ubuntu/ai_geo_workbench/shared/geoProfileQuestionMapping.ts'
+[2026-05-30T05:55:07.742Z] at async open (node:internal/fs/promises:638:25)
+[2026-05-30T05:55:07.742Z] at async readFile (node:internal/fs/promises:1242:14)
+[2026-05-30T05:55:07.743Z] at async getSource (node:internal/modules/esm/load:42:14)
+[2026-05-30T05:55:07.743Z] at async defaultLoad (node:internal/modules/esm/load:114:34)
+[2026-05-30T05:55:07.743Z] at async nextLoad (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T05:55:07.744Z] at async load (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1780120507454:2:1771)
+[2026-05-30T05:55:07.744Z] at async nextLoad (node:internal/modules/esm/hooks:748:22)
+[2026-05-30T05:55:07.745Z] at async Hooks.load (node:internal/modules/esm/hooks:385:20)
+[2026-05-30T05:55:07.745Z] at async handleMessage (node:internal/modules/esm/worker:199:18) {
+[2026-05-30T05:55:07.745Z] errno: -2,
+[2026-05-30T05:55:07.746Z] code: 'ENOENT',
+[2026-05-30T05:55:07.746Z] syscall: 'open',
+[2026-05-30T05:55:07.746Z] path: '/home/ubuntu/ai_geo_workbench/shared/geoProfileQuestionMapping.ts'
+[2026-05-30T05:55:07.747Z] }
+[2026-05-30T05:55:07.747Z] 
+[2026-05-30T05:55:07.747Z] Node.js v22.13.0
+[2026-05-30T05:55:07.906Z] 1:55:07 AM [tsx] unlink in ./server/passwordAuth.ts Rerunning...
+[2026-05-30T05:55:09.593Z] c[OAuth] Initialized with baseURL: https://api.manus.im
