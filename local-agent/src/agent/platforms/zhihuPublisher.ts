@@ -23,6 +23,7 @@ import { isBlockedZhihuNickname } from "../zhihuAccountDisplay";
 import {
   buildZhihuProfileUrl,
   collectLoginProfileSlugInBrowser,
+  collectProfileHeaderDebugInBrowser,
   collectZhihuIdentitySignalsInBrowser,
   resolveZhihuIdentityFromSignals,
   type ZhihuIdentityResolution,
@@ -455,18 +456,30 @@ export class ZhihuPublisher extends BasePlatformPublisher {
   }
 
   /**
-   * 等待个人页 ProfileHeader h1 文本非空且连续 500ms 不变；超时仅打日志，不抛错。
+   * 等待个人页 ProfileHeader 昵称非空且连续 500ms 不变；超时仅打日志，不抛错。
    */
   private async waitForStableProfileHeaderH1(page: Page, profileId?: string): Promise<string | null> {
     const stableMs = 500;
     try {
       const handle = await page.waitForFunction(
         ({ stableMs: ms }) => {
+          const skip =
+            "nav,[role=tablist],[class*=Tabs],[class*=Tab],button,[role=button],footer,[class*=Nav]";
+          const nameEl =
+            document.querySelector(".ProfileHeader-name") ??
+            document.querySelector('[class*="ProfileHeader-name"]');
           const h1 =
             document.querySelector(".ProfileHeader h1") ??
+            document.querySelector(".ProfileHeader-title") ??
             document.querySelector('[class*="ProfileHeader"] h1');
-          if (!h1) return null;
-          const text = (h1.textContent ?? "").replace(/\s+/g, " ").trim();
+          const el =
+            nameEl && !nameEl.closest(skip)
+              ? nameEl
+              : h1 && !h1.closest(skip)
+                ? h1
+                : null;
+          if (!el) return null;
+          const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
           if (!text || text.length < 2) return null;
           const w = window as unknown as {
             __zhihuProfileH1Stable?: { text: string; since: number };
@@ -484,7 +497,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       );
       return (await handle.jsonValue()) as string | null;
     } catch (e) {
-      console.warn("[agent-zhihu] profile header h1 wait timeout", {
+      console.warn("[agent-zhihu] profile header name wait timeout", {
         profileId,
         url: page.url(),
         error: e instanceof Error ? e.message : String(e),
@@ -520,17 +533,22 @@ export class ZhihuPublisher extends BasePlatformPublisher {
 
     let browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
     const slug = slugPick.slug ?? browserSignals.profileSlug ?? browserSignals.viewerStateSlug;
+    let navigatedProfileUrl: string | null = null;
+    let profileHeaderDebug = await page.evaluate(collectProfileHeaderDebugInBrowser);
 
     if (slug) {
       const profileUrl = buildZhihuProfileUrl(slug)!;
+      navigatedProfileUrl = profileUrl;
       console.log("[agent-zhihu] navigate profile for detect", {
         profileId,
         profileUrl,
+        slug,
         slugSource: slugPick.source,
       });
       await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
       const stableH1 = await this.waitForStableProfileHeaderH1(page, profileId);
       browserSignals = await page.evaluate(collectZhihuIdentitySignalsInBrowser);
+      profileHeaderDebug = await page.evaluate(collectProfileHeaderDebugInBrowser);
       if (stableH1 && !browserSignals.profileHeaderTitle) {
         browserSignals = { ...browserSignals, profileHeaderTitle: stableH1 };
       }
@@ -546,6 +564,23 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       viewerStateName: browserSignals.viewerStateName,
       viewerStateSlug: browserSignals.viewerStateSlug,
       userMenuName: browserSignals.userMenuName,
+    });
+
+    console.log("[agent-zhihu] identity debug", {
+      profileId,
+      slug,
+      slugSource: slugPick.source,
+      navigatedProfileUrl,
+      pageUrl: browserSignals.pageUrl,
+      h1Found: profileHeaderDebug.h1Found,
+      h1Text: profileHeaderDebug.h1Text,
+      nameElFound: profileHeaderDebug.nameElFound,
+      nameElText: profileHeaderDebug.nameElText,
+      pickedProfileHeaderText: profileHeaderDebug.pickedText,
+      profileHeaderTitle: browserSignals.profileHeaderTitle,
+      viewerStateName: browserSignals.viewerStateName,
+      viewerStateSlug: browserSignals.viewerStateSlug,
+      displayNameSource: identity.displayNameSource,
     });
 
     if (identity.rejectedCandidates.length > 0) {

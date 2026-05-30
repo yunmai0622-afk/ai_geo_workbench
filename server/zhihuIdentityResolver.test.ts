@@ -178,12 +178,12 @@ describe("zhihuIdentityResolver meng-ke-ke-61 fixture", () => {
   it("extracts 蒙科恰 and rejects tab stats from fixture HTML", () => {
     const html = read("local-agent/fixtures/zhihu-profile-meng-ke-ke-61.html");
     const title = html.match(/<title>([^<]+)<\/title>/)?.[1]?.trim() ?? "";
-    const h1 = html.match(/<h1>([^<]+)<\/h1>/)?.[1]?.trim() ?? "";
+    const name = html.match(/ProfileHeader-name">([^<]+)</)?.[1]?.trim() ?? "";
     expect(title).toBe("蒙科恰 - 知乎");
-    expect(h1).toBe("蒙科恰");
+    expect(name).toBe("蒙科恰");
 
     const identity = resolveZhihuIdentityFromSignals(
-      validSignals({ profileHeaderTitle: h1, documentTitle: title }),
+      validSignals({ profileHeaderTitle: name, documentTitle: title }),
     );
     expect(identity.displayName).toBe("蒙科恰");
     expect(identity.profileSlug).toBe("meng-ke-ke-61");
@@ -194,9 +194,19 @@ describe("zhihuIdentityResolver meng-ke-ke-61 fixture", () => {
     }
   });
 
+  it("rejects full h1 text when headline makes it too long", () => {
+    const longH1 = "蒙科恰 " + "示例个人简介".repeat(8);
+    expect(getZhihuNicknameRejectionReason(longH1, "profile_header")).toBe("too_long");
+    const r = resolveZhihuIdentityFromSignals(
+      validSignals({ profileHeaderTitle: "蒙科恰" }),
+    );
+    expect(r.displayName).toBe("蒙科恰");
+  });
+
   it("fixture HTML contains profile slug and real nickname markers", () => {
     const html = read("local-agent/fixtures/zhihu-profile-meng-ke-ke-61.html");
     expect(html).toContain("meng-ke-ke-61");
+    expect(html).toContain("ProfileHeader-name");
     expect(html).toContain("蒙科恰");
     expect(html).toContain("专栏 0");
   });
@@ -253,6 +263,7 @@ describe("zhihuIdentityResolver publish gate wiring", () => {
     expect(src).toContain("resolveZhihuIdentity");
     expect(src).toContain("collectZhihuIdentitySignalsInBrowser");
     expect(src).toContain("collectLoginProfileSlugInBrowser");
+    expect(src).toContain("collectProfileHeaderDebugInBrowser");
     expect(src).toContain("waitForStableProfileHeaderH1");
     expect(src).not.toContain('querySelectorAll("button, [role=\'button\']")');
     expect(src).not.toContain('querySelectorAll("[title], [aria-label]")');

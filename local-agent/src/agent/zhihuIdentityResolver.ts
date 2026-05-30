@@ -226,11 +226,25 @@ export type ZhihuIdentityBrowserSignals = {
 
 export type ZhihuLoginProfileSlug = {
   slug: string | null;
-  source: "viewer_state" | "header_link" | "none";
+  source: "pathname" | "viewer_state" | "data_state" | "header_link" | "none";
+};
+
+export type ZhihuProfileHeaderDebug = {
+  pageUrl: string;
+  h1Found: boolean;
+  h1Text: string | null;
+  nameElFound: boolean;
+  nameElText: string | null;
+  pickedText: string | null;
 };
 
 /** Playwright page.evaluate：解析当前登录用户 slug（urlToken 优先） */
 export function collectLoginProfileSlugInBrowser(): ZhihuLoginProfileSlug {
+  const pathMatch = location.pathname.match(/\/people\/([^/?#]+)/i);
+  if (pathMatch?.[1]) {
+    return { slug: pathMatch[1], source: "pathname" };
+  }
+
   try {
     const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> })
       .__INITIAL_STATE__;
@@ -248,6 +262,30 @@ export function collectLoginProfileSlugInBrowser(): ZhihuLoginProfileSlug {
   } catch {
     /* ignore */
   }
+
+  try {
+    const dataEl =
+      document.querySelector('#data[data-state]') ??
+      document.querySelector('[data-state]');
+    const raw = dataEl?.getAttribute("data-state");
+    if (raw) {
+      const state = JSON.parse(raw) as Record<string, unknown>;
+      const viewer = state.viewer ?? state.currentUser ?? state.user;
+      if (viewer && typeof viewer === "object") {
+        const v = viewer as Record<string, unknown>;
+        const urlToken =
+          (typeof v.urlToken === "string" && v.urlToken) ||
+          (typeof v.id === "string" && v.id) ||
+          null;
+        if (urlToken?.trim()) {
+          return { slug: urlToken.trim(), source: "data_state" };
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
   const header = document.querySelector("header") ?? document.body;
   for (const a of Array.from(header.querySelectorAll('a[href*="/people/"]'))) {
     const href = a.getAttribute("href") ?? "";
@@ -258,6 +296,32 @@ export function collectLoginProfileSlugInBrowser(): ZhihuLoginProfileSlug {
     return { slug: mm[1], source: "header_link" };
   }
   return { slug: null, source: "none" };
+}
+
+/** Playwright page.evaluate：个人页昵称 DOM 探测（供调试日志） */
+export function collectProfileHeaderDebugInBrowser(): ZhihuProfileHeaderDebug {
+  const skip =
+    "nav,[role=tablist],[class*=Tabs],[class*=Tab],button,[role=button],footer,[class*=Nav]";
+  const h1 =
+    document.querySelector(".ProfileHeader h1") ??
+    document.querySelector(".ProfileHeader-title") ??
+    document.querySelector('[class*="ProfileHeader"] h1');
+  const nameEl =
+    document.querySelector(".ProfileHeader-name") ??
+    document.querySelector('[class*="ProfileHeader-name"]');
+  const h1Text = (h1?.textContent ?? "").replace(/\s+/g, " ").trim() || null;
+  const nameElText = (nameEl?.textContent ?? "").replace(/\s+/g, " ").trim() || null;
+  let pickedText: string | null = null;
+  if (nameEl && !nameEl.closest(skip)) pickedText = nameElText;
+  else if (h1 && !h1.closest(skip)) pickedText = h1Text;
+  return {
+    pageUrl: location.href,
+    h1Found: Boolean(h1),
+    h1Text,
+    nameElFound: Boolean(nameEl),
+    nameElText,
+    pickedText,
+  };
 }
 
 /** Playwright page.evaluate 专用：逻辑须自包含，不可引用模块常量 */
@@ -273,35 +337,76 @@ export function collectZhihuIdentitySignalsInBrowser(): ZhihuIdentityBrowserSign
   }
   function profileHeaderTitle(): string | null {
     if (!/\/people\/[^/?#]+/i.test(location.pathname)) return null;
-    const h1 =
-      document.querySelector(".ProfileHeader h1") ??
-      document.querySelector('[class*="ProfileHeader"] h1');
-    if (!h1) return null;
     const skip =
       "nav,[role=tablist],[class*=Tabs],[class*=Tab],button,[role=button],footer,[class*=Nav]";
+    const nameEl =
+      document.querySelector(".ProfileHeader-name") ??
+      document.querySelector('[class*="ProfileHeader-name"]');
+    if (nameEl && !nameEl.closest(skip)) {
+      const fromName = clean(nameEl.textContent);
+      if (fromName) return fromName;
+    }
+    const h1 =
+      document.querySelector(".ProfileHeader h1") ??
+      document.querySelector(".ProfileHeader-title") ??
+      document.querySelector('[class*="ProfileHeader"] h1');
+    if (!h1) return null;
     if (h1.closest(skip)) return null;
     return clean(h1.textContent);
+  }
+  function readViewerRecord(v: Record<string, unknown>): { name: string | null; slug: string | null } {
+    const name =
+      (typeof v.name === "string" && v.name) ||
+      (typeof v.username === "string" && v.username) ||
+      (typeof v.fullname === "string" && v.fullname) ||
+      null;
+    const slug =
+      (typeof v.urlToken === "string" && v.urlToken) ||
+      (typeof v.id === "string" && v.id) ||
+      null;
+    return { name: clean(name), slug: slug?.trim() || null };
   }
   function viewerStateBundle(): { name: string | null; slug: string | null } {
     try {
       const initial = (window as unknown as { __INITIAL_STATE__?: Record<string, unknown> })
         .__INITIAL_STATE__;
       const viewer = initial?.viewer ?? initial?.currentUser ?? initial?.user;
-      if (!viewer || typeof viewer !== "object") return { name: null, slug: null };
-      const v = viewer as Record<string, unknown>;
-      const name =
-        (typeof v.name === "string" && v.name) ||
-        (typeof v.username === "string" && v.username) ||
-        (typeof v.fullname === "string" && v.fullname) ||
-        null;
-      const slug =
-        (typeof v.urlToken === "string" && v.urlToken) ||
-        (typeof v.id === "string" && v.id) ||
-        null;
-      return { name: clean(name), slug: slug?.trim() || null };
+      if (viewer && typeof viewer === "object") {
+        const picked = readViewerRecord(viewer as Record<string, unknown>);
+        if (picked.slug || picked.name) return picked;
+      }
     } catch {
-      return { name: null, slug: null };
+      /* ignore */
     }
+    try {
+      const pathSlug = location.pathname.match(/\/people\/([^/?#]+)/i)?.[1] ?? null;
+      const dataEl =
+        document.querySelector('#data[data-state]') ??
+        document.querySelector('[data-state]');
+      const raw = dataEl?.getAttribute("data-state");
+      if (raw) {
+        const state = JSON.parse(raw) as Record<string, unknown>;
+        const viewer = state.viewer ?? state.currentUser ?? state.user;
+        if (viewer && typeof viewer === "object") {
+          const picked = readViewerRecord(viewer as Record<string, unknown>);
+          if (picked.slug || picked.name) return picked;
+        }
+        if (pathSlug) {
+          const entities = state.entities as Record<string, unknown> | undefined;
+          const users = entities?.users as Record<string, Record<string, unknown>> | undefined;
+          const profileUser = users?.[pathSlug];
+          if (profileUser && typeof profileUser === "object") {
+            const picked = readViewerRecord(profileUser);
+            if (picked.name) {
+              return { name: picked.name, slug: pathSlug };
+            }
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return { name: null, slug: null };
   }
   function userMenuName(): string | null {
     const menu = document.querySelector(
