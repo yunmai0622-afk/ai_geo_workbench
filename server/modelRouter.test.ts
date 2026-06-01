@@ -6,15 +6,16 @@ describe("modelRouter", () => {
     vi.unstubAllEnvs();
   });
 
-  it("routes quality_review to deepseek by default", () => {
+  it("routes quality_review to volcengine by default (same as draft_generation)", () => {
     vi.stubEnv("QUALITY_REVIEW_MODEL", "");
-    const deepseek: ModelClient = {
-      name: "deepseek",
+    const volcengine: ModelClient = {
+      name: "volcengine",
       call: vi.fn().mockResolvedValue('{"total":80}'),
     };
-    const router = new ModelRouter({ deepseek });
-    expect(router.getProviderForTask("quality_review")).toBe("deepseek");
-    expect(router.getModel("quality_review")).toBe(deepseek);
+    const router = new ModelRouter({ volcengine });
+    expect(router.getProviderForTask("draft_generation")).toBe("volcengine");
+    expect(router.getProviderForTask("quality_review")).toBe("volcengine");
+    expect(router.getModel("quality_review")).toBe(volcengine);
   });
 
   it("rejects unimplemented claude client with clear error", async () => {
@@ -30,13 +31,13 @@ describe("modelRouter", () => {
   });
 
   it("calls mocked client and returns string", async () => {
-    const deepseek: ModelClient = {
-      name: "deepseek",
+    const volcengine: ModelClient = {
+      name: "volcengine",
       call: vi.fn().mockResolvedValue("ok-response"),
     };
-    const router = new ModelRouter({ deepseek });
+    const router = new ModelRouter({ volcengine });
     const resp = await router.callModel("quality_review", "user prompt", { systemPrompt: "sys" });
     expect(resp.text).toBe("ok-response");
-    expect(deepseek.call).toHaveBeenCalledWith("user prompt", "sys");
+    expect(volcengine.call).toHaveBeenCalledWith("user prompt", "sys");
   });
 });

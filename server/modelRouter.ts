@@ -1,5 +1,5 @@
 /**
- * 模型任务路由（C8-A）：质检走 quality_review → DeepSeek（可环境变量切换，Claude/GPT 预留）
+ * 模型任务路由（C8-A）：质检与正文生成共用 volcengine（OPENAI_*），可经 QUALITY_REVIEW_MODEL 切换
  */
 
 export type ModelTask =
@@ -19,21 +19,23 @@ export interface ModelClient {
 const TASK_DEFAULT_PROVIDER: Record<ModelTask, ModelProviderName> = {
   draft_generation: "volcengine",
   diagnosis: "deepseek",
-  quality_review: "deepseek",
+  quality_review: "volcengine",
   rewrite: "deepseek",
   report: "deepseek",
 };
 
 function resolveProviderFromEnv(task: ModelTask): ModelProviderName {
   if (task === "quality_review") {
-    const v = (process.env.QUALITY_REVIEW_MODEL ?? "deepseek").toLowerCase();
+    const raw = process.env.QUALITY_REVIEW_MODEL?.trim().toLowerCase();
+    const v = raw || TASK_DEFAULT_PROVIDER.quality_review;
     if (v === "claude" || v === "gpt" || v === "deepseek" || v === "volcengine") return v;
-    return "deepseek";
+    return TASK_DEFAULT_PROVIDER.quality_review;
   }
   if (task === "report") {
-    const v = (process.env.REPORT_MODEL ?? "deepseek").toLowerCase();
+    const raw = process.env.REPORT_MODEL?.trim().toLowerCase();
+    const v = raw || TASK_DEFAULT_PROVIDER.report;
     if (v === "claude" || v === "gpt" || v === "deepseek" || v === "volcengine") return v;
-    return "deepseek";
+    return TASK_DEFAULT_PROVIDER.report;
   }
   return TASK_DEFAULT_PROVIDER[task];
 }
