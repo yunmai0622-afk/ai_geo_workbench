@@ -82,7 +82,7 @@ import {
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
 import { type resolveArticleLifecycleView } from "@shared/articleLifecycle";
-import { normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
+import { isLegacyAiGeneratedCoverUrl, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import {
   buildDefaultPlatformStrategy,
   getPlatformRule,
@@ -123,16 +123,6 @@ import {
   LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME,
   type LocalAgentAccountStatusEntry,
 } from "@shared/localAgentAccountSync";
-import {
-  filterWeeklyContentCards,
-  resolveArticleCoverPreviewSrc,
-  resolveArticlePublishLink,
-  resolveContentCardStatus,
-  resolveContentTypeLabel,
-  sortWeeklyContentCardsByQuality,
-  type ContentCardQualitySort,
-  type ContentCardStatusFilter,
-} from "@shared/weeklyContentAssetsDisplay";
 
 type ProjectOption = { id: number; enterpriseName: string };
 
@@ -347,6 +337,22 @@ function articleNeedsCoverSaveHint(article: ArticleRow): boolean {
   return !article.coverBase64?.trim();
 }
 
+function articleCoverPreviewSrc(article: ArticleRow): string | null {
+  if (article.coverBase64?.trim()) {
+    const raw = article.coverBase64.trim();
+    return raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
+  }
+  if (article.coverTemplate && article.coverImageUrl?.trim()) {
+    const url = article.coverImageUrl.trim();
+    if (url.startsWith("data:")) return url;
+  }
+  if (isLegacyAiGeneratedCoverUrl(article.coverImageUrl) && !article.coverTemplate) {
+    return null;
+  }
+  return null;
+}
+
+
 export default function WeeklyContentPage() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
@@ -371,11 +377,6 @@ export default function WeeklyContentPage() {
   );
   const enterpriseProfileRecord = assetSummaryQuery.data?.profile as Record<string, unknown> | undefined;
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
-  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
-  const publishTasksQuery = trpc.publishTasks.listRecentByProject.useQuery(
-    { projectId: selectedProjectId!, limit: 50 },
-    { enabled: Boolean(selectedProjectId) },
-  );
 
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
@@ -428,11 +429,6 @@ export default function WeeklyContentPage() {
   >();
   const [platformProgressErrorMessage, setPlatformProgressErrorMessage] = useState<string>();
   const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
-  const [filterPlatform, setFilterPlatform] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<ContentCardStatusFilter>("all");
-  const [sortQuality, setSortQuality] = useState<ContentCardQualitySort>("none");
-  const [selectedCardIds, setSelectedCardIds] = useState<Set<number>>(() => new Set());
-  const [batchEnqueueBusy, setBatchEnqueueBusy] = useState(false);
 
   const isPublishReadyAccount = (a: PlatformAccountItem) =>
     a.isEnabled &&
@@ -969,8 +965,6 @@ export default function WeeklyContentPage() {
   ]);
 
   const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
-    const publishRecords = publishRecordsQuery.data ?? [];
-    const publishTasks = publishTasksQuery.data?.tasks ?? [];
     return articles
       .filter(a => typeof a.topicId === "number")
       .map(a => {
@@ -980,7 +974,6 @@ export default function WeeklyContentPage() {
         const q = scoresByArticleId.get(a.id);
         const pass = qualityPasses(a, q);
         const published = a.status === "已发布";
-        const statusView = resolveContentCardStatus({ published, publishable: pass });
         const ps = a.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
         const keywords = Array.isArray(ps?.targetAiPlatforms)
           ? (ps.targetAiPlatforms as string[]).filter(x => typeof x === "string")
@@ -994,15 +987,10 @@ export default function WeeklyContentPage() {
           ...publishBaseContext,
           article: a,
         });
-        const platformKey = platformResolved.recognized
-          ? normalizeWeeklyPlatformKey(platformResolved.label)
-          : normalizeWeeklyPlatformKey(a.targetPlatform);
         return {
           id: a.id,
           title: a.title ?? topic?.title ?? "未命名内容",
           targetPlatform: platformResolved.recognized ? platformResolved.label : a.targetPlatform,
-          platformKey,
-          contentTypeLabel: resolveContentTypeLabel(a),
           publishBlockHint: publishReadiness.ready ? null : publishReadiness.message,
           publishNextActionLabel: publishReadiness.ready ? null : publishReadiness.nextActionLabel,
           contentGoal: geoContentTaskSource?.taskDisplayName ?? null,
@@ -1013,81 +1001,16 @@ export default function WeeklyContentPage() {
             topic?.businessReason?.slice(0, 120) ??
             null,
           keywords,
-          statusLabel: statusView.label,
-          statusTone: statusView.tone,
-          statusFilterKey: statusView.filterKey,
+          statusLabel: published ? "已发布" : pass ? "可发布" : "待确认",
+          statusTone: published ? "success" : pass ? "info" : "warning",
           qualityDisplay: resolveQualityDisplay(a),
-          qualityScore: a.geoQualityScore ?? q?.totalScore ?? null,
           strategySummary: formatArticleStrategySummary(a),
-          coverThumbnailSrc: resolveArticleCoverPreviewSrc(a),
-          publishLink: resolveArticlePublishLink({
-            articleId: a.id,
-            publicPath: a.publicPath,
-            publishRecords,
-            publishTasks,
-          }),
           lifecycle: a.lifecycle,
           postPublish: a.postPublish,
           article: a as Record<string, unknown>,
         };
       });
-  }, [
-    articles,
-    topics,
-    tasks,
-    scoresByArticleId,
-    latestDiagnosisGap,
-    geoContentTaskSource,
-    publishBaseContext,
-    publishRecordsQuery.data,
-    publishTasksQuery.data?.tasks,
-  ]);
-
-  const displayContentCards = useMemo((): WeeklyArticleCardModel[] => {
-    const filtered = filterWeeklyContentCards<WeeklyArticleCardModel>(contentCardModels, {
-      platform: filterPlatform,
-      status: filterStatus,
-    });
-    return sortWeeklyContentCardsByQuality(filtered, sortQuality);
-  }, [contentCardModels, filterPlatform, filterStatus, sortQuality]);
-
-  const platformFilterOptions = useMemo(() => {
-    const keys = new Set<string>();
-    for (const card of contentCardModels) {
-      if (card.platformKey) keys.add(card.platformKey);
-      else if (card.targetPlatform?.trim()) keys.add(card.targetPlatform.trim());
-    }
-    return Array.from(keys)
-      .map(key => {
-        const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === key);
-        return { value: key, label: def?.label ?? key };
-      })
-      .sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
-  }, [contentCardModels]);
-
-  const toggleCardSelection = useCallback((articleId: number, checked: boolean) => {
-    setSelectedCardIds(prev => {
-      const next = new Set(prev);
-      if (checked) next.add(articleId);
-      else next.delete(articleId);
-      return next;
-    });
-  }, []);
-
-  const toggleSelectVisibleCards = useCallback(
-    (checked: boolean) => {
-      setSelectedCardIds(prev => {
-        const next = new Set(prev);
-        for (const card of displayContentCards) {
-          if (card.statusFilterKey === "published") continue;
-          if (checked) next.add(card.id);
-          else next.delete(card.id);
-        }
-        return next;
-      });
-    },
-    [displayContentCards],
-  );
+  }, [articles, topics, tasks, scoresByArticleId, latestDiagnosisGap, geoContentTaskSource, publishBaseContext]);
 
   const toggleExpand = (topicId: number) => {
     setExpandedTopicIds(prev => {
@@ -1475,106 +1398,6 @@ export default function WeeklyContentPage() {
     }
   };
 
-  const handleBatchEnqueuePublish = async () => {
-    if (!selectedProjectId || selectedCardIds.size === 0) {
-      toast.error("请先选择要加入发布队列的内容");
-      return;
-    }
-    if (batchEnqueueBusy || anyGenerating) return;
-
-    setBatchEnqueueBusy(true);
-    let successCount = 0;
-    let skippedCount = 0;
-    const taskIdsByArticle = new Map<number, number[]>();
-
-    try {
-      await hydratePublishDialogAgent({ syncToWeb: true });
-      const freshAccountGroups = (((await utils.geo.platformAccounts.list.fetch({ projectId: selectedProjectId }))
-        ?.accounts ?? []) as Array<{ platform: string; accounts: PlatformAccountItem[] }>);
-      const getReadyAccountsFresh = (slug: string) => {
-        const group = freshAccountGroups.find(g => g.platform === slug);
-        return (group?.accounts ?? []).filter(isPublishReadyAccount) as PlatformAccountItem[];
-      };
-      const pickPublishAccountFresh = (slug: string): PlatformAccountItem | null => {
-        const ready = getReadyAccountsFresh(slug);
-        if (ready.length === 0) return null;
-        if (ready.length === 1) return ready[0]!;
-        return null;
-      };
-
-      for (const articleId of Array.from(selectedCardIds)) {
-        const article = articles.find(a => a.id === articleId);
-        if (!article) {
-          skippedCount += 1;
-          continue;
-        }
-        if (article.status === "已发布" || unsavedArticleIds.has(articleId) || shouldBlockPublishForGeoQuality(article)) {
-          skippedCount += 1;
-          continue;
-        }
-        const readiness = evaluatePublishReadiness({
-          ...publishBaseContext,
-          article,
-        });
-        if (!readiness.ready) {
-          skippedCount += 1;
-          continue;
-        }
-        const resolved = getArticlePublishPlatform({
-          generationBasis: article.generationBasis ?? null,
-          targetPlatform: article.targetPlatform,
-          publishPlatform: article.publishPlatform,
-        });
-        const slug =
-          resolved.publishQueueSlug && resolved.supportedByLocalAgent && !resolved.queueBlockedReason
-            ? resolved.publishQueueSlug
-            : null;
-        if (!slug || !isBindingPublishPlatform(slug)) {
-          skippedCount += 1;
-          continue;
-        }
-        const picked = pickPublishAccountFresh(slug);
-        if (!picked) {
-          skippedCount += 1;
-          continue;
-        }
-        try {
-          const res = await createPublishTask.mutateAsync({
-            articleId,
-            platform: slug,
-            projectId: selectedProjectId,
-            platformAccountId: picked.id,
-          });
-          if (res.publishMode !== "local_agent") {
-            skippedCount += 1;
-            continue;
-          }
-          successCount += 1;
-          const existing = taskIdsByArticle.get(articleId) ?? [];
-          existing.push(res.taskId);
-          taskIdsByArticle.set(articleId, existing);
-        } catch {
-          skippedCount += 1;
-        }
-      }
-
-      if (successCount > 0) {
-        toast.success(`已将 ${successCount} 篇内容加入发布队列`);
-        setSelectedCardIds(new Set());
-        for (const [articleId, taskIds] of Array.from(taskIdsByArticle.entries())) {
-          void pollPublishTasksUntilDone(articleId, taskIds);
-        }
-      } else {
-        toast.error("所选内容均未能加入发布队列，请检查发布就绪状态与账号绑定");
-      }
-      if (skippedCount > 0 && successCount > 0) {
-        toast.message(`${skippedCount} 篇未满足发布条件，已跳过`);
-      }
-    } finally {
-      setBatchEnqueueBusy(false);
-    }
-  };
-
   if (!enabled && !projectsLoading) {
     return (
       <div data-testid="weekly-platform-content-page">
@@ -1715,118 +1538,26 @@ export default function WeeklyContentPage() {
 
           {contentCardModels.length > 0 ? (
             <section className="space-y-4" data-testid="weekly-content-cards">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
-                  <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
-                  <label className="sr-only" htmlFor="weekly-filter-platform">
-                    按平台筛选
-                  </label>
-                  <select
-                    id="weekly-filter-platform"
-                    className={aiInput}
-                    value={filterPlatform}
-                    onChange={e => setFilterPlatform(e.target.value)}
-                    data-testid="weekly-filter-platform"
-                  >
-                    <option value="all">全部平台</option>
-                    {platformFilterOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <label className="sr-only" htmlFor="weekly-filter-status">
-                    按状态筛选
-                  </label>
-                  <select
-                    id="weekly-filter-status"
-                    className={aiInput}
-                    value={filterStatus}
-                    onChange={e => setFilterStatus(e.target.value as ContentCardStatusFilter)}
-                    data-testid="weekly-filter-status"
-                  >
-                    <option value="all">全部状态</option>
-                    <option value="publishable">可发布</option>
-                    <option value="draft">草稿</option>
-                    <option value="published">已发布</option>
-                  </select>
-                  <label className="sr-only" htmlFor="weekly-sort-quality">
-                    按质检分排序
-                  </label>
-                  <select
-                    id="weekly-sort-quality"
-                    className={aiInput}
-                    value={sortQuality}
-                    onChange={e => setSortQuality(e.target.value as ContentCardQualitySort)}
-                    data-testid="weekly-sort-quality"
-                  >
-                    <option value="none">默认顺序</option>
-                    <option value="desc">质检分从高到低</option>
-                    <option value="asc">质检分从低到高</option>
-                  </select>
-                </div>
+              <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
+              <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {contentCardModels.map(model => {
+                  const article = articles.find(a => a.id === model.id);
+                  const topicId = article?.topicId;
+                  return (
+                    <WeeklyPlatformArticleCard
+                      key={model.id}
+                      model={model}
+                      disabled={anyGenerating}
+                      onView={() => article && openEditor(article)}
+                      onRegenerate={() => {
+                        if (typeof topicId === "number") void generateOne(topicId);
+                      }}
+                      onEnqueuePublish={() => article && openPublishDialog(article)}
+                    />
+                  );
+                })}
               </div>
-              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className={geoP0Brand.primaryOutline}
-                  data-testid="weekly-select-visible-cards"
-                  onClick={() => toggleSelectVisibleCards(true)}
-                >
-                  全选当前列表
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className={geoP0Brand.primaryOutline}
-                  onClick={() => setSelectedCardIds(new Set())}
-                >
-                  取消选择
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className={geoP0Brand.primary}
-                  disabled={batchEnqueueBusy || anyGenerating || selectedCardIds.size === 0}
-                  data-testid="weekly-batch-enqueue-publish"
-                  onClick={() => void handleBatchEnqueuePublish()}
-                >
-                  {batchEnqueueBusy ? "提交中…" : `批量加入发布队列（${selectedCardIds.size}）`}
-                </Button>
-              </div>
-              {displayContentCards.length === 0 ? (
-                <p className="text-sm text-gray-500" data-testid="weekly-content-cards-empty">
-                  当前筛选条件下暂无内容
-                </p>
-              ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
-                  {displayContentCards.map(model => {
-                    const article = articles.find(a => a.id === model.id);
-                    const topicId = article?.topicId;
-                    return (
-                      <WeeklyPlatformArticleCard
-                        key={model.id}
-                        model={model}
-                        disabled={anyGenerating || batchEnqueueBusy}
-                        selectable
-                        selected={selectedCardIds.has(model.id)}
-                        onSelectedChange={(checked: boolean) => toggleCardSelection(model.id, checked)}
-                        onView={() => article && openEditor(article)}
-                        onRegenerate={() => {
-                          if (typeof topicId === "number") void generateOne(topicId);
-                        }}
-                        onEnqueuePublish={() => article && openPublishDialog(article)}
-                      />
-                    );
-                  })}
-                </div>
-              )}
             </section>
           ) : null}
 
