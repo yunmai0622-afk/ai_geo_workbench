@@ -48,6 +48,7 @@ import {
 } from "@/lib/weeklyPlatformBoard";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl, getSearchFromLocation } from "@/lib/activeProject";
+import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
 import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
@@ -87,6 +88,13 @@ import {
   formatPublishEffectPrediction,
   PUBLISH_EFFECT_PREDICTION_LINES,
 } from "@shared/publishEffectPrediction";
+import {
+  formatPublishSuccessBody,
+  formatPublishSuccessPlatformPhrase,
+  PUBLISH_SUCCESS_NEXT_STEP,
+  PUBLISH_SUCCESS_NOTIFICATION_TITLE,
+  resolvePublishSuccessArticleUrl,
+} from "@shared/publishSuccessNotification";
 import {
   formatPublishEnqueueAccountOptionLabel,
   publishEnqueueLoginStatusLabel,
@@ -137,6 +145,9 @@ import {
   toPlatformContentGenerationError,
   PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE,
 } from "@shared/platformContentGenerationErrors";
+import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
+import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
+import { isSubscriptionLimitMessage, SUBSCRIPTION_LIMIT_CONTENT_MESSAGE } from "@shared/subscriptionLimits";
 import { toUserFacingError, toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
 import {
@@ -216,9 +227,11 @@ type PlatformAccountItem = {
 
 function readGenerateArticleError(err: unknown): string {
   if (err instanceof TRPCClientError) {
+    if (isSubscriptionLimitMessage(err.message)) return err.message;
     return toPlatformContentGenerationError(err.message);
   }
   if (err instanceof Error) {
+    if (isSubscriptionLimitMessage(err.message)) return err.message;
     return toPlatformContentGenerationError(err.message);
   }
   return toPlatformContentGenerationError("");
@@ -401,10 +414,28 @@ function notifyPublishEffectPrediction() {
   });
 }
 
+type PublishSuccessNotice = {
+  platformLabel: string;
+  articleUrl: string | null;
+};
+
+function showPublishSuccessNotification(
+  notice: PublishSuccessNotice,
+  setNotice: (value: PublishSuccessNotice | null) => void,
+) {
+  setNotice(notice);
+  toast.success(PUBLISH_SUCCESS_NOTIFICATION_TITLE, {
+    description: `${formatPublishSuccessBody(notice.platformLabel)}\n下一步：${PUBLISH_SUCCESS_NEXT_STEP}`,
+    duration: 10_000,
+  });
+}
+
 export default function WeeklyContentPage() {
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } = useProjectSelection();
+  const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
+  const contentLimitReached = subscriptionUsageQuery.data?.atLimit.contentArticle ?? false;
 
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
@@ -459,6 +490,7 @@ export default function WeeklyContentPage() {
   const [customCount, setCustomCount] = useState(String(DEFAULT_WEEKLY_GENERATION_COUNT));
   const [countError, setCountError] = useState<string | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [publishSuccessNotice, setPublishSuccessNotice] = useState<PublishSuccessNotice | null>(null);
   const [publishArticle, setPublishArticle] = useState<ArticleRow | null>(null);
   const [manualPublishPlatform, setManualPublishPlatform] = useState<BindingPublishPlatform | "">("");
   const [publishPlatformResolved, setPublishPlatformResolved] = useState<ResolvedArticlePublishPlatform | null>(
@@ -861,6 +893,7 @@ export default function WeeklyContentPage() {
     setSelectedContentTaskId(null);
     setPlatformBatchQueue(null);
     setPlatformBatchRunning(false);
+    setPublishSuccessNotice(null);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -942,6 +975,9 @@ export default function WeeklyContentPage() {
         }
         return { ok: true, userNotice };
       } catch (err) {
+        if (!options?.silentToast && handleSubscriptionLimitMutationError(err)) {
+          return { ok: false, userNotice: null };
+        }
         const msg = readGenerateArticleError(err);
         if (!options?.silentToast) {
           toast.error(msg);
@@ -1737,11 +1773,22 @@ export default function WeeklyContentPage() {
         const manual = tracked.filter(t => t.status === "manual_required");
         const failed = tracked.filter(t => t.status === "failed");
         if (ok.length > 0) {
-          toast.success(
-            ok.length === tracked.length
-              ? "发布成功，文章已标记为已发布"
-              : `${ok.length} 个平台发布成功，${drafts.length} 个已存草稿，${failed.length} 个失败`,
+          showPublishSuccessNotification(
+            {
+              platformLabel: formatPublishSuccessPlatformPhrase(
+                ok.map(t => publishPlatformCustomerLabel(t.platform)),
+              ),
+              articleUrl: resolvePublishSuccessArticleUrl(
+                ok.map(t => t.resultUrl ?? t.publishedUrl),
+              ),
+            },
+            setPublishSuccessNotice,
           );
+          if (ok.length < tracked.length) {
+            toast.message(
+              `${ok.length} 个平台发布成功，${drafts.length} 个已存草稿，${failed.length} 个失败`,
+            );
+          }
         } else if (drafts.length > 0 && failed.length === 0) {
           toast.success("内容已保存为平台草稿，请在平台内确认后正式发布");
         } else if (manual.length > 0 && failed.length === 0 && ok.length === 0) {
@@ -1791,6 +1838,10 @@ export default function WeeklyContentPage() {
       });
     if (!readiness.ready) {
       toast.error(readiness.message);
+      return;
+    }
+    if (activePrePublishChecklist && !activePrePublishChecklist.allPassed) {
+      toast.error(formatPrePublishChecklistBlockMessage(activePrePublishChecklist));
       return;
     }
     await hydratePublishDialogAgent({ syncToWeb: true });
@@ -1954,7 +2005,7 @@ export default function WeeklyContentPage() {
           coverImageUrl: article.coverImageUrl,
           platform: slug,
           article,
-          account: picked,
+          account: { ...picked, platform: slug },
           localAgentAccountValid: localAgentAccountSnapshot.some(
             e => e.platform === slug && e.loginStatus === "valid",
           ),
@@ -2073,7 +2124,7 @@ export default function WeeklyContentPage() {
       coverImageUrl: publishArticle.coverImageUrl,
       platform: publishDialogSlug,
       article: publishArticle,
-      account: account ?? null,
+      account: account ? { ...account, platform: publishDialogSlug } : null,
       localAgentAccountValid,
     });
   }, [
@@ -2118,6 +2169,12 @@ export default function WeeklyContentPage() {
 
   return (
     <div className="space-y-8 pb-12" data-testid="weekly-platform-content-page">
+      {contentLimitReached ? (
+        <SubscriptionUpgradePrompt
+          message={SUBSCRIPTION_LIMIT_CONTENT_MESSAGE}
+          testId="weekly-content-article-limit"
+        />
+      ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-gray-900">平台化内容资产</h1>
@@ -2141,6 +2198,13 @@ export default function WeeklyContentPage() {
           />
         </div>
       </header>
+
+      <PublishSuccessNotificationCard
+        visible={Boolean(publishSuccessNotice)}
+        platformLabel={publishSuccessNotice?.platformLabel ?? ""}
+        articleUrl={publishSuccessNotice?.articleUrl}
+        onDismiss={() => setPublishSuccessNotice(null)}
+      />
 
       {tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
         <p className="text-sm text-red-700">暂时无法加载，请刷新重试</p>

@@ -6,19 +6,13 @@ const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("GEO-V1.1-Post-Publish-Reminder", () => {
-  it("publish center shows post-publish reminder card with next steps", () => {
+  it("publish success notification superseded legacy post-publish reminder card", () => {
     const page = read("client/src/pages/ContentPublishingCenterPage.tsx");
-    const card = read("client/src/components/publishing/PostPublishReminderCard.tsx");
-    expect(page).toContain("PostPublishReminderCard");
-    expect(page).toContain("showPostPublishReminder");
-    expect(page).toContain("buildProjectUrl(\"/inclusion-monitoring\"");
-    expect(card).toContain("内容已发布成功");
-    expect(card).toContain("等待 7 天让 AI 平台收录内容");
-    expect(card).toContain("在收录监测页执行 AI 实测");
-    expect(card).toContain("对比发布前后的品牌提及率变化");
-    expect(card).toContain("去收录监测");
-    expect(card).toContain("知道了");
-    expect(card).toContain("post-publish-reminder-go-monitoring");
-    expect(card).toContain("post-publish-reminder-dismiss");
+    const card = read("client/src/components/publishing/PublishSuccessNotificationCard.tsx");
+    expect(page).toContain("PublishSuccessNotificationCard");
+    expect(page).not.toContain("PostPublishReminderCard");
+    expect(card).toContain("PUBLISH_SUCCESS_NOTIFICATION_TITLE");
+    expect(card).toContain("PUBLISH_SUCCESS_NEXT_STEP");
+    expect(card).toContain("PUBLISH_SUCCESS_VIEW_ARTICLE_LABEL");
   });
 });

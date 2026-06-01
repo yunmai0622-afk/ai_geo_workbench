@@ -54,6 +54,7 @@ import {
   resolvePublishSuccessArticleUrl,
 } from "@shared/publishSuccessNotification";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 type PublishSuccessNotice = {
