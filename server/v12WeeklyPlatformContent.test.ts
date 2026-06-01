@@ -52,7 +52,11 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
     expect(weekly).toContain("不支持一稿多发");
     expect(weekly).toContain("platform-content-progress");
     expect(weekly).toContain("PLATFORM_CONTENT_PROGRESS_HINT_30S");
-    expect(weekly).not.toMatch(/批量生成|生成内容资产|生成数量/);
+    expect(weekly).not.toMatch(/生成内容资产|生成数量/);
+    expect(weekly).toContain("PlatformBatchGenerationPanel");
+    expect(read("client/src/components/weekly/PlatformBatchGenerationPanel.tsx")).toContain(
+      "一键生成所有平台内容",
+    );
     expect(sourceLib).toContain("场景种草笔记");
     expect(sourceLib).toContain("问题回答长文");
   });
