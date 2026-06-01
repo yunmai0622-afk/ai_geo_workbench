@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { useEffect } from "react";
 import { Redirect } from "wouter";
@@ -34,7 +35,10 @@ export default function AdminStatsPage() {
 
   if (authLoading || (user?.role === "admin" && statsQuery.isLoading)) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">加载中…</div>
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-gray-500">
+        <Spinner className="size-6 text-blue-600" />
+        <p className="text-sm">加载中…</p>
+      </div>
     );
   }
 

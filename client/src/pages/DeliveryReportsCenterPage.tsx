@@ -400,8 +400,9 @@ export function DeliveryReportsCenterPage() {
           </div>
           <Button
             type="button"
+            variant="ai"
             size="lg"
-            className="h-12 shrink-0 bg-sky-600 px-6 text-base font-semibold text-white shadow-md hover:bg-sky-700"
+            className="h-12 shrink-0 px-6 text-base shadow-md"
             disabled={shareLinkBusy || loading}
             onClick={() => void copyCustomerShareLink(selectedProjectId)}
           >

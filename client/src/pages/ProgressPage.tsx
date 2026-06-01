@@ -7,6 +7,7 @@ import {
   AiSection,
 } from "@/components/ai/ProductUi";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
   buildProgressNextActions,
   computeAssetFunnel,
@@ -149,7 +150,10 @@ export default function ProgressPage() {
       {loadError ? (
         <p className="text-sm text-amber-100">暂时无法加载，请刷新重试</p>
       ) : loading ? (
-        <p className="text-sm text-gray-400">加载中...</p>
+        <div className="flex min-h-[240px] flex-col items-center justify-center gap-3">
+          <Spinner className="size-6 text-blue-600" />
+          <p className="text-sm text-gray-400">加载中…</p>
+        </div>
       ) : (
         <>
           <AiSection title="资产进展总览">

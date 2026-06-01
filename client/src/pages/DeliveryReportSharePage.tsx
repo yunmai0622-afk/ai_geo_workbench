@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { DeliveryReportCustomerView } from "@/components/DeliveryReportCustomerView";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { getLoginUrl, isLoginConfigured } from "@/const";
 import {
   buildDeliveryReportConclusionLine,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/deliveryReportDisplay";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
+import { mapCompetitorAnalysisForDeliveryReport } from "@shared/deliveryReportCompetitor";
 import { BarChart3 } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import { useLocation, useRoute } from "wouter";
@@ -52,8 +54,9 @@ function ShareLoginGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 text-gray-600">
-        正在加载报告…
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-gray-100 text-gray-600">
+        <Spinner className="size-6 text-blue-600" />
+        <p className="text-sm">正在加载报告…</p>
       </div>
     );
   }
@@ -73,11 +76,11 @@ function ShareLoginGate({ children }: { children: ReactNode }) {
             </p>
           </div>
           {loginConfigured ? (
-            <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-sky-600 text-white hover:bg-sky-700">
+            <Button onClick={() => { window.location.href = getLoginUrl(); }} variant="ai" size="lg" className="w-full">
               登录
             </Button>
           ) : (
-            <Button onClick={() => devLogin.mutate()} disabled={devLogin.isPending} size="lg" className="w-full bg-sky-600 text-white hover:bg-sky-700">
+            <Button onClick={() => devLogin.mutate()} disabled={devLogin.isPending} variant="ai" size="lg" className="w-full">
               {devLogin.isPending ? "正在登录" : "本地开发登录"}
             </Button>
           )}
@@ -104,6 +107,7 @@ function DeliveryReportShareContent() {
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const reportQuery = trpc.geo.reports.latest.useQuery(projectInput, { enabled });
+  const competitorSummaryQuery = trpc.geo.assetLibrary.competitorAnalysisSummary.useQuery(projectInput, { enabled });
 
   const project = (projectsQuery.data ?? []).find(p => p.id === projectId);
   const profile = summaryQuery.data?.profile as Record<string, unknown> | undefined;
@@ -154,6 +158,12 @@ function DeliveryReportShareContent() {
     );
   }, [monitoringQuery.data]);
 
+  const competitorComparison = useMemo(() => {
+    const summary = competitorSummaryQuery.data;
+    if (!summary || summary.competitors.length === 0) return null;
+    return mapCompetitorAnalysisForDeliveryReport(summary);
+  }, [competitorSummaryQuery.data]);
+
   if (!enabled) {
     return (
       <div className="mx-auto max-w-3xl bg-gray-100 px-6 py-16 text-gray-700">
@@ -166,7 +176,8 @@ function DeliveryReportShareContent() {
     projectsQuery.isLoading ||
     summaryQuery.isLoading ||
     monitoringQuery.isLoading ||
-    publishRecordsQuery.isLoading;
+    publishRecordsQuery.isLoading ||
+    competitorSummaryQuery.isLoading;
 
   return (
     <DeliveryReportCustomerView
@@ -181,6 +192,7 @@ function DeliveryReportShareContent() {
       contentAssetCount={articles.length}
       aiTestAggregate={aiTestAggregate}
       publishedItems={publishedItems}
+      competitorComparison={competitorComparison}
       loading={loading}
       showEvidenceLinks
       onNavigateEvidence={path => setLocation(path)}

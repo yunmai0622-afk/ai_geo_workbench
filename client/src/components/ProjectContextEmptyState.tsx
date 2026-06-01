@@ -26,7 +26,7 @@ export default function ProjectContextEmptyState({
         <p className="max-w-md text-sm leading-6 text-gray-400">{description}</p>
       </div>
       <Button
-        className="bg-blue-600 text-white hover:bg-blue-700"
+        variant="ai"
         onClick={() => setLocation("/clients")}
         data-testid="go-client-dashboard"
       >

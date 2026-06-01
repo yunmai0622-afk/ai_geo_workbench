@@ -16,6 +16,7 @@ import {
   type SectionStatusTone,
 } from "@/components/enterpriseProfile/types";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { geoP0Brand } from "@/lib/geoP0Visual";
@@ -768,7 +769,12 @@ export default function AssetCenterPage() {
       </header>
 
       {/* ═══ 消息提示 ═══ */}
-      {loading ? <p className="text-sm text-gray-400">正在加载…</p> : null}
+      {loading ? (
+        <div className="flex min-h-[200px] flex-col items-center justify-center gap-3">
+          <Spinner className="size-6 text-blue-600" />
+          <p className="text-sm text-gray-400">正在加载…</p>
+        </div>
+      ) : null}
       {queryError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{queryError}</div>
       ) : null}

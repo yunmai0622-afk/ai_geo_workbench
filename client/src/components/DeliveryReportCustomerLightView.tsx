@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
   buildEvidenceDetailPath,
   formatDeltaPercent,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/deliveryReportLightDisplay";
 import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
 import { useMemo, useRef, type ReactNode } from "react";
+import { DeliveryReportCompetitorSection } from "@/components/DeliveryReportCompetitorSection";
 import type { DeliveryReportCustomerViewProps } from "@/components/DeliveryReportCustomerView";
 
 const REPORT_TITLE = "GEO AI 搜索可见度优化交付报告";
@@ -79,6 +81,7 @@ export function DeliveryReportCustomerLightView({
   aiTestAggregate,
   publishedItems = [],
   suggestionLines,
+  competitorComparison,
   loading,
   showEvidenceLinks = true,
   embedded = false,
@@ -319,7 +322,10 @@ export function DeliveryReportCustomerLightView({
         </LightSection>
 
         {loading ? (
-          <p className="text-sm text-gray-600">正在加载报告内容…</p>
+          <div className="flex items-center gap-2 py-8 text-gray-600">
+            <Spinner className="size-5 text-blue-600" />
+            <p className="text-sm">正在加载报告内容…</p>
+          </div>
         ) : (
           <>
             {/* 区块 5：AI 实测证据 */}
@@ -328,7 +334,7 @@ export function DeliveryReportCustomerLightView({
                 <div className="rounded-xl border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-600">
                   暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以建立可追溯的可见度基线。
                   {showMonitoringCta && onGoMonitoring ? (
-                    <Button variant="default" className="mt-4 h-11 w-full bg-sky-600 hover:bg-sky-700 sm:w-auto" onClick={onGoMonitoring}>
+                    <Button variant="ai" className="mt-4 h-11 w-full sm:w-auto" onClick={onGoMonitoring}>
                       前往收录监测实测
                     </Button>
                   ) : null}
@@ -372,8 +378,8 @@ export function DeliveryReportCustomerLightView({
                           {showEvidenceLinks && onNavigateEvidence ? (
                             <Button
                               size="sm"
-                              variant="outline"
-                              className="h-11 shrink-0 border-sky-200 text-sky-800 hover:bg-sky-50"
+                              variant="aiOutline"
+                              className="h-11 shrink-0"
                               onClick={() =>
                                 onNavigateEvidence(
                                   buildEvidenceLink
@@ -392,8 +398,9 @@ export function DeliveryReportCustomerLightView({
 
                   <Button
                     type="button"
+                    variant="ai"
                     disabled={aiTestAggregate.keySamples.length === 0}
-                    className="h-11 w-full bg-sky-600 hover:bg-sky-700 disabled:opacity-40 sm:w-auto"
+                    className="h-11 w-full disabled:opacity-40 sm:w-auto"
                     onClick={scrollToEvidence}
                   >
                     查看原始 AI 回答证据
@@ -475,7 +482,21 @@ export function DeliveryReportCustomerLightView({
               </LightSection>
             ) : null}
 
-            {/* 区块 7：本轮新增 AI 搜索资产 */}
+            {/* 区块 7：竞品对比 */}
+            <LightSection
+              title="竞品对比"
+              description="对比本品牌与主要竞品在 AI 实测中的提及情况，以及竞品公开内容分布。"
+            >
+              {competitorComparison ? (
+                <DeliveryReportCompetitorSection data={competitorComparison} />
+              ) : (
+                <p className="text-sm text-gray-600" data-testid="delivery-report-competitor-empty">
+                  暂无竞品档案。完成品牌建档并补充主要竞品后，可在此查看 AI 实测提及对比与内容分布建议。
+                </p>
+              )}
+            </LightSection>
+
+            {/* 区块 8：本轮新增 AI 搜索资产 */}
             <LightSection title="本轮新增 AI 搜索资产">
               {publishedItems.length === 0 ? (
                 <p className="text-sm text-gray-600">本轮暂无发布记录</p>
@@ -506,7 +527,7 @@ export function DeliveryReportCustomerLightView({
               )}
             </LightSection>
 
-            {/* 区块 8：下一轮优化动作 */}
+            {/* 区块 9：下一轮优化动作 */}
             <LightSection title="下一轮优化动作">
               {actionLines.length === 0 ? (
                 <p className="text-sm text-gray-600">建议完成更多 AI 实测后更新优化动作。</p>
