@@ -11,6 +11,8 @@ import {
 import { ensureProjectsOwnerUserIdColumnOnce } from "./ensureProjectsOwnerUserId";
 import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
 import { mergeLinkAccessIntoRawJson } from "@shared/inclusionMonitoringDisplay";
+import { aggregateT0AiTestRunMetrics } from "@shared/t0AiTestRunMetrics";
+import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
 import { and, asc, desc, eq, inArray, like, not } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -104,6 +106,11 @@ import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
+import {
+  getQuestionTemplateById,
+  listQuestionTemplates,
+  resolveFilledQuestionTemplatePrompt,
+} from "./questionTemplateService";
 import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
 import { calculateRetestComparison } from "./geoRetestCalculator";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
@@ -1057,7 +1064,7 @@ const geoRouter = router({
         .orderBy(desc(projects.createdAt));
 
       const projectIds = accessibleIds;
-      const [articleRows, publishRows, monitoringRows, analysisRows, scoreRows] = await Promise.all([
+      const [articleRows, publishRows, monitoringRows, analysisRows, scoreRows, t0RoundRows] = await Promise.all([
         db
           .select({ projectId: geoArticles.projectId })
           .from(geoArticles)
@@ -1090,6 +1097,20 @@ const geoRouter = router({
           .from(geoScores)
           .where(inArray(geoScores.projectId, projectIds))
           .orderBy(desc(geoScores.createdAt)),
+        db
+          .select({
+            id: testRounds.id,
+            projectId: testRounds.projectId,
+            roundType: testRounds.roundType,
+            roundName: testRounds.roundName,
+            status: testRounds.status,
+            platforms: testRounds.platforms,
+            questionsCount: testRounds.questionsCount,
+            runsPerQuestion: testRounds.runsPerQuestion,
+            finishedAt: testRounds.finishedAt,
+          })
+          .from(testRounds)
+          .where(and(inArray(testRounds.projectId, projectIds), eq(testRounds.roundType, "T0_BASELINE"))),
       ]);
 
       const articleCountMap = new Map<number, number>();
@@ -1118,21 +1139,82 @@ const geoRouter = router({
         }
       }
 
-      return allProjects.map(p => ({
-        id: p.id,
-        enterpriseName: p.enterpriseName,
-        industry: p.industry,
-        website: p.website,
-        region: p.region,
-        status: p.status,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-        articleCount: articleCountMap.get(p.id) ?? 0,
-        publishCount: publishCountMap.get(p.id) ?? 0,
-        aiTestCount: aiTestCountMap.get(p.id) ?? 0,
-        lastDiagnosisAt: lastDiagnosisMap.get(p.id) ?? null,
-        latestGeoScore: latestScoreMap.get(p.id) ?? null,
-      }));
+      const t0RoundsByProject = new Map<number, TestRoundSummary[]>();
+      for (const row of t0RoundRows) {
+        const list = t0RoundsByProject.get(row.projectId) ?? [];
+        list.push(row as TestRoundSummary);
+        t0RoundsByProject.set(row.projectId, list);
+      }
+      const latestT0RoundByProject = new Map<
+        number,
+        { roundId: string; finishedAt: Date | null; mentionRate: number | null }
+      >();
+      for (const pid of Array.from(t0RoundsByProject.keys())) {
+        const rounds = t0RoundsByProject.get(pid) ?? [];
+        const baseRound = findLatestCompletedRound(rounds, "T0_BASELINE");
+        if (baseRound) {
+          latestT0RoundByProject.set(pid, {
+            roundId: baseRound.id,
+            finishedAt: baseRound.finishedAt ? new Date(baseRound.finishedAt) : null,
+            mentionRate: null,
+          });
+        }
+      }
+      const t0RoundIds = Array.from(latestT0RoundByProject.values()).map(entry => entry.roundId);
+      if (t0RoundIds.length > 0) {
+        const t0Runs = await db
+          .select({
+            roundId: aiTestRuns.roundId,
+            mentionedCompany: aiTestRuns.mentionedCompany,
+            recommendedCompany: aiTestRuns.recommendedCompany,
+          })
+          .from(aiTestRuns)
+          .where(inArray(aiTestRuns.roundId, t0RoundIds));
+        const runsByRound = new Map<string, typeof t0Runs>();
+        for (const run of t0Runs) {
+          const bucket = runsByRound.get(run.roundId) ?? [];
+          bucket.push(run);
+          runsByRound.set(run.roundId, bucket);
+        }
+        for (const pid of Array.from(latestT0RoundByProject.keys())) {
+          const entry = latestT0RoundByProject.get(pid);
+          if (!entry) continue;
+          const metrics = aggregateT0AiTestRunMetrics(runsByRound.get(entry.roundId) ?? []);
+          latestT0RoundByProject.set(pid, {
+            ...entry,
+            mentionRate: metrics?.mentionRate ?? null,
+          });
+        }
+      }
+
+      return allProjects.map(p => {
+        const t0 = latestT0RoundByProject.get(p.id);
+        const lastDiagnosisAt = lastDiagnosisMap.get(p.id) ?? null;
+        const lastMeasuredAt =
+          t0?.finishedAt && lastDiagnosisAt
+            ? t0.finishedAt > lastDiagnosisAt
+              ? t0.finishedAt
+              : lastDiagnosisAt
+            : t0?.finishedAt ?? lastDiagnosisAt ?? null;
+
+        return {
+          id: p.id,
+          enterpriseName: p.enterpriseName,
+          industry: p.industry,
+          website: p.website,
+          region: p.region,
+          status: p.status,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+          articleCount: articleCountMap.get(p.id) ?? 0,
+          publishCount: publishCountMap.get(p.id) ?? 0,
+          aiTestCount: aiTestCountMap.get(p.id) ?? 0,
+          lastDiagnosisAt,
+          lastMeasuredAt,
+          latestGeoScore: latestScoreMap.get(p.id) ?? null,
+          t0BrandMentionRate: t0?.mentionRate ?? null,
+        };
+      });
     }),
   }),
 
@@ -1886,6 +1968,41 @@ const geoRouter = router({
     }),
   }),
 
+  questionTemplates: router({
+    list: protectedProcedure
+      .input(
+        z
+          .object({
+            platform: z.string().trim().optional(),
+            questionType: z.string().trim().optional(),
+          })
+          .optional(),
+      )
+      .query(async ({ input }) => {
+        const db = await requireDb();
+        const rows = await listQuestionTemplates(db);
+        return rows.filter(row => {
+          if (input?.platform && row.platform !== input.platform) return false;
+          if (input?.questionType && row.questionType !== input.questionType) return false;
+          return true;
+        });
+      }),
+    preview: protectedProcedure
+      .input(z.object({ templateId: z.number().int().positive(), projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        const project = await requireProjectAccess(ctx, input.projectId);
+        const template = await getQuestionTemplateById(db, input.templateId);
+        if (!template) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "内容模板不存在" });
+        }
+        return {
+          template,
+          filledPrompt: resolveFilledQuestionTemplatePrompt(template, project),
+        };
+      }),
+  }),
+
   reports: router({
     latest: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -2335,6 +2452,7 @@ const geoRouter = router({
             contentTaskId: z.number().int().positive().optional(),
             diagnosisFinding: z.string().trim().max(4000).optional(),
             geoGap: z.string().trim().max(4000).optional(),
+            questionTemplateId: z.number().int().positive().optional(),
           })
           .superRefine((val, ctx) => {
             const hasPlatform = Boolean(val.targetPublishPlatform);
@@ -2454,6 +2572,19 @@ const geoRouter = router({
             };
           }
         }
+        let questionTemplateReference: { id: number; title: string; filledPrompt: string } | undefined;
+        if (input.questionTemplateId) {
+          const template = await getQuestionTemplateById(db, input.questionTemplateId);
+          if (!template) {
+            logDuration(topic.projectId, false, "QUESTION_TEMPLATE_NOT_FOUND");
+            throw new TRPCError({ code: "NOT_FOUND", message: "所选内容模板不存在" });
+          }
+          questionTemplateReference = {
+            id: template.id,
+            title: template.title,
+            filledPrompt: resolveFilledQuestionTemplatePrompt(template, project),
+          };
+        }
         draft = await generateGeoArticleDraft({
           project,
           topic: { ...topic, id: topic.id, articleType: topic.articleType as typeof articleTypes[number], optimizationTaskId: task.id },
@@ -2463,6 +2594,7 @@ const geoRouter = router({
           assetLibrary,
           platformStrategy,
           geoContentTaskTrace,
+          questionTemplateReference,
         });
       } catch (error) {
         const raw = error instanceof Error ? error.message : "GEO 文章生成失败";

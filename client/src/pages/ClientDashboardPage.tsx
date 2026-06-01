@@ -115,17 +115,17 @@ function ProjectCard({
       <p className="mb-3 text-[13px] text-gray-500">{regionIndustry}</p>
 
       {/* 指标区 */}
-      <div className="mb-3 grid grid-cols-3 gap-2 rounded-lg bg-gray-50 px-3 py-2.5">
+      <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 px-3 py-2.5 sm:grid-cols-3">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">GEO 分</p>
+          <p className="text-xs font-medium text-gray-500">GEO 分</p>
           <p className="text-sm font-bold tabular-nums text-gray-900">{geoScore}</p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">提及率</p>
+          <p className="text-xs font-medium text-gray-500">提及率</p>
           <p className="text-sm font-bold tabular-nums text-gray-900">{hasTestData ? "—" : "--"}</p>
         </div>
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">推荐率</p>
+        <div className="hidden sm:block">
+          <p className="text-xs font-medium text-gray-500">推荐率</p>
           <p className="text-sm font-bold tabular-nums text-gray-900">{hasTestData ? "—" : "--"}</p>
         </div>
       </div>
@@ -150,10 +150,10 @@ function ProjectCard({
       </p>
 
       {/* 底部 CTA */}
-      <div className="mt-auto flex justify-end">
+      <div className="mt-auto flex sm:justify-end">
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-[13px] font-medium text-blue-700 transition-all hover:bg-blue-100"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition-all hover:bg-blue-100 sm:w-auto sm:justify-start"
           data-testid="enter-workspace-button"
           onClick={(e) => {
             e.stopPropagation();
@@ -234,8 +234,8 @@ export default function ClientDashboardPage() {
       setActiveProjectId(created.id);
       setCreateOpen(false);
       setCreateForm(emptyCreateForm());
-      toast.success("企业项目已创建，请继续完成品牌资料建档");
-      setLocation(buildProjectUrl("/enterprise-profile", created.id));
+      toast.success("企业项目已创建，请按引导完成设置");
+      setLocation(buildProjectUrl("/onboarding", created.id));
     } catch (err) {
       console.error("[create-client-project]", err);
       toast.error(toUserFacingCreateProjectError(err));
@@ -247,15 +247,15 @@ export default function ClientDashboardPage() {
       <ClientsHubTopBar />
 
       {/* 标题区：左标题 + 右按钮 */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
           <h1 className={geoTypography.pageTitle}>企业项目</h1>
           <p className="max-w-2xl text-sm leading-relaxed text-gray-500">
             管理每个企业的 AI 搜索可见性、内容资产、监测进展与交付报告
           </p>
         </div>
         <Button
-          className={cn("shrink-0 rounded-xl px-5 py-2.5", geoP0Brand.primary)}
+          className={cn("w-full shrink-0 rounded-xl px-5 py-2.5 sm:w-auto", geoP0Brand.primary)}
           data-testid="create-client-project-button"
           onClick={() => setCreateOpen(true)}
         >
@@ -283,7 +283,7 @@ export default function ClientDashboardPage() {
               type="button"
               onClick={() => setStatusFilter(f.key)}
               className={cn(
-                "rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all",
+                "min-h-9 rounded-lg px-3.5 py-2 text-sm font-medium transition-all",
                 statusFilter === f.key
                   ? "bg-blue-600 text-white shadow-sm"
                   : "bg-white text-gray-600 border border-gray-200 hover:border-blue-200 hover:text-blue-700",

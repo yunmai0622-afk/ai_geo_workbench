@@ -62,6 +62,35 @@ export function deriveClientProjectCardDisplay(project: ClientProjectCardInput):
   return { stageLabel: "待建档", nextStep: "完成 GEO 建档，补齐企业基础信息" };
 }
 
+export function deriveClientProjectEightStepLabel(project: ClientProjectCardInput): string {
+  if (project.publishCount > 0 && project.aiTestCount > 0) return "交付";
+  if (project.publishCount > 0) return "监测";
+  if (project.articleCount > 0) return "发布";
+  if (project.latestGeoScore != null) return "内容";
+  if (project.status === "analysis_done" || project.status === "score_done") return "内容";
+  if (project.status === "responses_imported") return "评分";
+  if (project.aiTestCount > 0) return "实测";
+  return "建档";
+}
+
+export function formatBrandMentionRate(rate: number | null | undefined): string {
+  if (rate == null || Number.isNaN(rate)) return "--";
+  return `${Math.round(rate * 100)}%`;
+}
+
+export function formatMeasuredAt(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function formatGeoScore(score: number | null | undefined): string {
   if (score == null || Number.isNaN(score)) return "--";
   return String(Math.round(score));

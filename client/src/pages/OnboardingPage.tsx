@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getLoginUrl, isLoginConfigured } from "@/const";
-import { buildProjectUrl, setActiveProjectId } from "@/lib/activeProject";
+import { buildProjectUrl, getActiveProjectId, setActiveProjectId, syncActiveProjectIdFromUrl } from "@/lib/activeProject";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { ENTERPRISE_INDUSTRY_OPTIONS } from "@shared/enterpriseProfileIndustry";
@@ -221,7 +221,8 @@ export default function OnboardingPage() {
     );
   }
 
-  if (user && projects.length > 0) {
+  const continuingProjectId = projectId ?? getActiveProjectId();
+  if (user && projects.length > 0 && !continuingProjectId) {
     return <Redirect to="/clients" />;
   }
 
