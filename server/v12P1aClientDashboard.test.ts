@@ -9,7 +9,8 @@ describe("P1-A client dashboard", () => {
   it("clientDashboard listProjectsSummary returns project summaries", () => {
     const router = read("server/routers.ts");
     expect(router).toContain("clientDashboard: router({");
-    expect(router).toContain("listProjectsSummary: protectedProcedure.query");
+    expect(router).toContain("listProjectsSummary: protectedProcedure");
+    expect(router).toContain('archived: z.boolean().optional()');
     expect(router).toContain("articleCountMap");
     expect(router).toContain("geoInclusionMonitoringRecords.aiTestResults");
     expect(router.indexOf("from(geoInclusionMonitoringRecords)", router.indexOf("clientDashboard"))).toBeGreaterThan(-1);

@@ -1,5 +1,11 @@
 import { ClientsHubTopBar } from "@/components/clients/ClientsHubTopBar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
 import { cn } from "@/lib/utils";
 import {
@@ -22,7 +28,7 @@ import {
 } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { toUserFacingCreateProjectError } from "@shared/userFacingMutationErrors";
-import { ArrowRight, Building2, Loader2, Plus, Search } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowRight, Building2, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -43,9 +49,16 @@ type ProjectSummary = {
   lastMeasuredAt: Date | null;
   latestGeoScore: number | null;
   t0BrandMentionRate: number | null;
+  archivedAt: Date | null;
 };
 
-/* ─── 状态筛选标签 ─── */
+const ARCHIVE_VIEW_FILTERS = [
+  { key: "active", label: "进行中" },
+  { key: "archived", label: "已归档" },
+] as const;
+
+type ArchiveViewKey = (typeof ARCHIVE_VIEW_FILTERS)[number]["key"];
+
 const STATUS_FILTERS = [
   { key: "all", label: "全部" },
   { key: "profiling", label: "建档中" },
@@ -76,13 +89,20 @@ function matchFilter(project: ProjectSummary, filter: FilterKey): boolean {
   }
 }
 
-/* ─── 项目卡片 ─── */
 function ProjectCard({
   project,
   onEnter,
+  showArchived,
+  onArchive,
+  onUnarchive,
+  archivePending,
 }: {
   project: ProjectSummary;
   onEnter: (id: number) => void;
+  showArchived: boolean;
+  onArchive: (id: number) => void;
+  onUnarchive: (id: number) => void;
+  archivePending: boolean;
 }) {
   const { nextStep } = deriveClientProjectCardDisplay(project);
   const pipelineStep = deriveClientProjectEightStepLabel(project);
@@ -101,9 +121,47 @@ function ProjectCard({
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <h3 className="truncate text-[15px] font-semibold text-gray-900">{project.enterpriseName}</h3>
-        <span className={cn(stageBadgeClass(pipelineStep), "shrink-0")} data-testid="client-project-pipeline-step">
-          第 {pipelineStep} 步
-        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          <span className={cn(stageBadgeClass(pipelineStep))} data-testid="client-project-pipeline-step">
+            第 {pipelineStep} 步
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                data-testid="client-project-card-menu"
+                aria-label="项目操作"
+                onClick={e => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 rounded-xl" onClick={e => e.stopPropagation()}>
+              {showArchived ? (
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  data-testid="client-project-unarchive"
+                  disabled={archivePending}
+                  onClick={() => onUnarchive(project.id)}
+                >
+                  <ArchiveRestore className="mr-2 h-4 w-4" />
+                  取消归档
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  data-testid="client-project-archive"
+                  disabled={archivePending}
+                  onClick={() => onArchive(project.id)}
+                >
+                  <Archive className="mr-2 h-4 w-4" />
+                  归档
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <p className="mb-3 text-[13px] text-gray-500" data-testid="client-project-industry">
@@ -134,13 +192,12 @@ function ProjectCard({
         {nextStep}
       </p>
 
-      {/* 底部 CTA */}
       <div className="mt-auto flex sm:justify-end">
         <button
           type="button"
           className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition-all hover:bg-blue-100 sm:w-auto sm:justify-start"
           data-testid="enter-workspace-button"
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             onEnter(project.id);
           }}
@@ -169,13 +226,20 @@ const emptyCreateForm = (): CreateProjectForm => ({
 
 export default function ClientDashboardPage() {
   const [search, setSearch] = useState("");
+  const [archiveView, setArchiveView] = useState<ArchiveViewKey>("active");
   const [statusFilter, setStatusFilter] = useState<FilterKey>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateProjectForm>(emptyCreateForm);
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
-  const { data: projects = [], isLoading } = trpc.geo.clientDashboard.listProjectsSummary.useQuery();
+  const showArchived = archiveView === "archived";
+  const { data: projects = [], isLoading } = trpc.geo.clientDashboard.listProjectsSummary.useQuery({
+    archived: showArchived,
+  });
   const createProject = trpc.geo.projects.create.useMutation();
+  const archiveProject = trpc.geo.projects.archive.useMutation();
+  const unarchiveProject = trpc.geo.projects.unarchive.useMutation();
+  const archivePending = archiveProject.isPending || unarchiveProject.isPending;
 
   const filtered = useMemo(() => {
     return projects.filter(p => {
@@ -190,6 +254,35 @@ export default function ClientDashboardPage() {
     setActiveProjectId(projectId);
     setLocation(buildProjectUrl("/workspace", projectId));
   };
+
+  async function invalidateProjectLists() {
+    await Promise.all([
+      utils.geo.clientDashboard.listProjectsSummary.invalidate(),
+      utils.geo.projects.list.invalidate(),
+    ]);
+  }
+
+  async function handleArchive(projectId: number) {
+    try {
+      await archiveProject.mutateAsync({ id: projectId });
+      await invalidateProjectLists();
+      toast.success("项目已归档，可在「已归档」中查看");
+    } catch (err) {
+      console.error("[archive-client-project]", err);
+      toast.error("归档失败，请稍后重试");
+    }
+  }
+
+  async function handleUnarchive(projectId: number) {
+    try {
+      await unarchiveProject.mutateAsync({ id: projectId });
+      await invalidateProjectLists();
+      toast.success("已取消归档，项目回到进行中列表");
+    } catch (err) {
+      console.error("[unarchive-client-project]", err);
+      toast.error("取消归档失败，请稍后重试");
+    }
+  }
 
   async function handleCreateProject() {
     const enterpriseName = createForm.enterpriseName.trim();
@@ -231,7 +324,6 @@ export default function ClientDashboardPage() {
     <div className="mx-auto max-w-[1280px] space-y-6" data-testid="client-dashboard-page">
       <ClientsHubTopBar />
 
-      {/* 标题区：左标题 + 右按钮 */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <h1 className={geoTypography.pageTitle}>企业项目</h1>
@@ -249,7 +341,6 @@ export default function ClientDashboardPage() {
         </Button>
       </div>
 
-      {/* 搜索 + 状态筛选 */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-[380px]">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -260,6 +351,23 @@ export default function ClientDashboardPage() {
             className="rounded-xl border-gray-200 bg-white pl-10 shadow-sm transition-shadow focus:shadow-md"
             data-testid="client-dashboard-search"
           />
+        </div>
+        <div className="flex flex-wrap gap-1.5" data-testid="client-dashboard-archive-filters">
+          {ARCHIVE_VIEW_FILTERS.map(f => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setArchiveView(f.key)}
+              className={cn(
+                "min-h-9 rounded-lg px-3.5 py-2 text-sm font-medium transition-all",
+                archiveView === f.key
+                  ? "bg-gray-900 text-white shadow-sm"
+                  : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:text-gray-900",
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {STATUS_FILTERS.map(f => (
@@ -280,7 +388,6 @@ export default function ClientDashboardPage() {
         </div>
       </div>
 
-      {/* 卡片网格 / 加载 / 空状态 */}
       {isLoading ? (
         <div className="flex min-h-[30vh] items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -295,15 +402,25 @@ export default function ClientDashboardPage() {
           </div>
           <div className="space-y-2 text-center">
             <h2 className="text-lg font-semibold text-gray-900">
-              {search || statusFilter !== "all" ? "没有匹配的企业项目" : "还没有企业项目"}
+              {showArchived
+                ? search || statusFilter !== "all"
+                  ? "没有匹配的已归档项目"
+                  : "暂无已归档项目"
+                : search || statusFilter !== "all"
+                  ? "没有匹配的企业项目"
+                  : "还没有企业项目"}
             </h2>
             <p className="max-w-md text-sm leading-relaxed text-gray-500">
-              {search || statusFilter !== "all"
-                ? "请调整搜索条件或筛选状态。"
-                : "请先创建一个企业项目，完成基础资料建档后，即可发起 AI 搜索可见性诊断。"}
+              {showArchived
+                ? search || statusFilter !== "all"
+                  ? "请调整搜索条件或筛选状态。"
+                  : "归档后的项目会显示在这里，可随时取消归档恢复为进行中。"
+                : search || statusFilter !== "all"
+                  ? "请调整搜索条件或筛选状态。"
+                  : "请先创建一个企业项目，完成基础资料建档后，即可发起 AI 搜索可见性诊断。"}
             </p>
           </div>
-          {!search && statusFilter === "all" ? (
+          {!search && statusFilter === "all" && !showArchived ? (
             <Button
               className={cn("rounded-xl px-5", geoP0Brand.primary)}
               data-testid="create-client-project-empty-button"
@@ -326,12 +443,19 @@ export default function ClientDashboardPage() {
           )}
         >
           {filtered.map(project => (
-            <ProjectCard key={project.id} project={project} onEnter={handleEnter} />
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onEnter={handleEnter}
+              showArchived={showArchived}
+              onArchive={id => void handleArchive(id)}
+              onUnarchive={id => void handleUnarchive(id)}
+              archivePending={archivePending}
+            />
           ))}
         </div>
       )}
 
-      {/* 新建企业项目弹窗 */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent
           className="rounded-2xl border-gray-200 bg-white text-gray-900 shadow-xl sm:max-w-md"

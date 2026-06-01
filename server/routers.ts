@@ -14,7 +14,7 @@ import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring"
 import { mergeLinkAccessIntoRawJson } from "@shared/inclusionMonitoringDisplay";
 import { aggregateT0AiTestRunMetrics } from "@shared/t0AiTestRunMetrics";
 import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
-import { and, asc, desc, eq, inArray, like, not } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, like, not } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
@@ -1058,15 +1058,20 @@ const geoRouter = router({
 
   clientDashboard: router({
     /** 客户管理台聚合查询：仅当前用户可访问项目 */
-    listProjectsSummary: protectedProcedure.query(async ({ ctx }) => {
+    listProjectsSummary: protectedProcedure
+      .input(z.object({ archived: z.boolean().optional() }).optional())
+      .query(async ({ ctx, input }) => {
       const db = await requireDb();
       const accessibleIds = await listAccessibleProjectIds(ctx);
       if (accessibleIds.length === 0) return [];
 
+      const showArchived = input?.archived === true;
+      const archiveCondition = showArchived ? isNotNull(projects.archivedAt) : isNull(projects.archivedAt);
+
       const allProjects = await db
         .select()
         .from(projects)
-        .where(inArray(projects.id, accessibleIds))
+        .where(and(inArray(projects.id, accessibleIds), archiveCondition))
         .orderBy(desc(projects.createdAt));
 
       const projectIds = accessibleIds;
@@ -1210,6 +1215,7 @@ const geoRouter = router({
           website: p.website,
           region: p.region,
           status: p.status,
+          archivedAt: p.archivedAt,
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
           articleCount: articleCountMap.get(p.id) ?? 0,
@@ -1231,8 +1237,20 @@ const geoRouter = router({
       return db
         .select()
         .from(projects)
-        .where(eq(projects.ownerUserId, userId))
+        .where(and(eq(projects.ownerUserId, userId), isNull(projects.archivedAt)))
         .orderBy(desc(projects.createdAt));
+    }),
+    archive: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      await requireProjectAccess(ctx, input.id);
+      await db.update(projects).set({ archivedAt: new Date() }).where(eq(projects.id, input.id));
+      return { success: true } as const;
+    }),
+    unarchive: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      await requireProjectAccess(ctx, input.id);
+      await db.update(projects).set({ archivedAt: null }).where(eq(projects.id, input.id));
+      return { success: true } as const;
     }),
     create: protectedProcedure.input(projectInput).mutation(async ({ ctx, input }) => {
       await ensureProjectsOwnerUserIdColumnOnce();
@@ -2327,6 +2345,26 @@ const geoRouter = router({
         getArticleReviewFlagsByProject(db, input.projectId),
         getArticleRewriteFlagsByProject(db, input.projectId),
       ]);
+      const articleIds = uniqueRows.map(row => row.id);
+      const publishRows =
+        articleIds.length > 0
+          ? await db
+              .select({
+                articleId: geoPublishRecords.articleId,
+                publishedAt: geoPublishRecords.publishedAt,
+              })
+              .from(geoPublishRecords)
+              .where(
+                and(eq(geoPublishRecords.projectId, input.projectId), inArray(geoPublishRecords.articleId, articleIds)),
+              )
+              .orderBy(desc(geoPublishRecords.publishedAt))
+          : [];
+      const lastPublishRecordAtByArticle = new Map<number, Date>();
+      for (const row of publishRows) {
+        if (!lastPublishRecordAtByArticle.has(row.articleId)) {
+          lastPublishRecordAtByArticle.set(row.articleId, row.publishedAt);
+        }
+      }
       return uniqueRows.map(article => {
         const task = article.optimizationTaskId ? taskById.get(article.optimizationTaskId) : undefined;
         const card = task ? parseOptimizationTaskCard(task.executionSuggestion) : null;
@@ -2346,6 +2384,7 @@ const geoRouter = router({
           publishPlatform: publishFields.publishPlatform,
           contentType,
           lifecycle,
+          lastPublishRecordAt: lastPublishRecordAtByArticle.get(article.id) ?? null,
           postPublish: {
             pendingReview: reviewFlags.pendingReview.has(article.id),
             needsRewrite: rewriteFlags.needsRewrite.has(article.id),
@@ -2760,6 +2799,7 @@ const geoRouter = router({
               ? { recommendedAccountGroup: input.recommendedAccountGroup }
               : {}),
             ...(markQualityStale ? { geoQualityStale: 1 } : {}),
+            ...(contentChanged ? { contentEditedAt: new Date() } : {}),
           })
           .where(eq(geoArticles.id, input.articleId));
         await appendArticleLifecycleEvent(db, input.articleId, {

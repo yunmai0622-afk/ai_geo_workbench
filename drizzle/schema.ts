@@ -356,6 +356,7 @@ export const geoArticles = mysqlTable("geo_articles", {
   contentStrategyType: varchar("contentStrategyType", { length: 50 }),
   publishIdentity: varchar("publishIdentity", { length: 50 }),
   recommendedAccountGroup: varchar("recommendedAccountGroup", { length: 50 }),
+  contentEditedAt: timestamp("contentEditedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
