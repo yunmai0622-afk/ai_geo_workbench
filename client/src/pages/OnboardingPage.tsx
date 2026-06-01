@@ -7,6 +7,7 @@ import { buildProjectUrl, getActiveProjectId, setActiveProjectId, syncActiveProj
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { ENTERPRISE_INDUSTRY_OPTIONS } from "@shared/enterpriseProfileIndustry";
+import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { toUserFacingCreateProjectError } from "@shared/userFacingMutationErrors";
 import { BarChart3, Check, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -229,7 +230,9 @@ export default function OnboardingPage() {
       setStep(2);
     } catch (err) {
       console.error("[onboarding-step1]", err);
-      toast.error(toUserFacingCreateProjectError(err));
+      if (!handleSubscriptionLimitMutationError(err)) {
+        toast.error(toUserFacingCreateProjectError(err));
+      }
     }
   }
 

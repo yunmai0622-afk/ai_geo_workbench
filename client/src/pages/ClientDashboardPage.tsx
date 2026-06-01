@@ -29,7 +29,10 @@ import {
   formatGeoScore,
   formatMeasuredAt,
 } from "@/lib/projectWorkspaceDisplay";
+import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
+import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { trpc } from "@/lib/trpc";
+import { SUBSCRIPTION_LIMIT_PROJECT_MESSAGE } from "@shared/subscriptionLimits";
 import { toUserFacingCreateProjectError } from "@shared/userFacingMutationErrors";
 import { Archive, ArchiveRestore, ArrowRight, Building2, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -239,6 +242,8 @@ export default function ClientDashboardPage() {
   const { data: projects = [], isLoading } = trpc.geo.clientDashboard.listProjectsSummary.useQuery({
     archived: showArchived,
   });
+  const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
+  const projectLimitReached = subscriptionUsageQuery.data?.atLimit.project ?? false;
   const createProject = trpc.geo.projects.create.useMutation();
   const archiveProject = trpc.geo.projects.archive.useMutation();
   const unarchiveProject = trpc.geo.projects.unarchive.useMutation();
@@ -320,7 +325,9 @@ export default function ClientDashboardPage() {
       setLocation(buildProjectUrl("/onboarding", created.id));
     } catch (err) {
       console.error("[create-client-project]", err);
-      toast.error(toUserFacingCreateProjectError(err));
+      if (!handleSubscriptionLimitMutationError(err)) {
+        toast.error(toUserFacingCreateProjectError(err));
+      }
     }
   }
 
@@ -338,12 +345,20 @@ export default function ClientDashboardPage() {
         <Button
           className={cn("w-full shrink-0 rounded-xl px-5 py-2.5 sm:w-auto", geoP0Brand.primary)}
           data-testid="create-client-project-button"
+          disabled={projectLimitReached}
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="mr-1.5 h-4 w-4" />
           新建企业项目
         </Button>
       </div>
+
+      {projectLimitReached ? (
+        <SubscriptionUpgradePrompt
+          message={SUBSCRIPTION_LIMIT_PROJECT_MESSAGE}
+          testId="client-dashboard-project-limit"
+        />
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-[380px]">

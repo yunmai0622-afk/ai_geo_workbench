@@ -36,4 +36,15 @@ describe("GEO-V1.1 subscription plans display", () => {
     expect(settings).toContain("当前套餐");
     expect(settings).toContain("resolveUserSubscriptionPlanId");
   });
+
+  it("basic plan trial limits are enforced server-side", () => {
+    const limits = fs.readFileSync(path.join(root, "shared/subscriptionLimits.ts"), "utf8");
+    expect(limits).toContain("maxProjects: 1");
+    expect(limits).toContain("maxT0Detections: 3");
+    expect(limits).toContain("maxContentArticles: 10");
+    const svc = fs.readFileSync(path.join(root, "server/subscriptionLimits.ts"), "utf8");
+    expect(svc).toContain("assertCanCreateProject");
+    expect(svc).toContain("assertCanRunT0Detection");
+    expect(svc).toContain("assertCanGenerateContent");
+  });
 });

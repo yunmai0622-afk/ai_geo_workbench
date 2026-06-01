@@ -55,7 +55,11 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { trpc } from "@/lib/trpc";
-import { isSubscriptionLimitMessage, SUBSCRIPTION_LIMIT_T0_MESSAGE } from "@shared/subscriptionLimits";
+import {
+  isSubscriptionLimitMessage,
+  SUBSCRIPTION_LIMIT_CONTENT_MESSAGE,
+  SUBSCRIPTION_LIMIT_T0_MESSAGE,
+} from "@shared/subscriptionLimits";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import {
   aggregateAiTestEvidence,
@@ -1531,6 +1535,7 @@ export function AiDiagnosisFlowPage() {
               className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
               disabled={
                 !canOperate ||
+                t0LimitReached ||
                 isT0Running ||
                 running ||
                 generatingQuestions ||
@@ -1577,15 +1582,26 @@ export function AiDiagnosisFlowPage() {
           <p className="mt-2 text-xs text-gray-400">通义千问需 QWEN_API_KEY，文心一言需 WENXIN_API_KEY。</p>
         </div>
 
-        {(t0Message || t0Error) && (
-          <div
-            className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
-              t0Error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            {t0Error || t0Message}
-          </div>
-        )}
+        {t0LimitReached && !t0Error ? (
+          <SubscriptionUpgradePrompt
+            className="mt-4"
+            message={SUBSCRIPTION_LIMIT_T0_MESSAGE}
+            testId="ai-diagnosis-t0-limit"
+          />
+        ) : null}
+
+        {(t0Message || t0Error) &&
+          (t0Error && isSubscriptionLimitMessage(t0Error) ? (
+            <SubscriptionUpgradePrompt className="mt-4" message={t0Error} testId="ai-diagnosis-t0-limit-error" />
+          ) : (
+            <div
+              className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+                t0Error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+              }`}
+            >
+              {t0Error || t0Message}
+            </div>
+          ))}
 
         {isT0Running && t0Progress ? (
           <div
@@ -1867,6 +1883,8 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
   const contentPlanQuery = trpc.geo.contentPlans.latest.useQuery(projectInput, { enabled });
+  const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
+  const contentLimitReached = subscriptionUsageQuery.data?.atLimit.contentArticle ?? false;
   const generateTopics = trpc.geo.articles.topics.generate.useMutation();
   const generateArticle = trpc.geo.articles.generate.useMutation();
   const qualityCheck = trpc.geo.articles.qualityCheck.useMutation();
@@ -2189,6 +2207,10 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
         setMessage(`内容已生成并完成质量检查（${totalScore ?? "—"} 分）。请查看下方质量检查结果。`);
       }
     } catch (err) {
+      if (handleSubscriptionLimitMutationError(err)) {
+        setError(SUBSCRIPTION_LIMIT_CONTENT_MESSAGE);
+        return;
+      }
       setError(contentGenerationErrorMessage(err instanceof Error ? err.message : "生成内容失败") ?? "生成内容失败");
     }
   }
@@ -2295,6 +2317,12 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
         </CardHeader>
         <CardContent className="space-y-5">
           <BusinessPageProjectHeader projectName={selectedProject?.enterpriseName} testId="content-gen-project-header" />
+          {contentLimitReached ? (
+            <SubscriptionUpgradePrompt
+              message={SUBSCRIPTION_LIMIT_CONTENT_MESSAGE}
+              testId="content-generation-article-limit"
+            />
+          ) : null}
           <ActionState message={message} error={error || pageError} />
           {pageLoading ? <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600">正在读取项目、企业资料、诊断结果、优化任务、内容计划、选题、文章和已有质量分...</div> : null}
           {projects.length === 0 ? <EmptyStep title="暂无项目" description="请先在客户管理台新建或选择客户项目，再完成内容诊断后生成内容。" /> : null}

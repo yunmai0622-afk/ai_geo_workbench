@@ -1,3 +1,4 @@
+import { isSubscriptionLimitMessage } from "./subscriptionLimits";
 import {
   looksLikeInternalTechnicalError,
   toUserFacingErrorFromUnknown,
@@ -12,5 +13,9 @@ export function looksLikeInternalDatabaseError(message: string): boolean {
 }
 
 export function toUserFacingCreateProjectError(err: unknown): string {
+  if (err && typeof err === "object" && "message" in err) {
+    const message = String((err as { message: unknown }).message ?? "").trim();
+    if (isSubscriptionLimitMessage(message)) return message;
+  }
   return toUserFacingErrorFromUnknown(err, CREATE_PROJECT_FAILED_USER_MESSAGE);
 }
