@@ -1,4 +1,5 @@
 import { P0Card } from "@/components/geo/P0UiPrimitives";
+import { PlatformContentGuidelineHelp } from "@/components/weekly/PlatformContentGuidelineHelp";
 import { Button } from "@/components/ui/button";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import {
@@ -46,7 +47,14 @@ export function PlatformContentBoard({
           const hasContent = counts.pendingConfirm + counts.ready + counts.published > 0;
           return (
             <P0Card key={def.key} testId={`weekly-platform-card-${def.key}`} className="flex flex-col">
-              <h3 className="text-base font-semibold text-gray-900">{def.label}</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-base font-semibold text-gray-900">{def.label}</h3>
+                <PlatformContentGuidelineHelp
+                  platformLabel={def.label}
+                  publishPlatformId={def.publishPlatformId}
+                  testId={`platform-content-guideline-${def.key}`}
+                />
+              </div>
               <p className="mt-2 text-xs text-gray-600">
                 <span className="font-medium text-gray-500">平台内容角色：</span>
                 <span data-testid="weekly-platform-role">{platformRole}</span>
