@@ -28,7 +28,7 @@ import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Brain, Building2, ClipboardList, FileBarChart2, FileText, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
+import { BarChart3, Brain, Building2, ClipboardList, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -87,7 +87,14 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         label: "AI 实测诊断",
         desc: "检测品牌在 AI 平台中的提及与推荐",
         path: "/ai-diagnosis",
-        aliases: ["/ai-diagnosis", "/diagnosis", "/questions", "/responses", "/analysis", "/scores"],
+        aliases: ["/ai-diagnosis", "/diagnosis", "/responses", "/analysis", "/scores"],
+      },
+      {
+        icon: Library,
+        label: "问题库",
+        desc: "查看、编辑与管理 AI 实测问题",
+        path: "/questions",
+        aliases: ["/questions"],
       },
       {
         icon: FileText,

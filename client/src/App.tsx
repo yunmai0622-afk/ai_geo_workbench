@@ -25,6 +25,7 @@ import ProgressPage from "./pages/ProgressPage";
 import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
 import EffectiveActionsPage from "./pages/EffectiveActionsPage";
+import QuestionsLibraryPage from "./pages/QuestionsLibraryPage";
 import RegisterPage from "./pages/RegisterPage";
 
 function profileHasBrand(profile: unknown): boolean {
@@ -66,7 +67,7 @@ function PrivateRoutes() {
         <Route path="/projects" component={ProjectsPage} />
         <Route path="/assets" component={AssetCenterPage} />
         <Route path="/diagnosis" component={AiDiagnosisFlowPage} />
-        <Route path="/questions" component={QuestionsPage} />
+        <Route path="/questions" component={QuestionsLibraryPage} />
         <Route path="/responses" component={ResponsesPage} />
         <Route path="/analysis" component={AnalysisPage} />
         <Route path="/scores" component={ScoresPage} />
