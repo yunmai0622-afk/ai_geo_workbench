@@ -1356,6 +1356,7 @@ type GeoArticleTemplateBodyContext = {
   wovenGaps: string;
   materialDigest: string;
   evidenceGapText: string;
+  questionTemplateReference?: { id: number; title: string; filledPrompt: string };
 };
 
 /** 与历史版本一致的模板正文；仅当 GEO_ARTICLE_BODY=test-template 时在 generateGeoArticleDraft 中使用（单测/无 LLM CI）。 */
@@ -1502,6 +1503,14 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
     `主题：${task.taskName}`,
     `背景说明：${task.generationReason}`,
     `执行与表达侧重点：${task.executionSuggestion}`,
+    ...(ctx.questionTemplateReference
+      ? [
+          "",
+          "【内容模板参考】",
+          `模板名称：${ctx.questionTemplateReference.title}`,
+          `参考句式：${ctx.questionTemplateReference.filledPrompt}`,
+        ]
+      : []),
     "",
     "【行业语境与公开叙事参考（客观整理，勿写成攻击性竞品稿）】",
     competitorEvidenceText,
@@ -1603,6 +1612,7 @@ export async function generateGeoArticleDraft(input: {
   assetLibrary?: P12AssetLibraryContext | null;
   platformStrategy?: PlatformContentStrategyInput;
   geoContentTaskTrace?: GeoContentTaskGenerationTrace;
+  questionTemplateReference?: { id: number; title: string; filledPrompt: string };
 }): Promise<P11ArticleDraft> {
   if (!input.topic.optimizationTaskId && !nonEmpty(input.topic.contentGap)) throw new Error("文章选题必须绑定任务或内容缺口。");
   const { project, topic, task } = input;
@@ -1643,6 +1653,7 @@ export async function generateGeoArticleDraft(input: {
     wovenGaps,
     materialDigest,
     evidenceGapText,
+    questionTemplateReference: input.questionTemplateReference,
   };
 
   let content: string;

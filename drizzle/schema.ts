@@ -244,6 +244,23 @@ export const optimizationTasks = mysqlTable("optimization_tasks", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const questionTemplates = mysqlTable(
+  "question_templates",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    slug: varchar("slug", { length: 64 }).notNull(),
+    platform: varchar("platform", { length: 64 }).notNull(),
+    questionType: varchar("questionType", { length: 64 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    promptTemplate: text("promptTemplate").notNull(),
+    description: text("description"),
+    isBuiltin: int("isBuiltin").default(1).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [uniqueIndex("question_templates_slug_unique").on(table.slug)],
+);
+
 export const contentTemplates = mysqlTable("content_templates", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
@@ -866,6 +883,8 @@ export type GeoScore = typeof geoScores.$inferSelect;
 export type InsertGeoScore = typeof geoScores.$inferInsert;
 export type OptimizationTask = typeof optimizationTasks.$inferSelect;
 export type InsertOptimizationTask = typeof optimizationTasks.$inferInsert;
+export type QuestionTemplate = typeof questionTemplates.$inferSelect;
+export type InsertQuestionTemplate = typeof questionTemplates.$inferInsert;
 export type ContentTemplate = typeof contentTemplates.$inferSelect;
 export type InsertContentTemplate = typeof contentTemplates.$inferInsert;
 export type Report = typeof reports.$inferSelect;

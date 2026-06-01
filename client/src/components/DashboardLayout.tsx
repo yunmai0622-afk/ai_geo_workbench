@@ -19,12 +19,13 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Link } from "wouter";
 import LoginGatePanel from "@/components/auth/LoginGatePanel";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
-import { BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
+import { BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -33,7 +34,7 @@ import { EnterpriseProjectShell } from "./project/EnterpriseProjectShell";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients", "/knowledge"]);
+const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients", "/knowledge", "/settings"]);
 
 type MenuItem = {
   icon: typeof Sparkles;
@@ -98,6 +99,13 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "围绕 AI 引用逻辑生成品牌内容",
         path: "/weekly",
         aliases: ["/weekly", "/content-generation", "/articles"],
+      },
+      {
+        icon: LayoutTemplate,
+        label: "内容模板库",
+        desc: "按平台与问题类型查看系统内置模板",
+        path: "/templates",
+        aliases: ["/templates"],
       },
     ],
   },
@@ -337,9 +345,11 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 px-2 py-2 text-left hover:bg-gray-50 group-data-[collapsible=icon]:justify-center">
+              <div className="flex items-center gap-2">
+                <Link href="/settings" className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-blue-600 group-data-[collapsible=icon]:hidden" data-testid="sidebar-settings-link">设置</Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-gray-200 px-2 py-2 text-left hover:bg-gray-50 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center">
                     <Avatar className="h-8 w-8 border border-gray-100">
                       <AvatarFallback className="bg-gradient-to-br from-blue-50 to-blue-100 text-xs font-semibold text-blue-700">
                         {user?.name?.charAt(0).toUpperCase()}
@@ -352,12 +362,14 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <DropdownMenuItem asChild className="cursor-pointer"><Link href="/settings" className="flex w-full items-center"><Settings className="mr-2 h-4 w-4" /><span>设置</span></Link></DropdownMenuItem>
+                    <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>退出登录</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
             </SidebarFooter>
           </Sidebar>
           <div

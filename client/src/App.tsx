@@ -33,8 +33,10 @@ import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
 import EffectiveActionsPage from "./pages/EffectiveActionsPage";
 import QuestionsLibraryPage from "./pages/QuestionsLibraryPage";
+import TemplatesPage from "./pages/TemplatesPage";
 import KnowledgePage from "./pages/KnowledgePage";
 import RegisterPage from "./pages/RegisterPage";
+import SettingsPage from "./pages/SettingsPage";
 
 function profileHasBrand(profile: unknown): boolean {
   if (!profile || typeof profile !== "object") return false;
@@ -48,6 +50,7 @@ function PrivateRoutes() {
       <Suspense fallback={<RoutePageLoading />}>
       <Switch>
         <Route path="/clients" component={ClientDashboardPage} />
+        <Route path="/settings" component={SettingsPage} />
         <Route path="/knowledge" component={KnowledgePage} />
         <Route path="/workspace" component={EnterpriseWorkspacePage} />
         <Route path="/">
@@ -78,6 +81,7 @@ function PrivateRoutes() {
         <Route path="/assets" component={AssetCenterPage} />
         <Route path="/diagnosis" component={AiDiagnosisFlowPage} />
         <Route path="/questions" component={QuestionsLibraryPage} />
+        <Route path="/templates" component={TemplatesPage} />
         <Route path="/responses" component={ResponsesPage} />
         <Route path="/analysis" component={AnalysisPage} />
         <Route path="/scores" component={ScoresPage} />
@@ -116,7 +120,7 @@ function AuthenticatedAppShell() {
     Boolean(user) &&
     (projectsLoading || (Boolean(activeProjectId) && summaryQuery.isLoading));
 
-  if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge") {
+  if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings") {
     return (
       <DashboardLayout>
         <div className="flex min-h-[50vh] items-center justify-center text-gray-400">加载中...</div>
@@ -125,11 +129,11 @@ function AuthenticatedAppShell() {
   }
 
   // P0：/clients 为唯一新建/选项目入口；无项目时仍允许进入客户项目管理台空状态
-  if (user && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && !pathname.startsWith("/legacy/")) {
+  if (user && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 
-  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && !pathname.startsWith("/legacy/")) {
+  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 
@@ -142,6 +146,7 @@ function AuthenticatedAppShell() {
     pathname !== "/enterprise-profile" &&
     pathname !== "/clients" &&
     pathname !== "/knowledge" &&
+    pathname !== "/settings" &&
     !pathname.startsWith("/legacy/")
   ) {
     return <Redirect to={buildProjectUrl("/enterprise-profile", activeProjectId)} />;
