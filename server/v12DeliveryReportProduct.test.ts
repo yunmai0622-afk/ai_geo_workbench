@@ -21,19 +21,30 @@ describe("Phase4 delivery report productization", () => {
   it("first screen is customer delivery report", () => {
     for (const text of [
       "delivery-report-page",
-      "GEO 增长交付报告",
+      "GEO 实验型交付报告",
       "delivery-report-hero",
+      "delivery-report-detection-scope",
+      "本期检测范围",
+      "delivery-report-t0-baseline",
+      "T0 基线结果摘要",
       "一句话经营结论",
       "delivery-report-core-metrics",
+      "delivery-report-t0t1-comparison",
+      "T0/T1 变化对比",
+      "RetestComparisonPanel",
       "品牌提及率",
       "AI 推荐率",
       "内容引用率",
       "收录成功数",
       "待优化内容数",
       "delivery-report-next-actions",
+      "发布内容清单",
+      "delivery-report-uncertainty",
+      "不确定性说明",
       "生成下一轮内容计划",
       "进入优化池",
       "导出报告",
+      "window.print",
     ]) {
       expect(page + display).toContain(text);
     }
@@ -41,17 +52,20 @@ describe("Phase4 delivery report productization", () => {
     expect(display).toContain(NO_PUBLIC_LINK);
   });
 
-  it("report body has six customer sections", () => {
+  it("report body has experimental and customer sections", () => {
+    const shared = read("shared/deliveryReportExperimentalDisplay.ts");
     for (const text of [
       "本轮完成事项",
       "AI 平台表现",
-      "内容发布证据",
+      "发布内容清单",
       "收录与复测结果",
       "当前问题",
       "下一轮优化建议",
+      "DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER",
     ]) {
       expect(page).toContain(text);
     }
+    expect(shared).toContain("不承诺单次优化必然带来推荐率提升");
   });
 
   it("does not fabricate or expose engineering fields", () => {

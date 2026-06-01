@@ -22,6 +22,12 @@ import {
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
+import {
+  buildDetectionScopeDisplay,
+  buildT0BaselineSummary,
+  DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER,
+} from "@shared/deliveryReportExperimentalDisplay";
+import { resolveT0T1ComparisonRows } from "@shared/retestComparisonDisplay";
 import { useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -62,6 +68,14 @@ export function DeliveryReportsCenterPage() {
     { enabled: enabled && Boolean(selectedProjectId) },
   );
   const rewritePoolQuery = trpc.geo.articles.rewritePool.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const testRoundsQuery = trpc.geo.testRounds.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const retestComparisonsQuery = trpc.geo.retestComparisons.listByProject.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
@@ -184,6 +198,28 @@ export function DeliveryReportsCenterPage() {
     [aiTestAggregate.mentionRate, aiTestAggregate.recommendRate, publishRecords.length, hasAiTestData],
   );
 
+  const { baseRound, compareRound } = useMemo(() => {
+    const comparisons = retestComparisonsQuery.data ?? [];
+    const rounds = testRoundsQuery.data ?? [];
+    return resolveT0T1ComparisonRows(comparisons, rounds);
+  }, [retestComparisonsQuery.data, testRoundsQuery.data]);
+
+  const detectionScope = useMemo(
+    () =>
+      buildDetectionScopeDisplay({
+        baseRound,
+        compareRound,
+        fallbackQuestionCount: aiTestAggregate.questionCount,
+        fallbackPlatformCount: aiTestAggregate.engineCount,
+      }),
+    [baseRound, compareRound, aiTestAggregate.questionCount, aiTestAggregate.engineCount],
+  );
+
+  const t0BaselineSummary = useMemo(
+    () => buildT0BaselineSummary(testRoundsQuery.data ?? [], retestComparisonsQuery.data ?? []),
+    [testRoundsQuery.data, retestComparisonsQuery.data],
+  );
+
   const completedItems = useMemo(() => {
     const lines: string[] = [];
     if (analyses.length > 0) lines.push(`完成 ${analyses.length} 项 AI 内容诊断`);
@@ -257,6 +293,46 @@ export function DeliveryReportsCenterPage() {
           </dl>
         </header>
 
+        <section className="space-y-4" data-testid="delivery-report-detection-scope">
+          <div className="space-y-1">
+            <h2 className={geoP0Surfaces.sectionTitle}>本期检测范围</h2>
+            <p className={geoP0Surfaces.muted}>基于当前项目已配置的测试问题、AI 平台与检测轮次汇总。</p>
+          </div>
+          {!detectionScope.hasData ? (
+            <P0Card className="text-sm text-gray-500">{metricHint("--")}</P0Card>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <P0MetricTile label="检测问题数" value={detectionScope.questionCount} />
+              <P0MetricTile label="AI 平台数" value={detectionScope.platformCount} />
+              <P0MetricTile label="每题检测轮次" value={detectionScope.detectionRounds} />
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-4" data-testid="delivery-report-t0-baseline">
+          <div className="space-y-1">
+            <h2 className={geoP0Surfaces.sectionTitle}>T0 基线结果摘要</h2>
+            <p className={geoP0Surfaces.muted}>T0 基线检测完成后的汇总，用于与 T1 复测对照。</p>
+          </div>
+          {!t0BaselineSummary.hasData ? (
+            <P0Card className="text-sm text-gray-500">暂无 T0 基线数据，请先完成 T0 基线检测。</P0Card>
+          ) : (
+            <P0Card testId="delivery-report-t0-baseline-card">
+              <p className="text-sm text-gray-600">
+                {t0BaselineSummary.roundName}
+                {t0BaselineSummary.finishedAtLabel !== "—"
+                  ? ` · 完成于 ${t0BaselineSummary.finishedAtLabel}`
+                  : ""}
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-gray-800">
+                {t0BaselineSummary.summaryLines.map(line => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </P0Card>
+          )}
+        </section>
+
         <P0Card testId="delivery-report-conclusion" className="border-sky-100 bg-sky-50/40">
           <p className={geoP0Surfaces.sectionTitle}>一句话经营结论</p>
           <p className="mt-2 text-sm leading-relaxed text-gray-800">{reportMeta.conclusionLine}</p>
@@ -279,6 +355,16 @@ export function DeliveryReportsCenterPage() {
               hint={metricHint(coreMetrics.pendingOptimizeCount)}
             />
           </div>
+        </section>
+
+        <section className="space-y-4" data-testid="delivery-report-t0t1-comparison">
+          <div className="space-y-1">
+            <h2 className={geoP0Surfaces.sectionTitle}>T0/T1 变化对比</h2>
+            <p className={geoP0Surfaces.muted}>复用检测对比面板，展示基线与复测之间的提及频次变化。</p>
+          </div>
+          {selectedProjectId ? (
+            <RetestComparisonPanel projectId={selectedProjectId} enabled={enabled} />
+          ) : null}
         </section>
 
         <P0Card testId="delivery-report-next-actions">
@@ -363,7 +449,7 @@ export function DeliveryReportsCenterPage() {
           )}
         </P0Section>
 
-        <P0Section title="内容发布证据" description="仅展示已登记的发布记录；公开链接须人工回填。">
+        <P0Section title="发布内容清单" description="已登记并回填公开链接的发布文章列表。">
           {publishedItems.length === 0 ? (
             <P0Card className="text-sm text-gray-500">暂无发布记录</P0Card>
           ) : (
@@ -444,6 +530,11 @@ export function DeliveryReportsCenterPage() {
             不承诺保证收录、排名或 AI 推荐；报告仅引用已确认事实与实测样本。
           </p>
         </P0Section>
+
+        <P0Card testId="delivery-report-uncertainty" className="border-amber-100 bg-amber-50/60">
+          <p className={geoP0Surfaces.sectionTitle}>不确定性说明</p>
+          <p className="mt-2 text-sm leading-relaxed text-gray-700">{DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER}</p>
+        </P0Card>
       </div>
 
       {selectedProjectId ? (

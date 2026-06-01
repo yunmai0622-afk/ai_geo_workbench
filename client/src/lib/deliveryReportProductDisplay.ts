@@ -60,7 +60,7 @@ export function buildDeliveryReportMeta(params: {
   const { enterpriseName, reportGeneratedAt, analysisCount, hasAiTestData, hasPublishWithLink, visibilityScore, mentionRate, recommendRate, maxProblemLine } =
     params;
 
-  const reportTitle = `${enterpriseName} GEO 增长交付报告`;
+  const reportTitle = `${enterpriseName} GEO 实验型交付报告`;
 
   let reportPeriod = "--";
   if (reportGeneratedAt && !Number.isNaN(reportGeneratedAt.getTime())) {
