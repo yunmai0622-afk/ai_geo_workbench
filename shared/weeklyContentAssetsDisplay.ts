@@ -1,5 +1,10 @@
 import { isLegacyAiGeneratedCoverUrl } from "./articleCoverTemplate";
 import { getContentAssetTypeLabel, inferContentStrategyFromArticleType } from "./contentStrategy";
+import {
+  GEO_ARTICLE_STATUS_DRAFT_LABEL,
+  GEO_ARTICLE_STATUS_PUBLISHABLE_LABEL,
+  GEO_ARTICLE_STATUS_PUBLISHED,
+} from "./constants";
 
 export type PublishRecordLinkRow = {
   articleId?: number | null;
@@ -27,9 +32,13 @@ export function resolveContentCardStatus(params: {
   published: boolean;
   publishable: boolean;
 }): { label: string; filterKey: ContentCardStatus; tone: "neutral" | "info" | "success" | "warning" } {
-  if (params.published) return { label: "已发布", filterKey: "published", tone: "success" };
-  if (params.publishable) return { label: "可发布", filterKey: "publishable", tone: "info" };
-  return { label: "草稿", filterKey: "draft", tone: "warning" };
+  if (params.published) {
+    return { label: GEO_ARTICLE_STATUS_PUBLISHED, filterKey: "published", tone: "success" };
+  }
+  if (params.publishable) {
+    return { label: GEO_ARTICLE_STATUS_PUBLISHABLE_LABEL, filterKey: "publishable", tone: "info" };
+  }
+  return { label: GEO_ARTICLE_STATUS_DRAFT_LABEL, filterKey: "draft", tone: "warning" };
 }
 
 export function resolveContentTypeLabel(article: {
