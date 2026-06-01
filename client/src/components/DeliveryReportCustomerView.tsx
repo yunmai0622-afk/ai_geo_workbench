@@ -45,6 +45,8 @@ export type DeliveryReportCustomerViewProps = {
   onNavigateEvidence?: (path: string) => void;
   buildEvidenceLink?: (sample: { monitoringRecordId: number; resultIndex: number }) => string;
   onGoMonitoring?: () => void;
+  /** 公开分享页展示链接有效期（ISO）；undefined 时不展示有效期条 */
+  shareExpiresAt?: string | null;
 };
 
 function MetricCard({ label, value, large }: { label: string; value: string; large?: boolean }) {

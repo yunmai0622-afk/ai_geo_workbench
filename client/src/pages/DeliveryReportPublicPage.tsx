@@ -84,6 +84,7 @@ export default function DeliveryReportPublicPage() {
       enterpriseName={data.enterpriseName}
       reportGeneratedAt={data.reportGeneratedAt ? new Date(data.reportGeneratedAt) : null}
       conclusionLine={data.conclusionLine}
+      shareExpiresAt={data.shareExpiresAt}
       visibilityScore={data.visibilityScore ?? null}
       publishCount={publishedItems.length}
       contentAssetCount={publishedItems.length}

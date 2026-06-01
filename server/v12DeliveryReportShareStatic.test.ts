@@ -27,9 +27,13 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(routerBlock.indexOf('path="/delivery-reports/public/:token"')).toBeLessThan(
       routerBlock.indexOf("<Route component={AuthenticatedAppShell}"),
     );
+    expect(reportPageSource).toContain("生成分享链接");
+    expect(reportPageSource).toContain("delivery-report-share-primary");
+    expect(reportPageSource).toContain("shareLinkStatus");
     expect(reportPageSource).toContain("复制客户报告链接");
     expect(reportPageSource).toContain("客户报告链接已复制");
-    const copyToastLine = reportPageSource.match(/toast\.success\("客户报告链接已复制[^"]*"\)/)?.[0] ?? "";
+    const copyToastLine =
+      reportPageSource.match(/toast\.success\([^)]*客户报告链接已复制[^)]*\)/)?.[0] ?? "";
     expect(copyToastLine.length).toBeGreaterThan(0);
     for (const forbidden of ["shareToken", "projectId", "migration"]) {
       expect(copyToastLine).not.toContain(forbidden);
@@ -70,6 +74,10 @@ describe("delivery report share page renders customer-facing sections", () => {
       expect(customerPages).toContain(text);
     }
     expect(publicSource).toContain('variant="light"');
+    expect(publicSource).toContain("shareExpiresAt");
+    expect(lightViewSource).toContain("主要检测结论");
+    expect(lightViewSource).toContain("delivery-report-public-share-expiry");
+    expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("DELIVERY_REPORT_SHARE_VALIDITY_DAYS");
     expect(shareSource).toContain('variant="light"');
     for (const text of [
       "GEO AI 搜索可见度优化交付报告",

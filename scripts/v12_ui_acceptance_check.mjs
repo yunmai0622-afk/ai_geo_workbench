@@ -196,11 +196,13 @@ assertContains('交付报告页', deliveryReportPage, '确定要禁用当前客�
 assertContains('交付报告页', deliveryReportPage, '确定要重新生成客户报告链接吗？');
 assertContains('交付报告页', deliveryReportPage, 'window.confirm');
 const copyToastLine =
-  deliveryReportPage.match(/toast\.success\("客户报告链接已复制[^"]*"\)/)?.[0] ?? '';
+  deliveryReportPage.match(/toast\.success\([^)]*客户报告链接已复制[^)]*\)/)?.[0] ?? '';
 if (!copyToastLine) failures.push('交付报告页 缺少：复制链接成功 toast');
 for (const forbidden of ['shareToken', 'migration', 'rawAnswer']) {
   assertNotContains('复制链接成功提示', copyToastLine, forbidden);
 }
+assertContains('交付报告页', deliveryReportPage, '生成分享链接');
+assertContains('交付报告页', deliveryReportPage, 'delivery-report-share-primary');
 assertContains('部署说明', read('HARNESS.md'), '0019_delivery_report_share_tokens');
 assertContains('部署说明', read('HARNESS.md'), 'pnpm db:push');
 assertContains('匿名分享文案', read('shared/deliveryReportPublicShare.ts'), '报告链接无效或已失效，请联系服务人员重新获取');

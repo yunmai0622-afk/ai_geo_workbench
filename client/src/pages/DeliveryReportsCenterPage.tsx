@@ -1,5 +1,5 @@
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
-import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
+import { GeoHealthBriefCard } from "@/components/delivery/GeoHealthBriefCard";
 import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
 import { RetestComparisonPanel } from "@/components/RetestComparisonPanel";
 import { FileText, Link2 } from "lucide-react";
@@ -16,7 +16,11 @@ import {
   NO_PUBLIC_LINK_HINT,
   visibilityScoreDisplay,
 } from "@/lib/deliveryReportProductDisplay";
-import { mapPublishRecordsToItems, resolveDeliveryReportVisibilityScore } from "@/lib/deliveryReportDisplay";
+import {
+  buildNextActionLines,
+  mapPublishRecordsToItems,
+  resolveDeliveryReportVisibilityScore,
+} from "@/lib/deliveryReportDisplay";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
@@ -94,6 +98,7 @@ export function DeliveryReportsCenterPage() {
 
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
   const scoreTrendQuery = trpc.geo.scores.recent.useQuery(projectInput, { enabled });
+  const t0MetricsQuery = trpc.geo.scores.t0Metrics.useQuery(projectInput, { enabled });
   const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
   const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
@@ -420,6 +425,19 @@ export function DeliveryReportsCenterPage() {
             </div>
           </dl>
         </header>
+
+        <GeoHealthBriefCard
+          enterpriseName={enterpriseName}
+          publishRecords={publishRecords as PublishRecordWeekRow[]}
+          articles={articles as Array<{ status?: string | null }>}
+          testRounds={(testRoundsQuery.data ?? []) as GeoHealthBriefCard["props"]["testRounds"]}
+          t0MentionRate={t0MetricsQuery.data?.mentionRate ?? null}
+          t0RecommendRate={t0MetricsQuery.data?.recommendRate ?? null}
+          monitoringMentionRate={hasAiTestData ? aiTestAggregate.mentionRate : null}
+          monitoringRecommendRate={hasAiTestData ? aiTestAggregate.recommendRate : null}
+          contentGapLine={maxProblemLine}
+          disabled={loading || t0MetricsQuery.isLoading}
+        />
 
         <section className="space-y-4" data-testid="delivery-report-detection-scope">
           <div className="space-y-1">

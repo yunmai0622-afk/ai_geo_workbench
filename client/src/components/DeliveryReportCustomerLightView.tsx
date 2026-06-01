@@ -26,6 +26,7 @@ import {
   recommendRateNarrative,
   resolveVisibilityScoreTier,
 } from "@/lib/deliveryReportLightDisplay";
+import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
 import { useMemo, useRef, type ReactNode } from "react";
 import type { DeliveryReportCustomerViewProps } from "@/components/DeliveryReportCustomerView";
 
@@ -71,6 +72,7 @@ export function DeliveryReportCustomerLightView({
   brandName,
   enterpriseName,
   reportGeneratedAt,
+  conclusionLine,
   visibilityScore,
   publishCount,
   contentAssetCount,
@@ -86,6 +88,7 @@ export function DeliveryReportCustomerLightView({
   onGoMonitoring,
   reportNumberSuffix,
   reportNumberSeed,
+  shareExpiresAt,
 }: DeliveryReportCustomerLightViewProps) {
   const evidenceRef = useRef<HTMLDivElement>(null);
   const hasAiTestData = aiTestAggregate.questionCount > 0;
@@ -190,9 +193,21 @@ export function DeliveryReportCustomerLightView({
     evidenceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const shareExpiryLabel = formatDeliveryReportShareExpiryLabel(shareExpiresAt);
+  const detectionConclusion = conclusionLine.trim();
+
   return (
     <div className={shellClass}>
       <div className={`mx-auto max-w-3xl space-y-10 ${embedded ? "" : "px-4 py-8 pb-16 sm:px-6 sm:py-10"}`}>
+        {shareExpiresAt !== undefined ? (
+          <p
+            className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-3 text-center text-sm text-sky-900"
+            data-testid="delivery-report-public-share-expiry"
+          >
+            本报告为对外分享只读版本 · {shareExpiryLabel}
+          </p>
+        ) : null}
+
         {/* 区块 1：报告封面 */}
         <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-100 bg-gradient-to-r from-sky-50 to-white px-5 py-6 sm:px-8 sm:py-8">
@@ -234,6 +249,17 @@ export function DeliveryReportCustomerLightView({
             </div>
           </div>
         </header>
+
+        {detectionConclusion ? (
+          <LightSection title="主要检测结论" description="基于本轮内容诊断与 AI 搜索实测汇总，不含内部技术字段。">
+            <p
+              className="rounded-xl border border-amber-100 bg-amber-50/80 p-4 text-sm leading-relaxed text-gray-800 sm:text-base"
+              data-testid="delivery-report-public-detection-conclusion"
+            >
+              {detectionConclusion}
+            </p>
+          </LightSection>
+        ) : null}
 
         {/* 区块 2：老板版结论 */}
         <LightSection title="老板先看这 3 点">
