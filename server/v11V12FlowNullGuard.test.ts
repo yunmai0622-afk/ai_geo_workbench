@@ -35,5 +35,13 @@ describe("GEO-V1.1-V12FlowFix null guards", () => {
     expect(hook).toContain("projectsRaw");
     expect(hook).toContain(".filter(p => p != null");
     expect(hook).toContain("p?.id === contextProjectId");
+    expect(hook).toContain("typeof p?.id === \"number\"");
+  });
+
+  it("ContentPublishingCenterPage filters list rows and uses optional id", () => {
+    const page = read("client/src/pages/ContentPublishingCenterPage.tsx");
+    expect(page).toContain("function filterListWithNumericId");
+    expect(page).toContain("filterListWithNumericId(articlesQuery.data");
+    expect(page).not.toMatch(/[^?]\.id\b/);
   });
 });

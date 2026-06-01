@@ -166,12 +166,14 @@ export function DeliveryReportsCenterPage() {
   const tasks = (tasksQuery.data ?? []) as Array<Record<string, unknown>>;
   const articles = (articlesQuery.data ?? []) as Array<Record<string, unknown>>;
   const publishRecords = (publishRecordsQuery.data ?? []) as Array<Record<string, unknown>>;
-  const monitoringRows = (monitoringQuery.data ?? []) as MonitoringRecordLike[];
+  const monitoringRows = (monitoringQuery.data ?? []).filter(
+    r => r != null && typeof r?.id === "number",
+  ) as MonitoringRecordLike[];
 
   const aiTestAggregate = useMemo(() => {
     return aggregateAiTestEvidence(
       monitoringRows.map(r => ({
-        monitoringRecordId: r.id,
+        monitoringRecordId: r?.id,
         results: r.aiTestResults ?? [],
       })),
     );
@@ -188,7 +190,7 @@ export function DeliveryReportsCenterPage() {
   const articleTitleById = useMemo(() => {
     const m = new Map<number, string>();
     for (const a of articles) {
-      if (typeof a.id === "number" && a.title) m.set(a.id, String(a.title));
+      if (typeof a?.id === "number" && a.title) m.set(a?.id, String(a.title));
     }
     return m;
   }, [articles]);
@@ -799,7 +801,7 @@ export function DeliveryReportsCenterPage() {
           ) : (
             <ul className="space-y-2 text-sm text-gray-700">
               {monitoringRows.slice(0, 8).map(row => (
-                <li key={row.id} className="rounded-lg border border-gray-100 bg-white px-4 py-3">
+                <li key={row?.id} className="rounded-lg border border-gray-100 bg-white px-4 py-3">
                   {(row.articleTitle ?? "未命名内容").trim()} · {row.publishChannel ?? "—"} · 收录：
                   {(row.inclusionStatus ?? "").trim() || "未检测"}
                 </li>

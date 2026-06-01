@@ -115,6 +115,18 @@ type AgentTaskRow = {
   retryExhausted?: boolean;
 };
 
+function hasNumericId<T extends { id?: unknown }>(
+  value: T | null | undefined,
+): value is T & { id: number } {
+  return value != null && typeof value?.id === "number";
+}
+
+function filterListWithNumericId<T extends { id?: unknown }>(
+  rows: Array<T | null | undefined> | null | undefined,
+): Array<T & { id: number }> {
+  return (rows ?? []).filter(hasNumericId);
+}
+
 function articleLatestQuality(articleId: number | undefined, scores: QualityScoreRow[]) {
   if (!articleId) return undefined;
   return scores.find(s => s.articleId === articleId);
@@ -200,15 +212,15 @@ export function ContentPublishingCenterPage() {
   const completedAgentTaskIdsRef = useRef<Set<number>>(new Set());
   const completedAgentTasksInitializedRef = useRef(false);
 
-  const articles = (articlesQuery.data ?? []) as ArticleRow[];
+  const articles = filterListWithNumericId(articlesQuery.data ?? []) as ArticleRow[];
   const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
   const publishableArticles = useMemo(
-    () => articles.filter(a => isQualityPassed(articleLatestQuality(a.id, scores))),
+    () => articles.filter(a => isQualityPassed(articleLatestQuality(a?.id, scores))),
     [articles, scores],
   );
-  const publishRecords = (publishRecordsQuery.data ?? []) as PublishRecordRow[];
-  const agentTasks = (autoPublishTasksQuery.data?.tasks ?? []) as AgentTaskRow[];
-  const articleById = useMemo(() => new Map(articles.map(a => [a.id, a])), [articles]);
+  const publishRecords = filterListWithNumericId(publishRecordsQuery.data ?? []) as PublishRecordRow[];
+  const agentTasks = filterListWithNumericId(autoPublishTasksQuery.data?.tasks ?? []) as AgentTaskRow[];
+  const articleById = useMemo(() => new Map(articles.map(a => [a?.id, a])), [articles]);
 
   const hasInFlightAgentTasks = useMemo(
     () =>
@@ -230,7 +242,7 @@ export function ContentPublishingCenterPage() {
   }, [selectedProjectId]);
 
   useEffect(() => {
-    const completedIds = agentTasks.filter(t => t.status === "completed").map(t => t.id);
+    const completedIds = agentTasks.filter(t => t.status === "completed").map(t => t?.id);
     if (!completedAgentTasksInitializedRef.current) {
       completedIds.forEach(id => completedAgentTaskIdsRef.current.add(id));
       completedAgentTasksInitializedRef.current = true;
@@ -239,7 +251,7 @@ export function ContentPublishingCenterPage() {
     const newlyCompleted = completedIds.filter(id => !completedAgentTaskIdsRef.current.has(id));
     if (newlyCompleted.length > 0) {
       newlyCompleted.forEach(id => completedAgentTaskIdsRef.current.add(id));
-      const tasks = agentTasks.filter(t => newlyCompleted.includes(t.id));
+      const tasks = agentTasks.filter(t => t?.id != null && newlyCompleted.includes(t?.id));
       setPublishSuccessNotice({
         platformLabel: formatPublishSuccessPlatformPhrase(
           tasks.map(t => publishPlatformCustomerLabel(t.platform)),
@@ -318,8 +330,8 @@ export function ContentPublishingCenterPage() {
       return;
     }
     const current = typeof manualArticleId === "number" ? manualArticleId : undefined;
-    if (current == null || !publishableArticles.some(a => a.id === current)) {
-      setManualArticleId(publishableArticles[0].id);
+    if (current == null || !publishableArticles.some(a => a?.id === current)) {
+      setManualArticleId(publishableArticles[0]?.id ?? "");
     }
   }, [publishableArticles, manualArticleId]);
 
@@ -328,7 +340,9 @@ export function ContentPublishingCenterPage() {
       const next = { ...prev };
       for (const r of publishRecords) {
         const url = recordPublicLink(r);
-        if (next[r.id] === undefined) next[r.id] = url;
+        const recordId = r?.id;
+        if (recordId == null) continue;
+        if (next[recordId] === undefined) next[recordId] = url;
       }
       return next;
     });
@@ -407,7 +421,7 @@ export function ContentPublishingCenterPage() {
 
   async function handleSaveRowLink(recordId: number) {
     if (!selectedProjectId) return;
-    const record = publishRecords.find(r => r.id === recordId);
+    const record = publishRecords.find(r => r?.id === recordId);
     if (!record?.articleId) return;
     const article = articleById.get(record.articleId);
     const channel = (record.publishChannel || "").trim();
@@ -419,7 +433,7 @@ export function ContentPublishingCenterPage() {
     setSavingRowId(recordId);
     try {
       await updateManualPublishRecord.mutateAsync({
-        id: record.id,
+        id: record?.id,
         projectId: selectedProjectId,
         articleId: record.articleId,
         publishPlatform: channel as "知乎",
@@ -503,7 +517,7 @@ export function ContentPublishingCenterPage() {
       toast.error("请选择一篇文章");
       return;
     }
-    const article = articles.find(a => a.id === articleId);
+    const article = articles.find(a => a?.id === articleId);
     if (!article || !isQualityPassed(articleLatestQuality(articleId, scores))) {
       toast.error(`仅可选择已通过质量检查（≥ ${GEO_ARTICLE_MIN_PASS_SCORE} 分）的文章`);
       return;
@@ -795,8 +809,8 @@ export function ContentPublishingCenterPage() {
                         </SelectTrigger>
                         <SelectContent>
                           {publishableArticles.map(a => (
-                            <SelectItem key={a.id} value={String(a.id)}>
-                              {a.title?.trim() || `文章 #${a.id}`}
+                            <SelectItem key={a?.id} value={String(a?.id)}>
+                              {a.title?.trim() || `文章 #${a?.id}`}
                             </SelectItem>
                           ))}
                         </SelectContent>

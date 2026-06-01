@@ -23,8 +23,8 @@ export function useActiveProjectSelection() {
   const projects = useMemo(
     () =>
       projectsRaw
-        .filter(p => p != null && typeof p.id === "number" && Number.isFinite(p.id))
-        .map(p => ({ id: p.id, enterpriseName: p.enterpriseName })),
+        .filter(p => p != null && typeof p?.id === "number" && Number.isFinite(p?.id))
+        .map(p => ({ id: p?.id as number, enterpriseName: p?.enterpriseName ?? "" })),
     [projectsRaw],
   );
 
