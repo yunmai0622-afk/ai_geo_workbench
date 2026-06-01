@@ -501,6 +501,12 @@ export function ContentPublishingCenterPage() {
         </Button>
       </header>
 
+      <FirstUseHintBanner
+        storageKey={FIRST_USE_HINT_KEYS.contentPublishing}
+        message="发布前请确保本地客户端已启动并连接"
+        data-testid="first-use-hint-content-publishing"
+      />
+
       {loading ? (
         <div className="flex items-center gap-2 py-12 text-gray-500">
           <Spinner className="size-5 text-blue-600" />
