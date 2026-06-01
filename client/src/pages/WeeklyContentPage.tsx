@@ -357,12 +357,23 @@ function useProjectSelection() {
   return useActiveProjectSelection();
 }
 
-/** URL projectId 优先，避免批量生成时 session 与路由上下文不一致 */
+/** URL projectId 优先，避免多平台生成时 session 与路由上下文不一致 */
 function resolveMutationProjectId(
   selectedProjectId: number | undefined,
   location: string,
 ): number | null {
-  return selectedProjectId ?? getActiveProjectId({ search: getSearchFromLocation(location) });
+  const pid = selectedProjectId ?? getActiveProjectId({ search: getSearchFromLocation(location) });
+  if (pid == null || !Number.isFinite(pid) || pid <= 0) return null;
+  return pid;
+}
+
+function assertMutationProjectId(
+  selectedProjectId: number | undefined,
+  location: string,
+): number {
+  const pid = resolveMutationProjectId(selectedProjectId, location);
+  if (!pid) throw new Error("项目未选择");
+  return pid;
 }
 
 function parseKeyPointsFromBusinessReason(reason?: string | null): string[] {
@@ -1438,8 +1449,10 @@ export default function WeeklyContentPage() {
       | { ok: true; topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> }
       | { ok: false; errorMessage: string }
     > => {
-      const projectId = resolveMutationProjectId(selectedProjectId, location);
-      if (!projectId) {
+      let projectId: number;
+      try {
+        projectId = assertMutationProjectId(selectedProjectId, location);
+      } catch {
         return { ok: false, errorMessage: PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE };
       }
 
@@ -1682,8 +1695,9 @@ export default function WeeklyContentPage() {
   );
 
   const handleBatchGenerateAllPlatforms = async () => {
-    const projectId = resolveMutationProjectId(selectedProjectId, location);
-    if (!projectId) {
+    try {
+      assertMutationProjectId(selectedProjectId, location);
+    } catch {
       toast.error(PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE);
       return;
     }

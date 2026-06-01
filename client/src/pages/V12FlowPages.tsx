@@ -282,6 +282,14 @@ function useProjectSelection() {
   return useActiveProjectSelection();
 }
 
+function requireValidProjectId(selectedProjectId: number | undefined): number {
+  const pid = selectedProjectId;
+  if (pid == null || !Number.isFinite(pid) || pid <= 0) {
+    throw new Error("项目未选择");
+  }
+  return pid;
+}
+
 function InfoCard({ title, desc, value }: { title: string; desc: string; value?: string }) {
   return (
     <div className="ai-metric-card text-gray-900">
@@ -1823,6 +1831,7 @@ export function AiDiagnosisFlowPage() {
               <h3 className="font-semibold text-gray-900">诊断结果</h3>
               <div className="mt-3 space-y-3">
                 {analyses.map(item => {
+                  if (!item || typeof item.id !== "number") return null;
                   const detail = diagnosisJson(item) as Record<string, unknown>;
                   const v12 = diagnosisV12DisplayFields(detail);
                   return (
@@ -1920,7 +1929,9 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   const assetSummary = assetSummaryQuery.data;
   const hasProfile = Boolean(assetSummary?.profile);
   const assetSources = (assetSummary?.assetSources ?? []) as Array<{ title?: string | null; sourceType?: string | null; contentText?: string | null; isPublic?: number | boolean | null }>;
-  const analyses = analysisQuery.data ?? [];
+  const analyses = (analysisQuery.data ?? []).filter(
+    item => item != null && typeof item.id === "number",
+  );
   const tasks = (tasksQuery.data ?? []).filter(
     task => task != null && typeof task.id === "number",
   ) as TaskLike[];
@@ -2148,7 +2159,13 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   }
 
   async function handleGenerateTopics() {
-    if (!selectedProjectId) return;
+    let projectId: number;
+    try {
+      projectId = requireValidProjectId(selectedProjectId);
+    } catch {
+      setError("项目未选择，请从客户管理台进入当前企业后再试。");
+      return;
+    }
     if (!hasProfile) {
       setError("当前项目还没有企业档案。请先在企业档案中完成「基本身份」与「你的客户」等必填项，再配置内容生产计划。");
       return;
@@ -2168,11 +2185,13 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     setMessage(undefined);
     setError(undefined);
     try {
-      await generateTopics.mutateAsync({ projectId: selectedProjectId });
+      await generateTopics.mutateAsync({ projectId });
       const refreshedTopics = await topicsQuery.refetch();
-      const refreshed = (refreshedTopics.data ?? []) as TopicLike[];
+      const refreshed = (refreshedTopics.data ?? []).filter(
+        topic => topic != null && typeof topic.id === "number",
+      ) as TopicLike[];
       const nextTopic = refreshed.find(topic => topic.optimizationTaskId && contentPlan.taskIds.includes(topic.optimizationTaskId)) ?? refreshed[0];
-      if (!nextTopic) throw new Error("没有可用于生成文章的选题，请先完成 内容诊断和优化任务。");
+      if (!nextTopic?.id) throw new Error("没有可用于生成文章的选题，请先完成 内容诊断和优化任务。");
       startTransition(() => setSelectedTopicId(nextTopic.id));
       setMessage("已根据优化任务同步内容选题，请选择一个选题生成 1 篇文章。");
     } catch (err) {
@@ -2181,16 +2200,18 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   }
 
   async function generateOneArticleAndPersist(topicId: number) {
-    if (!selectedProjectId || !latestPlan) throw new Error("请先保存本周内容生产计划，再生成文章。");
+    const projectId = requireValidProjectId(selectedProjectId);
+    const planId = latestPlan?.id;
+    if (!planId) throw new Error("请先保存本周内容生产计划，再生成文章。");
     const result = await generateArticle.mutateAsync({ topicId });
     if (!result.articleId) throw new Error("生成未返回文章 ID");
-    const topicIndex = Math.max(visibleTopics.findIndex(topic => topic.id === topicId), 0);
-    const topicForItem = visibleTopics.find(t => t.id === topicId) ?? topics.find(t => t.id === topicId);
+    const topicIndex = Math.max(visibleTopics.findIndex(topic => topic?.id === topicId), 0);
+    const topicForItem = visibleTopics.find(t => t?.id === topicId) ?? topics.find(t => t?.id === topicId);
     if (!topicForItem) throw new Error("选题不存在");
     const repeatHint = topicRepeatHint(topicForItem, visibleTopics);
     await addContentPlanItem.mutateAsync({
-      projectId: selectedProjectId,
-      planId: latestPlan.id,
+      projectId,
+      planId,
       topicId,
       articleId: result.articleId,
       targetPlatform: cyclePick(contentPlan.targetPlatforms, topicIndex, "目标平台待确认"),
@@ -2200,10 +2221,10 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
       duplicateRisk: repeatHint.includes("较高") ? "高" : repeatHint.includes("集中") ? "中" : "低",
     });
     await Promise.all([
-      utils.geo.articles.list.invalidate({ projectId: selectedProjectId }),
-      utils.geo.articles.topics.list.invalidate({ projectId: selectedProjectId }),
-      utils.geo.articles.latestQualityScores.invalidate({ projectId: selectedProjectId }),
-      utils.geo.contentPlans.latest.invalidate({ projectId: selectedProjectId }),
+      utils.geo.articles.list.invalidate({ projectId }),
+      utils.geo.articles.topics.list.invalidate({ projectId }),
+      utils.geo.articles.latestQualityScores.invalidate({ projectId }),
+      utils.geo.contentPlans.latest.invalidate({ projectId }),
     ]);
     await articlesQuery.refetch();
     await scoresQuery.refetch();
@@ -2238,8 +2259,14 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   }
 
   async function handleGenerateAllArticles() {
-    if (!selectedProjectId || !latestPlan) {
+    if (!latestPlan?.id) {
       setError("请先保存本周内容生产计划，再生成文章。");
+      return;
+    }
+    try {
+      requireValidProjectId(selectedProjectId);
+    } catch {
+      setError("项目未选择，请从客户管理台进入当前企业后再试。");
       return;
     }
     if (visibleTopics.length === 0) {
@@ -2729,7 +2756,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 </div>
                 <p className="mt-3 text-blue-700">内容重复风险：{duplicateRiskStatus(antiDuplication.similarityRisk)}（轻量规则，不作为合规阻断）。</p>
                 <p className="mt-2">差异化角度建议：{antiDuplication.differentiationAngle}</p>
-                {antiDuplication.similarArticles.length > 0 ? <div className="mt-3"><p className="font-medium text-white">相似历史文章</p><ul className="mt-2 list-disc space-y-1 pl-5">{antiDuplication.similarArticles.map(item => <li key={item.id}>{item.title}</li>)}</ul></div> : <p className="mt-3 text-emerald-100">未发现明显相似历史文章。</p>}
+                {antiDuplication.similarArticles.length > 0 ? <div className="mt-3"><p className="font-medium text-white">相似历史文章</p><ul className="mt-2 list-disc space-y-1 pl-5">{antiDuplication.similarArticles.map((item, index) => <li key={item?.id ?? `similar-${index}`}>{item?.title ?? "无标题"}</li>)}</ul></div> : <p className="mt-3 text-emerald-100">未发现明显相似历史文章。</p>}
                 <p className="mt-3 text-amber-100">差异度结果当前为轻量规则计算，未写入数据库；不是复杂语义向量相似度。</p>
               </div>
             </div> : null}
@@ -2842,7 +2869,9 @@ export function InclusionMonitoringFlowPage() {
   );
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
-  const records = (monitoringQuery.data ?? []) as MonitoringRecordLike[];
+  const records = (monitoringQuery.data ?? []).filter(
+    record => record != null && typeof record.id === "number",
+  ) as MonitoringRecordLike[];
   const publishRecordCount = (publishRecordsQuery.data ?? []).length;
   const loading = monitoringQuery.isLoading || publishRecordsQuery.isLoading;
   const [runningRecordId, setRunningRecordId] = useState<number | null>(null);
@@ -3044,10 +3073,13 @@ export function InclusionMonitoringFlowPage() {
           <h2 className="text-base font-semibold text-gray-900">监测记录</h2>
           <p className="text-xs text-gray-500">选择测试阶段后点击「执行AI实测」，将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。</p>
           <div className="grid gap-4 lg:grid-cols-2">
-            {records.map(record => (
+            {records.map(record => {
+              if (!record?.id) return null;
+              const recordId = record.id;
+              return (
               <div
-                id={`monitoring-record-${record.id}`}
-                key={record.id}
+                id={`monitoring-record-${recordId}`}
+                key={recordId}
                 className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -3056,7 +3088,7 @@ export function InclusionMonitoringFlowPage() {
                       {record.articleTitle?.trim() ? record.articleTitle : `文章 #${record.articleId}`}
                     </p>
                     {record.gapLinkDisplay ? (
-                      <p className="mt-1 text-xs text-gray-700" data-testid={`monitoring-gap-link-${record.id}`}>
+                      <p className="mt-1 text-xs text-gray-700" data-testid={`monitoring-gap-link-${recordId}`}>
                         {record.gapLinkDisplay}
                       </p>
                     ) : record.linkedDetectionQuestion ? (
@@ -3065,7 +3097,7 @@ export function InclusionMonitoringFlowPage() {
                       </p>
                     ) : null}
                     {record.questionMentionRateChange?.summaryLine ? (
-                      <p className="mt-1 text-xs text-blue-800" data-testid={`monitoring-mention-rate-${record.id}`}>
+                      <p className="mt-1 text-xs text-blue-800" data-testid={`monitoring-mention-rate-${recordId}`}>
                         {record.questionMentionRateChange.summaryLine}
                       </p>
                     ) : null}
@@ -3108,20 +3140,20 @@ export function InclusionMonitoringFlowPage() {
                       onClick={() => {
                         if (!selectedProjectId) return;
                         if (record.nextAction === "查看实测结果") {
-                          const detail = document.getElementById(`monitoring-ai-results-${record.id}`);
+                          const detail = document.getElementById(`monitoring-ai-results-${recordId}`);
                           detail?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                           return;
                         }
-                        setRunningRecordId(record.id);
+                        setRunningRecordId(recordId);
                         runCheck.mutate({
                           projectId: selectedProjectId,
-                          recordId: record.id,
+                          recordId,
                           engines: ["doubao", "deepseek", "kimi"],
                           testStage: selectedTestStage,
                         });
                       }}
                     >
-                      {runCheck.isPending && runningRecordId === record.id
+                      {runCheck.isPending && runningRecordId === recordId
                         ? "实测中…"
                         : record.nextAction === "查看实测结果"
                           ? "查看实测结果"
@@ -3178,23 +3210,23 @@ export function InclusionMonitoringFlowPage() {
                     disabled={!selectedProjectId || runCheck.isPending}
                     onClick={() => {
                       if (!selectedProjectId) return;
-                      setRunningRecordId(record.id);
+                      setRunningRecordId(recordId);
                       runCheck.mutate({
                         projectId: selectedProjectId,
-                        recordId: record.id,
+                        recordId,
                         engines: ["doubao", "deepseek", "kimi"],
                         testStage: selectedTestStage,
                       });
                     }}
                   >
-                    {runCheck.isPending && runningRecordId === record.id ? "实测中…" : "执行AI实测"}
+                    {runCheck.isPending && runningRecordId === recordId ? "实测中…" : "执行AI实测"}
                   </Button>
                 </div>
 
                 {/* 实测明细 */}
                 {record.aiTestResults && record.aiTestResults.length > 0 ? (
                   <div
-                    id={`monitoring-ai-results-${record.id}`}
+                    id={`monitoring-ai-results-${recordId}`}
                     className="mt-4 space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-3"
                   >
                     <p className="text-xs font-medium text-gray-600">实测明细</p>
@@ -3221,7 +3253,7 @@ export function InclusionMonitoringFlowPage() {
                             size="sm"
                             variant="ghost"
                             className="h-7 px-2 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                            onClick={() => setLocation(buildEvidenceDetailPath(record.id, i))}
+                            onClick={() => setLocation(buildEvidenceDetailPath(recordId, i))}
                           >
                             查看证据
                           </Button>
@@ -3237,7 +3269,8 @@ export function InclusionMonitoringFlowPage() {
                   </div>
                 ) : null}
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       )}

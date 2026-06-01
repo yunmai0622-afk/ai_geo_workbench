@@ -715,16 +715,29 @@ const geoAssetRouter = router({
       } as const;
     }
     await requireProjectAccess(ctx, input.projectId);
-    const [profiles, sources, cases, competitors, rules, styles, strategies, authorizations] = await Promise.all([
+    const [profiles, sources, cases, rules, styles, strategies, authorizations] = await Promise.all([
       db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1),
       db.select().from(geoAssetSources).where(eq(geoAssetSources.projectId, input.projectId)).orderBy(desc(geoAssetSources.createdAt)),
       db.select().from(customerCases).where(eq(customerCases.projectId, input.projectId)).orderBy(desc(customerCases.createdAt)),
-      db.select().from(competitorProfiles).where(eq(competitorProfiles.projectId, input.projectId)).orderBy(desc(competitorProfiles.createdAt)),
       db.select().from(complianceRules).where(eq(complianceRules.projectId, input.projectId)).orderBy(desc(complianceRules.createdAt)),
       db.select().from(contentStyleProfiles).where(eq(contentStyleProfiles.projectId, input.projectId)).orderBy(desc(contentStyleProfiles.createdAt)),
       db.select().from(publishStrategies).where(eq(publishStrategies.projectId, input.projectId)).orderBy(desc(publishStrategies.createdAt)),
       db.select().from(platformAuthorizationConfigs).where(eq(platformAuthorizationConfigs.projectId, input.projectId)).orderBy(desc(platformAuthorizationConfigs.createdAt)),
     ]);
+    let competitors: (typeof competitorProfiles.$inferSelect)[] = [];
+    try {
+      competitors = await db
+        .select()
+        .from(competitorProfiles)
+        .where(eq(competitorProfiles.projectId, input.projectId))
+        .orderBy(desc(competitorProfiles.createdAt));
+    } catch (error) {
+      console.error("[geo.assetLibrary.summary] competitor_profiles query failed", {
+        projectId: input.projectId,
+        error,
+      });
+      competitors = [];
+    }
     const profile = profiles[0] ?? null;
     const completionScore = profile?.completionScore ?? calculateProfileCompletionScore(profile);
     const usableAssetCount = sources.filter(source => source.canUseForGeneration && source.manuallyConfirmed).length;
