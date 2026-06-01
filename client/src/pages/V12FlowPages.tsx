@@ -23,9 +23,11 @@ import {
   type PublishRecordForDisplay,
 } from "@/lib/assetProgressDisplay";
 import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
+import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection, type ProjectOption } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
+import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { aiChipActive, aiChipIdle, aiDataTable, aiGlassPanel, aiInput, aiInternalZone, aiListRow, aiMetricCard, aiSubPanel } from "@/lib/aiProductUi";
 import {
   buildDeliveryReportConclusionLine,
@@ -1224,6 +1226,12 @@ export function AiDiagnosisFlowPage() {
         <h1 className="text-2xl font-bold text-gray-900">AI 实测诊断</h1>
         <p className="mt-1 text-sm text-gray-500">检测企业在豆包、Kimi、DeepSeek 等 AI 平台中的品牌提及、推荐和内容引用情况</p>
       </div>
+
+      <FirstUseHintBanner
+        storageKey={FIRST_USE_HINT_KEYS.aiDiagnosis}
+        message="点击「启动T0基线检测」开始检测AI是否认识你的品牌"
+        data-testid="first-use-hint-ai-diagnosis"
+      />
 
       {/* --- 诊断状态 + 最近实测时间 --- */}
       <div className="flex flex-wrap items-center gap-3">
@@ -2730,6 +2738,12 @@ export function InclusionMonitoringFlowPage() {
           跟踪已发布内容的收录状态与 AI 搜索实测结果。完成平台适配发布并回填公开链接后，系统会开始收录监测。
         </p>
       </header>
+
+      <FirstUseHintBanner
+        storageKey={FIRST_USE_HINT_KEYS.inclusionMonitoring}
+        message="发布内容后在这里追踪AI是否收录了你的内容"
+        data-testid="first-use-hint-inclusion-monitoring"
+      />
 
       {/* --- 收录概览卡 --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

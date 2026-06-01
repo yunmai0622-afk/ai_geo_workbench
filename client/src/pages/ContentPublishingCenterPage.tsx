@@ -1,3 +1,4 @@
+import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
@@ -19,11 +20,17 @@ import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
+import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { recordPublicLink, publishStatusLabel } from "@/lib/assetProgressDisplay";
 import { downloadPublishRecordsCsv } from "@/lib/geoDataExportDownload";
 import { formatPublishedAtLabel } from "@/lib/deliveryReportDisplay";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
+import {
+  fetchLocalAgentDownloadManifest,
+  pickLocalAgentDownloadHref,
+} from "@/lib/localAgentDownloadManifest";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
+import { isLocalAgentClientOutdated } from "@shared/localAgentVersionCompare";
 import {
   mapAgentTaskToCard,
   mapManualRecordToCard,
@@ -85,6 +92,9 @@ type AgentTaskRow = {
   agentFinishedAt?: Date | string | number | null;
   agentPickedAt?: Date | string | number | null;
   createdAt?: Date | string | number | null;
+  retryCount?: number | null;
+  canRetry?: boolean;
+  retryExhausted?: boolean;
 };
 
 function articleLatestQuality(articleId: number | undefined, scores: QualityScoreRow[]) {
@@ -152,15 +162,20 @@ export function ContentPublishingCenterPage() {
   });
   const createManualPublishRecord = trpc.geo.articles.createManualPublishRecord.useMutation();
   const updateManualPublishRecord = trpc.geo.articles.updateManualPublishRecord.useMutation();
+  const retryPublishTask = trpc.publishTasks.retry.useMutation();
   const [manualArticleId, setManualArticleId] = useState<number | "">("");
   const [manualPlatform, setManualPlatform] = useState<ManualPublishPlatform>("知乎");
   const [manualLink, setManualLink] = useState("");
   const [savingManual, setSavingManual] = useState(false);
 
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
+  const [localAgentClientVersion, setLocalAgentClientVersion] = useState<string | null>(null);
+  const [manifestVersion, setManifestVersion] = useState<string | null>(null);
+  const [manifestDownloadHref, setManifestDownloadHref] = useState<string | null>(null);
   const [checkingAgent, setCheckingAgent] = useState(false);
   const [linkDraftById, setLinkDraftById] = useState<Record<number, string>>({});
   const [savingRowId, setSavingRowId] = useState<number | null>(null);
+  const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
 
@@ -189,11 +204,13 @@ export function ContentPublishingCenterPage() {
     try {
       const h = await checkLocalAgentHealth();
       setLocalAgentOnline(h?.ok ?? false);
+      setLocalAgentClientVersion(h?.version?.trim() ? h.version.trim() : null);
       if (selectedProjectId) {
         await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
       }
     } catch {
       setLocalAgentOnline(false);
+      setLocalAgentClientVersion(null);
     } finally {
       setCheckingAgent(false);
     }
@@ -203,6 +220,15 @@ export function ContentPublishingCenterPage() {
     if (!enabled) return;
     void refreshAgentHealth();
   }, [enabled, selectedProjectId, refreshAgentHealth]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    void fetchLocalAgentDownloadManifest().then(manifest => {
+      const version = manifest?.version?.trim();
+      setManifestVersion(version || null);
+      setManifestDownloadHref(pickLocalAgentDownloadHref(manifest));
+    });
+  }, [enabled]);
 
   useEffect(() => {
     if (publishableArticles.length === 0) {
@@ -269,6 +295,28 @@ export function ContentPublishingCenterPage() {
   }, [taskCards]);
 
   const pendingCount = columns.pending.length;
+
+  const localAgentUpdateNotice = useMemo(() => {
+    if (
+      !localAgentOnline ||
+      !localAgentClientVersion ||
+      !manifestVersion ||
+      !manifestDownloadHref ||
+      !isLocalAgentClientOutdated(localAgentClientVersion, manifestVersion)
+    ) {
+      return null;
+    }
+    return {
+      clientVersion: localAgentClientVersion,
+      manifestVersion,
+      downloadHref: manifestDownloadHref,
+    };
+  }, [
+    localAgentOnline,
+    localAgentClientVersion,
+    manifestVersion,
+    manifestDownloadHref,
+  ]);
 
   const loading =
     articlesQuery.isLoading || scoresQuery.isLoading || publishRecordsQuery.isLoading || autoPublishTasksQuery.isLoading;
@@ -337,6 +385,31 @@ export function ContentPublishingCenterPage() {
 
   function markAbnormal(card: PublishTaskCardModel) {
     toast.error(card.errorMessage || card.statusLabel || "发布异常，请查看状态说明或联系交付同学");
+  }
+
+  async function handleRetryPublishTask(card: PublishTaskCardModel) {
+    if (!selectedProjectId || !card.taskId) return;
+    if (card.retryExhausted) {
+      toast.error("请人工处理：已达最大重试次数");
+      return;
+    }
+    setRetryingTaskId(card.taskId);
+    try {
+      const result = await retryPublishTask.mutateAsync({
+        projectId: selectedProjectId,
+        taskId: card.taskId,
+      });
+      await autoPublishTasksQuery.refetch();
+      toast.success(
+        result.canRetryAgain
+          ? `已重新加入发布队列（第 ${result.retryCount} 次重试）`
+          : "已重新加入发布队列；若再次失败需人工处理",
+      );
+    } catch (e) {
+      toast.error(toUserFacingErrorFromUnknown(e, "重试失败"));
+    } finally {
+      setRetryingTaskId(null);
+    }
   }
 
   async function handleSaveManualRecord() {
@@ -445,6 +518,7 @@ export function ContentPublishingCenterPage() {
               }}
               checking={checkingAgent}
               onRefresh={() => void refreshAgentHealth()}
+              updateNotice={localAgentUpdateNotice}
             />
 
             <PublishPlatformAccountsOverview
@@ -463,10 +537,12 @@ export function ContentPublishingCenterPage() {
               columns={columns}
               linkDraftByRecordId={linkDraftById}
               savingRecordId={savingRowId}
+              retryingTaskId={retryingTaskId}
               onPreview={openPreview}
               onStartPublish={startLocalPublish}
               onSaveLink={handleSaveRowLink}
               onMarkAbnormal={markAbnormal}
+              onRetryTask={card => void handleRetryPublishTask(card)}
               onLinkDraftChange={(id, v) => setLinkDraftById(d => ({ ...d, [id]: v }))}
             />
 

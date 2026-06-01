@@ -15,13 +15,16 @@ import {
 import { aggregateAiTestEvidence, normalizeAiTestResult, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
 import { buildDeliveryReportConclusionLine, resolveDeliveryReportVisibilityScore } from "@shared/deliveryReportScore";
 import {
+  computeDeliveryReportShareExpiresAt,
   DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE,
   DELIVERY_REPORT_SHARE_INVALID_MESSAGE,
   mapItemToPublicEvidence,
   mapRecordsToPublicPublishedContent,
   type DeliveryReportPublicEvidencePayload,
   type DeliveryReportPublicSharePayload,
+  type DeliveryReportShareLinkStatus,
 } from "@shared/deliveryReportPublicShare";
+import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
 import { getDb } from "./db";
 
@@ -54,17 +57,48 @@ export function isShareTokenRowActive(row: { isEnabled: boolean; expiresAt: Date
   return true;
 }
 
-export async function resolveShareTokenProjectId(db: DbConn, token: string): Promise<number> {
+export async function findShareTokenRow(db: DbConn, token: string) {
   const rows = await db
     .select()
     .from(deliveryReportShareTokens)
     .where(eq(deliveryReportShareTokens.token, token))
     .limit(1);
-  const row = rows[0];
+  return rows[0];
+}
+
+export async function resolveShareTokenProjectId(db: DbConn, token: string): Promise<number> {
+  const row = await findShareTokenRow(db, token);
   if (!isShareTokenRowActive(row)) {
     throw new TRPCError({ code: "NOT_FOUND", message: SHARE_TOKEN_INVALID });
   }
-  return row.projectId;
+  return row!.projectId;
+}
+
+export async function getActiveShareTokenForProject(
+  db: DbConn,
+  projectId: number,
+): Promise<{ token: string; expiresAt: Date | null } | null> {
+  const existing = await db
+    .select()
+    .from(deliveryReportShareTokens)
+    .where(and(eq(deliveryReportShareTokens.projectId, projectId), eq(deliveryReportShareTokens.isEnabled, true)))
+    .orderBy(desc(deliveryReportShareTokens.createdAt))
+    .limit(1);
+  const row = existing[0];
+  if (!row || !isShareTokenRowActive(row)) return null;
+  return { token: row.token, expiresAt: row.expiresAt ?? null };
+}
+
+export async function getShareLinkStatusForProject(db: DbConn, projectId: number): Promise<DeliveryReportShareLinkStatus> {
+  const active = await getActiveShareTokenForProject(db, projectId);
+  if (!active) {
+    return { hasActiveLink: false, sharePath: null, shareExpiresAt: null };
+  }
+  return {
+    hasActiveLink: true,
+    sharePath: buildDeliveryReportPublicPath(active.token),
+    shareExpiresAt: active.expiresAt ? active.expiresAt.toISOString() : null,
+  };
 }
 
 /** 禁用 projectId 下所有启用中的分享链接（软禁用，不删除记录） */
@@ -90,36 +124,36 @@ export async function disableEnabledShareTokensForProject(
 }
 
 /** 禁用旧链接并生成新的随机分享链接 */
-export async function regenerateShareLinkForProject(db: DbConn, projectId: number): Promise<string> {
+export async function regenerateShareLinkForProject(
+  db: DbConn,
+  projectId: number,
+): Promise<{ token: string; expiresAt: Date }> {
   await disableEnabledShareTokensForProject(db, projectId);
   const token = generateDeliveryReportShareToken();
-  await db.insert(deliveryReportShareTokens).values({ token, projectId, isEnabled: true });
-  return token;
+  const expiresAt = computeDeliveryReportShareExpiresAt();
+  await db.insert(deliveryReportShareTokens).values({ token, projectId, isEnabled: true, expiresAt });
+  return { token, expiresAt };
 }
 
-export async function getOrCreateShareTokenForProject(db: DbConn, projectId: number): Promise<string> {
-  const existing = await db
-    .select()
-    .from(deliveryReportShareTokens)
-    .where(and(eq(deliveryReportShareTokens.projectId, projectId), eq(deliveryReportShareTokens.isEnabled, true)))
-    .orderBy(desc(deliveryReportShareTokens.createdAt))
-    .limit(1);
-
-  if (existing[0]) {
-    const row = existing[0];
-    if (!row.expiresAt || row.expiresAt.getTime() >= Date.now()) {
-      return row.token;
-    }
+export async function getOrCreateShareTokenForProject(
+  db: DbConn,
+  projectId: number,
+): Promise<{ token: string; expiresAt: Date | null }> {
+  const active = await getActiveShareTokenForProject(db, projectId);
+  if (active) {
+    return active;
   }
 
   const token = generateDeliveryReportShareToken();
-  await db.insert(deliveryReportShareTokens).values({ token, projectId, isEnabled: true });
-  return token;
+  const expiresAt = computeDeliveryReportShareExpiresAt();
+  await db.insert(deliveryReportShareTokens).values({ token, projectId, isEnabled: true, expiresAt });
+  return { token, expiresAt };
 }
 
 export async function buildDeliveryReportPublicSharePayload(
   db: DbConn,
   projectId: number,
+  shareExpiresAt: Date | null = null,
 ): Promise<DeliveryReportPublicSharePayload> {
   const projectRows = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
   const project = projectRows[0];
@@ -214,6 +248,7 @@ export async function buildDeliveryReportPublicSharePayload(
     reportGeneratedAt: reportGeneratedAt ? reportGeneratedAt.toISOString() : null,
     visibilityScore,
     conclusionLine,
+    shareExpiresAt: shareExpiresAt ? shareExpiresAt.toISOString() : null,
     aiTest: toPublicAiTestAggregate(aggregate),
     publishedContent,
   };

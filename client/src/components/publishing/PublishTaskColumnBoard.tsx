@@ -39,6 +39,8 @@ type Props = {
   onSaveLink: (recordId: number) => void;
   onMarkAbnormal: (card: PublishTaskCardModel) => void;
   onLinkDraftChange: (recordId: number, value: string) => void;
+  retryingTaskId?: number | null;
+  onRetryTask?: (card: PublishTaskCardModel) => void;
 };
 
 function TaskCard({
@@ -51,6 +53,8 @@ function TaskCard({
   onSaveLink,
   onMarkAbnormal,
   onLinkDraftChange,
+  retryingTaskId,
+  onRetryTask,
 }: {
   card: PublishTaskCardModel;
   col: PublishColumnId;
@@ -128,6 +132,15 @@ function TaskCard({
         </p>
       ) : null}
 
+      {card.retryExhausted ? (
+        <p
+          className="rounded-md border border-amber-100 bg-amber-50 px-2.5 py-2 text-xs text-amber-900"
+          data-testid="publish-retry-exhausted"
+        >
+          请人工处理（已重试 {card.retryCount ?? 0} 次，已达上限）
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
         <Button
           type="button"
@@ -168,7 +181,19 @@ function TaskCard({
             </Button>
           </>
         ) : null}
-        {card.isAbnormal ? (
+        {card.canRetry && card.taskId && onRetryTask ? (
+          <Button
+            type="button"
+            size="sm"
+            className={geoP0Brand.primary}
+            data-testid={`publish-retry-btn-${card.taskId}`}
+            disabled={retryingTaskId === card.taskId}
+            onClick={() => onRetryTask(card)}
+          >
+            {retryingTaskId === card.taskId ? "重试中…" : "重试"}
+          </Button>
+        ) : null}
+        {card.isAbnormal && !card.canRetry ? (
           <Button
             type="button"
             size="sm"
@@ -193,6 +218,8 @@ export function PublishTaskColumnBoard({
   onSaveLink,
   onMarkAbnormal,
   onLinkDraftChange,
+  retryingTaskId,
+  onRetryTask,
 }: Props) {
   return (
     <div className="space-y-8" data-testid="publish-task-columns">
@@ -219,6 +246,8 @@ export function PublishTaskColumnBoard({
                   onSaveLink={onSaveLink}
                   onMarkAbnormal={onMarkAbnormal}
                   onLinkDraftChange={onLinkDraftChange}
+                  retryingTaskId={retryingTaskId}
+                  onRetryTask={onRetryTask}
                 />
               ))}
             </div>

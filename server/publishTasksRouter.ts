@@ -35,6 +35,8 @@ import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness"
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/schema";
 import { emitPublishFailedNotification, emitPublishSuccessNotification } from "./systemNotifications";
+import { retryFailedPublishTask } from "./publishTaskRetryService";
+import { canRetryPublishTask, isPublishRetryExhausted } from "@shared/publishTaskRetry";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -472,13 +474,36 @@ export const publishTasksRouter = router({
           agentLog: publishTasks.agentLog,
           agentPickedAt: publishTasks.agentPickedAt,
           agentFinishedAt: publishTasks.agentFinishedAt,
+          retryCount: publishTasks.retryCount,
+          retryLog: publishTasks.retryLog,
           createdAt: publishTasks.createdAt,
         })
         .from(publishTasks)
         .where(eq(publishTasks.projectId, input.projectId))
         .orderBy(desc(publishTasks.id))
         .limit(input.limit ?? 30);
-      return { tasks: rows } as const;
+      return {
+        tasks: rows.map(row => ({
+          ...row,
+          canRetry: canRetryPublishTask(row),
+          retryExhausted: isPublishRetryExhausted(row),
+        })),
+      } as const;
+    }),
+
+  retry: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        taskId: z.number().int().positive(),
+        reason: z.string().max(2000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDbConn();
+      const ownerUserId = getCurrentUserId(ctx);
+      await requireProjectAccessConn(db, ownerUserId, input.projectId);
+      return retryFailedPublishTask(db, input);
     }),
 
   latestByArticle: protectedProcedure

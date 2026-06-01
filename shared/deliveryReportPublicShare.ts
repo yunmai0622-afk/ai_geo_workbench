@@ -10,6 +10,22 @@ export type DeliveryReportPublicPublishedItem = {
 };
 
 /** 匿名客户报告页只读数据（无工程字段、无用户敏感信息） */
+/** 客户报告分享链接默认有效天数 */
+export const DELIVERY_REPORT_SHARE_VALIDITY_DAYS = 30;
+
+export function computeDeliveryReportShareExpiresAt(from: Date = new Date()): Date {
+  const expiresAt = new Date(from);
+  expiresAt.setDate(expiresAt.getDate() + DELIVERY_REPORT_SHARE_VALIDITY_DAYS);
+  return expiresAt;
+}
+
+export function formatDeliveryReportShareExpiryLabel(expiresAt: string | Date | null | undefined): string {
+  if (!expiresAt) return "链接长期有效";
+  const date = typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
+  if (Number.isNaN(date.getTime())) return "—";
+  return `有效期至 ${date.toLocaleString("zh-CN", { dateStyle: "long", timeStyle: "short" })}`;
+}
+
 export type DeliveryReportPublicSharePayload = {
   brandName: string;
   enterpriseName: string;
@@ -17,8 +33,16 @@ export type DeliveryReportPublicSharePayload = {
   /** 与 conclusionLine 一致：内容覆盖总分 totalScore */
   visibilityScore: number | null;
   conclusionLine: string;
+  /** 分享 token 过期时间（ISO）；null 表示未设置过期 */
+  shareExpiresAt: string | null;
   aiTest: AiTestEvidenceAggregate;
   publishedContent: DeliveryReportPublicPublishedItem[];
+};
+
+export type DeliveryReportShareLinkStatus = {
+  hasActiveLink: boolean;
+  sharePath: string | null;
+  shareExpiresAt: string | null;
 };
 
 export function mapRecordsToPublicPublishedContent(

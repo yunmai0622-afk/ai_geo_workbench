@@ -1,9 +1,11 @@
+import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
 import { buildProjectUrl } from "@/lib/activeProject";
+import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import {
@@ -79,6 +81,11 @@ export default function EnterpriseWorkspacePage() {
 
   return (
     <div className="space-y-7" data-testid="workspace-page">
+      <FirstUseHintBanner
+        storageKey={FIRST_USE_HINT_KEYS.workspace}
+        message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
+        data-testid="first-use-hint-workspace"
+      />
       {summaryQuery.isLoading ? (
         <p className="text-sm text-gray-400">加载工作台数据…</p>
       ) : summaryQuery.isError ? (

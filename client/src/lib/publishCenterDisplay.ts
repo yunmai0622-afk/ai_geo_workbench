@@ -3,6 +3,7 @@ import {
   publishTaskStatusCustomerLabel,
 } from "@shared/publishTaskErrors";
 import { isBindingPublishPlatform, PUBLISH_PLATFORM_LABELS } from "@shared/platformAccountVerify";
+import { isPublishRetryExhausted, MAX_PUBLISH_TASK_RETRIES } from "@shared/publishTaskRetry";
 
 export type PublishColumnId = "pending" | "active" | "done";
 
@@ -29,6 +30,9 @@ export type PublishTaskCardModel = {
   linkDraft?: string;
   /** Agent 发布完成且已写入收录监测时展示 */
   autoInclusionMonitoring?: boolean;
+  retryCount?: number;
+  canRetry?: boolean;
+  retryExhausted?: boolean;
 };
 
 export const AUTO_INCLUSION_MONITORING_HINT = "已自动进入收录监测";
@@ -128,12 +132,19 @@ export function mapAgentTaskToCard(
     agentFinishedAt?: Date | string | number | null;
     agentPickedAt?: Date | string | number | null;
     createdAt?: Date | string | number | null;
+    retryCount?: number | null;
+    canRetry?: boolean;
+    retryExhausted?: boolean;
   },
   contentGoal?: string | null,
   options?: { autoInclusionMonitoring?: boolean },
 ): PublishTaskCardModel {
   const column = classifyPublishTaskColumn(task.status);
-  const isAbnormal = task.status === "failed" || task.status === "session_expired";
+  const retryCount = task.retryCount ?? 0;
+  const retryExhausted = task.retryExhausted ?? isPublishRetryExhausted({ status: task.status, retryCount });
+  const canRetry = task.canRetry ?? (task.status === "failed" && retryCount < MAX_PUBLISH_TASK_RETRIES);
+  const isAbnormal =
+    task.status === "failed" || task.status === "session_expired" || retryExhausted;
   const draftUrl = task.draftUrl?.trim() || null;
   const publishedUrl = task.resultUrl?.trim() || null;
   const errorMessage =
@@ -167,6 +178,9 @@ export function mapAgentTaskToCard(
       Boolean(options?.autoInclusionMonitoring) &&
       task.status === "completed" &&
       Boolean(publishedUrl),
+    retryCount,
+    canRetry,
+    retryExhausted,
   };
 }
 

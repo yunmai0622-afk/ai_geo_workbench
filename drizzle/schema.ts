@@ -647,6 +647,10 @@ export const publishTasks = mysqlTable("publish_tasks", {
   agentErrorType: varchar("agentErrorType", { length: 50 }),
   agentErrorMessage: text("agentErrorMessage"),
   agentLog: json("agentLog").$type<string[]>(),
+  retryCount: int("retryCount").default(0).notNull(),
+  retryLog: json("retryLog").$type<
+    Array<{ at: string; reason: string; previousError?: string | null }>
+  >(),
   errorMessage: text("errorMessage"),
   apiKey: varchar("apiKey", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
