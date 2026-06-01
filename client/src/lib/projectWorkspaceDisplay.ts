@@ -14,6 +14,9 @@ export const CUSTOMER_STAGE_LABELS: Record<WorkspaceStageId, string> = {
 
 export const COCKPIT_PIPELINE_STEPS = ["建档", "诊断", "生产", "发布", "监测", "复测", "报告"] as const;
 
+/** GEO 分低于该值时，客户项目卡片优先提示优化，不引导先看交付报告 */
+export const CLIENT_PROJECT_LOW_GEO_SCORE_THRESHOLD = 60;
+
 export function cockpitPipelineIndex(stageId: WorkspaceStageId): number {
   const map: Record<WorkspaceStageId, number> = {
     bind_publish_env: 0,
@@ -42,6 +45,13 @@ export function deriveClientProjectCardDisplay(project: ClientProjectCardInput):
   nextStep: string;
 } {
   if (project.publishCount > 0 && project.aiTestCount > 0) {
+    const score = project.latestGeoScore;
+    if (score != null && score < CLIENT_PROJECT_LOW_GEO_SCORE_THRESHOLD) {
+      return {
+        stageLabel: "优化中",
+        nextStep: "GEO 分偏低，优先优化内容质量与收录表现，提升可见度后再查看交付报告",
+      };
+    }
     return { stageLabel: "报告已生成", nextStep: "查看交付报告或继续优化收录表现" };
   }
   if (project.publishCount > 0) {
@@ -62,6 +72,12 @@ export function deriveClientProjectCardDisplay(project: ClientProjectCardInput):
   return { stageLabel: "待建档", nextStep: "完成 GEO 建档，补齐企业基础信息" };
 }
 
+/** 客户项目卡片右上角：完整阶段标签（勿再包一层「第 X 步」） */
+export function deriveClientProjectPipelineBadgeLabel(project: ClientProjectCardInput): string {
+  return deriveClientProjectCardDisplay(project).stageLabel;
+}
+
+/** @deprecated 旧版短标签仅用于兼容；新 UI 请用 deriveClientProjectPipelineBadgeLabel */
 export function deriveClientProjectEightStepLabel(project: ClientProjectCardInput): string {
   if (project.publishCount > 0 && project.aiTestCount > 0) return "交付";
   if (project.publishCount > 0) return "监测";

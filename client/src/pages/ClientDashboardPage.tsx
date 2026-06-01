@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { buildProjectUrl, setActiveProjectId } from "@/lib/activeProject";
 import {
   deriveClientProjectCardDisplay,
-  deriveClientProjectEightStepLabel,
+  deriveClientProjectPipelineBadgeLabel,
   formatBrandMentionRate,
   formatGeoScore,
   formatMeasuredAt,
@@ -111,7 +111,7 @@ function ProjectCard({
   archivePending: boolean;
 }) {
   const { nextStep } = deriveClientProjectCardDisplay(project);
-  const pipelineStep = deriveClientProjectEightStepLabel(project);
+  const pipelineBadgeLabel = deriveClientProjectPipelineBadgeLabel(project);
   const geoScore = formatGeoScore(project.latestGeoScore);
   const mentionRateText =
     project.t0BrandMentionRate != null ? formatBrandMentionRate(project.t0BrandMentionRate) : "--";
@@ -128,8 +128,11 @@ function ProjectCard({
       <div className="mb-2 flex items-start justify-between gap-2">
         <h3 className="truncate text-[15px] font-semibold text-gray-900">{project.enterpriseName}</h3>
         <div className="flex shrink-0 items-center gap-1">
-          <span className={cn(stageBadgeClass(pipelineStep))} data-testid="client-project-pipeline-step">
-            第 {pipelineStep} 步
+          <span
+            className={cn(stageBadgeClass(pipelineBadgeLabel))}
+            data-testid="client-project-pipeline-step"
+          >
+            {pipelineBadgeLabel}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
