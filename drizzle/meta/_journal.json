@@ -386,6 +386,13 @@
       "when": 1778276197827,
       "tag": "0054_system_notifications_weekly_growth",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1778277197827,
+      "tag": "0055_fix_missing_columns",
+      "breakpoints": true
     }
   ]
 }
