@@ -31,7 +31,7 @@ export type ResolvedArticlePublishPlatform = {
   weeklyPlatformKey: WeeklyPlatformKey;
   /** publishTasks.create 入参 platform（绑定平台或 wechat） */
   publishQueueSlug: BindingPublishPlatform | "wechat" | null;
-  /** Local Agent 可自动发布（zhihu/sohu/toutiao/baijiahao） */
+  /** Local Agent 可自动发布（zhihu/sohu/toutiao/baijiahao/netease） */
   supportedByLocalAgent: boolean;
   /** 已从文章/策略识别出平台（非 unknown） */
   recognized: boolean;
@@ -48,7 +48,13 @@ export type ArticlePublishPlatformSource = {
   lifecycle?: { platform?: string | null } | null;
 };
 
-const LOCAL_AGENT_AUTO_PUBLISH_PLATFORMS = new Set<BindingPublishPlatform>(["zhihu", "sohu", "toutiao", "baijiahao"]);
+const LOCAL_AGENT_AUTO_PUBLISH_PLATFORMS = new Set<BindingPublishPlatform>([
+  "zhihu",
+  "sohu",
+  "toutiao",
+  "baijiahao",
+  "netease",
+]);
 
 function weeklyKeyFromPublishId(id: PublishPlatformId): WeeklyPlatformKey {
   if (id === "xiaohongshu") return "xiaohongshu";
@@ -177,10 +183,7 @@ function finalizeResolved(slug: Exclude<ArticlePublishPlatformSlug, "unknown">):
   const publishQueueSlug: BindingPublishPlatform | null = binding;
   const supportedByLocalAgent = binding ? LOCAL_AGENT_AUTO_PUBLISH_PLATFORMS.has(binding) : false;
   let queueBlockedReason: string | null = null;
-  if (publishId === "netease") {
-    queueBlockedReason =
-      "本篇内容识别为「网易号」，当前本地客户端暂不支持自动发布，请先选择人工发布或后续接入。";
-  } else if (publishId === "other") {
+  if (publishId === "other") {
     queueBlockedReason =
       "本篇内容识别为「其他平台」。请按实际渠道人工发布或在策略中选择明确平台后重新生成。";
   } else if (!supportedByLocalAgent && publishQueueSlug) {

@@ -33,7 +33,7 @@ describe("Enterprise-Account-Matrix-Redesign", () => {
     expect(constants).toContain("全部账号");
     expect(constants).toContain("官方账号组");
     expect(hook).toContain("绑定${PUBLISH_PLATFORM_LABELS[selectedPlatform]}账号");
-    expect(shared).toContain("发布待接入");
+    expect(shared).toContain("pending_verify");
     expect(tech).toContain("账号详情");
     expect(table).toContain("platform-account-technical");
   });

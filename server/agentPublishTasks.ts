@@ -20,7 +20,7 @@ export const AGENT_PUBLISH_STATUSES = [
 
 export type AgentPublishStatus = (typeof AGENT_PUBLISH_STATUSES)[number];
 
-const AGENT_POLL_PLATFORMS = new Set(["zhihu", "sohu", "baijiahao", "toutiao"]);
+const AGENT_POLL_PLATFORMS = new Set(["zhihu", "sohu", "baijiahao", "toutiao", "netease"]);
 
 const TERMINAL_STATUSES = new Set<AgentPublishStatus>([
   "draft_saved",

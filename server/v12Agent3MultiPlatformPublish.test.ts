@@ -6,12 +6,14 @@ const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("Agent-3 multi-platform local publish", () => {
-  it("publisherFactory registers four platforms", () => {
+  it("publisherFactory registers five publish platforms", () => {
     const factory = read("local-agent/src/agent/platforms/publisherFactory.ts");
     expect(factory).toContain("zhihu: zhihuPublisher");
     expect(factory).toContain("sohu: sohuPublisher");
     expect(factory).toContain("baijiahao: baijiahaoPublisher");
     expect(factory).toContain("toutiao: toutiaoPublisher");
+    expect(factory).toContain("netease: neteasePublisher");
+    expect(factory).toContain('"netease"');
     expect(factory).toContain("publishWithPlatform");
   });
 
@@ -32,6 +34,7 @@ describe("Agent-3 multi-platform local publish", () => {
     expect(read("local-agent/src/agent/platforms/sohuPublisher.ts")).toContain("mp.sohu.com");
     expect(read("local-agent/src/agent/platforms/baijiahaoPublisher.ts")).toContain("baijiahao.baidu.com");
     expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).toContain("mp.toutiao.com");
+    expect(read("local-agent/src/agent/platforms/neteasePublisher.ts")).toContain("mp.163.com");
   });
 
   it("does not mock success or store credentials", () => {
@@ -46,10 +49,11 @@ describe("Agent-3 multi-platform local publish", () => {
     expect(read("server/agentPublishTasks.ts")).toContain("AGENT_POLL_PLATFORMS");
   });
 
-  it("poll returns all four agent platforms", () => {
+  it("poll returns all five agent platforms", () => {
     expect(read("server/agentPublishTasks.ts")).toContain('"sohu"');
     expect(read("server/agentPublishTasks.ts")).toContain('"baijiahao"');
     expect(read("server/agentPublishTasks.ts")).toContain('"toutiao"');
+    expect(read("server/agentPublishTasks.ts")).toContain('"netease"');
     expect(read("server/agentPublishTasks.ts")).toContain('action: "publish"');
   });
 
@@ -63,11 +67,12 @@ describe("Agent-3 multi-platform local publish", () => {
     expect(zhihu).toContain("save_timestamp_or_autosave_hint");
   });
 
-  it("baijiahao/sohu/toutiao publishers attempt publish with shared mp flow", () => {
+  it("baijiahao/sohu/toutiao/netease publishers attempt publish with shared mp flow", () => {
     for (const file of [
       "local-agent/src/agent/platforms/baijiahaoPublisher.ts",
       "local-agent/src/agent/platforms/sohuPublisher.ts",
       "local-agent/src/agent/platforms/toutiaoPublisher.ts",
+      "local-agent/src/agent/platforms/neteasePublisher.ts",
     ]) {
       const src = read(file);
       expect(src).toContain("attemptPublishArticle");

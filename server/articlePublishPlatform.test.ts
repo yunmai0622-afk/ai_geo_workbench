@@ -61,11 +61,11 @@ describe("articlePublishPlatform", () => {
     expect(resolved.queueBlockedReason).toMatch(/内容策略/);
   });
 
-  it("maps netease with bind-only blocked reason", () => {
+  it("maps netease as local-agent publish platform", () => {
     const resolved = normalizePublishPlatform("网易号");
     expect(resolved.slug).toBe("netease");
     expect(resolved.publishQueueSlug).toBe("netease");
-    expect(resolved.supportedByLocalAgent).toBe(false);
-    expect(resolved.queueBlockedReason).toMatch(/网易号/);
+    expect(resolved.supportedByLocalAgent).toBe(true);
+    expect(resolved.queueBlockedReason).toBeNull();
   });
 });

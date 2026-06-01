@@ -34,8 +34,6 @@ type Props = {
 export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Props) {
   const b = usePlatformAccountBinding(projectId);
   const platformLabel = PUBLISH_PLATFORM_LABELS[b.selectedPlatform];
-  const isNetease = b.selectedPlatform === "netease";
-
   return (
     <div className="space-y-4" data-testid="platform-account-matrix">
       <div>
@@ -161,9 +159,6 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
             <div className="rounded-xl border border-dashed border-gray-200 py-12 text-center" data-testid="platform-account-empty">
               <p className="text-base font-medium text-white">暂无{platformLabel}账号</p>
               <p className="mt-2 text-sm text-gray-500">绑定后可用于内容发布、状态追踪和复测任务。</p>
-              {isNetease ? (
-                <p className="mt-2 text-xs text-amber-200/90">网易号账号绑定已开放，自动发布能力待接入。</p>
-              ) : null}
               <Button
                 type="button"
                 className={cn(aiPrimaryBtn, "mt-4")}

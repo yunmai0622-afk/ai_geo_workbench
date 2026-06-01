@@ -3,7 +3,7 @@ import { touchAccountOpened } from "../profileManager";
 import { updateAccount, type StoredPlatform } from "../storage";
 import { closeContext, getOpenContext, getOrLaunchContext } from "./browserSession";
 
-export type LocalPublishPlatform = "zhihu" | "sohu" | "baijiahao" | "toutiao";
+export type LocalPublishPlatform = "zhihu" | "sohu" | "baijiahao" | "toutiao" | "netease";
 
 export type LocalPublishTask = {
   taskId: number;

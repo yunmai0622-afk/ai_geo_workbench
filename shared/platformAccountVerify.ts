@@ -15,11 +15,10 @@ export const PLATFORM_PUBLISH_CAPABILITY: Record<BindingPublishPlatform, Platfor
   sohu: "pending_verify",
   toutiao: "pending_verify",
   baijiahao: "pending_verify",
-  netease: "bind_only",
+  netease: "pending_verify",
 };
 
 export function platformCapabilityHint(platform: BindingPublishPlatform): string | null {
-  if (platform === "netease") return "发布待接入";
   if (PLATFORM_PUBLISH_CAPABILITY[platform] === "pending_verify") return null;
   return null;
 }

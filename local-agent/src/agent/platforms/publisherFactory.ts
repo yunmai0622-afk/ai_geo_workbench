@@ -15,11 +15,17 @@ const BINDING_PUBLISHERS: Record<StoredPlatform, BasePlatformPublisher> = {
   netease: neteasePublisher,
 };
 
-/** 支持 Local Agent 绑定（含网易号 bind-only） */
+/** 支持 Local Agent 绑定的平台 */
 export const LOCAL_AGENT_BINDING_PLATFORMS = Object.keys(BINDING_PUBLISHERS) as StoredPlatform[];
 
 /** 支持自动/半自动发布的平台 */
-export const LOCAL_AGENT_PLATFORMS = ["zhihu", "sohu", "baijiahao", "toutiao"] as LocalPublishPlatform[];
+export const LOCAL_AGENT_PLATFORMS = [
+  "zhihu",
+  "sohu",
+  "baijiahao",
+  "toutiao",
+  "netease",
+] as LocalPublishPlatform[];
 
 export function isBindingPlatform(platform: string): platform is StoredPlatform {
   return (LOCAL_AGENT_BINDING_PLATFORMS as readonly string[]).includes(platform);
