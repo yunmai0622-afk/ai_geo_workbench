@@ -38,11 +38,11 @@ describe("C7-A-Fix unsaved changes block publish", () => {
     expect(weekly).toContain("setArticleUnsaved(editorArticle.id, false)");
   });
 
-  it("publish hints when coverBase64 is missing without hard block", () => {
-    const weekly = read("client/src/pages/WeeklyContentPage.tsx");
-    expect(weekly).toContain("ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE");
-    expect(weekly).toContain("publish-missing-cover-hint");
-    expect(weekly).toContain("articleNeedsCoverSaveHint");
+  it("publish blocks when cover is missing via pre-publish checklist", () => {
+    const panel = read("client/src/components/publishing/PublishPrePublishChecklist.tsx");
+    expect(panel).toContain("publish-pre-checklist");
+    expect(panel).toContain("pre-check-");
+    expect(read("shared/publishPrePublishChecklist.ts")).toContain("has_cover");
   });
 
   it("publish task still includes projectId and expectedAccountName", () => {
