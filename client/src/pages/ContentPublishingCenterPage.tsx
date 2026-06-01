@@ -8,6 +8,7 @@ import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentP
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
 import { PostPublishReminderCard } from "@/components/publishing/PostPublishReminderCard";
 import { PublishRecordsCalendar } from "@/components/publishing/PublishRecordsCalendar";
+import { PublishRecordsListPanel } from "@/components/publishing/PublishRecordsListPanel";
 import { PublishTaskColumnBoard } from "@/components/publishing/PublishTaskColumnBoard";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
@@ -573,14 +574,36 @@ export function ContentPublishingCenterPage() {
       />
 
       <Tabs defaultValue="tasks" className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2 print:hidden">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3 print:hidden">
           <TabsTrigger value="tasks" data-testid="publish-center-tab-tasks">
             发布任务
+          </TabsTrigger>
+          <TabsTrigger value="records" data-testid="publish-center-tab-records">
+            发布记录
           </TabsTrigger>
           <TabsTrigger value="calendar" data-testid="publish-calendar-tab">
             发布日历
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="records" className="mt-0">
+          <PublishRecordsListPanel
+            records={publishRecords}
+            loading={publishRecordsQuery.isLoading}
+            resolveTitle={record => {
+              const article = articleById.get(record.articleId ?? 0);
+              return (
+                article?.title?.trim() ||
+                record.publishTitle?.trim() ||
+                `文章 #${record.articleId ?? "—"}`
+              );
+            }}
+            onViewAllHistory={() =>
+              selectedProjectId &&
+              setLocation(buildProjectUrl("/publish-records-history", selectedProjectId))
+            }
+          />
+        </TabsContent>
 
         <TabsContent value="calendar" className="mt-0">
           <PublishRecordsCalendar
@@ -767,18 +790,9 @@ export function ContentPublishingCenterPage() {
                     </Button>
                   </div>
                 )}
-                {publishRecords.length === 0 ? (
-                  <p className="text-gray-500">暂无发布记录</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {publishRecords.map(record => (
-                      <li key={record.id} className="rounded-lg border border-gray-100 px-3 py-2">
-                        {articleById.get(record.articleId ?? 0)?.title ?? record.publishTitle ?? "无标题"} ·{" "}
-                        {record.publishChannel ?? "—"} · {publishStatusLabel(record.publishStatus)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <p className="text-gray-500">
+                  已登记记录请在上方「发布记录」标签页查看；超过 30 条时可使用「查看全部历史」按时间筛选。
+                </p>
               </div>
             </details>
 

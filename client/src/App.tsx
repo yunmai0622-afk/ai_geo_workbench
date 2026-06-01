@@ -41,6 +41,7 @@ import PricingPage from "./pages/PricingPage";
 import RegisterPage from "./pages/RegisterPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import SettingsPage from "./pages/SettingsPage";
+import { PublishRecordsHistoryPage } from "./pages/PublishRecordsHistoryPage";
 import AdminConfigPage from "./pages/AdminConfigPage";
 import AdminStatsPage from "./pages/AdminStatsPage";
 
@@ -85,6 +86,7 @@ function PrivateRoutes() {
           <Redirect to="/weekly" />
         </Route>
         <Route path="/content-publishing" component={ContentPublishingFlowPage} />
+        <Route path="/publish-records-history" component={PublishRecordsHistoryPage} />
         <Route path="/inclusion-monitoring" component={InclusionMonitoringFlowPage} />
         <Route path="/geo/evidence/:monitoringId/:resultIndex" component={AiSearchEvidencePage} />
         <Route path="/delivery-reports" component={DeliveryReportsFlowPage} />
