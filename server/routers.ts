@@ -843,6 +843,27 @@ const geoAssetRouter = router({
     await db.update(competitorProfiles).set({ ...values, canReference: booleanToInt(values.canReference) }).where(eq(competitorProfiles.id, id));
     return { success: true, id } as const;
   }),
+  competitorAnalysisSummary: protectedProcedure
+    .input(z.object({ projectId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await requireDb();
+      await requireProjectAccess(ctx, input.projectId);
+      const { resolveCompetitorAnalysisSummary } = await import("./competitorAnalysis");
+      const profileRows = await db
+        .select({ brandName: enterpriseGeoProfiles.brandName, enterpriseName: enterpriseGeoProfiles.enterpriseName })
+        .from(enterpriseGeoProfiles)
+        .where(eq(enterpriseGeoProfiles.projectId, input.projectId))
+        .limit(1);
+      const projectRows = await db
+        .select({ enterpriseName: projects.enterpriseName })
+        .from(projects)
+        .where(eq(projects.id, input.projectId))
+        .limit(1);
+      const brandName =
+        String(profileRows[0]?.brandName ?? profileRows[0]?.enterpriseName ?? projectRows[0]?.enterpriseName ?? "").trim() ||
+        "本品牌";
+      return resolveCompetitorAnalysisSummary(db, input.projectId, brandName);
+    }),
   /** 合规规则 / 发布策略 / 平台授权 的客户写入入口已关闭，统一由 `server/systemConfig.ts` 与只读历史表承载。 */
   createComplianceRule: protectedProcedure.input(complianceRuleInput).mutation(() => {
     throw new TRPCError({ code: "FORBIDDEN", message: "合规规则已迁移为系统统一配置，此入口已关闭。" });
