@@ -1,4 +1,5 @@
 /** GEO Web SPA 路径（须与 client/src/App.tsx 路由一致） */
+export const GEO_WEB_PATH_AI_DIAGNOSIS = "/ai-diagnosis";
 export const GEO_WEB_PATH_CONTENT_PRODUCTION = "/weekly";
 export const GEO_WEB_PATH_PUBLISH_RECORDS = "/content-publishing";
 export const GEO_WEB_PATH_PLATFORM_ACCOUNTS = "/enterprise-profile#publish-platform-accounts";
@@ -27,4 +28,14 @@ export function resolveGeoWebPath(target: GeoWebNavigationTarget): string {
 
 export function buildGeoWebUrlForTarget(serverUrl: string, target: GeoWebNavigationTarget): string {
   return buildGeoWebUrl(serverUrl, resolveGeoWebPath(target));
+}
+
+/** 与 client buildProjectUrl 一致：为项目上下文附加 ?projectId= */
+export function buildProjectScopedPath(path: string, projectId: number): string {
+  const basePath = path.split("?")[0] || "/";
+  return `${basePath}?projectId=${projectId}`;
+}
+
+export function buildProjectScopedUrl(serverUrl: string, path: string, projectId: number): string {
+  return buildGeoWebUrl(serverUrl, buildProjectScopedPath(path, projectId));
 }

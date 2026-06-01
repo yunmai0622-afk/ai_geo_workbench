@@ -1,13 +1,58 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { SystemNotificationType } from "@shared/systemNotificationDisplay";
-import { projects, systemNotifications } from "../drizzle/schema";
+import {
+  GEO_WEB_PATH_AI_DIAGNOSIS,
+  GEO_WEB_PATH_PUBLISH_RECORDS,
+  buildProjectScopedUrl,
+} from "@shared/geoWebPaths";
+import { projects, systemNotifications, users } from "../drizzle/schema";
+import { ENV } from "./_core/env";
+import { sendSimpleEmail } from "./email";
 import type { DbConn } from "./projectAccess";
 
 async function resolveProjectOwner(db: DbConn, projectId: number) {
-  const rows = await db.select({ ownerUserId: projects.ownerUserId, enterpriseName: projects.enterpriseName }).from(projects).where(eq(projects.id, projectId)).limit(1);
+  const rows = await db
+    .select({
+      ownerUserId: projects.ownerUserId,
+      enterpriseName: projects.enterpriseName,
+      ownerEmail: users.email,
+    })
+    .from(projects)
+    .leftJoin(users, eq(projects.ownerUserId, users.id))
+    .where(eq(projects.id, projectId))
+    .limit(1);
   const row = rows[0];
   if (!row?.ownerUserId) return null;
-  return { ownerUserId: row.ownerUserId, enterpriseName: row.enterpriseName };
+  return {
+    ownerUserId: row.ownerUserId,
+    enterpriseName: row.enterpriseName,
+    ownerEmail: row.ownerEmail?.trim() || null,
+  };
+}
+
+function resolveEmailViewUrl(projectId: number, path: string): string | null {
+  const base = ENV.appPublicUrl.trim();
+  if (!base) return null;
+  try {
+    return buildProjectScopedUrl(base, path, projectId);
+  } catch {
+    return null;
+  }
+}
+
+async function notifyOwnerByEmail(input: {
+  ownerEmail: string | null;
+  subject: string;
+  result: string;
+  viewUrl?: string | null;
+}) {
+  if (!input.ownerEmail) return;
+  await sendSimpleEmail({
+    to: input.ownerEmail,
+    subject: input.subject,
+    result: input.result,
+    viewUrl: input.viewUrl,
+  });
 }
 
 export async function createSystemNotification(db: DbConn, input: { userId: number; projectId?: number | null; type: SystemNotificationType; title: string; content: string; }) {
@@ -34,7 +79,15 @@ export async function markAllNotificationsRead(db: DbConn, userId: number) {
 export async function emitT0CompleteNotification(db: DbConn, projectId: number, roundName: string) {
   const owner = await resolveProjectOwner(db, projectId);
   if (!owner) return;
-  await createSystemNotification(db, { userId: owner.ownerUserId, projectId, type: "t0_complete", title: "T0 检测完成", content: `${owner.enterpriseName} 的 ${roundName} 已完成，可在 AI 实测诊断页查看结果。` });
+  const title = "T0 检测完成";
+  const content = `${owner.enterpriseName} 的 ${roundName} 已完成，可在 AI 实测诊断页查看结果。`;
+  await createSystemNotification(db, { userId: owner.ownerUserId, projectId, type: "t0_complete", title, content });
+  await notifyOwnerByEmail({
+    ownerEmail: owner.ownerEmail,
+    subject: title,
+    result: content,
+    viewUrl: resolveEmailViewUrl(projectId, GEO_WEB_PATH_AI_DIAGNOSIS),
+  });
 }
 
 export async function emitT1RetestCompleteNotification(db: DbConn, projectId: number, roundName: string) {
@@ -47,7 +100,15 @@ export async function emitPublishSuccessNotification(db: DbConn, projectId: numb
   const owner = await resolveProjectOwner(db, projectId);
   if (!owner) return;
   const platformLabel = platform?.trim() ? `${platform} ` : "";
-  await createSystemNotification(db, { userId: owner.ownerUserId, projectId, type: "publish_success", title: "内容发布成功", content: `${owner.enterpriseName} 的内容「${articleTitle}」已在${platformLabel}发布成功。` });
+  const title = "内容发布成功";
+  const content = `${owner.enterpriseName} 的内容「${articleTitle}」已在${platformLabel}发布成功。`;
+  await createSystemNotification(db, { userId: owner.ownerUserId, projectId, type: "publish_success", title, content });
+  await notifyOwnerByEmail({
+    ownerEmail: owner.ownerEmail,
+    subject: title,
+    result: content,
+    viewUrl: resolveEmailViewUrl(projectId, GEO_WEB_PATH_PUBLISH_RECORDS),
+  });
 }
 
 export async function emitPublishFailedNotification(db: DbConn, projectId: number, articleTitle: string, reason?: string | null) {

@@ -15,4 +15,13 @@ describe("GEO-V1.1-Notifications", () => {
     expect(read("server/routers.ts")).toContain("notifications: systemNotificationsRouter");
     expect(read("client/src/components/notifications/NotificationBell.tsx")).toContain("refetchInterval: NOTIFICATION_POLL_INTERVAL_MS");
   });
+
+  it("sends email on T0 complete and publish success", () => {
+    const notifications = read("server/systemNotifications.ts");
+    expect(notifications).toContain("notifyOwnerByEmail");
+    expect(notifications).toContain("sendSimpleEmail");
+    expect(notifications).toContain("GEO_WEB_PATH_AI_DIAGNOSIS");
+    expect(notifications).toContain("GEO_WEB_PATH_PUBLISH_RECORDS");
+    expect(read(".env.example")).toContain("SMTP_HOST");
+  });
 });
