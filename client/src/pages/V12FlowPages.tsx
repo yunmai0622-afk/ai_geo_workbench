@@ -25,7 +25,9 @@ import {
 import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { RetestPlanPanel } from "@/components/diagnosis/RetestPlanPanel";
+import { DangerousActionConfirmDialog } from "@/components/DangerousActionConfirmDialog";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
+import { useDangerousActionConfirm } from "@/hooks/useDangerousActionConfirm";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection, type ProjectOption } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
@@ -84,6 +86,7 @@ const MONITORING_TEST_STAGE_DONE_LABEL: Record<AiTestStage, string> = {
   after_publish: "发布后复测",
 };
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { DANGEROUS_ACTION_LABELS } from "@shared/dangerousActionConfirm";
 import { classifyGeoDiagnosisLlmError } from "@shared/geoDiagnosisLlmErrors";
 import { toPlatformContentGenerationError } from "@shared/platformContentGenerationErrors";
 import {
@@ -853,6 +856,8 @@ export function AiDiagnosisFlowPage() {
   const generateTasks = trpc.geo.tasks.generate.useMutation();
   const createT0WithQuestions = trpc.geo.testRounds.createT0WithQuestions.useMutation();
   const startT0Execution = trpc.geo.testRounds.startT0Execution.useMutation();
+  const resetT0Baseline = trpc.geo.testRounds.resetT0Baseline.useMutation();
+  const dangerousConfirm = useDangerousActionConfirm();
   const testRoundsQuery = trpc.geo.testRounds.list.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
@@ -1157,6 +1162,30 @@ export function AiDiagnosisFlowPage() {
   }
 
   const t0ExportProjectName = selectedProject?.enterpriseName ?? "当前企业";
+  const hasT0BaselineToReset = testRounds.some(
+    round => round.roundType === "T0_BASELINE" && round.status !== "running",
+  );
+
+  async function handleResetT0Baseline() {
+    if (!selectedProjectId) return;
+    try {
+      const result = await resetT0Baseline.mutateAsync({ projectId: selectedProjectId });
+      t0CompletionHandledRef.current = null;
+      setActiveT0RoundId(null);
+      setT0Message(undefined);
+      setT0Error(undefined);
+      await utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId });
+      toast.success(
+        result.deletedRoundCount > 0
+          ? `已重置 T0 检测（清除 ${result.deletedRoundCount} 轮记录）`
+          : "当前没有可清除的 T0 检测记录",
+      );
+    } catch (err) {
+      const raw =
+        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "重置 T0 检测失败";
+      toast.error(customerErrorMessage(raw));
+    }
+  }
 
   function handleExportT0ResultsCsv() {
     if (t0RunsQuery.isLoading || t0RoundQuestionsQuery.isLoading) {
@@ -1252,6 +1281,7 @@ export function AiDiagnosisFlowPage() {
 
   return (
     <div className="space-y-6">
+      <DangerousActionConfirmDialog {...dangerousConfirm.dialogProps} />
       {/* --- 页面标题区 --- */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">AI 实测诊断</h1>
@@ -1462,21 +1492,39 @@ export function AiDiagnosisFlowPage() {
               调用真实 AI 平台实测，写入 test_rounds 与 ai_test_runs，与上方合成诊断入口并行保留。
             </p>
           </div>
-          <Button
-            type="button"
-            className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
-            disabled={
-              !canOperate ||
-              isT0Running ||
-              running ||
-              generatingQuestions ||
-              selectedT0Platforms.length === 0
-            }
-            onClick={() => void handleStartT0Baseline()}
-            data-testid="ai-diagnosis-start-t0"
-          >
-            {t0StartingMutation ? "正在启动 T0 检测…" : isT0Running ? "T0 检测进行中…" : "启动T0基线检测"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {hasT0BaselineToReset ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 border-red-200 text-red-700 hover:bg-red-50"
+                disabled={!canOperate || isT0Running || resetT0Baseline.isPending}
+                data-testid="ai-diagnosis-reset-t0"
+                onClick={() =>
+                  dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.resetT0Detection, () =>
+                    handleResetT0Baseline(),
+                  )
+                }
+              >
+                {resetT0Baseline.isPending ? "正在重置…" : "重置T0检测"}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
+              disabled={
+                !canOperate ||
+                isT0Running ||
+                running ||
+                generatingQuestions ||
+                selectedT0Platforms.length === 0
+              }
+              onClick={() => void handleStartT0Baseline()}
+              data-testid="ai-diagnosis-start-t0"
+            >
+              {t0StartingMutation ? "正在启动 T0 检测…" : isT0Running ? "T0 检测进行中…" : "启动T0基线检测"}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-4" data-testid="ai-diagnosis-t0-platform-select">

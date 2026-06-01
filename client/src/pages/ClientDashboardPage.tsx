@@ -1,11 +1,14 @@
 import { ClientsHubTopBar } from "@/components/clients/ClientsHubTopBar";
+import { DangerousActionConfirmDialog } from "@/components/DangerousActionConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { useDangerousActionConfirm } from "@/hooks/useDangerousActionConfirm";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DANGEROUS_ACTION_LABELS } from "@shared/dangerousActionConfirm";
 import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
 import { cn } from "@/lib/utils";
 import {
@@ -240,6 +243,7 @@ export default function ClientDashboardPage() {
   const archiveProject = trpc.geo.projects.archive.useMutation();
   const unarchiveProject = trpc.geo.projects.unarchive.useMutation();
   const archivePending = archiveProject.isPending || unarchiveProject.isPending;
+  const dangerousConfirm = useDangerousActionConfirm();
 
   const filtered = useMemo(() => {
     return projects.filter(p => {
@@ -448,13 +452,17 @@ export default function ClientDashboardPage() {
               project={project}
               onEnter={handleEnter}
               showArchived={showArchived}
-              onArchive={id => void handleArchive(id)}
+              onArchive={id =>
+                dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.archiveProject, () => handleArchive(id))
+              }
               onUnarchive={id => void handleUnarchive(id)}
               archivePending={archivePending}
             />
           ))}
         </div>
       )}
+
+      <DangerousActionConfirmDialog {...dangerousConfirm.dialogProps} />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent
@@ -536,6 +544,7 @@ export default function ClientDashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <DangerousActionConfirmDialog {...dangerousConfirm.dialogProps} />
     </div>
   );
 }

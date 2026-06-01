@@ -1,4 +1,6 @@
 import { ArticleGenerationHistoryPanel } from "@/components/ArticleGenerationHistoryPanel";
+import { DangerousActionConfirmDialog } from "@/components/DangerousActionConfirmDialog";
+import { useDangerousActionConfirm } from "@/hooks/useDangerousActionConfirm";
 import { ArticleContentEditMeta } from "@/components/ArticleContentEditMeta";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { GeoArticleQualityScoreDetailPopover } from "@/components/GeoArticleQualityScoreDetailPopover";
@@ -49,6 +51,7 @@ import {
   normalizeContentTags,
   parseContentTagsInput,
 } from "@shared/geoArticleContentTags";
+import { DANGEROUS_ACTION_LABELS } from "@shared/dangerousActionConfirm";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -91,6 +94,7 @@ type ArticleAssetEditorSheetProps = {
   brandName: string;
   article: EditableArticleAsset | null;
   onSaved?: () => void;
+  onDeleted?: () => void;
   onDirtyChange?: (articleId: number, dirty: boolean) => void;
 };
 
@@ -110,9 +114,12 @@ export function ArticleAssetEditorSheet({
   brandName,
   article,
   onSaved,
+  onDeleted,
   onDirtyChange,
 }: ArticleAssetEditorSheetProps) {
   const updateArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
+  const deleteArticle = trpc.geo.articles.deleteContent.useMutation();
+  const dangerousConfirm = useDangerousActionConfirm();
   const qualityScoresQuery = trpc.geo.articles.latestQualityScores.useQuery(
     { projectId },
     { enabled: open && Boolean(article?.id) },
@@ -617,21 +624,49 @@ export function ArticleAssetEditorSheet({
           </div>
         </div>
 
-        <SheetFooter className="border-t border-gray-200 pt-4">
-          <Button type="button" variant="outline" className="border-gray-200" onClick={() => handleOpenChange(false)}>
-            取消
-          </Button>
-          <Button
-            type="button"
-            variant="ai"
-            disabled={isSaving || updateArticle.isPending}
-            data-testid="article-asset-save-button"
-            onClick={() => void handleSave()}
-          >
-            {isSaving || updateArticle.isPending ? "保存中…" : "保存修改"}
-          </Button>
+        <SheetFooter className="flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          {article ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="border-red-200 text-red-700 hover:bg-red-50"
+              disabled={isSaving || updateArticle.isPending || deleteArticle.isPending}
+              data-testid="article-asset-delete-button"
+              onClick={() =>
+                dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.deleteContent, async () => {
+                  try {
+                    await deleteArticle.mutateAsync({ projectId, articleId: article.id });
+                    toast.success("内容已删除");
+                    onDeleted?.();
+                    handleOpenChange(false);
+                  } catch (err) {
+                    toast.error(toUserFacingErrorFromUnknown(err, "删除失败"));
+                  }
+                })
+              }
+            >
+              删除内容
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" className="border-gray-200" onClick={() => handleOpenChange(false)}>
+              取消
+            </Button>
+            <Button
+              type="button"
+              variant="ai"
+              disabled={isSaving || updateArticle.isPending || deleteArticle.isPending}
+              data-testid="article-asset-save-button"
+              onClick={() => void handleSave()}
+            >
+              {isSaving || updateArticle.isPending ? "保存中…" : "保存修改"}
+            </Button>
+          </div>
         </SheetFooter>
       </SheetContent>
+      <DangerousActionConfirmDialog {...dangerousConfirm.dialogProps} />
     </Sheet>
   );
 }

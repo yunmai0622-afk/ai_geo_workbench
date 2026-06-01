@@ -2379,6 +2379,10 @@ export default function WeeklyContentPage() {
             if (editorArticle) setArticleUnsaved(editorArticle.id, false);
             void invalidateArticles();
           }}
+          onDeleted={() => {
+            setEditorArticle(null);
+            void invalidateArticles();
+          }}
         />
       ) : null}
 

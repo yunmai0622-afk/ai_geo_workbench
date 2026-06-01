@@ -36,6 +36,8 @@ import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
+import { deleteGeoArticleCascade } from "./geoArticleDelete";
+import { resetProjectT0Baseline } from "./resetT0Baseline";
 
 import {
   aiResponses,
@@ -3051,6 +3053,24 @@ const geoRouter = router({
         const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
         return { success: true, article: updated[0] ?? null } as const;
       }),
+    deleteContent: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          articleId: z.number().int().positive(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        const article = rows[0];
+        if (!article || article.projectId !== input.projectId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+        }
+        await deleteGeoArticleCascade(db, input.projectId, input.articleId);
+        return { success: true } as const;
+      }),
     contentQualityReview: protectedProcedure
       .input(
         z.object({
@@ -3637,6 +3657,20 @@ ${article.markdownContent}`,
           detail: { roundId: summary.roundId },
         });
         return { success: true, roundId: summary.roundId, status: summary.status } as const;
+      }),
+    resetT0Baseline: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const result = await resetProjectT0Baseline(db, input.projectId);
+        if (!result.ok) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "T0 检测正在进行中，请等待完成后再重置",
+          });
+        }
+        return { success: true, deletedRoundCount: result.deletedRoundCount } as const;
       }),
   }),
 
