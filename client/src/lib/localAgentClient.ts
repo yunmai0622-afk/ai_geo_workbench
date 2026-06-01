@@ -43,6 +43,14 @@ export type LocalAgentAccountSnapshotRow = {
 
 const LOCAL_AGENT_UNAVAILABLE_MESSAGE = "无法连接本地发布客户端";
 
+/** 合并多组件同时触发的健康探测，避免重复请求 */
+const HEALTH_PROBE_CACHE_MS = 2500;
+let healthProbeCache: { at: number; value: LocalAgentHealth | null } | null = null;
+
+export function resetLocalAgentHealthProbeCache(): void {
+  healthProbeCache = null;
+}
+
 async function agentFetch<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
@@ -87,7 +95,20 @@ function looksLikeAgentInternalMessage(message: string): boolean {
   );
 }
 
-export async function checkLocalAgentHealth(): Promise<LocalAgentHealth | null> {
+export async function checkLocalAgentHealth(options?: {
+  /** 用户点击「重试检测」等场景跳过短时缓存 */
+  force?: boolean;
+}): Promise<LocalAgentHealth | null> {
+  const now = Date.now();
+  if (
+    !options?.force &&
+    healthProbeCache &&
+    now - healthProbeCache.at < HEALTH_PROBE_CACHE_MS
+  ) {
+    return healthProbeCache.value;
+  }
+
+  let value: LocalAgentHealth | null = null;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
@@ -97,12 +118,16 @@ export async function checkLocalAgentHealth(): Promise<LocalAgentHealth | null> 
       cache: "no-store",
     });
     clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = (await res.json()) as LocalAgentHealth;
-    return data.ok ? data : null;
+    if (res.ok) {
+      const data = (await res.json()) as LocalAgentHealth;
+      value = data.ok ? data : null;
+    }
   } catch {
-    return null;
+    value = null;
   }
+
+  healthProbeCache = { at: now, value };
+  return value;
 }
 
 export async function createPlatformProfile(input: {

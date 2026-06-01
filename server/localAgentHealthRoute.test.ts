@@ -19,5 +19,6 @@ describe("localAgentHealthRoute", () => {
     expect(shared).toContain('LOCAL_AGENT_BROWSER_HEALTH_URL = "/api/local-agent/health"');
     expect(client).toContain("LOCAL_AGENT_BROWSER_HEALTH_URL");
     expect(client).not.toMatch(/fetch\(`\$\{LOCAL_AGENT_BASE_URL\}\/health`/);
+    expect(client).toContain("healthProbeCache");
   });
 });

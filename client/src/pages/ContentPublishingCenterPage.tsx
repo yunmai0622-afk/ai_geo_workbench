@@ -285,7 +285,7 @@ export function ContentPublishingCenterPage() {
   const refreshAgentHealth = useCallback(async () => {
     setCheckingAgent(true);
     try {
-      const h = await checkLocalAgentHealth();
+      const h = await checkLocalAgentHealth({ force: true });
       setLocalAgentOnline(h?.ok ?? false);
       setLocalAgentClientVersion(h?.version?.trim() ? h.version.trim() : null);
       await runAccountHealthCheck({ detectSessions: true });

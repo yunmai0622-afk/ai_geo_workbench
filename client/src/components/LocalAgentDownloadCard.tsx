@@ -57,10 +57,10 @@ export function LocalAgentDownloadCard() {
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
   const [macHref, setMacHref] = useState<string | null>(null);
 
-  const refreshHealth = useCallback(async () => {
+  const refreshHealth = useCallback(async (force = false) => {
     setChecking(true);
     try {
-      const h = await checkLocalAgentHealth();
+      const h = await checkLocalAgentHealth(force ? { force: true } : undefined);
       setHealth(h);
       return h;
     } finally {
@@ -87,7 +87,7 @@ export function LocalAgentDownloadCard() {
   const winOffered = Boolean(winHref);
 
   const handleDetect = async () => {
-    const h = await refreshHealth();
+    const h = await refreshHealth(true);
     if (h) {
       toast.success("客户端已连接");
     } else {

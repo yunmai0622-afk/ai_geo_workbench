@@ -149,7 +149,7 @@ export function usePlatformAccountBinding(projectId: number) {
   };
 
   const retryAgentHealth = async (): Promise<boolean> => {
-    const health = await checkLocalAgentHealth();
+    const health = await checkLocalAgentHealth({ force: true });
     if (!health) {
       setBindStep("agent_offline");
       setBindStatusText("未检测到本地发布客户端。请先下载安装并启动 GEO 发布客户端后重试。");
