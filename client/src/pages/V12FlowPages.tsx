@@ -2712,6 +2712,15 @@ export function InclusionMonitoringFlowPage() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-16 text-gray-500">
+        <Spinner className="size-6 text-blue-600" />
+        <p className="text-sm">正在加载收录监测数据…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-12">
       {/* --- 页面标题区 --- */}
