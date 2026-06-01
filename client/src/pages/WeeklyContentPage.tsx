@@ -70,7 +70,11 @@ import {
 } from "@shared/articleAssetDraft";
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
-import { getGeoQualityLabel, type GeoQualityRecommendation } from "@shared/geoQualityReview";
+import {
+  getGeoQualityLabel,
+  type GeoQualityRecommendation,
+  type GeoQualityReviewResult,
+} from "@shared/geoQualityReview";
 import {
   GEO_QUALITY_STALE_PUBLISH_HINT,
   isGeoQualityScoreStale,
@@ -233,7 +237,7 @@ type ArticleRow = {
   coverImageUrl?: string | null;
   geoQualityScore?: number | null;
   geoQualityRecommendation?: string | null;
-  geoQualityDetail?: unknown;
+  geoQualityDetail?: GeoQualityReviewResult | Record<string, unknown> | null;
   geoQualityStale?: boolean | number | null;
   contentStrategyType?: string | null;
   publishIdentity?: string | null;
