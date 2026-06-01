@@ -3,6 +3,8 @@ import {
   formatBrandMentionRate,
   formatLastAiTestLabel,
   formatRecommendRate,
+  formatT0BrandMentionRate,
+  formatT0RecommendRate,
   hasCompletedT1Retest,
   pickAiTestAggregate,
   resolveMainChainNextAction,
@@ -21,6 +23,7 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
     { enabled },
   );
   const testRoundsQuery = trpc.geo.testRounds.list.useQuery({ projectId: projectId! }, { enabled });
+  const t0MetricsQuery = trpc.geo.scores.t0Metrics.useQuery({ projectId: projectId! }, { enabled });
   const analysisQuery = trpc.geo.analysis.list.useQuery({ projectId: projectId! }, { enabled });
 
   const monitoring = monitoringQuery.data ?? [];
@@ -34,7 +37,12 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
 
   const aiTestAggregate = useMemo(() => {
     if (!summary) return monitoringAggregate;
-    return pickAiTestAggregate(summary.brandMentionRate, summary.aiTestResultCount, monitoringAggregate);
+    return pickAiTestAggregate(
+      summary.brandMentionRate,
+      summary.recommendRate,
+      summary.aiTestResultCount,
+      monitoringAggregate,
+    );
   }, [summary, monitoringAggregate]);
 
   const mainChainNextAction: MainChainNextAction | null = useMemo(() => {
@@ -42,18 +50,22 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
     return resolveMainChainNextAction(projectId, summary, testRounds);
   }, [projectId, summary, testRounds]);
 
-  const brandMentionRateText = formatBrandMentionRate(aiTestAggregate);
-  const recommendRateText = formatRecommendRate(aiTestAggregate);
+  const brandMentionRateText = t0MetricsQuery.data
+    ? formatT0BrandMentionRate(t0MetricsQuery.data)
+    : formatBrandMentionRate(aiTestAggregate);
+  const recommendRateText = t0MetricsQuery.data
+    ? formatT0RecommendRate(t0MetricsQuery.data)
+    : formatRecommendRate(aiTestAggregate);
   const lastAiTestLabel = formatLastAiTestLabel({
     analyses,
     monitoring,
     testRounds,
   });
-  const hasT1Retest = hasCompletedT1Retest(testRounds);
+  const hasT1Retest = summary?.hasCompletedT1Retest ?? hasCompletedT1Retest(testRounds);
 
   const loading =
     enabled &&
-    (monitoringQuery.isLoading || testRoundsQuery.isLoading || analysisQuery.isLoading);
+    (monitoringQuery.isLoading || testRoundsQuery.isLoading || t0MetricsQuery.isLoading || analysisQuery.isLoading);
 
   return {
     mainChainNextAction,

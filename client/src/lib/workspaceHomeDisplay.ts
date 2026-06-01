@@ -1,5 +1,6 @@
 import { buildProjectUrl } from "@/lib/activeProject";
 import { aggregateAiTestEvidence, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
+import type { T0AiTestRunMetricsResult } from "@shared/t0AiTestRunMetrics";
 import {
   hasCompletedT1Retest,
   resolveMainChainNextActionPaths,
@@ -48,6 +49,7 @@ export { hasCompletedT1Retest } from "@shared/workspaceMainChain";
 
 export function pickAiTestAggregate(
   summaryMentionRate: number | null,
+  summaryRecommendRate: number | null,
   summaryQuestionCount: number,
   monitoringAggregate: AiTestEvidenceAggregate,
 ): AiTestEvidenceAggregate {
@@ -57,6 +59,7 @@ export function pickAiTestAggregate(
       ...monitoringAggregate,
       questionCount: summaryQuestionCount,
       mentionRate: summaryMentionRate,
+      recommendRate: summaryRecommendRate ?? monitoringAggregate.recommendRate,
     };
   }
   return monitoringAggregate;
@@ -70,6 +73,16 @@ export function formatBrandMentionRate(aggregate: AiTestEvidenceAggregate): stri
 export function formatRecommendRate(aggregate: AiTestEvidenceAggregate): string {
   if (aggregate.questionCount <= 0) return "--";
   return `${Math.round(aggregate.recommendRate * 100)}%`;
+}
+
+export function formatT0BrandMentionRate(metrics: T0AiTestRunMetricsResult | null | undefined): string {
+  if (!metrics || metrics.totalRuns <= 0) return "--";
+  return `${Math.round(metrics.mentionRate * 100)}%`;
+}
+
+export function formatT0RecommendRate(metrics: T0AiTestRunMetricsResult | null | undefined): string {
+  if (!metrics || metrics.totalRuns <= 0) return "--";
+  return `${Math.round(metrics.recommendRate * 100)}%`;
 }
 
 export function formatLastAiTestLabel(input: {

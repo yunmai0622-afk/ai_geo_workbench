@@ -94,15 +94,21 @@ export type WorkspaceSummaryMetrics = {
   articleCount: number;
   publishRecordCount: number;
   publishTaskCount: number;
+  completedPublishTaskCount: number;
   retestPendingCount: number;
   rewriteOpenCount: number;
   aiTestResultCount: number;
   monitoringRecordCount: number;
+  retestComparisonCount: number;
+  reportCount: number;
   geoScore: number | null;
   brandMentionRate: number | null;
+  recommendRate: number | null;
   lowQualityArticleCount: number;
   hasAnalysis: boolean;
   hasGeoScore: boolean;
+  hasCompletedT0Baseline: boolean;
+  hasCompletedT1Retest: boolean;
   p0ProfileComplete: boolean;
 };
 

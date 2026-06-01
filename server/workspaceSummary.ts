@@ -9,13 +9,18 @@ import {
   geoScores,
   projectPlatformAccounts,
   publishTasks,
+  reports,
+  retestComparisons,
+  testRounds,
 } from "../drizzle/schema";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
+import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
 import { isP0GeoProfileComplete } from "@shared/workspaceStateMachine";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkflow";
 import { calculateProfileCompletionScore } from "./assetLibrary";
 import { getDb } from "./db";
+import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -42,11 +47,16 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     articleRows,
     publishRows,
     taskCountRows,
+    completedTaskCountRows,
     analysisRows,
     scoreRows,
     monitoringRows,
     retestItems,
     rewriteItems,
+    testRoundRows,
+    retestComparisonCountRows,
+    reportCountRows,
+    t0Metrics,
   ] = await Promise.all([
     db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, projectId)).limit(1),
     db.select().from(projectPlatformAccounts).where(eq(projectPlatformAccounts.projectId, projectId)),
@@ -56,6 +66,10 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       .select({ count: sql<number>`count(*)` })
       .from(publishTasks)
       .where(eq(publishTasks.projectId, projectId)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(publishTasks)
+      .where(and(eq(publishTasks.projectId, projectId), eq(publishTasks.status, "completed"))),
     db.select({ id: analysisResults.id }).from(analysisResults).where(eq(analysisResults.projectId, projectId)).limit(1),
     db.select({ totalScore: geoScores.totalScore }).from(geoScores).where(eq(geoScores.projectId, projectId)).orderBy(desc(geoScores.createdAt)).limit(1),
     db
@@ -67,6 +81,23 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       .where(eq(geoInclusionMonitoringRecords.projectId, projectId)),
     listPostPublishRetestQueue(db, projectId),
     listRewritePool(db, projectId),
+    db
+      .select({
+        roundType: testRounds.roundType,
+        status: testRounds.status,
+        finishedAt: testRounds.finishedAt,
+      })
+      .from(testRounds)
+      .where(eq(testRounds.projectId, projectId)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(retestComparisons)
+      .where(eq(retestComparisons.projectId, projectId)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(reports)
+      .where(eq(reports.projectId, projectId)),
+    resolveLatestT0AiTestRunMetrics(db, projectId),
   ]);
 
   const qualityRows =
@@ -114,6 +145,14 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     (item: { status: string }) => item.status === "pending" || item.status === "in_progress",
   ).length;
   const rewriteOpenCount = rewriteItems.length;
+  const monitoringQuestionCount = aiAggregate.questionCount;
+  const aiTestResultCount = t0Metrics?.totalRuns ?? monitoringQuestionCount;
+  const brandMentionRate =
+    t0Metrics?.mentionRate ??
+    (monitoringQuestionCount > 0 ? aiAggregate.mentionRate : null);
+  const recommendRate =
+    t0Metrics?.recommendRate ??
+    (monitoringQuestionCount > 0 ? aiAggregate.recommendRate : null);
 
   return {
     enterpriseName: profile?.enterpriseName ?? null,
@@ -123,15 +162,21 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     articleCount: articleRows.length,
     publishRecordCount: publishRows.length,
     publishTaskCount: Number(taskCountRows[0]?.count ?? 0),
+    completedPublishTaskCount: Number(completedTaskCountRows[0]?.count ?? 0),
     retestPendingCount,
     rewriteOpenCount,
-    aiTestResultCount: aiAggregate.questionCount,
+    aiTestResultCount,
     monitoringRecordCount: monitoringRows.length,
+    retestComparisonCount: Number(retestComparisonCountRows[0]?.count ?? 0),
+    reportCount: Number(reportCountRows[0]?.count ?? 0),
     geoScore: scoreRows[0]?.totalScore ?? null,
-    brandMentionRate: aiAggregate.questionCount > 0 ? aiAggregate.mentionRate : null,
+    brandMentionRate,
+    recommendRate,
     lowQualityArticleCount,
     hasAnalysis: analysisRows.length > 0,
     hasGeoScore: scoreRows.length > 0,
+    hasCompletedT0Baseline: hasCompletedT0Baseline(testRoundRows),
+    hasCompletedT1Retest: hasCompletedT1Retest(testRoundRows),
     p0ProfileComplete: isP0GeoProfileComplete(profileRecord),
   } as const;
 }

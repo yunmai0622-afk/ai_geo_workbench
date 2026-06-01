@@ -58,10 +58,11 @@ describe("GEO-V1-C 企业工作台状态机", () => {
   it("展示进度指标且不暴露工程字段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     expect(page).toContain("workspace-header-card");
+    expect(page).toContain("workspace-main-chain-progress");
     for (const label of ["品牌提及率", "内容资产", "GEO 分", "发布记录"]) {
       expect(page).toContain(label);
     }
-    expect(page).toContain("EIGHT_STEP_PIPELINE");
+    expect(page).toContain("resolveMainChainSteps");
     expect(page).not.toContain("localAgentId");
     expect(page).not.toContain("rawJson");
     expect(page).not.toContain("profileId");
@@ -71,6 +72,9 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(read("server/routers.ts")).toContain("workspace:");
     expect(read("server/routers.ts")).toContain("fetchWorkspaceSummaryMetrics");
     expect(read("server/workspaceSummary.ts")).toContain("projectId");
+    expect(read("server/workspaceSummary.ts")).toContain("completedPublishTaskCount");
+    expect(read("server/workspaceSummary.ts")).toContain("retestComparisons");
+    expect(read("server/workspaceSummary.ts")).toContain("reports");
     expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toContain("geo.workspace.summary");
   });
 
@@ -92,15 +96,21 @@ describe("GEO-V1-C 企业工作台状态机", () => {
       articleCount: 3,
       publishRecordCount: 2,
       publishTaskCount: 1,
+      completedPublishTaskCount: 1,
       retestPendingCount: 0,
       rewriteOpenCount: 0,
       aiTestResultCount: 5,
       monitoringRecordCount: 2,
+      retestComparisonCount: 1,
+      reportCount: 0,
       geoScore: 72,
       brandMentionRate: 0.4,
+      recommendRate: 0.2,
       lowQualityArticleCount: 0,
       hasAnalysis: true,
       hasGeoScore: true,
+      hasCompletedT0Baseline: true,
+      hasCompletedT1Retest: false,
       p0ProfileComplete: true,
       localAgentOnline: true,
     };
