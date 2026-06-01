@@ -472,7 +472,11 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       try {
         const buffer = Buffer.from(b64, "base64");
         if (!buffer.length) return null;
-        const ext = mimeType.includes("jpeg") || mimeType.includes("jpg") ? ".jpg" : ".png";
+        const ext = mimeType.includes("svg")
+          ? ".svg"
+          : mimeType.includes("jpeg") || mimeType.includes("jpg")
+            ? ".jpg"
+            : ".png";
         return { buffer, ext };
       } catch {
         return null;
@@ -480,7 +484,11 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     };
 
     if (task.coverBase64?.trim()) {
-      return decodeBase64(task.coverBase64.trim());
+      const raw = task.coverBase64.trim();
+      if (raw.startsWith("svg:")) {
+        return decodeBase64(`data:image/svg+xml;base64,${raw.slice(4)}`);
+      }
+      return decodeBase64(raw);
     }
     if (task.coverImageUrl?.trim()) {
       const url = task.coverImageUrl.trim();

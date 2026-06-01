@@ -19,6 +19,7 @@ import {
   resolvePublishPlatformAccount,
   verifyPublishTaskAccount,
 } from "./projectPlatformAccounts";
+import { isValidStoredCoverBase64, parseStoredCoverBase64, resolveArticleCoverBase64ForPublish } from "@shared/articleCoverBase64";
 import { buildPublishCoverImageUrl, parseDataUrlCover } from "@shared/publishCoverPayload";
 import {
   BINDING_PUBLISH_PLATFORMS,
@@ -43,6 +44,11 @@ import {
   PUBLISH_QUEUE_DUPLICATE_MESSAGE,
 } from "@shared/publishQueueDedup";
 import { buildDeliveryReportPublishStats } from "@shared/deliveryReportPublishStats";
+import {
+  evaluatePrePublishChecklist,
+  formatPrePublishChecklistBlockMessage,
+  type PrePublishChecklistPlatform,
+} from "@shared/publishPrePublishChecklist";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -137,6 +143,52 @@ async function assertPublishReadinessForCreate(
   return readiness;
 }
 
+async function assertPrePublishChecklistForCreate(
+  input: {
+    article: typeof geoArticles.$inferSelect;
+    platform: z.infer<typeof publishPlatformSlugEnum>;
+    boundAccount: {
+      platform: string;
+      accountName: string | null;
+      isEnabled: boolean | number | null;
+      localProfileId: string | null;
+      localAgentId: string | null;
+      sessionStatus: string | null;
+    };
+  },
+) {
+  const platform = input.platform as PrePublishChecklistPlatform;
+  const checklist = evaluatePrePublishChecklist({
+    title: input.article.title ?? "",
+    markdownContent: input.article.markdownContent ?? "",
+    coverBase64: input.article.coverBase64,
+    coverImageUrl: input.article.coverImageUrl,
+    platform,
+    article: {
+      geoQualityScore: input.article.geoQualityScore,
+      geoQualityRecommendation: input.article.geoQualityRecommendation,
+      geoQualityStale: input.article.geoQualityStale,
+      lifecycleStatus: input.article.lifecycleStatus,
+      lifecycleEvents: input.article.lifecycleEvents,
+      status: input.article.status,
+    },
+    account: {
+      platform: input.boundAccount.platform,
+      accountName: input.boundAccount.accountName,
+      isEnabled: input.boundAccount.isEnabled,
+      localProfileId: input.boundAccount.localProfileId,
+      localAgentId: input.boundAccount.localAgentId,
+      sessionStatus: input.boundAccount.sessionStatus,
+    },
+  });
+  if (!checklist.allPassed) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: formatPrePublishChecklistBlockMessage(checklist),
+    });
+  }
+}
+
 async function assertNoDuplicatePublishQueueTask(
   db: Awaited<ReturnType<typeof requireDbConn>>,
   input: { articleId: number; platform: string },
@@ -183,7 +235,6 @@ async function attachCoverImagePayload(coverImageUrl: string | null, origin: str
       return { coverImageUrl: resolvedUrl, coverImageBase64: undefined, coverImageMime: undefined };
     }
     const mime = res.headers.get("content-type") || "image/png";
-    console.log(`[封面图] 服务端已缓存封面 base64，${buf.length} bytes`);
     return {
       coverImageUrl: resolvedUrl,
       coverImageBase64: buf.toString("base64"),
@@ -254,17 +305,15 @@ export const publishTasksRouter = router({
         platformAccountId: input.platformAccountId,
       });
 
-      const rawCoverBase64 = article.coverBase64?.trim() ?? "";
+      const brandLabel = String(project.enterpriseName ?? "海豚知道").trim() || "海豚知道";
+      const effectiveCoverBase64 = resolveArticleCoverBase64ForPublish(article, brandLabel);
       const rawCoverImageUrl = article.coverImageUrl?.trim() ?? "";
-      if (!rawCoverBase64 && !rawCoverImageUrl) {
-        console.warn(
-          `[封面图] 文章 ${input.articleId} 暂无 coverBase64/coverImageUrl，任务将仅含正文`,
-        );
-      } else if (rawCoverBase64) {
+      if (!effectiveCoverBase64 && !rawCoverImageUrl) {
+        console.warn(`[封面图] 文章 ${input.articleId} 暂无封面且无法合成，任务将仅含正文`);
+      } else if (effectiveCoverBase64) {
         try {
-          const payload = rawCoverBase64.startsWith("data:")
-            ? (rawCoverBase64.replace(/^data:[^;]+;base64,/, "") ?? "")
-            : rawCoverBase64;
+          const parsed = parseStoredCoverBase64(effectiveCoverBase64);
+          const payload = parsed?.base64 ?? effectiveCoverBase64;
           const coverBytes = Buffer.from(payload, "base64").length;
           if (coverBytes > 100 * 1024) {
             console.warn(
@@ -274,9 +323,15 @@ export const publishTasksRouter = router({
         } catch {
           console.warn(`[封面图] 文章 ${input.articleId} coverBase64 无法解码，仍尝试写入任务`);
         }
+        if (!article.coverBase64?.trim() || !isValidStoredCoverBase64(article.coverBase64)) {
+          await db
+            .update(geoArticles)
+            .set({ coverBase64: effectiveCoverBase64 })
+            .where(eq(geoArticles.id, input.articleId));
+        }
       }
 
-      const coverImageUrl = buildPublishCoverImageUrl(article.coverBase64, article.coverImageUrl);
+      const coverImageUrl = buildPublishCoverImageUrl(effectiveCoverBase64, article.coverImageUrl);
 
       if (!boundAccount.localAgentId?.trim() || !boundAccount.localProfileId?.trim()) {
         throw new TRPCError({
@@ -291,6 +346,12 @@ export const publishTasksRouter = router({
           message: publishBlockedSessionExpiredMessage(input.platform),
         });
       }
+
+      await assertPrePublishChecklistForCreate({
+        article,
+        platform: input.platform,
+        boundAccount,
+      });
 
       await assertNoDuplicatePublishQueueTask(db, {
         articleId: input.articleId,

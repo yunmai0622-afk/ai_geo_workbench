@@ -69,7 +69,11 @@ function parseCoverPayload(task: LocalPublishTask): { buffer: Buffer; ext: strin
     try {
       const buffer = Buffer.from(b64, "base64");
       if (!buffer.length) return null;
-      const ext = mimeType.includes("jpeg") || mimeType.includes("jpg") ? ".jpg" : ".png";
+      const ext = mimeType.includes("svg")
+        ? ".svg"
+        : mimeType.includes("jpeg") || mimeType.includes("jpg")
+          ? ".jpg"
+          : ".png";
       return { buffer, ext };
     } catch {
       return null;

@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildPublishCoverImageUrl, parseDataUrlCover } from "./publishCoverPayload";
+import { encodeStoredCoverBase64, encodeSvgStringToBase64 } from "./articleCoverBase64";
+import { buildPublishCoverImageUrl } from "./publishCoverPayload";
 
 describe("publishCoverPayload", () => {
-  it("builds data url from article cover base64", () => {
-    const url = buildPublishCoverImageUrl("abc123", null);
-    expect(url).toBe("data:image/png;base64,abc123");
-  });
-
-  it("parses data url for extension payload", () => {
-    const parsed = parseDataUrlCover("data:image/png;base64,QUJD");
-    expect(parsed?.coverImageBase64).toBe("QUJD");
-    expect(parsed?.coverImageMime).toBe("image/png");
+  it("builds svg data url from stored svg prefix payload", () => {
+    const b64 = encodeSvgStringToBase64("<svg></svg>");
+    const stored = encodeStoredCoverBase64({ mime: "image/svg+xml", base64: b64 });
+    expect(buildPublishCoverImageUrl(stored, null)).toBe(`data:image/svg+xml;base64,${b64}`);
   });
 });

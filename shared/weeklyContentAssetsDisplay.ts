@@ -1,3 +1,4 @@
+import { buildCoverDataUrlFromStored } from "./articleCoverBase64";
 import { articleMatchesContentTagFilter } from "./geoArticleContentTags";
 import { isLegacyAiGeneratedCoverUrl } from "./articleCoverTemplate";
 import { getContentAssetTypeLabel, inferContentStrategyFromArticleType } from "./contentStrategy";
@@ -62,10 +63,8 @@ export function resolveArticleCoverPreviewSrc(article: {
   coverTemplate?: string | null;
   coverImageUrl?: string | null;
 }): string | null {
-  if (article.coverBase64?.trim()) {
-    const raw = article.coverBase64.trim();
-    return raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
-  }
+  const fromStored = buildCoverDataUrlFromStored(article.coverBase64);
+  if (fromStored) return fromStored;
   if (article.coverTemplate && article.coverImageUrl?.trim()) {
     const url = article.coverImageUrl.trim();
     if (url.startsWith("data:")) return url;

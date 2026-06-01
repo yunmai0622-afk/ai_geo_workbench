@@ -35,6 +35,7 @@ import {
   type ContentAssetType,
   type PublishIdentity,
 } from "@shared/contentStrategy";
+import { buildCoverDataUrlFromStored } from "@shared/articleCoverBase64";
 import {
   ARTICLE_COVER_TEMPLATE_IDS,
   ARTICLE_COVER_TEMPLATE_LABELS,
@@ -99,10 +100,8 @@ type ArticleAssetEditorSheetProps = {
 };
 
 function coverPreviewFromFields(coverBase64?: string | null, coverImageUrl?: string | null): string | null {
-  if (coverBase64?.trim()) {
-    const raw = coverBase64.trim();
-    return raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
-  }
+  const fromStored = buildCoverDataUrlFromStored(coverBase64);
+  if (fromStored) return fromStored;
   if (coverImageUrl?.trim()) return coverImageUrl.trim();
   return null;
 }
