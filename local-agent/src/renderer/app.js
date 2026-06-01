@@ -4,6 +4,7 @@ const PLATFORM_LABELS = {
   sohu: "搜狐号",
   baijiahao: "百家号",
   toutiao: "头条号",
+  netease: "网易号",
   wechat: "公众号",
 };
 
@@ -312,7 +313,7 @@ function renderDiagnostics() {
 let selectedPlatform = "zhihu";
 
 function renderAccounts() {
-  const order = ["zhihu", "xiaohongshu", "sohu", "baijiahao", "toutiao", "wechat"];
+  const order = ["zhihu", "xiaohongshu", "sohu", "baijiahao", "toutiao", "netease", "wechat"];
   // Render left sidebar
   const platformListEl = $("#platform-list");
   if (!platformListEl) return;

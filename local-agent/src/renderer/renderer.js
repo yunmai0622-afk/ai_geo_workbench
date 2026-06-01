@@ -7,9 +7,10 @@ const PLATFORM_LABELS = {
   sohu: "搜狐号",
   baijiahao: "百家号",
   toutiao: "头条号",
+  netease: "网易号",
 };
 
-const PLATFORM_ORDER = ["zhihu", "sohu", "baijiahao", "toutiao"];
+const PLATFORM_ORDER = ["zhihu", "sohu", "baijiahao", "toutiao", "netease"];
 
 let selectedProfileId = null;
 let selectedPlatform = null;

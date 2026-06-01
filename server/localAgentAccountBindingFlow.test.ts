@@ -49,6 +49,21 @@ describe("Local-Agent-Account-Binding-Flow-P0", () => {
     expect(main).toContain("暂未接入账号环境创建");
   });
 
+  it("账号环境侧栏展示搜狐/百家号/头条/网易并可创建", () => {
+    for (const platform of ["sohu", "baijiahao", "toutiao", "netease"] as const) {
+      expect(appJs).toContain(`"${platform}"`);
+      expect(appJs).toContain("CREATABLE_PLATFORMS");
+    }
+    expect(appJs).toContain("搜狐号");
+    expect(appJs).toContain("百家号");
+    expect(appJs).toContain("头条号");
+    expect(appJs).toContain("网易号");
+    expect(main).toContain('"sohu"');
+    expect(main).toContain('"baijiahao"');
+    expect(main).toContain('"toutiao"');
+    expect(main).toContain('"netease"');
+  });
+
   it("workspace 风险提示指向本地客户端", () => {
     expect(workspace).toContain("workspacePublishAccountRiskHint");
     expect(read("shared/localAgentAccountBinding.ts")).toContain("本地发布客户端");
