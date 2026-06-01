@@ -61,6 +61,18 @@ export function hasCompletedT1Retest(testRounds: TestRoundRow[]): boolean {
   );
 }
 
+export function hasCompletedT2Retest(testRounds: TestRoundRow[]): boolean {
+  return testRounds.some(
+    round => round.roundType === "T2_RETEST" && isCompletedTestRound(round),
+  );
+}
+
+export function hasCompletedT3Retest(testRounds: TestRoundRow[]): boolean {
+  return testRounds.some(
+    round => round.roundType === "T3_RETEST" && isCompletedTestRound(round),
+  );
+}
+
 /** @deprecated 保留兼容；主链路现以 T0 完成为准 */
 export function hasCompletedAiDiagnosis(metrics: WorkspaceSummaryMetrics): boolean {
   return metrics.hasCompletedT0Baseline || metrics.hasAnalysis || metrics.hasGeoScore || metrics.aiTestResultCount > 0;

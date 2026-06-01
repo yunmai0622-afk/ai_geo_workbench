@@ -20,10 +20,11 @@ describe("GEO-V1.1-T1-Auto-Trigger", () => {
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     const monitoring = read("client/src/pages/V12FlowPages.tsx");
     const card = read("client/src/components/diagnosis/T1RetestReminderCard.tsx");
-    expect(workspace).toContain("T1RetestReminderCard");
-    expect(workspace).toContain("showT1RetestAutoTriggerReminder");
-    expect(workspace).toContain("workspace-t1-retest-reminder");
-    expect(monitoring).toContain("inclusion-monitoring-t1-retest-reminder");
+    expect(workspace).toContain("RetestDueReminderCard");
+    expect(workspace).toContain("retestDueReminder");
+    expect(workspace).toContain("workspace-retest-due-reminder");
+    expect(monitoring).toContain("inclusion-monitoring-retest-due-reminder");
+    expect(monitoring).toContain("RetestPlanPanel");
     expect(monitoring).toContain("geo.workspace.summary");
     expect(card).toContain("T1_RETEST_AUTO_TRIGGER_MESSAGE");
     expect(card).toContain("T1_RETEST_AUTO_TRIGGER_CTA_LABEL");

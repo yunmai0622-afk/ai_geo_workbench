@@ -23,7 +23,8 @@ import {
   type PublishRecordForDisplay,
 } from "@/lib/assetProgressDisplay";
 import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
-import { T1RetestReminderCard } from "@/components/diagnosis/T1RetestReminderCard";
+import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
+import { RetestPlanPanel } from "@/components/diagnosis/RetestPlanPanel";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection, type ProjectOption } from "@/hooks/useActiveProjectSelection";
@@ -70,7 +71,6 @@ import {
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
 import { T0DiagnosisVisualizationPanel } from "@/components/diagnosis/T0DiagnosisVisualizationPanel";
-import { T1_RETEST_AUTO_TRIGGER_CTA_PATH } from "@shared/t1RetestAutoTrigger";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
   { value: "manual_check", label: "人工复测" },
@@ -2835,12 +2835,19 @@ export function InclusionMonitoringFlowPage() {
         data-testid="first-use-hint-inclusion-monitoring"
       />
 
-      {workspaceSummaryQuery.data?.showT1RetestAutoTriggerReminder && selectedProjectId ? (
-        <T1RetestReminderCard
-          visible
-          testId="inclusion-monitoring-t1-retest-reminder"
+      <RetestPlanPanel plan={workspaceSummaryQuery.data?.retestPlan} />
+
+      {workspaceSummaryQuery.data?.retestDueReminder && selectedProjectId ? (
+        <RetestDueReminderCard
+          reminder={workspaceSummaryQuery.data.retestDueReminder}
+          testId="inclusion-monitoring-retest-due-reminder"
           onGoRetest={() =>
-            setLocation(buildProjectUrl(T1_RETEST_AUTO_TRIGGER_CTA_PATH, selectedProjectId))
+            setLocation(
+              buildProjectUrl(
+                workspaceSummaryQuery.data!.retestDueReminder!.ctaPath,
+                selectedProjectId,
+              ),
+            )
           }
         />
       ) : null}

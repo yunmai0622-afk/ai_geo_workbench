@@ -14,6 +14,7 @@ import {
   testRounds,
 } from "../drizzle/schema";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
+import { buildRetestPlan, resolveRetestDueReminder } from "@shared/retestPlan";
 import { shouldShowT1RetestAutoTriggerReminder } from "@shared/t1RetestAutoTrigger";
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
 import { isP0GeoProfileComplete } from "@shared/workspaceStateMachine";
@@ -188,10 +189,17 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     hasGeoScore: scoreRows.length > 0,
     hasCompletedT0Baseline: hasCompletedT0Baseline(testRoundRows),
     hasCompletedT1Retest: hasCompletedT1Retest(testRoundRows),
-    showT1RetestAutoTriggerReminder: shouldShowT1RetestAutoTriggerReminder({
-      completedPublishTasks: completedPublishTaskRows,
-      testRounds: testRoundRows,
-    }),
+    ...(() => {
+      const retestPlanInput = {
+        completedPublishTasks: completedPublishTaskRows,
+        testRounds: testRoundRows,
+      };
+      return {
+        retestPlan: buildRetestPlan(retestPlanInput),
+        retestDueReminder: resolveRetestDueReminder(retestPlanInput),
+        showT1RetestAutoTriggerReminder: shouldShowT1RetestAutoTriggerReminder(retestPlanInput),
+      };
+    })(),
     p0ProfileComplete: isP0GeoProfileComplete(profileRecord),
   } as const;
 }
