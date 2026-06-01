@@ -37,12 +37,19 @@ export default function LoginGatePanel() {
   return (
     <AuthPageLayout
       footer={
-        <p className="text-sm text-gray-500">
-          还没有账号？{" "}
-          <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700">
-            立即注册
-          </Link>
-        </p>
+        <div className="space-y-3 text-sm text-gray-500">
+          <p>
+            <Link href="/landing" className="font-medium text-blue-600 hover:text-blue-700">
+              了解更多
+            </Link>
+          </p>
+          <p>
+            还没有账号？{" "}
+            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700">
+              立即注册
+            </Link>
+          </p>
+        </div>
       }
     >
       <div className="mb-6 flex flex-col items-center text-center">

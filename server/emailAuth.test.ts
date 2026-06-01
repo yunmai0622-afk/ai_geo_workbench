@@ -52,10 +52,18 @@ describe("GEO-V1.1 email registration auth", () => {
     expect(layout).toContain("LoginGatePanel");
   });
 
-  it("login panel links to register", () => {
+  it("login panel links to register and landing", () => {
     const login = fs.readFileSync(path.join(root, "client/src/components/auth/LoginGatePanel.tsx"), "utf8");
     expect(login).toContain("还没有账号");
     expect(login).toContain("/register");
+    expect(login).toContain("了解更多");
+    expect(login).toContain("/landing");
+  });
+
+  it("landing page route exists", () => {
+    const app = fs.readFileSync(path.join(root, "client/src/App.tsx"), "utf8");
+    expect(app).toContain('path="/landing"');
+    expect(fs.existsSync(path.join(root, "client/src/pages/LandingPage.tsx"))).toBe(true);
   });
 
   it("login page uses split marketing layout and forgot password", () => {

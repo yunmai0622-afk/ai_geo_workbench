@@ -35,6 +35,7 @@ import EffectiveActionsPage from "./pages/EffectiveActionsPage";
 import QuestionsLibraryPage from "./pages/QuestionsLibraryPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import KnowledgePage from "./pages/KnowledgePage";
+import LandingPage from "./pages/LandingPage";
 import RegisterPage from "./pages/RegisterPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -165,6 +166,7 @@ function Router() {
       <Route path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex" component={DeliveryReportPublicEvidencePage} />
       <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />
       <Route path="/delivery-reports/share/:projectId" component={DeliveryReportSharePage} />
+      <Route path="/landing" component={LandingPage} />
       <Route path="/register" component={RegisterPage} />
       <Route path="/status" component={SystemStatusPage} />
       <Route path="/onboarding" component={OnboardingPage} />
