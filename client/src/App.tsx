@@ -13,6 +13,7 @@ import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, T
 import GeoPublicContentPage from "./pages/GeoPublicContent";
 import AssetCenterPage from "./pages/AssetCenter";
 import DemoGeoPage from "./pages/DemoGeo";
+import LegacyOnboardingPage from "./pages/LegacyOnboardingPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import AiSearchEvidencePage from "./pages/AiSearchEvidencePage";
 import DeliveryReportPublicEvidencePage from "./pages/DeliveryReportPublicEvidencePage";
@@ -144,10 +145,8 @@ function Router() {
       <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />
       <Route path="/delivery-reports/share/:projectId" component={DeliveryReportSharePage} />
       <Route path="/register" component={RegisterPage} />
-      <Route path="/onboarding">
-        <Redirect to="/clients" />
-      </Route>
-      <Route path="/legacy/onboarding" component={OnboardingPage} />
+      <Route path="/onboarding" component={OnboardingPage} />
+      <Route path="/legacy/onboarding" component={LegacyOnboardingPage} />
       <Route component={AuthenticatedAppShell} />
     </Switch>
   );

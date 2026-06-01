@@ -46,7 +46,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(appSource).toContain('path="/weekly"');
     expect(appSource).toContain('path="/progress"');
     expect(appSource).toContain('path="/legacy/onboarding"');
-    expect(appSource).toMatch(/path="\/onboarding"[\s\S]*Redirect to="\/clients"/);
+    expect(appSource).toContain('path="/onboarding" component={OnboardingPage}');
     expect(appSource).toContain("profileHasBrand");
     expect(appSource).toContain("ContentPublishingFlowPage");
     expect(appSource).toContain("InclusionMonitoringFlowPage");

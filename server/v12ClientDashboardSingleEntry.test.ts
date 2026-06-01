@@ -31,17 +31,21 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(src).toContain("客户管理台");
   });
 
-  it("Onboarding 仅无项目时引导，已有项目去客户管理台", () => {
+  it("Onboarding 3 步引导：无项目时展示，已有项目跳转客户管理台", () => {
     const onboarding = read("client/src/pages/OnboardingPage.tsx");
-    expect(onboarding).toContain("onboarding-has-projects");
-    expect(onboarding).toContain("已有客户项目");
-    expect(onboarding).toContain("去客户管理台");
+    expect(onboarding).toContain("onboarding-step-1");
+    expect(onboarding).toContain("onboarding-step-2");
+    expect(onboarding).toContain("onboarding-step-3");
     expect(onboarding).toContain("projects.length > 0");
-    expect(onboarding).toContain('buildProjectUrl("/enterprise-profile"');
+    expect(onboarding).toContain('Redirect to="/clients"');
+    expect(onboarding).toContain("generateTargetQuestions");
+    expect(onboarding).toContain('buildProjectUrl("/ai-diagnosis"');
+    const register = read("client/src/pages/RegisterPage.tsx");
+    expect(register).toContain('setLocation("/onboarding")');
     const app = read("client/src/App.tsx");
     expect(app).toContain('pathname !== "/clients"');
     expect(app).toMatch(/projects\.length === 0[\s\S]{0,120}Redirect to="\/clients"/);
-    expect(app).toMatch(/path="\/onboarding"[\s\S]*Redirect to="\/clients"/);
+    expect(app).toContain('path="/onboarding" component={OnboardingPage}');
   });
 
   it("DashboardLayout 侧栏为 GEO 建档", () => {

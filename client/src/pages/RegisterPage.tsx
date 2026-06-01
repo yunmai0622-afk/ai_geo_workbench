@@ -27,7 +27,7 @@ export default function RegisterPage() {
   const register = trpc.auth.register.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
-      setLocation("/clients");
+      setLocation("/onboarding");
     },
     onError: err => setError(registerErrorMessage(err)),
   });

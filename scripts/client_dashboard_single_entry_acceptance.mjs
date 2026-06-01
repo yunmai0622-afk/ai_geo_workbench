@@ -51,8 +51,8 @@ if (asset.includes("当前客户项目") && asset.includes("切换客户") && !/
   ok("AssetCenter 只读当前项目 + 切换客户");
 } else fail("AssetCenter project switch UI");
 
-if (onboarding.includes("onboarding-has-projects") && onboarding.includes("已有客户项目")) {
-  ok("Onboarding 已有项目去客户管理台");
+if (onboarding.includes("onboarding-step-1") && onboarding.includes('Redirect to="/clients"')) {
+  ok("Onboarding 3 步引导，已有项目去客户管理台");
 } else fail("Onboarding existing projects");
 
 if (layout.includes('label: "GEO 建档"')) {
