@@ -47,7 +47,7 @@ import {
   type WeeklyPlatformKey,
 } from "@/lib/weeklyPlatformBoard";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
-import { buildProjectUrl, getSearchFromLocation } from "@/lib/activeProject";
+import { buildProjectUrl, getActiveProjectId, getSearchFromLocation } from "@/lib/activeProject";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
 import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
@@ -144,6 +144,7 @@ import { TRPCClientError } from "@trpc/client";
 import {
   toPlatformContentGenerationError,
   PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE,
+  PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE,
 } from "@shared/platformContentGenerationErrors";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
@@ -356,6 +357,14 @@ function useProjectSelection() {
   return useActiveProjectSelection();
 }
 
+/** URL projectId 优先，避免批量生成时 session 与路由上下文不一致 */
+function resolveMutationProjectId(
+  selectedProjectId: number | undefined,
+  location: string,
+): number | null {
+  return selectedProjectId ?? getActiveProjectId({ search: getSearchFromLocation(location) });
+}
+
 function parseKeyPointsFromBusinessReason(reason?: string | null): string[] {
   if (!reason) return [];
   const m = reason.match(/核心论点：([^；]+)/);
@@ -463,6 +472,7 @@ export default function WeeklyContentPage() {
   );
 
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
+  const generateTasksMutation = trpc.geo.tasks.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
   const syncLocalAgentSnapshot = trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
@@ -904,8 +914,10 @@ export default function WeeklyContentPage() {
 
     autoTopicsTriggeredRef.current = true;
     setPreparingTopics(true);
+    const projectId = resolveMutationProjectId(selectedProjectId, location);
+    if (!projectId) return;
     generateTopicsMutation
-      .mutateAsync({ projectId: selectedProjectId!, generationCount: DEFAULT_WEEKLY_GENERATION_COUNT })
+      .mutateAsync({ projectId, generationCount: DEFAULT_WEEKLY_GENERATION_COUNT })
       .then(async () => {
         await topicsQuery.refetch();
       })
@@ -922,6 +934,7 @@ export default function WeeklyContentPage() {
     tasks.length,
     hasStaleTopics,
     selectedProjectId,
+    location,
     generateTopicsMutation,
     topicsQuery,
   ]);
@@ -1010,7 +1023,11 @@ export default function WeeklyContentPage() {
   }, [countPreset, customCount]);
 
   const handleWeeklyGenerate = async () => {
-    if (!selectedProjectId) return;
+    const projectId = resolveMutationProjectId(selectedProjectId, location);
+    if (!projectId) {
+      toast.error(PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE);
+      return;
+    }
     if (platformStrategyError) {
       toast.error(platformStrategyError);
       return;
@@ -1021,7 +1038,7 @@ export default function WeeklyContentPage() {
     setBatchState({ current: 0, total: targetCount, target: targetCount });
     try {
       const topicResult = await generateTopicsMutation.mutateAsync({
-        projectId: selectedProjectId,
+        projectId,
         generationCount: targetCount,
       });
       const [topicRefetch, articleRefetch] = await Promise.all([topicsQuery.refetch(), articlesQuery.refetch()]);
@@ -1359,19 +1376,34 @@ export default function WeeklyContentPage() {
   };
 
   const findPendingTopicForPlatform = useCallback(
-    (platformKey: WeeklyPlatformKey, topicRows: TopicRow[]) => {
+    (
+      platformKey: WeeklyPlatformKey,
+      topicRows: TopicRow[],
+      options?: { relaxTaskFilter?: boolean; relaxPlatformMatch?: boolean },
+    ) => {
       const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === platformKey)!;
-      const activeTaskId = geoContentTaskSource?.contentTaskId;
+      const activeTaskId =
+        options?.relaxTaskFilter === true ? null : geoContentTaskSource?.contentTaskId ?? null;
       return topicRows.find(t => {
-        if (articleByTopicId.has(t.id)) return false;
+        if (!t?.id || articleByTopicId.has(t.id)) return false;
         if (!isTopicBoundToProjectTasks(t, taskIdSet)) return false;
         if (activeTaskId != null && t.optimizationTaskId !== activeTaskId) return false;
-        const task = tasks.find(row => row.id === t.optimizationTaskId);
+        if (options?.relaxPlatformMatch === true) return true;
+        const task = tasks.find(row => row?.id === t.optimizationTaskId);
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         return matchTopicToPlatform(card?.recommendedPlatform ?? [], def.label);
       });
     },
     [articleByTopicId, taskIdSet, tasks, geoContentTaskSource?.contentTaskId],
+  );
+
+  const findAnyBoundPendingTopic = useCallback(
+    (topicRows: TopicRow[]) =>
+      topicRows.find(t => {
+        if (!t?.id || articleByTopicId.has(t.id)) return false;
+        return isTopicBoundToProjectTasks(t, taskIdSet);
+      }),
+    [articleByTopicId, taskIdSet],
   );
 
   const recordPlatformGenerationFailure = useCallback(
@@ -1406,6 +1438,11 @@ export default function WeeklyContentPage() {
       | { ok: true; topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> }
       | { ok: false; errorMessage: string }
     > => {
+      const projectId = resolveMutationProjectId(selectedProjectId, location);
+      if (!projectId) {
+        return { ok: false, errorMessage: PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE };
+      }
+
       const publishId = resolvePublishSlugForWeeklyPlatform(platformKey);
       const strategyOverride: Partial<PlatformContentStrategyInput> = {};
       if (publishId) {
@@ -1417,18 +1454,45 @@ export default function WeeklyContentPage() {
         setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
       }
 
-      let topicRows = topics;
+      let topicRows = topics.filter(t => t != null && typeof t.id === "number") as TopicRow[];
       let pending = findPendingTopicForPlatform(platformKey, topicRows);
+
+      if (!pending && tasks.length === 0 && analyses.length > 0) {
+        await generateTasksMutation.mutateAsync({ projectId });
+        const tasksRefetch = await tasksQuery.refetch();
+        const refreshedTasks = (tasksRefetch.data ?? []) as TaskRow[];
+        if (refreshedTasks.length > 0) {
+          await generateTopicsMutation.mutateAsync({
+            projectId,
+            generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
+          });
+          const refetch = await topicsQuery.refetch();
+          topicRows = (refetch.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
+          pending = findPendingTopicForPlatform(platformKey, topicRows);
+        }
+      }
+
       if (!pending && tasks.length > 0) {
         await generateTopicsMutation.mutateAsync({
-          projectId: selectedProjectId!,
+          projectId,
           generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
         });
         const refetch = await topicsQuery.refetch();
-        topicRows = (refetch.data ?? []) as TopicRow[];
+        topicRows = (refetch.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
         pending = findPendingTopicForPlatform(platformKey, topicRows);
       }
+
       if (!pending) {
+        pending =
+          findPendingTopicForPlatform(platformKey, topicRows, { relaxTaskFilter: true }) ??
+          findPendingTopicForPlatform(platformKey, topicRows, {
+            relaxTaskFilter: true,
+            relaxPlatformMatch: true,
+          }) ??
+          findAnyBoundPendingTopic(topicRows);
+      }
+
+      if (!pending?.id) {
         return { ok: false, errorMessage: PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE };
       }
       return { ok: true, topicId: pending.id, strategyOverride };
@@ -1436,10 +1500,15 @@ export default function WeeklyContentPage() {
     [
       topics,
       tasks.length,
+      analyses.length,
       findPendingTopicForPlatform,
+      findAnyBoundPendingTopic,
       generateTopicsMutation,
+      generateTasksMutation,
       selectedProjectId,
+      location,
       topicsQuery,
+      tasksQuery,
     ],
   );
 
@@ -1613,7 +1682,11 @@ export default function WeeklyContentPage() {
   );
 
   const handleBatchGenerateAllPlatforms = async () => {
-    if (!selectedProjectId) return;
+    const projectId = resolveMutationProjectId(selectedProjectId, location);
+    if (!projectId) {
+      toast.error(PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE);
+      return;
+    }
     if (platformStrategyError) {
       toast.error(platformStrategyError);
       return;

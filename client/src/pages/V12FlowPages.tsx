@@ -600,6 +600,7 @@ function buildDiagnosisHeadlineLine(
 function topDiagnosisGapCards(analyses: DiagnosisAnalysisRow[], limit = 5) {
   const cards: { id: number; title: string; detail: string }[] = [];
   for (const item of analyses) {
+    if (!item || typeof item.id !== "number") continue;
     const detail = diagnosisJson(item) as Record<string, unknown>;
     const gapRaw = (item.contentGap ?? item.notRecommendedReason ?? "").trim();
     const gap = gapRaw || diagnosisText(item.notRecommendedReason, "");
@@ -638,15 +639,24 @@ function buildTargetQuestionGenerateMessage(result: {
 }
 
 function topTargetQuestionCards(questions: DiagnosisQuestionRow[], limit = TARGET_QUESTION_PREVIEW_COUNT) {
-  return questions.slice(0, limit).map(q => {
+  const cards: {
+    id: number;
+    title: string;
+    intentLabel: string;
+    disadvantaged: boolean;
+  }[] = [];
+  for (const q of questions) {
+    if (!q || typeof q.id !== "number") continue;
     const meta = parseStoredQuestionMeta(q.targetKeyword ?? null);
-    return {
+    cards.push({
       id: q.id,
       title: (q.questionText ?? "").trim() || "待补充问题",
       intentLabel: targetQuestionIntentLabel(meta.intent, meta.disadvantaged),
       disadvantaged: meta.disadvantaged,
-    };
-  });
+    });
+    if (cards.length >= limit) break;
+  }
+  return cards;
 }
 
 const DIAGNOSIS_CONSOLE_STEPS = [
@@ -780,7 +790,9 @@ function buildAntiDuplicationResult(article: ArticleLike | undefined, articles: 
       blocked: false,
     };
   }
-  const peers = articles.filter(item => item.id !== article.id);
+  const peers = articles
+    .filter((item): item is ArticleLike => item != null && typeof item.id === "number")
+    .filter(item => item.id !== article.id);
   const currentTokens = titleTokens(article.title);
   const similarArticles = peers
     .map(item => ({ article: item, ratio: overlapRatio(currentTokens, titleTokens(item.title)) }))
@@ -893,9 +905,9 @@ export function AiDiagnosisFlowPage() {
     AiTaskProgressErrorCategory | undefined
   >();
   const diagnosisProgress = useAiTaskStagedProgress({ stages: AI_DIAGNOSIS_PROGRESS_STAGES });
-  const questions = questionsQuery.data ?? [];
-  const analyses = analysisQuery.data ?? [];
-  const tasks = tasksQuery.data ?? [];
+  const questions = (questionsQuery.data ?? []).filter(q => q != null && typeof q.id === "number");
+  const analyses = (analysisQuery.data ?? []).filter(item => item != null && typeof item.id === "number");
+  const tasks = (tasksQuery.data ?? []).filter(task => task != null && typeof task.id === "number");
   const profile = assetSummaryQuery.data?.profile;
   const hasProfile = Boolean(profile);
   const targetQuestions = questions.filter(q => Number(q.enabled) !== 0 && q.questionType === "指定问题");
@@ -1018,7 +1030,7 @@ export function AiDiagnosisFlowPage() {
   const t0CompletionHandledRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (runningT0Round && !activeT0RoundId) {
+    if (runningT0Round?.id && !activeT0RoundId) {
       setActiveT0RoundId(runningT0Round.id);
     }
   }, [runningT0Round, activeT0RoundId]);
@@ -1244,7 +1256,11 @@ export function AiDiagnosisFlowPage() {
         platforms: selectedT0Platforms.length > 0 ? [...selectedT0Platforms] : [...T0_DEFAULT_PLATFORMS],
         runsPerQuestion: 3,
       });
-      const roundId = createResult.round.id;
+      const roundId = createResult.round?.id;
+      if (!roundId) {
+        setT0Error("T0 轮次创建失败，请刷新后重试。");
+        return;
+      }
       t0CompletionHandledRef.current = null;
       setActiveT0RoundId(roundId);
       await utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId });
@@ -1905,9 +1921,15 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   const hasProfile = Boolean(assetSummary?.profile);
   const assetSources = (assetSummary?.assetSources ?? []) as Array<{ title?: string | null; sourceType?: string | null; contentText?: string | null; isPublic?: number | boolean | null }>;
   const analyses = analysisQuery.data ?? [];
-  const tasks = (tasksQuery.data ?? []) as TaskLike[];
-  const topics = (topicsQuery.data ?? []) as TopicLike[];
-  const articles = (articlesQuery.data ?? []) as ArticleLike[];
+  const tasks = (tasksQuery.data ?? []).filter(
+    task => task != null && typeof task.id === "number",
+  ) as TaskLike[];
+  const topics = (topicsQuery.data ?? []).filter(
+    topic => topic != null && typeof topic.id === "number",
+  ) as TopicLike[];
+  const articles = (articlesQuery.data ?? []).filter(
+    article => article != null && typeof article.id === "number",
+  ) as ArticleLike[];
   const scores = (scoresQuery.data ?? []) as QualityScoreLike[];
   const articlesSorted = useMemo(() => {
     return [...articles].sort((a, b) => {
@@ -2232,6 +2254,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     try {
       for (let i = 0; i < total; i++) {
         const topic = visibleTopics[i];
+        if (!topic?.id) continue;
         setBatchProgress({ current: i + 1, total });
         try {
           const result = await generateOneArticleAndPersist(topic.id);
@@ -2439,7 +2462,8 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               ) : visibleTopics.length > 0 ? (
                 <div className="grid gap-3 lg:grid-cols-2">
                   {visibleTopics.map(topic => {
-                    const taskForTopic = tasks.find(t => t.id === topic.optimizationTaskId);
+                    if (!topic?.id) return null;
+                    const taskForTopic = tasks.find(t => t?.id === topic.optimizationTaskId);
                     const topicCard = parseGeoTaskCard(taskForTopic?.executionSuggestion ?? null);
                     const platformLine = topicCard?.recommendedPlatform?.length ? topicCard.recommendedPlatform.join("、") : "—";
                     const contentTypeLine = topicCard?.contentType || topic.articleType || "—";
