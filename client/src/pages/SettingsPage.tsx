@@ -4,6 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import {
+  getSubscriptionPlanById,
+  resolveUserSubscriptionPlanId,
+} from "@shared/subscriptionPlans";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -25,9 +29,33 @@ export default function SettingsPage() {
     onError: err => setPasswordError(toUserFacingErrorFromUnknown(err, "密码修改失败，请稍后重试")),
   });
   const canChangePassword = Boolean(user?.passwordHash);
+  const currentPlan = getSubscriptionPlanById(resolveUserSubscriptionPlanId());
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
       <header className="space-y-1"><h1 className="text-2xl font-semibold text-gray-900">账号设置</h1><p className="text-sm text-gray-500">管理您的基本信息与登录密码</p></header>
+      <Card data-testid="settings-subscription-plan">
+        <CardHeader>
+          <CardTitle>当前套餐</CardTitle>
+          <CardDescription>展示您的订阅档位；在线升级与支付功能即将开放</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+            <p className="text-base font-semibold text-gray-900" data-testid="settings-plan-name">
+              {currentPlan.name}
+            </p>
+            <p className="mt-1 text-sm text-gray-600">
+              {currentPlan.priceLabel}
+              {currentPlan.priceNote ?? ""}
+              {" · "}
+              {currentPlan.projectLimitLabel}
+            </p>
+            <p className="mt-2 text-sm text-gray-600">{currentPlan.featureSummary}</p>
+          </div>
+          <Button type="button" variant="outline" asChild>
+            <a href="/pricing">查看全部套餐</a>
+          </Button>
+        </CardContent>
+      </Card>
       <Card><CardHeader><CardTitle>基本信息</CardTitle><CardDescription>邮箱用于登录，不可修改；您可以更新显示姓名</CardDescription></CardHeader><CardContent>
         <form className="space-y-4" onSubmit={e => { e.preventDefault(); const t = name.trim(); if (!t) { setProfileError("请填写姓名"); return; } setProfileError(null); updateProfile.mutate({ name: t }); }} data-testid="settings-profile-form">
           <div className="space-y-2"><Label htmlFor="settings-email">邮箱</Label><Input id="settings-email" type="email" value={user?.email ?? ""} disabled /></div>
@@ -48,17 +76,30 @@ export default function SettingsPage() {
         ) : null}
       </CardContent></Card>
       {user?.role === "admin" ? (
-        <Card data-testid="settings-admin-config-link">
-          <CardHeader>
-            <CardTitle>系统配置</CardTitle>
-            <CardDescription>管理员可调整限流、质检及格线与默认发布平台</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button type="button" variant="outline" asChild>
-              <a href="/admin/config">打开系统配置</a>
-            </Button>
-          </CardContent>
-        </Card>
+        <>
+          <Card data-testid="settings-admin-stats-link">
+            <CardHeader>
+              <CardTitle>系统使用统计</CardTitle>
+              <CardDescription>查看注册用户、活跃项目、发布与内容生成等汇总数据</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button type="button" variant="outline" asChild>
+                <a href="/admin/stats">打开使用统计</a>
+              </Button>
+            </CardContent>
+          </Card>
+          <Card data-testid="settings-admin-config-link">
+            <CardHeader>
+              <CardTitle>系统配置</CardTitle>
+              <CardDescription>管理员可调整限流、质检及格线与默认发布平台</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button type="button" variant="outline" asChild>
+                <a href="/admin/config">打开系统配置</a>
+              </Button>
+            </CardContent>
+          </Card>
+        </>
       ) : null}
       <Card data-testid="settings-data-export-section">
         <CardHeader>

@@ -1,4 +1,5 @@
 /** GEO Web SPA 路径（须与 client/src/App.tsx 路由一致） */
+export const GEO_WEB_PATH_PRICING = "/pricing";
 export const GEO_WEB_PATH_AI_DIAGNOSIS = "/ai-diagnosis";
 export const GEO_WEB_PATH_CONTENT_PRODUCTION = "/weekly";
 export const GEO_WEB_PATH_PUBLISH_RECORDS = "/content-publishing";

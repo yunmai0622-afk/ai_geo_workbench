@@ -36,10 +36,12 @@ import QuestionsLibraryPage from "./pages/QuestionsLibraryPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import KnowledgePage from "./pages/KnowledgePage";
 import LandingPage from "./pages/LandingPage";
+import PricingPage from "./pages/PricingPage";
 import RegisterPage from "./pages/RegisterPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import SettingsPage from "./pages/SettingsPage";
 import AdminConfigPage from "./pages/AdminConfigPage";
+import AdminStatsPage from "./pages/AdminStatsPage";
 
 function profileHasBrand(profile: unknown): boolean {
   if (!profile || typeof profile !== "object") return false;
@@ -170,6 +172,7 @@ function Router() {
       <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />
       <Route path="/delivery-reports/share/:projectId" component={DeliveryReportSharePage} />
       <Route path="/landing" component={LandingPage} />
+      <Route path="/pricing" component={PricingPage} />
       <Route path="/register" component={RegisterPage} />
       <Route path="/status" component={SystemStatusPage} />
       <Route path="/onboarding" component={OnboardingPage} />
