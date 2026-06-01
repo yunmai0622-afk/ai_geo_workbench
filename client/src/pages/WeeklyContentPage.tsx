@@ -82,6 +82,10 @@ import {
 } from "@shared/geoQualityStale";
 import { getPublishTimeSuggest } from "@shared/publishTimeSuggest";
 import {
+  formatPublishEffectPrediction,
+  PUBLISH_EFFECT_PREDICTION_LINES,
+} from "@shared/publishEffectPrediction";
+import {
   formatPublishEnqueueAccountOptionLabel,
   publishEnqueueLoginStatusLabel,
   PUBLISH_ENQUEUE_RELOGIN_ACTION_LABEL,
@@ -360,17 +364,15 @@ function previewText(markdown?: string | null, max = 400) {
   return `${raw.slice(0, max)}…`;
 }
 
-async function copyText(label: string, text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(`已复制${label}`);
-  } catch {
-    toast.error("复制失败，请手动选择复制");
-  }
-}
-
 function articleNeedsCoverSaveHint(article: ArticleRow): boolean {
   return !article.coverBase64?.trim();
+}
+
+function notifyPublishEffectPrediction() {
+  toast.message("发布后效果预期", {
+    description: formatPublishEffectPrediction(),
+    duration: 12_000,
+  });
 }
 
 export default function WeeklyContentPage() {
@@ -1665,6 +1667,7 @@ export default function WeeklyContentPage() {
         }
       }
       toast.success("发布任务已发送至本地客户端，请保持客户端运行。");
+      notifyPublishEffectPrediction();
       setPublishDialogOpen(false);
       setPublishArticle(null);
       void pollPublishTasksUntilDone(articleId, taskIds);
@@ -1763,6 +1766,7 @@ export default function WeeklyContentPage() {
 
       if (successCount > 0) {
         toast.success(`已将 ${successCount} 篇内容加入发布队列`);
+        notifyPublishEffectPrediction();
         setSelectedCardIds(new Set());
         for (const [articleId, taskIds] of Array.from(taskIdsByArticle.entries())) {
           void pollPublishTasksUntilDone(articleId, taskIds);
@@ -2247,6 +2251,17 @@ export default function WeeklyContentPage() {
                     {getPublishTimeSuggest(publishDialogSlug)}
                   </p>
                 ) : null}
+                <div
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900"
+                  data-testid="publish-effect-prediction"
+                >
+                  <p className="font-medium text-emerald-950">发布后效果预期</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-emerald-900">
+                    {PUBLISH_EFFECT_PREDICTION_LINES.map(line => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
                 {publishDialogSlug && isBindingPublishPlatform(publishDialogSlug) ? (
                   (() => {
                     const selectable = getEnqueueSelectableAccountsForPlatform(publishDialogSlug);

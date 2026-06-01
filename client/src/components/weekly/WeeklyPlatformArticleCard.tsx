@@ -10,6 +10,9 @@ import { shouldBlockPublishForGeoQuality } from "@shared/geoQualityStale";
 import type { resolveArticleLifecycleView } from "@shared/articleLifecycle";
 import type { GeoArticleQualityScoreRow } from "@shared/geoArticleQualityScoreDetail";
 import type { ContentCardStatus } from "@shared/weeklyContentAssetsDisplay";
+import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 export type WeeklyArticleCardModel = {
   id: number;
@@ -49,11 +52,41 @@ type Props = {
   onEnqueuePublish: () => void;
 };
 
+function articleBodyForCopy(article: Record<string, unknown>): string {
+  const raw = article.markdownContent;
+  if (typeof raw !== "string") return "";
+  return stripInternalArticleMetadataFromMarkdown(raw).trim();
+}
+
 export function WeeklyPlatformArticleCard(props: Props) {
   const { model, disabled, selectable, selected, onSelectedChange, onView, onRegenerate, onEnqueuePublish } = props;
   const platformLabel = model.targetPlatform?.trim() || "待指定平台";
   const platformKey = model.platformKey ?? normalizeWeeklyPlatformKey(model.targetPlatform);
   const contentTypeLabel = model.contentTypeLabel?.trim() || "未标注";
+  const [bodyCopied, setBodyCopied] = useState(false);
+  const bodyCopyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (bodyCopyTimerRef.current) clearTimeout(bodyCopyTimerRef.current);
+    };
+  }, []);
+
+  const copyBody = async () => {
+    const payload = articleBodyForCopy(model.article);
+    if (!payload) {
+      toast.error("正文为空，无法复制");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+      if (bodyCopyTimerRef.current) clearTimeout(bodyCopyTimerRef.current);
+      setBodyCopied(true);
+      bodyCopyTimerRef.current = setTimeout(() => setBodyCopied(false), 2000);
+    } catch {
+      toast.error("复制失败，请检查浏览器剪贴板权限");
+    }
+  };
 
   return (
     <P0Card testId={`weekly-content-card-${model.id}`} className="flex flex-col">
@@ -137,6 +170,16 @@ export function WeeklyPlatformArticleCard(props: Props) {
       {model.lifecycle ? <div className="mt-2"><ArticleLifecyclePanel articleId={model.id} article={model.article as Parameters<typeof ArticleLifecyclePanel>[0]["article"]} lifecycle={model.lifecycle} compact /></div> : null}
       {model.publishBlockHint ? <p className="mt-3 text-xs text-amber-800" data-testid="weekly-card-publish-readiness">{model.publishBlockHint}{model.publishNextActionLabel ? <span className="mt-1 block font-medium">下一步：{model.publishNextActionLabel}</span> : null}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className={geoP0Brand.primaryOutline}
+          data-testid={`weekly-card-copy-body-${model.id}`}
+          onClick={() => void copyBody()}
+        >
+          {bodyCopied ? "已复制" : "复制正文"}
+        </Button>
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={onView}>查看</Button>
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} disabled={disabled} onClick={onRegenerate}>重新生成</Button>
         <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>

@@ -119,6 +119,8 @@ export function ArticleAssetEditorSheet({
   const [contentStrategyType, setContentStrategyType] = useState<ContentAssetType | "">("");
   const [publishIdentity, setPublishIdentity] = useState<PublishIdentity | "">("");
   const [recommendedAccountGroup, setRecommendedAccountGroup] = useState<AccountGroupType | "">("");
+  const [bodyCopied, setBodyCopied] = useState(false);
+  const bodyCopyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const buildQualityInitial = useCallback((a: EditableArticleAsset): GeoQualityInitialState => ({
     score: a.geoQualityScore,
@@ -152,8 +154,15 @@ export function ArticleAssetEditorSheet({
   }, [buildQualityInitial]);
 
   useEffect(() => {
+    return () => {
+      if (bodyCopyTimerRef.current) clearTimeout(bodyCopyTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!open) {
       loadedArticleIdRef.current = null;
+      setBodyCopied(false);
       return;
     }
     if (!article) return;
@@ -236,6 +245,22 @@ export function ArticleAssetEditorSheet({
       throw new Error("封面导出为空，请重试或点击「重新生成封面」");
     }
     return png;
+  };
+
+  const copyBodyToClipboard = async () => {
+    const payload = content.trim();
+    if (!payload) {
+      toast.error("正文为空，无法复制");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+      if (bodyCopyTimerRef.current) clearTimeout(bodyCopyTimerRef.current);
+      setBodyCopied(true);
+      bodyCopyTimerRef.current = setTimeout(() => setBodyCopied(false), 2000);
+    } catch {
+      toast.error("复制失败，请检查浏览器剪贴板权限");
+    }
   };
 
   const handleSave = async () => {
@@ -376,7 +401,19 @@ export function ArticleAssetEditorSheet({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="asset-content">文章正文</Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor="asset-content">文章正文</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-gray-200 text-gray-700"
+                data-testid="article-copy-body-button"
+                onClick={() => void copyBodyToClipboard()}
+              >
+                {bodyCopied ? "已复制" : "一键复制正文"}
+              </Button>
+            </div>
             <textarea
               id="asset-content"
               className={`${aiInput} min-h-[220px] resize-y font-mono text-sm leading-relaxed`}
