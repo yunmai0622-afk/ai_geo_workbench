@@ -5,6 +5,7 @@ import { GEO_SYNTHETIC_AI_RESPONSE_PREFIX, isSyntheticGeoRawAnswer } from "@shar
 import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionMapping";
 import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
 import { CREATE_PROJECT_FAILED_USER_MESSAGE } from "@shared/userFacingMutationErrors";
+import { CONTENT_REVIEW_STATUSES } from "@shared/contentReviewStatus";
 import {
   assertLlmConfiguredForDiagnosis,
   classifyGeoDiagnosisLlmError,
@@ -14,7 +15,7 @@ import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring"
 import { mergeLinkAccessIntoRawJson } from "@shared/inclusionMonitoringDisplay";
 import { aggregateT0AiTestRunMetrics } from "@shared/t0AiTestRunMetrics";
 import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, like, not } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, not } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
@@ -33,6 +34,7 @@ import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
+import { userFeedbackRouter } from "./userFeedbackRouter";
 
 import {
   aiResponses,
@@ -103,7 +105,13 @@ import {
 } from "./geoArticleLogic";
 import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
 import { appendArticleLifecycleEvent, getArticleLifecycleTimeline } from "./articleLifecycleService";
+import { markGeoArticlePublishedAt } from "./geoArticlePublishState";
 import { resolveArticleLifecycleView } from "@shared/articleLifecycle";
+import {
+  applyGeoArticleGenerationHistoryRestore,
+  buildGeoArticleGenerationHistory,
+  findGeoArticleGenerationHistoryEntry,
+} from "@shared/geoArticleGenerationHistory";
 import { triggerManualReview, getArticleReviewFlagsByProject, enqueueReviewQueueItem } from "./reviewQueueService";
 import { recordRewriteFromQualityReject } from "./rewritePoolService";
 import { generateNextContentSuggestion, getArticleRewriteFlagsByProject } from "./rewritePoolService";
@@ -159,6 +167,7 @@ import {
   regenerateShareLinkForProject,
   resolveShareTokenProjectId,
 } from "./deliveryReportPublicShare";
+import { buildProjectDeliveryReportContentQuality } from "./deliveryReportContentQuality";
 import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare";
 import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import { runDailyAiCheck } from "./scheduledAiCheck";
@@ -2058,6 +2067,13 @@ const geoRouter = router({
       const result = await db.select().from(reports).where(eq(reports.projectId, input.projectId)).orderBy(desc(reports.createdAt)).limit(1);
       return result[0] ?? null;
     }),
+    contentQualitySummary: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        return buildProjectDeliveryReportContentQuality(db, input.projectId);
+      }),
     generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       const project = await requireProjectAccess(ctx, input.projectId);
@@ -2428,6 +2444,137 @@ const geoRouter = router({
         });
         return { ...timeline, lifecycle };
       }),
+    generationHistory: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          articleId: z.number().int().positive(),
+        }),
+      )
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        const article = rows[0];
+        if (!article || article.projectId !== input.projectId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+        }
+        const priorRows = await db
+          .select({
+            id: geoArticles.id,
+            title: geoArticles.title,
+            markdownContent: geoArticles.markdownContent,
+            status: geoArticles.status,
+            createdAt: geoArticles.createdAt,
+          })
+          .from(geoArticles)
+          .where(
+            and(
+              eq(geoArticles.projectId, input.projectId),
+              eq(geoArticles.topicId, article.topicId),
+              ne(geoArticles.id, article.id),
+            ),
+          )
+          .orderBy(desc(geoArticles.createdAt));
+        const entries = buildGeoArticleGenerationHistory({
+          article: {
+            id: article.id,
+            topicId: article.topicId,
+            title: article.title,
+            markdownContent: article.markdownContent,
+            status: article.status,
+            createdAt: article.createdAt,
+            updatedAt: article.updatedAt,
+            optimizationVersions: article.optimizationVersions,
+          },
+          priorGenerations: priorRows,
+        });
+        return {
+          source: "geo_articles",
+          entries,
+        } as const;
+      }),
+    restoreGenerationHistory: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          articleId: z.number().int().positive(),
+          entryKey: z.string().trim().min(1),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        const article = rows[0];
+        if (!article || article.projectId !== input.projectId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+        }
+        const priorRows = await db
+          .select({
+            id: geoArticles.id,
+            title: geoArticles.title,
+            markdownContent: geoArticles.markdownContent,
+            status: geoArticles.status,
+            createdAt: geoArticles.createdAt,
+          })
+          .from(geoArticles)
+          .where(
+            and(
+              eq(geoArticles.projectId, input.projectId),
+              eq(geoArticles.topicId, article.topicId),
+              ne(geoArticles.id, article.id),
+            ),
+          )
+          .orderBy(desc(geoArticles.createdAt));
+        const entries = buildGeoArticleGenerationHistory({
+          article: {
+            id: article.id,
+            topicId: article.topicId,
+            title: article.title,
+            markdownContent: article.markdownContent,
+            status: article.status,
+            createdAt: article.createdAt,
+            updatedAt: article.updatedAt,
+            optimizationVersions: article.optimizationVersions,
+          },
+          priorGenerations: priorRows,
+        });
+        const entry = findGeoArticleGenerationHistoryEntry(entries, input.entryKey);
+        if (!entry) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "未找到对应的历史版本" });
+        }
+        const restored = applyGeoArticleGenerationHistoryRestore({
+          article: {
+            id: article.id,
+            topicId: article.topicId,
+            title: article.title,
+            markdownContent: article.markdownContent,
+            status: article.status,
+            createdAt: article.createdAt,
+            optimizationVersions: article.optimizationVersions,
+          },
+          entry,
+        });
+        const markQualityStale = article.geoQualityReviewedAt != null;
+        await db
+          .update(geoArticles)
+          .set({
+            title: restored.title,
+            markdownContent: restored.markdownContent,
+            optimizationVersions: restored.optimizationVersions,
+            ...(markQualityStale ? { geoQualityStale: 1 } : {}),
+            contentEditedAt: new Date(),
+          })
+          .where(eq(geoArticles.id, input.articleId));
+        await appendArticleLifecycleEvent(db, input.articleId, {
+          status: "confirmed",
+          source: "generation_history_restore",
+          message: `已恢复历史版本：${entry.sourceLabel}`,
+        });
+        const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        return { success: true, article: updated[0] ?? null } as const;
+      }),
     latestQualityScores: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
@@ -2487,6 +2634,12 @@ const geoRouter = router({
         ].filter(Boolean).join("\n"),
         publishedAt,
       }).$returningId();
+      if (input.publishStatus === "published" || input.publishStatus === "link_backfilled") {
+        await markGeoArticlePublishedAt(db, article.id, {
+          publishedAt,
+          publicPath: input.publishUrl.trim(),
+        });
+      }
       return { success: true, id: inserted[0]?.id ?? 0 } as const;
     }),
     updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
@@ -2526,6 +2679,12 @@ const geoRouter = router({
         ].filter(Boolean).join("\n"),
         publishedAt,
       }).where(eq(geoPublishRecords.id, input.id));
+      if (input.publishStatus === "published" || input.publishStatus === "link_backfilled") {
+        await markGeoArticlePublishedAt(db, article.id, {
+          publishedAt,
+          publicPath: input.publishUrl.trim(),
+        });
+      }
       return { success: true, id: input.id } as const;
     }),
     inclusionMonitoringRecords: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
@@ -2770,6 +2929,7 @@ const geoRouter = router({
           contentStrategyType: z.enum(CONTENT_ASSET_TYPES).optional().nullable(),
           publishIdentity: z.enum(PUBLISH_IDENTITIES).optional().nullable(),
           recommendedAccountGroup: z.enum(ACCOUNT_GROUP_TYPES).optional().nullable(),
+          contentTags: z.array(z.string().max(32)).max(10).optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
@@ -2780,6 +2940,8 @@ const geoRouter = router({
         if (!article || article.projectId !== input.projectId) {
           throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
         }
+        const nextContentTags =
+          input.contentTags === undefined ? undefined : normalizeContentTags(input.contentTags);
         const coverTemplate = input.coverTemplate
           ? normalizeArticleCoverTemplateId(input.coverTemplate)
           : normalizeArticleCoverTemplateId(article.coverTemplate);
@@ -2820,6 +2982,7 @@ const geoRouter = router({
             ...(input.recommendedAccountGroup !== undefined
               ? { recommendedAccountGroup: input.recommendedAccountGroup }
               : {}),
+            ...(nextContentTags !== undefined ? { contentTags: nextContentTags } : {}),
             ...(markQualityStale ? { geoQualityStale: 1 } : {}),
             ...(contentChanged ? { contentEditedAt: new Date() } : {}),
           })
@@ -2831,6 +2994,38 @@ const geoRouter = router({
         });
         const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
         return { success: true, article: updated[0] ?? null } as const;
+      }),
+    updateContentTags: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          articleId: z.number().int().positive(),
+          contentTags: z.array(z.string().max(32)).max(10),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        const article = rows[0];
+        if (!article || article.projectId !== input.projectId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+        }
+        const contentTags = normalizeContentTags(input.contentTags);
+        await db.update(geoArticles).set({ contentTags }).where(eq(geoArticles.id, input.articleId));
+        const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        return { success: true, article: updated[0] ?? null, contentTags } as const;
+      }),
+    contentTagStats: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db
+          .select({ contentTags: geoArticles.contentTags })
+          .from(geoArticles)
+          .where(and(eq(geoArticles.projectId, input.projectId), not(like(geoArticles.title, "%如何回答%"))));
+        return computeContentTagStats(rows);
       }),
     contentQualityReview: protectedProcedure
       .input(
@@ -2939,7 +3134,7 @@ ${article.markdownContent}`,
       });
       if (prePublishCheck.blocked) throw new TRPCError({ code: "BAD_REQUEST", message: prePublishCheck.summary });
       const publicPath = `/geo/content/${article.projectId}/${article.id}`;
-      await db.update(geoArticles).set({ status: "已发布", publicPath }).where(eq(geoArticles.id, article.id));
+      await markGeoArticlePublishedAt(db, article.id, { publicPath });
       if (article.optimizationTaskId) {
         await db.update(optimizationTasks).set({ status: "retest", publishedUrl: publicPath, needRetest: 1 }).where(eq(optimizationTasks.id, article.optimizationTaskId));
       }

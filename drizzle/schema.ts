@@ -357,6 +357,9 @@ export const geoArticles = mysqlTable("geo_articles", {
   publishIdentity: varchar("publishIdentity", { length: 50 }),
   recommendedAccountGroup: varchar("recommendedAccountGroup", { length: 50 }),
   contentEditedAt: timestamp("contentEditedAt"),
+  contentTags: json("contentTags").$type<string[]>(),
+  contentReviewStatus: varchar("contentReviewStatus", { length: 32 }).default("待审核").notNull(),
+  publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -889,6 +892,17 @@ export const auditLogs = mysqlTable("audit_logs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** GEO V1.1：用户反馈（右下角反馈入口） */
+export const userFeedbackTypeEnum = mysqlEnum("feedbackType", ["bug", "suggestion", "other"]);
+export const userFeedbacks = mysqlTable("user_feedbacks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  projectId: int("projectId"),
+  type: userFeedbackTypeEnum.notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 /** 全局系统配置（单行 id=1，管理员在 /admin/config 维护） */
 export const geoSystemConfig = mysqlTable("geo_system_config", {
   id: int("id").primaryKey().default(1),
@@ -896,6 +910,9 @@ export const geoSystemConfig = mysqlTable("geo_system_config", {
   t0DetectionPerHourLimit: int("t0DetectionPerHourLimit").notNull(),
   qualityMinPassScore: int("qualityMinPassScore").notNull(),
   defaultPublishPlatforms: json("defaultPublishPlatforms").$type<string[]>().notNull(),
+  systemAnnouncementEnabled: int("systemAnnouncementEnabled").notNull().default(0),
+  systemAnnouncementBody: text("systemAnnouncementBody"),
+  systemAnnouncementUpdatedAt: timestamp("systemAnnouncementUpdatedAt"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   updatedByUserId: int("updatedByUserId"),
 });

@@ -18,6 +18,7 @@ import { Suspense } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { GeoIntroModal } from "./components/GeoIntroModal";
+import { UserFeedbackFab } from "./components/UserFeedbackFab";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
@@ -201,6 +202,7 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
+          <UserFeedbackFab />
           <Router />
         </TooltipProvider>
       </ThemeProvider>
