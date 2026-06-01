@@ -90,6 +90,18 @@ describe("delivery report visual hierarchy (C3-A / C3-B)", () => {
     expect(customerView).toContain("break-words");
   });
 
+  it("renders retest hero at top of light delivery report (GEO-V1.1-Retest-Visual-Report)", () => {
+    const retestHero = readProjectFile("client/src/components/DeliveryReportRetestHero.tsx");
+    expect(customerLightView).toContain("DeliveryReportRetestHero");
+    expect(customerLightView).toContain("publishCompare={aiTestAggregate.publishCompare}");
+    expect(retestHero).toContain('data-testid="delivery-report-retest-hero"');
+    expect(retestHero).toContain("发布前提及率");
+    expect(retestHero).toContain("发布后提及率");
+    expect(retestHero).toContain("T0基线");
+    expect(retestHero).toContain("等待发布后7天执行T1复测");
+    expect(readProjectFile("client/src/lib/deliveryReportLightDisplay.ts")).toContain("buildPublishRetestHeroContent");
+  });
+
   it("renders competitor comparison section on delivery report (GEO-V1.1)", () => {
     expect(customerLightView).toContain("竞品对比");
     expect(customerLightView).toContain("DeliveryReportCompetitorSection");

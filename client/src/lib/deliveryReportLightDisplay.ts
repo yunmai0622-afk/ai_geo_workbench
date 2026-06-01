@@ -145,3 +145,53 @@ export function formatVisibilityScoreDisplay(score: number | null): string {
   if (score == null) return s;
   return `${s} 分`;
 }
+
+export type PublishRetestHeroContent =
+  | {
+      kind: "comparison";
+      beforePct: number;
+      afterPct: number;
+      deltaPoints: number;
+    }
+  | {
+      kind: "waiting_t1";
+      t0BaselinePct: number;
+    };
+
+export function resolvePublishRetestMentionPercent(
+  stage: AiTestEvidenceAggregate["publishCompare"]["before"],
+): number {
+  if (!stage.hasData || stage.mentionRate == null) return 0;
+  return Math.round(stage.mentionRate * 100);
+}
+
+export function formatMentionRateDeltaPoints(delta: number): string {
+  const points = Math.round(delta * 100);
+  if (points > 0) return `+${points}个百分点`;
+  if (points < 0) return `${points}个百分点`;
+  return "持平";
+}
+
+/** 交付报告顶部复测对比：有 T1（发布后）样本则展示前后对比，否则展示 T0 等待态 */
+export function buildPublishRetestHeroContent(
+  compare: AiTestEvidenceAggregate["publishCompare"],
+): PublishRetestHeroContent {
+  if (compare.after.hasData) {
+    const beforePct = resolvePublishRetestMentionPercent(compare.before);
+    const afterPct = resolvePublishRetestMentionPercent(compare.after);
+    const delta =
+      compare.changes.mentionRateDelta ??
+      (compare.after.mentionRate ?? 0) - (compare.before.mentionRate ?? 0);
+    return {
+      kind: "comparison",
+      beforePct,
+      afterPct,
+      deltaPoints: Math.round(delta * 100),
+    };
+  }
+
+  return {
+    kind: "waiting_t1",
+    t0BaselinePct: resolvePublishRetestMentionPercent(compare.before),
+  };
+}

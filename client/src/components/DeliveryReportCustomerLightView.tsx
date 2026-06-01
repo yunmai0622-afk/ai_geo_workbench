@@ -30,6 +30,7 @@ import {
 import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
 import { useMemo, useRef, type ReactNode } from "react";
 import { DeliveryReportCompetitorSection } from "@/components/DeliveryReportCompetitorSection";
+import { DeliveryReportRetestHero } from "@/components/DeliveryReportRetestHero";
 import type { DeliveryReportCustomerViewProps } from "@/components/DeliveryReportCustomerView";
 
 const REPORT_TITLE = "GEO AI 搜索可见度优化交付报告";
@@ -252,6 +253,8 @@ export function DeliveryReportCustomerLightView({
             </div>
           </div>
         </header>
+
+        <DeliveryReportRetestHero publishCompare={aiTestAggregate.publishCompare} />
 
         {detectionConclusion ? (
           <LightSection title="主要检测结论" description="基于本轮内容诊断与 AI 搜索实测汇总，不含内部技术字段。">
