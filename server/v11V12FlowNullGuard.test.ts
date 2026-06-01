@@ -23,4 +23,17 @@ describe("GEO-V1.1-V12FlowFix null guards", () => {
     const page = read("client/src/pages/V12FlowPages.tsx");
     expect(page).toContain("filterListWithNumericId(selection.projects)");
   });
+
+  it("V12FlowPages uses optional chaining for runtime .id access", () => {
+    const page = read("client/src/pages/V12FlowPages.tsx");
+    expect(page).not.toMatch(/[^?]\.id\b/);
+    expect(page).toContain("typeof value?.id === \"number\"");
+  });
+
+  it("useActiveProjectSelection filters null projects and uses optional id", () => {
+    const hook = read("client/src/hooks/useActiveProjectSelection.ts");
+    expect(hook).toContain("projectsRaw");
+    expect(hook).toContain(".filter(p => p != null");
+    expect(hook).toContain("p?.id === contextProjectId");
+  });
 });

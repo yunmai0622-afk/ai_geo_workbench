@@ -35,32 +35,32 @@ export function RetestPlanPanel({ plan, testId = "retest-plan-panel" }: Props) {
       </div>
 
       <ol className="mt-4 space-y-3">
-        {plan.milestones.map(item => (
+        {plan.milestones.filter(Boolean).map(item => (
           <li
-            key={item.phase}
+            key={item?.phase ?? "milestone"}
             data-testid={`retest-plan-milestone-${item.phase}`}
             className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-start gap-2">
-              {statusIcon(item.status)}
+              {statusIcon(item?.status ?? "pending")}
               <div>
                 <p className="font-medium text-gray-900">
-                  {item.title}
-                  <span className="ml-2 text-xs font-normal text-gray-500">{item.scheduleHint}</span>
+                  {item?.title ?? "复测节点"}
+                  <span className="ml-2 text-xs font-normal text-gray-500">{item?.scheduleHint ?? ""}</span>
                 </p>
-                <p className="mt-0.5 text-sm text-gray-600">建议时间：{item.suggestedAtLabel}</p>
+                <p className="mt-0.5 text-sm text-gray-600">建议时间：{item?.suggestedAtLabel ?? "待定"}</p>
               </div>
             </div>
             <span
               className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-medium ${
-                item.status === "completed"
+                item?.status === "completed"
                   ? "bg-emerald-50 text-emerald-800"
-                  : item.status === "due"
+                  : item?.status === "due"
                     ? "bg-amber-50 text-amber-900"
                     : "bg-gray-100 text-gray-600"
               }`}
             >
-              {item.statusLabel}
+              {item?.statusLabel ?? ""}
             </span>
           </li>
         ))}

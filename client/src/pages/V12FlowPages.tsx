@@ -286,7 +286,7 @@ function useProjectSelection() {
     [selection.projects],
   );
   const selectedProject = useMemo(
-    () => projects.find(p => p.id === selection.selectedProjectId),
+    () => projects.find(p => p?.id === selection.selectedProjectId),
     [projects, selection.selectedProjectId],
   );
   return { ...selection, projects, selectedProject };
@@ -303,7 +303,7 @@ function requireValidProjectId(selectedProjectId: number | undefined): number {
 function hasNumericId<T extends { id?: unknown }>(
   value: T | null | undefined,
 ): value is T & { id: number } {
-  return value != null && typeof value.id === "number";
+  return value != null && typeof value?.id === "number";
 }
 
 function filterListWithNumericId<T extends { id?: unknown }>(
@@ -318,8 +318,8 @@ function filterTestRounds(
   return (rows ?? []).filter(
     (round): round is TestRoundSummary =>
       round != null &&
-      typeof round.id === "string" &&
-      round.id.length > 0 &&
+      typeof round?.id === "string" &&
+      round?.id.length > 0 &&
       typeof round.roundType === "string",
   );
 }
@@ -650,13 +650,13 @@ function buildDiagnosisHeadlineLine(
 function topDiagnosisGapCards(analyses: DiagnosisAnalysisRow[], limit = 5) {
   const cards: { id: number; title: string; detail: string }[] = [];
   for (const item of analyses) {
-    if (!item || typeof item.id !== "number") continue;
+    if (!item || typeof item?.id !== "number") continue;
     const detail = diagnosisJson(item) as Record<string, unknown>;
     const gapRaw = (item.contentGap ?? item.notRecommendedReason ?? "").trim();
     const gap = gapRaw || diagnosisText(item.notRecommendedReason, "");
     if (!gap || gap === "暂无。") continue;
     cards.push({
-      id: item.id,
+      id: item?.id,
       title: diagnosisText(detail.questionText, "内容缺口"),
       detail: gap.length > 140 ? `${gap.slice(0, 140)}…` : gap,
     });
@@ -696,10 +696,10 @@ function topTargetQuestionCards(questions: DiagnosisQuestionRow[], limit = TARGE
     disadvantaged: boolean;
   }[] = [];
   for (const q of questions) {
-    if (!q || typeof q.id !== "number") continue;
+    if (!q || typeof q?.id !== "number") continue;
     const meta = parseStoredQuestionMeta(q.targetKeyword ?? null);
     cards.push({
-      id: q.id,
+      id: q?.id,
       title: (q.questionText ?? "").trim() || "待补充问题",
       intentLabel: targetQuestionIntentLabel(meta.intent, meta.disadvantaged),
       disadvantaged: meta.disadvantaged,
@@ -841,8 +841,8 @@ function buildAntiDuplicationResult(article: ArticleLike | undefined, articles: 
     };
   }
   const peers = articles
-    .filter((item): item is ArticleLike => item != null && typeof item.id === "number")
-    .filter(item => item.id !== article.id);
+    .filter((item): item is ArticleLike => item != null && typeof item?.id === "number")
+    .filter(item => item?.id !== article?.id);
   const currentTokens = titleTokens(article.title);
   const similarArticles = peers
     .map(item => ({ article: item, ratio: overlapRatio(currentTokens, titleTokens(item.title)) }))
@@ -853,7 +853,7 @@ function buildAntiDuplicationResult(article: ArticleLike | undefined, articles: 
   const currentHeadings = headingSignature(article.markdownContent);
   const structureRepeated = peers.some(item => overlapRatio(currentHeadings, headingSignature(item.markdownContent)) >= 0.55);
   const titleRepeated = similarArticles.some(item => item.title.trim() === article.title.trim() || overlapRatio(currentTokens, titleTokens(item.title)) >= 0.55);
-  const topicRepeated = Boolean(topic && peers.some(item => item.topicId === topic.id || (item.optimizationTaskId && item.optimizationTaskId === topic.optimizationTaskId && overlapRatio(currentTokens, titleTokens(item.title)) >= 0.35)));
+  const topicRepeated = Boolean(topic && peers.some(item => item.topicId === topic?.id || (item.optimizationTaskId && item.optimizationTaskId === topic.optimizationTaskId && overlapRatio(currentTokens, titleTokens(item.title)) >= 0.35)));
   const sameTaskRepeated = Boolean(article.optimizationTaskId && peers.filter(item => item.optimizationTaskId === article.optimizationTaskId).length >= 2);
   const sameWeekRepeated = plan.taskIds.filter(id => id === article.optimizationTaskId).length > 1 || peers.filter(item => item.articleType === article.articleType).length >= Math.max(2, plan.weeklyCount);
   const viewpointRepeated = peers.some(item => overlapRatio(titleTokens(excerptMarkdown(article.markdownContent)), titleTokens(excerptMarkdown(item.markdownContent))) >= 0.45);
@@ -978,21 +978,22 @@ export function AiDiagnosisFlowPage() {
   );
   const displayT0Round =
     activeT0RoundQuery.data ??
-    (activeT0RoundId ? testRounds.find(round => round.id === activeT0RoundId) : null) ??
+    (activeT0RoundId ? testRounds.find(round => round?.id === activeT0RoundId) : null) ??
     runningT0Round ??
     latestCompletedT0Round ??
     null;
   const isT0Running = t0StartingMutation || displayT0Round?.status === "running";
+  const displayT0RoundId = displayT0Round?.id;
   const t0RunsQuery = trpc.geo.aiTestRuns.listByRound.useQuery(
-    { projectId: selectedProjectId!, roundId: displayT0Round!.id },
+    { projectId: selectedProjectId!, roundId: displayT0RoundId ?? "" },
     {
-      enabled: enabled && Boolean(selectedProjectId && displayT0Round?.id),
+      enabled: enabled && Boolean(selectedProjectId && displayT0RoundId),
       refetchInterval: isT0Running ? 2000 : false,
     },
   );
   const t0RoundQuestionsQuery = trpc.geo.roundQuestions.listByRound.useQuery(
-    { projectId: selectedProjectId!, roundId: displayT0Round!.id },
-    { enabled: enabled && Boolean(selectedProjectId && displayT0Round?.id) },
+    { projectId: selectedProjectId!, roundId: displayT0RoundId ?? "" },
+    { enabled: enabled && Boolean(selectedProjectId && displayT0RoundId) },
   );
   const t0QuestionTypeById = useMemo(() => {
     const map = new Map<number, string>();
@@ -1085,7 +1086,7 @@ export function AiDiagnosisFlowPage() {
 
   useEffect(() => {
     if (runningT0Round?.id && !activeT0RoundId) {
-      setActiveT0RoundId(runningT0Round.id);
+      setActiveT0RoundId(runningT0Round?.id);
     }
   }, [runningT0Round, activeT0RoundId]);
 
@@ -1093,18 +1094,18 @@ export function AiDiagnosisFlowPage() {
     if (!selectedProjectId || !displayT0Round?.id) return;
     const terminal = displayT0Round.status === "completed" || displayT0Round.status === "failed";
     if (!terminal) return;
-    if (t0CompletionHandledRef.current === displayT0Round.id) return;
-    t0CompletionHandledRef.current = displayT0Round.id;
+    if (t0CompletionHandledRef.current === displayT0Round?.id) return;
+    t0CompletionHandledRef.current = displayT0Round?.id;
 
     void Promise.all([
       utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId }),
       utils.geo.aiTestRuns.listByRound.invalidate({
         projectId: selectedProjectId,
-        roundId: displayT0Round.id,
+        roundId: displayT0Round?.id,
       }),
       utils.geo.roundQuestions.listByRound.invalidate({
         projectId: selectedProjectId,
-        roundId: displayT0Round.id,
+        roundId: displayT0Round?.id,
       }),
     ]);
 
@@ -1532,11 +1533,11 @@ export function AiDiagnosisFlowPage() {
             ) : (
               <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
                 {consoleQuestionPreview.map(q => {
-                  if (!q || typeof q.id !== "number") return null;
+                  if (!q || typeof q?.id !== "number") return null;
                   const meta = parseStoredQuestionMeta(q.targetKeyword ?? null);
                   const typeLabel = targetQuestionIntentLabel(meta.intent, meta.disadvantaged);
                   return (
-                    <div key={q.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                    <div key={q?.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
                       <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${meta.disadvantaged ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{typeLabel}</span>
                       <p className="mt-1 text-sm text-gray-700">{q.questionText}</p>
                     </div>
@@ -1625,10 +1626,10 @@ export function AiDiagnosisFlowPage() {
           <p className="text-xs font-medium text-gray-500">实测平台（多选）</p>
           <div className="mt-2 flex flex-wrap gap-3">
             {T0_AI_ENGINE_OPTIONS.map(option => {
-              const checked = selectedT0Platforms.includes(option.id);
+              const checked = selectedT0Platforms.includes(option?.id);
               return (
                 <label
-                  key={option.id}
+                  key={option?.id}
                   className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800"
                 >
                   <input
@@ -1639,10 +1640,10 @@ export function AiDiagnosisFlowPage() {
                     onChange={() => {
                       setSelectedT0Platforms(prev => {
                         if (checked) {
-                          const next = prev.filter(id => id !== option.id);
+                          const next = prev.filter(id => id !== option?.id);
                           return next.length > 0 ? next : prev;
                         }
-                        return [...prev, option.id];
+                        return [...prev, option?.id];
                       });
                     }}
                   />
@@ -1788,7 +1789,7 @@ export function AiDiagnosisFlowPage() {
             ) : (
               <div className="mt-3 space-y-2">
                 {visibleGapCards.map(card => (
-                  <div key={card.id} className="rounded-lg border-l-4 border-l-amber-400 border border-gray-100 bg-gray-50 p-3">
+                  <div key={card?.id} className="rounded-lg border-l-4 border-l-amber-400 border border-gray-100 bg-gray-50 p-3">
                     <p className="text-sm font-medium text-gray-800 line-clamp-1">{card.title}</p>
                     <p className="mt-1 text-xs text-gray-500 line-clamp-2">{card.detail}</p>
                   </div>
@@ -1808,7 +1809,7 @@ export function AiDiagnosisFlowPage() {
             ) : (
               <div className="mt-3 space-y-2">
                 {visibleQuestionCards.map(card => (
-                  <div key={card.id} className="rounded-lg border-l-4 border-l-blue-400 border border-gray-100 bg-gray-50 p-3">
+                  <div key={card?.id} className="rounded-lg border-l-4 border-l-blue-400 border border-gray-100 bg-gray-50 p-3">
                     <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${card.disadvantaged ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{card.intentLabel}</span>
                     <p className="mt-1 text-sm text-gray-700">{card.title}</p>
                   </div>
@@ -1879,11 +1880,11 @@ export function AiDiagnosisFlowPage() {
               <h3 className="font-semibold text-gray-900">诊断结果</h3>
               <div className="mt-3 space-y-3">
                 {analyses.map(item => {
-                  if (!item || typeof item.id !== "number") return null;
+                  if (!item || typeof item?.id !== "number") return null;
                   const detail = diagnosisJson(item) as Record<string, unknown>;
                   const v12 = diagnosisV12DisplayFields(detail);
                   return (
-                    <div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+                    <div key={item?.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
                       <p className="font-medium text-gray-800">客户问题：{diagnosisText(detail.questionText, "未关联客户问题")}</p>
                       <div className="mt-3 grid gap-2 md:grid-cols-2">
                         <p>AI 是否提及品牌：{yesNo(item.mentionsEnterprise)}</p>
@@ -1919,10 +1920,10 @@ export function AiDiagnosisFlowPage() {
               ) : (
                 <div className="mt-3 grid gap-3 lg:grid-cols-2">
                   {tasks.map(task => {
-                    if (!task || typeof task.id !== "number") return null;
+                    if (!task || typeof task?.id !== "number") return null;
                     const card = parseGeoTaskCard(task.executionSuggestion);
                     return (
-                      <div key={task.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+                      <div key={task?.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
                         <p className="font-medium text-gray-800">{task.taskName}</p>
                         <p className="mt-1 text-blue-600 text-xs">优先级：{task.priority || "待评估"}</p>
                         <p className="text-xs">解决问题：{task.generationReason || "补齐诊断发现的内容缺口"}</p>
@@ -2003,28 +2004,28 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   const pageError = contentGenerationErrorMessage(
     assetSummaryQuery.error?.message || analysisQuery.error?.message || tasksQuery.error?.message || topicsQuery.error?.message || articlesQuery.error?.message || scoresQuery.error?.message || contentPlanQuery.error?.message,
   );
-  const selectedTask = tasks.find(task => task.id === selectedTaskId);
+  const selectedTask = tasks.find(task => task?.id === selectedTaskId);
   const planTaskIdSet = new Set(contentPlan.taskIds);
   const visibleTopics =
     planTaskIdSet.size > 0
       ? topics.filter(t => t.optimizationTaskId != null && planTaskIdSet.has(t.optimizationTaskId))
       : topics;
-  const visibleTopicIdsKey = useMemo(() => visibleTopics.map(t => t.id).join(","), [visibleTopics]);
-  const articleIdsKey = useMemo(() => articles.map(a => a.id).join(","), [articles]);
-  const stableTaskIdsKey = useMemo(() => tasks.map(t => t.id).join(","), [tasks]);
-  const selectedTopic = topics.find(topic => topic.id === selectedTopicId);
-  const selectedArticle = articles.find(article => article.id === selectedArticleId) ?? (selectedTopicId ? articles.find(article => article.topicId === selectedTopicId) : articles[0]);
+  const visibleTopicIdsKey = useMemo(() => visibleTopics.map(t => t?.id).join(","), [visibleTopics]);
+  const articleIdsKey = useMemo(() => articles.map(a => a?.id).join(","), [articles]);
+  const stableTaskIdsKey = useMemo(() => tasks.map(t => t?.id).join(","), [tasks]);
+  const selectedTopic = topics.find(topic => topic?.id === selectedTopicId);
+  const selectedArticle = articles.find(article => article?.id === selectedArticleId) ?? (selectedTopicId ? articles.find(article => article.topicId === selectedTopicId) : articles[0]);
   /** 与列表同源的文章行，用于发布标题等字段，避免展示对象与 articles 缓存不一致 */
   const articleRowFromList = useMemo(() => {
     if (!selectedArticle?.id) return null;
-    return articles.find(a => a.id === selectedArticle.id) ?? selectedArticle;
+    return articles.find(a => a?.id === selectedArticle?.id) ?? selectedArticle;
   }, [articles, selectedArticle]);
   const publishBodyMarkdown = useMemo(
     () => stripLeadingMarkdownH1Line(selectedArticle?.markdownContent),
     [selectedArticle?.id, selectedArticle?.markdownContent],
   );
-  const currentEnterpriseName = useMemo(() => projects.find(p => p.id === selectedProjectId)?.enterpriseName ?? "", [projects, selectedProjectId]);
-  const selectedQuality = selectedArticle ? scores.find(score => score.articleId === selectedArticle.id) : undefined;
+  const currentEnterpriseName = useMemo(() => projects.find(p => p?.id === selectedProjectId)?.enterpriseName ?? "", [projects, selectedProjectId]);
+  const selectedQuality = selectedArticle ? scores.find(score => score.articleId === selectedArticle?.id) : undefined;
   const basis = asRecord(selectedArticle?.generationBasis);
   const assetUsage = asRecord(basis.assetLibraryUsage);
   const enterpriseMaterials = objectList(assetUsage.enterpriseMaterials);
@@ -2066,7 +2067,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   useEffect(() => {
     if (!selectedProjectId) return;
 
-    const valid = new Set(tasks.map(t => t.id));
+    const valid = new Set(tasks.map(t => t?.id));
     const serverPlan = latestPlan && latestPlan.projectId === selectedProjectId ? latestPlan : null;
 
     if (serverPlan) {
@@ -2093,7 +2094,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
       setSelectedTaskId(undefined);
       return;
     }
-    const picked = tasks.slice(0, Math.min(3, tasks.length)).map(t => t.id);
+    const picked = tasks.slice(0, Math.min(3, tasks.length)).map(t => t?.id);
     setContentPlan({ ...base, taskIds: picked });
     setSelectedTaskId(prev => {
       if (prev && picked.includes(prev)) return prev;
@@ -2131,7 +2132,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     if (!selectedProjectId) return;
     const first = visibleTopics[0]?.id;
     if (!first) return;
-    const ids = new Set(visibleTopics.map(t => t.id));
+    const ids = new Set(visibleTopics.map(t => t?.id));
     if (!selectedTopicId || !ids.has(selectedTopicId)) startTransition(() => setSelectedTopicId(first));
   }, [selectedProjectId, selectedTopicId, visibleTopicIdsKey]);
 
@@ -2139,7 +2140,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     if (!selectedProjectId) return;
     const first = articles[0]?.id;
     if (!first) return;
-    const ids = new Set(articles.map(a => a.id));
+    const ids = new Set(articles.map(a => a?.id));
     if (!selectedArticleId || !ids.has(selectedArticleId)) startTransition(() => setSelectedArticleId(first));
   }, [selectedProjectId, selectedArticleId, articleIdsKey]);
 
@@ -2169,7 +2170,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     setMessage(undefined);
     setError(undefined);
     try {
-      const validTaskIds = new Set(tasks.map(t => t.id));
+      const validTaskIds = new Set(tasks.map(t => t?.id));
       const linkedOptimizationTaskIds = contentPlan.taskIds.filter(id => validTaskIds.has(id));
       if (linkedOptimizationTaskIds.length === 0) {
         setError("选中的优化任务已失效或不属于当前项目，请重新勾选后再保存。");
@@ -2231,7 +2232,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
       const refreshed = filterListWithNumericId(refreshedTopics.data) as TopicLike[];
       const nextTopic = refreshed.find(topic => topic.optimizationTaskId && contentPlan.taskIds.includes(topic.optimizationTaskId)) ?? refreshed[0];
       if (!nextTopic?.id) throw new Error("没有可用于生成文章的选题，请先完成 内容诊断和优化任务。");
-      startTransition(() => setSelectedTopicId(nextTopic.id));
+      startTransition(() => setSelectedTopicId(nextTopic?.id));
       setMessage("已根据优化任务同步内容选题，请选择一个选题生成 1 篇文章。");
     } catch (err) {
       setError(toUserFacingErrorFromUnknown(err, "生成内容选题失败"));
@@ -2323,10 +2324,10 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
         if (!topic?.id) continue;
         setBatchProgress({ current: i + 1, total });
         try {
-          const result = await generateOneArticleAndPersist(topic.id);
+          const result = await generateOneArticleAndPersist(topic?.id);
           ok += 1;
           if (result.articleId) startTransition(() => setSelectedArticleId(result.articleId));
-          startTransition(() => setSelectedTopicId(topic.id));
+          startTransition(() => setSelectedTopicId(topic?.id));
         } catch {
           skippedRounds.push(i + 1);
           setMessage(`第${i + 1}篇生成失败，已跳过，继续生成剩余文章`);
@@ -2368,7 +2369,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     setMessage("重新检查中…");
     setError(undefined);
     try {
-      const result = await qualityCheck.mutateAsync({ articleId: selectedArticle.id });
+      const result = await qualityCheck.mutateAsync({ articleId: selectedArticle?.id });
       await Promise.all([
         utils.geo.articles.list.invalidate({ projectId: selectedProjectId }),
         utils.geo.articles.latestQualityScores.invalidate({ projectId: selectedProjectId }),
@@ -2492,8 +2493,8 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
             {tasks.length === 0 ? <EmptyStep title="暂无优化任务" description="完成 内容诊断并生成任务后，才能基于任务生成内容。" /> : <div className="mt-4 grid gap-3 lg:grid-cols-2">{tasks.map(task => {
               const card = parseGeoTaskCard(task.executionSuggestion);
               return (
-                <button key={task.id} type="button" onClick={() => togglePlanTask(task.id)} className={contentPlan.taskIds.includes(task.id) ? aiChipActive : aiChipIdle}>
-                  <p className="font-medium text-white">{contentPlan.taskIds.includes(task.id) ? "已纳入计划：" : ""}{task.taskName}</p>
+                <button key={task?.id} type="button" onClick={() => togglePlanTask(task?.id)} className={contentPlan.taskIds.includes(task?.id) ? aiChipActive : aiChipIdle}>
+                  <p className="font-medium text-white">{contentPlan.taskIds.includes(task?.id) ? "已纳入计划：" : ""}{task.taskName}</p>
                   <p className="mt-1 text-blue-600">{task.taskType || "内容任务"} · {task.priority || "优先级未标注"}</p>
                   <p className="mt-2 text-gray-400">{task.generationReason || "该任务来自 内容诊断后的内容缺口判断。"}</p>
                   {card ? (
@@ -2534,7 +2535,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                     const platformLine = topicCard?.recommendedPlatform?.length ? topicCard.recommendedPlatform.join("、") : "—";
                     const contentTypeLine = topicCard?.contentType || topic.articleType || "—";
                     return (
-                      <button key={topic.id} type="button" onClick={() => setSelectedTopicId(topic.id)} className={selectedTopicId === topic.id ? aiChipActive : aiChipIdle}>
+                      <button key={topic?.id} type="button" onClick={() => setSelectedTopicId(topic?.id)} className={selectedTopicId === topic?.id ? aiChipActive : aiChipIdle}>
                         <p className="font-medium text-white">{topic.title}</p>
                         <p className="mt-2 text-gray-400">优化任务：{taskForTopic?.taskName ?? "—"}</p>
                         {topicCard?.keyPoints?.length ? (
@@ -2583,7 +2584,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
               </div>
             </div>
             {!selectedTopic ? <EmptyStep title="尚未选择选题" description="请先生成并选择一个内容选题。" /> : (() => {
-              const stTask = tasks.find(t => t.id === selectedTopic.optimizationTaskId);
+              const stTask = tasks.find(t => t?.id === selectedTopic.optimizationTaskId);
               const stCard = parseGeoTaskCard(stTask?.executionSuggestion ?? null);
               return (
                 <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 text-sm leading-6 text-gray-600">
@@ -2600,23 +2601,23 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 <p className="mt-1 text-xs text-gray-400">按生成时间倒序；点击一行可查看正文与下方质量检查详情。</p>
                 <ul className="mt-3 divide-y divide-white/10">
                   {articlesSorted.map(article => {
-                    const q = scores.find(s => s.articleId === article.id);
+                    const q = scores.find(s => s.articleId === article?.id);
                     const pass = articleQualityPassesGate(article, q);
                     const scoreLabel = q?.totalScore != null ? `${q.totalScore} 分` : "—";
                     return (
-                      <li key={article.id}>
+                      <li key={article?.id}>
                         <button
                           type="button"
                           onClick={() => {
                             startTransition(() => {
-                              setSelectedArticleId(article.id);
+                              setSelectedArticleId(article?.id);
                               if (article.topicId != null) setSelectedTopicId(article.topicId);
                             });
                           }}
-                          className={`flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left text-sm transition hover:bg-white/[0.04] ${selectedArticleId === article.id ? "text-blue-700" : "text-gray-700"}`}
+                          className={`flex w-full flex-wrap items-center justify-between gap-2 py-3 text-left text-sm transition hover:bg-white/[0.04] ${selectedArticleId === article?.id ? "text-blue-700" : "text-gray-700"}`}
                         >
                           <span className="min-w-0 flex-1 font-medium text-white">
-                            #{article.id} · {article.title || "无标题"}
+                            #{article?.id} · {article.title || "无标题"}
                           </span>
                           <span className="shrink-0 text-xs text-gray-400">质量 {scoreLabel}</span>
                           <Badge
@@ -2641,7 +2642,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                 <div className="rounded-3xl border border-gray-200 bg-white p-5">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <p className="text-sm text-blue-600">文章 #{selectedArticle.id} · {cyclePick(contentPlan.targetPlatforms, 0, "目标平台待确认")} · {cyclePick(contentPlan.contentTypes, 0, selectedArticle.articleType || "内容")}</p>
+                      <p className="text-sm text-blue-600">文章 #{selectedArticle?.id} · {cyclePick(contentPlan.targetPlatforms, 0, "目标平台待确认")} · {cyclePick(contentPlan.contentTypes, 0, selectedArticle.articleType || "内容")}</p>
                       <p className="mt-2 text-xs text-gray-500">模型原标题：{articleRowFromList?.title ?? selectedArticle.title}</p>
                     </div>
                     <span className="rounded-full border border-gray-200 bg-white/[0.04] px-3 py-1 text-xs text-gray-700">{selectedArticle.status || (selectedQuality ? "已检查" : "生成中")}</span>
@@ -2909,7 +2910,7 @@ export function InclusionMonitoringFlowPage() {
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const records = (monitoringQuery.data ?? []).filter(
-    record => record != null && typeof record.id === "number",
+    record => record != null && typeof record?.id === "number",
   ) as MonitoringRecordLike[];
   const publishRecordCount = (publishRecordsQuery.data ?? []).length;
   const loading = monitoringQuery.isLoading || publishRecordsQuery.isLoading;
@@ -3114,7 +3115,7 @@ export function InclusionMonitoringFlowPage() {
           <div className="grid gap-4 lg:grid-cols-2">
             {records.map(record => {
               if (!record?.id) return null;
-              const recordId = record.id;
+              const recordId = record?.id;
               return (
               <div
                 id={`monitoring-record-${recordId}`}
