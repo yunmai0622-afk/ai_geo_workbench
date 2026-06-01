@@ -9,6 +9,17 @@ import {
   type TestRoundSummary,
 } from "./retestComparisonDisplay";
 
+export function formatT0TestedAtLabel(value: Date | string | null | undefined): string {
+  if (value == null) return "—";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function formatT0BooleanLabel(value: boolean): string {
+  return value ? "是" : "否";
+}
+
 export const GEO_CSV_UTF8_BOM = "\uFEFF";
 
 export function escapeCsvCell(value: string | number | null | undefined): string {
@@ -55,6 +66,49 @@ export function buildGeoReportCsvFilename(projectName: string, date = new Date()
 export function buildGeoPublishRecordsCsvFilename(projectName: string, date = new Date()): string {
   const datePart = date.toISOString().slice(0, 10);
   return `geo-publish-records-${sanitizeGeoExportFilenameSegment(projectName)}-${datePart}.csv`;
+}
+
+export function buildGeoT0ResultCsvFilename(projectName: string, date = new Date()): string {
+  const datePart = date.toISOString().slice(0, 10);
+  return `t0-result-${sanitizeGeoExportFilenameSegment(projectName)}-${datePart}.csv`;
+}
+
+export type T0ResultExportRow = {
+  questionText: string;
+  questionType: string;
+  platform: string;
+  mentionedBrand: boolean;
+  recommendedBrand: boolean;
+  competitorNames: string[];
+  testedAt: Date | string | null | undefined;
+};
+
+export function buildT0ResultsCsvSection(rows: T0ResultExportRow[]): CsvSection {
+  return {
+    title: "T0检测结果",
+    headers: [
+      "问题内容",
+      "问题类型",
+      "检测平台",
+      "是否提及品牌",
+      "是否推荐品牌",
+      "出现的竞品",
+      "检测时间",
+    ],
+    rows: rows.map(row => [
+      row.questionText,
+      resolveQuestionTypeDisplayLabel(row.questionType),
+      resolvePlatformDisplayLabel(row.platform),
+      formatT0BooleanLabel(row.mentionedBrand),
+      formatT0BooleanLabel(row.recommendedBrand),
+      row.competitorNames.length > 0 ? row.competitorNames.join("、") : "—",
+      formatT0TestedAtLabel(row.testedAt),
+    ]),
+  };
+}
+
+export function buildT0ResultsCsvContent(rows: T0ResultExportRow[]): string {
+  return buildCsvDocument([buildT0ResultsCsvSection(rows)]);
 }
 
 export type DetectionQuestionExportRow = {

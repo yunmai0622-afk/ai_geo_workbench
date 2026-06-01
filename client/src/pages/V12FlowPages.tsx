@@ -28,6 +28,7 @@ import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection, type ProjectOption } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
+import { downloadT0ResultsCsv } from "@/lib/geoDataExportDownload";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { aiChipActive, aiChipIdle, aiDataTable, aiGlassPanel, aiInput, aiInternalZone, aiListRow, aiMetricCard, aiSubPanel } from "@/lib/aiProductUi";
 import {
@@ -1155,6 +1156,31 @@ export function AiDiagnosisFlowPage() {
     }
   }
 
+  const t0ExportProjectName = selectedProject?.enterpriseName ?? "当前企业";
+
+  function handleExportT0ResultsCsv() {
+    if (t0RunsQuery.isLoading || t0RoundQuestionsQuery.isLoading) {
+      toast.message("T0 检测结果加载中，请稍后再导出");
+      return;
+    }
+    const questionTextById = new Map<number, string>();
+    for (const link of t0RoundQuestionsQuery.data ?? []) {
+      const text = link.question?.questionText?.trim();
+      if (text) questionTextById.set(link.questionId, text);
+    }
+    const rows = t0Runs.map(run => ({
+      questionText: questionTextById.get(run.questionId) ?? `问题 #${run.questionId}`,
+      questionType: t0QuestionTypeById.get(run.questionId) ?? "指定问题",
+      platform: run.platform,
+      mentionedBrand: run.mentionedCompany,
+      recommendedBrand: run.recommendedCompany,
+      competitorNames: run.competitorNames ?? [],
+      testedAt: run.testedAt,
+    }));
+    downloadT0ResultsCsv({ projectName: t0ExportProjectName, rows });
+    toast.success(rows.length > 0 ? "T0 检测结果 CSV 已开始下载" : "已导出空表（暂无检测记录）");
+  }
+
   async function handleStartT0Baseline() {
     if (!selectedProjectId) {
       setT0Error("请先选择项目。");
@@ -1507,6 +1533,20 @@ export function AiDiagnosisFlowPage() {
 
         {displayT0Round?.status === "completed" && t0ResultsDisplay ? (
           <div className="mt-5 space-y-4" data-testid="ai-diagnosis-t0-results">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-medium text-gray-900">检测结果汇总</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                data-testid="ai-diagnosis-t0-export-csv"
+                disabled={t0RunsQuery.isLoading || !selectedProjectId}
+                onClick={handleExportT0ResultsCsv}
+              >
+                导出检测结果
+              </Button>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                 <p className="text-xs text-gray-500">总测试次数</p>

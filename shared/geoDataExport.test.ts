@@ -3,7 +3,9 @@ import {
   GEO_CSV_UTF8_BOM,
   buildDeliveryReportCsvContent,
   buildGeoReportCsvFilename,
+  buildGeoT0ResultCsvFilename,
   buildPublishRecordsCsvContent,
+  buildT0ResultsCsvContent,
   escapeCsvCell,
 } from "./geoDataExport";
 
@@ -96,5 +98,32 @@ describe("geoDataExport", () => {
     expect(csv).toContain("发布记录");
     expect(csv).toContain("文章A");
     expect(csv).toContain("https://example.com/a");
+  });
+
+  it("buildGeoT0ResultCsvFilename uses t0-result prefix", () => {
+    expect(buildGeoT0ResultCsvFilename("海豚知道", new Date("2026-06-01T12:00:00Z"))).toBe(
+      "t0-result-海豚知道-2026-06-01.csv",
+    );
+  });
+
+  it("buildT0ResultsCsvContent exports T0 detection columns", () => {
+    const csv = buildT0ResultsCsvContent([
+      {
+        questionText: "哪家知识付费平台好？",
+        questionType: "行业推荐",
+        platform: "doubao",
+        mentionedBrand: true,
+        recommendedBrand: false,
+        competitorNames: ["小鹅通"],
+        testedAt: "2026-06-01T08:00:00.000Z",
+      },
+    ]);
+    expect(csv.startsWith(GEO_CSV_UTF8_BOM)).toBe(true);
+    expect(csv).toContain("T0检测结果");
+    expect(csv).toContain("问题内容");
+    expect(csv).toContain("是否提及品牌");
+    expect(csv).toContain("哪家知识付费平台好？");
+    expect(csv).toContain("豆包");
+    expect(csv).toContain("小鹅通");
   });
 });

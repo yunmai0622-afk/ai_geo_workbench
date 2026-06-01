@@ -24,11 +24,21 @@ describe("GEO-V1.1-Data-Export static", () => {
     expect(page).toContain("downloadPublishRecordsCsv");
   });
 
+  it("ai diagnosis page exposes T0 results CSV export", () => {
+    const page = read("client/src/pages/V12FlowPages.tsx");
+    expect(page).toContain('data-testid="ai-diagnosis-t0-export-csv"');
+    expect(page).toContain("导出检测结果");
+    expect(page).toContain("downloadT0ResultsCsv");
+  });
+
   it("shared geoDataExport defines BOM and geo-report filename", () => {
     const shared = read("shared/geoDataExport.ts");
     expect(shared).toContain("GEO_CSV_UTF8_BOM");
     expect(shared).toContain("buildGeoReportCsvFilename");
     expect(shared).toContain("geo-report-");
+    expect(shared).toContain("buildGeoT0ResultCsvFilename");
+    expect(shared).toContain("t0-result-");
+    expect(shared).toContain("buildT0ResultsCsvContent");
   });
 
   it("delivery report and settings expose backup export hints", () => {

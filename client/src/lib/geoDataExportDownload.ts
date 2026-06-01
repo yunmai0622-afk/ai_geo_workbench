@@ -2,9 +2,12 @@ import {
   buildDeliveryReportCsvContent,
   buildGeoPublishRecordsCsvFilename,
   buildGeoReportCsvFilename,
+  buildGeoT0ResultCsvFilename,
   buildPublishRecordsCsvContent,
+  buildT0ResultsCsvContent,
   type DetectionQuestionExportRow,
   type PublishRecordExportRow,
+  type T0ResultExportRow,
   type T0T1ExportInput,
 } from "@shared/geoDataExport";
 import type { AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
@@ -42,4 +45,12 @@ export function downloadPublishRecordsCsv(params: {
 }): void {
   const content = buildPublishRecordsCsvContent(params.rows);
   downloadTextFile(content, buildGeoPublishRecordsCsvFilename(params.projectName));
+}
+
+export function downloadT0ResultsCsv(params: {
+  projectName: string;
+  rows: T0ResultExportRow[];
+}): void {
+  const content = buildT0ResultsCsvContent(params.rows);
+  downloadTextFile(content, buildGeoT0ResultCsvFilename(params.projectName));
 }
