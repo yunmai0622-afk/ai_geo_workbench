@@ -23,11 +23,12 @@ import { QuestionTemplatePicker } from "@/components/content/QuestionTemplatePic
 import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchGenerationPanel";
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
 import { GeoContentTaskPanels } from "@/components/weekly/GeoContentTaskPanels";
+import { WeeklyPlatformArticleCard, type WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
 import {
-  WeeklyPlatformArticleCard,
-  resolveQualityDisplay,
-  type WeeklyArticleCardModel,
-} from "@/components/weekly/WeeklyPlatformArticleCard";
+  computeAverageGeoQualityScore,
+  resolveFriendlyQualityFailHints,
+  resolveQualityCardView,
+} from "@shared/geoQualityScoreDisplay";
 import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
@@ -1039,9 +1040,9 @@ export default function WeeklyContentPage() {
           statusLabel: statusView.label,
           statusTone: statusView.tone,
           statusFilterKey: statusView.filterKey,
-          qualityDisplay: resolveQualityDisplay(a),
+          qualityView: resolveQualityCardView(a),
+          qualityFailHints: resolveFriendlyQualityFailHints(a),
           qualityScore: a.geoQualityScore ?? q?.totalScore ?? null,
-          qualityScoreRow: q ?? null,
           strategySummary: formatArticleStrategySummary(a),
           coverThumbnailSrc: resolveArticleCoverPreviewSrc(a),
           publishLink: resolveArticlePublishLink({
@@ -1075,6 +1076,11 @@ export default function WeeklyContentPage() {
     });
     return sortWeeklyContentCardsByQuality(filtered, sortQuality);
   }, [contentCardModels, filterPlatform, filterStatus, titleSearch, sortQuality]);
+
+  const averageQualityScore = useMemo(
+    () => computeAverageGeoQualityScore(contentCardModels.map(card => card.qualityScore)),
+    [contentCardModels],
+  );
 
   const platformFilterOptions = useMemo(() => {
     const keys = new Set<string>();
@@ -1879,6 +1885,13 @@ export default function WeeklyContentPage() {
                 <div>
                   <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
                   <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
+                  {averageQualityScore != null ? (
+                    <p className="mt-1 text-sm text-gray-700" data-testid="weekly-content-avg-quality">
+                      平均质检分：
+                      <span className="ml-1 font-semibold tabular-nums text-gray-900">{averageQualityScore}</span>
+                      <span className="ml-1 text-gray-500">分（共 {contentCardModels.filter(c => c.qualityScore != null).length} 篇已评分）</span>
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
                   <label className="sr-only" htmlFor="weekly-filter-platform">

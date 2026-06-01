@@ -63,7 +63,12 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
 
   it("内容卡片与真实质检分", () => {
     expect(weekly).toContain("WeeklyPlatformArticleCard");
-    expect(weekly).toContain("resolveQualityDisplay");
+    expect(weekly).toContain("resolveQualityCardView");
+    expect(weekly).toContain("weekly-content-avg-quality");
+    expect(read("shared/geoQualityScoreDisplay.ts")).toContain("优秀");
+    expect(read("client/src/components/weekly/WeeklyPlatformArticleCard.tsx")).toContain(
+      "weekly-card-quality-fail-hints",
+    );
     expect(weekly).toContain("加入发布队列");
     expect(weekly).toContain("weekly-batch-enqueue-publish");
     expect(weekly).toContain("weekly-filter-platform");

@@ -1,4 +1,12 @@
-import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
+#!/usr/bin/env python3
+"""One-shot patch for GEO-V1.1-Quality-Score-Display (run from repo root)."""
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+CARD = ROOT / "client/src/components/weekly/WeeklyPlatformArticleCard.tsx"
+CARD.write_text(
+    """import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -123,3 +131,74 @@ export function WeeklyPlatformArticleCard(props: Props) {
     </P0Card>
   );
 }
+""",
+    encoding="utf-8",
+)
+
+weekly = ROOT / "client/src/pages/WeeklyContentPage.tsx"
+text = weekly.read_text(encoding="utf-8")
+text = text.replace(
+    """import {
+  WeeklyPlatformArticleCard,
+  resolveQualityDisplay,
+  type WeeklyArticleCardModel,
+} from "@/components/weekly/WeeklyPlatformArticleCard";""",
+    """import { WeeklyPlatformArticleCard, type WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
+import {
+  computeAverageGeoQualityScore,
+  resolveFriendlyQualityFailHints,
+  resolveQualityCardView,
+} from "@shared/geoQualityScoreDisplay";""",
+)
+text = text.replace(
+    "          qualityDisplay: resolveQualityDisplay(a),",
+    """          qualityView: resolveQualityCardView(a),
+          qualityFailHints: resolveFriendlyQualityFailHints(a),""",
+)
+if "const averageQualityScore = useMemo" not in text:
+    text = text.replace(
+        """  }, [contentCardModels, filterPlatform, filterStatus, titleSearch, sortQuality]);
+
+  const platformFilterOptions = useMemo(() => {""",
+        """  }, [contentCardModels, filterPlatform, filterStatus, titleSearch, sortQuality]);
+
+  const averageQualityScore = useMemo(
+    () => computeAverageGeoQualityScore(contentCardModels.map(card => card.qualityScore)),
+    [contentCardModels],
+  );
+
+  const platformFilterOptions = useMemo(() => {""",
+    )
+if "weekly-content-avg-quality" not in text:
+    text = text.replace(
+        """                  <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
+                  <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
+                </div>""",
+        """                  <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
+                  <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
+                  {averageQualityScore != null ? (
+                    <p className="mt-1 text-sm text-gray-700" data-testid="weekly-content-avg-quality">
+                      平均质检分：
+                      <span className="ml-1 font-semibold tabular-nums text-gray-900">{averageQualityScore}</span>
+                      <span className="ml-1 text-gray-500">分（共 {contentCardModels.filter(c => c.qualityScore != null).length} 篇已评分）</span>
+                    </p>
+                  ) : null}
+                </div>""",
+    )
+weekly.write_text(text, encoding="utf-8")
+
+test = ROOT / "server/v12WeeklyPlatformContent.test.ts"
+tt = test.read_text(encoding="utf-8")
+if "resolveQualityCardView" not in tt:
+    tt = tt.replace(
+        '    expect(weekly).toContain("resolveQualityDisplay");',
+        """    expect(weekly).toContain("resolveQualityCardView");
+    expect(weekly).toContain("weekly-content-avg-quality");
+    expect(read("shared/geoQualityScoreDisplay.ts")).toContain("优秀");
+    expect(read("client/src/components/weekly/WeeklyPlatformArticleCard.tsx")).toContain(
+      "weekly-card-quality-fail-hints",
+    );""",
+    )
+    test.write_text(tt, encoding="utf-8")
+
+print("ok", "qualityView" in weekly.read_text(encoding="utf-8"))
