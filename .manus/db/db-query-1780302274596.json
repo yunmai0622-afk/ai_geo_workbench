@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `geo_articles` ADD COLUMN IF NOT EXISTS `contentTags` json NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `geo_articles` ADD COLUMN IF NOT EXISTS `contentTags` json NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1529
+}

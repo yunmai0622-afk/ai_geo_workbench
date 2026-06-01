@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `audit_logs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `projectId` int,\n  `action` varchar(64) NOT NULL,\n  `detail` text,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `audit_logs_id` PRIMARY KEY(`id`)\n);\nCREATE INDEX `idx_audit_logs_user_id` ON `audit_logs` (`userId`);\nCREATE INDEX `idx_audit_logs_project_id` ON `audit_logs` (`projectId`);\nCREATE INDEX `idx_audit_logs_action` ON `audit_logs` (`action`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute CREATE TABLE `audit_logs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `projectId` int,\n  `action` varchar(64) NOT NULL,\n  `detail` text,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `audit_logs_id` PRIMARY KEY(`id`)\n);\nCREATE INDEX `idx_audit_logs_user_id` ON `audit_logs` (`userId`);\nCREATE INDEX `idx_audit_logs_project_id` ON `audit_logs` (`projectId`);\nCREATE INDEX `idx_audit_logs_action` ON `audit_logs` (`action`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3105
+}

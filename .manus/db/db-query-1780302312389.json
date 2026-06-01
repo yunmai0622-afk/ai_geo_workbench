@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `questions` ADD `contentGapTags` json;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `questions` ADD `contentGapTags` json;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1834
+}

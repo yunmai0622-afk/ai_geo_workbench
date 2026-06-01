@@ -2933,3 +2933,135 @@
 [2026-06-01T04:19:35.765Z] Server running on http://localhost:3000/
 [2026-06-01T04:19:35.766Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
 [2026-06-01T04:19:36.194Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-01T08:22:35.855Z] 4:22:35 AM [vite] (client) page reload index.html
+[2026-06-01T08:22:35.858Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.859Z] 4:22:35 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-06-01T08:22:35.860Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/ArticleAssetEditorSheet.tsx
+[2026-06-01T08:22:35.861Z] 4:22:35 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-01T08:22:35.862Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerLightView.tsx
+[2026-06-01T08:22:35.862Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerView.tsx
+[2026-06-01T08:22:35.863Z] 4:22:35 AM [vite] (client) hmr update /src/components/ErrorBoundary.tsx, /src/index.css
+[2026-06-01T08:22:35.863Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/GeoQualityScore.tsx
+[2026-06-01T08:22:35.864Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/ProjectContextEmptyState.tsx
+[2026-06-01T08:22:35.864Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.865Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/clients/ClientsHubTopBar.tsx
+[2026-06-01T08:22:35.865Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.866Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx
+[2026-06-01T08:22:35.866Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/ProfileIntakePanel.tsx
+[2026-06-01T08:22:35.867Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/geo/AiTaskProgressCard.tsx
+[2026-06-01T08:22:35.869Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.870Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.870Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-01T08:22:35.871Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-01T08:22:35.871Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/LocalAccountBindingGuideCard.tsx
+[2026-06-01T08:22:35.872Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/LocalAgentStatusCard.tsx
+[2026-06-01T08:22:35.872Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishTaskColumnBoard.tsx
+[2026-06-01T08:22:35.873Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/PlatformContentBoard.tsx
+[2026-06-01T08:22:35.874Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/WeeklyPlatformArticleCard.tsx
+[2026-06-01T08:22:35.874Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/WeeklyContentPage.tsx, /src/pages/V12FlowPages.tsx
+[2026-06-01T08:22:35.875Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-01T08:22:35.876Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/WeeklyContentPage.tsx, /src/pages/V12FlowPages.tsx, /src/components/geo/AiTaskProgressCard.tsx
+[2026-06-01T08:22:35.876Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.877Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerLightView.tsx
+[2026-06-01T08:22:35.877Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/DeliveryReportsCenterPage.tsx
+[2026-06-01T08:22:35.878Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/DemoGeo.tsx
+[2026-06-01T08:22:35.878Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/ClientDashboardPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-01T08:22:35.878Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/ContentPublishingCenterPage.tsx, /src/components/publishing/LocalAgentPublishStepsPanel.tsx
+[2026-06-01T08:22:35.879Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/WeeklyContentPage.tsx, /src/components/ArticleAssetEditorSheet.tsx
+[2026-06-01T08:22:35.879Z] 4:22:35 AM [vite] (client) page reload src/lib/trpc.ts
+[2026-06-01T08:22:35.879Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-01T08:22:35.880Z] 4:22:35 AM [vite] (client) hmr update /src/pages/AiSearchEvidencePage.tsx, /src/index.css
+[2026-06-01T08:22:35.880Z] 4:22:35 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-06-01T08:22:35.881Z] 4:22:35 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-06-01T08:22:35.881Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/ContentPublishingCenterPage.tsx
+[2026-06-01T08:22:35.881Z] 4:22:35 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicEvidencePage.tsx, /src/index.css
+[2026-06-01T08:22:35.882Z] 4:22:35 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicPage.tsx, /src/index.css
+[2026-06-01T08:22:35.882Z] 4:22:35 AM [vite] (client) hmr update /src/pages/DeliveryReportSharePage.tsx, /src/index.css
+[2026-06-01T08:22:35.882Z] 4:22:35 AM [vite] (client) hmr update /src/index.css, /src/pages/DeliveryReportsCenterPage.tsx
+[2026-06-01T08:22:35.883Z] 4:22:35 AM [vite] (client) hmr update /src/pages/DemoGeo.tsx, /src/index.css
+[2026-06-01T08:22:35.883Z] 4:22:35 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-01T08:22:35.883Z] 4:22:35 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-06-01T08:22:35.884Z] 4:22:35 AM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/index.css
+[2026-06-01T08:22:35.884Z] 4:22:35 AM [vite] (client) hmr update /src/pages/ProgressPage.tsx, /src/index.css
+[2026-06-01T08:22:35.885Z] 4:22:35 AM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+[2026-06-01T08:22:35.885Z] 4:22:35 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx, /src/index.css
+[2026-06-01T08:22:35.885Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/index.css
+[2026-06-01T08:22:35.902Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/V12FlowPages.tsx, /src/components/geo/AiTaskProgressCard.tsx
+[2026-06-01T08:22:35.903Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/PlatformContentStrategyPanel.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-01T08:22:35.904Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/ArticleAssetEditorSheet.tsx
+[2026-06-01T08:22:35.904Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-01T08:22:35.905Z] 4:22:35 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicPage.tsx, /src/pages/DeliveryReportPublicEvidencePage.tsx, /src/pages/AiSearchEvidencePage.tsx
+[2026-06-01T08:22:35.905Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/publishing/LocalAccountBindingGuideCard.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/components/publishing/LocalAgentPublishStepsPanel.tsx
+[2026-06-01T08:22:35.905Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx
+[2026-06-01T08:22:35.906Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/pages/V12FlowPages.tsx, /src/components/geo/AiTaskProgressCard.tsx
+[2026-06-01T08:22:35.906Z] 4:22:35 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/PlatformContentStrategyPanel.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-01T08:22:35.907Z] 4:22:35 AM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/pages/ClientDashboardPage.tsx
+[2026-06-01T08:22:35.908Z] 4:22:35 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-01T08:22:35.908Z] 4:22:35 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-01T08:22:35.909Z] 4:22:35 AM [vite] changed tsconfig file detected: /home/ubuntu/ai_geo_workbench/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+[2026-06-01T08:22:35.943Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.944Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.945Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.945Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.945Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.948Z] 4:22:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:22:35.980Z] 4:22:35 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-06-01T08:22:40.544Z] c[geoSystemConfig] Failed to read database row: DrizzleQueryError: Failed query: select `id`, `contentGenerationPerMinuteLimit`, `t0DetectionPerHourLimit`, `qualityMinPassScore`, `defaultPublishPlatforms`, `systemAnnouncementEnabled`, `systemAnnouncementBody`, `systemAnnouncementUpdatedAt`, `updatedAt`, `updatedByUserId` from `geo_system_config` where `geo_system_config`.`id` = ? limit ?
+[2026-06-01T08:22:40.545Z] params: 1,1
+[2026-06-01T08:22:40.545Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-01T08:22:40.546Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-01T08:22:40.546Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-01T08:22:40.547Z] at async loadGeoSystemConfig (/home/ubuntu/ai_geo_workbench/server/geoSystemConfigStore.ts:141:20)
+[2026-06-01T08:22:40.547Z] at async Promise.all (index 2)
+[2026-06-01T08:22:40.547Z] at async startServer (/home/ubuntu/ai_geo_workbench/server/_core/index.ts:41:3) {
+[2026-06-01T08:22:40.548Z] query: 'select `id`, `contentGenerationPerMinuteLimit`, `t0DetectionPerHourLimit`, `qualityMinPassScore`, `defaultPublishPlatforms`, `systemAnnouncementEnabled`, `systemAnnouncementBody`, `systemAnnouncementUpdatedAt`, `updatedAt`, `updatedByUserId` from `geo_system_config` where `geo_system_config`.`id` = ? limit ?',
+[2026-06-01T08:22:40.548Z] params: [ 1, 1 ],
+[2026-06-01T08:22:40.548Z] cause: Error: Table 'kzxhj9uy5xjygmmczjypbe.geo_system_config' doesn't exist
+[2026-06-01T08:22:40.549Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-01T08:22:40.549Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-01T08:22:40.550Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-01T08:22:40.550Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-01T08:22:40.550Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-01T08:22:40.551Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15) {
+[2026-06-01T08:22:40.551Z] code: 'ER_NO_SUCH_TABLE',
+[2026-06-01T08:22:40.552Z] errno: 1146,
+[2026-06-01T08:22:40.552Z] sql: 'select `id`, `contentGenerationPerMinuteLimit`, `t0DetectionPerHourLimit`, `qualityMinPassScore`, `defaultPublishPlatforms`, `systemAnnouncementEnabled`, `systemAnnouncementBody`, `systemAnnouncementUpdatedAt`, `updatedAt`, `updatedByUserId` from `geo_system_config` where `geo_system_config`.`id` = 1 limit 1',
+[2026-06-01T08:22:40.552Z] sqlState: '42S02',
+[2026-06-01T08:22:40.553Z] sqlMessage: "Table 'kzxhj9uy5xjygmmczjypbe.geo_system_config' doesn't exist"
+[2026-06-01T08:22:40.553Z] }
+[2026-06-01T08:22:40.553Z] }
+[2026-06-01T08:22:44.542Z] Server running on http://localhost:3000/
+[2026-06-01T08:23:13.834Z] Dev server process group stopped
+[2026-06-01T08:23:13.838Z] ELIFECYCLE  Command failed.
+[2026-06-01T08:23:13.920Z] Dev server exited with code -15
+[2026-06-01T08:23:16.848Z] Starting dev server with command: pnpm run dev
+[2026-06-01T08:23:17.815Z] 
+[2026-06-01T08:23:17.816Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-01T08:23:17.816Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-01T08:23:17.817Z] 
+[2026-06-01T08:23:21.680Z] [geoSystemConfig] Failed to read database row: DrizzleQueryError: Failed query: select `id`, `contentGenerationPerMinuteLimit`, `t0DetectionPerHourLimit`, `qualityMinPassScore`, `defaultPublishPlatforms`, `systemAnnouncementEnabled`, `systemAnnouncementBody`, `systemAnnouncementUpdatedAt`, `updatedAt`, `updatedByUserId` from `geo_system_config` where `geo_system_config`.`id` = ? limit ?
+[2026-06-01T08:23:21.681Z] params: 1,1
+[2026-06-01T08:23:21.682Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-01T08:23:21.682Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-01T08:23:21.683Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-01T08:23:21.683Z] at async loadGeoSystemConfig (/home/ubuntu/ai_geo_workbench/server/geoSystemConfigStore.ts:141:20)
+[2026-06-01T08:23:21.684Z] at async Promise.all (index 2)
+[2026-06-01T08:23:21.684Z] at async startServer (/home/ubuntu/ai_geo_workbench/server/_core/index.ts:41:3) {
+[2026-06-01T08:23:21.684Z] query: 'select `id`, `contentGenerationPerMinuteLimit`, `t0DetectionPerHourLimit`, `qualityMinPassScore`, `defaultPublishPlatforms`, `systemAnnouncementEnabled`, `systemAnnouncementBody`, `systemAnnouncementUpdatedAt`, `updatedAt`, `updatedByUserId` from `geo_system_config` where `geo_system_config`.`id` = ? limit ?',
+[2026-06-01T08:23:21.685Z] params: [ 1, 1 ],
+[2026-06-01T08:23:21.685Z] cause: Error: Table 'kzxhj9uy5xjygmmczjypbe.geo_system_config' doesn't exist
+[2026-06-01T08:23:21.686Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-01T08:23:21.686Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-01T08:23:21.686Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-01T08:23:21.687Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-01T08:23:21.687Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-01T08:23:21.687Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15) {
+[2026-06-01T08:23:21.688Z] code: 'ER_NO_SUCH_TABLE',
+[2026-06-01T08:23:21.688Z] errno: 1146,
+[2026-06-01T08:23:21.688Z] sql: 'select `id`, `contentGenerationPerMinuteLimit`, `t0DetectionPerHourLimit`, `qualityMinPassScore`, `defaultPublishPlatforms`, `systemAnnouncementEnabled`, `systemAnnouncementBody`, `systemAnnouncementUpdatedAt`, `updatedAt`, `updatedByUserId` from `geo_system_config` where `geo_system_config`.`id` = 1 limit 1',
+[2026-06-01T08:23:21.689Z] sqlState: '42S02',
+[2026-06-01T08:23:21.689Z] sqlMessage: "Table 'kzxhj9uy5xjygmmczjypbe.geo_system_config' doesn't exist"
+[2026-06-01T08:23:21.689Z] }
+[2026-06-01T08:23:21.690Z] }
+[2026-06-01T08:23:24.965Z] 4:23:24 AM [vite] (client) Re-optimizing dependencies because lockfile has changed
+[2026-06-01T08:23:24.993Z] Server running on http://localhost:3000/
