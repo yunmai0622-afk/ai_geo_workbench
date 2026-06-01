@@ -24,6 +24,7 @@ import { enrichAnswerAnalysis } from "./geoAiMentionEvidence";
 import type { DbConn } from "./projectAccess";
 import { syncCompetitorAiMentionCounts } from "./competitorAnalysis";
 import { emitT0CompleteNotification } from "./systemNotifications";
+import { applyT0QuestionGapTagsForRound } from "./t0QuestionGapTags";
 
 export type T0RunTask = {
   questionId: number;
@@ -380,6 +381,11 @@ export async function runT0ExecutionBackground(
         await syncCompetitorAiMentionCounts(db, round.projectId);
       } catch (err) {
         console.warn("[t0-execution] competitor mention sync failed", roundId, err);
+      }
+      try {
+        await applyT0QuestionGapTagsForRound(db, round.projectId, roundId);
+      } catch (err) {
+        console.warn("[t0-execution] question gap tag apply failed", roundId, err);
       }
       void emitT0CompleteNotification(db, round.projectId, round.roundName).catch(err => console.warn("[notifications] T0 failed", roundId, err));
     }

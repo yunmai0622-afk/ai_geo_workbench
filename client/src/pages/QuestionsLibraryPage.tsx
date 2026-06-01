@@ -25,6 +25,10 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
+import {
+  T0_QUESTION_GAP_TAGS,
+  type T0QuestionGapTagLabel,
+} from "@shared/t0QuestionGapTags";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { Library, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -35,7 +39,24 @@ type QuestionRow = {
   questionText: string;
   questionType: string;
   enabled: number | boolean | null;
+  contentGapTags?: string[] | null;
 };
+
+const GAP_TAG_BADGE_CLASS: Record<T0QuestionGapTagLabel, string> = {
+  [T0_QUESTION_GAP_TAGS.highPriorityGap]: "border-amber-200 bg-amber-50 text-amber-800",
+  [T0_QUESTION_GAP_TAGS.competitorSuppression]: "border-rose-200 bg-rose-50 text-rose-800",
+  [T0_QUESTION_GAP_TAGS.lowRecommendRate]: "border-sky-200 bg-sky-50 text-sky-800",
+};
+
+function questionGapTags(question: QuestionRow): T0QuestionGapTagLabel[] {
+  if (!Array.isArray(question.contentGapTags)) return [];
+  return question.contentGapTags.filter(
+    (tag): tag is T0QuestionGapTagLabel =>
+      tag === T0_QUESTION_GAP_TAGS.highPriorityGap ||
+      tag === T0_QUESTION_GAP_TAGS.competitorSuppression ||
+      tag === T0_QUESTION_GAP_TAGS.lowRecommendRate,
+  );
+}
 
 const LIBRARY_GROUPS = [
   { key: "品牌认知", dbType: "品牌认知", label: "品牌认知" },
@@ -146,6 +167,20 @@ export default function QuestionsLibraryPage() {
     createMutation.isPending ||
     updateMutation.isPending ||
     generateMutation.isPending;
+
+  const gapTagSummary = useMemo(() => {
+    const counts = {
+      [T0_QUESTION_GAP_TAGS.highPriorityGap]: 0,
+      [T0_QUESTION_GAP_TAGS.competitorSuppression]: 0,
+      [T0_QUESTION_GAP_TAGS.lowRecommendRate]: 0,
+    };
+    for (const question of questions) {
+      for (const tag of questionGapTags(question)) {
+        counts[tag] += 1;
+      }
+    }
+    return counts;
+  }, [questions]);
 
   const stats = useMemo(() => {
     const total = questions.length;
@@ -320,6 +355,24 @@ export default function QuestionsLibraryPage() {
             />
           </div>
 
+          {Object.values(gapTagSummary).some(count => count > 0) ? (
+            <P0Card>
+              <p className="text-sm font-medium text-gray-900">T0 内容缺口标签</p>
+              <p className="mt-1 text-xs text-gray-500">
+                基于最近一次 T0 检测自动标注，便于优先补充内容方向。
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(Object.entries(gapTagSummary) as [T0QuestionGapTagLabel, number][]).map(([tag, count]) =>
+                  count > 0 ? (
+                    <Badge key={tag} variant="outline" className={`text-xs ${GAP_TAG_BADGE_CLASS[tag]}`}>
+                      {tag} {count}
+                    </Badge>
+                  ) : null,
+                )}
+              </div>
+            </P0Card>
+          ) : null}
+
           {stats.byGroup.some(g => g.count > 0) ? (
             <P0Card>
               <p className="text-sm font-medium text-gray-900">各类型分布</p>
@@ -377,6 +430,16 @@ export default function QuestionsLibraryPage() {
                                 <Badge variant="outline" className="text-xs">
                                   {resolveQuestionTypeDisplayLabel(question.questionType)}
                                 </Badge>
+                                {questionGapTags(question).map(tag => (
+                                  <Badge
+                                    key={`${question.id}-${tag}`}
+                                    variant="outline"
+                                    className={`text-xs ${GAP_TAG_BADGE_CLASS[tag]}`}
+                                    data-testid={`question-gap-tag-${question.id}-${tag}`}
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ))}
                                 {!isQuestionEnabled(question.enabled) ? (
                                   <Badge variant="secondary" className="text-xs text-gray-500">
                                     已停用
