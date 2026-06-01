@@ -7,9 +7,11 @@ import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccou
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
 import { PostPublishReminderCard } from "@/components/publishing/PostPublishReminderCard";
+import { PublishRecordsCalendar } from "@/components/publishing/PublishRecordsCalendar";
 import { PublishTaskColumnBoard } from "@/components/publishing/PublishTaskColumnBoard";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -570,6 +572,32 @@ export function ContentPublishingCenterPage() {
         }}
       />
 
+      <Tabs defaultValue="tasks" className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2 print:hidden">
+          <TabsTrigger value="tasks" data-testid="publish-center-tab-tasks">
+            发布任务
+          </TabsTrigger>
+          <TabsTrigger value="calendar" data-testid="publish-calendar-tab">
+            发布日历
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendar" className="mt-0">
+          <PublishRecordsCalendar
+            records={publishRecords}
+            loading={publishRecordsQuery.isLoading}
+            resolveTitle={record => {
+              const article = articleById.get(record.articleId ?? 0);
+              return (
+                article?.title?.trim() ||
+                record.publishTitle?.trim() ||
+                `文章 #${record.articleId ?? "—"}`
+              );
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="tasks" className="mt-0">
       {loading ? (
         <div className="flex items-center gap-2 py-12 text-gray-500">
           <Spinner className="size-5 text-blue-600" />
@@ -769,6 +797,8 @@ export function ContentPublishingCenterPage() {
           <LocalAgentPublishStepsPanel projectId={selectedProjectId} />
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       {selectedProjectId && editorArticle ? (
         <ArticleAssetEditorSheet
