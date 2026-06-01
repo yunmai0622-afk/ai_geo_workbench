@@ -73,8 +73,8 @@ describe("Agent-3 multi-platform local publish", () => {
       expect(src).toContain("attemptPublishArticle");
       expect(src).toContain("attemptMpPublishArticle");
       expect(src).toContain("executeMpPublishTask");
-      expect(src).toContain("publish_article");
     }
+    expect(read("local-agent/src/agent/platforms/mpPublishExtensions.ts")).toContain("publish_article");
     expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).toContain("skipCover: true");
     expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).toContain(
       "fillFirstSelectorInPageOrFrames",
