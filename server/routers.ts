@@ -21,7 +21,7 @@ import { invokeLLM } from "./_core/llm";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getDb, upsertUser } from "./db";
+import { getDb, getUserByOpenId, upsertUser } from "./db";
 import { changeUserPassword, loginEmailUser, registerEmailUser, updateUserProfile } from "./emailAuth";
 import { setUserSessionCookie } from "./authSession";
 import { agentRouter } from "./agentRouter";
@@ -160,6 +160,8 @@ import { runDailyAiCheck } from "./scheduledAiCheck";
 import { fetchWorkspaceSummaryMetrics } from "./workspaceSummary";
 import { buildGeoTaskDurationLogBase, logGeoAnalysisRunDuration, logGeoArticlesGenerateDuration, type GeoArticlesGenerateStepTimings } from "./geoTaskDurationLog";
 import { assertContentGenerationRateLimit, assertT0DetectionRateLimit } from "./memoryRateLimit";
+import { writeAuditLog } from "./auditLog";
+import { AUDIT_LOG_ACTIONS } from "@shared/auditLogActions";
 import {
   getCurrentUserId,
   getProjectRowConn,
@@ -1256,13 +1258,23 @@ const geoRouter = router({
       await ensureProjectsOwnerUserIdColumnOnce();
       const db = await requireDb();
       const ownerUserId = getCurrentUserId(ctx);
+      let projectId = 0;
       try {
-        await db.insert(projects).values({ ...input, ownerUserId });
+        const inserted = await db.insert(projects).values({ ...input, ownerUserId }).$returningId();
+        projectId = Number(inserted[0]?.id ?? 0);
       } catch (err) {
         console.error("[geo.projects.create]", err);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: CREATE_PROJECT_FAILED_USER_MESSAGE,
+        });
+      }
+      if (projectId > 0) {
+        await writeAuditLog(db, {
+          userId: ownerUserId,
+          projectId,
+          action: AUDIT_LOG_ACTIONS.projectCreate,
+          detail: { enterpriseName: input.enterpriseName },
         });
       }
       return { success: true } as const;
@@ -2086,6 +2098,12 @@ const geoRouter = router({
       await db.delete(reports).where(eq(reports.projectId, input.projectId));
       await db.insert(reports).values({ projectId: input.projectId, geoScoreId: latestScore[0].id, ...report });
       await updateProjectStatus(input.projectId, "report_ready");
+      await writeAuditLog(db, {
+        userId: getCurrentUserId(ctx),
+        projectId: input.projectId,
+        action: AUDIT_LOG_ACTIONS.deliveryReportGenerate,
+        detail: { geoScoreId: latestScore[0].id },
+      });
       return { success: true, report } as const;
     }),
     shareLinkStatus: protectedProcedure
@@ -2941,6 +2959,12 @@ ${article.markdownContent}`,
         publicUrl: publicPath,
         qualityScore: latestScore.totalScore,
       }));
+      await writeAuditLog(db, {
+        userId: getCurrentUserId(ctx),
+        projectId: article.projectId,
+        action: AUDIT_LOG_ACTIONS.contentPublish,
+        detail: { articleId: article.id, publicPath },
+      });
       return { success: true, publicPath } as const;
     }),
     retestQueue: protectedProcedure
@@ -3381,6 +3405,12 @@ ${article.markdownContent}`,
             message: "该检测轮次已开始执行，请勿重复启动",
           });
         }
+        await writeAuditLog(db, {
+          userId: getCurrentUserId(ctx),
+          projectId: input.projectId,
+          action: AUDIT_LOG_ACTIONS.t0Start,
+          detail: { roundId: summary.roundId },
+        });
         return { success: true, roundId: summary.roundId, status: summary.status } as const;
       }),
   }),
@@ -3659,6 +3689,12 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const user = await loginEmailUser({ email: input.email, password: input.password });
         await setUserSessionCookie(ctx, user);
+        const db = await requireDb();
+        await writeAuditLog(db, {
+          userId: user.id,
+          action: AUDIT_LOG_ACTIONS.userLogin,
+          detail: { method: "email" },
+        });
         return { success: true as const };
       }),
     devLogin: publicProcedure.mutation(async ({ ctx }) => {
@@ -3684,9 +3720,27 @@ export const appRouter = router({
       }, { expiresInMs: ONE_YEAR_MS });
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      const devUser = await getUserByOpenId(openId);
+      if (devUser?.id) {
+        const db = await requireDb();
+        await writeAuditLog(db, {
+          userId: devUser.id,
+          action: AUDIT_LOG_ACTIONS.userLogin,
+          detail: { method: "local-dev" },
+        });
+      }
       return { success: true } as const;
     }),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      const userId = ctx.user?.id;
+      if (userId) {
+        const db = await requireDb();
+        await writeAuditLog(db, {
+          userId,
+          action: AUDIT_LOG_ACTIONS.userLogout,
+          detail: null,
+        });
+      }
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return {

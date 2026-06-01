@@ -1,6 +1,8 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
+import { writeAuditLog } from "../auditLog";
+import { AUDIT_LOG_ACTIONS } from "@shared/auditLogActions";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -43,6 +45,16 @@ export function registerOAuthRoutes(app: Express) {
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+      const oauthUser = await db.getUserByOpenId(userInfo.openId);
+      const conn = await db.getDb();
+      if (oauthUser?.id && conn) {
+        await writeAuditLog(conn, {
+          userId: oauthUser.id,
+          action: AUDIT_LOG_ACTIONS.userLogin,
+          detail: { method: userInfo.loginMethod ?? userInfo.platform ?? "oauth" },
+        });
+      }
 
       res.redirect(302, "/");
     } catch (error) {

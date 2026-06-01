@@ -878,6 +878,16 @@ export const systemNotifications = mysqlTable("system_notifications", {
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/** 关键操作审计日志（仅写入，无 UI） */
+export const auditLogs = mysqlTable("audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  projectId: int("projectId"),
+  action: varchar("action", { length: 64 }).notNull(),
+  detail: text("detail"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Project = typeof projects.$inferSelect;
@@ -942,3 +952,5 @@ export type EffectiveAction = typeof effectiveActions.$inferSelect;
 export type InsertEffectiveAction = typeof effectiveActions.$inferInsert;
 export type SystemNotification = typeof systemNotifications.$inferSelect;
 export type InsertSystemNotification = typeof systemNotifications.$inferInsert;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
