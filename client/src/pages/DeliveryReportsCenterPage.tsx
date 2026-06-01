@@ -28,6 +28,8 @@ import {
   DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER,
 } from "@shared/deliveryReportExperimentalDisplay";
 import { resolveT0T1ComparisonRows } from "@shared/retestComparisonDisplay";
+import { downloadDeliveryReportCsv } from "@/lib/geoDataExportDownload";
+import type { DetectionQuestionExportRow } from "@shared/geoDataExport";
 import { useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -79,6 +81,7 @@ export function DeliveryReportsCenterPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
 
   const loading =
     scoreQuery.isLoading ||
@@ -198,11 +201,47 @@ export function DeliveryReportsCenterPage() {
     [aiTestAggregate.mentionRate, aiTestAggregate.recommendRate, publishRecords.length, hasAiTestData],
   );
 
-  const { baseRound, compareRound } = useMemo(() => {
+  const { baseRound, compareRound, rows: t0t1Rows } = useMemo(() => {
     const comparisons = retestComparisonsQuery.data ?? [];
     const rounds = testRoundsQuery.data ?? [];
     return resolveT0T1ComparisonRows(comparisons, rounds);
   }, [retestComparisonsQuery.data, testRoundsQuery.data]);
+
+  const detectionQuestionRows = useMemo((): DetectionQuestionExportRow[] => {
+    const questionRows = (questionsQuery.data ?? []) as Array<Record<string, unknown>>;
+    if (questionRows.length > 0) {
+      return questionRows.map(q => ({
+        questionText: String(q.questionText ?? q.question_text ?? "").trim() || "—",
+        questionType: String(q.questionType ?? q.question_type ?? "—"),
+        enabled: Number(q.enabled ?? 1) !== 0,
+      }));
+    }
+    const seen = new Set<string>();
+    const fromTests: DetectionQuestionExportRow[] = [];
+    for (const item of aiTestAggregate.items ?? []) {
+      const text = item.question.trim();
+      if (!text || seen.has(text)) continue;
+      seen.add(text);
+      fromTests.push({ questionText: text, questionType: "实测问题", enabled: true });
+    }
+    return fromTests;
+  }, [questionsQuery.data, aiTestAggregate.items]);
+
+  const projectExportName = selectedProject?.enterpriseName ?? enterpriseName;
+
+  function handleExportDeliveryCsv() {
+    if (loading) {
+      toast.message("报告数据加载中，请稍后再导出");
+      return;
+    }
+    downloadDeliveryReportCsv({
+      projectName: projectExportName,
+      detectionQuestions: detectionQuestionRows,
+      aggregate: aiTestAggregate,
+      t0t1: { baseRound, compareRound, rows: t0t1Rows },
+    });
+    toast.success("交付报告 CSV 已开始下载");
+  }
 
   const detectionScope = useMemo(
     () =>
@@ -401,6 +440,16 @@ export function DeliveryReportsCenterPage() {
             onClick={() => window.print()}
           >
             导出报告
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className={geoP0Brand.primaryOutline}
+            data-testid="delivery-report-export-csv"
+            disabled={loading}
+            onClick={handleExportDeliveryCsv}
+          >
+            导出 CSV
           </Button>
           <Button
             type="button"

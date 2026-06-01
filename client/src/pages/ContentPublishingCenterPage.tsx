@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { recordPublicLink, publishStatusLabel } from "@/lib/assetProgressDisplay";
+import { downloadPublishRecordsCsv } from "@/lib/geoDataExportDownload";
+import { formatPublishedAtLabel } from "@/lib/deliveryReportDisplay";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import {
@@ -382,13 +384,48 @@ export function ContentPublishingCenterPage() {
 
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
 
+  function handleExportPublishRecordsCsv() {
+    if (loading) {
+      toast.message("发布记录加载中，请稍后再导出");
+      return;
+    }
+    const rows = publishRecords.map(record => {
+      const article = articleById.get(record.articleId ?? 0);
+      const title =
+        article?.title?.trim() || record.publishTitle?.trim() || `文章 #${record.articleId ?? "—"}`;
+      const link = recordPublicLink(record);
+      return {
+        title,
+        platform: record.publishChannel?.trim() || "—",
+        publishedAt:
+          formatPublishedAtLabel(record.publishedAt as Date | string | null | undefined) ?? "—",
+        link: link || "—",
+        status: publishStatusLabel(record.publishStatus),
+      };
+    });
+    downloadPublishRecordsCsv({ projectName, rows });
+    toast.success(rows.length > 0 ? "发布记录 CSV 已开始下载" : "已导出空表（暂无发布记录）");
+  }
+
   return (
     <div className="space-y-6 pb-12" data-testid="publish-center-page">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">平台适配发布</h1>
-        <p className="text-sm text-gray-500">
-          通过 Local Agent 在本地完成发布，降低登录、验证码和平台风控风险。按平台独立发布，需人工确认，不支持自动发布或一稿多发。
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-gray-900">平台适配发布</h1>
+          <p className="text-sm text-gray-500">
+            通过 Local Agent 在本地完成发布，降低登录、验证码和平台风控风险。按平台独立发布，需人工确认，不支持自动发布或一稿多发。
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className={`shrink-0 ${geoP0Brand.primaryOutline}`}
+          data-testid="publish-records-export-csv"
+          disabled={loading || !selectedProjectId}
+          onClick={handleExportPublishRecordsCsv}
+        >
+          导出发布记录
+        </Button>
       </header>
 
       {loading ? (
