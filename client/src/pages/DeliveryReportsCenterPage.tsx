@@ -1,3 +1,4 @@
+import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
 import { RetestComparisonPanel } from "@/components/RetestComparisonPanel";
@@ -24,6 +25,13 @@ import {
   buildT0BaselineSummary,
   DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER,
 } from "@shared/deliveryReportExperimentalDisplay";
+import {
+  buildGeoGrowthSuggestions,
+  countDistinctPublishPlatforms,
+  countUnpublishedArticles,
+  findLatestT0FinishedAt,
+} from "@shared/geoGrowthSuggestions";
+import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
 import { resolveT0T1ComparisonRows } from "@shared/retestComparisonDisplay";
 import { downloadDeliveryReportCsv } from "@/lib/geoDataExportDownload";
 import type { DetectionQuestionExportRow } from "@shared/geoDataExport";
@@ -54,7 +62,35 @@ export function DeliveryReportsCenterPage() {
   const createShareLink = trpc.geo.reports.createShareLink.useMutation();
   const disableShareLink = trpc.geo.reports.disableShareLink.useMutation();
   const regenerateShareLink = trpc.geo.reports.regenerateShareLink.useMutation();
+  const shareLinkStatusQuery = trpc.geo.reports.shareLinkStatus.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const shareLinkBusy = createShareLink.isPending || disableShareLink.isPending || regenerateShareLink.isPending;
+  const [shareExpiresAtHint, setShareExpiresAtHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    setShareExpiresAtHint(null);
+  }, [selectedProjectId]);
+
+  const shareExpiryDisplay = useMemo(() => {
+    if (!shareExpiresAtHint && !shareLinkStatusQuery.data?.hasActiveLink) return null;
+    const iso = shareExpiresAtHint ?? shareLinkStatusQuery.data?.shareExpiresAt ?? null;
+    return formatDeliveryReportShareExpiryLabel(iso);
+  }, [shareExpiresAtHint, shareLinkStatusQuery.data]);
+
+  async function copyCustomerShareLink(projectId: number) {
+    try {
+      const { sharePath, shareExpiresAt } = await createShareLink.mutateAsync({ projectId });
+      await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
+      setShareExpiresAtHint(shareExpiresAt);
+      void shareLinkStatusQuery.refetch();
+      const expiryHint = shareExpiresAt ? formatDeliveryReportShareExpiryLabel(shareExpiresAt) : "链接长期有效";
+      toast.success(`客户报告链接已复制（${expiryHint}）`);
+    } catch {
+      toast.error("复制失败，请稍后重试");
+    }
+  }
 
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
   const scoreTrendQuery = trpc.geo.scores.recent.useQuery(projectInput, { enabled });
@@ -199,16 +235,31 @@ export function DeliveryReportsCenterPage() {
     [aiTestAggregate, monitoringRows, pendingOptimizeCount, citationRate],
   );
 
-  const nextSuggestions = useMemo(
-    () =>
-      buildNextActionLines(
-        aiTestAggregate.mentionRate,
-        aiTestAggregate.recommendRate,
-        publishRecords.length,
-        hasAiTestData,
+  const growthSuggestions = useMemo(() => {
+    const rounds = testRoundsQuery.data ?? [];
+    const mentionRate = hasAiTestData ? aiTestAggregate.mentionRate : null;
+    const recommendRate = hasAiTestData ? aiTestAggregate.recommendRate : null;
+    return buildGeoGrowthSuggestions({
+      mentionRate,
+      recommendRate,
+      distinctPublishPlatformCount: countDistinctPublishPlatforms(
+        publishRecords as Array<{ publishChannel?: string | null }>,
       ),
-    [aiTestAggregate.mentionRate, aiTestAggregate.recommendRate, publishRecords.length, hasAiTestData],
-  );
+      unpublishedArticleCount: countUnpublishedArticles(
+        articles as Array<{ status?: string | null }>,
+      ),
+      hasCompletedT0Baseline: hasCompletedT0Baseline(rounds),
+      hasCompletedT1Retest: hasCompletedT1Retest(rounds),
+      t0FinishedAt: findLatestT0FinishedAt(rounds),
+    });
+  }, [
+    testRoundsQuery.data,
+    hasAiTestData,
+    aiTestAggregate.mentionRate,
+    aiTestAggregate.recommendRate,
+    publishRecords,
+    articles,
+  ]);
 
   const { baseRound, compareRound, rows: t0t1Rows } = useMemo(() => {
     const comparisons = retestComparisonsQuery.data ?? [];
@@ -315,6 +366,35 @@ export function DeliveryReportsCenterPage() {
         </TabsContent>
 
         <TabsContent value="report" className="mt-0 space-y-8">
+      {selectedProjectId ? (
+        <div
+          className="flex flex-col gap-3 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-5 shadow-sm print:hidden sm:flex-row sm:items-center sm:justify-between"
+          data-testid="delivery-report-share-primary"
+        >
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-semibold text-gray-900">对外分享交付报告</p>
+            <p className="text-sm text-gray-600">
+              生成只读链接发给客户，展示企业名称、GEO 评分与主要检测结论，不含内部工程字段。
+            </p>
+            {shareExpiryDisplay ? (
+              <p className="text-xs text-sky-800" data-testid="delivery-report-share-expiry-hint">
+                当前链接：{shareExpiryDisplay}
+              </p>
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            size="lg"
+            className="h-12 shrink-0 bg-sky-600 px-6 text-base font-semibold text-white shadow-md hover:bg-sky-700"
+            disabled={shareLinkBusy || loading}
+            onClick={() => void copyCustomerShareLink(selectedProjectId)}
+          >
+            <Link2 className="mr-2 size-5" aria-hidden />
+            生成分享链接
+          </Button>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="flex items-center gap-2 py-8 text-gray-500">
           <Spinner className="size-5 text-blue-600" />
@@ -421,14 +501,12 @@ export function DeliveryReportsCenterPage() {
           ) : null}
         </section>
 
-        <P0Card testId="delivery-report-next-actions">
-          <p className={geoP0Surfaces.sectionTitle}>下一轮建议</p>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-gray-700">
-            {nextSuggestions.map(line => (
-              <li key={line}>{line}</li>
-            ))}
-          </ol>
-        </P0Card>
+        <GeoGrowthSuggestionsPanel
+          projectId={selectedProjectId}
+          suggestions={growthSuggestions}
+          loading={loading}
+          className="print:break-inside-avoid"
+        />
 
         <div className="flex flex-wrap gap-3 print:hidden" data-testid="delivery-report-actions">
           <Button
@@ -584,12 +662,12 @@ export function DeliveryReportsCenterPage() {
           </P0Card>
         </P0Section>
 
-        <P0Section title="下一轮优化建议">
-          <ol className="list-decimal space-y-2 pl-5 text-sm text-gray-700">
-            {nextSuggestions.map(line => (
-              <li key={`next-${line}`}>{line}</li>
-            ))}
-          </ol>
+        <P0Section title="增长建议" description="基于品牌提及率、推荐率、发布平台与 T0/T1 进度自动生成，不含 LLM 推断。">
+          <GeoGrowthSuggestionsPanel
+            projectId={selectedProjectId}
+            suggestions={growthSuggestions}
+            loading={loading}
+          />
           <p className="mt-4 text-xs text-gray-500">
             不承诺保证收录、排名或 AI 推荐；报告仅引用已确认事实与实测样本。
           </p>
@@ -612,17 +690,7 @@ export function DeliveryReportsCenterPage() {
               variant="outline"
               className={geoP0Brand.primaryOutline}
               disabled={shareLinkBusy}
-              onClick={() => {
-                void (async () => {
-                  try {
-                    const { sharePath } = await createShareLink.mutateAsync({ projectId: selectedProjectId });
-                    await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
-                    toast.success("客户报告链接已复制");
-                  } catch {
-                    toast.error("复制失败，请稍后重试");
-                  }
-                })();
-              }}
+              onClick={() => void copyCustomerShareLink(selectedProjectId)}
             >
               复制客户报告链接
             </Button>
@@ -635,8 +703,12 @@ export function DeliveryReportsCenterPage() {
                 void (async () => {
                   if (!window.confirm(CONFIRM_REGENERATE_CUSTOMER_REPORT_LINK)) return;
                   try {
-                    const { sharePath } = await regenerateShareLink.mutateAsync({ projectId: selectedProjectId });
+                    const { sharePath, shareExpiresAt } = await regenerateShareLink.mutateAsync({
+                      projectId: selectedProjectId,
+                    });
                     await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
+                    setShareExpiresAtHint(shareExpiresAt);
+                    void shareLinkStatusQuery.refetch();
                     toast.success("新链接已生成并复制，旧链接已失效");
                   } catch {
                     toast.error("操作失败，请稍后重试");
@@ -656,6 +728,8 @@ export function DeliveryReportsCenterPage() {
                   if (!window.confirm(CONFIRM_DISABLE_CUSTOMER_REPORT_LINK)) return;
                   try {
                     const result = await disableShareLink.mutateAsync({ projectId: selectedProjectId });
+                    setShareExpiresAtHint(null);
+                    void shareLinkStatusQuery.refetch();
                     if (!result.disabled) toast.message("当前暂无可禁用的链接");
                     else toast.success("客户报告链接已禁用");
                   } catch {

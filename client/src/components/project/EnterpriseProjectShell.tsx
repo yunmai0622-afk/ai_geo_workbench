@@ -5,6 +5,8 @@ import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
 import { useEffect, useMemo, useState } from "react";
+import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
+import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
 import { ProjectNextActionPanel } from "./ProjectNextActionPanel";
 import { ProjectWorkspaceTopBar } from "./ProjectWorkspaceTopBar";
 
@@ -39,6 +41,7 @@ export function EnterpriseProjectShell({ children }: Props) {
   }, [summaryQuery.data, selectedProjectId, localAgentOnline]);
 
   const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, summaryQuery.data);
+  const growthSuggestions = useGeoGrowthSuggestions(selectedProjectId, Boolean(selectedProjectId));
 
   const recentItems = useMemo(() => {
     const m = summaryQuery.data;
@@ -86,6 +89,12 @@ export function EnterpriseProjectShell({ children }: Props) {
               riskHints={resolution?.riskHints ?? []}
               recentItems={recentItems}
               loading={(summaryQuery.isLoading || homeDisplay.loading) && Boolean(selectedProjectId)}
+            />
+            <GeoGrowthSuggestionsPanel
+              projectId={selectedProjectId}
+              suggestions={growthSuggestions.suggestions}
+              loading={growthSuggestions.loading}
+              variant="sidebar"
             />
           </div>
         </div>
