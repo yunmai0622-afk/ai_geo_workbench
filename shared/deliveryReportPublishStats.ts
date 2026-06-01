@@ -1,5 +1,9 @@
 import { getCalendarWeekRange, isTimestampInWeek } from "./geoHealthBrief";
-import { isBindingPublishPlatform, PUBLISH_PLATFORM_LABELS } from "./platformAccountVerify";
+import {
+  BINDING_PUBLISH_PLATFORMS,
+  isBindingPublishPlatform,
+  PUBLISH_PLATFORM_LABELS,
+} from "./platformAccountVerify";
 
 export type PublishTaskStatsRow = {
   platform: string;
@@ -13,9 +17,18 @@ export type DeliveryReportPublishPlatformStat = {
   count: number;
 };
 
+export type PlatformPublishSuccessRateStat = {
+  platform: string;
+  label: string;
+  successCount: number;
+  failedCount: number;
+  successRatePercent: number | null;
+};
+
 export type DeliveryReportPublishStats = {
   totalPublishCount: number;
   platformDistribution: DeliveryReportPublishPlatformStat[];
+  platformSuccessRates: PlatformPublishSuccessRateStat[];
   successRatePercent: number | null;
   weekPublishCount: number;
   weekRangeLabel: string;
@@ -40,6 +53,57 @@ export function formatPlatformDistributionLine(stats: DeliveryReportPublishPlatf
 export function formatPublishSuccessRatePercent(rate: number | null): string {
   if (rate == null) return "—";
   return `${rate}%`;
+}
+
+export function formatPlatformPublishSuccessRateLine(stat: PlatformPublishSuccessRateStat): string {
+  const rate = formatPublishSuccessRatePercent(stat.successRatePercent);
+  return `${stat.label}：成功${stat.successCount}次/失败${stat.failedCount}次（成功率${rate}）`;
+}
+
+/**
+ * 按平台汇总 publish_tasks 终态（completed / failed）成功率。
+ * 固定展示矩阵绑定平台；若存在其他 platform 且有任务记录，追加在末尾。
+ */
+export function buildPlatformPublishSuccessRates(
+  rows: PublishTaskStatsRow[],
+): PlatformPublishSuccessRateStat[] {
+  const countsByPlatform = new Map<string, { success: number; failed: number }>();
+
+  for (const row of rows) {
+    const key = row.platform.trim() || "unknown";
+    if (row.status === "completed") {
+      const current = countsByPlatform.get(key) ?? { success: 0, failed: 0 };
+      current.success += 1;
+      countsByPlatform.set(key, current);
+    } else if (row.status === "failed") {
+      const current = countsByPlatform.get(key) ?? { success: 0, failed: 0 };
+      current.failed += 1;
+      countsByPlatform.set(key, current);
+    }
+  }
+
+  const platformsWithRows = new Set(rows.map(row => row.platform.trim() || "unknown"));
+  const extraPlatforms = [...platformsWithRows].filter(
+    platform => !(BINDING_PUBLISH_PLATFORMS as readonly string[]).includes(platform),
+  );
+  extraPlatforms.sort((a, b) =>
+    publishPlatformDisplayLabel(a).localeCompare(publishPlatformDisplayLabel(b), "zh-CN"),
+  );
+
+  const orderedPlatforms = [...BINDING_PUBLISH_PLATFORMS, ...extraPlatforms];
+
+  return orderedPlatforms.map(platform => {
+    const counts = countsByPlatform.get(platform) ?? { success: 0, failed: 0 };
+    const terminalCount = counts.success + counts.failed;
+    return {
+      platform,
+      label: publishPlatformDisplayLabel(platform),
+      successCount: counts.success,
+      failedCount: counts.failed,
+      successRatePercent:
+        terminalCount > 0 ? Math.round((counts.success / terminalCount) * 100) : null,
+    };
+  });
 }
 
 /**
@@ -87,6 +151,7 @@ export function buildDeliveryReportPublishStats(
   return {
     totalPublishCount: rows.length,
     platformDistribution,
+    platformSuccessRates: buildPlatformPublishSuccessRates(rows),
     successRatePercent,
     weekPublishCount,
     weekRangeLabel: weekRange.label,

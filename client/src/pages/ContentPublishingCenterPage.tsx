@@ -2,6 +2,7 @@ import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformStatusOverview";
+import { PlatformPublishSuccessRatePanel } from "@/components/publishing/PlatformPublishSuccessRatePanel";
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
@@ -561,6 +562,10 @@ export function ContentPublishingCenterPage() {
 
       {selectedProjectId ? (
         <PlatformStatusOverview projectId={selectedProjectId} />
+      ) : null}
+
+      {selectedProjectId ? (
+        <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
       ) : null}
 
       <PostPublishReminderCard
