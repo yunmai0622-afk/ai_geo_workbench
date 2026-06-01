@@ -91,13 +91,7 @@ export function resolvePublishSlugForWeeklyPlatform(key: WeeklyPlatformKey): Pub
   return def?.publishPlatformId ?? null;
 }
 
-export function matchTopicToPlatform(
-  recommendedPlatforms: string[],
-  platformLabel: string,
-): boolean {
-  if (recommendedPlatforms.length === 0) return true;
-  return recommendedPlatforms.some(p => p.includes(platformLabel) || platformLabel.includes(p));
-}
+export { matchTopicToPlatform } from "@shared/platformTopicAllocation";
 
 export function formatCountsLine(counts: PlatformContentCounts): string | null {
   const parts: string[] = [];

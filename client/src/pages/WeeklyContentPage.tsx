@@ -151,6 +151,12 @@ import { isSubscriptionLimitMessage, SUBSCRIPTION_LIMIT_CONTENT_MESSAGE } from "
 import { toUserFacingError, toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
 import {
+  buildArticleTopicIdSet,
+  countUnassignedPendingTopics,
+  isTopicIdInRows,
+  resolvePendingPlatformTopic,
+} from "@shared/platformTopicAllocation";
+import {
   GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE,
   buildGeoContentTaskDisplayName,
   buildWeeklyPlatformGenerationGoal,
@@ -1391,45 +1397,20 @@ export default function WeeklyContentPage() {
     setPublishDialogOpen(true);
   };
 
-  const findPendingTopicForPlatform = useCallback(
-    (
-      platformKey: WeeklyPlatformKey,
-      topicRows: TopicRow[],
-      options?: {
-        relaxTaskFilter?: boolean;
-        relaxPlatformMatch?: boolean;
-        articleByTopicIdOverride?: Map<number, ArticleRow>;
-      },
-    ) => {
+  const pickPendingTopicForPlatform = useCallback(
+    (platformKey: WeeklyPlatformKey, topicRows: TopicRow[], articleTopicIds: Set<number>) => {
       const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === platformKey)!;
-      const activeTaskId =
-        options?.relaxTaskFilter === true ? null : geoContentTaskSource?.contentTaskId ?? null;
-      const consumedArticles = options?.articleByTopicIdOverride ?? articleByTopicId;
-      return topicRows.find(t => {
-        if (!t?.id || consumedArticles.has(t.id)) return false;
-        if (!isTopicBoundToProjectTasks(t, taskIdSet)) return false;
-        if (activeTaskId != null && t.optimizationTaskId !== activeTaskId) return false;
-        if (options?.relaxPlatformMatch === true) return true;
-        const task = tasks.find(row => row?.id === t.optimizationTaskId);
-        const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
-        return matchTopicToPlatform(card?.recommendedPlatform ?? [], def.label);
+      return resolvePendingPlatformTopic({
+        platformKey,
+        platformLabel: def.label,
+        topicRows,
+        articleTopicIds,
+        tasks,
+        taskIdSet,
+        activeTaskId: geoContentTaskSource?.contentTaskId ?? null,
       });
     },
-    [articleByTopicId, taskIdSet, tasks, geoContentTaskSource?.contentTaskId],
-  );
-
-  const findAnyBoundPendingTopic = useCallback(
-    (
-      topicRows: TopicRow[],
-      options?: { articleByTopicIdOverride?: Map<number, ArticleRow> },
-    ) => {
-      const consumedArticles = options?.articleByTopicIdOverride ?? articleByTopicId;
-      return topicRows.find(t => {
-        if (!t?.id || consumedArticles.has(t.id)) return false;
-        return isTopicBoundToProjectTasks(t, taskIdSet);
-      });
-    },
-    [articleByTopicId, taskIdSet],
+    [tasks, taskIdSet, geoContentTaskSource?.contentTaskId],
   );
 
   const recordPlatformGenerationFailure = useCallback(
@@ -1482,110 +1463,70 @@ export default function WeeklyContentPage() {
         setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
       }
 
-      const [topicsRefetch, articlesRefetch] = await Promise.all([
-        topicsQuery.refetch(),
-        articlesQuery.refetch(),
-      ]);
-      const freshArticleByTopicId = new Map<number, ArticleRow>();
-      for (const article of (articlesRefetch.data ?? []) as ArticleRow[]) {
-        if (typeof article.topicId === "number") {
-          freshArticleByTopicId.set(article.topicId, article);
-        }
-      }
-      const pendingLookup = {
-        articleByTopicIdOverride: freshArticleByTopicId,
+      const reloadTopicGenerationSnapshot = async () => {
+        const [topicList, articleList] = await Promise.all([
+          utils.geo.articles.topics.list.fetch({ projectId }),
+          utils.geo.articles.list.fetch({ projectId }),
+        ]);
+        const rows = (topicList ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
+        const articleTopicIds = buildArticleTopicIdSet((articleList ?? []) as ArticleRow[]);
+        return { topicRows: rows, articleTopicIds };
       };
 
-      let topicRows = (topicsRefetch.data ?? []).filter(
-        t => t != null && typeof t.id === "number",
-      ) as TopicRow[];
-      let pending = findPendingTopicForPlatform(platformKey, topicRows, pendingLookup);
+      const regenTopicsIfNeeded = async () => {
+        await generateTopicsMutation.mutateAsync({
+          projectId,
+          generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
+        });
+        await utils.geo.articles.topics.list.invalidate({ projectId });
+        await utils.geo.articles.list.invalidate({ projectId });
+        return reloadTopicGenerationSnapshot();
+      };
+
+      let { topicRows, articleTopicIds } = await reloadTopicGenerationSnapshot();
+      let pending = pickPendingTopicForPlatform(platformKey, topicRows, articleTopicIds);
 
       if (!pending && topicRows.length === 0 && tasks.length === 0 && analyses.length > 0) {
         await generateTasksMutation.mutateAsync({ projectId });
         const tasksRefetch = await tasksQuery.refetch();
         const refreshedTasks = (tasksRefetch.data ?? []) as TaskRow[];
         if (refreshedTasks.length > 0) {
-          await generateTopicsMutation.mutateAsync({
-            projectId,
-            generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
-          });
-          const [topicsAfterGen, articlesAfterGen] = await Promise.all([
-            topicsQuery.refetch(),
-            articlesQuery.refetch(),
-          ]);
-          topicRows = (topicsAfterGen.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
-          freshArticleByTopicId.clear();
-          for (const article of (articlesAfterGen.data ?? []) as ArticleRow[]) {
-            if (typeof article.topicId === "number") {
-              freshArticleByTopicId.set(article.topicId, article);
-            }
-          }
-          pending = findPendingTopicForPlatform(platformKey, topicRows, pendingLookup);
+          ({ topicRows, articleTopicIds } = await regenTopicsIfNeeded());
+          pending = pickPendingTopicForPlatform(platformKey, topicRows, articleTopicIds);
         }
       }
 
-      if (!pending && topicRows.length === 0 && tasks.length > 0) {
-        await generateTopicsMutation.mutateAsync({
-          projectId,
-          generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
-        });
-        const [topicsAfterGen, articlesAfterGen] = await Promise.all([
-          topicsQuery.refetch(),
-          articlesQuery.refetch(),
-        ]);
-        topicRows = (topicsAfterGen.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
-        freshArticleByTopicId.clear();
-        for (const article of (articlesAfterGen.data ?? []) as ArticleRow[]) {
-          if (typeof article.topicId === "number") {
-            freshArticleByTopicId.set(article.topicId, article);
-          }
-        }
-        pending = findPendingTopicForPlatform(platformKey, topicRows, pendingLookup);
+      if (
+        !pending &&
+        tasks.length > 0 &&
+        countUnassignedPendingTopics(topicRows, articleTopicIds, taskIdSet) === 0
+      ) {
+        ({ topicRows, articleTopicIds } = await regenTopicsIfNeeded());
+        pending = pickPendingTopicForPlatform(platformKey, topicRows, articleTopicIds);
       }
 
-      if (!pending) {
-        pending =
-          findPendingTopicForPlatform(platformKey, topicRows, {
-            ...pendingLookup,
-            relaxTaskFilter: true,
-          }) ??
-          findPendingTopicForPlatform(platformKey, topicRows, {
-            ...pendingLookup,
-            relaxTaskFilter: true,
-            relaxPlatformMatch: true,
-          }) ??
-          findAnyBoundPendingTopic(topicRows, pendingLookup);
+      if (!pending?.id || !isTopicIdInRows(pending.id, topicRows)) {
+        ({ topicRows, articleTopicIds } = await reloadTopicGenerationSnapshot());
+        pending = pickPendingTopicForPlatform(platformKey, topicRows, articleTopicIds);
       }
 
-      const pendingTopicId = pending?.id;
-      if (pendingTopicId && !topicRows.some(t => t.id === pendingTopicId)) {
-        const refetch = await topicsQuery.refetch();
-        topicRows = (refetch.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
-        if (!topicRows.some(t => t.id === pendingTopicId)) {
-          pending = undefined;
-        }
-      }
-
-      if (!pending?.id) {
+      if (!pending?.id || !isTopicIdInRows(pending.id, topicRows)) {
         return { ok: false, errorMessage: PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE };
       }
       return { ok: true, topicId: pending.id, strategyOverride };
     },
     [
-      topics,
       tasks.length,
       analyses.length,
-      findPendingTopicForPlatform,
-      findAnyBoundPendingTopic,
+      pickPendingTopicForPlatform,
       generateTopicsMutation,
       generateTasksMutation,
       selectedProjectId,
       location,
       accessibleProjectIds,
-      topicsQuery,
       tasksQuery,
-      articlesQuery,
+      taskIdSet,
+      utils,
     ],
   );
 
@@ -1604,13 +1545,29 @@ export default function WeeklyContentPage() {
       topicId?: number;
       strategyOverride?: Partial<PlatformContentStrategyInput>;
     }> => {
-      const resolved = options?.retryParams
-        ? {
-            ok: true as const,
-            topicId: options.retryParams.topicId,
-            strategyOverride: options.retryParams.strategyOverride,
+      let resolved:
+        | { ok: true; topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> }
+        | { ok: false; errorMessage: string };
+      if (options?.retryParams) {
+        try {
+          const projectId = assertMutationProjectId(selectedProjectId, location, accessibleProjectIds);
+          const topicList = await utils.geo.articles.topics.list.fetch({ projectId });
+          const topicRows = (topicList ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
+          if (isTopicIdInRows(options.retryParams.topicId, topicRows)) {
+            resolved = {
+              ok: true,
+              topicId: options.retryParams.topicId,
+              strategyOverride: options.retryParams.strategyOverride,
+            };
+          } else {
+            resolved = await resolvePlatformGenerationParams(platformKey);
           }
-        : await resolvePlatformGenerationParams(platformKey);
+        } catch {
+          resolved = { ok: false, errorMessage: PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE };
+        }
+      } else {
+        resolved = await resolvePlatformGenerationParams(platformKey);
+      }
       if (!resolved.ok) {
         if (!options?.silentToast) {
           toast.error(resolved.errorMessage);
@@ -1645,6 +1602,10 @@ export default function WeeklyContentPage() {
       generateOne,
       recordPlatformGenerationFailure,
       clearPlatformGenerationRetry,
+      selectedProjectId,
+      location,
+      accessibleProjectIds,
+      utils,
     ],
   );
 
