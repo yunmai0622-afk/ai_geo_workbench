@@ -10,6 +10,8 @@ import {
   PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE,
   PLATFORM_CONTENT_PROFILE_INSUFFICIENT_MESSAGE,
   PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
+  PLATFORM_CONTENT_STALE_TOPICS_MESSAGE,
+  PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE,
   PLATFORM_CONTENT_GEO_STRUCTURE_OPTIMIZING_MESSAGE,
   PLATFORM_CONTENT_QC_MANUAL_REVIEW_MESSAGE,
   toPlatformContentGenerationError,
@@ -102,6 +104,9 @@ describe("platform content generation errors (P0)", () => {
       PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
     );
     expect(toPlatformContentGenerationError("缺少生成依据：竞品差距")).toContain("生成依据还缺少");
+    expect(toPlatformContentGenerationError("文章选题不存在")).toBe(PLATFORM_CONTENT_STALE_TOPICS_MESSAGE);
+    expect(toPlatformContentGenerationError("文章选题不存在")).not.toBe(PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE);
+    expect(toPlatformContentGenerationError("无权访问该客户项目")).toBe(PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE);
   });
 
   it("rejects missing platform params", () => {

@@ -77,8 +77,12 @@ function isParamsMissingRaw(message: string): boolean {
   );
 }
 
+function isTopicMissingRaw(message: string): boolean {
+  return /文章选题不存在/.test(message);
+}
+
 function isProjectAccessRaw(message: string): boolean {
-  return /项目不存在|无访问权限|NOT_FOUND|文章选题不存在|FORBIDDEN/.test(message);
+  return /项目不存在|无访问权限|无权访问|NOT_FOUND|FORBIDDEN/.test(message);
 }
 
 function mapDiagnosisGateRaw(message: string): string | null {
@@ -141,6 +145,7 @@ export function toPlatformContentGenerationError(raw: string): string {
   if (message === PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE) return message;
   if (message === PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE) return message;
   if (message === PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE) return message;
+  if (isTopicMissingRaw(message)) return PLATFORM_CONTENT_STALE_TOPICS_MESSAGE;
   if (isProjectAccessRaw(message)) return PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE;
   if (isParamsMissingRaw(message)) return PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE;
   if (isProfileInsufficientRaw(message)) return message;

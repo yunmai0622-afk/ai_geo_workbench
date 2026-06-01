@@ -369,9 +369,13 @@ function resolveMutationProjectId(
 function assertMutationProjectId(
   selectedProjectId: number | undefined,
   location: string,
+  accessibleProjectIds?: readonly number[],
 ): number {
   const pid = resolveMutationProjectId(selectedProjectId, location);
   if (!pid) throw new Error("项目未选择");
+  if (accessibleProjectIds && !accessibleProjectIds.includes(pid)) {
+    throw new Error("项目未选择");
+  }
   return pid;
 }
 
@@ -452,7 +456,9 @@ function showPublishSuccessNotification(
 export default function WeeklyContentPage() {
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
-  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } = useProjectSelection();
+  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading, projects } =
+    useProjectSelection();
+  const accessibleProjectIds = useMemo(() => projects.map(p => p.id), [projects]);
   const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
   const contentLimitReached = subscriptionUsageQuery.data?.atLimit.contentArticle ?? false;
 
@@ -1389,13 +1395,18 @@ export default function WeeklyContentPage() {
     (
       platformKey: WeeklyPlatformKey,
       topicRows: TopicRow[],
-      options?: { relaxTaskFilter?: boolean; relaxPlatformMatch?: boolean },
+      options?: {
+        relaxTaskFilter?: boolean;
+        relaxPlatformMatch?: boolean;
+        articleByTopicIdOverride?: Map<number, ArticleRow>;
+      },
     ) => {
       const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === platformKey)!;
       const activeTaskId =
         options?.relaxTaskFilter === true ? null : geoContentTaskSource?.contentTaskId ?? null;
+      const consumedArticles = options?.articleByTopicIdOverride ?? articleByTopicId;
       return topicRows.find(t => {
-        if (!t?.id || articleByTopicId.has(t.id)) return false;
+        if (!t?.id || consumedArticles.has(t.id)) return false;
         if (!isTopicBoundToProjectTasks(t, taskIdSet)) return false;
         if (activeTaskId != null && t.optimizationTaskId !== activeTaskId) return false;
         if (options?.relaxPlatformMatch === true) return true;
@@ -1408,11 +1419,16 @@ export default function WeeklyContentPage() {
   );
 
   const findAnyBoundPendingTopic = useCallback(
-    (topicRows: TopicRow[]) =>
-      topicRows.find(t => {
-        if (!t?.id || articleByTopicId.has(t.id)) return false;
+    (
+      topicRows: TopicRow[],
+      options?: { articleByTopicIdOverride?: Map<number, ArticleRow> },
+    ) => {
+      const consumedArticles = options?.articleByTopicIdOverride ?? articleByTopicId;
+      return topicRows.find(t => {
+        if (!t?.id || consumedArticles.has(t.id)) return false;
         return isTopicBoundToProjectTasks(t, taskIdSet);
-      }),
+      });
+    },
     [articleByTopicId, taskIdSet],
   );
 
@@ -1450,7 +1466,7 @@ export default function WeeklyContentPage() {
     > => {
       let projectId: number;
       try {
-        projectId = assertMutationProjectId(selectedProjectId, location);
+        projectId = assertMutationProjectId(selectedProjectId, location, accessibleProjectIds);
       } catch {
         return { ok: false, errorMessage: PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE };
       }
@@ -1466,10 +1482,26 @@ export default function WeeklyContentPage() {
         setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
       }
 
-      let topicRows = topics.filter(t => t != null && typeof t.id === "number") as TopicRow[];
-      let pending = findPendingTopicForPlatform(platformKey, topicRows);
+      const [topicsRefetch, articlesRefetch] = await Promise.all([
+        topicsQuery.refetch(),
+        articlesQuery.refetch(),
+      ]);
+      const freshArticleByTopicId = new Map<number, ArticleRow>();
+      for (const article of (articlesRefetch.data ?? []) as ArticleRow[]) {
+        if (typeof article.topicId === "number") {
+          freshArticleByTopicId.set(article.topicId, article);
+        }
+      }
+      const pendingLookup = {
+        articleByTopicIdOverride: freshArticleByTopicId,
+      };
 
-      if (!pending && tasks.length === 0 && analyses.length > 0) {
+      let topicRows = (topicsRefetch.data ?? []).filter(
+        t => t != null && typeof t.id === "number",
+      ) as TopicRow[];
+      let pending = findPendingTopicForPlatform(platformKey, topicRows, pendingLookup);
+
+      if (!pending && topicRows.length === 0 && tasks.length === 0 && analyses.length > 0) {
         await generateTasksMutation.mutateAsync({ projectId });
         const tasksRefetch = await tasksQuery.refetch();
         const refreshedTasks = (tasksRefetch.data ?? []) as TaskRow[];
@@ -1478,30 +1510,61 @@ export default function WeeklyContentPage() {
             projectId,
             generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
           });
-          const refetch = await topicsQuery.refetch();
-          topicRows = (refetch.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
-          pending = findPendingTopicForPlatform(platformKey, topicRows);
+          const [topicsAfterGen, articlesAfterGen] = await Promise.all([
+            topicsQuery.refetch(),
+            articlesQuery.refetch(),
+          ]);
+          topicRows = (topicsAfterGen.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
+          freshArticleByTopicId.clear();
+          for (const article of (articlesAfterGen.data ?? []) as ArticleRow[]) {
+            if (typeof article.topicId === "number") {
+              freshArticleByTopicId.set(article.topicId, article);
+            }
+          }
+          pending = findPendingTopicForPlatform(platformKey, topicRows, pendingLookup);
         }
       }
 
-      if (!pending && tasks.length > 0) {
+      if (!pending && topicRows.length === 0 && tasks.length > 0) {
         await generateTopicsMutation.mutateAsync({
           projectId,
           generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
         });
-        const refetch = await topicsQuery.refetch();
-        topicRows = (refetch.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
-        pending = findPendingTopicForPlatform(platformKey, topicRows);
+        const [topicsAfterGen, articlesAfterGen] = await Promise.all([
+          topicsQuery.refetch(),
+          articlesQuery.refetch(),
+        ]);
+        topicRows = (topicsAfterGen.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
+        freshArticleByTopicId.clear();
+        for (const article of (articlesAfterGen.data ?? []) as ArticleRow[]) {
+          if (typeof article.topicId === "number") {
+            freshArticleByTopicId.set(article.topicId, article);
+          }
+        }
+        pending = findPendingTopicForPlatform(platformKey, topicRows, pendingLookup);
       }
 
       if (!pending) {
         pending =
-          findPendingTopicForPlatform(platformKey, topicRows, { relaxTaskFilter: true }) ??
           findPendingTopicForPlatform(platformKey, topicRows, {
+            ...pendingLookup,
+            relaxTaskFilter: true,
+          }) ??
+          findPendingTopicForPlatform(platformKey, topicRows, {
+            ...pendingLookup,
             relaxTaskFilter: true,
             relaxPlatformMatch: true,
           }) ??
-          findAnyBoundPendingTopic(topicRows);
+          findAnyBoundPendingTopic(topicRows, pendingLookup);
+      }
+
+      const pendingTopicId = pending?.id;
+      if (pendingTopicId && !topicRows.some(t => t.id === pendingTopicId)) {
+        const refetch = await topicsQuery.refetch();
+        topicRows = (refetch.data ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
+        if (!topicRows.some(t => t.id === pendingTopicId)) {
+          pending = undefined;
+        }
       }
 
       if (!pending?.id) {
@@ -1519,8 +1582,10 @@ export default function WeeklyContentPage() {
       generateTasksMutation,
       selectedProjectId,
       location,
+      accessibleProjectIds,
       topicsQuery,
       tasksQuery,
+      articlesQuery,
     ],
   );
 
@@ -1695,7 +1760,7 @@ export default function WeeklyContentPage() {
 
   const handleBatchGenerateAllPlatforms = async () => {
     try {
-      assertMutationProjectId(selectedProjectId, location);
+      assertMutationProjectId(selectedProjectId, location, accessibleProjectIds);
     } catch {
       toast.error(PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE);
       return;
