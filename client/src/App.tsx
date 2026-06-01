@@ -24,6 +24,7 @@ import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, T
 import GeoPublicContentPage from "./pages/GeoPublicContent";
 import AssetCenterPage from "./pages/AssetCenter";
 import DemoGeoPage from "./pages/DemoGeo";
+import DemoGeoBrowsePage from "./pages/DemoGeoBrowse";
 import LegacyOnboardingPage from "./pages/LegacyOnboardingPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import AiSearchEvidencePage from "./pages/AiSearchEvidencePage";
@@ -180,7 +181,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/demo" component={DemoGeoPage} />
-      <Route path="/demo/geo" component={DemoGeoPage} />
+      <Route path="/demo/geo" component={DemoGeoBrowsePage} />
       <Route path="/geo/content/:projectId/:articleId" component={GeoPublicContentPage} />
       <Route path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex" component={DeliveryReportPublicEvidencePage} />
       <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />

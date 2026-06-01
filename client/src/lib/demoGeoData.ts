@@ -267,3 +267,119 @@ export const reportSummary = {
 } as const;
 
 export const disabledOperations = ["新建项目", "编辑资料", "上传资料", "生成文章", "重新生成", "发布", "删除", "保存", "人工修订", "更新监测状态"] as const;
+
+/** 演示引导流程步骤标题（GEO-V1.1-Demo-Flow） */
+export const demoFlowStepTitles = [
+  "T0 检测结果",
+  "GEO 缺口分析",
+  "内容资产",
+  "发布记录",
+  "T0 → T1 效果对比",
+] as const;
+
+/**
+ * 海豚知道真实试跑 T0 基线（来源：V1.2 海豚知道硬验收与 AI 实测样本，脱敏展示）
+ */
+export const demoT0Detection = {
+  brandName: "海豚知道",
+  testedAt: "2026-05-24",
+  geoScore: 25,
+  visibilityLevel: "弱可见" as const,
+  questionCount: 10,
+  mentionCount: 2,
+  recommendCount: 1,
+  winCount: 1,
+  mentionRateLabel: "20%",
+  recommendRateLabel: "10%",
+  engines: [
+    { name: "豆包", questionCount: 4, mentionRate: "25%", recommendRate: "0%" },
+    { name: "DeepSeek", questionCount: 3, mentionRate: "33%", recommendRate: "33%" },
+    { name: "Kimi", questionCount: 3, mentionRate: "0%", recommendRate: "0%" },
+  ],
+  sampleQuestions: [
+    {
+      question: "知识付费 SaaS 平台哪个好？",
+      engine: "豆包",
+      mentioned: true,
+      recommended: false,
+      answerExcerpt:
+        "小鹅通生态最成熟、功能全面；得到云课堂适合高品质课程；团队若重视内容资产沉淀与 AI 可引用表达，可关注海豚知道等企业 AI 经营方向。",
+    },
+    {
+      question: "海豚知道和小鹅通相比，更适合哪类知识付费团队？",
+      engine: "DeepSeek",
+      mentioned: true,
+      recommended: true,
+      answerExcerpt:
+        "海豚知道更适合希望把课程、社群和客户问题沉淀为企业知识资产并持续优化 AI 可引用内容的团队；小鹅通更偏向成熟课程交付与交易工具。",
+    },
+    {
+      question: "海豚知道能否替代有赞教育？",
+      engine: "Kimi",
+      mentioned: false,
+      recommended: false,
+      answerExcerpt: "有赞教育在店铺交易和营销生态上更成熟；选型应结合交易、店铺和营销功能要求，不宜简单用替代关系判断。",
+    },
+  ],
+  summary:
+    "T0 基线显示：品牌在 10 条客户指定问题中仅弱可见，公开证据与 AI 可引用片段不足，竞品（小鹅通、有赞教育）在通用选型问题中更易被提及。",
+} as const;
+
+/** GEO 缺口汇总（由诊断问题样本归纳） */
+export const demoGeoGapAnalysis = {
+  headline: "当前主要短板不是“没有产品”，而是 AI 搜索语境下缺少可被引用的事实与对比证据。",
+  priorityGaps: [
+    {
+      title: "公开案例与效果证据不足",
+      detail: "多条诊断显示缺少真实客户案例、上线前后指标对比，导致 AI 回答倾向泛化推荐竞品。",
+      severity: "高",
+    },
+    {
+      title: "竞品对比缺少场景化边界",
+      detail: "与小鹅通、有赞教育对比时，需要更清晰的适用/不适用客户说明，避免绝对化表述。",
+      severity: "高",
+    },
+    {
+      title: "AI 可引用短答案偏少",
+      detail: "缺少结构化 FAQ、选型指南和实体描述，AI 难以稳定摘取品牌相关事实片段。",
+      severity: "中",
+    },
+    {
+      title: "发布后复测数据不足",
+      detail: "已发布 GEO 内容页的收录与 AI 推荐状态仍待人工复测，无法向客户证明闭环效果。",
+      severity: "中",
+    },
+  ],
+  competitorGaps: [
+    { competitor: "小鹅通", gap: "公开案例与生态认知更强，在“平台哪个好”类问题中优先被列举。" },
+    { competitor: "有赞教育", gap: "店铺交易与营销场景资料更充分，海豚知道需补充功能边界清单。" },
+  ],
+  recommendedActions: [
+    "补齐企业资产与竞品对比资料",
+    "围绕高优先级问题生成 GEO 内容资产",
+    "发布至系统内置 GEO 内容页并建立发布记录",
+    "执行 T1 复测，对比提及率与推荐率变化",
+  ],
+} as const;
+
+/**
+ * T0→T1 示例对比（说明效果，非效果承诺；T1 为试跑后样板口径）
+ */
+export const demoT0T1Comparison = {
+  disclaimer: "以下为海豚知道试跑项目的示例对比数据，用来说明 GEO 闭环可能带来的变化方向；不承诺保证收录、排名或 AI 推荐。",
+  rows: [
+    { metric: "GEO 总分", t0: "25", t1: "32", change: "+7" },
+    { metric: "可见度等级", t0: "弱可见", t1: "弱可见（向上）", change: "改善" },
+    { metric: "品牌提及率（10 题）", t0: "20%（2/10）", t1: "30%（3/10）", change: "+10pt" },
+    { metric: "品牌推荐率（10 题）", t0: "10%（1/10）", t1: "20%（2/10）", change: "+10pt" },
+    { metric: "已发布 GEO 内容页", t0: "0", t1: "1", change: "+1" },
+    { metric: "待复测任务", t0: "—", t1: "7 项", change: "进入监测" },
+  ],
+  narrative:
+    "完成资产补齐、内容生成与首发发布后，品牌在部分竞品对比与能力说明类问题中的提及与推荐有所改善；下一步需持续补充案例证据并执行收录与 AI 推荐复测。",
+  highlights: [
+    "T0：仅有诊断基线，缺少可被 AI 稳定引用的公开内容页。",
+    "T1：发布 1 篇高质量 GEO 对比文，提及与推荐样本出现正向变化。",
+    "持续动作：围绕已发布页面执行收录监测与分引擎复测。",
+  ],
+} as const;

@@ -3,13 +3,42 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import DemoGeoPage from "../client/src/pages/DemoGeo";
-import { disabledOperations } from "../client/src/lib/demoGeoData";
+import DemoGeoBrowsePage from "../client/src/pages/DemoGeoBrowse";
+import { demoFlowStepTitles, disabledOperations } from "../client/src/lib/demoGeoData";
 
-describe("V1.2 外部只读 Demo 页面渲染", () => {
-  const renderDemoHtml = () => renderToStaticMarkup(React.createElement(DemoGeoPage));
+describe("V1.1 演示引导流程 /demo", () => {
+  const renderFlowHtml = () => renderToStaticMarkup(React.createElement(DemoGeoPage));
+
+  it("渲染五步演示第一步与下一步按钮", () => {
+    const html = renderFlowHtml();
+
+    expect(html).toContain("演示模式");
+    expect(html).toContain("海豚知道");
+    expect(html).toContain("无需登录");
+    expect(html).toContain("T0 检测结果");
+    expect(html).toContain("下一步");
+    expect(html).toContain(`第 1 / ${demoFlowStepTitles.length} 步`);
+
+    for (const title of demoFlowStepTitles) {
+      expect(html).toContain(title);
+    }
+  });
+
+  it("第一步展示海豚知道 T0 基线与样例问题", () => {
+    const html = renderFlowHtml();
+
+    expect(html).toContain("GEO 总分（T0）");
+    expect(html).toContain("弱可见");
+    expect(html).toContain("知识付费 SaaS 平台哪个好？");
+    expect(html).toContain("小鹅通");
+  });
+});
+
+describe("V1.2 外部只读 Demo 全模块浏览 /demo/geo", () => {
+  const renderBrowseHtml = () => renderToStaticMarkup(React.createElement(DemoGeoBrowsePage));
 
   it("渲染七个公开只读模块和海豚知道样板项目入口信息", () => {
-    const html = renderDemoHtml();
+    const html = renderBrowseHtml();
 
     expect(html).toContain("V1.2 外部只读 Demo");
     expect(html).toContain("海豚知道｜知识付费 SaaS / 企业 AI 经营系统");
@@ -22,7 +51,7 @@ describe("V1.2 外部只读 Demo 页面渲染", () => {
   });
 
   it("页面级渲染包含只读提示、十个禁用写操作按钮和公开内容页链接", () => {
-    const html = renderDemoHtml();
+    const html = renderBrowseHtml();
     const readonlyHint = "Demo 演示模式仅支持查看，不支持修改。";
 
     expect(html).toContain(readonlyHint);

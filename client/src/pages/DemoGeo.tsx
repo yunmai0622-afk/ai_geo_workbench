@@ -1,317 +1,361 @@
-import React, { type ReactNode } from "react";
-
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { AUTH_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import {
-  assetSections,
   demoArticles,
-  demoMetrics,
+  demoFlowStepTitles,
+  demoGeoGapAnalysis,
   demoProject,
+  demoT0Detection,
+  demoT0T1Comparison,
   diagnosisQuestions,
-  disabledOperations,
-  growthPath,
-  monitoringRecords,
   publishRecords,
-  reportSummary,
 } from "@/lib/demoGeoData";
+import { BarChart3, CheckCircle2, ChevronRight } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "wouter";
 
-type SectionProps = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  children: ReactNode;
-};
+const TOTAL_STEPS = demoFlowStepTitles.length;
 
-const toneClasses = {
-  cyan: "border-blue-200 bg-blue-50 text-blue-700 shadow-cyan-500/10",
-  violet: "border-blue-200 bg-blue-50 text-blue-700 shadow-sm",
-  emerald: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100 shadow-emerald-500/10",
-  amber: "border-amber-300/20 bg-amber-400/10 text-amber-100 shadow-amber-500/10",
-  blue: "border-blue-300/20 bg-blue-400/10 text-blue-100 shadow-blue-500/10",
-} as const;
-
-function Section({ eyebrow, title, description, children }: SectionProps) {
+function DemoShell({ children }: { children: ReactNode }) {
   return (
-    <section className="scroll-mt-28 rounded-[2rem] border border-gray-200 bg-gray-50 p-5 shadow-2xl shadow-blue-950/20 backdrop-blur md:p-7">
-      <div className="mb-6 max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-blue-600/80">{eyebrow}</p>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white md:text-3xl">{title}</h2>
-        <p className="mt-3 text-sm leading-6 text-gray-600">{description}</p>
-      </div>
-      {children}
-    </section>
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-white to-blue-50/40 text-gray-900">
+      <header className="border-b border-gray-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white">
+              <BarChart3 className="h-5 w-5" aria-hidden />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{AUTH_PRODUCT_NAME}</p>
+              <p className="text-xs text-gray-500">演示模式 · {demoProject.shortName} 样板数据</p>
+            </div>
+          </div>
+          <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">无需登录</span>
+        </div>
+      </header>
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 sm:py-10">{children}</main>
+    </div>
   );
 }
 
-function StatusBadge({ children, tone = "cyan" }: { children: React.ReactNode; tone?: keyof typeof toneClasses }) {
-  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium shadow-lg ${toneClasses[tone]}`}>{children}</span>;
+function StepProgress({ step }: { step: number }) {
+  return (
+    <div className="mb-8">
+      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+        第 {step} / {TOTAL_STEPS} 步
+      </p>
+      <div className="mt-3 flex gap-2">
+        {demoFlowStepTitles.map((title, index) => {
+          const n = index + 1;
+          const active = n === step;
+          const done = n < step;
+          return (
+            <div key={title} className="flex-1">
+              <div
+                className={`h-1.5 rounded-full ${done ? "bg-blue-600" : active ? "bg-blue-400" : "bg-gray-200"}`}
+                title={title}
+              />
+              <p className={`mt-2 hidden text-[10px] leading-tight sm:block ${active ? "font-medium text-blue-700" : "text-gray-400"}`}>
+                {title}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
-function ReadOnlyNotice() {
+function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-3xl border border-amber-300/20 bg-amber-400/10 p-5 text-sm leading-6 text-amber-50 shadow-xl shadow-amber-950/10">
-      <p className="font-semibold">Demo 演示模式仅支持查看，不支持修改。</p>
-      <p className="mt-2 text-amber-100/80">本页面不提供登录、编辑、生成、发布、删除、保存或更新状态能力；展示内容均为“海豚知道”样板项目脱敏数据。</p>
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-gray-900">{value}</p>
+      {hint ? <p className="mt-2 text-xs leading-5 text-gray-600">{hint}</p> : null}
+    </div>
+  );
+}
+
+function StepT0Detection() {
+  const t0 = demoT0Detection;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">T0 检测结果</h1>
+        <p className="mt-2 text-sm leading-6 text-gray-600">
+          展示「{t0.brandName}」在 AI 实测诊断阶段的基线结果（{t0.testedAt} 样本，脱敏展示）。
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard label="GEO 总分（T0）" value={`${t0.geoScore}`} hint={`可见度：${t0.visibilityLevel}`} />
+        <MetricCard label="客户指定问题" value={`${t0.questionCount} 条`} />
+        <MetricCard label="品牌提及" value={`${t0.mentionCount} 次`} hint={`提及率 ${t0.mentionRateLabel}`} />
+        <MetricCard label="品牌推荐" value={`${t0.recommendCount} 次`} hint={`推荐率 ${t0.recommendRateLabel}`} />
+      </div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900">分引擎汇总</h2>
+        <ul className="mt-3 divide-y divide-gray-100 text-sm">
+          {t0.engines.map(engine => (
+            <li key={engine.name} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:justify-between">
+              <span className="font-medium text-gray-900">{engine.name}</span>
+              <span className="text-gray-600">
+                {engine.questionCount} 题 · 提及 {engine.mentionRate} · 推荐 {engine.recommendRate}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-gray-900">关键问题样例</h2>
+        {t0.sampleQuestions.map(item => (
+          <article key={item.question} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-500">{item.engine}</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${item.mentioned ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}`}
+              >
+                {item.mentioned ? "已提及" : "未提及"}
+              </span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${item.recommended ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600"}`}
+              >
+                {item.recommended ? "已推荐" : "未推荐"}
+              </span>
+            </div>
+            <p className="mt-2 text-sm font-medium text-gray-900">{item.question}</p>
+            <p className="mt-2 text-sm leading-6 text-gray-600">{item.answerExcerpt}</p>
+          </article>
+        ))}
+      </div>
+      <p className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">{t0.summary}</p>
+    </div>
+  );
+}
+
+function StepGeoGapAnalysis() {
+  const gaps = demoGeoGapAnalysis;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">GEO 缺口分析</h1>
+        <p className="mt-2 text-sm leading-6 text-gray-600">{gaps.headline}</p>
+      </div>
+      <div className="space-y-3">
+        {gaps.priorityGaps.map(gap => (
+          <article key={gap.title} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-sm font-semibold text-gray-900">{gap.title}</h2>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${gap.severity === "高" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}
+              >
+                优先级 {gap.severity}
+              </span>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-gray-600">{gap.detail}</p>
+          </article>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900">竞品差距</h2>
+        <ul className="mt-3 space-y-2 text-sm text-gray-600">
+          {gaps.competitorGaps.map(item => (
+            <li key={item.competitor}>
+              <span className="font-medium text-gray-900">{item.competitor}：</span>
+              {item.gap}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5">
+        <h2 className="text-sm font-semibold text-blue-900">建议优化路径</h2>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-blue-900/90">
+          {gaps.recommendedActions.map(action => (
+            <li key={action}>{action}</li>
+          ))}
+        </ol>
+      </div>
+      <p className="text-xs text-gray-500">以下展示 3 条诊断问题摘要（共 {diagnosisQuestions.length} 条样本中的节选）。</p>
+      <div className="grid gap-3 md:grid-cols-3">
+        {diagnosisQuestions.slice(0, 3).map((item, index) => (
+          <div key={item.question} className="rounded-xl border border-dashed border-gray-200 bg-white/80 p-3 text-xs">
+            <p className="font-medium text-gray-800">
+              {index + 1}. {item.question}
+            </p>
+            <p className="mt-2 text-gray-600">缺口：{item.gap}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StepContentAssets() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">生成的内容资产</h1>
+        <p className="mt-2 text-sm leading-6 text-gray-600">
+          基于诊断缺口与企业资产，系统生成可被 AI 引用的 GEO 内容（含生成依据、事实溯源与质检结果）。
+        </p>
+      </div>
+      <div className="space-y-4">
+        {demoArticles.map(article => (
+          <article key={article.title} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-medium text-blue-600">{article.type}</p>
+                <h2 className="mt-1 text-lg font-semibold text-gray-900">{article.title}</h2>
+                <p className="mt-1 text-sm text-gray-500">{article.status}</p>
+              </div>
+              <span className="inline-flex shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+                质量评分 {article.qualityScore}/100
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-gray-600">
+              <span className="font-medium text-gray-800">AI 可引用片段：</span>
+              {article.aiQuotableSnippets[0]}
+            </p>
+            <p className="mt-2 text-xs text-gray-500">生成依据 {article.generatedBasis.length} 项 · 事实溯源 {article.factTrace.length} 条</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StepPublishRecords() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">发布记录</h1>
+        <p className="mt-2 text-sm leading-6 text-gray-600">展示内容发布至系统内置 GEO 内容页的记录（Demo 不执行真实发布操作）。</p>
+      </div>
+      {publishRecords.map(record => (
+        <article key={record.title} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">{record.status}</span>
+            <span className="text-xs text-gray-500">{record.channel}</span>
+          </div>
+          <h2 className="mt-3 text-lg font-semibold text-gray-900">{record.title}</h2>
+          <p className="mt-2 text-sm text-gray-600">{record.notes}</p>
+          <p className="mt-3 text-sm">
+            <span className="text-gray-500">公开链接：</span>
+            <a className="text-blue-600 underline underline-offset-2" href={record.publicPath}>
+              {record.publicPath}
+            </a>
+          </p>
+          <p className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">第三方素材：{record.thirdPartyMaterial}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function StepT0T1Comparison() {
+  const cmp = demoT0T1Comparison;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">T0 → T1 效果对比</h1>
+        <p className="mt-2 text-sm leading-6 text-gray-600">用示例数据说明试跑前后指标变化方向（非效果承诺）。</p>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-gray-50 text-gray-600">
+            <tr>
+              <th className="px-4 py-3 font-medium">指标</th>
+              <th className="px-4 py-3 font-medium">T0 基线</th>
+              <th className="px-4 py-3 font-medium">T1 试跑后</th>
+              <th className="px-4 py-3 font-medium">变化</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {cmp.rows.map(row => (
+              <tr key={row.metric}>
+                <td className="px-4 py-3 font-medium text-gray-900">{row.metric}</td>
+                <td className="px-4 py-3 text-gray-600">{row.t0}</td>
+                <td className="px-4 py-3 text-gray-600">{row.t1}</td>
+                <td className="px-4 py-3 text-blue-700">{row.change}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul className="space-y-2">
+        {cmp.highlights.map(item => (
+          <li key={item} className="flex gap-2 text-sm leading-6 text-gray-700">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+            {item}
+          </li>
+        ))}
+      </ul>
+      <p className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm leading-6 text-gray-700">{cmp.narrative}</p>
+      <p className="text-xs leading-5 text-gray-500">{cmp.disclaimer}</p>
+    </div>
+  );
+}
+
+function DemoCompleteScreen() {
+  return (
+    <div className="flex flex-col items-center py-6 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+        <CheckCircle2 className="h-8 w-8" aria-hidden />
+      </div>
+      <h1 className="mt-6 text-2xl font-semibold text-gray-900">演示完成</h1>
+      <p className="mt-3 max-w-md text-sm leading-6 text-gray-600">
+        你已了解从 AI 诊断、缺口分析、内容生成、发布到效果对比的完整 GEO 增长路径。注册后即可为你的企业建立专属项目。
+      </p>
+      <Button size="lg" className="mt-8 bg-blue-600 px-8 text-white hover:bg-blue-700" asChild>
+        <Link href="/register">开始你的 GEO 之旅</Link>
+      </Button>
+      <p className="mt-4 text-xs text-gray-500">
+        需要查看完整只读模块？
+        <Link href="/demo/geo" className="ml-1 text-blue-600 underline underline-offset-2">
+          打开全模块浏览
+        </Link>
+      </p>
     </div>
   );
 }
 
 export default function DemoGeoPage() {
+  const [step, setStep] = useState(1);
+  const [finished, setFinished] = useState(false);
+
+  useEffect(() => {
+    document.title = `演示模式 - ${demoProject.shortName} | ${AUTH_PRODUCT_NAME}`;
+  }, []);
+
+  const handleNext = () => {
+    if (step >= TOTAL_STEPS) {
+      setFinished(true);
+      return;
+    }
+    setStep(s => s + 1);
+  };
+
   return (
-    <main className="min-h-screen overflow-hidden bg-[#040816] text-gray-900">
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute left-[-12%] top-[-18%] h-[32rem] w-[32rem] rounded-full bg-blue-200/30 blur-3xl" />
-        <div className="absolute right-[-10%] top-[12%] h-[36rem] w-[36rem] rounded-full bg-blue-300/20 blur-3xl" />
-        <div className="absolute bottom-[-18%] left-[24%] h-[34rem] w-[34rem] rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(80,120,255,0.16),transparent_35%),linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:auto,48px_48px,48px_48px]" />
-      </div>
-
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-[#040816]/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-          <a href="#overview" className="group inline-flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-sm font-bold text-blue-700 shadow-lg shadow-blue-500/10">内容增长系统</span>
-            <span>
-              <span className="block text-sm font-semibold text-white">V1.2 外部只读 Demo</span>
-              <span className="block text-xs text-gray-400">{demoProject.shortName} 样板项目</span>
-            </span>
-          </a>
-          <nav className="flex gap-2 overflow-x-auto text-xs text-gray-600 md:text-sm">
-            {[
-              ["总览", "overview"],
-              ["资产", "assets"],
-              ["诊断", "diagnosis"],
-              ["内容", "content"],
-              ["发布", "publish"],
-              ["监测", "monitoring"],
-              ["报告", "report"],
-            ].map(([label, id]) => (
-              <a key={id} href={`#${id}`} className="rounded-full border border-gray-200 bg-white px-3 py-2 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
-                {label}
-              </a>
-            ))}
-          </nav>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-6 md:py-12">
-        <section id="overview" className="relative overflow-hidden rounded-[2.5rem] border border-blue-200 bg-gradient-to-br from-slate-950 via-blue-950/55 to-violet-950/60 p-6 shadow-2xl shadow-cyan-950/30 md:p-10">
-          <div className="absolute right-8 top-8 hidden h-40 w-40 rounded-full border border-blue-200 bg-blue-50 blur-sm md:block" />
-          <div className="relative grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-            <div>
-              <div className="mb-5 flex flex-wrap gap-3">
-                <StatusBadge>公开只读</StatusBadge>
-                <StatusBadge tone="violet">无需登录</StatusBadge>
-                <StatusBadge tone="emerald">仅样板数据</StatusBadge>
-              </div>
-              <p className="text-sm font-semibold uppercase tracking-[0.42em] text-blue-600/80">AI 内容增长系统 Growth Workbench</p>
-              <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-white md:text-6xl">{demoProject.name}</h1>
-              <p className="mt-5 max-w-3xl text-base leading-7 text-gray-600 md:text-lg">外部验收、销售演示和客户试跑展示专用入口。页面完整展示 V1.2 的核心样板能力，但不开放任何写操作、生成操作或发布操作。</p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <StatusBadge tone="amber">当前阶段：{demoProject.stage}</StatusBadge>
-                <StatusBadge tone="blue">下一步动作：发布后复测</StatusBadge>
-              </div>
-            </div>
-            <ReadOnlyNotice />
+    <DemoShell>
+      {finished ? (
+        <DemoCompleteScreen />
+      ) : (
+        <>
+          <StepProgress step={step} />
+          {step === 1 ? <StepT0Detection /> : null}
+          {step === 2 ? <StepGeoGapAnalysis /> : null}
+          {step === 3 ? <StepContentAssets /> : null}
+          {step === 4 ? <StepPublishRecords /> : null}
+          {step === 5 ? <StepT0T1Comparison /> : null}
+          <div className="mt-10 flex flex-col items-stretch gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-between">
+            <p className="text-xs leading-5 text-gray-500">{demoProject.riskNotice}</p>
+            <Button type="button" className="shrink-0 bg-blue-600 text-white hover:bg-blue-700 sm:min-w-[140px]" onClick={handleNext}>
+              {step >= TOTAL_STEPS ? "完成演示" : "下一步"}
+              <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+            </Button>
           </div>
-        </section>
-
-        <Section eyebrow="01 / Overview" title="总览指挥舱" description="展示外部 Demo 的核心指标、当前阶段、下一步动作、内容增长路径、AI 今日建议和待复测任务。">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {demoMetrics.map((metric) => (
-              <article key={metric.label} className={`rounded-3xl border p-5 shadow-xl ${toneClasses[metric.tone]}`}>
-                <p className="text-sm text-gray-600">{metric.label}</p>
-                <p className="mt-3 text-3xl font-semibold text-white">{metric.value}</p>
-                <p className="mt-3 text-xs leading-5 text-gray-600">{metric.note}</p>
-              </article>
-            ))}
-          </div>
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-            <div className="rounded-3xl border border-gray-200 bg-white p-5">
-              <h3 className="text-lg font-semibold text-white">内容增长路径</h3>
-              <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                {growthPath.map((step, index) => (
-                  <div key={step} className="relative rounded-2xl border border-gray-200 bg-white/75 p-4">
-                    <span className="text-xs text-blue-600">0{index + 1}</span>
-                    <p className="mt-2 text-sm font-semibold text-white">{step}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="rounded-3xl border border-emerald-300/15 bg-emerald-400/5 p-5">
-                <p className="text-sm font-semibold text-emerald-100">AI 今日建议</p>
-                <p className="mt-3 text-sm leading-6 text-gray-600">{demoProject.nextAction}</p>
-              </div>
-              <div className="rounded-3xl border border-amber-300/15 bg-amber-400/5 p-5">
-                <p className="text-sm font-semibold text-amber-100">待处理任务</p>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
-                  <li>复测已发布 公开内容页收录状态。</li>
-                  <li>复测 AI 是否提及、是否推荐海豚知道。</li>
-                  <li>补充客户案例证据链，避免泛化表述。</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </Section>
-
-        <Section eyebrow="02 / Assets" title="企业资产" description="只读展示海豚知道样板项目的基础资料、产品服务、案例采集、竞品、合规、风格和发布策略，不展示真实客户敏感数据。">
-          <div id="assets" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {assetSections.map((section) => (
-              <article key={section.title} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-xl shadow-blue-950/10">
-                <h3 className="text-base font-semibold text-white">{section.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-gray-600">{section.content}</p>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section eyebrow="03 / Diagnosis" title="内容诊断" description="展示 10 条客户指定问题、AI 回答、语义分析、内容评分、内容缺口、竞品差距和人工修订样本。">
-          <div id="diagnosis" className="grid gap-4 lg:grid-cols-2">
-            {diagnosisQuestions.map((item, index) => (
-              <article key={item.question} className="rounded-3xl border border-gray-200 bg-white p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-base font-semibold leading-6 text-white">{index + 1}. {item.question}</h3>
-                  <StatusBadge tone={item.score >= 40 ? "emerald" : "blue"}>内容增长系统 {item.score}</StatusBadge>
-                </div>
-                <p className="mt-4 text-sm leading-6 text-gray-600"><span className="text-blue-600">AI 回答：</span>{item.answer}</p>
-                <div className="mt-4 grid gap-3 text-xs leading-5 text-gray-600 md:grid-cols-2">
-                  <p><span className="text-blue-600">语义分析：</span>{item.analysis}</p>
-                  <p><span className="text-amber-200">内容缺口：</span>{item.gap}</p>
-                  <p><span className="text-blue-200">竞品差距：</span>{item.competitorGap}</p>
-                  <p><span className="text-emerald-200">人工修订样本：</span>{item.manualRevision}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section eyebrow="04 / Content" title="内容生产" description="展示 3 篇核心 内容，每篇包含 8 项生成依据、事实溯源表、质量评分、一致性检查、发布前检查和 AI 可引用片段。">
-          <div id="content" className="space-y-5">
-            {demoArticles.map((article) => (
-              <article key={article.title} className="rounded-[2rem] border border-gray-200 bg-white p-5 shadow-xl shadow-violet-950/10 md:p-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-600/80">{article.type}</p>
-                    <h3 className="mt-3 text-xl font-semibold text-white">{article.title}</h3>
-                    <p className="mt-2 text-sm text-gray-400">{article.status}</p>
-                  </div>
-                  <StatusBadge tone={article.qualityScore >= 95 ? "emerald" : "violet"}>内容质量评分 {article.qualityScore}/100</StatusBadge>
-                </div>
-                <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                  <div className="rounded-3xl border border-gray-200 bg-blue-50/50 p-4">
-                    <h4 className="font-semibold text-blue-700">8 项生成依据</h4>
-                    <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-gray-600">
-                      {article.generatedBasis.map((basis) => <li key={basis}>{basis}</li>)}
-                    </ol>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="overflow-hidden rounded-3xl border border-gray-200">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-white/[0.06] text-gray-700">
-                          <tr>
-                            <th className="px-4 py-3">事实项</th>
-                            <th className="px-4 py-3">来源</th>
-                            <th className="px-4 py-3">状态</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/10 text-gray-600">
-                          {article.factTrace.map((fact) => (
-                            <tr key={`${article.title}-${fact.item}`}>
-                              <td className="px-4 py-3">{fact.item}</td>
-                              <td className="px-4 py-3">{fact.source}</td>
-                              <td className="px-4 py-3">{fact.status}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <p className="rounded-2xl border border-emerald-300/15 bg-emerald-400/5 p-4 text-sm leading-6 text-gray-600"><span className="text-emerald-100">一致性检查：</span>{article.consistencyCheck}</p>
-                      <p className="rounded-2xl border border-blue-300/15 bg-blue-400/5 p-4 text-sm leading-6 text-gray-600"><span className="text-blue-100">发布前检查：</span>{article.prePublishCheck}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-5 rounded-3xl border border-blue-200 bg-blue-50/50 p-4">
-                  <h4 className="font-semibold text-blue-700">AI 可引用片段</h4>
-                  <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
-                    {article.aiQuotableSnippets.map((snippet) => <li key={snippet}>“{snippet}”</li>)}
-                  </ul>
-                </div>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section eyebrow="05 / Publish" title="平台发布" description="展示系统内置 公开内容页发布记录、可访问链接和第三方平台只读素材说明，不执行发布动作。">
-          <div id="publish" className="space-y-4">
-            {publishRecords.map((record) => (
-              <article key={record.title} className="rounded-3xl border border-gray-200 bg-white p-5">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">{record.title}</h3>
-                    <p className="mt-2 text-sm text-gray-400">{record.channel}｜质量评分 {record.qualityScore}/100</p>
-                    <p className="mt-3 text-sm leading-6 text-gray-600">{record.notes}</p>
-                  </div>
-                  <StatusBadge tone="emerald">{record.status}</StatusBadge>
-                </div>
-                <div className="mt-4 rounded-2xl border border-gray-200 bg-blue-50/50 p-4 text-sm leading-6 text-gray-600">
-                  <p className="text-blue-700">发布链接可访问：</p>
-                  <a className="mt-2 inline-flex break-all text-blue-600 underline decoration-cyan-300/40 underline-offset-4 hover:text-blue-700" href={record.publicPath}>{record.publicPath}</a>
-                </div>
-                <p className="mt-4 rounded-2xl border border-gray-200 bg-white/[0.03] p-4 text-sm leading-6 text-gray-600">第三方平台素材：{record.thirdPartyMaterial}</p>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section eyebrow="06 / Monitoring" title="收录监测" description="展示发布后监测记录、收录状态、AI 提及状态、AI 推荐状态、当前建议和未达成时的优化建议。">
-          <div id="monitoring" className="grid gap-4 lg:grid-cols-2">
-            {monitoringRecords.map((record) => (
-              <article key={record.target} className="rounded-3xl border border-gray-200 bg-white p-5">
-                <h3 className="text-lg font-semibold text-white">{record.target}</h3>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <StatusBadge tone="amber">收录状态：{record.indexStatus}</StatusBadge>
-                  <StatusBadge tone="blue">AI 提及：{record.aiMentionStatus}</StatusBadge>
-                  <StatusBadge tone="violet">AI 推荐：{record.aiRecommendStatus}</StatusBadge>
-                </div>
-                <p className="mt-4 text-sm leading-6 text-gray-600"><span className="text-blue-600">当前建议：</span>{record.currentSuggestion}</p>
-                <p className="mt-3 text-sm leading-6 text-gray-600"><span className="text-amber-200">未收录 / 未提及 / 未推荐优化建议：</span>{record.optimizationSuggestion}</p>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section eyebrow="07 / Report" title="报告中心" description="展示至少 1 份客户可读 内容增长系统 试跑报告，并保留样本量有限的风险说明。">
-          <div id="report" className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
-            <article className="rounded-3xl border border-gray-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-600/80">客户可读报告</p>
-              <h3 className="mt-3 text-2xl font-semibold text-white">{reportSummary.title}</h3>
-              <p className="mt-4 text-sm leading-6 text-gray-600"><span className="text-blue-600">报告范围：</span>{reportSummary.scope}</p>
-              <p className="mt-3 text-sm leading-6 text-gray-600"><span className="text-emerald-200">结论摘要：</span>{reportSummary.conclusion}</p>
-            </article>
-            <div className="rounded-3xl border border-amber-300/20 bg-amber-400/10 p-5 shadow-xl shadow-amber-950/10">
-              <p className="text-sm font-semibold text-amber-100">风险提示卡</p>
-              <p className="mt-3 text-sm leading-6 text-amber-50/90">{reportSummary.risk}</p>
-              <p className="mt-3 text-xs leading-5 text-amber-100/75">Demo 中的监测状态为样板展示和待人工复测口径，不能用于对客户作效果保证。</p>
-            </div>
-          </div>
-        </Section>
-
-        <section className="rounded-[2rem] border border-gray-200 bg-white p-5 md:p-7">
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-blue-600/80">Read-only Guard</p>
-              <h2 className="mt-3 text-2xl font-semibold text-white">以下操作在 Demo 中均已禁用</h2>
-            </div>
-            <StatusBadge tone="amber">Demo 演示模式仅支持查看，不支持修改。</StatusBadge>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-            {disabledOperations.map((operation) => (
-              <button key={operation} disabled title="Demo 演示模式仅支持查看，不支持修改。" className="cursor-not-allowed rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-sm text-gray-500 opacity-75">
-                {operation}
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-    </main>
+        </>
+      )}
+    </DemoShell>
   );
 }
