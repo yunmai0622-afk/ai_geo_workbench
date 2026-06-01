@@ -12,9 +12,9 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(src).toContain("create-client-project-dialog");
     expect(src).toContain("create-client-project-button");
     expect(src).toContain("还没有企业项目");
-    expect(src).toContain("buildProjectUrl(\"/enterprise-profile\"");
+    expect(src).toContain('buildProjectUrl("/onboarding"');
     expect(src).toContain("setActiveProjectId(created.id)");
-    expect(src).not.toContain('setLocation("/onboarding")');
+    expect(src).toContain('setLocation(buildProjectUrl("/onboarding"');
   });
 
   it("AssetCenter 移除新建企业与项目切换", () => {
@@ -36,7 +36,7 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(onboarding).toContain("onboarding-step-1");
     expect(onboarding).toContain("onboarding-step-2");
     expect(onboarding).toContain("onboarding-step-3");
-    expect(onboarding).toContain("projects.length > 0");
+    expect(onboarding).toContain("continuingProjectId");
     expect(onboarding).toContain('Redirect to="/clients"');
     expect(onboarding).toContain("generateTargetQuestions");
     expect(onboarding).toContain('buildProjectUrl("/ai-diagnosis"');

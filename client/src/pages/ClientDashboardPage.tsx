@@ -15,12 +15,14 @@ import { Label } from "@/components/ui/label";
 import { buildProjectUrl, setActiveProjectId } from "@/lib/activeProject";
 import {
   deriveClientProjectCardDisplay,
-  displayRegionIndustry,
+  deriveClientProjectEightStepLabel,
+  formatBrandMentionRate,
   formatGeoScore,
+  formatMeasuredAt,
 } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { toUserFacingCreateProjectError } from "@shared/userFacingMutationErrors";
-import { AlertTriangle, ArrowRight, Building2, Loader2, Plus, Search } from "lucide-react";
+import { ArrowRight, Building2, Loader2, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -38,7 +40,9 @@ type ProjectSummary = {
   publishCount: number;
   aiTestCount: number;
   lastDiagnosisAt: Date | null;
+  lastMeasuredAt: Date | null;
   latestGeoScore: number | null;
+  t0BrandMentionRate: number | null;
 };
 
 /* ─── 状态筛选标签 ─── */
@@ -80,24 +84,14 @@ function ProjectCard({
   project: ProjectSummary;
   onEnter: (id: number) => void;
 }) {
-  const { stageLabel, nextStep } = deriveClientProjectCardDisplay(project);
+  const { nextStep } = deriveClientProjectCardDisplay(project);
+  const pipelineStep = deriveClientProjectEightStepLabel(project);
   const geoScore = formatGeoScore(project.latestGeoScore);
-  const regionIndustry = displayRegionIndustry(
-    project.industry?.trim() && project.industry !== "待补充" ? project.industry : null,
-    project.region?.trim() && project.region !== "待补充" ? project.region : null,
-  );
-
-  // 品牌提及率/推荐率 - 从 aiTestCount 推断是否有实测数据
-  const hasTestData = project.aiTestCount > 0;
-  const lastTestDate = project.lastDiagnosisAt
-    ? new Date(project.lastDiagnosisAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric" })
-    : null;
-
-  // 风险判断（轻量）
-  const risks: string[] = [];
-  if (stageLabel === "待建档") risks.push("建档未完成");
-  if (project.articleCount === 0 && stageLabel !== "待建档" && stageLabel !== "待诊断")
-    risks.push("无内容资产");
+  const mentionRateText =
+    project.t0BrandMentionRate != null ? formatBrandMentionRate(project.t0BrandMentionRate) : "--";
+  const industryLabel =
+    project.industry?.trim() && project.industry !== "待补充" ? project.industry.trim() : "未填写行业";
+  const lastMeasuredLabel = formatMeasuredAt(project.lastMeasuredAt ?? project.lastDiagnosisAt) ?? "暂无";
 
   return (
     <article
@@ -105,45 +99,36 @@ function ProjectCard({
       data-testid="client-project-card"
       onClick={() => onEnter(project.id)}
     >
-      {/* 顶部：企业名 + 阶段 */}
       <div className="mb-2 flex items-start justify-between gap-2">
         <h3 className="truncate text-[15px] font-semibold text-gray-900">{project.enterpriseName}</h3>
-        <span className={cn(stageBadgeClass(stageLabel), "shrink-0")}>{stageLabel}</span>
+        <span className={cn(stageBadgeClass(pipelineStep), "shrink-0")} data-testid="client-project-pipeline-step">
+          第 {pipelineStep} 步
+        </span>
       </div>
 
-      {/* 行业 / 地区 */}
-      <p className="mb-3 text-[13px] text-gray-500">{regionIndustry}</p>
-
-      {/* 指标区 */}
-      <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 px-3 py-2.5 sm:grid-cols-3">
-        <div>
-          <p className="text-xs font-medium text-gray-500">GEO 分</p>
-          <p className="text-sm font-bold tabular-nums text-gray-900">{geoScore}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-gray-500">提及率</p>
-          <p className="text-sm font-bold tabular-nums text-gray-900">{hasTestData ? "—" : "--"}</p>
-        </div>
-        <div className="hidden sm:block">
-          <p className="text-xs font-medium text-gray-500">推荐率</p>
-          <p className="text-sm font-bold tabular-nums text-gray-900">{hasTestData ? "—" : "--"}</p>
-        </div>
-      </div>
-
-      {/* 最近实测时间 */}
-      <p className="mb-2 text-[12px] text-gray-400">
-        最近实测：{lastTestDate ?? "暂无"}
+      <p className="mb-3 text-[13px] text-gray-500" data-testid="client-project-industry">
+        {industryLabel}
       </p>
 
-      {/* 风险 */}
-      {risks.length > 0 ? (
-        <div className="mb-2 flex items-center gap-1.5 text-[12px] text-amber-700">
-          <AlertTriangle className="h-3 w-3 shrink-0" />
-          <span>{risks.join("；")}</span>
+      <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 px-3 py-2.5">
+        <div>
+          <p className="text-xs font-medium text-gray-500">GEO 分</p>
+          <p className="text-sm font-bold tabular-nums text-gray-900" data-testid="client-project-geo-score">
+            {geoScore}
+          </p>
         </div>
-      ) : null}
+        <div>
+          <p className="text-xs font-medium text-gray-500">品牌提及率</p>
+          <p className="text-sm font-bold tabular-nums text-gray-900" data-testid="client-project-mention-rate">
+            {mentionRateText}
+          </p>
+        </div>
+      </div>
 
-      {/* 下一步动作 */}
+      <p className="mb-4 text-[12px] text-gray-400" data-testid="client-project-last-measured">
+        最近实测：{lastMeasuredLabel}
+      </p>
+
       <p className="mb-4 line-clamp-2 text-[13px] leading-relaxed text-gray-600">
         <span className="font-medium text-gray-400">下一步：</span>
         {nextStep}

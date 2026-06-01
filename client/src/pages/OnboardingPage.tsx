@@ -129,6 +129,26 @@ export default function OnboardingPage() {
   const [questionsGenerated, setQuestionsGenerated] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
+  useEffect(() => {
+    syncActiveProjectIdFromUrl();
+    const activeId = getActiveProjectId();
+    if (activeId) setProjectId(prev => prev ?? activeId);
+  }, []);
+
+  useEffect(() => {
+    if (!projectId || projects.length === 0) return;
+    const selected = projects.find(p => p.id === projectId);
+    if (!selected) return;
+    setForm(prev => ({
+      enterpriseName: prev.enterpriseName || selected.enterpriseName,
+      industry:
+        prev.industry ||
+        (selected.industry?.trim() && selected.industry !== "待补充" ? selected.industry : ""),
+      coreBusiness: prev.coreBusiness,
+      targetCustomer: prev.targetCustomer,
+    }));
+  }, [projectId, projects]);
+
   const createProject = trpc.geo.projects.create.useMutation();
   const upsertProfile = trpc.geo.assetLibrary.upsertProfile.useMutation();
   const generateTargetQuestions = trpc.geo.questions.generateTargetQuestions.useMutation();
