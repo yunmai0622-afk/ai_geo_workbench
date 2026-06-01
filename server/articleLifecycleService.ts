@@ -74,7 +74,7 @@ export async function appendArticleLifecycleEvent(
       lifecycleStatus: input.status,
       lifecycleEvents: events,
       ...(legacy ? { status: legacy as typeof article.status } : {}),
-      ...(input.status === "published" ? {} : {}),
+      ...(input.status === "published" ? { publishedAt: new Date() } : {}),
     })
     .where(eq(geoArticles.id, articleId));
 
@@ -152,7 +152,7 @@ export async function syncLifecycleFromAgentPublishTask(
       message = `已发布：${url}`;
       await db
         .update(geoArticles)
-        .set({ publicPath: url })
+        .set({ publicPath: url, publishedAt: new Date() })
         .where(eq(geoArticles.id, input.articleId));
       break;
     }

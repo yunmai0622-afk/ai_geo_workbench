@@ -130,6 +130,7 @@ import {
 import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
 import { calculateRetestComparison } from "./geoRetestCalculator";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
+import { computeContentTagStats, normalizeContentTags } from "@shared/geoArticleContentTags";
 import { resolveArticleListPublishFields } from "@shared/articlePublishPlatform";
 import {
   GEO_ENHANCEMENT_GOAL_OPTIONS,
@@ -3027,6 +3028,29 @@ const geoRouter = router({
           .where(and(eq(geoArticles.projectId, input.projectId), not(like(geoArticles.title, "%如何回答%"))));
         return computeContentTagStats(rows);
       }),
+    setContentReviewStatus: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          articleId: z.number().int().positive(),
+          status: z.enum(CONTENT_REVIEW_STATUSES),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        const article = rows[0];
+        if (!article || article.projectId !== input.projectId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+        }
+        await db
+          .update(geoArticles)
+          .set({ contentReviewStatus: input.status })
+          .where(eq(geoArticles.id, input.articleId));
+        const updated = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        return { success: true, article: updated[0] ?? null } as const;
+      }),
     contentQualityReview: protectedProcedure
       .input(
         z.object({
@@ -3982,6 +4006,7 @@ export const appRouter = router({
   geo: geoRouter,
   publishTasks: publishTasksRouter,
   notifications: systemNotificationsRouter,
+  feedback: userFeedbackRouter,
 });
 
 export type AppRouter = typeof appRouter;

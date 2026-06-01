@@ -3,6 +3,12 @@ import { GeoArticleQualityScoreDetailPopover } from "@/components/GeoArticleQual
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  CONTENT_REVIEW_STATUSES,
+  contentReviewStatusBadgeClass,
+  type ContentReviewStatus,
+} from "@shared/contentReviewStatus";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import { normalizeWeeklyPlatformKey } from "@/lib/weeklyPlatformBoard";
 import type { GeoQualityCardView } from "@shared/geoQualityScoreDisplay";
@@ -37,12 +43,15 @@ export type WeeklyArticleCardModel = {
   qualityOptimizationSuggestions?: string[];
   coverThumbnailSrc?: string | null;
   publishLink?: string | null;
+  publishedAtLabel?: string | null;
   strategySummary?: string | null;
   lifecycle?: ReturnType<typeof resolveArticleLifecycleView>;
   postPublish?: { pendingReview?: boolean; needsRewrite?: boolean };
   article: Record<string, unknown>;
   publishBlockHint?: string | null;
   publishNextActionLabel?: string | null;
+  contentReviewStatus: ContentReviewStatus;
+  contentTags?: string[] | null;
 };
 
 type Props = {
@@ -54,6 +63,7 @@ type Props = {
   onView: () => void;
   onRegenerate: () => void;
   onEnqueuePublish: () => void;
+  onContentReviewStatusChange?: (status: ContentReviewStatus) => void;
 };
 
 function articleBodyForCopy(article: Record<string, unknown>): string {
@@ -63,7 +73,17 @@ function articleBodyForCopy(article: Record<string, unknown>): string {
 }
 
 export function WeeklyPlatformArticleCard(props: Props) {
-  const { model, disabled, selectable, selected, onSelectedChange, onView, onRegenerate, onEnqueuePublish } = props;
+  const {
+    model,
+    disabled,
+    selectable,
+    selected,
+    onSelectedChange,
+    onView,
+    onRegenerate,
+    onEnqueuePublish,
+    onContentReviewStatusChange,
+  } = props;
   const platformLabel = model.targetPlatform?.trim() || "待指定平台";
   const platformKey = model.platformKey ?? normalizeWeeklyPlatformKey(model.targetPlatform);
   const contentTypeLabel = model.contentTypeLabel?.trim() || "未标注";
@@ -163,6 +183,18 @@ export function WeeklyPlatformArticleCard(props: Props) {
             <span className="text-xs text-gray-500" data-testid="weekly-card-content-type">{contentTypeLabel}</span>
           </div>
           <h3 className="mt-2 line-clamp-2 text-base font-semibold text-gray-900">{model.title}</h3>
+          {model.contentTags?.length ? (
+            <div className="mt-2 flex flex-wrap gap-1.5" data-testid="weekly-card-content-tags">
+              {model.contentTags.map(tag => (
+                <span
+                  key={tag}
+                  className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] text-violet-800"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
       {model.contentGoal ? <p className="mt-2 text-xs text-gray-600"><span className="font-medium text-gray-500">内容目标：</span>{model.contentGoal}</p> : null}
@@ -212,6 +244,11 @@ export function WeeklyPlatformArticleCard(props: Props) {
           </ul>
         </div>
       ) : null}
+      {model.publishedAtLabel ? (
+        <p className="mt-2 text-xs text-emerald-800" data-testid="weekly-card-published-at">
+          {model.publishedAtLabel}
+        </p>
+      ) : null}
       {model.publishLink ? (
         <p className="mt-2 text-xs text-gray-600"><span className="font-medium text-gray-500">发布链接：</span>
           <a href={model.publishLink} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline-offset-2 hover:underline" data-testid="weekly-card-publish-link">查看已发布内容</a>
@@ -219,6 +256,35 @@ export function WeeklyPlatformArticleCard(props: Props) {
       ) : null}
       {model.lifecycle ? <div className="mt-2"><ArticleLifecyclePanel articleId={model.id} article={model.article as Parameters<typeof ArticleLifecyclePanel>[0]["article"]} lifecycle={model.lifecycle} compact /></div> : null}
       {model.publishBlockHint ? <p className="mt-3 text-xs text-amber-800" data-testid="weekly-card-publish-readiness">{model.publishBlockHint}{model.publishNextActionLabel ? <span className="mt-1 block font-medium">下一步：{model.publishNextActionLabel}</span> : null}</p> : null}
+      <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="weekly-card-content-review">
+        <span className="text-xs font-medium text-gray-500">审核状态</span>
+        <span
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${contentReviewStatusBadgeClass(model.contentReviewStatus)}`}
+          data-testid="weekly-card-content-review-badge"
+        >
+          {model.contentReviewStatus}
+        </span>
+        <Select
+          value={model.contentReviewStatus}
+          disabled={disabled}
+          onValueChange={value => onContentReviewStatusChange?.(value as ContentReviewStatus)}
+        >
+          <SelectTrigger
+            className="h-8 w-[9.5rem] text-xs"
+            data-testid="weekly-card-content-review-status"
+            aria-label={`${model.title} 审核状态`}
+          >
+            <SelectValue placeholder="选择审核状态" />
+          </SelectTrigger>
+          <SelectContent>
+            {CONTENT_REVIEW_STATUSES.map(status => (
+              <SelectItem key={status} value={status} className="text-xs">
+                {status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {xiaohongshuMaterial ? (
         <XiaohongshuMaterialCard className="mt-3" material={xiaohongshuMaterial} disabled={disabled} />
       ) : null}

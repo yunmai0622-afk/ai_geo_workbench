@@ -33,6 +33,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
+import { markGeoArticlePublishedAt } from "./geoArticlePublishState";
 import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/schema";
 import { emitPublishFailedNotification, emitPublishSuccessNotification } from "./systemNotifications";
 import { retryFailedPublishTask } from "./publishTaskRetryService";
@@ -458,7 +459,7 @@ export const publishTasksRouter = router({
               needRetest: 1,
               notes: "浏览器插件自动发布完成",
             });
-            await db.update(geoArticles).set({ status: "已发布" }).where(eq(geoArticles.id, article.id));
+            await markGeoArticlePublishedAt(db, article.id);
           }
         }
         void emitPublishSuccessNotification(db, task.projectId, task.articleTitle, task.platform).catch((err: unknown) => {

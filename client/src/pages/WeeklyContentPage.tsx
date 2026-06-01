@@ -101,6 +101,11 @@ import {
   getPublishIdentityLabel,
   isAccountGroupType,
 } from "@shared/contentStrategy";
+import {
+  CONTENT_REVIEW_PENDING_ENQUEUE_HINT,
+  isContentReviewPending,
+  normalizeContentReviewStatus,
+} from "@shared/contentReviewStatus";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
 import { type resolveArticleLifecycleView } from "@shared/articleLifecycle";
@@ -149,6 +154,7 @@ import {
   formatArticlePublishedAtSentence,
   resolveArticlePublishedAtForDisplay,
 } from "@shared/articlePublishState";
+import { computeContentTagStats, normalizeContentTags } from "@shared/geoArticleContentTags";
 import {
   filterWeeklyContentCards,
   resolveArticleCoverPreviewSrc,
@@ -262,11 +268,13 @@ type ArticleRow = {
   publishedAt?: Date | string | null;
   lastPublishRecordAt?: Date | string | null;
   generationBasis?: Record<string, unknown> | null;
+  contentTags?: string[] | null;
   lifecycle?: ReturnType<typeof resolveArticleLifecycleView>;
   postPublish?: {
     pendingReview?: boolean;
     needsRewrite?: boolean;
   };
+  contentReviewStatus?: string | null;
 };
 
 function formatGeoQualitySummary(article: ArticleRow): string | null {
@@ -421,6 +429,13 @@ export default function WeeklyContentPage() {
   const createPublishTask = trpc.publishTasks.create.useMutation();
   const syncLocalAgentSnapshot = trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
   const updateGeneratedArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
+  const setContentReviewStatus = trpc.geo.articles.setContentReviewStatus.useMutation({
+    onSuccess: async () => {
+      await invalidateArticles();
+      toast.success("审核状态已更新");
+    },
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "更新审核状态失败")),
+  });
   const generateRewriteSuggestion = trpc.geo.articles.generateRewriteSuggestion.useMutation();
   const [suggestionDialog, setSuggestionDialog] = useState<{ open: boolean; text: string; articleTitle: string }>({
     open: false,
@@ -478,6 +493,7 @@ export default function WeeklyContentPage() {
   const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<ContentCardStatusFilter>("all");
+  const [filterContentTag, setFilterContentTag] = useState<string>("all");
   const [titleSearch, setTitleSearch] = useState("");
   const [sortQuality, setSortQuality] = useState<ContentCardQualitySort>("none");
   const [selectedCardIds, setSelectedCardIds] = useState<Set<number>>(() => new Set());
@@ -1125,6 +1141,8 @@ export default function WeeklyContentPage() {
             : null,
           lifecycle: a.lifecycle,
           postPublish: a.postPublish,
+          contentTags: normalizeContentTags(a.contentTags),
+          contentReviewStatus: normalizeContentReviewStatus(a.contentReviewStatus),
           article: a as Record<string, unknown>,
         };
       });
@@ -1145,9 +1163,12 @@ export default function WeeklyContentPage() {
       platform: filterPlatform,
       status: filterStatus,
       titleQuery: titleSearch,
+      contentTag: filterContentTag,
     });
     return sortWeeklyContentCardsByQuality(filtered, sortQuality);
-  }, [contentCardModels, filterPlatform, filterStatus, titleSearch, sortQuality]);
+  }, [contentCardModels, filterPlatform, filterStatus, filterContentTag, titleSearch, sortQuality]);
+
+  const contentTagStats = useMemo(() => computeContentTagStats(contentCardModels), [contentCardModels]);
 
   const averageQualityScore = useMemo(
     () => computeAverageGeoQualityScore(contentCardModels.map(card => card.qualityScore)),
@@ -1242,6 +1263,9 @@ export default function WeeklyContentPage() {
       toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
     } else if (article.geoQualityRecommendation === "revise") {
       toast.message("内容有优化空间，确认后可继续发布");
+    }
+    if (isContentReviewPending(article.contentReviewStatus)) {
+      toast.message(CONTENT_REVIEW_PENDING_ENQUEUE_HINT);
     }
     setPublishArticle(article);
     setManualPublishPlatform("");
@@ -1792,6 +1816,9 @@ export default function WeeklyContentPage() {
     if (articleNeedsCoverSaveHint(publishArticle)) {
       toast.message(ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE);
     }
+    if (isContentReviewPending(publishArticle.contentReviewStatus)) {
+      toast.message(CONTENT_REVIEW_PENDING_ENQUEUE_HINT);
+    }
     const articleId = publishArticle.id;
     const taskIds: number[] = [];
     try {
@@ -1830,6 +1857,7 @@ export default function WeeklyContentPage() {
     setBatchEnqueueBusy(true);
     let successCount = 0;
     let skippedCount = 0;
+    let pendingReviewEnqueuedCount = 0;
     const taskIdsByArticle = new Map<number, number[]>();
 
     try {
@@ -1900,6 +1928,9 @@ export default function WeeklyContentPage() {
             continue;
           }
           successCount += 1;
+          if (isContentReviewPending(article.contentReviewStatus)) {
+            pendingReviewEnqueuedCount += 1;
+          }
           const existing = taskIdsByArticle.get(articleId) ?? [];
           existing.push(res.taskId);
           taskIdsByArticle.set(articleId, existing);
@@ -1910,6 +1941,11 @@ export default function WeeklyContentPage() {
 
       if (successCount > 0) {
         toast.success(`已将 ${successCount} 篇内容加入发布队列`);
+        if (pendingReviewEnqueuedCount > 0) {
+          toast.message(
+            `${pendingReviewEnqueuedCount} 篇尚未标记为「已审核可发布」，${CONTENT_REVIEW_PENDING_ENQUEUE_HINT}`,
+          );
+        }
         notifyPublishEffectPrediction();
         setSelectedCardIds(new Set());
         for (const [articleId, taskIds] of Array.from(taskIdsByArticle.entries())) {
@@ -2179,8 +2215,49 @@ export default function WeeklyContentPage() {
                     <option value="desc">质检分从高到低</option>
                     <option value="asc">质检分从低到高</option>
                   </select>
+                  <label className="sr-only" htmlFor="weekly-filter-content-tag">
+                    按内容标签筛选
+                  </label>
+                  <select
+                    id="weekly-filter-content-tag"
+                    className={aiInput}
+                    value={filterContentTag}
+                    onChange={e => setFilterContentTag(e.target.value)}
+                    data-testid="weekly-filter-content-tag"
+                  >
+                    <option value="all">全部标签</option>
+                    {contentTagStats.map(row => (
+                      <option key={row.tag} value={row.tag}>
+                        {row.tag}（{row.count}）
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
+              {contentTagStats.length > 0 ? (
+                <div
+                  className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
+                  data-testid="weekly-content-tag-stats"
+                >
+                  <span className="font-medium text-gray-900">标签统计：</span>
+                  {contentTagStats.map(row => (
+                    <button
+                      key={row.tag}
+                      type="button"
+                      className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                        filterContentTag === row.tag
+                          ? "border-violet-600 bg-violet-600 text-white"
+                          : "border-gray-300 bg-white hover:border-violet-400"
+                      }`}
+                      onClick={() =>
+                        setFilterContentTag(prev => (prev === row.tag ? "all" : row.tag))
+                      }
+                    >
+                      {row.tag} · {row.count}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
                 <Button
                   type="button"
@@ -2214,7 +2291,9 @@ export default function WeeklyContentPage() {
               </div>
               {displayContentCards.length === 0 ? (
                 <p className="text-sm text-gray-500" data-testid="weekly-content-cards-empty">
-                  {titleSearch.trim() ? "未找到匹配内容" : "当前筛选条件下暂无内容"}
+                  {titleSearch.trim() || filterContentTag !== "all"
+                    ? "未找到匹配内容"
+                    : "当前筛选条件下暂无内容"}
                 </p>
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -2234,6 +2313,14 @@ export default function WeeklyContentPage() {
                           if (typeof topicId === "number") void generateOne(topicId);
                         }}
                         onEnqueuePublish={() => article && openPublishDialog(article)}
+                        onContentReviewStatusChange={status => {
+                          if (!selectedProjectId) return;
+                          setContentReviewStatus.mutate({
+                            projectId: selectedProjectId,
+                            articleId: model.id,
+                            status,
+                          });
+                        }}
                       />
                     );
                   })}
