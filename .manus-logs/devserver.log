@@ -3097,3 +3097,17 @@
 [2026-06-01T08:56:10.345Z] [Auth] Missing session cookie
 [2026-06-01T08:57:03.907Z] [Auth] Missing session cookie
 [2026-06-01T08:58:03.484Z] 4:58:03 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T09:20:21.224Z] 5:20:21 AM [vite] (client) hmr update /src/index.css, /src/pages/V12FlowPages.tsx
+[2026-06-01T09:20:21.225Z] 5:20:21 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T09:20:21.344Z] 5:20:21 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-06-01T09:20:28.402Z] cServer running on http://localhost:3000/
+[2026-06-01T09:20:54.080Z] Dev server process group stopped
+[2026-06-01T09:20:54.083Z] ELIFECYCLE  Command failed.
+[2026-06-01T09:20:54.160Z] Dev server exited with code -15
+[2026-06-01T09:20:57.112Z] Starting dev server with command: pnpm run dev
+[2026-06-01T09:20:57.906Z] 
+[2026-06-01T09:20:57.907Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-01T09:20:57.907Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-01T09:20:57.907Z] 
+[2026-06-01T09:21:04.730Z] Server running on http://localhost:3000/
+[2026-06-01T09:21:16.952Z] [Auth] Missing session cookie
