@@ -5,6 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerHealthRoute } from "../healthRoute";
+import { registerApiDocsRoute } from "../apiDocsRoute";
 import { registerLocalAgentAccountStatusRoute } from "../localAgentAccountStatusRoute";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
@@ -49,6 +50,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerHealthRoute(app);
+  registerApiDocsRoute(app);
   registerLocalAgentAccountStatusRoute(app);
   registerOAuthRoutes(app);
 
