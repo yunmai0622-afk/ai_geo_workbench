@@ -49,6 +49,10 @@ function profileHasBrand(profile: unknown): boolean {
   return typeof brandName === "string" && brandName.trim().length > 0;
 }
 
+function isAdminShellPath(pathname: string): boolean {
+  return pathname === "/admin/config" || pathname === "/admin/stats";
+}
+
 function PrivateRoutes() {
   return (
     <DashboardLayout>
@@ -57,6 +61,8 @@ function PrivateRoutes() {
         <Route path="/clients" component={ClientDashboardPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/admin/config" component={AdminConfigPage} />
+        <Route path="/admin/stats" component={AdminStatsPage} />
+        <Route path="/admin/stats" component={AdminStatsPage} />
         <Route path="/knowledge" component={KnowledgePage} />
         <Route path="/workspace" component={EnterpriseWorkspacePage} />
         <Route path="/">
@@ -126,7 +132,7 @@ function AuthenticatedAppShell() {
     Boolean(user) &&
     (projectsLoading || (Boolean(activeProjectId) && summaryQuery.isLoading));
 
-  if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && pathname !== "/admin/config") {
+  if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname)) {
     return (
       <DashboardLayout>
         <div className="flex min-h-[50vh] items-center justify-center text-gray-400">加载中...</div>
@@ -135,11 +141,11 @@ function AuthenticatedAppShell() {
   }
 
   // P0：/clients 为唯一新建/选项目入口；无项目时仍允许进入客户项目管理台空状态
-  if (user && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && pathname !== "/admin/config" && !pathname.startsWith("/legacy/")) {
+  if (user && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 
-  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && pathname !== "/admin/config" && !pathname.startsWith("/legacy/")) {
+  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 
@@ -153,7 +159,7 @@ function AuthenticatedAppShell() {
     pathname !== "/clients" &&
     pathname !== "/knowledge" &&
     pathname !== "/settings" &&
-    pathname !== "/admin/config" &&
+    !isAdminShellPath(pathname) &&
     !pathname.startsWith("/legacy/")
   ) {
     return <Redirect to={buildProjectUrl("/enterprise-profile", activeProjectId)} />;
