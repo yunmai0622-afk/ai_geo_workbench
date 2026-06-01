@@ -63,6 +63,24 @@ describe("Agent-3 multi-platform local publish", () => {
     expect(zhihu).toContain("save_timestamp_or_autosave_hint");
   });
 
+  it("baijiahao/sohu/toutiao publishers attempt publish with shared mp flow", () => {
+    for (const file of [
+      "local-agent/src/agent/platforms/baijiahaoPublisher.ts",
+      "local-agent/src/agent/platforms/sohuPublisher.ts",
+      "local-agent/src/agent/platforms/toutiaoPublisher.ts",
+    ]) {
+      const src = read(file);
+      expect(src).toContain("attemptPublishArticle");
+      expect(src).toContain("attemptMpPublishArticle");
+      expect(src).toContain("executeMpPublishTask");
+      expect(src).toContain("publish_article");
+    }
+    expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).toContain("skipCover: true");
+    expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).toContain(
+      "fillFirstSelectorInPageOrFrames",
+    );
+  });
+
   it("platform account matrix supports five binding platforms", () => {
     const ui =
       read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx") +

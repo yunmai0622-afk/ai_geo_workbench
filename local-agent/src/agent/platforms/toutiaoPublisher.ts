@@ -1,7 +1,57 @@
 import type { Page } from "playwright";
-import { BasePlatformPublisher } from "./basePublisher";
+import {
+  BasePlatformPublisher,
+  type LocalPublishResult,
+  type LocalPublishTask,
+} from "./basePublisher";
+import {
+  attemptMpPublishArticle,
+  executeMpPublishTask,
+  fillFirstSelectorInPageOrFrames,
+  type MpPublishArticleConfig,
+} from "./mpPublishExtensions";
 
 const SKIP = /头条|登录|注册|首页|logo|消息/i;
+
+/** 头条号发布按钮备选（主文档；iframe 内编辑器单独 fill） */
+export const TOUTIAO_PUBLISH_BUTTON_SELECTORS = [
+  'button:has-text("发布")',
+  '.publish-btn',
+  '[class*="publish-button"]',
+  '[class*="footer"] button:has-text("发布")',
+  'getByRole("button", { name: /^发布$|^发布文章$|^提交$/ })',
+] as const;
+
+function extractToutiaoPublicUrl(url: string): string | null {
+  const article =
+    url.match(/https?:\/\/www\.toutiao\.com\/article\/\d+/i) ??
+    url.match(/https?:\/\/www\.toutiao\.com\/item\/\d+/i) ??
+    url.match(/https?:\/\/m\.toutiao\.com\/article\/\d+/i);
+  return article ? article[0] : null;
+}
+
+const TOUTIAO_MP_CONFIG: MpPublishArticleConfig = {
+  platformTag: "toutiao",
+  publishButtonPattern: /^发布$|^发布文章$|^提交$/,
+  publishButtonSkip: /草稿|预览|取消|删除|保存|存草稿|定时/i,
+  toolbarSelectorHints: [
+    ".publish-footer",
+    '[class*="publish"]',
+    '[class*="footer"]',
+    "header",
+    '[class*="submit"]',
+  ],
+  confirmDialogText: /发布|确认|封面|原创/i,
+  confirmButtonPattern: /^确认发布$|^发布$|^发布文章$|^提交$|^确定$/,
+  successTextPattern: /发布成功|提交成功|文章已发布/,
+  publishErrorPattern:
+    /发布失败|请上传封面|请添加封面|缺少封面|内容不符合|违规|审核未通过|再试一次|操作失败/i,
+  extractPublicUrl: extractToutiaoPublicUrl,
+  skipCover: true,
+  softWritePageWarnings: true,
+  fillTitle: (page, title, selectors) => fillFirstSelectorInPageOrFrames(page, selectors, title),
+  fillContent: (page, content, selectors) => fillFirstSelectorInPageOrFrames(page, selectors, content),
+};
 
 export class ToutiaoPublisher extends BasePlatformPublisher {
   readonly platform = "toutiao" as const;
@@ -74,6 +124,26 @@ export class ToutiaoPublisher extends BasePlatformPublisher {
       return "头条发布页可能在 iframe 内，若无法自动填写请人工操作";
     }
     return null;
+  }
+
+  async attemptPublishArticle(page: Page) {
+    return attemptMpPublishArticle(page, TOUTIAO_MP_CONFIG);
+  }
+
+  override async publish(task: LocalPublishTask): Promise<LocalPublishResult> {
+    return executeMpPublishTask(
+      {
+        titleSelectors: this.titleSelectors(),
+        contentSelectors: this.contentSelectors(),
+        writeUrlReady: url => this.writeUrlReady(url),
+        detectAccount: page => this.detectAccount(page),
+        extraWritePageChecks: page => this.extraWritePageChecks(page),
+        attemptSaveDraft: page => this.attemptSaveDraft(page),
+        urls: this.urls,
+      },
+      task,
+      TOUTIAO_MP_CONFIG,
+    );
   }
 }
 
