@@ -108,6 +108,23 @@ function formatPublishTaskLogLine(entry, platformLabel) {
       if (status === "ok") return "✅ 草稿已保存";
       return "ℹ️ 草稿待人工确认";
 
+    case "click_publish_button":
+      if (status === "ok") return "✅ 点击发布";
+      return `⚠️ ${customerizeTaskError(message) || "未找到发布按钮"}`;
+
+    case "confirm_publish_dialog":
+      if (status === "ok") return "✅ 确认发布弹窗";
+      if (status === "skipped") return "ℹ️ 无发布确认弹窗";
+      return `⚠️ ${customerizeTaskError(message) || "确认发布失败"}`;
+
+    case "wait_publish_success":
+      if (status === "ok") return "✅ 发布成功";
+      return `⚠️ ${customerizeTaskError(message) || "等待发布成功超时"}`;
+
+    case "extract_public_url":
+      if (status === "ok") return "✅ 已获取公开链接";
+      return `⚠️ ${customerizeTaskError(message) || "未能提取公开链接"}`;
+
     case "publish_article":
       if (status === "ok") return "✅ 发布成功";
       return `⚠️ 发布失败${message ? `：${customerizeTaskError(message)}` : ""}`;

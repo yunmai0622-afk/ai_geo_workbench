@@ -21,6 +21,8 @@ describe("localAgentVersionCompare", () => {
     expect(isLocalAgentClientOutdated("1.0.14", "1.0.15")).toBe(true);
     expect(isLocalAgentClientOutdated("1.0.15", "1.0.15")).toBe(false);
     expect(isLocalAgentClientOutdated("1.0.16", "1.0.15")).toBe(false);
+    expect(isLocalAgentClientOutdated("1.0.15", "1.0.16")).toBe(true);
+    expect(compareLocalAgentSemver("1.0.16", "1.0.16")).toBe(0);
   });
 
   it("returns null for unparseable versions", () => {

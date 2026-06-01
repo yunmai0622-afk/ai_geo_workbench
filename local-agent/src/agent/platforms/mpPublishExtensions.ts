@@ -16,6 +16,22 @@ import {
   type PublishStepLog,
 } from "./basePublisher";
 
+export type MpPublishSubStep = {
+  step: string;
+  status: PublishStepLog["status"];
+  message?: string;
+};
+
+export function formatMpSelectorMiss(
+  platformTag: string,
+  fieldLabel: "标题" | "正文",
+  selectors: string[],
+): string {
+  const preview = selectors.slice(0, 6).join(" | ");
+  const suffix = selectors.length > 6 ? ` 等共 ${selectors.length} 个` : "";
+  return `[${platformTag}] 未找到${fieldLabel}输入（已尝试：${preview}${suffix}）`;
+}
+
 export type MpPublishArticleConfig = {
   platformTag: string;
   publishButtonPattern: RegExp;
@@ -105,12 +121,12 @@ export async function uploadPlatformCover(
   config: MpPublishArticleConfig,
 ): Promise<{ ok: boolean; message: string; selector?: string }> {
   if (config.skipCover) {
-    return { ok: false, message: "cover_skipped_by_platform" };
+    return { ok: false, message: `[${config.platformTag}] cover_skipped_by_platform` };
   }
 
   const resolved = await resolveCoverTempFile(task, config.platformTag);
   if (!resolved) {
-    return { ok: false, message: "no_cover_payload" };
+    return { ok: false, message: `[${config.platformTag}] no_cover_payload` };
   }
 
   const fileInputSelectors = config.coverFileInputSelectors ?? [
@@ -146,7 +162,10 @@ export async function uploadPlatformCover(
         /* next */
       }
     }
-    return { ok: false, message: "cover_input_not_found" };
+    return {
+      ok: false,
+      message: `[${config.platformTag}] cover_input_not_found（未找到 file input，已尝试 ${fileInputSelectors.length} 个选择器）`,
+    };
   } finally {
     resolved.cleanup();
   }
@@ -205,13 +224,18 @@ async function clickMpPublishButton(page: Page, config: MpPublishArticleConfig):
   return false;
 }
 
-async function confirmMpPublishDialogIfPresent(page: Page, config: MpPublishArticleConfig): Promise<void> {
+async function confirmMpPublishDialogIfPresent(
+  page: Page,
+  config: MpPublishArticleConfig,
+): Promise<{ clicked: boolean; message: string }> {
   const dialogFilter = config.confirmDialogText ?? /发布|确认|定时|原创/i;
   const dialog = page
     .locator('[role="dialog"], [class*="Modal"], [class*="modal"], [class*="dialog"]')
     .filter({ hasText: dialogFilter })
     .first();
-  if (!(await dialog.isVisible({ timeout: 3000 }).catch(() => false))) return;
+  if (!(await dialog.isVisible({ timeout: 3000 }).catch(() => false))) {
+    return { clicked: false, message: `[${config.platformTag}] 无发布确认弹窗` };
+  }
 
   const confirmPattern = config.confirmButtonPattern ?? /^确认发布$|^发布$|^立即发布$|^提交$|^确定$/;
   const confirm = dialog
@@ -221,7 +245,9 @@ async function confirmMpPublishDialogIfPresent(page: Page, config: MpPublishArti
   if (await confirm.isVisible({ timeout: 2000 }).catch(() => false)) {
     await confirm.click({ timeout: 5000 }).catch(() => undefined);
     await page.waitForTimeout(800);
+    return { clicked: true, message: `[${config.platformTag}] 已点击确认发布` };
   }
+  return { clicked: false, message: `[${config.platformTag}] 检测到弹窗但未找到确认按钮` };
 }
 
 async function waitForMpPublishSuccess(page: Page, config: MpPublishArticleConfig, timeoutMs = 18000): Promise<boolean> {
@@ -258,45 +284,87 @@ export async function attemptMpPublishArticle(
   publicUrl?: string;
   errorType?: string;
   message?: string;
+  subSteps: MpPublishSubStep[];
 }> {
+  const subSteps: MpPublishSubStep[] = [];
+  const tag = config.platformTag;
+
   await page.waitForTimeout(800);
 
   const clicked = await clickMpPublishButton(page, config);
   if (!clicked) {
+    const msg = `[${tag}] 未找到写作页「发布」按钮（pattern: ${String(config.publishButtonPattern)}）`;
+    subSteps.push({ step: "click_publish_button", status: "failed", message: msg });
     return {
       published: false,
       errorType: "publish_button_not_found",
-      message: `未找到${config.platformTag}写作页「发布」按钮（pattern: ${config.publishButtonPattern})`,
+      message: msg,
+      subSteps,
     };
   }
+  subSteps.push({ step: "click_publish_button", status: "ok", message: `[${tag}] 已点击发布` });
 
   await page.waitForTimeout(800);
-  await confirmMpPublishDialogIfPresent(page, config);
+  const confirm = await confirmMpPublishDialogIfPresent(page, config);
+  subSteps.push({
+    step: "confirm_publish_dialog",
+    status: confirm.clicked ? "ok" : "skipped",
+    message: confirm.message,
+  });
   await page.waitForTimeout(500);
 
   const successVisible = await waitForMpPublishSuccess(page, config, 18000);
   const body = await page.locator("body").innerText().catch(() => "");
+  const currentUrl = page.url();
 
   if (!successVisible) {
     if (config.publishErrorPattern.test(body)) {
+      const line = extractPublishErrorLine(body, config.publishErrorPattern).slice(0, 240);
+      const msg = `[${tag}] 平台返回：${line}`;
+      subSteps.push({ step: "wait_publish_success", status: "failed", message: msg });
       return {
         published: false,
         errorType: "publish_failed",
-        message: extractPublishErrorLine(body, config.publishErrorPattern).slice(0, 240),
+        message: msg,
+        subSteps,
       };
     }
-    const fallbackUrl = config.extractPublicUrl(page.url());
+    const fallbackUrl = config.extractPublicUrl(currentUrl);
     if (fallbackUrl) {
-      return { published: true, publicUrl: fallbackUrl, message: "url_redirect_without_success_hint" };
+      subSteps.push({
+        step: "wait_publish_success",
+        status: "ok",
+        message: `[${tag}] URL 已跳转但未检测到成功文案`,
+      });
+      subSteps.push({
+        step: "extract_public_url",
+        status: "ok",
+        message: fallbackUrl,
+      });
+      return {
+        published: true,
+        publicUrl: fallbackUrl,
+        message: `[${tag}] url_redirect_without_success_hint`,
+        subSteps,
+      };
     }
+    const msg = `[${tag}] 等待发布成功提示超时（18秒），当前 URL：${currentUrl.split("?")[0]}`;
+    subSteps.push({ step: "wait_publish_success", status: "failed", message: msg });
     return {
       published: false,
-      errorType: "publish_failed",
-      message: `等待${config.platformTag}发布成功提示超时（18秒）`,
+      errorType: "publish_timeout",
+      message: msg,
+      subSteps,
     };
   }
 
-  let publicUrl = config.extractPublicUrl(page.url());
+  subSteps.push({
+    step: "wait_publish_success",
+    status: "ok",
+    message: `[${tag}] 检测到发布成功提示`,
+  });
+
+  let publicUrl = config.extractPublicUrl(currentUrl);
   if (!publicUrl) {
     for (let i = 0; i < 8; i += 1) {
       await page.waitForTimeout(500);
@@ -306,21 +374,34 @@ export async function attemptMpPublishArticle(
   }
 
   if (!publicUrl && config.successTextPattern.test(body)) {
+    const msg = `[${tag}] 发布成功但未从 URL 提取公开链接（${page.url().split("?")[0]}）`;
+    subSteps.push({ step: "extract_public_url", status: "failed", message: msg });
     return {
       published: true,
-      message: "publish_success_without_public_url",
+      errorType: "public_url_missing",
+      message: msg,
+      subSteps,
     };
   }
 
   if (!publicUrl) {
+    const msg = `[${tag}] 发布成功提示已出现，但 URL 不符合公开链接规则：${page.url().split("?")[0]}`;
+    subSteps.push({ step: "extract_public_url", status: "failed", message: msg });
     return {
       published: false,
-      errorType: "publish_failed",
-      message: `${config.platformTag}发布成功提示已出现，但未能从 URL 提取公开链接`,
+      errorType: "public_url_extract_failed",
+      message: msg,
+      subSteps,
     };
   }
 
-  return { published: true, publicUrl, message: "publish_success" };
+  subSteps.push({ step: "extract_public_url", status: "ok", message: publicUrl });
+  return {
+    published: true,
+    publicUrl,
+    message: `[${tag}] publish_success`,
+    subSteps,
+  };
 }
 
 export async function fillFirstSelectorInPageOrFrames(
@@ -392,23 +473,30 @@ export async function executeMpPublishTask(
     await page.waitForTimeout(2000);
 
     if (isLoginUrl(page.url(), hooks.urls.loginUrlPattern)) {
-      logs.push(stepLog("detect_account", "failed", "未登录"));
+      const loginMsg = `[${mpConfig.platformTag}] 首页跳转登录页，会话已失效`;
+      logs.push(stepLog("detect_account", "failed", loginMsg));
       return {
         status: "session_expired",
         errorType: "login_required",
-        errorMessage: "未登录或会话已过期，请先打开登录窗口手动登录",
+        errorMessage: loginMsg,
         logs,
       };
     }
 
     const detected = await hooks.detectAccount(page);
-    logs.push(stepLog("detect_account", detected ? "ok" : "failed", detected ?? "未识别到昵称"));
+    logs.push(
+      stepLog(
+        "detect_account",
+        detected ? "ok" : "failed",
+        detected ?? `[${mpConfig.platformTag}] 未识别到昵称`,
+      ),
+    );
 
     if (!detected) {
       return {
         status: "failed",
         errorType: "account_unknown",
-        errorMessage: "无法识别当前登录账号",
+        errorMessage: `[${mpConfig.platformTag}] 无法识别当前登录账号，请确认已登录且后台首页可显示昵称`,
         logs,
       };
     }
@@ -447,11 +535,12 @@ export async function executeMpPublishTask(
     const writeUrl = page.url();
 
     if (isLoginUrl(writeUrl, hooks.urls.loginUrlPattern)) {
-      logs.push(stepLog("open_write", "failed", "跳转登录"));
+      const loginMsg = `[${mpConfig.platformTag}] 打开发布页时跳转登录`;
+      logs.push(stepLog("open_write", "failed", loginMsg));
       return {
         status: "session_expired",
         errorType: "login_required",
-        errorMessage: "发布页需要登录",
+        errorMessage: loginMsg,
         logs,
       };
     }
@@ -498,11 +587,12 @@ export async function executeMpPublishTask(
     const titleFill = mpConfig.fillTitle
       ? await mpConfig.fillTitle(page, task.title, hooks.titleSelectors)
       : await fillFirstSelector(page, hooks.titleSelectors, task.title);
+    const titleMiss = formatMpSelectorMiss(mpConfig.platformTag, "标题", hooks.titleSelectors);
     logs.push(
       stepLog(
         "fill_title",
         titleFill.ok ? "ok" : "failed",
-        titleFill.ok ? undefined : "未找到标题输入框",
+        titleFill.ok ? undefined : titleMiss,
         titleFill.selector,
       ),
     );
@@ -510,7 +600,7 @@ export async function executeMpPublishTask(
       return {
         status: "failed",
         errorType: "title_input_not_found",
-        errorMessage: "未找到标题输入框",
+        errorMessage: titleMiss,
         logs,
       };
     }
@@ -518,11 +608,12 @@ export async function executeMpPublishTask(
     const contentFill = mpConfig.fillContent
       ? await mpConfig.fillContent(page, task.content, hooks.contentSelectors)
       : await fillFirstSelector(page, hooks.contentSelectors, task.content);
+    const contentMiss = formatMpSelectorMiss(mpConfig.platformTag, "正文", hooks.contentSelectors);
     logs.push(
       stepLog(
         "fill_content",
         contentFill.ok ? "ok" : "failed",
-        contentFill.ok ? undefined : "未找到正文编辑器",
+        contentFill.ok ? undefined : contentMiss,
         contentFill.selector,
       ),
     );
@@ -530,7 +621,7 @@ export async function executeMpPublishTask(
       return {
         status: "failed",
         errorType: "content_input_not_found",
-        errorMessage: "未找到正文编辑器",
+        errorMessage: contentMiss,
         logs,
       };
     }
@@ -555,6 +646,9 @@ export async function executeMpPublishTask(
     }
 
     const publishResult = await attemptMpPublishArticle(page, mpConfig);
+    for (const sub of publishResult.subSteps) {
+      logs.push(stepLog(sub.step, sub.status, sub.message));
+    }
     logs.push(
       stepLog(
         "publish_article",
