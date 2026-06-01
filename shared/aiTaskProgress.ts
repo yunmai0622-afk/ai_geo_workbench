@@ -3,6 +3,8 @@
 export type AiTaskProgressStage = {
   percent: number;
   label: string;
+  /** 客户可见的步骤说明（内容生成等长任务） */
+  description?: string;
 };
 
 export const AI_DIAGNOSIS_PROGRESS_STAGES: AiTaskProgressStage[] = [
@@ -17,13 +19,36 @@ export const AI_DIAGNOSIS_PROGRESS_STAGES: AiTaskProgressStage[] = [
 ];
 
 export const PLATFORM_CONTENT_PROGRESS_STAGES: AiTaskProgressStage[] = [
-  { percent: 10, label: "读取企业资料与诊断结果" },
-  { percent: 25, label: "确认平台内容策略" },
-  { percent: 40, label: "生成标题与结构" },
-  { percent: 65, label: "生成正文内容" },
-  { percent: 80, label: "执行内容质检" },
-  { percent: 90, label: "保存内容记录" },
-  { percent: 100, label: "完成" },
+  {
+    percent: 10,
+    label: "准备企业资料",
+    description: "正在汇总企业档案、诊断结论与本轮内容策略，作为生成依据。",
+  },
+  {
+    percent: 30,
+    label: "生成文章结构",
+    description: "正在确定标题、段落结构与平台表达风格。",
+  },
+  {
+    percent: 60,
+    label: "生成正文内容",
+    description: "正在调用模型撰写正文，请保持页面打开。",
+  },
+  {
+    percent: 80,
+    label: "执行质量检测",
+    description: "正在检查内容完整性、可读性与重复风险。",
+  },
+  {
+    percent: 95,
+    label: "保存内容",
+    description: "正在保存到内容库并刷新列表。",
+  },
+  {
+    percent: 100,
+    label: "完成",
+    description: "内容已生成，可在下方卡片中查看与发布。",
+  },
 ];
 
 export const AI_DIAGNOSIS_PROGRESS_HINT_30S =
@@ -33,10 +58,12 @@ export const AI_DIAGNOSIS_PROGRESS_HINT_60S =
   "本次诊断耗时较长，可能是模型服务繁忙。你可以继续等待或稍后重试。";
 
 export const PLATFORM_CONTENT_PROGRESS_HINT_30S =
-  "内容生成需要调用模型，当前仍在处理，请稍候。";
+  "内容生成进行中，请保持页面打开，系统仍在处理。";
 
 export const PLATFORM_CONTENT_PROGRESS_HINT_60S =
-  "本次内容生成耗时较长，可能是模型服务繁忙。请继续等待或稍后重试。";
+  "本次生成耗时较长，可能是模型服务繁忙。你可以继续等待或稍后重试。";
+
+export const PLATFORM_CONTENT_PROGRESS_HINT_90S = "生成时间较长，请耐心等待...";
 
 export const AI_TASK_PROGRESS_KEEP_OPEN_HINT = "模型服务正在处理，请保持页面打开。";
 

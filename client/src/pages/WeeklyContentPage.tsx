@@ -77,6 +77,14 @@ import {
 } from "@shared/geoQualityStale";
 import { getPublishTimeSuggest } from "@shared/publishTimeSuggest";
 import {
+  formatPublishEnqueueAccountOptionLabel,
+  publishEnqueueLoginStatusLabel,
+  PUBLISH_ENQUEUE_RELOGIN_ACTION_LABEL,
+  PUBLISH_ENQUEUE_SESSION_EXPIRED_HINT,
+  readLastEnqueuePublishAccountId,
+  writeLastEnqueuePublishAccountId,
+} from "@shared/publishEnqueueAccountSelect";
+import {
   ACCOUNT_GROUP_MISMATCH_HINT,
   accountGroupsMismatch,
   formatArticleStrategySummary,
@@ -120,8 +128,7 @@ import {
   resolveGeoContentTaskSource,
 } from "@shared/geoContentTaskSource";
 import {
-  PLATFORM_CONTENT_PROGRESS_HINT_30S,
-  PLATFORM_CONTENT_PROGRESS_HINT_60S,
+  PLATFORM_CONTENT_PROGRESS_HINT_90S,
   PLATFORM_CONTENT_PROGRESS_STAGES,
   type AiTaskProgressErrorCategory,
 } from "@shared/aiTaskProgress";
@@ -172,6 +179,7 @@ type PlatformAccountItem = {
   localAgentId: string | null;
   localProfileId: string | null;
   sessionStatus: string | null;
+  lastLoginAt?: Date | string | null;
   verificationStatus: string;
 };
 
@@ -544,16 +552,44 @@ export default function WeeklyContentPage() {
     [getAllEnabledAccountsForPlatform],
   );
 
-  const pickPublishAccount = useCallback(
+  const getEnqueueSelectableAccountsForPlatform = useCallback(
+    (slug: string) =>
+      getAllEnabledAccountsForPlatform(slug).filter(a => a.isEnabled && Boolean(a.accountName?.trim())),
+    [getAllEnabledAccountsForPlatform],
+  );
+
+  const pickSelectedPublishAccount = useCallback(
     (slug: string): PlatformAccountItem | null => {
-      const ready = getPublishReadyAccountsForPlatform(slug);
-      if (ready.length === 0) return null;
+      const selectable = getEnqueueSelectableAccountsForPlatform(slug);
+      if (selectable.length === 0) return null;
       const selectedId = selectedPublishAccountIds[slug];
-      if (selectedId) return ready.find(a => a.id === selectedId) ?? null;
+      if (selectedId) return selectable.find(a => a.id === selectedId) ?? null;
+      const ready = selectable.filter(isPublishReadyAccount);
       if (ready.length === 1) return ready[0]!;
       return null;
     },
-    [getPublishReadyAccountsForPlatform, selectedPublishAccountIds],
+    [getEnqueueSelectableAccountsForPlatform, selectedPublishAccountIds],
+  );
+
+  const pickPublishAccount = useCallback(
+    (slug: string): PlatformAccountItem | null => {
+      const selected = pickSelectedPublishAccount(slug);
+      if (selected && isPublishReadyAccount(selected)) return selected;
+      const ready = getPublishReadyAccountsForPlatform(slug);
+      if (ready.length === 0) return null;
+      if (ready.length === 1) return ready[0]!;
+      return null;
+    },
+    [pickSelectedPublishAccount, getPublishReadyAccountsForPlatform],
+  );
+
+  const rememberEnqueuePublishAccount = useCallback(
+    (slug: string, accountId: number) => {
+      if (!selectedProjectId) return;
+      writeLastEnqueuePublishAccountId(selectedProjectId, slug, accountId);
+      setSelectedPublishAccountIds(prev => ({ ...prev, [slug]: accountId }));
+    },
+    [selectedProjectId],
   );
 
   const publishAccountGroupWarnings = useMemo(() => {
@@ -563,7 +599,7 @@ export default function WeeklyContentPage() {
     const recLabel = getAccountGroupLabel(publishArticle.recommendedAccountGroup);
     const out: Array<{ slug: string; platformLabel: string; message: string }> = [];
     for (const slug of Array.from(selectedPlatforms)) {
-      const row = pickPublishAccount(slug);
+      const row = pickSelectedPublishAccount(slug);
       if (!row) continue;
       if (!accountGroupsMismatch(publishArticle.recommendedAccountGroup, row.accountGroup)) continue;
       const boundLabel = getAccountGroupLabel(row.accountGroup) || "未设置账号组";
@@ -574,7 +610,7 @@ export default function WeeklyContentPage() {
       });
     }
     return out;
-  }, [publishArticle, selectedPlatforms, pickPublishAccount]);
+  }, [publishArticle, selectedPlatforms, pickSelectedPublishAccount]);
 
   const tasks = (tasksQuery.data ?? []) as TaskRow[];
   const analyses = (analysisQuery.data ?? []) as AnalysisRow[];
@@ -1185,7 +1221,12 @@ export default function WeeklyContentPage() {
         ? resolved.publishQueueSlug
         : null;
     setSelectedPlatforms(publishSlug ? new Set([publishSlug]) : new Set());
-    setSelectedPublishAccountIds({});
+    const restoredAccounts: Record<string, number> = {};
+    if (selectedProjectId && publishSlug) {
+      const lastId = readLastEnqueuePublishAccountId(selectedProjectId, publishSlug);
+      if (lastId != null) restoredAccounts[publishSlug] = lastId;
+    }
+    setSelectedPublishAccountIds(restoredAccounts);
     publishDialogPlatformsInitRef.current = true;
     void hydratePublishDialogAgent({ syncToWeb: false });
     setPublishDialogOpen(true);
@@ -1285,7 +1326,7 @@ export default function WeeklyContentPage() {
         toast.error(msg);
         return;
       }
-      platformContentProgress.setStage(90);
+      platformContentProgress.setStage(95);
       platformContentProgress.complete();
       if (result.userNotice) {
         toast.message(result.userNotice);
@@ -1450,7 +1491,7 @@ export default function WeeklyContentPage() {
       if (adding && isBindingPublishPlatform(slug)) {
         const ready = getPublishReadyAccountsForPlatform(slug);
         if (ready.length === 1) {
-          setSelectedPublishAccountIds(p => ({ ...p, [slug]: ready[0]!.id }));
+          rememberEnqueuePublishAccount(slug, ready[0]!.id);
         }
       }
       return next;
@@ -1559,8 +1600,13 @@ export default function WeeklyContentPage() {
     const pickPublishAccountFresh = (slug: string): PlatformAccountItem | null => {
       const ready = getReadyAccountsFresh(slug);
       if (ready.length === 0) return null;
-      const selectedId = selectedPublishAccountIds[slug];
-      if (selectedId) return ready.find(a => a.id === selectedId) ?? null;
+      const stored =
+        selectedProjectId != null ? readLastEnqueuePublishAccountId(selectedProjectId, slug) : null;
+      const preferredId = selectedPublishAccountIds[slug] ?? stored;
+      if (preferredId) {
+        const found = ready.find(a => a.id === preferredId);
+        if (found) return found;
+      }
       if (ready.length === 1) return ready[0]!;
       return null;
     };
@@ -1604,6 +1650,7 @@ export default function WeeklyContentPage() {
           platformAccountId: picked.id,
         });
         taskIds.push(res.taskId);
+        rememberEnqueuePublishAccount(slug, picked.id);
         if (res.publishMode !== "local_agent") {
           toast.error("发布任务未走本地客户端，请联系交付同学检查配置");
           return;
@@ -1641,6 +1688,11 @@ export default function WeeklyContentPage() {
       const pickPublishAccountFresh = (slug: string): PlatformAccountItem | null => {
         const ready = getReadyAccountsFresh(slug);
         if (ready.length === 0) return null;
+        const stored = readLastEnqueuePublishAccountId(selectedProjectId, slug);
+        if (stored) {
+          const found = ready.find(a => a.id === stored);
+          if (found) return found;
+        }
         if (ready.length === 1) return ready[0]!;
         return null;
       };
@@ -1778,6 +1830,28 @@ export default function WeeklyContentPage() {
     }
   }, [publishDialogOpen, publishDialogSlug]);
 
+  useEffect(() => {
+    if (!publishDialogOpen || !publishDialogSlug || !selectedProjectId) return;
+    const selectable = getEnqueueSelectableAccountsForPlatform(publishDialogSlug);
+    if (selectable.length === 0) return;
+    setSelectedPublishAccountIds(prev => {
+      if (prev[publishDialogSlug]) return prev;
+      const stored = readLastEnqueuePublishAccountId(selectedProjectId, publishDialogSlug);
+      if (stored && selectable.some(a => a.id === stored)) {
+        return { ...prev, [publishDialogSlug]: stored };
+      }
+      const ready = selectable.filter(isPublishReadyAccount);
+      if (ready.length === 1) return { ...prev, [publishDialogSlug]: ready[0]!.id };
+      return prev;
+    });
+  }, [
+    publishDialogOpen,
+    publishDialogSlug,
+    selectedProjectId,
+    getEnqueueSelectableAccountsForPlatform,
+    platformAccountGroups,
+  ]);
+
   return (
     <div className="space-y-8 pb-12" data-testid="weekly-platform-content-page">
       <header className="space-y-4">
@@ -1850,10 +1924,10 @@ export default function WeeklyContentPage() {
               testId="platform-content-progress"
               title={`正在生成${activePlatformProgressLabel}内容`}
               stepLabel={platformContentProgress.stepLabel}
+              stepDescription={platformContentProgress.stepDescription}
               percent={platformContentProgress.percent}
               elapsedSec={platformContentProgress.elapsedSec}
-              hint30s={PLATFORM_CONTENT_PROGRESS_HINT_30S}
-              hint60s={PLATFORM_CONTENT_PROGRESS_HINT_60S}
+              hint90s={PLATFORM_CONTENT_PROGRESS_HINT_90S}
               status={
                 platformContentProgress.isFailed
                   ? "failed"
@@ -2167,22 +2241,27 @@ export default function WeeklyContentPage() {
                 ) : null}
                 {publishDialogSlug && isBindingPublishPlatform(publishDialogSlug) ? (
                   (() => {
-                    const rows = getPublishReadyAccountsForPlatform(publishDialogSlug);
-                    const picked = pickPublishAccount(publishDialogSlug);
+                    const selectable = getEnqueueSelectableAccountsForPlatform(publishDialogSlug);
+                    const picked = pickSelectedPublishAccount(publishDialogSlug);
                     const localEntry = publishDialogAccountSnapshot.find(
                       e => e.platform === publishDialogSlug && e.loginStatus === "valid",
                     );
-                    if (rows.length === 0 && !localEntry) return null;
+                    if (selectable.length === 0 && !localEntry) return null;
                     const accountNameLabel =
                       picked?.accountName ??
-                      rows[0]?.accountName ??
+                      selectable[0]?.accountName ??
                       (localEntry?.displayNameVerified && localEntry.displayName
                         ? localEntry.displayName
                         : LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME);
+                    const statusLabel = picked
+                      ? publishEnqueueLoginStatusLabel(picked.sessionStatus)
+                      : selectable[0]
+                        ? publishEnqueueLoginStatusLabel(selectable[0].sessionStatus)
+                        : "有效";
                     return (
                       <p className="text-xs text-gray-600" data-testid="publish-dialog-account-status">
-                        账号状态：已绑定
-                        <span className="ml-2">账号名称：{accountNameLabel}</span>
+                        账号名称：{accountNameLabel}
+                        <span className="ml-2">登录状态：{statusLabel}</span>
                       </p>
                     );
                   })()

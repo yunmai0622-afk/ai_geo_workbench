@@ -9,10 +9,12 @@ export type AiTaskProgressCardProps = {
   testId?: string;
   title: string;
   stepLabel: string;
+  stepDescription?: string;
   percent: number;
   elapsedSec: number;
   hint30s?: string;
   hint60s?: string;
+  hint90s?: string;
   status: "running" | "success" | "failed";
   errorCategory?: AiTaskProgressErrorCategory;
   errorMessage?: string;
@@ -22,20 +24,24 @@ export function AiTaskProgressCard({
   testId = "ai-task-progress-card",
   title,
   stepLabel,
+  stepDescription,
   percent,
   elapsedSec,
   hint30s,
   hint60s,
+  hint90s,
   status,
   errorCategory,
   errorMessage,
 }: AiTaskProgressCardProps) {
   const timedHint =
-    status === "running" && elapsedSec >= 60 && hint60s
-      ? hint60s
-      : status === "running" && elapsedSec >= 30 && hint30s
-        ? hint30s
-        : null;
+    status === "running" && elapsedSec >= 90 && hint90s
+      ? hint90s
+      : status === "running" && elapsedSec >= 60 && hint60s
+        ? hint60s
+        : status === "running" && elapsedSec >= 30 && hint30s
+          ? hint30s
+          : null;
 
   const failure =
     status === "failed" && errorCategory
@@ -62,6 +68,11 @@ export function AiTaskProgressCard({
         <p data-testid={`${testId}-step`}>
           当前步骤：<span className="font-medium text-gray-900">{stepLabel}</span>
         </p>
+        {stepDescription ? (
+          <p className="text-gray-600" data-testid={`${testId}-step-description`}>
+            {stepDescription}
+          </p>
+        ) : null}
         <p data-testid={`${testId}-percent`}>进度：{percent}%</p>
         <p data-testid={`${testId}-elapsed`}>已耗时：{elapsedSec} 秒</p>
       </div>

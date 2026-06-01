@@ -18,6 +18,7 @@ export function useAiTaskStagedProgress({ stages, maxIncompletePercent = AI_TASK
   const [status, setStatus] = useState<AiTaskStagedProgressStatus>("idle");
   const [percent, setPercent] = useState(0);
   const [stepLabel, setStepLabel] = useState("");
+  const [stepDescription, setStepDescription] = useState("");
   const [elapsedSec, setElapsedSec] = useState(0);
   const startedAtRef = useRef<number | null>(null);
   const manualStageRef = useRef<AiTaskProgressStage | null>(null);
@@ -27,6 +28,7 @@ export function useAiTaskStagedProgress({ stages, maxIncompletePercent = AI_TASK
     setStatus("idle");
     setPercent(0);
     setStepLabel("");
+    setStepDescription("");
     setElapsedSec(0);
     startedAtRef.current = null;
     manualStageRef.current = null;
@@ -41,6 +43,7 @@ export function useAiTaskStagedProgress({ stages, maxIncompletePercent = AI_TASK
     setStatus("running");
     setPercent(first?.percent ?? 10);
     setStepLabel(first?.label ?? "");
+    setStepDescription(first?.description ?? "");
     setElapsedSec(0);
   }, [stages, maxIncompletePercent]);
 
@@ -52,6 +55,7 @@ export function useAiTaskStagedProgress({ stages, maxIncompletePercent = AI_TASK
       const stage: AiTaskProgressStage = {
         percent: targetPercent,
         label: label ?? match?.label ?? stepLabel,
+        description: match?.description,
       };
       manualStageRef.current = stage;
       const capped =
@@ -60,6 +64,7 @@ export function useAiTaskStagedProgress({ stages, maxIncompletePercent = AI_TASK
           : clampIncompleteProgressPercent(stage.percent, optimisticCapRef.current);
       setPercent(capped);
       setStepLabel(stage.label);
+      setStepDescription(stage.description ?? match?.description ?? "");
     },
     [stages, status, stepLabel],
   );
@@ -74,6 +79,7 @@ export function useAiTaskStagedProgress({ stages, maxIncompletePercent = AI_TASK
     setStatus("success");
     setPercent(100);
     setStepLabel(done.label);
+    setStepDescription(done.description ?? "");
   }, [stages]);
 
   const fail = useCallback(() => {
@@ -90,9 +96,12 @@ export function useAiTaskStagedProgress({ stages, maxIncompletePercent = AI_TASK
         const manualCap = clampIncompleteProgressPercent(manual.percent, optimisticCapRef.current);
         const timed = pickTimedOptimisticStage(stages, elapsedMs, optimisticCapRef.current);
         const nextPercent = Math.max(manualCap, timed.percent);
-        const nextLabel = nextPercent > manualCap ? timed.label : manual.label;
+        const useTimed = nextPercent > manualCap;
+        const nextLabel = useTimed ? timed.label : manual.label;
+        const nextDescription = useTimed ? (timed.description ?? "") : (manual.description ?? "");
         setPercent(clampIncompleteProgressPercent(nextPercent, optimisticCapRef.current));
         setStepLabel(nextLabel);
+        setStepDescription(nextDescription);
       }
     };
     tick();
@@ -104,6 +113,7 @@ export function useAiTaskStagedProgress({ stages, maxIncompletePercent = AI_TASK
     status,
     percent,
     stepLabel,
+    stepDescription,
     elapsedSec,
     start,
     reset,

@@ -54,6 +54,8 @@ describe("GEO AI task progress P0 static", () => {
     expect(card).toContain("已耗时");
     expect(card).toContain("hint30s");
     expect(card).toContain("hint60s");
+    expect(card).toContain("hint90s");
+    expect(card).toContain("step-description");
     expect(card).toContain("data-elapsed-sec");
   });
 });
