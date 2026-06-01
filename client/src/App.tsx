@@ -24,6 +24,7 @@ import WeeklyContentPage from "./pages/WeeklyContentPage";
 import ProgressPage from "./pages/ProgressPage";
 import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
+import EffectiveActionsPage from "./pages/EffectiveActionsPage";
 import RegisterPage from "./pages/RegisterPage";
 
 function profileHasBrand(profile: unknown): boolean {
@@ -61,6 +62,7 @@ function PrivateRoutes() {
         <Route path="/inclusion-monitoring" component={InclusionMonitoringFlowPage} />
         <Route path="/geo/evidence/:monitoringId/:resultIndex" component={AiSearchEvidencePage} />
         <Route path="/delivery-reports" component={DeliveryReportsFlowPage} />
+        <Route path="/effective-actions" component={EffectiveActionsPage} />
         <Route path="/projects" component={ProjectsPage} />
         <Route path="/assets" component={AssetCenterPage} />
         <Route path="/diagnosis" component={AiDiagnosisFlowPage} />

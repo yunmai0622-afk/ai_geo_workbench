@@ -28,7 +28,7 @@ import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Brain, Building2, FileBarChart2, FileText, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
+import { BarChart3, Brain, Building2, ClipboardList, FileBarChart2, FileText, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -126,6 +126,13 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "生成客户可读的增长交付报告",
         path: "/delivery-reports",
         aliases: ["/delivery-reports", "/reports"],
+      },
+      {
+        icon: ClipboardList,
+        label: "有效动作",
+        desc: "记录和查看已执行动作的效果判断",
+        path: "/effective-actions",
+        aliases: ["/effective-actions"],
       },
     ],
   },
