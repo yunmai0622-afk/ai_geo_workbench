@@ -1,6 +1,7 @@
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
+import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformStatusOverview";
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
@@ -554,6 +555,10 @@ export function ContentPublishingCenterPage() {
         message="发布前请确保本地客户端已启动并连接"
         data-testid="first-use-hint-content-publishing"
       />
+
+      {selectedProjectId ? (
+        <PlatformStatusOverview projectId={selectedProjectId} />
+      ) : null}
 
       <PostPublishReminderCard
         visible={showPostPublishReminder}
