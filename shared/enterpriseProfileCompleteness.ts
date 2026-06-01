@@ -132,7 +132,6 @@ const GEO_FEATURE_PATH_PREFIXES = [
   "/responses",
   "/analysis",
   "/scores",
-  "/tasks",
   "/projects",
   "/flow",
 ];

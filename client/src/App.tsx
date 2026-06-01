@@ -20,7 +20,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { GeoIntroModal } from "./components/GeoIntroModal";
 import { UserFeedbackFab } from "./components/UserFeedbackFab";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
+import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage } from "./pages/GeoPages";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
 import AssetCenterPage from "./pages/AssetCenter";
 import DemoGeoPage from "./pages/DemoGeo";
@@ -101,7 +101,9 @@ function PrivateRoutes() {
         <Route path="/responses" component={ResponsesPage} />
         <Route path="/analysis" component={AnalysisPage} />
         <Route path="/scores" component={ScoresPage} />
-        <Route path="/tasks" component={TasksPage} />
+        <Route path="/tasks">
+          <Redirect to="/weekly" />
+        </Route>
         <Route path="/reports" component={DeliveryReportsFlowPage} />
         <Route path="/articles">
           <Redirect to="/weekly" />

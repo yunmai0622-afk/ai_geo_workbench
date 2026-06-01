@@ -26,6 +26,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       "平台化内容资产",
       "平台适配发布",
       "收录监测",
+      "资产进展",
       "交付报告",
     ]) {
       expect(layoutSource).toContain(`label: "${label}"`);
@@ -41,6 +42,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(appSource).toContain("WeeklyContentPage");
     expect(appSource).toContain('path="/articles"');
     expect(appSource).toMatch(/path="\/articles"[\s\S]*Redirect to="\/weekly"/);
+    expect(appSource).toMatch(/path="\/tasks"[\s\S]*Redirect to="\/weekly"/);
     expect(appSource).toContain("ProgressPage");
     expect(appSource).toContain("OnboardingPage");
     expect(appSource).toContain('path="/weekly"');

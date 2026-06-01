@@ -25,7 +25,7 @@ import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
-import { BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
+import { BarChart3, BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -35,7 +35,13 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { SystemAnnouncementBanner } from "./SystemAnnouncementBanner";
 import { Button } from "./ui/button";
 
-const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients", "/knowledge", "/settings", "/admin/config"]);
+const PATHS_WITHOUT_PROJECT_SHELL = new Set([
+  "/clients",
+  "/knowledge",
+  "/settings",
+  "/admin/config",
+  "/admin/stats",
+]);
 
 type MenuItem = {
   icon: typeof Sparkles;
@@ -126,6 +132,13 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "检查内容是否被 AI 平台收录和引用",
         path: "/inclusion-monitoring",
         aliases: ["/inclusion-monitoring", "/monitoring"],
+      },
+      {
+        icon: BarChart3,
+        label: "资产进展",
+        desc: "查看内容漏斗与发布实测进展",
+        path: "/progress",
+        aliases: ["/progress"],
       },
     ],
   },
