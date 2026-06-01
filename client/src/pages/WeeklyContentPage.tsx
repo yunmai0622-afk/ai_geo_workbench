@@ -2251,17 +2251,6 @@ export default function WeeklyContentPage() {
                     {getPublishTimeSuggest(publishDialogSlug)}
                   </p>
                 ) : null}
-                <div
-                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900"
-                  data-testid="publish-effect-prediction"
-                >
-                  <p className="font-medium text-emerald-950">发布后效果预期</p>
-                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-emerald-900">
-                    {PUBLISH_EFFECT_PREDICTION_LINES.map(line => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                </div>
                 {publishDialogSlug && isBindingPublishPlatform(publishDialogSlug) ? (
                   (() => {
                     const selectable = getEnqueueSelectableAccountsForPlatform(publishDialogSlug);
@@ -2323,6 +2312,17 @@ export default function WeeklyContentPage() {
                 </select>
               </div>
             )}
+            <div
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900"
+              data-testid="publish-effect-prediction"
+            >
+              <p className="font-medium text-emerald-950">发布后效果预期</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-emerald-900">
+                {PUBLISH_EFFECT_PREDICTION_LINES.map(line => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
             {publishDialogSlug ? (
               PUBLISH_QUEUE_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
               const selectableAccounts = isBindingPublishPlatform(p.slug)
