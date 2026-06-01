@@ -22,6 +22,7 @@ import {
 } from "./geoAiMentionCheck";
 import { enrichAnswerAnalysis } from "./geoAiMentionEvidence";
 import type { DbConn } from "./projectAccess";
+import { emitT0CompleteNotification } from "./systemNotifications";
 
 export type T0RunTask = {
   questionId: number;
@@ -372,6 +373,10 @@ export async function runT0ExecutionBackground(
       .update(testRounds)
       .set({ status: finalStatus, finishedAt })
       .where(eq(testRounds.id, roundId));
+
+    if (finalStatus === "completed") {
+      void emitT0CompleteNotification(db, round.projectId, round.roundName).catch(err => console.warn("[notifications] T0 failed", roundId, err));
+    }
 
     return {
       roundId,

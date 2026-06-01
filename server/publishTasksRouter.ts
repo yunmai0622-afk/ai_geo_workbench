@@ -34,6 +34,7 @@ import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/p
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/schema";
+import { emitPublishFailedNotification, emitPublishSuccessNotification } from "./systemNotifications";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -430,6 +431,11 @@ export const publishTasksRouter = router({
         }
       }
 
+        void emitPublishSuccessNotification(db, task.projectId, task.articleTitle, task.platform).catch(console.warn);
+      }
+      if (input.status === "failed") {
+        void emitPublishFailedNotification(db, task.projectId, task.articleTitle, input.errorMessage ?? null).catch(console.warn);
+      }
       return { ok: true } as const;
     }),
 

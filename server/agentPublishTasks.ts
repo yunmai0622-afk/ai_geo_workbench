@@ -5,6 +5,7 @@ import { publishTasks } from "../drizzle/schema";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { syncArticleLifecycleFromAgentTask } from "./agentArticleLifecycle";
 import { requireDbConn } from "./projectPlatformAccounts";
+import { emitPublishFailedNotification, emitPublishSuccessNotification } from "./systemNotifications";
 
 type DbConn = Awaited<ReturnType<typeof requireDbConn>>;
 
@@ -162,6 +163,9 @@ export async function reportAgentTaskResult(
     publishedUrl,
     errorMessage: input.errorMessage,
   });
+
+  if (input.status === "completed") void emitPublishSuccessNotification(db, task.projectId, task.articleTitle, task.platform).catch(console.warn);
+  else if (input.status === "failed") void emitPublishFailedNotification(db, task.projectId, task.articleTitle, input.errorMessage ?? null).catch(console.warn);
 
   return {
     ok: true,

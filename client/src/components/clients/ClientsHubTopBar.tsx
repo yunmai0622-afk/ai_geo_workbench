@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ChevronDown, LogOut } from "lucide-react";
 
 /**
@@ -32,8 +33,9 @@ export function ClientsHubTopBar() {
         </div>
       </div>
 
-      {/* 右侧：用户信息 */}
-      <DropdownMenu>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
@@ -58,6 +60,7 @@ export function ClientsHubTopBar() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }

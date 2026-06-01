@@ -840,6 +840,18 @@ export const effectiveActions = mysqlTable("effective_actions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** GEO V1.1：用户系统通知 */
+export const systemNotificationTypeEnum = mysqlEnum("notificationType", ["t0_complete","publish_success","publish_failed","t1_retest_complete"]);
+export const systemNotifications = mysqlTable("system_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  projectId: int("projectId"),
+  type: systemNotificationTypeEnum.notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Project = typeof projects.$inferSelect;
@@ -900,3 +912,5 @@ export type RetestComparison = typeof retestComparisons.$inferSelect;
 export type InsertRetestComparison = typeof retestComparisons.$inferInsert;
 export type EffectiveAction = typeof effectiveActions.$inferSelect;
 export type InsertEffectiveAction = typeof effectiveActions.$inferInsert;
+export type SystemNotification = typeof systemNotifications.$inferSelect;
+export type InsertSystemNotification = typeof systemNotifications.$inferInsert;

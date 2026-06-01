@@ -27,6 +27,7 @@ import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
+import { systemNotificationsRouter } from "./systemNotificationsRouter";
 
 import {
   aiResponses,
@@ -106,6 +107,7 @@ import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
+import { emitT1RetestCompleteNotification } from "./systemNotifications";
 import {
   getQuestionTemplateById,
   listQuestionTemplates,
@@ -3230,6 +3232,9 @@ ${article.markdownContent}`,
           startedAt: input.startedAt ? new Date(input.startedAt) : null,
           finishedAt: input.finishedAt ? new Date(input.finishedAt) : null,
         });
+        if (input.roundType === "T1_RETEST" && input.status === "completed") {
+          void emitT1RetestCompleteNotification(db, input.projectId, input.roundName).catch(err => console.warn("[notifications] T1 failed", id, err));
+        }
         return { success: true, id } as const;
       }),
     list: protectedProcedure
@@ -3638,6 +3643,7 @@ export const appRouter = router({
   }),
   geo: geoRouter,
   publishTasks: publishTasksRouter,
+  notifications: systemNotificationsRouter,
 });
 
 export type AppRouter = typeof appRouter;
