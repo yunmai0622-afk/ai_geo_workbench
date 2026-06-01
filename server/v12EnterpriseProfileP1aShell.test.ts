@@ -10,10 +10,13 @@ describe("GEO-V1-UI-P1-A Profile-Shell-Compatibility", () => {
   const asset = read("client/src/pages/AssetCenter.tsx");
   const profileUi = readEnterpriseProfileUi();
   const basic = read("client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx");
+  const completenessHeader = read("client/src/components/enterpriseProfile/ProfileCompletenessHeader.tsx");
 
   it("5 分钟建档首屏与主按钮", () => {
     expect(profileUi).toContain("品牌资产建档");
-    expect(asset).toContain("建档完成度");
+    expect(asset).toContain("ProfileCompletenessHeader");
+    expect(completenessHeader).toContain("企业资料完整度");
+    expect(completenessHeader).toContain("资料完整");
     expect(asset).toContain("ProfileAiUnderstandingPreview");
     expect(asset).toContain("save-profile-start-diagnosis");
     expect(asset).toContain("保存并开始 AI 实测诊断");

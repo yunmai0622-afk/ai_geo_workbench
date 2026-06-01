@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ENTERPRISE_INDUSTRY_OPTIONS } from "@shared/enterpriseProfileIndustry";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
+import type { ProfileCompletenessFieldKey } from "@shared/enterpriseProfileCompleteness";
 
 export type FiveMinuteBasicValues = {
   brandName: string;
@@ -24,6 +25,7 @@ type Props = {
   onKeywordDraftChange: (v: string) => void;
   onAddKeyword: () => void;
   onRemoveKeyword: (k: string) => void;
+  missingFieldKeys?: ProfileCompletenessFieldKey[];
 };
 
 const inputClass =
@@ -34,19 +36,31 @@ function Field({
   hint,
   required,
   testId,
+  highlightMissing,
   children,
 }: {
   label: string;
   hint?: string;
   required?: boolean;
   testId: string;
+  highlightMissing?: boolean;
   children: ReactNode;
 }) {
   return (
-    <label className="block space-y-1.5 text-sm" data-testid={testId}>
+    <label
+      className={cn(
+        "block space-y-1.5 rounded-lg text-sm transition-colors",
+        highlightMissing && "border border-amber-300 bg-amber-50/80 p-3 ring-1 ring-amber-200",
+      )}
+      data-testid={testId}
+      data-missing={highlightMissing ? "true" : undefined}
+    >
       <span className="font-medium text-gray-800">
         {label}
         {required ? <span className="ml-1 text-amber-600">*</span> : null}
+        {highlightMissing ? (
+          <span className="ml-2 text-[11px] font-normal text-amber-700">待填写</span>
+        ) : null}
       </span>
       {hint ? <span className="block text-[12px] leading-snug text-gray-400">{hint}</span> : null}
       {children}
@@ -62,8 +76,10 @@ export function FiveMinuteBasicOnboardingSection({
   onKeywordDraftChange,
   onAddKeyword,
   onRemoveKeyword,
+  missingFieldKeys = [],
 }: Props) {
   const set = (key: keyof FiveMinuteBasicValues, v: string) => onChange({ [key]: v });
+  const isMissing = (key: ProfileCompletenessFieldKey) => missingFieldKeys.includes(key);
 
   return (
     <div className="geo-card p-6" data-testid="five-minute-basic-onboarding" id="profile-basic-five-min">
@@ -75,10 +91,10 @@ export function FiveMinuteBasicOnboardingSection({
       <div className="mt-6 space-y-5">
         {/* Row 1 */}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="企业名称" hint="AI 识别品牌的第一依据" required testId="p0-field-brand-name">
+          <Field label="企业名称" hint="AI 识别品牌的第一依据" required testId="p0-field-brand-name" highlightMissing={isMissing("brandName")}>
             <Input className={inputClass} value={values.brandName} onChange={e => set("brandName", e.target.value)} placeholder="如：海豚知道" />
           </Field>
-          <Field label="所属行业" hint="帮助 AI 匹配行业场景" required testId="p0-field-industry">
+          <Field label="所属行业" hint="帮助 AI 匹配行业场景" required testId="p0-field-industry" highlightMissing={isMissing("industry")}>
             <select
               className={cn(inputClass, "w-full rounded-lg border px-3")}
               value={values.industrySelect}
@@ -94,13 +110,13 @@ export function FiveMinuteBasicOnboardingSection({
         </div>
 
         {values.industrySelect === "其他" ? (
-          <Field label="自定义行业" required testId="p0-field-industry-custom">
+          <Field label="自定义行业" required testId="p0-field-industry-custom" highlightMissing={isMissing("industry")}>
             <Input className={inputClass} value={values.industryCustom} onChange={e => set("industryCustom", e.target.value)} placeholder="请输入行业名称" />
           </Field>
         ) : null}
 
         {/* Row 2 */}
-        <Field label="一句话介绍" hint="AI 回答用户问题时引用的核心描述" required testId="p0-field-one-liner">
+        <Field label="一句话介绍" hint="AI 回答用户问题时引用的核心描述" required testId="p0-field-one-liner" highlightMissing={isMissing("oneLiner")}>
           <Input
             className={inputClass}
             value={values.oneLiner}
@@ -111,17 +127,17 @@ export function FiveMinuteBasicOnboardingSection({
 
         {/* Row 3 */}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="核心产品 / 服务" hint="AI 推荐时会引用的产品描述" required testId="p0-field-product">
+          <Field label="核心产品 / 服务" hint="AI 推荐时会引用的产品描述" required testId="p0-field-product" highlightMissing={isMissing("productDesc")}>
             <Input className={inputClass} value={values.productDesc} onChange={e => set("productDesc", e.target.value)} placeholder="如：企业级 AI 搜索优化 SaaS" />
           </Field>
-          <Field label="目标客户" hint="AI 判断推荐场景的依据" required testId="p0-field-target-customer">
+          <Field label="目标客户" hint="AI 判断推荐场景的依据" required testId="p0-field-target-customer" highlightMissing={isMissing("targetCustomer")}>
             <Input className={inputClass} value={values.targetCustomer} onChange={e => set("targetCustomer", e.target.value)} placeholder="如：中小型 B2B 企业" />
           </Field>
         </div>
 
         {/* Row 4 */}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="主要解决的问题" hint="客户最常遇到的痛点" required testId="p0-field-primary-pain">
+          <Field label="主要解决的问题" hint="客户最常遇到的痛点" required testId="p0-field-primary-pain" highlightMissing={isMissing("primaryPain")}>
             <Input
               className={inputClass}
               value={values.primaryPain}
@@ -129,7 +145,7 @@ export function FiveMinuteBasicOnboardingSection({
               placeholder="如：品牌在 AI 搜索中不可见"
             />
           </Field>
-          <Field label="核心优势" hint="相比同行，客户为什么选你" required testId="p0-field-core-advantage">
+          <Field label="核心优势" hint="相比同行，客户为什么选你" required testId="p0-field-core-advantage" highlightMissing={isMissing("coreAdvantage")}>
             <Input
               className={inputClass}
               value={values.coreAdvantage}
@@ -140,8 +156,14 @@ export function FiveMinuteBasicOnboardingSection({
         </div>
 
         {/* Keywords */}
-        <div data-testid="p0-field-keywords">
-          <Field label="希望被 AI 推荐的关键词" hint="用户搜索这些词时，AI 应该提到你" required testId="p0-field-keywords-label">
+        <div
+          data-testid="p0-field-keywords"
+          className={cn(
+            isMissing("keywords") && "rounded-lg border border-amber-300 bg-amber-50/80 p-3 ring-1 ring-amber-200",
+          )}
+          data-missing={isMissing("keywords") ? "true" : undefined}
+        >
+          <Field label="希望被 AI 推荐的关键词" hint="用户搜索这些词时，AI 应该提到你" required testId="p0-field-keywords-label" highlightMissing={isMissing("keywords")}>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               {keywords.map(k => (
                 <span

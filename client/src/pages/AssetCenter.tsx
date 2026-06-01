@@ -31,7 +31,9 @@ import {
 import { toUserFacingErrorFromUnknown, toUserFacingQueryError } from "@shared/userFacingErrors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ProfileCompletenessHeader } from "@/components/enterpriseProfile/ProfileCompletenessHeader";
+import { evaluateEnterpriseProfileCompletenessFromForm } from "@shared/enterpriseProfileCompleteness";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SummaryLike = {
@@ -587,29 +589,29 @@ export default function AssetCenterPage() {
     setObjectionDraft("");
   }
 
-  const completionPercent = useMemo(() => {
-    const checks = [
-      brandName.trim().length > 0,
-      industryTagValue.trim().length > 0,
-      oneLiner.trim().length > 0,
-      productDesc.trim().length > 0,
-      targetCustomer.trim().length > 0,
-      customerPains.some(p => p.trim().length > 0),
-      keyPoints.some(k => k.trim().length > 0),
-      keywords.length > 0,
-    ];
-    const done = checks.filter(Boolean).length;
-    return Math.round((done / checks.length) * 100);
-  }, [
-    brandName,
-    industryTagValue,
-    oneLiner,
-    productDesc,
-    targetCustomer,
-    customerPains,
-    keyPoints,
-    keywords,
-  ]);
+  const profileCompleteness = useMemo(
+    () =>
+      evaluateEnterpriseProfileCompletenessFromForm({
+        brandName,
+        industryTagValue,
+        oneLiner,
+        productDesc,
+        targetCustomer,
+        customerPains,
+        keyPoints,
+        keywords,
+      }),
+    [
+      brandName,
+      industryTagValue,
+      oneLiner,
+      productDesc,
+      targetCustomer,
+      customerPains,
+      keyPoints,
+      keywords,
+    ],
+  );
 
   const computeProfileSectionStatuses = useMemo(() => {
     const brandDone =
@@ -796,30 +798,7 @@ export default function AssetCenterPage() {
             </TabsList>
 
             <TabsContent value="profile" className="mt-6 space-y-6">
-          {/* ═══ 建档完成度 ═══ */}
-          <div className="geo-card p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-700">建档完成度</p>
-                <p className="text-[12px] text-gray-400">基于 8 项核心建档字段计算</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full bg-blue-600 transition-all"
-                    style={{ width: `${completionPercent}%` }}
-                  />
-                </div>
-                <span className="text-lg font-bold tabular-nums text-gray-900">{completionPercent}%</span>
-              </div>
-            </div>
-            {completionPercent === 100 ? (
-              <div className="mt-3 flex items-center gap-2 text-[13px] text-emerald-700">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>核心信息已完整，可保存并开始 AI 实测诊断</span>
-              </div>
-            ) : null}
-          </div>
+          <ProfileCompletenessHeader completeness={profileCompleteness} />
 
           {/* ═══ 主体两栏：左核心字段 + 右 AI 预览 ═══ */}
           <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
@@ -833,6 +812,7 @@ export default function AssetCenterPage() {
                 onKeywordDraftChange={setKeywordDraft}
                 onAddKeyword={addKeyword}
                 onRemoveKeyword={removeKeyword}
+                missingFieldKeys={profileCompleteness.missingKeys}
               />
 
               {aiFilledFields.size > 0 ? (

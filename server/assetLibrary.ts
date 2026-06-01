@@ -1,3 +1,5 @@
+import { evaluateEnterpriseProfileCompletenessFromProfile } from "@shared/enterpriseProfileCompleteness";
+
 export const assetSourceTypes = [
   "企业基础资料",
   "产品服务资料",
@@ -59,40 +61,7 @@ export function summarizeTextToStructuredSummary(text: string | undefined | null
 }
 
 export function calculateProfileCompletionScore(profile: EnterpriseProfileLike | null | undefined): number {
-  if (!profile) return 0;
-  const requiredFields = [
-    "enterpriseName",
-    "shortName",
-    "officialWebsite",
-    "industry",
-    "region",
-    "productServiceIntro",
-    "targetCustomers",
-    "coreSellingPoints",
-    "servicePriceRange",
-    "serviceModel",
-    "fitCustomers",
-    "unfitCustomers",
-    "salesChannels",
-    "commonQuestions",
-    "purchaseDecisionFactors",
-    "productIntro",
-    "featureNotes",
-    "serviceProcess",
-    "deliveryPlan",
-    "afterSalesService",
-    "competitorDifference",
-    "priceExplanation",
-    "salesTalkTracks",
-    "commonObjections",
-  ];
-  const filled = requiredFields.filter(field => {
-    const value = profile[field];
-    if (Array.isArray(value)) return value.length > 0;
-    if (value === null || value === undefined) return false;
-    return String(value).trim().length > 0;
-  }).length;
-  return Math.round((filled / requiredFields.length) * 100);
+  return evaluateEnterpriseProfileCompletenessFromProfile(profile).percent;
 }
 
 export function assertNoPlainCredentialKeys(input: Record<string, unknown>) {

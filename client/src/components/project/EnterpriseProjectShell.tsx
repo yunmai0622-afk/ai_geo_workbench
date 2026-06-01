@@ -7,6 +7,7 @@ import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
 import { useEffect, useMemo, useState } from "react";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
+import { ProfileCompletenessLowHint } from "@/components/enterpriseProfile/ProfileCompletenessLowHint";
 import { ProjectNextActionPanel } from "./ProjectNextActionPanel";
 import { ProjectWorkspaceTopBar } from "./ProjectWorkspaceTopBar";
 
@@ -76,6 +77,7 @@ export function EnterpriseProjectShell({ children }: Props) {
         projectId={selectedProjectId}
         loading={summaryQuery.isLoading && Boolean(selectedProjectId)}
       />
+      <ProfileCompletenessLowHint projectId={selectedProjectId ?? null} className="mt-4" />
       {/* 三栏：左导航(DashboardLayout) + 中间主内容 + 右侧面板(300px固定) */}
       <div className="flex gap-6 pt-6">
         <div className="min-w-0 flex-1">{children}</div>
