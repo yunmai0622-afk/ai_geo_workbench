@@ -12,6 +12,7 @@ import { monitoringEvidenceRows } from "@/lib/assetProgressDisplay";
 import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
@@ -76,6 +77,7 @@ export default function V1WorkbenchOverview() {
   }, []);
 
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
+  const scoreTrendQuery = trpc.geo.scores.recent.useQuery(projectInput, { enabled });
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
   const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
@@ -85,6 +87,14 @@ export default function V1WorkbenchOverview() {
   const articles = (articlesQuery.data ?? []) as ArticleRow[];
   const publishRecords = (publishRecordsQuery.data ?? []) as PublishRecordRow[];
   const latestScore = scoreQuery.data as GeoScoreRow | null | undefined;
+  const scoreTrendPoints = useMemo(
+    () =>
+      ((scoreTrendQuery.data ?? []) as GeoScoreRow[]).map(row => ({
+        totalScore: row.totalScore,
+        createdAt: row.createdAt ?? new Date(0),
+      })),
+    [scoreTrendQuery.data],
+  );
   const monitoring = monitoringQuery.data ?? [];
 
   const aiTestAggregate = useMemo(
@@ -113,6 +123,7 @@ export default function V1WorkbenchOverview() {
     projectsLoading ||
     (enabled &&
       (scoreQuery.isLoading ||
+        scoreTrendQuery.isLoading ||
         tasksQuery.isLoading ||
         articlesQuery.isLoading ||
         publishRecordsQuery.isLoading ||
@@ -152,6 +163,16 @@ export default function V1WorkbenchOverview() {
             <AiMetricCard label="本周新增资产" value={weeklyAssetText} hint="本周生成 + 已登记发布" accent="amber" />
           </div>
         )}
+      </AiSection>
+
+      <AiSection title="GEO 分数趋势" description="最近 5 次内容诊断评分变化（按记录时间从早到晚）。">
+        <div className="ai-glass-panel p-4">
+          <GeoScoreTrendChart
+            points={scoreTrendPoints}
+            loading={enabled && scoreTrendQuery.isLoading}
+            variant="dark"
+          />
+        </div>
       </AiSection>
 
       <AiSection title="下一步动作" description="按优先级推进，把诊断结论转化为可发布资产。">

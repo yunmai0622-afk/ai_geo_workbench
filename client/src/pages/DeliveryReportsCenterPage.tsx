@@ -1,6 +1,7 @@
+import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
 import { RetestComparisonPanel } from "@/components/RetestComparisonPanel";
-import { FileText } from "lucide-react";
+import { FileText, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,11 +15,7 @@ import {
   NO_PUBLIC_LINK_HINT,
   visibilityScoreDisplay,
 } from "@/lib/deliveryReportProductDisplay";
-import {
-  buildNextActionLines,
-  mapPublishRecordsToItems,
-  resolveDeliveryReportVisibilityScore,
-} from "@/lib/deliveryReportDisplay";
+import { mapPublishRecordsToItems, resolveDeliveryReportVisibilityScore } from "@/lib/deliveryReportDisplay";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
@@ -30,7 +27,8 @@ import {
 import { resolveT0T1ComparisonRows } from "@shared/retestComparisonDisplay";
 import { downloadDeliveryReportCsv } from "@/lib/geoDataExportDownload";
 import type { DetectionQuestionExportRow } from "@shared/geoDataExport";
-import { useMemo, useRef } from "react";
+import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -59,6 +57,7 @@ export function DeliveryReportsCenterPage() {
   const shareLinkBusy = createShareLink.isPending || disableShareLink.isPending || regenerateShareLink.isPending;
 
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
+  const scoreTrendQuery = trpc.geo.scores.recent.useQuery(projectInput, { enabled });
   const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
   const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
@@ -83,8 +82,18 @@ export function DeliveryReportsCenterPage() {
   );
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
 
+  const scoreTrendPoints = useMemo(
+    () =>
+      (scoreTrendQuery.data ?? []).map(row => ({
+        totalScore: row.totalScore,
+        createdAt: row.createdAt,
+      })),
+    [scoreTrendQuery.data],
+  );
+
   const loading =
     scoreQuery.isLoading ||
+    scoreTrendQuery.isLoading ||
     analysisQuery.isLoading ||
     articlesQuery.isLoading ||
     publishRecordsQuery.isLoading ||
@@ -376,6 +385,12 @@ export function DeliveryReportsCenterPage() {
           <p className={geoP0Surfaces.sectionTitle}>一句话经营结论</p>
           <p className="mt-2 text-sm leading-relaxed text-gray-800">{reportMeta.conclusionLine}</p>
         </P0Card>
+
+        <P0Section title="GEO 分数趋势" description="最近 5 次内容诊断评分变化，便于对照交付周期内的提升。">
+          <P0Card testId="delivery-report-score-trend">
+            <GeoScoreTrendChart points={scoreTrendPoints} loading={loading} variant="light" />
+          </P0Card>
+        </P0Section>
 
         <section data-testid="delivery-report-core-metrics">
           <h2 className={`mb-3 ${geoP0Surfaces.sectionTitle}`}>核心指标</h2>
