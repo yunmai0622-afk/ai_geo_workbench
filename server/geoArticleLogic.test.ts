@@ -272,7 +272,7 @@ describe("P1.1 GEO article generation", () => {
     expect(canPublishArticle("审核通过")).toBe(true);
     expect(Object.keys(draft.thirdPartyMaterials)).toEqual(["GEO 内容页版", "官网版", "公众号长文版", "知乎回答版", "小红书笔记版", "百家号/头条号版"]);
     expect(draft.thirdPartyMaterials["GEO 内容页版"]).toContain("## 问题与背景");
-    expect(draft.thirdPartyMaterials["公众号长文版"]).toContain("## 正文");
+    expect(draft.thirdPartyMaterials["公众号长文版"]).toContain("【正文】");
     expect(draft.thirdPartyMaterials["知乎回答版"]).toContain("可摘取的短回答");
     expect(draft.thirdPartyMaterials["小红书笔记版"]).toContain("【笔记标题】");
     expect(draft.thirdPartyMaterials["小红书笔记版"]).toContain("【正文】");

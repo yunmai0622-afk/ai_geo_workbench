@@ -17,7 +17,10 @@ import {
   isArticleAssetDraftDirty,
   type ArticleAssetDraftSnapshot,
 } from "@shared/articleAssetDraft";
+import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
+import { resolveWechatMaterial } from "@shared/wechatMaterial";
+import { WechatMaterialCard } from "@/components/weekly/WechatMaterialCard";
 import {
   ACCOUNT_GROUP_OPTIONS,
   CONTENT_ASSET_TYPE_OPTIONS,
@@ -38,7 +41,6 @@ import {
   type ArticleCoverTemplateId,
 } from "@shared/articleCoverTemplate";
 import { XiaohongshuMaterialCard } from "@/components/weekly/XiaohongshuMaterialCard";
-import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import { resolveXiaohongshuMaterial } from "@shared/xiaohongshuMaterial";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -129,14 +131,19 @@ export function ArticleAssetEditorSheet({
   const [bodyCopied, setBodyCopied] = useState(false);
   const bodyCopyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  const publishPlatformResolved = useMemo(
+    () =>
+      article
+        ? getArticlePublishPlatform({
+            targetPlatform: article.targetPlatform,
+            publishPlatform: article.publishPlatform,
+            generationBasis: article.generationBasis ?? null,
+          })
+        : null,
+    [article],
+  );
   const xiaohongshuMaterial = useMemo(() => {
-    if (!article) return null;
-    const platform = getArticlePublishPlatform({
-      generationBasis: article.generationBasis ?? null,
-      targetPlatform: article.targetPlatform,
-      publishPlatform: article.publishPlatform,
-    });
-    if (platform.slug !== "xiaohongshu") return null;
+    if (!article || publishPlatformResolved?.slug !== "xiaohongshu") return null;
     const materials = article.thirdPartyMaterials ?? {};
     const ps = article.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
     const keywords = Array.isArray(ps?.targetAiPlatforms)
@@ -148,7 +155,17 @@ export function ArticleAssetEditorSheet({
       markdownContent: content,
       keywords,
     });
-  }, [article, content, title]);
+  }, [article, content, title, publishPlatformResolved?.slug]);
+  const wechatMaterial = useMemo(() => {
+    if (!article || publishPlatformResolved?.slug !== "wechat") return null;
+    const materials = article.thirdPartyMaterials ?? {};
+    return resolveWechatMaterial({
+      materialText: materials["公众号长文版"],
+      title: title || article.title,
+      markdownContent: content,
+      generationBasis: article.generationBasis ?? null,
+    });
+  }, [article, content, title, publishPlatformResolved?.slug]);
 
   const buildQualityInitial = useCallback((a: EditableArticleAsset): GeoQualityInitialState => ({
     score: a.geoQualityScore,
@@ -432,19 +449,25 @@ export function ArticleAssetEditorSheet({
             <XiaohongshuMaterialCard material={xiaohongshuMaterial} disabled={isSaving || updateArticle.isPending} />
           ) : null}
 
+          {wechatMaterial ? (
+            <WechatMaterialCard material={wechatMaterial} disabled={isSaving || updateArticle.isPending} />
+          ) : null}
+
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Label htmlFor="asset-content">文章正文</Label>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="border-gray-200 text-gray-700"
-                data-testid="article-copy-body-button"
-                onClick={() => void copyBodyToClipboard()}
-              >
-                {bodyCopied ? "已复制" : "一键复制正文"}
-              </Button>
+              {publishPlatformResolved?.slug !== "wechat" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-gray-200 text-gray-700"
+                  data-testid="article-copy-body-button"
+                  onClick={() => void copyBodyToClipboard()}
+                >
+                  {bodyCopied ? "已复制" : "一键复制正文"}
+                </Button>
+              ) : null}
             </div>
             <textarea
               id="asset-content"
