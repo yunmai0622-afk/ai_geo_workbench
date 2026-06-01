@@ -26,6 +26,7 @@ import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
 import EffectiveActionsPage from "./pages/EffectiveActionsPage";
 import QuestionsLibraryPage from "./pages/QuestionsLibraryPage";
+import KnowledgePage from "./pages/KnowledgePage";
 import RegisterPage from "./pages/RegisterPage";
 
 function profileHasBrand(profile: unknown): boolean {
@@ -39,6 +40,7 @@ function PrivateRoutes() {
     <DashboardLayout>
       <Switch>
         <Route path="/clients" component={ClientDashboardPage} />
+        <Route path="/knowledge" component={KnowledgePage} />
         <Route path="/workspace" component={EnterpriseWorkspacePage} />
         <Route path="/">
           <Redirect to="/clients" />
@@ -105,7 +107,7 @@ function AuthenticatedAppShell() {
     Boolean(user) &&
     (projectsLoading || (Boolean(activeProjectId) && summaryQuery.isLoading));
 
-  if (profileLoading && pathname !== "/clients") {
+  if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge") {
     return (
       <DashboardLayout>
         <div className="flex min-h-[50vh] items-center justify-center text-gray-400">加载中...</div>
@@ -114,11 +116,11 @@ function AuthenticatedAppShell() {
   }
 
   // P0：/clients 为唯一新建/选项目入口；无项目时仍允许进入客户项目管理台空状态
-  if (user && projects.length === 0 && pathname !== "/clients" && !pathname.startsWith("/legacy/")) {
+  if (user && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 
-  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && !pathname.startsWith("/legacy/")) {
+  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 
@@ -130,6 +132,7 @@ function AuthenticatedAppShell() {
     !hasBrand &&
     pathname !== "/enterprise-profile" &&
     pathname !== "/clients" &&
+    pathname !== "/knowledge" &&
     !pathname.startsWith("/legacy/")
   ) {
     return <Redirect to={buildProjectUrl("/enterprise-profile", activeProjectId)} />;

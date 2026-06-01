@@ -19,16 +19,13 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl, isLoginConfigured } from "@/const";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import LoginGatePanel from "@/components/auth/LoginGatePanel";
 import { Link } from "wouter";
-import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Brain, Building2, ClipboardList, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
+import { BarChart3, BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -37,7 +34,7 @@ import { EnterpriseProjectShell } from "./project/EnterpriseProjectShell";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients"]);
+const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients", "/knowledge"]);
 
 type MenuItem = {
   icon: typeof Sparkles;
@@ -162,24 +159,6 @@ export default function DashboardLayout({
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
   const { loading, user } = useAuth();
-  const utils = trpc.useUtils();
-  const devLogin = trpc.auth.devLogin.useMutation({
-    onSuccess: async () => {
-      await utils.auth.me.invalidate();
-      window.location.reload();
-    },
-  });
-  const [emailLogin, setEmailLogin] = useState({ email: "", password: "" });
-  const [emailLoginError, setEmailLoginError] = useState<string | null>(null);
-  const loginWithEmail = trpc.auth.loginWithEmail.useMutation({
-    onSuccess: async () => {
-      await utils.auth.me.invalidate();
-      window.location.href = "/clients";
-    },
-    onError: err => {
-      setEmailLoginError(toUserFacingErrorFromUnknown(err, "登录失败，请稍后重试"));
-    },
-  });
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
