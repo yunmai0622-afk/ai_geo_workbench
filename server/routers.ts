@@ -104,6 +104,7 @@ import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
+import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
 import { calculateRetestComparison } from "./geoRetestCalculator";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import { resolveArticleListPublishFields } from "@shared/articlePublishPlatform";
@@ -1724,8 +1725,48 @@ const geoRouter = router({
           totalScore: r.totalScore,
         })),
       });
-      return row;
+
+      const t0Metrics = await resolveLatestT0AiTestRunMetrics(db, input.projectId);
+      if (!t0Metrics) return row;
+
+      const analyses = await db
+        .select()
+        .from(analysisResults)
+        .where(eq(analysisResults.projectId, input.projectId));
+      try {
+        const effectiveScore = calculateGeoScore(resolveEffectiveAnalysisResults(analyses), t0Metrics);
+        if (row) {
+          return {
+            ...row,
+            aiVisibilityScore: effectiveScore.aiVisibilityScore,
+            aiRecommendationScore: effectiveScore.aiRecommendationScore,
+            competitorWinScore: effectiveScore.competitorWinScore,
+            cognitionAccuracyScore: effectiveScore.cognitionAccuracyScore,
+            contentAssetScore: effectiveScore.contentAssetScore,
+            totalScore: effectiveScore.totalScore,
+            visibilityLevel: effectiveScore.visibilityLevel,
+            calculationDetail: effectiveScore.calculationDetail,
+          };
+        }
+        return {
+          id: 0,
+          projectId: input.projectId,
+          createdAt: t0Metrics.finishedAt ?? new Date(),
+          updatedAt: t0Metrics.finishedAt ?? new Date(),
+          ...effectiveScore,
+        };
+      } catch {
+        return row;
+      }
     }),
+    t0Metrics: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive().optional() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        if (!input.projectId) return null;
+        await requireProjectAccess(ctx, input.projectId);
+        return resolveLatestT0AiTestRunMetrics(db, input.projectId);
+      }),
     list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (!input.projectId) return [];
@@ -1745,10 +1786,11 @@ const geoRouter = router({
     calculate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
-      if (analyses.length === 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析，再计算 GEO 评分" });
+      const t0Metrics = await resolveLatestT0AiTestRunMetrics(db, input.projectId);
+      if (analyses.length === 0 && !t0Metrics) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析或 T0 基线测试，再计算 GEO 评分" });
       }
-      const score = calculateGeoScore(resolveEffectiveAnalysisResults(analyses));
+      const score = calculateGeoScore(resolveEffectiveAnalysisResults(analyses), t0Metrics);
       await db.delete(geoScores).where(eq(geoScores.projectId, input.projectId));
       await db.insert(geoScores).values({ projectId: input.projectId, ...score });
       await updateProjectStatus(input.projectId, "score_done");
@@ -2289,7 +2331,7 @@ const geoRouter = router({
       .mutation(async ({ ctx, input }) => {
       const startedAtMs = Date.now();
       let stepStartMs = startedAtMs;
-      const stepTimings: import("./geoTaskDurationLog").GeoArticlesGenerateStepTimings = {};
+      const stepTimings: GeoArticlesGenerateStepTimings = {};
       const durationBase = () => buildGeoTaskDurationLogBase(startedAtMs);
       const logDuration = (projectId: number, success: boolean, errorCode: string | null) => {
         logGeoArticlesGenerateDuration({

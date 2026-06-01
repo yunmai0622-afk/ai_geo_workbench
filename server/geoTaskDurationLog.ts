@@ -11,6 +11,14 @@ export type GeoAnalysisDurationLog = {
   errorCode: string | null;
 };
 
+export type GeoArticlesGenerateStepTimings = {
+  dbPrefetchMs?: number;
+  draftGenerationMs?: number;
+  dbPersistMs?: number;
+  qualityCheckMs?: number;
+  autoRewriteCount?: number;
+};
+
 export type GeoArticlesGenerateDurationLog = {
   action: "geo.articles.generate";
   projectId: number;
@@ -21,6 +29,7 @@ export type GeoArticlesGenerateDurationLog = {
   durationMs: number;
   success: boolean;
   errorCode: string | null;
+  stepTimings?: GeoArticlesGenerateStepTimings;
 };
 
 export function buildGeoTaskDurationLogBase(startedAtMs: number) {

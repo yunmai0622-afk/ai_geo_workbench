@@ -58,13 +58,6 @@ const MANUAL_ADD_TYPES = LIBRARY_GROUPS.map(g => ({ value: g.dbType, label: g.la
 
 const GROUP_DB_TYPES = new Set<string>(LIBRARY_GROUPS.map(g => g.dbType));
 
-type LibraryQuestionGroup = {
-  key: string;
-  dbType: string;
-  label: string;
-  items: QuestionRow[];
-};
-
 function isQuestionEnabled(enabled: QuestionRow["enabled"]) {
   return Number(enabled) !== 0;
 }

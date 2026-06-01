@@ -1980,8 +1980,9 @@ export async function rewriteGeoArticleMarkdownForQuality(input: {
   markdownContent: string;
   quality: P11QualityScore;
   antiDup: GeoArticleAntiDuplicationResult;
+  timeoutMs?: number;
 }): Promise<string> {
-  const { projectName, articleTitle, markdownContent, quality, antiDup } = input;
+  const { projectName, articleTitle, markdownContent, quality, antiDup, timeoutMs } = input;
   const userPayload = [
     `企业/项目：${projectName}`,
     `文章标题：${articleTitle}`,
@@ -1993,6 +1994,8 @@ export async function rewriteGeoArticleMarkdownForQuality(input: {
     "请全文重写 Markdown 正文：换新的切入角度与小标题脉络，减少与历史文章重复的段落结构；保留核心事实与合规要求（不虚构案例、不作排名保证、不攻击竞品），但换用不同表达方式；全文仍须为第三方行业/用户视角，禁止「XX公司如何回答」「XX公司面向…」等企业自述句式；保留 GEO 常用二级标题结构（如引言、核心问题、对比、FAQ、结论等），不要输出除 JSON 外的其他文字。",
   ].join("\n\n");
   const response = await invokeLLM({
+    timeout_ms: timeoutMs,
+    max_tokens: 8192,
     messages: [
       {
         role: "system",

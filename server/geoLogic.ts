@@ -1,4 +1,5 @@
 import { formatTargetAiVisibilityReportSection } from "@shared/platformContentRules";
+import type { T0AiTestRunMetricsResult } from "@shared/t0AiTestRunMetrics";
 import { invokeLLM } from "./_core/llm";
 
 export const generatedQuestionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
@@ -215,23 +216,28 @@ export function getVisibilityLevel(totalScore: number): VisibilityLevel {
 
 const clampPercent = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
-export function calculateGeoScore(analyses: AnalysisLike[]) {
-  if (analyses.length === 0) {
+export function calculateGeoScore(analyses: AnalysisLike[], t0Metrics?: T0AiTestRunMetricsResult | null) {
+  const count = analyses.length;
+  if (count === 0 && !t0Metrics) {
     throw new Error("缺少 AI 分析结果，无法计算 GEO 评分。");
   }
 
-  const count = analyses.length;
-  const mentioned = analyses.filter(item => item.mentionsEnterprise === 1).length;
-  const recommended = analyses.filter(item => item.recommendsEnterprise === 1).length;
-  const enterpriseWins = analyses.filter(item => item.enterpriseWins === 1).length;
-  const accurate = analyses.filter(item => item.hasMisconception !== 1).length;
-  const noGap = analyses.filter(item => !item.contentGap || item.contentGap.trim().length === 0).length;
+  const mentioned = count > 0 ? analyses.filter(item => item.mentionsEnterprise === 1).length : 0;
+  const recommended = count > 0 ? analyses.filter(item => item.recommendsEnterprise === 1).length : 0;
+  const enterpriseWins = count > 0 ? analyses.filter(item => item.enterpriseWins === 1).length : 0;
+  const accurate = count > 0 ? analyses.filter(item => item.hasMisconception !== 1).length : 0;
+  const noGap =
+    count > 0 ? analyses.filter(item => !item.contentGap || item.contentGap.trim().length === 0).length : 0;
 
-  const aiVisibilityScore = clampPercent((mentioned / count) * 100);
-  const aiRecommendationScore = clampPercent((recommended / count) * 100);
-  const competitorWinScore = clampPercent((enterpriseWins / count) * 100);
-  const cognitionAccuracyScore = clampPercent((accurate / count) * 100);
-  const contentAssetScore = clampPercent((noGap / count) * 100);
+  const aiVisibilityScore = t0Metrics
+    ? clampPercent(t0Metrics.mentionRate * 100)
+    : clampPercent((mentioned / count) * 100);
+  const aiRecommendationScore = t0Metrics
+    ? clampPercent(t0Metrics.recommendRate * 100)
+    : clampPercent((recommended / count) * 100);
+  const competitorWinScore = count > 0 ? clampPercent((enterpriseWins / count) * 100) : 0;
+  const cognitionAccuracyScore = count > 0 ? clampPercent((accurate / count) * 100) : 0;
+  const contentAssetScore = count > 0 ? clampPercent((noGap / count) * 100) : 0;
   const totalScore = clampPercent(
     aiVisibilityScore * 0.25 +
       aiRecommendationScore * 0.25 +
@@ -249,12 +255,13 @@ export function calculateGeoScore(analyses: AnalysisLike[]) {
     totalScore,
     visibilityLevel: getVisibilityLevel(totalScore),
     calculationDetail: {
-      sampleCount: count,
-      mentioned,
-      recommended,
+      sampleCount: t0Metrics?.totalRuns ?? count,
+      mentioned: t0Metrics?.mentionedCount ?? mentioned,
+      recommended: t0Metrics?.recommendedCount ?? recommended,
       enterpriseWins,
       accurate,
       noGap,
+      dataSource: t0Metrics ? "t0_ai_test_runs" : "analysis_results",
       weights: {
         aiVisibility: "25%",
         aiRecommendation: "25%",

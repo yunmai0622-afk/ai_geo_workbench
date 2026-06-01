@@ -37,6 +37,18 @@ import { recordRewriteFromQualityReject } from "./rewritePoolService";
 
 const MAX_AUTO_QUALITY_REWRITES = 2;
 
+/** 单次质检流程（含自动重写）允许的最大 wall time；超时后跳过剩余重写，标记需人工审核。 */
+export function resolveGeoQcFlowMaxMs(): number {
+  const raw = Number(process.env.GEO_QC_FLOW_MAX_MS ?? 30_000);
+  return Number.isFinite(raw) && raw > 0 ? raw : 30_000;
+}
+
+/** 单次 LLM 换角重写的请求超时。 */
+export function resolveGeoQcRewriteTimeoutMs(): number {
+  const raw = Number(process.env.GEO_QC_REWRITE_TIMEOUT_MS ?? 25_000);
+  return Number.isFinite(raw) && raw > 0 ? raw : 25_000;
+}
+
 export type GeoArticleQualityCheckFlowResult = {
   success: boolean;
   quality: P11QualityScore;
@@ -77,38 +89,52 @@ export async function runGeoArticleQualityCheckFlow(db: Db, articleId: number): 
   const article = articleRows[0];
   if (!article) throw new TRPCError({ code: "NOT_FOUND", message: "文章不存在" });
 
-  const project = await getProjectOrThrow(db, article.projectId);
-  const projectQuestions = await db.select().from(questions).where(eq(questions.projectId, article.projectId));
-  const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, article.projectId));
-  const responses = await db.select().from(aiResponses).where(eq(aiResponses.projectId, article.projectId));
-  const taskRows = article.optimizationTaskId
-    ? await db.select().from(optimizationTasks).where(eq(optimizationTasks.id, article.optimizationTaskId)).limit(1)
-    : [];
-  const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
-  const assetLibrary = await getAssetLibraryContext(db, article.projectId);
+  const flowStartedAt = Date.now();
+  const qcFlowMaxMs = resolveGeoQcFlowMaxMs();
 
-  const peerRows = await db
-    .select({
-      id: geoArticles.id,
-      title: geoArticles.title,
-      markdownContent: geoArticles.markdownContent,
-      topicId: geoArticles.topicId,
-      optimizationTaskId: geoArticles.optimizationTaskId,
-      articleType: geoArticles.articleType,
-    })
-    .from(geoArticles)
-    .where(eq(geoArticles.projectId, article.projectId));
-  const topicMetaRows = await db
-    .select({ id: geoArticleTopics.id, optimizationTaskId: geoArticleTopics.optimizationTaskId })
-    .from(geoArticleTopics)
-    .where(eq(geoArticleTopics.id, article.topicId))
-    .limit(1);
-  const latestPlanRows = await db
-    .select({ linkedOptimizationTaskIds: contentPlans.linkedOptimizationTaskIds, weeklyArticleCount: contentPlans.weeklyArticleCount })
-    .from(contentPlans)
-    .where(eq(contentPlans.projectId, article.projectId))
-    .orderBy(desc(contentPlans.updatedAt))
-    .limit(1);
+  const [
+    project,
+    projectQuestions,
+    analyses,
+    responses,
+    taskRows,
+    assetLibrary,
+    peerRows,
+    topicMetaRows,
+    latestPlanRows,
+  ] = await Promise.all([
+    getProjectOrThrow(db, article.projectId),
+    db.select().from(questions).where(eq(questions.projectId, article.projectId)),
+    db.select().from(analysisResults).where(eq(analysisResults.projectId, article.projectId)),
+    db.select().from(aiResponses).where(eq(aiResponses.projectId, article.projectId)),
+    article.optimizationTaskId
+      ? db.select().from(optimizationTasks).where(eq(optimizationTasks.id, article.optimizationTaskId)).limit(1)
+      : Promise.resolve([]),
+    getAssetLibraryContext(db, article.projectId),
+    db
+      .select({
+        id: geoArticles.id,
+        title: geoArticles.title,
+        markdownContent: geoArticles.markdownContent,
+        topicId: geoArticles.topicId,
+        optimizationTaskId: geoArticles.optimizationTaskId,
+        articleType: geoArticles.articleType,
+      })
+      .from(geoArticles)
+      .where(eq(geoArticles.projectId, article.projectId)),
+    db
+      .select({ id: geoArticleTopics.id, optimizationTaskId: geoArticleTopics.optimizationTaskId })
+      .from(geoArticleTopics)
+      .where(eq(geoArticleTopics.id, article.topicId))
+      .limit(1),
+    db
+      .select({ linkedOptimizationTaskIds: contentPlans.linkedOptimizationTaskIds, weeklyArticleCount: contentPlans.weeklyArticleCount })
+      .from(contentPlans)
+      .where(eq(contentPlans.projectId, article.projectId))
+      .orderBy(desc(contentPlans.updatedAt))
+      .limit(1),
+  ]);
+  const analysesWithQuestions = attachQuestionTextToAnalyses(resolveEffectiveAnalysisResults(analyses), responses, projectQuestions);
   const planForAntiDup = {
     taskIds: latestPlanRows[0]?.linkedOptimizationTaskIds ?? [],
     weeklyCount: latestPlanRows[0]?.weeklyArticleCount ?? 3,
@@ -197,6 +223,15 @@ export async function runGeoArticleQualityCheckFlow(db: Db, articleId: number): 
 
   let used = 0;
   while (!isGeoArticleQualityCheckPass(quality) && used < MAX_AUTO_QUALITY_REWRITES) {
+    if (Date.now() - flowStartedAt >= qcFlowMaxMs) {
+      console.warn("[GEO质检] 质检流程已达时间上限，跳过剩余自动重写", {
+        articleId,
+        qcFlowMaxMs,
+        elapsedMs: Date.now() - flowStartedAt,
+        autoRewriteCount: used,
+      });
+      break;
+    }
     const markdownBeforeRewrite = markdownContent;
     try {
       markdownContent = await rewriteGeoArticleMarkdownForQuality({
@@ -205,6 +240,7 @@ export async function runGeoArticleQualityCheckFlow(db: Db, articleId: number): 
         markdownContent,
         quality,
         antiDup,
+        timeoutMs: resolveGeoQcRewriteTimeoutMs(),
       });
     } catch (error) {
       console.error("[GEO质检] 自动换角重写失败，将标记为需人工审核", error);

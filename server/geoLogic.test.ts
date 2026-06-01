@@ -181,6 +181,21 @@ describe("GEO 评分与等级", () => {
   it("没有分析结果时拒绝评分，避免假数据", () => {
     expect(() => calculateGeoScore([])).toThrow("缺少 AI 分析结果");
   });
+
+  it("仅有 T0 ai_test_runs 时使用提及率与推荐率", () => {
+    const score = calculateGeoScore([], {
+      totalRuns: 10,
+      mentionedCount: 8,
+      recommendedCount: 6,
+      mentionRate: 0.8,
+      recommendRate: 0.6,
+    });
+    expect(score.aiVisibilityScore).toBe(80);
+    expect(score.aiRecommendationScore).toBe(60);
+    expect(score.competitorWinScore).toBe(0);
+    expect(score.calculationDetail.dataSource).toBe("t0_ai_test_runs");
+    expect(score.calculationDetail.sampleCount).toBe(10);
+  });
 });
 
 const mockLlmTask = (overrides: Partial<{
