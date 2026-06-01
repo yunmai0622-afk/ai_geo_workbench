@@ -429,13 +429,19 @@ export const publishTasksRouter = router({
             await db.update(geoArticles).set({ status: "已发布" }).where(eq(geoArticles.id, article.id));
           }
         }
+        void emitPublishSuccessNotification(db, task.projectId, task.articleTitle, task.platform).catch((err: unknown) => {
+          console.warn("[notifications] publish success notification failed", task.id, err);
+        });
       }
 
-        void emitPublishSuccessNotification(db, task.projectId, task.articleTitle, task.platform).catch(console.warn);
-      }
       if (input.status === "failed") {
-        void emitPublishFailedNotification(db, task.projectId, task.articleTitle, input.errorMessage ?? null).catch(console.warn);
+        void emitPublishFailedNotification(db, task.projectId, task.articleTitle, input.errorMessage ?? null).catch(
+          (err: unknown) => {
+            console.warn("[notifications] publish failed notification failed", task.id, err);
+          },
+        );
       }
+
       return { ok: true } as const;
     }),
 
