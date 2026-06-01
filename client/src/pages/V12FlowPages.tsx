@@ -79,6 +79,7 @@ import {
   type T0AiEngineId,
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
+import type { TestRoundSummary } from "@shared/retestComparisonDisplay";
 import { T0DiagnosisVisualizationPanel } from "@/components/diagnosis/T0DiagnosisVisualizationPanel";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
@@ -279,7 +280,16 @@ type ReportLike = {
 };
 
 function useProjectSelection() {
-  return useActiveProjectSelection();
+  const selection = useActiveProjectSelection();
+  const projects = useMemo(
+    () => filterListWithNumericId(selection.projects) as ProjectOption[],
+    [selection.projects],
+  );
+  const selectedProject = useMemo(
+    () => projects.find(p => p.id === selection.selectedProjectId),
+    [projects, selection.selectedProjectId],
+  );
+  return { ...selection, projects, selectedProject };
 }
 
 function requireValidProjectId(selectedProjectId: number | undefined): number {
@@ -288,6 +298,36 @@ function requireValidProjectId(selectedProjectId: number | undefined): number {
     throw new Error("项目未选择");
   }
   return pid;
+}
+
+function hasNumericId<T extends { id?: unknown }>(
+  value: T | null | undefined,
+): value is T & { id: number } {
+  return value != null && typeof value.id === "number";
+}
+
+function filterListWithNumericId<T extends { id?: unknown }>(
+  rows: Array<T | null | undefined> | null | undefined,
+): Array<T & { id: number }> {
+  return (rows ?? []).filter(hasNumericId);
+}
+
+function filterTestRounds(
+  rows: Array<TestRoundSummary | null | undefined> | null | undefined,
+): TestRoundSummary[] {
+  return (rows ?? []).filter(
+    (round): round is TestRoundSummary =>
+      round != null &&
+      typeof round.id === "string" &&
+      round.id.length > 0 &&
+      typeof round.roundType === "string",
+  );
+}
+
+function filterAiTestRuns<T extends { questionId?: unknown }>(
+  rows: Array<T | null | undefined> | null | undefined,
+): T[] {
+  return (rows ?? []).filter((run): run is T => run != null && typeof run.questionId === "number");
 }
 
 function InfoCard({ title, desc, value }: { title: string; desc: string; value?: string }) {
@@ -560,6 +600,7 @@ function diagnosisLastRunLabel(analyses: DiagnosisAnalysisRow[]): string {
   if (analyses.length === 0) return "暂无数据";
   let max = NaN;
   for (const row of analyses) {
+    if (!row) continue;
     for (const value of [row.updatedAt, row.createdAt]) {
       if (!value) continue;
       const t = new Date(value).getTime();
@@ -579,6 +620,7 @@ function diagnosisLastRunLabel(analyses: DiagnosisAnalysisRow[]): string {
 function countDiagnosisGaps(analyses: DiagnosisAnalysisRow[]): number {
   if (analyses.length === 0) return 0;
   const withGap = analyses.filter(row => {
+    if (!row) return false;
     const gap = (row.contentGap ?? "").trim();
     const reason = (row.notRecommendedReason ?? "").trim();
     return gap.length > 0 || reason.length > 0;
@@ -899,7 +941,7 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
-  const testRounds = testRoundsQuery.data ?? [];
+  const testRounds = filterTestRounds(testRoundsQuery.data);
   const runningT0Round = testRounds.find(
     round => round.roundType === "T0_BASELINE" && round.status === "running",
   );
@@ -913,9 +955,9 @@ export function AiDiagnosisFlowPage() {
     AiTaskProgressErrorCategory | undefined
   >();
   const diagnosisProgress = useAiTaskStagedProgress({ stages: AI_DIAGNOSIS_PROGRESS_STAGES });
-  const questions = (questionsQuery.data ?? []).filter(q => q != null && typeof q.id === "number");
-  const analyses = (analysisQuery.data ?? []).filter(item => item != null && typeof item.id === "number");
-  const tasks = (tasksQuery.data ?? []).filter(task => task != null && typeof task.id === "number");
+  const questions = filterListWithNumericId(questionsQuery.data);
+  const analyses = filterListWithNumericId(analysisQuery.data);
+  const tasks = filterListWithNumericId(tasksQuery.data);
   const profile = assetSummaryQuery.data?.profile;
   const hasProfile = Boolean(profile);
   const targetQuestions = questions.filter(q => Number(q.enabled) !== 0 && q.questionType === "指定问题");
@@ -952,10 +994,10 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId!, roundId: displayT0Round!.id },
     { enabled: enabled && Boolean(selectedProjectId && displayT0Round?.id) },
   );
-  const t0Runs = t0RunsQuery.data ?? [];
   const t0QuestionTypeById = useMemo(() => {
     const map = new Map<number, string>();
     for (const link of t0RoundQuestionsQuery.data ?? []) {
+      if (!link || typeof link.questionId !== "number") continue;
       const questionType = link.question?.questionType;
       if (typeof questionType === "string" && questionType.trim()) {
         map.set(link.questionId, questionType);
@@ -978,11 +1020,15 @@ export function AiDiagnosisFlowPage() {
       enabled: enabled && Boolean(selectedProjectId && visualizationRoundId && !canReuseVisualizationRuns),
     },
   );
-  const visualizationRuns = canReuseVisualizationRuns ? t0Runs : (vizRunsQuery.data ?? []);
+  const t0Runs = filterAiTestRuns(t0RunsQuery.data);
+  const visualizationRuns = canReuseVisualizationRuns
+    ? t0Runs
+    : filterAiTestRuns(vizRunsQuery.data);
   const visualizationQuestionTypeById = useMemo(() => {
     if (canReuseVisualizationRuns) return t0QuestionTypeById;
     const map = new Map<number, string>();
     for (const link of vizRoundQuestionsQuery.data ?? []) {
+      if (!link || typeof link.questionId !== "number") continue;
       const questionType = link.question?.questionType;
       if (typeof questionType === "string" && questionType.trim()) {
         map.set(link.questionId, questionType);
@@ -1146,7 +1192,7 @@ export function AiDiagnosisFlowPage() {
       const result = await generateTargetQuestionsMutation.mutateAsync({ projectId: selectedProjectId });
       await utils.geo.questions.list.invalidate({ projectId: selectedProjectId });
       const refetchResult = await questionsQuery.refetch();
-      const refreshed = refetchResult.data ?? [];
+      const refreshed = filterListWithNumericId(refetchResult.data);
       const readyTargets = refreshed.filter(q => Number(q.enabled) !== 0 && q.questionType === "指定问题");
       const genHint = buildTargetQuestionGenerateMessage(result);
       if (readyTargets.length === 0) {
@@ -1231,6 +1277,7 @@ export function AiDiagnosisFlowPage() {
     }
     const questionTextById = new Map<number, string>();
     for (const link of t0RoundQuestionsQuery.data ?? []) {
+      if (!link || typeof link.questionId !== "number") continue;
       const text = link.question?.questionText?.trim();
       if (text) questionTextById.set(link.questionId, text);
     }
@@ -1485,6 +1532,7 @@ export function AiDiagnosisFlowPage() {
             ) : (
               <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
                 {consoleQuestionPreview.map(q => {
+                  if (!q || typeof q.id !== "number") return null;
                   const meta = parseStoredQuestionMeta(q.targetKeyword ?? null);
                   const typeLabel = targetQuestionIntentLabel(meta.intent, meta.disadvantaged);
                   return (
@@ -1871,6 +1919,7 @@ export function AiDiagnosisFlowPage() {
               ) : (
                 <div className="mt-3 grid gap-3 lg:grid-cols-2">
                   {tasks.map(task => {
+                    if (!task || typeof task.id !== "number") return null;
                     const card = parseGeoTaskCard(task.executionSuggestion);
                     return (
                       <div key={task.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
@@ -1929,18 +1978,10 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   const assetSummary = assetSummaryQuery.data;
   const hasProfile = Boolean(assetSummary?.profile);
   const assetSources = (assetSummary?.assetSources ?? []) as Array<{ title?: string | null; sourceType?: string | null; contentText?: string | null; isPublic?: number | boolean | null }>;
-  const analyses = (analysisQuery.data ?? []).filter(
-    item => item != null && typeof item.id === "number",
-  );
-  const tasks = (tasksQuery.data ?? []).filter(
-    task => task != null && typeof task.id === "number",
-  ) as TaskLike[];
-  const topics = (topicsQuery.data ?? []).filter(
-    topic => topic != null && typeof topic.id === "number",
-  ) as TopicLike[];
-  const articles = (articlesQuery.data ?? []).filter(
-    article => article != null && typeof article.id === "number",
-  ) as ArticleLike[];
+  const analyses = filterListWithNumericId(analysisQuery.data) as DiagnosisAnalysisRow[];
+  const tasks = filterListWithNumericId(tasksQuery.data) as TaskLike[];
+  const topics = filterListWithNumericId(topicsQuery.data) as TopicLike[];
+  const articles = filterListWithNumericId(articlesQuery.data) as ArticleLike[];
   const scores = (scoresQuery.data ?? []) as QualityScoreLike[];
   const articlesSorted = useMemo(() => {
     return [...articles].sort((a, b) => {
@@ -2187,9 +2228,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     try {
       await generateTopics.mutateAsync({ projectId });
       const refreshedTopics = await topicsQuery.refetch();
-      const refreshed = (refreshedTopics.data ?? []).filter(
-        topic => topic != null && typeof topic.id === "number",
-      ) as TopicLike[];
+      const refreshed = filterListWithNumericId(refreshedTopics.data) as TopicLike[];
       const nextTopic = refreshed.find(topic => topic.optimizationTaskId && contentPlan.taskIds.includes(topic.optimizationTaskId)) ?? refreshed[0];
       if (!nextTopic?.id) throw new Error("没有可用于生成文章的选题，请先完成 内容诊断和优化任务。");
       startTransition(() => setSelectedTopicId(nextTopic.id));
