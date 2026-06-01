@@ -145,7 +145,18 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("收录监测页展示已发布内容监测卡片和有限样本风险", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    for (const text of ["收录监测", "已创建的监测卡片", "收录", "AI 提及", "AI 推荐", "最近检测：", "当前建议", "监测结果来自有限样本"]) {
+    for (const text of [
+      "收录监测",
+      "已创建的监测卡片",
+      "收录",
+      "AI 提及",
+      "AI 推荐",
+      "最近检测：",
+      "链接可访问性：",
+      "建议操作：",
+      "执行AI实测",
+      "监测结果来自有限样本",
+    ]) {
       expect(flowSource).toContain(text);
     }
   });
@@ -156,7 +167,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     for (const text of [
       "本轮完成事项",
       "AI 平台表现",
-      "内容发布证据",
+      "发布内容清单",
       "收录与复测结果",
       "当前问题",
       "下一轮优化建议",

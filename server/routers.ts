@@ -10,6 +10,7 @@ import {
 } from "@shared/geoDiagnosisLlmErrors";
 import { ensureProjectsOwnerUserIdColumnOnce } from "./ensureProjectsOwnerUserId";
 import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
+import { mergeLinkAccessIntoRawJson } from "@shared/inclusionMonitoringDisplay";
 import { and, asc, desc, eq, inArray, like, not } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -101,6 +102,7 @@ import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkfl
 import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
+import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
 import { calculateRetestComparison } from "./geoRetestCalculator";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
@@ -143,7 +145,7 @@ import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare
 import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import { runDailyAiCheck } from "./scheduledAiCheck";
 import { fetchWorkspaceSummaryMetrics } from "./workspaceSummary";
-import { buildGeoTaskDurationLogBase, logGeoAnalysisRunDuration, logGeoArticlesGenerateDuration } from "./geoTaskDurationLog";
+import { buildGeoTaskDurationLogBase, logGeoAnalysisRunDuration, logGeoArticlesGenerateDuration, type GeoArticlesGenerateStepTimings } from "./geoTaskDurationLog";
 import {
   getCurrentUserId,
   getProjectRowConn,
@@ -2286,6 +2288,8 @@ const geoRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
       const startedAtMs = Date.now();
+      let stepStartMs = startedAtMs;
+      const stepTimings: import("./geoTaskDurationLog").GeoArticlesGenerateStepTimings = {};
       const durationBase = () => buildGeoTaskDurationLogBase(startedAtMs);
       const logDuration = (projectId: number, success: boolean, errorCode: string | null) => {
         logGeoArticlesGenerateDuration({
@@ -2294,6 +2298,7 @@ const geoRouter = router({
           platform: input.targetPublishPlatform ?? null,
           success,
           errorCode,
+          stepTimings,
         });
       };
       const db = await requireDb();
@@ -2313,6 +2318,8 @@ const geoRouter = router({
         db.select().from(aiResponses).where(eq(aiResponses.projectId, topic.projectId)),
         getAssetLibraryContext(topic.projectId),
       ]);
+      stepTimings.dbPrefetchMs = Date.now() - stepStartMs;
+      stepStartMs = Date.now();
       const sourceQuestionIds = Array.isArray(topic.sourceQuestionIds) ? topic.sourceQuestionIds : [];
       const sourceAnalysisIds = Array.isArray(topic.sourceAnalysisIds) ? topic.sourceAnalysisIds : [];
       const questionScope = projectQuestions.filter(question => sourceQuestionIds.includes(question.id));
@@ -2417,6 +2424,8 @@ const geoRouter = router({
         logDuration(topic.projectId, false, llmClassified.code !== "not_llm_error" ? llmClassified.code : "GENERATION_FAILED");
         throw new TRPCError({ code: isClientError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR", message });
       }
+      stepTimings.draftGenerationMs = Date.now() - stepStartMs;
+      stepStartMs = Date.now();
       const inserted = await db.insert(geoArticles).values(draft).$returningId();
       const articleId = inserted[0]?.id ?? 0;
       if (!articleId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "文章写入失败" });
@@ -2426,7 +2435,11 @@ const geoRouter = router({
         message: "内容资产生成完成",
       });
       await db.update(geoArticleTopics).set({ status: "已生成" }).where(eq(geoArticleTopics.id, topic.id));
+      stepTimings.dbPersistMs = Date.now() - stepStartMs;
+      stepStartMs = Date.now();
       const qcResult = await runGeoArticleQualityCheckFlow(db, articleId);
+      stepTimings.qualityCheckMs = Date.now() - stepStartMs;
+      stepTimings.autoRewriteCount = qcResult.autoRewriteCount;
       logDuration(topic.projectId, true, null);
       const qualityCheckPassed = qcResult.finalStatus === "质检通过";
       return {
@@ -2746,6 +2759,43 @@ ${article.markdownContent}`,
         }
 
         return { backfilled: missing.length } as const;
+      }),
+    checkPublishLinks: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          recordIds: z.array(z.number().int().positive()).optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+
+        const rows = await db
+          .select()
+          .from(geoInclusionMonitoringRecords)
+          .where(eq(geoInclusionMonitoringRecords.projectId, input.projectId));
+
+        const targetRows = input.recordIds?.length
+          ? rows.filter(row => input.recordIds!.includes(row.id))
+          : rows;
+
+        const checked: Array<{ recordId: number; accessible: boolean; checkedAt: string }> = [];
+
+        for (const row of targetRows) {
+          const linkAccess = await probePublishLinkAccessibility(row.publicUrl);
+          const rawJson =
+            row.rawJson && typeof row.rawJson === "object" && !Array.isArray(row.rawJson)
+              ? (row.rawJson as Record<string, unknown>)
+              : {};
+          await db
+            .update(geoInclusionMonitoringRecords)
+            .set({ rawJson: mergeLinkAccessIntoRawJson(rawJson, linkAccess) })
+            .where(eq(geoInclusionMonitoringRecords.id, row.id));
+          checked.push({ recordId: row.id, accessible: linkAccess.accessible, checkedAt: linkAccess.checkedAt });
+        }
+
+        return { checked: checked.length, results: checked } as const;
       }),
   }),
   aiMentionCheck: router({
