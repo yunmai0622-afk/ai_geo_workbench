@@ -74,6 +74,7 @@ import {
   isGeoQualityScoreStale,
   shouldBlockPublishForGeoQuality,
 } from "@shared/geoQualityStale";
+import { getPublishTimeSuggest } from "@shared/publishTimeSuggest";
 import {
   ACCOUNT_GROUP_MISMATCH_HINT,
   accountGroupsMismatch,
@@ -2140,6 +2141,15 @@ export default function WeeklyContentPage() {
                     <span className="ml-1 text-xs text-amber-700">（手动指定）</span>
                   ) : null}
                 </p>
+                {publishDialogSlug ? (
+                  <p
+                    className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700"
+                    data-testid="publish-time-suggest"
+                  >
+                    <span className="font-medium text-gray-900">建议发布时间：</span>
+                    {getPublishTimeSuggest(publishDialogSlug)}
+                  </p>
+                ) : null}
                 {publishDialogSlug && isBindingPublishPlatform(publishDialogSlug) ? (
                   (() => {
                     const rows = getPublishReadyAccountsForPlatform(publishDialogSlug);
