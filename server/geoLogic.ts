@@ -1,9 +1,13 @@
 import { formatTargetAiVisibilityReportSection } from "@shared/platformContentRules";
+import { GEO_T0_QUESTION_BANK_TYPES } from "@shared/geoQuestionBankTypes";
 import type { T0AiTestRunMetricsResult } from "@shared/t0AiTestRunMetrics";
 import { invokeLLM } from "./_core/llm";
 
-export const generatedQuestionTypes = ["品牌认知", "行业推荐", "竞品对比", "痛点解决", "价格选型", "高意向成交"] as const;
-export const questionTypes = [...generatedQuestionTypes, "指定问题", "scenario_need", "long_tail_conversion"] as const;
+/** T0 问题库 AI 生成使用的五类（GEO-V1.1-Question-Quality） */
+export const generatedQuestionTypes = [...GEO_T0_QUESTION_BANK_TYPES] as const;
+/** 历史库中可能仍存在旧类型，查询与展示需兼容 */
+export const legacyQuestionTypes = ["痛点解决", "价格选型", "高意向成交"] as const;
+export const questionTypes = [...generatedQuestionTypes, ...legacyQuestionTypes, "指定问题"] as const;
 export const questionSources = ["ai_generated", "manual", "csv"] as const;
 export const questionSourceLabels: Record<(typeof questionSources)[number], string> = { ai_generated: "AI 生成", manual: "手动指定", csv: "CSV 导入" };
 export const aiPlatforms = ["ChatGPT", "DeepSeek", "豆包", "Kimi", "通义", "文心", "Perplexity", "其他"] as const;
