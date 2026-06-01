@@ -1,5 +1,5 @@
 /**
- * 确保 publish_tasks 含 Agent-2 字段（与 drizzle/0027_agent_publish_tasks.sql 一致）
+ * 确保 publish_tasks 含 Agent-2 字段（与 drizzle/0026_agent_publish_tasks.sql 一致）
  */
 import "dotenv/config";
 import mysql from "mysql2/promise";

@@ -89,7 +89,7 @@ const projectsBlock = schema.slice(
 );
 report.ownerUserId = {
   schemaNotNull: /ownerUserId:\s*int\("ownerUserId"\)\.notNull\(\)/.test(projectsBlock),
-  migration0030: exists("drizzle/0030_projects_owner_user_id.sql"),
+  migration0030: exists("drizzle/0031_projects_owner_user_id.sql"),
   ensureScript: exists("scripts/ensure_project_owner_user_id.mjs"),
 };
 if (!report.ownerUserId.schemaNotNull) gateFail("P0: schema 缺少 projects.ownerUserId notNull");

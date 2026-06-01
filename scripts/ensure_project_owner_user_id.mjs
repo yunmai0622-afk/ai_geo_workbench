@@ -29,7 +29,7 @@ async function main() {
   try {
     const hasCol = await columnExists(conn, "projects", "ownerUserId");
     if (!hasCol) {
-      console.error("[ABORT] projects.ownerUserId 列不存在，请先执行 drizzle/0030_projects_owner_user_id.sql");
+      console.error("[ABORT] projects.ownerUserId 列不存在，请先执行 drizzle/0031_projects_owner_user_id.sql");
       process.exit(1);
     }
     console.log("[OK] projects.ownerUserId 列已存在");

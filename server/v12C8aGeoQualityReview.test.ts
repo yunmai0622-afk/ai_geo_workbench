@@ -47,6 +47,6 @@ describe("C8-A GEO content quality review", () => {
 
   it("schema has geo quality fields on geo_articles", () => {
     expect(read("drizzle/schema.ts")).toContain("geoQualityScore");
-    expect(read("drizzle/0021_geo_quality_review.sql")).toContain("geoQualityScore");
+    expect(read("drizzle/0020_geo_quality_review.sql")).toContain("geoQualityScore");
   });
 });

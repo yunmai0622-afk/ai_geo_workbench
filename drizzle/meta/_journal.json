@@ -12,197 +12,316 @@
     {
       "idx": 1,
       "version": "5",
-      "when": 1778224874534,
+      "when": 1778225697827,
       "tag": "0001_tough_shadowcat",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "5",
-      "when": 1778226260271,
+      "when": 1778226697827,
       "tag": "0002_odd_redwing",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "5",
-      "when": 1778226384191,
+      "when": 1778227697827,
       "tag": "0003_powerful_vapor",
       "breakpoints": true
     },
     {
       "idx": 4,
       "version": "5",
-      "when": 1778230227445,
+      "when": 1778228697827,
       "tag": "0004_orange_tiger_shark",
       "breakpoints": true
     },
     {
       "idx": 5,
       "version": "5",
-      "when": 1778230993089,
+      "when": 1778229697827,
       "tag": "0005_naive_vector",
       "breakpoints": true
     },
     {
       "idx": 6,
       "version": "5",
-      "when": 1778240629765,
-      "tag": "0006_empty_joseph",
+      "when": 1778230697827,
+      "tag": "0006_bizarre_young_avengers",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "5",
-      "when": 1778242343632,
-      "tag": "0007_bizarre_young_avengers",
+      "when": 1778231697827,
+      "tag": "0007_empty_joseph",
       "breakpoints": true
     },
     {
       "idx": 8,
       "version": "5",
-      "when": 1778249268879,
+      "when": 1778232697827,
       "tag": "0008_eminent_mac_gargan",
       "breakpoints": true
     },
     {
       "idx": 9,
       "version": "5",
-      "when": 1778295993961,
+      "when": 1778233697827,
       "tag": "0009_fine_scream",
       "breakpoints": true
     },
     {
       "idx": 10,
       "version": "5",
-      "when": 1778307804761,
+      "when": 1778234697827,
       "tag": "0010_green_switch",
       "breakpoints": true
     },
     {
       "idx": 11,
       "version": "5",
-      "when": 1778337862202,
+      "when": 1778235697827,
       "tag": "0011_purple_wiccan",
       "breakpoints": true
     },
     {
       "idx": 12,
       "version": "5",
-      "when": 1778643986420,
-      "tag": "0012_thankful_blink",
+      "when": 1778236697827,
+      "tag": "0012_article_status_need_manual_review",
       "breakpoints": true
     },
     {
       "idx": 13,
       "version": "5",
-      "when": 1778745000000,
-      "tag": "0013_manual_publish_record",
+      "when": 1778237697827,
+      "tag": "0013_enterprise_geo_profile_v2",
       "breakpoints": true
     },
     {
       "idx": 14,
       "version": "5",
-      "when": 1778800000000,
-      "tag": "0015_enterprise_geo_profile_v2",
+      "when": 1778238697827,
+      "tag": "0014_manual_publish_record",
       "breakpoints": true
     },
     {
       "idx": 15,
       "version": "5",
-      "when": 1778900000000,
-      "tag": "0016_publish_tasks",
+      "when": 1778239697827,
+      "tag": "0015_publish_tasks",
       "breakpoints": true
     },
     {
       "idx": 16,
       "version": "5",
-      "when": 1779508530719,
-      "tag": "0016_nifty_colonel_america",
+      "when": 1778240697827,
+      "tag": "0016_thankful_blink",
       "breakpoints": true
     },
     {
       "idx": 17,
       "version": "5",
-      "when": 1779600000000,
-      "tag": "0020_project_platform_accounts",
+      "when": 1778241697827,
+      "tag": "0017_publish_tasks_cover_image",
       "breakpoints": true
     },
     {
       "idx": 18,
       "version": "5",
-      "when": 1779700000000,
-      "tag": "0021_geo_quality_review",
+      "when": 1778242697827,
+      "tag": "0018_ai_mention_check",
       "breakpoints": true
     },
     {
       "idx": 19,
       "version": "5",
-      "when": 1779800000000,
-      "tag": "0022_geo_quality_stale",
+      "when": 1778243697827,
+      "tag": "0019_delivery_report_share_tokens",
       "breakpoints": true
     },
     {
       "idx": 20,
       "version": "5",
-      "when": 1779900000000,
-      "tag": "0023_content_strategy_account_group",
+      "when": 1778244697827,
+      "tag": "0020_geo_quality_review",
       "breakpoints": true
     },
     {
       "idx": 21,
       "version": "5",
-      "when": 1780000000000,
-      "tag": "0024_platform_multi_accounts",
+      "when": 1778245697827,
+      "tag": "0021_geo_quality_stale",
       "breakpoints": true
     },
     {
       "idx": 22,
       "version": "5",
-      "when": 1780100000000,
-      "tag": "0025_fix_inclusion_monitoring_columns",
+      "when": 1778246697827,
+      "tag": "0022_nifty_colonel_america",
       "breakpoints": true
     },
     {
       "idx": 23,
       "version": "5",
-      "when": 1780200000000,
-      "tag": "0026_local_agent_account_binding",
+      "when": 1778247697827,
+      "tag": "0023_project_platform_accounts",
       "breakpoints": true
     },
     {
       "idx": 24,
       "version": "5",
-      "when": 1780300000000,
-      "tag": "0027_agent_publish_tasks",
+      "when": 1778248697827,
+      "tag": "0024_content_strategy_account_group",
       "breakpoints": true
     },
     {
       "idx": 25,
       "version": "5",
-      "when": 1780400000000,
-      "tag": "0031_v11_test_round_retest",
+      "when": 1778249697827,
+      "tag": "0025_platform_multi_accounts",
       "breakpoints": true
     },
     {
       "idx": 26,
       "version": "5",
-      "when": 1780500000000,
-      "tag": "0032_v11_phase2_t0_orchestration",
+      "when": 1778250697827,
+      "tag": "0026_agent_publish_tasks",
       "breakpoints": true
     },
     {
       "idx": 27,
       "version": "5",
-      "when": 1780600000000,
-      "tag": "0033_v11_phase2_effective_actions",
+      "when": 1778251697827,
+      "tag": "0027_article_lifecycle",
       "breakpoints": true
     },
     {
       "idx": 28,
       "version": "5",
-      "when": 1780700000000,
-      "tag": "0035_users_email_password",
+      "when": 1778252697827,
+      "tag": "0028_fix_inclusion_monitoring_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1778253697827,
+      "tag": "0029_local_agent_account_binding",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1778254697827,
+      "tag": "0030_review_rewrite_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1778255697827,
+      "tag": "0031_projects_owner_user_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1778256697827,
+      "tag": "0032_v11_test_round_retest",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1778257697827,
+      "tag": "0033_publish_tasks_cover_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1778258697827,
+      "tag": "0034_users_email_password",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1778259697827,
+      "tag": "0035_v11_phase2_ai_test_runs_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1778260697827,
+      "tag": "0036_v11_phase2_effective_actions",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1778261697827,
+      "tag": "0037_v11_phase2_t0_orchestration",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1778262697827,
+      "tag": "0038_geo_articles_cover_mediumtext",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1778263697827,
+      "tag": "0039_system_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1778264697827,
+      "tag": "0040_question_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1778265697827,
+      "tag": "0041_publish_tasks_retry",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1778266697827,
+      "tag": "0042_competitor_profiles_ai_mention_count",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1778267697827,
+      "tag": "0043_projects_archived_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "5",
+      "when": 1778268697827,
+      "tag": "0044_geo_articles_content_edited_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1778269697827,
+      "tag": "0045_audit_logs",
       "breakpoints": true
     }
   ]

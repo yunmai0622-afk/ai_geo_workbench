@@ -61,7 +61,7 @@ describe("C7-B project platform account binding", () => {
   });
 
   it("C7-B-Fix: migration and rollout hints", () => {
-    const migration = read("drizzle/0020_project_platform_accounts.sql");
+    const migration = read("drizzle/0023_project_platform_accounts.sql");
     const schema = read("drizzle/schema.ts");
     expect(migration).toContain("project_platform_accounts");
     expect(migration).toContain("accountVerificationStatus");
@@ -80,6 +80,6 @@ describe("C7-B project platform account binding", () => {
     expect(weekly).toContain("发布任务已发送至本地客户端");
     expect(weekly).toContain("checkLocalAgentHealth");
     expect(weekly).not.toMatch(/Chrome\s*插件|重载插件/);
-    expect(read("drizzle/meta/_journal.json")).toContain("0020_project_platform_accounts");
+    expect(read("drizzle/meta/_journal.json")).toContain("0023_project_platform_accounts");
   });
 });

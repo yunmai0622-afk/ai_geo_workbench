@@ -17,7 +17,7 @@ describe("GEO V1.1 Phase 2 effective_actions", () => {
   });
 
   it("migration 0033 仅建 effective_actions", () => {
-    const sql = read("drizzle/0033_v11_phase2_effective_actions.sql");
+    const sql = read("drizzle/0036_v11_phase2_effective_actions.sql");
     expect(sql).toContain("CREATE TABLE `effective_actions`");
     expect(sql).not.toContain("DROP TABLE");
   });

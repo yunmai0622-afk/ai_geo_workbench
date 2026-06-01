@@ -11,7 +11,7 @@ function read(rel: string) {
 
 describe("GEO-V1.1-Audit-Log", () => {
   it("migration 0042 creates audit_logs table", () => {
-    const sql = read("drizzle/0042_audit_logs.sql");
+    const sql = read("drizzle/0045_audit_logs.sql");
     expect(sql).toContain("CREATE TABLE `audit_logs`");
     expect(sql).toContain("`userId`");
     expect(sql).toContain("`projectId`");

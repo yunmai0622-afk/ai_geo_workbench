@@ -38,7 +38,7 @@ async function main() {
   console.log("=== project_platform_accounts 索引检查 ===");
   console.log(`旧索引 ${OLD_INDEX}: ${hasOld ? "存在（应迁移）" : "不存在（OK）"}`);
   if (hasOld) console.log(`  列: ${byName.get(OLD_INDEX).join(", ")}`);
-  console.log(`新索引 ${NEW_INDEX}: ${hasNew ? "存在（OK）" : "不存在（需执行 drizzle/0024_platform_multi_accounts.sql）"}`);
+  console.log(`新索引 ${NEW_INDEX}: ${hasNew ? "存在（OK）" : "不存在（需执行 drizzle/0025_platform_multi_accounts.sql）"}`);
   if (hasNew) console.log(`  列: ${byName.get(NEW_INDEX).join(", ")}`);
 
   await conn.end();

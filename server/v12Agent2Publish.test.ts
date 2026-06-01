@@ -9,7 +9,7 @@ describe("Agent-2 Web publish task + local agent loop", () => {
   it("schema and migration add agent publish columns", () => {
     expect(read("drizzle/schema.ts")).toContain("localAgentId");
     expect(read("drizzle/schema.ts")).toContain("agentLog");
-    expect(read("drizzle/0027_agent_publish_tasks.sql")).toContain("localProfileId");
+    expect(read("drizzle/0026_agent_publish_tasks.sql")).toContain("localProfileId");
   });
 
   it("publishTasks.create routes bound account to pending_agent only", () => {

@@ -52,7 +52,7 @@ describe("Agent-Migration-2 local agent publish main path", () => {
   });
 
   it("legacy account hint remains in publish flow copy", () => {
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("旧账号需在企业档案重新绑定");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("需在企业档案重新绑定本地客户端");
     const matrix =
       read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx") +
       read("client/src/components/PlatformAccountBindingSection.tsx");

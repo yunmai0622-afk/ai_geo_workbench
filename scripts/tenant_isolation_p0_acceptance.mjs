@@ -29,8 +29,8 @@ const projectsBlock = schema.slice(
 if (/ownerUserId:\s*int\("ownerUserId"\)\.notNull\(\)/.test(projectsBlock)) ok("projects schema ownerUserId int notNull");
 else fail("projects schema missing ownerUserId");
 
-if (fs.existsSync(path.join(ROOT, "drizzle/0030_projects_owner_user_id.sql"))) ok("migration 0030 exists");
-else fail("missing drizzle/0030_projects_owner_user_id.sql");
+if (fs.existsSync(path.join(ROOT, "drizzle/0031_projects_owner_user_id.sql"))) ok("migration 0031 exists");
+else fail("missing drizzle/0031_projects_owner_user_id.sql");
 
 if (fs.existsSync(path.join(ROOT, "scripts/ensure_project_owner_user_id.mjs"))) ok("ensure script exists");
 else fail("missing ensure_project_owner_user_id.mjs");

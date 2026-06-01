@@ -210,7 +210,7 @@ function checkWorkspace() {
 function checkApi500Risks() {
   const routers = read("server/routers.ts");
   const schema = read("drizzle/schema.ts");
-  const migrationOk = exists("drizzle/0030_projects_owner_user_id.sql");
+  const migrationOk = exists("drizzle/0031_projects_owner_user_id.sql");
   const ownerFilter = /projects\.list[\s\S]{0,800}ownerUserId/.test(routers) || /eq\(projects\.ownerUserId,\s*userId\)/.test(routers);
   const schemaOk = /ownerUserId:\s*int\("ownerUserId"\)\.notNull\(\)/.test(
     schema.slice(schema.indexOf('export const projects'), schema.indexOf("export const questions")),

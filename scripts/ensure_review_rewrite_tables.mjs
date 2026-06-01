@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const sql = readFileSync(resolve(__dirname, "../drizzle/0029_review_rewrite_queue.sql"), "utf8");
+const sql = readFileSync(resolve(__dirname, "../drizzle/0030_review_rewrite_queue.sql"), "utf8");
 
 const url = process.env.DATABASE_URL;
 if (!url) {

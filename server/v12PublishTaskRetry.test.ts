@@ -7,7 +7,7 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("GEO-V1.1-Publish-Retry", () => {
   it("migration 0040 adds retryCount to publish_tasks", () => {
-    expect(read("drizzle/0040_publish_tasks_retry.sql")).toContain("retryCount");
+    expect(read("drizzle/0041_publish_tasks_retry.sql")).toContain("retryCount");
     expect(read("drizzle/schema.ts")).toContain('retryCount: int("retryCount")');
     expect(read("drizzle/schema.ts")).toContain("retryLog");
   });

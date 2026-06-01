@@ -1,6 +1,6 @@
 import mysql from "mysql2/promise";
 
-/** GEO-V1-H：本地库未跑 drizzle/0030 时幂等补齐 projects.ownerUserId（不新增 migration 文件） */
+/** GEO-V1-H：本地库未跑 drizzle/0031 时幂等补齐 projects.ownerUserId（不新增 migration 文件） */
 async function columnExists(conn: mysql.Connection, table: string, column: string): Promise<boolean> {
   const [rows] = await conn.query<mysql.RowDataPacket[]>(
     `SELECT 1 AS ok FROM information_schema.COLUMNS

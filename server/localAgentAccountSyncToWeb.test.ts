@@ -34,7 +34,8 @@ describe("Local agent account sync to web P0", () => {
   it("weekly publish dialog supports refresh when status not synced", () => {
     expect(weekly).toContain("publish-readiness-refresh-status");
     expect(weekly).toContain("listLocalAgentAccountSnapshots");
-    expect(weekly).toContain("账号状态：已绑定");
+    expect(weekly).toContain("刷新账号状态");
+    expect(weekly).toContain("ACCOUNT_STATUS_NOT_SYNCED");
   });
 
   it("local agent detect triggers account status sync", () => {

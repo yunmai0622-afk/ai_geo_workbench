@@ -736,7 +736,7 @@ export function DeliveryReportsCenterPage() {
           </P0Card>
         </P0Section>
 
-        <P0Section title="增长建议" description="基于品牌提及率、推荐率、发布平台与 T0/T1 进度自动生成，不含 LLM 推断。">
+        <P0Section title="下一轮优化建议" description="基于品牌提及率、推荐率、发布平台与 T0/T1 进度自动生成，不含 LLM 推断。">
           <GeoGrowthSuggestionsPanel
             projectId={selectedProjectId}
             suggestions={growthSuggestions}

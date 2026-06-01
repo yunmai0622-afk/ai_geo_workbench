@@ -23,7 +23,9 @@ describe("P0 创建项目热修", () => {
     const routers = read("server/routers.ts");
     expect(routers).toContain("CREATE_PROJECT_FAILED_USER_MESSAGE");
     expect(routers).toContain("[geo.projects.create]");
-    expect(routers).toMatch(/create:[\s\S]{0,400}catch \(err\)/);
+    expect(routers).toMatch(
+      /create: protectedProcedure\.input\(projectInput\)[\s\S]{0,600}catch \(err\)/,
+    );
     expect(routers).not.toMatch(/toast\.error\(err\.message\)/);
   });
 

@@ -1,5 +1,5 @@
 /**
- * 确保 geo_articles 含生命周期字段（与 drizzle/0028_article_lifecycle.sql 一致）
+ * 确保 geo_articles 含生命周期字段（与 drizzle/0027_article_lifecycle.sql 一致）
  */
 import "dotenv/config";
 import mysql from "mysql2/promise";

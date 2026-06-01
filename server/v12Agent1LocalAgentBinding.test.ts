@@ -48,7 +48,7 @@ describe("Agent-1 Web + local-agent account binding", () => {
 
   it("schema and migration add local agent columns", () => {
     expect(read("drizzle/schema.ts")).toContain("localAgentId");
-    expect(read("drizzle/0026_local_agent_account_binding.sql")).toContain("localProfileId");
+    expect(read("drizzle/0029_local_agent_account_binding.sql")).toContain("localProfileId");
   });
 
   it("C7-B publish verification unchanged", () => {

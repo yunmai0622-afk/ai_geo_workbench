@@ -87,7 +87,7 @@ describe("GEO-V1-H Tenant Isolation P0", () => {
 
   it("ensure 脚本与 migration 存在", () => {
     expect(fs.existsSync(path.join(root, "scripts/ensure_project_owner_user_id.mjs"))).toBe(true);
-    expect(fs.existsSync(path.join(root, "drizzle/0030_projects_owner_user_id.sql"))).toBe(true);
+    expect(fs.existsSync(path.join(root, "drizzle/0031_projects_owner_user_id.sql"))).toBe(true);
   });
 
   it("Agent router 仍为 publicProcedure", () => {

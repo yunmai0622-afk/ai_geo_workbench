@@ -19,7 +19,7 @@ describe("P2 platform multi-account binding & publish", () => {
   });
 
   it("migration drops old index and creates new unique index", () => {
-    const sql = read("drizzle/0024_platform_multi_accounts.sql");
+    const sql = read("drizzle/0025_platform_multi_accounts.sql");
     expect(sql).toContain("DROP INDEX `project_platform_accounts_project_platform`");
     expect(sql).toContain("project_platform_accounts_project_platform_name");
     expect(sql).toContain("accountName");

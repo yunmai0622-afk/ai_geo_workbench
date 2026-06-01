@@ -33,7 +33,7 @@ describe("P2-B-Verify-Fix inclusion monitoring", () => {
   });
 
   it("migration 0025 adds ai test columns without table rebuild", () => {
-    const sql = read("drizzle/0025_fix_inclusion_monitoring_columns.sql");
+    const sql = read("drizzle/0028_fix_inclusion_monitoring_columns.sql");
     expect(sql).toContain("aiTestResults");
     expect(sql).toContain("lastAiTestedAt");
     expect(sql).not.toContain("DROP TABLE");

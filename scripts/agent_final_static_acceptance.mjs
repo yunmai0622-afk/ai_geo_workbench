@@ -87,11 +87,11 @@ for (const s of ["dev", "typecheck", "build"]) {
 }
 
 // Migrations
-for (const m of ["0026_local_agent_account_binding.sql", "0027_agent_publish_tasks.sql"]) {
+for (const m of ["0029_local_agent_account_binding.sql", "0026_agent_publish_tasks.sql"]) {
   if (!fs.existsSync(path.join(root, "drizzle", m))) fail(`缺少 migration ${m}`);
   else pass(`migration ${m}`);
 }
-mustInclude("drizzle/meta/_journal.json", ["0026_local_agent_account_binding", "0027_agent_publish_tasks"], "journal");
+mustInclude("drizzle/meta/_journal.json", ["0029_local_agent_account_binding", "0026_agent_publish_tasks"], "journal");
 
 // Artifacts checklist files
 const artifactChecklists = [

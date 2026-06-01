@@ -7,7 +7,7 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("GEO-V1.1-Project-Archive", () => {
   it("migration 0042 adds archivedAt to projects", () => {
-    expect(read("drizzle/0042_projects_archived_at.sql")).toContain("archivedAt");
+    expect(read("drizzle/0043_projects_archived_at.sql")).toContain("archivedAt");
     expect(read("drizzle/schema.ts")).toContain('archivedAt: timestamp("archivedAt")');
   });
 
