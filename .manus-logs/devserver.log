@@ -3111,3 +3111,34 @@
 [2026-06-01T09:20:57.907Z] 
 [2026-06-01T09:21:04.730Z] Server running on http://localhost:3000/
 [2026-06-01T09:21:16.952Z] [Auth] Missing session cookie
+[2026-06-01T09:56:02.320Z] 5:56:02 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-06-01T09:56:02.321Z] 5:56:02 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T09:56:02.322Z] 5:56:02 AM [vite] (client) hmr update /src/components/UserFeedbackFab.tsx, /src/index.css
+[2026-06-01T09:56:02.322Z] 5:56:02 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T09:56:02.323Z] 5:56:02 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-01T09:56:02.324Z] 5:56:02 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/ClientDashboardPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectSwitcher.tsx
+[2026-06-01T09:56:02.324Z] 5:56:02 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T09:56:02.325Z] 5:56:02 AM [vite] (client) page reload src/main.tsx
+[2026-06-01T09:56:02.326Z] 5:56:02 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-06-01T09:56:02.326Z] 5:56:02 AM [vite] (client) hmr update /src/pages/SettingsPage.tsx, /src/index.css
+[2026-06-01T09:56:02.326Z] 5:56:02 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T09:56:02.333Z] 5:56:02 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/components/enterpriseProfile/ProfileCompletenessHeader.tsx, /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx
+[2026-06-01T09:56:02.334Z] 5:56:02 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-01T09:56:02.334Z] 5:56:02 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/pages/OnboardingPage.tsx, /src/components/SubscriptionUpgradePrompt.tsx
+[2026-06-01T09:56:02.334Z] 5:56:02 AM [vite] (client) hmr update /src/pages/PricingPage.tsx, /src/pages/SettingsPage.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/pages/OnboardingPage.tsx, /src/components/SubscriptionUpgradePrompt.tsx
+[2026-06-01T09:56:02.335Z] 5:56:02 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicEvidencePage.tsx, /src/pages/AiSearchEvidencePage.tsx, /src/pages/DeliveryReportPublicPage.tsx, /src/pages/AdminConfigPage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/RegisterPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/pages/GeoPages.tsx, /src/pages/SettingsPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/AssetCenter.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/OnboardingPage.tsx, /src/components/auth/LoginGatePanel.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/enterpriseProfile/CompetitorAnalysisSection.tsx, /src/components/enterpriseProfile/ProfileIntakePanel.tsx
+[2026-06-01T09:56:02.443Z] 5:56:02 AM [tsx] change in ./shared/userFacingErrors.ts Restarting...
+[2026-06-01T09:56:09.649Z] cServer running on http://localhost:3000/
+[2026-06-01T09:56:56.119Z] Dev server process group stopped
+[2026-06-01T09:56:56.122Z] ELIFECYCLE  Command failed.
+[2026-06-01T09:56:56.184Z] Dev server exited with code -15
+[2026-06-01T09:56:59.132Z] Starting dev server with command: pnpm run dev
+[2026-06-01T09:56:59.989Z] 
+[2026-06-01T09:56:59.990Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-01T09:56:59.991Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-01T09:56:59.991Z] 
+[2026-06-01T09:57:07.002Z] Server running on http://localhost:3000/
+[2026-06-01T09:57:19.725Z] [Auth] Missing session cookie
+[2026-06-01T09:57:20.059Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-01T09:57:26.670Z] 5:57:26 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T09:58:14.703Z] 5:58:14 AM [vite] (client) hmr update /src/index.css
