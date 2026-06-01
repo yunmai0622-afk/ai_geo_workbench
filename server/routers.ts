@@ -155,6 +155,7 @@ import {
   requireAnalysisAccess,
   requireArticleAccess,
   requireMonitoringRecordAccess,
+  requireOptimizationTaskAccess,
   requireProjectAccess,
   requireQuestionAccess,
   requireTestRoundAccess,
@@ -1336,6 +1337,7 @@ const geoRouter = router({
     }),
     create: protectedProcedure.input(aiResponseInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireProjectAccess(ctx, input.projectId);
       await db.insert(aiResponses).values({ ...input, questionId: input.questionId ?? null, checkedAt: new Date(input.checkedAt) });
       await syncManualQuestionsFromAiResponseImport(db, [{ projectId: input.projectId, questionText: input.questionText }]);
       await updateProjectStatus(input.projectId, "responses_imported");
@@ -1343,12 +1345,15 @@ const geoRouter = router({
     }),
     importCsvRows: protectedProcedure.input(z.object({ rows: z.array(aiResponseInput).min(1) })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      const projectIds = Array.from(new Set(input.rows.map(row => row.projectId)));
+      for (const projectId of projectIds) {
+        await requireProjectAccess(ctx, projectId);
+      }
       await db.insert(aiResponses).values(input.rows.map(row => ({ ...row, questionId: row.questionId ?? null, checkedAt: new Date(row.checkedAt) })));
       await syncManualQuestionsFromAiResponseImport(
         db,
         input.rows.map(row => ({ projectId: row.projectId, questionText: row.questionText })),
       );
-      const projectIds = Array.from(new Set(input.rows.map(row => row.projectId)));
       await Promise.all(projectIds.map(projectId => updateProjectStatus(projectId, "responses_imported")));
       return { success: true, count: input.rows.length } as const;
     }),
@@ -1785,6 +1790,7 @@ const geoRouter = router({
     }),
     calculate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireProjectAccess(ctx, input.projectId);
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       const t0Metrics = await resolveLatestT0AiTestRunMetrics(db, input.projectId);
       if (analyses.length === 0 && !t0Metrics) {
@@ -1826,6 +1832,7 @@ const geoRouter = router({
       needRetest: z.boolean().optional().default(false),
     })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      await requireOptimizationTaskAccess(ctx, input.id);
       await db.update(optimizationTasks).set({
         status: input.status,
         publishedUrl: input.status === "done" ? input.publishedUrl ?? null : null,

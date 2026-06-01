@@ -39,7 +39,7 @@ describe("V1.0 客户主路径静态回归", () => {
   });
 
   it("首页展示增长总览、核心指标与行动卡", () => {
-    const homeSource = readProjectFile("client/src/pages/Home.tsx") + readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
+    const homeSource = readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
     expect(homeSource).toContain("AI 搜索增长总览");
     for (const text of ["核心状态", "下一步动作", "最近进展", "品牌提及率", "AI 搜索可见度评分"]) {
       expect(homeSource).toContain(text);

@@ -7,7 +7,7 @@ const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRo
 
 describe("V1.0 可售卖版产品体验静态回归", () => {
   it("首页展示增长驾驶舱、行动卡与核心指标", () => {
-    const homeSource = readProjectFile("client/src/pages/Home.tsx") + readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
+    const homeSource = readProjectFile("client/src/components/V1WorkbenchOverview.tsx");
     expect(homeSource).toContain("AI 搜索增长总览");
     expect(homeSource).toContain("下一步动作");
     expect(homeSource).toContain("AiMetricCard");

@@ -6,6 +6,7 @@ import {
   analysisResults,
   geoArticles,
   geoInclusionMonitoringRecords,
+  optimizationTasks,
   projects,
   publishTasks,
   questions,
@@ -182,6 +183,18 @@ export async function requireAiResponseAccess(ctx: TrpcContext, aiResponseId: nu
     .where(eq(aiResponses.id, aiResponseId))
     .limit(1);
   if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "AI 回答不存在" });
+  await requireProjectAccess(ctx, rows[0].projectId);
+  return rows[0].projectId;
+}
+
+export async function requireOptimizationTaskAccess(ctx: TrpcContext, taskId: number): Promise<number> {
+  const db = await requireDbConn();
+  const rows = await db
+    .select({ projectId: optimizationTasks.projectId })
+    .from(optimizationTasks)
+    .where(eq(optimizationTasks.id, taskId))
+    .limit(1);
+  if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "优化任务不存在" });
   await requireProjectAccess(ctx, rows[0].projectId);
   return rows[0].projectId;
 }

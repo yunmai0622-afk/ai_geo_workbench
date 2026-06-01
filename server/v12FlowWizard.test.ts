@@ -1,42 +1,11 @@
-import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const navigateMock = vi.fn();
-
-vi.mock("wouter", () => ({
-  useLocation: () => ["/flow", navigateMock],
-}));
-
-vi.mock("@/lib/trpc", () => ({
-  trpc: {
-    geo: {
-      projects: {
-        list: {
-          useQuery: () => ({
-            isLoading: false,
-            data: [{ id: 1, enterpriseName: "海豚知道", industry: "知识付费 SaaS", status: "created", website: "https://haitunzhidao.com" }],
-          }),
-        },
-      },
-      scores: { latest: { useQuery: () => ({ isLoading: false, data: null, isError: false }) } },
-      tasks: { list: { useQuery: () => ({ isLoading: false, data: [], isError: false }) } },
-      articles: {
-        list: { useQuery: () => ({ isLoading: false, data: [], isError: false }) },
-        publishRecords: { useQuery: () => ({ isLoading: false, data: [], isError: false }) },
-        inclusionMonitoringRecords: { useQuery: () => ({ isLoading: false, data: [], isError: false }) },
-      },
-    },
-  },
-}));
-
-import GeoFlowWizardPage from "../client/src/pages/GeoFlowWizard";
+const projectRoot = resolve(__dirname, "..");
+const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRoot, relativePath), "utf-8");
 
 describe("工作台 Flow 页（与首页同组件）", () => {
-  const readProjectFile = (relativePath: string) => readFileSync(resolve(__dirname, "..", relativePath), "utf-8");
-
   it("将 /flow 注册为受保护路由，确保客户试跑向导可访问", () => {
     const appSource = readProjectFile("client/src/App.tsx");
     expect(appSource).toContain('path="/flow"');
