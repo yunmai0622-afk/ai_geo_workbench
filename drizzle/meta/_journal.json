@@ -334,8 +334,36 @@
     {
       "idx": 47,
       "version": "5",
+      "when": 1778271697827,
+      "tag": "0047_geo_articles_published_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1778272697827,
+      "tag": "0048_geo_articles_content_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "5",
+      "when": 1778273197827,
+      "tag": "0049_geo_articles_content_review_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
       "when": 1778273697827,
       "tag": "0050_user_feedbacks",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "5",
+      "when": 1778274697827,
+      "tag": "0051_geo_system_config_announcement",
       "breakpoints": true
     }
   ]

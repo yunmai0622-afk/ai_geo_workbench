@@ -544,7 +544,6 @@ export default function ClientDashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <DangerousActionConfirmDialog {...dangerousConfirm.dialogProps} />
     </div>
   );
 }

@@ -7,8 +7,8 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("GEO-V1.1-Content-Review-Status", () => {
   it("persists contentReviewStatus on geo_articles", () => {
-    expect(read("drizzle/schema.ts")).toContain("contentReviewStatus");
-    expect(read("drizzle/0050_geo_articles_content_review_status.sql")).toContain("待审核");
+    expect(read("drizzle/schema.ts")).toContain('contentReviewStatus');
+    expect(read("drizzle/0049_geo_articles_content_review_status.sql")).toContain("待审核");
   });
 
   it("exposes setContentReviewStatus mutation", () => {
@@ -33,6 +33,7 @@ describe("GEO-V1.1-Content-Review-Status", () => {
     );
     const confirmFn = weekly.slice(weekly.indexOf("const handleConfirmPublish"));
     expect(confirmFn.indexOf("isContentReviewPending")).toBeGreaterThan(-1);
+    const blockIdx = confirmFn.indexOf("return;");
     const pendingHintIdx = confirmFn.indexOf("CONTENT_REVIEW_PENDING_ENQUEUE_HINT");
     expect(pendingHintIdx).toBeGreaterThan(-1);
     expect(confirmFn.indexOf("createPublishTask.mutateAsync")).toBeGreaterThan(pendingHintIdx);
