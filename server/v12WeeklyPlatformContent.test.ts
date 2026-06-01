@@ -65,6 +65,8 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
     expect(weekly).toContain("WeeklyPlatformArticleCard");
     expect(weekly).toContain("resolveQualityDisplay");
     expect(weekly).toContain("加入发布队列");
+    expect(weekly).toContain("weekly-batch-enqueue-publish");
+    expect(weekly).toContain("weekly-filter-platform");
     expect(weekly).toContain("getArticlePublishPlatform");
     expect(weekly).toContain("publish-dialog-platform-label");
     expect(weekly).not.toContain("rawAnswer");
