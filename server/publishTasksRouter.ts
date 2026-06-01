@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import {
@@ -37,6 +37,10 @@ import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/sc
 import { emitPublishFailedNotification, emitPublishSuccessNotification } from "./systemNotifications";
 import { retryFailedPublishTask } from "./publishTaskRetryService";
 import { canRetryPublishTask, isPublishRetryExhausted } from "@shared/publishTaskRetry";
+import {
+  PUBLISH_QUEUE_BLOCKING_STATUSES,
+  PUBLISH_QUEUE_DUPLICATE_MESSAGE,
+} from "@shared/publishQueueDedup";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -129,6 +133,26 @@ async function assertPublishReadinessForCreate(
     throw new TRPCError({ code: "BAD_REQUEST", message: readiness.message });
   }
   return readiness;
+}
+
+async function assertNoDuplicatePublishQueueTask(
+  db: Awaited<ReturnType<typeof requireDbConn>>,
+  input: { articleId: number; platform: string },
+) {
+  const existing = await db
+    .select({ id: publishTasks.id })
+    .from(publishTasks)
+    .where(
+      and(
+        eq(publishTasks.articleId, input.articleId),
+        eq(publishTasks.platform, input.platform),
+        inArray(publishTasks.status, [...PUBLISH_QUEUE_BLOCKING_STATUSES]),
+      ),
+    )
+    .limit(1);
+  if (existing.length > 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: PUBLISH_QUEUE_DUPLICATE_MESSAGE });
+  }
 }
 
 async function attachCoverImagePayload(coverImageUrl: string | null, origin: string) {
@@ -265,6 +289,11 @@ export const publishTasksRouter = router({
           message: publishBlockedSessionExpiredMessage(input.platform),
         });
       }
+
+      await assertNoDuplicatePublishQueueTask(db, {
+        articleId: input.articleId,
+        platform: input.platform,
+      });
 
       const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);
       const inserted = await db

@@ -1,3 +1,4 @@
+import { ArticleContentEditMeta } from "@/components/ArticleContentEditMeta";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { GeoQualityScore, type GeoQualityInitialState } from "@/components/GeoQualityScore";
 import { type GeoQualityReviewResult } from "@shared/geoQualityReview";
@@ -60,6 +61,9 @@ export type EditableArticleAsset = {
   status?: string | null;
   publicPath?: string | null;
   lifecycle?: Parameters<typeof ArticleLifecyclePanel>[0]["lifecycle"];
+  contentEditedAt?: Date | string | null;
+  updatedAt?: Date | string | null;
+  lastPublishRecordAt?: Date | string | null;
 };
 
 type ArticleAssetEditorSheetProps = {
@@ -285,6 +289,14 @@ export function ArticleAssetEditorSheet({
         <div className="flex-1 space-y-5 overflow-y-auto px-1 py-2">
           {article ? (
             <ArticleLifecyclePanel articleId={article.id} article={article} lifecycle={article.lifecycle} />
+          ) : null}
+          {article ? (
+            <ArticleContentEditMeta
+              contentEditedAt={article.contentEditedAt}
+              updatedAt={article.updatedAt}
+              lifecycleEvents={article.lifecycleEvents}
+              lastPublishRecordAt={article.lastPublishRecordAt}
+            />
           ) : null}
           <div className="space-y-2">
             <Label htmlFor="asset-title">文章标题</Label>
