@@ -1,8 +1,11 @@
+import { Button } from "@/components/ui/button";
+import { geoP0Brand } from "@/lib/geoP0Visual";
 import { Progress } from "@/components/ui/progress";
 import {
   AI_TASK_PROGRESS_KEEP_OPEN_HINT,
   type AiTaskProgressErrorCategory,
 } from "@shared/aiTaskProgress";
+import { CONTENT_GENERATION_REGENERATE_LABEL } from "@shared/contentGenerationRetry";
 import { formatAiTaskProgressFailure } from "@/lib/aiTaskProgressErrors";
 
 export type AiTaskProgressCardProps = {
@@ -18,6 +21,10 @@ export type AiTaskProgressCardProps = {
   status: "running" | "success" | "failed";
   errorCategory?: AiTaskProgressErrorCategory;
   errorMessage?: string;
+  /** 生成失败时展示「重新生成」 */
+  onRegenerate?: () => void;
+  regenerateDisabled?: boolean;
+  regenerateLabel?: string;
 };
 
 export function AiTaskProgressCard({
@@ -33,6 +40,9 @@ export function AiTaskProgressCard({
   status,
   errorCategory,
   errorMessage,
+  onRegenerate,
+  regenerateDisabled = false,
+  regenerateLabel = CONTENT_GENERATION_REGENERATE_LABEL,
 }: AiTaskProgressCardProps) {
   const timedHint =
     status === "running" && elapsedSec >= 90 && hint90s
@@ -96,6 +106,23 @@ export function AiTaskProgressCard({
           <p className="mt-1">{failure.message}</p>
           <p className="mt-1 text-xs text-red-700/90">建议：{failure.nextStep}</p>
         </div>
+      ) : null}
+      {status === "failed" && errorMessage && !failure ? (
+        <p className="mt-3 text-sm text-red-800" data-testid={`${testId}-error-plain`}>
+          {errorMessage}
+        </p>
+      ) : null}
+      {status === "failed" && onRegenerate ? (
+        <Button
+          type="button"
+          size="sm"
+          className={`mt-3 ${geoP0Brand.primary}`}
+          disabled={regenerateDisabled}
+          data-testid={`${testId}-regenerate`}
+          onClick={onRegenerate}
+        >
+          {regenerateLabel}
+        </Button>
       ) : null}
     </div>
   );

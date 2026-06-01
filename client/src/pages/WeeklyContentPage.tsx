@@ -146,6 +146,10 @@ import {
   type LocalAgentAccountStatusEntry,
 } from "@shared/localAgentAccountSync";
 import {
+  formatArticlePublishedAtSentence,
+  resolveArticlePublishedAtForDisplay,
+} from "@shared/articlePublishState";
+import {
   filterWeeklyContentCards,
   resolveArticleCoverPreviewSrc,
   resolveArticlePublishLink,
@@ -161,6 +165,11 @@ import {
   updatePlatformBatchItemStatus,
   type PlatformBatchQueueItem,
 } from "@shared/platformBatchGeneration";
+import {
+  CONTENT_GENERATION_RETRY_EXHAUSTED_MESSAGE,
+  nextConsecutiveGenerationFailCount,
+  resolveContentGenerationFailureDisplay,
+} from "@shared/contentGenerationRetry";
 
 type ProjectOption = { id: number; enterpriseName: string };
 
@@ -250,6 +259,8 @@ type ArticleRow = {
   lifecycleStatus?: string | null;
   lifecycleEvents?: unknown;
   publicPath?: string | null;
+  publishedAt?: Date | string | null;
+  lastPublishRecordAt?: Date | string | null;
   generationBasis?: Record<string, unknown> | null;
   lifecycle?: ReturnType<typeof resolveArticleLifecycleView>;
   postPublish?: {
@@ -458,6 +469,12 @@ export default function WeeklyContentPage() {
     AiTaskProgressErrorCategory | undefined
   >();
   const [platformProgressErrorMessage, setPlatformProgressErrorMessage] = useState<string>();
+  const [platformGenerationRetry, setPlatformGenerationRetry] = useState<{
+    platformKey: WeeklyPlatformKey;
+    topicId: number;
+    strategyOverride: Partial<PlatformContentStrategyInput>;
+    failCount: number;
+  } | null>(null);
   const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<ContentCardStatusFilter>("all");
@@ -845,7 +862,7 @@ export default function WeeklyContentPage() {
       topicId: number,
       strategyOverride?: Partial<PlatformContentStrategyInput>,
       options?: { silentToast?: boolean },
-    ): Promise<{ ok: boolean; userNotice?: string | null }> => {
+    ): Promise<{ ok: boolean; userNotice?: string | null; errorDetail?: string }> => {
       const effectiveStrategy = { ...platformStrategy, ...strategyOverride };
       const strategyErr = validatePlatformContentStrategy(effectiveStrategy);
       if (strategyErr) {
@@ -881,7 +898,7 @@ export default function WeeklyContentPage() {
         const msg = readGenerateArticleError(err);
         if (!options?.silentToast) {
           toast.error(msg);
-          return { ok: false };
+          return { ok: false, userNotice: null };
         }
         throw err instanceof Error ? err : new Error(msg);
       } finally {
@@ -1098,6 +1115,14 @@ export default function WeeklyContentPage() {
             publishRecords,
             publishTasks,
           }),
+          publishedAtLabel: published
+            ? formatArticlePublishedAtSentence(
+                resolveArticlePublishedAtForDisplay({
+                  publishedAt: a.publishedAt,
+                  lastPublishRecordAt: a.lastPublishRecordAt,
+                }),
+              )
+            : null,
           lifecycle: a.lifecycle,
           postPublish: a.postPublish,
           article: a as Record<string, unknown>,
@@ -1258,11 +1283,38 @@ export default function WeeklyContentPage() {
     [articleByTopicId, taskIdSet, tasks, geoContentTaskSource?.contentTaskId],
   );
 
-  const generatePlatformContent = useCallback(
+  const recordPlatformGenerationFailure = useCallback(
+    (
+      platformKey: WeeklyPlatformKey,
+      topicId: number,
+      strategyOverride: Partial<PlatformContentStrategyInput>,
+      lastError: string,
+    ) => {
+      let failCount = 1;
+      setPlatformGenerationRetry(prev => {
+        failCount = nextConsecutiveGenerationFailCount(platformKey, prev);
+        return { platformKey, topicId, strategyOverride, failCount };
+      });
+      return resolveContentGenerationFailureDisplay({ failCount, lastError });
+    },
+    [],
+  );
+
+  const clearPlatformGenerationRetry = useCallback((platformKey?: WeeklyPlatformKey) => {
+    setPlatformGenerationRetry(prev => {
+      if (!prev) return null;
+      if (platformKey && prev.platformKey !== platformKey) return prev;
+      return null;
+    });
+  }, []);
+
+  const resolvePlatformGenerationParams = useCallback(
     async (
       platformKey: WeeklyPlatformKey,
-      options?: { silentToast?: boolean },
-    ): Promise<{ ok: boolean; errorMessage?: string; userNotice?: string | null }> => {
+    ): Promise<
+      | { ok: true; topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> }
+      | { ok: false; errorMessage: string }
+    > => {
       const publishId = resolvePublishSlugForWeeklyPlatform(platformKey);
       const strategyOverride: Partial<PlatformContentStrategyInput> = {};
       if (publishId) {
@@ -1286,22 +1338,9 @@ export default function WeeklyContentPage() {
         pending = findPendingTopicForPlatform(platformKey, topicRows);
       }
       if (!pending) {
-        const msg = PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE;
-        if (!options?.silentToast) {
-          toast.error(msg);
-        }
-        return { ok: false, errorMessage: msg };
+        return { ok: false, errorMessage: PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE };
       }
-
-      const result = await generateOne(pending.id, strategyOverride, { silentToast: true });
-      if (!result.ok) {
-        const msg = "内容生成失败，请稍后重试";
-        if (!options?.silentToast) {
-          toast.error(msg);
-        }
-        return { ok: false, errorMessage: msg };
-      }
-      return { ok: true, userNotice: result.userNotice };
+      return { ok: true, topicId: pending.id, strategyOverride };
     },
     [
       topics,
@@ -1310,16 +1349,79 @@ export default function WeeklyContentPage() {
       generateTopicsMutation,
       selectedProjectId,
       topicsQuery,
-      generateOne,
     ],
   );
 
-  const handlePlatformGenerate = async (platformKey: WeeklyPlatformKey) => {
+  const generatePlatformContent = useCallback(
+    async (
+      platformKey: WeeklyPlatformKey,
+      options?: {
+        silentToast?: boolean;
+        /** 重试时复用上次 topic 与策略参数，不再重新匹配选题 */
+        retryParams?: { topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> };
+      },
+    ): Promise<{
+      ok: boolean;
+      errorMessage?: string;
+      userNotice?: string | null;
+      topicId?: number;
+      strategyOverride?: Partial<PlatformContentStrategyInput>;
+    }> => {
+      const resolved = options?.retryParams
+        ? {
+            ok: true as const,
+            topicId: options.retryParams.topicId,
+            strategyOverride: options.retryParams.strategyOverride,
+          }
+        : await resolvePlatformGenerationParams(platformKey);
+      if (!resolved.ok) {
+        if (!options?.silentToast) {
+          toast.error(resolved.errorMessage);
+        }
+        return { ok: false, errorMessage: resolved.errorMessage };
+      }
+
+      const { topicId, strategyOverride } = resolved;
+      const result = await generateOne(topicId, strategyOverride, { silentToast: true });
+      if (!result.ok) {
+        const failure = recordPlatformGenerationFailure(
+          platformKey,
+          topicId,
+          strategyOverride,
+          result.errorDetail ?? "内容生成失败，请稍后重试",
+        );
+        if (!options?.silentToast) {
+          toast.error(failure.message);
+        }
+        return {
+          ok: false,
+          errorMessage: failure.message,
+          topicId,
+          strategyOverride,
+        };
+      }
+      clearPlatformGenerationRetry(platformKey);
+      return { ok: true, userNotice: result.userNotice, topicId, strategyOverride };
+    },
+    [
+      resolvePlatformGenerationParams,
+      generateOne,
+      recordPlatformGenerationFailure,
+      clearPlatformGenerationRetry,
+    ],
+  );
+
+  const runPlatformContentGenerationUi = async (
+    platformKey: WeeklyPlatformKey,
+    options?: { retryParams?: { topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> } },
+  ) => {
     setGeneratingPlatformKey(platformKey);
     setPlatformProgressLabelKey(platformKey);
     setPlatformProgressErrorCategory(undefined);
     setPlatformProgressErrorMessage(undefined);
-    platformContentProgress.reset();
+    if (!options?.retryParams) {
+      platformContentProgress.reset();
+    }
     platformContentProgress.start();
 
     try {
@@ -1327,13 +1429,16 @@ export default function WeeklyContentPage() {
       platformContentProgress.setStage(25);
       platformContentProgress.setStage(40);
       platformContentProgress.allowOptimisticUpTo(80);
-      const result = await generatePlatformContent(platformKey);
+      const result = await generatePlatformContent(platformKey, options);
       if (!result.ok) {
         const msg = result.errorMessage ?? "内容生成失败，请稍后重试";
-        setPlatformProgressErrorCategory("unknown");
+        const exhausted = msg === CONTENT_GENERATION_RETRY_EXHAUSTED_MESSAGE;
+        setPlatformProgressErrorCategory(exhausted ? undefined : "unknown");
         setPlatformProgressErrorMessage(msg);
         platformContentProgress.fail();
-        toast.error(msg);
+        if (!options?.retryParams) {
+          toast.error(msg);
+        }
         return;
       }
       platformContentProgress.setStage(95);
@@ -1341,20 +1446,45 @@ export default function WeeklyContentPage() {
       if (result.userNotice) {
         toast.message(result.userNotice);
       } else {
-        toast.success("内容已生成并保存。");
+        toast.success(options?.retryParams ? "内容已重新生成并保存。" : "内容已生成并保存。");
       }
       window.setTimeout(() => platformContentProgress.reset(), 5000);
     } catch (err) {
       const raw =
         err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "";
       const msg = readGenerateArticleError(err);
-      setPlatformProgressErrorCategory(mapPlatformContentErrorCategory(raw || msg));
-      setPlatformProgressErrorMessage(msg);
+      const topicId = options?.retryParams?.topicId ?? platformGenerationRetry?.topicId;
+      const strategyOverride =
+        options?.retryParams?.strategyOverride ?? platformGenerationRetry?.strategyOverride;
+      let displayMessage = msg;
+      if (topicId != null && strategyOverride) {
+        const failure = recordPlatformGenerationFailure(platformKey, topicId, strategyOverride, msg);
+        displayMessage = failure.message;
+      }
+      const exhausted = displayMessage === CONTENT_GENERATION_RETRY_EXHAUSTED_MESSAGE;
+      setPlatformProgressErrorMessage(displayMessage);
+      setPlatformProgressErrorCategory(
+        exhausted ? undefined : mapPlatformContentErrorCategory(raw || msg),
+      );
       platformContentProgress.fail();
       toast.error(msg);
     } finally {
       setGeneratingPlatformKey(null);
     }
+  };
+
+  const handlePlatformGenerate = async (platformKey: WeeklyPlatformKey) => {
+    await runPlatformContentGenerationUi(platformKey);
+  };
+
+  const handlePlatformRegenerate = () => {
+    if (!platformGenerationRetry) return;
+    const { platformKey, topicId, strategyOverride, failCount } = platformGenerationRetry;
+    const display = resolveContentGenerationFailureDisplay({ failCount, lastError: null });
+    if (!display.canRegenerate) return;
+    void runPlatformContentGenerationUi(platformKey, {
+      retryParams: { topicId, strategyOverride },
+    });
   };
 
   const runPlatformBatchItem = useCallback(
@@ -1444,6 +1574,20 @@ export default function WeeklyContentPage() {
     if (!key) return null;
     return WEEKLY_PLATFORM_DEFS.find(d => d.key === key)?.label ?? null;
   }, [platformProgressLabelKey, generatingPlatformKey]);
+
+  const platformProgressFailureDisplay = useMemo(
+    () =>
+      resolveContentGenerationFailureDisplay({
+        failCount: platformGenerationRetry?.failCount ?? 0,
+        lastError: platformProgressErrorMessage,
+      }),
+    [platformGenerationRetry?.failCount, platformProgressErrorMessage],
+  );
+
+  const canRegeneratePlatformContent =
+    platformContentProgress.isFailed &&
+    platformGenerationRetry != null &&
+    platformProgressFailureDisplay.canRegenerate;
 
   const handlePlatformView = (platformKey: WeeklyPlatformKey) => {
     const hit = articles.find(
@@ -1948,7 +2092,15 @@ export default function WeeklyContentPage() {
                     : "running"
               }
               errorCategory={platformProgressErrorCategory}
-              errorMessage={platformProgressErrorMessage}
+              errorMessage={
+                platformContentProgress.isFailed
+                  ? platformProgressFailureDisplay.message
+                  : platformProgressErrorMessage
+              }
+              onRegenerate={
+                canRegeneratePlatformContent ? () => handlePlatformRegenerate() : undefined
+              }
+              regenerateDisabled={anyGenerating}
             />
           ) : null}
 
