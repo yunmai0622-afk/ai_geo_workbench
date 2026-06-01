@@ -25,6 +25,7 @@ import {
   type DeliveryReportShareLinkStatus,
 } from "@shared/deliveryReportPublicShare";
 import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare";
+import { mapCompetitorAnalysisForDeliveryReport } from "@shared/deliveryReportCompetitor";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
 import { getDb } from "./db";
 
@@ -242,6 +243,13 @@ export async function buildDeliveryReportPublicSharePayload(
     })),
   );
 
+  const { resolveCompetitorAnalysisSummary } = await import("./competitorAnalysis");
+  const competitorSummary = await resolveCompetitorAnalysisSummary(db, projectId, brandName);
+  const competitorComparison =
+    competitorSummary.competitors.length > 0
+      ? mapCompetitorAnalysisForDeliveryReport(competitorSummary)
+      : null;
+
   return {
     brandName,
     enterpriseName,
@@ -251,6 +259,7 @@ export async function buildDeliveryReportPublicSharePayload(
     shareExpiresAt: shareExpiresAt ? shareExpiresAt.toISOString() : null,
     aiTest: toPublicAiTestAggregate(aggregate),
     publishedContent,
+    competitorComparison,
   };
 }
 

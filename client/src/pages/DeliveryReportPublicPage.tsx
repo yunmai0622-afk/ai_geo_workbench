@@ -90,6 +90,7 @@ export default function DeliveryReportPublicPage() {
       contentAssetCount={publishedItems.length}
       publishedItems={publishedItems}
       aiTestAggregate={data.aiTest}
+      competitorComparison={data.competitorComparison ?? null}
       reportNumberSeed={token}
       showEvidenceLinks
       buildEvidenceLink={sample => buildDeliveryReportPublicEvidencePath(token, sample.monitoringRecordId, sample.resultIndex)}

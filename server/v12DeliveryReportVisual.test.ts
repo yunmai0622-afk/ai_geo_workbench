@@ -7,6 +7,8 @@ const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRo
 
 describe("delivery report visual hierarchy (C3-A / C3-B)", () => {
   const customerView = readProjectFile("client/src/components/DeliveryReportCustomerView.tsx");
+  const customerLightView = readProjectFile("client/src/components/DeliveryReportCustomerLightView.tsx");
+  const competitorSection = readProjectFile("client/src/components/DeliveryReportCompetitorSection.tsx");
   const displayLib = readProjectFile("client/src/lib/deliveryReportDisplay.ts");
   const flow = readProjectFile("client/src/pages/V12FlowPages.tsx");
   const share = readProjectFile("client/src/pages/DeliveryReportSharePage.tsx");
@@ -86,6 +88,18 @@ describe("delivery report visual hierarchy (C3-A / C3-B)", () => {
     expect(customerView).toContain("grid-cols-1");
     expect(customerView).toContain("break-all");
     expect(customerView).toContain("break-words");
+  });
+
+  it("renders competitor comparison section on delivery report (GEO-V1.1)", () => {
+    expect(customerLightView).toContain("竞品对比");
+    expect(customerLightView).toContain("DeliveryReportCompetitorSection");
+    expect(competitorSection).toContain("AI 提及次数对比");
+    expect(competitorSection).toContain("各平台竞品内容分布");
+    expect(competitorSection).toContain("建议补充的内容方向");
+    expect(share).toContain("competitorAnalysisSummary");
+    expect(publicPage).toContain("competitorComparison");
+    expect(readProjectFile("server/deliveryReportPublicShare.ts")).toContain("resolveCompetitorAnalysisSummary");
+    expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("competitorComparison");
   });
 
   it("anonymous report renders published content from publicShare", () => {

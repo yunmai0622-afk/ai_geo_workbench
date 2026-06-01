@@ -19,6 +19,7 @@ import {
   type DeliveryReportPublishedItem,
 } from "@/lib/deliveryReportDisplay";
 import { DeliveryReportCustomerLightView } from "@/components/DeliveryReportCustomerLightView";
+import type { DeliveryReportCompetitorComparison } from "@shared/deliveryReportCompetitor";
 import { useMemo, useRef, type ReactNode } from "react";
 
 export type DeliveryReportCustomerViewProps = {
@@ -31,6 +32,7 @@ export type DeliveryReportCustomerViewProps = {
   aiTestAggregate: AiTestEvidenceAggregate;
   publishedItems?: DeliveryReportPublishedItem[];
   suggestionLines?: string[];
+  competitorComparison?: DeliveryReportCompetitorComparison | null;
   loading?: boolean;
   showEvidenceLinks?: boolean;
   embedded?: boolean;

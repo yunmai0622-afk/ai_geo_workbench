@@ -50,7 +50,10 @@ export async function resolveCompetitorAnalysisSummary(db: DbConn, projectId: nu
       .where(eq(competitorProfiles.projectId, projectId))
       .orderBy(competitorProfiles.updatedAt),
     db
-      .select({ competitorNames: aiTestRuns.competitorNames })
+      .select({
+        competitorNames: aiTestRuns.competitorNames,
+        mentionedCompany: aiTestRuns.mentionedCompany,
+      })
       .from(aiTestRuns)
       .where(eq(aiTestRuns.projectId, projectId)),
   ]);
@@ -60,6 +63,7 @@ export async function resolveCompetitorAnalysisSummary(db: DbConn, projectId: nu
     profileNames,
     runs.map(run => run.competitorNames ?? []),
   );
+  const brandAiMentionCount = runs.filter(run => run.mentionedCompany).length;
 
   const input = {
     brandName,
@@ -70,6 +74,7 @@ export async function resolveCompetitorAnalysisSummary(db: DbConn, projectId: nu
 
   return {
     brandName,
+    brandAiMentionCount,
     totalAiTestRuns: runs.length,
     competitors: buildCompetitorAnalysisRows(input),
     contentSuggestions: buildCompetitorContentSuggestions(input),

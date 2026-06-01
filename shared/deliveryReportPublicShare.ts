@@ -1,5 +1,6 @@
 import type { AiTestEvidenceAggregate, AiTestEvidenceItem, AiTestSentiment } from "./aiTestEvidence";
 import { parseStatusLabelCn, testStageLabelCn } from "./aiTestEvidence";
+import type { DeliveryReportCompetitorComparison } from "./deliveryReportCompetitor";
 
 /** 匿名报告「本轮发布内容」客户安全字段 */
 export type DeliveryReportPublicPublishedItem = {
@@ -37,6 +38,8 @@ export type DeliveryReportPublicSharePayload = {
   shareExpiresAt: string | null;
   aiTest: AiTestEvidenceAggregate;
   publishedContent: DeliveryReportPublicPublishedItem[];
+  /** 竞品对比（ai_test_runs + competitor_profiles） */
+  competitorComparison: DeliveryReportCompetitorComparison | null;
 };
 
 export type DeliveryReportShareLinkStatus = {
