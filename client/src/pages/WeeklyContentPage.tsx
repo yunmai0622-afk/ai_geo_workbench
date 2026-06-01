@@ -1,4 +1,6 @@
+import { PublishPrePublishChecklist } from "@/components/publishing/PublishPrePublishChecklist";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
+import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +47,7 @@ import {
   type WeeklyPlatformKey,
 } from "@/lib/weeklyPlatformBoard";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
-import { buildProjectUrl } from "@/lib/activeProject";
+import { buildProjectUrl, getSearchFromLocation } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
@@ -94,6 +96,10 @@ import {
   writeLastEnqueuePublishAccountId,
 } from "@shared/publishEnqueueAccountSelect";
 import {
+  evaluatePrePublishChecklist,
+  formatPrePublishChecklistBlockMessage,
+} from "@shared/publishPrePublishChecklist";
+import {
   ACCOUNT_GROUP_MISMATCH_HINT,
   accountGroupsMismatch,
   formatArticleStrategySummary,
@@ -121,6 +127,7 @@ import {
   MAX_WEEKLY_GENERATION_COUNT,
   weeklyGenerationCountClientError,
 } from "@shared/weeklyContentGeneration";
+import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { useLocation } from "wouter";
@@ -395,7 +402,7 @@ function notifyPublishEffectPrediction() {
 }
 
 export default function WeeklyContentPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } = useProjectSelection();
 
@@ -492,12 +499,36 @@ export default function WeeklyContentPage() {
   } | null>(null);
   const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
+  const t0GapDeepLinkHandledRef = useRef(false);
   const [filterStatus, setFilterStatus] = useState<ContentCardStatusFilter>("all");
   const [filterContentTag, setFilterContentTag] = useState<string>("all");
   const [titleSearch, setTitleSearch] = useState("");
   const [sortQuality, setSortQuality] = useState<ContentCardQualitySort>("none");
   const [selectedCardIds, setSelectedCardIds] = useState<Set<number>>(() => new Set());
   const [batchEnqueueBusy, setBatchEnqueueBusy] = useState(false);
+
+  useEffect(() => {
+    if (t0GapDeepLinkHandledRef.current) return;
+    const params = new URLSearchParams(getSearchFromLocation(location));
+    const weeklyPlatform = params.get("weeklyPlatform");
+    const questionType = params.get("questionType");
+    if (!weeklyPlatform && !questionType) return;
+    t0GapDeepLinkHandledRef.current = true;
+    if (weeklyPlatform) {
+      const key = normalizeWeeklyPlatformKey(weeklyPlatform);
+      setFilterPlatform(key);
+      requestAnimationFrame(() => {
+        document
+          .querySelector(`[data-testid="weekly-platform-card-${key}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+    if (questionType) {
+      toast.message("T0 检测内容缺口建议", {
+        description: `建议优先生成${resolveQuestionTypeDisplayLabel(questionType)}相关内容`,
+      });
+    }
+  }, [location]);
 
   const isPublishReadyAccount = (a: PlatformAccountItem) =>
     a.isEnabled &&
@@ -1916,6 +1947,22 @@ export default function WeeklyContentPage() {
           skippedCount += 1;
           continue;
         }
+        const preCheck = evaluatePrePublishChecklist({
+          title: article.title ?? "",
+          markdownContent: article.markdownContent ?? "",
+          coverBase64: article.coverBase64,
+          coverImageUrl: article.coverImageUrl,
+          platform: slug,
+          article,
+          account: picked,
+          localAgentAccountValid: localAgentAccountSnapshot.some(
+            e => e.platform === slug && e.loginStatus === "valid",
+          ),
+        });
+        if (!preCheck.allPassed) {
+          skippedCount += 1;
+          continue;
+        }
         try {
           const res = await createPublishTask.mutateAsync({
             articleId,
@@ -2010,6 +2057,31 @@ export default function WeeklyContentPage() {
     const rows = getPublishReadyAccountsForPlatform(publishDialogSlug);
     return rows.some(a => a.accountName === LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME);
   }, [publishDialogAccountSnapshot, publishDialogSlug, getPublishReadyAccountsForPlatform]);
+
+  const activePrePublishChecklist = useMemo(() => {
+    if (!publishArticle || !publishDialogSlug || !isBindingPublishPlatform(publishDialogSlug)) {
+      return null;
+    }
+    const account = pickSelectedPublishAccount(publishDialogSlug);
+    const localAgentAccountValid = publishDialogAccountSnapshot.some(
+      e => e.platform === publishDialogSlug && e.loginStatus === "valid",
+    );
+    return evaluatePrePublishChecklist({
+      title: publishArticle.title ?? "",
+      markdownContent: publishArticle.markdownContent ?? "",
+      coverBase64: publishArticle.coverBase64,
+      coverImageUrl: publishArticle.coverImageUrl,
+      platform: publishDialogSlug,
+      article: publishArticle,
+      account: account ?? null,
+      localAgentAccountValid,
+    });
+  }, [
+    publishArticle,
+    publishDialogSlug,
+    pickSelectedPublishAccount,
+    publishDialogAccountSnapshot,
+  ]);
 
   useEffect(() => {
     if (!publishDialogOpen) {
@@ -2431,14 +2503,7 @@ export default function WeeklyContentPage() {
                 )}
               </p>
             </div>
-            {publishArticle && articleNeedsCoverSaveHint(publishArticle) ? (
-              <p
-                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-                data-testid="publish-missing-cover-hint"
-              >
-                {ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE}
-              </p>
-            ) : null}
+            <PublishPrePublishChecklist checklist={activePrePublishChecklist} />
             {activePublishReadiness && !activePublishReadiness.ready ? (
               <p
                 className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
@@ -2716,7 +2781,8 @@ export default function WeeklyContentPage() {
                 disabled={
                   createPublishTask.isPending ||
                   selectedPlatforms.size === 0 ||
-                  (activePublishReadiness != null && !activePublishReadiness.ready)
+                  (activePublishReadiness != null && !activePublishReadiness.ready) ||
+                  (activePrePublishChecklist != null && !activePrePublishChecklist.allPassed)
                 }
                 onClick={() => void handleConfirmPublish()}
               >

@@ -175,6 +175,8 @@ export const questions = mysqlTable("questions", {
   businessValue: int("businessValue").default(3).notNull(),
   source: questionSourceEnum.default("ai_generated").notNull(),
   enabled: int("enabled").default(1).notNull(),
+  /** T0 检测完成后自动标注的内容缺口标签（客户可读文案） */
+  contentGapTags: json("contentGapTags").$type<string[]>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -324,6 +326,8 @@ export const geoArticles = mysqlTable("geo_articles", {
   articleType: articleTypeEnum.notNull(),
   markdownContent: text("markdownContent").notNull(),
   generationBasis: json("generationBasis").$type<Record<string, unknown>>(),
+  targetQuestionId: varchar("targetQuestionId", { length: 36 }),
+  targetGapType: varchar("targetGapType", { length: 64 }),
   citableSnippets: json("citableSnippets").$type<Array<Record<string, string>>>(),
   geoStructure: json("geoStructure").$type<Record<string, unknown>>(),
   thirdPartyMaterials: json("thirdPartyMaterials").$type<Record<string, string>>().notNull(),
@@ -870,7 +874,7 @@ export const effectiveActions = mysqlTable("effective_actions", {
 });
 
 /** GEO V1.1：用户系统通知 */
-export const systemNotificationTypeEnum = mysqlEnum("notificationType", ["t0_complete","publish_success","publish_failed","t1_retest_complete"]);
+export const systemNotificationTypeEnum = mysqlEnum("notificationType", ["t0_complete","publish_success","publish_failed","t1_retest_complete","weekly_growth_report"]);
 export const systemNotifications = mysqlTable("system_notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),

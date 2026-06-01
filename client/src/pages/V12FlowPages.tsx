@@ -27,6 +27,7 @@ import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderC
 import { RetestPlanPanel } from "@/components/diagnosis/RetestPlanPanel";
 import { DangerousActionConfirmDialog } from "@/components/DangerousActionConfirmDialog";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
+import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { useDangerousActionConfirm } from "@/hooks/useDangerousActionConfirm";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection, type ProjectOption } from "@/hooks/useActiveProjectSelection";
@@ -52,7 +53,9 @@ import {
   type AiTaskProgressErrorCategory,
 } from "@shared/aiTaskProgress";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { trpc } from "@/lib/trpc";
+import { isSubscriptionLimitMessage, SUBSCRIPTION_LIMIT_T0_MESSAGE } from "@shared/subscriptionLimits";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import {
   aggregateAiTestEvidence,
@@ -247,6 +250,13 @@ type MonitoringRecordLike = {
   lastAiTestedAt?: Date | string | null;
   currentSuggestion?: string | null;
   aiTestResults?: AiTestResultLike[] | null;
+  articleTitle?: string | null;
+  linkedDetectionQuestion?: string | null;
+  gapLinkDisplay?: string | null;
+  questionMentionRateChange?: {
+    summaryLine: string;
+    hasData: boolean;
+  } | null;
   linkAccess?: {
     accessible: boolean;
     checkedAt: string;
@@ -503,6 +513,7 @@ function customerErrorMessage(value?: string) {
 
 function contentGenerationErrorMessage(value?: string) {
   if (!value) return undefined;
+  if (isSubscriptionLimitMessage(value)) return value;
   return toPlatformContentGenerationError(value);
 }
 
@@ -854,6 +865,8 @@ export function AiDiagnosisFlowPage() {
   const runAnalysis = trpc.geo.analysis.run.useMutation();
   const calculateScore = trpc.geo.scores.calculate.useMutation();
   const generateTasks = trpc.geo.tasks.generate.useMutation();
+  const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
+  const t0LimitReached = subscriptionUsageQuery.data?.atLimit.t0Detection ?? false;
   const createT0WithQuestions = trpc.geo.testRounds.createT0WithQuestions.useMutation();
   const startT0Execution = trpc.geo.testRounds.startT0Execution.useMutation();
   const resetT0Baseline = trpc.geo.testRounds.resetT0Baseline.useMutation();
@@ -1242,6 +1255,10 @@ export function AiDiagnosisFlowPage() {
       await utils.geo.testRounds.get.invalidate({ projectId: selectedProjectId, id: roundId });
       setT0Message("T0 基线检测已启动，正在后台执行，请稍候…");
     } catch (err) {
+      if (handleSubscriptionLimitMutationError(err)) {
+        setT0Error(SUBSCRIPTION_LIMIT_T0_MESSAGE);
+        return;
+      }
       const raw =
         err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "启动 T0 基线检测失败";
       setT0Error(customerErrorMessage(raw));
@@ -2983,7 +3000,23 @@ export function InclusionMonitoringFlowPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">文章 #{record.articleId}</p>
+                    <p className="font-semibold text-gray-900 truncate">
+                      {record.articleTitle?.trim() ? record.articleTitle : `文章 #${record.articleId}`}
+                    </p>
+                    {record.gapLinkDisplay ? (
+                      <p className="mt-1 text-xs text-gray-700" data-testid={`monitoring-gap-link-${record.id}`}>
+                        {record.gapLinkDisplay}
+                      </p>
+                    ) : record.linkedDetectionQuestion ? (
+                      <p className="mt-1 text-xs text-gray-600">
+                        关联检测问题：{record.linkedDetectionQuestion}
+                      </p>
+                    ) : null}
+                    {record.questionMentionRateChange?.summaryLine ? (
+                      <p className="mt-1 text-xs text-blue-800" data-testid={`monitoring-mention-rate-${record.id}`}>
+                        {record.questionMentionRateChange.summaryLine}
+                      </p>
+                    ) : null}
                     {toAbsoluteUrl(record.publicUrl) ? (
                       <a
                         className="mt-1 inline-block text-sm text-blue-600 hover:underline truncate max-w-full"

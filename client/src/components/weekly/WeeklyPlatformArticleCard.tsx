@@ -32,6 +32,11 @@ export type WeeklyArticleCardModel = {
   contentTypeLabel?: string | null;
   contentGoal?: string | null;
   geoGap?: string | null;
+  gapLinkDisplay?: string | null;
+  questionMentionRateChange?: {
+    summaryLine: string;
+    hasData: boolean;
+  } | null;
   keywords?: string[];
   statusLabel: string;
   statusTone: "neutral" | "info" | "success" | "warning";
@@ -198,7 +203,21 @@ export function WeeklyPlatformArticleCard(props: Props) {
         </div>
       </div>
       {model.contentGoal ? <p className="mt-2 text-xs text-gray-600"><span className="font-medium text-gray-500">内容目标：</span>{model.contentGoal}</p> : null}
-      {model.geoGap ? <p className="mt-1 text-xs text-gray-600" data-testid="weekly-card-geo-gap"><span className="font-medium text-gray-500">对应 GEO 缺口：</span>{model.geoGap}</p> : null}
+      {model.gapLinkDisplay ? (
+        <p className="mt-1 text-xs text-gray-700" data-testid="weekly-card-gap-link">
+          {model.gapLinkDisplay}
+        </p>
+      ) : model.geoGap ? (
+        <p className="mt-1 text-xs text-gray-600" data-testid="weekly-card-geo-gap">
+          <span className="font-medium text-gray-500">对应 GEO 缺口：</span>
+          {model.geoGap}
+        </p>
+      ) : null}
+      {model.questionMentionRateChange?.summaryLine ? (
+        <p className="mt-1 text-xs text-blue-800" data-testid="weekly-card-mention-rate-change">
+          {model.questionMentionRateChange.summaryLine}
+        </p>
+      ) : null}
       {model.keywords?.length ? <p className="mt-1 text-xs text-gray-600"><span className="font-medium text-gray-500">关键词：</span>{model.keywords.join("、")}</p> : null}
       {model.strategySummary ? <p className="mt-2 text-xs text-gray-500" data-testid="article-strategy-summary">{model.strategySummary}</p> : null}
       {model.qualityView ? (

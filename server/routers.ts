@@ -106,9 +106,16 @@ import {
   type ArticleStatus,
   type P12AssetLibraryContext,
 } from "./geoArticleLogic";
+import { generateT0QuestionBank } from "./geoQuestionBank";
 import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
 import { appendArticleLifecycleEvent, getArticleLifecycleTimeline } from "./articleLifecycleService";
 import { markGeoArticlePublishedAt } from "./geoArticlePublishState";
+import {
+  enrichArticlesWithGapLink,
+  loadLinkedQuestionTextForArticle,
+  resolveArticleTargetGapLink,
+} from "./articleGapLink";
+import { buildArticleGapLinkContext } from "@shared/articleGapLink";
 import { resolveArticleLifecycleView } from "@shared/articleLifecycle";
 import {
   applyGeoArticleGenerationHistoryRestore,
@@ -172,11 +179,18 @@ import {
 } from "./deliveryReportPublicShare";
 import { buildProjectDeliveryReportContentQuality } from "./deliveryReportContentQuality";
 import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare";
+import { isValidStoredCoverBase64 } from "@shared/articleCoverBase64";
 import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import { runDailyAiCheck } from "./scheduledAiCheck";
 import { fetchWorkspaceSummaryMetrics } from "./workspaceSummary";
 import { buildGeoTaskDurationLogBase, logGeoAnalysisRunDuration, logGeoArticlesGenerateDuration, type GeoArticlesGenerateStepTimings } from "./geoTaskDurationLog";
 import { assertContentGenerationRateLimit, assertT0DetectionRateLimit } from "./memoryRateLimit";
+import {
+  assertCanCreateProject,
+  assertCanGenerateContent,
+  assertCanRunT0Detection,
+  getSubscriptionUsageSnapshot,
+} from "./subscriptionLimits";
 import { writeAuditLog } from "./auditLog";
 import { AUDIT_LOG_ACTIONS } from "@shared/auditLogActions";
 import {
@@ -1263,6 +1277,7 @@ const geoRouter = router({
       await ensureProjectsOwnerUserIdColumnOnce();
       const db = await requireDb();
       const ownerUserId = getCurrentUserId(ctx);
+      await assertCanCreateProject(db, ownerUserId);
       let projectId = 0;
       try {
         const inserted = await db.insert(projects).values({ ...input, ownerUserId }).$returningId();
@@ -1356,11 +1371,14 @@ const geoRouter = router({
       await requireProjectAccess(ctx, input.projectId);
       return insertSpecifiedQuestions(input.projectId, input.rows, "csv");
     }),
-    /** 基于企业档案生成 5–10 条 AI 检索型目标问题，写入 questions（覆盖同项目历史 ai_generated 行）。 */
+    /**
+     * 基于企业档案生成 T0 问题库（五类各≥4，共≥20）+ 内容诊断用「指定问题」（8–10）。
+     * 覆盖同项目历史 ai_generated 行。
+     */
     generateTargetQuestions: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       const project = await requireProjectAccess(ctx, input.projectId);
-      const existingRows = await db
+      const existingSpecifiedRows = await db
         .select({ questionText: questions.questionText })
         .from(questions)
         .where(
@@ -1370,7 +1388,7 @@ const geoRouter = router({
             eq(questions.enabled, 1),
           ),
         );
-      const excludeQuestions = existingRows
+      const excludeQuestions = existingSpecifiedRows
         .map(r => (r.questionText ?? "").trim())
         .filter(t => t.length > 0);
       const profileRows = await db
@@ -1389,7 +1407,7 @@ const geoRouter = router({
         : "（档案未填客户痛点，请结合行业常识推演）";
       const competitors = mapped.competitors.length > 0 ? mapped.competitors.join("、") : "（未填）";
       const keyPointsStr = mapped.keyPoints.join("；") || project.coreSellingPoints;
-      const generatedPack = await llmGenerateTargetSearchQuestions({
+      const promptPack = {
         brandName: (mapped.brandName || project.enterpriseName).trim(),
         industryTag: (mapped.industryTag || project.industry).trim(),
         productDesc: (mapped.productDesc || project.productIntro).trim(),
@@ -1397,78 +1415,96 @@ const geoRouter = router({
         customerPains,
         competitors,
         keyPoints: keyPointsStr,
-        excludeQuestions,
+        coreKeywords: project.coreKeywords ?? [],
+      };
+      const t0Bank = await generateT0QuestionBank(promptPack);
+      const generatedPack = await llmGenerateTargetSearchQuestions({
+        ...promptPack,
+        excludeQuestions: [
+          ...excludeQuestions,
+          ...t0Bank.rows.map(r => r.questionText),
+        ],
       });
-      const generated = generatedPack.rows;
+      const specifiedRows = generatedPack.rows;
       await db.delete(questions).where(and(eq(questions.projectId, input.projectId), eq(questions.source, "ai_generated")));
-      await db.insert(questions).values(
-        generated.map(item => ({
+      await db.insert(questions).values([
+        ...t0Bank.rows.map(item => ({
+          projectId: input.projectId,
+          questionText: item.questionText,
+          questionType: item.questionType,
+          targetKeyword: null,
+          intentLevel: "高" as const,
+          businessValue: 5,
+          source: "ai_generated" as const,
+          enabled: 1,
+        })),
+        ...specifiedRows.map(item => ({
           projectId: input.projectId,
           questionText: item.questionText,
           questionType: "指定问题" as const,
           targetKeyword: JSON.stringify({ intent: item.intent, disadvantaged: item.disadvantaged }),
-          intentLevel: "高",
+          intentLevel: "高" as const,
           businessValue: item.disadvantaged ? 9 : 7,
+          source: "ai_generated" as const,
+          enabled: 1,
+        })),
+      ]);
+      await updateProjectStatus(input.projectId, "questions_ready");
+      const totalCount = t0Bank.rows.length + specifiedRows.length;
+      return {
+        success: true,
+        count: totalCount,
+        newCount: totalCount,
+        t0QuestionCount: t0Bank.rows.length,
+        specifiedQuestionCount: specifiedRows.length,
+        typeDistribution: t0Bank.byType,
+        filteredCount: generatedPack.filteredCount,
+        hadPreviousQuestions: excludeQuestions.length > 0,
+      } as const;
+    }),
+    /** 批量生成 T0 问题库（五类各≥4，共≥20），覆盖同项目历史 ai_generated。 */
+    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      const project = await requireProjectAccess(ctx, input.projectId);
+      const profileRows = await db
+        .select()
+        .from(enterpriseGeoProfiles)
+        .where(eq(enterpriseGeoProfiles.projectId, input.projectId))
+        .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+        .limit(1);
+      const ep = profileRows[0];
+      const mapped = extractProfileForQuestionGeneration({
+        profile: (ep ?? null) as Record<string, unknown> | null,
+        project,
+      });
+      const customerPains = mapped.customerPains.length
+        ? mapped.customerPains.join("；")
+        : "（档案未填客户痛点，请结合行业常识推演）";
+      const competitors = mapped.competitors.length > 0 ? mapped.competitors.join("、") : "（未填）";
+      const { rows, byType } = await generateT0QuestionBank({
+        brandName: (mapped.brandName || project.enterpriseName).trim(),
+        industryTag: (mapped.industryTag || project.industry).trim(),
+        productDesc: (mapped.productDesc || project.productIntro).trim(),
+        targetCustomer: (mapped.targetCustomer || project.targetCustomers).trim(),
+        customerPains,
+        competitors,
+        keyPoints: mapped.keyPoints.join("；") || project.coreSellingPoints,
+        coreKeywords: project.coreKeywords ?? [],
+      });
+      await db.delete(questions).where(and(eq(questions.projectId, input.projectId), eq(questions.source, "ai_generated")));
+      await db.insert(questions).values(
+        rows.map(item => ({
+          ...item,
+          projectId: input.projectId,
+          targetKeyword: null,
+          intentLevel: "高" as const,
+          businessValue: 5,
           source: "ai_generated" as const,
           enabled: 1,
         })),
       );
       await updateProjectStatus(input.projectId, "questions_ready");
-      return {
-        success: true,
-        count: generated.length,
-        newCount: generated.length,
-        filteredCount: generatedPack.filteredCount,
-        hadPreviousQuestions: excludeQuestions.length > 0,
-      } as const;
-    }),
-    generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-      const db = await requireDb();
-      const project = await requireProjectAccess(ctx, input.projectId);
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: "你是企业 GEO / AI Visibility 诊断顾问。请只输出符合 JSON Schema 的中文结果。" },
-          {
-            role: "user",
-            content: `请根据以下企业信息生成 50 个用户可能向 AI 对话平台提出的问题。必须覆盖问题类型：${generatedQuestionTypes.join("、")}。\n\n企业名称：${project.enterpriseName}\n行业：${project.industry}\n官网：${project.website}\n地区：${project.region}\n产品介绍：${project.productIntro}\n目标客户：${project.targetCustomers}\n核心卖点：${project.coreSellingPoints}\n竞品：${project.competitorNames.join("、")}\n核心关键词：${project.coreKeywords.join("、")}`,
-          },
-        ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "geo_questions",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                questions: {
-                  type: "array",
-                  minItems: 50,
-                  maxItems: 50,
-                  items: {
-                    type: "object",
-                    properties: {
-                      questionText: { type: "string" },
-                      questionType: { type: "string", enum: generatedQuestionTypes },
-                    },
-                    required: ["questionText", "questionType"],
-                    additionalProperties: false,
-                  },
-                },
-              },
-              required: ["questions"],
-              additionalProperties: false,
-            },
-          },
-        },
-      });
-      const parsed = parseLLMJson<{ questions: Array<{ questionText: string; questionType: typeof generatedQuestionTypes[number] }> }>(response.choices[0]?.message.content);
-      if (parsed.questions.length !== 50) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI 未返回 50 个问题，请重新生成" });
-      }
-      await db.insert(questions).values(parsed.questions.map(item => ({ ...item, projectId: input.projectId, targetKeyword: null, intentLevel: "中", businessValue: 3, source: "ai_generated" as const, enabled: 1 })));
-      await updateProjectStatus(input.projectId, "questions_ready");
-      return { success: true, count: parsed.questions.length } as const;
+      return { success: true, count: rows.length, typeDistribution: byType } as const;
     }),
   }),
 
@@ -2395,7 +2431,7 @@ const geoRouter = router({
           lastPublishRecordAtByArticle.set(row.articleId, row.publishedAt);
         }
       }
-      return uniqueRows.map(article => {
+      const mapped = uniqueRows.map(article => {
         const task = article.optimizationTaskId ? taskById.get(article.optimizationTaskId) : undefined;
         const card = task ? parseOptimizationTaskCard(task.executionSuggestion) : null;
         const taskRecommendedPlatform = card?.recommendedPlatform?.length
@@ -2421,6 +2457,7 @@ const geoRouter = router({
           },
         };
       });
+      return enrichArticlesWithGapLink(db, input.projectId, mapped);
     }),
     lifecycleTimeline: protectedProcedure
       .input(z.object({ articleId: z.number().int().positive() }))
@@ -2699,7 +2736,43 @@ const geoRouter = router({
         .from(geoInclusionMonitoringRecords)
         .where(eq(geoInclusionMonitoringRecords.projectId, input.projectId))
         .orderBy(desc(geoInclusionMonitoringRecords.createdAt));
-      return rows.map(mapInclusionMonitoringRecordForApi);
+      const articleIds = Array.from(new Set(rows.map(row => row.articleId)));
+      const articleRows =
+        articleIds.length > 0
+          ? await db
+              .select({
+                id: geoArticles.id,
+                title: geoArticles.title,
+                targetQuestionId: geoArticles.targetQuestionId,
+                targetGapType: geoArticles.targetGapType,
+                generationBasis: geoArticles.generationBasis,
+              })
+              .from(geoArticles)
+              .where(and(eq(geoArticles.projectId, input.projectId), inArray(geoArticles.id, articleIds)))
+          : [];
+      const articleById = new Map(articleRows.map(row => [row.id, row] as const));
+      const enrichedArticles = await enrichArticlesWithGapLink(db, input.projectId, articleRows);
+      const gapByArticleId = new Map(enrichedArticles.map(row => [row.id, row] as const));
+
+      return Promise.all(
+        rows.map(async row => {
+          const article = articleById.get(row.articleId);
+          const gap = gapByArticleId.get(row.articleId);
+          const linkedQuestionText = article ? await loadLinkedQuestionTextForArticle(db, article) : null;
+          const gapContext = buildArticleGapLinkContext({
+            targetQuestionId: article?.targetQuestionId,
+            targetGapType: article?.targetGapType,
+            questionText: linkedQuestionText,
+          });
+          return mapInclusionMonitoringRecordForApi({
+            ...row,
+            articleTitle: article?.title ?? null,
+            linkedDetectionQuestion: gapContext.questionText,
+            gapLinkDisplay: gap?.gapLinkDisplay ?? gapContext.displayLine,
+            questionMentionRateChange: gap?.questionMentionRateChange ?? null,
+          });
+        }),
+      );
     }),
     generate: protectedProcedure
       .input(
@@ -2739,7 +2812,10 @@ const geoRouter = router({
           }),
       )
       .mutation(async ({ ctx, input }) => {
-      await assertContentGenerationRateLimit(getCurrentUserId(ctx));
+      const userId = getCurrentUserId(ctx);
+      const dbForLimit = await requireDb();
+      await assertCanGenerateContent(dbForLimit, userId);
+      await assertContentGenerationRateLimit(userId);
       const startedAtMs = Date.now();
       let stepStartMs = startedAtMs;
       const stepTimings: GeoArticlesGenerateStepTimings = {};
@@ -2893,7 +2969,24 @@ const geoRouter = router({
       }
       stepTimings.draftGenerationMs = Date.now() - stepStartMs;
       stepStartMs = Date.now();
-      const inserted = await db.insert(geoArticles).values(draft).$returningId();
+      const linkedQuestionText =
+        input.targetQuestion?.trim() ||
+        (typeof draft.generationBasis?.customerQuestion === "string" ? draft.generationBasis.customerQuestion : "");
+      const gapLink = await resolveArticleTargetGapLink(db, {
+        projectId: topic.projectId,
+        questionText: linkedQuestionText,
+        sourceQuestionIds,
+        analyses: analysisScope,
+        projectQuestions,
+      });
+      const inserted = await db
+        .insert(geoArticles)
+        .values({
+          ...draft,
+          targetQuestionId: gapLink?.roundQuestionId?.trim() ? gapLink.roundQuestionId : null,
+          targetGapType: gapLink?.gapType ?? null,
+        })
+        .$returningId();
       const articleId = inserted[0]?.id ?? 0;
       if (!articleId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "文章写入失败" });
       await appendArticleLifecycleEvent(db, articleId, {
@@ -2948,6 +3041,15 @@ const geoRouter = router({
         const coverTemplate = input.coverTemplate
           ? normalizeArticleCoverTemplateId(input.coverTemplate)
           : normalizeArticleCoverTemplateId(article.coverTemplate);
+        if (input.coverBase64 != null && input.coverBase64 !== undefined) {
+          const trimmedCover = input.coverBase64.trim();
+          if (!trimmedCover || !isValidStoredCoverBase64(trimmedCover)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "封面图无效或为空，请重新生成封面后再保存",
+            });
+          }
+        }
         const nextCoverBase64 =
           input.coverBase64 === undefined
             ? article.coverBase64
@@ -3372,12 +3474,39 @@ ${article.markdownContent}`,
           .limit(1);
         const profile = profileRows[0];
 
-        const questionRows = await db
+        let questionRows = await db
           .select({ questionText: questions.questionText })
           .from(questions)
           .where(eq(questions.projectId, input.projectId))
           .orderBy(desc(questions.businessValue))
           .limit(5);
+
+        if (input.recordId) {
+          const monitoringRows = await db
+            .select({ articleId: geoInclusionMonitoringRecords.articleId })
+            .from(geoInclusionMonitoringRecords)
+            .where(eq(geoInclusionMonitoringRecords.id, input.recordId))
+            .limit(1);
+          const articleId = monitoringRows[0]?.articleId;
+          if (articleId) {
+            const articleRows = await db
+              .select({
+                targetQuestionId: geoArticles.targetQuestionId,
+                targetGapType: geoArticles.targetGapType,
+                generationBasis: geoArticles.generationBasis,
+              })
+              .from(geoArticles)
+              .where(eq(geoArticles.id, articleId))
+              .limit(1);
+            const article = articleRows[0];
+            if (article) {
+              const linkedText = await loadLinkedQuestionTextForArticle(db, article);
+              if (linkedText) {
+                questionRows = [{ questionText: linkedText }];
+              }
+            }
+          }
+        }
 
         if (questionRows.length === 0) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "项目暂无问题数据，请先生成问题" });
@@ -3619,8 +3748,9 @@ ${article.markdownContent}`,
       )
       .mutation(async ({ ctx, input }) => {
         await requireProjectAccess(ctx, input.projectId);
-        await assertT0DetectionRateLimit(input.projectId);
         const db = await requireDb();
+        await assertCanRunT0Detection(db, getCurrentUserId(ctx));
+        await assertT0DetectionRateLimit(input.projectId);
         const result = await createT0RoundWithQuestions(db, {
           projectId: input.projectId,
           roundName: input.roundName,
@@ -3910,6 +4040,13 @@ ${article.markdownContent}`,
   }),
 
   platformAccounts: projectPlatformAccountsRouter,
+
+  subscription: router({
+    usage: protectedProcedure.query(async ({ ctx }) => {
+      const db = await requireDb();
+      return getSubscriptionUsageSnapshot(db, getCurrentUserId(ctx));
+    }),
+  }),
 });
 
 export const appRouter = router({
