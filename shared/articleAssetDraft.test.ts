@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE,
   ARTICLE_SAVED_PUBLISH_HINT_MESSAGE,
   ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE,
   buildArticleAssetSnapshot,
@@ -50,5 +51,6 @@ describe("articleAssetDraft", () => {
   it("exposes publish block and saved hint messages", () => {
     expect(ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE).toContain("未保存修改");
     expect(ARTICLE_SAVED_PUBLISH_HINT_MESSAGE).toContain("最新标题");
+    expect(ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE).toContain("保存修改");
   });
 });

@@ -4,7 +4,7 @@ import mysql from "mysql2/promise";
 const GEO_ARTICLE_QUALITY_COLUMNS: Array<{ name: string; ddl: string }> = [
   { name: "coverTemplate", ddl: "ADD COLUMN `coverTemplate` varchar(32) NULL" },
   { name: "coverImageUrl", ddl: "ADD COLUMN `coverImageUrl` varchar(2000) NULL" },
-  { name: "coverBase64", ddl: "ADD COLUMN `coverBase64` text NULL" },
+  { name: "coverBase64", ddl: "ADD COLUMN `coverBase64` mediumtext NULL" },
   { name: "geoQualityScore", ddl: "ADD COLUMN `geoQualityScore` int NULL" },
   { name: "geoQualityDetail", ddl: "ADD COLUMN `geoQualityDetail` json NULL" },
   { name: "geoQualityReviewedAt", ddl: "ADD COLUMN `geoQualityReviewedAt` timestamp NULL" },
@@ -43,7 +43,12 @@ export async function ensureGeoQualityColumns(databaseUrl?: string): Promise<voi
   try {
     conn = await mysql.createConnection(url);
     for (const col of GEO_ARTICLE_QUALITY_COLUMNS) {
-      if (await columnExists(conn, "geo_articles", col.name)) continue;
+      if (await columnExists(conn, "geo_articles", col.name)) {
+        if (col.name === "coverBase64") {
+          await conn.query("ALTER TABLE `geo_articles` MODIFY COLUMN `coverBase64` mediumtext NULL");
+        }
+        continue;
+      }
       await conn.query(`ALTER TABLE \`geo_articles\` ${col.ddl}`);
       console.log(`[Database] Added geo_articles.${col.name}`);
     }

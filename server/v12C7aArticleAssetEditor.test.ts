@@ -47,11 +47,12 @@ describe("C7-A article asset editor and template cover", () => {
     expect(read("client/src/components/ArticleAssetEditorSheet.tsx")).toContain('onChange={e => setTemplate');
   });
 
-  it("missing cover does not block article editing", () => {
+  it("save always renders PNG cover before updateGeneratedArticle", () => {
     const sheet = read("client/src/components/ArticleAssetEditorSheet.tsx");
-    expect(sheet).toContain("待生成封面");
-    expect(sheet).toContain("封面生成失败，可重试");
-    expect(sheet).toContain("handleSave");
+    expect(sheet).toContain("generateCoverBase64ForSave");
+    expect(sheet).toContain("renderArticleCoverPng");
+    expect(sheet).toContain("coverBase64: coverBase64ToSave");
+    expect(sheet).toContain("coverImageUrl: null");
   });
 
   it("publish task still includes projectId and expectedAccountName after article editing", () => {

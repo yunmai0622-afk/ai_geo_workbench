@@ -7,6 +7,10 @@ export const ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE =
 export const ARTICLE_SAVED_PUBLISH_HINT_MESSAGE =
   "内容已保存，发布时将使用最新标题、正文和封面。";
 
+/** 文章尚无 coverBase64 时，加入发布队列前的提示（不阻断） */
+export const ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE =
+  "当前文章封面尚未写入数据库，请先打开「编辑内容」并点击「保存修改」，再发布。";
+
 export type ArticleAssetDraftSnapshot = {
   title: string;
   content: string;

@@ -59,7 +59,10 @@ import {
   resolveEffectiveArticlePublishPlatform,
   type ResolvedArticlePublishPlatform,
 } from "@shared/articlePublishPlatform";
-import { ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE } from "@shared/articleAssetDraft";
+import {
+  ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE,
+  ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE,
+} from "@shared/articleAssetDraft";
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
 import { getGeoQualityLabel, type GeoQualityRecommendation } from "@shared/geoQualityReview";
@@ -327,6 +330,10 @@ async function copyText(label: string, text: string) {
   } catch {
     toast.error("复制失败，请手动选择复制");
   }
+}
+
+function articleNeedsCoverSaveHint(article: ArticleRow): boolean {
+  return !article.coverBase64?.trim();
 }
 
 function articleCoverPreviewSrc(article: ArticleRow): string | null {
@@ -1047,6 +1054,9 @@ export default function WeeklyContentPage() {
   const openPublishDialog = (article: ArticleRow) => {
     if (blockPublishIfUnsaved(article.id)) return;
     if (blockPublishIfQualityReject(article)) return;
+    if (articleNeedsCoverSaveHint(article)) {
+      toast.message(ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE);
+    }
     if (isGeoQualityScoreStale(article)) {
       toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
     } else if (article.geoQualityRecommendation === "revise") {
@@ -1358,8 +1368,8 @@ export default function WeeklyContentPage() {
         return;
       }
     }
-    if (!articleCoverPreviewSrc(publishArticle)) {
-      toast.message("当前文章暂无封面，将先发布正文；可在「编辑内容」中生成封面后重试");
+    if (articleNeedsCoverSaveHint(publishArticle)) {
+      toast.message(ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE);
     }
     const articleId = publishArticle.id;
     const taskIds: number[] = [];
@@ -1641,6 +1651,14 @@ export default function WeeklyContentPage() {
                 )}
               </p>
             </div>
+            {publishArticle && articleNeedsCoverSaveHint(publishArticle) ? (
+              <p
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+                data-testid="publish-missing-cover-hint"
+              >
+                {ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE}
+              </p>
+            ) : null}
             {activePublishReadiness && !activePublishReadiness.ready ? (
               <p
                 className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"

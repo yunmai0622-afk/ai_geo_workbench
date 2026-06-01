@@ -1,4 +1,4 @@
-import { boolean, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, mediumtext, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -327,7 +327,7 @@ export const geoArticles = mysqlTable("geo_articles", {
   publicPath: varchar("publicPath", { length: 1000 }),
   coverTemplate: varchar("coverTemplate", { length: 32 }),
   coverImageUrl: varchar("coverImageUrl", { length: 2000 }),
-  coverBase64: text("coverBase64"),
+  coverBase64: mediumtext("coverBase64"),
   geoQualityScore: int("geoQualityScore"),
   geoQualityDetail: json("geoQualityDetail").$type<Record<string, unknown>>(),
   geoQualityReviewedAt: timestamp("geoQualityReviewedAt"),

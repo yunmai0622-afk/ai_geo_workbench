@@ -2465,7 +2465,12 @@ const geoRouter = router({
         const coverTemplate = input.coverTemplate
           ? normalizeArticleCoverTemplateId(input.coverTemplate)
           : normalizeArticleCoverTemplateId(article.coverTemplate);
-        const nextCoverBase64 = input.coverBase64 === undefined ? article.coverBase64 : input.coverBase64;
+        const nextCoverBase64 =
+          input.coverBase64 === undefined
+            ? article.coverBase64
+            : input.coverBase64?.trim()
+              ? input.coverBase64.trim()
+              : null;
         const nextCoverImageUrl = input.coverImageUrl === undefined ? article.coverImageUrl : input.coverImageUrl;
         const prevCoverTemplate = normalizeArticleCoverTemplateId(article.coverTemplate);
         const contentChanged =

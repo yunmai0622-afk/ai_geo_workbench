@@ -98,6 +98,8 @@ export function ArticleAssetEditorSheet({
   const [coverGenerating, setCoverGenerating] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
   const savedSnapshot = useRef<ArticleAssetDraftSnapshot | null>(null);
+  const loadedArticleIdRef = useRef<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [qualityInitial, setQualityInitial] = useState<GeoQualityInitialState | undefined>();
   const [contentStrategyType, setContentStrategyType] = useState<ContentAssetType | "">("");
   const [publishIdentity, setPublishIdentity] = useState<PublishIdentity | "">("");
@@ -135,7 +137,14 @@ export function ArticleAssetEditorSheet({
   }, [buildQualityInitial]);
 
   useEffect(() => {
-    if (open && article) resetFromArticle(article);
+    if (!open) {
+      loadedArticleIdRef.current = null;
+      return;
+    }
+    if (!article) return;
+    if (loadedArticleIdRef.current === article.id) return;
+    loadedArticleIdRef.current = article.id;
+    resetFromArticle(article);
   }, [open, article, resetFromArticle]);
 
   useEffect(() => {
@@ -198,46 +207,34 @@ export function ArticleAssetEditorSheet({
     }
   };
 
-  const handleSave = async () => {
-    console.log("[cover-debug] handleSave 开始执行", {
-      articleId: article?.id ?? null,
-      hasTitle: Boolean(title.trim()),
-      hasContent: Boolean(content.trim()),
-    });
-    if (!article) {
-      console.warn("[cover-debug] 提前返回: 无 article");
-      return;
+  const generateCoverBase64ForSave = async (): Promise<{ coverBase64: string; dataUrl: string }> => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      throw new Error("请先填写文章标题");
     }
+    const png = await renderArticleCoverPng({
+      template,
+      title: trimmedTitle,
+      brandName,
+    });
+    if (!png.coverBase64?.trim()) {
+      throw new Error("封面导出为空，请重试或点击「重新生成封面」");
+    }
+    return png;
+  };
+
+  const handleSave = async () => {
+    if (!article || isSaving || updateArticle.isPending) return;
     if (!title.trim() || !content.trim()) {
-      console.warn("[cover-debug] 提前返回: 标题或正文为空");
       toast.error("标题和正文不能为空");
       return;
     }
+    setIsSaving(true);
+    setCoverError(null);
     try {
-      let coverBase64ToSave = coverBase64Draft;
-      console.log("[cover-debug] 准备调用 renderArticleCoverPng", {
-        template,
-        titlePreview: title.trim().slice(0, 40),
-        brandName,
-      });
-      try {
-        const png = await renderArticleCoverPng({
-          template,
-          title: title.trim(),
-          brandName,
-        });
-        console.log("[cover-debug] 生成结果长度:", png?.coverBase64?.length ?? 0);
-        if (!png?.coverBase64?.trim()) {
-          throw new Error("封面导出为空，请重试或点击「重新生成封面」");
-        }
-        coverBase64ToSave = png.coverBase64;
-        setCoverBase64Draft(png.coverBase64);
-        setCoverPreview(png.dataUrl);
-      } catch (e) {
-        console.error("[cover-debug] 生成失败:", e);
-        throw e;
-      }
-      console.log("[cover-debug] 提交保存 coverBase64 length=", coverBase64ToSave?.length ?? 0);
+      const { coverBase64: coverBase64ToSave, dataUrl } = await generateCoverBase64ForSave();
+      setCoverBase64Draft(coverBase64ToSave);
+      setCoverPreview(dataUrl);
       const saved = await updateArticle.mutateAsync({
         projectId,
         articleId: article.id,
@@ -245,7 +242,7 @@ export function ArticleAssetEditorSheet({
         content: content.trim(),
         coverTemplate: template,
         coverBase64: coverBase64ToSave,
-        coverImageUrl: coverBase64ToSave ? null : article.coverImageUrl,
+        coverImageUrl: null,
         contentStrategyType: contentStrategyType || null,
         publishIdentity: publishIdentity || null,
         recommendedAccountGroup: recommendedAccountGroup || null,
@@ -264,12 +261,13 @@ export function ArticleAssetEditorSheet({
       onSaved?.();
       onOpenChange(false);
     } catch (e) {
-      console.error("[cover-debug] 保存失败", e);
       const msg = e instanceof Error ? e.message : "保存失败";
       if (msg.includes("封面")) {
         setCoverError(msg);
       }
       toast.error(msg);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -435,8 +433,14 @@ export function ArticleAssetEditorSheet({
           <Button type="button" variant="outline" className="border-gray-200" onClick={() => handleOpenChange(false)}>
             取消
           </Button>
-          <Button type="button" variant="ai" disabled={updateArticle.isPending} onClick={() => void handleSave()}>
-            {updateArticle.isPending ? "保存中…" : "保存修改"}
+          <Button
+            type="button"
+            variant="ai"
+            disabled={isSaving || updateArticle.isPending}
+            data-testid="article-asset-save-button"
+            onClick={() => void handleSave()}
+          >
+            {isSaving || updateArticle.isPending ? "保存中…" : "保存修改"}
           </Button>
         </SheetFooter>
       </SheetContent>
