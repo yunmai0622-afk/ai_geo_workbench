@@ -1,5 +1,6 @@
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
 import type { RetestDueReminder, RetestPlanView } from "./retestPlan";
+import type { T0ContentGapSuggestionsResult } from "./t0ContentGapSuggestions";
 import { isP0GeoProfileCompleteFromRecord } from "./geoProfileP0Readiness";
 import { buildWorkspacePublishRiskHints } from "./publishReadiness";
 import { workspacePublishAccountRiskHint } from "./localAgentAccountBinding";
@@ -117,6 +118,8 @@ export type WorkspaceSummaryMetrics = {
   /** 当前最早到期且未完成的复测提醒；无则 null */
   retestDueReminder: RetestDueReminder | null;
   p0ProfileComplete: boolean;
+  /** T0 完成后基于 ai_test_runs 的内容缺口建议 */
+  t0ContentGapSuggestions?: T0ContentGapSuggestionsResult | null;
 };
 
 export type WorkspaceStageResolutionInput = WorkspaceSummaryMetrics & {

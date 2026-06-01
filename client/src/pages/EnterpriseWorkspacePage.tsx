@@ -1,5 +1,6 @@
 import { GeoScoreWeightExplanationHelp } from "@/components/geo/GeoScoreWeightExplanationHelp";
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
+import { T0ContentGapSuggestionsCard } from "@/components/geo/T0ContentGapSuggestionsCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { WorkspaceDashboardOverviewCards } from "@/components/project/WorkspaceDashboardOverviewCards";
@@ -109,6 +110,13 @@ export default function EnterpriseWorkspacePage() {
       ) : stage && metrics && selectedProjectId ? (
         <>
           <WorkspaceDashboardOverviewCards metrics={metrics} />
+
+          {metrics.t0ContentGapSuggestions ? (
+            <T0ContentGapSuggestionsCard
+              projectId={selectedProjectId}
+              suggestions={metrics.t0ContentGapSuggestions}
+            />
+          ) : null}
 
           {/* ═══ 8 步主链路进度 ═══ */}
           <section className="geo-card p-5" data-testid="workspace-main-chain-progress">

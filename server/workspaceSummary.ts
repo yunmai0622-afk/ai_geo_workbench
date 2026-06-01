@@ -23,6 +23,7 @@ import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkfl
 import { calculateProfileCompletionScore } from "./assetLibrary";
 import { getDb } from "./db";
 import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
+import { resolveT0ContentGapSuggestions } from "./t0ContentGapSuggestions";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -60,6 +61,7 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     retestComparisonCountRows,
     reportCountRows,
     t0Metrics,
+    t0ContentGapSuggestions,
   ] = await Promise.all([
     db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, projectId)).limit(1),
     db.select().from(projectPlatformAccounts).where(eq(projectPlatformAccounts.projectId, projectId)),
@@ -110,6 +112,7 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       .from(reports)
       .where(eq(reports.projectId, projectId)),
     resolveLatestT0AiTestRunMetrics(db, projectId),
+    resolveT0ContentGapSuggestions(db, projectId),
   ]);
 
   const qualityRows =
@@ -201,5 +204,6 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       };
     })(),
     p0ProfileComplete: isP0GeoProfileComplete(profileRecord),
+    t0ContentGapSuggestions,
   } as const;
 }

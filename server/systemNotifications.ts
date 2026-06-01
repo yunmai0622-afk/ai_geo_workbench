@@ -5,6 +5,7 @@ import {
   GEO_WEB_PATH_PUBLISH_RECORDS,
   buildProjectScopedUrl,
 } from "@shared/geoWebPaths";
+import { resolveT0ContentGapSuggestions } from "./t0ContentGapSuggestions";
 import { projects, systemNotifications, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { sendSimpleEmail } from "./email";
@@ -80,7 +81,12 @@ export async function emitT0CompleteNotification(db: DbConn, projectId: number, 
   const owner = await resolveProjectOwner(db, projectId);
   if (!owner) return;
   const title = "T0 检测完成";
-  const content = `${owner.enterpriseName} 的 ${roundName} 已完成，可在 AI 实测诊断页查看结果。`;
+  const gapSuggestions = await resolveT0ContentGapSuggestions(db, projectId).catch(() => null);
+  const gapHint =
+    gapSuggestions && gapSuggestions.items.length > 0
+      ? ` 工作台已推送 ${gapSuggestions.items.length} 条内容缺口建议，可一键进入内容生成。`
+      : "";
+  const content = `${owner.enterpriseName} 的 ${roundName} 已完成，可在 AI 实测诊断页查看结果。${gapHint}`;
   await createSystemNotification(db, { userId: owner.ownerUserId, projectId, type: "t0_complete", title, content });
   await notifyOwnerByEmail({
     ownerEmail: owner.ownerEmail,
