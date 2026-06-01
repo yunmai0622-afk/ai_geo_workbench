@@ -3,7 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { geoP0Brand } from "@/lib/geoP0Visual";
-import type { PublishColumnId, PublishTaskCardModel } from "@/lib/publishCenterDisplay";
+import {
+  AUTO_INCLUSION_MONITORING_HINT,
+  type PublishColumnId,
+  type PublishTaskCardModel,
+} from "@/lib/publishCenterDisplay";
 
 const COLUMN_META: Record<
   PublishColumnId,
@@ -108,6 +112,15 @@ function TaskCard({
           ) : null}
         </div>
       )}
+
+      {card.autoInclusionMonitoring ? (
+        <p
+          className="rounded-md border border-emerald-100 bg-emerald-50 px-2.5 py-2 text-xs text-emerald-800"
+          data-testid="publish-auto-inclusion-hint"
+        >
+          {AUTO_INCLUSION_MONITORING_HINT}
+        </p>
+      ) : null}
 
       {card.errorMessage ? (
         <p className="rounded-md border border-red-100 bg-red-50 px-2.5 py-2 text-xs text-red-800">

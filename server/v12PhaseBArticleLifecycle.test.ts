@@ -10,6 +10,8 @@ describe("Phase B — 文章生命周期与发布任务状态打通", () => {
     expect(read("server/agentArticleLifecycle.ts")).toContain("syncArticleLifecycleFromAgentTask");
     expect(read("server/agentArticleLifecycle.ts")).toContain("draft_saved");
     expect(read("server/agentArticleLifecycle.ts")).toContain("manual_required");
+    expect(read("server/agentArticleLifecycle.ts")).toContain("geoInclusionMonitoringRecords");
+    expect(read("server/agentArticleLifecycle.ts")).toContain("agent.reportAgentTaskResult");
     expect(read("server/agentArticleLifecycle.ts")).not.toMatch(/fake.*success|mock.*success/i);
   });
 
@@ -17,6 +19,7 @@ describe("Phase B — 文章生命周期与发布任务状态打通", () => {
     const svc = read("server/agentPublishTasks.ts");
     expect(svc).toContain("syncArticleLifecycleFromAgentTask");
     expect(svc).toContain("articleLifecycle");
+    expect(svc).toContain("inclusionMonitoringCreated");
     expect(svc).toContain("completed 状态必须提供 publicUrl");
   });
 

@@ -141,6 +141,10 @@ export function ContentPublishingCenterPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const inclusionMonitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(
+    projectInput,
+    { enabled },
+  );
   const triggerReview = trpc.geo.articles.triggerReview.useMutation({
     onSuccess: () => void retestQueueQuery.refetch(),
   });
@@ -167,6 +171,16 @@ export function ContentPublishingCenterPage() {
   const publishRecords = (publishRecordsQuery.data ?? []) as PublishRecordRow[];
   const agentTasks = (autoPublishTasksQuery.data?.tasks ?? []) as AgentTaskRow[];
   const articleById = useMemo(() => new Map(articles.map(a => [a.id, a])), [articles]);
+
+  const autoInclusionByArticleAndUrl = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of inclusionMonitoringQuery.data ?? []) {
+      const articleId = typeof row.articleId === "number" ? row.articleId : null;
+      const url = typeof row.publicUrl === "string" ? row.publicUrl.trim() : "";
+      if (articleId && url) keys.add(`${articleId}:${url}`);
+    }
+    return keys;
+  }, [inclusionMonitoringQuery.data]);
 
   const refreshAgentHealth = useCallback(async () => {
     setCheckingAgent(true);
@@ -225,7 +239,12 @@ export function ContentPublishingCenterPage() {
           : typeof article?.generationBasis?.geoEnhancementGoal === "string"
             ? (article.generationBasis.geoEnhancementGoal as string)
             : null;
-      return mapAgentTaskToCard(task, goal);
+      const publishedUrl = task.resultUrl?.trim() || "";
+      const autoInclusionMonitoring =
+        task.status === "completed" &&
+        Boolean(publishedUrl) &&
+        autoInclusionByArticleAndUrl.has(`${task.articleId}:${publishedUrl}`);
+      return mapAgentTaskToCard(task, goal, { autoInclusionMonitoring });
     });
     for (const record of publishRecords) {
       const article = record.articleId ? articleById.get(record.articleId) : undefined;
@@ -233,7 +252,7 @@ export function ContentPublishingCenterPage() {
       if (mapped) cards.push(mapped);
     }
     return cards;
-  }, [agentTasks, publishRecords, articleById]);
+  }, [agentTasks, publishRecords, articleById, autoInclusionByArticleAndUrl]);
 
   const columns = useMemo(() => {
     const out: Record<PublishColumnId, PublishTaskCardModel[]> = {

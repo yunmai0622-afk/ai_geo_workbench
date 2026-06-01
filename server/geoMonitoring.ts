@@ -11,6 +11,8 @@ export function buildInitialInclusionMonitoringRecord(input: {
   publishRecordId: number;
   publicUrl: string;
   qualityScore: number;
+  rawJsonSource?: string;
+  rawJsonCreatedBy?: string;
 }) {
   return {
     projectId: input.projectId,
@@ -23,10 +25,10 @@ export function buildInitialInclusionMonitoringRecord(input: {
     currentSuggestion: "已发布文章已进入收录监测，当前状态为未检测；下一步需要人工或后续复测流程确认收录、AI 提及和 AI 推荐情况。",
     optimizationSuggestions: initialMonitoringSuggestions,
     rawJson: {
-      source: "publish_geo_content_page",
+      source: input.rawJsonSource ?? "publish_geo_content_page",
       qualityScore: input.qualityScore,
       needRetest: true,
-      createdBy: "geo.articles.publish",
+      createdBy: input.rawJsonCreatedBy ?? "geo.articles.publish",
     },
   };
 }

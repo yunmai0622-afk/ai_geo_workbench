@@ -168,6 +168,7 @@ export async function reportAgentTaskResult(
     taskId: input.taskId,
     status: input.status,
     articleLifecycle: lifecycle,
+    inclusionMonitoringCreated: lifecycle.inclusionMonitoringCreated,
   };
 }
 

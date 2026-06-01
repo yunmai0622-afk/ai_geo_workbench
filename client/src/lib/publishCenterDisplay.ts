@@ -27,7 +27,11 @@ export type PublishTaskCardModel = {
   publishedUrl: string | null;
   timeLabel: string | null;
   linkDraft?: string;
+  /** Agent 发布完成且已写入收录监测时展示 */
+  autoInclusionMonitoring?: boolean;
 };
+
+export const AUTO_INCLUSION_MONITORING_HINT = "已自动进入收录监测";
 
 const EXTRA_PLATFORM_LABELS: Record<string, string> = {
   xiaohongshu: "小红书",
@@ -126,6 +130,7 @@ export function mapAgentTaskToCard(
     createdAt?: Date | string | number | null;
   },
   contentGoal?: string | null,
+  options?: { autoInclusionMonitoring?: boolean },
 ): PublishTaskCardModel {
   const column = classifyPublishTaskColumn(task.status);
   const isAbnormal = task.status === "failed" || task.status === "session_expired";
@@ -158,6 +163,10 @@ export function mapAgentTaskToCard(
     draftUrl,
     publishedUrl: task.status === "completed" ? publishedUrl : null,
     timeLabel: resolveTaskTimeLabel(task),
+    autoInclusionMonitoring:
+      Boolean(options?.autoInclusionMonitoring) &&
+      task.status === "completed" &&
+      Boolean(publishedUrl),
   };
 }
 

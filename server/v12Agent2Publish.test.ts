@@ -63,5 +63,6 @@ describe("Agent-2 Web publish task + local agent loop", () => {
     expect(read("shared/publishTaskErrors.ts")).toContain("pending_agent");
     expect(read("shared/publishTaskErrors.ts")).toContain("manual_required");
     expect(read("client/src/pages/ContentPublishingCenterPage.tsx")).toContain("listRecentByProject");
+    expect(read("client/src/lib/publishCenterDisplay.ts")).toContain("已自动进入收录监测");
   });
 });
