@@ -66,6 +66,8 @@ export const API_DOC_SECTIONS: ApiDocSection[] = [
       { path: "geo.articles.topics.generate", type: "mutation", auth: "protected", summary: "生成内容选题" },
       { path: "geo.articles.generate", type: "mutation", auth: "protected", summary: "生成文章正文（Markdown）" },
       { path: "geo.articles.list", type: "query", auth: "protected", summary: "文章列表" },
+      { path: "geo.articles.generationHistory", type: "query", auth: "protected", summary: "内容生成历史（geo_articles 同行与 optimizationVersions）" },
+      { path: "geo.articles.restoreGenerationHistory", type: "mutation", auth: "protected", summary: "恢复到指定生成历史版本" },
       { path: "geo.contentPlans.latest", type: "query", auth: "protected", summary: "最新内容生产计划" },
       { path: "geo.contentPlans.upsert", type: "mutation", auth: "protected", summary: "创建或更新内容计划" },
       { path: "geo.reports.generate", type: "mutation", auth: "protected", summary: "生成交付报告 Markdown" },

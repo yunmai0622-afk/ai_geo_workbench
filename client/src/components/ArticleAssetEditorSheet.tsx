@@ -1,3 +1,4 @@
+import { ArticleGenerationHistoryPanel } from "@/components/ArticleGenerationHistoryPanel";
 import { ArticleContentEditMeta } from "@/components/ArticleContentEditMeta";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { GeoArticleQualityScoreDetailPopover } from "@/components/GeoArticleQualityScoreDetailPopover";
@@ -494,6 +495,19 @@ export function ArticleAssetEditorSheet({
                 <span className="ml-2 text-xs text-gray-500">点击查看五项评分明细</span>
               </p>
             </div>
+          ) : null}
+
+          {article ? (
+            <ArticleGenerationHistoryPanel
+              projectId={projectId}
+              articleId={article.id}
+              disabled={isSaving || updateArticle.isPending}
+              onRestored={payload => {
+                setTitle(payload.title);
+                setContent(payload.markdownContent);
+                onDirtyChange?.(article.id, true);
+              }}
+            />
           ) : null}
 
           {article ? (
