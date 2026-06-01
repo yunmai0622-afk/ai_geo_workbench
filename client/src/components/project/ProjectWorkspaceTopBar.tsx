@@ -4,7 +4,6 @@ import { workspaceCtaUrl, type WorkspaceStageDefinition } from "@shared/workspac
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 
 type Props = {
@@ -77,7 +76,6 @@ export function ProjectWorkspaceTopBar({
       </div>
 
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
-        <NotificationBell />
         {ctaStage ? (
           <Button
             type="button"
