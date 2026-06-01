@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { GEO_SYNTHETIC_AI_RESPONSE_PREFIX, isSyntheticGeoRawAnswer } from "@shared/geoSyntheticResponse";
 import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionMapping";
+import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
 import { CREATE_PROJECT_FAILED_USER_MESSAGE } from "@shared/userFacingMutationErrors";
 import {
   assertLlmConfiguredForDiagnosis,
@@ -2574,7 +2575,7 @@ const geoRouter = router({
             };
           }
         }
-        let questionTemplateReference: { id: number; title: string; filledPrompt: string } | undefined;
+        let questionTemplateReference: GeoQuestionTemplateReference | undefined;
         if (input.questionTemplateId) {
           const template = await getQuestionTemplateById(db, input.questionTemplateId);
           if (!template) {

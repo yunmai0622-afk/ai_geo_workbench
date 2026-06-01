@@ -14,7 +14,8 @@ describe("C7-A article asset editor and template cover", () => {
   it("generated article renders cover preview on weekly page", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     const editor = read("client/src/components/ArticleAssetEditorSheet.tsx");
-    expect(weekly).toContain("articleCoverPreviewSrc");
+    expect(weekly).toContain("resolveArticleCoverPreviewSrc");
+    expect(weekly).toContain("coverThumbnailSrc");
     expect(editor).toContain("aspect-video");
     expect(editor).toContain("待生成封面");
   });

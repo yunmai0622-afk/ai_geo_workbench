@@ -11,6 +11,7 @@ import {
   type PlatformContentStrategyInput,
 } from "@shared/platformContentRules";
 import { dedupeTargetQuestionRows } from "@shared/targetQuestionDedup";
+import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
 import { getSystemComplianceRulesForPrePublish, getSystemComplianceUsageLines, SYSTEM_PUBLISH_STRATEGY_LINES } from "./systemConfig";
 
 export { GEO_ARTICLE_MIN_PASS_SCORE };
@@ -1356,7 +1357,7 @@ type GeoArticleTemplateBodyContext = {
   wovenGaps: string;
   materialDigest: string;
   evidenceGapText: string;
-  questionTemplateReference?: { id: number; title: string; filledPrompt: string };
+  questionTemplateReference?: GeoQuestionTemplateReference;
 };
 
 /** 与历史版本一致的模板正文；仅当 GEO_ARTICLE_BODY=test-template 时在 generateGeoArticleDraft 中使用（单测/无 LLM CI）。 */
@@ -1612,7 +1613,7 @@ export async function generateGeoArticleDraft(input: {
   assetLibrary?: P12AssetLibraryContext | null;
   platformStrategy?: PlatformContentStrategyInput;
   geoContentTaskTrace?: GeoContentTaskGenerationTrace;
-  questionTemplateReference?: { id: number; title: string; filledPrompt: string };
+  questionTemplateReference?: GeoQuestionTemplateReference;
 }): Promise<P11ArticleDraft> {
   if (!input.topic.optimizationTaskId && !nonEmpty(input.topic.contentGap)) throw new Error("文章选题必须绑定任务或内容缺口。");
   const { project, topic, task } = input;

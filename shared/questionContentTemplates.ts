@@ -12,6 +12,13 @@ export type QuestionTemplateVariables = {
   coreAdvantage: string;
 };
 
+/** Resolved template passed into GEO article generation (routers → geoArticleLogic). */
+export type GeoQuestionTemplateReference = {
+  id: number;
+  title: string;
+  filledPrompt: string;
+};
+
 export type BuiltinQuestionTemplateSeed = {
   slug: string;
   platform: QuestionTemplatePlatform;

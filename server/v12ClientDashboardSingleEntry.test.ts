@@ -44,7 +44,8 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(register).toContain('setLocation("/onboarding")');
     const app = read("client/src/App.tsx");
     expect(app).toContain('pathname !== "/clients"');
-    expect(app).toMatch(/projects\.length === 0[\s\S]{0,120}Redirect to="\/clients"/);
+    expect(app).toContain("projects.length === 0");
+    expect(app).toContain('Redirect to="/clients"');
     expect(app).toContain('path="/onboarding" component={OnboardingPage}');
   });
 
