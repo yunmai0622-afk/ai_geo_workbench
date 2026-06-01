@@ -57,10 +57,15 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("展示进度指标且不暴露工程字段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
+    expect(page).toContain("workspace-dashboard-overview");
+    expect(page).toContain("WorkspaceDashboardOverviewCards");
     expect(page).toContain("workspace-header-card");
     expect(page).toContain("workspace-main-chain-progress");
     for (const label of ["品牌提及率", "内容资产", "GEO 分", "发布记录"]) {
       expect(page).toContain(label);
+    }
+    for (const label of ["发布次数", "AI提及率", "GEO评分"]) {
+      expect(read("client/src/components/project/WorkspaceDashboardOverviewCards.tsx")).toContain(label);
     }
     expect(page).toContain("resolveMainChainSteps");
     expect(page).not.toContain("localAgentId");

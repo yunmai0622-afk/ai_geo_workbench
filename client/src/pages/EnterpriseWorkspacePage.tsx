@@ -1,7 +1,8 @@
 import { GeoScoreWeightExplanationHelp } from "@/components/geo/GeoScoreWeightExplanationHelp";
-import { T1RetestReminderCard } from "@/components/diagnosis/T1RetestReminderCard";
+import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
+import { WorkspaceDashboardOverviewCards } from "@/components/project/WorkspaceDashboardOverviewCards";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
@@ -21,7 +22,6 @@ import {
   toMainChainProgressInput,
   type MainChainStepView,
 } from "@shared/workspaceMainChain";
-import { T1_RETEST_AUTO_TRIGGER_CTA_PATH } from "@shared/t1RetestAutoTrigger";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -89,21 +89,27 @@ export default function EnterpriseWorkspacePage() {
         message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
         data-testid="first-use-hint-workspace"
       />
-      {metrics?.showT1RetestAutoTriggerReminder && selectedProjectId ? (
-        <T1RetestReminderCard
-          visible
-          testId="workspace-t1-retest-reminder"
+      {metrics?.retestDueReminder && selectedProjectId ? (
+        <RetestDueReminderCard
+          reminder={metrics.retestDueReminder}
+          testId="workspace-retest-due-reminder"
           onGoRetest={() =>
-            setLocation(buildProjectUrl(T1_RETEST_AUTO_TRIGGER_CTA_PATH, selectedProjectId))
+            setLocation(buildProjectUrl(metrics.retestDueReminder!.ctaPath, selectedProjectId))
           }
         />
       ) : null}
       {summaryQuery.isLoading ? (
-        <p className="text-sm text-gray-400">加载工作台数据…</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4" data-testid="workspace-dashboard-overview-loading">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="geo-card h-[88px] animate-pulse bg-gray-50" aria-hidden />
+          ))}
+        </div>
       ) : summaryQuery.isError ? (
         <p className="text-sm text-red-600">暂时无法加载工作台，请刷新重试。</p>
       ) : stage && metrics && selectedProjectId ? (
         <>
+          <WorkspaceDashboardOverviewCards metrics={metrics} />
+
           {/* ═══ 8 步主链路进度 ═══ */}
           <section className="geo-card p-5" data-testid="workspace-main-chain-progress">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
