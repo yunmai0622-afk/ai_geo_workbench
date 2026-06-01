@@ -2054,9 +2054,13 @@ const geoRouter = router({
       .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
         await requireProjectAccess(ctx, input.projectId);
-        const shareToken = await getOrCreateShareTokenForProject(db, input.projectId);
+        const { token: shareToken, expiresAt } = await getOrCreateShareTokenForProject(db, input.projectId);
         const sharePath = buildDeliveryReportPublicPath(shareToken);
-        return { sharePath, shareToken } as const;
+        return {
+          sharePath,
+          shareToken,
+          shareExpiresAt: expiresAt ? expiresAt.toISOString() : null,
+        } as const;
       }),
     disableShareLink: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
@@ -2071,9 +2075,14 @@ const geoRouter = router({
       .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
         await requireProjectAccess(ctx, input.projectId);
-        const shareToken = await regenerateShareLinkForProject(db, input.projectId);
+        const { token: shareToken, expiresAt } = await regenerateShareLinkForProject(db, input.projectId);
         const sharePath = buildDeliveryReportPublicPath(shareToken);
-        return { success: true, sharePath } as const;
+        return {
+          success: true,
+          sharePath,
+          shareToken,
+          shareExpiresAt: expiresAt.toISOString(),
+        } as const;
       }),
     publicShare: publicProcedure
       .input(z.object({ token: z.string().min(16).max(64) }))
