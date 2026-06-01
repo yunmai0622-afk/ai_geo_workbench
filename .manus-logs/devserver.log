@@ -2921,3 +2921,15 @@
 [2026-06-01T04:03:06.458Z] c[OAuth] Initialized with baseURL: https://api.manus.im
 [2026-06-01T04:03:11.156Z] Server running on http://localhost:3000/
 [2026-06-01T04:03:11.157Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-06-01T04:04:35.871Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-01T04:08:11.157Z] [定时实测] 开始执行 2026-06-01T04:08:11.157Z
+[2026-06-01T04:08:12.889Z] [定时实测] 找到 28 条需要检测的记录
+[2026-06-01T04:11:17.570Z] [实测] 豆包 完成：提及 1/5，推荐 1/5
+[2026-06-01T04:14:15.079Z] [实测] DeepSeek 完成：提及 1/5，推荐 1/5
+[2026-06-01T04:14:15.745Z] [定时实测] 记录 330001 完成：提及=已提及
+[2026-06-01T04:17:17.079Z] [实测] 豆包 完成：提及 1/5，推荐 0/5
+[2026-06-01T04:19:28.257Z] 12:19:28 AM [tsx] change in ./server/_core/index.ts Restarting...
+[2026-06-01T04:19:29.878Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-06-01T04:19:35.765Z] Server running on http://localhost:3000/
+[2026-06-01T04:19:35.766Z] [定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次
+[2026-06-01T04:19:36.194Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
