@@ -54,6 +54,13 @@ import {
   sentimentLabelCn,
   type AiTestStage,
 } from "@shared/aiTestEvidence";
+import { publishLinkAccessLabel } from "@shared/inclusionMonitoringDisplay";
+import {
+  buildT0DiagnosisResultsDisplay,
+  computeT0QuestionProgress,
+  formatT0Rate,
+  T0_DEFAULT_PLATFORMS,
+} from "@shared/t0DiagnosisDisplay";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
   { value: "manual_check", label: "人工复测" },
@@ -221,6 +228,13 @@ type MonitoringRecordLike = {
   lastAiTestedAt?: Date | string | null;
   currentSuggestion?: string | null;
   aiTestResults?: AiTestResultLike[] | null;
+  linkAccess?: {
+    accessible: boolean;
+    checkedAt: string;
+    statusCode?: number | null;
+    errorMessage?: string | null;
+  } | null;
+  nextAction?: string | null;
 };
 
 type ReportLike = {
@@ -816,8 +830,17 @@ export function AiDiagnosisFlowPage() {
   const runAnalysis = trpc.geo.analysis.run.useMutation();
   const calculateScore = trpc.geo.scores.calculate.useMutation();
   const generateTasks = trpc.geo.tasks.generate.useMutation();
+  const createT0WithQuestions = trpc.geo.testRounds.createT0WithQuestions.useMutation();
+  const startT0Execution = trpc.geo.testRounds.startT0Execution.useMutation();
+  const testRoundsQuery = trpc.geo.testRounds.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
+  const [t0Message, setT0Message] = useState<string>();
+  const [t0Error, setT0Error] = useState<string>();
+  const [activeT0RoundId, setActiveT0RoundId] = useState<string | null>(null);
   const [diagnosisProgressErrorCategory, setDiagnosisProgressErrorCategory] = useState<
     AiTaskProgressErrorCategory | undefined
   >();
@@ -831,6 +854,65 @@ export function AiDiagnosisFlowPage() {
   const loading = questionsQuery.isLoading || assetSummaryQuery.isLoading || analysisQuery.isLoading || scoreQuery.isLoading || tasksQuery.isLoading;
   const generatingQuestions = generateTargetQuestionsMutation.isPending;
   const running = runAnalysis.isPending || calculateScore.isPending || generateTasks.isPending;
+  const t0RunningMutation = createT0WithQuestions.isPending || startT0Execution.isPending;
+  const testRounds = testRoundsQuery.data ?? [];
+  const runningT0Round = testRounds.find(
+    round => round.roundType === "T0_BASELINE" && round.status === "running",
+  );
+  const latestCompletedT0Round = testRounds.find(
+    round => round.roundType === "T0_BASELINE" && round.status === "completed",
+  );
+  const displayT0Round =
+    (activeT0RoundId ? testRounds.find(round => round.id === activeT0RoundId) : null) ??
+    runningT0Round ??
+    latestCompletedT0Round ??
+    null;
+  const isT0Running = t0RunningMutation || displayT0Round?.status === "running";
+  const t0RunsQuery = trpc.geo.aiTestRuns.listByRound.useQuery(
+    { projectId: selectedProjectId!, roundId: displayT0Round!.id },
+    {
+      enabled: enabled && Boolean(selectedProjectId && displayT0Round?.id),
+      refetchInterval: isT0Running ? 2000 : false,
+    },
+  );
+  const t0RoundQuestionsQuery = trpc.geo.roundQuestions.listByRound.useQuery(
+    { projectId: selectedProjectId!, roundId: displayT0Round!.id },
+    { enabled: enabled && Boolean(selectedProjectId && displayT0Round?.id) },
+  );
+  const t0Runs = t0RunsQuery.data ?? [];
+  const t0QuestionTypeById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const link of t0RoundQuestionsQuery.data ?? []) {
+      const questionType = link.question?.questionType;
+      if (typeof questionType === "string" && questionType.trim()) {
+        map.set(link.questionId, questionType);
+      }
+    }
+    return map;
+  }, [t0RoundQuestionsQuery.data]);
+  const t0ResultsDisplay = useMemo(() => {
+    if (displayT0Round?.status !== "completed") return null;
+    return buildT0DiagnosisResultsDisplay(
+      t0Runs.map(run => ({
+        questionId: run.questionId,
+        mentionedCompany: run.mentionedCompany,
+        recommendedCompany: run.recommendedCompany,
+        competitorMentioned: run.competitorMentioned,
+        competitorNames: run.competitorNames ?? [],
+      })),
+      t0QuestionTypeById,
+    );
+  }, [displayT0Round?.status, t0Runs, t0QuestionTypeById]);
+  const t0Progress = useMemo(() => {
+    if (!displayT0Round || displayT0Round.status !== "running") return null;
+    const expectedRunsPerQuestion =
+      (displayT0Round.runsPerQuestion ?? 3) * (displayT0Round.platforms?.length ?? T0_DEFAULT_PLATFORMS.length);
+    return computeT0QuestionProgress(
+      t0Runs.map(run => ({ questionId: run.questionId })),
+      displayT0Round.questionsCount,
+      expectedRunsPerQuestion,
+    );
+  }, [displayT0Round, t0Runs]);
   const pageError = customerErrorMessage(
     assetSummaryQuery.error?.message || questionsQuery.error?.message || analysisQuery.error?.message || scoreQuery.error?.message || tasksQuery.error?.message,
   );
@@ -965,6 +1047,40 @@ export function AiDiagnosisFlowPage() {
         diagnosisProgress.fail();
       }
       setError(customerErrorMessage(raw));
+    }
+  }
+
+  async function handleStartT0Baseline() {
+    if (!selectedProjectId) {
+      setT0Error("请先选择项目。");
+      return;
+    }
+    if (!hasProfile) {
+      setT0Error("当前项目还没有企业档案，请先完成建档后再启动 T0 基线检测。");
+      return;
+    }
+    setT0Message(undefined);
+    setT0Error(undefined);
+    try {
+      const createResult = await createT0WithQuestions.mutateAsync({
+        projectId: selectedProjectId,
+        platforms: [...T0_DEFAULT_PLATFORMS],
+        runsPerQuestion: 3,
+      });
+      const roundId = createResult.round.id;
+      setActiveT0RoundId(roundId);
+      await utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId });
+      await startT0Execution.mutateAsync({ projectId: selectedProjectId, roundId });
+      await Promise.all([
+        utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId }),
+        utils.geo.aiTestRuns.listByRound.invalidate({ projectId: selectedProjectId, roundId }),
+        utils.geo.roundQuestions.listByRound.invalidate({ projectId: selectedProjectId, roundId }),
+      ]);
+      setT0Message("T0 基线检测已完成，以下为真实 AI 平台实测结果。");
+    } catch (err) {
+      const raw =
+        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "启动 T0 基线检测失败";
+      setT0Error(customerErrorMessage(raw));
     }
   }
 
@@ -1177,6 +1293,103 @@ export function AiDiagnosisFlowPage() {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* --- T0 基线真实检测（独立入口，不替换原有 analysis.run 诊断） --- */}
+      <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm" data-testid="ai-diagnosis-t0-baseline">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">T0 基线真实检测</h2>
+            <p className="mt-1 text-xs text-gray-500">
+              调用真实 AI 平台实测（豆包 / DeepSeek / Kimi），写入 test_rounds 与 ai_test_runs，与上方合成诊断入口并行保留。
+            </p>
+          </div>
+          <Button
+            type="button"
+            className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
+            disabled={!canOperate || t0RunningMutation || running || generatingQuestions}
+            onClick={() => void handleStartT0Baseline()}
+            data-testid="ai-diagnosis-start-t0"
+          >
+            {t0RunningMutation ? "正在启动 T0 检测…" : "启动T0基线检测"}
+          </Button>
+        </div>
+
+        {(t0Message || t0Error) && (
+          <div
+            className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+              t0Error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {t0Error || t0Message}
+          </div>
+        )}
+
+        {isT0Running && t0Progress ? (
+          <div
+            className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"
+            data-testid="ai-diagnosis-t0-progress"
+          >
+            正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
+          </div>
+        ) : null}
+
+        {displayT0Round?.status === "completed" && t0ResultsDisplay ? (
+          <div className="mt-5 space-y-4" data-testid="ai-diagnosis-t0-results">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs text-gray-500">总测试次数</p>
+                <p className="mt-1 text-xl font-bold text-gray-900">{t0ResultsDisplay.totalRuns}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs text-gray-500">品牌提及</p>
+                <p className="mt-1 text-xl font-bold text-gray-900">
+                  {t0ResultsDisplay.mentionedCount} 次 · {formatT0Rate(t0ResultsDisplay.mentionRate)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs text-gray-500">品牌推荐</p>
+                <p className="mt-1 text-xl font-bold text-gray-900">
+                  {t0ResultsDisplay.recommendedCount} 次 · {formatT0Rate(t0ResultsDisplay.recommendRate)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs text-gray-500">竞品出现</p>
+                <p className="mt-1 text-xl font-bold text-gray-900">{t0ResultsDisplay.competitorAppearances} 次</p>
+                {t0ResultsDisplay.competitorNames.length > 0 ? (
+                  <p className="mt-1 text-xs text-gray-500 line-clamp-2">
+                    {t0ResultsDisplay.competitorNames.join("、")}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-400">暂未提及竞品</p>
+                )}
+              </div>
+            </div>
+
+            {t0ResultsDisplay.byQuestionType.length > 0 ? (
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <h3 className="text-sm font-semibold text-gray-900">按问题类型分组</h3>
+                <div className="mt-3 space-y-2">
+                  {t0ResultsDisplay.byQuestionType.map(group => (
+                    <div
+                      key={group.questionType}
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700"
+                    >
+                      <p className="font-medium text-gray-900">{group.label}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        测试 {group.totalRuns} 次 · 提及 {group.mentionedCount} 次（{formatT0Rate(group.mentionRate)}）
+                        · 推荐 {group.recommendedCount} 次（{formatT0Rate(group.recommendRate)}）
+                        · 竞品出现 {group.competitorAppearances} 次
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : displayT0Round?.status === "completed" && !t0ResultsDisplay ? (
+          <p className="mt-4 text-sm text-gray-500">T0 检测已完成，但暂无可展示的实测记录。</p>
+        ) : null}
       </div>
 
       {/* --- 核心诊断结论 --- */}
@@ -2299,6 +2512,26 @@ export function InclusionMonitoringFlowPage() {
   const publishRecordCount = (publishRecordsQuery.data ?? []).length;
   const [runningRecordId, setRunningRecordId] = useState<number | null>(null);
   const [selectedTestStage, setSelectedTestStage] = useState<AiTestStage>("manual_check");
+  const [linkCheckTriggered, setLinkCheckTriggered] = useState(false);
+
+  const checkPublishLinks = trpc.geo.inclusionMonitoring.checkPublishLinks.useMutation({
+    onSuccess: async () => {
+      if (selectedProjectId) {
+        await utils.geo.articles.inclusionMonitoringRecords.invalidate({ projectId: selectedProjectId });
+      }
+      await monitoringQuery.refetch();
+    },
+  });
+
+  useEffect(() => {
+    setLinkCheckTriggered(false);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId || records.length === 0 || linkCheckTriggered || checkPublishLinks.isPending) return;
+    setLinkCheckTriggered(true);
+    checkPublishLinks.mutate({ projectId: selectedProjectId });
+  }, [selectedProjectId, records.length, linkCheckTriggered, checkPublishLinks.isPending]);
 
   const urlParams = useMemo(() => {
     const search = location.includes("?") ? location.slice(location.indexOf("?")) : window.location.search;
@@ -2442,7 +2675,7 @@ export function InclusionMonitoringFlowPage() {
         /* --- 监测记录列表 --- */
         <div className="space-y-4">
           <h2 className="text-base font-semibold text-gray-900">监测记录</h2>
-          <p className="text-xs text-gray-500">选择测试阶段后点击「立即实测」，将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。</p>
+          <p className="text-xs text-gray-500">选择测试阶段后点击「执行AI实测」，将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。</p>
           <div className="grid gap-4 lg:grid-cols-2">
             {records.map(record => (
               <div
@@ -2465,6 +2698,14 @@ export function InclusionMonitoringFlowPage() {
                     ) : (
                       <p className="mt-1 text-sm text-gray-400">公开链接未回填</p>
                     )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      链接可访问性：{publishLinkAccessLabel(record.linkAccess)}
+                      {record.linkAccess?.checkedAt
+                        ? `（检测于 ${formatTime(record.linkAccess.checkedAt)}）`
+                        : checkPublishLinks.isPending
+                          ? "（检测中…）"
+                          : ""}
+                    </p>
                     <p className="mt-1 text-xs text-gray-400">
                       最近检测：{formatTime(record.lastCheckedAt) === "未记录" ? "未检测" : formatTime(record.lastCheckedAt)}
                     </p>
@@ -2474,7 +2715,36 @@ export function InclusionMonitoringFlowPage() {
                       </p>
                     ) : null}
                   </div>
-                  <RadioTower className="h-5 w-5 shrink-0 text-blue-500" />
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <RadioTower className="h-5 w-5 text-blue-500" />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 bg-blue-600 px-3 text-xs hover:bg-blue-700 text-white shadow-sm"
+                      disabled={!selectedProjectId || runCheck.isPending}
+                      onClick={() => {
+                        if (!selectedProjectId) return;
+                        if (record.nextAction === "查看实测结果") {
+                          const detail = document.getElementById(`monitoring-ai-results-${record.id}`);
+                          detail?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                          return;
+                        }
+                        setRunningRecordId(record.id);
+                        runCheck.mutate({
+                          projectId: selectedProjectId,
+                          recordId: record.id,
+                          engines: ["doubao", "deepseek", "kimi"],
+                          testStage: selectedTestStage,
+                        });
+                      }}
+                    >
+                      {runCheck.isPending && runningRecordId === record.id
+                        ? "实测中…"
+                        : record.nextAction === "查看实测结果"
+                          ? "查看实测结果"
+                          : "执行AI实测"}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* 状态指标 */}
@@ -2495,7 +2765,10 @@ export function InclusionMonitoringFlowPage() {
 
                 {/* 当前建议 */}
                 <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                  建议：{record.currentSuggestion ?? "保持监测并更新客户报告。"}
+                  建议操作：{record.nextAction ?? "执行AI实测"}
+                </p>
+                <p className="mt-2 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                  优化建议：{record.currentSuggestion ?? "保持监测并更新客户报告。"}
                 </p>
 
                 {/* 测试阶段 + 实测按钮 */}
@@ -2531,13 +2804,16 @@ export function InclusionMonitoringFlowPage() {
                       });
                     }}
                   >
-                    {runCheck.isPending && runningRecordId === record.id ? "实测中…" : "立即实测"}
+                    {runCheck.isPending && runningRecordId === record.id ? "实测中…" : "执行AI实测"}
                   </Button>
                 </div>
 
                 {/* 实测明细 */}
                 {record.aiTestResults && record.aiTestResults.length > 0 ? (
-                  <div className="mt-4 space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                  <div
+                    id={`monitoring-ai-results-${record.id}`}
+                    className="mt-4 space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-3"
+                  >
                     <p className="text-xs font-medium text-gray-600">实测明细</p>
                     {record.aiTestResults.map((r, i) => (
                       <div
