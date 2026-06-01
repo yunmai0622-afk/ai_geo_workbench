@@ -35,12 +35,19 @@ describe("Agent-4 local publish client productization", () => {
     expect(d).toContain("不包含 Cookie");
   });
 
-  it("renderer has four tabs", () => {
+  it("renderer has overview, tasks, diagnostics and settings tabs", () => {
     const html = read("local-agent/src/renderer/index.html");
-    for (const tab of ["总览", "账号环境", "发布任务", "诊断与日志"]) {
+    for (const tab of ["总览", "账号环境", "发布任务", "诊断", "设置"]) {
       expect(html).toContain(tab);
     }
-    expect(read("local-agent/src/renderer/app.js")).toContain("deleteProfile");
+    expect(html).toContain('data-tab="settings"');
+    expect(html).toContain("panel-settings");
+    const diagSlice = html.slice(html.indexOf("panel-diagnostics"), html.indexOf("panel-settings"));
+    expect(diagSlice).not.toContain("btn-save-settings");
+    const appJs = read("local-agent/src/renderer/app.js");
+    expect(appJs).toContain("deleteProfile");
+    expect(appJs).toContain("最后检查：");
+    expect(appJs).toContain("暂无任务日志，请在发布任务页选择一条任务查看执行详情");
   });
 
   it("server exposes agent.listTasks for client queue", () => {

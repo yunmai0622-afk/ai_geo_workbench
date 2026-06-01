@@ -22,7 +22,8 @@
       <button type="button" class="tab active" data-tab="overview">总览</button>
       <button type="button" class="tab" data-tab="accounts">账号环境</button>
       <button type="button" class="tab" data-tab="tasks">发布任务</button>
-      <button type="button" class="tab" data-tab="diagnostics">诊断与日志</button>
+      <button type="button" class="tab" data-tab="diagnostics">诊断</button>
+      <button type="button" class="tab" data-tab="settings">设置</button>
     </nav>
 
     <main class="tab-panels">
@@ -103,10 +104,10 @@
         </div>
       </section>
 
-      <!-- ===== 诊断与日志 ===== -->
+      <!-- ===== 诊断 ===== -->
       <section id="panel-diagnostics" class="panel" role="tabpanel" hidden>
         <div class="panel-intro">
-          <p>查看连接状态与发布任务执行记录。如遇发布失败，请先在此查看步骤说明；需要技术支持时可复制日志发给交付同学。</p>
+          <p>查看连接状态、任务执行记录与实时输出。如遇发布失败，请先在此查看步骤说明；需要技术支持时可复制日志发给交付同学。</p>
         </div>
 
         <!-- 连接诊断 -->
@@ -129,23 +130,28 @@
             <button type="button" id="btn-copy-logs">复制日志（含技术详情）</button>
           </div>
           <label class="log-select-label">选择任务 <select id="log-task-select"></select></label>
-          <pre id="log-detail" class="log-detail log-detail-customer"></pre>
+          <pre id="log-detail" class="log-detail log-detail-customer is-empty">暂无任务日志，请在发布任务页选择一条任务查看执行详情</pre>
           <details class="log-raw-fold">
             <summary>查看原始技术日志</summary>
-            <pre id="log-detail-raw" class="log-detail log-detail-raw"></pre>
+            <pre id="log-detail-raw" class="log-detail log-detail-raw is-empty">选择任务后可查看原始技术日志</pre>
           </details>
         </div>
 
         <!-- 实时日志（技术人员） -->
         <div class="diag-section">
           <h3>实时输出</h3>
-          <p class="diag-hint muted">客户端运行时的简要输出，一般无需关注。</p>
-          <pre id="live-log" class="live-log"></pre>
+          <p class="diag-hint muted">客户端运行时的简要输出；空闲轮询状态会合并为一条「最后检查」记录。</p>
+          <pre id="live-log" class="live-log is-empty">暂无实时输出</pre>
         </div>
+      </section>
 
-        <!-- 高级设置 -->
-        <div class="diag-section">
-          <h3>设置</h3>
+      <!-- ===== 设置 ===== -->
+      <section id="panel-settings" class="panel" role="tabpanel" hidden>
+        <div class="panel-intro">
+          <p>管理客户端数据目录、轮询与服务端连接等选项。修改后请点击「保存设置」生效。</p>
+        </div>
+        <div class="diag-section settings-panel">
+          <h3>客户端设置</h3>
           <form id="settings-form" class="form-grid">
             <label class="check"><input type="checkbox" id="set-auto-poll" /> 启动后自动开始接收任务</label>
             <label>数据目录 <input type="text" id="set-data-dir" readonly /></label>

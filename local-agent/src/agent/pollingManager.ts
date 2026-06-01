@@ -88,7 +88,6 @@ export async function pollOnce(): Promise<{ processed: number; message: string }
 
     if (tasks.length === 0) {
       state.lastCycleMessage = "暂无待处理任务";
-      log("暂无待处理任务");
       return { processed: 0, message: "暂无待处理任务" };
     }
 

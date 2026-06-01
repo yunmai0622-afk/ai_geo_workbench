@@ -26,6 +26,20 @@ let dashboard = null;
 let selectedLogTaskId = null;
 let selectedLogDetail = null;
 
+const LOG_DETAIL_EMPTY_TEXT =
+  "暂无任务日志，请在发布任务页选择一条任务查看执行详情";
+const LOG_DETAIL_RAW_EMPTY_TEXT = "选择任务后可查看原始技术日志";
+const LIVE_LOG_EMPTY_TEXT = "暂无实时输出";
+
+/** 轮询空闲类消息：合并为单行「最后检查」 */
+const IDLE_LOG_KEYS = new Map([
+  ["暂无待处理任务", "暂无任务"],
+  ["正在执行任务，跳过本轮", "正在执行任务，跳过本轮"],
+]);
+
+let liveLogIdleLine = null;
+let liveLogLines = [];
+
 const TaskLogDisplay = () => globalThis.PublishTaskLogDisplay ?? {};
 
 function $(sel) {
@@ -39,9 +53,9 @@ function fmtTime(v) {
 }
 
 function fmtDateShort(v) {
-  if (!v) return "暂无";
+  if (!v) return "—";
   const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "暂无";
+  if (Number.isNaN(d.getTime())) return "—";
   const h = String(d.getHours()).padStart(2, "0");
   const m = String(d.getMinutes()).padStart(2, "0");
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${h}:${m}`;
@@ -104,12 +118,86 @@ function techLastError(acc) {
   return msg;
 }
 
+function formatLastCheckTime(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "—";
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  const s = String(d.getSeconds()).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+function idleLogSummary(line) {
+  return IDLE_LOG_KEYS.get(String(line).trim()) ?? null;
+}
+
+function flushLiveLogView() {
+  const el = $("#live-log");
+  if (!el) return;
+  const parts = [];
+  if (liveLogIdleLine) parts.push(liveLogIdleLine);
+  parts.push(...liveLogLines);
+  if (parts.length === 0) {
+    el.textContent = LIVE_LOG_EMPTY_TEXT;
+    el.classList.add("is-empty");
+  } else {
+    el.textContent = `${parts.join("\n")}\n`;
+    el.classList.remove("is-empty");
+  }
+}
+
+function setLiveLogIdleStatus(at, summary) {
+  liveLogIdleLine = `最后检查：${formatLastCheckTime(at)}，${summary}`;
+  flushLiveLogView();
+}
+
+function syncLiveLogIdleFromDashboard(d) {
+  if (!d?.polling) return;
+  if (d.polling.lastCycleMessage === "暂无待处理任务" && d.polling.lastPollAt) {
+    setLiveLogIdleStatus(d.polling.lastPollAt, "暂无任务");
+  }
+}
+
 function appendLiveLog(line, isErr) {
   const el = $("#live-log");
   if (!el) return;
-  const row = `[${new Date().toLocaleTimeString()}] ${line}\n`;
-  el.textContent = row + el.textContent.slice(0, 8000);
+  const text = String(line ?? "").trim();
+  if (!text) return;
+
+  if (!isErr) {
+    const idleSummary = idleLogSummary(text);
+    if (idleSummary) {
+      setLiveLogIdleStatus(new Date(), idleSummary);
+      return;
+    }
+    if (liveLogLines.length > 0) {
+      const last = liveLogLines[0];
+      const m = last.match(/^\[[^\]]+\]\s+(.+)$/);
+      if (m && m[1] === text) {
+        liveLogLines[0] = `[${new Date().toLocaleTimeString()}] ${text}`;
+        flushLiveLogView();
+        return;
+      }
+    }
+  }
+
+  liveLogLines.unshift(`[${new Date().toLocaleTimeString()}] ${text}`);
+  liveLogLines = liveLogLines.slice(0, 80);
   if (isErr) el.classList.add("err");
+  else el.classList.remove("err");
+  flushLiveLogView();
+}
+
+function setLogDetailEmpty(el, text) {
+  if (!el) return;
+  el.textContent = text;
+  el.classList.add("is-empty");
+}
+
+function setLogDetailContent(el, text) {
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove("is-empty");
 }
 
 /** 打开发布页结果展示 */
@@ -244,7 +332,7 @@ function renderOverview() {
       ? TaskLogDisplay().customerizeTaskError(d.recentFailure.message)
       : d.recentFailure.message;
     activities.push({
-      time: d.recentFailure.createdAt || d.recentFailure.updatedAt,
+      time: d.recentFailure.agentFinishedAt || d.recentFailure.createdAt,
       text: `${PLATFORM_LABELS[d.recentFailure.platform] ?? d.recentFailure.platform} · ${taskFinalStatusLabel(d.recentFailure.status)}${errHint ? " · " + errHint : ""}`,
     });
   }
@@ -291,7 +379,12 @@ function renderDiagnostics() {
     diagServer.className = connOk ? "conn-line ok" : "conn-line err";
   }
 
-  // Settings
+  syncLiveLogIdleFromDashboard(d);
+}
+
+function renderSettings() {
+  if (!dashboard) return;
+  const d = dashboard;
   const cfg = d.config;
   const setServer = $("#set-server-url");
   if (setServer) setServer.value = cfg.serverUrl;
@@ -322,7 +415,8 @@ function renderAccounts() {
     const list = dashboard.accounts.filter((a) => a.platform === platform);
     const count = list.length;
     const hasActive = list.some((a) => a.sessionStatus === "active");
-    let statusText = "未绑定";
+    const isPendingPlatform = PENDING_PLATFORMS.has(platform);
+    let statusText = isPendingPlatform ? "暂未接入" : "未绑定";
     let statusClass = "status-unbound";
     if (count > 0 && hasActive) {
       statusText = "已绑定";
@@ -334,9 +428,7 @@ function renderAccounts() {
     const li = document.createElement("li");
     li.className = `platform-item ${platform === selectedPlatform ? "active" : ""}`;
     li.setAttribute("data-platform", platform);
-    const pendingTag = PENDING_PLATFORMS.has(platform)
-      ? '<span class="platform-item-pending">暂未接入</span>'
-      : "";
+    const pendingTag = "";
     li.innerHTML = `
       <span class="platform-item-name">${PLATFORM_LABELS[platform]}</span>
       <span class="platform-item-count">${count} 个账号</span>
@@ -364,6 +456,8 @@ function renderAccountsMain() {
   const list = dashboard.accounts.filter((a) => a.platform === platform);
   const canCreate = CREATABLE_PLATFORMS.has(platform);
   const isPending = PENDING_PLATFORMS.has(platform);
+  const hasAccounts = list.length > 0;
+  const createBtnLabel = hasAccounts ? `添加${label}账号` : `创建${label}账号环境`;
 
   headerEl.innerHTML = `
     <div class="accounts-main-title-row">
@@ -378,7 +472,7 @@ function renderAccountsMain() {
       </div>
       <button type="button" data-create="${platform}" class="btn-create-right" ${
         canCreate ? "" : "disabled"
-      }>创建${label}账号环境</button>
+      }>${createBtnLabel}</button>
     </div>
   `;
   const createBtn = headerEl.querySelector(".btn-create-right");
@@ -502,8 +596,10 @@ function renderLogSelect() {
   const prev = selectedLogTaskId;
   sel.innerHTML = '<option value="">选择任务查看日志</option>';
   if (!dashboard.localTaskLogs.length) {
-    const logDetail = $("#log-detail");
-    if (logDetail) logDetail.textContent = "暂无执行日志";
+    selectedLogTaskId = null;
+    selectedLogDetail = null;
+    setLogDetailEmpty($("#log-detail"), LOG_DETAIL_EMPTY_TEXT);
+    setLogDetailEmpty($("#log-detail-raw"), LOG_DETAIL_RAW_EMPTY_TEXT);
     return;
   }
   for (const log of dashboard.localTaskLogs) {
@@ -526,19 +622,22 @@ async function renderLogDetail(taskId) {
   if (!logDetail) return;
   if (!log) {
     selectedLogDetail = null;
-    logDetail.textContent = "本地无该任务记录";
-    if (logDetailRaw) logDetailRaw.textContent = "";
+    setLogDetailEmpty(logDetail, "本地无该任务记录");
+    setLogDetailEmpty(logDetailRaw, LOG_DETAIL_RAW_EMPTY_TEXT);
     return;
   }
   const platformLabel = PLATFORM_LABELS[log.platform] ?? log.platform ?? "平台";
   const display = TaskLogDisplay();
-  logDetail.textContent = display.formatPublishTaskLogsForCustomer
-    ? display.formatPublishTaskLogsForCustomer(log, platformLabel)
-    : `任务 #${log.taskId}`;
+  setLogDetailContent(
+    logDetail,
+    display.formatPublishTaskLogsForCustomer
+      ? display.formatPublishTaskLogsForCustomer(log, platformLabel)
+      : `任务 #${log.taskId}`,
+  );
   if (logDetailRaw) {
-    logDetailRaw.textContent = display.formatPublishTaskLogsRaw
-      ? display.formatPublishTaskLogsRaw(log)
-      : "";
+    const raw = display.formatPublishTaskLogsRaw ? display.formatPublishTaskLogsRaw(log) : "";
+    if (raw.trim()) setLogDetailContent(logDetailRaw, raw);
+    else setLogDetailEmpty(logDetailRaw, LOG_DETAIL_RAW_EMPTY_TEXT);
   }
 }
 
@@ -551,7 +650,12 @@ async function refresh() {
     renderTasks();
     renderLogSelect();
     renderDiagnostics();
+    renderSettings();
     if (selectedLogTaskId) renderLogDetail(selectedLogTaskId);
+    else {
+      setLogDetailEmpty($("#log-detail"), LOG_DETAIL_EMPTY_TEXT);
+      setLogDetailEmpty($("#log-detail-raw"), LOG_DETAIL_RAW_EMPTY_TEXT);
+    }
     $("#hdr-version").textContent = `v${dashboard.appVersion}`;
   } catch (e) {
     appendLiveLog(e instanceof Error ? e.message : String(e), true);
@@ -641,7 +745,13 @@ const logSelect = $("#log-task-select");
 if (logSelect) {
   logSelect.onchange = () => {
     const v = logSelect.value;
-    if (v) renderLogDetail(Number(v));
+    if (v) void renderLogDetail(Number(v));
+    else {
+      selectedLogTaskId = null;
+      selectedLogDetail = null;
+      setLogDetailEmpty($("#log-detail"), LOG_DETAIL_EMPTY_TEXT);
+      setLogDetailEmpty($("#log-detail-raw"), LOG_DETAIL_RAW_EMPTY_TEXT);
+    }
   };
 }
 
