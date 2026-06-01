@@ -110,6 +110,7 @@ const PATHS_WITHOUT_PROFILE_HINT = new Set([
   "/settings",
   "/admin/config",
   "/admin/stats",
+  "/admin/subscription",
 ]);
 
 const GEO_FEATURE_PATH_PREFIXES = [

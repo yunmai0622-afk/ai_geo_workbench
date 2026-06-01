@@ -24,6 +24,7 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { adminConfigRouter } from "./adminConfigRouter";
 import { adminStatsRouter } from "./adminStatsRouter";
+import { adminSubscriptionRouter } from "./adminSubscriptionRouter";
 import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
 import { getDefaultPublishPlatformsSync } from "./geoSystemConfigStore";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -4066,6 +4067,7 @@ export const appRouter = router({
   agent: agentRouter,
   adminConfig: adminConfigRouter,
   adminStats: adminStatsRouter,
+  adminSubscription: adminSubscriptionRouter,
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

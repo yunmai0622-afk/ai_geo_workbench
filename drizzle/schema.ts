@@ -19,6 +19,10 @@ export const users = mysqlTable("users", {
   passwordHash: varchar("passwordHash", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  /** 订阅套餐档位（管理员可调整；未接入支付前默认基础版） */
+  subscriptionPlanId: mysqlEnum("subscriptionPlanId", ["basic", "professional", "enterprise"])
+    .default("basic")
+    .notNull(),
   /** 浏览器发布插件 API 密钥 */
   extensionApiKey: varchar("extensionApiKey", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

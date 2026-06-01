@@ -52,6 +52,7 @@ export function planAppliesBasicFreeLimits(planId: SubscriptionPlanId): boolean 
   return planId === "basic";
 }
 
+/** @deprecated 服务端请使用 resolveUserSubscriptionPlanIdFromDb；此处仅供无 DB 的客户端缺省 */
 export function resolveSubscriptionPlanIdForUser(_userId?: number): SubscriptionPlanId {
   return resolveUserSubscriptionPlanId();
 }

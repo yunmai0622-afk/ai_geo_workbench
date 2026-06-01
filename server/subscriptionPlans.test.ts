@@ -30,11 +30,11 @@ describe("GEO-V1.1 subscription plans display", () => {
     expect(fs.existsSync(path.join(root, "client/src/pages/PricingPage.tsx"))).toBe(true);
   });
 
-  it("settings page shows current plan", () => {
+  it("settings page shows current plan from subscription usage", () => {
     const settings = fs.readFileSync(path.join(root, "client/src/pages/SettingsPage.tsx"), "utf8");
     expect(settings).toContain("settings-subscription-plan");
     expect(settings).toContain("当前套餐");
-    expect(settings).toContain("resolveUserSubscriptionPlanId");
+    expect(settings).toContain("geo.subscription.usage");
   });
 
   it("basic plan trial limits are enforced server-side", () => {

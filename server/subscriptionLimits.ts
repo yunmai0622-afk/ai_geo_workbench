@@ -3,13 +3,13 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   BASIC_PLAN_LIMITS,
   planAppliesBasicFreeLimits,
-  resolveSubscriptionPlanIdForUser,
   subscriptionLimitMessageFor,
   type SubscriptionLimitKind,
 } from "@shared/subscriptionLimits";
 import type { SubscriptionPlanId } from "@shared/subscriptionPlans";
 import { geoArticles, projects, testRounds } from "../drizzle/schema";
 import type { getDb } from "./db";
+import { resolveUserSubscriptionPlanIdFromDb } from "./userSubscriptionPlan";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -66,7 +66,7 @@ export async function countContentArticlesForUser(db: Db, userId: number): Promi
 }
 
 export async function getSubscriptionUsageSnapshot(db: Db, userId: number): Promise<SubscriptionUsageSnapshot> {
-  const planId = resolveSubscriptionPlanIdForUser(userId);
+  const planId = await resolveUserSubscriptionPlanIdFromDb(db, userId);
   const limited = planAppliesBasicFreeLimits(planId);
   const [projectCount, t0DetectionCount, contentArticleCount] = await Promise.all([
     countActiveProjectsForUser(db, userId),
@@ -95,7 +95,7 @@ function throwSubscriptionLimit(kind: SubscriptionLimitKind): never {
 }
 
 export async function assertCanCreateProject(db: Db, userId: number): Promise<void> {
-  const planId = resolveSubscriptionPlanIdForUser(userId);
+  const planId = await resolveUserSubscriptionPlanIdFromDb(db, userId);
   if (!planAppliesBasicFreeLimits(planId)) return;
   const projectCount = await countActiveProjectsForUser(db, userId);
   if (projectCount >= BASIC_PLAN_LIMITS.maxProjects) {
@@ -104,7 +104,7 @@ export async function assertCanCreateProject(db: Db, userId: number): Promise<vo
 }
 
 export async function assertCanRunT0Detection(db: Db, userId: number): Promise<void> {
-  const planId = resolveSubscriptionPlanIdForUser(userId);
+  const planId = await resolveUserSubscriptionPlanIdFromDb(db, userId);
   if (!planAppliesBasicFreeLimits(planId)) return;
   const t0Count = await countT0DetectionsForUser(db, userId);
   if (t0Count >= BASIC_PLAN_LIMITS.maxT0Detections) {
@@ -113,7 +113,7 @@ export async function assertCanRunT0Detection(db: Db, userId: number): Promise<v
 }
 
 export async function assertCanGenerateContent(db: Db, userId: number): Promise<void> {
-  const planId = resolveSubscriptionPlanIdForUser(userId);
+  const planId = await resolveUserSubscriptionPlanIdFromDb(db, userId);
   if (!planAppliesBasicFreeLimits(planId)) return;
   const articleCount = await countContentArticlesForUser(db, userId);
   if (articleCount >= BASIC_PLAN_LIMITS.maxContentArticles) {

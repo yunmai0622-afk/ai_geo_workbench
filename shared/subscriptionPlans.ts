@@ -1,6 +1,13 @@
 /** GEO 订阅套餐（展示用，暂不接入支付） */
 export type SubscriptionPlanId = "basic" | "professional" | "enterprise";
 
+export const SUBSCRIPTION_PLAN_IDS = ["basic", "professional", "enterprise"] as const satisfies readonly SubscriptionPlanId[];
+
+export function parseSubscriptionPlanId(value: unknown): SubscriptionPlanId | null {
+  if (value === "basic" || value === "professional" || value === "enterprise") return value;
+  return null;
+}
+
 export type SubscriptionPlanDisplay = {
   id: SubscriptionPlanId;
   name: string;
@@ -51,7 +58,7 @@ export function getSubscriptionPlanById(planId: SubscriptionPlanId): Subscriptio
   return plan;
 }
 
-/** 未接入支付前，所有账号默认基础版 */
+/** 客户端缺省展示：未拉取到服务端套餐快照时使用基础版 */
 export function resolveUserSubscriptionPlanId(): SubscriptionPlanId {
   return DEFAULT_SUBSCRIPTION_PLAN_ID;
 }

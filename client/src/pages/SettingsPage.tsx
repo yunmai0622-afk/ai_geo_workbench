@@ -4,10 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import {
-  getSubscriptionPlanById,
-  resolveUserSubscriptionPlanId,
-} from "@shared/subscriptionPlans";
+import { getSubscriptionPlanById } from "@shared/subscriptionPlans";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -29,7 +26,12 @@ export default function SettingsPage() {
     onError: err => setPasswordError(toUserFacingErrorFromUnknown(err, "密码修改失败，请稍后重试")),
   });
   const canChangePassword = Boolean(user?.passwordHash);
-  const currentPlan = getSubscriptionPlanById(resolveUserSubscriptionPlanId());
+  const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery(undefined, {
+    enabled: Boolean(user),
+  });
+  const currentPlan = getSubscriptionPlanById(
+    subscriptionUsageQuery.data?.planId ?? "basic",
+  );
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
       <header className="space-y-1"><h1 className="text-2xl font-semibold text-gray-900">账号设置</h1><p className="text-sm text-gray-500">管理您的基本信息与登录密码</p></header>
@@ -96,6 +98,17 @@ export default function SettingsPage() {
             <CardContent>
               <Button type="button" variant="outline" asChild>
                 <a href="/admin/config">打开系统配置</a>
+              </Button>
+            </CardContent>
+          </Card>
+          <Card data-testid="settings-admin-subscription-link">
+            <CardHeader>
+              <CardTitle>用户套餐管理</CardTitle>
+              <CardDescription>为指定账号手动升级套餐，豁免免费版内容生成等限制</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button type="button" variant="outline" asChild>
+                <a href="/admin/subscription">打开套餐管理</a>
               </Button>
             </CardContent>
           </Card>
