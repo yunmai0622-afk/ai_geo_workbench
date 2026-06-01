@@ -27,6 +27,13 @@ function formatHealthTimestamp(at?: string) {
   return parsed.toLocaleString("zh-CN", { hour12: false });
 }
 
+const COMMON_ISSUE_RECOVERY = [
+  { problem: "客户端无法连接", action: "检查网络，重启客户端" },
+  { problem: "内容生成失败", action: "检查企业资料是否完整" },
+  { problem: "发布失败", action: "检查账号是否有效，重新登录" },
+  { problem: "AI 检测超时", action: "减少问题数量，重试" },
+] as const;
+
 export default function SystemStatusPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
 
@@ -153,6 +160,25 @@ export default function SystemStatusPage() {
             综合状态：{state.data.ok ? "全部通过" : "存在异常"} · HTTP {state.httpOk ? "200" : "503"}
           </p>
         ) : null}
+
+        <section className="mt-8 border-t border-slate-200 pt-6" aria-labelledby="common-issues-heading">
+          <h2 id="common-issues-heading" className="text-sm font-semibold text-slate-800">
+            常见问题解决
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">遇到异常时可先按下列步骤自查</p>
+          <ol className="mt-4 space-y-3">
+            {COMMON_ISSUE_RECOVERY.map((item, index) => (
+              <li key={item.problem} className="rounded border border-slate-100 bg-slate-50/80 px-3 py-2">
+                <p className="font-medium text-slate-800">
+                  {index + 1}. {item.problem}
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  <span className="text-slate-500">→</span> {item.action}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </section>
       </div>
     </div>
   );

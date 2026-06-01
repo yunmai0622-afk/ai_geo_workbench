@@ -29,4 +29,17 @@ describe("GEO-V1.1 system status page", () => {
     expect(read("client/src/pages/SystemStatusPage.tsx")).toContain("最近内容生成");
     expect(read("client/src/pages/SystemStatusPage.tsx")).toContain("发布队列任务数");
   });
+
+  it("status page includes static common issue recovery guide", () => {
+    const page = read("client/src/pages/SystemStatusPage.tsx");
+    expect(page).toContain("常见问题解决");
+    expect(page).toContain("客户端无法连接");
+    expect(page).toContain("检查网络，重启客户端");
+    expect(page).toContain("内容生成失败");
+    expect(page).toContain("检查企业资料是否完整");
+    expect(page).toContain("发布失败");
+    expect(page).toContain("检查账号是否有效，重新登录");
+    expect(page).toContain("AI 检测超时");
+    expect(page).toContain("减少问题数量，重试");
+  });
 });
