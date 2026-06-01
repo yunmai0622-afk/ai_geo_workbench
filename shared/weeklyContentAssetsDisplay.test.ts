@@ -30,6 +30,14 @@ describe("weeklyContentAssetsDisplay", () => {
     ];
     expect(filterWeeklyContentCards(cards, { platform: "zhihu", status: "all" })).toHaveLength(1);
   });
+  it("filterWeeklyContentCards filters by title query", () => {
+    const cards = [
+      { id: 1, title: "知乎品牌问答", statusFilterKey: "draft" as const },
+      { id: 2, title: "小红书种草笔记", statusFilterKey: "draft" as const },
+    ];
+    expect(filterWeeklyContentCards(cards, { titleQuery: "知乎" })).toHaveLength(1);
+    expect(filterWeeklyContentCards(cards, { titleQuery: " 未命中 " })).toHaveLength(0);
+  });
   it("sortWeeklyContentCardsByQuality orders by score", () => {
     const cards = [
       { id: 1, statusFilterKey: "draft" as const, qualityScore: 60 },

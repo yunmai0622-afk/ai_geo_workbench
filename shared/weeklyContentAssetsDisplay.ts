@@ -22,6 +22,7 @@ export type ContentCardQualitySort = "none" | "desc" | "asc";
 
 export type WeeklyContentCardView = {
   id: number;
+  title?: string | null;
   platformKey?: string | null;
   targetPlatform?: string | null;
   statusFilterKey: ContentCardStatus;
@@ -109,10 +110,11 @@ export function resolveArticlePublishLink(params: {
 
 export function filterWeeklyContentCards<T extends WeeklyContentCardView>(
   cards: T[],
-  filters: { platform?: string; status?: ContentCardStatusFilter },
+  filters: { platform?: string; status?: ContentCardStatusFilter; titleQuery?: string },
 ): T[] {
   const platform = (filters.platform ?? "all").trim();
   const status = filters.status ?? "all";
+  const titleQuery = (filters.titleQuery ?? "").trim().toLowerCase();
   return cards.filter(card => {
     if (platform !== "all") {
       const key = (card.platformKey ?? "").trim();
@@ -120,6 +122,10 @@ export function filterWeeklyContentCards<T extends WeeklyContentCardView>(
       if (key !== platform && label !== platform) return false;
     }
     if (status !== "all" && card.statusFilterKey !== status) return false;
+    if (titleQuery) {
+      const title = (card.title ?? "").trim().toLowerCase();
+      if (!title.includes(titleQuery)) return false;
+    }
     return true;
   });
 }

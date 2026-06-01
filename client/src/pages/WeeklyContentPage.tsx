@@ -1,6 +1,7 @@
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { aiInput } from "@/lib/aiProductUi";
 import {
   Dialog,
@@ -97,6 +98,7 @@ import {
   weeklyGenerationCountClientError,
 } from "@shared/weeklyContentGeneration";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
@@ -441,6 +443,7 @@ export default function WeeklyContentPage() {
   const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<ContentCardStatusFilter>("all");
+  const [titleSearch, setTitleSearch] = useState("");
   const [sortQuality, setSortQuality] = useState<ContentCardQualitySort>("none");
   const [selectedCardIds, setSelectedCardIds] = useState<Set<number>>(() => new Set());
   const [batchEnqueueBusy, setBatchEnqueueBusy] = useState(false);
@@ -1066,9 +1069,10 @@ export default function WeeklyContentPage() {
     const filtered = filterWeeklyContentCards<WeeklyArticleCardModel>(contentCardModels, {
       platform: filterPlatform,
       status: filterStatus,
+      titleQuery: titleSearch,
     });
     return sortWeeklyContentCardsByQuality(filtered, sortQuality);
-  }, [contentCardModels, filterPlatform, filterStatus, sortQuality]);
+  }, [contentCardModels, filterPlatform, filterStatus, titleSearch, sortQuality]);
 
   const platformFilterOptions = useMemo(() => {
     const keys = new Set<string>();
@@ -1767,11 +1771,28 @@ export default function WeeklyContentPage() {
 
   return (
     <div className="space-y-8 pb-12" data-testid="weekly-platform-content-page">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">平台化内容资产</h1>
-        <p className="text-sm text-gray-500">
-          根据 AI 实测缺口，按平台生成可发布、可监测、可复测的 GEO 内容资产。各平台独立生成，不支持一稿多发。
-        </p>
+      <header className="space-y-4">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-gray-900">平台化内容资产</h1>
+          <p className="text-sm text-gray-500">
+            根据 AI 实测缺口，按平台生成可发布、可监测、可复测的 GEO 内容资产。各平台独立生成，不支持一稿多发。
+          </p>
+        </div>
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
+          <label className="sr-only" htmlFor="weekly-content-title-search">
+            按标题搜索内容
+          </label>
+          <Input
+            id="weekly-content-title-search"
+            type="search"
+            placeholder="按标题搜索内容…"
+            value={titleSearch}
+            onChange={e => setTitleSearch(e.target.value)}
+            className="rounded-xl border-gray-200 bg-white pl-10 shadow-sm"
+            data-testid="weekly-content-title-search"
+          />
+        </div>
       </header>
 
       {tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
@@ -1939,7 +1960,7 @@ export default function WeeklyContentPage() {
               </div>
               {displayContentCards.length === 0 ? (
                 <p className="text-sm text-gray-500" data-testid="weekly-content-cards-empty">
-                  当前筛选条件下暂无内容
+                  {titleSearch.trim() ? "未找到匹配内容" : "当前筛选条件下暂无内容"}
                 </p>
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
