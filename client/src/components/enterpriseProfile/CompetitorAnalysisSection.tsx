@@ -135,7 +135,7 @@ export function CompetitorAnalysisSection({ projectId, brandName }: Props) {
           汇总竞品档案与 AI 实测提及情况，帮助判断 {brandName || "本品牌"} 应优先补充哪些公开内容。
         </p>
         <p className="mt-2 text-xs text-gray-400">
-          数据来源：competitor_profiles 表 · ai_test_runs.competitorNames（共 {summaryQuery.data?.totalAiTestRuns ?? 0} 条实测记录）
+          数据来源：竞品档案与 AI 实测诊断结果（共 {summaryQuery.data?.totalAiTestRuns ?? 0} 条实测记录）
         </p>
       </div>
 
@@ -146,14 +146,14 @@ export function CompetitorAnalysisSection({ projectId, brandName }: Props) {
 
       {!hasCompetitors ? (
         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-          暂无竞品档案。请先在「品牌建档 → 高级素材 → 竞品差异」中填写竞品名称，或由运营在 competitor_profiles 表录入完整竞品资料。
+          暂无竞品档案。请先在「品牌建档 → 高级素材 → 竞品差异」中填写竞品名称，或联系运营补充完整竞品资料。
         </div>
       ) : (
         <>
           <div className="geo-card overflow-hidden">
             <div className="border-b border-gray-100 px-5 py-4">
               <h3 className="text-sm font-semibold text-gray-900">竞品列表</h3>
-              <p className="mt-1 text-xs text-gray-500">按 AI 提及频次排序；优势描述来自竞品档案 strengths 字段。</p>
+              <p className="mt-1 text-xs text-gray-500">按 AI 提及频次排序；优势描述来自竞品档案。</p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
