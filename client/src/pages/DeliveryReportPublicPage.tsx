@@ -5,6 +5,7 @@ import {
   buildDeliveryReportPublicEvidencePath,
   DELIVERY_REPORT_SHARE_INVALID_MESSAGE,
 } from "@shared/deliveryReportPublicShare";
+import { toUserFacingQueryError } from "@shared/userFacingErrors";
 import type { AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
 import { useLocation, useRoute } from "wouter";
 
@@ -64,7 +65,7 @@ export default function DeliveryReportPublicPage() {
   if (shareQuery.isError || !shareQuery.data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100 px-6 text-center text-gray-700">
-        <p>{shareQuery.error?.message ?? DELIVERY_REPORT_SHARE_INVALID_MESSAGE}</p>
+        <p>{toUserFacingQueryError(shareQuery.error?.message, DELIVERY_REPORT_SHARE_INVALID_MESSAGE)}</p>
       </div>
     );
   }

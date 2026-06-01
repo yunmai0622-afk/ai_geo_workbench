@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { buildEvidenceDetailPath, type AiTestEvidenceItem } from "@shared/aiTestEvidence";
 import { mapItemToPublicEvidence } from "@shared/deliveryReportPublicShare";
+import { toUserFacingQueryError } from "@shared/userFacingErrors";
 import { useLocation, useRoute } from "wouter";
 
 export default function AiSearchEvidencePage() {
@@ -39,7 +40,7 @@ export default function AiSearchEvidencePage() {
   if (detailQuery.isError || !item) {
     return (
       <div className="mx-auto max-w-3xl space-y-4 p-8 text-gray-600">
-        <p>{detailQuery.error?.message ?? "未找到该条实测证据。"}</p>
+        <p>{toUserFacingQueryError(detailQuery.error?.message, "未找到该条实测证据。")}</p>
         <Button variant="outline" onClick={() => setLocation("/inclusion-monitoring")}>
           返回收录监测
         </Button>

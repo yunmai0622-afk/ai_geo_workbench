@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { aiInput } from "@/lib/aiProductUi";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { trpc } from "@/lib/trpc";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import {
   ARTICLE_SAVED_PUBLISH_HINT_MESSAGE,
   buildArticleAssetSnapshot,
@@ -199,7 +200,7 @@ export function ArticleAssetEditorSheet({
       setCoverBase64Draft(coverBase64);
       setCoverPreview(dataUrl);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "封面生成失败";
+      const msg = toUserFacingErrorFromUnknown(e, "封面生成失败");
       setCoverError(msg);
       toast.error(msg);
     } finally {
@@ -261,7 +262,7 @@ export function ArticleAssetEditorSheet({
       onSaved?.();
       onOpenChange(false);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "保存失败";
+      const msg = toUserFacingErrorFromUnknown(e, "保存失败");
       if (msg.includes("封面")) {
         setCoverError(msg);
       }

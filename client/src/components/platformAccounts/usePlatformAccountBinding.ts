@@ -306,7 +306,7 @@ export function usePlatformAccountBinding(projectId: number) {
       }
       const result = await detectLocalAgentAccount(row.localProfileId);
       if (!result.ok || !result.accountName) {
-        toast.error(result.message ?? "检测失败");
+        toast.error(toUserFacingError(result.message, "检测失败"));
         return;
       }
       if (result.accountName !== row.accountName) {

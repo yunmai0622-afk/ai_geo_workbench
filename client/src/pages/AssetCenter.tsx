@@ -1,4 +1,5 @@
 import { AdvancedMaterialsSection } from "@/components/enterpriseProfile/AdvancedMaterialsSection";
+import { CompetitorAnalysisSection } from "@/components/enterpriseProfile/CompetitorAnalysisSection";
 import {
   FiveMinuteBasicOnboardingSection,
   type FiveMinuteBasicValues,
@@ -16,6 +17,7 @@ import {
 } from "@/components/enterpriseProfile/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
@@ -777,6 +779,17 @@ export default function AssetCenterPage() {
 
       {currentProjectId ? (
         <>
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="profile" data-testid="asset-tab-profile">
+                品牌建档
+              </TabsTrigger>
+              <TabsTrigger value="competitor-analysis" data-testid="asset-tab-competitor-analysis">
+                竞品分析
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile" className="mt-6 space-y-6">
           {/* ═══ 建档完成度 ═══ */}
           <div className="geo-card p-5">
             <div className="flex items-center justify-between">
@@ -931,6 +944,15 @@ export default function AssetCenterPage() {
           />
 
           {/* 发布环境配置已移至 /content-publishing，此处只做轻提示 */}
+            </TabsContent>
+
+            <TabsContent value="competitor-analysis" className="mt-6">
+              <CompetitorAnalysisSection
+                projectId={currentProjectId}
+                brandName={brandName || currentProject?.enterpriseName || ""}
+              />
+            </TabsContent>
+          </Tabs>
         </>
       ) : null}
     </div>

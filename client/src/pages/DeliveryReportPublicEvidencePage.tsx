@@ -5,6 +5,7 @@ import {
   buildDeliveryReportPublicPath,
   DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE,
 } from "@shared/deliveryReportPublicShare";
+import { toUserFacingQueryError } from "@shared/userFacingErrors";
 import { useLocation, useRoute } from "wouter";
 
 export default function DeliveryReportPublicEvidencePage() {
@@ -36,7 +37,7 @@ export default function DeliveryReportPublicEvidencePage() {
   if (evidenceQuery.isError || !evidenceQuery.data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center text-gray-600">
-        <p>{evidenceQuery.error?.message ?? DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE}</p>
+        <p>{toUserFacingQueryError(evidenceQuery.error?.message, DELIVERY_REPORT_EVIDENCE_INVALID_MESSAGE)}</p>
       </div>
     );
   }

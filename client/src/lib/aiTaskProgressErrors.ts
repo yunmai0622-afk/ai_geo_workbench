@@ -5,6 +5,7 @@ import {
 } from "@shared/aiTaskProgress";
 import { classifyGeoDiagnosisLlmError } from "@shared/geoDiagnosisLlmErrors";
 import { classifyPlatformContentLlmError, isNonLlmPlatformContentError } from "@shared/platformContentLlmErrors";
+import { toUserFacingError } from "@shared/userFacingErrors";
 
 export function mapGeoDiagnosisErrorCategory(raw: string): AiTaskProgressErrorCategory {
   const c = classifyGeoDiagnosisLlmError(raw);
@@ -57,6 +58,6 @@ export function formatAiTaskProgressFailure(
 ): { categoryLabel: string; message: string; nextStep: string } {
   const categoryLabel = AI_TASK_ERROR_CATEGORY_LABELS[category];
   const nextStep = AI_TASK_ERROR_NEXT_STEP[category];
-  const message = detailMessage.trim() || categoryLabel;
+  const message = toUserFacingError(detailMessage.trim(), categoryLabel);
   return { categoryLabel, message, nextStep };
 }

@@ -7,6 +7,7 @@ import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { buildPublishPlatformAccountOverview } from "@shared/publishPlatformAccountOverview";
+import { toUserFacingError } from "@shared/userFacingErrors";
 import { ExternalLink } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
@@ -104,7 +105,7 @@ export function PublishPlatformAccountsOverview({
               void focusLocalAgentAccountsTab()
                 .then(r => {
                   if (r.ok) toast.success("已切换到本地客户端「账号环境」");
-                  else toast.error(r.message || "无法唤起本地客户端，请手动打开应用");
+                  else toast.error(toUserFacingError(r.message, "无法唤起本地客户端，请手动打开应用"));
                 })
                 .catch(() => {
                   toast.message("请在本机打开 GEO 本地发布客户端，点击顶部「账号环境」标签");

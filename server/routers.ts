@@ -19,7 +19,7 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, upsertUser } from "./db";
-import { loginEmailUser, registerEmailUser } from "./emailAuth";
+import { changeUserPassword, loginEmailUser, registerEmailUser, updateUserProfile } from "./emailAuth";
 import { setUserSessionCookie } from "./authSession";
 import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
@@ -3475,6 +3475,34 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    updateProfile: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1, "请填写姓名").max(120, "姓名不能超过 120 个字符"),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const user = await updateUserProfile(ctx.user.id, { name: input.name });
+        return { success: true as const, user };
+      }),
+    changePassword: protectedProcedure
+      .input(
+        z.object({
+          currentPassword: z.string().min(1, "请输入旧密码"),
+          newPassword: z.string().min(8, "密码至少需要 8 位"),
+          confirmPassword: z.string().min(8, "请确认新密码"),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (input.newPassword !== input.confirmPassword) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "两次输入的新密码不一致" });
+        }
+        await changeUserPassword(ctx.user.id, {
+          currentPassword: input.currentPassword,
+          newPassword: input.newPassword,
+        });
+        return { success: true as const };
+      }),
   }),
   geo: geoRouter,
   publishTasks: publishTasksRouter,
