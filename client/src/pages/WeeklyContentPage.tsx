@@ -18,6 +18,7 @@ import {
   listLocalAgentAccountSnapshots,
 } from "@/lib/localAgentClient";
 import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
+import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchGenerationPanel";
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
 import { GeoContentTaskPanels } from "@/components/weekly/GeoContentTaskPanels";
 import {
@@ -123,6 +124,12 @@ import {
   LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME,
   type LocalAgentAccountStatusEntry,
 } from "@shared/localAgentAccountSync";
+import {
+  buildPlatformBatchQueue,
+  countPlatformBatchCompleted,
+  updatePlatformBatchItemStatus,
+  type PlatformBatchQueueItem,
+} from "@shared/platformBatchGeneration";
 
 type ProjectOption = { id: number; enterpriseName: string };
 
@@ -367,14 +374,8 @@ export default function WeeklyContentPage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
-  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
-    { projectId: selectedProjectId! },
-    { enabled: Boolean(selectedProjectId) },
-  );
-  const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(
-    { projectId: selectedProjectId! },
-    { enabled: Boolean(selectedProjectId) },
-  );
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(projectInput, { enabled });
+  const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
   const enterpriseProfileRecord = assetSummaryQuery.data?.profile as Record<string, unknown> | undefined;
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
 
@@ -423,6 +424,8 @@ export default function WeeklyContentPage() {
   );
   const [selectedContentTaskId, setSelectedContentTaskId] = useState<number | null>(null);
   const [generatingPlatformKey, setGeneratingPlatformKey] = useState<WeeklyPlatformKey | null>(null);
+  const [platformBatchQueue, setPlatformBatchQueue] = useState<PlatformBatchQueueItem[] | null>(null);
+  const [platformBatchRunning, setPlatformBatchRunning] = useState(false);
   const [platformProgressLabelKey, setPlatformProgressLabelKey] = useState<WeeklyPlatformKey | null>(null);
   const [platformProgressErrorCategory, setPlatformProgressErrorCategory] = useState<
     AiTaskProgressErrorCategory | undefined
@@ -709,7 +712,11 @@ export default function WeeklyContentPage() {
   );
 
   const queriesReady =
-    enabled && !tasksQuery.isLoading && !topicsQuery.isLoading && !analysisQuery.isLoading;
+    enabled &&
+    !tasksQuery.isLoading &&
+    !topicsQuery.isLoading &&
+    !analysisQuery.isLoading &&
+    !articlesQuery.isLoading;
   const showDiagnosisEmpty = queriesReady && !hasDiagnosisData;
   const showDirectionEmpty =
     queriesReady &&
@@ -726,6 +733,8 @@ export default function WeeklyContentPage() {
     setExpandedTopicIds(new Set());
     setBatchState(null);
     setSelectedContentTaskId(null);
+    setPlatformBatchQueue(null);
+    setPlatformBatchRunning(false);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -889,8 +898,9 @@ export default function WeeklyContentPage() {
     }
   };
 
-  const batchBusy = batchState !== null;
-  const anyGenerating = batchBusy || generatingTopicIds.size > 0 || generateArticleMutation.isPending;
+  const batchBusy = batchState !== null || platformBatchRunning;
+  const anyGenerating =
+    batchBusy || generatingTopicIds.size > 0 || generateArticleMutation.isPending || platformBatchRunning;
   const batchDone = !batchBusy && pendingTopicIds.length === 0 && topics.length > 0 && topics.every(t => articleByTopicId.has(t.id));
 
   const estMinutesRemaining = batchState ? Math.max(1, Math.ceil((batchState.total - batchState.current + 1) * 2)) : 0;
@@ -1098,28 +1108,21 @@ export default function WeeklyContentPage() {
     [articleByTopicId, taskIdSet, tasks, geoContentTaskSource?.contentTaskId],
   );
 
-  const handlePlatformGenerate = async (platformKey: WeeklyPlatformKey) => {
-    const publishId = resolvePublishSlugForWeeklyPlatform(platformKey);
-    const strategyOverride: Partial<PlatformContentStrategyInput> = {};
-    if (publishId) {
-      strategyOverride.targetPublishPlatform = publishId;
-      setPlatformStrategy(prev => ({ ...prev, targetPublishPlatform: publishId }));
-    }
-    if (platformKey === "xiaohongshu") {
-      strategyOverride.contentStrategyType = "seeding";
-      setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
-    }
-
-    setGeneratingPlatformKey(platformKey);
-    setPlatformProgressLabelKey(platformKey);
-    setPlatformProgressErrorCategory(undefined);
-    setPlatformProgressErrorMessage(undefined);
-    platformContentProgress.reset();
-    platformContentProgress.start();
-
-    try {
-      platformContentProgress.setStage(10);
-      platformContentProgress.setStage(25);
+  const generatePlatformContent = useCallback(
+    async (
+      platformKey: WeeklyPlatformKey,
+      options?: { silentToast?: boolean },
+    ): Promise<{ ok: boolean; errorMessage?: string; userNotice?: string | null }> => {
+      const publishId = resolvePublishSlugForWeeklyPlatform(platformKey);
+      const strategyOverride: Partial<PlatformContentStrategyInput> = {};
+      if (publishId) {
+        strategyOverride.targetPublishPlatform = publishId;
+        setPlatformStrategy(prev => ({ ...prev, targetPublishPlatform: publishId }));
+      }
+      if (platformKey === "xiaohongshu") {
+        strategyOverride.contentStrategyType = "seeding";
+        setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
+      }
 
       let topicRows = topics;
       let pending = findPendingTopicForPlatform(platformKey, topicRows);
@@ -1134,18 +1137,54 @@ export default function WeeklyContentPage() {
       }
       if (!pending) {
         const msg = PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE;
+        if (!options?.silentToast) {
+          toast.error(msg);
+        }
+        return { ok: false, errorMessage: msg };
+      }
+
+      const result = await generateOne(pending.id, strategyOverride, { silentToast: true });
+      if (!result.ok) {
+        const msg = "内容生成失败，请稍后重试";
+        if (!options?.silentToast) {
+          toast.error(msg);
+        }
+        return { ok: false, errorMessage: msg };
+      }
+      return { ok: true, userNotice: result.userNotice };
+    },
+    [
+      topics,
+      tasks.length,
+      findPendingTopicForPlatform,
+      generateTopicsMutation,
+      selectedProjectId,
+      topicsQuery,
+      generateOne,
+    ],
+  );
+
+  const handlePlatformGenerate = async (platformKey: WeeklyPlatformKey) => {
+    setGeneratingPlatformKey(platformKey);
+    setPlatformProgressLabelKey(platformKey);
+    setPlatformProgressErrorCategory(undefined);
+    setPlatformProgressErrorMessage(undefined);
+    platformContentProgress.reset();
+    platformContentProgress.start();
+
+    try {
+      platformContentProgress.setStage(10);
+      platformContentProgress.setStage(25);
+      platformContentProgress.setStage(40);
+      platformContentProgress.allowOptimisticUpTo(80);
+      const result = await generatePlatformContent(platformKey);
+      if (!result.ok) {
+        const msg = result.errorMessage ?? "内容生成失败，请稍后重试";
         setPlatformProgressErrorCategory("unknown");
         setPlatformProgressErrorMessage(msg);
         platformContentProgress.fail();
         toast.error(msg);
         return;
-      }
-
-      platformContentProgress.setStage(40);
-      platformContentProgress.allowOptimisticUpTo(80);
-      const result = await generateOne(pending.id, strategyOverride, { silentToast: true });
-      if (!result.ok) {
-        throw new Error("内容生成失败，请稍后重试");
       }
       platformContentProgress.setStage(90);
       platformContentProgress.complete();
@@ -1166,6 +1205,88 @@ export default function WeeklyContentPage() {
     } finally {
       setGeneratingPlatformKey(null);
     }
+  };
+
+  const runPlatformBatchItem = useCallback(
+    async (platformKey: WeeklyPlatformKey): Promise<{ ok: boolean; errorMessage?: string }> => {
+      setGeneratingPlatformKey(platformKey);
+      setPlatformBatchQueue(prev =>
+        prev
+          ? updatePlatformBatchItemStatus(prev, platformKey, { status: "running", errorMessage: undefined })
+          : prev,
+      );
+      try {
+        const result = await generatePlatformContent(platformKey, { silentToast: true });
+        setPlatformBatchQueue(prev =>
+          prev
+            ? updatePlatformBatchItemStatus(prev, platformKey, {
+                status: result.ok ? "completed" : "failed",
+                errorMessage: result.ok ? undefined : result.errorMessage,
+              })
+            : prev,
+        );
+        return result;
+      } catch (err) {
+        const msg = readGenerateArticleError(err);
+        setPlatformBatchQueue(prev =>
+          prev
+            ? updatePlatformBatchItemStatus(prev, platformKey, { status: "failed", errorMessage: msg })
+            : prev,
+        );
+        return { ok: false, errorMessage: msg };
+      } finally {
+        setGeneratingPlatformKey(null);
+      }
+    },
+    [generatePlatformContent],
+  );
+
+  const handleBatchGenerateAllPlatforms = async () => {
+    if (!selectedProjectId) return;
+    if (platformStrategyError) {
+      toast.error(platformStrategyError);
+      return;
+    }
+    const queue = buildPlatformBatchQueue(
+      WEEKLY_PLATFORM_DEFS.map(def => ({ key: def.key, label: def.label })),
+    );
+    setPlatformBatchQueue(queue);
+    setPlatformBatchRunning(true);
+    try {
+      for (const def of WEEKLY_PLATFORM_DEFS) {
+        await runPlatformBatchItem(def.key);
+      }
+      setPlatformBatchQueue(prev => {
+        const done = prev ? countPlatformBatchCompleted(prev) : 0;
+        const total = prev?.length ?? WEEKLY_PLATFORM_DEFS.length;
+        if (done === total) {
+          toast.success(`全部平台内容已生成（${done}/${total}）`);
+        } else if (done > 0) {
+          toast.message(`部分平台生成完成：${done}/${total} 个平台成功`);
+        } else {
+          toast.error("全部平台生成失败，请检查诊断与资料后重试");
+        }
+        return prev;
+      });
+    } finally {
+      setPlatformBatchRunning(false);
+    }
+  };
+
+  const handleRetryPlatformBatchItem = (platformKey: string) => {
+    void (async () => {
+      setPlatformBatchRunning(true);
+      try {
+        const result = await runPlatformBatchItem(platformKey as WeeklyPlatformKey);
+        if (result.ok) {
+          toast.success("该平台内容已重新生成");
+        } else {
+          toast.error(result.errorMessage ?? "重试失败，请稍后再试");
+        }
+      } finally {
+        setPlatformBatchRunning(false);
+      }
+    })();
   };
 
   const activePlatformProgressLabel = useMemo(() => {
@@ -1500,6 +1621,13 @@ export default function WeeklyContentPage() {
           ) : null}
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
+
+          <PlatformBatchGenerationPanel
+            queue={platformBatchQueue}
+            running={platformBatchRunning}
+            onStartBatch={() => void handleBatchGenerateAllPlatforms()}
+            onRetry={handleRetryPlatformBatchItem}
+          />
 
           {platformContentProgress.status !== "idle" && activePlatformProgressLabel ? (
             <AiTaskProgressCard

@@ -1,11 +1,20 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
+import { RoutePageLoading } from "@/components/RoutePageLoading";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getActiveProjectId, buildProjectUrl } from "@/lib/activeProject";
+import {
+  AiDiagnosisFlowPage,
+  ContentPublishingFlowPage,
+  DeliveryReportsFlowPage,
+  InclusionMonitoringFlowPage,
+  WeeklyContentPage,
+} from "@/lib/lazyPages";
 import { trpc } from "@/lib/trpc";
 import NotFound from "@/pages/NotFound";
+import { Suspense } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -19,8 +28,6 @@ import AiSearchEvidencePage from "./pages/AiSearchEvidencePage";
 import DeliveryReportPublicEvidencePage from "./pages/DeliveryReportPublicEvidencePage";
 import DeliveryReportPublicPage from "./pages/DeliveryReportPublicPage";
 import DeliveryReportSharePage from "./pages/DeliveryReportSharePage";
-import { AiDiagnosisFlowPage, ContentPublishingFlowPage, DeliveryReportsFlowPage, InclusionMonitoringFlowPage } from "./pages/V12FlowPages";
-import WeeklyContentPage from "./pages/WeeklyContentPage";
 import ProgressPage from "./pages/ProgressPage";
 import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
@@ -38,6 +45,7 @@ function profileHasBrand(profile: unknown): boolean {
 function PrivateRoutes() {
   return (
     <DashboardLayout>
+      <Suspense fallback={<RoutePageLoading />}>
       <Switch>
         <Route path="/clients" component={ClientDashboardPage} />
         <Route path="/knowledge" component={KnowledgePage} />
@@ -83,6 +91,7 @@ function PrivateRoutes() {
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
+      </Suspense>
     </DashboardLayout>
   );
 }

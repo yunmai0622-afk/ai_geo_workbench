@@ -400,7 +400,7 @@ export function ArticleAssetEditorSheet({
             <Label>封面预览</Label>
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
               {coverPreview ? (
-                <img src={coverPreview} alt="封面预览" className="aspect-video w-full object-cover" />
+                <img src={coverPreview} alt="封面预览" loading="lazy" className="aspect-video w-full object-cover" />
               ) : (
                 <div className="flex aspect-video items-center justify-center px-4 text-center text-sm text-gray-500">
                   {coverError ? "封面生成失败，可重试" : "待生成封面"}

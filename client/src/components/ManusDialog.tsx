@@ -58,6 +58,7 @@ export function ManusDialog({
               <img
                 src={logo}
                 alt="Dialog graphic"
+                loading="lazy"
                 className="w-10 h-10 rounded-md"
               />
             </div>
