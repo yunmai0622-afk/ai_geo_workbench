@@ -159,6 +159,7 @@ import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@sh
 import { runDailyAiCheck } from "./scheduledAiCheck";
 import { fetchWorkspaceSummaryMetrics } from "./workspaceSummary";
 import { buildGeoTaskDurationLogBase, logGeoAnalysisRunDuration, logGeoArticlesGenerateDuration, type GeoArticlesGenerateStepTimings } from "./geoTaskDurationLog";
+import { assertContentGenerationRateLimit, assertT0DetectionRateLimit } from "./memoryRateLimit";
 import {
   getCurrentUserId,
   getProjectRowConn,
@@ -2515,6 +2516,7 @@ const geoRouter = router({
           }),
       )
       .mutation(async ({ ctx, input }) => {
+      assertContentGenerationRateLimit(getCurrentUserId(ctx));
       const startedAtMs = Date.now();
       let stepStartMs = startedAtMs;
       const stepTimings: GeoArticlesGenerateStepTimings = {};
@@ -3307,8 +3309,9 @@ ${article.markdownContent}`,
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const db = await requireDb();
         await requireProjectAccess(ctx, input.projectId);
+        assertT0DetectionRateLimit(input.projectId);
+        const db = await requireDb();
         const result = await createT0RoundWithQuestions(db, {
           projectId: input.projectId,
           roundName: input.roundName,
