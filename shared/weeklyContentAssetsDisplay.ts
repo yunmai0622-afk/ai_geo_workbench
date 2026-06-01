@@ -1,3 +1,4 @@
+import { articleMatchesContentTagFilter } from "./geoArticleContentTags";
 import { isLegacyAiGeneratedCoverUrl } from "./articleCoverTemplate";
 import { getContentAssetTypeLabel, inferContentStrategyFromArticleType } from "./contentStrategy";
 import {
@@ -27,6 +28,7 @@ export type WeeklyContentCardView = {
   targetPlatform?: string | null;
   statusFilterKey: ContentCardStatus;
   qualityScore?: number | null;
+  contentTags?: string[] | null;
 };
 
 export function resolveContentCardStatus(params: {
@@ -110,11 +112,17 @@ export function resolveArticlePublishLink(params: {
 
 export function filterWeeklyContentCards<T extends WeeklyContentCardView>(
   cards: T[],
-  filters: { platform?: string; status?: ContentCardStatusFilter; titleQuery?: string },
+  filters: {
+    platform?: string;
+    status?: ContentCardStatusFilter;
+    titleQuery?: string;
+    contentTag?: string;
+  },
 ): T[] {
   const platform = (filters.platform ?? "all").trim();
   const status = filters.status ?? "all";
   const titleQuery = (filters.titleQuery ?? "").trim().toLowerCase();
+  const contentTag = (filters.contentTag ?? "all").trim();
   return cards.filter(card => {
     if (platform !== "all") {
       const key = (card.platformKey ?? "").trim();
@@ -122,6 +130,7 @@ export function filterWeeklyContentCards<T extends WeeklyContentCardView>(
       if (key !== platform && label !== platform) return false;
     }
     if (status !== "all" && card.statusFilterKey !== status) return false;
+    if (!articleMatchesContentTagFilter({ contentTags: card.contentTags }, contentTag)) return false;
     if (titleQuery) {
       const title = (card.title ?? "").trim().toLowerCase();
       if (!title.includes(titleQuery)) return false;

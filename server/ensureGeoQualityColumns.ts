@@ -14,6 +14,7 @@ const GEO_ARTICLE_QUALITY_COLUMNS: Array<{ name: string; ddl: string }> = [
   { name: "contentStrategyType", ddl: "ADD COLUMN `contentStrategyType` varchar(50) NULL" },
   { name: "publishIdentity", ddl: "ADD COLUMN `publishIdentity` varchar(50) NULL" },
   { name: "recommendedAccountGroup", ddl: "ADD COLUMN `recommendedAccountGroup` varchar(50) NULL" },
+  { name: "contentTags", ddl: "ADD COLUMN `contentTags` json NULL" },
 ];
 
 const PROJECT_PLATFORM_ACCOUNT_COLUMNS: Array<{ name: string; ddl: string }> = [

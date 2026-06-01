@@ -30,6 +30,14 @@ describe("weeklyContentAssetsDisplay", () => {
     ];
     expect(filterWeeklyContentCards(cards, { platform: "zhihu", status: "all" })).toHaveLength(1);
   });
+  it("filterWeeklyContentCards filters by content tag", () => {
+    const cards = [
+      { id: 1, title: "A", statusFilterKey: "draft" as const, contentTags: ["主推产品"] },
+      { id: 2, title: "B", statusFilterKey: "draft" as const, contentTags: ["品牌故事"] },
+    ];
+    expect(filterWeeklyContentCards(cards, { contentTag: "主推产品" })).toHaveLength(1);
+  });
+
   it("filterWeeklyContentCards filters by title query", () => {
     const cards = [
       { id: 1, title: "知乎品牌问答", statusFilterKey: "draft" as const },

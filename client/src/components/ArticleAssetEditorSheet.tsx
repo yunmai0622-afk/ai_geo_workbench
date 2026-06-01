@@ -43,6 +43,12 @@ import {
 } from "@shared/articleCoverTemplate";
 import { XiaohongshuMaterialCard } from "@/components/weekly/XiaohongshuMaterialCard";
 import { resolveXiaohongshuMaterial } from "@shared/xiaohongshuMaterial";
+import {
+  CONTENT_TAG_PRESETS,
+  formatContentTagsInput,
+  normalizeContentTags,
+  parseContentTagsInput,
+} from "@shared/geoArticleContentTags";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -75,6 +81,7 @@ export type EditableArticleAsset = {
   generationBasis?: Record<string, unknown> | null;
   targetPlatform?: string | null;
   publishPlatform?: string | null;
+  contentTags?: string[] | null;
 };
 
 type ArticleAssetEditorSheetProps = {
@@ -129,6 +136,7 @@ export function ArticleAssetEditorSheet({
   const [contentStrategyType, setContentStrategyType] = useState<ContentAssetType | "">("");
   const [publishIdentity, setPublishIdentity] = useState<PublishIdentity | "">("");
   const [recommendedAccountGroup, setRecommendedAccountGroup] = useState<AccountGroupType | "">("");
+  const [contentTagsInput, setContentTagsInput] = useState("");
   const [bodyCopied, setBodyCopied] = useState(false);
   const bodyCopyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -197,6 +205,7 @@ export function ArticleAssetEditorSheet({
     setRecommendedAccountGroup(
       (a.recommendedAccountGroup as AccountGroupType) || defaultRecommendedAccountGroup(),
     );
+    setContentTagsInput(formatContentTagsInput(normalizeContentTags(a.contentTags)));
   }, [buildQualityInitial]);
 
   useEffect(() => {
@@ -332,6 +341,7 @@ export function ArticleAssetEditorSheet({
         contentStrategyType: contentStrategyType || null,
         publishIdentity: publishIdentity || null,
         recommendedAccountGroup: recommendedAccountGroup || null,
+        contentTags: parseContentTagsInput(contentTagsInput),
       });
       if (saved.article) {
         setQualityInitial(buildQualityInitial(saved.article as EditableArticleAsset));
@@ -396,6 +406,36 @@ export function ArticleAssetEditorSheet({
               <p className="mt-1 text-xs text-gray-500">
                 用于区分这篇内容适合用什么口吻、什么身份、哪类账号发布。
               </p>
+            </div>
+            <div className="space-y-2" data-testid="article-content-tags">
+              <Label htmlFor="asset-content-tags">内容标签</Label>
+              <p className="text-xs text-gray-500">用顿号或逗号分隔，最多 10 个；用于列表筛选与统计。</p>
+              <input
+                id="asset-content-tags"
+                className={aiInput}
+                value={contentTagsInput}
+                onChange={e => setContentTagsInput(e.target.value)}
+                placeholder="例如：主推产品、竞品对比"
+                data-testid="article-content-tags-input"
+              />
+              <div className="flex flex-wrap gap-2">
+                {CONTENT_TAG_PRESETS.map(preset => (
+                  <Button
+                    key={preset}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      const current = parseContentTagsInput(contentTagsInput);
+                      if (current.some(t => t === preset)) return;
+                      setContentTagsInput(formatContentTagsInput([...current, preset]));
+                    }}
+                  >
+                    + {preset}
+                  </Button>
+                ))}
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="asset-strategy-type">内容类型</Label>

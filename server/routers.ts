@@ -130,7 +130,6 @@ import {
 import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
 import { calculateRetestComparison } from "./geoRetestCalculator";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
-import { computeContentTagStats, normalizeContentTags } from "@shared/geoArticleContentTags";
 import { resolveArticleListPublishFields } from "@shared/articlePublishPlatform";
 import {
   GEO_ENHANCEMENT_GOAL_OPTIONS,
