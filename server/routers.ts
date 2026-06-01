@@ -120,6 +120,7 @@ import {
   PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
   toPlatformContentGenerationError,
   PLATFORM_CONTENT_AI_NOT_CONFIGURED_MESSAGE,
+  PLATFORM_CONTENT_QC_MANUAL_REVIEW_MESSAGE,
 } from "@shared/platformContentGenerationErrors";
 import { classifyPlatformContentLlmError } from "@shared/platformContentLlmErrors";
 import { diagnoseLlmProviderEnv, formatMissingLlmEnvServerLog } from "@shared/llmEnvDiagnostics";
@@ -2408,9 +2409,9 @@ const geoRouter = router({
             raw ? { rawError: raw.slice(0, 2000) } : {},
           );
         }
-        const message = llmClassified.userMessage ?? toPlatformContentGenerationError(raw);
+        const message = toPlatformContentGenerationError(raw);
         const isClientError =
-          /企业资料不足|企业资料还缺少|生成依据还缺少|生成的内容未通过 GEO 结构校验|请选择目标|不存在或无访问权限|文章选题不存在|未绑定优化任务|内容选题|请先完成 AI 实测诊断|还没有生成内容优化任务|当前平台暂无/.test(
+          /企业资料不足|企业资料还缺少|生成依据还缺少|内容正在优化中|生成的内容未通过 GEO 结构校验|请选择目标|不存在或无访问权限|文章选题不存在|未绑定优化任务|内容选题|请先完成 AI 实测诊断|还没有生成内容优化任务|当前平台暂无/.test(
             message,
           );
         logDuration(topic.projectId, false, llmClassified.code !== "not_llm_error" ? llmClassified.code : "GENERATION_FAILED");
@@ -2427,13 +2428,15 @@ const geoRouter = router({
       await db.update(geoArticleTopics).set({ status: "已生成" }).where(eq(geoArticleTopics.id, topic.id));
       const qcResult = await runGeoArticleQualityCheckFlow(db, articleId);
       logDuration(topic.projectId, true, null);
+      const qualityCheckPassed = qcResult.finalStatus === "质检通过";
       return {
         success: true,
         articleId,
         quality: qcResult.quality,
         autoRewriteCount: qcResult.autoRewriteCount,
         finalStatus: qcResult.finalStatus,
-        qualityCheckPassed: qcResult.finalStatus === "质检通过",
+        qualityCheckPassed,
+        userNotice: qualityCheckPassed ? null : PLATFORM_CONTENT_QC_MANUAL_REVIEW_MESSAGE,
       } as const;
     }),
     updateGeneratedArticle: protectedProcedure

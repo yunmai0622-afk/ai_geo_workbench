@@ -95,7 +95,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
-import { toPlatformContentGenerationError, PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE } from "@shared/platformContentGenerationErrors";
+import {
+  toPlatformContentGenerationError,
+  PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE,
+} from "@shared/platformContentGenerationErrors";
 import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
 import {
   GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE,
@@ -763,19 +766,19 @@ export default function WeeklyContentPage() {
       topicId: number,
       strategyOverride?: Partial<PlatformContentStrategyInput>,
       options?: { silentToast?: boolean },
-    ) => {
+    ): Promise<{ ok: boolean; userNotice?: string | null }> => {
       const effectiveStrategy = { ...platformStrategy, ...strategyOverride };
       const strategyErr = validatePlatformContentStrategy(effectiveStrategy);
       if (strategyErr) {
         if (!options?.silentToast) {
           toast.error(strategyErr);
-          return false;
+          return { ok: false };
         }
         throw new Error(strategyErr);
       }
       setGeneratingTopicIds(prev => new Set(prev).add(topicId));
       try {
-        await generateArticleMutation.mutateAsync({
+        const data = await generateArticleMutation.mutateAsync({
           topicId,
           targetPublishPlatform: effectiveStrategy.targetPublishPlatform,
           contentStrategyType: effectiveStrategy.contentStrategyType,
@@ -789,12 +792,16 @@ export default function WeeklyContentPage() {
           geoGap: geoContentTaskSource?.geoGapSummary,
         });
         await invalidateArticles();
-        return true;
+        const userNotice = data.userNotice ?? null;
+        if (userNotice && !options?.silentToast) {
+          toast.message(userNotice);
+        }
+        return { ok: true, userNotice };
       } catch (err) {
         const msg = readGenerateArticleError(err);
         if (!options?.silentToast) {
           toast.error(msg);
-          return false;
+          return { ok: false };
         }
         throw err instanceof Error ? err : new Error(msg);
       } finally {
@@ -856,8 +863,8 @@ export default function WeeklyContentPage() {
       for (let i = 0; i < toGenerate.length; i++) {
         const topicId = toGenerate[i]!;
         setBatchState({ current: i + 1, total, target: targetCount });
-        const ok = await generateOne(topicId);
-        if (ok) done += 1;
+        const result = await generateOne(topicId);
+        if (result.ok) done += 1;
       }
       const planned = topicResult?.count ?? targetCount;
       if (done === 0) {
@@ -1125,13 +1132,17 @@ export default function WeeklyContentPage() {
 
       platformContentProgress.setStage(40);
       platformContentProgress.allowOptimisticUpTo(80);
-      const ok = await generateOne(pending.id, strategyOverride, { silentToast: true });
-      if (!ok) {
+      const result = await generateOne(pending.id, strategyOverride, { silentToast: true });
+      if (!result.ok) {
         throw new Error("内容生成失败，请稍后重试");
       }
       platformContentProgress.setStage(90);
       platformContentProgress.complete();
-      toast.success("内容已生成并保存。");
+      if (result.userNotice) {
+        toast.message(result.userNotice);
+      } else {
+        toast.success("内容已生成并保存。");
+      }
       window.setTimeout(() => platformContentProgress.reset(), 5000);
     } catch (err) {
       const raw =

@@ -34,6 +34,12 @@ export {
 export const PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE =
   "AI 内容生成服务暂时不可用，请稍后重试。";
 
+export const PLATFORM_CONTENT_GEO_STRUCTURE_OPTIMIZING_MESSAGE =
+  "内容正在优化中，请稍候重试";
+
+export const PLATFORM_CONTENT_QC_MANUAL_REVIEW_MESSAGE =
+  "内容已生成，建议人工检查后再发布";
+
 export const PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE =
   "当前企业项目不存在或无访问权限，请重新进入项目后再试。";
 
@@ -104,11 +110,10 @@ function mapDiagnosisGateRaw(message: string): string | null {
 }
 
 function mapGeoStructureValidationRaw(message: string): string | null {
-  if (!/文章缺少 GEO 可收录结构/.test(message)) return null;
-  const detail = message.replace(/^文章缺少 GEO 可收录结构：/, "").replace(/，不能生成。$/, "").trim();
-  return detail
-    ? `生成的内容未通过 GEO 结构校验（${detail}）。请稍后重试，或调整目标问题后再次生成。`
-    : "生成的内容未通过 GEO 结构校验。请稍后重试，或调整目标问题后再次生成。";
+  if (!/文章缺少 GEO 可收录结构|生成的内容未通过 GEO 结构校验|GEO 结构校验/.test(message)) {
+    return null;
+  }
+  return PLATFORM_CONTENT_GEO_STRUCTURE_OPTIMIZING_MESSAGE;
 }
 
 function mapGenerationBasisRaw(message: string): string | null {

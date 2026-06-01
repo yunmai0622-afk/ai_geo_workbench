@@ -37,12 +37,31 @@ function truncateForLog(message: string, max = 500): string {
   return t.length <= max ? t : `${t.slice(0, max)}…`;
 }
 
+/** 业务/校验类错误，不应因客户端缺少 OPENAI_* 而误判为 LLM 未配置 */
+export function isNonLlmPlatformContentError(message: string): boolean {
+  const m = message.trim();
+  if (!m) return false;
+  return (
+    /文章缺少 GEO 可收录结构|生成的内容未通过 GEO 结构校验|GEO 结构校验/.test(m) ||
+    /企业资料还缺少|企业资料不足|生成依据还缺少/.test(m) ||
+    /请选择目标|请填写目标问题|文章选题|未绑定优化任务|内容选题|请先完成 AI 实测诊断|还没有生成内容优化任务|当前平台暂无/.test(
+      m,
+    ) ||
+    /不存在或无访问权限|项目不存在|无访问权限|FORBIDDEN|NOT_FOUND|BAD_REQUEST|-32600/.test(m) ||
+    /内容已生成，建议人工检查/.test(m)
+  );
+}
+
 export function classifyPlatformContentLlmError(
   raw: string,
   diag?: LlmProviderEnvDiagnostic,
 ): PlatformContentLlmErrorClassification {
   const message = raw.trim();
   const env = diag ?? diagnoseLlmProviderEnv();
+
+  if (isNonLlmPlatformContentError(message)) {
+    return { code: "not_llm_error", userMessage: null, serverLog: "" };
+  }
 
   if (/OPENAI_API_KEY is not configured|BUILT_IN_FORGE_API_KEY is not configured/i.test(message)) {
     const missing = env.missingEnvVars.length > 0 ? env.missingEnvVars : env.requiredEnvVars;

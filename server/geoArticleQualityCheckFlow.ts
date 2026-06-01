@@ -207,8 +207,8 @@ export async function runGeoArticleQualityCheckFlow(db: Db, articleId: number): 
         antiDup,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "自动换角重写失败";
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+      console.error("[GEO质检] 自动换角重写失败，将标记为需人工审核", error);
+      break;
     }
     optimizationVersions.push({
       version: optimizationVersions.length + 1,

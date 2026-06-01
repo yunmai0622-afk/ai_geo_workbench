@@ -1293,9 +1293,6 @@ export function validateGeoCollectableStructure(content: string, snippets?: P11C
     const missing: string[] = [];
     if (!/(^|\n)#\s+(?!#)\S/m.test(norm)) missing.push("# 文章一级标题");
     if (countMarkdownH2Lines(norm) < 4) missing.push("平台专属二级结构（至少 4 个小节）");
-    if (!/(^|\n)##(?!#)\s*(便于引用的要点|可引用要点|摘录要点|AI\s*可引用片段)(?=\s*(?:\n|$))/m.test(norm)) {
-      missing.push("## 便于引用的要点");
-    }
     const snippetCountFromDb = snippets && snippets.length >= 3 && snippets.length <= 5;
     const snippetCountFromBody = countCitableH3BlocksInContent(norm) >= 3;
     if (!snippetCountFromDb && !snippetCountFromBody) missing.push("3-5 段引用友好片段");
@@ -1321,10 +1318,6 @@ export function validateGeoCollectableStructure(content: string, snippets?: P11C
     { missingLabel: "## 案例参考", patterns: [h2(/案例参考/)] },
     { missingLabel: "## 常见误区", patterns: [h2(/常见误区/)] },
     { missingLabel: "## 小结", patterns: [h2(/小结/)] },
-    {
-      missingLabel: "## 便于引用的要点",
-      patterns: [h2(/便于引用的要点/), h2(/可引用要点/), h2(/摘录要点/), h2(/AI\s*可引用片段/)],
-    },
   ];
   const missing: string[] = [];
   if (!/(^|\n)#\s+(?!#)\S/m.test(norm)) missing.push("# 文章一级标题");

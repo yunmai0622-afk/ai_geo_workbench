@@ -4,7 +4,7 @@ import {
   type AiTaskProgressErrorCategory,
 } from "@shared/aiTaskProgress";
 import { classifyGeoDiagnosisLlmError } from "@shared/geoDiagnosisLlmErrors";
-import { classifyPlatformContentLlmError } from "@shared/platformContentLlmErrors";
+import { classifyPlatformContentLlmError, isNonLlmPlatformContentError } from "@shared/platformContentLlmErrors";
 
 export function mapGeoDiagnosisErrorCategory(raw: string): AiTaskProgressErrorCategory {
   const c = classifyGeoDiagnosisLlmError(raw);
@@ -29,6 +29,9 @@ export function mapGeoDiagnosisErrorCategory(raw: string): AiTaskProgressErrorCa
 }
 
 export function mapPlatformContentErrorCategory(raw: string): AiTaskProgressErrorCategory {
+  if (isNonLlmPlatformContentError(raw)) {
+    return "unknown";
+  }
   const c = classifyPlatformContentLlmError(raw);
   switch (c.code) {
     case "not_configured":

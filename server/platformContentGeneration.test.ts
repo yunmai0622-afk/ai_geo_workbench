@@ -10,9 +10,11 @@ import {
   PLATFORM_CONTENT_PARAMS_MISSING_MESSAGE,
   PLATFORM_CONTENT_PROFILE_INSUFFICIENT_MESSAGE,
   PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE,
+  PLATFORM_CONTENT_GEO_STRUCTURE_OPTIMIZING_MESSAGE,
+  PLATFORM_CONTENT_QC_MANUAL_REVIEW_MESSAGE,
   toPlatformContentGenerationError,
 } from "@shared/platformContentGenerationErrors";
-import { classifyPlatformContentLlmError } from "@shared/platformContentLlmErrors";
+import { classifyPlatformContentLlmError, isNonLlmPlatformContentError } from "@shared/platformContentLlmErrors";
 import { diagnoseLlmProviderEnv } from "@shared/llmEnvDiagnostics";
 import { buildDefaultPlatformStrategy } from "@shared/platformContentRules";
 import {
@@ -81,6 +83,14 @@ describe("platform content generation errors (P0)", () => {
     expect(classifyPlatformContentLlmError("status=403").code).toBe("auth_failed");
     expect(classifyPlatformContentLlmError("429 rate limit").code).toBe("rate_limit");
     expect(classifyPlatformContentLlmError("OPENAI_TIMEOUT").code).toBe("timeout");
+    expect(
+      classifyPlatformContentLlmError("生成的内容未通过 GEO 结构校验（## 便于引用的要点）").code,
+    ).toBe("not_llm_error");
+    expect(isNonLlmPlatformContentError("文章缺少 GEO 可收录结构：## 便于引用的要点，不能生成。")).toBe(true);
+    expect(
+      toPlatformContentGenerationError("文章缺少 GEO 可收录结构：## 便于引用的要点，不能生成。"),
+    ).toBe(PLATFORM_CONTENT_GEO_STRUCTURE_OPTIMIZING_MESSAGE);
+    expect(PLATFORM_CONTENT_QC_MANUAL_REVIEW_MESSAGE).toContain("人工检查");
     expect(diagnoseLlmProviderEnv().provider).toBeTruthy();
     expect(toPlatformContentGenerationError("请先完成 AI 语义分析，再生成优化任务")).toBe(
       PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
@@ -225,12 +235,15 @@ describe("platform content generation errors (P0)", () => {
     expect(validateGeoCollectableStructure(repaired, snippets, basis)).toEqual([]);
   });
 
-  it("maps GEO structure validation errors to actionable copy, not generic AI unavailable", () => {
-    expect(toPlatformContentGenerationError("文章缺少 GEO 可收录结构：## 平台适配说明，不能生成。")).toContain(
-      "GEO 结构校验",
+  it("maps GEO structure validation errors to optimizing copy, not generic AI unavailable", () => {
+    expect(toPlatformContentGenerationError("文章缺少 GEO 可收录结构：## 平台适配说明，不能生成。")).toBe(
+      PLATFORM_CONTENT_GEO_STRUCTURE_OPTIMIZING_MESSAGE,
     );
     expect(toPlatformContentGenerationError("文章缺少 GEO 可收录结构：## 平台适配说明，不能生成。")).not.toBe(
       PLATFORM_CONTENT_AI_UNAVAILABLE_MESSAGE,
+    );
+    expect(toPlatformContentGenerationError("文章缺少 GEO 可收录结构：## 平台适配说明，不能生成。")).not.toBe(
+      PLATFORM_CONTENT_AI_NOT_CONFIGURED_MESSAGE,
     );
   });
 });
