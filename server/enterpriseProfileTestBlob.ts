@@ -11,7 +11,7 @@ const ENTERPRISE_PROFILE_UI_FILES = [
   "client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx",
   "client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx",
   "client/src/components/enterpriseProfile/ProfileAiUnderstandingPreview.tsx",
-  "client/src/components/enterpriseProfile/ProfilePublishEnvLightHint.tsx",
+  "client/src/components/platformAccounts/PublishPlatformAccountsOverview.tsx",
 ] as const;
 
 export function readEnterpriseProfileUi(): string {

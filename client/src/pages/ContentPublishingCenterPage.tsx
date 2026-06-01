@@ -1,5 +1,6 @@
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
+import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
@@ -387,6 +388,11 @@ export function ContentPublishingCenterPage() {
               }}
               checking={checkingAgent}
               onRefresh={() => void refreshAgentHealth()}
+            />
+
+            <PublishPlatformAccountsOverview
+              projectId={selectedProjectId!}
+              showDownloadCard={false}
             />
 
             <LocalAccountBindingGuideCard

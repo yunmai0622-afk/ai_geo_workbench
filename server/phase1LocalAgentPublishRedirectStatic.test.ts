@@ -49,11 +49,11 @@ describe("Phase1 Local Agent publish redirect", () => {
 
     expect(app).toContain(GEO_WEB_PATH_LEGACY_ASSET_CENTER);
     expect(weekly).toContain('buildProjectUrl("/enterprise-profile"');
-    expect(weekly).toContain("#platform-accounts");
+    expect(weekly).toContain("#publish-platform-accounts");
     expect(weekly).not.toMatch(/setLocation\("\/asset-center/);
-    expect(read("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx")).toContain(
-      'id="platform-accounts"',
+    expect(read("client/src/components/platformAccounts/PublishPlatformAccountsOverview.tsx")).toContain(
+      'id="publish-platform-accounts"',
     );
-    expect(weekly).toContain("#platform-accounts");
+    expect(asset).toContain("publish-platform-accounts");
   });
 });

@@ -32,7 +32,7 @@ export const WORKSPACE_STAGES: WorkspaceStageDefinition[] = [
     blockerHint: "本地发布客户端未连接，或当前项目尚未绑定可发布的平台账号。",
     ctaLabel: "去绑定发布账号",
     ctaPath: "/enterprise-profile",
-    ctaHash: "#platform-accounts",
+    ctaHash: "#publish-platform-accounts",
   },
   {
     id: "complete_geo_profile",

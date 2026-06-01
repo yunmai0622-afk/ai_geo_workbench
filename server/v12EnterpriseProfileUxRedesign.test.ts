@@ -20,7 +20,7 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
 
   it("页面标题与首屏 5 分钟建档", () => {
     expect(profileUi).toContain("品牌资产建档");
-    expect(asset).toContain("ProfilePublishEnvLightHint");
+    expect(asset).toContain("PublishPlatformAccountsOverview");
     expect(asset.indexOf("<FiveMinuteBasicOnboardingSection")).toBeGreaterThan(-1);
     expect(publishEnv.indexOf("LocalAgentDownloadCard")).toBeLessThan(
       publishEnv.indexOf("PlatformAccountBindingSection"),

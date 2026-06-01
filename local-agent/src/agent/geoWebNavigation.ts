@@ -3,7 +3,7 @@ import { readAgentConfig } from "./agentConfig";
 /** 与仓库根目录 shared/geoWebPaths.ts 保持同步 */
 export const GEO_WEB_PATH_CONTENT_PRODUCTION = "/weekly";
 export const GEO_WEB_PATH_PUBLISH_RECORDS = "/content-publishing";
-export const GEO_WEB_PATH_PLATFORM_ACCOUNTS = "/enterprise-profile#platform-accounts";
+export const GEO_WEB_PATH_PLATFORM_ACCOUNTS = "/enterprise-profile#publish-platform-accounts";
 
 export type GeoWebNavigationTarget = "contentProduction" | "publishRecords" | "platformAccounts";
 

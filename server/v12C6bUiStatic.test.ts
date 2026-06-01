@@ -29,15 +29,15 @@ describe("C6-B enterprise profile flow order", () => {
     expect(read("client/src/pages/OnboardingPage.tsx")).toContain('Redirect to="/clients"');
   });
 
-  it("shows publish env hint then basic onboarding when project selected", () => {
-    expect(profileUi).toContain("ProfilePublishEnvLightHint");
+  it("shows basic onboarding then publish account overview when project selected", () => {
+    expect(profileUi).toContain("PublishPlatformAccountsOverview");
     const basicBlock = page.indexOf("<FiveMinuteBasicOnboardingSection");
-    const hintBlock = page.indexOf("<ProfilePublishEnvLightHint");
+    const accountsBlock = page.indexOf("<PublishPlatformAccountsOverview");
     const uploadBlock = page.indexOf("<ProfileUploadAssistSection");
     expect(basicBlock).toBeGreaterThan(-1);
-    expect(hintBlock).toBeGreaterThan(-1);
-    expect(basicBlock).toBeLessThan(hintBlock);
-    expect(basicBlock).toBeLessThan(uploadBlock);
+    expect(accountsBlock).toBeGreaterThan(-1);
+    expect(basicBlock).toBeLessThan(accountsBlock);
+    expect(accountsBlock).toBeLessThan(uploadBlock);
   });
 
   it("auto switches after create with hint message", () => {

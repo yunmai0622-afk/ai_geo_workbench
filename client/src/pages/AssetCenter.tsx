@@ -4,7 +4,7 @@ import {
   type FiveMinuteBasicValues,
 } from "@/components/enterpriseProfile/FiveMinuteBasicOnboardingSection";
 import { ProfileAiUnderstandingPreview } from "@/components/enterpriseProfile/ProfileAiUnderstandingPreview";
-import { ProfilePublishEnvLightHint } from "@/components/enterpriseProfile/ProfilePublishEnvLightHint";
+import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { ProfileUploadAssistSection } from "@/components/enterpriseProfile/ProfileUploadAssistSection";
 import type { ProfileApplyPatch } from "@/components/enterpriseProfile/ProfileIntakePanel";
 import {
@@ -243,10 +243,6 @@ export default function AssetCenterPage() {
     projectInput,
     { enabled: Boolean(currentProjectId) },
   );
-  const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
-    { projectId: currentProjectId! },
-    { enabled: Boolean(currentProjectId) },
-  );
   const summary = summaryData as SummaryLike | undefined;
   const profile = summary?.profile ?? null;
 
@@ -454,11 +450,6 @@ export default function AssetCenterPage() {
     [faqItems],
   );
 
-  const enabledPlatformAccountCount = useMemo(() => {
-    const groups = (platformAccountsQuery.data?.accounts ?? []) as Array<{ accounts: Array<{ isEnabled: boolean }> }>;
-    return groups.reduce((n, g) => n + g.accounts.filter(a => a.isEnabled).length, 0);
-  }, [platformAccountsQuery.data]);
-
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -467,7 +458,7 @@ export default function AssetCenterPage() {
     if (typeof window === "undefined" || !currentProjectId) return;
     const hash = window.location.hash.replace(/^#/, "");
     if (hash === "platform-accounts" || hash === "profile-publish-env") {
-      requestAnimationFrame(() => scrollToSection("profile-publish-env"));
+      requestAnimationFrame(() => scrollToSection("publish-platform-accounts"));
     }
   }, [currentProjectId]);
 
@@ -858,11 +849,8 @@ export default function AssetCenterPage() {
             <ProfileAiUnderstandingPreview model={aiPreviewModel} />
           </div>
 
-          {/* ═══ 发布环境轻提示 ═══ */}
-          <ProfilePublishEnvLightHint
-            projectId={currentProjectId}
-            configured={enabledPlatformAccountCount > 0}
-          />
+          {/* ═══ 发布账号绑定状态（只读 + 本地客户端引导） ═══ */}
+          <PublishPlatformAccountsOverview projectId={currentProjectId} />
 
           {/* ═══ 资料上传辅助 ═══ */}
           <div ref={intakeSectionRef}>

@@ -44,11 +44,11 @@ describe("GEO-V1-UI-P1-A Profile-Shell-Compatibility", () => {
     expect(count).toBeLessThanOrEqual(10);
   });
 
-  it("发布环境轻提示、高级素材默认折叠", () => {
-    const hint = read("client/src/components/enterpriseProfile/ProfilePublishEnvLightHint.tsx");
-    expect(asset).toContain("ProfilePublishEnvLightHint");
-    expect(hint).toContain("发布环境未配置不影响建档");
-    expect(hint).toContain("平台适配发布");
+  it("发布账号只读概览、高级素材默认折叠", () => {
+    const overview = read("client/src/components/platformAccounts/PublishPlatformAccountsOverview.tsx");
+    expect(asset).toContain("PublishPlatformAccountsOverview");
+    expect(overview).toContain("管理发布账号");
+    expect(overview).toContain("在本地客户端管理账号");
     expect(read("client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx")).toContain(
       "advanced-materials-collapsed",
     );

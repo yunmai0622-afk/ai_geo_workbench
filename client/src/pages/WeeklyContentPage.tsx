@@ -1352,7 +1352,7 @@ export default function WeeklyContentPage() {
           toast.error(
             `${publishBlockedNoLocalProfileMessage(slug)} 请先下载安装并启动本地发布客户端，然后到企业档案绑定发布账号。`,
           );
-          selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#platform-accounts");
+          selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#publish-platform-accounts");
           return;
         }
         if (allEnabled.some(a => a.sessionStatus !== "active")) {

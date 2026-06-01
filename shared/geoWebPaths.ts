@@ -1,7 +1,7 @@
 /** GEO Web SPA 路径（须与 client/src/App.tsx 路由一致） */
 export const GEO_WEB_PATH_CONTENT_PRODUCTION = "/weekly";
 export const GEO_WEB_PATH_PUBLISH_RECORDS = "/content-publishing";
-export const GEO_WEB_PATH_PLATFORM_ACCOUNTS = "/enterprise-profile#platform-accounts";
+export const GEO_WEB_PATH_PLATFORM_ACCOUNTS = "/enterprise-profile#publish-platform-accounts";
 
 /** 历史错误路径，仅用于兼容重定向 */
 export const GEO_WEB_PATH_LEGACY_ASSET_CENTER = "/asset-center";

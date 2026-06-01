@@ -15,7 +15,7 @@ describe("C5-D enterprise profile page product UI", () => {
     expect(profileUi).toContain("FiveMinuteBasicOnboardingSection");
     expect(profileUi).toContain("ProfileUploadAssistSection");
     expect(profileUi).toContain("AdvancedMaterialsSection");
-    expect(profileUi).toContain("ProfilePublishEnvLightHint");
+    expect(profileUi).toContain("PublishPlatformAccountsOverview");
     expect(page).not.toContain("Section 1 · 基本身份");
     expect(page).not.toContain("GeoStatusGuide");
   });
