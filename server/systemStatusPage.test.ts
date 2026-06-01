@@ -22,4 +22,11 @@ describe("GEO-V1.1 system status page", () => {
   it("status page calls /api/health", () => {
     expect(read("client/src/pages/SystemStatusPage.tsx")).toContain('fetch("/api/health"');
   });
+
+  it("health API exposes operations snapshot for monitor", () => {
+    expect(read("shared/health.ts")).toContain("operations:");
+    expect(read("server/healthChecks.ts")).toContain("checkOperationsHealth");
+    expect(read("client/src/pages/SystemStatusPage.tsx")).toContain("最近内容生成");
+    expect(read("client/src/pages/SystemStatusPage.tsx")).toContain("发布队列任务数");
+  });
 });

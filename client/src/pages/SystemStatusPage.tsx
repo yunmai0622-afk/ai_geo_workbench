@@ -20,6 +20,13 @@ function StatusIndicator({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
+function formatHealthTimestamp(at?: string) {
+  if (!at) return null;
+  const parsed = new Date(at);
+  if (Number.isNaN(parsed.getTime())) return at;
+  return parsed.toLocaleString("zh-CN", { hour12: false });
+}
+
 export default function SystemStatusPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
 
@@ -46,6 +53,15 @@ export default function SystemStatusPage() {
       ? state.data.database
       : { ok: false, message: state.kind === "error" ? state.message : undefined };
   const llm = state.kind === "ready" ? state.data.llm : { ok: false };
+  const operations =
+    state.kind === "ready"
+      ? state.data.operations
+      : {
+          lastContentGeneration: { ok: false, message: state.kind === "error" ? state.message : undefined },
+          lastPublish: { ok: false },
+          queueTaskCount: 0,
+          queueAvailable: false,
+        };
   const version = state.kind === "ready" ? state.data.version : "—";
 
   return (
@@ -84,6 +100,44 @@ export default function SystemStatusPage() {
                 </p>
               ) : null}
               {llm.message ? <p className="mt-1 pl-6 text-xs text-slate-600">{llm.message}</p> : null}
+            </li>
+            <li className="border-t border-slate-100 pt-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">业务运行状态</p>
+              <ul className="space-y-4">
+                <li>
+                  <StatusIndicator ok={operations.lastContentGeneration.ok} label="最近内容生成" />
+                  {operations.lastContentGeneration.at ? (
+                    <p className="mt-1 pl-6 text-xs text-slate-600">
+                      时间：{formatHealthTimestamp(operations.lastContentGeneration.at)}
+                    </p>
+                  ) : null}
+                  {operations.lastContentGeneration.message ? (
+                    <p className="mt-1 pl-6 text-xs text-slate-600">{operations.lastContentGeneration.message}</p>
+                  ) : null}
+                </li>
+                <li>
+                  <StatusIndicator ok={operations.lastPublish.ok} label="最近发布" />
+                  {operations.lastPublish.at ? (
+                    <p className="mt-1 pl-6 text-xs text-slate-600">
+                      时间：{formatHealthTimestamp(operations.lastPublish.at)}
+                    </p>
+                  ) : null}
+                  {operations.lastPublish.message ? (
+                    <p className="mt-1 pl-6 text-xs text-slate-600">{operations.lastPublish.message}</p>
+                  ) : null}
+                </li>
+                <li>
+                  <p className="text-slate-700">
+                    <span className="font-medium">发布队列任务数：</span>
+                    {operations.queueAvailable ? (
+                      <span className="font-semibold tabular-nums">{operations.queueTaskCount}</span>
+                    ) : (
+                      <span className="text-red-600">不可用</span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">统计 pending / agent_processing 等非终态任务</p>
+                </li>
+              </ul>
             </li>
             <li className="border-t border-slate-100 pt-4">
               <p className="text-slate-700">

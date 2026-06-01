@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { sql } from "drizzle-orm";
+import { desc, inArray, sql } from "drizzle-orm";
+import type { HealthOperationsSnapshot } from "../shared/health";
+import {
+  evaluateLastContentGeneration,
+  evaluateLastPublish,
+  PUBLISH_QUEUE_ACTIVE_STATUSES,
+} from "../shared/healthOperations";
 import { diagnoseLlmProviderEnv } from "../shared/llmEnvDiagnostics";
+import { geoArticles, publishTasks } from "../drizzle/schema";
 import { getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 
@@ -33,6 +40,73 @@ export async function checkDatabaseConnection(): Promise<ServiceCheckResult> {
   } catch (error) {
     const message = error instanceof Error ? error.message : "数据库查询失败";
     return { ok: false, message };
+  }
+}
+
+function unavailableOperations(message: string): HealthOperationsSnapshot {
+  return {
+    lastContentGeneration: { ok: false, message },
+    lastPublish: { ok: false, message },
+    queueTaskCount: 0,
+    queueAvailable: false,
+  };
+}
+
+export async function checkOperationsHealth(): Promise<HealthOperationsSnapshot> {
+  if (!process.env.DATABASE_URL?.trim()) {
+    return unavailableOperations("DATABASE_URL 未配置");
+  }
+  const db = await getDb();
+  if (!db) {
+    return unavailableOperations("数据库连接不可用");
+  }
+
+  try {
+    const [articleRows, publishRows, queueRows] = await Promise.all([
+      db
+        .select({
+          markdownContent: geoArticles.markdownContent,
+          createdAt: geoArticles.createdAt,
+        })
+        .from(geoArticles)
+        .orderBy(desc(geoArticles.createdAt))
+        .limit(1),
+      db
+        .select({
+          status: publishTasks.status,
+          updatedAt: publishTasks.updatedAt,
+          agentFinishedAt: publishTasks.agentFinishedAt,
+          errorMessage: publishTasks.errorMessage,
+        })
+        .from(publishTasks)
+        .orderBy(desc(publishTasks.updatedAt))
+        .limit(1),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(publishTasks)
+        .where(inArray(publishTasks.status, [...PUBLISH_QUEUE_ACTIVE_STATUSES])),
+    ]);
+
+    const article = articleRows[0];
+    const publish = publishRows[0];
+    const queueTaskCount = Number(queueRows[0]?.count ?? 0);
+
+    return {
+      lastContentGeneration: evaluateLastContentGeneration(
+        article
+          ? {
+              markdownContent: article.markdownContent,
+              createdAt: article.createdAt,
+            }
+          : null,
+      ),
+      lastPublish: evaluateLastPublish(publish ?? null),
+      queueTaskCount: Number.isFinite(queueTaskCount) ? queueTaskCount : 0,
+      queueAvailable: true,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "运营状态查询失败";
+    return unavailableOperations(message);
   }
 }
 

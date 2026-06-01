@@ -3,11 +3,16 @@ import type { HealthResponse } from "../shared/health";
 import {
   checkDatabaseConnection,
   checkLlmService,
+  checkOperationsHealth,
   getAppVersion,
 } from "./healthChecks";
 
 export async function buildHealthResponse(): Promise<HealthResponse> {
-  const [database, llm] = await Promise.all([checkDatabaseConnection(), checkLlmService()]);
+  const [database, llm, operations] = await Promise.all([
+    checkDatabaseConnection(),
+    checkLlmService(),
+    checkOperationsHealth(),
+  ]);
   const api = { ok: true };
   return {
     ok: api.ok && database.ok && llm.ok,
@@ -15,6 +20,7 @@ export async function buildHealthResponse(): Promise<HealthResponse> {
     api,
     database,
     llm,
+    operations,
   };
 }
 
@@ -31,6 +37,12 @@ export function registerHealthRoute(app: Express) {
         api: { ok: false },
         database: { ok: false, message },
         llm: { ok: false, message },
+        operations: {
+          lastContentGeneration: { ok: false, message },
+          lastPublish: { ok: false, message },
+          queueTaskCount: 0,
+          queueAvailable: false,
+        },
       } satisfies HealthResponse);
     }
   });
