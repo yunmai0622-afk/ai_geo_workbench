@@ -32,6 +32,7 @@ import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { cn } from "@/lib/utils";
 import { EnterpriseProjectShell } from "./project/EnterpriseProjectShell";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import { SystemAnnouncementBanner } from "./SystemAnnouncementBanner";
 import { Button } from "./ui/button";
 
 const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients", "/knowledge", "/settings", "/admin/config"]);
@@ -383,6 +384,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
       ) : null}
 
       <SidebarInset className={isClientsHub ? "w-full max-w-none" : undefined}>
+        <SystemAnnouncementBanner />
         {isMobile && !isClientsHub ? (
           <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-2">
             <div className="flex items-center gap-2">

@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { DEFAULT_MANUAL_PUBLISH_PLATFORMS } from "@shared/geoSystemConfig";
-import { loadGeoSystemConfig, saveGeoSystemConfig } from "./geoSystemConfigStore";
+import {
+  loadGeoSystemConfig,
+  loadSystemAnnouncementPublic,
+  saveGeoSystemConfig,
+  saveSystemAnnouncement,
+} from "./geoSystemConfigStore";
 import { adminProcedure, protectedProcedure, router } from "./_core/trpc";
 
 const configInputSchema = z.object({
@@ -12,6 +17,21 @@ const configInputSchema = z.object({
     .min(1, "至少保留一个发布平台")
     .max(30),
 });
+
+const announcementInputSchema = z
+  .object({
+    enabled: z.boolean(),
+    body: z.string().max(4000),
+  })
+  .superRefine((val, ctx) => {
+    if (val.enabled && !val.body.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "开启公告时请填写公告内容",
+        path: ["body"],
+      });
+    }
+  });
 
 export const adminConfigRouter = router({
   /** 管理员：读取完整系统配置 */
@@ -40,4 +60,12 @@ export const adminConfigRouter = router({
       fallbackPlatforms: [...DEFAULT_MANUAL_PUBLISH_PLATFORMS],
     } as const;
   }),
+
+  /** 管理员：发布或关闭系统公告 */
+  updateAnnouncement: adminProcedure.input(announcementInputSchema).mutation(async ({ ctx, input }) => {
+    return saveSystemAnnouncement(input, ctx.user.id);
+  }),
+
+  /** 已登录用户：当前系统公告（顶部横幅） */
+  systemAnnouncement: protectedProcedure.query(async () => loadSystemAnnouncementPublic()),
 });

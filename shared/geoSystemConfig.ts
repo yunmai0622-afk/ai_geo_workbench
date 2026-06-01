@@ -1,4 +1,5 @@
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
+import type { SystemAnnouncementPublic } from "./systemAnnouncement";
 
 /** 人工发布登记可选平台（系统默认列表，管理员可在后台调整） */
 export const DEFAULT_MANUAL_PUBLISH_PLATFORMS = [
@@ -18,14 +19,22 @@ export type GeoSystemConfigSnapshot = {
   t0DetectionPerHourLimit: number;
   qualityMinPassScore: number;
   defaultPublishPlatforms: string[];
+  systemAnnouncement: SystemAnnouncementPublic;
   /** 配置来源：数据库行 / 环境变量 / 内置默认 */
   source: "database" | "environment" | "default";
   updatedAt: string | null;
 };
+
+export const GEO_SYSTEM_ANNOUNCEMENT_DEFAULTS = {
+  enabled: false,
+  body: "",
+  versionKey: null,
+} as const satisfies SystemAnnouncementPublic;
 
 export const GEO_SYSTEM_CONFIG_DEFAULTS = {
   contentGenerationPerMinuteLimit: 3,
   t0DetectionPerHourLimit: 1,
   qualityMinPassScore: GEO_ARTICLE_MIN_PASS_SCORE,
   defaultPublishPlatforms: [...DEFAULT_MANUAL_PUBLISH_PLATFORMS],
+  systemAnnouncement: { ...GEO_SYSTEM_ANNOUNCEMENT_DEFAULTS },
 } as const satisfies Omit<GeoSystemConfigSnapshot, "source" | "updatedAt">;

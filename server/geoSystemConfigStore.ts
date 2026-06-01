@@ -1,14 +1,17 @@
 import { eq } from "drizzle-orm";
 import {
   DEFAULT_MANUAL_PUBLISH_PLATFORMS,
+  GEO_SYSTEM_ANNOUNCEMENT_DEFAULTS,
   GEO_SYSTEM_CONFIG_DEFAULTS,
   type GeoSystemConfigSnapshot,
 } from "@shared/geoSystemConfig";
+import type { SystemAnnouncementPublic } from "@shared/systemAnnouncement";
 import { geoSystemConfig } from "../drizzle/schema";
 import { getDb } from "./db";
 import type { RateLimitConfig } from "./memoryRateLimit";
 
 type GeoSystemConfigValues = Omit<GeoSystemConfigSnapshot, "source" | "updatedAt">;
+type GeoSystemConfigRunParams = Omit<GeoSystemConfigValues, "systemAnnouncement">;
 
 let cached: GeoSystemConfigSnapshot | null = null;
 
@@ -88,6 +91,15 @@ function mergeConfig(
   };
 }
 
+function announcementFromRow(row: typeof geoSystemConfig.$inferSelect): SystemAnnouncementPublic {
+  const body = typeof row.systemAnnouncementBody === "string" ? row.systemAnnouncementBody : "";
+  const enabled = row.systemAnnouncementEnabled === 1;
+  const versionKey = row.systemAnnouncementUpdatedAt
+    ? new Date(row.systemAnnouncementUpdatedAt).toISOString()
+    : null;
+  return { enabled, body, versionKey };
+}
+
 function rowToValues(row: typeof geoSystemConfig.$inferSelect): GeoSystemConfigValues {
   const platforms = Array.isArray(row.defaultPublishPlatforms)
     ? row.defaultPublishPlatforms.filter((p): p is string => typeof p === "string" && p.trim().length > 0)
@@ -97,7 +109,21 @@ function rowToValues(row: typeof geoSystemConfig.$inferSelect): GeoSystemConfigV
     t0DetectionPerHourLimit: row.t0DetectionPerHourLimit,
     qualityMinPassScore: row.qualityMinPassScore,
     defaultPublishPlatforms: platforms.length > 0 ? platforms : [...DEFAULT_MANUAL_PUBLISH_PLATFORMS],
+    systemAnnouncement: announcementFromRow(row),
   };
+}
+
+async function readAnnouncementFromDb(): Promise<SystemAnnouncementPublic> {
+  const db = await getDb();
+  if (!db) return { ...GEO_SYSTEM_ANNOUNCEMENT_DEFAULTS };
+  try {
+    const rows = await db.select().from(geoSystemConfig).where(eq(geoSystemConfig.id, 1)).limit(1);
+    const row = rows[0];
+    if (!row) return { ...GEO_SYSTEM_ANNOUNCEMENT_DEFAULTS };
+    return announcementFromRow(row);
+  } catch {
+    return { ...GEO_SYSTEM_ANNOUNCEMENT_DEFAULTS };
+  }
 }
 
 export function invalidateGeoSystemConfigCache(): void {
@@ -144,7 +170,7 @@ export async function loadGeoSystemConfig(): Promise<GeoSystemConfigSnapshot> {
 }
 
 export async function saveGeoSystemConfig(
-  input: GeoSystemConfigValues,
+  input: GeoSystemConfigRunParams,
   updatedByUserId: number,
 ): Promise<GeoSystemConfigSnapshot> {
   const db = await getDb();
@@ -152,12 +178,17 @@ export async function saveGeoSystemConfig(
     throw new Error("数据库不可用，无法保存系统配置");
   }
 
+  const announcement = await readAnnouncementFromDb();
+
   const payload = {
     id: 1,
     contentGenerationPerMinuteLimit: input.contentGenerationPerMinuteLimit,
     t0DetectionPerHourLimit: input.t0DetectionPerHourLimit,
     qualityMinPassScore: input.qualityMinPassScore,
     defaultPublishPlatforms: input.defaultPublishPlatforms,
+    systemAnnouncementEnabled: announcement.enabled ? 1 : 0,
+    systemAnnouncementBody: announcement.body.trim() ? announcement.body : null,
+    systemAnnouncementUpdatedAt: announcement.versionKey ? new Date(announcement.versionKey) : null,
     updatedByUserId,
   };
 
@@ -170,6 +201,60 @@ export async function saveGeoSystemConfig(
 
   invalidateGeoSystemConfigCache();
   return loadGeoSystemConfig();
+}
+
+export async function saveSystemAnnouncement(
+  input: { enabled: boolean; body: string },
+  updatedByUserId: number,
+): Promise<GeoSystemConfigSnapshot> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("数据库不可用，无法保存系统公告");
+  }
+
+  const trimmedBody = input.body.trim();
+  const now = new Date();
+  const announcement: SystemAnnouncementPublic = {
+    enabled: input.enabled,
+    body: trimmedBody,
+    versionKey: input.enabled && trimmedBody ? now.toISOString() : null,
+  };
+
+  const existing = await db.select().from(geoSystemConfig).where(eq(geoSystemConfig.id, 1)).limit(1);
+  const row = existing[0];
+
+  if (row) {
+    await db
+      .update(geoSystemConfig)
+      .set({
+        systemAnnouncementEnabled: announcement.enabled ? 1 : 0,
+        systemAnnouncementBody: announcement.body || null,
+        systemAnnouncementUpdatedAt: announcement.versionKey ? now : null,
+        updatedByUserId,
+      })
+      .where(eq(geoSystemConfig.id, 1));
+  } else {
+    const defaults = GEO_SYSTEM_CONFIG_DEFAULTS;
+    await db.insert(geoSystemConfig).values({
+      id: 1,
+      contentGenerationPerMinuteLimit: defaults.contentGenerationPerMinuteLimit,
+      t0DetectionPerHourLimit: defaults.t0DetectionPerHourLimit,
+      qualityMinPassScore: defaults.qualityMinPassScore,
+      defaultPublishPlatforms: [...defaults.defaultPublishPlatforms],
+      systemAnnouncementEnabled: announcement.enabled ? 1 : 0,
+      systemAnnouncementBody: announcement.body || null,
+      systemAnnouncementUpdatedAt: announcement.versionKey ? now : null,
+      updatedByUserId,
+    });
+  }
+
+  invalidateGeoSystemConfigCache();
+  return loadGeoSystemConfig();
+}
+
+export async function loadSystemAnnouncementPublic(): Promise<SystemAnnouncementPublic> {
+  const cfg = await loadGeoSystemConfig();
+  return cfg.systemAnnouncement;
 }
 
 export async function getContentGenerationRateLimitConfig(): Promise<RateLimitConfig> {
