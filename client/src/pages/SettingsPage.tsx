@@ -47,6 +47,19 @@ export default function SettingsPage() {
           </form>
         ) : null}
       </CardContent></Card>
+      {user?.role === "admin" ? (
+        <Card data-testid="settings-admin-config-link">
+          <CardHeader>
+            <CardTitle>系统配置</CardTitle>
+            <CardDescription>管理员可调整限流、质检及格线与默认发布平台</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button type="button" variant="outline" asChild>
+              <a href="/admin/config">打开系统配置</a>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
       <Card data-testid="settings-data-export-section">
         <CardHeader>
           <CardTitle>数据导出</CardTitle>

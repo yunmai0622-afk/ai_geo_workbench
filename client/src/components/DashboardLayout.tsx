@@ -34,7 +34,7 @@ import { EnterpriseProjectShell } from "./project/EnterpriseProjectShell";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients", "/knowledge", "/settings"]);
+const PATHS_WITHOUT_PROJECT_SHELL = new Set(["/clients", "/knowledge", "/settings", "/admin/config"]);
 
 type MenuItem = {
   icon: typeof Sparkles;

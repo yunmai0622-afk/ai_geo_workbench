@@ -1,13 +1,19 @@
 import { TRPCError } from "@trpc/server";
+import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
+import {
+  getContentGenerationRateLimitConfig,
+  getT0DetectionRateLimitConfig,
+} from "./geoSystemConfigStore";
 
+/** 内置默认限流（测试与无 DB 场景） */
 export const CONTENT_GENERATION_RATE_LIMIT = {
   windowMs: 60_000,
-  maxRequests: 3,
+  maxRequests: GEO_SYSTEM_CONFIG_DEFAULTS.contentGenerationPerMinuteLimit,
 } as const;
 
 export const T0_DETECTION_RATE_LIMIT = {
   windowMs: 60 * 60_000,
-  maxRequests: 1,
+  maxRequests: GEO_SYSTEM_CONFIG_DEFAULTS.t0DetectionPerHourLimit,
 } as const;
 
 export type RateLimitConfig = {
@@ -52,11 +58,9 @@ export class MemoryRateLimiter {
 
 export const geoApiRateLimiter = new MemoryRateLimiter();
 
-export function assertContentGenerationRateLimit(userId: number): void {
-  const result = geoApiRateLimiter.check(
-    `content-gen:user:${userId}`,
-    CONTENT_GENERATION_RATE_LIMIT,
-  );
+export async function assertContentGenerationRateLimit(userId: number): Promise<void> {
+  const config = await getContentGenerationRateLimitConfig();
+  const result = geoApiRateLimiter.check(`content-gen:user:${userId}`, config);
   if (!result.allowed) {
     throw new TRPCError({
       code: "TOO_MANY_REQUESTS",
@@ -65,11 +69,9 @@ export function assertContentGenerationRateLimit(userId: number): void {
   }
 }
 
-export function assertT0DetectionRateLimit(projectId: number): void {
-  const result = geoApiRateLimiter.check(
-    `t0-detect:project:${projectId}`,
-    T0_DETECTION_RATE_LIMIT,
-  );
+export async function assertT0DetectionRateLimit(projectId: number): Promise<void> {
+  const config = await getT0DetectionRateLimitConfig();
+  const result = geoApiRateLimiter.check(`t0-detect:project:${projectId}`, config);
   if (!result.allowed) {
     throw new TRPCError({
       code: "TOO_MANY_REQUESTS",

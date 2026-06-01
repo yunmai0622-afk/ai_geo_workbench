@@ -20,6 +20,9 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
+import { adminConfigRouter } from "./adminConfigRouter";
+import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
+import { getDefaultPublishPlatformsSync } from "./geoSystemConfigStore";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, getUserByOpenId, upsertUser } from "./db";
 import { changeUserPassword, loginEmailUser, registerEmailUser, updateUserProfile } from "./emailAuth";
@@ -45,6 +48,7 @@ import {
   geoArticleTopics,
   geoArticles,
   geoPublishRecords,
+  type InsertGeoPublishRecord,
   geoInclusionMonitoringRecords,
   geoAssetSources,
   geoScores,
@@ -87,7 +91,7 @@ import {
   generateGeoArticleDraft,
   generateGeoArticleTopics,
   generateTargetQuestions as llmGenerateTargetSearchQuestions,
-  GEO_ARTICLE_MIN_PASS_SCORE,
+  getGeoArticleMinPassScore,
   mergeProjectWithEnterpriseProfile,
   parseOptimizationTaskCard,
   resolveEnterpriseProfileForContent,
@@ -262,18 +266,6 @@ const contentPlanItemInput = z.object({
   duplicateRisk: z.string().optional().nullable(),
 });
 
-const manualPublishPlatforms = [
-  "自有内容站 / 企业官网 GEO 页面",
-  "微信公众号",
-  "知乎",
-  "百家号",
-  "头条号",
-  "小红书",
-  "搜狐号",
-  "网易号",
-  "CSDN / 掘金",
-] as const;
-
 const manualPublishStatuses = [
   "pending_human_publish",
   "published",
@@ -285,7 +277,7 @@ const manualPublishStatuses = [
 const manualPublishRecordInput = z.object({
   projectId: z.number().int().positive(),
   articleId: z.number().int().positive(),
-  publishPlatform: z.enum(manualPublishPlatforms),
+  publishPlatform: z.string().trim().min(1, "请选择发布平台"),
   publishTitle: z.string().min(1, "请输入发布标题"),
   publishUrl: z.string().optional().default(""),
   publishedAt: z.string().min(1, "请选择发布时间"),
@@ -660,7 +652,7 @@ const publishStrategyInput = z.object({
   strategyName: nonEmptyString,
   reviewMode: z.enum(publishReviewModes).default("全人工审核"),
   dailyLimit: z.number().int().positive().nullable().optional(),
-  minQualityScore: z.number().int().min(0).max(100).default(GEO_ARTICLE_MIN_PASS_SCORE),
+  minQualityScore: z.number().int().min(0).max(100).default(GEO_SYSTEM_CONFIG_DEFAULTS.qualityMinPassScore),
   preferredPlatforms: z.array(z.string()).default([]),
   bannedPlatforms: z.array(z.string()).default([]),
   platformNotes: optionalText,
@@ -2458,6 +2450,12 @@ const geoRouter = router({
     createManualPublishRecord: protectedProcedure.input(manualPublishRecordInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await requireProjectAccess(ctx, input.projectId);
+      const allowedPlatforms = getDefaultPublishPlatformsSync();
+      if (!allowedPlatforms.includes(input.publishPlatform)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "发布平台不在系统允许列表中" });
+      }
+      const publishChannel = input.publishPlatform as InsertGeoPublishRecord["publishChannel"];
+      const minPassScore = getGeoArticleMinPassScore();
       const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
       if (!article || article.projectId !== input.projectId) {
@@ -2465,8 +2463,8 @@ const geoRouter = router({
       }
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
-      if (!latestScore || latestScore.blocked || latestScore.totalScore < GEO_ARTICLE_MIN_PASS_SCORE) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: `只有已通过 GEO 质检且质量分不低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 的内容才能记录人工发布结果` });
+      if (!latestScore || latestScore.blocked || latestScore.totalScore < minPassScore) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `只有已通过 GEO 质检且质量分不低于 ${minPassScore} 的内容才能记录人工发布结果` });
       }
       const publishedAt = new Date(input.publishedAt);
       if (Number.isNaN(publishedAt.getTime())) {
@@ -2476,7 +2474,7 @@ const geoRouter = router({
         projectId: input.projectId,
         articleId: article.id,
         optimizationTaskId: article.optimizationTaskId,
-        publishChannel: input.publishPlatform,
+        publishChannel,
         publishTitle: input.publishTitle,
         publishUrl: input.publishUrl.trim(),
         publishStatus: input.publishStatus,
@@ -2492,6 +2490,11 @@ const geoRouter = router({
     }),
     updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
+      const allowedPlatforms = getDefaultPublishPlatformsSync();
+      if (!allowedPlatforms.includes(input.publishPlatform)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "发布平台不在系统允许列表中" });
+      }
+      const publishChannel = input.publishPlatform as InsertGeoPublishRecord["publishChannel"];
       const recordRows = await db.select().from(geoPublishRecords).where(eq(geoPublishRecords.id, input.id)).limit(1);
       const record = recordRows[0];
       if (!record) {
@@ -2511,7 +2514,7 @@ const geoRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "发布时间格式不正确" });
       }
       await db.update(geoPublishRecords).set({
-        publishChannel: input.publishPlatform,
+        publishChannel,
         publishTitle: input.publishTitle,
         publishUrl: input.publishUrl.trim(),
         publishStatus: input.publishStatus,
@@ -2573,7 +2576,7 @@ const geoRouter = router({
           }),
       )
       .mutation(async ({ ctx, input }) => {
-      assertContentGenerationRateLimit(getCurrentUserId(ctx));
+      await assertContentGenerationRateLimit(getCurrentUserId(ctx));
       const startedAtMs = Date.now();
       let stepStartMs = startedAtMs;
       const stepTimings: GeoArticlesGenerateStepTimings = {};
@@ -2905,7 +2908,8 @@ const geoRouter = router({
       const latestScore = scoreRows[0];
       const consistency = article.consistencyCheck as { publishAllowed?: boolean; score?: number; riskLevel?: string; blockReasons?: string[] } | null;
       const canAudit = canAuditArticle(article.status as ArticleStatus, latestScore ? { totalScore: latestScore.totalScore, blocked: Boolean(latestScore.blocked) } : null);
-      if (!canAudit || consistency?.publishAllowed === false || (consistency?.score ?? 100) < GEO_ARTICLE_MIN_PASS_SCORE || consistency?.riskLevel === "高") throw new TRPCError({ code: "BAD_REQUEST", message: `未质检通过、低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分或一致性检查未通过的文章不能审核` });
+      const minPassScore = getGeoArticleMinPassScore();
+      if (!canAudit || consistency?.publishAllowed === false || (consistency?.score ?? 100) < minPassScore || consistency?.riskLevel === "高") throw new TRPCError({ code: "BAD_REQUEST", message: `未质检通过、低于 ${minPassScore} 分或一致性检查未通过的文章不能审核` });
       await db.update(geoArticles).set({ status: input.approved ? "审核通过" : "审核未通过" }).where(eq(geoArticles.id, article.id));
       if (!input.approved) {
         await appendArticleLifecycleEvent(db, article.id, {
@@ -2922,7 +2926,8 @@ const geoRouter = router({
       if (!canPublishArticle(article.status as ArticleStatus)) throw new TRPCError({ code: "BAD_REQUEST", message: "未审核通过的文章不能发布" });
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       const latestScore = scoreRows[0];
-      if (!latestScore || latestScore.blocked || latestScore.totalScore < GEO_ARTICLE_MIN_PASS_SCORE) throw new TRPCError({ code: "BAD_REQUEST", message: `文章质量分低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 或存在禁止发布风险，不能发布` });
+      const minPassScorePublish = getGeoArticleMinPassScore();
+      if (!latestScore || latestScore.blocked || latestScore.totalScore < minPassScorePublish) throw new TRPCError({ code: "BAD_REQUEST", message: `文章质量分低于 ${minPassScorePublish} 或存在禁止发布风险，不能发布` });
       const assetLibrary = await getAssetLibraryContext(article.projectId);
       const prePublishCheck = evaluateAssetLibraryPrePublishCheck({
         content: `${article.title}
@@ -3374,7 +3379,7 @@ ${article.markdownContent}`,
       )
       .mutation(async ({ ctx, input }) => {
         await requireProjectAccess(ctx, input.projectId);
-        assertT0DetectionRateLimit(input.projectId);
+        await assertT0DetectionRateLimit(input.projectId);
         const db = await requireDb();
         const result = await createT0RoundWithQuestions(db, {
           projectId: input.projectId,
@@ -3655,6 +3660,7 @@ ${article.markdownContent}`,
 
 export const appRouter = router({
   agent: agentRouter,
+  adminConfig: adminConfigRouter,
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { getGeoArticleMinPassScore } from "./geoArticleLogic";
 import {
   geoArticleQualityScores,
   geoArticles,
@@ -454,7 +454,7 @@ export const publishTasksRouter = router({
               publishTitle: task.articleTitle,
               publishUrl: input.resultUrl.trim(),
               publishStatus: "已发布",
-              qualityScore: latestScore?.totalScore ?? GEO_ARTICLE_MIN_PASS_SCORE,
+              qualityScore: latestScore?.totalScore ?? getGeoArticleMinPassScore(),
               needRetest: 1,
               notes: "浏览器插件自动发布完成",
             });

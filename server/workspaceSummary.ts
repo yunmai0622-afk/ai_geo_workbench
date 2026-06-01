@@ -17,7 +17,7 @@ import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
 import { shouldShowT1RetestAutoTriggerReminder } from "@shared/t1RetestAutoTrigger";
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
 import { isP0GeoProfileComplete } from "@shared/workspaceStateMachine";
-import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { getGeoArticleMinPassScore } from "./geoArticleLogic";
 import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkflow";
 import { calculateProfileCompletionScore } from "./assetLibrary";
 import { getDb } from "./db";
@@ -144,7 +144,7 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
   let lowQualityArticleCount = 0;
   for (const article of articleRows) {
     const score = latestScoreByArticle.get(article.id);
-    if (score != null && score < GEO_ARTICLE_MIN_PASS_SCORE) lowQualityArticleCount += 1;
+    if (score != null && score < getGeoArticleMinPassScore()) lowQualityArticleCount += 1;
   }
 
   const monitoringEvidence = monitoringRows.map(r => ({

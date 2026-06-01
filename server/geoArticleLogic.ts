@@ -1,5 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { getQualityMinPassScoreSync } from "./geoSystemConfigStore";
 import {
   buildPlatformContentStrategyMeta,
   formatPlatformRulesForPrompt,
@@ -15,6 +16,11 @@ import type { GeoQuestionTemplateReference } from "@shared/questionContentTempla
 import { getSystemComplianceRulesForPrePublish, getSystemComplianceUsageLines, SYSTEM_PUBLISH_STRATEGY_LINES } from "./systemConfig";
 
 export { GEO_ARTICLE_MIN_PASS_SCORE };
+
+/** 运行时质检及格线（数据库 / 环境变量 / 默认） */
+export function getGeoArticleMinPassScore(): number {
+  return getQualityMinPassScoreSync();
+}
 
 export const articleTypes = ["官网版 GEO 文章", "问答型 GEO 文章", "竞品对比型 GEO 文章", "行业选型型 GEO 文章"] as const;
 export const articleStatuses = ["待生成", "已生成", "待质检", "质检通过", "待审核", "审核通过", "已发布", "待复测", "质检未通过", "需人工审核", "审核未通过"] as const;
@@ -1007,7 +1013,7 @@ export function canQualityCheckArticle(status: ArticleStatus) {
 }
 
 export function canAuditArticle(status: ArticleStatus, quality?: Pick<P11QualityScore, "totalScore" | "blocked"> | null) {
-  return (status === "质检通过" || status === "待审核") && Boolean(quality) && !quality?.blocked && (quality?.totalScore ?? 0) >= GEO_ARTICLE_MIN_PASS_SCORE;
+  return (status === "质检通过" || status === "待审核") && Boolean(quality) && !quality?.blocked && (quality?.totalScore ?? 0) >= getGeoArticleMinPassScore();
 }
 
 export function canPublishArticle(status: ArticleStatus) {
@@ -1756,7 +1762,7 @@ export function scoreGeoArticleQuality(input: {
     forbiddenReasons.length > 0 || prePublishCheck.forbiddenTerms.length > 0 || prePublishCheck.forbiddenClaims.length > 0;
   const complianceScore = complianceViolated ? Math.max(0, hasNoFakeDisclaimer ? 8 : 5) : hasNoFakeDisclaimer ? 15 : 12;
   const totalScore = problemMatchScore + evidenceScore + structureScore + originalityScore + geoCitableScore + complianceScore;
-  const lowScoreSuggestion = totalScore < GEO_ARTICLE_MIN_PASS_SCORE;
+  const lowScoreSuggestion = totalScore < getGeoArticleMinPassScore();
   const structureBlocked = structureIssues.length > 0;
   const complianceBlockReasons = unique([...forbiddenReasons, ...prePublishCheck.blockReasons]);
   const blocked = complianceBlockReasons.length > 0;
@@ -1769,7 +1775,7 @@ export function scoreGeoArticleQuality(input: {
     ...(length < 3000 ? ["增加可核验的企业实体信息、适合/不适合客户、FAQ 与发布后复测说明，提高可引用完整度。"] : []),
     ...(blocked ? ["请先处理合规阻断项（禁用词、虚假案例/链接、禁止承诺等），修订后再保存。"] : []),
     ...(lowScoreSuggestion && !blocked
-      ? [`质量分 ${totalScore} 低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分参考线，建议修订后再发布；业务允许时也可直接发布。`]
+      ? [`质量分 ${totalScore} 低于 ${getGeoArticleMinPassScore()} 分参考线，建议修订后再发布；业务允许时也可直接发布。`]
       : []),
     ...(assetEvidenceStrength === "低" ? ["补充并确认企业基础资料、产品服务资料或官网内容，提升资产库证据强度。"] : []),
     ...(assetUsage.missingEvidenceNotes.length > 0 ? [`关键事实仍需补充或确认：${assetUsage.missingEvidenceNotes.join("；")}。`] : []),
@@ -1782,9 +1788,9 @@ export function scoreGeoArticleQuality(input: {
   const detailSuffix = `资产库证据强度：${assetEvidenceStrength}。事实来源：${factSourceSummary}。未确认事实：${prePublishCheck.unconfirmedFacts.length > 0 ? prePublishCheck.unconfirmedFacts.join("；") : "无"}。`;
   const reviewSummary = blocked
     ? `质检阻断，必须修改后才能发布：${complianceBlockReasons.join("；")}。${detailSuffix}发布前可优化的建议（非必须）：${optimizationSuggestions.join("；")}`
-    : totalScore >= GEO_ARTICLE_MIN_PASS_SCORE
+    : totalScore >= getGeoArticleMinPassScore()
       ? `质检通过，可发布。质量分 ${totalScore}。${detailSuffix}发布前可优化的建议（非必须）：${optimizationSuggestions.join("；")}`
-      : `建议修订后发布，也可直接发布。质量分 ${totalScore}（低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分参考线）。${detailSuffix}发布前可优化的建议（非必须）：${optimizationSuggestions.join("；")}`;
+      : `建议修订后发布，也可直接发布。质量分 ${totalScore}（低于 ${getGeoArticleMinPassScore()} 分参考线）。${detailSuffix}发布前可优化的建议（非必须）：${optimizationSuggestions.join("；")}`;
   return {
     problemMatchScore,
     evidenceScore,
@@ -1862,7 +1868,7 @@ export function buildOptimizedArticleVersion(input: {
     title: input.article.title,
     markdownContent: input.article.markdownContent,
     consistencyScore: input.quality?.consistencyCheck?.score,
-    reason: input.reason || `低于 ${GEO_ARTICLE_MIN_PASS_SCORE} 分或一致性未通过时生成优化版本，并保留旧版本供回滚和审计。`,
+    reason: input.reason || `低于 ${getGeoArticleMinPassScore()} 分或一致性未通过时生成优化版本，并保留旧版本供回滚和审计。`,
   };
   const appendices: Record<typeof input.mode, string> = {
     "增强版": "## 优化增强说明\n\n本版重点补齐生成依据、事实溯源、FAQ、竞品对比和 AI 可引用片段。发布前仍需重新评分与重新一致性检查。",
@@ -1970,7 +1976,7 @@ export function assessGeoArticleAntiDuplication(input: {
 }
 
 function isOnlyLowScoreQualityBlock(blockReasons: string[]): boolean {
-  const min = GEO_ARTICLE_MIN_PASS_SCORE;
+  const min = getGeoArticleMinPassScore();
   const re = new RegExp(`内容质量分 \\d+ 低于 ${min}|低于 ${min} 分`);
   return blockReasons.length > 0 && blockReasons.every(r => re.test(r));
 }
@@ -1983,7 +1989,7 @@ export function shouldTriggerAutoQualityRewrite(quality: P11QualityScore, antiDu
 }
 
 export function isGeoArticleQualityCheckPass(quality: P11QualityScore): boolean {
-  return !quality.blocked && quality.totalScore >= GEO_ARTICLE_MIN_PASS_SCORE;
+  return !quality.blocked && quality.totalScore >= getGeoArticleMinPassScore();
 }
 
 export async function rewriteGeoArticleMarkdownForQuality(input: {

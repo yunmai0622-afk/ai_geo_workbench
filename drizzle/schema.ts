@@ -888,6 +888,17 @@ export const auditLogs = mysqlTable("audit_logs", {
   detail: text("detail"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/** 全局系统配置（单行 id=1，管理员在 /admin/config 维护） */
+export const geoSystemConfig = mysqlTable("geo_system_config", {
+  id: int("id").primaryKey().default(1),
+  contentGenerationPerMinuteLimit: int("contentGenerationPerMinuteLimit").notNull(),
+  t0DetectionPerHourLimit: int("t0DetectionPerHourLimit").notNull(),
+  qualityMinPassScore: int("qualityMinPassScore").notNull(),
+  defaultPublishPlatforms: json("defaultPublishPlatforms").$type<string[]>().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedByUserId: int("updatedByUserId"),
+});
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Project = typeof projects.$inferSelect;
@@ -954,3 +965,5 @@ export type SystemNotification = typeof systemNotifications.$inferSelect;
 export type InsertSystemNotification = typeof systemNotifications.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
+export type GeoSystemConfig = typeof geoSystemConfig.$inferSelect;
+export type InsertGeoSystemConfig = typeof geoSystemConfig.$inferInsert;
