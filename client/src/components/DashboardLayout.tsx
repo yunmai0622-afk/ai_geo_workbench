@@ -185,6 +185,12 @@ export default function DashboardLayout({
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
+  useEffect(() => {
+    if (!loading && !user) {
+      document.title = "登录 - GEO增长工作台";
+    }
+  }, [loading, user]);
+
   if (loading) {
     return <DashboardLayoutSkeleton />;
   }

@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { BarChart3 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 
@@ -12,6 +12,10 @@ function registerErrorMessage(err: unknown): string {
 }
 
 export default function RegisterPage() {
+  useEffect(() => {
+    document.title = "注册账号 - GEO增长工作台";
+  }, []);
+
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [form, setForm] = useState({
