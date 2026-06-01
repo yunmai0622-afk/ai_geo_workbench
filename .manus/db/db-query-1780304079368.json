@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `competitor_profiles`\n  ADD COLUMN IF NOT EXISTS `positioning` text NULL,\n  ADD COLUMN IF NOT EXISTS `strengths` text NULL,\n  ADD COLUMN IF NOT EXISTS `weaknesses` text NULL,\n  ADD COLUMN IF NOT EXISTS `priceInfo` text NULL,\n  ADD COLUMN IF NOT EXISTS `contentAssets` text NULL,\n  ADD COLUMN IF NOT EXISTS `aiMentionCount` int NOT NULL DEFAULT 0;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `competitor_profiles`\n  ADD COLUMN IF NOT EXISTS `positioning` text NULL,\n  ADD COLUMN IF NOT EXISTS `strengths` text NULL,\n  ADD COLUMN IF NOT EXISTS `weaknesses` text NULL,\n  ADD COLUMN IF NOT EXISTS `priceInfo` text NULL,\n  ADD COLUMN IF NOT EXISTS `contentAssets` text NULL,\n  ADD COLUMN IF NOT EXISTS `aiMentionCount` int NOT NULL DEFAULT 0;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1719
+}

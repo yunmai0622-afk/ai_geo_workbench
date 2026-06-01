@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `publish_tasks`\n  ADD COLUMN IF NOT EXISTS `retryCount` int NOT NULL DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `retryLog` json NULL;\nALTER TABLE `questions`\n  ADD COLUMN IF NOT EXISTS `contentGapTags` json NULL;\nALTER TABLE `projects`\n  ADD COLUMN IF NOT EXISTS `archivedAt` timestamp NULL;\nCREATE INDEX IF NOT EXISTS `idx_projects_archived_at` ON `projects` (`archivedAt`);\nALTER TABLE `geo_system_config`\n  ADD COLUMN IF NOT EXISTS `systemAnnouncementEnabled` tinyint NOT NULL DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `systemAnnouncementBody` text NULL,\n  ADD COLUMN IF NOT EXISTS `systemAnnouncementUpdatedAt` timestamp NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute ALTER TABLE `publish_tasks`\n  ADD COLUMN IF NOT EXISTS `retryCount` int NOT NULL DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `retryLog` json NULL;\nALTER TABLE `questions`\n  ADD COLUMN IF NOT EXISTS `contentGapTags` json NULL;\nALTER TABLE `projects`\n  ADD COLUMN IF NOT EXISTS `archivedAt` timestamp NULL;\nCREATE INDEX IF NOT EXISTS `idx_projects_archived_at` ON `projects` (`archivedAt`);\nALTER TABLE `geo_system_config`\n  ADD COLUMN IF NOT EXISTS `systemAnnouncementEnabled` tinyint NOT NULL DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `systemAnnouncementBody` text NULL,\n  ADD COLUMN IF NOT EXISTS `systemAnnouncementUpdatedAt` timestamp NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2863
+}

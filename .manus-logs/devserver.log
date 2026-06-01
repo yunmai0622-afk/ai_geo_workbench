@@ -3083,3 +3083,17 @@
 [2026-06-01T08:31:42.341Z] Server running on http://localhost:3000/
 [2026-06-01T08:31:42.944Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-01T08:35:42.903Z] 4:35:42 AM [vite] (client) hmr update /src/index.css
+[2026-06-01T08:55:44.890Z] Dev server process group stopped
+[2026-06-01T08:55:44.893Z] ELIFECYCLE  Command failed.
+[2026-06-01T08:55:44.956Z] Dev server exited with code -15
+[2026-06-01T08:55:47.919Z] Starting dev server with command: pnpm run dev
+[2026-06-01T08:55:48.763Z] 
+[2026-06-01T08:55:48.764Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-01T08:55:48.765Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-01T08:55:48.765Z] 
+[2026-06-01T08:55:55.769Z] Server running on http://localhost:3000/
+[2026-06-01T08:55:57.189Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-01T08:56:04.487Z] [Auth] Missing session cookie
+[2026-06-01T08:56:10.345Z] [Auth] Missing session cookie
+[2026-06-01T08:57:03.907Z] [Auth] Missing session cookie
+[2026-06-01T08:58:03.484Z] 4:58:03 AM [vite] (client) hmr update /src/index.css

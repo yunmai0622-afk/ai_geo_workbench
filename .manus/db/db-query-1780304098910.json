@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `user_feedbacks` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `projectId` int,\n  `type` enum('bug','suggestion','other') NOT NULL,\n  `description` text NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `user_feedbacks_id` PRIMARY KEY(`id`)\n);\nCREATE INDEX IF NOT EXISTS `idx_user_feedbacks_user_id` ON `user_feedbacks` (`userId`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute CREATE TABLE IF NOT EXISTS `user_feedbacks` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `projectId` int,\n  `type` enum('bug','suggestion','other') NOT NULL,\n  `description` text NOT NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `user_feedbacks_id` PRIMARY KEY(`id`)\n);\nCREATE INDEX IF NOT EXISTS `idx_user_feedbacks_user_id` ON `user_feedbacks` (`userId`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1798
+}

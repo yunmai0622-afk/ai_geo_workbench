@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `system_notifications` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `projectId` int,\n  `type` enum('t0_complete','publish_success','publish_failed','t1_retest_complete','weekly_growth_report') NOT NULL,\n  `title` varchar(255) NOT NULL,\n  `content` text NOT NULL,\n  `readAt` timestamp NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `system_notifications_id` PRIMARY KEY(`id`)\n);\nCREATE INDEX IF NOT EXISTS `idx_system_notifications_user_id` ON `system_notifications` (`userId`);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute CREATE TABLE IF NOT EXISTS `system_notifications` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `projectId` int,\n  `type` enum('t0_complete','publish_success','publish_failed','t1_retest_complete','weekly_growth_report') NOT NULL,\n  `title` varchar(255) NOT NULL,\n  `content` text NOT NULL,\n  `readAt` timestamp NULL,\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `system_notifications_id` PRIMARY KEY(`id`)\n);\nCREATE INDEX IF NOT EXISTS `idx_system_notifications_user_id` ON `system_notifications` (`userId`);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2084
+}
