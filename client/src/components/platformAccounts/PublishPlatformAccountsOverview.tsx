@@ -6,10 +6,7 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import {
-  buildPublishPlatformAccountOverview,
-  type PlatformAccountOverviewGroup,
-} from "@shared/publishPlatformAccountOverview";
+import { buildPublishPlatformAccountOverview } from "@shared/publishPlatformAccountOverview";
 import { ExternalLink } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
@@ -28,7 +25,7 @@ export function PublishPlatformAccountsOverview({
 }: Props) {
   const accountsQuery = trpc.geo.platformAccounts.list.useQuery({ projectId });
   const rows = useMemo(() => {
-    const groups = (accountsQuery.data?.accounts ?? []) as PlatformAccountOverviewGroup[];
+    const groups = accountsQuery.data?.accounts ?? [];
     return buildPublishPlatformAccountOverview(groups);
   }, [accountsQuery.data]);
 

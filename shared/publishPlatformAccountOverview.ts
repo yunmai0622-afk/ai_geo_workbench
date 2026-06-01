@@ -21,11 +21,17 @@ export type PlatformAccountOverviewGroup = {
   accounts: PlatformAccountOverviewAccount[];
 };
 
+/** geo.platformAccounts.list 返回的 accounts 为 readonly，入参需兼容 */
+export type PlatformAccountOverviewGroupInput = {
+  readonly platform: string;
+  readonly accounts: ReadonlyArray<PlatformAccountOverviewAccount>;
+};
+
 /** 按绑定平台顺序生成网页端只读展示行（数据来源 geo.platformAccounts.list） */
 export function buildPublishPlatformAccountOverview(
-  groups: PlatformAccountOverviewGroup[],
+  groups: ReadonlyArray<PlatformAccountOverviewGroupInput>,
 ): PlatformAccountOverviewRow[] {
-  const byPlatform = new Map<string, PlatformAccountOverviewAccount[]>();
+  const byPlatform = new Map<string, ReadonlyArray<PlatformAccountOverviewAccount>>();
   for (const g of groups) {
     byPlatform.set(g.platform, g.accounts ?? []);
   }
