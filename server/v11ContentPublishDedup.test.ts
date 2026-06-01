@@ -17,6 +17,8 @@ describe("GEO-V1.1-Content-Dedup publish queue", () => {
     const dedup = read("shared/publishQueueDedup.ts");
     expect(dedup).toContain("该内容已在发布队列中");
     expect(dedup).toContain("pending_agent");
+    expect(dedup).toContain("failed");
+    expect(dedup).toContain("platformAccountId");
     expect(dedup).toContain("completed");
   });
 });

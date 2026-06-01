@@ -117,7 +117,9 @@ export async function buildDashboard() {
           taskId: recentFailed.id,
           platform: recentFailed.platform,
           status: recentFailed.status,
-          message: recentFailed.agentErrorMessage ?? null,
+          message: recentFailed.agentErrorMessage ?? recentFailed.errorMessage ?? null,
+          createdAt: recentFailed.createdAt,
+          agentFinishedAt: recentFailed.agentFinishedAt,
         }
       : null,
     accounts,

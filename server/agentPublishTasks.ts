@@ -2,6 +2,8 @@ import { parseDataUrlCover } from "../shared/publishCoverPayload";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { publishTasks } from "../drizzle/schema";
+import { publishQueueDedupKey } from "../shared/publishQueueDedup";
+import { maintainAgentPublishTasks } from "./agentPublishTaskMaintenance";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { syncArticleLifecycleFromAgentTask } from "./agentArticleLifecycle";
 import { requireDbConn } from "./projectPlatformAccounts";
@@ -32,14 +34,29 @@ const TERMINAL_STATUSES = new Set<AgentPublishStatus>([
 ]);
 
 export async function pollAgentTasks(db: DbConn, localAgentId: string, limit = 3) {
+  await maintainAgentPublishTasks(db, localAgentId);
+
   const rows = await db
     .select()
     .from(publishTasks)
     .where(and(eq(publishTasks.localAgentId, localAgentId), eq(publishTasks.status, "pending_agent")))
-    .orderBy(asc(publishTasks.createdAt))
-    .limit(limit);
+    .orderBy(asc(publishTasks.createdAt));
 
-  const tasks = rows
+  const seen = new Set<string>();
+  const dedupedRows = rows.filter(r => {
+    const accountId = r.platformAccountId;
+    if (accountId == null || accountId <= 0) return true;
+    const key = publishQueueDedupKey({
+      articleId: r.articleId,
+      platform: r.platform,
+      platformAccountId: accountId,
+    });
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const tasks = dedupedRows.slice(0, limit)
     .filter(r => AGENT_POLL_PLATFORMS.has(r.platform) && r.localProfileId)
     .map(r => {
       let coverBase64: string | undefined;
@@ -181,6 +198,8 @@ export async function listAgentTasksForClient(
   localAgentId: string,
   limit = 50,
 ) {
+  await maintainAgentPublishTasks(db, localAgentId);
+
   const rows = await db
     .select({
       id: publishTasks.id,

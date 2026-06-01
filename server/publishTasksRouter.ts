@@ -42,6 +42,7 @@ import { canRetryPublishTask, isPublishRetryExhausted } from "@shared/publishTas
 import {
   PUBLISH_QUEUE_BLOCKING_STATUSES,
   PUBLISH_QUEUE_DUPLICATE_MESSAGE,
+  PUBLISH_QUEUE_DUPLICATE_RETRY_MESSAGE,
 } from "@shared/publishQueueDedup";
 import { buildDeliveryReportPublishStats } from "@shared/deliveryReportPublishStats";
 import {
@@ -191,21 +192,25 @@ async function assertPrePublishChecklistForCreate(
 
 async function assertNoDuplicatePublishQueueTask(
   db: Awaited<ReturnType<typeof requireDbConn>>,
-  input: { articleId: number; platform: string },
+  input: { articleId: number; platform: string; platformAccountId: number },
 ) {
   const existing = await db
-    .select({ id: publishTasks.id })
+    .select({ id: publishTasks.id, status: publishTasks.status })
     .from(publishTasks)
     .where(
       and(
         eq(publishTasks.articleId, input.articleId),
         eq(publishTasks.platform, input.platform),
+        eq(publishTasks.platformAccountId, input.platformAccountId),
         inArray(publishTasks.status, [...PUBLISH_QUEUE_BLOCKING_STATUSES]),
       ),
     )
     .limit(1);
   if (existing.length > 0) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: PUBLISH_QUEUE_DUPLICATE_MESSAGE });
+    const row = existing[0]!;
+    const message =
+      row.status === "failed" ? PUBLISH_QUEUE_DUPLICATE_RETRY_MESSAGE : PUBLISH_QUEUE_DUPLICATE_MESSAGE;
+    throw new TRPCError({ code: "BAD_REQUEST", message });
   }
 }
 
@@ -355,6 +360,7 @@ export const publishTasksRouter = router({
       await assertNoDuplicatePublishQueueTask(db, {
         articleId: input.articleId,
         platform: input.platform,
+        platformAccountId: boundAccount.id,
       });
 
       const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);
