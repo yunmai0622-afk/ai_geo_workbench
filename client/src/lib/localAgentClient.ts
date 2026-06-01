@@ -1,4 +1,7 @@
-import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
+import {
+  LOCAL_AGENT_BASE_URL,
+  LOCAL_AGENT_BROWSER_HEALTH_URL,
+} from "@shared/localAgent";
 import {
   mapLocalStoredAccountToStatusEntry,
   type LocalAgentAccountStatusEntry,
@@ -38,17 +41,32 @@ export type LocalAgentAccountSnapshotRow = {
   lastCheckedAt: string | null;
 };
 
+const LOCAL_AGENT_UNAVAILABLE_MESSAGE = "无法连接本地发布客户端";
+
 async function agentFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${LOCAL_AGENT_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  const data = (await res.json()) as T & { message?: string };
+  let res: Response;
+  try {
+    res = await fetch(`${LOCAL_AGENT_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch {
+    throw new Error(LOCAL_AGENT_UNAVAILABLE_MESSAGE);
+  }
+  let data: T & { message?: string };
+  try {
+    data = (await res.json()) as T & { message?: string };
+  } catch {
+    throw new Error(LOCAL_AGENT_UNAVAILABLE_MESSAGE);
+  }
   if (!res.ok) {
-    const err = new Error((data as { message?: string }).message ?? `Agent HTTP ${res.status}`);
+    const raw = (data as { message?: string }).message;
+    const err = new Error(
+      raw && !looksLikeAgentInternalMessage(raw) ? raw : LOCAL_AGENT_UNAVAILABLE_MESSAGE,
+    );
     (err as Error & { status: number; data: unknown }).status = res.status;
     (err as Error & { data: unknown }).data = data;
     throw err;
@@ -56,11 +74,28 @@ async function agentFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return data;
 }
 
+function looksLikeAgentInternalMessage(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("127.0.0.1") ||
+    lower.includes("localhost") ||
+    lower.includes("39888") ||
+    lower.includes("err_connection") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("networkerror") ||
+    lower.includes("econnrefused")
+  );
+}
+
 export async function checkLocalAgentHealth(): Promise<LocalAgentHealth | null> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(`${LOCAL_AGENT_BASE_URL}/health`, { signal: controller.signal });
+    const res = await fetch(LOCAL_AGENT_BROWSER_HEALTH_URL, {
+      signal: controller.signal,
+      credentials: "include",
+      cache: "no-store",
+    });
     clearTimeout(timer);
     if (!res.ok) return null;
     const data = (await res.json()) as LocalAgentHealth;
@@ -103,10 +138,10 @@ export async function openLocalAgentLogin(profileId: string): Promise<{ ok: bool
 export async function focusLocalAgentAccountsTab(): Promise<{ ok: boolean; message: string }> {
   try {
     return await agentFetch<{ ok: boolean; message: string }>("/ui/focus-accounts", { method: "POST" });
-  } catch (e) {
+  } catch {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "无法连接本地发布客户端",
+      message: LOCAL_AGENT_UNAVAILABLE_MESSAGE,
     };
   }
 }
@@ -120,22 +155,28 @@ export async function detectLocalAgentAccount(profileId: string): Promise<Detect
   } catch (e) {
     const data = (e as Error & { data?: DetectAccountResponse }).data;
     if (data && data.ok === false) return data;
-    throw e;
+    throw e instanceof Error && !looksLikeAgentInternalMessage(e.message)
+      ? e
+      : new Error(LOCAL_AGENT_UNAVAILABLE_MESSAGE);
   }
 }
 
 export async function listLocalAgentAccountSnapshots(): Promise<LocalAgentAccountStatusEntry[]> {
-  const data = await agentFetch<{ accounts: LocalAgentAccountSnapshotRow[] }>("/accounts", {
-    method: "GET",
-  });
-  return (data.accounts ?? []).map(acc =>
-    mapLocalStoredAccountToStatusEntry({
-      platform: acc.platform,
-      profileId: acc.profileId,
-      accountName: acc.accountName,
-      displayNameVerified: acc.displayNameVerified,
-      sessionStatus: acc.sessionStatus,
-      lastCheckedAt: acc.lastCheckedAt,
-    }),
-  );
+  try {
+    const data = await agentFetch<{ accounts: LocalAgentAccountSnapshotRow[] }>("/accounts", {
+      method: "GET",
+    });
+    return (data.accounts ?? []).map(acc =>
+      mapLocalStoredAccountToStatusEntry({
+        platform: acc.platform,
+        profileId: acc.profileId,
+        accountName: acc.accountName,
+        displayNameVerified: acc.displayNameVerified,
+        sessionStatus: acc.sessionStatus,
+        lastCheckedAt: acc.lastCheckedAt,
+      }),
+    );
+  } catch {
+    return [];
+  }
 }

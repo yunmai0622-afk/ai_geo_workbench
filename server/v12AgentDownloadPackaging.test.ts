@@ -21,7 +21,7 @@ describe("Agent-Client-Download-Packaging", () => {
     expect(read("client/src/components/LocalAgentDownloadCard.tsx")).toContain("download-mac-agent");
     expect(read("client/src/components/LocalAgentDownloadCard.tsx")).toContain("detect-local-agent");
     expect(read("client/src/components/LocalAgentDownloadCard.tsx")).toContain("checkLocalAgentHealth");
-    expect(read("client/src/lib/localAgentClient.ts")).toContain("/health");
+    expect(read("client/src/lib/localAgentClient.ts")).toContain("LOCAL_AGENT_BROWSER_HEALTH_URL");
   });
 
   it("Mac download files exist in public/downloads", () => {

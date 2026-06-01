@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { aiGlassPanel, aiInput, aiOutlineBtn, aiPrimaryBtn } from "@/lib/aiProductUi";
 import { cn } from "@/lib/utils";
-import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
 import { PUBLISH_IDENTITY_OPTIONS } from "@shared/contentStrategy";
 import {
   PUBLISH_PLATFORM_LABELS,
@@ -46,7 +45,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
       {showDownloadCard ? <LocalAgentDownloadCard /> : null}
 
       <div className="rounded-xl border border-blue-400/25 bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-800">
-        请先启动本地客户端（{LOCAL_AGENT_BASE_URL}），再点击右上角「绑定{platformLabel}账号」。登录仅在本地 Agent 窗口完成。
+        请先启动 GEO 本地发布客户端，再点击右上角「绑定{platformLabel}账号」。登录仅在本地客户端窗口完成。
       </div>
 
       {b.bindStatusText ? (

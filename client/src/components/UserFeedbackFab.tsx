@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -130,7 +131,9 @@ export function UserFeedbackFab() {
                   />
                 </div>
                 {submitMutation.error ? (
-                  <p className="text-sm text-red-600">{submitMutation.error.message}</p>
+                  <p className="text-sm text-red-600">
+                    {toUserFacingErrorFromUnknown(submitMutation.error, "提交失败，请稍后重试")}
+                  </p>
                 ) : null}
               </div>
               <DialogFooter>

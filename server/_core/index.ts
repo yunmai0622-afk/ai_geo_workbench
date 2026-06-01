@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerHealthRoute } from "../healthRoute";
 import { registerApiDocsRoute } from "../apiDocsRoute";
 import { registerLocalAgentAccountStatusRoute } from "../localAgentAccountStatusRoute";
+import { registerLocalAgentHealthRoute } from "../localAgentHealthRoute";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -54,6 +55,7 @@ async function startServer() {
   registerHealthRoute(app);
   registerApiDocsRoute(app);
   registerLocalAgentAccountStatusRoute(app);
+  registerLocalAgentHealthRoute(app);
   registerOAuthRoutes(app);
 
   // Server-side redirect for mac zip download (GitHub Release)

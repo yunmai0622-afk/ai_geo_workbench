@@ -31,6 +31,14 @@ const INTERNAL_MARKERS = [
   "syntaxerror",
   "typeerror",
   "referenceerror",
+  "127.0.0.1",
+  "localhost:",
+  ":39888",
+  "err_connection",
+  "econnrefused",
+  "failed to fetch",
+  "networkerror",
+  "net::err",
 ] as const;
 
 const TRPC_CODE_PATTERN =

@@ -9,6 +9,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { trpc } from "@/lib/trpc";
 import type { GeoArticleGenerationHistoryEntry } from "@shared/geoArticleGenerationHistory";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -74,7 +75,7 @@ export function ArticleGenerationHistoryPanel({
         });
       }
     },
-    onError: err => toast.error(err.message || "恢复失败"),
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "恢复失败")),
   });
   const [previewEntry, setPreviewEntry] = useState<GeoArticleGenerationHistoryEntry | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);

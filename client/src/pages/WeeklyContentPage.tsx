@@ -50,7 +50,6 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl, getActiveProjectId, getSearchFromLocation } from "@/lib/activeProject";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
-import { LOCAL_AGENT_BASE_URL } from "@shared/localAgent";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import {
   BINDING_PUBLISH_PLATFORMS,
@@ -631,8 +630,8 @@ export default function WeeklyContentPage() {
             accounts: snapshot,
           });
           await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
-        } catch (err) {
-          console.warn("[weekly] sync local agent account snapshot failed", err);
+        } catch {
+          // 同步失败不阻断弹窗；状态已由本地快照更新
         }
       }
       return health;

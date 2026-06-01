@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
-import { UNAUTHED_ERR_MSG } from '@shared/const';
+import { UNAUTHED_ERR_MSG } from "@shared/const";
+import { looksLikeInternalTechnicalError } from "@shared/userFacingErrors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
@@ -22,11 +23,19 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (loginUrl) window.location.href = loginUrl;
 };
 
+function shouldLogTrpcCacheError(error: unknown): boolean {
+  if (!(error instanceof TRPCClientError)) return true;
+  if (error.message === UNAUTHED_ERR_MSG) return false;
+  return !looksLikeInternalTechnicalError(error.message);
+}
+
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    if (shouldLogTrpcCacheError(error)) {
+      console.error("[API Query Error]", error);
+    }
   }
 });
 
@@ -34,7 +43,9 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    if (shouldLogTrpcCacheError(error)) {
+      console.error("[API Mutation Error]", error);
+    }
   }
 });
 

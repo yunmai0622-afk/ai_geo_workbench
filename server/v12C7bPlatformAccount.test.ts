@@ -74,7 +74,8 @@ describe("C7-B project platform account binding", () => {
       read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
     expect(binding).toContain("本地");
     expect(binding).toContain("PlatformAccountMatrix");
-    expect(binding).toContain("LOCAL_AGENT_BASE_URL");
+    expect(binding).toContain("GEO 本地发布客户端");
+    expect(binding).not.toContain("127.0.0.1:39888");
     expect(binding).not.toContain("GEO_START_AUTH");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weekly).toContain("发布任务已发送至本地客户端");
