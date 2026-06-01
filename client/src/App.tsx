@@ -62,7 +62,6 @@ function PrivateRoutes() {
         <Route path="/settings" component={SettingsPage} />
         <Route path="/admin/config" component={AdminConfigPage} />
         <Route path="/admin/stats" component={AdminStatsPage} />
-        <Route path="/admin/stats" component={AdminStatsPage} />
         <Route path="/knowledge" component={KnowledgePage} />
         <Route path="/workspace" component={EnterpriseWorkspacePage} />
         <Route path="/">
