@@ -236,6 +236,36 @@ export function CompetitorAnalysisSection({ projectId, brandName }: Props) {
             </div>
           </div>
 
+          <div className="geo-card p-5" data-testid="competitor-gap-suggestions">
+            <h3 className="text-sm font-semibold text-gray-900">缺口建议</h3>
+            <p className="mt-1 text-xs text-gray-500">
+              按 AI 实测中竞品被提及的问题类型，对照本品牌覆盖情况，给出可执行的内容补充方向。
+            </p>
+            <p className="mt-2 text-xs text-amber-800/80">数据来源：ai_test_runs</p>
+            {(summaryQuery.data?.gapSuggestions?.items.length ?? 0) > 0 ? (
+              <ul className="mt-4 space-y-3 text-sm text-gray-700">
+                {summaryQuery.data?.gapSuggestions?.items.map(item => (
+                  <li
+                    key={item.id}
+                    className="rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-3"
+                    data-testid={`competitor-gap-item-${item.questionType}`}
+                  >
+                    <p className="font-medium text-amber-950">{item.message}</p>
+                    <p className="mt-1 text-xs text-amber-900/80">
+                      本品牌覆盖：提及 {item.brandMentionCount}/{item.totalRuns} 次（{item.brandCoveragePercent}%）
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-gray-500">
+                {summaryQuery.data?.totalAiTestRuns
+                  ? "当前实测中竞品提及与本品牌覆盖较为均衡，暂无优先缺口。"
+                  : "完成 AI 实测诊断后，将基于竞品出现记录生成缺口建议。"}
+              </p>
+            )}
+          </div>
+
           <div className="geo-card p-5" data-testid="competitor-content-suggestions">
             <h3 className="text-sm font-semibold text-gray-900">建议补充的内容类型</h3>
             <p className="mt-1 text-xs text-gray-500">基于竞品 AI 提及频次与公开内容分布自动生成，供内容策略参考。</p>

@@ -1,10 +1,11 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   aggregateCompetitorMentionCounts,
   buildCompetitorAnalysisRows,
   buildCompetitorContentSuggestions,
 } from "@shared/competitorAnalysisDisplay";
-import { aiTestRuns, competitorProfiles } from "../drizzle/schema";
+import { buildCompetitorGapSuggestions } from "@shared/competitorGapSuggestions";
+import { aiTestRuns, competitorProfiles, questions } from "../drizzle/schema";
 
 type DbConn = NonNullable<Awaited<ReturnType<typeof import("./db").getDb>>>;
 
@@ -51,8 +52,11 @@ export async function resolveCompetitorAnalysisSummary(db: DbConn, projectId: nu
       .orderBy(competitorProfiles.updatedAt),
     db
       .select({
+        questionId: aiTestRuns.questionId,
         competitorNames: aiTestRuns.competitorNames,
         mentionedCompany: aiTestRuns.mentionedCompany,
+        recommendedCompany: aiTestRuns.recommendedCompany,
+        competitorMentioned: aiTestRuns.competitorMentioned,
       })
       .from(aiTestRuns)
       .where(eq(aiTestRuns.projectId, projectId)),
@@ -64,6 +68,20 @@ export async function resolveCompetitorAnalysisSummary(db: DbConn, projectId: nu
     runs.map(run => run.competitorNames ?? []),
   );
   const brandAiMentionCount = runs.filter(run => run.mentionedCompany).length;
+
+  const questionIds = Array.from(new Set(runs.map(run => run.questionId)));
+  const questionTypeByQuestionId = new Map<number, string>();
+  if (questionIds.length > 0) {
+    const qRows = await db
+      .select({ id: questions.id, questionType: questions.questionType })
+      .from(questions)
+      .where(inArray(questions.id, questionIds));
+    for (const row of qRows) {
+      questionTypeByQuestionId.set(row.id, row.questionType);
+    }
+  }
+
+  const gapSuggestions = buildCompetitorGapSuggestions(runs, questionTypeByQuestionId);
 
   const input = {
     brandName,
@@ -78,5 +96,6 @@ export async function resolveCompetitorAnalysisSummary(db: DbConn, projectId: nu
     totalAiTestRuns: runs.length,
     competitors: buildCompetitorAnalysisRows(input),
     contentSuggestions: buildCompetitorContentSuggestions(input),
+    gapSuggestions,
   } as const;
 }
