@@ -41,6 +41,10 @@ import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceM
 import { resolveT0T1ComparisonRows } from "@shared/retestComparisonDisplay";
 import { downloadDeliveryReportCsv } from "@/lib/geoDataExportDownload";
 import type { DetectionQuestionExportRow } from "@shared/geoDataExport";
+import {
+  formatPlatformDistributionLine,
+  formatPublishSuccessRatePercent,
+} from "@shared/deliveryReportPublishStats";
 import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -106,6 +110,10 @@ export function DeliveryReportsCenterPage() {
   const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
   const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
+  const publishStatsQuery = trpc.publishTasks.projectStats.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const retestQueueQuery = trpc.geo.articles.retestQueue.useQuery(
     { projectId: selectedProjectId! },
@@ -140,6 +148,7 @@ export function DeliveryReportsCenterPage() {
     analysisQuery.isLoading ||
     articlesQuery.isLoading ||
     publishRecordsQuery.isLoading ||
+    publishStatsQuery.isLoading ||
     monitoringQuery.isLoading;
 
   const score = scoreQuery.data as Record<string, unknown> | null | undefined;
@@ -609,6 +618,42 @@ export function DeliveryReportsCenterPage() {
                 ))}
             </ul>
           )}
+        </P0Section>
+
+        <P0Section
+          title="发布统计"
+          description="基于发布任务（publish_tasks）汇总，反映自动/客户端发布尝试与成功情况。"
+        >
+          <div className="space-y-4" data-testid="delivery-report-publish-stats">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <P0MetricTile
+                label="总发布次数"
+                value={String(publishStatsQuery.data?.totalPublishCount ?? 0)}
+                hint="项目下全部发布任务数"
+              />
+              <P0MetricTile
+                label="发布成功率"
+                value={formatPublishSuccessRatePercent(publishStatsQuery.data?.successRatePercent ?? null)}
+                hint={
+                  publishStatsQuery.data &&
+                  publishStatsQuery.data.completedCount + publishStatsQuery.data.failedCount > 0
+                    ? `成功 ${publishStatsQuery.data.completedCount} / 失败 ${publishStatsQuery.data.failedCount}`
+                    : "暂无已完成或失败的任务"
+                }
+              />
+              <P0MetricTile
+                label="本周发布数量"
+                value={String(publishStatsQuery.data?.weekPublishCount ?? 0)}
+                hint={publishStatsQuery.data?.weekRangeLabel ?? "当前自然周"}
+              />
+            </div>
+            <P0Card testId="delivery-report-publish-stats-platforms">
+              <p className="text-xs font-medium text-gray-500">各平台发布分布</p>
+              <p className="mt-2 text-sm leading-relaxed text-gray-800">
+                {formatPlatformDistributionLine(publishStatsQuery.data?.platformDistribution ?? [])}
+              </p>
+            </P0Card>
+          </div>
         </P0Section>
 
         <P0Section title="发布内容清单" description="已登记并回填公开链接的发布文章列表。">
