@@ -102,6 +102,18 @@ describe("delivery report visual hierarchy (C3-A / C3-B)", () => {
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("competitorComparison");
   });
 
+  it("renders content quality summary on delivery report center (GEO-V1.1-Quality-Report)", () => {
+    const center = readProjectFile("client/src/pages/DeliveryReportsCenterPage.tsx");
+    expect(center).toContain('data-testid="delivery-report-content-quality"');
+    expect(center).toContain("内容质量");
+    expect(center).toContain("contentQualitySummary");
+    expect(center).toContain("平均质检分");
+    expect(readProjectFile("shared/deliveryReportContentQuality.ts")).toContain(
+      "buildDeliveryReportContentQualitySummary",
+    );
+    expect(readProjectFile("server/deliveryReportContentQuality.ts")).toContain("geoArticleQualityScores");
+  });
+
   it("anonymous report renders published content from publicShare", () => {
     expect(publicPage).toContain("publishedContent");
     expect(customerView).toContain("本轮新增 AI 搜索资产");

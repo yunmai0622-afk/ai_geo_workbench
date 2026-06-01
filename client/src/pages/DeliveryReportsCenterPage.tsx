@@ -45,6 +45,11 @@ import {
   formatPlatformDistributionLine,
   formatPublishSuccessRatePercent,
 } from "@shared/deliveryReportPublishStats";
+import {
+  formatContentQualityPlatformDistributionLine,
+  type DeliveryReportContentQualityFailedItem,
+  type DeliveryReportContentQualityPriorityItem,
+} from "@shared/deliveryReportContentQuality";
 import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -114,6 +119,10 @@ export function DeliveryReportsCenterPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const contentQualityQuery = trpc.geo.reports.contentQualitySummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const retestQueueQuery = trpc.geo.articles.retestQueue.useQuery(
     { projectId: selectedProjectId! },
@@ -149,6 +158,7 @@ export function DeliveryReportsCenterPage() {
     articlesQuery.isLoading ||
     publishRecordsQuery.isLoading ||
     publishStatsQuery.isLoading ||
+    contentQualityQuery.isLoading ||
     monitoringQuery.isLoading;
 
   const score = scoreQuery.data as Record<string, unknown> | null | undefined;
@@ -628,6 +638,90 @@ export function DeliveryReportsCenterPage() {
                 ))}
             </ul>
           )}
+        </P0Section>
+
+        <P0Section
+          title="内容质量"
+          description="基于已生成内容与 GEO 质检评分汇总，反映内容生产阶段质量，不承诺发布或收录结果。"
+        >
+          <div className="space-y-4" data-testid="delivery-report-content-quality">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <P0MetricTile
+                label="平均质检分"
+                value={
+                  contentQualityQuery.data?.averageScore != null
+                    ? String(contentQualityQuery.data.averageScore)
+                    : "—"
+                }
+                hint={
+                  contentQualityQuery.data
+                    ? `已评分 ${contentQualityQuery.data.scoredArticleCount} / 已生成 ${contentQualityQuery.data.generatedArticleCount} 篇`
+                    : "完成内容生成与质检后展示"
+                }
+              />
+              <P0MetricTile
+                label="已生成内容"
+                value={String(contentQualityQuery.data?.generatedArticleCount ?? 0)}
+                hint="不含仍为「待生成」的选题占位"
+              />
+              <P0MetricTile
+                label="质检未通过"
+                value={String(contentQualityQuery.data?.failedItems.length ?? 0)}
+                hint="低于参考线、合规阻断或状态为未通过"
+              />
+            </div>
+            <P0Card testId="delivery-report-content-quality-platforms">
+              <p className="text-xs font-medium text-gray-500">各平台内容质量分布</p>
+              <p className="mt-2 text-sm leading-relaxed text-gray-800">
+                {formatContentQualityPlatformDistributionLine(
+                  contentQualityQuery.data?.platformDistribution ?? [],
+                )}
+              </p>
+            </P0Card>
+            <P0Card testId="delivery-report-content-quality-failed">
+              <p className="text-xs font-medium text-gray-500">质检未通过内容</p>
+              {(contentQualityQuery.data?.failedItems.length ?? 0) === 0 ? (
+                <p className="mt-2 text-sm text-gray-600">当前无质检未通过内容。</p>
+              ) : (
+                <ul className="mt-3 space-y-2 text-sm text-gray-800">
+                  {contentQualityQuery.data!.failedItems.map((item: DeliveryReportContentQualityFailedItem) => (
+                    <li
+                      key={item.articleId}
+                      className="rounded-lg border border-red-100 bg-red-50/50 px-4 py-3"
+                    >
+                      <p className="font-medium text-gray-900">
+                        {item.title}
+                        {item.totalScore != null ? ` · ${item.totalScore} 分` : ""}
+                      </p>
+                      <p className="mt-1 text-gray-600">{item.platformLabel}</p>
+                      <p className="mt-1 text-red-900/90">{item.reasons.join("；")}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </P0Card>
+            <P0Card testId="delivery-report-content-quality-priority">
+              <p className="text-xs font-medium text-gray-500">建议优先优化</p>
+              {(contentQualityQuery.data?.priorityItems.length ?? 0) === 0 ? (
+                <p className="mt-2 text-sm text-gray-600">暂无待优先优化的低分内容。</p>
+              ) : (
+                <ul className="mt-3 space-y-2 text-sm text-gray-800">
+                  {contentQualityQuery.data!.priorityItems.map((item: DeliveryReportContentQualityPriorityItem) => (
+                    <li
+                      key={item.articleId}
+                      className="rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3"
+                    >
+                      <p className="font-medium text-gray-900">
+                        {item.title} · {item.totalScore} 分
+                      </p>
+                      <p className="mt-1 text-gray-600">{item.platformLabel}</p>
+                      <p className="mt-1 text-amber-950/90">{item.suggestion}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </P0Card>
+          </div>
         </P0Section>
 
         <P0Section
