@@ -6,6 +6,7 @@ import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionM
 import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
 import { CREATE_PROJECT_FAILED_USER_MESSAGE } from "@shared/userFacingMutationErrors";
 import { CONTENT_REVIEW_STATUSES } from "@shared/contentReviewStatus";
+import { computeContentTagStats, normalizeContentTags } from "@shared/geoArticleContentTags";
 import {
   assertLlmConfiguredForDiagnosis,
   classifyGeoDiagnosisLlmError,
