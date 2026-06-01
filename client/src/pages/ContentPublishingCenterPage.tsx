@@ -7,8 +7,10 @@ import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/P
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
-import { PostPublishReminderCard } from "@/components/publishing/PostPublishReminderCard";
+import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
+import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { PublishRecordsCalendar } from "@/components/publishing/PublishRecordsCalendar";
+import { PublishAccountSessionAlert } from "@/components/publishing/PublishAccountSessionAlert";
 import { PublishRecordsListPanel } from "@/components/publishing/PublishRecordsListPanel";
 import { PublishTaskColumnBoard } from "@/components/publishing/PublishTaskColumnBoard";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
@@ -25,6 +27,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { recordPublicLink, publishStatusLabel } from "@/lib/assetProgressDisplay";
@@ -46,9 +49,17 @@ import {
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
+import {
+  formatPublishSuccessPlatformPhrase,
+  resolvePublishSuccessArticleUrl,
+} from "@shared/publishSuccessNotification";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "wouter";
 import { toast } from "sonner";
+
+type PublishSuccessNotice = {
+  platformLabel: string;
+  articleUrl: string | null;
+};
 
 type ArticleRow = {
   id: number;
@@ -184,7 +195,7 @@ export function ContentPublishingCenterPage() {
   const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
-  const [showPostPublishReminder, setShowPostPublishReminder] = useState(false);
+  const [publishSuccessNotice, setPublishSuccessNotice] = useState<PublishSuccessNotice | null>(null);
   const completedAgentTaskIdsRef = useRef<Set<number>>(new Set());
   const completedAgentTasksInitializedRef = useRef(false);
 
@@ -214,7 +225,7 @@ export function ContentPublishingCenterPage() {
   useEffect(() => {
     completedAgentTaskIdsRef.current = new Set();
     completedAgentTasksInitializedRef.current = false;
-    setShowPostPublishReminder(false);
+    setPublishSuccessNotice(null);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -227,7 +238,13 @@ export function ContentPublishingCenterPage() {
     const newlyCompleted = completedIds.filter(id => !completedAgentTaskIdsRef.current.has(id));
     if (newlyCompleted.length > 0) {
       newlyCompleted.forEach(id => completedAgentTaskIdsRef.current.add(id));
-      setShowPostPublishReminder(true);
+      const tasks = agentTasks.filter(t => newlyCompleted.includes(t.id));
+      setPublishSuccessNotice({
+        platformLabel: formatPublishSuccessPlatformPhrase(
+          tasks.map(t => publishPlatformCustomerLabel(t.platform)),
+        ),
+        articleUrl: resolvePublishSuccessArticleUrl(tasks.map(t => t.resultUrl)),
+      });
     }
   }, [agentTasks]);
 
@@ -249,13 +266,17 @@ export function ContentPublishingCenterPage() {
     return keys;
   }, [inclusionMonitoringQuery.data]);
 
+  const { checking: accountHealthChecking, agentOnline: accountHealthAgentOnline, runCheck: runAccountHealthCheck } =
+    usePublishAccountHealthCheck(selectedProjectId ?? null, enabled);
+
   const refreshAgentHealth = useCallback(async () => {
     setCheckingAgent(true);
     try {
       const h = await checkLocalAgentHealth();
       setLocalAgentOnline(h?.ok ?? false);
       setLocalAgentClientVersion(h?.version?.trim() ? h.version.trim() : null);
-      if (selectedProjectId) {
+      await runAccountHealthCheck({ detectSessions: true });
+      if (!h?.ok && selectedProjectId) {
         await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
       }
     } catch {
@@ -264,12 +285,22 @@ export function ContentPublishingCenterPage() {
     } finally {
       setCheckingAgent(false);
     }
-  }, [selectedProjectId, utils.geo.platformAccounts.list]);
+  }, [runAccountHealthCheck, selectedProjectId, utils.geo.platformAccounts.list]);
 
   useEffect(() => {
     if (!enabled) return;
-    void refreshAgentHealth();
-  }, [enabled, selectedProjectId, refreshAgentHealth]);
+    const h = checkLocalAgentHealth();
+    void h.then(health => {
+      setLocalAgentOnline(health?.ok ?? false);
+      setLocalAgentClientVersion(health?.version?.trim() ? health.version.trim() : null);
+    });
+  }, [enabled, selectedProjectId]);
+
+  useEffect(() => {
+    if (accountHealthAgentOnline != null) {
+      setLocalAgentOnline(accountHealthAgentOnline);
+    }
+  }, [accountHealthAgentOnline]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -302,10 +333,12 @@ export function ContentPublishingCenterPage() {
     });
   }, [publishRecords]);
 
+  const platformAccountGroups = platformAccountsQuery.data?.accounts ?? [];
+
   const boundPlatformCount = useMemo(() => {
-    const groups = platformAccountsQuery.data?.accounts ?? [];
-    return groups.filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled)).length;
-  }, [platformAccountsQuery.data]);
+    return platformAccountGroups.filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled))
+      .length;
+  }, [platformAccountGroups]);
 
   const taskCards = useMemo(() => {
     const cards: PublishTaskCardModel[] = agentTasks.map(task => {
@@ -490,7 +523,10 @@ export function ContentPublishingCenterPage() {
       await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
       setManualLink("");
       if (url) {
-        setShowPostPublishReminder(true);
+        setPublishSuccessNotice({
+          platformLabel: manualPlatform,
+          articleUrl: resolvePublishSuccessArticleUrl([url]),
+        });
       }
       toast.success("已登记发布记录");
     } catch (e) {
@@ -561,6 +597,16 @@ export function ContentPublishingCenterPage() {
       />
 
       {selectedProjectId ? (
+        <PublishAccountSessionAlert
+          projectId={selectedProjectId}
+          groups={platformAccountGroups}
+          checking={accountHealthChecking}
+          agentOnline={accountHealthAgentOnline ?? localAgentOnline}
+          onAfterRelogin={() => void runAccountHealthCheck({ detectSessions: true })}
+        />
+      ) : null}
+
+      {selectedProjectId ? (
         <PlatformStatusOverview projectId={selectedProjectId} />
       ) : null}
 
@@ -568,14 +614,11 @@ export function ContentPublishingCenterPage() {
         <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
       ) : null}
 
-      <PostPublishReminderCard
-        visible={showPostPublishReminder}
-        onDismiss={() => setShowPostPublishReminder(false)}
-        onGoInclusionMonitoring={() => {
-          if (selectedProjectId) {
-            setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId));
-          }
-        }}
+      <PublishSuccessNotificationCard
+        visible={Boolean(publishSuccessNotice)}
+        platformLabel={publishSuccessNotice?.platformLabel ?? ""}
+        articleUrl={publishSuccessNotice?.articleUrl}
+        onDismiss={() => setPublishSuccessNotice(null)}
       />
 
       <Tabs defaultValue="tasks" className="space-y-4">
@@ -641,7 +684,7 @@ export function ContentPublishingCenterPage() {
                 boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
                 pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
               }}
-              checking={checkingAgent}
+              checking={checkingAgent || accountHealthChecking}
               onRefresh={() => void refreshAgentHealth()}
               updateNotice={localAgentUpdateNotice}
             />
@@ -654,7 +697,7 @@ export function ContentPublishingCenterPage() {
             <LocalAccountBindingGuideCard
               localAgentOnline={localAgentOnline}
               boundPlatformCount={boundPlatformCount}
-              checking={checkingAgent}
+              checking={checkingAgent || accountHealthChecking}
               onRefresh={() => void refreshAgentHealth()}
             />
 
