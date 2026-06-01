@@ -23,6 +23,7 @@ import {
   type PublishRecordForDisplay,
 } from "@/lib/assetProgressDisplay";
 import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
+import { T1RetestReminderCard } from "@/components/diagnosis/T1RetestReminderCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection, type ProjectOption } from "@/hooks/useActiveProjectSelection";
@@ -68,6 +69,7 @@ import {
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
 import { T0DiagnosisVisualizationPanel } from "@/components/diagnosis/T0DiagnosisVisualizationPanel";
+import { T1_RETEST_AUTO_TRIGGER_CTA_PATH } from "@shared/t1RetestAutoTrigger";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
   { value: "manual_check", label: "人工复测" },
@@ -2677,6 +2679,10 @@ export function InclusionMonitoringFlowPage() {
   const utils = trpc.useUtils();
   const selection = useProjectSelection();
   const { projects, selectedProjectId, selectedProject, projectInput, enabled, isLoading: projectsLoading } = selection;
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const records = (monitoringQuery.data ?? []) as MonitoringRecordLike[];
@@ -2788,6 +2794,16 @@ export function InclusionMonitoringFlowPage() {
         message="发布内容后在这里追踪AI是否收录了你的内容"
         data-testid="first-use-hint-inclusion-monitoring"
       />
+
+      {workspaceSummaryQuery.data?.showT1RetestAutoTriggerReminder && selectedProjectId ? (
+        <T1RetestReminderCard
+          visible
+          testId="inclusion-monitoring-t1-retest-reminder"
+          onGoRetest={() =>
+            setLocation(buildProjectUrl(T1_RETEST_AUTO_TRIGGER_CTA_PATH, selectedProjectId))
+          }
+        />
+      ) : null}
 
       {/* --- 收录概览卡 --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

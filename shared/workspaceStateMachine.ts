@@ -109,6 +109,8 @@ export type WorkspaceSummaryMetrics = {
   hasGeoScore: boolean;
   hasCompletedT0Baseline: boolean;
   hasCompletedT1Retest: boolean;
+  /** 有 completed 发布且超过 7 天、且无 completed T1 复测 */
+  showT1RetestAutoTriggerReminder: boolean;
   p0ProfileComplete: boolean;
 };
 

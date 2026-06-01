@@ -14,6 +14,7 @@ import {
   testRounds,
 } from "../drizzle/schema";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
+import { shouldShowT1RetestAutoTriggerReminder } from "@shared/t1RetestAutoTrigger";
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
 import { isP0GeoProfileComplete } from "@shared/workspaceStateMachine";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
@@ -48,6 +49,7 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     publishRows,
     taskCountRows,
     completedTaskCountRows,
+    completedPublishTaskRows,
     analysisRows,
     scoreRows,
     monitoringRows,
@@ -68,6 +70,15 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       .where(eq(publishTasks.projectId, projectId)),
     db
       .select({ count: sql<number>`count(*)` })
+      .from(publishTasks)
+      .where(and(eq(publishTasks.projectId, projectId), eq(publishTasks.status, "completed"))),
+    db
+      .select({
+        status: publishTasks.status,
+        agentFinishedAt: publishTasks.agentFinishedAt,
+        updatedAt: publishTasks.updatedAt,
+        createdAt: publishTasks.createdAt,
+      })
       .from(publishTasks)
       .where(and(eq(publishTasks.projectId, projectId), eq(publishTasks.status, "completed"))),
     db.select({ id: analysisResults.id }).from(analysisResults).where(eq(analysisResults.projectId, projectId)).limit(1),
@@ -177,6 +188,10 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     hasGeoScore: scoreRows.length > 0,
     hasCompletedT0Baseline: hasCompletedT0Baseline(testRoundRows),
     hasCompletedT1Retest: hasCompletedT1Retest(testRoundRows),
+    showT1RetestAutoTriggerReminder: shouldShowT1RetestAutoTriggerReminder({
+      completedPublishTasks: completedPublishTaskRows,
+      testRounds: testRoundRows,
+    }),
     p0ProfileComplete: isP0GeoProfileComplete(profileRecord),
   } as const;
 }

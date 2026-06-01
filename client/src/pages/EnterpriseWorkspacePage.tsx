@@ -1,3 +1,4 @@
+import { T1RetestReminderCard } from "@/components/diagnosis/T1RetestReminderCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
@@ -19,6 +20,7 @@ import {
   toMainChainProgressInput,
   type MainChainStepView,
 } from "@shared/workspaceMainChain";
+import { T1_RETEST_AUTO_TRIGGER_CTA_PATH } from "@shared/t1RetestAutoTrigger";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -86,6 +88,15 @@ export default function EnterpriseWorkspacePage() {
         message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
         data-testid="first-use-hint-workspace"
       />
+      {metrics?.showT1RetestAutoTriggerReminder && selectedProjectId ? (
+        <T1RetestReminderCard
+          visible
+          testId="workspace-t1-retest-reminder"
+          onGoRetest={() =>
+            setLocation(buildProjectUrl(T1_RETEST_AUTO_TRIGGER_CTA_PATH, selectedProjectId))
+          }
+        />
+      ) : null}
       {summaryQuery.isLoading ? (
         <p className="text-sm text-gray-400">加载工作台数据…</p>
       ) : summaryQuery.isError ? (

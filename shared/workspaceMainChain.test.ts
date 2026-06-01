@@ -31,6 +31,7 @@ const baseMetrics = (): WorkspaceSummaryMetrics => ({
   hasGeoScore: false,
   hasCompletedT0Baseline: false,
   hasCompletedT1Retest: false,
+  showT1RetestAutoTriggerReminder: false,
   p0ProfileComplete: true,
 });
 
