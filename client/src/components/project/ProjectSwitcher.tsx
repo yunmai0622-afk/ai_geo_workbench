@@ -11,6 +11,7 @@ import { buildProjectUrl, setActiveProjectId } from "@/lib/activeProject";
 import { formatGeoScore } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { GeoScoreWeightExplanationHelp } from "@/components/geo/GeoScoreWeightExplanationHelp";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -64,7 +65,14 @@ export function ProjectSwitcher({
           data-testid="project-switcher-trigger"
         >
           <span className="min-w-0 truncate text-sm md:text-[15px]">{triggerLabel}</span>
-          <span className="shrink-0 text-xs font-medium text-gray-400">GEO {scoreText}</span>
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-gray-400">
+            GEO {scoreText}
+            <GeoScoreWeightExplanationHelp
+              testId="project-switcher-geo-score-explanation"
+              stopPropagation
+              className="p-0"
+            />
+          </span>
           {listLoading ? (
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gray-400" />
           ) : (

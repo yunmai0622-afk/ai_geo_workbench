@@ -1,3 +1,4 @@
+import { GeoScoreWeightExplanationHelp } from "@/components/geo/GeoScoreWeightExplanationHelp";
 import { T1RetestReminderCard } from "@/components/diagnosis/T1RetestReminderCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
@@ -23,7 +24,7 @@ import {
 import { T1_RETEST_AUTO_TRIGGER_CTA_PATH } from "@shared/t1RetestAutoTrigger";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
 import { AlertTriangle, ArrowRight } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 
 export default function EnterpriseWorkspacePage() {
@@ -138,7 +139,11 @@ export default function EnterpriseWorkspacePage() {
           {/* ═══ 数据摘要 + 快速操作 ═══ */}
           <section className="geo-card p-6" data-testid="workspace-header-card">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-              <MetricCell label="GEO 分" value={formatGeoScore(metrics.geoScore)} />
+              <MetricCell
+                label="GEO 分"
+                value={formatGeoScore(metrics.geoScore)}
+                labelSuffix={<GeoScoreWeightExplanationHelp />}
+              />
               <MetricCell label="品牌提及率" value={homeDisplay.brandMentionRateText} />
               <MetricCell label="推荐率" value={homeDisplay.recommendRateText} />
               <MetricCell label="最近实测" value={homeDisplay.lastAiTestLabel} />
@@ -196,10 +201,21 @@ export default function EnterpriseWorkspacePage() {
   );
 }
 
-function MetricCell({ label, value }: { label: string; value: string }) {
+function MetricCell({
+  label,
+  value,
+  labelSuffix,
+}: {
+  label: string;
+  value: string;
+  labelSuffix?: ReactNode;
+}) {
   return (
-    <div>
-      <p className="text-[11px] font-medium text-gray-400">{label}</p>
+    <div data-testid={label === "GEO 分" ? "workspace-geo-score-metric" : undefined}>
+      <div className="flex items-center gap-0.5">
+        <p className="text-[11px] font-medium text-gray-400">{label}</p>
+        {labelSuffix}
+      </div>
       <p className="mt-0.5 text-base font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
     </div>
   );
