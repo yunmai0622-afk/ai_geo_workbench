@@ -8,6 +8,7 @@ const NO_PUBLIC_LINK = "暂无公开链接，请先完成发布并回填链接�
 
 describe("Phase4 delivery report productization", () => {
   const page = read("client/src/pages/DeliveryReportsCenterPage.tsx");
+  const healthBrief = read("client/src/components/delivery/GeoHealthBriefCard.tsx");
   const display = read("client/src/lib/deliveryReportProductDisplay.ts");
   const flow = read("client/src/pages/V12FlowPages.tsx");
 
@@ -23,6 +24,10 @@ describe("Phase4 delivery report productization", () => {
       "delivery-report-page",
       "GEO 实验型交付报告",
       "delivery-report-hero",
+      "delivery-report-health-brief",
+      "健康度简报",
+      "生成本周摘要",
+      "复制文本",
       "delivery-report-detection-scope",
       "本期检测范围",
       "delivery-report-t0-baseline",
@@ -37,7 +42,6 @@ describe("Phase4 delivery report productization", () => {
       "内容引用率",
       "收录成功数",
       "待优化内容数",
-      "delivery-report-next-actions",
       "发布内容清单",
       "delivery-report-uncertainty",
       "不确定性说明",
@@ -46,7 +50,7 @@ describe("Phase4 delivery report productization", () => {
       "导出报告",
       "window.print",
     ]) {
-      expect(page + display).toContain(text);
+      expect(page + display + healthBrief).toContain(text);
     }
     expect(display).toContain("当前数据不足，完成发布后复测后将生成本轮 GEO 增长结论。");
     expect(display).toContain(NO_PUBLIC_LINK);
@@ -60,7 +64,6 @@ describe("Phase4 delivery report productization", () => {
       "发布内容清单",
       "收录与复测结果",
       "当前问题",
-      "下一轮优化建议",
       "DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER",
     ]) {
       expect(page).toContain(text);
