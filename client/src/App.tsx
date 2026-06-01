@@ -17,6 +17,7 @@ import NotFound from "@/pages/NotFound";
 import { Suspense } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { GeoIntroModal } from "./components/GeoIntroModal";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AnalysisPage, ProjectsPage, QuestionsPage, ResponsesPage, ScoresPage, TasksPage } from "./pages/GeoPages";
 import GeoPublicContentPage from "./pages/GeoPublicContent";
@@ -164,7 +165,12 @@ function AuthenticatedAppShell() {
     return <Redirect to={buildProjectUrl("/enterprise-profile", activeProjectId)} />;
   }
 
-  return <PrivateRoutes />;
+  return (
+    <>
+      <GeoIntroModal />
+      <PrivateRoutes />
+    </>
+  );
 }
 
 function Router() {
