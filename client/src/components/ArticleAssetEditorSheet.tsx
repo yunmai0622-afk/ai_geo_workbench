@@ -1,5 +1,6 @@
 import { ArticleContentEditMeta } from "@/components/ArticleContentEditMeta";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
+import { GeoArticleQualityScoreDetailPopover } from "@/components/GeoArticleQualityScoreDetailPopover";
 import { GeoQualityScore, type GeoQualityInitialState } from "@/components/GeoQualityScore";
 import { type GeoQualityReviewResult } from "@shared/geoQualityReview";
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,15 @@ export function ArticleAssetEditorSheet({
   onDirtyChange,
 }: ArticleAssetEditorSheetProps) {
   const updateArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
+  const qualityScoresQuery = trpc.geo.articles.latestQualityScores.useQuery(
+    { projectId },
+    { enabled: open && Boolean(article?.id) },
+  );
+  const articleQualityRow = useMemo(() => {
+    if (!article?.id) return null;
+    const rows = qualityScoresQuery.data ?? [];
+    return rows.find(row => row.articleId === article.id) ?? null;
+  }, [article?.id, qualityScoresQuery.data]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [template, setTemplate] = useState<ArticleCoverTemplateId>("ai-tech");
@@ -374,6 +384,25 @@ export function ArticleAssetEditorSheet({
               onChange={e => setContent(e.target.value)}
             />
           </div>
+
+          {article && articleQualityRow?.totalScore != null ? (
+            <div
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700"
+              data-testid="article-geo-quality-score-summary"
+            >
+              <p className="text-xs font-medium text-gray-500">内容 GEO 质检（质量检查记录）</p>
+              <p className="mt-1">
+                质检总分：
+                <GeoArticleQualityScoreDetailPopover
+                  qualityRow={articleQualityRow}
+                  testId="article-editor-geo-quality-detail"
+                >
+                  <span className="font-semibold text-gray-900">{articleQualityRow.totalScore} 分</span>
+                </GeoArticleQualityScoreDetailPopover>
+                <span className="ml-2 text-xs text-gray-500">点击查看五项评分明细</span>
+              </p>
+            </div>
+          ) : null}
 
           {article ? (
             <GeoQualityScore

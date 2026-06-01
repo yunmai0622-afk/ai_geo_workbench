@@ -1,4 +1,5 @@
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
+import { GeoArticleQualityScoreDetailPopover } from "@/components/GeoArticleQualityScoreDetailPopover";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,6 +8,7 @@ import { normalizeWeeklyPlatformKey } from "@/lib/weeklyPlatformBoard";
 import type { GeoQualityCardView } from "@shared/geoQualityScoreDisplay";
 import { shouldBlockPublishForGeoQuality } from "@shared/geoQualityStale";
 import type { resolveArticleLifecycleView } from "@shared/articleLifecycle";
+import type { GeoArticleQualityScoreRow } from "@shared/geoArticleQualityScoreDetail";
 import type { ContentCardStatus } from "@shared/weeklyContentAssetsDisplay";
 
 export type WeeklyArticleCardModel = {
@@ -23,6 +25,7 @@ export type WeeklyArticleCardModel = {
   statusFilterKey: ContentCardStatus;
   qualityView: GeoQualityCardView | null;
   qualityScore?: number | null;
+  qualityScoreRow?: GeoArticleQualityScoreRow | null;
   qualityFailHints?: string[];
   coverThumbnailSrc?: string | null;
   publishLink?: string | null;
@@ -85,7 +88,12 @@ export function WeeklyPlatformArticleCard(props: Props) {
       {model.qualityView ? (
         <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="weekly-card-quality">
           <span className="text-sm text-gray-600">质检分</span>
-          <span className="text-sm font-semibold tabular-nums text-gray-900">{model.qualityView.score}</span>
+          <GeoArticleQualityScoreDetailPopover
+            qualityRow={model.qualityScoreRow}
+            testId={`weekly-card-quality-detail-${model.id}`}
+          >
+            <span className="text-sm font-semibold tabular-nums text-gray-900">{model.qualityView.score}</span>
+          </GeoArticleQualityScoreDetailPopover>
           <span
             className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${model.qualityView.tier.badgeClassName}`}
             data-testid="weekly-card-quality-tier"

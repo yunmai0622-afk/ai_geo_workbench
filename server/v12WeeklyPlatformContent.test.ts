@@ -69,6 +69,10 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
     expect(read("client/src/components/weekly/WeeklyPlatformArticleCard.tsx")).toContain(
       "weekly-card-quality-fail-hints",
     );
+    expect(read("client/src/components/weekly/WeeklyPlatformArticleCard.tsx")).toContain(
+      "GeoArticleQualityScoreDetailPopover",
+    );
+    expect(read("shared/geoArticleQualityScoreDetail.ts")).toContain("实体清晰度");
     expect(weekly).toContain("加入发布队列");
     expect(weekly).toContain("weekly-batch-enqueue-publish");
     expect(weekly).toContain("weekly-filter-platform");
