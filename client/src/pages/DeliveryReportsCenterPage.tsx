@@ -537,6 +537,15 @@ export function DeliveryReportsCenterPage() {
           className="print:break-inside-avoid"
         />
 
+        <p
+          className="text-sm text-gray-600 print:hidden"
+          data-testid="delivery-report-export-backup-hint"
+        >
+          建议定期导出报告数据备份。
+          <br />
+          点击「导出CSV」保存本地副本。
+        </p>
+
         <div className="flex flex-wrap gap-3 print:hidden" data-testid="delivery-report-actions">
           <Button
             type="button"

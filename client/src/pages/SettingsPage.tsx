@@ -47,6 +47,24 @@ export default function SettingsPage() {
           </form>
         ) : null}
       </CardContent></Card>
+      <Card data-testid="settings-data-export-section">
+        <CardHeader>
+          <CardTitle>数据导出</CardTitle>
+          <CardDescription>以下数据可在对应页面导出为 CSV 文件，保存到本地备份</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="list-disc space-y-3 pl-5 text-sm text-gray-700">
+            <li>
+              <span className="font-medium text-gray-900">交付报告</span>
+              （交付报告页 → 导出 CSV）：检测问题列表、各平台 AI 提及与推荐情况、T0/T1 对比数据
+            </li>
+            <li>
+              <span className="font-medium text-gray-900">发布记录</span>
+              （内容发布页 → 导出发布记录）：文章标题、发布平台、发布时间、链接、发布状态
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   );
 }

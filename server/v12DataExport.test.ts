@@ -30,4 +30,16 @@ describe("GEO-V1.1-Data-Export static", () => {
     expect(shared).toContain("buildGeoReportCsvFilename");
     expect(shared).toContain("geo-report-");
   });
+
+  it("delivery report and settings expose backup export hints", () => {
+    const delivery = read("client/src/pages/DeliveryReportsCenterPage.tsx");
+    expect(delivery).toContain('data-testid="delivery-report-export-backup-hint"');
+    expect(delivery).toContain("建议定期导出报告数据备份");
+    expect(delivery).toContain("导出CSV");
+
+    const settings = read("client/src/pages/SettingsPage.tsx");
+    expect(settings).toContain('data-testid="settings-data-export-section"');
+    expect(settings).toContain("数据导出");
+    expect(settings).toContain("导出发布记录");
+  });
 });
