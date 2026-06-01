@@ -86,12 +86,14 @@ export async function emitWeeklyGrowthReportForProject(
         .where(eq(geoInclusionMonitoringRecords.projectId, projectId)),
       db
         .select({
-          roundType: testRounds.roundType,
-          status: testRounds.status,
-          finishedAt: testRounds.finishedAt,
-          roundName: testRounds.roundName,
           id: testRounds.id,
-          createdAt: testRounds.createdAt,
+          roundType: testRounds.roundType,
+          roundName: testRounds.roundName,
+          status: testRounds.status,
+          platforms: testRounds.platforms,
+          questionsCount: testRounds.questionsCount,
+          runsPerQuestion: testRounds.runsPerQuestion,
+          finishedAt: testRounds.finishedAt,
         })
         .from(testRounds)
         .where(eq(testRounds.projectId, projectId)),
@@ -112,7 +114,7 @@ export async function emitWeeklyGrowthReportForProject(
     publishRecords,
     articles: articleRows,
     monitoringRows,
-    testRounds: testRoundRows as unknown as TestRoundSummary[],
+    testRounds: testRoundRows satisfies TestRoundSummary[],
     t0MentionRate: t0Metrics?.mentionRate ?? null,
     t0RecommendRate: t0Metrics?.recommendRate ?? null,
     monitoringMentionRate: aiAggregate.questionCount > 0 ? aiAggregate.mentionRate : null,
