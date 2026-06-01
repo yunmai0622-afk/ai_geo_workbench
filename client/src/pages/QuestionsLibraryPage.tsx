@@ -25,6 +25,7 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { Library, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -102,14 +103,14 @@ export default function QuestionsLibraryPage() {
     onSuccess: async () => {
       await utils.geo.questions.list.invalidate(projectInput);
     },
-    onError: err => toast.error(err.message || "更新状态失败"),
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "更新状态失败")),
   });
   const deleteMutation = trpc.geo.questions.delete.useMutation({
     onSuccess: async () => {
       await utils.geo.questions.list.invalidate(projectInput);
       toast.success("问题已删除");
     },
-    onError: err => toast.error(err.message || "删除失败"),
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "删除失败")),
   });
   const createMutation = trpc.geo.questions.create.useMutation({
     onSuccess: async () => {
@@ -118,7 +119,7 @@ export default function QuestionsLibraryPage() {
       setAddOpen(false);
       setForm(defaultForm());
     },
-    onError: err => toast.error(err.message || "添加失败"),
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "添加失败")),
   });
   const updateMutation = trpc.geo.questions.update.useMutation({
     onSuccess: async () => {
@@ -127,14 +128,14 @@ export default function QuestionsLibraryPage() {
       setEditQuestion(null);
       setForm(defaultForm());
     },
-    onError: err => toast.error(err.message || "更新失败"),
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "更新失败")),
   });
   const generateMutation = trpc.geo.questions.generateTargetQuestions.useMutation({
     onSuccess: async result => {
       await utils.geo.questions.list.invalidate(projectInput);
       toast.success(buildGenerateMessage(result));
     },
-    onError: err => toast.error(err.message || "生成问题建议失败"),
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成问题建议失败")),
   });
 
   const questions = (questionsQuery.data ?? []) as QuestionRow[];

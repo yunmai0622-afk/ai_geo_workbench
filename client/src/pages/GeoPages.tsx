@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { AlertTriangle, Brain, FileBarChart2, FileText, RadioTower, Send, Target } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ type BasisInput = Record<string, any> | null | undefined;
 type TraceabilityInput = Array<{ sourceName?: string | null; isPublic?: boolean | number | null; manuallyConfirmed?: boolean | number | null }> | null | undefined;
 type PlatformAuthorizationInput = Array<{ platformName?: string | null; accountAlias?: string | null; authorizationStatus?: string | null }> | null | undefined;
 
+const toastMutationError = (err: unknown) => toast.error(toUserFacingErrorFromUnknown(err));
 const projectInput = (projectId?: number) => ({ projectId });
 const boolValue = (value: unknown) => value === true || value === 1;
 const textValue = (value: unknown, fallback = "待补充") => typeof value === "string" && value.trim() ? value : fallback;
@@ -160,10 +162,10 @@ export function QuestionsPage() {
   const analyses = trpc.geo.analysis.list.useQuery(input, { enabled });
   const score = trpc.geo.scores.latest.useQuery(input, { enabled });
   const tasks = trpc.geo.tasks.list.useQuery(input, { enabled });
-  const generateQuestions = trpc.geo.questions.generate.useMutation({ onSuccess: async () => { toast.success("客户问题已生成"); await utils.geo.questions.list.invalidate(); }, onError: error => toast.error(error.message) });
-  const runAnalysis = trpc.geo.analysis.run.useMutation({ onSuccess: async () => { toast.success("诊断结果已生成"); await utils.geo.analysis.list.invalidate(); }, onError: error => toast.error(error.message) });
-  const calculateScore = trpc.geo.scores.calculate.useMutation({ onSuccess: async () => { toast.success("内容评分已生成"); await utils.geo.scores.latest.invalidate(); }, onError: error => toast.error(error.message) });
-  const generateTasks = trpc.geo.tasks.generate.useMutation({ onSuccess: async () => { toast.success("下一步建议已生成"); await utils.geo.tasks.list.invalidate(); }, onError: error => toast.error(error.message) });
+  const generateQuestions = trpc.geo.questions.generate.useMutation({ onSuccess: async () => { toast.success("客户问题已生成"); await utils.geo.questions.list.invalidate(); }, onError: toastMutationError });
+  const runAnalysis = trpc.geo.analysis.run.useMutation({ onSuccess: async () => { toast.success("诊断结果已生成"); await utils.geo.analysis.list.invalidate(); }, onError: toastMutationError });
+  const calculateScore = trpc.geo.scores.calculate.useMutation({ onSuccess: async () => { toast.success("内容评分已生成"); await utils.geo.scores.latest.invalidate(); }, onError: toastMutationError });
+  const generateTasks = trpc.geo.tasks.generate.useMutation({ onSuccess: async () => { toast.success("下一步建议已生成"); await utils.geo.tasks.list.invalidate(); }, onError: toastMutationError });
   const q = questions.data ?? [];
   const r = responses.data ?? [];
   const a = analyses.data ?? [];
@@ -225,8 +227,8 @@ export function ArticlesPage() {
   const qualityScores = trpc.geo.articles.latestQualityScores.useQuery(input, { enabled });
   const records = trpc.geo.articles.publishRecords.useQuery(input, { enabled });
   const assetSummary = trpc.geo.assetLibrary.summary.useQuery(input, { enabled });
-  const generateTopics = trpc.geo.articles.topics.generate.useMutation({ onSuccess: async () => { toast.success("推荐选题已生成"); await utils.geo.articles.topics.list.invalidate(); }, onError: error => toast.error(error.message) });
-  const generateArticle = trpc.geo.articles.generate.useMutation({ onSuccess: async data => { toast.success("文章正文已生成"); setSelectedArticleId(data.articleId); await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.topics.list.invalidate()]); }, onError: error => toast.error(error.message) });
+  const generateTopics = trpc.geo.articles.topics.generate.useMutation({ onSuccess: async () => { toast.success("推荐选题已生成"); await utils.geo.articles.topics.list.invalidate(); }, onError: toastMutationError });
+  const generateArticle = trpc.geo.articles.generate.useMutation({ onSuccess: async data => { toast.success("文章正文已生成"); setSelectedArticleId(data.articleId); await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.topics.list.invalidate()]); }, onError: toastMutationError });
   const qualityCheck = trpc.geo.articles.qualityCheck.useMutation({
     onSuccess: async data => {
       const ext = data as { autoRewriteCount?: number; finalStatus?: string };
@@ -237,10 +239,10 @@ export function ArticlesPage() {
       else toast.warning(`质量未通过，请查看阻断原因${suffix}`);
       await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.latestQualityScores.invalidate()]);
     },
-    onError: error => toast.error(error.message),
+    onError: toastMutationError,
   });
-  const optimizeArticle = trpc.geo.articles.optimizeVersion.useMutation({ onSuccess: async () => { toast.success("已生成优化版本并保留旧版记录"); await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.latestQualityScores.invalidate()]); }, onError: error => toast.error(error.message) });
-  const publishArticle = trpc.geo.articles.publish.useMutation({ onSuccess: async data => { toast.success(`已发布：${data.publicPath}`); await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.publishRecords.invalidate()]); }, onError: error => toast.error(error.message) });
+  const optimizeArticle = trpc.geo.articles.optimizeVersion.useMutation({ onSuccess: async () => { toast.success("已生成优化版本并保留旧版记录"); await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.latestQualityScores.invalidate()]); }, onError: toastMutationError });
+  const publishArticle = trpc.geo.articles.publish.useMutation({ onSuccess: async data => { toast.success(`已发布：${data.publicPath}`); await Promise.all([utils.geo.articles.list.invalidate(), utils.geo.articles.publishRecords.invalidate()]); }, onError: toastMutationError });
   const latestScoreByArticle = new Map<number, Row>();
   for (const item of qualityScores.data ?? []) {
     if (!latestScoreByArticle.has(item.articleId)) latestScoreByArticle.set(item.articleId, item as Row);
@@ -345,7 +347,7 @@ export function ReportsPage() {
   const utils = trpc.useUtils();
   const { selectedProject, selectedProjectId, input, enabled } = useSelectedProject();
   const report = trpc.geo.reports.latest.useQuery(input, { enabled });
-  const generateReport = trpc.geo.reports.generate.useMutation({ onSuccess: async () => { toast.success("交付报告已生成"); await utils.geo.reports.latest.invalidate(); }, onError: error => toast.error(error.message) });
+  const generateReport = trpc.geo.reports.generate.useMutation({ onSuccess: async () => { toast.success("交付报告已生成"); await utils.geo.reports.latest.invalidate(); }, onError: toastMutationError });
   const reportTypes = ["内容诊断报告", "内容生产报告", "发布监测报告", "复测优化报告"];
   return (
     <PageShell title="交付报告" desc="交付报告页只展示 内容诊断报告、内容生产报告、发布监测报告、复测优化报告四类报告卡片，并保留风险说明。" enabled={enabled} projectName={selectedProject?.enterpriseName} guide={{ stage: "交付报告", completion: report.data ? 96 : 86, nextAction: report.data ? "查看并交付报告" : "生成交付报告", why: "报告把建档、诊断、内容、发布和监测串成客户可解释结果。", risk: "报告只能引用已确认事实，不承诺保证收录、排名或 AI 推荐。", ctaLabel: report.data ? "返回总览" : "生成交付报告", ctaPath: report.data ? "/" : "/delivery-reports" }}>

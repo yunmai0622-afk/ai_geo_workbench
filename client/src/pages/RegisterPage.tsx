@@ -5,12 +5,10 @@ import { trpc } from "@/lib/trpc";
 import { BarChart3 } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { TRPCClientError } from "@trpc/client";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 
 function registerErrorMessage(err: unknown): string {
-  if (err instanceof TRPCClientError) return err.message;
-  if (err instanceof Error) return err.message;
-  return "注册失败，请稍后重试";
+  return toUserFacingErrorFromUnknown(err, "注册失败，请稍后重试");
 }
 
 export default function RegisterPage() {

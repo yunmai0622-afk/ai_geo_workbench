@@ -9,6 +9,7 @@ import {
   type GeoQualityReviewResult,
 } from "@shared/geoQualityReview";
 import { GEO_QUALITY_STALE_EDITOR_HINT } from "@shared/geoQualityStale";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -95,7 +96,7 @@ export function GeoQualityScore({
         toast.success(`质检完成：${data.result.total} 分 · ${getGeoQualityLabel(data.result.recommendation)}`);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "质检失败，请稍后重试");
+      toast.error(toUserFacingErrorFromUnknown(e, "质检失败，请稍后重试"));
     }
   };
 

@@ -30,6 +30,7 @@ import {
 } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -278,7 +279,7 @@ export function ContentPublishingCenterPage() {
       await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
       toast.success("链接已更新");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "更新链接失败");
+      toast.error(toUserFacingErrorFromUnknown(e, "更新链接失败"));
     } finally {
       setSavingRowId(null);
     }
@@ -346,7 +347,7 @@ export function ContentPublishingCenterPage() {
       setManualLink("");
       toast.success("已登记发布记录");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "登记失败");
+      toast.error(toUserFacingErrorFromUnknown(e, "登记失败"));
     } finally {
       setSavingManual(false);
     }

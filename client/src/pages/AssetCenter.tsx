@@ -25,6 +25,7 @@ import {
   ENTERPRISE_INDUSTRY_OPTIONS,
   resolveIndustryFromStored,
 } from "@shared/enterpriseProfileIndustry";
+import { toUserFacingErrorFromUnknown, toUserFacingQueryError } from "@shared/userFacingErrors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
@@ -664,7 +665,7 @@ export default function AssetCenterPage() {
       : "待完善";
 
   const loading = projectsLoading || isLoading;
-  const queryError = projectsError?.message || summaryError?.message;
+  const queryError = toUserFacingQueryError(projectsError?.message || summaryError?.message);
   const saving =
     upsertProfile.isPending ||
     createCustomerCase.isPending ||
@@ -686,7 +687,7 @@ export default function AssetCenterPage() {
       await refreshSummary();
       setMessage(`${label}已保存。`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "保存失败");
+      setError(toUserFacingErrorFromUnknown(e, "保存失败"));
     }
   }
 
@@ -733,7 +734,7 @@ export default function AssetCenterPage() {
       setMessage("品牌资产建档已保存。");
       setLocation(buildProjectUrl("/ai-diagnosis", currentProjectId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "保存失败");
+      setError(toUserFacingErrorFromUnknown(e, "保存失败"));
     }
   }
 

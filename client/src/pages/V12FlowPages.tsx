@@ -75,6 +75,12 @@ const MONITORING_TEST_STAGE_DONE_LABEL: Record<AiTestStage, string> = {
 };
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { classifyGeoDiagnosisLlmError } from "@shared/geoDiagnosisLlmErrors";
+import { toPlatformContentGenerationError } from "@shared/platformContentGenerationErrors";
+import {
+  toUserFacingError,
+  toUserFacingErrorFromUnknown,
+  toUserFacingQueryError,
+} from "@shared/userFacingErrors";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Brain, ChevronDown, FileBarChart2, FileText, HelpCircle, RadioTower, Send, ShieldCheck } from "lucide-react";
@@ -476,10 +482,15 @@ function customerErrorMessage(value?: string) {
   const classified = classifyGeoDiagnosisLlmError(value);
   if (classified.code !== "NOT_LLM_ERROR") return classified.userMessage;
   if (/目标客户问题|指定问题/.test(value)) return "请先在下方点击「重新生成」，或手动添加「指定问题」类型问题，再运行诊断。";
-  if (/Internal Server Error|TRPCError|unexpected|TypeError/i.test(value)) {
-    return "内容诊断暂时无法完成，可能是上游服务异常。请稍后重试，或联系交付人员查看服务状态。";
-  }
-  return value;
+  return toUserFacingError(
+    value,
+    "内容诊断暂时无法完成，可能是上游服务异常。请稍后重试，或联系交付人员查看服务状态。",
+  );
+}
+
+function contentGenerationErrorMessage(value?: string) {
+  if (!value) return undefined;
+  return toPlatformContentGenerationError(value);
 }
 
 function scoreReason(score?: { totalScore?: number | null; aiVisibilityScore?: number | null; aiRecommendationScore?: number | null; contentAssetScore?: number | null } | null) {
@@ -1679,7 +1690,9 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     (articlesQuery.isFetching && articlesQuery.data === undefined) ||
     (scoresQuery.isFetching && scoresQuery.data === undefined) ||
     (contentPlanQuery.isFetching && contentPlanQuery.data === undefined);
-  const pageError = assetSummaryQuery.error?.message || analysisQuery.error?.message || tasksQuery.error?.message || topicsQuery.error?.message || articlesQuery.error?.message || scoresQuery.error?.message || contentPlanQuery.error?.message;
+  const pageError = contentGenerationErrorMessage(
+    assetSummaryQuery.error?.message || analysisQuery.error?.message || tasksQuery.error?.message || topicsQuery.error?.message || articlesQuery.error?.message || scoresQuery.error?.message || contentPlanQuery.error?.message,
+  );
   const selectedTask = tasks.find(task => task.id === selectedTaskId);
   const planTaskIdSet = new Set(contentPlan.taskIds);
   const visibleTopics =
@@ -1872,7 +1885,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
       ]);
       setMessage(`内容生产计划已保存，刷新页面后仍可读回。计划 ID：${result.planId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存内容生产计划失败");
+      setError(toUserFacingErrorFromUnknown(err, "保存内容生产计划失败"));
     }
   }
 
@@ -1905,7 +1918,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
       startTransition(() => setSelectedTopicId(nextTopic.id));
       setMessage("已根据优化任务同步内容选题，请选择一个选题生成 1 篇文章。");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "生成内容选题失败");
+      setError(toUserFacingErrorFromUnknown(err, "生成内容选题失败"));
     }
   }
 
@@ -1958,7 +1971,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
         setMessage(`内容已生成并完成质量检查（${totalScore ?? "—"} 分）。请查看下方质量检查结果。`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "生成内容失败");
+      setError(contentGenerationErrorMessage(err instanceof Error ? err.message : "生成内容失败") ?? "生成内容失败");
     }
   }
 
@@ -2033,7 +2046,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
       ]);
       setMessage(formatQualityCheckMessage(result as { quality?: QualityScoreLike; autoRewriteCount?: number; finalStatus?: string }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "文章质量检查失败");
+      setError(toUserFacingErrorFromUnknown(err, "文章质量检查失败"));
     }
   }
 
@@ -2607,7 +2620,7 @@ export function InclusionMonitoringFlowPage() {
       }
       await monitoringQuery.refetch();
     },
-    onError: e => toast.error(e.message),
+    onError: e => toast.error(toUserFacingErrorFromUnknown(e, "补录监测记录失败")),
   });
 
   const runCheck = trpc.geo.aiMentionCheck.run.useMutation({
@@ -2622,7 +2635,7 @@ export function InclusionMonitoringFlowPage() {
       }
       await monitoringQuery.refetch();
     },
-    onError: e => toast.error(e.message),
+    onError: e => toast.error(toUserFacingErrorFromUnknown(e, "监测检测失败")),
     onSettled: () => setRunningRecordId(null),
   });
 

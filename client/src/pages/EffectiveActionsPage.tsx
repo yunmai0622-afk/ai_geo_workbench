@@ -42,6 +42,7 @@ import {
 } from "@/lib/effectiveActionsDisplay";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { ClipboardList, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -82,7 +83,7 @@ export default function EffectiveActionsPage() {
       setForm(defaultCreateForm());
     },
     onError: err => {
-      toast.error(err.message || "保存失败，请稍后重试");
+      toast.error(toUserFacingErrorFromUnknown(err, "保存失败，请稍后重试"));
     },
   });
 

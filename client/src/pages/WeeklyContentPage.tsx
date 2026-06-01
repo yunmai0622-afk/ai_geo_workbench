@@ -102,6 +102,7 @@ import {
   toPlatformContentGenerationError,
   PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE,
 } from "@shared/platformContentGenerationErrors";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
 import {
   GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE,
@@ -1210,7 +1211,7 @@ export default function WeeklyContentPage() {
       await invalidateArticles();
       toast.success("封面已重新生成");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "封面生成失败，可重试");
+      toast.error(toUserFacingErrorFromUnknown(err, "封面生成失败，可重试"));
     } finally {
       setRegeneratingCoverIds(prev => {
         const next = new Set(prev);
@@ -1393,7 +1394,7 @@ export default function WeeklyContentPage() {
       setPublishArticle(null);
       void pollPublishTasksUntilDone(articleId, taskIds);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "创建发布任务失败");
+      toast.error(toUserFacingErrorFromUnknown(err, "创建发布任务失败"));
     }
   };
 

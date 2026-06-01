@@ -6,6 +6,7 @@ import { workspaceCtaUrl, type WorkspaceStageDefinition } from "@shared/workspac
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { ProjectSwitcher } from "./ProjectSwitcher";
 
 type Props = {
   enterpriseName?: string | null;

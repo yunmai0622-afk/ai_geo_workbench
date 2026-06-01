@@ -23,7 +23,7 @@ import { getLoginUrl, isLoginConfigured } from "@/const";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
-import { TRPCClientError } from "@trpc/client";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
@@ -177,7 +177,7 @@ export default function DashboardLayout({
       window.location.href = "/clients";
     },
     onError: err => {
-      setEmailLoginError(err instanceof TRPCClientError ? err.message : "登录失败，请稍后重试");
+      setEmailLoginError(toUserFacingErrorFromUnknown(err, "登录失败，请稍后重试"));
     },
   });
 
@@ -215,7 +215,11 @@ export default function DashboardLayout({
               <Button onClick={() => devLogin.mutate()} disabled={devLogin.isPending} size="lg" className="w-full bg-blue-600 text-white hover:bg-blue-700">
                 {devLogin.isPending ? "正在登录" : "本地开发登录"}
               </Button>
-              {devLogin.error ? <p className="text-sm leading-6 text-red-600">{devLogin.error.message}</p> : null}
+              {devLogin.error ? (
+                <p className="text-sm leading-6 text-red-600">
+                  {toUserFacingErrorFromUnknown(devLogin.error, "开发登录失败，请稍后重试")}
+                </p>
+              ) : null}
             </div>
           )}
 

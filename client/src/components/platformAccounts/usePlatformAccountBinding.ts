@@ -18,6 +18,7 @@ import {
   PLATFORM_PUBLISH_CAPABILITY,
   type BindingPublishPlatform,
 } from "@shared/platformAccountVerify";
+import { toUserFacingError, toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -182,7 +183,7 @@ export function usePlatformAccountBinding(projectId: number) {
       await openLocalAgentLogin(profile.profileId);
       toast.success(`请在本地客户端窗口中完成${label}登录`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "绑定流程失败");
+      toast.error(toUserFacingErrorFromUnknown(e, "绑定流程失败"));
       resetBindFlow();
     } finally {
       setBindBusy(false);
@@ -200,9 +201,11 @@ export function usePlatformAccountBinding(projectId: number) {
     try {
       const result = await detectLocalAgentAccount(localProfileId);
       if (!result.ok || !result.accountName) {
-        const msg =
+        const msg = toUserFacingError(
           result.message ??
-          `未检测到${PUBLISH_PLATFORM_LABELS[selectedPlatform]}登录账号，请先在打开窗口中登录`;
+            `未检测到${PUBLISH_PLATFORM_LABELS[selectedPlatform]}登录账号，请先在打开窗口中登录`,
+          "未检测到登录账号，请先在打开窗口中登录",
+        );
         setBindStatusText(msg);
         toast.error(msg);
         setBindStep("login_opened");
@@ -212,7 +215,7 @@ export function usePlatformAccountBinding(projectId: number) {
       openConfirmDialog(result.accountName, formAccountRole, formAccountGroup);
       toast.success(`已检测到账号「${result.accountName}」`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "检测失败");
+      toast.error(toUserFacingErrorFromUnknown(e, "检测失败"));
       setBindStep("login_opened");
     } finally {
       setBindBusy(false);
@@ -265,7 +268,7 @@ export function usePlatformAccountBinding(projectId: number) {
       setEditOpen(false);
       resetBindFlow();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "保存失败");
+      toast.error(toUserFacingErrorFromUnknown(e, "保存失败"));
     }
   };
 
@@ -276,7 +279,7 @@ export function usePlatformAccountBinding(projectId: number) {
       await invalidate();
       toast.success("已删除");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "删除失败");
+      toast.error(toUserFacingErrorFromUnknown(e, "删除失败"));
     }
   };
 
@@ -286,7 +289,7 @@ export function usePlatformAccountBinding(projectId: number) {
       await invalidate();
       toast.success(enabled ? "已启用" : "已禁用");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "操作失败");
+      toast.error(toUserFacingErrorFromUnknown(e, "操作失败"));
     }
   };
 
@@ -333,7 +336,7 @@ export function usePlatformAccountBinding(projectId: number) {
       await invalidate();
       toast.success("登录状态已更新");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "检测失败");
+      toast.error(toUserFacingErrorFromUnknown(e, "检测失败"));
     } finally {
       setBindBusy(false);
     }
@@ -353,7 +356,7 @@ export function usePlatformAccountBinding(projectId: number) {
       await openLocalAgentLogin(row.localProfileId);
       toast.success("已打开登录窗口，请完成登录后点击「检测登录态」");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "无法打开登录窗口");
+      toast.error(toUserFacingErrorFromUnknown(e, "无法打开登录窗口"));
     } finally {
       setBindBusy(false);
     }

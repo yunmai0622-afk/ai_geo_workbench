@@ -4,6 +4,7 @@ import { aiGlassPanel, aiInput, aiOutlineBtn, aiPrimaryBtn } from "@/lib/aiProdu
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { ENTERPRISE_INDUSTRY_OPTIONS } from "@shared/enterpriseProfileIndustry";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { FileUp, Sparkles } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -259,7 +260,7 @@ export function ProfileIntakePanel({
       setApplyMode("empty");
       setOverwriteConfirm(false);
     } catch (e) {
-      setLocalError(e instanceof Error ? e.message : "解析失败");
+      setLocalError(toUserFacingErrorFromUnknown(e, "解析失败"));
     }
   }
 
