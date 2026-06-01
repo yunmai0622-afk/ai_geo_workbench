@@ -11,8 +11,12 @@ import type { resolveArticleLifecycleView } from "@shared/articleLifecycle";
 import type { GeoArticleQualityScoreRow } from "@shared/geoArticleQualityScoreDetail";
 import type { ContentCardStatus } from "@shared/weeklyContentAssetsDisplay";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
-import { useEffect, useRef, useState } from "react";
+import { resolveXiaohongshuMaterial } from "@shared/xiaohongshuMaterial";
+import { resolveWechatMaterial } from "@shared/wechatMaterial";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { XiaohongshuMaterialCard } from "@/components/weekly/XiaohongshuMaterialCard";
+import { WechatMaterialCard } from "@/components/weekly/WechatMaterialCard";
 
 export type WeeklyArticleCardModel = {
   id: number;
@@ -63,6 +67,52 @@ export function WeeklyPlatformArticleCard(props: Props) {
   const platformLabel = model.targetPlatform?.trim() || "待指定平台";
   const platformKey = model.platformKey ?? normalizeWeeklyPlatformKey(model.targetPlatform);
   const contentTypeLabel = model.contentTypeLabel?.trim() || "未标注";
+  const xiaohongshuMaterial = useMemo(() => {
+    if (platformKey !== "xiaohongshu") return null;
+    const article = model.article;
+    const materials =
+      article.thirdPartyMaterials && typeof article.thirdPartyMaterials === "object"
+        ? (article.thirdPartyMaterials as Record<string, string>)
+        : {};
+    const basis =
+      article.generationBasis && typeof article.generationBasis === "object"
+        ? (article.generationBasis as Record<string, unknown>)
+        : null;
+    const ps = basis?.platformContentStrategy as Record<string, unknown> | undefined;
+    const keywords = Array.isArray(ps?.targetAiPlatforms)
+      ? (ps.targetAiPlatforms as string[]).filter((x): x is string => typeof x === "string")
+      : model.keywords;
+    return resolveXiaohongshuMaterial({
+      materialText: materials["小红书笔记版"],
+      title: typeof article.title === "string" ? article.title : model.title,
+      markdownContent:
+        typeof article.markdownContent === "string"
+          ? stripInternalArticleMetadataFromMarkdown(article.markdownContent)
+          : "",
+      keywords,
+    });
+  }, [platformKey, model.article, model.title, model.keywords]);
+  const wechatMaterial = useMemo(() => {
+    if (platformKey !== "wechat") return null;
+    const article = model.article;
+    const materials =
+      article.thirdPartyMaterials && typeof article.thirdPartyMaterials === "object"
+        ? (article.thirdPartyMaterials as Record<string, string>)
+        : {};
+    const basis =
+      article.generationBasis && typeof article.generationBasis === "object"
+        ? (article.generationBasis as Record<string, unknown>)
+        : null;
+    return resolveWechatMaterial({
+      materialText: materials["公众号长文版"],
+      title: typeof article.title === "string" ? article.title : model.title,
+      markdownContent:
+        typeof article.markdownContent === "string"
+          ? stripInternalArticleMetadataFromMarkdown(article.markdownContent)
+          : "",
+      generationBasis: basis,
+    });
+  }, [platformKey, model.article, model.title]);
   const [bodyCopied, setBodyCopied] = useState(false);
   const bodyCopyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -169,17 +219,25 @@ export function WeeklyPlatformArticleCard(props: Props) {
       ) : null}
       {model.lifecycle ? <div className="mt-2"><ArticleLifecyclePanel articleId={model.id} article={model.article as Parameters<typeof ArticleLifecyclePanel>[0]["article"]} lifecycle={model.lifecycle} compact /></div> : null}
       {model.publishBlockHint ? <p className="mt-3 text-xs text-amber-800" data-testid="weekly-card-publish-readiness">{model.publishBlockHint}{model.publishNextActionLabel ? <span className="mt-1 block font-medium">下一步：{model.publishNextActionLabel}</span> : null}</p> : null}
+      {xiaohongshuMaterial ? (
+        <XiaohongshuMaterialCard className="mt-3" material={xiaohongshuMaterial} disabled={disabled} />
+      ) : null}
+      {wechatMaterial ? (
+        <WechatMaterialCard className="mt-3" material={wechatMaterial} disabled={disabled} />
+      ) : null}
       <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className={geoP0Brand.primaryOutline}
-          data-testid={`weekly-card-copy-body-${model.id}`}
-          onClick={() => void copyBody()}
-        >
-          {bodyCopied ? "已复制" : "复制正文"}
-        </Button>
+        {platformKey !== "wechat" && platformKey !== "xiaohongshu" ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={geoP0Brand.primaryOutline}
+            data-testid={`weekly-card-copy-body-${model.id}`}
+            onClick={() => void copyBody()}
+          >
+            {bodyCopied ? "已复制" : "复制正文"}
+          </Button>
+        ) : null}
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={onView}>查看</Button>
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} disabled={disabled} onClick={onRegenerate}>重新生成</Button>
         <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>

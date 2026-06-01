@@ -37,6 +37,9 @@ import {
   normalizeArticleCoverTemplateId,
   type ArticleCoverTemplateId,
 } from "@shared/articleCoverTemplate";
+import { XiaohongshuMaterialCard } from "@/components/weekly/XiaohongshuMaterialCard";
+import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
+import { resolveXiaohongshuMaterial } from "@shared/xiaohongshuMaterial";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -65,6 +68,10 @@ export type EditableArticleAsset = {
   contentEditedAt?: Date | string | null;
   updatedAt?: Date | string | null;
   lastPublishRecordAt?: Date | string | null;
+  thirdPartyMaterials?: Record<string, string> | null;
+  generationBasis?: Record<string, unknown> | null;
+  targetPlatform?: string | null;
+  publishPlatform?: string | null;
 };
 
 type ArticleAssetEditorSheetProps = {
@@ -121,6 +128,27 @@ export function ArticleAssetEditorSheet({
   const [recommendedAccountGroup, setRecommendedAccountGroup] = useState<AccountGroupType | "">("");
   const [bodyCopied, setBodyCopied] = useState(false);
   const bodyCopyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const xiaohongshuMaterial = useMemo(() => {
+    if (!article) return null;
+    const platform = getArticlePublishPlatform({
+      generationBasis: article.generationBasis ?? null,
+      targetPlatform: article.targetPlatform,
+      publishPlatform: article.publishPlatform,
+    });
+    if (platform.slug !== "xiaohongshu") return null;
+    const materials = article.thirdPartyMaterials ?? {};
+    const ps = article.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
+    const keywords = Array.isArray(ps?.targetAiPlatforms)
+      ? (ps.targetAiPlatforms as string[]).filter((x): x is string => typeof x === "string")
+      : [];
+    return resolveXiaohongshuMaterial({
+      materialText: materials["小红书笔记版"],
+      title: title || article.title,
+      markdownContent: content,
+      keywords,
+    });
+  }, [article, content, title]);
 
   const buildQualityInitial = useCallback((a: EditableArticleAsset): GeoQualityInitialState => ({
     score: a.geoQualityScore,
@@ -399,6 +427,10 @@ export function ArticleAssetEditorSheet({
               </select>
             </div>
           </div>
+
+          {xiaohongshuMaterial ? (
+            <XiaohongshuMaterialCard material={xiaohongshuMaterial} disabled={isSaving || updateArticle.isPending} />
+          ) : null}
 
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">

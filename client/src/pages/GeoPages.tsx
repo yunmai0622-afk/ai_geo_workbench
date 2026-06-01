@@ -9,6 +9,8 @@ import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { AlertTriangle, Brain, FileBarChart2, FileText, RadioTower, Send, Target } from "lucide-react";
+import { XiaohongshuMaterialCard } from "@/components/weekly/XiaohongshuMaterialCard";
+import { resolveXiaohongshuMaterial } from "@shared/xiaohongshuMaterial";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -298,7 +300,85 @@ export function ArticlesPage() {
             {materialKeys.map(key => {
               const gate = buildThirdPartyPublishGate(key, platformAuthorizations);
               const materialText = String(selectedMaterials[key] ?? "");
-              return <details key={key} className="rounded-2xl border border-gray-200 bg-white/[0.03] p-4"><summary className="cursor-pointer font-medium text-blue-700">{key}</summary><div className={`mt-3 rounded-xl border p-3 ${gate.allowManualPublish ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-700" : "border-amber-300/20 bg-amber-400/10 text-amber-50"}`}>{gate.allowManualPublish ? `可人工复制发布：${gate.status} · ${gate.accountAlias}` : gate.blockReason}</div><pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-3 text-xs text-gray-600">{materialText}</pre><div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3"><label className="text-xs font-medium text-gray-700">回填发布链接</label><input disabled={!gate.allowManualPublish} placeholder="人工发布后粘贴第三方平台公开链接；系统不会自动登录发布" className="mt-2 h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none disabled:cursor-not-allowed disabled:opacity-50" /><p className="mt-2 text-xs text-gray-400">标记已人工发布前，请确认素材已由人工复制到第三方平台并完成公开发布。</p></div><div className="mt-3 flex flex-wrap gap-2"><Button disabled={!gate.allowManualPublish} onClick={async () => { await navigator.clipboard?.writeText(materialText); toast.success("已复制素材，请到第三方平台后台人工粘贴发布。"); }} className="bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">复制素材</Button><Button disabled={!gate.allowManualPublish} onClick={() => toast.info("请在第三方平台后台人工粘贴素材并自行确认发布，系统不会代发。")} variant="outline" className="border-gray-200 text-gray-900 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50">进入人工发布提示</Button><Button disabled={!gate.allowManualPublish} onClick={() => toast.info("已进入人工发布记录流程：请先回填发布链接，再由人工确认标记；当前不会调用第三方自动发布 API。")} variant="outline" className="border-gray-200 text-gray-900 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50">标记已人工发布</Button><Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId))} variant="outline" className="border-gray-200 text-gray-900 hover:bg-gray-100">配置授权</Button></div></details>;
+              const xiaohongshuView =
+                key === "小红书笔记版"
+                  ? resolveXiaohongshuMaterial({
+                      materialText,
+                      title: selectedArticle.title,
+                      markdownContent: selectedArticle.markdownContent,
+                    })
+                  : null;
+              return (
+                <details key={key} className="rounded-2xl border border-gray-200 bg-white/[0.03] p-4">
+                  <summary className="cursor-pointer font-medium text-blue-700">{key}</summary>
+                  <div
+                    className={`mt-3 rounded-xl border p-3 ${gate.allowManualPublish ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-700" : "border-amber-300/20 bg-amber-400/10 text-amber-50"}`}
+                  >
+                    {gate.allowManualPublish
+                      ? `可人工复制发布：${gate.status} · ${gate.accountAlias}`
+                      : gate.blockReason}
+                  </div>
+                  {xiaohongshuView ? (
+                    <XiaohongshuMaterialCard className="mt-3" material={xiaohongshuView} disabled={!gate.allowManualPublish} />
+                  ) : (
+                    <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-3 text-xs text-gray-600">
+                      {materialText}
+                    </pre>
+                  )}
+                  <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                    <label className="text-xs font-medium text-gray-700">回填发布链接</label>
+                    <input
+                      disabled={!gate.allowManualPublish}
+                      placeholder="人工发布后粘贴第三方平台公开链接；系统不会自动登录发布"
+                      className="mt-2 h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                    <p className="mt-2 text-xs text-gray-400">
+                      标记已人工发布前，请确认素材已由人工复制到第三方平台并完成公开发布。
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {!xiaohongshuView ? (
+                      <Button
+                        disabled={!gate.allowManualPublish}
+                        onClick={async () => {
+                          await navigator.clipboard?.writeText(materialText);
+                          toast.success("已复制素材，请到第三方平台后台人工粘贴发布。");
+                        }}
+                        className="bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        复制素材
+                      </Button>
+                    ) : null}
+                    <Button
+                      disabled={!gate.allowManualPublish}
+                      onClick={() => toast.info("请在第三方平台后台人工粘贴素材并自行确认发布，系统不会代发。")}
+                      variant="outline"
+                      className="border-gray-200 text-gray-900 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      进入人工发布提示
+                    </Button>
+                    <Button
+                      disabled={!gate.allowManualPublish}
+                      onClick={() =>
+                        toast.info(
+                          "已进入人工发布记录流程：请先回填发布链接，再由人工确认标记；当前不会调用第三方自动发布 API。",
+                        )
+                      }
+                      variant="outline"
+                      className="border-gray-200 text-gray-900 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      标记已人工发布
+                    </Button>
+                    <Button
+                      onClick={() => selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId))}
+                      variant="outline"
+                      className="border-gray-200 text-gray-900 hover:bg-gray-100"
+                    >
+                      配置授权
+                    </Button>
+                  </div>
+                </details>
+              );
             })}
           </div> : <p className="text-sm text-gray-400">请选择一篇文章查看第三方平台素材。</p>}
         </InfoCard>

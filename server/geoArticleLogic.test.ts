@@ -274,6 +274,9 @@ describe("P1.1 GEO article generation", () => {
     expect(draft.thirdPartyMaterials["GEO 内容页版"]).toContain("## 问题与背景");
     expect(draft.thirdPartyMaterials["公众号长文版"]).toContain("## 正文");
     expect(draft.thirdPartyMaterials["知乎回答版"]).toContain("可摘取的短回答");
+    expect(draft.thirdPartyMaterials["小红书笔记版"]).toContain("【笔记标题】");
+    expect(draft.thirdPartyMaterials["小红书笔记版"]).toContain("【正文】");
+    expect(draft.thirdPartyMaterials["小红书笔记版"]).toContain("【话题标签】");
   });
 
   it("blocks publishing only for forbidden content, not for structure-only gaps", () => {

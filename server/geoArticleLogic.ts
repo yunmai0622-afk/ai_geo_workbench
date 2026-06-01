@@ -12,6 +12,8 @@ import {
   type PlatformContentStrategyInput,
 } from "@shared/platformContentRules";
 import { dedupeTargetQuestionRows } from "@shared/targetQuestionDedup";
+import { buildXiaohongshuMaterialFromInputs, buildXiaohongshuMaterialText } from "@shared/xiaohongshuMaterial";
+import { buildWechatMaterialFromInputs, buildWechatMaterialText } from "@shared/wechatMaterial";
 import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
 import { getSystemComplianceRulesForPrePublish, getSystemComplianceUsageLines, SYSTEM_PUBLISH_STRATEGY_LINES } from "./systemConfig";
 
@@ -1813,6 +1815,41 @@ export function scoreGeoArticleQuality(input: {
   };
 }
 
+function buildWechatArticleMaterial(input: {
+  title: string;
+  markdownContent: string;
+  basis: P11GenerationBasis;
+  summary?: string;
+}): string {
+  const view = buildWechatMaterialFromInputs({
+    title: input.title,
+    markdownContent: input.markdownContent,
+    generationBasis: input.basis as Record<string, unknown>,
+    summaryOverride: input.summary,
+  });
+  return buildWechatMaterialText(view);
+}
+
+function buildXiaohongshuNoteMaterial(input: {
+  project: P11ProjectLike;
+  title: string;
+  markdownContent: string;
+  basis: P11GenerationBasis;
+}): string {
+  const ps = input.basis.platformContentStrategy as Record<string, unknown> | undefined;
+  const keywords = Array.isArray(ps?.targetAiPlatforms)
+    ? (ps.targetAiPlatforms as string[]).filter((x): x is string => typeof x === "string")
+    : [];
+  const view = buildXiaohongshuMaterialFromInputs({
+    title: input.title,
+    markdownContent: input.markdownContent,
+    industry: input.project.industry,
+    enterpriseName: input.project.enterpriseName,
+    keywords,
+  });
+  return buildXiaohongshuMaterialText(view);
+}
+
 export function generateThirdPartyMaterials(input: {
   project: P11ProjectLike;
   title: string;
@@ -1828,13 +1865,29 @@ export function generateThirdPartyMaterials(input: {
   const snippets = formatSnippets(input.snippets);
   const platformNote =
     "本篇按平台化策略单独生成，未提供其它平台的可复制正文；如需其它平台请重新选择目标平台后生成。";
+  const xiaohongshuNote = buildXiaohongshuNoteMaterial({
+    project: input.project,
+    title: input.title,
+    markdownContent: input.markdownContent,
+    basis: input.basis,
+  });
+  const wechatArticle = buildWechatArticleMaterial({
+    title: input.title,
+    markdownContent: input.markdownContent,
+    basis: input.basis,
+    summary,
+  });
 
   if (input.targetPublishPlatform && isPublishPlatformId(input.targetPublishPlatform)) {
     const rule = getPlatformRule(input.targetPublishPlatform);
     const platformBody =
       input.targetPublishPlatform === "zhihu"
         ? `问题：${question}\n\n回答：${input.markdownContent}\n\n${platformNote}`
-        : `# ${input.title}\n\n${summary}\n\n## 正文\n\n${input.markdownContent}\n\n## 平台说明\n\n${platformNote}`;
+        : input.targetPublishPlatform === "xiaohongshu"
+          ? `${xiaohongshuNote}\n\n${platformNote}`
+          : input.targetPublishPlatform === "wechat"
+            ? `${wechatArticle}\n\n${platformNote}`
+            : `# ${input.title}\n\n${summary}\n\n## 正文\n\n${input.markdownContent}\n\n## 平台说明\n\n${platformNote}`;
     return {
       "GEO 内容页版": input.markdownContent,
       [rule.materialKey]: platformBody,
@@ -1844,9 +1897,9 @@ export function generateThirdPartyMaterials(input: {
   return {
     "GEO 内容页版": input.markdownContent,
     "官网版": input.markdownContent,
-    "公众号长文版": `# ${input.title}\n\n${summary}\n\n## 正文\n\n${input.markdownContent}\n\n## 给编辑的说明\n\n以上为可直接对外使用的长文底稿；发布前请完成事实核对、合规审核与配图/排版。`,
+    "公众号长文版": wechatArticle,
     "知乎回答版": `问题：${question}\n\n回答：如果要判断${input.project.enterpriseName}是否适合被 AI 或读者理解，不能只看品牌介绍，而要看公开内容是否回答了真实选型问题。${summary}\n\n## 关键判断\n\n${input.basis.notRecommendedReason}\n\n## 和常见方案的客观差异\n\n${input.basis.competitorGap}\n\n## 可摘取的短回答\n\n${snippets}\n\n本文不作排名保证，也不攻击竞品。`,
-    "小红书笔记版": `${input.title}\n\n适合人群：正在做 ${input.project.industry} 选型或内容优化的团队。\n\n核心发现：${summary}\n\n可摘取的短答案：\n${input.snippets.map(item => `- ${item.question} ${item.answer}`).join("\n")}\n\n发布前需要补充：真实客户案例、真实页面链接、真实截图或可核验数据。\n\n提醒：不要作排名保证，不要攻击竞品。`,
+    "小红书笔记版": xiaohongshuNote,
     "百家号/头条号版": `# ${input.title}\n\n${summary}\n\n## 正文\n\n${input.markdownContent}\n\n## 给作者的改写提示\n\n可把上文改写成行业观察或资讯稿，保持事实口径一致；避免加入未经验证的数据或承诺式表述。\n\n## 便于摘抄的要点\n\n${snippets}`,
   };
 }
