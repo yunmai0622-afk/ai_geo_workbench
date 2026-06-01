@@ -1,7 +1,9 @@
 import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
+import { RetestComparisonPanel } from "@/components/RetestComparisonPanel";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import {
@@ -214,6 +216,21 @@ export function DeliveryReportsCenterPage() {
 
   return (
     <div className="space-y-8 pb-12" data-testid="delivery-report-page">
+      <Tabs defaultValue="report" className="space-y-6">
+        <TabsList className="grid w-full max-w-md grid-cols-2 print:hidden">
+          <TabsTrigger value="report">交付报告</TabsTrigger>
+          <TabsTrigger value="comparison" data-testid="retest-comparison-tab">
+            检测对比
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="comparison" className="mt-0 print:hidden">
+          {selectedProjectId ? (
+            <RetestComparisonPanel projectId={selectedProjectId} enabled={enabled} />
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="report" className="mt-0 space-y-8">
       {loading ? (
         <div className="flex items-center gap-2 py-8 text-gray-500">
           <Spinner className="size-5 text-blue-600" />
@@ -523,6 +540,8 @@ export function DeliveryReportsCenterPage() {
           </div>
         </div>
       </details>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
