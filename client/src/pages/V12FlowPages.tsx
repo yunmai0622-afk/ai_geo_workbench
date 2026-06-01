@@ -36,6 +36,7 @@ import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
 import { mapGeoDiagnosisErrorCategory } from "@/lib/aiTaskProgressErrors";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { TRPCClientError } from "@trpc/client";
 import {
   AI_DIAGNOSIS_PROGRESS_HINT_30S,
@@ -61,6 +62,8 @@ import {
   formatT0Rate,
   T0_DEFAULT_PLATFORMS,
 } from "@shared/t0DiagnosisDisplay";
+import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
+import { T0DiagnosisVisualizationPanel } from "@/components/diagnosis/T0DiagnosisVisualizationPanel";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
   { value: "manual_check", label: "人工复测" },
@@ -910,6 +913,47 @@ export function AiDiagnosisFlowPage() {
     }
     return map;
   }, [t0RoundQuestionsQuery.data]);
+  const visualizationRoundId = latestCompletedT0Round?.id ?? null;
+  const canReuseVisualizationRuns =
+    visualizationRoundId != null && displayT0Round?.id === visualizationRoundId;
+  const vizRunsQuery = trpc.geo.aiTestRuns.listByRound.useQuery(
+    { projectId: selectedProjectId!, roundId: visualizationRoundId! },
+    {
+      enabled: enabled && Boolean(selectedProjectId && visualizationRoundId && !canReuseVisualizationRuns),
+    },
+  );
+  const vizRoundQuestionsQuery = trpc.geo.roundQuestions.listByRound.useQuery(
+    { projectId: selectedProjectId!, roundId: visualizationRoundId! },
+    {
+      enabled: enabled && Boolean(selectedProjectId && visualizationRoundId && !canReuseVisualizationRuns),
+    },
+  );
+  const visualizationRuns = canReuseVisualizationRuns ? t0Runs : (vizRunsQuery.data ?? []);
+  const visualizationQuestionTypeById = useMemo(() => {
+    if (canReuseVisualizationRuns) return t0QuestionTypeById;
+    const map = new Map<number, string>();
+    for (const link of vizRoundQuestionsQuery.data ?? []) {
+      const questionType = link.question?.questionType;
+      if (typeof questionType === "string" && questionType.trim()) {
+        map.set(link.questionId, questionType);
+      }
+    }
+    return map;
+  }, [canReuseVisualizationRuns, t0QuestionTypeById, vizRoundQuestionsQuery.data]);
+  const diagnosisVisualization = useMemo(() => {
+    if (!visualizationRoundId || visualizationRuns.length === 0) return null;
+    return buildT0DiagnosisVisualization(
+      visualizationRuns.map(run => ({
+        questionId: run.questionId,
+        platform: run.platform,
+        mentionedCompany: run.mentionedCompany,
+        recommendedCompany: run.recommendedCompany,
+        competitorMentioned: run.competitorMentioned,
+        hasSourceLinks: run.hasSourceLinks,
+      })),
+      visualizationQuestionTypeById,
+    );
+  }, [visualizationRoundId, visualizationRuns, visualizationQuestionTypeById]);
   const t0ResultsDisplay = useMemo(() => {
     if (displayT0Round?.status !== "completed") return null;
     return buildT0DiagnosisResultsDisplay(
@@ -1155,6 +1199,15 @@ export function AiDiagnosisFlowPage() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-16 text-gray-500">
+        <Spinner className="size-6 text-blue-600" />
+        <p className="text-sm">正在加载 AI 实测诊断数据…</p>
+      </div>
+    );
+  }
+
   /* --- 平台覆盖卡片数据 --- */
   const platformCards = [
     { name: "豆包", icon: "🤖" },
@@ -1207,6 +1260,12 @@ export function AiDiagnosisFlowPage() {
           <p className="mt-1 text-xs text-gray-400">已纳入诊断的目标问题</p>
         </div>
       </div>
+
+      {diagnosisVisualization ? (
+        <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm">
+          <T0DiagnosisVisualizationPanel visualization={diagnosisVisualization} />
+        </div>
+      ) : null}
 
       {/* --- 覆盖平台卡片 --- */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -2570,6 +2629,7 @@ export function InclusionMonitoringFlowPage() {
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const records = (monitoringQuery.data ?? []) as MonitoringRecordLike[];
   const publishRecordCount = (publishRecordsQuery.data ?? []).length;
+  const loading = monitoringQuery.isLoading || publishRecordsQuery.isLoading;
   const [runningRecordId, setRunningRecordId] = useState<number | null>(null);
   const [selectedTestStage, setSelectedTestStage] = useState<AiTestStage>("manual_check");
   const [linkCheckTriggered, setLinkCheckTriggered] = useState(false);
