@@ -8,6 +8,7 @@ import {
   getPlatformRule,
   getPlatformSpecificOutline,
   isPublishPlatformId,
+  type PublishPlatformId,
   type GeoContentTaskGenerationTrace,
   type PlatformContentStrategyInput,
 } from "@shared/platformContentRules";
@@ -15,6 +16,12 @@ import { dedupeTargetQuestionRows } from "@shared/targetQuestionDedup";
 import { buildXiaohongshuMaterialFromInputs, buildXiaohongshuMaterialText } from "@shared/xiaohongshuMaterial";
 import { buildWechatMaterialFromInputs, buildWechatMaterialText } from "@shared/wechatMaterial";
 import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
+import {
+  buildPlatformDraftQualityRewriteAddon,
+  buildPlatformGenerationQualityPromptLines,
+  evaluatePlatformDraftContentQuality,
+  shouldRunPlatformDraftQualityGate,
+} from "@shared/platformDraftContentQuality";
 import { getSystemComplianceRulesForPrePublish, getSystemComplianceUsageLines, SYSTEM_PUBLISH_STRATEGY_LINES } from "./systemConfig";
 
 export { GEO_ARTICLE_MIN_PASS_SCORE };
@@ -432,6 +439,7 @@ export type P11ArticleDraft = {
   contentStrategyType?: string | null;
   publishIdentity?: string | null;
   recommendedAccountGroup?: string | null;
+  coverTemplate?: string | null;
 };
 
 export type P11QualityScore = {
@@ -1477,6 +1485,7 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
           "【文章框架要求 — 本平台专属二级标题】",
           "二级标题请使用且仅使用以下精确文案（不得改用其它平台的标题序列）：",
           getPlatformSpecificOutline(platformId, brandName),
+          ...buildPlatformGenerationQualityPromptLines(platformId),
           `在正文合适位置自然提及品牌名「${brandName}」1-2 次；可结合${brandProductLine}落地，不要堆叠硬广。`,
         ];
       }
@@ -1551,8 +1560,43 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
     "【问题清单摘录（供灵感，不必逐条照抄）】",
     materialDigest,
     "",
-    "【篇幅】以 1500-2500 字为主；若资料不足请用「资料待补充」等读者可理解的表述，不要暴露内部流程名词。",
+    ((): string => {
+      const ps = basis.platformContentStrategy as Record<string, unknown> | undefined;
+      const platformId =
+        ps && typeof ps.targetPublishPlatform === "string" && isPublishPlatformId(ps.targetPublishPlatform)
+          ? ps.targetPublishPlatform
+          : null;
+      if (platformId === "zhihu") {
+        return "【篇幅】知乎正文不少于 2000 字；若资料不足请用「资料待补充」等读者可理解的表述，不要暴露内部流程名词。";
+      }
+      if (platformId === "sohu" || platformId === "baijiahao") {
+        return "【篇幅】资讯稿建议 1200-2200 字；若资料不足请用「资料待补充」等读者可理解的表述，不要暴露内部流程名词。";
+      }
+      return "【篇幅】以 1500-2500 字为主；若资料不足请用「资料待补充」等读者可理解的表述，不要暴露内部流程名词。";
+    })(),
   ].join("\n");
+}
+
+const MAX_PLATFORM_DRAFT_QUALITY_REWRITES = 2;
+
+async function ensurePlatformDraftContentQuality(input: {
+  markdownContent: string;
+  platformId: PublishPlatformId;
+  userMaterial: string;
+  brandName: string;
+}): Promise<string> {
+  let current = input.markdownContent;
+  for (let attempt = 0; attempt <= MAX_PLATFORM_DRAFT_QUALITY_REWRITES; attempt++) {
+    const check = evaluatePlatformDraftContentQuality(input.platformId, current);
+    if (check.passed) return current;
+    if (attempt >= MAX_PLATFORM_DRAFT_QUALITY_REWRITES) return current;
+    const rewriteMaterial = [
+      input.userMaterial,
+      buildPlatformDraftQualityRewriteAddon(check, input.brandName),
+    ].join("\n\n");
+    current = await invokeLlmForGeoArticleDraftMarkdown(rewriteMaterial);
+  }
+  return current;
 }
 
 async function invokeLlmForGeoArticleDraftMarkdown(userMaterial: string): Promise<string> {
@@ -1665,11 +1709,26 @@ export async function generateGeoArticleDraft(input: {
     questionTemplateReference: input.questionTemplateReference,
   };
 
+  const resolvedBrand =
+    input.assetLibrary?.resolvedEnterpriseProfile?.brandName ||
+    resolveEnterpriseProfileForContent(input.assetLibrary?.profile ?? null).brandName ||
+    project.enterpriseName;
+  const userMaterial = buildGeoArticleDraftUserMaterial(templateCtx);
+
   let content: string;
   if (process.env.GEO_ARTICLE_BODY === "test-template") {
     content = buildGeoArticleBodyFromTemplate(templateCtx);
   } else {
-    content = await invokeLlmForGeoArticleDraftMarkdown(buildGeoArticleDraftUserMaterial(templateCtx));
+    content = await invokeLlmForGeoArticleDraftMarkdown(userMaterial);
+    const draftPlatformId = input.platformStrategy?.targetPublishPlatform;
+    if (draftPlatformId && shouldRunPlatformDraftQualityGate(draftPlatformId)) {
+      content = await ensurePlatformDraftContentQuality({
+        markdownContent: content,
+        platformId: draftPlatformId,
+        userMaterial,
+        brandName: resolvedBrand,
+      });
+    }
   }
 
   content = ensurePlatformCollectableMarkdown(content, snippets, basis);

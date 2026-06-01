@@ -56,6 +56,18 @@ describe("platform content rules expansion P0", () => {
     expect(xhs).toContain("【当前发布平台内容规则 — 小红书】");
     expect(zh).not.toContain("生活方式、经验分享、种草");
   });
+
+  it("知乎规则强调数据、案例与 2000 字", () => {
+    const zh = formatPlatformRulesForPrompt("zhihu");
+    expect(zh).toContain("2000 字以上");
+    expect(zh).toContain("具体数字");
+    expect(zh).toContain("案例");
+  });
+
+  it("搜狐与百家号 Prompt 强调资讯时效", () => {
+    expect(formatPlatformRulesForPrompt("sohu")).toMatch(/时效|资讯/);
+    expect(formatPlatformRulesForPrompt("baijiahao")).toMatch(/时效|资讯/);
+  });
 });
 
 describe("AI visibility targets expansion P0", () => {
@@ -103,6 +115,8 @@ describe("AI visibility targets expansion P0", () => {
     expect(logic).toContain("formatTargetAiPlatformsForPrompt");
     expect(logic).toContain("formatPlatformRulesForPrompt");
     expect(logic).toContain("禁止一稿多平台");
+    expect(logic).toContain("ensurePlatformDraftContentQuality");
+    expect(logic).toContain("buildPlatformGenerationQualityPromptLines");
   });
 
   it("交付报告展示目标 AI 平台", () => {
