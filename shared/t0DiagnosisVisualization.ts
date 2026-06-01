@@ -47,7 +47,7 @@ export const DIAGNOSIS_HIT_QUESTION_TYPES = [
   { key: "long_tail_conversion", label: "长尾转化类" },
 ] as const;
 
-const DIAGNOSIS_PLATFORM_ORDER = ["doubao", "kimi", "deepseek"] as const;
+const DIAGNOSIS_PLATFORM_ORDER = ["doubao", "kimi", "deepseek", "qwen", "wenxin"] as const;
 
 const GEO_SCORE_BAR_DEFS = [
   { key: "brand_recognition", label: "品牌识别率", questionType: "品牌认知", metric: "mention" as const },
@@ -67,6 +67,8 @@ function normalizePlatform(platform: string): string {
   if (key === "doubao" || key === "豆包") return "doubao";
   if (key === "kimi") return "kimi";
   if (key === "deepseek") return "deepseek";
+  if (key === "qwen" || key === "通义千问" || key === "通义") return "qwen";
+  if (key === "wenxin" || key === "文心一言" || key === "文心") return "wenxin";
   return key;
 }
 

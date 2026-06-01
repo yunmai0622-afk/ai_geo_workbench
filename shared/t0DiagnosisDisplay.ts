@@ -2,6 +2,17 @@ import { aggregateT0AiTestRunMetrics, type AiTestRunMetricRow } from "./t0AiTest
 
 export const T0_DEFAULT_PLATFORMS = ["doubao", "deepseek", "kimi"] as const;
 
+/** AI 实测诊断页可选引擎（T0 基线检测 / 平台多选） */
+export const T0_AI_ENGINE_OPTIONS = [
+  { id: "doubao", label: "豆包" },
+  { id: "deepseek", label: "DeepSeek" },
+  { id: "kimi", label: "Kimi" },
+  { id: "qwen", label: "通义千问" },
+  { id: "wenxin", label: "文心一言" },
+] as const;
+
+export type T0AiEngineId = (typeof T0_AI_ENGINE_OPTIONS)[number]["id"];
+
 const QUESTION_TYPE_CUSTOMER_LABELS: Record<string, string> = {
   品牌认知: "品牌识别类问题",
   行业推荐: "行业推荐类问题",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeAnswer, buildAiMentionSuggestion } from "./geoAiMentionCheck";
+import { analyzeAnswer, buildAiMentionSuggestion, normalizePlatformToAiEngine } from "./geoAiMentionCheck";
 
 describe("geoAiMentionCheck", () => {
   it("detects brand mention and recommendation", () => {
@@ -22,6 +22,13 @@ describe("geoAiMentionCheck", () => {
     expect(buildAiMentionSuggestion({ mentionRate: 0, recommendRate: 0 })).toContain("0%");
     expect(buildAiMentionSuggestion({ mentionRate: 0.4, recommendRate: 0 })).toContain("推荐率 0%");
     expect(buildAiMentionSuggestion({ mentionRate: 0.4, recommendRate: 0.2 })).toContain("提及率 40%");
+  });
+
+  it("maps qwen and wenxin platform aliases", () => {
+    expect(normalizePlatformToAiEngine("qwen")).toBe("qwen");
+    expect(normalizePlatformToAiEngine("通义千问")).toBe("qwen");
+    expect(normalizePlatformToAiEngine("wenxin")).toBe("wenxin");
+    expect(normalizePlatformToAiEngine("文心一言")).toBe("wenxin");
   });
 
   it("zero mention advice explains likely reasons", () => {

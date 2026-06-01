@@ -148,7 +148,9 @@ import {
   buildDeliveryReportPublicEvidencePayload,
   buildDeliveryReportPublicSharePayload,
   disableEnabledShareTokensForProject,
+  findShareTokenRow,
   getOrCreateShareTokenForProject,
+  getShareLinkStatusForProject,
   regenerateShareLinkForProject,
   resolveShareTokenProjectId,
 } from "./deliveryReportPublicShare";
@@ -1894,6 +1896,25 @@ const geoRouter = router({
         .where(eq(geoScores.projectId, input.projectId))
         .orderBy(asc(geoScores.createdAt));
     }),
+    recent: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive().optional() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        if (!input.projectId) return [];
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db
+          .select({
+            id: geoScores.id,
+            totalScore: geoScores.totalScore,
+            visibilityLevel: geoScores.visibilityLevel,
+            createdAt: geoScores.createdAt,
+          })
+          .from(geoScores)
+          .where(eq(geoScores.projectId, input.projectId))
+          .orderBy(desc(geoScores.createdAt), desc(geoScores.id))
+          .limit(5);
+        return rows.reverse();
+      }),
     calculate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await requireProjectAccess(ctx, input.projectId);
@@ -1903,7 +1924,6 @@ const geoRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析或 T0 基线测试，再计算 GEO 评分" });
       }
       const score = calculateGeoScore(resolveEffectiveAnalysisResults(analyses), t0Metrics);
-      await db.delete(geoScores).where(eq(geoScores.projectId, input.projectId));
       await db.insert(geoScores).values({ projectId: input.projectId, ...score });
       await updateProjectStatus(input.projectId, "score_done");
       return { success: true, score } as const;
@@ -2049,6 +2069,13 @@ const geoRouter = router({
       await updateProjectStatus(input.projectId, "report_ready");
       return { success: true, report } as const;
     }),
+    shareLinkStatus: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        return getShareLinkStatusForProject(db, input.projectId);
+      }),
     createShareLink: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
@@ -2088,8 +2115,9 @@ const geoRouter = router({
       .input(z.object({ token: z.string().min(16).max(64) }))
       .query(async ({ ctx, input }) => {
         const db = await requireDb();
+        const tokenRow = await findShareTokenRow(db, input.token);
         const projectId = await resolveShareTokenProjectId(db, input.token);
-        return buildDeliveryReportPublicSharePayload(db, projectId);
+        return buildDeliveryReportPublicSharePayload(db, projectId, tokenRow?.expiresAt ?? null);
       }),
     publicEvidence: publicProcedure
       .input(
@@ -3018,7 +3046,7 @@ ${article.markdownContent}`,
         z.object({
           projectId: z.number().int().positive(),
           recordId: z.number().int().positive().optional(),
-          engines: z.array(z.enum(["doubao", "deepseek", "kimi"])).optional(),
+          engines: z.array(z.enum(["doubao", "deepseek", "kimi", "qwen", "wenxin"])).optional(),
           testStage: z.enum(["before_publish", "after_publish", "manual_check"]).optional().default("manual_check"),
         }),
       )

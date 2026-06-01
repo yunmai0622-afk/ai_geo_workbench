@@ -45,6 +45,10 @@ const PLATFORM_DISPLAY_LABELS: Record<string, string> = {
   豆包: "豆包",
   deepseek: "DeepSeek",
   kimi: "Kimi",
+  qwen: "通义千问",
+  通义千问: "通义千问",
+  wenxin: "文心一言",
+  文心一言: "文心一言",
 };
 
 export function resolveQuestionTypeDisplayLabel(questionType: string): string {

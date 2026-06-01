@@ -1,12 +1,14 @@
 /**
  * AI 引擎真实可见度实测
- * 支持：豆包（火山引擎）、DeepSeek、Kimi
+ * 支持：豆包（火山引擎）、DeepSeek、Kimi、通义千问、文心一言
  */
 
 import type { AiTestEvidenceItem, AiTestStage } from "@shared/aiTestEvidence";
 import { enrichAiTestResult, type EnrichAiTestResultContext } from "./geoAiMentionEvidence";
 
-export type AiEngine = "doubao" | "deepseek" | "kimi";
+export type AiEngine = "doubao" | "deepseek" | "kimi" | "qwen" | "wenxin";
+
+export const AI_ENGINE_IDS = ["doubao", "deepseek", "kimi", "qwen", "wenxin"] as const satisfies readonly AiEngine[];
 
 export interface AiTestResult {
   engine: AiEngine;
@@ -79,6 +81,18 @@ const ENGINE_CONFIG: Record<
     model: "moonshot-v1-8k",
     apiKey: process.env.KIMI_API_KEY ?? "",
   },
+  qwen: {
+    name: "通义千问",
+    apiUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    model: "qwen-plus",
+    apiKey: process.env.QWEN_API_KEY ?? "",
+  },
+  wenxin: {
+    name: "文心一言",
+    apiUrl: "https://qianfan.baidubce.com/v2/chat/completions",
+    model: "ernie-4.0-turbo-8k",
+    apiKey: process.env.WENXIN_API_KEY ?? "",
+  },
 };
 
 export function normalizePlatformToAiEngine(platform: string): AiEngine | null {
@@ -86,6 +100,8 @@ export function normalizePlatformToAiEngine(platform: string): AiEngine | null {
   if (key === "doubao" || key === "豆包") return "doubao";
   if (key === "deepseek") return "deepseek";
   if (key === "kimi") return "kimi";
+  if (key === "qwen" || key === "通义千问" || key === "通义") return "qwen";
+  if (key === "wenxin" || key === "文心一言" || key === "文心") return "wenxin";
   return null;
 }
 

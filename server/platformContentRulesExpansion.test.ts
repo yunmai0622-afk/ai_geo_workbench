@@ -87,6 +87,8 @@ describe("AI visibility targets expansion P0", () => {
 
   it("增强目标 registry 状态正确", () => {
     expect(getAiVisibilityTargetByLabel("豆包")?.status).toBe("tested");
+    expect(getAiVisibilityTargetByLabel("通义千问")?.status).toBe("tested");
+    expect(getAiVisibilityTargetByLabel("文心一言")?.status).toBe("tested");
     expect(getAiVisibilityTargetByLabel("腾讯元宝")?.status).toBe("enhancement");
     expect(getAiVisibilityTargetByLabel("ChatGPT")?.status).toBe("not_connected");
   });

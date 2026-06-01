@@ -62,7 +62,9 @@ import {
   buildT0DiagnosisResultsDisplay,
   computeT0QuestionProgress,
   formatT0Rate,
+  T0_AI_ENGINE_OPTIONS,
   T0_DEFAULT_PLATFORMS,
+  type T0AiEngineId,
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
 import { T0DiagnosisVisualizationPanel } from "@/components/diagnosis/T0DiagnosisVisualizationPanel";
@@ -861,6 +863,7 @@ export function AiDiagnosisFlowPage() {
   const [t0Message, setT0Message] = useState<string>();
   const [t0Error, setT0Error] = useState<string>();
   const [activeT0RoundId, setActiveT0RoundId] = useState<string | null>(null);
+  const [selectedT0Platforms, setSelectedT0Platforms] = useState<T0AiEngineId[]>([...T0_DEFAULT_PLATFORMS]);
   const [diagnosisProgressErrorCategory, setDiagnosisProgressErrorCategory] = useState<
     AiTaskProgressErrorCategory | undefined
   >();
@@ -1164,7 +1167,7 @@ export function AiDiagnosisFlowPage() {
     try {
       const createResult = await createT0WithQuestions.mutateAsync({
         projectId: selectedProjectId,
-        platforms: [...T0_DEFAULT_PLATFORMS],
+        platforms: selectedT0Platforms.length > 0 ? [...selectedT0Platforms] : [...T0_DEFAULT_PLATFORMS],
         runsPerQuestion: 3,
       });
       const roundId = createResult.round.id;
@@ -1215,7 +1218,7 @@ export function AiDiagnosisFlowPage() {
     { name: "豆包", icon: "🤖" },
     { name: "Kimi", icon: "🔍" },
     { name: "DeepSeek", icon: "🧠" },
-    { name: "通义/夸克", icon: "💡" },
+    { name: "通义千问", icon: "💡" },
     { name: "文心一言", icon: "📝" },
   ];
 
@@ -1224,7 +1227,9 @@ export function AiDiagnosisFlowPage() {
       {/* --- 页面标题区 --- */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">AI 实测诊断</h1>
-        <p className="mt-1 text-sm text-gray-500">检测企业在豆包、Kimi、DeepSeek 等 AI 平台中的品牌提及、推荐和内容引用情况</p>
+        <p className="mt-1 text-sm text-gray-500">
+          检测企业在豆包、Kimi、DeepSeek、通义千问、文心一言等 AI 平台中的品牌提及、推荐和内容引用情况
+        </p>
       </div>
 
       <FirstUseHintBanner
@@ -1426,18 +1431,57 @@ export function AiDiagnosisFlowPage() {
           <div>
             <h2 className="text-sm font-semibold text-gray-900">T0 基线真实检测</h2>
             <p className="mt-1 text-xs text-gray-500">
-              调用真实 AI 平台实测（豆包 / DeepSeek / Kimi），写入 test_rounds 与 ai_test_runs，与上方合成诊断入口并行保留。
+              调用真实 AI 平台实测，写入 test_rounds 与 ai_test_runs，与上方合成诊断入口并行保留。
             </p>
           </div>
           <Button
             type="button"
             className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
-            disabled={!canOperate || isT0Running || running || generatingQuestions}
+            disabled={
+              !canOperate ||
+              isT0Running ||
+              running ||
+              generatingQuestions ||
+              selectedT0Platforms.length === 0
+            }
             onClick={() => void handleStartT0Baseline()}
             data-testid="ai-diagnosis-start-t0"
           >
             {t0StartingMutation ? "正在启动 T0 检测…" : isT0Running ? "T0 检测进行中…" : "启动T0基线检测"}
           </Button>
+        </div>
+
+        <div className="mt-4" data-testid="ai-diagnosis-t0-platform-select">
+          <p className="text-xs font-medium text-gray-500">实测平台（多选）</p>
+          <div className="mt-2 flex flex-wrap gap-3">
+            {T0_AI_ENGINE_OPTIONS.map(option => {
+              const checked = selectedT0Platforms.includes(option.id);
+              return (
+                <label
+                  key={option.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800"
+                >
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    checked={checked}
+                    disabled={isT0Running || t0StartingMutation}
+                    onChange={() => {
+                      setSelectedT0Platforms(prev => {
+                        if (checked) {
+                          const next = prev.filter(id => id !== option.id);
+                          return next.length > 0 ? next : prev;
+                        }
+                        return [...prev, option.id];
+                      });
+                    }}
+                  />
+                  {option.label}
+                </label>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-gray-400">通义千问需 QWEN_API_KEY，文心一言需 WENXIN_API_KEY。</p>
         </div>
 
         {(t0Message || t0Error) && (
