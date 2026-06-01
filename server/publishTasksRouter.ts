@@ -41,6 +41,7 @@ import {
   PUBLISH_QUEUE_BLOCKING_STATUSES,
   PUBLISH_QUEUE_DUPLICATE_MESSAGE,
 } from "@shared/publishQueueDedup";
+import { buildDeliveryReportPublishStats } from "@shared/deliveryReportPublishStats";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -474,6 +475,23 @@ export const publishTasksRouter = router({
       }
 
       return { ok: true } as const;
+    }),
+
+  projectStats: protectedProcedure
+    .input(z.object({ projectId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await requireDb();
+      const ownerUserId = getCurrentUserId(ctx);
+      await requireProjectAccessConn(db, ownerUserId, input.projectId);
+      const rows = await db
+        .select({
+          platform: publishTasks.platform,
+          status: publishTasks.status,
+          createdAt: publishTasks.createdAt,
+        })
+        .from(publishTasks)
+        .where(eq(publishTasks.projectId, input.projectId));
+      return buildDeliveryReportPublishStats(rows);
     }),
 
   listRecentByProject: protectedProcedure

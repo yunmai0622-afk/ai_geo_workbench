@@ -1,5 +1,7 @@
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
-import { GeoHealthBriefCard } from "@/components/delivery/GeoHealthBriefCard";
+import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
+import { GeoHealthBriefCard, type GeoHealthBriefCardProps } from "@/components/delivery/GeoHealthBriefCard";
+import type { PublishRecordWeekRow } from "@shared/geoHealthBrief";
 import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
 import { RetestComparisonPanel } from "@/components/RetestComparisonPanel";
 import { FileText, Link2 } from "lucide-react";
@@ -430,7 +432,7 @@ export function DeliveryReportsCenterPage() {
           enterpriseName={enterpriseName}
           publishRecords={publishRecords as PublishRecordWeekRow[]}
           articles={articles as Array<{ status?: string | null }>}
-          testRounds={(testRoundsQuery.data ?? []) as GeoHealthBriefCard["props"]["testRounds"]}
+          testRounds={(testRoundsQuery.data ?? []) as GeoHealthBriefCardProps["testRounds"]}
           t0MentionRate={t0MetricsQuery.data?.mentionRate ?? null}
           t0RecommendRate={t0MetricsQuery.data?.recommendRate ?? null}
           monitoringMentionRate={hasAiTestData ? aiTestAggregate.mentionRate : null}

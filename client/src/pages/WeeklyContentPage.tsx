@@ -1041,6 +1041,7 @@ export default function WeeklyContentPage() {
           statusFilterKey: statusView.filterKey,
           qualityDisplay: resolveQualityDisplay(a),
           qualityScore: a.geoQualityScore ?? q?.totalScore ?? null,
+          qualityScoreRow: q ?? null,
           strategySummary: formatArticleStrategySummary(a),
           coverThumbnailSrc: resolveArticleCoverPreviewSrc(a),
           publishLink: resolveArticlePublishLink({
