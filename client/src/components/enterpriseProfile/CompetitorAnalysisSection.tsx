@@ -153,14 +153,14 @@ export function CompetitorAnalysisSection({ projectId, brandName }: Props) {
           <div className="geo-card overflow-hidden">
             <div className="border-b border-gray-100 px-5 py-4">
               <h3 className="text-sm font-semibold text-gray-900">竞品列表</h3>
-              <p className="mt-1 text-xs text-gray-500">按 AI 提及频次排序；优势描述来自竞品档案。</p>
+              <p className="mt-1 text-xs text-gray-500">按 AI 检测中出现次数排序；优势描述来自竞品档案。</p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-left text-xs text-gray-500">
                   <tr>
                     <th className="px-5 py-3 font-medium">竞品名称</th>
-                    <th className="px-5 py-3 font-medium">AI 提及频次</th>
+                    <th className="px-5 py-3 font-medium">AI 检测提及</th>
                     <th className="px-5 py-3 font-medium">相对 {brandName || "本品牌"} 的优势</th>
                   </tr>
                 </thead>
@@ -168,11 +168,12 @@ export function CompetitorAnalysisSection({ projectId, brandName }: Props) {
                   {sortedCompetitors.map(row => (
                     <tr key={row.id} data-testid={`competitor-row-${row.id}`}>
                       <td className="px-5 py-4 font-medium text-gray-900">{row.competitorName}</td>
-                      <td className="px-5 py-4 tabular-nums text-gray-700">
-                        <span className={cn("font-semibold", row.aiMentionCount > 0 ? "text-amber-700" : "text-gray-400")}>
-                          {row.aiMentionCount}
+                      <td className="px-5 py-4 text-gray-700">
+                        <span className={cn("text-sm", row.aiMentionCount > 0 ? "font-medium text-amber-800" : "text-gray-400")}>
+                          AI检测中出现
+                          <span className="mx-1 tabular-nums font-semibold">{row.aiMentionCount}</span>
+                          次
                         </span>
-                        <span className="ml-1 text-xs text-gray-400">次</span>
                       </td>
                       <td className="px-5 py-4 text-gray-600">{row.advantageDescription}</td>
                     </tr>

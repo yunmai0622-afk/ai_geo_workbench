@@ -22,6 +22,7 @@ import {
 } from "./geoAiMentionCheck";
 import { enrichAnswerAnalysis } from "./geoAiMentionEvidence";
 import type { DbConn } from "./projectAccess";
+import { syncCompetitorAiMentionCounts } from "./competitorAnalysis";
 import { emitT0CompleteNotification } from "./systemNotifications";
 
 export type T0RunTask = {
@@ -375,6 +376,11 @@ export async function runT0ExecutionBackground(
       .where(eq(testRounds.id, roundId));
 
     if (finalStatus === "completed") {
+      try {
+        await syncCompetitorAiMentionCounts(db, round.projectId);
+      } catch (err) {
+        console.warn("[t0-execution] competitor mention sync failed", roundId, err);
+      }
       void emitT0CompleteNotification(db, round.projectId, round.roundName).catch(err => console.warn("[notifications] T0 failed", roundId, err));
     }
 

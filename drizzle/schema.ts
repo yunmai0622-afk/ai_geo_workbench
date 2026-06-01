@@ -159,6 +159,8 @@ export const projects = mysqlTable("projects", {
   competitorNames: json("competitorNames").$type<string[]>().notNull(),
   coreKeywords: json("coreKeywords").$type<string[]>().notNull(),
   status: projectStatusEnum.default("created").notNull(),
+  /** 归档时间；NULL 表示活跃项目 */
+  archivedAt: timestamp("archivedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -566,6 +568,8 @@ export const competitorProfiles = mysqlTable("competitor_profiles", {
   priceInfo: text("priceInfo"),
   contentAssets: text("contentAssets"),
   aiRecommendationSignals: text("aiRecommendationSignals"),
+  /** T0/AI 实测完成后汇总的竞品提及次数（与 ai_test_runs.competitorNames 聚合同步） */
+  aiMentionCount: int("aiMentionCount").default(0).notNull(),
   comparisonNotes: text("comparisonNotes"),
   sourceAssetIds: json("sourceAssetIds").$type<number[]>().notNull(),
   canReference: int("canReference").default(1).notNull(),
