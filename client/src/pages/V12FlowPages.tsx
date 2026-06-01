@@ -836,6 +836,10 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const testRounds = testRoundsQuery.data ?? [];
+  const runningT0Round = testRounds.find(
+    round => round.roundType === "T0_BASELINE" && round.status === "running",
+  );
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
   const [t0Message, setT0Message] = useState<string>();
@@ -854,20 +858,25 @@ export function AiDiagnosisFlowPage() {
   const loading = questionsQuery.isLoading || assetSummaryQuery.isLoading || analysisQuery.isLoading || scoreQuery.isLoading || tasksQuery.isLoading;
   const generatingQuestions = generateTargetQuestionsMutation.isPending;
   const running = runAnalysis.isPending || calculateScore.isPending || generateTasks.isPending;
-  const t0RunningMutation = createT0WithQuestions.isPending || startT0Execution.isPending;
-  const testRounds = testRoundsQuery.data ?? [];
-  const runningT0Round = testRounds.find(
-    round => round.roundType === "T0_BASELINE" && round.status === "running",
+  const t0PollRoundId = activeT0RoundId ?? runningT0Round?.id ?? null;
+  const activeT0RoundQuery = trpc.geo.testRounds.get.useQuery(
+    { projectId: selectedProjectId!, id: t0PollRoundId! },
+    {
+      enabled: enabled && Boolean(selectedProjectId && t0PollRoundId),
+      refetchInterval: query => (query.state.data?.status === "running" ? 5000 : false),
+    },
   );
+  const t0StartingMutation = createT0WithQuestions.isPending || startT0Execution.isPending;
   const latestCompletedT0Round = testRounds.find(
     round => round.roundType === "T0_BASELINE" && round.status === "completed",
   );
   const displayT0Round =
+    activeT0RoundQuery.data ??
     (activeT0RoundId ? testRounds.find(round => round.id === activeT0RoundId) : null) ??
     runningT0Round ??
     latestCompletedT0Round ??
     null;
-  const isT0Running = t0RunningMutation || displayT0Round?.status === "running";
+  const isT0Running = t0StartingMutation || displayT0Round?.status === "running";
   const t0RunsQuery = trpc.geo.aiTestRuns.listByRound.useQuery(
     { projectId: selectedProjectId!, roundId: displayT0Round!.id },
     {
@@ -921,6 +930,40 @@ export function AiDiagnosisFlowPage() {
   const [gapsExpanded, setGapsExpanded] = useState(false);
   const [questionsExpanded, setQuestionsExpanded] = useState(false);
   const [consoleQuestionsExpanded, setConsoleQuestionsExpanded] = useState(false);
+  const t0CompletionHandledRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (runningT0Round && !activeT0RoundId) {
+      setActiveT0RoundId(runningT0Round.id);
+    }
+  }, [runningT0Round, activeT0RoundId]);
+
+  useEffect(() => {
+    if (!selectedProjectId || !displayT0Round?.id) return;
+    const terminal = displayT0Round.status === "completed" || displayT0Round.status === "failed";
+    if (!terminal) return;
+    if (t0CompletionHandledRef.current === displayT0Round.id) return;
+    t0CompletionHandledRef.current = displayT0Round.id;
+
+    void Promise.all([
+      utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId }),
+      utils.geo.aiTestRuns.listByRound.invalidate({
+        projectId: selectedProjectId,
+        roundId: displayT0Round.id,
+      }),
+      utils.geo.roundQuestions.listByRound.invalidate({
+        projectId: selectedProjectId,
+        roundId: displayT0Round.id,
+      }),
+    ]);
+
+    if (displayT0Round.status === "completed") {
+      setT0Message("T0 基线检测已完成，以下为真实 AI 平台实测结果。");
+      setT0Error(undefined);
+    } else {
+      setT0Error("T0 基线检测未成功完成，请稍后重试或联系支持。");
+    }
+  }, [displayT0Round?.id, displayT0Round?.status, selectedProjectId, utils]);
 
   const gapCount = useMemo(() => countDiagnosisGaps(analyses as DiagnosisAnalysisRow[]), [analyses]);
   const gapCardsPreview = useMemo(() => topDiagnosisGapCards(analyses as DiagnosisAnalysisRow[], 5), [analyses]);
@@ -1068,15 +1111,19 @@ export function AiDiagnosisFlowPage() {
         runsPerQuestion: 3,
       });
       const roundId = createResult.round.id;
+      t0CompletionHandledRef.current = null;
       setActiveT0RoundId(roundId);
       await utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId });
-      await startT0Execution.mutateAsync({ projectId: selectedProjectId, roundId });
-      await Promise.all([
-        utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId }),
-        utils.geo.aiTestRuns.listByRound.invalidate({ projectId: selectedProjectId, roundId }),
-        utils.geo.roundQuestions.listByRound.invalidate({ projectId: selectedProjectId, roundId }),
-      ]);
-      setT0Message("T0 基线检测已完成，以下为真实 AI 平台实测结果。");
+      const startResult = await startT0Execution.mutateAsync({
+        projectId: selectedProjectId,
+        roundId,
+      });
+      if (startResult.status !== "running") {
+        setT0Error("T0 基线检测未能启动，请刷新后重试。");
+        return;
+      }
+      await utils.geo.testRounds.get.invalidate({ projectId: selectedProjectId, id: roundId });
+      setT0Message("T0 基线检测已启动，正在后台执行，请稍候…");
     } catch (err) {
       const raw =
         err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "启动 T0 基线检测失败";
@@ -1307,11 +1354,11 @@ export function AiDiagnosisFlowPage() {
           <Button
             type="button"
             className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
-            disabled={!canOperate || t0RunningMutation || running || generatingQuestions}
+            disabled={!canOperate || isT0Running || running || generatingQuestions}
             onClick={() => void handleStartT0Baseline()}
             data-testid="ai-diagnosis-start-t0"
           >
-            {t0RunningMutation ? "正在启动 T0 检测…" : "启动T0基线检测"}
+            {t0StartingMutation ? "正在启动 T0 检测…" : isT0Running ? "T0 检测进行中…" : "启动T0基线检测"}
           </Button>
         </div>
 

@@ -248,6 +248,8 @@ export async function executeT0Run(
   }
 }
 
+export const T0_RUN_TIMEOUT_MS = 30_000;
+
 export type StartT0ExecutionSuccess = {
   roundId: string;
   completedRuns: number;
@@ -255,9 +257,33 @@ export type StartT0ExecutionSuccess = {
   failures: Array<{ questionId: number; platform: string; runIndex: number; error: string }>;
 };
 
-export type StartT0ExecutionResult =
-  | StartT0ExecutionSuccess
+export type StartT0ExecutionImmediateResult =
+  | { roundId: string; status: "running" }
   | { error: "ROUND_ALREADY_STARTED" };
+
+export type StartT0ExecutionResult = StartT0ExecutionImmediateResult;
+
+async function executeT0RunWithTimeout(
+  db: DbConn,
+  input: Parameters<typeof executeT0Run>[1],
+): Promise<ExecuteT0RunResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      executeT0Run(db, input),
+      new Promise<ExecuteT0RunResult>(resolve => {
+        timer = setTimeout(
+          () => resolve({ ok: false, error: "单次实测超时（30秒），已跳过" }),
+          T0_RUN_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
+}
 
 function recordT0RunOutcome(
   result: ExecuteT0RunResult,
@@ -277,7 +303,7 @@ function recordT0RunOutcome(
   });
 }
 
-export async function startT0Execution(db: DbConn, roundId: string): Promise<StartT0ExecutionResult> {
+async function prepareT0ExecutionStart(db: DbConn, roundId: string) {
   const roundRows = await db.select().from(testRounds).where(eq(testRounds.id, roundId)).limit(1);
   const round = roundRows[0];
   if (!round) {
@@ -296,6 +322,76 @@ export async function startT0Execution(db: DbConn, roundId: string): Promise<Sta
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: "该轮次未绑定任何问题" });
   }
 
+  return { round, boundQuestionIds };
+}
+
+export async function runT0ExecutionBackground(
+  db: DbConn,
+  roundId: string,
+): Promise<StartT0ExecutionSuccess> {
+  const { round, boundQuestionIds } = await prepareT0ExecutionStart(db, roundId);
+
+  const platforms = round.platforms ?? [];
+  const runsPerQuestion = round.runsPerQuestion ?? 3;
+  const state = { completedRuns: 0, failedRuns: 0, failures: [] as StartT0ExecutionSuccess["failures"] };
+
+  try {
+    for (const questionId of boundQuestionIds) {
+      for (let runIndex = 1; runIndex <= runsPerQuestion; runIndex += 1) {
+        const platformResults = await Promise.allSettled(
+          platforms.map(platform =>
+            executeT0RunWithTimeout(db, {
+              projectId: round.projectId,
+              roundId,
+              questionId,
+              platform,
+              runIndex,
+            }),
+          ),
+        );
+
+        for (let i = 0; i < platforms.length; i += 1) {
+          const platform = platforms[i]!;
+          const task: T0RunTask = { questionId, platform, runIndex };
+          const settled = platformResults[i]!;
+          if (settled.status === "rejected") {
+            const message =
+              settled.reason instanceof Error ? settled.reason.message : String(settled.reason);
+            recordT0RunOutcome({ ok: false, error: message }, task, state);
+          } else {
+            recordT0RunOutcome(settled.value, task, state);
+          }
+        }
+      }
+    }
+
+    const finishedAt = new Date();
+    const finalStatus =
+      state.failedRuns > 0 && state.completedRuns === 0 ? "failed" : "completed";
+    await db
+      .update(testRounds)
+      .set({ status: finalStatus, finishedAt })
+      .where(eq(testRounds.id, roundId));
+
+    return {
+      roundId,
+      completedRuns: state.completedRuns,
+      failedRuns: state.failedRuns,
+      failures: state.failures,
+    };
+  } catch (err) {
+    const finishedAt = new Date();
+    await db
+      .update(testRounds)
+      .set({ status: "failed", finishedAt })
+      .where(eq(testRounds.id, roundId));
+    throw err;
+  }
+}
+
+export async function startT0Execution(db: DbConn, roundId: string): Promise<StartT0ExecutionResult> {
+  await prepareT0ExecutionStart(db, roundId);
+
   const startedAt = new Date();
   const lockResult = await db
     .update(testRounds)
@@ -309,50 +405,9 @@ export async function startT0Execution(db: DbConn, roundId: string): Promise<Sta
     return { error: "ROUND_ALREADY_STARTED" };
   }
 
-  const platforms = round.platforms ?? [];
-  const runsPerQuestion = round.runsPerQuestion ?? 3;
-  let completedRuns = 0;
-  let failedRuns = 0;
-  const failures: StartT0ExecutionSuccess["failures"] = [];
-  const state = { completedRuns, failedRuns, failures };
+  void runT0ExecutionBackground(db, roundId).catch(err => {
+    console.error("[t0-execution] background failed", roundId, err);
+  });
 
-  for (const questionId of boundQuestionIds) {
-    for (let runIndex = 1; runIndex <= runsPerQuestion; runIndex += 1) {
-      const platformResults = await Promise.allSettled(
-        platforms.map(platform =>
-          executeT0Run(db, {
-            projectId: round.projectId,
-            roundId,
-            questionId,
-            platform,
-            runIndex,
-          }),
-        ),
-      );
-
-      for (let i = 0; i < platforms.length; i += 1) {
-        const platform = platforms[i]!;
-        const task: T0RunTask = { questionId, platform, runIndex };
-        const settled = platformResults[i]!;
-        if (settled.status === "rejected") {
-          const message = settled.reason instanceof Error ? settled.reason.message : String(settled.reason);
-          recordT0RunOutcome({ ok: false, error: message }, task, state);
-        } else {
-          recordT0RunOutcome(settled.value, task, state);
-        }
-      }
-    }
-  }
-
-  completedRuns = state.completedRuns;
-  failedRuns = state.failedRuns;
-
-  const finishedAt = new Date();
-  const finalStatus = failedRuns > 0 && completedRuns === 0 ? "failed" : "completed";
-  await db
-    .update(testRounds)
-    .set({ status: finalStatus, finishedAt })
-    .where(eq(testRounds.id, roundId));
-
-  return { roundId, completedRuns, failedRuns, failures: state.failures };
+  return { roundId, status: "running" };
 }

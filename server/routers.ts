@@ -3135,7 +3135,7 @@ ${article.markdownContent}`,
             message: "该检测轮次已开始执行，请勿重复启动",
           });
         }
-        return { success: true, ...summary } as const;
+        return { success: true, roundId: summary.roundId, status: summary.status } as const;
       }),
   }),
 
