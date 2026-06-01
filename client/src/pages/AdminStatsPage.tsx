@@ -1,15 +1,16 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { useEffect } from "react";
 import { Redirect } from "wouter";
 
-type AdminStatMetricKey =
-  | "totalRegisteredUsers"
-  | "activeProjectCount"
-  | "totalPublishCount"
-  | "totalContentGenerationCount"
-  | "todayActiveUserCount";
+type AdminStatsSummary = RouterOutputs["adminStats"]["summary"];
+type AdminStatMetricKey = keyof Omit<AdminStatsSummary, "sources">;
+
+function formatAdminStatValue(stats: AdminStatsSummary | undefined, key: AdminStatMetricKey): string {
+  if (!stats) return "—";
+  return stats[key].toLocaleString();
+}
 
 const STAT_ITEMS: Array<{
   key: AdminStatMetricKey;
@@ -67,7 +68,7 @@ export default function AdminStatsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold tabular-nums text-gray-900">
-                {stats ? stats[item.key].toLocaleString() : "—"}
+                {formatAdminStatValue(stats, item.key)}
               </p>
             </CardContent>
           </Card>
