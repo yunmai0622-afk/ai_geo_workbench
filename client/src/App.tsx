@@ -36,6 +36,7 @@ import QuestionsLibraryPage from "./pages/QuestionsLibraryPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import KnowledgePage from "./pages/KnowledgePage";
 import RegisterPage from "./pages/RegisterPage";
+import SystemStatusPage from "./pages/SystemStatusPage";
 import SettingsPage from "./pages/SettingsPage";
 
 function profileHasBrand(profile: unknown): boolean {
@@ -165,6 +166,7 @@ function Router() {
       <Route path="/delivery-reports/public/:token" component={DeliveryReportPublicPage} />
       <Route path="/delivery-reports/share/:projectId" component={DeliveryReportSharePage} />
       <Route path="/register" component={RegisterPage} />
+      <Route path="/status" component={SystemStatusPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/legacy/onboarding" component={LegacyOnboardingPage} />
       <Route component={AuthenticatedAppShell} />
