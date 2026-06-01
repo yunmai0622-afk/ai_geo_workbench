@@ -26,6 +26,19 @@ describe("GEO-V1.1 email registration auth", () => {
     expect(routers).toContain("register:");
     expect(routers).toContain("loginWithEmail:");
     expect(routers).toContain("registerEmailUser");
+    expect(routers).toContain("updateProfile:");
+    expect(routers).toContain("changePassword:");
+  });
+
+  it("settings page route exists", () => {
+    const app = fs.readFileSync(path.join(root, "client/src/App.tsx"), "utf8");
+    expect(app).toContain('path="/settings"');
+    expect(fs.existsSync(path.join(root, "client/src/pages/SettingsPage.tsx"))).toBe(true);
+  });
+
+  it("top bar links to settings", () => {
+    const topBar = fs.readFileSync(path.join(root, "client/src/components/clients/ClientsHubTopBar.tsx"), "utf8");
+    expect(topBar).toContain("/settings");
   });
 
   it("register page route exists", () => {
