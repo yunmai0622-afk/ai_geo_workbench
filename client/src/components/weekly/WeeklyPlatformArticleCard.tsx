@@ -27,6 +27,7 @@ export type WeeklyArticleCardModel = {
   qualityScore?: number | null;
   qualityScoreRow?: GeoArticleQualityScoreRow | null;
   qualityFailHints?: string[];
+  qualityOptimizationSuggestions?: string[];
   coverThumbnailSrc?: string | null;
   publishLink?: string | null;
   strategySummary?: string | null;
@@ -103,6 +104,19 @@ export function WeeklyPlatformArticleCard(props: Props) {
           {model.qualityView.staleLabel ? (
             <span className="text-xs text-amber-700">{model.qualityView.staleLabel}</span>
           ) : null}
+        </div>
+      ) : null}
+      {model.qualityOptimizationSuggestions?.length ? (
+        <div
+          className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2"
+          data-testid="weekly-card-quality-suggestions"
+        >
+          <p className="text-xs font-medium text-amber-900">优化建议</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs leading-relaxed text-amber-900">
+            {model.qualityOptimizationSuggestions.map(suggestion => (
+              <li key={suggestion}>{suggestion}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {model.qualityFailHints?.length ? (

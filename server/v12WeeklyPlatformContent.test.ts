@@ -71,6 +71,11 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
       "weekly-card-quality-fail-hints",
     );
     expect(read("client/src/components/weekly/WeeklyPlatformArticleCard.tsx")).toContain(
+      "weekly-card-quality-suggestions",
+    );
+    expect(read("shared/geoQualityAutoSuggest.ts")).toContain("建议添加1-2个具体客户案例");
+    expect(weekly).toContain("resolveGeoQualityOptimizationSuggestions");
+    expect(read("client/src/components/weekly/WeeklyPlatformArticleCard.tsx")).toContain(
       "GeoArticleQualityScoreDetailPopover",
     );
     expect(read("shared/geoArticleQualityScoreDetail.ts")).toContain("实体清晰度");

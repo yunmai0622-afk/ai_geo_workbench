@@ -24,6 +24,7 @@ import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchG
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
 import { GeoContentTaskPanels } from "@/components/weekly/GeoContentTaskPanels";
 import { WeeklyPlatformArticleCard, type WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
+import { resolveGeoQualityOptimizationSuggestions } from "@shared/geoQualityAutoSuggest";
 import {
   computeAverageGeoQualityScore,
   resolveFriendlyQualityFailHints,
@@ -232,6 +233,7 @@ type ArticleRow = {
   coverImageUrl?: string | null;
   geoQualityScore?: number | null;
   geoQualityRecommendation?: string | null;
+  geoQualityDetail?: unknown;
   geoQualityStale?: boolean | number | null;
   contentStrategyType?: string | null;
   publishIdentity?: string | null;
@@ -1079,6 +1081,7 @@ export default function WeeklyContentPage() {
           statusFilterKey: statusView.filterKey,
           qualityView: resolveQualityCardView(a),
           qualityFailHints: resolveFriendlyQualityFailHints(a),
+          qualityOptimizationSuggestions: resolveGeoQualityOptimizationSuggestions(a),
           qualityScore: a.geoQualityScore ?? q?.totalScore ?? null,
           qualityScoreRow: q ?? null,
           strategySummary: formatArticleStrategySummary(a),
