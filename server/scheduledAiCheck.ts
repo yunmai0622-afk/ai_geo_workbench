@@ -10,7 +10,6 @@ import { runAiMentionCheck } from "./geoAiMentionCheck";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
 
 export async function runDailyAiCheck() {
-  console.log(`[定时实测] 开始执行 ${new Date().toISOString()}`);
   const db = await getDb();
   if (!db) {
     console.error("[定时实测] 数据库不可用，跳过");
@@ -29,8 +28,6 @@ export async function runDailyAiCheck() {
       ),
     )
     .limit(50);
-
-  console.log(`[定时实测] 找到 ${records.length} 条需要检测的记录`);
 
   for (const record of records) {
     try {
@@ -52,7 +49,6 @@ export async function runDailyAiCheck() {
         .limit(5);
 
       if (questionRows.length === 0) {
-        console.log(`[定时实测] 项目 ${record.projectId} 无问题数据，跳过`);
         continue;
       }
 
@@ -68,7 +64,6 @@ export async function runDailyAiCheck() {
       });
 
       if (result.results.length === 0) {
-        console.log(`[定时实测] 记录 ${record.id} 未获得 AI 回答，跳过`);
         continue;
       }
 
@@ -88,15 +83,11 @@ export async function runDailyAiCheck() {
         })
         .where(eq(geoInclusionMonitoringRecords.id, record.id));
 
-      console.log(`[定时实测] 记录 ${record.id} 完成：提及=${mentionStatus}`);
-
       await new Promise(r => setTimeout(r, 2000));
     } catch (e) {
       console.error(`[定时实测] 记录 ${record.id} 失败:`, e);
     }
   }
-
-  console.log(`[定时实测] 本次执行完成 ${new Date().toISOString()}`);
 }
 
 export function startDailyAiCheckScheduler() {
@@ -104,6 +95,4 @@ export function startDailyAiCheckScheduler() {
     runDailyAiCheck();
     setInterval(runDailyAiCheck, 24 * 60 * 60 * 1000);
   }, 5 * 60 * 1000);
-
-  console.log("[定时实测] 调度器已启动，将在 5 分钟后首次执行，之后每 24 小时执行一次");
 }

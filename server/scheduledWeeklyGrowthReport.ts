@@ -14,6 +14,4 @@ export function startWeeklyGrowthReportScheduler() {
     void tryRunWeeklyGrowthReportOnMonday();
     setInterval(() => void tryRunWeeklyGrowthReportOnMonday(), 24 * 60 * 60 * 1000);
   }, 5 * 60 * 1000);
-
-  console.log("[增长周报] 调度器已启动：启动 5 分钟后首次检查，之后每 24 小时检查；周一执行");
 }

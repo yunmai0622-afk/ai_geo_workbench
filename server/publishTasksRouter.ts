@@ -218,7 +218,6 @@ async function attachCoverImagePayload(coverImageUrl: string | null, origin: str
   if (resolvedUrl.startsWith("data:")) {
     const parsed = parseDataUrlCover(resolvedUrl);
     if (parsed) {
-      console.log(`[封面图] 使用文章模板封面 base64，${parsed.coverImageBase64.length} chars`);
       return parsed;
     }
   }

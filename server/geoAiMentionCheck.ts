@@ -252,10 +252,6 @@ export async function runAiMentionCheck(input: AiMentionCheckInput): Promise<AiM
       await new Promise(r => setTimeout(r, 500));
     }
 
-    const engineResults = results.filter(r => r.engine === engine);
-    console.log(
-      `[实测] ${config.name} 完成：提及 ${engineResults.filter(r => r.mentionsBrand).length}/${engineResults.length}，推荐 ${engineResults.filter(r => r.recommendsBrand).length}/${engineResults.length}`,
-    );
   }
 
   const engineSummary = {} as AiMentionCheckOutput["engineSummary"];

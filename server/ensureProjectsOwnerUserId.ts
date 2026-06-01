@@ -28,11 +28,9 @@ export async function ensureProjectsOwnerUserIdColumn(databaseUrl?: string): Pro
     conn = await mysql.createConnection(url);
     if (!(await columnExists(conn, "projects", "ownerUserId"))) {
       await conn.query("ALTER TABLE `projects` ADD COLUMN `ownerUserId` int NULL");
-      console.log("[Database] Added projects.ownerUserId");
     }
     if (!(await indexExists(conn, "projects", "idx_projects_owner_user_id"))) {
       await conn.query("CREATE INDEX `idx_projects_owner_user_id` ON `projects` (`ownerUserId`)");
-      console.log("[Database] Added idx_projects_owner_user_id");
     }
 
     const [users] = await conn.query<mysql.RowDataPacket[]>("SELECT id FROM users ORDER BY id ASC");

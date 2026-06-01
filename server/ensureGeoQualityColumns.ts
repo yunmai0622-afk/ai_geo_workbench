@@ -51,12 +51,10 @@ export async function ensureGeoQualityColumns(databaseUrl?: string): Promise<voi
         continue;
       }
       await conn.query(`ALTER TABLE \`geo_articles\` ${col.ddl}`);
-      console.log(`[Database] Added geo_articles.${col.name}`);
     }
     for (const col of PROJECT_PLATFORM_ACCOUNT_COLUMNS) {
       if (await columnExists(conn, "project_platform_accounts", col.name)) continue;
       await conn.query(`ALTER TABLE \`project_platform_accounts\` ${col.ddl}`);
-      console.log(`[Database] Added project_platform_accounts.${col.name}`);
     }
   } catch (error) {
     console.warn("[Database] ensureGeoQualityColumns failed:", error);

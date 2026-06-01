@@ -89,4 +89,4 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// KNOWN(GEO-V1.1): feature queries live in domain modules (geoArticleLogic, routers, etc.).

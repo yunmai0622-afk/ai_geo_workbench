@@ -167,9 +167,5 @@ export async function runWeeklyGrowthReport(now: Date = new Date()) {
     }
   }
 
-  console.log(
-    `[增长周报] 完成 ${now.toISOString()}：项目 ${activeProjects.length}，新建 ${created}，跳过 ${skipped}`,
-  );
-
   return { created, skipped, projects: activeProjects.length };
 }

@@ -16,16 +16,13 @@ export async function generateCoverImage(articleTitle: string): Promise<string |
 配合简洁的线条图形或图标，专业感强，适合知识付费内容，
 禁止出现任何文字水印，禁止卡通风格，禁止人脸特写，16:9横版构图`;
 
-    console.log(`[封面图] 开始生成，标题: ${articleTitle}，尺寸: ${COVER_WIDTH}x${COVER_HEIGHT}`);
     const { url } = await generateImage({
       prompt,
       width: COVER_WIDTH,
       height: COVER_HEIGHT,
     });
 
-    if (url) {
-      console.log(`[封面图] 生成成功: ${url}`);
-    } else {
+    if (!url) {
       console.warn("[封面图] 生成返回空 url");
     }
 
