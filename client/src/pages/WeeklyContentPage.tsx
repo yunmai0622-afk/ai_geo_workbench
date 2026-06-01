@@ -564,6 +564,7 @@ export default function WeeklyContentPage() {
       if (selectable.length === 0) return null;
       const selectedId = selectedPublishAccountIds[slug];
       if (selectedId) return selectable.find(a => a.id === selectedId) ?? null;
+      if (selectable.length === 1) return selectable[0]!;
       const ready = selectable.filter(isPublishReadyAccount);
       if (ready.length === 1) return ready[0]!;
       return null;
@@ -2302,24 +2303,35 @@ export default function WeeklyContentPage() {
             )}
             {publishDialogSlug ? (
               PUBLISH_QUEUE_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
+              const selectableAccounts = isBindingPublishPlatform(p.slug)
+                ? getEnqueueSelectableAccountsForPlatform(p.slug)
+                : [];
               const readyAccounts = isBindingPublishPlatform(p.slug) ? getPublishReadyAccountsForPlatform(p.slug) : [];
               const legacyAccounts = isBindingPublishPlatform(p.slug)
-                ? getAllEnabledAccountsForPlatform(p.slug).filter(
-                    a => a.isEnabled && !isPublishReadyAccount(a),
-                  )
+                ? selectableAccounts.filter(a => !a.localProfileId?.trim() || !a.localAgentId?.trim())
                 : [];
-              const picked = isBindingPublishPlatform(p.slug) ? pickPublishAccount(p.slug) : null;
-              const needsPick = readyAccounts.length > 1 && !picked;
+              const selected = isBindingPublishPlatform(p.slug) ? pickSelectedPublishAccount(p.slug) : null;
+              const needsPick = selectableAccounts.length > 1 && !selectedPublishAccountIds[p.slug];
+              const sessionExpired =
+                selected != null &&
+                isBindingPublishPlatform(p.slug) &&
+                selected.sessionStatus === "expired";
+              const renderAccountSummary = (a: PlatformAccountItem) =>
+                formatPublishEnqueueAccountOptionLabel({
+                  accountName: a.accountName,
+                  sessionStatus: a.sessionStatus,
+                  lastLoginAt: a.lastLoginAt ?? null,
+                });
               return (
                 <div key={p.slug} className="flex flex-col gap-2 rounded-lg border border-gray-200 px-3 py-2">
                   <span className="text-sm font-medium">{p.label}</span>
                   {isBindingPublishPlatform(p.slug) ? (
                     <div className="space-y-2">
-                      {readyAccounts.length === 0 ? (
+                      {selectableAccounts.length === 0 ? (
                         <span className="text-xs text-amber-600">无可发布账号（需绑定本地环境且登录有效）</span>
-                      ) : readyAccounts.length === 1 ? (
-                        <span className="text-xs text-gray-600">
-                          发布账号：{readyAccounts[0]!.accountName} · 登录有效
+                      ) : selectableAccounts.length === 1 ? (
+                        <span className="text-xs text-gray-600" data-testid="publish-dialog-single-account">
+                          发布账号：{renderAccountSummary(selectableAccounts[0]!)}
                         </span>
                       ) : (
                         <>
@@ -2327,47 +2339,72 @@ export default function WeeklyContentPage() {
                           <select
                             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
                             value={selectedPublishAccountIds[p.slug] ?? ""}
-                            onChange={e =>
-                              setSelectedPublishAccountIds(prev => ({
-                                ...prev,
-                                [p.slug]: Number(e.target.value),
-                              }))
-                            }
+                            onChange={e => {
+                              const accountId = Number(e.target.value);
+                              if (!accountId) return;
+                              rememberEnqueuePublishAccount(p.slug, accountId);
+                            }}
                             onClick={e => e.stopPropagation()}
+                            data-testid="publish-dialog-account-select"
                           >
                             <option value="">请选择账号</option>
-                            {readyAccounts.map(a => (
+                            {selectableAccounts.map(a => (
                               <option key={a.id} value={a.id}>
-                                {a.accountName}
+                                {renderAccountSummary(a)}
                               </option>
                             ))}
                           </select>
-                          {picked ? (
+                          {selected ? (
                             <span className="text-xs text-gray-600">
-                              已选账号：{picked.accountName}
+                              已选：{renderAccountSummary(selected)}
                             </span>
                           ) : null}
                         </>
                       )}
+                      {sessionExpired ? (
+                        <div
+                          className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                          data-testid="publish-enqueue-session-expired"
+                        >
+                          <p className="text-xs text-amber-900">{PUBLISH_ENQUEUE_SESSION_EXPIRED_HINT}</p>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-amber-500 text-amber-800"
+                            data-testid="publish-enqueue-relogin"
+                            onClick={() => {
+                              void focusLocalAgentAccountsTab()
+                                .then(r => {
+                                  if (r.ok) toast.success("已切换到本地客户端「账号环境」");
+                                  else toast.error(toUserFacingError(r.message, "请手动打开本地客户端"));
+                                })
+                                .catch(() => toast.message("请在本机打开 GEO 本地发布客户端"));
+                            }}
+                          >
+                            {PUBLISH_ENQUEUE_RELOGIN_ACTION_LABEL}
+                          </Button>
+                        </div>
+                      ) : null}
                       {legacyAccounts.length > 0 ? (
                         <p className="text-xs text-amber-600">
-                          {legacyAccounts.length} 个旧账号需在企业档案重新绑定本地客户端后方可发布。
+                          {legacyAccounts.length} 个账号需在企业档案重新绑定本地客户端后方可发布。
                         </p>
                       ) : null}
                       {needsPick ? (
-                        <span className="text-xs text-red-600">该平台有多个可发布账号，请选择后再发布</span>
+                        <span className="text-xs text-red-600">该平台有多个账号，请选择后再发布</span>
+                      ) : null}
+                      {selected && !isPublishReadyAccount(selected) && !sessionExpired ? (
+                        <span className="text-xs text-amber-600">
+                          当前账号尚未就绪，请完成本地绑定并检测登录态后再发布。
+                        </span>
+                      ) : null}
+                      {readyAccounts.length === 0 && selectableAccounts.length > 0 && !sessionExpired ? (
+                        <span className="text-xs text-amber-600">暂无可直接发布的账号，请检查登录状态与本地绑定。</span>
                       ) : null}
                     </div>
                   ) : (
-                    <span className="pl-7 text-xs text-gray-500">
-                      {isBindingPublishPlatform(p.slug) && readyAccounts.length === 1
-                        ? `可发布账号：${readyAccounts[0]!.accountName}`
-                        : isBindingPublishPlatform(p.slug) && readyAccounts.length > 1
-                          ? `${readyAccounts.length} 个可发布账号`
-                          : isBindingPublishPlatform(p.slug)
-                            ? "暂无可发布账号"
-                            : "无需绑定平台账号"}
-                    </span>
+                    <span className="pl-7 text-xs text-gray-500">无需绑定平台账号</span>
                   )}
                 </div>
               );
