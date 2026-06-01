@@ -12,6 +12,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startDailyAiCheckScheduler } from "../scheduledAiCheck";
+import { startWeeklyGrowthReportScheduler } from "../scheduledWeeklyGrowthReport";
 import { ensureGeoQualityColumns } from "../ensureGeoQualityColumns";
 import { ensureProjectsOwnerUserIdColumn } from "../ensureProjectsOwnerUserId";
 import { diagnoseLlmProviderEnv, formatMissingLlmEnvServerLog } from "../../shared/llmEnvDiagnostics";
@@ -85,6 +86,7 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
     startDailyAiCheckScheduler();
+    startWeeklyGrowthReportScheduler();
   });
 }
 
