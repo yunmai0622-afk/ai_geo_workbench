@@ -102,7 +102,7 @@ import {
   toPlatformContentGenerationError,
   PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE,
 } from "@shared/platformContentGenerationErrors";
-import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
+import { toUserFacingError, toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
 import {
   GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE,
@@ -1847,7 +1847,7 @@ export default function WeeklyContentPage() {
                   void focusLocalAgentAccountsTab()
                     .then(r => {
                       if (r.ok) toast.success("已切换到本地客户端「账号环境」");
-                      else toast.error(r.message || "请手动打开本地客户端");
+                      else toast.error(toUserFacingError(r.message, "请手动打开本地客户端"));
                     })
                     .catch(() => toast.message("请在本机打开 GEO 本地发布客户端"));
                 }}

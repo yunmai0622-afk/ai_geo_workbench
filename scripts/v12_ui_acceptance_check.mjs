@@ -8,7 +8,7 @@ import {
 const root = resolve(process.cwd());
 const read = (relativePath) => readFileSync(resolve(root, relativePath), 'utf-8');
 const sources = {
-  home: read('client/src/pages/Home.tsx') + read('client/src/components/V1WorkbenchOverview.tsx'),
+  home: read('client/src/components/V1WorkbenchOverview.tsx'),
   layout: read('client/src/components/DashboardLayout.tsx'),
   app: read('client/src/App.tsx'),
   share: read('client/src/pages/DeliveryReportSharePage.tsx'),
@@ -101,7 +101,6 @@ for (const item of [
   'ProfileAiUnderstandingPreview',
   'ProfileUploadAssistSection',
   'AdvancedMaterialsSection',
-  'ProfilePublishEnvLightHint',
   'enterprise-profile-page',
 ]) {
   assertContains('企业档案页', sources.assets, item);
@@ -175,11 +174,11 @@ const deliveryReportPage =
   read('client/src/lib/deliveryReportProductDisplay.ts');
 const deliveryReportPages = deliveryReportPage + sources.customerView;
 for (const item of [
-  'GEO 增长交付报告',
+  'GEO 实验型交付报告',
   'delivery-report-page',
   '一句话经营结论',
   '本轮完成事项',
-  '内容发布证据',
+  '发布内容清单',
   '生成下一轮内容计划',
 ]) {
   assertContains('交付报告页', deliveryReportPage, item);

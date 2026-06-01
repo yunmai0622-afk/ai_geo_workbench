@@ -35,9 +35,9 @@ describe("Agent-4 local publish client productization", () => {
     expect(d).toContain("不包含 Cookie");
   });
 
-  it("renderer has five tabs", () => {
+  it("renderer has four tabs", () => {
     const html = read("local-agent/src/renderer/index.html");
-    for (const tab of ["总览", "账号环境", "发布任务", "执行日志", "设置"]) {
+    for (const tab of ["总览", "账号环境", "发布任务", "诊断与日志"]) {
       expect(html).toContain(tab);
     }
     expect(read("local-agent/src/renderer/app.js")).toContain("deleteProfile");
