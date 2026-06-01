@@ -20,12 +20,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import LoginGatePanel from "@/components/auth/LoginGatePanel";
-import { Link } from "wouter";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
+import { BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -175,94 +174,7 @@ export default function DashboardLayout({
   }
 
   if (!user) {
-    const loginConfigured = isLoginConfigured();
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-gray-900">
-        <div className="flex w-full max-w-md flex-col items-center gap-8 rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-lg">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <BarChart3 className="h-7 w-7" />
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight">登录后继续</h1>
-            <p className="max-w-sm text-sm leading-6 text-gray-500">
-              登录后可按增长总览、内容诊断、资产生产、发布记录与客户交付报告推进项目。
-            </p>
-          </div>
-          {loginConfigured ? (
-            <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full bg-blue-600 text-white hover:bg-blue-700">
-              使用 OAuth 登录
-            </Button>
-          ) : (
-            <div className="w-full space-y-3">
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
-                本地环境未配置外部 OAuth 登录参数。可使用本地开发登录进入系统验收页面；生产环境不会启用该入口。
-              </div>
-              <Button onClick={() => devLogin.mutate()} disabled={devLogin.isPending} size="lg" className="w-full bg-blue-600 text-white hover:bg-blue-700">
-                {devLogin.isPending ? "正在登录" : "本地开发登录"}
-              </Button>
-              {devLogin.error ? (
-                <p className="text-sm leading-6 text-red-600">
-                  {toUserFacingErrorFromUnknown(devLogin.error, "开发登录失败，请稍后重试")}
-                </p>
-              ) : null}
-            </div>
-          )}
-
-          <div className="w-full space-y-3 border-t border-gray-100 pt-6 text-left">
-            <p className="text-center text-xs font-medium uppercase tracking-wide text-gray-400">或使用邮箱登录</p>
-            <form
-              className="space-y-3"
-              data-testid="email-login-form"
-              onSubmit={e => {
-                e.preventDefault();
-                setEmailLoginError(null);
-                loginWithEmail.mutate(emailLogin);
-              }}
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="login-email">邮箱</Label>
-                <Input
-                  id="login-email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={emailLogin.email}
-                  onChange={e => setEmailLogin(s => ({ ...s, email: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="login-password">密码</Label>
-                <Input
-                  id="login-password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={emailLogin.password}
-                  onChange={e => setEmailLogin(s => ({ ...s, password: e.target.value }))}
-                />
-              </div>
-              {emailLoginError ? <p className="text-sm text-red-600">{emailLoginError}</p> : null}
-              <Button
-                type="submit"
-                variant="outline"
-                size="lg"
-                className="w-full"
-                disabled={loginWithEmail.isPending}
-              >
-                {loginWithEmail.isPending ? "登录中…" : "邮箱登录"}
-              </Button>
-            </form>
-          </div>
-
-          <p className="text-sm text-gray-500">
-            还没有账号？{" "}
-            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700">
-              立即注册
-            </Link>
-          </p>
-        </div>
-      </div>
-    );
+    return <LoginGatePanel />;
   }
 
   return (
@@ -402,6 +314,29 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </SidebarContent>
 
             <SidebarFooter className="border-t border-gray-200 bg-white p-3">
+              <SidebarMenu className="mb-2">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={pathname === "/knowledge"}
+                    onClick={() => setLocation("/knowledge")}
+                    tooltip="使用指南"
+                    data-testid="sidebar-knowledge-link"
+                    className={cn(
+                      "h-10 rounded-lg border border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                      pathname === "/knowledge" &&
+                        "border-blue-100 bg-blue-50 font-medium text-blue-800",
+                    )}
+                  >
+                    <BookOpen
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        pathname === "/knowledge" ? "text-blue-600" : "text-gray-400",
+                      )}
+                    />
+                    {!isCollapsed ? <span className="truncate text-sm">使用指南</span> : null}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 px-2 py-2 text-left hover:bg-gray-50 group-data-[collapsible=icon]:justify-center">
