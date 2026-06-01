@@ -5,6 +5,7 @@ import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/P
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
+import { PostPublishReminderCard } from "@/components/publishing/PostPublishReminderCard";
 import { PublishTaskColumnBoard } from "@/components/publishing/PublishTaskColumnBoard";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -178,6 +179,9 @@ export function ContentPublishingCenterPage() {
   const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
+  const [showPostPublishReminder, setShowPostPublishReminder] = useState(false);
+  const completedAgentTaskIdsRef = useRef<Set<number>>(new Set());
+  const completedAgentTasksInitializedRef = useRef(false);
 
   const articles = (articlesQuery.data ?? []) as ArticleRow[];
   const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
@@ -188,6 +192,47 @@ export function ContentPublishingCenterPage() {
   const publishRecords = (publishRecordsQuery.data ?? []) as PublishRecordRow[];
   const agentTasks = (autoPublishTasksQuery.data?.tasks ?? []) as AgentTaskRow[];
   const articleById = useMemo(() => new Map(articles.map(a => [a.id, a])), [articles]);
+
+  const hasInFlightAgentTasks = useMemo(
+    () =>
+      agentTasks.some(
+        t =>
+          t.status !== "completed" &&
+          t.status !== "failed" &&
+          t.status !== "draft_saved" &&
+          t.status !== "session_expired" &&
+          t.status !== "manual_required",
+      ),
+    [agentTasks],
+  );
+
+  useEffect(() => {
+    completedAgentTaskIdsRef.current = new Set();
+    completedAgentTasksInitializedRef.current = false;
+    setShowPostPublishReminder(false);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    const completedIds = agentTasks.filter(t => t.status === "completed").map(t => t.id);
+    if (!completedAgentTasksInitializedRef.current) {
+      completedIds.forEach(id => completedAgentTaskIdsRef.current.add(id));
+      completedAgentTasksInitializedRef.current = true;
+      return;
+    }
+    const newlyCompleted = completedIds.filter(id => !completedAgentTaskIdsRef.current.has(id));
+    if (newlyCompleted.length > 0) {
+      newlyCompleted.forEach(id => completedAgentTaskIdsRef.current.add(id));
+      setShowPostPublishReminder(true);
+    }
+  }, [agentTasks]);
+
+  useEffect(() => {
+    if (!enabled || !hasInFlightAgentTasks) return;
+    const timer = setInterval(() => {
+      void autoPublishTasksQuery.refetch();
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [enabled, hasInFlightAgentTasks, autoPublishTasksQuery]);
 
   const autoInclusionByArticleAndUrl = useMemo(() => {
     const keys = new Set<string>();
@@ -439,6 +484,9 @@ export function ContentPublishingCenterPage() {
       });
       await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
       setManualLink("");
+      if (url) {
+        setShowPostPublishReminder(true);
+      }
       toast.success("已登记发布记录");
     } catch (e) {
       toast.error(toUserFacingErrorFromUnknown(e, "登记失败"));
@@ -505,6 +553,16 @@ export function ContentPublishingCenterPage() {
         storageKey={FIRST_USE_HINT_KEYS.contentPublishing}
         message="发布前请确保本地客户端已启动并连接"
         data-testid="first-use-hint-content-publishing"
+      />
+
+      <PostPublishReminderCard
+        visible={showPostPublishReminder}
+        onDismiss={() => setShowPostPublishReminder(false)}
+        onGoInclusionMonitoring={() => {
+          if (selectedProjectId) {
+            setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId));
+          }
+        }}
       />
 
       {loading ? (
