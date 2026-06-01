@@ -1,5 +1,7 @@
+import { PageUsageHelpButton } from "@/components/help/PageUsageHelpButton";
 import { Button } from "@/components/ui/button";
 import { geoP0Brand, geoP0Surfaces, stageBadgeClass } from "@/lib/geoP0Visual";
+import { resolvePageUsageHelpId } from "@shared/pageUsageHelp";
 import { workspaceCtaUrl, type WorkspaceStageDefinition } from "@shared/workspaceStateMachine";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
@@ -23,7 +25,9 @@ export function ProjectWorkspaceTopBar({
   projectId,
   loading,
 }: Props) {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const pathname = location.split("?")[0] || location;
+  const pageHelpId = resolvePageUsageHelpId(pathname);
 
   if (!projectId) {
     return (
@@ -67,12 +71,13 @@ export function ProjectWorkspaceTopBar({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 md:gap-4">
+      <div className="flex flex-wrap items-center gap-3 sm:ml-auto md:gap-4">
         {stageLabel ? (
           <span className={stageBadgeClass(stageLabel)} data-testid="project-topbar-stage">
             {stageLabel}
           </span>
         ) : null}
+        {pageHelpId ? <PageUsageHelpButton helpId={pageHelpId} testId={`page-usage-help-${pageHelpId}`} /> : null}
       </div>
 
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
