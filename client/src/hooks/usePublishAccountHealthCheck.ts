@@ -39,7 +39,7 @@ export function usePublishAccountHealthCheck(projectId: number | null, enabled: 
         const health = await checkLocalAgentHealth();
         const online = Boolean(health?.ok);
         if (runId !== runIdRef.current) return;
-        setAgentOnline(online);
+        setAgentOnline(prev => (prev === online ? prev : online));
 
         if (!online || !health) {
           setLastCheckedAt(new Date());
@@ -81,8 +81,13 @@ export function usePublishAccountHealthCheck(projectId: number | null, enabled: 
   const runCheckRef = useRef(runCheck);
   runCheckRef.current = runCheck;
 
+  const autoRunKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!enabled || !projectId) return;
+    const key = String(projectId);
+    if (autoRunKeyRef.current === key) return;
+    autoRunKeyRef.current = key;
     void runCheckRef.current({ detectSessions: true });
   }, [enabled, projectId]);
 

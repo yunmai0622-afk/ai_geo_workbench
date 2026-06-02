@@ -14,6 +14,7 @@ import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { PublishRecordsCalendar } from "@/components/publishing/PublishRecordsCalendar";
 import { PublishAccountSessionAlert } from "@/components/publishing/PublishAccountSessionAlert";
 import { PublishRecordsListPanel } from "@/components/publishing/PublishRecordsListPanel";
+import { PublishCenterErrorBoundary } from "@/components/publishing/PublishCenterErrorBoundary";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -281,6 +282,14 @@ function queueTabFromCard(card: PublishTaskCardModel): QueueTabKey {
 }
 
 export function ContentPublishingCenterPage() {
+  return (
+    <PublishCenterErrorBoundary>
+      <ContentPublishingCenterPageInner />
+    </PublishCenterErrorBoundary>
+  );
+}
+
+function ContentPublishingCenterPageInner() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } =
@@ -296,6 +305,7 @@ export function ContentPublishingCenterPage() {
     { projectId: selectedProjectId!, limit: 30 },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const refetchAutoPublishTasks = autoPublishTasksQuery.refetch;
   const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
@@ -320,7 +330,7 @@ export function ContentPublishingCenterPage() {
   const retryPublishTask = trpc.publishTasks.retry.useMutation();
   const backfillTaskPublicUrl = trpc.publishTasks.backfillPublicUrl.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
-  const [manualArticleId, setManualArticleId] = useState<number | "">("");
+  const [manualArticleId, setManualArticleId] = useState<number | undefined>(undefined);
   const [manualPlatform, setManualPlatform] = useState<ManualPublishPlatform>("知乎");
   const [manualLink, setManualLink] = useState("");
   const [savingManual, setSavingManual] = useState(false);
@@ -350,6 +360,22 @@ export function ContentPublishingCenterPage() {
     () => articles.filter(a => isQualityPassed(articleLatestQuality(a?.id, scores))),
     [articles, scores],
   );
+  const manualArticleSelectValue = useMemo(() => {
+    if (publishableArticles.length === 0) return undefined;
+    if (
+      manualArticleId != null &&
+      publishableArticles.some(a => a?.id === manualArticleId)
+    ) {
+      return String(manualArticleId);
+    }
+    const fallbackId = publishableArticles[0]?.id;
+    return fallbackId != null ? String(fallbackId) : undefined;
+  }, [publishableArticles, manualArticleId]);
+  const effectiveManualArticleId = useMemo(() => {
+    if (!manualArticleSelectValue) return undefined;
+    const parsed = Number.parseInt(manualArticleSelectValue, 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [manualArticleSelectValue]);
   const publishRecords = useMemo(
     () => filterListWithNumericId(asArray<PublishRecordRow>(publishRecordsQuery.data)) as PublishRecordRow[],
     [publishRecordsQuery.data],
@@ -377,6 +403,7 @@ export function ContentPublishingCenterPage() {
     completedAgentTaskIdsRef.current = new Set();
     completedAgentTasksInitializedRef.current = false;
     setPublishSuccessNotice(null);
+    setManualArticleId(undefined);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -402,10 +429,10 @@ export function ContentPublishingCenterPage() {
   useEffect(() => {
     if (!enabled || !hasInFlightAgentTasks) return;
     const timer = setInterval(() => {
-      void autoPublishTasksQuery.refetch();
+      void refetchAutoPublishTasks();
     }, 3000);
     return () => clearInterval(timer);
-  }, [enabled, hasInFlightAgentTasks, autoPublishTasksQuery]);
+  }, [enabled, hasInFlightAgentTasks, refetchAutoPublishTasks]);
 
   const autoInclusionByArticleAndUrl = useMemo(() => {
     const keys = new Set<string>();
@@ -424,15 +451,17 @@ export function ContentPublishingCenterPage() {
     setCheckingAgent(true);
     try {
       const h = await checkLocalAgentHealth({ force: true });
-      setLocalAgentOnline(h?.ok ?? false);
-      setLocalAgentClientVersion(h?.version?.trim() ? h.version.trim() : null);
+      const online = h?.ok ?? false;
+      setLocalAgentOnline(prev => (prev === online ? prev : online));
+      const version = h?.version?.trim() ? h.version.trim() : null;
+      setLocalAgentClientVersion(prev => (prev === version ? prev : version));
       await runAccountHealthCheck({ detectSessions: true });
       if (!h?.ok && selectedProjectId) {
         await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
       }
     } catch {
-      setLocalAgentOnline(false);
-      setLocalAgentClientVersion(null);
+      setLocalAgentOnline(prev => (prev === false ? prev : false));
+      setLocalAgentClientVersion(prev => (prev === null ? prev : null));
     } finally {
       setCheckingAgent(false);
     }
@@ -442,47 +471,44 @@ export function ContentPublishingCenterPage() {
     if (!enabled) return;
     const h = checkLocalAgentHealth();
     void h.then(health => {
-      setLocalAgentOnline(health?.ok ?? false);
-      setLocalAgentClientVersion(health?.version?.trim() ? health.version.trim() : null);
+      const online = health?.ok ?? false;
+      setLocalAgentOnline(prev => (prev === online ? prev : online));
+      const version = health?.version?.trim() ? health.version.trim() : null;
+      setLocalAgentClientVersion(prev => (prev === version ? prev : version));
     });
   }, [enabled, selectedProjectId]);
 
   useEffect(() => {
-    if (accountHealthAgentOnline != null) {
-      setLocalAgentOnline(accountHealthAgentOnline);
-    }
+    if (accountHealthAgentOnline == null) return;
+    setLocalAgentOnline(prev =>
+      prev === accountHealthAgentOnline ? prev : accountHealthAgentOnline,
+    );
   }, [accountHealthAgentOnline]);
 
   useEffect(() => {
     if (!enabled) return;
     void fetchLocalAgentDownloadManifest().then(manifest => {
-      const version = manifest?.version?.trim();
-      setManifestVersion(version || null);
-      setManifestDownloadHref(pickLocalAgentDownloadHref(manifest));
+      const version = manifest?.version?.trim() || null;
+      const href = pickLocalAgentDownloadHref(manifest);
+      setManifestVersion(prev => (prev === version ? prev : version));
+      setManifestDownloadHref(prev => (prev === href ? prev : href));
     });
   }, [enabled]);
 
   useEffect(() => {
-    if (publishableArticles.length === 0) {
-      setManualArticleId("");
-      return;
-    }
-    const current = typeof manualArticleId === "number" ? manualArticleId : undefined;
-    if (current == null || !publishableArticles.some(a => a?.id === current)) {
-      setManualArticleId(publishableArticles[0]?.id ?? "");
-    }
-  }, [publishableArticles, manualArticleId]);
-
-  useEffect(() => {
     setLinkDraftById(prev => {
+      let changed = false;
       const next = { ...prev };
       for (const r of publishRecords ?? []) {
         const url = recordPublicLink(r);
         const recordId = r?.id;
         if (recordId == null) continue;
-        if (next[recordId] === undefined) next[recordId] = url;
+        if (next[recordId] === undefined) {
+          next[recordId] = url;
+          changed = true;
+        }
       }
-      return next;
+      return changed ? next : prev;
     });
   }, [publishRecords]);
 
@@ -850,7 +876,7 @@ export function ContentPublishingCenterPage() {
 
   async function handleSaveManualRecord() {
     if (!selectedProjectId) return;
-    const articleId = typeof manualArticleId === "number" ? manualArticleId : undefined;
+    const articleId = effectiveManualArticleId;
     if (!articleId) {
       toast.error("请选择一篇文章");
       return;
@@ -1396,7 +1422,7 @@ export function ContentPublishingCenterPage() {
                     <div className="space-y-2">
                       <Label>选择文章</Label>
                       <Select
-                        value={String(manualArticleId)}
+                        value={manualArticleSelectValue}
                         onValueChange={v => setManualArticleId(Number(v))}
                       >
                         <SelectTrigger>
