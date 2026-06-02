@@ -188,13 +188,28 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
   ).length;
   const rewriteOpenCount = rewriteItems.length;
   const monitoringQuestionCount = aiAggregate.questionCount;
-  const aiTestResultCount = t0Metrics?.totalRuns ?? monitoringQuestionCount;
+  const analysisCount = analysisRows.length;
+  const analysisMentionRate =
+    analysisCount > 0
+      ? analysisRows.filter(row => row.mentionsEnterprise === 1).length / analysisCount
+      : null;
+  const analysisRecommendRate =
+    analysisCount > 0
+      ? analysisRows.filter(row => row.recommendsEnterprise === 1).length / analysisCount
+      : null;
+  const latestScore = scoreRows[0] ?? null;
+  const aiTestResultCount =
+    t0Metrics?.totalRuns ?? (monitoringQuestionCount > 0 ? monitoringQuestionCount : analysisCount);
   const brandMentionRate =
     t0Metrics?.mentionRate ??
-    (monitoringQuestionCount > 0 ? aiAggregate.mentionRate : null);
+    (monitoringQuestionCount > 0 ? aiAggregate.mentionRate : null) ??
+    analysisMentionRate ??
+    (latestScore?.aiVisibilityScore != null ? latestScore.aiVisibilityScore / 100 : null);
   const recommendRate =
     t0Metrics?.recommendRate ??
-    (monitoringQuestionCount > 0 ? aiAggregate.recommendRate : null);
+    (monitoringQuestionCount > 0 ? aiAggregate.recommendRate : null) ??
+    analysisRecommendRate ??
+    (latestScore?.aiRecommendationScore != null ? latestScore.aiRecommendationScore / 100 : null);
 
   return {
     enterpriseName: profile?.enterpriseName ?? null,
@@ -213,11 +228,11 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     monitoringRecordCount: monitoringRows.length,
     retestComparisonCount: Number(retestComparisonCountRows[0]?.count ?? 0),
     reportCount: Number(reportCountRows[0]?.count ?? 0),
-    geoScore: scoreRows[0]?.totalScore ?? null,
+    geoScore: latestScore?.totalScore ?? null,
+    hasAnalysis: analysisCount > 0,
     brandMentionRate,
     recommendRate,
     lowQualityArticleCount,
-    hasAnalysis: analysisRows.length > 0,
     hasGeoScore: scoreRows.length > 0,
     hasCompletedT0Baseline: hasCompletedT0Baseline(testRoundRows),
     hasCompletedT1Retest: hasCompletedT1Retest(testRoundRows),
