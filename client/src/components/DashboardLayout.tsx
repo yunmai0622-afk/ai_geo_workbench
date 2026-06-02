@@ -26,7 +26,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
 import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
+import { BookOpen, Brain, Building2, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -63,11 +63,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/clients",
         aliases: ["/clients"],
       },
-    ],
-  },
-  {
-    title: "增长总览",
-    items: [
       {
         icon: Sparkles,
         label: "项目工作台",
@@ -134,17 +129,10 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/inclusion-monitoring",
         aliases: ["/inclusion-monitoring", "/monitoring"],
       },
-      {
-        icon: BarChart3,
-        label: "资产进展",
-        desc: "查看内容漏斗与发布实测进展",
-        path: "/progress",
-        aliases: ["/progress"],
-      },
     ],
   },
   {
-    title: "客户交付",
+    title: "交付",
     items: [
       {
         icon: FileBarChart2,
@@ -153,12 +141,17 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/delivery-reports",
         aliases: ["/delivery-reports", "/reports"],
       },
+    ],
+  },
+  {
+    title: "设置",
+    items: [
       {
-        icon: ClipboardList,
-        label: "有效动作",
-        desc: "记录和查看已执行动作的效果判断",
-        path: "/effective-actions",
-        aliases: ["/effective-actions"],
+        icon: BookOpen,
+        label: "使用指南",
+        desc: "查看系统使用说明与操作指引",
+        path: "/knowledge",
+        aliases: ["/knowledge"],
       },
     ],
   },
@@ -342,29 +335,6 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </SidebarContent>
 
             <SidebarFooter className="border-t border-gray-200 bg-white p-3">
-              <SidebarMenu className="mb-2">
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={pathname === "/knowledge"}
-                    onClick={() => setLocation("/knowledge")}
-                    tooltip="使用指南"
-                    data-testid="sidebar-knowledge-link"
-                    className={cn(
-                      "h-10 rounded-lg border border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                      pathname === "/knowledge" &&
-                        "border-blue-100 bg-blue-50 font-medium text-blue-800",
-                    )}
-                  >
-                    <BookOpen
-                      className={cn(
-                        "h-4 w-4 shrink-0",
-                        pathname === "/knowledge" ? "text-blue-600" : "text-gray-400",
-                      )}
-                    />
-                    {!isCollapsed ? <span className="truncate text-sm">使用指南</span> : null}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
               <div className="flex items-center gap-2">
                 <Link href="/settings" className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-blue-600 group-data-[collapsible=icon]:hidden" data-testid="sidebar-settings-link">设置</Link>
                 <DropdownMenu>

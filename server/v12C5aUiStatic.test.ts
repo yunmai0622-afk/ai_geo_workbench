@@ -16,12 +16,12 @@ describe("C5-A global product UI overhaul", () => {
   it("uses grouped product navigation labels", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     expect(layout).toContain("AI 搜索增长系统");
-    expect(layout).toContain("增长总览");
     expect(layout).toContain("项目工作台");
     expect(layout).toContain("平台化内容资产");
     expect(layout).toContain("平台适配发布");
     expect(layout).toContain("收录监测");
     expect(layout).toContain("交付报告");
+    expect(layout).toContain("使用指南");
   });
 
   it("main pages use cockpit layout structure", () => {

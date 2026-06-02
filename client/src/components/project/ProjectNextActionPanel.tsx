@@ -25,8 +25,8 @@ type Props = {
  * 右侧下一步面板 — 顾问卡风格
  * 结构：
  * 1. 下一步建议（当前最该做什么 + 为什么 + 做完进入哪阶段 + CTA）
- * 2. 风险提醒
- * 3. 最近结果
+ * 2. 风险提醒（默认折叠，有风险时展开）
+ * 3. 最近结果（紧凑摘要）
  * 无数据时隐藏对应区块
  */
 export function ProjectNextActionPanel({
@@ -53,6 +53,10 @@ export function ProjectNextActionPanel({
   const nextStageName = mainChainNextAction?.nextStageName ?? fallbackNextStageName;
   const ctaPath =
     mainChainNextAction?.ctaPath ?? (stage && projectId ? workspaceCtaUrl(projectId, stage) : null);
+
+  const recentSummary = recentItems
+    .map(item => (item.detail ? `${item.label} ${item.detail}` : item.label))
+    .join(" · ");
 
   return (
     <aside
@@ -101,15 +105,17 @@ export function ProjectNextActionPanel({
 
       {/* ═══ 风险提醒 ═══ */}
       {riskHints.length > 0 ? (
-        <div
-          className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4"
+        <details
+          open
+          className="rounded-2xl border border-amber-200 bg-amber-50/60"
           data-testid="next-action-risks"
         >
-          <div className="mb-2.5 flex items-center gap-2">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
             <h3 className="text-[13px] font-semibold text-amber-800">风险提醒</h3>
-          </div>
-          <ul className="space-y-1.5">
+            <span className="ml-auto text-[11px] text-amber-700">{riskHints.length} 项</span>
+          </summary>
+          <ul className="space-y-1.5 border-t border-amber-200/60 px-4 pb-3 pt-2">
             {riskHints.map(hint => (
               <li key={hint} className="flex gap-2 text-[12px] leading-relaxed text-amber-900/90">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
@@ -117,21 +123,14 @@ export function ProjectNextActionPanel({
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       ) : null}
 
       {/* ═══ 最近结果 ═══ */}
-      {recentItems.length > 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4" data-testid="next-action-recent">
-          <h4 className="mb-3 text-[13px] font-semibold text-gray-700">最近数据</h4>
-          <div className="space-y-2.5">
-            {recentItems.map(item => (
-              <div key={item.label} className="flex items-center justify-between gap-2 text-[12px]">
-                <span className="text-gray-500">{item.label}</span>
-                <span className="font-medium tabular-nums text-gray-900">{item.detail ?? "—"}</span>
-              </div>
-            ))}
-          </div>
+      {recentSummary ? (
+        <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3" data-testid="next-action-recent">
+          <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">最近数据</h4>
+          <p className="text-[11px] leading-relaxed text-gray-600">{recentSummary}</p>
         </div>
       ) : null}
     </aside>

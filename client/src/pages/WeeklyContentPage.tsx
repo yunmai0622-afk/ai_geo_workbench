@@ -5,6 +5,7 @@ import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { aiInput } from "@/lib/aiProductUi";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -1281,20 +1282,6 @@ export default function WeeklyContentPage() {
     [contentCardModels],
   );
 
-  const platformFilterOptions = useMemo(() => {
-    const keys = new Set<string>();
-    for (const card of contentCardModels) {
-      if (card.platformKey) keys.add(card.platformKey);
-      else if (card.targetPlatform?.trim()) keys.add(card.targetPlatform.trim());
-    }
-    return Array.from(keys)
-      .map(key => {
-        const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === key);
-        return { value: key, label: def?.label ?? key };
-      })
-      .sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
-  }, [contentCardModels]);
-
   const toggleCardSelection = useCallback((articleId: number, checked: boolean) => {
     setSelectedCardIds(prev => {
       const next = new Set(prev);
@@ -2404,7 +2391,7 @@ export default function WeeklyContentPage() {
 
           {contentCardModels.length > 0 ? (
             <section className="space-y-4" data-testid="weekly-content-cards">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex flex-col gap-3">
                 <div>
                   <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
                   <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
@@ -2416,24 +2403,47 @@ export default function WeeklyContentPage() {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
-                  <label className="sr-only" htmlFor="weekly-filter-platform">
-                    按平台筛选
-                  </label>
-                  <select
-                    id="weekly-filter-platform"
-                    className={aiInput}
-                    value={filterPlatform}
-                    onChange={e => setFilterPlatform(e.target.value)}
-                    data-testid="weekly-filter-platform"
+                <div
+                  className="flex gap-2 overflow-x-auto pb-1"
+                  data-testid="weekly-filter-platform"
+                  role="tablist"
+                  aria-label="按平台筛选"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={filterPlatform === "all"}
+                    data-testid="weekly-filter-platform-all"
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
+                      filterPlatform === "all"
+                        ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
+                    )}
+                    onClick={() => setFilterPlatform("all")}
                   >
-                    <option value="all">全部平台</option>
-                    {platformFilterOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    全部
+                  </button>
+                  {WEEKLY_PLATFORM_DEFS.map(def => (
+                    <button
+                      key={def.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={filterPlatform === def.key}
+                      data-testid={`weekly-filter-platform-${def.key}`}
+                      className={cn(
+                        "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
+                        filterPlatform === def.key
+                          ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
+                      )}
+                      onClick={() => setFilterPlatform(def.key)}
+                    >
+                      {def.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
                   <label className="sr-only" htmlFor="weekly-filter-status">
                     按状态筛选
                   </label>
@@ -2544,7 +2554,7 @@ export default function WeeklyContentPage() {
                     : "当前筛选条件下暂无内容"}
                 </p>
               ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {displayContentCards.map(model => {
                     const article = articles.find(a => a.id === model.id);
                     const topicId = article?.topicId;
