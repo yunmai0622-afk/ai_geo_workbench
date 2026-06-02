@@ -19,6 +19,7 @@ const required = [
   "src/agent/taskLogStore.ts",
   "src/agent/dashboard.ts",
   "src/renderer/app.js",
+  "src/renderer/uxCopy.js",
   "src/renderer/publishTaskLogDisplay.js",
   "src/agent/platforms/zhihuPublisher.ts",
   "src/agent/platforms/publisherFactory.ts",
@@ -92,6 +93,29 @@ if (!publisher.includes("cover_upload_skipped")) {
 }
 if (/password|mock.*success/i.test(publisher)) {
   console.error("forbidden pattern in zhihuAdapter");
+  process.exit(1);
+}
+
+const html = fs.readFileSync(path.join(root, "src/renderer/index.html"), "utf-8");
+const ux = fs.readFileSync(path.join(root, "src/renderer/uxCopy.js"), "utf-8");
+const appJs = fs.readFileSync(path.join(root, "src/renderer/app.js"), "utf-8");
+for (const [needle, hay] of [
+  ["状态总览", html],
+  ["诊断与设置", html],
+  ["准备就绪", ux],
+  ["GEO Web 的本地发布执行器", html],
+  ["确认发布", ux],
+  ["renderHeroActions", appJs],
+  ["renderTasksEmptyState", appJs],
+  ["renderDiagSettings", appJs],
+]) {
+  if (!hay.includes(needle)) {
+    console.error("missing ux:", needle);
+    process.exit(1);
+  }
+}
+if (/自动发布|自动接收并执行/.test(html)) {
+  console.error("forbidden misleading copy in html");
   process.exit(1);
 }
 
