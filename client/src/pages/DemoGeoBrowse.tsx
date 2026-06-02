@@ -255,8 +255,9 @@ export default function DemoGeoBrowsePage() {
                   <StatusBadge tone="emerald">{record.status}</StatusBadge>
                 </div>
                 <div className="mt-4 rounded-2xl border border-gray-200 bg-blue-50/50 p-4 text-sm leading-6 text-gray-600">
-                  <p className="font-medium text-blue-700">发布链接可访问：</p>
-                  <a className="mt-2 inline-flex break-all text-blue-600 underline decoration-cyan-300/40 underline-offset-4 hover:text-blue-700" href={record.publicPath}>{record.publicPath}</a>
+                  <p className="font-medium text-blue-700">发布路径：</p>
+                  <p className="mt-2 break-all text-gray-800">{record.publicPath}</p>
+                  <p className="mt-1 text-xs text-gray-500">Demo 仅展示样板路径，不跳转至后台发布页。</p>
                 </div>
                 <p className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-600">第三方平台素材：{record.thirdPartyMaterial}</p>
               </article>
