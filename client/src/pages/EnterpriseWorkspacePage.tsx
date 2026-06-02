@@ -13,7 +13,7 @@ import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
-import { checkLocalAgentHealth } from "@/lib/localAgentClient";
+import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import {
   CUSTOMER_STAGE_LABELS,
   formatGeoScore,
@@ -35,15 +35,13 @@ import {
 } from "@shared/workspaceDashboardOverview";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
 import { AlertTriangle, ArrowRight } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { useLocation } from "wouter";
 
 export default function EnterpriseWorkspacePage() {
   const [, setLocation] = useLocation();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } =
     useActiveProjectSelection();
-  const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
-
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
@@ -57,23 +55,21 @@ export default function EnterpriseWorkspacePage() {
     document.title = `${enterpriseName} - 项目工作台`;
   }, [selectedProject?.enterpriseName]);
 
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    void (async () => {
-      const health = await checkLocalAgentHealth();
-      if (!cancelled) setLocalAgentOnline(health?.ok ?? false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, selectedProjectId]);
+  const { localAgentOnline, status: localAgentConnectionStatus, accountSnapshot } =
+    useLocalAgentConnection({
+      boundPublishAccountCount: summaryQuery.data?.boundPublishAccountCount ?? 0,
+    });
 
   const resolution = useMemo(() => {
     const m = summaryQuery.data;
     if (!m || !selectedProjectId) return null;
-    return resolveWorkspaceStage({ ...m, localAgentOnline });
-  }, [summaryQuery.data, selectedProjectId, localAgentOnline]);
+    return resolveWorkspaceStage({
+      ...m,
+      localAgentOnline,
+      localAgentConnectionStatus,
+      localAccountSnapshotEmpty: accountSnapshot.length === 0,
+    });
+  }, [summaryQuery.data, selectedProjectId, localAgentOnline, localAgentConnectionStatus, accountSnapshot]);
 
   const metrics = summaryQuery.data;
   const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, metrics);

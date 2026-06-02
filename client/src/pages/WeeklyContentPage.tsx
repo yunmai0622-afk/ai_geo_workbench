@@ -1,3 +1,4 @@
+import { LocalAgentConnectionPanel } from "@/components/publishing/LocalAgentConnectionPanel";
 import { PublishPrePublishChecklist } from "@/components/publishing/PublishPrePublishChecklist";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
@@ -16,11 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
-import {
-  checkLocalAgentHealth,
-  focusLocalAgentAccountsTab,
-  listLocalAgentAccountSnapshots,
-} from "@/lib/localAgentClient";
+import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
 import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
 import { QuestionTemplatePicker } from "@/components/content/QuestionTemplatePicker";
 import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchGenerationPanel";
@@ -48,7 +45,9 @@ import {
   type PlatformContentCounts,
   type WeeklyPlatformKey,
 } from "@/lib/weeklyPlatformBoard";
+import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useProjectScopedQueryRows } from "@/hooks/useProjectScopedQueryRows";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, getActiveProjectId, getSearchFromLocation } from "@/lib/activeProject";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
@@ -74,7 +73,11 @@ import {
   ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE,
 } from "@shared/articleAssetDraft";
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
-import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
+import {
+  evaluatePublishReadiness,
+  isPublishReadyPlatformAccount,
+  type PublishReadyAccountRow,
+} from "@shared/publishReadiness";
 import {
   getGeoQualityLabel,
   type GeoQualityRecommendation,
@@ -160,6 +163,7 @@ import {
   resolvePendingPlatformTopic,
 } from "@shared/platformTopicAllocation";
 import {
+  GEO_CONTENT_TASK_EMPTY_FOR_PROJECT_MESSAGE,
   GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE,
   buildGeoContentTaskDisplayName,
   buildWeeklyPlatformGenerationGoal,
@@ -169,6 +173,10 @@ import {
   parseGeoOptimizationTaskCard,
   resolveGeoContentTaskSource,
 } from "@shared/geoContentTaskSource";
+import {
+  isContentTaskIdInProjectTaskList,
+  PROJECT_SCOPED_CONTENT_TASK_STALE_CLIENT_MESSAGE,
+} from "@shared/geoProjectScopedContentTask";
 import {
   PLATFORM_CONTENT_PROGRESS_HINT_90S,
   PLATFORM_CONTENT_PROGRESS_STAGES,
@@ -474,11 +482,13 @@ export default function WeeklyContentPage() {
   const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
   const contentLimitReached = subscriptionUsageQuery.data?.atLimit.contentArticle ?? false;
 
-  const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
+  const scopedListInput = { projectId: selectedProjectId! };
+  const scopedListEnabled = Boolean(selectedProjectId);
+  const tasksQuery = trpc.geo.tasks.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
-  const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
-  const topicsQuery = trpc.geo.articles.topics.list.useQuery(projectInput, { enabled });
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const analysisQuery = trpc.geo.analysis.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
+  const topicsQuery = trpc.geo.articles.topics.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
+  const articlesQuery = trpc.geo.articles.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
   const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
@@ -535,8 +545,6 @@ export default function WeeklyContentPage() {
     null,
   );
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
-  const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
-  const [localAgentAccountSnapshot, setLocalAgentAccountSnapshot] = useState<LocalAgentAccountStatusEntry[]>([]);
   /** 发布弹窗内冻结的 Agent 状态，避免打开期间反复 sync/invalidate 导致抖动 */
   const [publishDialogAgentOnline, setPublishDialogAgentOnline] = useState<boolean | null>(null);
   const [publishDialogAccountSnapshot, setPublishDialogAccountSnapshot] = useState<
@@ -607,68 +615,6 @@ export default function WeeklyContentPage() {
     Boolean(a.localAgentId?.trim()) &&
     a.sessionStatus === "active";
 
-  const readLocalAgentSnapshot = useCallback(async () => {
-    const h = await checkLocalAgentHealth();
-    const online = h?.ok ?? false;
-    if (!online) {
-      return { health: h, online: false, snapshot: [] as LocalAgentAccountStatusEntry[] };
-    }
-    try {
-      const snapshot = await listLocalAgentAccountSnapshots();
-      return { health: h, online: true, snapshot };
-    } catch {
-      return { health: h, online: true, snapshot: [] as LocalAgentAccountStatusEntry[] };
-    }
-  }, []);
-
-  const applyGlobalAgentSnapshot = useCallback((online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
-    setLocalAgentOnline(online);
-    setLocalAgentAccountSnapshot(snapshot);
-  }, []);
-
-  const applyPublishDialogAgentSnapshot = useCallback(
-    (online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
-      setPublishDialogAgentOnline(online);
-      setPublishDialogAccountSnapshot(snapshot);
-    },
-    [],
-  );
-
-  /** 仅读取本地 Agent 快照，不触发 Web 同步（避免弹窗抖动） */
-  const hydratePublishDialogAgent = useCallback(
-    async (options?: { syncToWeb?: boolean }) => {
-      const { health, online, snapshot } = await readLocalAgentSnapshot();
-      applyPublishDialogAgentSnapshot(online, snapshot);
-      applyGlobalAgentSnapshot(online, snapshot);
-      if (options?.syncToWeb && online && selectedProjectId && health && snapshot.length > 0) {
-        try {
-          await syncLocalAgentSnapshot.mutateAsync({
-            agentId: health.agentId,
-            projectId: selectedProjectId,
-            accounts: snapshot,
-          });
-          await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
-        } catch {
-          // 同步失败不阻断弹窗；状态已由本地快照更新
-        }
-      }
-      return health;
-    },
-    [
-      readLocalAgentSnapshot,
-      applyPublishDialogAgentSnapshot,
-      applyGlobalAgentSnapshot,
-      selectedProjectId,
-      syncLocalAgentSnapshot,
-      utils.geo.platformAccounts.list,
-    ],
-  );
-
-  const refreshLocalAgentHealth = useCallback(
-    () => hydratePublishDialogAgent({ syncToWeb: true }),
-    [hydratePublishDialogAgent],
-  );
-
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
 
@@ -679,6 +625,72 @@ export default function WeeklyContentPage() {
         accounts: PlatformAccountItem[];
       }>,
     [platformAccountsQuery.data],
+  );
+
+  const boundPublishAccountCount = useMemo(() => {
+    let count = 0;
+    for (const group of platformAccountGroups) {
+      for (const account of group.accounts ?? []) {
+        if (isPublishReadyPlatformAccount({ ...account, platform: group.platform })) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  }, [platformAccountGroups]);
+
+  const {
+    status: localAgentConnectionStatus,
+    checkConnection,
+    accountSnapshot: localAgentAccountSnapshot,
+    localAgentConnectedOnline,
+    localAgentOnline,
+  } = useLocalAgentConnection({ boundPublishAccountCount });
+
+  const applyPublishDialogAgentSnapshot = useCallback(
+    (online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
+      setPublishDialogAgentOnline(online);
+      setPublishDialogAccountSnapshot(snapshot);
+    },
+    [],
+  );
+
+  const hydratePublishDialogAgent = useCallback(
+    async (options?: { syncToWeb?: boolean }) => {
+      const result = await checkConnection();
+      applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot);
+      if (
+        options?.syncToWeb &&
+        result.online &&
+        selectedProjectId &&
+        result.health &&
+        result.accountSnapshot.length > 0
+      ) {
+        try {
+          await syncLocalAgentSnapshot.mutateAsync({
+            agentId: result.health.agentId,
+            projectId: selectedProjectId,
+            accounts: result.accountSnapshot,
+          });
+          await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
+        } catch {
+          // 同步失败不阻断弹窗；状态已由本地快照更新
+        }
+      }
+      return result.health;
+    },
+    [
+      applyPublishDialogAgentSnapshot,
+      checkConnection,
+      selectedProjectId,
+      syncLocalAgentSnapshot,
+      utils.geo.platformAccounts.list,
+    ],
+  );
+
+  const refreshLocalAgentHealth = useCallback(
+    () => hydratePublishDialogAgent({ syncToWeb: true }),
+    [hydratePublishDialogAgent],
   );
 
   const getAllEnabledAccountsForPlatform = useCallback(
@@ -755,8 +767,8 @@ export default function WeeklyContentPage() {
     return out;
   }, [publishArticle, selectedPlatforms, pickSelectedPublishAccount]);
 
-  const tasks = (tasksQuery.data ?? []) as TaskRow[];
-  const analyses = (analysisQuery.data ?? []) as AnalysisRow[];
+  const tasks = useProjectScopedQueryRows<TaskRow>(selectedProjectId, tasksQuery) as TaskRow[];
+  const analyses = useProjectScopedQueryRows<AnalysisRow>(selectedProjectId, analysisQuery) as AnalysisRow[];
   const geoContentTaskSource = useMemo(
     () =>
       resolveGeoContentTaskSource({
@@ -885,13 +897,13 @@ export default function WeeklyContentPage() {
     manualPublishPlatform,
   ]);
 
-  const topics = (topicsQuery.data ?? []) as TopicRow[];
+  const topics = useProjectScopedQueryRows<TopicRow>(selectedProjectId, topicsQuery) as TopicRow[];
   const topicsById = useMemo(() => new Map(topics.map(topic => [topic.id, topic] as const)), [topics]);
   const tasksById = useMemo(() => new Map(tasks.map(task => [task.id, task] as const)), [tasks]);
   const taskIdSet = useMemo(() => taskIdSetFromList(tasks.map(t => t.id)), [tasks]);
   const staleTopicCount = useMemo(() => countStaleTopics(topics, taskIdSet), [topics, taskIdSet]);
   const hasStaleTopics = staleTopicCount > 0;
-  const articles = (articlesQuery.data ?? []) as ArticleRow[];
+  const articles = useProjectScopedQueryRows<ArticleRow>(selectedProjectId, articlesQuery) as ArticleRow[];
   const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
 
   const articlesById = useMemo(() => new Map(articles.map(a => [a.id, a] as const)), [articles]);
@@ -917,6 +929,7 @@ export default function WeeklyContentPage() {
   const queriesReady =
     enabled && !tasksQuery.isLoading && !topicsQuery.isLoading && !analysisQuery.isLoading;
   const showDiagnosisEmpty = queriesReady && !hasDiagnosisData;
+  const showProjectTasksEmpty = queriesReady && hasDiagnosisData && tasks.length === 0;
   const showDirectionEmpty =
     queriesReady &&
     hasDiagnosisData &&
@@ -936,6 +949,23 @@ export default function WeeklyContentPage() {
     setPlatformBatchRunning(false);
     setPublishSuccessNotice(null);
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId || !tasksQuery.isFetched) return;
+    if (
+      selectedContentTaskId != null &&
+      !isContentTaskIdInProjectTaskList(selectedContentTaskId, tasks)
+    ) {
+      setSelectedContentTaskId(null);
+      toast.message(PROJECT_SCOPED_CONTENT_TASK_STALE_CLIENT_MESSAGE);
+    }
+  }, [selectedProjectId, tasksQuery.isFetched, tasks, selectedContentTaskId]);
+
+  const resolvedContentTaskIdForGenerate = useMemo(() => {
+    const candidate = selectedContentTaskId ?? geoContentTaskSource?.contentTaskId ?? null;
+    if (!isContentTaskIdInProjectTaskList(candidate, tasks)) return undefined;
+    return candidate ?? undefined;
+  }, [selectedContentTaskId, geoContentTaskSource?.contentTaskId, tasks]);
 
   useEffect(() => {
     if (!enabled || !queriesReady) return;
@@ -1007,7 +1037,7 @@ export default function WeeklyContentPage() {
           targetQuestion: effectiveStrategy.targetQuestion.trim(),
           geoEnhancementGoal: effectiveStrategy.geoEnhancementGoal,
           targetAiPlatforms: [...effectiveStrategy.targetAiPlatforms],
-          contentTaskId: geoContentTaskSource?.contentTaskId ?? undefined,
+          contentTaskId: resolvedContentTaskIdForGenerate,
           diagnosisFinding: geoContentTaskSource?.diagnosisFinding,
           geoGap: geoContentTaskSource?.geoGapSummary,
           platformRule: formatPlatformRuleSummaryForGeneration(
@@ -1039,7 +1069,14 @@ export default function WeeklyContentPage() {
         });
       }
     },
-    [generateArticleMutation, invalidateArticles, platformStrategy, geoContentTaskSource, selectedQuestionTemplateId],
+    [
+      generateArticleMutation,
+      invalidateArticles,
+      platformStrategy,
+      geoContentTaskSource,
+      resolvedContentTaskIdForGenerate,
+      selectedQuestionTemplateId,
+    ],
   );
 
   const handleGenerateOne = (topicId: number) => {
@@ -1458,7 +1495,7 @@ export default function WeeklyContentPage() {
     }
     setSelectedPublishAccountIds(restoredAccounts);
     publishDialogPlatformsInitRef.current = true;
-    void hydratePublishDialogAgent({ syncToWeb: false });
+    applyPublishDialogAgentSnapshot(localAgentConnectedOnline, localAgentAccountSnapshot);
     setPublishDialogOpen(true);
   };
 
@@ -2438,6 +2475,20 @@ export default function WeeklyContentPage() {
             去 AI 实测诊断
           </Button>
         </P0Card>
+      ) : showProjectTasksEmpty ? (
+        <P0Card testId="weekly-no-project-content-tasks">
+          <p className="text-sm leading-relaxed text-gray-700" data-testid="weekly-no-project-content-tasks-message">
+            {GEO_CONTENT_TASK_EMPTY_FOR_PROJECT_MESSAGE}
+          </p>
+          <Button
+            type="button"
+            className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
+            data-testid="weekly-go-ai-diagnosis-from-empty-tasks"
+            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
+          >
+            去 AI 实测诊断
+          </Button>
+        </P0Card>
       ) : (
         <>
           <PageAnchorNav
@@ -2831,14 +2882,13 @@ export default function WeeklyContentPage() {
       )}
 
       {enabled ? (
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm" data-testid="local-agent-publish-hint">
-          <p className="font-medium text-gray-800">本地发布客户端</p>
-          <p className="mt-1 text-xs text-gray-500">
-            发布任务将发送至本机 GEO 本地发布客户端。请保持客户端运行并接收发布任务；任务状态为「等待本地客户端处理」时表示已入队。
-          </p>
-          {localAgentOnline === false ? (
-            <p className="mt-2 text-xs text-amber-600">当前未检测到客户端在线，发布将被阻断。</p>
-          ) : null}
+        <div data-testid="local-agent-publish-hint">
+          <LocalAgentConnectionPanel
+            status={localAgentConnectionStatus}
+            checking={localAgentConnectionStatus === "CHECKING"}
+            onCheckConnection={() => void checkConnection()}
+            onRefreshAccountStatus={() => void refreshLocalAgentHealth()}
+          />
         </div>
       ) : null}
 
@@ -2890,25 +2940,20 @@ export default function WeeklyContentPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-              <p className="mt-2 text-xs text-blue-700">
-                任务将发送至本地 GEO 发布客户端，由本篇对应平台账号执行填稿。
-              </p>
-              <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-blue-800">
-                客户端状态：
-                {publishDialogAgentOnline === true ? (
-                  <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                    已连接
-                  </span>
-                ) : publishDialogAgentOnline === false ? (
-                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                    未连接
-                  </span>
-                ) : (
-                  <span className="text-gray-500">检测中…</span>
-                )}
-              </p>
-            </div>
+            <p className="text-xs text-gray-600">
+              任务将发送至本地 GEO 发布客户端，由本篇对应平台账号执行填稿。
+            </p>
+            <LocalAgentConnectionPanel
+              status={localAgentConnectionStatus}
+              checking={localAgentConnectionStatus === "CHECKING"}
+              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 shadow-none"
+              onCheckConnection={() =>
+                void checkConnection().then((result) =>
+                  applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot),
+                )
+              }
+              onRefreshAccountStatus={() => void hydratePublishDialogAgent({ syncToWeb: true })}
+            />
             <PublishPrePublishChecklist checklist={activePrePublishChecklist} />
             {activePublishReadiness && !activePublishReadiness.ready ? (
               <p

@@ -8,7 +8,7 @@ import {
   collectBoundProfileIdsForHealthCheck,
   filterSnapshotEntriesForProfiles,
 } from "@shared/publishAccountHealthCheck";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 type RunOptions = {
   /** 是否对绑定账号执行本地 detect（打开页时默认 true） */
@@ -77,19 +77,6 @@ export function usePublishAccountHealthCheck(projectId: number | null, enabled: 
     },
     [enabled, projectId, syncSnapshot, utils.geo.platformAccounts.list],
   );
-
-  const runCheckRef = useRef(runCheck);
-  runCheckRef.current = runCheck;
-
-  const autoRunKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!enabled || !projectId) return;
-    const key = String(projectId);
-    if (autoRunKeyRef.current === key) return;
-    autoRunKeyRef.current = key;
-    void runCheckRef.current({ detectSessions: true });
-  }, [enabled, projectId]);
 
   return {
     checking,

@@ -1,13 +1,13 @@
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
 import { buildProjectUrl } from "@/lib/activeProject";
-import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { shouldShowPublishBindNav } from "@shared/globalNavVisibility";
 import { resolvePageNextActionSuggestion } from "@shared/pageNextActionSuggestion";
 import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
 import { ProfileCompletenessLowHint } from "@/components/enterpriseProfile/ProfileCompletenessLowHint";
@@ -30,29 +30,30 @@ export function EnterpriseProjectShell({ children }: Props) {
   const [location, setLocation] = useLocation();
   const pathname = location.split("?")[0] || location;
   const isMobile = useIsMobile();
-  const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const health = await checkLocalAgentHealth();
-      if (!cancelled) setLocalAgentOnline(health?.ok ?? false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProjectId]);
+  const boundPublishAccountCount = summaryQuery.data?.boundPublishAccountCount ?? 0;
+  const {
+    status: localAgentConnectionStatus,
+    localAgentOnline,
+    accountSnapshot,
+    checkConnection,
+  } = useLocalAgentConnection({ boundPublishAccountCount });
 
   const resolution = useMemo(() => {
     const m = summaryQuery.data;
     if (!m || !selectedProjectId) return null;
-    return resolveWorkspaceStage({ ...m, localAgentOnline });
-  }, [summaryQuery.data, selectedProjectId, localAgentOnline]);
+    return resolveWorkspaceStage({
+      ...m,
+      localAgentOnline,
+      localAgentConnectionStatus,
+      localAccountSnapshotEmpty: accountSnapshot.length === 0,
+    });
+  }, [summaryQuery.data, selectedProjectId, localAgentOnline, localAgentConnectionStatus, accountSnapshot]);
 
   const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, summaryQuery.data);
   const growthSuggestions = useGeoGrowthSuggestions(selectedProjectId, Boolean(selectedProjectId));
@@ -126,6 +127,8 @@ export function EnterpriseProjectShell({ children }: Props) {
       riskHints={resolution?.riskHints ?? []}
       recentItems={recentItems}
       loading={(summaryQuery.isLoading || homeDisplay.loading) && Boolean(selectedProjectId)}
+      localAgentConnectionStatus={localAgentConnectionStatus}
+      onCheckLocalAgentConnection={() => void checkConnection()}
     />
   );
 

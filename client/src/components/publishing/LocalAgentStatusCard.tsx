@@ -1,6 +1,11 @@
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { Button } from "@/components/ui/button";
 import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
+import {
+  LOCAL_AGENT_TROUBLESHOOTING_ANCHOR,
+  localAgentConnectionCopy,
+  type LocalAgentConnectionStatus,
+} from "@shared/localAgentConnectionStatus";
 import { Download, RefreshCw } from "lucide-react";
 
 export type LocalAgentStatusSnapshot = {
@@ -22,45 +27,76 @@ export type LocalAgentUpdateNotice = {
 };
 
 type Props = {
-  status: LocalAgentStatusSnapshot;
+  status: LocalAgentConnectionStatus;
+  statusSnapshot: LocalAgentStatusSnapshot;
   checking?: boolean;
-  onRefresh?: () => void;
+  onCheckConnection?: () => void;
+  onRefreshAccountStatus?: () => void;
   updateNotice?: LocalAgentUpdateNotice | null;
 };
 
-export function LocalAgentStatusCard({ status, checking, onRefresh, updateNotice }: Props) {
+export function LocalAgentStatusCard({
+  status,
+  statusSnapshot,
+  checking,
+  onCheckConnection,
+  onRefreshAccountStatus,
+  updateNotice,
+}: Props) {
+  const copy = localAgentConnectionCopy(status);
   const connectionLabel =
-    status.connected === null ? "--" : status.connected ? "已连接" : "未连接";
+    statusSnapshot.connected === null ? "--" : statusSnapshot.connected ? "已连接" : "未连接";
   const browserLabel =
-    status.browserReady === null ? "--" : status.browserReady ? "已准备好" : "未检测到";
+    statusSnapshot.browserReady === null
+      ? "--"
+      : statusSnapshot.browserReady
+        ? "已准备好"
+        : "未检测到";
+  const primaryAction =
+    copy.primaryButton === "刷新账号状态" ? onRefreshAccountStatus : onCheckConnection;
 
   return (
     <P0Card testId="local-agent-status-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className={geoP0Surfaces.sectionTitle}>Local Agent 状态</p>
-          <p className={`mt-1 ${geoP0Surfaces.muted}`}>本地发布客户端连接与账号准备情况</p>
+          <p className={geoP0Surfaces.sectionTitle}>{copy.title}</p>
+          <p className={`mt-1 ${geoP0Surfaces.muted}`}>{copy.description}</p>
         </div>
-        {onRefresh ? (
+        {copy.primaryButton && primaryAction ? (
           <Button
             type="button"
             size="sm"
             variant="outline"
             className={geoP0Brand.primaryOutline}
             disabled={checking}
-            onClick={onRefresh}
+            onClick={() => void primaryAction()}
+            data-testid="local-agent-status-primary-action"
           >
             <RefreshCw className={`mr-1 size-3.5 ${checking ? "animate-spin" : ""}`} />
-            检测连接
+            {copy.primaryButton}
           </Button>
         ) : null}
       </div>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="连接状态" value={connectionLabel} />
         <Metric label="本地浏览器" value={browserLabel} />
-        <Metric label="已绑定平台" value={displayMetric(status.boundPlatformCount, " 个")} />
-        <Metric label="待发布任务" value={displayMetric(status.pendingTaskCount, " 条")} />
+        <Metric label="已绑定平台" value={displayMetric(statusSnapshot.boundPlatformCount, " 个")} />
+        <Metric label="待发布任务" value={displayMetric(statusSnapshot.pendingTaskCount, " 条")} />
       </dl>
+      {copy.secondaryButton ? (
+        <div className="mt-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={geoP0Brand.primaryOutline}
+            asChild
+            data-testid="local-agent-status-secondary-action"
+          >
+            <a href={LOCAL_AGENT_TROUBLESHOOTING_ANCHOR}>{copy.secondaryButton}</a>
+          </Button>
+        </div>
+      ) : null}
       {updateNotice ? (
         <div
           className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"

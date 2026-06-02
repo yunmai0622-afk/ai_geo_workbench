@@ -103,6 +103,7 @@ export function LocalAgentDownloadCard() {
   return (
     <div
       className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+      id="local-agent-download"
       data-testid="local-agent-download-card"
     >
       {/* Header: title + status */}

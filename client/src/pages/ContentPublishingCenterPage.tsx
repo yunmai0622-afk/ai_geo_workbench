@@ -29,6 +29,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { asArray, PUBLISH_QUEUE_EMPTY_LABELS } from "@/lib/contentPublishingSafeData";
@@ -41,8 +42,8 @@ import {
   fetchLocalAgentDownloadManifest,
   pickLocalAgentDownloadHref,
 } from "@/lib/localAgentDownloadManifest";
-import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import { isLocalAgentClientOutdated } from "@shared/localAgentVersionCompare";
+import { isPublishReadyPlatformAccount } from "@shared/publishReadiness";
 import {
   mapAgentTaskToCard,
   mapManualRecordToCard,
@@ -295,7 +296,10 @@ function ContentPublishingCenterPageInner() {
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } =
     useActiveProjectSelection();
 
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const articlesQuery = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.publishRecords.listWithStatus.useQuery(
     { projectId: selectedProjectId! },
@@ -335,11 +339,8 @@ function ContentPublishingCenterPageInner() {
   const [manualLink, setManualLink] = useState("");
   const [savingManual, setSavingManual] = useState(false);
 
-  const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
-  const [localAgentClientVersion, setLocalAgentClientVersion] = useState<string | null>(null);
   const [manifestVersion, setManifestVersion] = useState<string | null>(null);
   const [manifestDownloadHref, setManifestDownloadHref] = useState<string | null>(null);
-  const [checkingAgent, setCheckingAgent] = useState(false);
   const [linkDraftById, setLinkDraftById] = useState<Record<number, string>>({});
   const [savingRowId, setSavingRowId] = useState<number | null>(null);
   const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
@@ -444,46 +445,8 @@ function ContentPublishingCenterPageInner() {
     return keys;
   }, [inclusionMonitoringQuery.data]);
 
-  const { checking: accountHealthChecking, agentOnline: accountHealthAgentOnline, runCheck: runAccountHealthCheck } =
+  const { checking: accountHealthChecking, runCheck: runAccountHealthCheck } =
     usePublishAccountHealthCheck(selectedProjectId ?? null, enabled);
-
-  const refreshAgentHealth = useCallback(async () => {
-    setCheckingAgent(true);
-    try {
-      const h = await checkLocalAgentHealth({ force: true });
-      const online = h?.ok ?? false;
-      setLocalAgentOnline(prev => (prev === online ? prev : online));
-      const version = h?.version?.trim() ? h.version.trim() : null;
-      setLocalAgentClientVersion(prev => (prev === version ? prev : version));
-      await runAccountHealthCheck({ detectSessions: true });
-      if (!h?.ok && selectedProjectId) {
-        await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
-      }
-    } catch {
-      setLocalAgentOnline(prev => (prev === false ? prev : false));
-      setLocalAgentClientVersion(prev => (prev === null ? prev : null));
-    } finally {
-      setCheckingAgent(false);
-    }
-  }, [runAccountHealthCheck, selectedProjectId, utils.geo.platformAccounts.list]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    const h = checkLocalAgentHealth();
-    void h.then(health => {
-      const online = health?.ok ?? false;
-      setLocalAgentOnline(prev => (prev === online ? prev : online));
-      const version = health?.version?.trim() ? health.version.trim() : null;
-      setLocalAgentClientVersion(prev => (prev === version ? prev : version));
-    });
-  }, [enabled, selectedProjectId]);
-
-  useEffect(() => {
-    if (accountHealthAgentOnline == null) return;
-    setLocalAgentOnline(prev =>
-      prev === accountHealthAgentOnline ? prev : accountHealthAgentOnline,
-    );
-  }, [accountHealthAgentOnline]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -516,6 +479,18 @@ function ContentPublishingCenterPageInner() {
     const accounts = platformAccountsQuery.data?.accounts;
     return Array.isArray(accounts) ? accounts : [];
   }, [platformAccountsQuery.data?.accounts]);
+
+  const boundPublishAccountCount = useMemo(() => {
+    let count = 0;
+    for (const group of platformAccountGroups) {
+      for (const account of group.accounts ?? []) {
+        if (isPublishReadyPlatformAccount({ ...account, platform: group.platform })) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  }, [platformAccountGroups]);
 
   const boundPlatformCount = useMemo(() => {
     return (platformAccountGroups ?? []).filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled))
@@ -570,6 +545,31 @@ function ContentPublishingCenterPageInner() {
 
   const pendingCount = queueTabs.pending.length;
   const failedCount = queueTabs.failed.length;
+
+  const {
+    status: localAgentConnectionStatus,
+    statusSnapshot: localAgentStatusSnapshot,
+    checkConnection,
+    clientVersion: localAgentClientVersion,
+    localAgentConnectedOnline,
+    localAgentOnline,
+  } = useLocalAgentConnection({
+    boundPublishAccountCount,
+    boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
+    pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
+  });
+
+  const refreshAgentHealth = useCallback(async () => {
+    const result = await checkConnection();
+    if (result.online) {
+      await runAccountHealthCheck({ detectSessions: true });
+    } else if (selectedProjectId) {
+      await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
+    }
+  }, [checkConnection, runAccountHealthCheck, selectedProjectId, utils.geo.platformAccounts.list]);
+
+  const checkingAgent =
+    localAgentConnectionStatus === "CHECKING" || accountHealthChecking;
 
   const qualityByArticleId = useMemo(() => {
     const map = new Map<number, QualityScoreRow>();
@@ -627,7 +627,7 @@ function ContentPublishingCenterPageInner() {
 
   const localAgentUpdateNotice = useMemo(() => {
     if (
-      !localAgentOnline ||
+      !localAgentConnectedOnline ||
       !localAgentClientVersion ||
       !manifestVersion ||
       !manifestDownloadHref ||
@@ -641,7 +641,7 @@ function ContentPublishingCenterPageInner() {
       downloadHref: manifestDownloadHref,
     };
   }, [
-    localAgentOnline,
+    localAgentConnectedOnline,
     localAgentClientVersion,
     manifestVersion,
     manifestDownloadHref,
@@ -738,7 +738,7 @@ function ContentPublishingCenterPageInner() {
   }
 
   function startLocalPublish(card: PublishTaskCardModel) {
-    if (localAgentOnline === false) {
+    if (!localAgentConnectedOnline) {
       toast.error("Local Agent 未连接，请先下载并启动客户端");
       return;
     }
@@ -761,7 +761,7 @@ function ContentPublishingCenterPageInner() {
       toast.message(`${card.label} 需人工发布，请复制素材后登记发布记录`);
       return false;
     }
-    if (localAgentOnline === false) {
+    if (!localAgentConnectedOnline) {
       toast.error("Local Agent 未连接，请先下载并启动客户端");
       return false;
     }
@@ -801,7 +801,7 @@ function ContentPublishingCenterPageInner() {
       toast.error("当前没有可一键发布的平台内容，请先生成并通过质量检查");
       return;
     }
-    if (localAgentOnline === false) {
+    if (!localAgentConnectedOnline) {
       toast.error("Local Agent 未连接，请先下载并启动客户端");
       return;
     }
@@ -990,7 +990,7 @@ function ContentPublishingCenterPageInner() {
           projectId={selectedProjectId}
           groups={platformAccountGroups}
           checking={accountHealthChecking}
-          agentOnline={accountHealthAgentOnline ?? localAgentOnline}
+          agentOnline={localAgentOnline}
           onAfterRelogin={() => void runAccountHealthCheck({ detectSessions: true })}
         />
       ) : null}
@@ -1096,14 +1096,14 @@ function ContentPublishingCenterPageInner() {
                 disabled={checkingAgent || accountHealthChecking}
                 data-testid="publish-ready-refresh"
               >
-                刷新状态
+                检测本地客户端连接
               </Button>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                 <p className="text-xs text-gray-500">Local Agent</p>
                 <p className="mt-1 text-sm font-semibold text-gray-900">
-                  {localAgentOnline ? "已连接" : "未连接"}
+                  {localAgentConnectedOnline ? "已连接" : localAgentOnline === false ? "未连接" : "待检测"}
                 </p>
               </div>
               <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
@@ -1123,14 +1123,11 @@ function ContentPublishingCenterPageInner() {
             </div>
             <div className="mt-4">
               <LocalAgentStatusCard
-                status={{
-                  connected: localAgentOnline,
-                  browserReady: localAgentOnline,
-                  boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
-                  pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
-                }}
-                checking={checkingAgent || accountHealthChecking}
-                onRefresh={() => void refreshAgentHealth()}
+                status={localAgentConnectionStatus}
+                statusSnapshot={localAgentStatusSnapshot}
+                checking={checkingAgent}
+                onCheckConnection={() => void checkConnection()}
+                onRefreshAccountStatus={() => void refreshAgentHealth()}
                 updateNotice={localAgentUpdateNotice}
               />
             </div>

@@ -1,5 +1,11 @@
 /** Local Agent 账号环境 — Web 引导文案与平台边界（与 local-agent 能力对齐） */
 
+import {
+  localAgentConnectionCopy,
+  localAgentConnectionRiskHint,
+  mapBooleanOnlineToConnectionStatus,
+  type LocalAgentConnectionStatus,
+} from "./localAgentConnectionStatus";
 import { BINDING_PUBLISH_PLATFORMS, PUBLISH_PLATFORM_LABELS } from "./platformAccountVerify";
 
 /** 可在客户端「账号环境」中创建独立浏览器配置的平台 */
@@ -23,8 +29,7 @@ export const LOCAL_AGENT_ACCOUNT_BINDING_TITLE = "尚未配置本地发布账号
 export const LOCAL_AGENT_ACCOUNT_BINDING_BODY =
   "平台账号登录环境只保存在你的本地发布客户端，不会上传密码或 Cookie。请打开本地客户端，在「账号环境」中创建并登录对应平台账号。";
 
-export const LOCAL_AGENT_NOT_CONNECTED_HINT =
-  "请先打开 GEO 本地发布客户端，再点击「刷新账号状态」检测连接。";
+export const LOCAL_AGENT_NOT_CONNECTED_HINT = localAgentConnectionCopy("DISCONNECTED").description;
 
 export const LOCAL_AGENT_CONNECTED_NO_ACCOUNT_HINT =
   "客户端已连接，但尚未创建任何平台账号环境。请在客户端「账号环境」中创建并登录。";
@@ -41,9 +46,15 @@ export function isLocalAgentAccountEnvCreatable(platform: string): platform is L
   return (LOCAL_AGENT_ACCOUNT_ENV_CREATABLE as readonly string[]).includes(platform);
 }
 
-export function workspacePublishAccountRiskHint(localAgentOnline: boolean | null | undefined): string {
-  if (localAgentOnline === false) {
-    return "本地发布客户端未连接。请打开 GEO 本地发布客户端，在「账号环境」中配置平台登录环境。";
+export function workspacePublishAccountRiskHint(
+  localAgentOnline?: boolean | null,
+  localAgentConnectionStatus?: LocalAgentConnectionStatus,
+): string {
+  const status =
+    localAgentConnectionStatus ?? mapBooleanOnlineToConnectionStatus(localAgentOnline);
+  if (status !== "CONNECTED") {
+    const hint = localAgentConnectionRiskHint(status, { boundPublishAccountCount: 0 });
+    if (hint) return hint;
   }
-  return "尚未在本地发布客户端配置可发布账号。请在客户端「账号环境」中创建并登录，再返回本页刷新状态。";
+  return "尚未在本地发布客户端配置可发布账号。请在客户端「账号环境」中创建并登录，再返回本页点击刷新账号状态。";
 }
