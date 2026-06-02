@@ -177,11 +177,15 @@ function buildFitCustomersValue(tags: string[], industry: string, scale: string)
 export default function AssetCenterPage() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
-  const { data: projects = [], isLoading: projectsLoading, error: projectsError } = trpc.geo.projects.list.useQuery();
-  const { selectedProjectId: currentProjectId } = useActiveProjectSelection();
+  const {
+    selectedProjectId: currentProjectId,
+    selectedProject: activeSelectionProject,
+    projects,
+    projectsLoading,
+  } = useActiveProjectSelection();
   const currentProject = useMemo(
-    () => (currentProjectId ? projects.find(p => p.id === currentProjectId) : undefined),
-    [projects, currentProjectId],
+    () => activeSelectionProject ?? (currentProjectId ? projects.find(p => p.id === currentProjectId) : undefined),
+    [activeSelectionProject, projects, currentProjectId],
   );
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
@@ -666,7 +670,8 @@ export default function AssetCenterPage() {
       : "待完善";
 
   const loading = projectsLoading || isLoading;
-  const queryError = toUserFacingQueryError(projectsError?.message || summaryError?.message);
+  const queryError = toUserFacingQueryError(summaryError?.message);
+  const hasBlockingLoadError = Boolean(queryError && !summaryData);
   const saving =
     upsertProfile.isPending ||
     createCustomerCase.isPending ||
@@ -675,6 +680,7 @@ export default function AssetCenterPage() {
   async function refreshSummary() {
     if (!currentProjectId) return;
     await Promise.all([
+      utils.geo.projects.list.invalidate(),
       utils.geo.assetLibrary.summary.invalidate({ projectId: currentProjectId }),
       utils.geo.workspace.summary.invalidate({ projectId: currentProjectId }),
     ]);
@@ -773,8 +779,21 @@ export default function AssetCenterPage() {
           <p className="text-sm text-gray-400">正在加载…</p>
         </div>
       ) : null}
-      {queryError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{queryError}</div>
+      {hasBlockingLoadError ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p>{queryError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 border-amber-300 bg-white px-3 text-xs text-amber-900 hover:bg-amber-100"
+              onClick={() => void refreshSummary()}
+              disabled={loading}
+            >
+              重新加载
+            </Button>
+          </div>
+        </div>
       ) : null}
       {message ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{message}</div>
