@@ -26,7 +26,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
 import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
-import { BookOpen, Brain, Building2, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
+import { BookOpen, Brain, Building2, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Settings, ShieldCheck, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -41,6 +41,8 @@ const PATHS_WITHOUT_PROJECT_SHELL = new Set([
   "/knowledge",
   "/settings",
   "/admin/config",
+  "/admin/publish-tasks",
+  "/admin/subscription",
   "/admin/stats",
 ]);
 
@@ -150,7 +152,18 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
   },
 ];
 
-const allMenuItems = navGroups.flatMap(g => g.items);
+const adminNavGroup: { title: string; items: MenuItem[] } = {
+  title: "管理后台",
+  items: [
+    {
+      icon: ShieldCheck,
+      label: "发布任务监控",
+      desc: "查看全局发布任务状态与失败原因",
+      path: "/admin/publish-tasks",
+      aliases: ["/admin/publish-tasks"],
+    },
+  ],
+};
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 292;
@@ -223,13 +236,18 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = location.split("?")[0] || location;
+  const visibleNavGroups = useMemo(
+    () => (user?.role === "admin" ? [...navGroups, adminNavGroup] : navGroups),
+    [user?.role],
+  );
+  const allMenuItems = useMemo(() => visibleNavGroups.flatMap(g => g.items), [visibleNavGroups]);
   const activeMenuItem = allMenuItems.find(item => item.aliases.includes(pathname));
   const isMobile = useIsMobile();
   const useProjectShell = !PATHS_WITHOUT_PROJECT_SHELL.has(pathname);
   const isClientsHub = pathname === "/clients";
 
   const navigateWithProject = (path: string) => {
-    if (path === "/clients") {
+    if (path === "/clients" || path.startsWith("/admin/")) {
       setLocation(path);
       return;
     }
@@ -292,7 +310,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </SidebarHeader>
 
             <SidebarContent className="gap-0 bg-white">
-              {navGroups.map(group => (
+              {visibleNavGroups.map(group => (
                 <div key={group.title} className="px-2 py-2">
                   {!isCollapsed ? (
                     <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
