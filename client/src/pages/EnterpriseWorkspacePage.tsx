@@ -20,6 +20,7 @@ import {
 } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { resolveDeliveryStageView } from "@/lib/deliveryStage";
 import {
   resolveMainChainSteps,
   toMainChainProgressInput,
@@ -70,6 +71,10 @@ export default function EnterpriseWorkspacePage() {
   const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, metrics);
   const stage = resolution?.currentStage;
   const stageLabel = stage ? CUSTOMER_STAGE_LABELS[stage.id] : null;
+  const deliveryStage = useMemo(() => {
+    if (!metrics) return null;
+    return resolveDeliveryStageView({ ...metrics, localAgentOnline });
+  }, [metrics, localAgentOnline]);
 
   const mainChainSteps = useMemo((): MainChainStepView[] => {
     if (!metrics) return [];
@@ -161,29 +166,59 @@ export default function EnterpriseWorkspacePage() {
           <section className="geo-card p-5" data-testid="workspace-main-chain-progress">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-[12px] font-medium text-gray-400">增长主链路</p>
+                <p className="text-[12px] font-medium text-gray-400">交付指挥中心</p>
                 <h1 className={cn(geoTypography.pageTitle, "mt-0.5")} data-testid="workspace-enterprise-name">
                   {selectedProject?.enterpriseName ?? "当前企业"}
                 </h1>
               </div>
               {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
             </div>
+            {deliveryStage ? (
+              <div
+                className="mb-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4"
+                data-testid="workspace-delivery-stage-card"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-blue-900">
+                    当前阶段：{deliveryStage.stageLabel}
+                  </p>
+                  <span className="text-xs text-blue-700">{deliveryStage.stage}</span>
+                </div>
+                <p className="mt-1 text-sm text-blue-800">{deliveryStage.stageDescription}</p>
+                {deliveryStage.blockingReasons.length > 0 ? (
+                  <p className="mt-2 text-xs text-blue-700">
+                    阻断原因：{deliveryStage.blockingReasons.join("；")}
+                  </p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-700">
+                  {deliveryStage.todos.map(todo => (
+                    <span key={todo} className="rounded-full border border-gray-200 bg-white px-2.5 py-1">
+                      {todo}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2">
-              {mainChainSteps.map(step => (
+              {(deliveryStage?.progressSteps ?? mainChainSteps).map(step => (
                 <button
-                  key={step.id}
+                  key={"id" in step ? step.id : step.key}
                   type="button"
-                  onClick={() => setLocation(buildProjectUrl(step.path, selectedProjectId))}
+                  onClick={() =>
+                    "path" in step
+                      ? setLocation(buildProjectUrl(step.path, selectedProjectId))
+                      : null
+                  }
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
                     step.done
                       ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                       : "border-gray-200 bg-white text-gray-600 hover:border-blue-200 hover:bg-blue-50",
                   )}
-                  data-testid={`main-chain-step-${step.step}`}
+                  data-testid={`main-chain-step-${"step" in step ? step.step : step.key}`}
                 >
                   <span aria-hidden>{step.done ? "✅" : "⏳"}</span>
-                  <span>{step.name}</span>
+                  <span>{"name" in step ? step.name : step.label}</span>
                 </button>
               ))}
             </div>

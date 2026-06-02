@@ -29,6 +29,7 @@ import {
   formatGeoScore,
   formatMeasuredAt,
 } from "@/lib/projectWorkspaceDisplay";
+import { formatStageActionLabel, resolveDeliveryStageView } from "@/lib/deliveryStage";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { trpc } from "@/lib/trpc";
@@ -112,6 +113,43 @@ function ProjectCard({
 }) {
   const { nextStep } = deriveClientProjectCardDisplay(project);
   const pipelineBadgeLabel = deriveClientProjectPipelineBadgeLabel(project);
+  const deliveryStage = resolveDeliveryStageView({
+    profileCompletionPercent: project.status === "created" ? 0 : 100,
+    boundPublishAccountCount: 0,
+    expiredSessionAccountCount: 0,
+    articleCount: project.articleCount,
+    publishRecordCount: project.publishCount,
+    publishTaskCount: 0,
+    completedPublishTaskCount: 0,
+    retestPendingCount: project.publishCount > 0 && project.aiTestCount === 0 ? 1 : 0,
+    rewriteOpenCount: 0,
+    aiTestResultCount: project.aiTestCount,
+    monitoringRecordCount: project.aiTestCount > 0 ? 1 : 0,
+    retestComparisonCount: 0,
+    reportCount: project.publishCount > 0 && project.aiTestCount > 0 ? 1 : 0,
+    geoScore: project.latestGeoScore,
+    brandMentionRate: project.t0BrandMentionRate,
+    recommendRate: null,
+    lowQualityArticleCount: 0,
+    hasAnalysis: project.lastDiagnosisAt != null,
+    hasGeoScore: project.latestGeoScore != null,
+    hasCompletedT0Baseline: project.aiTestCount > 0,
+    hasCompletedT1Retest: project.aiTestCount > 0,
+    showT1RetestAutoTriggerReminder: false,
+    retestPlan: {
+      publishAt: null,
+      publishAtLabel: null,
+      milestones: [],
+      nextSuggestion: null,
+    },
+    retestDueReminder: null,
+    p0ProfileComplete: project.status !== "created",
+    t0ContentGapSuggestions: null,
+    localAgentOnline: null,
+  });
+  const actionLabel = formatStageActionLabel(deliveryStage.stage);
+  const todoCount = deliveryStage.todos.length;
+  const riskCount = deliveryStage.blockingReasons.length;
   const geoScore = formatGeoScore(project.latestGeoScore);
   const mentionRateText =
     project.t0BrandMentionRate != null ? formatBrandMentionRate(project.t0BrandMentionRate) : "--";
@@ -200,6 +238,14 @@ function ProjectCard({
         <span className="font-medium text-gray-400">下一步：</span>
         {nextStep}
       </p>
+      <div className="mb-4 flex items-center gap-2 text-xs">
+        <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700" data-testid="client-project-todo-count">
+          待办 {todoCount}
+        </span>
+        <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700" data-testid="client-project-risk-count">
+          风险 {riskCount}
+        </span>
+      </div>
 
       <div className="mt-auto flex sm:justify-end">
         <button
@@ -211,7 +257,8 @@ function ProjectCard({
             onEnter(project.id);
           }}
         >
-          进入工作台
+          <span className="sr-only">进入工作台</span>
+          {actionLabel}
           <ArrowRight className="h-3 w-3" />
         </button>
       </div>
