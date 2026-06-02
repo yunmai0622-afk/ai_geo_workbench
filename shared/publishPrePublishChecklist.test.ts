@@ -85,6 +85,24 @@ describe("publishPrePublishChecklist", () => {
     expect(articleHasPublishableCover({ coverImageUrl: " https://cdn.example.com/c.png " })).toBe(true);
   });
 
+  it("allows toutiao without cover to align with local agent skipCover", () => {
+    const result = evaluatePrePublishChecklist({
+      title: "头条标题",
+      markdownContent: longBody,
+      platform: "toutiao",
+      article: { geoQualityScore: 80, geoQualityRecommendation: "publish" },
+      account: {
+        platform: "toutiao",
+        accountName: "a",
+        isEnabled: 1,
+        localProfileId: "p",
+        localAgentId: "a",
+        sessionStatus: "active",
+      },
+    });
+    expect(result.items.find(i => i.id === "has_cover")?.passed).toBe(true);
+  });
+
   it("blocks failed quality and expired account", () => {
     const result = evaluatePrePublishChecklist({
       title: "标题",

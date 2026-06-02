@@ -12,9 +12,9 @@ export type PlatformPublishCapability = "supported" | "pending_verify" | "bind_o
 
 export const PLATFORM_PUBLISH_CAPABILITY: Record<BindingPublishPlatform, PlatformPublishCapability> = {
   zhihu: "supported",
-  sohu: "pending_verify",
-  toutiao: "pending_verify",
-  baijiahao: "pending_verify",
+  sohu: "supported",
+  toutiao: "supported",
+  baijiahao: "supported",
   netease: "pending_verify",
 };
 

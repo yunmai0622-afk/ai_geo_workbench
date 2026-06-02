@@ -28,6 +28,7 @@ export type PrePublishChecklistResult = {
 };
 
 export type PrePublishChecklistPlatform = BindingPublishPlatform | "wechat" | "xiaohongshu";
+export const PRE_PUBLISH_COVER_OPTIONAL_PLATFORMS: readonly PrePublishChecklistPlatform[] = ["toutiao"] as const;
 
 /** 各平台标题字数上限（按 Unicode 码点计） */
 export const PUBLISH_PLATFORM_TITLE_MAX_CHARS: Record<PrePublishChecklistPlatform, number> = {
@@ -135,6 +136,9 @@ function evaluateBodyCheck(input: PrePublishChecklistInput, platformLabel: strin
 }
 
 function evaluateCoverCheck(input: PrePublishChecklistInput): PrePublishChecklistItem {
+  if (PRE_PUBLISH_COVER_OPTIONAL_PLATFORMS.includes(input.platform)) {
+    return item("has_cover", true, "");
+  }
   if (articleHasPublishableCover(input)) {
     return item("has_cover", true, "");
   }
