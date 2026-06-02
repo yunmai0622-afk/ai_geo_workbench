@@ -16,6 +16,7 @@ import { ensureProjectsOwnerUserIdColumnOnce } from "./ensureProjectsOwnerUserId
 import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
 import { mergeLinkAccessIntoRawJson } from "@shared/inclusionMonitoringDisplay";
 import { aggregateT0AiTestRunMetrics } from "@shared/t0AiTestRunMetrics";
+import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
 import { geoScorePercentToRate, resolveBrandMentionRate } from "@shared/brandMentionRateResolver";
 import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, not, sql } from "drizzle-orm";
@@ -1143,6 +1144,7 @@ const geoRouter = router({
         db
           .select({
             projectId: geoInclusionMonitoringRecords.projectId,
+            monitoringRecordId: geoInclusionMonitoringRecords.id,
             aiTestResults: geoInclusionMonitoringRecords.aiTestResults,
           })
           .from(geoInclusionMonitoringRecords)
@@ -1195,9 +1197,19 @@ const geoRouter = router({
         completedPublishTaskCountMap.set(r.projectId, Number(r.count ?? 0));
       }
       const aiTestCountMap = new Map<number, number>();
+      const monitoringEvidenceByProject = new Map<
+        number,
+        Array<{ monitoringRecordId: number; results: unknown[] }>
+      >();
       for (const r of monitoringRows) {
         const results = Array.isArray(r.aiTestResults) ? r.aiTestResults : [];
         aiTestCountMap.set(r.projectId, (aiTestCountMap.get(r.projectId) ?? 0) + results.length);
+        const evidence = monitoringEvidenceByProject.get(r.projectId) ?? [];
+        evidence.push({
+          monitoringRecordId: r.monitoringRecordId,
+          results,
+        });
+        monitoringEvidenceByProject.set(r.projectId, evidence);
       }
       const lastDiagnosisMap = new Map<number, Date>();
       const analysisMentionTotals = new Map<number, { mentioned: number; total: number }>();
@@ -1284,10 +1296,14 @@ const geoRouter = router({
           analysisTotals && analysisTotals.total > 0
             ? analysisTotals.mentioned / analysisTotals.total
             : null;
+        const monitoringEvidence = monitoringEvidenceByProject.get(p.id) ?? [];
+        const monitoringAggregate = aggregateAiTestEvidence(monitoringEvidence);
+        const monitoringQuestionCount = monitoringAggregate.questionCount;
         const brandMentionRate = resolveBrandMentionRate({
           t0MentionRate: t0?.mentionRate ?? null,
-          monitoringQuestionCount: 0,
-          monitoringMentionRate: null,
+          monitoringQuestionCount,
+          monitoringMentionRate:
+            monitoringQuestionCount > 0 ? monitoringAggregate.mentionRate : null,
           geoScoreMentionRate: geoScorePercentToRate(latestGeoVisibilityMap.get(p.id)),
           analysisMentionRate,
         });

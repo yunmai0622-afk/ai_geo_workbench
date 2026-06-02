@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { buildProjectUrl } from "@/lib/activeProject";
+import { asArray, PUBLISH_QUEUE_EMPTY_LABELS } from "@/lib/contentPublishingSafeData";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { recordPublicLink, publishStatusLabel } from "@/lib/assetProgressDisplay";
 import { downloadPublishRecordsCsv } from "@/lib/geoDataExportDownload";
@@ -139,6 +140,32 @@ type AgentTaskRow = {
 };
 
 type QueueTabKey = "pending" | "active" | "failed" | "completed";
+
+type RetestQueueItemRow = {
+  queueId?: number;
+  articleId?: number;
+  title?: string | null;
+  reviewType?: string | null;
+  triggerStatus?: string | null;
+  status?: string | null;
+  scheduledAt?: Date | string | number | null;
+};
+
+type InclusionMonitoringRow = {
+  articleId?: number;
+  publicUrl?: string | null;
+};
+
+type RewritePoolItemRow = {
+  articleId: number;
+  poolId?: number | null;
+  title?: string | null;
+  reason?: string | null;
+  source?: string | null;
+  articleStatus?: string | null;
+  publishTaskStatus?: string | null;
+  suggestionText?: string | null;
+};
 
 function hasNumericId<T extends { id?: unknown }>(
   value: T | null | undefined,
@@ -314,14 +341,23 @@ export function ContentPublishingCenterPage() {
   const completedAgentTaskIdsRef = useRef<Set<number>>(new Set());
   const completedAgentTasksInitializedRef = useRef(false);
 
-  const articles = filterListWithNumericId(articlesQuery.data ?? []) as ArticleRow[];
-  const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
+  const articles = useMemo(
+    () => filterListWithNumericId(asArray<ArticleRow>(articlesQuery.data)) as ArticleRow[],
+    [articlesQuery.data],
+  );
+  const scores = useMemo(() => asArray<QualityScoreRow>(scoresQuery.data), [scoresQuery.data]);
   const publishableArticles = useMemo(
     () => articles.filter(a => isQualityPassed(articleLatestQuality(a?.id, scores))),
     [articles, scores],
   );
-  const publishRecords = filterListWithNumericId(publishRecordsQuery.data ?? []) as PublishRecordRow[];
-  const agentTasks = filterListWithNumericId(autoPublishTasksQuery.data?.tasks ?? []) as AgentTaskRow[];
+  const publishRecords = useMemo(
+    () => filterListWithNumericId(asArray<PublishRecordRow>(publishRecordsQuery.data)) as PublishRecordRow[],
+    [publishRecordsQuery.data],
+  );
+  const agentTasks = useMemo(
+    () => filterListWithNumericId(asArray<AgentTaskRow>(autoPublishTasksQuery.data?.tasks)) as AgentTaskRow[],
+    [autoPublishTasksQuery.data?.tasks],
+  );
   const articleById = useMemo(() => new Map((articles ?? []).map(a => [a?.id, a])), [articles]);
 
   const hasInFlightAgentTasks = useMemo(
@@ -344,7 +380,7 @@ export function ContentPublishingCenterPage() {
   }, [selectedProjectId]);
 
   useEffect(() => {
-    const completedIds = ((agentTasks ?? []).filter(t => t.status === "completed")).map(t => t?.id);
+    const completedIds = ((agentTasks ?? []).filter(t => t.status === "completed") ?? []).map(t => t?.id);
     if (!completedAgentTasksInitializedRef.current) {
       completedIds.forEach(id => completedAgentTaskIdsRef.current.add(id));
       completedAgentTasksInitializedRef.current = true;
@@ -373,7 +409,7 @@ export function ContentPublishingCenterPage() {
 
   const autoInclusionByArticleAndUrl = useMemo(() => {
     const keys = new Set<string>();
-    for (const row of inclusionMonitoringQuery.data ?? []) {
+    for (const row of asArray<InclusionMonitoringRow>(inclusionMonitoringQuery.data)) {
       const articleId = typeof row.articleId === "number" ? row.articleId : null;
       const url = typeof row.publicUrl === "string" ? row.publicUrl.trim() : "";
       if (articleId && url) keys.add(`${articleId}:${url}`);
@@ -450,7 +486,10 @@ export function ContentPublishingCenterPage() {
     });
   }, [publishRecords]);
 
-  const platformAccountGroups = platformAccountsQuery.data?.accounts ?? [];
+  const platformAccountGroups = useMemo(() => {
+    const accounts = platformAccountsQuery.data?.accounts;
+    return Array.isArray(accounts) ? accounts : [];
+  }, [platformAccountsQuery.data?.accounts]);
 
   const boundPlatformCount = useMemo(() => {
     return (platformAccountGroups ?? []).filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled))
@@ -584,6 +623,14 @@ export function ContentPublishingCenterPage() {
 
   const loading =
     articlesQuery.isLoading || scoresQuery.isLoading || publishRecordsQuery.isLoading || autoPublishTasksQuery.isLoading;
+
+  const publishDataLoadFailed =
+    !loading &&
+    enabled &&
+    (articlesQuery.isError ||
+      scoresQuery.isError ||
+      publishRecordsQuery.isError ||
+      autoPublishTasksQuery.isError);
 
   async function handleSaveRowLink(recordId: number, explicitDraft?: string) {
     if (!selectedProjectId) return;
@@ -902,6 +949,16 @@ export function ContentPublishingCenterPage() {
         data-testid="first-use-hint-content-publishing"
       />
 
+      {publishDataLoadFailed ? (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="alert"
+          data-testid="publish-center-load-failed"
+        >
+          发布任务暂时无法加载，请稍后重试。
+        </div>
+      ) : null}
+
       {selectedProjectId ? (
         <PublishAccountSessionAlert
           projectId={selectedProjectId}
@@ -1067,7 +1124,7 @@ export function ContentPublishingCenterPage() {
                 <TabsContent key={tab} value={tab} className="mt-0">
                   {queueTabs[tab].length === 0 ? (
                     <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-5 text-sm text-gray-500">
-                      暂无任务
+                      {PUBLISH_QUEUE_EMPTY_LABELS[tab]}
                     </div>
                   ) : (
                     <div className="grid gap-3 lg:grid-cols-2">
@@ -1227,14 +1284,14 @@ export function ContentPublishingCenterPage() {
               <div className="grid gap-4 border-t border-gray-100 p-5 lg:grid-cols-2">
                 <div>
                   <h3 className="text-sm font-medium text-gray-800">待复测队列</h3>
-                  {(retestQueueQuery.data?.items ?? []).length === 0 ? (
+                  {asArray<RetestQueueItemRow>(retestQueueQuery.data?.items).length === 0 ? (
                     <p className="mt-2 text-sm text-gray-500">暂无待复测内容</p>
                   ) : (
                     <ul className="mt-2 space-y-2 text-sm text-gray-700">
-                      {(retestQueueQuery.data?.items ?? []).map(item => (
+                      {asArray<RetestQueueItemRow>(retestQueueQuery.data?.items).map(item => (
                         <li key={item.queueId ?? item.articleId} className="rounded-lg border border-gray-100 p-3">
                           <p className="font-medium">{item.title}</p>
-                          {selectedProjectId && item.queueId ? (
+                          {selectedProjectId && typeof item.queueId === "number" ? (
                             <Button
                               type="button"
                               size="sm"
@@ -1242,10 +1299,12 @@ export function ContentPublishingCenterPage() {
                               className={`mt-2 ${geoP0Brand.primaryOutline}`}
                               disabled={triggerReview.isPending}
                               onClick={() => {
+                                const queueId = item.queueId;
+                                if (queueId == null) return;
                                 void triggerReview
                                   .mutateAsync({
                                     projectId: selectedProjectId,
-                                    queueId: item.queueId,
+                                    queueId,
                                   })
                                   .then(() => {
                                     toast.success("已触发复测，状态更新为“复测进行中”");
@@ -1283,11 +1342,11 @@ export function ContentPublishingCenterPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-800">重写池</h3>
-                  {(rewritePoolQuery.data?.items ?? []).length === 0 ? (
+                  {asArray<RewritePoolItemRow>(rewritePoolQuery.data?.items).length === 0 ? (
                     <p className="mt-2 text-sm text-gray-500">暂无待重写条目</p>
                   ) : (
                     <ul className="mt-2 space-y-2 text-sm text-gray-700">
-                      {(rewritePoolQuery.data?.items ?? []).map(item => (
+                      {asArray<RewritePoolItemRow>(rewritePoolQuery.data?.items).map(item => (
                         <li
                           key={`${item.articleId}-${item.poolId ?? 0}`}
                           className="rounded-lg border border-gray-100 p-3"
@@ -1362,7 +1421,7 @@ export function ContentPublishingCenterPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {(MANUAL_PUBLISH_PLATFORMS ?? []).map(p => (
+                          {MANUAL_PUBLISH_PLATFORMS.map(p => (
                             <SelectItem key={p} value={p}>
                               {p}
                             </SelectItem>

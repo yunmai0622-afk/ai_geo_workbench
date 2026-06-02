@@ -19,7 +19,7 @@ describe("C6-B enterprise profile flow order", () => {
 
   it("hides onboarding blocks without selected project", () => {
     expect(page).toMatch(/if \(!currentProjectId && !projectsLoading\)/);
-    expect(page).toMatch(/currentProjectId \? \(/);
+    expect(page).toMatch(/currentProjectId && !coreProfileLoadFailed \? \(/);
     expect(profileUi).toContain("FiveMinuteBasicOnboardingSection");
   });
 

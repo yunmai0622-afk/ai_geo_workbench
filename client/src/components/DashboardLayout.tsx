@@ -38,7 +38,6 @@ import {
   PanelLeft,
   Send,
   Settings,
-  ShieldCheck,
   Sparkles,
   Users2,
 } from "lucide-react";
@@ -160,19 +159,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
   },
 ];
 
-const adminNavGroup: { title: string; items: MenuItem[] } = {
-  title: "管理后台",
-  items: [
-    {
-      icon: ShieldCheck,
-      label: "发布任务监控",
-      desc: "查看全局发布任务状态与失败原因",
-      path: "/admin/publish-tasks",
-      aliases: ["/admin/publish-tasks"],
-    },
-  ],
-};
-
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 292;
 const MIN_WIDTH = 230;
@@ -244,10 +230,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = location.split("?")[0] || location;
-  const visibleNavGroups = useMemo(
-    () => (user?.role === "admin" ? [...navGroups, adminNavGroup] : navGroups),
-    [user?.role],
-  );
+  const visibleNavGroups = navGroups;
   const allMenuItems = useMemo(() => visibleNavGroups.flatMap(g => g.items), [visibleNavGroups]);
   const activeMenuItem = allMenuItems.find(item => item.aliases.includes(pathname));
   const isMobile = useIsMobile();

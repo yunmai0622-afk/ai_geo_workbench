@@ -13,6 +13,7 @@ describe("P1-A client dashboard", () => {
     expect(router).toContain('archived: z.boolean().optional()');
     expect(router).toContain("articleCountMap");
     expect(router).toContain("geoInclusionMonitoringRecords.aiTestResults");
+    expect(router).toContain("aggregateAiTestEvidence");
     expect(router.indexOf("from(geoInclusionMonitoringRecords)", router.indexOf("clientDashboard"))).toBeGreaterThan(-1);
     const dashboardBlock = router.slice(router.indexOf("clientDashboard: router({"), router.indexOf("projects: router({"));
     expect(dashboardBlock).not.toContain("from(aiResponses)");
@@ -40,7 +41,8 @@ describe("P1-A client dashboard", () => {
   it("ClientDashboardPage contains 客户项目", () => {
     const page = read("client/src/pages/ClientDashboardPage.tsx");
     expect(page).toContain("企业项目");
-    expect(page).toContain("进入工作台");
+    expect(page).toContain("buildStageActionUrl");
+    expect(page).toContain("formatStageActionLabel");
     expect(page).toContain("client-dashboard-search");
   });
 

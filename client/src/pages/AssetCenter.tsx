@@ -35,6 +35,13 @@ import { evaluateEnterpriseProfileCompletenessFromForm } from "@shared/enterpris
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  PROFILE_CORE_LOAD_FAILED_MESSAGE,
+  PROFILE_NON_CRITICAL_SUMMARY_HINT,
+  profileSaveFailureMessage,
+  shouldShowProfileCoreLoadFailure,
+  shouldShowProfileNonCriticalSummaryHint,
+} from "@/lib/enterpriseProfileLoadDisplay";
 
 type SummaryLike = {
   profile?: Record<string, unknown> | null;
@@ -244,9 +251,12 @@ export default function AssetCenterPage() {
   const updateCustomerCase = trpc.geo.assetLibrary.updateCustomerCase.useMutation();
 
   const projectInput = useMemo(() => ({ projectId: currentProjectId! }), [currentProjectId]);
-  const { data: summaryData, isLoading, isFetched } = trpc.geo.assetLibrary.summary.useQuery(
+  const { data: summaryData, isLoading, isFetched, error: summaryError } = trpc.geo.assetLibrary.summary.useQuery(
     projectInput,
-    { enabled: Boolean(currentProjectId) },
+    {
+      enabled: Boolean(currentProjectId),
+      retry: 1,
+    },
   );
   const summary = summaryData as SummaryLike | undefined;
   const profile = summary?.profile ?? null;
@@ -617,6 +627,26 @@ export default function AssetCenterPage() {
     return "当前 AI 可理解度较低，建议先补齐核心资料后再启动诊断。";
   }, [profileCompleteness.percent]);
 
+  const hasRenderableProfile = useMemo(() => {
+    const p = profile as Record<string, unknown> | null;
+    if (p && (textField(p.brandName) || textField(p.enterpriseName))) return true;
+    if (brandName.trim() || oneLiner.trim() || productDesc.trim()) return true;
+    return profileCompleteness.percent > 0;
+  }, [profile, brandName, oneLiner, productDesc, profileCompleteness.percent]);
+
+  const coreProfileLoadFailed = shouldShowProfileCoreLoadFailure({
+    summaryError: Boolean(summaryError),
+    hasSummaryData: Boolean(summaryData),
+    isFetched,
+    hasRenderableProfile,
+  });
+
+  const showNonCriticalSummaryHint = shouldShowProfileNonCriticalSummaryHint({
+    summaryError: Boolean(summaryError),
+    hasRenderableProfile,
+    profileCompletenessPercent: profileCompleteness.percent,
+  });
+
   const computeProfileSectionStatuses = useMemo(() => {
     const brandDone =
       Boolean(brandName.trim()) && Boolean(industryTagValue.trim()) && Boolean(productDesc.trim());
@@ -695,7 +725,7 @@ export default function AssetCenterPage() {
       await refreshSummary();
       setMessage(`${label}已保存。`);
     } catch (e) {
-      toast.error(toUserFacingErrorFromUnknown(e, "保存失败"));
+      toast.error(profileSaveFailureMessage(toUserFacingErrorFromUnknown(e, "保存失败")));
     }
   }
 
@@ -741,7 +771,7 @@ export default function AssetCenterPage() {
       setMessage("品牌资产建档已保存。");
       setLocation(buildProjectUrl("/ai-diagnosis", currentProjectId));
     } catch (e) {
-      toast.error(toUserFacingErrorFromUnknown(e, "保存失败"));
+      toast.error(profileSaveFailureMessage(toUserFacingErrorFromUnknown(e, "保存失败")));
     }
   }
 
@@ -779,11 +809,41 @@ export default function AssetCenterPage() {
           <p className="text-sm text-gray-400">正在加载…</p>
         </div>
       ) : null}
+      {!loading && coreProfileLoadFailed ? (
+        <div
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-800"
+          role="alert"
+          data-testid="enterprise-profile-core-load-failed"
+        >
+          <p>{PROFILE_CORE_LOAD_FAILED_MESSAGE}</p>
+          <Button type="button" variant="outline" className="mt-3" onClick={() => void refreshSummary()}>
+            刷新重试
+          </Button>
+        </div>
+      ) : null}
+      {showNonCriticalSummaryHint ? (
+        <p
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="status"
+          data-testid="enterprise-profile-summary-load-hint"
+        >
+          {PROFILE_NON_CRITICAL_SUMMARY_HINT}
+          <Button
+            type="button"
+            variant="link"
+            className="ml-1 h-auto p-0 text-amber-900 underline"
+            onClick={() => void refreshSummary()}
+            disabled={loading}
+          >
+            重试加载
+          </Button>
+        </p>
+      ) : null}
       {message ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{message}</div>
       ) : null}
 
-      {currentProjectId ? (
+      {currentProjectId && !coreProfileLoadFailed ? (
         <>
           <div className="mt-6 space-y-6">
             <section

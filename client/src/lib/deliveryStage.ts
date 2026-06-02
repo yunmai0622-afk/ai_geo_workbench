@@ -171,14 +171,41 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
   };
 }
 
-/** 客户项目卡片主按钮文案（S3–S7 为阶段引导，其余为进入工作台） */
+/** 客户项目卡片主按钮文案（未知阶段回退「进入工作台」） */
 export function formatStageActionLabel(stage: DeliveryStageId): string {
-  const map: Partial<Record<DeliveryStageId, string>> = {
-    S3_READY_FOR_CONTENT: "去生成内容",
+  const map: Record<DeliveryStageId, string> = {
+    S1_PROFILE_INCOMPLETE: "继续建档",
+    S2_READY_FOR_DIAGNOSIS: "开始 AI 诊断",
+    S3_READY_FOR_CONTENT: "生成内容资产",
     S4_READY_FOR_PUBLISH: "去发布内容",
     S5_WAITING_LINKS: "去回填链接",
-    S6_READY_FOR_MONITORING: "去执行复测",
-    S7_READY_FOR_REPORT: "去生成报告",
+    S6_READY_FOR_MONITORING: "执行复测",
+    S7_READY_FOR_REPORT: "生成交付报告",
+    S8_DELIVERED_OR_NEXT_ROUND: "查看报告",
   };
   return map[stage] ?? "进入工作台";
+}
+
+/** 客户项目卡片主按钮跳转路径（不含 projectId，由 buildProjectUrl 拼接） */
+export function resolveStageActionPath(stage: DeliveryStageId): string {
+  const map: Record<DeliveryStageId, string> = {
+    S1_PROFILE_INCOMPLETE: "/enterprise-profile",
+    S2_READY_FOR_DIAGNOSIS: "/ai-diagnosis",
+    S3_READY_FOR_CONTENT: "/weekly",
+    S4_READY_FOR_PUBLISH: "/content-publishing",
+    S5_WAITING_LINKS: "/content-publishing",
+    S6_READY_FOR_MONITORING: "/inclusion-monitoring",
+    S7_READY_FOR_REPORT: "/delivery-reports",
+    S8_DELIVERED_OR_NEXT_ROUND: "/delivery-reports",
+  };
+  return map[stage] ?? "/workspace";
+}
+
+export function buildStageActionUrl(stage: DeliveryStageId, projectId: number): string {
+  const path = resolveStageActionPath(stage);
+  const base = path.split("?")[0] || path;
+  if (stage === "S5_WAITING_LINKS") {
+    return `${base}?projectId=${projectId}&filter=waiting_links`;
+  }
+  return `${base}?projectId=${projectId}`;
 }

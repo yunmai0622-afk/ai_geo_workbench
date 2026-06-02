@@ -25,11 +25,15 @@ import { activateProject, buildProjectUrl } from "@/lib/activeProject";
 import {
   deriveClientProjectCardDisplay,
   deriveClientProjectPipelineBadgeLabel,
-  formatBrandMentionRate,
+  formatClientProjectMentionRate,
   formatGeoScore,
   formatMeasuredAt,
 } from "@/lib/projectWorkspaceDisplay";
-import { formatStageActionLabel, resolveDeliveryStageView } from "@/lib/deliveryStage";
+import {
+  buildStageActionUrl,
+  formatStageActionLabel,
+  resolveDeliveryStageView,
+} from "@/lib/deliveryStage";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { trpc } from "@/lib/trpc";
@@ -99,6 +103,7 @@ function matchFilter(project: ProjectSummary, filter: FilterKey): boolean {
 function ProjectCard({
   project,
   onEnter,
+  metricsLoading,
   showArchived,
   onArchive,
   onUnarchive,
@@ -106,11 +111,13 @@ function ProjectCard({
 }: {
   project: ProjectSummary;
   onEnter: (id: number) => void;
+  metricsLoading: boolean;
   showArchived: boolean;
   onArchive: (id: number) => void;
   onUnarchive: (id: number) => void;
   archivePending: boolean;
 }) {
+  const [, setLocation] = useLocation();
   const { nextStep } = deriveClientProjectCardDisplay(project);
   const pipelineBadgeLabel = deriveClientProjectPipelineBadgeLabel(project);
   const deliveryStage = resolveDeliveryStageView({
@@ -149,17 +156,19 @@ function ProjectCard({
     t0ContentGapSuggestions: null,
     localAgentOnline: null,
   });
+  // 未知阶段主按钮回退文案：进入工作台
   const actionLabel = formatStageActionLabel(deliveryStage.stage);
+  const stageActionUrl = buildStageActionUrl(deliveryStage.stage, project.id);
   const todoCount = deliveryStage.todos.length;
   const riskCount = deliveryStage.blockingReasons.length;
   const geoScore = formatGeoScore(project.latestGeoScore);
-  const mentionRateText =
-    project.t0BrandMentionRate != null
-      ? formatBrandMentionRate(project.t0BrandMentionRate)
-      : project.latestGeoScore != null
-        ? "待实测"
-        : "完成AI实测后显示";
-  const mentionRateIsPlaceholder = project.t0BrandMentionRate == null;
+  const hasAiTestData = project.aiTestCount > 0 || project.lastDiagnosisAt != null;
+  const mentionRateText = formatClientProjectMentionRate({
+    mentionRate: project.t0BrandMentionRate,
+    hasAiTestData,
+    loading: metricsLoading,
+  });
+  const mentionRateIsPlaceholder = mentionRateText === "未实测" || mentionRateText === "加载中";
   const industryLabel =
     project.industry?.trim() && project.industry !== "待补充" ? project.industry.trim() : "未填写行业";
   const lastMeasuredLabel = formatMeasuredAt(project.lastMeasuredAt ?? project.lastDiagnosisAt) ?? "暂无";
@@ -267,10 +276,10 @@ function ProjectCard({
           data-testid="enter-workspace-button"
           onClick={e => {
             e.stopPropagation();
-            onEnter(project.id);
+            setLocation(stageActionUrl);
           }}
         >
-          <span className="sr-only">进入工作台</span>
+          <span className="sr-only">{actionLabel}</span>
           {actionLabel}
           <ArrowRight className="h-3 w-3" />
         </button>
@@ -529,6 +538,7 @@ export default function ClientDashboardPage() {
               key={project.id}
               project={project}
               onEnter={handleEnter}
+              metricsLoading={isLoading}
               showArchived={showArchived}
               onArchive={id =>
                 dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.archiveProject, () => handleArchive(id))

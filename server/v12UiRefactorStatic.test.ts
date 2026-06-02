@@ -23,6 +23,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       "企业项目",
       "品牌资产建档",
       "AI 实测诊断",
+      "问题库",
       "平台化内容资产",
       "平台适配发布",
       "收录监测",
@@ -74,8 +75,9 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
   it("企业档案页呈现 5 分钟建档结构", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
     expect(assetSource).toContain("geo.assetLibrary.summary.useQuery");
-    expect(assetSource).not.toContain("enterprise-profile-summary-load-hint");
-    expect(assetSource).not.toContain("border-red-200 bg-red-50");
+    expect(assetSource).toContain("enterpriseProfileLoadDisplay");
+    expect(assetSource).toContain("enterprise-profile-summary-load-hint");
+    expect(assetSource).toContain("enterprise-profile-core-load-failed");
     expect(assetSource).not.toContain("hasBlockingLoadError");
     const publishOverview = readProjectFile(
       "client/src/components/platformAccounts/PublishPlatformAccountsOverview.tsx",
