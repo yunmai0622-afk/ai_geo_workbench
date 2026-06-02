@@ -48,7 +48,8 @@ describe("Phase4 delivery report productization", () => {
       "生成下一轮内容计划",
       "进入优化池",
       "导出报告",
-      "window.print",
+      "delivery-report-export-pdf",
+      "downloadDeliveryReportPdf",
     ]) {
       expect(page + display + healthBrief).toContain(text);
     }

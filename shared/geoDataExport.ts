@@ -63,6 +63,11 @@ export function buildGeoReportCsvFilename(projectName: string, date = new Date()
   return `geo-report-${sanitizeGeoExportFilenameSegment(projectName)}-${datePart}.csv`;
 }
 
+export function buildGeoReportPdfFilename(projectName: string, date = new Date()): string {
+  const datePart = date.toISOString().slice(0, 10);
+  return `geo-report-${sanitizeGeoExportFilenameSegment(projectName)}-${datePart}.pdf`;
+}
+
 export function buildGeoPublishRecordsCsvFilename(projectName: string, date = new Date()): string {
   const datePart = date.toISOString().slice(0, 10);
   return `geo-publish-records-${sanitizeGeoExportFilenameSegment(projectName)}-${datePart}.csv`;

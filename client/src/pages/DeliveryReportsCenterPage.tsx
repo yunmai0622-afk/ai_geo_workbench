@@ -42,6 +42,7 @@ import {
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
 import { resolveT0T1ComparisonRows } from "@shared/retestComparisonDisplay";
 import { downloadDeliveryReportCsv } from "@/lib/geoDataExportDownload";
+import { downloadDeliveryReportPdf } from "@/lib/deliveryReportPdfExport";
 import type { DetectionQuestionExportRow } from "@shared/geoDataExport";
 import {
   formatPlatformDistributionLine,
@@ -91,6 +92,7 @@ export function DeliveryReportsCenterPage() {
     regenerateShareLink.isPending ||
     renewShareLink.isPending;
   const [shareExpiresAtHint, setShareExpiresAtHint] = useState<string | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
     setShareExpiresAtHint(null);
@@ -360,6 +362,27 @@ export function DeliveryReportsCenterPage() {
       t0t1: { baseRound, compareRound, rows: t0t1Rows },
     });
     toast.success("交付报告 CSV 已开始下载");
+  }
+
+  async function handleExportDeliveryPdf() {
+    if (loading) {
+      toast.message("报告数据加载中，请稍后再导出");
+      return;
+    }
+    const target = reportRef.current;
+    if (!target) {
+      toast.error("未找到报告内容，请刷新页面后重试");
+      return;
+    }
+    setExportingPdf(true);
+    try {
+      await downloadDeliveryReportPdf(target, projectExportName);
+      toast.success("交付报告 PDF 已开始下载");
+    } catch {
+      toast.error("PDF 导出失败，请稍后重试");
+    } finally {
+      setExportingPdf(false);
+    }
   }
 
   const detectionScope = useMemo(
@@ -640,9 +663,11 @@ export function DeliveryReportsCenterPage() {
             type="button"
             variant="outline"
             className={geoP0Brand.primaryOutline}
-            onClick={() => window.print()}
+            data-testid="delivery-report-export-pdf"
+            disabled={loading || exportingPdf}
+            onClick={() => void handleExportDeliveryPdf()}
           >
-            导出报告
+            {exportingPdf ? "导出中…" : "导出报告"}
           </Button>
           <Button
             type="button"

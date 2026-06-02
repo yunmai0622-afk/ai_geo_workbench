@@ -32,8 +32,10 @@ describe("GEO-V1.1 delivery report experimental upgrade", () => {
     }
   });
 
-  it("keeps browser print export for PDF", () => {
-    expect(page).toContain("window.print()");
+  it("keeps real PDF export for delivery report", () => {
+    expect(page).toContain("downloadDeliveryReportPdf");
+    expect(page).toContain("delivery-report-export-pdf");
     expect(page).toContain("导出报告");
+    expect(page).not.toContain("window.print()");
   });
 });
