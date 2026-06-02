@@ -524,7 +524,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     }
   }
 
-  /** 上传专栏写作页封面；失败不阻断后续发布 */
+  /** 上传专栏写作页封面；有封面载荷但上传失败时由调用方返回 manual_required */
   private async uploadZhihuCover(
     page: Page,
     task: LocalPublishTask,
@@ -1733,7 +1733,23 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       page = beforePublishFlow.page;
 
       const coverResult = await this.uploadZhihuCover(page, task);
-      logs.push(stepLog("upload_cover", coverResult.ok ? "ok" : "skipped", coverResult.message, coverResult.selector));
+      const coverHadPayload = coverResult.message !== "no_cover_payload";
+      logs.push(
+        stepLog(
+          "upload_cover",
+          coverResult.ok ? "ok" : coverHadPayload ? "failed" : "skipped",
+          coverResult.message,
+          coverResult.selector,
+        ),
+      );
+      if (!coverResult.ok && coverHadPayload) {
+        return {
+          status: "manual_required",
+          errorType: "cover_upload_failed",
+          errorMessage: "封面上传失败，请手动在知乎编辑器中添加封面后发布",
+          logs,
+        };
+      }
 
       if (publishAction === "save_draft") {
         const save = await this.attemptSaveDraft(page);
