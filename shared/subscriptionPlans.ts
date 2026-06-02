@@ -50,7 +50,7 @@ export const SUBSCRIPTION_PLANS: readonly SubscriptionPlanDisplay[] = [
   },
 ] as const;
 
-export const SUBSCRIPTION_CONTACT_EMAIL = "contact@example.com";
+export const SUBSCRIPTION_CONTACT_EMAIL = "523245782@qq.com";
 
 export function getSubscriptionPlanById(planId: SubscriptionPlanId): SubscriptionPlanDisplay {
   const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);

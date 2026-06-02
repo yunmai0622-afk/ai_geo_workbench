@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { AUTH_PRODUCT_NAME } from "@/components/auth/authMarketing";
+import { SUBSCRIPTION_CONTACT_EMAIL } from "@shared/subscriptionPlans";
 import { BarChart3, LineChart, Search, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "wouter";
@@ -95,7 +96,7 @@ export default function LandingPage() {
       <footer className="border-t border-gray-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-8 text-center text-sm text-gray-500 sm:px-6">
           <p className="font-medium text-gray-700">联系我们</p>
-          <p className="mt-2">商务合作与产品咨询：contact@example.com（占位）</p>
+          <p className="mt-2">商务合作与产品咨询：{SUBSCRIPTION_CONTACT_EMAIL}</p>
         </div>
       </footer>
     </div>

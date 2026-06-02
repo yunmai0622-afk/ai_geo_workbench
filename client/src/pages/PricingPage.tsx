@@ -106,7 +106,7 @@ export default function PricingPage() {
             ))}
           </div>
           <p className="mt-8 text-center text-sm text-gray-500">
-            企业版与专业版升级：{SUBSCRIPTION_CONTACT_EMAIL}（占位邮箱，接入支付前请通过商务开通）
+            企业版与专业版升级请联系：{SUBSCRIPTION_CONTACT_EMAIL}（当前暂未开通在线支付）
           </p>
         </section>
       </main>

@@ -28,7 +28,7 @@ export const demoProject = {
 } as const;
 
 export const demoMetrics: DemoMetric[] = [
-  { label: "GEO 总分", value: "25", note: "T0 基线阶段（弱可见）", tone: "cyan" },
+  { label: "GEO 总分", value: "32", note: "试跑后当前得分（弱可见向上）", tone: "cyan" },
   { label: "资料完整度", value: "100%", note: "企业资产样板资料已补齐", tone: "emerald" },
   { label: "AI 可见度", value: "30%", note: "10 条指定问题中 3 条被提及", tone: "blue" },
   { label: "AI 推荐率", value: "20%", note: "10 条指定问题中 2 条被推荐", tone: "violet" },
@@ -262,7 +262,7 @@ export const monitoringRecords = [
 export const reportSummary = {
   title: "海豚知道 GEO 试跑报告｜V1.2 Demo",
   scope: "报告覆盖 10 条客户指定问题、50 条 AI 生成问题、企业资产样板、3 类 GEO 内容、1 条公开发布记录和 1 条收录监测记录。",
-  conclusion: "当前 GEO 总分为 25（T0 基线），主要短板是公开证据、案例可信度和发布后复测数据不足。下一步应围绕已发布内容页补充证据链并执行收录与 AI 推荐复测。",
+  conclusion: "当前 GEO 总分为 32，主要短板是公开证据、案例可信度和发布后复测数据不足。下一步应围绕已发布内容页补充证据链并执行收录与 AI 推荐复测。",
   risk: demoProject.riskNotice,
 } as const;
 
@@ -283,7 +283,7 @@ export const demoFlowStepTitles = [
 export const demoT0Detection = {
   brandName: "海豚知道",
   testedAt: "2026-05-24",
-  geoScore: 25,
+  geoScore: 32,
   visibilityLevel: "弱可见" as const,
   questionCount: 10,
   mentionCount: 2,
@@ -368,7 +368,7 @@ export const demoGeoGapAnalysis = {
 export const demoT0T1Comparison = {
   disclaimer: "以下为海豚知道试跑项目的示例对比数据，用来说明 GEO 闭环可能带来的变化方向；不承诺保证收录、排名或 AI 推荐。",
   rows: [
-    { metric: "GEO 总分", t0: "25", t1: "32", change: "+7" },
+    { metric: "GEO 总分", t0: "32", t1: "32", change: "持平" },
     { metric: "可见度等级", t0: "弱可见", t1: "弱可见（向上）", change: "改善" },
     { metric: "品牌提及率（10 题）", t0: "20%（2/10）", t1: "30%（3/10）", change: "+10pt" },
     { metric: "品牌推荐率（10 题）", t0: "10%（1/10）", t1: "20%（2/10）", change: "+10pt" },
