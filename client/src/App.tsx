@@ -55,6 +55,7 @@ import SystemStatusPage from "./pages/SystemStatusPage";
 import SettingsPage from "./pages/SettingsPage";
 import { PublishRecordsHistoryPage } from "./pages/PublishRecordsHistoryPage";
 import AdminConfigPage from "./pages/AdminConfigPage";
+import AdminPublishTasksPage from "./pages/AdminPublishTasksPage";
 import AdminStatsPage from "./pages/AdminStatsPage";
 import AdminSubscriptionPage from "./pages/AdminSubscriptionPage";
 
@@ -67,6 +68,7 @@ function profileHasBrand(profile: unknown): boolean {
 function isAdminShellPath(pathname: string): boolean {
   return (
     pathname === "/admin/config" ||
+    pathname === "/admin/publish-tasks" ||
     pathname === "/admin/stats" ||
     pathname === "/admin/subscription"
   );
@@ -80,6 +82,7 @@ function PrivateRoutes() {
         <Route path="/clients" component={ClientDashboardPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/admin/config" component={AdminConfigPage} />
+        <Route path="/admin/publish-tasks" component={AdminPublishTasksPage} />
         <Route path="/admin/stats" component={AdminStatsPage} />
         <Route path="/admin/subscription" component={AdminSubscriptionPage} />
         <Route path="/knowledge" component={KnowledgePage} />

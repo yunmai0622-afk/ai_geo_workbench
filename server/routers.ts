@@ -24,6 +24,7 @@ import { invokeLLM } from "./_core/llm";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { adminConfigRouter } from "./adminConfigRouter";
+import { adminPublishTasksRouter } from "./adminPublishTasksRouter";
 import { adminStatsRouter } from "./adminStatsRouter";
 import { adminSubscriptionRouter } from "./adminSubscriptionRouter";
 import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
@@ -4134,6 +4135,7 @@ ${article.markdownContent}`,
 export const appRouter = router({
   agent: agentRouter,
   adminConfig: adminConfigRouter,
+  adminPublishTasks: adminPublishTasksRouter,
   adminStats: adminStatsRouter,
   adminSubscription: adminSubscriptionRouter,
   system: systemRouter,
