@@ -154,7 +154,10 @@ function ProjectCard({
   const riskCount = deliveryStage.blockingReasons.length;
   const geoScore = formatGeoScore(project.latestGeoScore);
   const mentionRateText =
-    project.t0BrandMentionRate != null ? formatBrandMentionRate(project.t0BrandMentionRate) : "--";
+    project.t0BrandMentionRate != null
+      ? formatBrandMentionRate(project.t0BrandMentionRate)
+      : "完成AI实测后显示";
+  const mentionRateIsPlaceholder = project.t0BrandMentionRate == null;
   const industryLabel =
     project.industry?.trim() && project.industry !== "待补充" ? project.industry.trim() : "未填写行业";
   const lastMeasuredLabel = formatMeasuredAt(project.lastMeasuredAt ?? project.lastDiagnosisAt) ?? "暂无";
@@ -226,7 +229,13 @@ function ProjectCard({
         </div>
         <div>
           <p className="text-xs font-medium text-gray-500">品牌提及率</p>
-          <p className="text-sm font-bold tabular-nums text-gray-900" data-testid="client-project-mention-rate">
+          <p
+            className={cn(
+              "text-sm font-bold tabular-nums text-gray-900",
+              mentionRateIsPlaceholder && "text-xs font-medium text-gray-500 tabular-nums",
+            )}
+            data-testid="client-project-mention-rate"
+          >
             {mentionRateText}
           </p>
         </div>

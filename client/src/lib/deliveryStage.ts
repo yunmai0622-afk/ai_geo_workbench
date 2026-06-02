@@ -171,16 +171,14 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
   };
 }
 
+/** 客户项目卡片主按钮文案（S3–S7 为阶段引导，其余为进入工作台） */
 export function formatStageActionLabel(stage: DeliveryStageId): string {
-  const map: Record<DeliveryStageId, string> = {
-    S1_PROFILE_INCOMPLETE: "继续建档",
-    S2_READY_FOR_DIAGNOSIS: "开始诊断",
-    S3_READY_FOR_CONTENT: "生成内容",
-    S4_READY_FOR_PUBLISH: "去发布",
-    S5_WAITING_LINKS: "回填链接",
-    S6_READY_FOR_MONITORING: "执行复测",
-    S7_READY_FOR_REPORT: "生成报告",
-    S8_DELIVERED_OR_NEXT_ROUND: "下一轮优化",
+  const map: Partial<Record<DeliveryStageId, string>> = {
+    S3_READY_FOR_CONTENT: "去生成内容",
+    S4_READY_FOR_PUBLISH: "去发布内容",
+    S5_WAITING_LINKS: "去回填链接",
+    S6_READY_FOR_MONITORING: "去执行复测",
+    S7_READY_FOR_REPORT: "去生成报告",
   };
-  return map[stage];
+  return map[stage] ?? "进入工作台";
 }

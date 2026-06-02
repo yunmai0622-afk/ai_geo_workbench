@@ -44,7 +44,9 @@ import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { ClipboardList, Plus } from "lucide-react";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 type CreateFormState = {
@@ -66,6 +68,7 @@ function defaultCreateForm(): CreateFormState {
 }
 
 export default function EffectiveActionsPage() {
+  const [, setLocation] = useLocation();
   const { selectedProjectId, enabled, projectsLoading } = useActiveProjectSelection();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<CreateFormState>(() => defaultCreateForm());
@@ -164,8 +167,24 @@ export default function EffectiveActionsPage() {
         ) : listQuery.isError ? (
           <P0Card className="text-sm text-amber-700">暂时无法加载，请刷新重试</P0Card>
         ) : rows.length === 0 ? (
-          <P0Card className="text-sm text-gray-500" testId="effective-actions-empty">
-            暂无有效动作记录。点击「新增动作」开始记录交付过程中的关键动作。
+          <P0Card className="space-y-4 text-sm text-gray-600" testId="effective-actions-empty">
+            <p className="leading-relaxed">
+              记录每轮 GEO 优化中执行的关键动作，
+              <br />
+              如发布了哪些内容、做了哪些调整。
+              <br />
+              完成第一次发布后开始记录。
+            </p>
+            {selectedProjectId ? (
+              <Button
+                type="button"
+                className={geoP0Brand.primary}
+                data-testid="effective-actions-goto-publish"
+                onClick={() => setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
+              >
+                去发布内容
+              </Button>
+            ) : null}
           </P0Card>
         ) : (
           <P0Card className="overflow-x-auto p-0">
