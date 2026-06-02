@@ -1,4 +1,15 @@
+import { isLegacyOrphanProjectId } from "@/lib/projectContextCache";
+import { LEGACY_ORPHAN_PROJECT_ID } from "@shared/const";
+
+export { LEGACY_ORPHAN_PROJECT_ID };
+
 const STORAGE_KEY = "activeProjectId";
+
+function sanitizeActiveProjectId(id: number | null): number | null {
+  if (id == null) return null;
+  if (isLegacyOrphanProjectId(id)) return null;
+  return id;
+}
 
 /** 无效 / 已删除 projectId 时 toast 与重定向文案 */
 export const INVALID_PROJECT_MESSAGE = "项目不存在";
@@ -17,7 +28,8 @@ export function getProjectIdFromSearch(search: string): number | null {
   const raw = new URLSearchParams(normalized).get("projectId");
   if (!raw) return null;
   const id = Number.parseInt(raw, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
+  const parsed = Number.isFinite(id) && id > 0 ? id : null;
+  return sanitizeActiveProjectId(parsed);
 }
 
 export function getProjectIdFromUrl(searchOverride?: string): number | null {
@@ -31,7 +43,8 @@ export function getActiveProjectIdFromStorage(): number | null {
   const raw = sessionStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
   const id = Number.parseInt(raw, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
+  const parsed = Number.isFinite(id) && id > 0 ? id : null;
+  return sanitizeActiveProjectId(parsed);
 }
 
 /** URL projectId 优先，其次 sessionStorage；禁止 fallback 到 projects[0]（存在性校验见 resolveActiveProjectId） */
@@ -103,7 +116,7 @@ export function parseProjectId(value: number | string | null | undefined): numbe
 }
 
 export function setActiveProjectId(projectId: number | string): void {
-  const id = parseProjectId(projectId);
+  const id = sanitizeActiveProjectId(parseProjectId(projectId));
   if (!id) return;
   if (typeof window !== "undefined") {
     sessionStorage.setItem(STORAGE_KEY, String(id));

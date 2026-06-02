@@ -4,7 +4,15 @@ import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 import { RoutePageLoading } from "@/components/RoutePageLoading";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getActiveProjectId, buildProjectUrl, isProjectIdAccessible, getSearchFromLocation } from "@/lib/activeProject";
+import {
+  activateProject,
+  buildProjectUrl,
+  getActiveProjectId,
+  getSearchFromLocation,
+  isProjectIdAccessible,
+  resolveActiveProjectId,
+} from "@/lib/activeProject";
+import { nukeStaleProjectContextCache } from "@/lib/projectContextCache";
 import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
 import {
   AiDiagnosisFlowPage,
@@ -15,7 +23,7 @@ import {
 } from "@/lib/lazyPages";
 import { trpc } from "@/lib/trpc";
 import NotFound from "@/pages/NotFound";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { GeoIntroModal } from "./components/GeoIntroModal";
@@ -127,11 +135,29 @@ function PrivateRoutes() {
 
 /** 登录后基于 activeProjectId 检查企业档案，未完成引导则进入建档页 */
 function AuthenticatedAppShell() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const search = getSearchFromLocation(location);
   const { loading: authLoading, user } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, { enabled: Boolean(user) });
   const contextProjectId = typeof window !== "undefined" ? getActiveProjectId({ search }) : null;
+  const healedLegacyCacheRef = useRef(false);
+
+  useEffect(() => {
+    nukeStaleProjectContextCache();
+  }, []);
+
+  useEffect(() => {
+    if (!user || projectsLoading || projects.length === 0 || healedLegacyCacheRef.current) return;
+    const resolved = resolveActiveProjectId(projects, { search });
+    if (!resolved.staleContext || resolved.projectId == null) return;
+    healedLegacyCacheRef.current = true;
+    activateProject(resolved.projectId);
+    const pathname = location.split("?")[0] || location;
+    if (pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname)) {
+      setLocation(buildProjectUrl(pathname, resolved.projectId));
+    }
+  }, [user, projectsLoading, projects, search, location, setLocation]);
+
   useInvalidProjectRedirect({
     projectsLoading,
     projects,
@@ -217,6 +243,10 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    nukeStaleProjectContextCache();
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">

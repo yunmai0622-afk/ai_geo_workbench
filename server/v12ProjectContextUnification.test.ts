@@ -23,6 +23,9 @@ describe("GEO-V1-A Project 上下文统一", () => {
     expect(lib).toContain("projectId");
     expect(lib).toContain("inspectActiveProjectContext");
     expect(lib).toContain("activateProject");
+    expect(read("client/src/lib/projectContextCache.ts")).toContain('PROJECT_CONTEXT_CACHE_VERSION = "v2"');
+    expect(read("client/src/main.tsx")).toContain("nukeStaleProjectContextCache");
+    expect(read("client/src/App.tsx")).toContain("nukeStaleProjectContextCache");
   });
 
   it("DashboardLayout 显示当前客户与切换入口", () => {
