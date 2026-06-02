@@ -8,6 +8,13 @@ import { useEffect, useMemo, useState } from "react";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
 import { ProfileCompletenessLowHint } from "@/components/enterpriseProfile/ProfileCompletenessLowHint";
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/useMobile";
+import { geoP0Brand } from "@/lib/geoP0Visual";
+import { workspaceCtaUrl } from "@shared/workspaceStateMachine";
+import { ArrowRight } from "lucide-react";
+import { useLocation } from "wouter";
+import { ProjectNextActionMobileDock } from "./ProjectNextActionMobileDock";
 import { ProjectNextActionPanel } from "./ProjectNextActionPanel";
 import { ProjectWorkspaceTopBar } from "./ProjectWorkspaceTopBar";
 
@@ -17,6 +24,8 @@ type Props = {
 
 export function EnterpriseProjectShell({ children }: Props) {
   const { selectedProjectId, selectedProject } = useActiveProjectSelection();
+  const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
@@ -67,6 +76,26 @@ export function EnterpriseProjectShell({ children }: Props) {
 
   const stageLabel = resolution ? CUSTOMER_STAGE_LABELS[resolution.currentStageId] : null;
 
+  const ctaLabel = homeDisplay.mainChainNextAction?.ctaLabel ?? resolution?.currentStage?.ctaLabel;
+  const ctaPath =
+    homeDisplay.mainChainNextAction?.ctaPath ??
+    (resolution?.currentStage && selectedProjectId
+      ? workspaceCtaUrl(selectedProjectId, resolution.currentStage)
+      : null);
+  const mobileDockSummary = ctaLabel ?? stageLabel ?? "查看当前阶段建议";
+
+  const nextActionPanel = (
+    <ProjectNextActionPanel
+      projectId={selectedProjectId}
+      stage={resolution?.currentStage ?? null}
+      mainChainNextAction={homeDisplay.mainChainNextAction}
+      blockerReason={resolution?.blockerReasons[0] ?? null}
+      riskHints={resolution?.riskHints ?? []}
+      recentItems={recentItems}
+      loading={(summaryQuery.isLoading || homeDisplay.loading) && Boolean(selectedProjectId)}
+    />
+  );
+
   return (
     <div className="space-y-0" data-testid="enterprise-project-shell">
       <ProjectWorkspaceTopBar
@@ -80,18 +109,30 @@ export function EnterpriseProjectShell({ children }: Props) {
       <ProfileCompletenessLowHint projectId={selectedProjectId ?? null} className="mt-4" />
       {/* 三栏：左导航(DashboardLayout) + 中间主内容 + 右侧面板(300px固定) */}
       <div className="flex gap-6 pt-6">
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className={isMobile ? "min-w-0 flex-1 pb-28" : "min-w-0 flex-1"}>
+          {isMobile && ctaLabel && selectedProjectId && ctaPath ? (
+            <div
+              className="mb-4 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 lg:hidden"
+              data-testid="next-action-mobile-inline-cta"
+            >
+              <p className="text-xs font-medium text-blue-800">当前建议</p>
+              <p className="mt-1 text-sm leading-relaxed text-gray-800">{ctaLabel}</p>
+              <Button
+                type="button"
+                className={`mt-3 w-full ${geoP0Brand.primary}`}
+                data-testid="next-action-mobile-inline-button"
+                onClick={() => setLocation(ctaPath)}
+              >
+                {ctaLabel}
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </div>
+          ) : null}
+          {children}
+        </div>
         <div className="hidden shrink-0 lg:block" style={{ width: 300 }}>
-          <div className="sticky top-6">
-            <ProjectNextActionPanel
-              projectId={selectedProjectId}
-              stage={resolution?.currentStage ?? null}
-              mainChainNextAction={homeDisplay.mainChainNextAction}
-              blockerReason={resolution?.blockerReasons[0] ?? null}
-              riskHints={resolution?.riskHints ?? []}
-              recentItems={recentItems}
-              loading={(summaryQuery.isLoading || homeDisplay.loading) && Boolean(selectedProjectId)}
-            />
+          <div className="sticky top-6 space-y-4">
+            {nextActionPanel}
             <GeoGrowthSuggestionsPanel
               projectId={selectedProjectId}
               suggestions={growthSuggestions.suggestions}
@@ -101,6 +142,18 @@ export function EnterpriseProjectShell({ children }: Props) {
           </div>
         </div>
       </div>
+
+      {isMobile ? (
+        <ProjectNextActionMobileDock summaryLabel={mobileDockSummary}>
+          {nextActionPanel}
+          <GeoGrowthSuggestionsPanel
+            projectId={selectedProjectId}
+            suggestions={growthSuggestions.suggestions}
+            loading={growthSuggestions.loading}
+            variant="sidebar"
+          />
+        </ProjectNextActionMobileDock>
+      ) : null}
     </div>
   );
 }
