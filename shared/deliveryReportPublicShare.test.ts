@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeDeliveryReportShareExpiresAt,
+  resolveDeliveryReportShareCountdown,
   DELIVERY_REPORT_SHARE_RENEWAL_REMINDER_DAYS,
   DELIVERY_REPORT_SHARE_VALIDITY_DAYS,
   resolveDeliveryReportShareRenewalReminder,
@@ -46,5 +47,23 @@ describe("delivery report share renewal reminder", () => {
     const from = new Date("2026-01-01T00:00:00.000Z");
     const expiresAt = computeDeliveryReportShareExpiresAt(from);
     expect(expiresAt.getTime() - from.getTime()).toBe(DELIVERY_REPORT_SHARE_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
+  });
+
+  it("resolveDeliveryReportShareCountdown returns remaining days", () => {
+    const expiresAt = new Date(now);
+    expiresAt.setDate(expiresAt.getDate() + 5);
+    expect(resolveDeliveryReportShareCountdown(expiresAt, now)).toEqual({
+      daysRemaining: 5,
+      expired: false,
+    });
+  });
+
+  it("resolveDeliveryReportShareCountdown marks expired link", () => {
+    const expiresAt = new Date(now);
+    expiresAt.setMinutes(expiresAt.getMinutes() - 1);
+    expect(resolveDeliveryReportShareCountdown(expiresAt, now)).toEqual({
+      daysRemaining: 0,
+      expired: true,
+    });
   });
 });

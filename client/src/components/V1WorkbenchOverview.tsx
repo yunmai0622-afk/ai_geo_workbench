@@ -21,7 +21,24 @@ import { useLocation } from "wouter";
 
 type ArticleRow = { id: number; status?: string | null; createdAt?: Date | string | null; title?: string | null };
 type PublishRecordRow = { id: number; publishTitle?: string | null; publishChannel?: string | null; publishedAt?: Date | string | null };
-type GeoScoreRow = { id: number; totalScore: number; createdAt?: Date | string | null };
+type GeoScoreRow = {
+  id: number;
+  totalScore: number;
+  createdAt?: Date | string | null;
+  calculationDetail?: Record<string, unknown> | null;
+};
+
+function resolveIndustryAverageScore(detail: Record<string, unknown> | null | undefined): number | null {
+  if (!detail || typeof detail !== "object") return null;
+  const candidates = ["industryAverageScore", "industryAvgScore", "averageScore", "benchmarkScore"];
+  for (const key of candidates) {
+    const value = detail[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.max(0, Math.min(100, Math.round(value)));
+    }
+  }
+  return null;
+}
 
 function parseTime(value: Date | string | number | null | undefined): number {
   if (value == null) return NaN;
@@ -87,6 +104,7 @@ export default function V1WorkbenchOverview() {
   const articles = (articlesQuery.data ?? []) as ArticleRow[];
   const publishRecords = (publishRecordsQuery.data ?? []) as PublishRecordRow[];
   const latestScore = scoreQuery.data as GeoScoreRow | null | undefined;
+  const industryAverageScore = resolveIndustryAverageScore(latestScore?.calculationDetail);
   const scoreTrendPoints = useMemo(
     () =>
       ((scoreTrendQuery.data ?? []) as GeoScoreRow[]).map(row => ({
@@ -169,6 +187,7 @@ export default function V1WorkbenchOverview() {
         <div className="ai-glass-panel p-4">
           <GeoScoreTrendChart
             points={scoreTrendPoints}
+            industryAverageScore={industryAverageScore}
             loading={enabled && scoreTrendQuery.isLoading}
             variant="dark"
           />

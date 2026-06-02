@@ -1609,7 +1609,7 @@ export function AiDiagnosisFlowPage() {
                   {option.label}
                 </label>
               );
-            )}
+            })}
           </div>
           <p className="mt-2 text-xs text-gray-400">通义千问需 QWEN_API_KEY，文心一言需 WENXIN_API_KEY。</p>
         </div>
@@ -1779,7 +1779,7 @@ export function AiDiagnosisFlowPage() {
                   </button>
                 )}
               </div>
-            })}
+            )}
           </div>
         </div>
       )}
@@ -2679,7 +2679,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                   </div>
                 </div>
               </div>
-            })}
+            )}
           </section>
 
           <section className="ai-glass-panel p-5 md:p-6">
@@ -3416,10 +3416,10 @@ export function InclusionMonitoringFlowPage() {
                 ) : null}
               </div>
             );
-            )}
+            })}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* --- 下一步建议 --- */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">

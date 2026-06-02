@@ -25,6 +25,11 @@ export type DeliveryReportShareRenewalReminder = {
   daysRemaining: number;
 };
 
+export type DeliveryReportShareCountdown = {
+  daysRemaining: number;
+  expired: boolean;
+};
+
 export function computeDeliveryReportShareExpiresAt(from: Date = new Date()): Date {
   const expiresAt = new Date(from);
   expiresAt.setDate(expiresAt.getDate() + DELIVERY_REPORT_SHARE_VALIDITY_DAYS);
@@ -39,6 +44,23 @@ export function formatDeliveryReportShareExpiryLabel(expiresAt: string | Date | 
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function resolveDeliveryReportShareCountdown(
+  shareExpiresAt: string | Date | null | undefined,
+  now: Date = new Date(),
+): DeliveryReportShareCountdown | null {
+  if (!shareExpiresAt) return null;
+  const expiry = typeof shareExpiresAt === "string" ? new Date(shareExpiresAt) : shareExpiresAt;
+  if (Number.isNaN(expiry.getTime())) return null;
+  const msRemaining = expiry.getTime() - now.getTime();
+  if (msRemaining <= 0) {
+    return { daysRemaining: 0, expired: true };
+  }
+  return {
+    daysRemaining: Math.ceil(msRemaining / MS_PER_DAY),
+    expired: false,
+  };
+}
 
 export function resolveDeliveryReportShareRenewalReminder(
   shareExpiresAt: string | Date | null | undefined,

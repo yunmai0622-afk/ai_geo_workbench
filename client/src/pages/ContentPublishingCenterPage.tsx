@@ -123,6 +123,7 @@ type AgentTaskRow = {
   agentErrorMessage?: string | null;
   draftUrl?: string | null;
   resultUrl?: string | null;
+  publishedUrl?: string | null;
   agentFinishedAt?: Date | string | number | null;
   agentPickedAt?: Date | string | number | null;
   createdAt?: Date | string | number | null;
@@ -238,6 +239,7 @@ export function ContentPublishingCenterPage() {
   const createManualPublishRecord = trpc.geo.articles.createManualPublishRecord.useMutation();
   const updateManualPublishRecord = trpc.geo.articles.updateManualPublishRecord.useMutation();
   const retryPublishTask = trpc.publishTasks.retry.useMutation();
+  const backfillTaskPublicUrl = trpc.publishTasks.backfillPublicUrl.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
   const [manualArticleId, setManualArticleId] = useState<number | "">("");
   const [manualPlatform, setManualPlatform] = useState<ManualPublishPlatform>("知乎");
@@ -515,7 +517,7 @@ export function ContentPublishingCenterPage() {
   const loading =
     articlesQuery.isLoading || scoresQuery.isLoading || publishRecordsQuery.isLoading || autoPublishTasksQuery.isLoading;
 
-  async function handleSaveRowLink(recordId: number) {
+  async function handleSaveRowLink(recordId: number, explicitDraft?: string) {
     if (!selectedProjectId) return;
     const record = publishRecords.find(r => r?.id === recordId);
     if (!record?.articleId) return;
@@ -525,7 +527,7 @@ export function ContentPublishingCenterPage() {
       toast.error("该记录缺少平台信息，无法更新链接。");
       return;
     }
-    const draft = (linkDraftById[recordId] ?? "").trim();
+    const draft = (explicitDraft ?? linkDraftById[recordId] ?? "").trim();
     setSavingRowId(recordId);
     try {
       await updateManualPublishRecord.mutateAsync({
@@ -540,9 +542,37 @@ export function ContentPublishingCenterPage() {
         notes: publishRecordNoticeText(record.notes),
       });
       await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
+      await inclusionMonitoringQuery.refetch();
       toast.success("链接已更新");
     } catch (e) {
       toast.error(toUserFacingErrorFromUnknown(e, "更新链接失败"));
+    } finally {
+      setSavingRowId(null);
+    }
+  }
+
+  async function handleBackfillTaskLink(taskId: number, currentLink?: string | null) {
+    if (!selectedProjectId) return;
+    const draft = window.prompt("请输入公开链接", currentLink?.trim() || "");
+    if (draft == null) return;
+    const link = draft.trim();
+    if (!link) {
+      toast.error("请输入公开链接");
+      return;
+    }
+    setSavingRowId(taskId);
+    try {
+      await backfillTaskPublicUrl.mutateAsync({
+        projectId: selectedProjectId,
+        taskId,
+        publicUrl: link,
+      });
+      await autoPublishTasksQuery.refetch();
+      await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
+      await inclusionMonitoringQuery.refetch();
+      toast.success("已回填公开链接，并已生成收录监测计划");
+    } catch (e) {
+      toast.error(toUserFacingErrorFromUnknown(e, "回填公开链接失败"));
     } finally {
       setSavingRowId(null);
     }
@@ -824,14 +854,14 @@ export function ContentPublishingCenterPage() {
       />
 
       <Tabs defaultValue="tasks" className="space-y-4">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3 print:hidden">
-          <TabsTrigger value="tasks" data-testid="publish-center-tab-tasks">
+        <TabsList className="flex w-full gap-2 overflow-x-auto print:hidden">
+          <TabsTrigger value="tasks" data-testid="publish-center-tab-tasks" className="shrink-0">
             发布任务
           </TabsTrigger>
-          <TabsTrigger value="records" data-testid="publish-center-tab-records">
+          <TabsTrigger value="records" data-testid="publish-center-tab-records" className="shrink-0">
             发布记录
           </TabsTrigger>
-          <TabsTrigger value="calendar" data-testid="publish-calendar-tab">
+          <TabsTrigger value="calendar" data-testid="publish-calendar-tab" className="shrink-0">
             发布日历
           </TabsTrigger>
         </TabsList>
@@ -936,11 +966,11 @@ export function ContentPublishingCenterPage() {
             <h2 className="text-base font-semibold text-gray-900">发布任务队列</h2>
             <p className="mt-1 text-xs text-gray-500">按队列状态处理任务，优先清理失败与待确认任务。</p>
             <Tabs defaultValue="pending" className="mt-4 space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="pending" data-testid="publish-queue-tab-pending">待发布</TabsTrigger>
-                <TabsTrigger value="active" data-testid="publish-queue-tab-active">发布中/待确认</TabsTrigger>
-                <TabsTrigger value="failed" data-testid="publish-queue-tab-failed">失败</TabsTrigger>
-                <TabsTrigger value="completed" data-testid="publish-queue-tab-completed">已完成</TabsTrigger>
+              <TabsList className="flex w-full gap-2 overflow-x-auto">
+                <TabsTrigger value="pending" data-testid="publish-queue-tab-pending" className="shrink-0">待发布</TabsTrigger>
+                <TabsTrigger value="active" data-testid="publish-queue-tab-active" className="shrink-0">发布中/待确认</TabsTrigger>
+                <TabsTrigger value="failed" data-testid="publish-queue-tab-failed" className="shrink-0">失败</TabsTrigger>
+                <TabsTrigger value="completed" data-testid="publish-queue-tab-completed" className="shrink-0">已完成</TabsTrigger>
               </TabsList>
               {(["pending", "active", "failed", "completed"] as const).map(tab => (
                 <TabsContent key={tab} value={tab} className="mt-0">
@@ -974,23 +1004,56 @@ export function ContentPublishingCenterPage() {
                                 {retryingTaskId === card.taskId ? "重试中…" : "重试"}
                               </Button>
                             ) : null}
+                            {tab === "completed" && card.taskId ? (
+                              <>
+                                {card.publishedUrl ? (
+                                  <a
+                                    href={card.publishedUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center text-xs text-blue-600 hover:underline"
+                                  >
+                                    链接预览
+                                  </a>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className={geoP0Brand.primaryOutline}
+                                  disabled={savingRowId === card.taskId}
+                                  onClick={() => void handleBackfillTaskLink(card.taskId!, card.publishedUrl)}
+                                >
+                                  {savingRowId === card.taskId
+                                    ? "保存中…"
+                                    : card.publishedUrl
+                                      ? "编辑链接"
+                                      : "回填链接"}
+                                </Button>
+                              </>
+                            ) : null}
                             {card.recordId ? (
                               <>
-                                <Input
-                                  className="h-8 min-w-[180px] flex-1 text-xs"
-                                  placeholder="公开链接"
-                                  value={linkDraftById[card.recordId] ?? ""}
-                                  onChange={e => setLinkDraftById(d => ({ ...d, [card.recordId!]: e.target.value }))}
-                                />
                                 <Button
                                   type="button"
                                   size="sm"
                                   variant="outline"
                                   className={geoP0Brand.primaryOutline}
                                   disabled={savingRowId === card.recordId}
-                                  onClick={() => void handleSaveRowLink(card.recordId!)}
+                                  onClick={async () => {
+                                    const draft = window.prompt(
+                                      "请输入公开链接",
+                                      (linkDraftById[card.recordId!] ?? card.publishedUrl ?? "").trim(),
+                                    );
+                                    if (draft == null) return;
+                                    await handleSaveRowLink(card.recordId!, draft);
+                                  }}
                                 >
-                                  {savingRowId === card.recordId ? "保存中…" : "填链接"}
+                                  {savingRowId === card.recordId
+                                    ? "保存中…"
+                                    : card.publishedUrl
+                                      ? "编辑链接"
+                                      : "回填链接"}
                                 </Button>
                               </>
                             ) : null}

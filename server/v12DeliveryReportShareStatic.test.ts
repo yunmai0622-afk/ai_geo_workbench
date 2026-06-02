@@ -51,7 +51,7 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(reportPageSource).toContain("链接已续期");
     expect(reportPageSource).toContain("重新生成链接");
     expect(reportPageSource).toContain("禁用链接");
-    expect(reportPageSource).toContain("新链接已生成并复制");
+    expect(reportPageSource).toContain("新链接已生成，旧链接已失效");
     expect(reportPageSource).toContain("客户报告链接已禁用");
     expect(reportPageSource).toContain("确定要禁用当前客户报告链接吗？");
     expect(reportPageSource).toContain("禁用后，客户将无法通过原链接查看报告和证据");

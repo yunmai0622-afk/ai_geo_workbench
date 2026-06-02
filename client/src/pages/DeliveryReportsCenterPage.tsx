@@ -6,7 +6,7 @@ import { GeoHealthBriefCard, type GeoHealthBriefCardProps } from "@/components/d
 import type { PublishRecordWeekRow } from "@shared/geoHealthBrief";
 import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
 import { RetestComparisonPanel } from "@/components/RetestComparisonPanel";
-import { FileText, Link2 } from "lucide-react";
+import { Copy, FileText, Link2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,10 +61,20 @@ import { toast } from "sonner";
 
 type MonitoringRecordLike = {
   id: number;
+  articleId?: number | null;
   inclusionStatus?: string | null;
   aiTestResults?: unknown[] | null;
   articleTitle?: string | null;
   publishChannel?: string | null;
+  lastAiTestedAt?: string | null;
+};
+
+type EngineReportRow = {
+  label: string;
+  status: "已实测" | "增强目标" | "未接入";
+  mentionRate: number | null;
+  recommendRate: number | null;
+  testedQuestions: number;
 };
 
 const CONFIRM_DISABLE_CUSTOMER_REPORT_LINK =
@@ -92,11 +102,21 @@ export function DeliveryReportsCenterPage() {
     regenerateShareLink.isPending ||
     renewShareLink.isPending;
   const [shareExpiresAtHint, setShareExpiresAtHint] = useState<string | null>(null);
+  const [sharePathHint, setSharePathHint] = useState<string | null>(null);
+  const [showShareQrCode, setShowShareQrCode] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
     setShareExpiresAtHint(null);
+    setSharePathHint(null);
+    setShowShareQrCode(false);
   }, [selectedProjectId]);
+
+  const shareLinkUrl = useMemo(() => {
+    const sharePath = sharePathHint ?? shareLinkStatusQuery.data?.sharePath ?? null;
+    if (!sharePath) return null;
+    return `${window.location.origin}${sharePath}`;
+  }, [sharePathHint, shareLinkStatusQuery.data?.sharePath]);
 
   const shareExpiryDisplay = useMemo(() => {
     if (!shareExpiresAtHint && !shareLinkStatusQuery.data?.hasActiveLink) return null;
@@ -125,11 +145,20 @@ export function DeliveryReportsCenterPage() {
   async function copyCustomerShareLink(projectId: number) {
     try {
       const { sharePath, shareExpiresAt } = await createShareLink.mutateAsync({ projectId });
-      await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
+      setSharePathHint(sharePath);
       setShareExpiresAtHint(shareExpiresAt);
       void shareLinkStatusQuery.refetch();
       const expiryHint = shareExpiresAt ? formatDeliveryReportShareExpiryLabel(shareExpiresAt) : "链接长期有效";
-      toast.success(`客户报告链接已复制（${expiryHint}）`);
+      toast.success(`客户报告链接已生成（${expiryHint}）`);
+    } catch {
+      toast.error("生成失败，请稍后重试");
+    }
+  }
+
+  async function handleCopyShareLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("客户报告链接已复制");
     } catch {
       toast.error("复制失败，请稍后重试");
     }
@@ -424,6 +453,133 @@ export function DeliveryReportsCenterPage() {
     aiTestAggregate.engineCount,
   ]);
 
+  const initialGeoScore = scoreTrendPoints.length > 0 ? scoreTrendPoints[0]?.totalScore ?? null : null;
+  const currentGeoScore = scoreTrendPoints.length > 0 ? scoreTrendPoints[scoreTrendPoints.length - 1]?.totalScore ?? null : null;
+  const geoScoreDelta =
+    initialGeoScore != null && currentGeoScore != null ? currentGeoScore - initialGeoScore : null;
+  const mentionRateDelta =
+    t0MetricsQuery.data?.mentionRate != null && hasAiTestData
+      ? aiTestAggregate.mentionRate - t0MetricsQuery.data.mentionRate
+      : null;
+  const recommendRateDelta =
+    t0MetricsQuery.data?.recommendRate != null && hasAiTestData
+      ? aiTestAggregate.recommendRate - t0MetricsQuery.data.recommendRate
+      : null;
+  const retestedCount = monitoringRows.filter(row => Boolean(row.lastAiTestedAt)).length;
+  const hasEnoughDataForFullReport =
+    publishWithLinkCount > 0 && hasAiTestData && currentGeoScore != null && t0MetricsQuery.data != null;
+
+  const publishStatusByArticleId = useMemo(() => {
+    const map = new Map<number, MonitoringRecordLike>();
+    for (const row of monitoringRows) {
+      const anyRow = row as MonitoringRecordLike & { articleId?: number | null };
+      if (typeof anyRow.articleId === "number" && !map.has(anyRow.articleId)) {
+        map.set(anyRow.articleId, anyRow);
+      }
+    }
+    return map;
+  }, [monitoringRows]);
+
+  const contentListRows = useMemo(() => {
+    return publishRecords.map((record, index) => {
+      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      const article = articleId != null ? articles.find(a => a.id === articleId) : null;
+      const monitoring = articleId != null ? publishStatusByArticleId.get(articleId) : null;
+      const publishStatus = String(record.publishStatus ?? "待发布");
+      const qualityStatus =
+        article != null
+          ? String(article.status ?? "").includes("质检") || String(article.status ?? "").includes("审核")
+            ? String(article.status)
+            : "待质检"
+          : "待质检";
+      const retestStatus = monitoring?.lastAiTestedAt ? "已复测" : "待复测";
+      return {
+        key: `${record.id ?? index}`,
+        title: String(record.publishTitle ?? record.title ?? (article?.title as string) ?? `内容 ${index + 1}`),
+        platform: String(record.publishChannel ?? "未标注平台"),
+        publishStatus,
+        publicUrl: typeof record.publishUrl === "string" && record.publishUrl.trim() ? record.publishUrl : "",
+        qualityStatus,
+        retestStatus,
+      };
+    });
+  }, [publishRecords, articles, publishStatusByArticleId]);
+
+  const engineReportRows = useMemo<EngineReportRow[]>(() => {
+    const targets = [
+      { label: "豆包", aliases: ["doubao", "豆包"] },
+      { label: "Kimi", aliases: ["kimi"] },
+      { label: "DeepSeek", aliases: ["deepseek", "deep seek"] },
+      { label: "通义千问", aliases: ["tongyi", "qwen", "通义千问"] },
+      { label: "文心一言", aliases: ["wenxin", "yiyan", "文心一言"] },
+    ];
+    return targets.map(target => {
+      const hit = aiTestAggregate.byEngine.find(engine => {
+        const text = `${engine.engineName}`.toLowerCase();
+        return target.aliases.some(alias => text.includes(alias.toLowerCase()));
+      });
+      if (!hit || hit.questionCount <= 0) {
+        return {
+          label: target.label,
+          status: "未接入",
+          mentionRate: null,
+          recommendRate: null,
+          testedQuestions: 0,
+        };
+      }
+      const weak = hit.mentionRate < 0.4 || hit.recommendRate < 0.25;
+      return {
+        label: target.label,
+        status: weak ? "增强目标" : "已实测",
+        mentionRate: hit.mentionRate,
+        recommendRate: hit.recommendRate,
+        testedQuestions: hit.questionCount,
+      };
+    });
+  }, [aiTestAggregate.byEngine]);
+
+  const attributionLaggingIndicators = useMemo(() => {
+    const lines: string[] = [];
+    if (publishWithLinkCount === 0) lines.push("公开链接回填不足，导致发布结果无法进入完整监测链路。");
+    if (!hasAiTestData) lines.push("尚未完成 AI 实测，提及率与推荐率无法形成稳定结论。");
+    if (mentionRateDelta != null && mentionRateDelta < 0) lines.push("品牌提及率较 T0 下降，需优先补齐覆盖核心问题的内容。");
+    if (recommendRateDelta != null && recommendRateDelta < 0) lines.push("品牌推荐率较 T0 下降，需强化证据型内容与平台匹配。");
+    if (lines.length === 0) lines.push("当前关键指标无明显拖后项，建议继续扩大覆盖问题与发布平台。");
+    return lines;
+  }, [publishWithLinkCount, hasAiTestData, mentionRateDelta, recommendRateDelta]);
+
+  const geoAttributionLines = useMemo(() => {
+    const lines: string[] = [];
+    lines.push(
+      currentGeoScore != null
+        ? `当前 GEO 分为 ${currentGeoScore}，由最近一轮内容诊断与发布后监测共同决定。`
+        : "当前缺少可用的 GEO 分数据，需先完成内容诊断与评分。",
+    );
+    if (geoScoreDelta != null) {
+      lines.push(`较本轮起始分 ${initialGeoScore} 变化 ${geoScoreDelta >= 0 ? "+" : ""}${geoScoreDelta}。`);
+    }
+    lines.push(
+      completedItems.length > 0
+        ? `本轮已完成动作：${completedItems.slice(0, 3).join("；")}。`
+        : "本轮尚无可归因的执行动作记录。",
+    );
+    lines.push(`当前内容缺口：${maxProblemLine}`);
+    return lines;
+  }, [currentGeoScore, geoScoreDelta, initialGeoScore, completedItems, maxProblemLine]);
+
+  const nextRoundFocus = useMemo(() => {
+    const lines: string[] = [];
+    if (growthSuggestions.length > 0) {
+      for (const suggestion of growthSuggestions.slice(0, 5)) {
+        lines.push(suggestion.message);
+      }
+    }
+    if (lines.length < 3) lines.push("下轮内容主题：围绕当前高意向问题补齐对比与证据型文章。");
+    if (lines.length < 4) lines.push("推荐发布平台：优先补齐未形成稳定提及的平台。");
+    if (lines.length < 5) lines.push("需要复测的问题：优先复测未提及或未推荐的问题集。");
+    return lines.slice(0, 5);
+  }, [growthSuggestions]);
+
   if (!enabled && !projectsLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center" data-testid="delivery-report-page">
@@ -463,31 +619,67 @@ export function DeliveryReportsCenterPage() {
       ) : null}
       {selectedProjectId ? (
         <div
-          className="flex flex-col gap-3 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-5 shadow-sm print:hidden sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-5 shadow-sm print:hidden"
           data-testid="delivery-report-share-primary"
         >
-          <div className="min-w-0 space-y-1">
-            <p className="text-sm font-semibold text-gray-900">对外分享交付报告</p>
-            <p className="text-sm text-gray-600">
-              生成只读链接发给客户，展示企业名称、GEO 评分与主要检测结论，不含内部工程字段。
-            </p>
-            {shareExpiryDisplay ? (
-              <p className="text-xs text-sky-800" data-testid="delivery-report-share-expiry-hint">
-                当前链接：{shareExpiryDisplay}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-semibold text-gray-900">对外分享交付报告</p>
+              <p className="text-sm text-gray-600">
+                生成只读链接发给客户，展示企业名称、GEO 评分与主要检测结论，不含内部工程字段。
               </p>
-            ) : null}
+              {shareExpiryDisplay ? (
+                <p className="text-xs text-sky-800" data-testid="delivery-report-share-expiry-hint">
+                  当前链接：{shareExpiryDisplay}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              variant="ai"
+              size="lg"
+              className="h-12 shrink-0 px-6 text-base shadow-md"
+              disabled={shareLinkBusy || loading}
+              onClick={() => void copyCustomerShareLink(selectedProjectId)}
+            >
+              <Link2 className="mr-2 size-5" aria-hidden />
+              生成分享链接
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="ai"
-            size="lg"
-            className="h-12 shrink-0 px-6 text-base shadow-md"
-            disabled={shareLinkBusy || loading}
-            onClick={() => void copyCustomerShareLink(selectedProjectId)}
-          >
-            <Link2 className="mr-2 size-5" aria-hidden />
-            生成分享链接
-          </Button>
+          {shareLinkUrl ? (
+            <div className="rounded-xl border border-sky-100 bg-white/80 p-3" data-testid="delivery-report-share-link-preview">
+              <p className="text-xs text-gray-500">客户分享链接</p>
+              <p className="mt-1 break-all text-sm text-gray-800">{shareLinkUrl}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={geoP0Brand.primaryOutline}
+                  onClick={() => void handleCopyShareLink(shareLinkUrl)}
+                >
+                  <Copy className="mr-2 size-4" aria-hidden />
+                  复制链接
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={geoP0Brand.primaryOutline}
+                  onClick={() => setShowShareQrCode(prev => !prev)}
+                >
+                  <QrCode className="mr-2 size-4" aria-hidden />
+                  {showShareQrCode ? "隐藏二维码" : "显示二维码（可选）"}
+                </Button>
+              </div>
+              {showShareQrCode ? (
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareLinkUrl)}`}
+                  alt="客户报告分享二维码"
+                  className="mt-3 h-[180px] w-[180px] rounded-lg border border-gray-200 bg-white p-2"
+                  loading="lazy"
+                />
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -516,6 +708,127 @@ export function DeliveryReportsCenterPage() {
             </div>
           </dl>
         </header>
+
+        {!hasEnoughDataForFullReport ? (
+          <P0Card className="border-amber-200 bg-amber-50 text-amber-900">
+            暂无足够数据生成完整报告，请先完成发布与复测。
+          </P0Card>
+        ) : null}
+
+        <P0Section title="模块1：本轮交付摘要" description="回答本轮做了什么、结果如何。">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <P0MetricTile label="客户名称" value={enterpriseName} />
+            <P0MetricTile label="交付周期" value={reportMeta.reportPeriod} />
+            <P0MetricTile label="初始 GEO 分" value={initialGeoScore != null ? String(initialGeoScore) : "—"} />
+            <P0MetricTile label="当前 GEO 分" value={currentGeoScore != null ? String(currentGeoScore) : "—"} />
+            <P0MetricTile
+              label="品牌提及率变化"
+              value={
+                mentionRateDelta != null
+                  ? `${mentionRateDelta >= 0 ? "+" : ""}${Math.round(mentionRateDelta * 100)}%`
+                  : "—"
+              }
+            />
+            <P0MetricTile
+              label="推荐率变化"
+              value={
+                recommendRateDelta != null
+                  ? `${recommendRateDelta >= 0 ? "+" : ""}${Math.round(recommendRateDelta * 100)}%`
+                  : "—"
+              }
+            />
+            <P0MetricTile label="内容资产数" value={String(articles.length)} />
+            <P0MetricTile label="已发布 / 已复测" value={`${publishRecords.length} / ${retestedCount}`} />
+          </div>
+        </P0Section>
+
+        <P0Section title="模块2：本轮执行动作" description="真实执行动作回放（无模拟数据）。">
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
+              完成 AI 实测诊断：{hasAiTestData ? `是（${aiTestAggregate.questionCount} 题）` : "否"}
+            </li>
+            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
+              生成内容资产：{articles.length} 篇
+            </li>
+            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
+              已发布平台：{countDistinctPublishPlatforms(publishRecords as Array<{ publishChannel?: string | null }>)}
+            </li>
+            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
+              已回填链接：{publishWithLinkCount} 条
+            </li>
+            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
+              已完成复测：{retestedCount} 条
+            </li>
+          </ul>
+        </P0Section>
+
+        <P0Section title="模块3：发布内容清单" description="标题 / 平台 / 发布状态 / 公开链接 / 质检状态 / 复测状态。">
+          {contentListRows.length === 0 ? (
+            <P0Card className="text-sm text-gray-500">暂无发布记录</P0Card>
+          ) : (
+            <ul className="space-y-3">
+              {contentListRows.map(row => (
+                <li key={row.key} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <p className="font-medium text-gray-900">{row.title}</p>
+                  <p className="mt-1 text-sm text-gray-600">平台：{row.platform}</p>
+                  <p className="mt-1 text-sm text-gray-600">发布状态：{row.publishStatus}</p>
+                  <p className="mt-1 text-sm text-gray-600">质检状态：{row.qualityStatus}</p>
+                  <p className="mt-1 text-sm text-gray-600">复测状态：{row.retestStatus}</p>
+                  {row.publicUrl ? (
+                    <a href={row.publicUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-blue-600 hover:underline break-all">
+                      公开链接
+                    </a>
+                  ) : (
+                    <p className="mt-2 text-sm text-amber-800">{NO_PUBLIC_LINK_HINT}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </P0Section>
+
+        <P0Section title="模块4：AI 可见度变化" description="豆包 / Kimi / DeepSeek / 通义千问 / 文心一言。">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {engineReportRows.map(row => (
+              <li key={row.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="font-medium text-gray-900">{row.label}</p>
+                <p className="mt-1 text-sm text-gray-600">状态：{row.status}</p>
+                <p className="mt-1 text-sm text-gray-600">
+                  提及率：{row.mentionRate != null ? `${Math.round(row.mentionRate * 100)}%` : "未实测"}
+                </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  推荐率：{row.recommendRate != null ? `${Math.round(row.recommendRate * 100)}%` : "未实测"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </P0Section>
+
+        <P0Section title="模块5：GEO 分归因" description="为什么当前是这个分、拖后项与本轮影响。">
+          <P0Card className="space-y-2 text-sm text-gray-700">
+            {geoAttributionLines.map(line => (
+              <p key={line}>{line}</p>
+            ))}
+          </P0Card>
+          <P0Card className="space-y-2 text-sm text-gray-700">
+            <p className="font-medium text-gray-900">当前拖后腿指标</p>
+            <ul className="space-y-1">
+              {attributionLaggingIndicators.map(line => (
+                <li key={line}>- {line}</li>
+              ))}
+            </ul>
+          </P0Card>
+        </P0Section>
+
+        <P0Section title="模块6：下一轮优化建议" description="输出 3-5 条，直接可执行。">
+          <ul className="space-y-2 text-sm text-gray-700">
+            {nextRoundFocus.map(line => (
+              <li key={line} className="rounded-lg border border-gray-100 bg-white px-4 py-3">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </P0Section>
 
         <GeoHealthBriefCard
           enterpriseName={enterpriseName}
@@ -945,7 +1258,13 @@ export function DeliveryReportsCenterPage() {
               variant="outline"
               className={geoP0Brand.primaryOutline}
               disabled={shareLinkBusy}
-              onClick={() => void copyCustomerShareLink(selectedProjectId)}
+              onClick={() => {
+                if (shareLinkUrl) {
+                  void handleCopyShareLink(shareLinkUrl);
+                  return;
+                }
+                void copyCustomerShareLink(selectedProjectId);
+              }}
             >
               复制客户报告链接
             </Button>
@@ -961,10 +1280,11 @@ export function DeliveryReportsCenterPage() {
                     const { sharePath, shareExpiresAt } = await regenerateShareLink.mutateAsync({
                       projectId: selectedProjectId,
                     });
-                    await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
+                    setSharePathHint(sharePath);
                     setShareExpiresAtHint(shareExpiresAt);
+                    setShowShareQrCode(false);
                     void shareLinkStatusQuery.refetch();
-                    toast.success("新链接已生成并复制，旧链接已失效");
+                    toast.success("新链接已生成，旧链接已失效");
                   } catch {
                     toast.error("操作失败，请稍后重试");
                   }
@@ -984,6 +1304,8 @@ export function DeliveryReportsCenterPage() {
                   try {
                     const result = await disableShareLink.mutateAsync({ projectId: selectedProjectId });
                     setShareExpiresAtHint(null);
+                    setSharePathHint(null);
+                    setShowShareQrCode(false);
                     void shareLinkStatusQuery.refetch();
                     if (!result.disabled) toast.message("当前暂无可禁用的链接");
                     else toast.success("客户报告链接已禁用");

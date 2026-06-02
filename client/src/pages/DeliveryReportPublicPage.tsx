@@ -7,6 +7,7 @@ import {
 } from "@shared/deliveryReportPublicShare";
 import { toUserFacingQueryError } from "@shared/userFacingErrors";
 import type { AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
+import { useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 
 const emptyAggregate: AiTestEvidenceAggregate = {
@@ -35,6 +36,15 @@ export default function DeliveryReportPublicPage() {
   const enabled = token.length >= 16;
 
   const shareQuery = trpc.geo.reports.publicShare.useQuery({ token }, { enabled, retry: false });
+  const enterpriseNameForTitle = shareQuery.data?.enterpriseName?.trim() || "企业";
+
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = `${enterpriseNameForTitle} GEO 交付报告`;
+    return () => {
+      document.title = previousTitle;
+    };
+  }, [enterpriseNameForTitle]);
 
   if (!enabled) {
     return (

@@ -27,7 +27,7 @@ import {
   recommendRateNarrative,
   resolveVisibilityScoreTier,
 } from "@/lib/deliveryReportLightDisplay";
-import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
+import { formatDeliveryReportShareExpiryLabel, resolveDeliveryReportShareCountdown } from "@shared/deliveryReportPublicShare";
 import { useMemo, useRef, type ReactNode } from "react";
 import { DeliveryReportCompetitorSection } from "@/components/DeliveryReportCompetitorSection";
 import { DeliveryReportRetestHero } from "@/components/DeliveryReportRetestHero";
@@ -198,6 +198,7 @@ export function DeliveryReportCustomerLightView({
   };
 
   const shareExpiryLabel = formatDeliveryReportShareExpiryLabel(shareExpiresAt);
+  const shareCountdown = resolveDeliveryReportShareCountdown(shareExpiresAt);
   const detectionConclusion = conclusionLine.trim();
 
   return (
@@ -208,7 +209,14 @@ export function DeliveryReportCustomerLightView({
             className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-3 text-center text-sm text-sky-900"
             data-testid="delivery-report-public-share-expiry"
           >
-            本报告为对外分享只读版本 · {shareExpiryLabel}
+            本报告为对外分享只读版本 ·
+            {shareCountdown?.expired
+              ? " 报告链接已过期"
+              : shareCountdown
+                ? ` 有效期剩余 ${shareCountdown.daysRemaining} 天`
+                : ""}
+            {" · "}
+            {shareExpiryLabel}
           </p>
         ) : null}
 

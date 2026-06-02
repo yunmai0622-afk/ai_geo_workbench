@@ -1,6 +1,6 @@
 {
   "version": "1.0.17",
-  "copiedAt": "2026-06-02T03:56:22.537Z",
+  "copiedAt": "2026-06-02T07:34:46.318Z",
   "geoWebBaseUrl": "https://aigeoworkb-kzxhj9uy.manus.space",
   "macZipUrl": "https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.17/geo-local-agent-mac.zip",
   "macDmgUrl": null,
@@ -8,5 +8,11 @@
   "winSetupUrl": "/downloads/geo-local-agent-win.exe",
   "macZipSha256": "f208cdf71e983d82271b8996d68f8948cd47eb530311981eded40796b34cb16b",
   "macZipSizeBytes": 108020322,
-  "macZipExternal": true
+  "macZipExternal": true,
+  "files": [
+    "client/public/downloads/geo-local-agent-mac.dmg",
+    "client/public/downloads/geo-local-agent-mac.zip",
+    "client/public/downloads/geo-local-agent-win.zip",
+    "client/public/downloads/geo-local-agent-win.exe"
+  ]
 }

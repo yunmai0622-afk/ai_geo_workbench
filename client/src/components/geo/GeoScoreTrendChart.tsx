@@ -7,6 +7,7 @@ import {
 
 type GeoScoreTrendChartProps = {
   points: GeoScoreTrendPoint[];
+  industryAverageScore?: number | null;
   loading?: boolean;
   variant?: "light" | "dark";
   className?: string;
@@ -18,6 +19,7 @@ const CHART_H = 88;
 
 export function GeoScoreTrendChart({
   points,
+  industryAverageScore = null,
   loading = false,
   variant = "light",
   className = "",
@@ -53,6 +55,14 @@ export function GeoScoreTrendChart({
   const latest = points[points.length - 1]!;
   const earliest = points[0]!;
   const delta = latest.totalScore - earliest.totalScore;
+  const hasIndustryAverage = typeof industryAverageScore === "number" && Number.isFinite(industryAverageScore);
+  const industryDelta = hasIndustryAverage ? latest.totalScore - industryAverageScore : null;
+
+  const formatDiagnosticTimeLabel = (value: Date | string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "时间未知";
+    return date.toLocaleString("zh-CN", { hour12: false });
+  };
 
   return (
     <div className={className} data-testid={testId}>
@@ -71,7 +81,19 @@ export function GeoScoreTrendChart({
       </div>
 
       {points.length === 1 ? (
-        <p className={`mt-2 text-sm ${muted}`}>仅 1 次诊断记录，再次计算评分后可查看折线趋势。</p>
+        <div className="mt-2 space-y-1">
+          <p className={`text-sm ${muted}`}>完成更多 AI 诊断后可查看趋势变化。</p>
+          {hasIndustryAverage ? (
+            <p className={`text-xs ${muted}`}>
+              行业平均分 {industryAverageScore} 分
+              <span className={industryDelta != null && industryDelta >= 0 ? " text-emerald-600" : " text-amber-600"}>
+                {" "}
+                · 当前{industryDelta != null && industryDelta >= 0 ? "高于" : "低于"}
+                行业平均 {Math.abs(industryDelta ?? 0)} 分
+              </span>
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -93,7 +115,9 @@ export function GeoScoreTrendChart({
             />
           ) : null}
           {coords.map((c, i) => (
-            <circle key={i} cx={c.x} cy={c.y} r="4" fill={stroke} />
+            <circle key={i} cx={c.x} cy={c.y} r="4" fill={stroke}>
+              <title>{`${formatDiagnosticTimeLabel(points[i]!.createdAt)} · ${points[i]!.totalScore} 分`}</title>
+            </circle>
           ))}
         </svg>
 

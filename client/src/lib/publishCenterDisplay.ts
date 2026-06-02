@@ -129,6 +129,7 @@ export function mapAgentTaskToCard(
     agentErrorMessage?: string | null;
     draftUrl?: string | null;
     resultUrl?: string | null;
+    publishedUrl?: string | null;
     agentFinishedAt?: Date | string | number | null;
     agentPickedAt?: Date | string | number | null;
     createdAt?: Date | string | number | null;
@@ -146,7 +147,7 @@ export function mapAgentTaskToCard(
   const isAbnormal =
     task.status === "failed" || task.status === "session_expired" || retryExhausted;
   const draftUrl = task.draftUrl?.trim() || null;
-  const publishedUrl = task.resultUrl?.trim() || null;
+  const publishedUrl = task.publishedUrl?.trim() || task.resultUrl?.trim() || null;
   const errorMessage =
     task.status === "failed"
       ? customerMessageForAgentPublishFailure(task.agentErrorMessage, task.agentErrorType)
