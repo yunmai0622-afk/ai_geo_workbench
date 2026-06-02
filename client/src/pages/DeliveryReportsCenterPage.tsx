@@ -1,3 +1,4 @@
+import { DeliveryReportCompetitorSection } from "@/components/DeliveryReportCompetitorSection";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { GeoHealthBriefCard, type GeoHealthBriefCardProps } from "@/components/delivery/GeoHealthBriefCard";
@@ -50,6 +51,7 @@ import {
   type DeliveryReportContentQualityFailedItem,
   type DeliveryReportContentQualityPriorityItem,
 } from "@shared/deliveryReportContentQuality";
+import { mapCompetitorAnalysisForDeliveryReport } from "@shared/deliveryReportCompetitor";
 import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -141,6 +143,10 @@ export function DeliveryReportsCenterPage() {
     { enabled: enabled && Boolean(selectedProjectId) },
   );
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
+  const competitorSummaryQuery = trpc.geo.assetLibrary.competitorAnalysisSummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
 
   const scoreTrendPoints = useMemo(
     () =>
@@ -159,7 +165,8 @@ export function DeliveryReportsCenterPage() {
     publishRecordsQuery.isLoading ||
     publishStatsQuery.isLoading ||
     contentQualityQuery.isLoading ||
-    monitoringQuery.isLoading;
+    monitoringQuery.isLoading ||
+    competitorSummaryQuery.isLoading;
 
   const score = scoreQuery.data as Record<string, unknown> | null | undefined;
   const analyses = (analysisQuery.data ?? []) as Array<Record<string, unknown>>;
@@ -346,6 +353,12 @@ export function DeliveryReportsCenterPage() {
     () => buildT0BaselineSummary(testRoundsQuery.data ?? [], retestComparisonsQuery.data ?? []),
     [testRoundsQuery.data, retestComparisonsQuery.data],
   );
+
+  const competitorComparison = useMemo(() => {
+    const summary = competitorSummaryQuery.data;
+    if (!summary || summary.competitors.length === 0) return null;
+    return mapCompetitorAnalysisForDeliveryReport(summary);
+  }, [competitorSummaryQuery.data]);
 
   const completedItems = useMemo(() => {
     const lines: string[] = [];
@@ -542,6 +555,21 @@ export function DeliveryReportsCenterPage() {
             <RetestComparisonPanel projectId={selectedProjectId} enabled={enabled} />
           ) : null}
         </section>
+
+        <P0Section
+          title="竞品对比"
+          description="对比本品牌与主要竞品在 AI 实测中的提及情况，以及竞品公开内容分布。"
+        >
+          <div data-testid="delivery-report-competitor">
+            {competitorComparison ? (
+              <DeliveryReportCompetitorSection data={competitorComparison} />
+            ) : (
+              <P0Card className="text-sm text-gray-500" testId="delivery-report-competitor-empty">
+                暂无竞品档案。完成品牌建档并补充主要竞品后，可在此查看 AI 实测提及对比与内容分布建议。
+              </P0Card>
+            )}
+          </div>
+        </P0Section>
 
         <GeoGrowthSuggestionsPanel
           projectId={selectedProjectId}
