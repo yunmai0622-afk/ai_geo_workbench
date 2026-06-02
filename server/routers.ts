@@ -149,6 +149,7 @@ import { emitT1RetestCompleteNotification } from "./systemNotifications";
 import {
   getQuestionTemplateById,
   listQuestionTemplates,
+  buildQuestionTemplatePreview,
   resolveFilledQuestionTemplatePrompt,
 } from "./questionTemplateService";
 import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
@@ -2180,14 +2181,20 @@ const geoRouter = router({
       .input(z.object({ templateId: z.number().int().positive(), projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         const db = await requireDb();
-        const project = await requireProjectAccess(ctx, input.projectId);
+        const projectRow = await requireProjectAccess(ctx, input.projectId);
         const template = await getQuestionTemplateById(db, input.templateId);
         if (!template) {
           throw new TRPCError({ code: "NOT_FOUND", message: "内容模板不存在" });
         }
+        const assetLibrary = await getAssetLibraryContext(input.projectId);
+        const profile = assetLibrary.profile ?? null;
+        const preview = buildQuestionTemplatePreview(template, projectRow, profile);
         return {
-          template,
-          filledPrompt: resolveFilledQuestionTemplatePrompt(template, project),
+          template: preview.template,
+          enterpriseName: preview.enterpriseName,
+          filledPrompt: preview.filledPrompt,
+          usedFields: preview.usedFields,
+          missingFieldLabels: preview.missingFieldLabels,
         };
       }),
   }),
@@ -3062,7 +3069,7 @@ const geoRouter = router({
           questionTemplateReference = {
             id: template.id,
             title: template.title,
-            filledPrompt: resolveFilledQuestionTemplatePrompt(template, project),
+            filledPrompt: resolveFilledQuestionTemplatePrompt(template, project, assetLibrary.profile ?? null),
           };
         }
         draft = await generateGeoArticleDraft({

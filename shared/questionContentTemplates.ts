@@ -4,6 +4,38 @@ import { resolveQuestionTypeDisplayLabel } from "./retestComparisonDisplay";
 export const QUESTION_TEMPLATE_PLATFORMS = ["zhihu", "sohu", "baijiahao", "toutiao", "netease"] as const;
 export type QuestionTemplatePlatform = (typeof QUESTION_TEMPLATE_PLATFORMS)[number];
 
+
+export const QUESTION_TEMPLATE_FIELD_LABELS = {
+  brand: "企业名称",
+  product: "核心产品/服务",
+  targetCustomer: "目标客户",
+  industry: "所属行业",
+  coreAdvantage: "核心优势",
+} as const;
+
+export type QuestionTemplateFieldKey = keyof typeof QUESTION_TEMPLATE_FIELD_LABELS;
+
+export type QuestionTemplatePreviewProfileResult = {
+  enterpriseName: string;
+  rawVariables: QuestionTemplateVariables;
+  usedFields: QuestionTemplateFieldKey[];
+  missingFieldLabels: string[];
+  rawInputs: Record<QuestionTemplateFieldKey, string>;
+};
+
+export type QuestionTemplateFillResult = {
+  filledPrompt: string;
+  enterpriseName: string;
+  usedFields: QuestionTemplateFieldKey[];
+  missingFieldLabels: string[];
+  missingMarkers: string[];
+  rawVariables: QuestionTemplateVariables;
+};
+
+export function formatMissingTemplateFieldLabel(label: string): string {
+  return `【缺少：${label}】`;
+}
+
 export type QuestionTemplateVariables = {
   brand: string;
   product: string;
@@ -97,13 +129,27 @@ export function buildQuestionTemplateVariables(input: {
   targetCustomer?: string | null;
   industry?: string | null;
   coreAdvantage?: string | null;
+  markMissing?: boolean;
 }): QuestionTemplateVariables {
+  const resolve = (key: QuestionTemplateFieldKey, value?: string | null) => {
+    const trimmed = (value ?? "").trim();
+    if (trimmed) return trimmed;
+    if (input.markMissing) return formatMissingTemplateFieldLabel(QUESTION_TEMPLATE_FIELD_LABELS[key]);
+    const placeholders: Record<QuestionTemplateFieldKey, string> = {
+      brand: "（品牌名）",
+      product: "（核心产品）",
+      targetCustomer: "（目标客户）",
+      industry: "（行业）",
+      coreAdvantage: "（核心优势）",
+    };
+    return placeholders[key];
+  };
   return {
-    brand: (input.brand ?? "").trim() || "（品牌名）",
-    product: (input.product ?? "").trim() || "（核心产品）",
-    targetCustomer: (input.targetCustomer ?? "").trim() || "（目标客户）",
-    industry: (input.industry ?? "").trim() || "（行业）",
-    coreAdvantage: (input.coreAdvantage ?? "").trim() || "（核心优势）",
+    brand: resolve("brand", input.brand),
+    product: resolve("product", input.product),
+    targetCustomer: resolve("targetCustomer", input.targetCustomer),
+    industry: resolve("industry", input.industry),
+    coreAdvantage: resolve("coreAdvantage", input.coreAdvantage),
   };
 }
 
