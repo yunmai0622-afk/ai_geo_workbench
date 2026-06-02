@@ -66,7 +66,7 @@ function PageShell({
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-gray-200 bg-white p-6 text-gray-900 shadow-[0_0_34px_rgba(56,189,248,0.10)] backdrop-blur">
-        <p className="text-sm font-medium text-blue-600">内容增长系统</p>
+        <p className="text-sm font-medium text-blue-600">GEO 增长工作台</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">{title}</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">{desc}</p>
       </section>

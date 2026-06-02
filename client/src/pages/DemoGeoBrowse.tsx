@@ -1,5 +1,6 @@
 import React, { type ReactNode } from "react";
 
+import { AUTH_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import {
   assetSections,
   demoArticles,
@@ -23,9 +24,9 @@ type SectionProps = {
 const toneClasses = {
   cyan: "border-blue-200 bg-blue-50 text-blue-700 shadow-cyan-500/10",
   violet: "border-blue-200 bg-blue-50 text-blue-700 shadow-sm",
-  emerald: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100 shadow-emerald-500/10",
-  amber: "border-amber-300/20 bg-amber-400/10 text-amber-100 shadow-amber-500/10",
-  blue: "border-blue-300/20 bg-blue-400/10 text-blue-100 shadow-blue-500/10",
+  emerald: "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-emerald-500/10",
+  amber: "border-amber-200 bg-amber-50 text-amber-800 shadow-amber-500/10",
+  blue: "border-blue-200 bg-blue-50 text-blue-800 shadow-blue-500/10",
 } as const;
 
 function Section({ eyebrow, title, description, children }: SectionProps) {
@@ -33,7 +34,7 @@ function Section({ eyebrow, title, description, children }: SectionProps) {
     <section className="scroll-mt-28 rounded-[2rem] border border-gray-200 bg-gray-50 p-5 shadow-2xl shadow-blue-950/20 backdrop-blur md:p-7">
       <div className="mb-6 max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.32em] text-blue-600/80">{eyebrow}</p>
-        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white md:text-3xl">{title}</h2>
+        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900 md:text-3xl">{title}</h2>
         <p className="mt-3 text-sm leading-6 text-gray-600">{description}</p>
       </div>
       {children}
@@ -68,7 +69,7 @@ export default function DemoGeoBrowsePage() {
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-[#040816]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
           <a href="#overview" className="group inline-flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-sm font-bold text-blue-700 shadow-lg shadow-blue-500/10">内容增长系统</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 shadow-lg shadow-blue-500/10">GEO</span>
             <span>
               <span className="block text-sm font-semibold text-white">V1.2 外部只读 Demo</span>
               <span className="block text-xs text-gray-400">{demoProject.shortName} 样板项目</span>
@@ -102,9 +103,9 @@ export default function DemoGeoBrowsePage() {
                 <StatusBadge tone="violet">无需登录</StatusBadge>
                 <StatusBadge tone="emerald">仅样板数据</StatusBadge>
               </div>
-              <p className="text-sm font-semibold uppercase tracking-[0.42em] text-blue-600/80">AI 内容增长系统 Growth Workbench</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.42em] text-blue-400/90">{AUTH_PRODUCT_NAME}</p>
               <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-white md:text-6xl">{demoProject.name}</h1>
-              <p className="mt-5 max-w-3xl text-base leading-7 text-gray-600 md:text-lg">外部验收、销售演示和客户试跑展示专用入口。页面完整展示 V1.2 的核心样板能力，但不开放任何写操作、生成操作或发布操作。</p>
+              <p className="mt-5 max-w-3xl text-base leading-7 text-gray-300 md:text-lg">外部验收、销售演示和客户试跑展示专用入口。页面完整展示 V1.2 的核心样板能力，但不开放任何写操作、生成操作或发布操作。</p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <StatusBadge tone="amber">当前阶段：{demoProject.stage}</StatusBadge>
                 <StatusBadge tone="blue">下一步动作：发布后复测</StatusBadge>
@@ -114,36 +115,36 @@ export default function DemoGeoBrowsePage() {
           </div>
         </section>
 
-        <Section eyebrow="01 / Overview" title="总览指挥舱" description="展示外部 Demo 的核心指标、当前阶段、下一步动作、内容增长路径、AI 今日建议和待复测任务。">
+        <Section eyebrow="01 / Overview" title="总览指挥舱" description="展示外部 Demo 的核心指标、当前阶段、下一步动作、GEO 增长路径、AI 今日建议和待复测任务。">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {demoMetrics.map((metric) => (
               <article key={metric.label} className={`rounded-3xl border p-5 shadow-xl ${toneClasses[metric.tone]}`}>
-                <p className="text-sm text-gray-600">{metric.label}</p>
-                <p className="mt-3 text-3xl font-semibold text-white">{metric.value}</p>
-                <p className="mt-3 text-xs leading-5 text-gray-600">{metric.note}</p>
+                <p className="text-sm opacity-80">{metric.label}</p>
+                <p className="mt-3 text-3xl font-semibold">{metric.value}</p>
+                <p className="mt-3 text-xs leading-5 opacity-80">{metric.note}</p>
               </article>
             ))}
           </div>
           <div className="mt-6 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
             <div className="rounded-3xl border border-gray-200 bg-white p-5">
-              <h3 className="text-lg font-semibold text-white">内容增长路径</h3>
+              <h3 className="text-lg font-semibold text-gray-900">GEO 增长路径</h3>
               <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
                 {growthPath.map((step, index) => (
-                  <div key={step} className="relative rounded-2xl border border-gray-200 bg-white/75 p-4">
+                  <div key={step} className="relative rounded-2xl border border-gray-200 bg-gray-50 p-4">
                     <span className="text-xs text-blue-600">0{index + 1}</span>
-                    <p className="mt-2 text-sm font-semibold text-white">{step}</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-900">{step}</p>
                   </div>
                 ))}
               </div>
             </div>
             <div className="space-y-4">
-              <div className="rounded-3xl border border-emerald-300/15 bg-emerald-400/5 p-5">
-                <p className="text-sm font-semibold text-emerald-100">AI 今日建议</p>
-                <p className="mt-3 text-sm leading-6 text-gray-600">{demoProject.nextAction}</p>
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+                <p className="text-sm font-semibold text-emerald-800">AI 今日建议</p>
+                <p className="mt-3 text-sm leading-6 text-gray-700">{demoProject.nextAction}</p>
               </div>
-              <div className="rounded-3xl border border-amber-300/15 bg-amber-400/5 p-5">
-                <p className="text-sm font-semibold text-amber-100">待处理任务</p>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                <p className="text-sm font-semibold text-amber-800">待处理任务</p>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-700">
                   <li>复测已发布 公开内容页收录状态。</li>
                   <li>复测 AI 是否提及、是否推荐海豚知道。</li>
                   <li>补充客户案例证据链，避免泛化表述。</li>
@@ -157,7 +158,7 @@ export default function DemoGeoBrowsePage() {
           <div id="assets" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {assetSections.map((section) => (
               <article key={section.title} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-xl shadow-blue-950/10">
-                <h3 className="text-base font-semibold text-white">{section.title}</h3>
+                <h3 className="text-base font-semibold text-gray-900">{section.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-gray-600">{section.content}</p>
               </article>
             ))}
@@ -169,15 +170,15 @@ export default function DemoGeoBrowsePage() {
             {diagnosisQuestions.map((item, index) => (
               <article key={item.question} className="rounded-3xl border border-gray-200 bg-white p-5">
                 <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-base font-semibold leading-6 text-white">{index + 1}. {item.question}</h3>
-                  <StatusBadge tone={item.score >= 40 ? "emerald" : "blue"}>内容增长系统 {item.score}</StatusBadge>
+                  <h3 className="text-base font-semibold leading-6 text-gray-900">{index + 1}. {item.question}</h3>
+                  <StatusBadge tone={item.score >= 40 ? "emerald" : "blue"}>GEO 评分 {item.score}</StatusBadge>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-gray-600"><span className="text-blue-600">AI 回答：</span>{item.answer}</p>
+                <p className="mt-4 text-sm leading-6 text-gray-600"><span className="font-medium text-blue-700">AI 回答：</span>{item.answer}</p>
                 <div className="mt-4 grid gap-3 text-xs leading-5 text-gray-600 md:grid-cols-2">
-                  <p><span className="text-blue-600">语义分析：</span>{item.analysis}</p>
-                  <p><span className="text-amber-200">内容缺口：</span>{item.gap}</p>
-                  <p><span className="text-blue-200">竞品差距：</span>{item.competitorGap}</p>
-                  <p><span className="text-emerald-200">人工修订样本：</span>{item.manualRevision}</p>
+                  <p><span className="font-medium text-blue-700">语义分析：</span>{item.analysis}</p>
+                  <p><span className="font-medium text-amber-700">内容缺口：</span>{item.gap}</p>
+                  <p><span className="font-medium text-blue-700">竞品差距：</span>{item.competitorGap}</p>
+                  <p><span className="font-medium text-emerald-700">人工修订样本：</span>{item.manualRevision}</p>
                 </div>
               </article>
             ))}
@@ -191,8 +192,8 @@ export default function DemoGeoBrowsePage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-600/80">{article.type}</p>
-                    <h3 className="mt-3 text-xl font-semibold text-white">{article.title}</h3>
-                    <p className="mt-2 text-sm text-gray-400">{article.status}</p>
+                    <h3 className="mt-3 text-xl font-semibold text-gray-900">{article.title}</h3>
+                    <p className="mt-2 text-sm text-gray-500">{article.status}</p>
                   </div>
                   <StatusBadge tone={article.qualityScore >= 95 ? "emerald" : "violet"}>内容质量评分 {article.qualityScore}/100</StatusBadge>
                 </div>
@@ -206,14 +207,14 @@ export default function DemoGeoBrowsePage() {
                   <div className="space-y-4">
                     <div className="overflow-hidden rounded-3xl border border-gray-200">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-white/[0.06] text-gray-700">
+                        <thead className="bg-gray-50 text-gray-700">
                           <tr>
                             <th className="px-4 py-3">事实项</th>
                             <th className="px-4 py-3">来源</th>
                             <th className="px-4 py-3">状态</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/10 text-gray-600">
+                        <tbody className="divide-y divide-gray-100 text-gray-600">
                           {article.factTrace.map((fact) => (
                             <tr key={`${article.title}-${fact.item}`}>
                               <td className="px-4 py-3">{fact.item}</td>
@@ -225,8 +226,8 @@ export default function DemoGeoBrowsePage() {
                       </table>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
-                      <p className="rounded-2xl border border-emerald-300/15 bg-emerald-400/5 p-4 text-sm leading-6 text-gray-600"><span className="text-emerald-100">一致性检查：</span>{article.consistencyCheck}</p>
-                      <p className="rounded-2xl border border-blue-300/15 bg-blue-400/5 p-4 text-sm leading-6 text-gray-600"><span className="text-blue-100">发布前检查：</span>{article.prePublishCheck}</p>
+                      <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-gray-700"><span className="font-medium text-emerald-800">一致性检查：</span>{article.consistencyCheck}</p>
+                      <p className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-gray-700"><span className="font-medium text-blue-800">发布前检查：</span>{article.prePublishCheck}</p>
                     </div>
                   </div>
                 </div>
@@ -247,17 +248,17 @@ export default function DemoGeoBrowsePage() {
               <article key={record.title} className="rounded-3xl border border-gray-200 bg-white p-5">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{record.title}</h3>
-                    <p className="mt-2 text-sm text-gray-400">{record.channel}｜质量评分 {record.qualityScore}/100</p>
+                    <h3 className="text-lg font-semibold text-gray-900">{record.title}</h3>
+                    <p className="mt-2 text-sm text-gray-500">{record.channel}｜质量评分 {record.qualityScore}/100</p>
                     <p className="mt-3 text-sm leading-6 text-gray-600">{record.notes}</p>
                   </div>
                   <StatusBadge tone="emerald">{record.status}</StatusBadge>
                 </div>
                 <div className="mt-4 rounded-2xl border border-gray-200 bg-blue-50/50 p-4 text-sm leading-6 text-gray-600">
-                  <p className="text-blue-700">发布链接可访问：</p>
+                  <p className="font-medium text-blue-700">发布链接可访问：</p>
                   <a className="mt-2 inline-flex break-all text-blue-600 underline decoration-cyan-300/40 underline-offset-4 hover:text-blue-700" href={record.publicPath}>{record.publicPath}</a>
                 </div>
-                <p className="mt-4 rounded-2xl border border-gray-200 bg-white/[0.03] p-4 text-sm leading-6 text-gray-600">第三方平台素材：{record.thirdPartyMaterial}</p>
+                <p className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-600">第三方平台素材：{record.thirdPartyMaterial}</p>
               </article>
             ))}
           </div>
@@ -267,31 +268,31 @@ export default function DemoGeoBrowsePage() {
           <div id="monitoring" className="grid gap-4 lg:grid-cols-2">
             {monitoringRecords.map((record) => (
               <article key={record.target} className="rounded-3xl border border-gray-200 bg-white p-5">
-                <h3 className="text-lg font-semibold text-white">{record.target}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{record.target}</h3>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <StatusBadge tone="amber">收录状态：{record.indexStatus}</StatusBadge>
                   <StatusBadge tone="blue">AI 提及：{record.aiMentionStatus}</StatusBadge>
                   <StatusBadge tone="violet">AI 推荐：{record.aiRecommendStatus}</StatusBadge>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-gray-600"><span className="text-blue-600">当前建议：</span>{record.currentSuggestion}</p>
-                <p className="mt-3 text-sm leading-6 text-gray-600"><span className="text-amber-200">未收录 / 未提及 / 未推荐优化建议：</span>{record.optimizationSuggestion}</p>
+                <p className="mt-4 text-sm leading-6 text-gray-600"><span className="font-medium text-blue-700">当前建议：</span>{record.currentSuggestion}</p>
+                <p className="mt-3 text-sm leading-6 text-gray-600"><span className="font-medium text-amber-700">未收录 / 未提及 / 未推荐优化建议：</span>{record.optimizationSuggestion}</p>
               </article>
             ))}
           </div>
         </Section>
 
-        <Section eyebrow="07 / Report" title="报告中心" description="展示至少 1 份客户可读 内容增长系统 试跑报告，并保留样本量有限的风险说明。">
+        <Section eyebrow="07 / Report" title="报告中心" description={`展示至少 1 份客户可读 ${AUTH_PRODUCT_NAME} 试跑报告，并保留样本量有限的风险说明。`}>
           <div id="report" className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
             <article className="rounded-3xl border border-gray-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-600/80">客户可读报告</p>
-              <h3 className="mt-3 text-2xl font-semibold text-white">{reportSummary.title}</h3>
-              <p className="mt-4 text-sm leading-6 text-gray-600"><span className="text-blue-600">报告范围：</span>{reportSummary.scope}</p>
-              <p className="mt-3 text-sm leading-6 text-gray-600"><span className="text-emerald-200">结论摘要：</span>{reportSummary.conclusion}</p>
+              <h3 className="mt-3 text-2xl font-semibold text-gray-900">{reportSummary.title}</h3>
+              <p className="mt-4 text-sm leading-6 text-gray-600"><span className="font-medium text-blue-700">报告范围：</span>{reportSummary.scope}</p>
+              <p className="mt-3 text-sm leading-6 text-gray-600"><span className="font-medium text-emerald-700">结论摘要：</span>{reportSummary.conclusion}</p>
             </article>
-            <div className="rounded-3xl border border-amber-300/20 bg-amber-400/10 p-5 shadow-xl shadow-amber-950/10">
-              <p className="text-sm font-semibold text-amber-100">风险提示卡</p>
-              <p className="mt-3 text-sm leading-6 text-amber-50/90">{reportSummary.risk}</p>
-              <p className="mt-3 text-xs leading-5 text-amber-100/75">Demo 中的监测状态为样板展示和待人工复测口径，不能用于对客户作效果保证。</p>
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-xl">
+              <p className="text-sm font-semibold text-amber-800">风险提示卡</p>
+              <p className="mt-3 text-sm leading-6 text-amber-900/90">{reportSummary.risk}</p>
+              <p className="mt-3 text-xs leading-5 text-amber-800/80">Demo 中的监测状态为样板展示和待人工复测口径，不能用于对客户作效果保证。</p>
             </div>
           </div>
         </Section>
@@ -300,7 +301,7 @@ export default function DemoGeoBrowsePage() {
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-blue-600/80">Read-only Guard</p>
-              <h2 className="mt-3 text-2xl font-semibold text-white">以下操作在 Demo 中均已禁用</h2>
+              <h2 className="mt-3 text-2xl font-semibold text-gray-900">以下操作在 Demo 中均已禁用</h2>
             </div>
             <StatusBadge tone="amber">Demo 演示模式仅支持查看，不支持修改。</StatusBadge>
           </div>

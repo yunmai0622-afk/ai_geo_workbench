@@ -39,6 +39,9 @@ export default function LandingPage() {
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
             <Button variant="ghost" size="sm" asChild>
+              <Link href="/demo">查看演示</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
               <Link href="/pricing">套餐定价</Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
@@ -60,9 +63,12 @@ export default function LandingPage() {
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-gray-600 sm:text-lg">
               帮助企业在豆包、Kimi、DeepSeek等AI平台被识别、提及和推荐
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button size="lg" className="bg-blue-600 px-8 text-white hover:bg-blue-700" asChild>
                 <Link href="/register">免费开始</Link>
+              </Button>
+              <Button size="lg" variant="outline" className="px-8" asChild>
+                <Link href="/demo">先看演示</Link>
               </Button>
             </div>
           </div>

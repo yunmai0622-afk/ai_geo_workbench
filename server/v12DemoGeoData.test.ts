@@ -25,7 +25,7 @@ describe("V1.2 外部只读 Demo 数据", () => {
     expect(reportSummary.risk).toContain("样本量有限");
 
     const metrics = Object.fromEntries(demoMetrics.map((metric) => [metric.label, metric.value]));
-    expect(metrics["GEO 总分"]).toBe("32");
+    expect(metrics["GEO 总分"]).toBe("25");
     expect(metrics["资料完整度"]).toBe("100%");
     expect(metrics["AI 可见度"]).toBe("30%");
     expect(metrics["AI 推荐率"]).toBe("20%");

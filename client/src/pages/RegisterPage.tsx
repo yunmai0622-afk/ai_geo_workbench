@@ -51,12 +51,20 @@ export default function RegisterPage() {
   return (
     <AuthPageLayout
       footer={
-        <p className="text-sm text-gray-500">
-          已有账号？{" "}
-          <Link href="/" className="font-medium text-blue-600 hover:text-blue-700">
-            返回登录
-          </Link>
-        </p>
+        <div className="space-y-3 text-sm text-gray-500">
+          <p>
+            想先了解产品能力？{" "}
+            <Link href="/demo" className="font-medium text-blue-600 hover:text-blue-700">
+              查看演示
+            </Link>
+          </p>
+          <p>
+            已有账号？{" "}
+            <Link href="/" className="font-medium text-blue-600 hover:text-blue-700">
+              返回登录
+            </Link>
+          </p>
+        </div>
       }
     >
       <div className="mb-6 text-center">

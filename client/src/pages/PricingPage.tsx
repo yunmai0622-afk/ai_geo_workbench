@@ -33,6 +33,9 @@ export default function PricingPage() {
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
             <Button variant="ghost" size="sm" asChild>
+              <Link href="/demo">查看演示</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
               <Link href="/">登录</Link>
             </Button>
             <Button size="sm" className="bg-blue-600 text-white hover:bg-blue-700" asChild>
