@@ -5,6 +5,7 @@ import { PlatformPublishSuccessRatePanel } from "@/components/publishing/Platfor
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
+import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
 import { PublishWeeklyOverviewBar } from "@/components/publishing/PublishWeeklyOverviewBar";
 import { PublishPlatformCardGrid } from "@/components/publishing/PublishPlatformCardGrid";
 import { PublishActionSidePanel } from "@/components/publishing/PublishActionSidePanel";
@@ -13,7 +14,6 @@ import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { PublishRecordsCalendar } from "@/components/publishing/PublishRecordsCalendar";
 import { PublishAccountSessionAlert } from "@/components/publishing/PublishAccountSessionAlert";
 import { PublishRecordsListPanel } from "@/components/publishing/PublishRecordsListPanel";
-import { PublishTaskColumnBoard } from "@/components/publishing/PublishTaskColumnBoard";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,7 +44,6 @@ import { isLocalAgentClientOutdated } from "@shared/localAgentVersionCompare";
 import {
   mapAgentTaskToCard,
   mapManualRecordToCard,
-  type PublishColumnId,
   type PublishTaskCardModel,
 } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
@@ -132,6 +131,8 @@ type AgentTaskRow = {
   retryExhausted?: boolean;
 };
 
+type QueueTabKey = "pending" | "active" | "failed" | "completed";
+
 function hasNumericId<T extends { id?: unknown }>(
   value: T | null | undefined,
 ): value is T & { id: number } {
@@ -170,6 +171,33 @@ function toDatetimeLocalInput(value?: Date | string | number | null): string {
   const copy = new Date(d.getTime());
   copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
   return copy.toISOString().slice(0, 16);
+}
+
+function queueTabFromCard(card: PublishTaskCardModel): QueueTabKey {
+  if (
+    card.statusRaw === "failed" ||
+    card.statusRaw === "publish_failed" ||
+    card.statusRaw === "session_expired" ||
+    card.retryExhausted
+  ) {
+    return "failed";
+  }
+  if (
+    card.statusRaw === "pending" ||
+    card.statusRaw === "pending_agent" ||
+    card.statusRaw === "copied"
+  ) {
+    return "pending";
+  }
+  if (
+    card.statusRaw === "agent_processing" ||
+    card.statusRaw === "processing" ||
+    card.statusRaw === "manual_required" ||
+    card.statusRaw === "draft_saved"
+  ) {
+    return "active";
+  }
+  return "completed";
 }
 
 export function ContentPublishingCenterPage() {
@@ -374,6 +402,14 @@ export function ContentPublishingCenterPage() {
     return platformAccountGroups.filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled))
       .length;
   }, [platformAccountGroups]);
+  const availableAccountByPlatform = useMemo(() => {
+    return platformAccountGroups
+      .map(group => {
+        const count = (group.accounts ?? []).filter((a: { isEnabled: boolean }) => a.isEnabled).length;
+        return `${publishPlatformCustomerLabel(group.platform)} ${count} 个`;
+      })
+      .filter(Boolean);
+  }, [platformAccountGroups]);
 
   const taskCards = useMemo(() => {
     const cards: PublishTaskCardModel[] = agentTasks.map(task => {
@@ -400,19 +436,21 @@ export function ContentPublishingCenterPage() {
     return cards;
   }, [agentTasks, publishRecords, articleById, autoInclusionByArticleAndUrl]);
 
-  const columns = useMemo(() => {
-    const out: Record<PublishColumnId, PublishTaskCardModel[]> = {
+  const queueTabs = useMemo(() => {
+    const out: Record<QueueTabKey, PublishTaskCardModel[]> = {
       pending: [],
       active: [],
-      done: [],
+      failed: [],
+      completed: [],
     };
     for (const card of taskCards) {
-      out[card.column].push(card);
+      out[queueTabFromCard(card)].push(card);
     }
     return out;
   }, [taskCards]);
 
-  const pendingCount = columns.pending.length;
+  const pendingCount = queueTabs.pending.length;
+  const failedCount = queueTabs.failed.length;
 
   const qualityByArticleId = useMemo(() => {
     const map = new Map<number, QualityScoreRow>();
@@ -839,50 +877,135 @@ export function ContentPublishingCenterPage() {
           正在加载发布任务…
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
-          <div className="space-y-6 min-w-0">
-            <PublishPlatformCardGrid
-              cards={platformCards}
-              loading={loading}
-              publishingCardKey={publishingCardKey}
-              retryingTaskId={retryingTaskId}
-              onPreview={handlePlatformCardPreview}
-              onPublish={card => void enqueuePlatformCard(card)}
-              onRetry={handlePlatformCardRetry}
-            />
-
-            <LocalAgentStatusCard
-              status={{
-                connected: localAgentOnline,
-                browserReady: localAgentOnline,
-                boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
-                pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
-              }}
-              checking={checkingAgent || accountHealthChecking}
-              onRefresh={() => void refreshAgentHealth()}
-              updateNotice={localAgentUpdateNotice}
-            />
-
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-task-board-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                发布任务看板（待处理 / 处理中 / 已完成）
-              </summary>
-              <div className="space-y-4 border-t border-gray-100 p-5">
-                <PublishTaskColumnBoard
-                  columns={columns}
-                  linkDraftByRecordId={linkDraftById}
-                  savingRecordId={savingRowId}
-                  retryingTaskId={retryingTaskId}
-                  onPreview={openPreview}
-                  onStartPublish={startLocalPublish}
-                  onSaveLink={handleSaveRowLink}
-                  onMarkAbnormal={markAbnormal}
-                  onRetryTask={card => void handleRetryPublishTask(card)}
-                  onLinkDraftChange={(id, v) => setLinkDraftById(d => ({ ...d, [id]: v }))}
-                />
+        <div className="space-y-6">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-ready-status-module">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">发布准备状态</h2>
+                <p className="mt-1 text-xs text-gray-500">先确认客户端与账号，再推进任务队列。</p>
               </div>
-            </details>
+              <Button
+                type="button"
+                variant="outline"
+                className={geoP0Brand.primaryOutline}
+                onClick={() => void refreshAgentHealth()}
+                disabled={checkingAgent || accountHealthChecking}
+                data-testid="publish-ready-refresh"
+              >
+                刷新状态
+              </Button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Local Agent</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {localAgentOnline ? "已连接" : "未连接"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">可用账号</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {availableAccountByPlatform.length > 0 ? availableAccountByPlatform.join(" / ") : "暂无可用账号"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">待发布任务数</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{pendingCount}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">失败任务数</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{failedCount}</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <LocalAgentStatusCard
+                status={{
+                  connected: localAgentOnline,
+                  browserReady: localAgentOnline,
+                  boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
+                  pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
+                }}
+                checking={checkingAgent || accountHealthChecking}
+                onRefresh={() => void refreshAgentHealth()}
+                updateNotice={localAgentUpdateNotice}
+              />
+            </div>
+          </section>
 
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-task-queue-module">
+            <h2 className="text-base font-semibold text-gray-900">发布任务队列</h2>
+            <p className="mt-1 text-xs text-gray-500">按队列状态处理任务，优先清理失败与待确认任务。</p>
+            <Tabs defaultValue="pending" className="mt-4 space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="pending" data-testid="publish-queue-tab-pending">待发布</TabsTrigger>
+                <TabsTrigger value="active" data-testid="publish-queue-tab-active">发布中/待确认</TabsTrigger>
+                <TabsTrigger value="failed" data-testid="publish-queue-tab-failed">失败</TabsTrigger>
+                <TabsTrigger value="completed" data-testid="publish-queue-tab-completed">已完成</TabsTrigger>
+              </TabsList>
+              {(["pending", "active", "failed", "completed"] as const).map(tab => (
+                <TabsContent key={tab} value={tab} className="mt-0">
+                  {queueTabs[tab].length === 0 ? (
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                      暂无任务
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {queueTabs[tab].map(card => (
+                        <div key={card.key} className="rounded-xl border border-gray-200 bg-white p-4" data-testid={`publish-queue-card-${card.key}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="line-clamp-2 text-sm font-semibold text-gray-900">{card.title}</p>
+                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${card.statusBadgeClass}`}>
+                              {card.statusLabel}
+                            </span>
+                          </div>
+                          <dl className="mt-3 space-y-1.5 text-xs text-gray-600">
+                            <div className="flex gap-2"><dt className="text-gray-500">发布平台</dt><dd>{card.platformLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">账号状态</dt><dd>{card.accountLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">任务状态</dt><dd>{card.statusLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">失败原因</dt><dd>{card.errorMessage ?? "无"}</dd></div>
+                          </dl>
+                          <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                            <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={() => openPreview(card)}>预览</Button>
+                            {tab === "pending" ? (
+                              <Button type="button" size="sm" className={geoP0Brand.primary} onClick={() => startLocalPublish(card)}>开始发布</Button>
+                            ) : null}
+                            {card.canRetry && card.taskId ? (
+                              <Button type="button" size="sm" className={geoP0Brand.primary} onClick={() => void handleRetryPublishTask(card)} disabled={retryingTaskId === card.taskId}>
+                                {retryingTaskId === card.taskId ? "重试中…" : "重试"}
+                              </Button>
+                            ) : null}
+                            {card.recordId ? (
+                              <>
+                                <Input
+                                  className="h-8 min-w-[180px] flex-1 text-xs"
+                                  placeholder="公开链接"
+                                  value={linkDraftById[card.recordId] ?? ""}
+                                  onChange={e => setLinkDraftById(d => ({ ...d, [card.recordId!]: e.target.value }))}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className={geoP0Brand.primaryOutline}
+                                  disabled={savingRowId === card.recordId}
+                                  onClick={() => void handleSaveRowLink(card.recordId!)}
+                                >
+                                  {savingRowId === card.recordId ? "保存中…" : "填链接"}
+                                </Button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          </section>
+
+          <section className="space-y-4" data-testid="publish-config-help-module">
+            <h2 className="text-base font-semibold text-gray-900">发布配置与帮助</h2>
             <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-platform-accounts-fold">
               <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
                 管理发布账号
@@ -901,16 +1024,14 @@ export function ContentPublishingCenterPage() {
               </div>
             </details>
 
-            {selectedProjectId ? (
-              <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
-                <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                  各平台发布成功率
-                </summary>
-                <div className="border-t border-gray-100 p-5">
-                  <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
-                </div>
-              </details>
-            ) : null}
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-local-agent-download-fold">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
+                下载 Local Agent
+              </summary>
+              <div className="border-t border-gray-100 p-5">
+                <LocalAgentDownloadCard />
+              </div>
+            </details>
 
             <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-retest-rewrite-fold">
               <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
@@ -1041,33 +1162,8 @@ export function ContentPublishingCenterPage() {
                 </p>
               </div>
             </details>
-
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-local-agent-download-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                下载 Local Agent
-              </summary>
-              <div className="border-t border-gray-100 p-5">
-                <LocalAgentDownloadCard />
-              </div>
-            </details>
-
-
-          </div>
-
-          <PublishActionSidePanel
-            projectId={selectedProjectId}
-            publishAllBusy={publishAllBusy}
-            publishAllDisabled={loading || readyPlatformCount === 0}
-            readyPlatformCount={readyPlatformCount}
-            onPublishAll={() => void handlePublishAllPlatforms()}
-            onGenerateWeekly={() =>
-              selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))
-            }
-            onViewHistory={() =>
-              selectedProjectId &&
-              setLocation(buildProjectUrl("/publish-records-history", selectedProjectId))
-            }
-          />
+            <LocalAgentPublishStepsPanel projectId={selectedProjectId} />
+          </section>
         </div>
       )}
         </TabsContent>
