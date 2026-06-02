@@ -5,6 +5,7 @@ import { T0ContentGapSuggestionsCard } from "@/components/geo/T0ContentGapSugges
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { WorkspaceDashboardOverviewCards } from "@/components/project/WorkspaceDashboardOverviewCards";
+import { WorkspaceInclusionMonitoringSection } from "@/components/workspace/WorkspaceInclusionMonitoringSection";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
@@ -135,6 +136,19 @@ export default function EnterpriseWorkspacePage() {
               data-testid="workspace-geo-score-trend-chart"
             />
           </section>
+
+          <WorkspaceInclusionMonitoringSection
+            loading={homeDisplay.inclusionMonitoringLoading}
+            platformRows={homeDisplay.inclusionPlatformRows}
+            publishRecordCount={homeDisplay.publishRecordCount}
+            monitoringRecordCount={homeDisplay.monitoringRecordCount}
+            onOpenMonitoring={() =>
+              setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
+            }
+            onOpenPublishing={() =>
+              setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+            }
+          />
 
           {metrics.t0ContentGapSuggestions ? (
             <T0ContentGapSuggestionsCard

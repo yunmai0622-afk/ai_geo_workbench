@@ -12,6 +12,7 @@ import {
 } from "@/lib/workspaceHomeDisplay";
 import { trpc } from "@/lib/trpc";
 import type { WorkspaceSummaryMetrics } from "@shared/workspaceStateMachine";
+import { buildWorkspaceInclusionPlatformRows } from "@shared/workspaceInclusionMonitoring";
 import { useMemo } from "react";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
 
@@ -25,8 +26,10 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
   const testRoundsQuery = trpc.geo.testRounds.list.useQuery({ projectId: projectId! }, { enabled });
   const t0MetricsQuery = trpc.geo.scores.t0Metrics.useQuery({ projectId: projectId! }, { enabled });
   const analysisQuery = trpc.geo.analysis.list.useQuery({ projectId: projectId! }, { enabled });
+  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery({ projectId: projectId! }, { enabled });
 
   const monitoring = monitoringQuery.data ?? [];
+  const publishRecords = publishRecordsQuery.data ?? [];
   const testRounds = testRoundsQuery.data ?? [];
   const analyses = analysisQuery.data ?? [];
 
@@ -63,9 +66,32 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
   });
   const hasT1Retest = summary?.hasCompletedT1Retest ?? hasCompletedT1Retest(testRounds);
 
+  const inclusionPlatformRows = useMemo(
+    () =>
+      buildWorkspaceInclusionPlatformRows(
+        monitoring.map(row => ({
+          id: row.id,
+          publishRecordId: row.publishRecordId,
+          inclusionStatus: row.inclusionStatus,
+          lastCheckedAt: row.lastCheckedAt,
+        })),
+        publishRecords.map(row => ({
+          id: row.id,
+          publishChannel: row.publishChannel,
+        })),
+      ),
+    [monitoring, publishRecords],
+  );
+
+  const inclusionMonitoringLoading =
+    enabled && (monitoringQuery.isLoading || publishRecordsQuery.isLoading);
+
   const loading =
     enabled &&
-    (monitoringQuery.isLoading || testRoundsQuery.isLoading || t0MetricsQuery.isLoading || analysisQuery.isLoading);
+    (monitoringQuery.isLoading ||
+      testRoundsQuery.isLoading ||
+      t0MetricsQuery.isLoading ||
+      analysisQuery.isLoading);
 
   return {
     mainChainNextAction,
@@ -74,5 +100,9 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
     lastAiTestLabel,
     hasT1Retest,
     loading,
+    inclusionPlatformRows,
+    inclusionMonitoringLoading,
+    monitoringRecordCount: monitoring.length,
+    publishRecordCount: publishRecords.length,
   };
 }
