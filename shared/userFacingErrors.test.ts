@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  GENERIC_FORBIDDEN_MESSAGE,
   GENERIC_OPERATION_FAILED_MESSAGE,
+  GENERIC_SERVER_ERROR_MESSAGE,
+  GENERIC_SERVICE_UNAVAILABLE_MESSAGE,
+  GENERIC_UNAUTHORIZED_MESSAGE,
   looksLikeInternalTechnicalError,
   toUserFacingError,
   toUserFacingErrorFromUnknown,
@@ -30,12 +34,21 @@ describe("userFacingErrors", () => {
 
   it("filters TRPC error codes", () => {
     expect(toUserFacingError("NOT_FOUND")).toBe(GENERIC_OPERATION_FAILED_MESSAGE);
-    expect(toUserFacingError("UNAUTHORIZED")).toBe(GENERIC_OPERATION_FAILED_MESSAGE);
+    expect(toUserFacingError("UNAUTHORIZED")).toBe(GENERIC_UNAUTHORIZED_MESSAGE);
   });
 
   it("maps unknown errors with fallback", () => {
     expect(toUserFacingErrorFromUnknown(new Error("projectId invalid"))).toBe(GENERIC_OPERATION_FAILED_MESSAGE);
     expect(toUserFacingErrorFromUnknown(new Error("密码不正确"), "注册失败")).toBe("密码不正确");
-    expect(toUserFacingQueryError("Internal Server Error")).toBe("暂时无法加载，请刷新页面后重试。");
+    expect(toUserFacingQueryError("Internal Server Error")).toBe(GENERIC_SERVER_ERROR_MESSAGE);
+  });
+
+  it("maps known auth/network/server errors to user-facing messages", () => {
+    expect(toUserFacingError("Please login (10001)")).toBe(GENERIC_UNAUTHORIZED_MESSAGE);
+    expect(toUserFacingError("You do not have required permission (10002)")).toBe(GENERIC_FORBIDDEN_MESSAGE);
+    expect(toUserFacingError("FORBIDDEN")).toBe(GENERIC_FORBIDDEN_MESSAGE);
+    expect(toUserFacingError("UNAUTHORIZED")).toBe(GENERIC_UNAUTHORIZED_MESSAGE);
+    expect(toUserFacingError("INTERNAL_SERVER_ERROR")).toBe(GENERIC_SERVER_ERROR_MESSAGE);
+    expect(toUserFacingError("Failed to fetch")).toBe(GENERIC_SERVICE_UNAVAILABLE_MESSAGE);
   });
 });

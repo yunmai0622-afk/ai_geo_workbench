@@ -75,6 +75,7 @@ import {
   formatT0Rate,
   T0_AI_ENGINE_OPTIONS,
   T0_DEFAULT_PLATFORMS,
+  type T0AiEngineId,
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
 import { T0DiagnosisVisualizationPanel } from "@/components/diagnosis/T0DiagnosisVisualizationPanel";

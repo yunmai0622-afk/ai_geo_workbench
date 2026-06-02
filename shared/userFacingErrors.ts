@@ -1,3 +1,5 @@
+import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "./const";
+
 /** 前端用户可见错误文案 — 过滤 SQL / 堆栈 / 内部 ID / TRPC 码等技术信息 */
 
 export const GENERIC_OPERATION_FAILED_MESSAGE =
@@ -6,6 +8,9 @@ export const GENERIC_OPERATION_FAILED_MESSAGE =
 export const GENERIC_LOAD_FAILED_MESSAGE = "暂时无法加载，请刷新页面后重试。";
 
 export const GENERIC_SERVICE_UNAVAILABLE_MESSAGE = "服务暂时不可用，请稍后重试。";
+export const GENERIC_FORBIDDEN_MESSAGE = "当前账号暂无权限执行该操作，请联系管理员。";
+export const GENERIC_UNAUTHORIZED_MESSAGE = "登录状态已失效，请重新登录后重试。";
+export const GENERIC_SERVER_ERROR_MESSAGE = "服务器开小差了，请稍后重试。";
 
 const INTERNAL_MARKERS = [
   "failed query",
@@ -50,6 +55,23 @@ const TECHNICAL_FIELD_PATTERN =
 const ENGINEERING_TERM_PATTERN =
   /\b(mock(?:ed|ing)?|schema(?:validation|error)?|(?:llm|ai)[_-]?provider|(?:api[_-]?)?adapter)\b/i;
 
+const NETWORK_MARKERS = ["failed to fetch", "networkerror", "net::err", "econnrefused", "err_connection"] as const;
+
+export function toKnownUserFacingError(raw: string | undefined | null): string | null {
+  const message = (raw ?? "").trim();
+  if (!message) return null;
+  if (message === UNAUTHED_ERR_MSG || /^UNAUTHORIZED$/i.test(message)) return GENERIC_UNAUTHORIZED_MESSAGE;
+  if (message === NOT_ADMIN_ERR_MSG || /^FORBIDDEN$/i.test(message)) return GENERIC_FORBIDDEN_MESSAGE;
+  if (/^INTERNAL_SERVER_ERROR$/i.test(message) || /^Internal Server Error$/i.test(message)) {
+    return GENERIC_SERVER_ERROR_MESSAGE;
+  }
+  const lower = message.toLowerCase();
+  if (NETWORK_MARKERS.some(marker => lower.includes(marker))) {
+    return GENERIC_SERVICE_UNAVAILABLE_MESSAGE;
+  }
+  return null;
+}
+
 export function looksLikeInternalTechnicalError(message: string): boolean {
   const trimmed = message.trim();
   if (!trimmed) return false;
@@ -70,6 +92,8 @@ export function toUserFacingError(
 ): string {
   const message = (raw ?? "").trim();
   if (!message) return fallback;
+  const known = toKnownUserFacingError(message);
+  if (known) return known;
   if (looksLikeInternalTechnicalError(message)) return fallback;
   return message;
 }

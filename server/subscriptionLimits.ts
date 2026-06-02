@@ -2,8 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   BASIC_PLAN_LIMITS,
-  planAppliesBasicFreeLimits,
+  planHasContentArticleLimit,
+  resolveMaxProjectsForPlan,
   subscriptionLimitMessageFor,
+  subscriptionLimitsExemptForRole,
   type SubscriptionLimitKind,
 } from "@shared/subscriptionLimits";
 import type { SubscriptionPlanId } from "@shared/subscriptionPlans";
@@ -16,7 +18,10 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 export type SubscriptionUsageSnapshot = {
   planId: SubscriptionPlanId;
   limited: boolean;
-  limits: typeof BASIC_PLAN_LIMITS;
+  limits: {
+    maxProjects: number | null;
+    maxContentArticles: number | null;
+  };
   usage: {
     projectCount: number;
     t0DetectionCount: number;
@@ -65,58 +70,77 @@ export async function countContentArticlesForUser(db: Db, userId: number): Promi
   return Number(rows[0]?.count ?? 0);
 }
 
-export async function getSubscriptionUsageSnapshot(db: Db, userId: number): Promise<SubscriptionUsageSnapshot> {
+export async function getSubscriptionUsageSnapshot(
+  db: Db,
+  userId: number,
+  userRole: string,
+): Promise<SubscriptionUsageSnapshot> {
   const planId = await resolveUserSubscriptionPlanIdFromDb(db, userId);
-  const limited = planAppliesBasicFreeLimits(planId);
   const [projectCount, t0DetectionCount, contentArticleCount] = await Promise.all([
     countActiveProjectsForUser(db, userId),
     countT0DetectionsForUser(db, userId),
     countContentArticlesForUser(db, userId),
   ]);
-  const limits = BASIC_PLAN_LIMITS;
+
+  if (subscriptionLimitsExemptForRole(userRole)) {
+    return {
+      planId,
+      limited: false,
+      limits: { maxProjects: null, maxContentArticles: null },
+      usage: { projectCount, t0DetectionCount, contentArticleCount },
+      atLimit: { project: false, t0Detection: false, contentArticle: false },
+    };
+  }
+
+  const maxProjects = resolveMaxProjectsForPlan(planId);
+  const maxContentArticles = planHasContentArticleLimit(planId) ? BASIC_PLAN_LIMITS.maxContentArticles : null;
+
   return {
     planId,
-    limited,
-    limits,
+    limited: maxProjects !== null || maxContentArticles !== null,
+    limits: { maxProjects, maxContentArticles },
     usage: { projectCount, t0DetectionCount, contentArticleCount },
     atLimit: {
-      project: limited && projectCount >= limits.maxProjects,
-      t0Detection: limited && t0DetectionCount >= limits.maxT0Detections,
-      contentArticle: limited && contentArticleCount >= limits.maxContentArticles,
+      project: maxProjects !== null && projectCount >= maxProjects,
+      t0Detection: false,
+      contentArticle:
+        maxContentArticles !== null && contentArticleCount >= maxContentArticles,
     },
   };
 }
 
-function throwSubscriptionLimit(kind: SubscriptionLimitKind): never {
+function throwSubscriptionLimit(kind: SubscriptionLimitKind, planId: SubscriptionPlanId): never {
   throw new TRPCError({
     code: "FORBIDDEN",
-    message: subscriptionLimitMessageFor(kind),
+    message: subscriptionLimitMessageFor(kind, planId),
   });
 }
 
-export async function assertCanCreateProject(db: Db, userId: number): Promise<void> {
+export async function assertCanCreateProject(
+  db: Db,
+  userId: number,
+  userRole: string,
+): Promise<void> {
+  if (subscriptionLimitsExemptForRole(userRole)) return;
   const planId = await resolveUserSubscriptionPlanIdFromDb(db, userId);
-  if (!planAppliesBasicFreeLimits(planId)) return;
+  const maxProjects = resolveMaxProjectsForPlan(planId);
+  if (maxProjects === null) return;
   const projectCount = await countActiveProjectsForUser(db, userId);
-  if (projectCount >= BASIC_PLAN_LIMITS.maxProjects) {
-    throwSubscriptionLimit("project");
+  if (projectCount >= maxProjects) {
+    throwSubscriptionLimit("project", planId);
   }
 }
 
-export async function assertCanRunT0Detection(db: Db, userId: number): Promise<void> {
+export async function assertCanGenerateContent(
+  db: Db,
+  userId: number,
+  userRole: string,
+): Promise<void> {
+  if (subscriptionLimitsExemptForRole(userRole)) return;
   const planId = await resolveUserSubscriptionPlanIdFromDb(db, userId);
-  if (!planAppliesBasicFreeLimits(planId)) return;
-  const t0Count = await countT0DetectionsForUser(db, userId);
-  if (t0Count >= BASIC_PLAN_LIMITS.maxT0Detections) {
-    throwSubscriptionLimit("t0_detection");
-  }
-}
-
-export async function assertCanGenerateContent(db: Db, userId: number): Promise<void> {
-  const planId = await resolveUserSubscriptionPlanIdFromDb(db, userId);
-  if (!planAppliesBasicFreeLimits(planId)) return;
+  if (!planHasContentArticleLimit(planId)) return;
   const articleCount = await countContentArticlesForUser(db, userId);
   if (articleCount >= BASIC_PLAN_LIMITS.maxContentArticles) {
-    throwSubscriptionLimit("content_generation");
+    throwSubscriptionLimit("content_generation", planId);
   }
 }
