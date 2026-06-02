@@ -132,6 +132,7 @@ import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkfl
 import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
+import { ensureInclusionMonitoringRecordForPublishRecord } from "./publishRecordMonitoring";
 import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
 import {
@@ -199,7 +200,6 @@ import { assertContentGenerationRateLimit, assertT0DetectionRateLimit } from "./
 import {
   assertCanCreateProject,
   assertCanGenerateContent,
-  assertCanRunT0Detection,
   getSubscriptionUsageSnapshot,
 } from "./subscriptionLimits";
 import { writeAuditLog } from "./auditLog";
@@ -1302,7 +1302,7 @@ const geoRouter = router({
       await ensureProjectsOwnerUserIdColumnOnce();
       const db = await requireDb();
       const ownerUserId = getCurrentUserId(ctx);
-      await assertCanCreateProject(db, ownerUserId);
+      await assertCanCreateProject(db, ownerUserId, ctx.user!.role);
       let projectId = 0;
       try {
         const inserted = await db.insert(projects).values({ ...input, ownerUserId }).$returningId();
@@ -2731,13 +2731,25 @@ const geoRouter = router({
         ].filter(Boolean).join("\n"),
         publishedAt,
       }).$returningId();
+      const publishRecordId = inserted[0]?.id ?? 0;
       if (input.publishStatus === "published" || input.publishStatus === "link_backfilled") {
         await markGeoArticlePublishedAt(db, article.id, {
           publishedAt,
           publicPath: input.publishUrl.trim(),
         });
+        if (publishRecordId > 0) {
+          await ensureInclusionMonitoringRecordForPublishRecord(db, {
+            projectId: input.projectId,
+            articleId: article.id,
+            publishRecordId,
+            publicUrl: input.publishUrl.trim(),
+            qualityScore: latestScore.totalScore,
+            rawJsonSource: "manual_publish_record",
+            rawJsonCreatedBy: "geo.articles.createManualPublishRecord",
+          });
+        }
       }
-      return { success: true, id: inserted[0]?.id ?? 0 } as const;
+      return { success: true, id: publishRecordId } as const;
     }),
     updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -2780,6 +2792,15 @@ const geoRouter = router({
         await markGeoArticlePublishedAt(db, article.id, {
           publishedAt,
           publicPath: input.publishUrl.trim(),
+        });
+        await ensureInclusionMonitoringRecordForPublishRecord(db, {
+          projectId: input.projectId,
+          articleId: article.id,
+          publishRecordId: input.id,
+          publicUrl: input.publishUrl.trim(),
+          qualityScore: record.qualityScore ?? getGeoArticleMinPassScore(),
+          rawJsonSource: "manual_publish_record",
+          rawJsonCreatedBy: "geo.articles.updateManualPublishRecord",
         });
       }
       return { success: true, id: input.id } as const;
@@ -2872,8 +2893,8 @@ const geoRouter = router({
       .mutation(async ({ ctx, input }) => {
       const userId = getCurrentUserId(ctx);
       const dbForLimit = await requireDb();
-      await assertCanGenerateContent(dbForLimit, userId);
-      await assertContentGenerationRateLimit(userId);
+      await assertCanGenerateContent(dbForLimit, userId, ctx.user!.role);
+      await assertContentGenerationRateLimit(userId, ctx.user!.role);
       const startedAtMs = Date.now();
       let stepStartMs = startedAtMs;
       const stepTimings: GeoArticlesGenerateStepTimings = {};
@@ -3428,18 +3449,26 @@ ${article.markdownContent}`,
         throw new TRPCError({ code: "NOT_FOUND", message: "内容不存在或尚未发布" });
       }
       const project = await getProjectRowConn(db, article.projectId);
+      const projectForPublicBase = {
+        enterpriseName: project.enterpriseName,
+        industry: project.industry,
+        website: project.website,
+        targetCustomers: project.targetCustomers,
+        productIntro: project.productIntro,
+        coreSellingPoints: project.coreSellingPoints,
+      };
       const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, article.projectId)).limit(1);
       const prof = profileRows[0];
       const projectForPublic = prof
         ? {
-            ...project,
+            ...projectForPublicBase,
             brandName: prof.brandName ?? undefined,
             targetCustomer: prof.targetCustomer ?? undefined,
             productDesc: prof.productDesc ?? undefined,
             productServiceIntro: prof.productServiceIntro ?? undefined,
             oneLiner: prof.oneLiner ?? undefined,
           }
-        : project;
+        : projectForPublicBase;
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       return { article, project: projectForPublic, qualityScore: scoreRows[0] ?? null } as const;
     }),
@@ -3815,7 +3844,6 @@ ${article.markdownContent}`,
       .mutation(async ({ ctx, input }) => {
         await requireProjectAccess(ctx, input.projectId);
         const db = await requireDb();
-        await assertCanRunT0Detection(db, getCurrentUserId(ctx));
         await assertT0DetectionRateLimit(input.projectId, {
           id: getCurrentUserId(ctx),
           role: ctx.user!.role,
@@ -4127,7 +4155,7 @@ ${article.markdownContent}`,
   subscription: router({
     usage: protectedProcedure.query(async ({ ctx }) => {
       const db = await requireDb();
-      return getSubscriptionUsageSnapshot(db, getCurrentUserId(ctx));
+      return getSubscriptionUsageSnapshot(db, getCurrentUserId(ctx), ctx.user!.role);
     }),
   }),
 });

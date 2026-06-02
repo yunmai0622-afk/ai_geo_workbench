@@ -5,7 +5,6 @@ import {
   BASIC_PLAN_LIMITS,
   SUBSCRIPTION_LIMIT_CONTENT_MESSAGE,
   SUBSCRIPTION_LIMIT_PROJECT_MESSAGE,
-  SUBSCRIPTION_LIMIT_T0_MESSAGE,
   SUBSCRIPTION_UPGRADE_PATH,
   isSubscriptionLimitMessage,
 } from "../shared/subscriptionLimits";
@@ -15,7 +14,6 @@ const root = path.resolve(import.meta.dirname, "..");
 describe("GEO-V1.1-Pricing-Logic subscription limits", () => {
   it("defines basic plan quotas", () => {
     expect(BASIC_PLAN_LIMITS.maxProjects).toBe(1);
-    expect(BASIC_PLAN_LIMITS.maxT0Detections).toBe(3);
     expect(BASIC_PLAN_LIMITS.maxContentArticles).toBe(10);
   });
 
@@ -25,7 +23,6 @@ describe("GEO-V1.1-Pricing-Logic subscription limits", () => {
 
   it("recognizes subscription limit user messages", () => {
     expect(isSubscriptionLimitMessage(SUBSCRIPTION_LIMIT_PROJECT_MESSAGE)).toBe(true);
-    expect(isSubscriptionLimitMessage(SUBSCRIPTION_LIMIT_T0_MESSAGE)).toBe(true);
     expect(isSubscriptionLimitMessage(SUBSCRIPTION_LIMIT_CONTENT_MESSAGE)).toBe(true);
     expect(isSubscriptionLimitMessage("其它错误")).toBe(false);
   });
@@ -33,7 +30,6 @@ describe("GEO-V1.1-Pricing-Logic subscription limits", () => {
   it("enforces limits in geo routers", () => {
     const routers = fs.readFileSync(path.join(root, "server/routers.ts"), "utf8");
     expect(routers).toContain("assertCanCreateProject");
-    expect(routers).toContain("assertCanRunT0Detection");
     expect(routers).toContain("assertCanGenerateContent");
     expect(routers).toContain('from "./subscriptionLimits"');
     expect(routers).toContain("getSubscriptionUsageSnapshot");

@@ -62,7 +62,11 @@ export class MemoryRateLimiter {
 
 export const geoApiRateLimiter = new MemoryRateLimiter();
 
-export async function assertContentGenerationRateLimit(userId: number): Promise<void> {
+export async function assertContentGenerationRateLimit(
+  userId: number,
+  userRole?: string,
+): Promise<void> {
+  if (userRole === "admin") return;
   const config = await getContentGenerationRateLimitConfig();
   const result = geoApiRateLimiter.check(`content-gen:user:${userId}`, config);
   if (!result.allowed) {
