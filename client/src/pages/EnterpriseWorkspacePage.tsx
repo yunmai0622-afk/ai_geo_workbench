@@ -1,3 +1,4 @@
+import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { GeoScoreWeightExplanationHelp } from "@/components/geo/GeoScoreWeightExplanationHelp";
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { T0ContentGapSuggestionsCard } from "@/components/geo/T0ContentGapSuggestionsCard";
@@ -30,13 +31,17 @@ import { useLocation } from "wouter";
 
 export default function EnterpriseWorkspacePage() {
   const [, setLocation] = useLocation();
-  const { selectedProjectId, selectedProject, enabled, projectsLoading } = useActiveProjectSelection();
+  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } =
+    useActiveProjectSelection();
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
+  const scoreTrendQuery = trpc.geo.scores.recent.useQuery(projectInput, {
+    enabled: Boolean(selectedProjectId),
+  });
 
   useEffect(() => {
     document.title = "项目工作台";
@@ -69,6 +74,17 @@ export default function EnterpriseWorkspacePage() {
     if (!metrics) return [];
     return resolveMainChainSteps(toMainChainProgressInput(metrics));
   }, [metrics]);
+
+  const scoreTrendPoints = useMemo(
+    () =>
+      ((scoreTrendQuery.data ?? []) as { totalScore: number; createdAt?: Date | string | null }[]).map(
+        row => ({
+          totalScore: row.totalScore,
+          createdAt: row.createdAt ?? new Date(0),
+        }),
+      ),
+    [scoreTrendQuery.data],
+  );
 
   const headerCtaPath =
     homeDisplay.mainChainNextAction?.ctaPath ??
@@ -110,6 +126,15 @@ export default function EnterpriseWorkspacePage() {
       ) : stage && metrics && selectedProjectId ? (
         <>
           <WorkspaceDashboardOverviewCards metrics={metrics} />
+
+          <section className="geo-card p-5" data-testid="workspace-geo-score-trend">
+            <GeoScoreTrendChart
+              points={scoreTrendPoints}
+              loading={scoreTrendQuery.isLoading}
+              variant="light"
+              data-testid="workspace-geo-score-trend-chart"
+            />
+          </section>
 
           {metrics.t0ContentGapSuggestions ? (
             <T0ContentGapSuggestionsCard
