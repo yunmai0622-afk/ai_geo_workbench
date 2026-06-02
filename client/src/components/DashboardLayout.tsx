@@ -174,7 +174,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!loading && !user) {
-      document.title = "登录 - GEO增长工作台";
+      document.title = "登录 - GEO 增长工作台";
     }
   }, [loading, user]);
 

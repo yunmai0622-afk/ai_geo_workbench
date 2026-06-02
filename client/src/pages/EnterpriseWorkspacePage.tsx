@@ -51,8 +51,9 @@ export default function EnterpriseWorkspacePage() {
   });
 
   useEffect(() => {
-    document.title = "项目工作台";
-  }, []);
+    const enterpriseName = selectedProject?.enterpriseName?.trim() || "企业";
+    document.title = `${enterpriseName} - 项目工作台`;
+  }, [selectedProject?.enterpriseName]);
 
   useEffect(() => {
     if (!enabled) return;
