@@ -16,13 +16,14 @@ import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
 
 export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: WorkspaceSummaryMetrics | undefined) {
   const enabled = Boolean(projectId);
+  const queryInput = useMemo(() => (projectId ? { projectId } : undefined), [projectId]);
 
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(
-    { projectId: projectId! },
+    queryInput!,
     { enabled },
   );
-  const testRoundsQuery = trpc.geo.testRounds.list.useQuery({ projectId: projectId! }, { enabled });
-  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery({ projectId: projectId! }, { enabled });
+  const testRoundsQuery = trpc.geo.testRounds.list.useQuery(queryInput!, { enabled });
+  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(queryInput!, { enabled });
 
   const monitoring = monitoringQuery.data ?? [];
   const publishRecords = publishRecordsQuery.data ?? [];

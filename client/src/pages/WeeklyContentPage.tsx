@@ -882,6 +882,8 @@ export default function WeeklyContentPage() {
   ]);
 
   const topics = (topicsQuery.data ?? []) as TopicRow[];
+  const topicsById = useMemo(() => new Map(topics.map(topic => [topic.id, topic] as const)), [topics]);
+  const tasksById = useMemo(() => new Map(tasks.map(task => [task.id, task] as const)), [tasks]);
   const taskIdSet = useMemo(() => taskIdSetFromList(tasks.map(t => t.id)), [tasks]);
   const staleTopicCount = useMemo(() => countStaleTopics(topics, taskIdSet), [topics, taskIdSet]);
   const hasStaleTopics = staleTopicCount > 0;
@@ -1144,7 +1146,7 @@ export default function WeeklyContentPage() {
         published: 0,
       };
       for (const topic of topics) {
-        const task = tasks.find(t => t.id === topic.optimizationTaskId);
+        const task = typeof topic.optimizationTaskId === "number" ? tasksById.get(topic.optimizationTaskId) : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         const article = articleByTopicId.get(topic.id);
         const platformKey = article
@@ -1184,7 +1186,7 @@ export default function WeeklyContentPage() {
     });
   }, [
     topics,
-    tasks,
+    tasksById,
     articleByTopicId,
     scoresByArticleId,
     geoContentTaskSource?.linkedQuestion,
@@ -1198,8 +1200,11 @@ export default function WeeklyContentPage() {
     return articles
       .filter(a => typeof a.topicId === "number")
       .map(a => {
-        const topic = topics.find(t => t.id === a.topicId);
-        const task = topic ? tasks.find(t => t.id === topic.optimizationTaskId) : undefined;
+        const topic = typeof a.topicId === "number" ? topicsById.get(a.topicId) : undefined;
+        const task =
+          topic && typeof topic.optimizationTaskId === "number"
+            ? tasksById.get(topic.optimizationTaskId)
+            : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         const q = scoresByArticleId.get(a.id);
         const pass = qualityPasses(a, q);
@@ -1270,8 +1275,8 @@ export default function WeeklyContentPage() {
       });
   }, [
     articles,
-    topics,
-    tasks,
+    topicsById,
+    tasksById,
     scoresByArticleId,
     latestDiagnosisGap,
     geoContentTaskSource,
