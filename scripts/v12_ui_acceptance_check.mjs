@@ -46,6 +46,7 @@ assertContains('首页', sources.home, 'AiPageShell');
 
 for (const item of [
   '企业项目',
+  '项目工作台',
   '品牌资产建档',
   'AI 实测诊断',
   '问题库',
@@ -58,7 +59,9 @@ for (const item of [
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
 }
 assertContains('左侧导航', sources.layout, 'AI 搜索增长系统');
-assertNotContains('左侧导航', sources.layout, 'label: "项目工作台"');
+assertContains('左侧导航', sources.layout, 'title: "增长总览"');
+assertContains('旧资产进展路由', sources.app, 'LegacyAssetProgressRedirect');
+assertNotContains('旧资产进展路由', sources.app, 'ProgressPage');
 for (const item of [
   '总览',
   '内容生成',
@@ -79,6 +82,9 @@ for (const item of [
   '收录排名',
   '付费投稿',
   '资产进展看板',
+  '资产进展',
+  '有效动作',
+  '内容模板库',
   'AI 内容诊断',
   '内容资产生产',
   '资产发布记录',

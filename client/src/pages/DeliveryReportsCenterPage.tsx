@@ -1121,17 +1121,6 @@ export function DeliveryReportsCenterPage() {
           >
             导出 CSV
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className={geoP0Brand.primaryOutline}
-            data-testid="delivery-report-effective-actions-link"
-            onClick={() =>
-              selectedProjectId && setLocation(buildProjectUrl("/effective-actions", selectedProjectId))
-            }
-          >
-            有效动作记录
-          </Button>
         </div>
 
         <P0Section title="本轮完成事项" description="基于本项目中已发生的真实业务动作汇总，不含模拟数据。">

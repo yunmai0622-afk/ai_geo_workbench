@@ -41,7 +41,7 @@ import AiSearchEvidencePage from "./pages/AiSearchEvidencePage";
 import DeliveryReportPublicEvidencePage from "./pages/DeliveryReportPublicEvidencePage";
 import DeliveryReportPublicPage from "./pages/DeliveryReportPublicPage";
 import DeliveryReportSharePage from "./pages/DeliveryReportSharePage";
-import ProgressPage from "./pages/ProgressPage";
+import LegacyAssetProgressRedirect from "./components/LegacyAssetProgressRedirect";
 import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
 import EffectiveActionsPage from "./pages/EffectiveActionsPage";
@@ -102,7 +102,10 @@ function PrivateRoutes() {
         </Route>
         <Route path="/ai-diagnosis" component={AiDiagnosisFlowPage} />
         <Route path="/weekly" component={WeeklyContentPage} />
-        <Route path="/progress" component={ProgressPage} />
+        <Route path="/progress" component={LegacyAssetProgressRedirect} />
+        <Route path="/asset-progress" component={LegacyAssetProgressRedirect} />
+        <Route path="/assets-progress" component={LegacyAssetProgressRedirect} />
+        <Route path="/asset-dashboard" component={LegacyAssetProgressRedirect} />
         <Route path="/content-generation">
           <Redirect to="/weekly" />
         </Route>

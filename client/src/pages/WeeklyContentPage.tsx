@@ -2842,24 +2842,6 @@ export default function WeeklyContentPage() {
         </div>
       ) : null}
 
-      <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm" data-testid="weekly-advanced-config">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-gray-900">高级配置</h2>
-            <p className="text-xs text-gray-500">内容模板库供策略负责人维护；普通执行可忽略该项。</p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full md:w-auto"
-            data-testid="weekly-open-templates-entry"
-            onClick={() => setLocation(buildProjectUrl("/templates", selectedProjectId))}
-          >
-            打开内容模板库
-          </Button>
-        </div>
-      </section>
-
       {selectedProjectId && editorArticle ? (
         <ArticleAssetEditorSheet
           open={editorOpen}

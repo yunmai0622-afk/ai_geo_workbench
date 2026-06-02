@@ -18,9 +18,10 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    expect(layoutSource).not.toContain('title: "增长总览"');
+    expect(layoutSource).toContain('title: "增长总览"');
     for (const label of [
       "企业项目",
+      "项目工作台",
       "品牌资产建档",
       "AI 实测诊断",
       "问题库",
@@ -44,10 +45,12 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(appSource).toContain('path="/articles"');
     expect(appSource).toMatch(/path="\/articles"[\s\S]*Redirect to="\/weekly"/);
     expect(appSource).toMatch(/path="\/tasks"[\s\S]*Redirect to="\/weekly"/);
-    expect(appSource).toContain("ProgressPage");
+    expect(appSource).toContain("LegacyAssetProgressRedirect");
     expect(appSource).toContain("OnboardingPage");
     expect(appSource).toContain('path="/weekly"');
     expect(appSource).toContain('path="/progress"');
+    expect(appSource).toMatch(/path="\/progress"[\s\S]*LegacyAssetProgressRedirect/);
+    expect(appSource).not.toContain("ProgressPage");
     expect(appSource).toContain('path="/legacy/onboarding"');
     expect(appSource).toContain('path="/onboarding" component={OnboardingPage}');
     expect(appSource).toContain("profileHasBrand");

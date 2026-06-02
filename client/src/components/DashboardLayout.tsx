@@ -82,6 +82,18 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
     ],
   },
   {
+    title: "增长总览",
+    items: [
+      {
+        icon: Sparkles,
+        label: "项目工作台",
+        desc: "查看项目主链进展与下一步动作",
+        path: "/workspace",
+        aliases: ["/workspace", "/flow"],
+      },
+    ],
+  },
+  {
     title: "GEO 执行",
     items: [
       {

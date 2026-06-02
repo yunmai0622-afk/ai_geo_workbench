@@ -21,13 +21,13 @@ describe("C3-D global AI product UI", () => {
       read("client/src/components/V1WorkbenchOverview.tsx"),
       read("client/src/pages/V12FlowPages.tsx"),
       read("client/src/pages/WeeklyContentPage.tsx"),
-      read("client/src/pages/ProgressPage.tsx"),
+      read("client/src/pages/EnterpriseWorkspacePage.tsx"),
     ].join("\n");
     for (const text of [
       "AI 搜索增长总览",
       "内容诊断",
       "平台化内容资产",
-      "资产进展看板",
+      "项目工作台",
       "客户交付报告",
     ]) {
       expect(pages).toContain(text);
