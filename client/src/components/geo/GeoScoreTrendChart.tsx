@@ -126,8 +126,9 @@ export function GeoScoreTrendChart({
             <li
               key={`${formatGeoScoreTrendDateLabel(p.createdAt)}-${i}`}
               className="flex min-w-[5.5rem] items-center gap-2 text-xs"
+              title={`${formatDiagnosticTimeLabel(p.createdAt)} · ${p.totalScore} 分`}
             >
-              <span className="h-1.5 flex-1 rounded-full bg-gray-200" style={{ maxWidth: "4rem" }} title={`${p.totalScore} 分`}>
+              <span className="h-1.5 flex-1 rounded-full bg-gray-200" style={{ maxWidth: "4rem" }} aria-hidden>
                 <span
                   className="block h-full rounded-full"
                   style={{
