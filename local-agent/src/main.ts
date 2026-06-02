@@ -236,7 +236,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
-  stopPolling();
+  stopPolling({ log: false });
   httpServer?.close();
 });
 
@@ -352,7 +352,7 @@ ipcMain.handle("agent:saveConfig", async (_e, patch: Record<string, unknown>) =>
     maxTasksPerCycle: typeof patch.maxTasksPerCycle === "number" ? patch.maxTasksPerCycle : undefined,
     launchAtLogin: typeof patch.launchAtLogin === "boolean" ? patch.launchAtLogin : undefined,
   });
-  if (next.autoStartPolling) startPolling();
+  if (next.autoStartPolling) startPolling({ restartReason: "配置已更新" });
   else stopPolling();
   broadcastState();
   return { ...next, dataDir: DATA_DIR };
@@ -401,6 +401,20 @@ ipcMain.handle("agent:openGeoWeb", async (_e, target: GeoWebNavigationTarget) =>
     const url = resolveGeoWebUrl(target);
     await shell.openExternal(url);
     return { ok: true, url };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, message };
+  }
+});
+
+ipcMain.handle("agent:openExternalUrl", async (_e, url: string) => {
+  const href = typeof url === "string" ? url.trim() : "";
+  if (!/^https?:\/\//i.test(href)) {
+    return { ok: false, message: "下载链接无效" };
+  }
+  try {
+    await shell.openExternal(href);
+    return { ok: true, url: href };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, message };

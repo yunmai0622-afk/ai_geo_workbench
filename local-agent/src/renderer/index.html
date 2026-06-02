@@ -13,6 +13,7 @@
         <p class="subtitle">管理本机发布账号，自动接收并执行 GEO 内容发布任务</p>
       </div>
       <div class="header-right">
+        <div id="update-notice" class="update-notice" hidden></div>
         <span id="hdr-version" class="badge">v—</span>
         <span id="hdr-status" class="badge status-badge" data-status="unknown">检测中</span>
       </div>
@@ -130,7 +131,7 @@
             <button type="button" id="btn-copy-logs">复制日志（含技术详情）</button>
           </div>
           <label class="log-select-label">选择任务 <select id="log-task-select"></select></label>
-          <pre id="log-detail" class="log-detail log-detail-customer is-empty">暂无任务日志，请在发布任务页选择一条任务查看执行详情</pre>
+          <pre id="log-detail" class="log-detail log-detail-customer is-empty">暂无任务日志，选择一条发布任务查看执行详情</pre>
           <details class="log-raw-fold">
             <summary>查看原始技术日志</summary>
             <pre id="log-detail-raw" class="log-detail log-detail-raw is-empty">选择任务后可查看原始技术日志</pre>

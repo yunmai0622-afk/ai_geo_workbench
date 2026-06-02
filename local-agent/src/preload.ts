@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld("agentApi", {
   exportDiagnostics: () => ipcRenderer.invoke("agent:exportDiagnostics"),
   openGeoWeb: (target: "contentProduction" | "publishRecords" | "platformAccounts") =>
     ipcRenderer.invoke("agent:openGeoWeb", target),
+  openExternalUrl: (url: string) => ipcRenderer.invoke("agent:openExternalUrl", url),
   captureWindowPng: (filename: string) => ipcRenderer.invoke("agent:captureWindowPng", filename),
   onStateChanged: (cb: () => void) => {
     const handler = () => cb();

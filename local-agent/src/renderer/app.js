@@ -26,8 +26,7 @@ let dashboard = null;
 let selectedLogTaskId = null;
 let selectedLogDetail = null;
 
-const LOG_DETAIL_EMPTY_TEXT =
-  "暂无任务日志，请在发布任务页选择一条任务查看执行详情";
+const LOG_DETAIL_EMPTY_TEXT = "暂无任务日志，选择一条发布任务查看执行详情";
 const LOG_DETAIL_RAW_EMPTY_TEXT = "选择任务后可查看原始技术日志";
 const LIVE_LOG_EMPTY_TEXT = "暂无实时输出";
 
@@ -283,9 +282,34 @@ function computePrepSteps(d) {
   ];
 }
 
+function renderUpdateNotice(d) {
+  const el = $("#update-notice");
+  if (!el) return;
+  const notice = d?.updateNotice;
+  if (!notice) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML = `
+    <p class="update-notice-title">有新版本可用，建议更新客户端</p>
+    <p class="update-notice-desc">当前 v${escapeHtml(notice.clientVersion)}，最新 v${escapeHtml(notice.manifestVersion)}</p>
+    <button type="button" class="update-notice-download" id="btn-download-update">下载最新客户端</button>
+  `;
+  const btn = $("#btn-download-update");
+  if (btn) {
+    btn.onclick = () =>
+      void window.agentApi.openExternalUrl(notice.downloadUrl).then(r => {
+        if (!r.ok) appendLiveLog(r.message ?? "打开下载链接失败", true);
+      });
+  }
+}
+
 /* ===== Render: Overview ===== */
 function renderOverview() {
   const d = dashboard;
+  renderUpdateNotice(d);
   const overall = computeOverallStatus(d);
 
   // Header badge

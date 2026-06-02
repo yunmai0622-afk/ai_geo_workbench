@@ -138,31 +138,58 @@ export async function pollOnce(): Promise<{ processed: number; message: string }
   }
 }
 
-export function startPolling(): void {
-  stopPolling();
-  const cfg = readAgentConfig();
-  writeAgentConfig({ autoStartPolling: true });
-  state.isPolling = true;
-  const tick = () => {
+export type StartPollingOptions = {
+  /** 轮询已在运行时再次开启，记录中断原因（如连接异常、配置变更） */
+  restartReason?: string;
+};
+
+function createPollTick() {
+  return () => {
     void pollOnce().catch(e => {
       const msg = e instanceof Error ? e.message : String(e);
       setConnectionResult(false, msg);
       log(msg, true);
     });
   };
-  tick();
-  pollTimer = setInterval(tick, cfg.pollIntervalSeconds * 1000);
-  log(`已开启轮询（每 ${cfg.pollIntervalSeconds}s，每轮最多 ${cfg.maxTasksPerCycle} 条）`);
 }
 
-export function stopPolling(): void {
+export function startPolling(options?: StartPollingOptions): void {
+  const wasActive = pollTimer !== null;
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  const cfg = readAgentConfig();
+  writeAgentConfig({ autoStartPolling: true });
+  state.isPolling = true;
+  const tick = createPollTick();
+  tick();
+  pollTimer = setInterval(tick, cfg.pollIntervalSeconds * 1000);
+  const intervalHint = `（每 ${cfg.pollIntervalSeconds}s，每轮最多 ${cfg.maxTasksPerCycle} 条）`;
+  if (options?.restartReason && wasActive) {
+    log(`${options.restartReason}，正在重连...${intervalHint}`);
+  } else {
+    log(`已开启轮询${intervalHint}`);
+  }
+}
+
+export function stopPolling(options?: { log?: boolean }): void {
+  const wasActive = pollTimer !== null;
   if (pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
   }
   writeAgentConfig({ autoStartPolling: false });
   state.isPolling = false;
-  log("已停止轮询");
+  if (options?.log !== false && wasActive) {
+    log("已停止轮询");
+  }
+}
+
+/** 连接异常等场景下重启轮询，并输出原因 */
+export function restartPolling(reason: string): void {
+  if (!state.isPolling && !pollTimer) return;
+  startPolling({ restartReason: reason });
 }
 
 export function resumePollingIfEnabled(): void {

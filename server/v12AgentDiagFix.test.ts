@@ -22,7 +22,7 @@ describe("GEO-V1.1-AgentDiagFix", () => {
 
   it("log detail shows customer empty hint", () => {
     const html = read("local-agent/src/renderer/index.html");
-    expect(html).toContain("暂无任务日志，请在发布任务页选择一条任务查看执行详情");
+    expect(html).toContain("暂无任务日志，选择一条发布任务查看执行详情");
     expect(html).toContain("log-detail-customer is-empty");
   });
 

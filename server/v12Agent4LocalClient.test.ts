@@ -47,7 +47,7 @@ describe("Agent-4 local publish client productization", () => {
     const appJs = read("local-agent/src/renderer/app.js");
     expect(appJs).toContain("deleteProfile");
     expect(appJs).toContain("最后检查：");
-    expect(appJs).toContain("暂无任务日志，请在发布任务页选择一条任务查看执行详情");
+    expect(appJs).toContain("暂无任务日志，选择一条发布任务查看执行详情");
   });
 
   it("server exposes agent.listTasks for client queue", () => {

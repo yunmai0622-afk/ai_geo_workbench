@@ -8,6 +8,7 @@ import { listRecentTaskLogs } from "./taskLogStore";
 import { DATA_DIR, readAccounts } from "./storage";
 import { formatGeoServerConnectionError } from "./localAgentServerUrl";
 import { listAgentTasks, testServerConnection } from "./taskClient";
+import { fetchAgentUpdateNotice } from "./agentUpdateCheck";
 
 const LOCAL_HTTP_BASE = `http://${LOCAL_AGENT_HOST}:${LOCAL_AGENT_PORT}`;
 
@@ -86,6 +87,7 @@ export async function buildDashboard() {
   const localHttp = await probeLocalHttp();
 
   const localHttpStartupError = getLocalHttpStartupError();
+  const updateNotice = await fetchAgentUpdateNotice();
 
   return {
     appVersion: AGENT_VERSION,
@@ -117,7 +119,7 @@ export async function buildDashboard() {
           taskId: recentFailed.id,
           platform: recentFailed.platform,
           status: recentFailed.status,
-          message: recentFailed.agentErrorMessage ?? recentFailed.errorMessage ?? null,
+          message: recentFailed.agentErrorMessage ?? null,
           createdAt: recentFailed.createdAt,
           agentFinishedAt: recentFailed.agentFinishedAt,
         }
@@ -125,6 +127,7 @@ export async function buildDashboard() {
     accounts,
     serverTasks: serverTasks?.tasks ?? [],
     localTaskLogs: localLogs,
+    updateNotice,
     platformInfo: {
       platform: process.platform,
       arch: process.arch,
