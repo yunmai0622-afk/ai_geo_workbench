@@ -6,6 +6,7 @@ import { workspaceCtaUrl, type WorkspaceStageDefinition } from "@shared/workspac
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { resolveProjectTopBarPresentation } from "@/lib/projectWorkspaceTopBar";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 
 type Props = {
@@ -28,6 +29,7 @@ export function ProjectWorkspaceTopBar({
   const [location, setLocation] = useLocation();
   const pathname = location.split("?")[0] || location;
   const pageHelpId = resolvePageUsageHelpId(pathname);
+  const topBar = resolveProjectTopBarPresentation(stageLabel, ctaStage);
 
   if (!projectId) {
     return (
@@ -72,16 +74,16 @@ export function ProjectWorkspaceTopBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 sm:ml-auto md:gap-4">
-        {stageLabel ? (
-          <span className={stageBadgeClass(stageLabel)} data-testid="project-topbar-stage">
-            {stageLabel}
+        {topBar.stageBadgeLabel ? (
+          <span className={stageBadgeClass(topBar.stageBadgeLabel)} data-testid="project-topbar-stage">
+            {topBar.stageBadgeLabel}
           </span>
         ) : null}
         {pageHelpId ? <PageUsageHelpButton helpId={pageHelpId} testId={`page-usage-help-${pageHelpId}`} /> : null}
       </div>
 
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
-        {ctaStage ? (
+        {ctaStage && topBar.actionLabel ? (
           <Button
             type="button"
             size="sm"
@@ -89,7 +91,7 @@ export function ProjectWorkspaceTopBar({
             data-testid="project-topbar-cta"
             onClick={() => setLocation(workspaceCtaUrl(projectId, ctaStage))}
           >
-            {ctaStage.ctaLabel}
+            {topBar.actionLabel}
             <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
           </Button>
         ) : null}

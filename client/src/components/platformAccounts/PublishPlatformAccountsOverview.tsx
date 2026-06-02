@@ -54,7 +54,9 @@ export function PublishPlatformAccountsOverview({
           正在加载账号绑定状态…
         </div>
       ) : accountsQuery.isError ? (
-        <p className="mt-4 text-sm text-red-600">账号状态加载失败，请刷新页面后重试。</p>
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+          暂未读取到账号绑定状态，你仍可继续填写建档资料；稍后可刷新页面或在本地客户端完成绑定。
+        </p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full text-sm" data-testid="publish-platform-accounts-table">

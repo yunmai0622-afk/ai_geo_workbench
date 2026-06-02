@@ -34,7 +34,9 @@ export function PlatformStatusOverview({ projectId, className }: Props) {
           正在加载平台状态…
         </div>
       ) : accountsQuery.isError ? (
-        <p className="mt-4 text-sm text-red-600">平台状态加载失败，请刷新后重试。</p>
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+          暂未读取到平台状态，不影响其他建档操作。
+        </p>
       ) : (
         <ul
           className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"

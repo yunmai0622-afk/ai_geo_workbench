@@ -28,7 +28,7 @@ import {
   ENTERPRISE_INDUSTRY_OPTIONS,
   resolveIndustryFromStored,
 } from "@shared/enterpriseProfileIndustry";
-import { toUserFacingErrorFromUnknown, toUserFacingQueryError } from "@shared/userFacingErrors";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { evaluateEnterpriseProfileCompletenessFromForm } from "@shared/enterpriseProfileCompleteness";
@@ -674,8 +674,7 @@ export default function AssetCenterPage() {
       : "待完善";
 
   const loading = projectsLoading || isLoading;
-  const queryError = toUserFacingQueryError(summaryError?.message);
-  const hasBlockingLoadError = Boolean(queryError && !summaryData);
+  const summaryLoadFailed = Boolean(summaryError && !summaryData && isFetched);
   const saving =
     upsertProfile.isPending ||
     createCustomerCase.isPending ||
@@ -783,21 +782,23 @@ export default function AssetCenterPage() {
           <p className="text-sm text-gray-400">正在加载…</p>
         </div>
       ) : null}
-      {hasBlockingLoadError ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p>{queryError}</p>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-8 border-amber-300 bg-white px-3 text-xs text-amber-900 hover:bg-amber-100"
-              onClick={() => void refreshSummary()}
-              disabled={loading}
-            >
-              重新加载
-            </Button>
-          </div>
-        </div>
+      {summaryLoadFailed ? (
+        <p
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="status"
+          data-testid="enterprise-profile-summary-load-hint"
+        >
+          历史建档数据暂未同步，你仍可填写并保存；保存成功后会自动刷新。
+          <Button
+            type="button"
+            variant="link"
+            className="ml-1 h-auto p-0 text-amber-900 underline"
+            onClick={() => void refreshSummary()}
+            disabled={loading}
+          >
+            重试加载
+          </Button>
+        </p>
       ) : null}
       {message ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{message}</div>

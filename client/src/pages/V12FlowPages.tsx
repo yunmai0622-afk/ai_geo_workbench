@@ -1046,6 +1046,9 @@ export function AiDiagnosisFlowPage() {
   const pageError = customerErrorMessage(
     assetSummaryQuery.error?.message || questionsQuery.error?.message || analysisQuery.error?.message || scoreQuery.error?.message || tasksQuery.error?.message,
   );
+  const hasDiagnosisFirstScreen =
+    analyses.length > 0 || Boolean(scoreQuery.data) || Boolean(t0ResultsDisplay);
+  const showDiagnosisLoadHint = Boolean(pageError) && !hasDiagnosisFirstScreen;
   const canOperate = Boolean(selectedProjectId && hasProfile);
   const complete = analyses.length > 0 && Boolean(scoreQuery.data) && tasks.length > 0;
   const [gapsExpanded, setGapsExpanded] = useState(false);
@@ -1414,24 +1417,6 @@ export function AiDiagnosisFlowPage() {
         </p>
       </div>
 
-      <FirstUseHintBanner
-        storageKey={FIRST_USE_HINT_KEYS.aiDiagnosis}
-        message="点击「启动T0基线检测」开始检测AI是否认识你的品牌"
-        data-testid="first-use-hint-ai-diagnosis"
-      />
-
-      {/* --- 诊断状态 + 最近实测时间 --- */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-          complete ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-          analyses.length > 0 ? "bg-blue-50 text-blue-700 border border-blue-200" :
-          "bg-gray-100 text-gray-600 border border-gray-200"
-        }`}>
-          {complete ? "诊断已完成" : analyses.length > 0 ? "部分完成" : "未诊断"}
-        </span>
-        <span className="text-xs text-gray-500">最近实测：{lastDiagnosisLabel}</span>
-      </div>
-
       {(analyses.length > 0 || scoreQuery.data || t0ResultsDisplay) && (
         <div
           className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-white to-white p-5 shadow-md sm:p-6"
@@ -1507,6 +1492,50 @@ export function AiDiagnosisFlowPage() {
           去生成内容资产
         </Button>
       </div>
+
+      <FirstUseHintBanner
+        storageKey={FIRST_USE_HINT_KEYS.aiDiagnosis}
+        message="点击「启动T0基线检测」开始检测AI是否认识你的品牌"
+        data-testid="first-use-hint-ai-diagnosis"
+      />
+
+      {/* --- 诊断状态 + 最近实测时间 --- */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+          complete ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+          analyses.length > 0 ? "bg-blue-50 text-blue-700 border border-blue-200" :
+          "bg-gray-100 text-gray-600 border border-gray-200"
+        }`}>
+          {complete ? "诊断已完成" : analyses.length > 0 ? "部分完成" : "未诊断"}
+        </span>
+        <span className="text-xs text-gray-500">最近实测：{lastDiagnosisLabel}</span>
+      </div>
+
+      {showDiagnosisLoadHint ? (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="status"
+          data-testid="ai-diagnosis-load-hint"
+        >
+          <p>{pageError}</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+            onClick={() => {
+              void Promise.all([
+                questionsQuery.refetch(),
+                assetSummaryQuery.refetch(),
+                analysisQuery.refetch(),
+                scoreQuery.refetch(),
+                tasksQuery.refetch(),
+              ]);
+            }}
+          >
+            重试加载
+          </Button>
+        </div>
+      ) : null}
 
       {/* --- 核心指标卡 --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1586,30 +1615,13 @@ export function AiDiagnosisFlowPage() {
       )}
 
       {/* --- 操作状态提示 --- */}
-      {(message || error || pageError) && (
-        <div className={`rounded-xl border px-4 py-3 text-sm ${
-          (error || pageError) ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-        }`}>
-          {error || pageError || message}
-          {(error || pageError) ? (
-            <div className="mt-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  void Promise.all([
-                    questionsQuery.refetch(),
-                    assetSummaryQuery.refetch(),
-                    analysisQuery.refetch(),
-                    scoreQuery.refetch(),
-                    tasksQuery.refetch(),
-                  ]);
-                }}
-              >
-                重试加载
-              </Button>
-            </div>
-          ) : null}
+      {(message || error) && (
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${
+            error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          {error || message}
         </div>
       )}
 
@@ -1736,7 +1748,7 @@ export function AiDiagnosisFlowPage() {
       <details
         className="group rounded-xl border border-indigo-100 bg-white shadow-sm"
         data-testid="ai-diagnosis-t0-baseline"
-        open={isT0Running || t0StartingMutation}
+        open={Boolean(isT0Running || t0StartingMutation)}
       >
         <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
