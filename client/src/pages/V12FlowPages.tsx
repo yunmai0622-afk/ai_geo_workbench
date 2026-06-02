@@ -79,7 +79,6 @@ import {
   type T0AiEngineId,
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
-import type { TestRoundSummary } from "@shared/retestComparisonDisplay";
 import { T0DiagnosisVisualizationPanel } from "@/components/diagnosis/T0DiagnosisVisualizationPanel";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
@@ -280,16 +279,7 @@ type ReportLike = {
 };
 
 function useProjectSelection() {
-  const selection = useActiveProjectSelection();
-  const projects = useMemo(
-    () => filterListWithNumericId(selection.projects) as ProjectOption[],
-    [selection.projects],
-  );
-  const selectedProject = useMemo(
-    () => projects.find(p => p?.id === selection.selectedProjectId),
-    [projects, selection.selectedProjectId],
-  );
-  return { ...selection, projects, selectedProject };
+  return useActiveProjectSelection();
 }
 
 function requireValidProjectId(selectedProjectId: number | undefined): number {
@@ -298,36 +288,6 @@ function requireValidProjectId(selectedProjectId: number | undefined): number {
     throw new Error("项目未选择");
   }
   return pid;
-}
-
-function hasNumericId<T extends { id?: unknown }>(
-  value: T | null | undefined,
-): value is T & { id: number } {
-  return value != null && typeof value?.id === "number";
-}
-
-function filterListWithNumericId<T extends { id?: unknown }>(
-  rows: Array<T | null | undefined> | null | undefined,
-): Array<T & { id: number }> {
-  return (rows ?? []).filter(hasNumericId);
-}
-
-function filterTestRounds(
-  rows: Array<TestRoundSummary | null | undefined> | null | undefined,
-): TestRoundSummary[] {
-  return (rows ?? []).filter(
-    (round): round is TestRoundSummary =>
-      round != null &&
-      typeof round?.id === "string" &&
-      round?.id.length > 0 &&
-      typeof round.roundType === "string",
-  );
-}
-
-function filterAiTestRuns<T extends { questionId?: unknown }>(
-  rows: Array<T | null | undefined> | null | undefined,
-): T[] {
-  return (rows ?? []).filter((run): run is T => run != null && typeof run.questionId === "number");
 }
 
 function InfoCard({ title, desc, value }: { title: string; desc: string; value?: string }) {
@@ -941,7 +901,7 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
-  const testRounds = filterTestRounds(testRoundsQuery.data);
+  const testRounds = testRoundsQuery.data ?? [];
   const runningT0Round = testRounds.find(
     round => round.roundType === "T0_BASELINE" && round.status === "running",
   );
@@ -955,9 +915,9 @@ export function AiDiagnosisFlowPage() {
     AiTaskProgressErrorCategory | undefined
   >();
   const diagnosisProgress = useAiTaskStagedProgress({ stages: AI_DIAGNOSIS_PROGRESS_STAGES });
-  const questions = filterListWithNumericId(questionsQuery.data);
-  const analyses = filterListWithNumericId(analysisQuery.data);
-  const tasks = filterListWithNumericId(tasksQuery.data);
+  const questions = questionsQuery.data ?? [];
+  const analyses = analysisQuery.data ?? [];
+  const tasks = tasksQuery.data ?? [];
   const profile = assetSummaryQuery.data?.profile;
   const hasProfile = Boolean(profile);
   const targetQuestions = questions.filter(q => Number(q.enabled) !== 0 && q.questionType === "指定问题");
@@ -1021,10 +981,8 @@ export function AiDiagnosisFlowPage() {
       enabled: enabled && Boolean(selectedProjectId && visualizationRoundId && !canReuseVisualizationRuns),
     },
   );
-  const t0Runs = filterAiTestRuns(t0RunsQuery.data);
-  const visualizationRuns = canReuseVisualizationRuns
-    ? t0Runs
-    : filterAiTestRuns(vizRunsQuery.data);
+  const t0Runs = t0RunsQuery.data ?? [];
+  const visualizationRuns = canReuseVisualizationRuns ? t0Runs : (vizRunsQuery.data ?? []);
   const visualizationQuestionTypeById = useMemo(() => {
     if (canReuseVisualizationRuns) return t0QuestionTypeById;
     const map = new Map<number, string>();
@@ -1193,7 +1151,7 @@ export function AiDiagnosisFlowPage() {
       const result = await generateTargetQuestionsMutation.mutateAsync({ projectId: selectedProjectId });
       await utils.geo.questions.list.invalidate({ projectId: selectedProjectId });
       const refetchResult = await questionsQuery.refetch();
-      const refreshed = filterListWithNumericId(refetchResult.data);
+      const refreshed = refetchResult.data ?? [];
       const readyTargets = refreshed.filter(q => Number(q.enabled) !== 0 && q.questionType === "指定问题");
       const genHint = buildTargetQuestionGenerateMessage(result);
       if (readyTargets.length === 0) {
@@ -1979,10 +1937,10 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   const assetSummary = assetSummaryQuery.data;
   const hasProfile = Boolean(assetSummary?.profile);
   const assetSources = (assetSummary?.assetSources ?? []) as Array<{ title?: string | null; sourceType?: string | null; contentText?: string | null; isPublic?: number | boolean | null }>;
-  const analyses = filterListWithNumericId(analysisQuery.data) as DiagnosisAnalysisRow[];
-  const tasks = filterListWithNumericId(tasksQuery.data) as TaskLike[];
-  const topics = filterListWithNumericId(topicsQuery.data) as TopicLike[];
-  const articles = filterListWithNumericId(articlesQuery.data) as ArticleLike[];
+  const analyses = (analysisQuery.data ?? []) as DiagnosisAnalysisRow[];
+  const tasks = (tasksQuery.data ?? []) as TaskLike[];
+  const topics = (topicsQuery.data ?? []) as TopicLike[];
+  const articles = (articlesQuery.data ?? []) as ArticleLike[];
   const scores = (scoresQuery.data ?? []) as QualityScoreLike[];
   const articlesSorted = useMemo(() => {
     return [...articles].sort((a, b) => {
@@ -2229,7 +2187,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
     try {
       await generateTopics.mutateAsync({ projectId });
       const refreshedTopics = await topicsQuery.refetch();
-      const refreshed = filterListWithNumericId(refreshedTopics.data) as TopicLike[];
+      const refreshed = (refreshedTopics.data ?? []) as TopicLike[];
       const nextTopic = refreshed.find(topic => topic.optimizationTaskId && contentPlan.taskIds.includes(topic.optimizationTaskId)) ?? refreshed[0];
       if (!nextTopic?.id) throw new Error("没有可用于生成文章的选题，请先完成 内容诊断和优化任务。");
       startTransition(() => setSelectedTopicId(nextTopic?.id));

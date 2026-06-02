@@ -132,6 +132,13 @@ import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
+import {
+  filterAiTestRunRows,
+  filterRoundQuestionLinks,
+  filterRowsWithNumericId,
+  filterTestRoundRows,
+  sanitizeTestRoundRow,
+} from "./trpcRowSanitize";
 import { emitT1RetestCompleteNotification } from "./systemNotifications";
 import {
   getQuestionTemplateById,
@@ -762,14 +769,14 @@ const geoAssetRouter = router({
         nextAction,
         riskReminders,
         counts,
-        assetSources: sources,
-      customerCases: cases,
-      competitors,
-      complianceRules: rules,
-      styleProfiles: styles,
-      publishStrategies: strategies,
-      platformAuthorizations: authorizations,
-    } as const;
+        assetSources: filterRowsWithNumericId(sources),
+        customerCases: filterRowsWithNumericId(cases),
+        competitors: filterRowsWithNumericId(competitors),
+        complianceRules: filterRowsWithNumericId(rules),
+        styleProfiles: filterRowsWithNumericId(styles),
+        publishStrategies: filterRowsWithNumericId(strategies),
+        platformAuthorizations: filterRowsWithNumericId(authorizations),
+      } as const;
   }),
   upsertProfile: protectedProcedure.input(enterpriseProfileInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
@@ -1269,11 +1276,12 @@ const geoRouter = router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const db = await requireDb();
       const userId = getCurrentUserId(ctx);
-      return db
+      const rows = await db
         .select()
         .from(projects)
         .where(and(eq(projects.ownerUserId, userId), isNull(projects.archivedAt)))
         .orderBy(desc(projects.createdAt));
+      return filterRowsWithNumericId(rows);
     }),
     archive: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -1340,7 +1348,12 @@ const geoRouter = router({
       const db = await requireDb();
       if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
-      return db.select().from(questions).where(eq(questions.projectId, input.projectId)).orderBy(desc(questions.createdAt));
+      const rows = await db
+        .select()
+        .from(questions)
+        .where(eq(questions.projectId, input.projectId))
+        .orderBy(desc(questions.createdAt));
+      return filterRowsWithNumericId(rows);
     }),
     create: protectedProcedure.input(questionInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -1570,7 +1583,9 @@ const geoRouter = router({
         db.select({ id: aiResponses.id, questionId: aiResponses.questionId, questionText: aiResponses.questionText }).from(aiResponses).where(eq(aiResponses.projectId, input.projectId)),
         db.select({ id: questions.id, questionText: questions.questionText }).from(questions).where(eq(questions.projectId, input.projectId)),
       ]);
-      return attachQuestionTextToAnalyses(rows.map(resolveEffectiveAnalysisResult), responseRows, questionRows);
+      return filterRowsWithNumericId(
+        attachQuestionTextToAnalyses(rows.map(resolveEffectiveAnalysisResult), responseRows, questionRows),
+      );
     }),
     run: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const startedAtMs = Date.now();
@@ -2021,7 +2036,12 @@ const geoRouter = router({
       const db = await requireDb();
       if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
-      return db.select().from(optimizationTasks).where(eq(optimizationTasks.projectId, input.projectId)).orderBy(desc(optimizationTasks.createdAt));
+      const rows = await db
+        .select()
+        .from(optimizationTasks)
+        .where(eq(optimizationTasks.projectId, input.projectId))
+        .orderBy(desc(optimizationTasks.createdAt));
+      return filterRowsWithNumericId(rows);
     }),
     generate: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -2357,7 +2377,12 @@ const geoRouter = router({
         const db = await requireDb();
         if (!input.projectId) return [];
         await requireProjectAccess(ctx, input.projectId);
-        return db.select().from(geoArticleTopics).where(eq(geoArticleTopics.projectId, input.projectId)).orderBy(desc(geoArticleTopics.createdAt));
+        const rows = await db
+          .select()
+          .from(geoArticleTopics)
+          .where(eq(geoArticleTopics.projectId, input.projectId))
+          .orderBy(desc(geoArticleTopics.createdAt));
+        return filterRowsWithNumericId(rows);
       }),
       generate: protectedProcedure.input(z.object({
         projectId: z.number().int().positive(),
@@ -2471,7 +2496,8 @@ const geoRouter = router({
           },
         };
       });
-      return enrichArticlesWithGapLink(db, input.projectId, mapped);
+      const enriched = await enrichArticlesWithGapLink(db, input.projectId, mapped);
+      return filterRowsWithNumericId(enriched);
     }),
     lifecycleTimeline: protectedProcedure
       .input(z.object({ articleId: z.number().int().positive() }))
@@ -3734,11 +3760,12 @@ ${article.markdownContent}`,
       .query(async ({ ctx, input }) => {
         const db = await requireDb();
         await requireProjectAccess(ctx, input.projectId);
-        return db
+        const rows = await db
           .select()
           .from(testRounds)
           .where(eq(testRounds.projectId, input.projectId))
           .orderBy(desc(testRounds.createdAt));
+        return filterTestRoundRows(rows);
       }),
     get: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive(), id: z.string().uuid() }))
@@ -3748,7 +3775,11 @@ ${article.markdownContent}`,
         if (round.projectId !== input.projectId) {
           throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
         }
-        return round;
+        const sanitized = sanitizeTestRoundRow(round);
+        if (!sanitized) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "检测轮次数据无效" });
+        }
+        return sanitized;
       }),
     createT0WithQuestions: protectedProcedure
       .input(
@@ -3772,9 +3803,13 @@ ${article.markdownContent}`,
           runsPerQuestion: input.runsPerQuestion,
           questionIds: input.questionIds,
         });
+        const round = sanitizeTestRoundRow(result.round);
+        if (!round) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "创建 T0 轮次失败" });
+        }
         return {
           success: true,
-          round: result.round,
+          round,
           boundQuestionCount: result.boundQuestionCount,
         } as const;
       }),
@@ -3891,10 +3926,19 @@ ${article.markdownContent}`,
             ),
           );
         const qMap = new Map(qRows.map(q => [q.id, q]));
-        return links.map(link => ({
+        const withQuestion = links.map(link => ({
           ...link,
           question: qMap.get(link.questionId) ?? null,
         }));
+        const filtered = filterRoundQuestionLinks(withQuestion);
+        if (filtered.length < withQuestion.length) {
+          console.warn("[geo.roundQuestions.listByRound] dropped orphan round_question links", {
+            projectId: input.projectId,
+            roundId: input.roundId,
+            dropped: withQuestion.length - filtered.length,
+          });
+        }
+        return filtered;
       }),
   }),
 
@@ -3970,11 +4014,12 @@ ${article.markdownContent}`,
         if (round.projectId !== input.projectId) {
           throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
         }
-        return db
+        const rows = await db
           .select()
           .from(aiTestRuns)
           .where(and(eq(aiTestRuns.roundId, input.roundId), eq(aiTestRuns.projectId, input.projectId)))
           .orderBy(desc(aiTestRuns.testedAt), desc(aiTestRuns.runIndex));
+        return filterAiTestRunRows(rows);
       }),
   }),
 

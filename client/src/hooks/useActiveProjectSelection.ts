@@ -21,10 +21,7 @@ export function useActiveProjectSelection() {
   const pathname = getPathnameFromLocation(location);
   const { data: projectsRaw = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery();
   const projects = useMemo(
-    () =>
-      projectsRaw
-        .filter(p => p != null && typeof p?.id === "number" && Number.isFinite(p?.id))
-        .map(p => ({ id: p?.id as number, enterpriseName: p?.enterpriseName ?? "" })),
+    () => projectsRaw.map(p => ({ id: p.id, enterpriseName: p.enterpriseName ?? "" })),
     [projectsRaw],
   );
 
@@ -32,7 +29,7 @@ export function useActiveProjectSelection() {
 
   const resolvedProjectId = useMemo(() => {
     if (!contextProjectId) return undefined;
-    return projects.some(p => p?.id === contextProjectId) ? contextProjectId : undefined;
+    return projects.some(p => p.id === contextProjectId) ? contextProjectId : undefined;
   }, [contextProjectId, projects]);
 
   const [selectedProjectId, setSelectedProjectIdState] = useState<number | undefined>(resolvedProjectId);
@@ -47,7 +44,7 @@ export function useActiveProjectSelection() {
     const fromUrl = getProjectIdFromUrl(search);
     const fromStorage = getActiveProjectIdFromStorage();
     const id = fromUrl ?? fromStorage;
-    if (!id || !projects.some(p => p?.id === id)) return;
+    if (!id || !projects.some(p => p.id === id)) return;
     if (!fromUrl && fromStorage) {
       setLocation(buildProjectUrl(pathname, fromStorage));
     }
@@ -66,7 +63,7 @@ export function useActiveProjectSelection() {
   };
 
   const projectInput = useMemo(() => ({ projectId: resolvedProjectId }), [resolvedProjectId]);
-  const selectedProject = projects.find(p => p?.id === resolvedProjectId) as ProjectOption | undefined;
+  const selectedProject = projects.find(p => p.id === resolvedProjectId) as ProjectOption | undefined;
 
   return {
     projects: projects as ProjectOption[],
