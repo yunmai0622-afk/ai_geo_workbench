@@ -888,6 +888,7 @@ export default function WeeklyContentPage() {
   const articles = (articlesQuery.data ?? []) as ArticleRow[];
   const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
 
+  const articlesById = useMemo(() => new Map(articles.map(a => [a.id, a] as const)), [articles]);
   const scoresByArticleId = useMemo(() => new Map(scores.map(s => [s.articleId, s] as const)), [scores]);
 
   const articleByTopicId = useMemo(() => {
@@ -2048,7 +2049,7 @@ export default function WeeklyContentPage() {
         taskIds.push(res.taskId);
         rememberEnqueuePublishAccount(slug, picked.id);
         if (res.publishMode !== "local_agent") {
-          toast.error("发布任务未走本地客户端，请联系交付同学检查配置");
+          toast.error("发布任务未走本地客户端，请联系支持团队检查配置");
           return;
         }
       }
@@ -2340,7 +2341,19 @@ export default function WeeklyContentPage() {
       />
 
       {tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
-        <p className="text-sm text-red-700">暂时无法加载，请刷新重试</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p>暂时无法加载内容任务数据。</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => {
+              void Promise.all([tasksQuery.refetch(), topicsQuery.refetch(), articlesQuery.refetch()]);
+            }}
+          >
+            重试加载
+          </Button>
+        </div>
       ) : !queriesReady || preparingTopics || generateTopicsMutation.isPending ? (
         <div className="flex flex-col items-center gap-3 py-16 text-gray-500">
           <Spinner className="size-6 text-blue-600" />
@@ -2592,7 +2605,7 @@ export default function WeeklyContentPage() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {displayContentCards.map(model => {
-                    const article = articles.find(a => a.id === model.id);
+                    const article = articlesById.get(model.id);
                     const topicId = article?.topicId;
                     return (
                       <WeeklyPlatformArticleCard

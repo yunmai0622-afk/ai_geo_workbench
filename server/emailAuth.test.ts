@@ -18,7 +18,7 @@ describe("GEO-V1.1 email registration auth", () => {
   });
 
   it("normalizes email", () => {
-    expect(normalizeEmail("  User@Example.COM ")).toBe("user@example.com");
+    expect(normalizeEmail("  User@Demo.Local ")).toBe("user@demo.local");
   });
 
   it("auth router exposes register and loginWithEmail", () => {

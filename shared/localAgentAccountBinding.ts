@@ -7,7 +7,7 @@ export const LOCAL_AGENT_ACCOUNT_ENV_CREATABLE = BINDING_PUBLISH_PLATFORMS;
 
 export type LocalAgentAccountEnvCreatablePlatform = (typeof LOCAL_AGENT_ACCOUNT_ENV_CREATABLE)[number];
 
-/** 暂未接入自动创建/发布的平台（需在 UI 明确提示，禁止无反应） */
+/** 即将支持自动创建/发布的平台（需在 UI 明确提示，禁止无反应） */
 export const LOCAL_AGENT_ACCOUNT_ENV_PENDING = ["xiaohongshu", "wechat"] as const;
 
 export const LOCAL_AGENT_ACCOUNT_ENV_PENDING_LABELS: Record<

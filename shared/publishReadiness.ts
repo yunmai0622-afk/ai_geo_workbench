@@ -129,7 +129,7 @@ export function isPublishReadyPlatformAccount(row: PublishReadyAccountRow): bool
 }
 
 function platformUnsupportedMessage(label: string): string {
-  return `本篇内容识别为「${label}」，当前本地客户端暂未接入该平台发布，请先人工发布或等待接入。`;
+  return `本篇内容识别为「${label}」，当前本地客户端即将支持该平台发布，请先人工发布或等待支持。`;
 }
 
 function platformAccountUnboundMessage(label: string): string {

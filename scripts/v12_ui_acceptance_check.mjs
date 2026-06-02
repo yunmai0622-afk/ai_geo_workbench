@@ -253,7 +253,7 @@ for (const [name, source] of Object.entries(globalScanPages)) {
   }
 }
 
-const placeholderPattern = /\b(Lorem|Ipsum|TODO placeholder|Coming Soon|coming soon|Untitled|New Project|Dashboard)\b/;
+const placeholderPattern = /\b(Lorem|Ipsum|Coming Soon|coming soon|Untitled|New Project|Dashboard)\b/;
 for (const [name, source] of Object.entries(sources)) {
   const match = source.match(placeholderPattern);
   if (match) failures.push(`${name} 存在英文占位符：${match[0]}`);

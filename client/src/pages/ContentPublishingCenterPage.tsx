@@ -54,6 +54,12 @@ import {
   type PublishPagePlatformCard,
 } from "@shared/publishPageLayout";
 import {
+  REVIEW_QUEUE_STATUS_LABELS,
+  REVIEW_TYPE_LABELS,
+  type ReviewQueueStatus,
+  type ReviewType,
+} from "@shared/reviewQueue";
+import {
   isLocalAgentPublishTaskResult,
   pickReadyAccountForPlatform,
   publishBlockedReasonForPlatform,
@@ -172,6 +178,52 @@ function toDatetimeLocalInput(value?: Date | string | number | null): string {
   const copy = new Date(d.getTime());
   copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
   return copy.toISOString().slice(0, 16);
+}
+
+function formatDateTimeText(value?: Date | string | number | null): string {
+  if (!value) return "未设置";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "未设置";
+  return d.toLocaleString("zh-CN", { hour12: false });
+}
+
+function retestStatusLabel(status?: string | null): string {
+  if (!status) return "未知状态";
+  if ((status as ReviewQueueStatus) in REVIEW_QUEUE_STATUS_LABELS) {
+    return REVIEW_QUEUE_STATUS_LABELS[status as ReviewQueueStatus];
+  }
+  return status;
+}
+
+function retestTypeLabel(type?: string | null): string {
+  if (!type) return "未分类";
+  if ((type as ReviewType) in REVIEW_TYPE_LABELS) {
+    return REVIEW_TYPE_LABELS[type as ReviewType];
+  }
+  return type;
+}
+
+function rewriteSourceLabel(source?: string | null): string {
+  switch (source) {
+    case "quality_reject":
+      return "基础质检拒绝";
+    case "geo_quality_reject":
+      return "发布前质检 reject";
+    case "publish_failed":
+      return "发布失败";
+    case "session_expired":
+      return "登录态失效";
+    case "manual_required_stale":
+      return "人工确认超时";
+    case "ai_test_no_brand":
+      return "AI 提及不足";
+    case "inclusion_failed":
+      return "收录复测失败";
+    case "quality_check_fail":
+      return "自动质检未通过";
+    default:
+      return source?.trim() || "未标注来源";
+  }
 }
 
 function queueTabFromCard(card: PublishTaskCardModel): QueueTabKey {
@@ -543,7 +595,9 @@ export function ContentPublishingCenterPage() {
       });
       await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
       await inclusionMonitoringQuery.refetch();
-      toast.success("链接已更新");
+      toast.success(
+        draft ? "已回填公开链接，并已生成收录监测计划" : "链接已更新",
+      );
     } catch (e) {
       toast.error(toUserFacingErrorFromUnknown(e, "更新链接失败"));
     } finally {
@@ -608,7 +662,7 @@ export function ContentPublishingCenterPage() {
   }
 
   function markAbnormal(card: PublishTaskCardModel) {
-    toast.error(card.errorMessage || card.statusLabel || "发布异常，请查看状态说明或联系交付同学");
+    toast.error(card.errorMessage || card.statusLabel || "发布异常，请查看状态说明或联系支持团队");
   }
 
   async function enqueuePlatformCard(card: PublishPagePlatformCard): Promise<boolean> {
@@ -637,7 +691,7 @@ export function ContentPublishingCenterPage() {
         platformAccountId: account.id,
       });
       if (!isLocalAgentPublishTaskResult(res)) {
-        toast.error("发布任务未走本地客户端，请联系交付同学检查配置");
+        toast.error("发布任务未走本地客户端，请联系支持团队检查配置");
         return false;
       }
       await autoPublishTasksQuery.refetch();
@@ -1032,7 +1086,7 @@ export function ContentPublishingCenterPage() {
                                 </Button>
                               </>
                             ) : null}
-                            {card.recordId ? (
+                            {tab === "completed" && card.recordId ? (
                               <>
                                 <Button
                                   type="button"
@@ -1117,16 +1171,41 @@ export function ContentPublishingCenterPage() {
                               variant="outline"
                               className={`mt-2 ${geoP0Brand.primaryOutline}`}
                               disabled={triggerReview.isPending}
-                              onClick={() =>
-                                void triggerReview.mutateAsync({
-                                  projectId: selectedProjectId,
-                                  queueId: item.queueId,
-                                })
-                              }
+                              onClick={() => {
+                                void triggerReview
+                                  .mutateAsync({
+                                    projectId: selectedProjectId,
+                                    queueId: item.queueId,
+                                  })
+                                  .then(() => {
+                                    toast.success("已触发复测，状态更新为“复测进行中”");
+                                  })
+                                  .catch(e => {
+                                    toast.error(toUserFacingErrorFromUnknown(e, "触发复测失败"));
+                                  });
+                              }}
                             >
                               手动触发复测
                             </Button>
                           ) : null}
+                          <dl className="mt-2 grid grid-cols-1 gap-1 text-xs text-gray-500">
+                            <div className="flex gap-2">
+                              <dt>复测类型</dt>
+                              <dd>{retestTypeLabel(item.reviewType)}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>触发状态</dt>
+                              <dd>{item.triggerStatus || "未记录"}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>当前状态</dt>
+                              <dd>{retestStatusLabel(item.status)}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>计划时间</dt>
+                              <dd>{formatDateTimeText(item.scheduledAt)}</dd>
+                            </div>
+                          </dl>
                         </li>
                       ))}
                     </ul>
@@ -1145,6 +1224,26 @@ export function ContentPublishingCenterPage() {
                         >
                           <p className="font-medium">{item.title}</p>
                           <p className="mt-1 text-xs text-gray-500">{item.reason}</p>
+                          <dl className="mt-2 grid grid-cols-1 gap-1 text-xs text-gray-500">
+                            <div className="flex gap-2">
+                              <dt>触发来源</dt>
+                              <dd>{rewriteSourceLabel(item.source)}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>文章状态</dt>
+                              <dd>{item.articleStatus || "未记录"}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>任务状态</dt>
+                              <dd>{item.publishTaskStatus || "无发布任务"}</dd>
+                            </div>
+                            {item.suggestionText?.trim() ? (
+                              <div className="flex gap-2">
+                                <dt>改写建议</dt>
+                                <dd className="line-clamp-2">{item.suggestionText.trim()}</dd>
+                              </div>
+                            ) : null}
+                          </dl>
                         </li>
                       ))}
                     </ul>

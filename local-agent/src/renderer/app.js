@@ -440,7 +440,7 @@ function renderAccounts() {
     const count = list.length;
     const hasActive = list.some((a) => a.sessionStatus === "active");
     const isPendingPlatform = PENDING_PLATFORMS.has(platform);
-    let statusText = isPendingPlatform ? "暂未接入" : "未绑定";
+    let statusText = isPendingPlatform ? "即将支持" : "未绑定";
     let statusClass = "status-unbound";
     if (count > 0 && hasActive) {
       statusText = "已绑定";
@@ -490,7 +490,7 @@ function renderAccountsMain() {
         <p class="accounts-main-desc">在这里管理本机${label}登录环境。登录状态仅保存在本机，不上传密码或 Cookie。</p>
         ${
           isPending
-            ? `<p class="accounts-main-desc warn-text">平台「${label}」暂未接入账号环境创建。</p>`
+            ? `<p class="accounts-main-desc warn-text">平台「${label}」即将支持账号环境创建。</p>`
             : ""
         }
       </div>
@@ -718,7 +718,7 @@ async function handleCreatePlatformProfile(platform) {
   }
   const label = PLATFORM_LABELS[platform] ?? platform;
   if (PENDING_PLATFORMS.has(platform)) {
-    appendLiveLog(`平台「${label}」暂未接入账号环境创建，请等待后续版本`, true);
+    appendLiveLog(`平台「${label}」即将支持账号环境创建，请等待后续版本`, true);
     return;
   }
   if (!CREATABLE_PLATFORMS.has(platform)) {
