@@ -19,10 +19,8 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
   it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
     expect(layoutSource).not.toContain('title: "增长总览"');
-    expect(layoutSource).toMatch(/title:\s*"项目"[\s\S]*label:\s*"项目工作台"/);
     for (const label of [
       "企业项目",
-      "项目工作台",
       "品牌资产建档",
       "AI 实测诊断",
       "平台化内容资产",
@@ -76,7 +74,8 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
   it("企业档案页呈现 5 分钟建档结构", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
     expect(assetSource).toContain("geo.assetLibrary.summary.useQuery");
-    expect(assetSource).toContain("enterprise-profile-summary-load-hint");
+    expect(assetSource).not.toContain("enterprise-profile-summary-load-hint");
+    expect(assetSource).not.toContain("border-red-200 bg-red-50");
     expect(assetSource).not.toContain("hasBlockingLoadError");
     const publishOverview = readProjectFile(
       "client/src/components/platformAccounts/PublishPlatformAccountsOverview.tsx",

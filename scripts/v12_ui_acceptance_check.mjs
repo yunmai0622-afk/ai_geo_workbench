@@ -46,18 +46,19 @@ assertContains('首页', sources.home, 'AiPageShell');
 
 for (const item of [
   '企业项目',
-  '项目工作台',
   '品牌资产建档',
   'AI 实测诊断',
+  '问题库',
   '平台化内容资产',
   '平台适配发布',
   '收录监测',
   '交付报告',
+  '使用指南',
 ]) {
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
 }
 assertContains('左侧导航', sources.layout, 'AI 搜索增长系统');
-assertContains('左侧导航', sources.layout, 'path: "/workspace"');
+assertNotContains('左侧导航', sources.layout, 'label: "项目工作台"');
 for (const item of [
   '总览',
   '内容生成',

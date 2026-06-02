@@ -34,6 +34,7 @@ import { useLocation } from "wouter";
 import { evaluateEnterpriseProfileCompletenessFromForm } from "@shared/enterpriseProfileCompleteness";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type SummaryLike = {
   profile?: Record<string, unknown> | null;
@@ -187,7 +188,6 @@ export default function AssetCenterPage() {
     [activeSelectionProject, projects, currentProjectId],
   );
   const [message, setMessage] = useState<string>();
-  const [error, setError] = useState<string>();
 
   const [brandName, setBrandName] = useState("");
   const [brandShortName, setBrandShortName] = useState("");
@@ -244,7 +244,7 @@ export default function AssetCenterPage() {
   const updateCustomerCase = trpc.geo.assetLibrary.updateCustomerCase.useMutation();
 
   const projectInput = useMemo(() => ({ projectId: currentProjectId! }), [currentProjectId]);
-  const { data: summaryData, isLoading, isFetched, error: summaryError } = trpc.geo.assetLibrary.summary.useQuery(
+  const { data: summaryData, isLoading, isFetched } = trpc.geo.assetLibrary.summary.useQuery(
     projectInput,
     { enabled: Boolean(currentProjectId) },
   );
@@ -674,7 +674,6 @@ export default function AssetCenterPage() {
       : "待完善";
 
   const loading = projectsLoading || isLoading;
-  const summaryLoadFailed = Boolean(summaryError && !summaryData && isFetched);
   const saving =
     upsertProfile.isPending ||
     createCustomerCase.isPending ||
@@ -691,13 +690,12 @@ export default function AssetCenterPage() {
 
   async function runSave(label: string, fn: () => Promise<unknown>) {
     setMessage(undefined);
-    setError(undefined);
     try {
       await fn();
       await refreshSummary();
       setMessage(`${label}已保存。`);
     } catch (e) {
-      setError(toUserFacingErrorFromUnknown(e, "保存失败"));
+      toast.error(toUserFacingErrorFromUnknown(e, "保存失败"));
     }
   }
 
@@ -727,7 +725,6 @@ export default function AssetCenterPage() {
   async function saveFiveMinuteAndStartDiagnosis() {
     if (!currentProjectId) return;
     setMessage(undefined);
-    setError(undefined);
     try {
       if (!brandName.trim()) throw new Error("请填写企业名称");
       if (!industryTagValue.trim()) throw new Error("请选择所属行业");
@@ -744,7 +741,7 @@ export default function AssetCenterPage() {
       setMessage("品牌资产建档已保存。");
       setLocation(buildProjectUrl("/ai-diagnosis", currentProjectId));
     } catch (e) {
-      setError(toUserFacingErrorFromUnknown(e, "保存失败"));
+      toast.error(toUserFacingErrorFromUnknown(e, "保存失败"));
     }
   }
 
@@ -782,28 +779,9 @@ export default function AssetCenterPage() {
           <p className="text-sm text-gray-400">正在加载…</p>
         </div>
       ) : null}
-      {summaryLoadFailed ? (
-        <p
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-          role="status"
-          data-testid="enterprise-profile-summary-load-hint"
-        >
-          历史建档数据暂未同步，你仍可填写并保存；保存成功后会自动刷新。
-          <Button
-            type="button"
-            variant="link"
-            className="ml-1 h-auto p-0 text-amber-900 underline"
-            onClick={() => void refreshSummary()}
-            disabled={loading}
-          >
-            重试加载
-          </Button>
-        </p>
-      ) : null}
       {message ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{message}</div>
       ) : null}
-      {error ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div> : null}
 
       {currentProjectId ? (
         <>

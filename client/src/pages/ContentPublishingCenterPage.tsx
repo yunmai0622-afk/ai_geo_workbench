@@ -326,7 +326,7 @@ export function ContentPublishingCenterPage() {
 
   const hasInFlightAgentTasks = useMemo(
     () =>
-      agentTasks.some(
+      (agentTasks ?? []).some(
         t =>
           t.status !== "completed" &&
           t.status !== "failed" &&
@@ -344,7 +344,7 @@ export function ContentPublishingCenterPage() {
   }, [selectedProjectId]);
 
   useEffect(() => {
-    const completedIds = (agentTasks.filter(t => t.status === "completed") ?? []).map(t => t?.id);
+    const completedIds = ((agentTasks ?? []).filter(t => t.status === "completed")).map(t => t?.id);
     if (!completedAgentTasksInitializedRef.current) {
       completedIds.forEach(id => completedAgentTaskIdsRef.current.add(id));
       completedAgentTasksInitializedRef.current = true;
@@ -353,7 +353,7 @@ export function ContentPublishingCenterPage() {
     const newlyCompleted = completedIds.filter(id => !completedAgentTaskIdsRef.current.has(id));
     if (newlyCompleted.length > 0) {
       newlyCompleted.forEach(id => completedAgentTaskIdsRef.current.add(id));
-      const tasks = agentTasks.filter(t => t?.id != null && newlyCompleted.includes(t?.id));
+      const tasks = (agentTasks ?? []).filter(t => t?.id != null && newlyCompleted.includes(t?.id));
       setPublishSuccessNotice({
         platformLabel: formatPublishSuccessPlatformPhrase(
           (tasks ?? []).map(t => publishPlatformCustomerLabel(t.platform)),
@@ -440,7 +440,7 @@ export function ContentPublishingCenterPage() {
   useEffect(() => {
     setLinkDraftById(prev => {
       const next = { ...prev };
-      for (const r of publishRecords) {
+      for (const r of publishRecords ?? []) {
         const url = recordPublicLink(r);
         const recordId = r?.id;
         if (recordId == null) continue;
@@ -453,7 +453,7 @@ export function ContentPublishingCenterPage() {
   const platformAccountGroups = platformAccountsQuery.data?.accounts ?? [];
 
   const boundPlatformCount = useMemo(() => {
-    return platformAccountGroups.filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled))
+    return (platformAccountGroups ?? []).filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled))
       .length;
   }, [platformAccountGroups]);
   const availableAccountByPlatform = useMemo(() => {
@@ -482,7 +482,7 @@ export function ContentPublishingCenterPage() {
         autoInclusionByArticleAndUrl.has(`${task.articleId}:${publishedUrl}`);
       return mapAgentTaskToCard(task, goal, { autoInclusionMonitoring });
     });
-    for (const record of publishRecords) {
+    for (const record of publishRecords ?? []) {
       const article = record.articleId ? articleById.get(record.articleId) : undefined;
       const mapped = mapManualRecordToCard(record, article?.title);
       if (mapped) cards.push(mapped);
@@ -545,14 +545,14 @@ export function ContentPublishingCenterPage() {
   );
   const waitingLinkTaskCount = useMemo(
     () =>
-      agentTasks.filter(
+      (agentTasks ?? []).filter(
         task => task.status === "completed" && !(task.publishedUrl?.trim() || task.resultUrl?.trim()),
       ).length,
     [agentTasks],
   );
   const waitingLinkRecordCount = useMemo(
     () =>
-      publishRecords.filter(record => {
+      (publishRecords ?? []).filter(record => {
         const link = recordPublicLink(record);
         return !link;
       }).length,

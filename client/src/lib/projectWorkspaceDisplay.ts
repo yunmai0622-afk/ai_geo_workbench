@@ -90,7 +90,7 @@ export function deriveClientProjectEightStepLabel(project: ClientProjectCardInpu
 }
 
 export function formatBrandMentionRate(rate: number | null | undefined): string {
-  if (rate == null || Number.isNaN(rate)) return "--";
+  if (rate == null || Number.isNaN(rate)) return "完成AI实测后显示";
   return `${Math.round(rate * 100)}%`;
 }
 

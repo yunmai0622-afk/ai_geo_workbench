@@ -17,7 +17,6 @@ describe("V1.0 客户主路径静态回归", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
     for (const label of [
       "企业项目",
-      "项目工作台",
       "品牌资产建档",
       "AI 实测诊断",
       "平台化内容资产",
@@ -27,7 +26,6 @@ describe("V1.0 客户主路径静态回归", () => {
     ]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
-    expect(layoutSource).toContain('path: "/workspace"');
     expect(layoutSource).toContain('path: "/inclusion-monitoring"');
     expect(layoutSource).not.toContain("即将上线");
     for (const forbidden of ["总览", "内容生成", "内容发布", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心", "资产进展看板"]) {
