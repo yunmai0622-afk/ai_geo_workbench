@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatWorkspaceAiMentionRate, formatWorkspaceOverviewValues } from "./workspaceDashboardOverview";
+import {
+  buildGeoScoreAttributionLines,
+  buildGeoScoreChangeReason,
+  formatGeoScoreChangeBadge,
+  formatWorkspaceAiMentionRate,
+  formatWorkspaceOverviewValues,
+} from "./workspaceDashboardOverview";
 import type { WorkspaceSummaryMetrics } from "./workspaceStateMachine";
 
 function baseMetrics(overrides: Partial<WorkspaceSummaryMetrics> = {}): WorkspaceSummaryMetrics {
@@ -52,5 +58,31 @@ describe("GEO-V1.1-Dashboard-Overview 工作台数据总览", () => {
 
   it("无 GEO 评分时显示占位", () => {
     expect(formatWorkspaceOverviewValues(baseMetrics({ geoScore: null })).geoScoreText).toBe("--");
+  });
+
+  it("归因说明覆盖低提及、零推荐与内容覆盖不足", () => {
+    expect(
+      buildGeoScoreAttributionLines(
+        baseMetrics({
+          brandMentionRate: 0.1,
+          recommendRate: 0,
+          articleCount: 0,
+        }),
+      ),
+    ).toEqual([
+      "品牌提及率低：影响分数",
+      "推荐率为 0：影响分数",
+      "内容覆盖不足：影响分数",
+      "数据来源：真实诊断数据",
+    ]);
+  });
+
+  it("较上次变化文案按最新与上次分计算", () => {
+    expect(formatGeoScoreChangeBadge({ latestScore: 25, previousScore: 23 })).toBe("+2（较上次）");
+    expect(formatGeoScoreChangeBadge({ latestScore: 23, previousScore: 25 })).toBe("-2（较上次）");
+  });
+
+  it("变化原因在无风险项时给默认说明", () => {
+    expect(buildGeoScoreChangeReason(baseMetrics())).toBe("主要由诊断样本更新带来变化");
   });
 });

@@ -26,6 +26,11 @@ import {
   toMainChainProgressInput,
   type MainChainStepView,
 } from "@shared/workspaceMainChain";
+import {
+  buildGeoScoreAttributionLines,
+  buildGeoScoreChangeReason,
+  formatGeoScoreChangeBadge,
+} from "@shared/workspaceDashboardOverview";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -91,6 +96,14 @@ export default function EnterpriseWorkspacePage() {
       ),
     [scoreTrendQuery.data],
   );
+  const latestTrendScore = scoreTrendPoints.length > 0 ? scoreTrendPoints[scoreTrendPoints.length - 1]!.totalScore : null;
+  const previousTrendScore = scoreTrendPoints.length > 1 ? scoreTrendPoints[scoreTrendPoints.length - 2]!.totalScore : null;
+  const geoScoreChangeText = formatGeoScoreChangeBadge({
+    latestScore: latestTrendScore,
+    previousScore: previousTrendScore,
+  });
+  const geoScoreChangeReason = metrics && geoScoreChangeText ? buildGeoScoreChangeReason(metrics) : null;
+  const geoScoreAttributions = metrics ? buildGeoScoreAttributionLines(metrics) : [];
 
   const headerCtaPath =
     homeDisplay.mainChainNextAction?.ctaPath ??
@@ -131,7 +144,11 @@ export default function EnterpriseWorkspacePage() {
         <p className="text-sm text-red-600">暂时无法加载工作台，请刷新重试。</p>
       ) : stage && metrics && selectedProjectId ? (
         <>
-          <WorkspaceDashboardOverviewCards metrics={metrics} />
+          <WorkspaceDashboardOverviewCards
+            metrics={metrics}
+            latestGeoScore={latestTrendScore}
+            previousGeoScore={previousTrendScore}
+          />
 
           <section className="geo-card p-5" data-testid="workspace-geo-score-trend">
             <GeoScoreTrendChart
@@ -231,6 +248,10 @@ export default function EnterpriseWorkspacePage() {
                 label="GEO 分"
                 value={formatGeoScore(metrics.geoScore)}
                 labelSuffix={<GeoScoreWeightExplanationHelp />}
+                hintLines={[
+                  geoScoreChangeText ? `${geoScoreChangeText} · ${geoScoreChangeReason}` : null,
+                  ...geoScoreAttributions,
+                ].filter((line): line is string => Boolean(line))}
               />
               <MetricCell label="品牌提及率" value={homeDisplay.brandMentionRateText} />
               <MetricCell label="推荐率" value={homeDisplay.recommendRateText} />
@@ -293,10 +314,12 @@ function MetricCell({
   label,
   value,
   labelSuffix,
+  hintLines = [],
 }: {
   label: string;
   value: string;
   labelSuffix?: ReactNode;
+  hintLines?: string[];
 }) {
   return (
     <div data-testid={label === "GEO 分" ? "workspace-geo-score-metric" : undefined}>
@@ -305,6 +328,13 @@ function MetricCell({
         {labelSuffix}
       </div>
       <p className="mt-0.5 text-base font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
+      {hintLines.length > 0 ? (
+        <ul className="mt-1 space-y-0.5 text-[11px] leading-4 text-gray-500">
+          {hintLines.map((line, index) => (
+            <li key={`${label}-${index}`}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
