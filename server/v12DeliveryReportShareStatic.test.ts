@@ -43,6 +43,12 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(reportPageSource).toContain("createShareLink");
     expect(reportPageSource).toContain("disableShareLink");
     expect(reportPageSource).toContain("regenerateShareLink");
+    expect(reportPageSource).toContain("renewShareLink");
+    expect(reportPageSource).toContain("DeliveryReportShareRenewalReminderCard");
+    expect(readProjectFile("client/src/components/delivery/DeliveryReportShareRenewalReminderCard.tsx")).toContain(
+      "delivery-report-share-renewal-reminder",
+    );
+    expect(reportPageSource).toContain("链接已续期");
     expect(reportPageSource).toContain("重新生成链接");
     expect(reportPageSource).toContain("禁用链接");
     expect(reportPageSource).toContain("新链接已生成并复制");
@@ -60,6 +66,7 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(routerSource).toContain("publicEvidence");
     expect(routerSource).toContain("disableShareLink");
     expect(routerSource).toContain("regenerateShareLink");
+    expect(routerSource).toContain("renewShareLink");
     expect(routerSource).toContain("publicProcedure");
     expect(publicSource).toContain("buildDeliveryReportPublicEvidencePath");
     expect(publicSource).not.toContain("/geo/evidence/");
@@ -78,6 +85,8 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(lightViewSource).toContain("主要检测结论");
     expect(lightViewSource).toContain("delivery-report-public-share-expiry");
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("DELIVERY_REPORT_SHARE_VALIDITY_DAYS");
+    expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("DELIVERY_REPORT_SHARE_RENEWAL_REMINDER_DAYS");
+    expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("resolveDeliveryReportShareRenewalReminder");
     expect(shareSource).toContain('variant="light"');
     for (const text of [
       "GEO AI 搜索可见度优化交付报告",

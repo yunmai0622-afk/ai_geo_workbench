@@ -124,6 +124,31 @@ export async function disableEnabledShareTokensForProject(
   return { disabled: true, count: enabled.length };
 }
 
+/** 延长当前启用中的分享链接有效期（保留同一 token，客户无需更换链接） */
+export async function renewShareLinkForProject(
+  db: DbConn,
+  projectId: number,
+): Promise<{ token: string; expiresAt: Date }> {
+  const existing = await db
+    .select()
+    .from(deliveryReportShareTokens)
+    .where(and(eq(deliveryReportShareTokens.projectId, projectId), eq(deliveryReportShareTokens.isEnabled, true)))
+    .orderBy(desc(deliveryReportShareTokens.createdAt))
+    .limit(1);
+  const row = existing[0];
+  if (!row) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "当前项目暂无可续期的分享链接" });
+  }
+
+  const expiresAt = computeDeliveryReportShareExpiresAt();
+  await db
+    .update(deliveryReportShareTokens)
+    .set({ expiresAt })
+    .where(eq(deliveryReportShareTokens.id, row.id));
+
+  return { token: row.token, expiresAt };
+}
+
 /** 禁用旧链接并生成新的随机分享链接 */
 export async function regenerateShareLinkForProject(
   db: DbConn,

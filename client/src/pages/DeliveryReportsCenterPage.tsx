@@ -1,4 +1,5 @@
 import { DeliveryReportCompetitorSection } from "@/components/DeliveryReportCompetitorSection";
+import { DeliveryReportShareRenewalReminderCard } from "@/components/delivery/DeliveryReportShareRenewalReminderCard";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { GeoHealthBriefCard, type GeoHealthBriefCardProps } from "@/components/delivery/GeoHealthBriefCard";
@@ -52,7 +53,7 @@ import {
   type DeliveryReportContentQualityPriorityItem,
 } from "@shared/deliveryReportContentQuality";
 import { mapCompetitorAnalysisForDeliveryReport } from "@shared/deliveryReportCompetitor";
-import { formatDeliveryReportShareExpiryLabel } from "@shared/deliveryReportPublicShare";
+import { formatDeliveryReportShareExpiryLabel, resolveDeliveryReportShareRenewalReminder } from "@shared/deliveryReportPublicShare";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -79,11 +80,16 @@ export function DeliveryReportsCenterPage() {
   const createShareLink = trpc.geo.reports.createShareLink.useMutation();
   const disableShareLink = trpc.geo.reports.disableShareLink.useMutation();
   const regenerateShareLink = trpc.geo.reports.regenerateShareLink.useMutation();
+  const renewShareLink = trpc.geo.reports.renewShareLink.useMutation();
   const shareLinkStatusQuery = trpc.geo.reports.shareLinkStatus.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
-  const shareLinkBusy = createShareLink.isPending || disableShareLink.isPending || regenerateShareLink.isPending;
+  const shareLinkBusy =
+    createShareLink.isPending ||
+    disableShareLink.isPending ||
+    regenerateShareLink.isPending ||
+    renewShareLink.isPending;
   const [shareExpiresAtHint, setShareExpiresAtHint] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,6 +101,24 @@ export function DeliveryReportsCenterPage() {
     const iso = shareExpiresAtHint ?? shareLinkStatusQuery.data?.shareExpiresAt ?? null;
     return formatDeliveryReportShareExpiryLabel(iso);
   }, [shareExpiresAtHint, shareLinkStatusQuery.data]);
+
+  const shareRenewalReminder = useMemo(() => {
+    if (!shareLinkStatusQuery.data?.hasActiveLink) return null;
+    const iso = shareExpiresAtHint ?? shareLinkStatusQuery.data?.shareExpiresAt ?? null;
+    return resolveDeliveryReportShareRenewalReminder(iso);
+  }, [shareExpiresAtHint, shareLinkStatusQuery.data]);
+
+  async function renewCustomerShareLink(projectId: number) {
+    try {
+      const { shareExpiresAt } = await renewShareLink.mutateAsync({ projectId });
+      setShareExpiresAtHint(shareExpiresAt);
+      void shareLinkStatusQuery.refetch();
+      const expiryHint = shareExpiresAt ? formatDeliveryReportShareExpiryLabel(shareExpiresAt) : "链接长期有效";
+      toast.success(`链接已续期（${expiryHint}），客户仍可使用原链接访问`);
+    } catch {
+      toast.error("续期失败，请稍后重试");
+    }
+  }
 
   async function copyCustomerShareLink(projectId: number) {
     try {
@@ -407,6 +431,13 @@ export function DeliveryReportsCenterPage() {
         </TabsContent>
 
         <TabsContent value="report" className="mt-0 space-y-8">
+      {selectedProjectId && shareRenewalReminder ? (
+        <DeliveryReportShareRenewalReminderCard
+          reminder={shareRenewalReminder}
+          renewing={renewShareLink.isPending}
+          onRenew={() => void renewCustomerShareLink(selectedProjectId)}
+        />
+      ) : null}
       {selectedProjectId ? (
         <div
           className="flex flex-col gap-3 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-5 shadow-sm print:hidden sm:flex-row sm:items-center sm:justify-between"

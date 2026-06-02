@@ -183,6 +183,7 @@ import {
   getOrCreateShareTokenForProject,
   getShareLinkStatusForProject,
   regenerateShareLinkForProject,
+  renewShareLinkForProject,
   resolveShareTokenProjectId,
 } from "./deliveryReportPublicShare";
 import { buildProjectDeliveryReportContentQuality } from "./deliveryReportContentQuality";
@@ -2222,6 +2223,20 @@ const geoRouter = router({
         const db = await requireDb();
         await requireProjectAccess(ctx, input.projectId);
         const { token: shareToken, expiresAt } = await regenerateShareLinkForProject(db, input.projectId);
+        const sharePath = buildDeliveryReportPublicPath(shareToken);
+        return {
+          success: true,
+          sharePath,
+          shareToken,
+          shareExpiresAt: expiresAt.toISOString(),
+        } as const;
+      }),
+    renewShareLink: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const { token: shareToken, expiresAt } = await renewShareLinkForProject(db, input.projectId);
         const sharePath = buildDeliveryReportPublicPath(shareToken);
         return {
           success: true,

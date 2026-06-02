@@ -26,6 +26,15 @@ function regenerateProjectToken(rows: ShareRow[], projectId: number): string {
   return next;
 }
 
+function renewProjectToken(rows: ShareRow[], projectId: number): { token: string; renewed: boolean } {
+  const row = rows.find(r => r.projectId === projectId && r.isEnabled);
+  if (!row) return { token: "", renewed: false };
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30);
+  row.expiresAt = expiresAt;
+  return { token: row.token, renewed: true };
+}
+
 describe("delivery report share link management", () => {
   it("disableShareLink invalidates public report and evidence access", () => {
     const rows: ShareRow[] = [{ token: "active-tok", projectId: 1, isEnabled: true, expiresAt: null }];
@@ -42,6 +51,19 @@ describe("delivery report share link management", () => {
     expect(resolveTokenAccess(rows, "legacy-tok")).toBe(false);
     expect(resolveTokenAccess(rows, next)).toBe(true);
     expect(rows.filter(r => r.projectId === 2)).toHaveLength(2);
+  });
+
+  it("renewShareLink keeps token and extends expiry", () => {
+    const past = new Date();
+    past.setDate(past.getDate() - 1);
+    const rows: ShareRow[] = [{ token: "same-tok", projectId: 4, isEnabled: true, expiresAt: past }];
+    expect(resolveTokenAccess(rows, "same-tok")).toBe(false);
+
+    const { token, renewed } = renewProjectToken(rows, 4);
+    expect(renewed).toBe(true);
+    expect(token).toBe("same-tok");
+    expect(resolveTokenAccess(rows, "same-tok")).toBe(true);
+    expect(rows.filter(r => r.projectId === 4)).toHaveLength(1);
   });
 
   it("share link management does not remove report or test rows", () => {
