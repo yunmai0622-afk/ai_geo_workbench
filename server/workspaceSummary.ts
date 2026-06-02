@@ -90,8 +90,23 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       })
       .from(publishTasks)
       .where(and(eq(publishTasks.projectId, projectId), eq(publishTasks.status, "completed"))),
-    db.select({ id: analysisResults.id }).from(analysisResults).where(eq(analysisResults.projectId, projectId)).limit(1),
-    db.select({ totalScore: geoScores.totalScore }).from(geoScores).where(eq(geoScores.projectId, projectId)).orderBy(desc(geoScores.createdAt)).limit(1),
+    db
+      .select({
+        mentionsEnterprise: analysisResults.mentionsEnterprise,
+        recommendsEnterprise: analysisResults.recommendsEnterprise,
+      })
+      .from(analysisResults)
+      .where(eq(analysisResults.projectId, projectId)),
+    db
+      .select({
+        totalScore: geoScores.totalScore,
+        aiVisibilityScore: geoScores.aiVisibilityScore,
+        aiRecommendationScore: geoScores.aiRecommendationScore,
+      })
+      .from(geoScores)
+      .where(eq(geoScores.projectId, projectId))
+      .orderBy(desc(geoScores.createdAt))
+      .limit(1),
     db
       .select({
         id: geoInclusionMonitoringRecords.id,
