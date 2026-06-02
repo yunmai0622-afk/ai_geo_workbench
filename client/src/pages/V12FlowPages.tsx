@@ -25,6 +25,8 @@ import {
 import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { RetestPlanPanel } from "@/components/diagnosis/RetestPlanPanel";
+import { AiDiagnosisRerunConfirmDialog } from "@/components/diagnosis/AiDiagnosisRerunConfirmDialog";
+import { AiDiagnosisT0ConfirmDialog } from "@/components/diagnosis/AiDiagnosisT0ConfirmDialog";
 import { DangerousActionConfirmDialog } from "@/components/DangerousActionConfirmDialog";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
@@ -85,6 +87,11 @@ import {
   formatAiDiagnosisDateTime,
   resolveAiDiagnosisLastTestLabel,
 } from "@shared/aiDiagnosisResultDisplay";
+import {
+  buildAiDiagnosisRerunConfirmCopy,
+  buildT0StartConfirmCopy,
+  countEnabledQuestionsForT0,
+} from "@shared/aiDiagnosisManualT0Gate";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
   { value: "manual_check", label: "人工复测" },
@@ -1054,7 +1061,21 @@ export function AiDiagnosisFlowPage() {
   const [gapsExpanded, setGapsExpanded] = useState(false);
   const [questionsExpanded, setQuestionsExpanded] = useState(false);
   const [consoleQuestionsExpanded, setConsoleQuestionsExpanded] = useState(false);
+  const [t0ConfirmOpen, setT0ConfirmOpen] = useState(false);
+  const [rerunConfirmOpen, setRerunConfirmOpen] = useState(false);
   const t0CompletionHandledRef = useRef<string | null>(null);
+  const enabledQuestionCount = useMemo(() => countEnabledQuestionsForT0(questions), [questions]);
+  const hasT0BaselineResult = Boolean(latestCompletedT0Round);
+  const t0StartConfirmCopy = useMemo(
+    () =>
+      buildT0StartConfirmCopy({
+        questionCount: enabledQuestionCount,
+        platformCount: selectedT0Platforms.length > 0 ? selectedT0Platforms.length : T0_DEFAULT_PLATFORMS.length,
+        runsPerQuestion: 3,
+      }),
+    [enabledQuestionCount, selectedT0Platforms],
+  );
+  const rerunConfirmCopy = useMemo(() => buildAiDiagnosisRerunConfirmCopy(), []);
 
   useEffect(() => {
     if (runningT0Round?.id && !activeT0RoundId) {
@@ -1243,27 +1264,13 @@ export function AiDiagnosisFlowPage() {
         setMessage(`${genHint} 但列表暂未同步到可用的「指定问题」，请刷新页面或点击「运行内容诊断」重试。`);
         return;
       }
-      setMessage(`${genHint} 正在自动运行内容诊断…`);
-      try {
-        await executeDiagnosisPipeline(selectedProjectId);
-      } catch (diagErr) {
-        const raw =
-          diagErr instanceof TRPCClientError
-            ? diagErr.message
-            : diagErr instanceof Error
-              ? diagErr.message
-              : "运行内容诊断失败";
-        setDiagnosisProgressErrorCategory(mapGeoDiagnosisErrorCategory(raw));
-        diagnosisProgress.fail();
-        setError(customerErrorMessage(raw));
-        setMessage(`${genHint} 但自动诊断未完成，请点击「运行内容诊断」重试。`);
-      }
+      setMessage(`${genHint} 请点击「运行 AI 实测诊断」或「开始 T0 基线检测」继续。`);
     } catch (err) {
       setError(customerErrorMessage(err instanceof Error ? err.message : "生成问题失败"));
     }
   }
 
-  async function handleRunDiagnosis() {
+  function requestRunContentDiagnosis() {
     if (!selectedProjectId) return;
     if (!hasProfile) {
       setError("当前项目还没有企业档案，请先进入企业档案页完成建档。");
@@ -1273,6 +1280,18 @@ export function AiDiagnosisFlowPage() {
       setError("当前还没有「指定问题」类型的目标客户问题。请先点击「重新生成」或手动添加「指定问题」。");
       return;
     }
+    if (running || generatingQuestions || isT0Running) return;
+    setMessage(undefined);
+    setError(undefined);
+    if (analyses.length > 0) {
+      setRerunConfirmOpen(true);
+      return;
+    }
+    void handleRunDiagnosis();
+  }
+
+  async function handleRunDiagnosis() {
+    if (!selectedProjectId) return;
     setMessage(undefined);
     setError(undefined);
     try {
@@ -1286,6 +1305,38 @@ export function AiDiagnosisFlowPage() {
       }
       setError(customerErrorMessage(raw));
     }
+  }
+
+  function requestStartT0Baseline() {
+    if (!selectedProjectId) {
+      setT0Error("请先选择项目。");
+      return;
+    }
+    if (!hasProfile) {
+      setT0Error("当前项目还没有企业档案，请先完成建档后再启动 T0 基线检测。");
+      return;
+    }
+    if (enabledQuestionCount === 0) {
+      setT0Error("当前没有启用的检测问题，请先在问题库启用问题后再开始 T0 基线检测。");
+      return;
+    }
+    if (selectedT0Platforms.length === 0) {
+      setT0Error("请至少选择一个实测平台。");
+      return;
+    }
+    if (isT0Running || t0StartingMutation || running) return;
+    setT0Message(undefined);
+    setT0Error(undefined);
+    setT0ConfirmOpen(true);
+  }
+
+  async function refreshT0Status() {
+    if (!selectedProjectId) return;
+    await Promise.all([
+      testRoundsQuery.refetch(),
+      t0PollRoundId ? activeT0RoundQuery.refetch() : Promise.resolve(),
+      displayT0RoundId ? t0RunsQuery.refetch() : Promise.resolve(),
+    ]);
   }
 
   const t0ExportProjectName = selectedProject?.enterpriseName ?? "当前企业";
@@ -1409,6 +1460,30 @@ export function AiDiagnosisFlowPage() {
   return (
     <div className="space-y-6">
       <DangerousActionConfirmDialog {...dangerousConfirm.dialogProps} />
+      <AiDiagnosisT0ConfirmDialog
+        open={t0ConfirmOpen}
+        copy={t0StartConfirmCopy}
+        pending={t0StartingMutation}
+        onOpenChange={open => {
+          if (!t0StartingMutation) setT0ConfirmOpen(open);
+        }}
+        onConfirm={() => {
+          setT0ConfirmOpen(false);
+          void handleStartT0Baseline();
+        }}
+      />
+      <AiDiagnosisRerunConfirmDialog
+        open={rerunConfirmOpen}
+        copy={rerunConfirmCopy}
+        pending={running}
+        onOpenChange={open => {
+          if (!running) setRerunConfirmOpen(open);
+        }}
+        onConfirm={() => {
+          setRerunConfirmOpen(false);
+          void handleRunDiagnosis();
+        }}
+      />
       {/* --- 页面标题区 --- */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">AI 实测诊断</h1>
@@ -1495,9 +1570,77 @@ export function AiDiagnosisFlowPage() {
 
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.aiDiagnosis}
-        message="点击「启动T0基线检测」开始检测AI是否认识你的品牌"
+        message="点击「开始 T0 基线检测」并在确认后开始真实平台实测"
         data-testid="first-use-hint-ai-diagnosis"
       />
+
+      <div
+        className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5 shadow-sm"
+        data-testid="ai-diagnosis-t0-manual-gate"
+      >
+        {isT0Running ? (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-indigo-950">T0 检测进行中</p>
+            {t0Progress ? (
+              <p className="text-sm text-indigo-900" data-testid="ai-diagnosis-t0-progress">
+                正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
+              </p>
+            ) : (
+              <p className="text-sm text-indigo-900">正在准备检测任务，请稍候…</p>
+            )}
+            <p className="text-xs text-indigo-800">检测由您确认后启动；刷新页面不会自动发起新检测。</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-indigo-300 bg-white text-indigo-900 hover:bg-indigo-100"
+              data-testid="ai-diagnosis-refresh-t0-status"
+              disabled={testRoundsQuery.isFetching || activeT0RoundQuery.isFetching}
+              onClick={() => void refreshT0Status()}
+            >
+              {testRoundsQuery.isFetching || activeT0RoundQuery.isFetching ? "正在刷新…" : "刷新状态"}
+            </Button>
+          </div>
+        ) : hasT0BaselineResult ? (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-gray-900">已有 T0 基线结果</p>
+            <p className="text-sm text-gray-600">
+              可查看下方明细；如需重新实测，请确认检测范围与预计耗时后再开始。
+            </p>
+            <Button
+              type="button"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              data-testid="ai-diagnosis-restart-t0"
+              disabled={!canOperate || t0StartingMutation || running || generatingQuestions || enabledQuestionCount === 0}
+              onClick={requestStartT0Baseline}
+            >
+              重新诊断
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-gray-900">尚未完成 T0 基线检测</p>
+            <p className="text-sm text-gray-600">
+              T0 基线检测会基于当前问题库，在已接入 AI 平台中真实提问，用于建立品牌可见度初始基线。
+            </p>
+            <Button
+              type="button"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              data-testid="ai-diagnosis-start-t0-gate"
+              disabled={
+                !canOperate ||
+                t0StartingMutation ||
+                running ||
+                generatingQuestions ||
+                enabledQuestionCount === 0 ||
+                selectedT0Platforms.length === 0
+              }
+              onClick={requestStartT0Baseline}
+            >
+              开始 T0 基线检测
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* --- 诊断状态 + 最近实测时间 --- */}
       <div className="flex flex-wrap items-center gap-3">
@@ -1735,8 +1878,9 @@ export function AiDiagnosisFlowPage() {
             <Button
               type="button"
               className="mt-4 h-11 w-full bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={!canOperate || targetQuestions.length === 0 || running || generatingQuestions}
-              onClick={() => void handleRunDiagnosis()}
+              disabled={!canOperate || targetQuestions.length === 0 || running || generatingQuestions || isT0Running}
+              data-testid="ai-diagnosis-run-content-diagnosis"
+              onClick={requestRunContentDiagnosis}
             >
               {diagnoseBtnLabel}
             </Button>
@@ -1795,12 +1939,19 @@ export function AiDiagnosisFlowPage() {
                 isT0Running ||
                 running ||
                 generatingQuestions ||
-                selectedT0Platforms.length === 0
+                selectedT0Platforms.length === 0 ||
+                enabledQuestionCount === 0
               }
-              onClick={() => void handleStartT0Baseline()}
+              onClick={requestStartT0Baseline}
               data-testid="ai-diagnosis-start-t0"
             >
-              {t0StartingMutation ? "正在启动 T0 检测…" : isT0Running ? "T0 检测进行中…" : "启动T0基线检测"}
+              {t0StartingMutation
+                ? "正在启动 T0 检测…"
+                : isT0Running
+                  ? "T0 检测进行中…"
+                  : hasT0BaselineResult
+                    ? "重新诊断"
+                    : "开始 T0 基线检测"}
             </Button>
           </div>
         </div>
@@ -1851,12 +2002,27 @@ export function AiDiagnosisFlowPage() {
             </div>
           ))}
 
-        {isT0Running && t0Progress ? (
-          <div
-            className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"
-            data-testid="ai-diagnosis-t0-progress"
-          >
-            正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
+        {isT0Running ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {t0Progress ? (
+              <div
+                className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"
+                data-testid="ai-diagnosis-t0-progress-detail"
+              >
+                正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-indigo-300 text-indigo-900"
+              data-testid="ai-diagnosis-refresh-t0-status-detail"
+              disabled={testRoundsQuery.isFetching || activeT0RoundQuery.isFetching}
+              onClick={() => void refreshT0Status()}
+            >
+              刷新状态
+            </Button>
           </div>
         ) : null}
 
