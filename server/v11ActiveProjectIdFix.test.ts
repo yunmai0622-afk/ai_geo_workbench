@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LEGACY_ORPHAN_PROJECT_ID } from "@shared/const";
 import {
   activateProject,
+  buildProjectUrl,
   clearActiveProjectId,
   getActiveProjectId,
   getActiveProjectIdFromStorage,
   getProjectIdFromSearch,
   inspectActiveProjectContext,
+  isProjectIdAccessible,
   resolveActiveProjectId,
   setActiveProjectId,
 } from "../client/src/lib/activeProject";
@@ -71,6 +73,14 @@ describe("GEO-V1.1-ActiveProjectIdFix activeProject", () => {
     expect(result.projectId).toBeNull();
   });
 
+  it("列表首项为 30001 时 fallback 到下一个可导航项目", () => {
+    const orphanFirst = [{ id: LEGACY_ORPHAN_PROJECT_ID }, { id: 72 }, { id: 88 }];
+    setActiveProjectId(30002);
+    const result = inspectActiveProjectContext(orphanFirst);
+    expect(result.staleContext).toBe(true);
+    expect(result.projectId).toBe(72);
+  });
+
   it("不可访问的非孤儿 projectId 仍标记 stale 并 fallback", () => {
     setActiveProjectId(30002);
     const result = inspectActiveProjectContext(projects);
@@ -99,6 +109,13 @@ describe("GEO-V1.1-ActiveProjectIdFix activeProject", () => {
     const result = inspectActiveProjectContext(projects, { search: "?projectId=72" });
     expect(result.staleContext).toBe(false);
     expect(result.projectId).toBe(72);
+  });
+
+  it("buildProjectUrl 与 isProjectIdAccessible 拒绝 30001", () => {
+    expect(buildProjectUrl("/workspace", LEGACY_ORPHAN_PROJECT_ID)).toBe("/workspace");
+    expect(isProjectIdAccessible(LEGACY_ORPHAN_PROJECT_ID, [{ id: LEGACY_ORPHAN_PROJECT_ID }])).toBe(
+      false,
+    );
   });
 
   it("getActiveProjectId 与 URL 解析忽略 30001", () => {

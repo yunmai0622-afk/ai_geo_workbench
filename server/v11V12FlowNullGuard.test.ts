@@ -29,9 +29,10 @@ describe("GEO-V1.1-V12FlowRoot data-layer null sanitization", () => {
     expect(page).not.toContain("function filterAiTestRuns");
   });
 
-  it("useActiveProjectSelection trusts geo.projects.list sanitization", () => {
+  it("useActiveProjectSelection filters legacy orphan from geo.projects.list", () => {
     const hook = read("client/src/hooks/useActiveProjectSelection.ts");
-    expect(hook).not.toContain(".filter(p => p != null");
-    expect(hook).toContain("projectsRaw.map(p => ({ id: p.id");
+    expect(hook).toContain("filterNavigableProjects(projectsRaw)");
+    expect(hook).toContain("trpc.geo.projects.list.useQuery");
+    expect(read("server/routers.ts")).toContain("filterNavigableProjects(filterRowsWithNumericId(rows))");
   });
 });

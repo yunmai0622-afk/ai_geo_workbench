@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { filterNavigableProjects } from "@shared/projectNavigation";
 import { GEO_SYNTHETIC_AI_RESPONSE_PREFIX, isSyntheticGeoRawAnswer } from "@shared/geoSyntheticResponse";
 import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionMapping";
 import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
@@ -1282,7 +1283,7 @@ const geoRouter = router({
         .from(projects)
         .where(and(eq(projects.ownerUserId, userId), isNull(projects.archivedAt)))
         .orderBy(desc(projects.createdAt));
-      return filterRowsWithNumericId(rows);
+      return filterNavigableProjects(filterRowsWithNumericId(rows));
     }),
     archive: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();

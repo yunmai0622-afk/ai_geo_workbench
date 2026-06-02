@@ -1,4 +1,4 @@
-import { LEGACY_ORPHAN_PROJECT_ID } from "@shared/const";
+import { isLegacyOrphanProjectId, LEGACY_ORPHAN_PROJECT_ID } from "@shared/projectNavigation";
 
 /** localStorage：项目上下文缓存世代号，升级时清除 session 中的旧 activeProjectId */
 export const PROJECT_CONTEXT_CACHE_VERSION = "v2";
@@ -8,11 +8,7 @@ const ACTIVE_PROJECT_STORAGE_KEY = "activeProjectId";
 
 const SESSION_PROJECT_KEYS = [ACTIVE_PROJECT_STORAGE_KEY] as const;
 
-export { LEGACY_ORPHAN_PROJECT_ID };
-
-export function isLegacyOrphanProjectId(projectId: number | null | undefined): boolean {
-  return projectId === LEGACY_ORPHAN_PROJECT_ID;
-}
+export { LEGACY_ORPHAN_PROJECT_ID, isLegacyOrphanProjectId };
 
 function clearSessionProjectKeys(): void {
   if (typeof window === "undefined") return;

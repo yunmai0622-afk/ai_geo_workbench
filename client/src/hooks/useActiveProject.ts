@@ -16,7 +16,7 @@ export function useActiveProjectId() {
   const search = getSearchFromLocation(location);
   const urlProjectId = useMemo(() => getProjectIdFromSearch(search), [search]);
   const storedId = getActiveProjectIdFromStorage();
-  const activeProjectId = urlProjectId ?? storedId;
+  const activeProjectId = urlProjectId ?? storedId ?? null;
 
   const setActiveProjectId = useCallback(
     (projectId: number | null) => {

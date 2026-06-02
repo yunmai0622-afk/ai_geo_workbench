@@ -1,4 +1,5 @@
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
+import { isLegacyOrphanProjectId } from "./projectNavigation";
 import type { RetestDueReminder, RetestPlanView } from "./retestPlan";
 import type { T0ContentGapSuggestionsResult } from "./t0ContentGapSuggestions";
 import { isP0GeoProfileCompleteFromRecord } from "./geoProfileP0Readiness";
@@ -231,6 +232,9 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
 }
 
 export function workspaceCtaUrl(projectId: number, stage: WorkspaceStageDefinition): string {
+  if (isLegacyOrphanProjectId(projectId)) {
+    return stage.ctaPath;
+  }
   const base = `${stage.ctaPath}?projectId=${projectId}`;
   return stage.ctaHash ? `${base}${stage.ctaHash}` : base;
 }

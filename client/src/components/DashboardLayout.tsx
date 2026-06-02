@@ -23,7 +23,8 @@ import { Link } from "wouter";
 import LoginGatePanel from "@/components/auth/LoginGatePanel";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
-import { buildProjectUrl } from "@/lib/activeProject";
+import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
+import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
@@ -223,12 +224,13 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { activeProjectId } = useActiveProjectId();
-  const { data: projects = [] } = trpc.geo.projects.list.useQuery();
+  const { data: projectsRaw = [] } = trpc.geo.projects.list.useQuery();
+  const navigableProjects = useMemo(() => filterNavigableProjects(projectsRaw), [projectsRaw]);
   const validatedProjectId = useMemo(() => {
     if (!activeProjectId) return null;
-    return projects.some(project => project.id === activeProjectId) ? activeProjectId : null;
-  }, [activeProjectId, projects]);
-  const activeProject = projects.find(project => project.id === validatedProjectId);
+    return isProjectIdAccessible(activeProjectId, navigableProjects) ? activeProjectId : null;
+  }, [activeProjectId, navigableProjects]);
+  const activeProject = navigableProjects.find(project => project.id === validatedProjectId);
   const projectName = activeProject?.enterpriseName;
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";

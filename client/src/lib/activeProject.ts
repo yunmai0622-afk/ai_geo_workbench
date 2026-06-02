@@ -1,7 +1,10 @@
-import { isLegacyOrphanProjectId } from "@/lib/projectContextCache";
-import { LEGACY_ORPHAN_PROJECT_ID } from "@shared/const";
+import {
+  isLegacyOrphanProjectId,
+  LEGACY_ORPHAN_PROJECT_ID,
+  pickFirstNavigableProjectId,
+} from "@shared/projectNavigation";
 
-export { LEGACY_ORPHAN_PROJECT_ID };
+export { LEGACY_ORPHAN_PROJECT_ID, isLegacyOrphanProjectId };
 
 const STORAGE_KEY = "activeProjectId";
 
@@ -19,6 +22,7 @@ export function isProjectIdAccessible(
   projects: readonly { id: number }[],
 ): boolean {
   if (projectId == null || !Number.isFinite(projectId) || projectId <= 0) return false;
+  if (isLegacyOrphanProjectId(projectId)) return false;
   return projects.some(p => p.id === projectId);
 }
 
@@ -57,8 +61,7 @@ export function getActiveProjectId(options?: { skipUrl?: boolean; search?: strin
 }
 
 export function pickFirstAccessibleProjectId(projects: readonly { id: number }[]): number | null {
-  const first = projects[0]?.id;
-  return first != null && Number.isFinite(first) && first > 0 ? first : null;
+  return pickFirstNavigableProjectId(projects);
 }
 
 export type ResolveActiveProjectResult = {
@@ -112,7 +115,8 @@ export function activateProject(projectId: number | string): number | null {
 export function parseProjectId(value: number | string | null | undefined): number | null {
   if (value == null || value === "") return null;
   const id = typeof value === "number" ? value : Number.parseInt(String(value), 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
+  const parsed = Number.isFinite(id) && id > 0 ? id : null;
+  return sanitizeActiveProjectId(parsed);
 }
 
 export function setActiveProjectId(projectId: number | string): void {
@@ -141,8 +145,9 @@ export function clearActiveProjectId(): void {
 
 export function buildProjectUrl(path: string, projectId?: number | null): string {
   const basePath = path.split("?")[0] || "/";
-  if (!projectId) return basePath;
-  return `${basePath}?projectId=${projectId}`;
+  const id = sanitizeActiveProjectId(projectId ?? null);
+  if (!id) return basePath;
+  return `${basePath}?projectId=${id}`;
 }
 
 export function getPathnameFromLocation(location: string): string {

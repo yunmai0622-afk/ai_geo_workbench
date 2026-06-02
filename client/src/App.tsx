@@ -13,6 +13,7 @@ import {
   resolveActiveProjectId,
 } from "@/lib/activeProject";
 import { nukeStaleProjectContextCache } from "@/lib/projectContextCache";
+import { filterNavigableProjects } from "@shared/projectNavigation";
 import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
 import {
   AiDiagnosisFlowPage,
@@ -138,7 +139,10 @@ function AuthenticatedAppShell() {
   const [location, setLocation] = useLocation();
   const search = getSearchFromLocation(location);
   const { loading: authLoading, user } = useAuth();
-  const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, { enabled: Boolean(user) });
+  const { data: projectsRaw = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, {
+    enabled: Boolean(user),
+  });
+  const projects = useMemo(() => filterNavigableProjects(projectsRaw), [projectsRaw]);
   const contextProjectId = typeof window !== "undefined" ? getActiveProjectId({ search }) : null;
   const healedLegacyCacheRef = useRef(false);
 

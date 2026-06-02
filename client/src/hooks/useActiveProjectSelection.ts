@@ -6,6 +6,7 @@ import {
   inspectActiveProjectContext,
   setActiveProjectId,
 } from "@/lib/activeProject";
+import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
@@ -21,7 +22,11 @@ export function useActiveProjectSelection() {
   const pathname = getPathnameFromLocation(location);
   const { data: projectsRaw = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery();
   const projects = useMemo(
-    () => projectsRaw.map(p => ({ id: p.id, enterpriseName: p.enterpriseName ?? "" })),
+    () =>
+      filterNavigableProjects(projectsRaw).map(p => ({
+        id: p.id,
+        enterpriseName: p.enterpriseName ?? "",
+      })),
     [projectsRaw],
   );
 
