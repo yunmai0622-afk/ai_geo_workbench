@@ -188,6 +188,10 @@ function AuthenticatedAppShell() {
     Boolean(user) &&
     (projectsLoading || (Boolean(activeProjectId) && summaryQuery.isLoading));
 
+  if (user && !projectsLoading && (pathname === "/" || pathname === "/home")) {
+    return <Redirect to={projects.length === 0 ? "/onboarding" : "/clients"} />;
+  }
+
   if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname)) {
     return (
       <DashboardLayout>
@@ -196,9 +200,9 @@ function AuthenticatedAppShell() {
     );
   }
 
-  // P0：/clients 为唯一新建/选项目入口；无项目时仍允许进入客户项目管理台空状态
+  // 首次登录无项目时强制进入 onboarding，避免进入无上下文页面
   if (user && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
-    return <Redirect to="/clients" />;
+    return <Redirect to="/onboarding" />;
   }
 
   if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {

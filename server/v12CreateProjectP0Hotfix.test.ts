@@ -10,12 +10,14 @@ const root = resolve(__dirname, "..");
 const read = (rel: string) => readFileSync(resolve(root, rel), "utf-8");
 
 describe("P0 创建项目热修", () => {
-  it("App 根路径导向 /clients，/onboarding 为 3 步引导，旧引导保留 legacy", () => {
+  it("App 根路径按项目数导流，/onboarding 为 3 步引导，旧引导保留 legacy", () => {
     const app = read("client/src/App.tsx");
     expect(app).toContain('<Redirect to="/clients" />');
+    expect(app).toContain('pathname === "/" || pathname === "/home"');
+    expect(app).toContain('projects.length === 0 ? "/onboarding" : "/clients"');
     expect(app).toContain('path="/legacy/onboarding"');
     expect(app).toContain('path="/onboarding" component={OnboardingPage}');
-    expect(app).not.toMatch(/projects\.length === 0[\s\S]{0,200}Redirect to="\/onboarding"/);
+    expect(app).toMatch(/projects\.length === 0[\s\S]{0,300}Redirect to="\/onboarding"/);
     expect(app).not.toContain('<Route path="/" component={Home} />');
   });
 

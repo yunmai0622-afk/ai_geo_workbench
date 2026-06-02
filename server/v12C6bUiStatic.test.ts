@@ -26,6 +26,7 @@ describe("C6-B enterprise profile flow order", () => {
   it("places new project as secondary when projects exist", () => {
     expect(read("client/src/pages/ClientDashboardPage.tsx")).toContain("新建企业项目");
     expect(read("client/src/pages/LegacyOnboardingPage.tsx")).toContain("已有客户项目");
+    expect(read("client/src/pages/OnboardingPage.tsx")).toContain("if (user && projects.length > 0 && !continuingProjectId)");
     expect(read("client/src/pages/OnboardingPage.tsx")).toContain('Redirect to="/clients"');
   });
 

@@ -815,7 +815,24 @@ export function DeliveryReportsCenterPage() {
 
         <P0Section title="模块3：发布内容清单" description="标题 / 平台 / 发布状态 / 公开链接 / 质检状态 / 复测状态。">
           {contentListRows.length === 0 ? (
-            <P0Card className="text-sm text-gray-500">暂无发布记录</P0Card>
+            <P0Card className="border-dashed border-gray-300 bg-white text-center">
+              <div className="flex flex-col items-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                  <FileText className="h-5 w-5 text-gray-500" />
+                </div>
+                <p className="mt-3 text-sm font-medium text-gray-800">暂无发布记录</p>
+                <p className="mt-1 text-xs text-gray-500">请先完成内容发布并回填公开链接，再生成交付报告。</p>
+                <Button
+                  type="button"
+                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() =>
+                    selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                  }
+                >
+                  去发布内容
+                </Button>
+              </div>
+            </P0Card>
           ) : (
             <ul className="space-y-3">
               {contentListRows.map(row => (
@@ -1212,7 +1229,22 @@ export function DeliveryReportsCenterPage() {
 
         <P0Section title="发布内容清单" description="已登记并回填公开链接的发布文章列表。">
           {publishedItems.length === 0 ? (
-            <P0Card className="text-sm text-gray-500">暂无发布记录</P0Card>
+            <P0Card className="border-dashed border-gray-300 bg-white text-center">
+              <div className="flex flex-col items-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                  <FileText className="h-5 w-5 text-gray-500" />
+                </div>
+                <p className="mt-3 text-sm font-medium text-gray-800">暂无报告数据</p>
+                <p className="mt-1 text-xs text-gray-500">当前还没有可用于报告的发布记录，请先生成并发布内容。</p>
+                <Button
+                  type="button"
+                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}
+                >
+                  去生成内容
+                </Button>
+              </div>
+            </P0Card>
           ) : (
             <ul className="space-y-3">
               {publishedItems.map((item, index) => (

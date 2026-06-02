@@ -593,6 +593,32 @@ function buildDiagnosisHeadlineLine(
   return "当前品牌内容资产仍偏薄弱，建议优先补齐官网、FAQ 与案例类可引用内容。";
 }
 
+function diagnosisAwarenessLevel(score?: { totalScore?: number | null } | null): "偏弱" | "一般" | "良好" {
+  if (!score || typeof score.totalScore !== "number") return "偏弱";
+  if (score.totalScore >= 80) return "良好";
+  if (score.totalScore >= 50) return "一般";
+  return "偏弱";
+}
+
+function buildDiagnosisNextStepSuggestion(
+  score?: { totalScore?: number | null } | null,
+  gapCount = 0,
+): string {
+  if (!score || typeof score.totalScore !== "number") {
+    return "先完成一次完整诊断流程，生成缺口与任务后再进入内容资产生产。";
+  }
+  if (score.totalScore >= 80) {
+    return "保持当前优势，优先补强竞品对比和案例证据，巩固品牌推荐稳定性。";
+  }
+  if (score.totalScore >= 50) {
+    return "围绕高频缺口补齐 FAQ 与场景内容，优先提升品牌推荐信号。";
+  }
+  if (gapCount > 0) {
+    return "优先处理前 3 个内容缺口，先补品牌认知与痛点解决页，再复测提及率。";
+  }
+  return "先补齐品牌认知基础页与官网核心内容，再重新运行诊断。";
+}
+
 function topDiagnosisGapCards(analyses: DiagnosisAnalysisRow[], limit = 5) {
   const cards: { id: number; title: string; detail: string }[] = [];
   for (const item of analyses) {
@@ -1136,6 +1162,15 @@ export function AiDiagnosisFlowPage() {
     [diagnosisVisualization?.platformComparison, t0ResultsDisplay?.byPlatform],
   );
   const headline = useMemo(() => buildDiagnosisHeadlineLine(scoreQuery.data ?? null, gapCount), [scoreQuery.data, gapCount]);
+  const awarenessLevel = useMemo(() => diagnosisAwarenessLevel(scoreQuery.data ?? null), [scoreQuery.data]);
+  const nextStepSuggestion = useMemo(
+    () => buildDiagnosisNextStepSuggestion(scoreQuery.data ?? null, gapCount),
+    [scoreQuery.data, gapCount],
+  );
+  const primaryIssueLine = useMemo(() => {
+    if (gapCardsPreview.length > 0) return gapCardsPreview[0]?.detail ?? headline;
+    return headline;
+  }, [gapCardsPreview, headline]);
   const scoreDisplay =
     scoreQuery.data && typeof scoreQuery.data.totalScore === "number" ? `${scoreQuery.data.totalScore} 分` : "暂无数据";
   const stepActiveIndex = complete ? 3 : analyses.length > 0 ? 2 : targetQuestions.length > 0 ? 1 : hasProfile ? 0 : 0;
@@ -1396,6 +1431,32 @@ export function AiDiagnosisFlowPage() {
         <span className="text-xs text-gray-500">最近实测：{lastDiagnosisLabel}</span>
       </div>
 
+      {(analyses.length > 0 || scoreQuery.data) && (
+        <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-gray-900">核心诊断结论总览</h2>
+            <span className="rounded-full border border-blue-200 bg-blue-100 px-2.5 py-1 text-[10px] font-medium text-blue-700">
+              诊断流程产出
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <p className="text-xs text-gray-500">AI 对品牌的认知评级</p>
+              <p className="mt-1 text-xl font-bold text-blue-600">{awarenessLevel}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-4 sm:col-span-2">
+              <p className="text-xs text-gray-500">主要问题一句话概括</p>
+              <p className="mt-1 text-sm font-medium leading-6 text-gray-800">{primaryIssueLine}</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-4 sm:col-span-3">
+              <p className="text-xs text-gray-500">下一步建议</p>
+              <p className="mt-1 text-sm leading-6 text-gray-700">{nextStepSuggestion}</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm font-medium leading-relaxed text-gray-800">{headline}</p>
+        </div>
+      )}
+
       {/* --- 核心指标卡 --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-mention-rate">
@@ -1526,10 +1587,17 @@ export function AiDiagnosisFlowPage() {
         </div>
       )}
 
+      <div className="flex items-center gap-2">
+        <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-700">
+          诊断流程
+        </span>
+        <p className="text-xs text-gray-500">分析结论链路：输入问题 到 运行诊断 到 生成结论与任务</p>
+      </div>
+
       {/* --- 诊断流程控制台（浅色版） --- */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-gray-900">诊断流程</h2>
-        <p className="mt-1 text-xs text-gray-500">按步骤完成输入与诊断</p>
+        <p className="mt-1 text-xs text-gray-500">按步骤完成输入与诊断，产出分析结论与优化任务</p>
 
         {/* 步骤指示器 */}
         <div className="mt-5 flex items-center gap-1">
@@ -1614,6 +1682,12 @@ export function AiDiagnosisFlowPage() {
       </div>
 
       {/* --- T0 基线真实检测（独立入口，不替换原有 analysis.run 诊断） --- */}
+      <div className="flex items-center gap-2">
+        <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700">
+          T0 基线检测
+        </span>
+        <p className="text-xs text-gray-500">检测工具链路：真实平台实测并沉淀原始检测数据</p>
+      </div>
       <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm" data-testid="ai-diagnosis-t0-baseline">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -1822,28 +1896,6 @@ export function AiDiagnosisFlowPage() {
           <p className="mt-4 text-sm text-gray-500">T0 检测已完成，但暂无可展示的实测记录。</p>
         ) : null}
       </div>
-
-      {/* --- 核心诊断结论 --- */}
-      {(analyses.length > 0 || scoreQuery.data) && (
-        <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-900">核心诊断结论</h2>
-          <p className="mt-3 text-base font-medium leading-relaxed text-gray-800">{headline}</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-xs text-gray-500">内容覆盖评分</p>
-              <p className="mt-1 text-xl font-bold text-blue-600">{scoreDisplay}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-xs text-gray-500">内容缺口数</p>
-              <p className="mt-1 text-xl font-bold text-amber-600">{analyses.length > 0 ? String(gapCount) : "--"}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-xs text-gray-500">推荐生成方向</p>
-              <p className="mt-1 text-xl font-bold text-purple-600">{tasks.length > 0 ? String(tasks.length) : "--"}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* --- 内容缺口与目标问题 --- */}
       {analyses.length > 0 && (

@@ -1,4 +1,5 @@
 import type { WorkspaceSummaryMetrics } from "@shared/workspaceStateMachine";
+import { GEO_UNIFIED_MAIN_PIPELINE_STEPS } from "@shared/workspaceMainChain";
 
 /** 系统主定位（客户可见） */
 export const GEO_PRODUCT_MAIN_POSITIONING =
@@ -11,7 +12,7 @@ export const GEO_PRODUCT_SUB_POSITIONING =
 export type CustomerStepStatus = "未开始" | "进行中" | "已完成" | "需补充" | "有风险";
 
 export type MainPipelineStepDef = {
-  id: string;
+  id: (typeof GEO_UNIFIED_MAIN_PIPELINE_STEPS)[number]["id"];
   title: string;
   shortLabel: string;
   customerDescription: string;
@@ -19,74 +20,7 @@ export type MainPipelineStepDef = {
   emptyHint: string;
 };
 
-export const GEO_MAIN_PIPELINE_STEPS: MainPipelineStepDef[] = [
-  {
-    id: "profile_basics",
-    title: "企业资料建档",
-    shortLabel: "建档",
-    customerDescription: "录入企业基础信息，让系统知道品牌是谁、卖什么、服务谁。",
-    path: "/enterprise-profile",
-    emptyHint: "请先完成企业资料建档。",
-  },
-  {
-    id: "ai_search_test",
-    title: "AI 搜索现状实测",
-    shortLabel: "实测",
-    customerDescription: "在豆包、Kimi、DeepSeek 等平台发起真实提问，查看品牌是否被提及与推荐。",
-    path: "/ai-diagnosis",
-    emptyHint: "暂无实测结果，请先发起 AI 搜索实测。",
-  },
-  {
-    id: "brand_assets",
-    title: "品牌资产补全",
-    shortLabel: "资产",
-    customerDescription: "补充案例、背书、竞品与希望被 AI 推荐的问题，提升 AI 理解与引用质量。",
-    path: "/enterprise-profile",
-    emptyHint: "建议补充品牌资产，帮助 AI 更准确理解企业。",
-  },
-  {
-    id: "content_assets",
-    title: "内容资产生成",
-    shortLabel: "内容",
-    customerDescription: "围绕实测缺口生成适配平台的内容资产，提升理解与推荐概率，而非堆数量。",
-    path: "/weekly",
-    emptyHint: "暂无内容资产，请先完成实测诊断后再生成。",
-  },
-  {
-    id: "platform_publish",
-    title: "平台适配发布",
-    shortLabel: "发布",
-    customerDescription: "按平台策略人工确认发布或登记发布结果，不做一键全网群发。",
-    path: "/content-publishing",
-    emptyHint: "暂无发布记录，请完成内容后登记或执行发布。",
-  },
-  {
-    id: "inclusion_monitor",
-    title: "收录与引用监测",
-    shortLabel: "监测",
-    customerDescription: "跟踪内容收录、AI 引用、品牌提及与推荐，并对比竞品出现情况。",
-    path: "/inclusion-monitoring",
-    emptyHint: "暂无监测结果，请先完成发布记录并发起复测。",
-  },
-  {
-    id: "geo_score",
-    title: "GEO 评分与竞品对比",
-    shortLabel: "评分",
-    customerDescription: "查看本轮 GEO 评分与竞品对比，识别可见性差距。",
-    path: "/ai-diagnosis",
-    emptyHint: "暂无 GEO 评分，请先完成 AI 搜索实测。",
-  },
-  {
-    id: "delivery_report",
-    title: "交付报告与下一轮优化",
-    shortLabel: "交付",
-    customerDescription: "整理本轮执行摘要、问题清单与优化建议，推进下一轮提升。",
-    path: "/delivery-reports",
-    emptyHint: "暂无可交付报告，请先积累实测、发布与监测数据。",
-  },
-];
-
-export const COCKPIT_PIPELINE_STEPS = GEO_MAIN_PIPELINE_STEPS.map(s => s.shortLabel);
+export const COCKPIT_PIPELINE_STEPS = GEO_UNIFIED_MAIN_PIPELINE_STEPS.map(s => s.shortLabel);
 
 export const GEO_CONTENT_ASSET_TYPES = [
   "品牌解释型内容",
@@ -132,7 +66,7 @@ export function resolveMainPipelineStepStatuses(
   const m = metrics;
   const agentRisk = extras?.localAgentOnline === false;
 
-  return GEO_MAIN_PIPELINE_STEPS.map(step => {
+  return GEO_UNIFIED_MAIN_PIPELINE_STEPS.map(step => {
     switch (step.id) {
       case "profile_basics": {
         if (!m) return view(step, "未开始", "完成企业资料建档");
@@ -140,7 +74,7 @@ export function resolveMainPipelineStepStatuses(
         if (m.profileCompletionPercent > 0) return view(step, "进行中", "继续补齐必填建档信息");
         return view(step, "需补充", "填写企业基础信息");
       }
-      case "ai_search_test": {
+      case "ai_search_test_t0": {
         if (!m) return view(step, "未开始", step.emptyHint);
         if (m.aiTestResultCount > 0) return view(step, "已完成", "查看实测明细与引用来源");
         if (m.hasAnalysis) return view(step, "进行中", "发起 AI 搜索实测");
@@ -169,7 +103,7 @@ export function resolveMainPipelineStepStatuses(
         if (m.articleCount > 0) return view(step, "进行中", "人工确认发布或登记结果");
         return view(step, "未开始", step.emptyHint);
       }
-      case "inclusion_monitor": {
+      case "inclusion_monitor_retest": {
         if (!m) return view(step, "未开始", step.emptyHint);
         if (m.retestPendingCount > 0) return view(step, "有风险", "处理待复测项");
         if (m.monitoringRecordCount > 0) return view(step, "已完成", "查看收录与 AI 引用变化");

@@ -25,7 +25,7 @@ export default function LoginGatePanel() {
   const loginWithEmail = trpc.auth.loginWithEmail.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
-      window.location.href = "/clients";
+      window.location.href = "/";
     },
     onError: err => {
       setEmailLoginError(toEmailLoginErrorMessage(err));

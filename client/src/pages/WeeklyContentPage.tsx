@@ -137,7 +137,7 @@ import {
 } from "@shared/weeklyContentGeneration";
 import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
@@ -2602,11 +2602,32 @@ export default function WeeklyContentPage() {
                 </Button>
               </div>
               {displayContentCards.length === 0 ? (
-                <p className="text-sm text-gray-500" data-testid="weekly-content-cards-empty">
-                  {titleSearch.trim() || filterContentTag !== "all"
-                    ? "未找到匹配内容"
-                    : "当前筛选条件下暂无内容"}
-                </p>
+                <div
+                  className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center"
+                  data-testid="weekly-content-cards-empty"
+                >
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                    <FileText className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-gray-800">未找到匹配内容</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    请调整筛选条件，或返回全部内容后继续编辑和发布。
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-4 border-gray-200 text-gray-700 hover:bg-gray-50"
+                    onClick={() => {
+                      setFilterPlatform("all");
+                      setFilterStatus("all");
+                      setFilterContentTag("all");
+                      setSortQuality("none");
+                      setTitleSearch("");
+                    }}
+                  >
+                    清空筛选条件
+                  </Button>
+                </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {displayContentCards.map(model => {
@@ -2639,7 +2660,27 @@ export default function WeeklyContentPage() {
                 </div>
               )}
             </section>
-          ) : null}
+          ) : (
+            <P0Card className="border-dashed border-gray-300 bg-white" testId="weekly-content-empty">
+              <div className="flex flex-col items-center text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                  <FileText className="h-5 w-5 text-gray-500" />
+                </div>
+                <p className="mt-3 text-sm font-medium text-gray-800">本周还没有生成内容</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  先按平台生成首批内容，再进入质检与发布流程。
+                </p>
+                <Button
+                  type="button"
+                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={batchBusy}
+                  onClick={() => void handleBatchGenerateAllPlatforms()}
+                >
+                  生成平台内容
+                </Button>
+              </div>
+            </P0Card>
+          )}
 
           <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
             <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">

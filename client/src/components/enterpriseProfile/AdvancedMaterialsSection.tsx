@@ -44,6 +44,7 @@ type Props = {
   onFaqItemsChange: (items: FaqItem[]) => void;
   onSaveTrust: () => void;
   onSaveCompetitor: () => void;
+  showCompetitorSection?: boolean;
 };
 
 function FoldGroup({
@@ -107,6 +108,7 @@ export function AdvancedMaterialsSection(props: Props) {
     onFaqItemsChange,
     onSaveTrust,
     onSaveCompetitor,
+    showCompetitorSection = true,
   } = props;
 
   const addFaq = () => {
@@ -185,47 +187,49 @@ export function AdvancedMaterialsSection(props: Props) {
             </Button>
           </FoldGroup>
 
-          <FoldGroup title="竞品差异" summary={competitors.length ? `${competitors.length} 个竞品` : "待补充"} testId="advanced-fold-competitor">
-            <label className="block space-y-1 text-sm">
-              <span className="text-gray-600">常被比较的竞品</span>
-              <div className="flex flex-wrap gap-2">
-                {competitors.map(c => (
-                  <span key={c} className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-                    {c}
-                    <button type="button" className="text-gray-400 hover:text-red-500" onClick={() => onRemoveCompetitor(c)}>
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <Input
-                  className="max-w-[200px]"
-                  value={competitorDraft}
-                  onChange={e => onCompetitorDraftChange(e.target.value)}
-                  placeholder="输入后回车"
-                  onKeyDown={e => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      onAddCompetitor();
-                    }
-                  }}
-                />
-                <Button type="button" size="sm" variant="outline" onClick={onAddCompetitor}>
-                  添加
-                </Button>
-              </div>
-            </label>
-            <label className="block space-y-1 text-sm">
-              <span className="text-gray-600">我们的差异</span>
-              <Input value={competitorDifferenceText} onChange={e => onCompetitorDifferenceChange(e.target.value)} />
-            </label>
-            <label className="block space-y-1 text-sm">
-              <span className="text-gray-600">不承诺什么</span>
-              <Input value={unfitCustomers} onChange={e => onUnfitCustomersChange(e.target.value)} placeholder="如不承诺效果、不适用于某类客户" />
-            </label>
-            <Button type="button" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={onSaveCompetitor}>
-              保存竞品差异
-            </Button>
-          </FoldGroup>
+          {showCompetitorSection ? (
+            <FoldGroup title="竞品差异" summary={competitors.length ? `${competitors.length} 个竞品` : "待补充"} testId="advanced-fold-competitor">
+              <label className="block space-y-1 text-sm">
+                <span className="text-gray-600">常被比较的竞品</span>
+                <div className="flex flex-wrap gap-2">
+                  {competitors.map(c => (
+                    <span key={c} className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                      {c}
+                      <button type="button" className="text-gray-400 hover:text-red-500" onClick={() => onRemoveCompetitor(c)}>
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <Input
+                    className="max-w-[200px]"
+                    value={competitorDraft}
+                    onChange={e => onCompetitorDraftChange(e.target.value)}
+                    placeholder="输入后回车"
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        onAddCompetitor();
+                      }
+                    }}
+                  />
+                  <Button type="button" size="sm" variant="outline" onClick={onAddCompetitor}>
+                    添加
+                  </Button>
+                </div>
+              </label>
+              <label className="block space-y-1 text-sm">
+                <span className="text-gray-600">我们的差异</span>
+                <Input value={competitorDifferenceText} onChange={e => onCompetitorDifferenceChange(e.target.value)} />
+              </label>
+              <label className="block space-y-1 text-sm">
+                <span className="text-gray-600">不承诺什么</span>
+                <Input value={unfitCustomers} onChange={e => onUnfitCustomersChange(e.target.value)} placeholder="如不承诺效果、不适用于某类客户" />
+              </label>
+              <Button type="button" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={onSaveCompetitor}>
+                保存竞品差异
+              </Button>
+            </FoldGroup>
+          ) : null}
 
           <FoldGroup title="常见问答" summary={`${faqCount} 条`} testId="advanced-fold-faq">
             <div className="space-y-3">
