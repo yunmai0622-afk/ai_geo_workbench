@@ -1,9 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
+import { resolveT0DetectionPerHourLimit } from "@shared/t0DetectionRateLimit";
+import { DEFAULT_SUBSCRIPTION_PLAN_ID } from "@shared/subscriptionPlans";
+import { getDb } from "./db";
 import {
   getContentGenerationRateLimitConfig,
   getT0DetectionRateLimitConfig,
 } from "./geoSystemConfigStore";
+import { resolveUserSubscriptionPlanIdFromDb } from "./userSubscriptionPlan";
 
 /** 内置默认限流（测试与无 DB 场景） */
 export const CONTENT_GENERATION_RATE_LIMIT = {
@@ -69,8 +73,31 @@ export async function assertContentGenerationRateLimit(userId: number): Promise<
   }
 }
 
-export async function assertT0DetectionRateLimit(projectId: number): Promise<void> {
-  const config = await getT0DetectionRateLimitConfig();
+export type T0DetectionRateLimitUser = {
+  id: number;
+  role: string;
+};
+
+export async function assertT0DetectionRateLimit(
+  projectId: number,
+  user: T0DetectionRateLimitUser,
+): Promise<void> {
+  const baseConfig = await getT0DetectionRateLimitConfig();
+  const db = await getDb();
+  const planId = db
+    ? await resolveUserSubscriptionPlanIdFromDb(db, user.id)
+    : DEFAULT_SUBSCRIPTION_PLAN_ID;
+  const hourlyLimit = resolveT0DetectionPerHourLimit({
+    isAdmin: user.role === "admin",
+    planId,
+    configuredBasicLimit: baseConfig.maxRequests,
+  });
+  if (hourlyLimit === null) return;
+
+  const config: RateLimitConfig = {
+    windowMs: baseConfig.windowMs,
+    maxRequests: hourlyLimit,
+  };
   const result = geoApiRateLimiter.check(`t0-detect:project:${projectId}`, config);
   if (!result.allowed) {
     throw new TRPCError({

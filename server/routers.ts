@@ -3795,7 +3795,10 @@ ${article.markdownContent}`,
         await requireProjectAccess(ctx, input.projectId);
         const db = await requireDb();
         await assertCanRunT0Detection(db, getCurrentUserId(ctx));
-        await assertT0DetectionRateLimit(input.projectId);
+        await assertT0DetectionRateLimit(input.projectId, {
+          id: getCurrentUserId(ctx),
+          role: ctx.user!.role,
+        });
         const result = await createT0RoundWithQuestions(db, {
           projectId: input.projectId,
           roundName: input.roundName,
