@@ -465,7 +465,7 @@ export function DeliveryReportsCenterPage() {
     t0MetricsQuery.data?.recommendRate != null && hasAiTestData
       ? aiTestAggregate.recommendRate - t0MetricsQuery.data.recommendRate
       : null;
-  const retestedCount = monitoringRows.filter(row => Boolean(row.lastAiTestedAt)).length;
+  const retestedCount = monitoringRows.filter(row => Boolean((row as { lastAiTestedAt?: string | null }).lastAiTestedAt)).length;
   const hasEnoughDataForFullReport =
     publishWithLinkCount > 0 && hasAiTestData && currentGeoScore != null && t0MetricsQuery.data != null;
 
@@ -492,7 +492,7 @@ export function DeliveryReportsCenterPage() {
             ? String(article.status)
             : "待质检"
           : "待质检";
-      const retestStatus = monitoring?.lastAiTestedAt ? "已复测" : "待复测";
+      const retestStatus = (monitoring as { lastAiTestedAt?: string | null } | null)?.lastAiTestedAt ? "已复测" : "待复测";
       return {
         key: `${record.id ?? index}`,
         title: String(record.publishTitle ?? record.title ?? (article?.title as string) ?? `内容 ${index + 1}`),
@@ -571,7 +571,7 @@ export function DeliveryReportsCenterPage() {
     const lines: string[] = [];
     if (growthSuggestions.length > 0) {
       for (const suggestion of growthSuggestions.slice(0, 5)) {
-        lines.push(suggestion.message);
+        lines.push(typeof suggestion.message === "string" ? suggestion.message : String(suggestion.message));
       }
     }
     if (lines.length < 3) lines.push("下轮内容主题：围绕当前高意向问题补齐对比与证据型文章。");
