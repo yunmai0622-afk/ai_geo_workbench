@@ -1087,6 +1087,7 @@ export function AiDiagnosisFlowPage() {
   }, [displayT0Round?.id, displayT0Round?.status, selectedProjectId, utils]);
 
   const gapCount = useMemo(() => countDiagnosisGaps(analyses as DiagnosisAnalysisRow[]), [analyses]);
+  const recommendDirectionCount = tasks.length;
   const gapCardsPreview = useMemo(() => topDiagnosisGapCards(analyses as DiagnosisAnalysisRow[], 5), [analyses]);
   const gapCardsAll = useMemo(() => topDiagnosisGapCards(analyses as DiagnosisAnalysisRow[], 50), [analyses]);
   const questionCardsPreview = useMemo(
@@ -1431,31 +1432,81 @@ export function AiDiagnosisFlowPage() {
         <span className="text-xs text-gray-500">最近实测：{lastDiagnosisLabel}</span>
       </div>
 
-      {(analyses.length > 0 || scoreQuery.data) && (
-        <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
+      {(analyses.length > 0 || scoreQuery.data || t0ResultsDisplay) && (
+        <div
+          className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-white to-white p-5 shadow-md sm:p-6"
+          data-testid="ai-diagnosis-core-summary"
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-gray-900">核心诊断结论总览</h2>
+            <h2 className="text-base font-bold text-gray-900">核心诊断结论</h2>
             <span className="rounded-full border border-blue-200 bg-blue-100 px-2.5 py-1 text-[10px] font-medium text-blue-700">
               诊断流程产出
             </span>
           </div>
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-blue-100 bg-white p-3 text-center sm:p-4">
+              <p className="text-[11px] text-gray-500">GEO 分</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600" data-testid="ai-diagnosis-core-geo-score">
+                {scoreDisplay}
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-100 bg-white p-3 text-center sm:p-4">
+              <p className="text-[11px] text-gray-500">内容缺口数</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700" data-testid="ai-diagnosis-core-gap-count">
+                {gapCount}
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-white p-3 text-center sm:p-4">
+              <p className="text-[11px] text-gray-500">推荐方向数</p>
+              <p
+                className="mt-1 text-2xl font-bold tabular-nums text-emerald-700"
+                data-testid="ai-diagnosis-core-recommend-directions"
+              >
+                {recommendDirectionCount}
+              </p>
+            </div>
+          </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <p className="text-xs text-gray-500">AI 对品牌的认知评级</p>
-              <p className="mt-1 text-xl font-bold text-blue-600">{awarenessLevel}</p>
+              <p className="mt-1 text-lg font-bold text-blue-600">{awarenessLevel}</p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-4 sm:col-span-2">
               <p className="text-xs text-gray-500">主要问题一句话概括</p>
               <p className="mt-1 text-sm font-medium leading-6 text-gray-800">{primaryIssueLine}</p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-4 sm:col-span-3">
-              <p className="text-xs text-gray-500">下一步建议</p>
-              <p className="mt-1 text-sm leading-6 text-gray-700">{nextStepSuggestion}</p>
-            </div>
           </div>
-          <p className="mt-4 text-sm font-medium leading-relaxed text-gray-800">{headline}</p>
+          <p className="mt-3 text-sm leading-relaxed text-gray-700">{nextStepSuggestion}</p>
+          <p className="mt-2 text-sm font-medium leading-relaxed text-gray-800">{headline}</p>
         </div>
       )}
+
+      <div
+        className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+        data-testid="ai-diagnosis-next-content-actions"
+      >
+        <h2 className="text-sm font-semibold text-gray-900">下一步内容资产动作</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {DIAGNOSIS_NEXT_ACTIONS.map((action, idx) => (
+            <div key={action.title} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs text-gray-400">动作 {idx + 1}</p>
+              <p className="mt-2 text-sm font-medium text-gray-800">{action.title}</p>
+              <p className="mt-1 text-xs text-gray-500">{action.hint}</p>
+            </div>
+          ))}
+        </div>
+        {complete && (
+          <p className="mt-4 text-sm text-emerald-600">诊断已完成，可以进入内容资产生产。</p>
+        )}
+        <Button
+          type="button"
+          className="mt-4 h-11 bg-blue-600 hover:bg-blue-700 text-white"
+          disabled={!complete}
+          onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}
+        >
+          去生成内容资产
+        </Button>
+      </div>
 
       {/* --- 核心指标卡 --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1681,19 +1732,30 @@ export function AiDiagnosisFlowPage() {
         </div>
       </div>
 
-      {/* --- T0 基线真实检测（独立入口，不替换原有 analysis.run 诊断） --- */}
-      <div className="flex items-center gap-2">
-        <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700">
-          T0 基线检测
-        </span>
-        <p className="text-xs text-gray-500">检测工具链路：真实平台实测并沉淀原始检测数据</p>
-      </div>
-      <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm" data-testid="ai-diagnosis-t0-baseline">
+      {/* --- T0 基线真实检测（紧凑可折叠，不抢占首屏） --- */}
+      <details
+        className="group rounded-xl border border-indigo-100 bg-white shadow-sm"
+        data-testid="ai-diagnosis-t0-baseline"
+        open={isT0Running || t0StartingMutation}
+      >
+        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <ChevronDown className="h-4 w-4 text-indigo-600 transition-transform group-open:rotate-180" />
+            T0 基线真实检测
+          </span>
+          <span className="text-xs font-normal text-gray-500">
+            {displayT0Round?.status === "completed"
+              ? "已完成 · 展开查看明细"
+              : isT0Running
+                ? "检测进行中…"
+                : "真实平台实测入口"}
+          </span>
+        </summary>
+        <div className="space-y-4 border-t border-indigo-50 px-4 pb-4 pt-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">T0 基线真实检测</h2>
-            <p className="mt-1 text-xs text-gray-500">
-              调用真实 AI 平台实测，写入 test_rounds 与 ai_test_runs，与上方合成诊断入口并行保留。
+            <p className="text-xs text-gray-500">
+              调用真实 AI 平台实测并沉淀原始数据，与上方内容诊断流程并行保留。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1895,7 +1957,8 @@ export function AiDiagnosisFlowPage() {
         ) : displayT0Round?.status === "completed" && !t0ResultsDisplay ? (
           <p className="mt-4 text-sm text-gray-500">T0 检测已完成，但暂无可展示的实测记录。</p>
         ) : null}
-      </div>
+        </div>
+      </details>
 
       {/* --- 内容缺口与目标问题 --- */}
       {analyses.length > 0 && (
@@ -1942,31 +2005,6 @@ export function AiDiagnosisFlowPage() {
           </div>
         </div>
       )}
-
-      {/* --- 下一步动作 --- */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-900">下一步内容资产动作</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {DIAGNOSIS_NEXT_ACTIONS.map((action, idx) => (
-            <div key={action.title} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs text-gray-400">动作 {idx + 1}</p>
-              <p className="mt-2 text-sm font-medium text-gray-800">{action.title}</p>
-              <p className="mt-1 text-xs text-gray-500">{action.hint}</p>
-            </div>
-          ))}
-        </div>
-        {complete && (
-          <p className="mt-4 text-sm text-emerald-600">诊断已完成，可以进入内容资产生产。</p>
-        )}
-        <Button
-          type="button"
-          className="mt-4 h-11 bg-blue-600 hover:bg-blue-700 text-white"
-          disabled={!complete}
-          onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}
-        >
-          去生成内容资产
-        </Button>
-      </div>
 
       {/* --- 完整诊断明细（折叠） --- */}
       {analyses.length > 0 && (

@@ -197,6 +197,7 @@ export function resolveMainChainSteps(input: MainChainProgressInput): MainChainS
       step: index + 1,
       id: step.id,
       name: step.title,
+      shortLabel: step.shortLabel,
       path: step.path,
       done,
     };

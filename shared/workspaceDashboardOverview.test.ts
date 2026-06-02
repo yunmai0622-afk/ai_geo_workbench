@@ -50,10 +50,18 @@ describe("GEO-V1.1-Dashboard-Overview 工作台数据总览", () => {
     expect(values.geoScoreText).toBe("72分");
   });
 
-  it("无实测样本时 AI 提及率显示占位", () => {
+  it("无实测样本但有诊断结论时仍展示提及率", () => {
     expect(
       formatWorkspaceAiMentionRate(
-        baseMetrics({ brandMentionRate: 0.4, aiTestResultCount: 0 }),
+        baseMetrics({ brandMentionRate: 0.4, aiTestResultCount: 0, hasAnalysis: true }),
+      ),
+    ).toBe("40%");
+  });
+
+  it("无实测且无诊断时 AI 提及率显示占位", () => {
+    expect(
+      formatWorkspaceAiMentionRate(
+        baseMetrics({ brandMentionRate: null, aiTestResultCount: 0, hasAnalysis: false, hasGeoScore: false }),
       ),
     ).toBe("--");
   });

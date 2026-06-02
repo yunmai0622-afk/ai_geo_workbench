@@ -30,6 +30,7 @@ import {
   buildGeoScoreAttributionLines,
   buildGeoScoreChangeReason,
   formatGeoScoreChangeBadge,
+  workspaceAiMentionRateHint,
 } from "@shared/workspaceDashboardOverview";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
 import { AlertTriangle, ArrowRight } from "lucide-react";
@@ -38,7 +39,7 @@ import { useLocation } from "wouter";
 
 export default function EnterpriseWorkspacePage() {
   const [, setLocation] = useLocation();
-  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading, projects } =
+  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } =
     useActiveProjectSelection();
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
 
@@ -116,9 +117,7 @@ export default function EnterpriseWorkspacePage() {
     (metrics?.articleCount ?? 0) - (metrics?.publishTaskCount ?? 0) - (metrics?.publishRecordCount ?? 0),
   );
   const showRetestTodo = Boolean((metrics?.publishRecordWithPublicUrlCount ?? 0) > 0);
-  const showWorkspaceWelcomeHint = !(
-    projects.length > 0 && Boolean(metrics?.p0ProfileComplete)
-  );
+  const brandMentionRateHint = metrics ? workspaceAiMentionRateHint(metrics) : undefined;
 
   if (!enabled && !projectsLoading) {
     return (
@@ -130,13 +129,11 @@ export default function EnterpriseWorkspacePage() {
 
   return (
     <div className="space-y-7" data-testid="workspace-page">
-      {showWorkspaceWelcomeHint ? (
-        <FirstUseHintBanner
-          storageKey={FIRST_USE_HINT_KEYS.workspace}
-          message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
-          data-testid="first-use-hint-workspace"
-        />
-      ) : null}
+      <FirstUseHintBanner
+        storageKey={FIRST_USE_HINT_KEYS.workspace}
+        message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
+        data-testid="first-use-hint-workspace"
+      />
       {metrics?.retestDueReminder && selectedProjectId ? (
         <RetestDueReminderCard
           reminder={metrics.retestDueReminder}
@@ -293,7 +290,7 @@ export default function EnterpriseWorkspacePage() {
                 </div>
               </div>
             ) : null}
-            <div className="flex flex-col gap-2.5">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {(deliveryStage?.progressSteps ?? mainChainSteps).map(step => (
                 <button
                   key={"id" in step ? step.id : step.key}
@@ -304,7 +301,7 @@ export default function EnterpriseWorkspacePage() {
                       : null
                   }
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[13px] font-medium transition-colors sm:max-w-md",
+                    "flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[12px] font-medium transition-colors sm:text-[13px]",
                     step.done
                       ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                       : "border-gray-200 bg-white text-gray-600 hover:border-blue-200 hover:bg-blue-50",
@@ -312,7 +309,16 @@ export default function EnterpriseWorkspacePage() {
                   data-testid={`main-chain-step-${"step" in step ? step.step : step.key}`}
                 >
                   <span aria-hidden className="shrink-0">{step.done ? "✅" : "⏳"}</span>
-                  <span>{"name" in step ? step.name : step.label}</span>
+                  <span className="min-w-0 leading-snug">
+                    {"shortLabel" in step && typeof step.shortLabel === "string" ? (
+                      <>
+                        <span className="sm:hidden">{step.shortLabel}</span>
+                        <span className="hidden sm:inline">{"name" in step ? step.name : step.label}</span>
+                      </>
+                    ) : (
+                      ("name" in step ? step.name : step.label)
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
@@ -330,7 +336,11 @@ export default function EnterpriseWorkspacePage() {
                   ...geoScoreAttributions,
                 ].filter((line): line is string => Boolean(line))}
               />
-              <MetricCell label="品牌提及率" value={homeDisplay.brandMentionRateText} />
+              <MetricCell
+                label="品牌提及率"
+                value={homeDisplay.brandMentionRateText}
+                hintLines={brandMentionRateHint ? [brandMentionRateHint] : []}
+              />
               <MetricCell label="推荐率" value={homeDisplay.recommendRateText} />
               <MetricCell label="最近实测" value={homeDisplay.lastAiTestLabel} />
               <MetricCell
