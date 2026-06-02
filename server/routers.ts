@@ -16,8 +16,9 @@ import { ensureProjectsOwnerUserIdColumnOnce } from "./ensureProjectsOwnerUserId
 import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
 import { mergeLinkAccessIntoRawJson } from "@shared/inclusionMonitoringDisplay";
 import { aggregateT0AiTestRunMetrics } from "@shared/t0AiTestRunMetrics";
+import { geoScorePercentToRate, resolveBrandMentionRate } from "@shared/brandMentionRateResolver";
 import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, not } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, not, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
@@ -65,6 +66,7 @@ import {
   platformAuthorizationConfigs,
   publishStrategies,
   projects,
+  publishTasks,
   questions,
   reports,
   aiTestRuns,
@@ -1120,7 +1122,8 @@ const geoRouter = router({
         .orderBy(desc(projects.createdAt));
 
       const projectIds = accessibleIds;
-      const [articleRows, publishRows, monitoringRows, analysisRows, scoreRows, t0RoundRows] = await Promise.all([
+      const [articleRows, publishRows, completedPublishTaskRows, monitoringRows, analysisRows, scoreRows, t0RoundRows] =
+        await Promise.all([
         db
           .select({ projectId: geoArticles.projectId })
           .from(geoArticles)
@@ -1129,6 +1132,14 @@ const geoRouter = router({
           .select({ projectId: geoPublishRecords.projectId })
           .from(geoPublishRecords)
           .where(inArray(geoPublishRecords.projectId, projectIds)),
+        db
+          .select({
+            projectId: publishTasks.projectId,
+            count: sql<number>`count(*)`,
+          })
+          .from(publishTasks)
+          .where(and(inArray(publishTasks.projectId, projectIds), eq(publishTasks.status, "completed")))
+          .groupBy(publishTasks.projectId),
         db
           .select({
             projectId: geoInclusionMonitoringRecords.projectId,
@@ -1140,6 +1151,7 @@ const geoRouter = router({
           .select({
             projectId: analysisResults.projectId,
             createdAt: analysisResults.createdAt,
+            mentionsEnterprise: analysisResults.mentionsEnterprise,
           })
           .from(analysisResults)
           .where(inArray(analysisResults.projectId, projectIds))
@@ -1148,6 +1160,7 @@ const geoRouter = router({
           .select({
             projectId: geoScores.projectId,
             score: geoScores.totalScore,
+            aiVisibilityScore: geoScores.aiVisibilityScore,
             createdAt: geoScores.createdAt,
           })
           .from(geoScores)
@@ -1173,9 +1186,13 @@ const geoRouter = router({
       for (const r of articleRows) {
         articleCountMap.set(r.projectId, (articleCountMap.get(r.projectId) ?? 0) + 1);
       }
-      const publishCountMap = new Map<number, number>();
+      const publishRecordCountMap = new Map<number, number>();
       for (const r of publishRows) {
-        publishCountMap.set(r.projectId, (publishCountMap.get(r.projectId) ?? 0) + 1);
+        publishRecordCountMap.set(r.projectId, (publishRecordCountMap.get(r.projectId) ?? 0) + 1);
+      }
+      const completedPublishTaskCountMap = new Map<number, number>();
+      for (const r of completedPublishTaskRows) {
+        completedPublishTaskCountMap.set(r.projectId, Number(r.count ?? 0));
       }
       const aiTestCountMap = new Map<number, number>();
       for (const r of monitoringRows) {
@@ -1183,15 +1200,24 @@ const geoRouter = router({
         aiTestCountMap.set(r.projectId, (aiTestCountMap.get(r.projectId) ?? 0) + results.length);
       }
       const lastDiagnosisMap = new Map<number, Date>();
+      const analysisMentionTotals = new Map<number, { mentioned: number; total: number }>();
       for (const r of analysisRows) {
         if (!lastDiagnosisMap.has(r.projectId)) {
           lastDiagnosisMap.set(r.projectId, r.createdAt);
         }
+        const bucket = analysisMentionTotals.get(r.projectId) ?? { mentioned: 0, total: 0 };
+        bucket.total += 1;
+        if (r.mentionsEnterprise === 1) bucket.mentioned += 1;
+        analysisMentionTotals.set(r.projectId, bucket);
       }
       const latestScoreMap = new Map<number, number>();
+      const latestGeoVisibilityMap = new Map<number, number>();
       for (const r of scoreRows) {
         if (!latestScoreMap.has(r.projectId)) {
           latestScoreMap.set(r.projectId, r.score ?? 0);
+          if (r.aiVisibilityScore != null) {
+            latestGeoVisibilityMap.set(r.projectId, r.aiVisibilityScore);
+          }
         }
       }
 
@@ -1253,6 +1279,21 @@ const geoRouter = router({
               : lastDiagnosisAt
             : t0?.finishedAt ?? lastDiagnosisAt ?? null;
 
+        const analysisTotals = analysisMentionTotals.get(p.id);
+        const analysisMentionRate =
+          analysisTotals && analysisTotals.total > 0
+            ? analysisTotals.mentioned / analysisTotals.total
+            : null;
+        const brandMentionRate = resolveBrandMentionRate({
+          t0MentionRate: t0?.mentionRate ?? null,
+          monitoringQuestionCount: 0,
+          monitoringMentionRate: null,
+          geoScoreMentionRate: geoScorePercentToRate(latestGeoVisibilityMap.get(p.id)),
+          analysisMentionRate,
+        });
+        const manualPublishCount = publishRecordCountMap.get(p.id) ?? 0;
+        const agentPublishCount = completedPublishTaskCountMap.get(p.id) ?? 0;
+
         return {
           id: p.id,
           enterpriseName: p.enterpriseName,
@@ -1264,12 +1305,12 @@ const geoRouter = router({
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
           articleCount: articleCountMap.get(p.id) ?? 0,
-          publishCount: publishCountMap.get(p.id) ?? 0,
+          publishCount: manualPublishCount + agentPublishCount,
           aiTestCount: aiTestCountMap.get(p.id) ?? 0,
           lastDiagnosisAt,
           lastMeasuredAt,
           latestGeoScore: latestScoreMap.get(p.id) ?? null,
-          t0BrandMentionRate: t0?.mentionRate ?? null,
+          t0BrandMentionRate: brandMentionRate,
         };
       });
     }),

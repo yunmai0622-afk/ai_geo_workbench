@@ -45,12 +45,26 @@ describe("GEO-V1.1-Dashboard-Overview 工作台数据总览", () => {
   it("格式化四项核心指标", () => {
     const values = formatWorkspaceOverviewValues(baseMetrics());
     expect(values.articleCountText).toBe("3篇");
-    expect(values.publishCountText).toBe("2次");
+    expect(values.publishCountText).toBe("3次");
+    expect(values.publishCountHint).toBe("手工登记 2 次 · Agent 完成 1 次");
     expect(values.aiMentionRateText).toBe("40%");
     expect(values.geoScoreText).toBe("72分");
   });
 
+  it("仅有 Agent 完成发布时展示次数与说明", () => {
+    const values = formatWorkspaceOverviewValues(
+      baseMetrics({ publishRecordCount: 0, completedPublishTaskCount: 3 }),
+    );
+    expect(values.publishCountText).toBe("3次");
+    expect(values.publishCountHint).toBe("已通过 Agent 自动发布");
+  });
+
   it("无实测样本但有诊断结论时仍展示提及率", () => {
+    expect(
+      formatWorkspaceAiMentionRate(
+        baseMetrics({ brandMentionRate: 0.38, aiTestResultCount: 0, hasAnalysis: false, hasGeoScore: true }),
+      ),
+    ).toBe("38%");
     expect(
       formatWorkspaceAiMentionRate(
         baseMetrics({ brandMentionRate: 0.4, aiTestResultCount: 0, hasAnalysis: true }),

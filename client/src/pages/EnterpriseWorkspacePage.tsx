@@ -30,6 +30,7 @@ import {
   buildGeoScoreAttributionLines,
   buildGeoScoreChangeReason,
   formatGeoScoreChangeBadge,
+  formatWorkspacePublishCount,
   workspaceAiMentionRateHint,
 } from "@shared/workspaceDashboardOverview";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
@@ -118,6 +119,10 @@ export default function EnterpriseWorkspacePage() {
   );
   const showRetestTodo = Boolean((metrics?.publishRecordWithPublicUrlCount ?? 0) > 0);
   const brandMentionRateHint = metrics ? workspaceAiMentionRateHint(metrics) : undefined;
+  const publishOverview = useMemo(
+    () => (metrics ? formatWorkspacePublishCount(metrics) : null),
+    [metrics],
+  );
 
   if (!enabled && !projectsLoading) {
     return (
@@ -349,7 +354,12 @@ export default function EnterpriseWorkspacePage() {
               />
               <MetricCell
                 label="发布记录"
-                value={metrics.publishRecordCount > 0 ? `${metrics.publishRecordCount} 次` : "--"}
+                value={
+                  publishOverview && metrics.publishRecordCount + metrics.completedPublishTaskCount > 0
+                    ? publishOverview.text.replace("次", " 次")
+                    : "--"
+                }
+                hintLines={publishOverview?.hint ? [publishOverview.hint] : []}
               />
             </div>
 

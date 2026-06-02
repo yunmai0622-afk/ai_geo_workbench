@@ -32,7 +32,11 @@ export function WorkspaceDashboardOverviewCards({ metrics, latestGeoScore, previ
         <P0MetricTile label="内容资产" value={values.articleCountText} />
       </div>
       <div data-testid="workspace-overview-publishes">
-        <P0MetricTile label="发布次数" value={values.publishCountText} />
+        <P0MetricTile
+          label="发布次数"
+          value={values.publishCountText}
+          hint={values.publishCountHint}
+        />
       </div>
       <div data-testid="workspace-overview-mention-rate">
         <P0MetricTile

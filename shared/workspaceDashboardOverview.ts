@@ -1,16 +1,43 @@
 import type { WorkspaceSummaryMetrics } from "./workspaceStateMachine";
 
 export function formatWorkspaceAiMentionRate(metrics: WorkspaceSummaryMetrics): string {
-  if (metrics.brandMentionRate == null) {
-    if (metrics.hasAnalysis || metrics.hasGeoScore) {
-      return "待实测";
+  if (metrics.brandMentionRate != null) {
+    if (metrics.hasGeoScore || metrics.hasAnalysis || metrics.aiTestResultCount > 0) {
+      return `${Math.round(metrics.brandMentionRate * 100)}%`;
     }
-    return "--";
   }
-  if (metrics.aiTestResultCount <= 0 && !metrics.hasAnalysis && !metrics.hasGeoScore) {
-    return "--";
+  if (metrics.hasAnalysis || metrics.hasGeoScore) {
+    return "待实测";
   }
-  return `${Math.round(metrics.brandMentionRate * 100)}%`;
+  return "--";
+}
+
+export function formatWorkspacePublishCount(metrics: WorkspaceSummaryMetrics): {
+  text: string;
+  hint?: string;
+} {
+  const manual = metrics.publishRecordCount;
+  const agentCompleted = metrics.completedPublishTaskCount;
+  const total = manual + agentCompleted;
+  if (total > 0) {
+    if (manual > 0 && agentCompleted > 0) {
+      return {
+        text: `${total}次`,
+        hint: `手工登记 ${manual} 次 · Agent 完成 ${agentCompleted} 次`,
+      };
+    }
+    if (agentCompleted > 0 && manual === 0) {
+      return { text: `${agentCompleted}次`, hint: "已通过 Agent 自动发布" };
+    }
+    return { text: `${manual}次` };
+  }
+  if (metrics.publishTaskCount > 0) {
+    return {
+      text: "0次",
+      hint: `有 ${metrics.publishTaskCount} 条发布任务，尚无任何完成记录`,
+    };
+  }
+  return { text: "0次" };
 }
 
 export function workspaceAiMentionRateHint(metrics: WorkspaceSummaryMetrics): string | undefined {
@@ -26,9 +53,11 @@ export function workspaceAiMentionRateHint(metrics: WorkspaceSummaryMetrics): st
 export function formatWorkspaceOverviewValues(metrics: WorkspaceSummaryMetrics) {
   const geoScore =
     metrics.geoScore != null && !Number.isNaN(metrics.geoScore) ? Math.round(metrics.geoScore) : null;
+  const publishCount = formatWorkspacePublishCount(metrics);
   return {
     articleCountText: `${metrics.articleCount}篇`,
-    publishCountText: `${metrics.publishRecordCount}次`,
+    publishCountText: publishCount.text,
+    publishCountHint: publishCount.hint,
     aiMentionRateText: formatWorkspaceAiMentionRate(metrics),
     aiMentionRateHint: workspaceAiMentionRateHint(metrics),
     geoScoreText: geoScore == null ? "--" : `${geoScore}分`,

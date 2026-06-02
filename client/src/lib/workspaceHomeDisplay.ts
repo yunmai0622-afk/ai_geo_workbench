@@ -54,10 +54,10 @@ export function pickAiTestAggregate(
   monitoringAggregate: AiTestEvidenceAggregate,
 ): AiTestEvidenceAggregate {
   if (monitoringAggregate.questionCount > 0) return monitoringAggregate;
-  if (summaryQuestionCount > 0 && summaryMentionRate != null) {
+  if (summaryMentionRate != null) {
     return {
       ...monitoringAggregate,
-      questionCount: summaryQuestionCount,
+      questionCount: Math.max(summaryQuestionCount, 1),
       mentionRate: summaryMentionRate,
       recommendRate: summaryRecommendRate ?? monitoringAggregate.recommendRate,
     };

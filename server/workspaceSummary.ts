@@ -14,6 +14,11 @@ import {
   testRounds,
 } from "../drizzle/schema";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
+import {
+  geoScorePercentToRate,
+  resolveBrandMentionRate,
+  resolveRecommendRate,
+} from "@shared/brandMentionRateResolver";
 import { buildRetestPlan, resolveRetestDueReminder } from "@shared/retestPlan";
 import { shouldShowT1RetestAutoTriggerReminder } from "@shared/t1RetestAutoTrigger";
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
@@ -200,16 +205,22 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
   const latestScore = scoreRows[0] ?? null;
   const aiTestResultCount =
     t0Metrics?.totalRuns ?? (monitoringQuestionCount > 0 ? monitoringQuestionCount : analysisCount);
-  const brandMentionRate =
-    t0Metrics?.mentionRate ??
-    (monitoringQuestionCount > 0 ? aiAggregate.mentionRate : null) ??
-    analysisMentionRate ??
-    (latestScore?.aiVisibilityScore != null ? latestScore.aiVisibilityScore / 100 : null);
-  const recommendRate =
-    t0Metrics?.recommendRate ??
-    (monitoringQuestionCount > 0 ? aiAggregate.recommendRate : null) ??
-    analysisRecommendRate ??
-    (latestScore?.aiRecommendationScore != null ? latestScore.aiRecommendationScore / 100 : null);
+  const geoScoreMentionRate = geoScorePercentToRate(latestScore?.aiVisibilityScore);
+  const geoScoreRecommendRate = geoScorePercentToRate(latestScore?.aiRecommendationScore);
+  const brandMentionRate = resolveBrandMentionRate({
+    t0MentionRate: t0Metrics?.mentionRate,
+    monitoringMentionRate: monitoringQuestionCount > 0 ? aiAggregate.mentionRate : null,
+    monitoringQuestionCount,
+    geoScoreMentionRate,
+    analysisMentionRate,
+  });
+  const recommendRate = resolveRecommendRate({
+    t0RecommendRate: t0Metrics?.recommendRate,
+    monitoringRecommendRate: monitoringQuestionCount > 0 ? aiAggregate.recommendRate : null,
+    monitoringQuestionCount,
+    geoScoreRecommendRate,
+    analysisRecommendRate,
+  });
 
   return {
     enterpriseName: profile?.enterpriseName ?? null,

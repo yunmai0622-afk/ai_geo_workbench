@@ -156,7 +156,9 @@ function ProjectCard({
   const mentionRateText =
     project.t0BrandMentionRate != null
       ? formatBrandMentionRate(project.t0BrandMentionRate)
-      : "完成AI实测后显示";
+      : project.latestGeoScore != null
+        ? "待实测"
+        : "完成AI实测后显示";
   const mentionRateIsPlaceholder = project.t0BrandMentionRate == null;
   const industryLabel =
     project.industry?.trim() && project.industry !== "待补充" ? project.industry.trim() : "未填写行业";

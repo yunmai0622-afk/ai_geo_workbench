@@ -50,16 +50,12 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
   }, [projectId, summary, testRounds]);
 
   const brandMentionRateText =
-    summary && summary.brandMentionRate != null
-      ? summary.aiTestResultCount > 0 || summary.hasAnalysis || summary.hasGeoScore
-        ? `${Math.round(summary.brandMentionRate * 100)}%`
-        : formatBrandMentionRate(aiTestAggregate)
+    summary?.brandMentionRate != null
+      ? `${Math.round(summary.brandMentionRate * 100)}%`
       : formatBrandMentionRate(aiTestAggregate);
   const recommendRateText =
-    summary && summary.recommendRate != null
-      ? summary.aiTestResultCount > 0 || summary.hasAnalysis || summary.hasGeoScore
-        ? `${Math.round(summary.recommendRate * 100)}%`
-        : formatRecommendRate(aiTestAggregate)
+    summary?.recommendRate != null
+      ? `${Math.round(summary.recommendRate * 100)}%`
       : formatRecommendRate(aiTestAggregate);
   const lastAiTestLabel = formatLastAiTestLabel({
     analyses: [],
