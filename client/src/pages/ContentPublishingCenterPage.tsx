@@ -1,12 +1,13 @@
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
-import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformStatusOverview";
 import { PlatformPublishSuccessRatePanel } from "@/components/publishing/PlatformPublishSuccessRatePanel";
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
-import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
+import { PublishWeeklyOverviewBar } from "@/components/publishing/PublishWeeklyOverviewBar";
+import { PublishPlatformCardGrid } from "@/components/publishing/PublishPlatformCardGrid";
+import { PublishActionSidePanel } from "@/components/publishing/PublishActionSidePanel";
 import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { PublishRecordsCalendar } from "@/components/publishing/PublishRecordsCalendar";
@@ -48,6 +49,17 @@ import {
 } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import {
+  buildPublishPagePlatformCards,
+  buildWeeklyPublishOverviewStats,
+  type PublishPagePlatformCard,
+} from "@shared/publishPageLayout";
+import {
+  isLocalAgentPublishTaskResult,
+  pickReadyAccountForPlatform,
+  publishBlockedReasonForPlatform,
+  resolveEnqueuePlatformSlug,
+} from "@/lib/publishCenterEnqueue";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import {
   formatPublishSuccessPlatformPhrase,
@@ -65,8 +77,13 @@ type PublishSuccessNotice = {
 type ArticleRow = {
   id: number;
   title?: string | null;
+  status?: string | null;
+  targetPlatform?: string | null;
+  publishPlatform?: string | null;
   markdownContent?: string | null;
   generationBasis?: Record<string, unknown> | null;
+  publishedAt?: Date | string | null;
+  lastPublishRecordAt?: Date | string | null;
 };
 
 type QualityScoreRow = {
@@ -193,6 +210,7 @@ export function ContentPublishingCenterPage() {
   const createManualPublishRecord = trpc.geo.articles.createManualPublishRecord.useMutation();
   const updateManualPublishRecord = trpc.geo.articles.updateManualPublishRecord.useMutation();
   const retryPublishTask = trpc.publishTasks.retry.useMutation();
+  const createPublishTask = trpc.publishTasks.create.useMutation();
   const [manualArticleId, setManualArticleId] = useState<number | "">("");
   const [manualPlatform, setManualPlatform] = useState<ManualPublishPlatform>("知乎");
   const [manualLink, setManualLink] = useState("");
@@ -206,6 +224,8 @@ export function ContentPublishingCenterPage() {
   const [linkDraftById, setLinkDraftById] = useState<Record<number, string>>({});
   const [savingRowId, setSavingRowId] = useState<number | null>(null);
   const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
+  const [publishingCardKey, setPublishingCardKey] = useState<string | null>(null);
+  const [publishAllBusy, setPublishAllBusy] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
   const [publishSuccessNotice, setPublishSuccessNotice] = useState<PublishSuccessNotice | null>(null);
@@ -394,6 +414,44 @@ export function ContentPublishingCenterPage() {
 
   const pendingCount = columns.pending.length;
 
+  const qualityByArticleId = useMemo(() => {
+    const map = new Map<number, QualityScoreRow>();
+    for (const score of scores) {
+      if (typeof score.articleId === "number") map.set(score.articleId, score);
+    }
+    return map;
+  }, [scores]);
+
+  const weeklyOverviewStats = useMemo(
+    () =>
+      buildWeeklyPublishOverviewStats({
+        articles,
+        qualityByArticleId,
+        minPassScore: GEO_ARTICLE_MIN_PASS_SCORE,
+        publishRecords,
+        publishTasks: agentTasks,
+      }),
+    [articles, qualityByArticleId, publishRecords, agentTasks],
+  );
+
+  const platformCards = useMemo(
+    () =>
+      buildPublishPagePlatformCards({
+        articles,
+        qualityByArticleId,
+        minPassScore: GEO_ARTICLE_MIN_PASS_SCORE,
+        publishRecords,
+        publishTasks: agentTasks,
+        accountGroups: platformAccountGroups,
+      }),
+    [articles, qualityByArticleId, publishRecords, agentTasks, platformAccountGroups],
+  );
+
+  const readyPlatformCount = useMemo(
+    () => platformCards.filter(card => card.canPublish).length,
+    [platformCards],
+  );
+
   const localAgentUpdateNotice = useMemo(() => {
     if (
       !localAgentOnline ||
@@ -483,6 +541,101 @@ export function ContentPublishingCenterPage() {
 
   function markAbnormal(card: PublishTaskCardModel) {
     toast.error(card.errorMessage || card.statusLabel || "发布异常，请查看状态说明或联系交付同学");
+  }
+
+  async function enqueuePlatformCard(card: PublishPagePlatformCard): Promise<boolean> {
+    if (!selectedProjectId || !card.articleId) return false;
+    const slug = resolveEnqueuePlatformSlug(card);
+    if (!slug) {
+      toast.message(`${card.label} 需人工发布，请复制素材后登记发布记录`);
+      return false;
+    }
+    if (localAgentOnline === false) {
+      toast.error("Local Agent 未连接，请先下载并启动客户端");
+      return false;
+    }
+    const account = pickReadyAccountForPlatform(platformAccountGroups, slug);
+    if (!account) {
+      const blocked = publishBlockedReasonForPlatform(platformAccountGroups, slug);
+      toast.error(blocked);
+      return false;
+    }
+    setPublishingCardKey(card.key);
+    try {
+      const res = await createPublishTask.mutateAsync({
+        articleId: card.articleId,
+        platform: slug,
+        projectId: selectedProjectId,
+        platformAccountId: account.id,
+      });
+      if (!isLocalAgentPublishTaskResult(res)) {
+        toast.error("发布任务未走本地客户端，请联系交付同学检查配置");
+        return false;
+      }
+      await autoPublishTasksQuery.refetch();
+      toast.success(`${card.label} 已加入本地发布队列`);
+      return true;
+    } catch (e) {
+      toast.error(toUserFacingErrorFromUnknown(e, "加入发布队列失败"));
+      return false;
+    } finally {
+      setPublishingCardKey(null);
+    }
+  }
+
+  async function handlePublishAllPlatforms() {
+    if (!selectedProjectId) return;
+    const targets = platformCards.filter(card => card.canPublish);
+    if (targets.length === 0) {
+      toast.error("当前没有可一键发布的平台内容，请先生成并通过质量检查");
+      return;
+    }
+    if (localAgentOnline === false) {
+      toast.error("Local Agent 未连接，请先下载并启动客户端");
+      return;
+    }
+    setPublishAllBusy(true);
+    let ok = 0;
+    let fail = 0;
+    try {
+      for (const card of targets) {
+        const success = await enqueuePlatformCard(card);
+        if (success) ok += 1;
+        else fail += 1;
+      }
+      if (ok > 0) {
+        toast.success(`已将 ${ok} 个平台内容加入本地发布队列`);
+      }
+      if (fail > 0 && ok > 0) {
+        toast.message(`${fail} 个平台未能加入队列，请检查账号绑定与内容状态`);
+      } else if (fail > 0 && ok === 0) {
+        toast.error("未能加入发布队列，请检查各平台账号与内容状态");
+      }
+    } finally {
+      setPublishAllBusy(false);
+    }
+  }
+
+  function handlePlatformCardPreview(card: PublishPagePlatformCard) {
+    if (card.previewUrl) {
+      window.open(card.previewUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (card.articleId) {
+      const article = articleById.get(card.articleId);
+      if (article) {
+        setEditorArticle(article);
+        setEditorOpen(true);
+        return;
+      }
+    }
+    toast.message("暂无可预览内容，请先在平台化内容生产完成生成");
+  }
+
+  function handlePlatformCardRetry(card: PublishPagePlatformCard) {
+    if (!card.taskId) return;
+    const taskCard = taskCards.find(t => t.taskId === card.taskId);
+    if (taskCard) void handleRetryPublishTask(taskCard);
   }
 
   async function handleRetryPublishTask(card: PublishTaskCardModel) {
@@ -622,11 +775,7 @@ export function ContentPublishingCenterPage() {
       ) : null}
 
       {selectedProjectId ? (
-        <PlatformStatusOverview projectId={selectedProjectId} />
-      ) : null}
-
-      {selectedProjectId ? (
-        <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
+        <PublishWeeklyOverviewBar stats={weeklyOverviewStats} loading={loading} />
       ) : null}
 
       <PublishSuccessNotificationCard
@@ -690,8 +839,18 @@ export function ContentPublishingCenterPage() {
           正在加载发布任务…
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[1fr_260px]">
+        <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
           <div className="space-y-6 min-w-0">
+            <PublishPlatformCardGrid
+              cards={platformCards}
+              loading={loading}
+              publishingCardKey={publishingCardKey}
+              retryingTaskId={retryingTaskId}
+              onPreview={handlePlatformCardPreview}
+              onPublish={card => void enqueuePlatformCard(card)}
+              onRetry={handlePlatformCardRetry}
+            />
+
             <LocalAgentStatusCard
               status={{
                 connected: localAgentOnline,
@@ -704,30 +863,54 @@ export function ContentPublishingCenterPage() {
               updateNotice={localAgentUpdateNotice}
             />
 
-            <PublishPlatformAccountsOverview
-              projectId={selectedProjectId!}
-              showDownloadCard={false}
-            />
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-task-board-fold">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
+                发布任务看板（待处理 / 处理中 / 已完成）
+              </summary>
+              <div className="space-y-4 border-t border-gray-100 p-5">
+                <PublishTaskColumnBoard
+                  columns={columns}
+                  linkDraftByRecordId={linkDraftById}
+                  savingRecordId={savingRowId}
+                  retryingTaskId={retryingTaskId}
+                  onPreview={openPreview}
+                  onStartPublish={startLocalPublish}
+                  onSaveLink={handleSaveRowLink}
+                  onMarkAbnormal={markAbnormal}
+                  onRetryTask={card => void handleRetryPublishTask(card)}
+                  onLinkDraftChange={(id, v) => setLinkDraftById(d => ({ ...d, [id]: v }))}
+                />
+              </div>
+            </details>
 
-            <LocalAccountBindingGuideCard
-              localAgentOnline={localAgentOnline}
-              boundPlatformCount={boundPlatformCount}
-              checking={checkingAgent || accountHealthChecking}
-              onRefresh={() => void refreshAgentHealth()}
-            />
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-platform-accounts-fold">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
+                管理发布账号
+              </summary>
+              <div className="space-y-4 border-t border-gray-100 p-5">
+                <PublishPlatformAccountsOverview
+                  projectId={selectedProjectId!}
+                  showDownloadCard={false}
+                />
+                <LocalAccountBindingGuideCard
+                  localAgentOnline={localAgentOnline}
+                  boundPlatformCount={boundPlatformCount}
+                  checking={checkingAgent || accountHealthChecking}
+                  onRefresh={() => void refreshAgentHealth()}
+                />
+              </div>
+            </details>
 
-            <PublishTaskColumnBoard
-              columns={columns}
-              linkDraftByRecordId={linkDraftById}
-              savingRecordId={savingRowId}
-              retryingTaskId={retryingTaskId}
-              onPreview={openPreview}
-              onStartPublish={startLocalPublish}
-              onSaveLink={handleSaveRowLink}
-              onMarkAbnormal={markAbnormal}
-              onRetryTask={card => void handleRetryPublishTask(card)}
-              onLinkDraftChange={(id, v) => setLinkDraftById(d => ({ ...d, [id]: v }))}
-            />
+            {selectedProjectId ? (
+              <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
+                  各平台发布成功率
+                </summary>
+                <div className="border-t border-gray-100 p-5">
+                  <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
+                </div>
+              </details>
+            ) : null}
 
             <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-retest-rewrite-fold">
               <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
@@ -871,7 +1054,20 @@ export function ContentPublishingCenterPage() {
 
           </div>
 
-          <LocalAgentPublishStepsPanel projectId={selectedProjectId} />
+          <PublishActionSidePanel
+            projectId={selectedProjectId}
+            publishAllBusy={publishAllBusy}
+            publishAllDisabled={loading || readyPlatformCount === 0}
+            readyPlatformCount={readyPlatformCount}
+            onPublishAll={() => void handlePublishAllPlatforms()}
+            onGenerateWeekly={() =>
+              selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))
+            }
+            onViewHistory={() =>
+              selectedProjectId &&
+              setLocation(buildProjectUrl("/publish-records-history", selectedProjectId))
+            }
+          />
         </div>
       )}
         </TabsContent>

@@ -142,7 +142,11 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       expect(publishSource).toContain(text);
     }
     expect(publishSource).not.toContain("trpc.geo.articles.publish.useMutation");
-    expect(publishSource).not.toContain("publishTasks.create");
+    expect(publishSource).toContain("publishTasks.create");
+    expect(publishSource).toContain("PublishWeeklyOverviewBar");
+    expect(
+      publishSource + readProjectFile("client/src/components/publishing/PublishActionSidePanel.tsx"),
+    ).toContain("一键发布所有平台");
   });
 
   it("收录监测页展示已发布内容监测卡片和有限样本风险", () => {
