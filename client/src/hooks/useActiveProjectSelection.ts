@@ -10,6 +10,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
 
 export type ProjectOption = { id: number; enterpriseName: string };
 
@@ -26,6 +27,12 @@ export function useActiveProjectSelection() {
   );
 
   const contextProjectId = useMemo(() => getActiveProjectId({ search }), [search]);
+
+  useInvalidProjectRedirect({
+    projectsLoading,
+    projects,
+    contextProjectId,
+  });
 
   const resolvedProjectId = useMemo(() => {
     if (!contextProjectId) return undefined;

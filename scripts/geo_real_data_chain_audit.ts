@@ -1,6 +1,6 @@
 /**
  * GEO 真实数据链审计：企业建档 + 指定文章平台字段
- * 用法：DATABASE_URL=... PROJECT_ID=30001 ARTICLE_TITLE_KEYWORD=录屏 npx tsx scripts/geo_real_data_chain_audit.ts
+ * 用法：DATABASE_URL=... PROJECT_ID=72 ARTICLE_TITLE_KEYWORD=录屏 npx tsx scripts/geo_real_data_chain_audit.ts
  */
 import { config as loadEnv } from "dotenv";
 import { resolve } from "node:path";
@@ -17,7 +17,16 @@ import { parseOptimizationTaskCard } from "../server/geoArticleLogic";
 
 loadEnv({ path: resolve(process.cwd(), ".env") });
 
-const projectId = Number(process.env.PROJECT_ID ?? "30001");
+const projectIdRaw = process.env.PROJECT_ID?.trim();
+if (!projectIdRaw) {
+  console.error("需要环境变量 PROJECT_ID（例如 PROJECT_ID=72）");
+  process.exit(1);
+}
+const projectId = Number(projectIdRaw);
+if (!Number.isFinite(projectId) || projectId <= 0) {
+  console.error("PROJECT_ID 无效:", projectIdRaw);
+  process.exit(1);
+}
 const titleKeyword = process.env.ARTICLE_TITLE_KEYWORD ?? "录屏";
 
 async function main() {

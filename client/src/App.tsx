@@ -4,7 +4,8 @@ import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 import { RoutePageLoading } from "@/components/RoutePageLoading";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getActiveProjectId, buildProjectUrl } from "@/lib/activeProject";
+import { getActiveProjectId, buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
+import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
 import {
   AiDiagnosisFlowPage,
   ContentPublishingFlowPage,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/lazyPages";
 import { trpc } from "@/lib/trpc";
 import NotFound from "@/pages/NotFound";
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { GeoIntroModal } from "./components/GeoIntroModal";
@@ -129,7 +130,16 @@ function AuthenticatedAppShell() {
   const [location] = useLocation();
   const { loading: authLoading, user } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, { enabled: Boolean(user) });
-  const activeProjectId = typeof window !== "undefined" ? getActiveProjectId() : null;
+  const contextProjectId = typeof window !== "undefined" ? getActiveProjectId() : null;
+  useInvalidProjectRedirect({
+    projectsLoading,
+    projects,
+    contextProjectId,
+  });
+  const activeProjectId = useMemo(() => {
+    if (!contextProjectId || projectsLoading) return null;
+    return isProjectIdAccessible(contextProjectId, projects) ? contextProjectId : null;
+  }, [contextProjectId, projects, projectsLoading]);
   const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(
     { projectId: activeProjectId ?? 0 },
     { enabled: Boolean(user) && Boolean(activeProjectId) },

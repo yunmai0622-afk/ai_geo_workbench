@@ -12,6 +12,7 @@ import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
 import { mapCompetitorAnalysisForDeliveryReport } from "@shared/deliveryReportCompetitor";
 import { BarChart3 } from "lucide-react";
+import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
 import { useMemo, type ReactNode } from "react";
 import { useLocation, useRoute } from "wouter";
 
@@ -110,6 +111,12 @@ function DeliveryReportShareContent() {
   const competitorSummaryQuery = trpc.geo.assetLibrary.competitorAnalysisSummary.useQuery(projectInput, { enabled });
 
   const project = (projectsQuery.data ?? []).find(p => p.id === projectId);
+  useInvalidProjectRedirect({
+    projectsLoading: projectsQuery.isLoading,
+    projects: projectsQuery.data ?? [],
+    contextProjectId: projectId,
+  });
+
   const profile = summaryQuery.data?.profile as Record<string, unknown> | undefined;
   const brandName =
     (typeof profile?.brandName === "string" && profile.brandName.trim()) ||
@@ -168,6 +175,15 @@ function DeliveryReportShareContent() {
     return (
       <div className="mx-auto max-w-3xl bg-gray-100 px-6 py-16 text-gray-700">
         <p>报告链接无效，请向交付人员索取正确的客户报告链接。</p>
+      </div>
+    );
+  }
+
+  if (!projectsQuery.isLoading && !project) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 text-gray-600">
+        <Spinner className="size-6 text-blue-600" />
+        <p className="ml-3 text-sm">正在返回客户管理台…</p>
       </div>
     );
   }

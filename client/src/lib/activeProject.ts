@@ -1,5 +1,16 @@
 const STORAGE_KEY = "activeProjectId";
 
+/** 无效 / 已删除 projectId 时 toast 与重定向文案 */
+export const INVALID_PROJECT_MESSAGE = "项目不存在";
+
+export function isProjectIdAccessible(
+  projectId: number | null | undefined,
+  projects: readonly { id: number }[],
+): boolean {
+  if (projectId == null || !Number.isFinite(projectId) || projectId <= 0) return false;
+  return projects.some(p => p.id === projectId);
+}
+
 export function getProjectIdFromSearch(search: string): number | null {
   const normalized = search.startsWith("?") ? search : search ? `?${search}` : "";
   if (!normalized) return null;
