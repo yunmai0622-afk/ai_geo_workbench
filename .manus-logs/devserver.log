@@ -3157,3 +3157,25 @@
 [2026-06-01T10:34:18.740Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-01T10:34:29.044Z] [Auth] Missing session cookie
 [2026-06-01T10:35:06.170Z] 6:35:06 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T03:34:05.368Z] 11:34:05 PM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-02T03:34:05.371Z] 11:34:05 PM [vite] (client) hmr update /src/index.css
+[2026-06-02T03:34:05.372Z] 11:34:05 PM [vite] (client) hmr update /src/index.css
+[2026-06-02T03:34:05.373Z] 11:34:05 PM [vite] (client) hmr update /src/index.css, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/pages/ProgressPage.tsx, /src/pages/GeoPages.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/TemplatesPage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T03:34:05.374Z] 11:34:05 PM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-02T03:34:05.375Z] 11:34:05 PM [vite] (client) hmr update /src/index.css
+[2026-06-02T03:34:05.376Z] 11:34:05 PM [vite] (client) hmr update /src/index.css
+[2026-06-02T03:34:05.376Z] 11:34:05 PM [vite] (client) hmr update /src/index.css
+[2026-06-02T03:34:05.497Z] 11:34:05 PM [tsx] change in ./server/routers.ts Restarting...
+[2026-06-02T03:34:12.507Z] cServer running on http://localhost:3000/
+[2026-06-02T03:35:02.112Z] Dev server process group stopped
+[2026-06-02T03:35:02.115Z] ELIFECYCLE  Command failed.
+[2026-06-02T03:35:02.133Z] Dev server exited with code -15
+[2026-06-02T03:35:05.140Z] Starting dev server with command: pnpm run dev
+[2026-06-02T03:35:05.897Z] 
+[2026-06-02T03:35:05.898Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-02T03:35:05.899Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-02T03:35:05.899Z] 
+[2026-06-02T03:35:13.017Z] Server running on http://localhost:3000/
+[2026-06-02T03:35:29.492Z] [Auth] Missing session cookie
+[2026-06-02T03:35:29.807Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-02T03:36:31.763Z] 11:36:31 PM [vite] (client) hmr update /src/index.css
