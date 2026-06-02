@@ -393,6 +393,13 @@
       "when": 1778277197827,
       "tag": "0055_fix_missing_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "5",
+      "when": 1778278197827,
+      "tag": "0056_users_subscription_plan",
+      "breakpoints": true
     }
   ]
 }
