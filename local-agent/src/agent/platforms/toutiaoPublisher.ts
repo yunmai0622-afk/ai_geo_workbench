@@ -1,19 +1,19 @@
 import type { Page } from "playwright";
 import {
   BasePlatformPublisher,
+  fillFirstSelector,
   type LocalPublishResult,
   type LocalPublishTask,
 } from "./basePublisher";
 import {
   attemptMpPublishArticle,
   executeMpPublishTask,
-  fillFirstSelectorInPageOrFrames,
   type MpPublishArticleConfig,
 } from "./mpPublishExtensions";
 
 const SKIP = /头条|登录|注册|首页|logo|消息/i;
 
-/** 头条号发布按钮备选（主文档；iframe 内编辑器单独 fill） */
+/** 头条号发布按钮备选（主文档 Playwright 直操编辑器，不依赖跨域 iframe） */
 export const TOUTIAO_PUBLISH_BUTTON_SELECTORS = [
   'button:has-text("发布")',
   '.publish-btn',
@@ -49,8 +49,6 @@ const TOUTIAO_MP_CONFIG: MpPublishArticleConfig = {
   extractPublicUrl: extractToutiaoPublicUrl,
   skipCover: true,
   softWritePageWarnings: true,
-  fillTitle: (page, title, selectors) => fillFirstSelectorInPageOrFrames(page, selectors, title),
-  fillContent: (page, content, selectors) => fillFirstSelectorInPageOrFrames(page, selectors, content),
 };
 
 export class ToutiaoPublisher extends BasePlatformPublisher {
@@ -103,25 +101,74 @@ export class ToutiaoPublisher extends BasePlatformPublisher {
     return [
       ".ProseMirror",
       ".public-DraftEditor-content",
+      ".editor-kit-container [contenteditable='true']",
+      ".publish-editor [contenteditable='true']",
       '[contenteditable="true"]',
-      ".editor-kit-container [contenteditable]",
     ];
   }
 
-  protected async extraWritePageChecks(page: Page): Promise<string | null> {
-    const frames = page.frames();
-    let hasEditor = false;
-    for (const frame of frames) {
+  protected async waitForWriteEditor(page: Page, timeoutMs = 16000): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await this.hasWriteEditor(page)) return true;
+      await page.waitForTimeout(500);
+    }
+    return false;
+  }
+
+  protected async hasWriteEditor(page: Page): Promise<boolean> {
+    for (const sel of this.titleSelectors()) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count()) > 0 && (await loc.isVisible().catch(() => false))) return true;
+    }
+    for (const sel of this.contentSelectors()) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count()) > 0 && (await loc.isVisible().catch(() => false))) return true;
+    }
+    return false;
+  }
+
+  /** 标题：主文档 fill（与搜狐/百家号一致，不走 iframe） */
+  protected async fillToutiaoTitle(
+    page: Page,
+    title: string,
+    selectors: string[],
+  ): Promise<{ ok: boolean; selector?: string }> {
+    return fillFirstSelector(page, selectors, title, true);
+  }
+
+  /** 正文：优先 ProseMirror / Draft 区点击 + 键盘输入，避免误填标题 */
+  protected async fillToutiaoContent(
+    page: Page,
+    content: string,
+    selectors: string[],
+  ): Promise<{ ok: boolean; selector?: string }> {
+    const bodySelectors = [
+      ".publish-editor .ProseMirror",
+      ".ProseMirror",
+      ".public-DraftEditor-content",
+      ".editor-kit-container [contenteditable='true']",
+    ];
+    for (const sel of bodySelectors) {
+      const loc = page.locator(sel).first();
+      if ((await loc.count()) === 0) continue;
       try {
-        const count = await frame.locator(".ProseMirror, [contenteditable='true']").count();
-        if (count > 0) hasEditor = true;
+        await loc.click({ timeout: 5000 });
+        await page.waitForTimeout(400);
+        await page.keyboard.press("Meta+A").catch(() => page.keyboard.press("Control+A").catch(() => {}));
+        await page.keyboard.type(content, { delay: 6 });
+        return { ok: true, selector: sel };
       } catch {
-        /* cross-origin iframe */
+        /* next */
       }
     }
-    const mainCount = await page.locator(".ProseMirror, [contenteditable='true']").count();
-    if (!hasEditor && mainCount === 0) {
-      return "头条发布页可能在 iframe 内，若无法自动填写请人工操作";
+    return fillFirstSelector(page, selectors, content, true);
+  }
+
+  protected async extraWritePageChecks(page: Page): Promise<string | null> {
+    const ready = await this.waitForWriteEditor(page, 12000);
+    if (!ready) {
+      return "头条发布页编辑器未就绪，请确认已进入图文发布页并刷新后重试";
     }
     return null;
   }
@@ -142,7 +189,11 @@ export class ToutiaoPublisher extends BasePlatformPublisher {
         urls: this.urls,
       },
       task,
-      TOUTIAO_MP_CONFIG,
+      {
+        ...TOUTIAO_MP_CONFIG,
+        fillTitle: (page, title, selectors) => this.fillToutiaoTitle(page, title, selectors),
+        fillContent: (page, content, selectors) => this.fillToutiaoContent(page, content, selectors),
+      },
     );
   }
 }

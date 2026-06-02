@@ -32,11 +32,12 @@ describe("C7-C platform publish adapters", () => {
     expect(read("local-agent/src/agent/platforms/basePublisher.ts")).toContain("write_page_not_found");
   });
 
-  it("toutiao publisher handles iframe editor surfaces", () => {
+  it("toutiao publisher targets main-document editor surfaces", () => {
     const adapter = read("local-agent/src/agent/platforms/toutiaoPublisher.ts");
     expect(adapter).toContain(".ProseMirror");
-    expect(adapter).toContain("iframe");
+    expect(adapter).toContain("waitForWriteEditor");
     expect(adapter).toContain(".public-DraftEditor-content");
+    expect(adapter).not.toContain("fillFirstSelectorInPageOrFrames");
   });
 
   it("sohu publisher warns when category is required", () => {
