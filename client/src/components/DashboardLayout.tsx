@@ -26,7 +26,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { cn } from "@/lib/utils";
@@ -222,9 +222,13 @@ type DashboardLayoutContentProps = {
 function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { activeProjectId } = useActiveProjectId({ syncUrl: false });
+  const { activeProjectId } = useActiveProjectId();
   const { data: projects = [] } = trpc.geo.projects.list.useQuery();
-  const activeProject = projects.find(project => project.id === activeProjectId);
+  const validatedProjectId = useMemo(() => {
+    if (!activeProjectId) return null;
+    return projects.some(project => project.id === activeProjectId) ? activeProjectId : null;
+  }, [activeProjectId, projects]);
+  const activeProject = projects.find(project => project.id === validatedProjectId);
   const projectName = activeProject?.enterpriseName;
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -241,7 +245,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
       setLocation(path);
       return;
     }
-    setLocation(buildProjectUrl(path, activeProjectId));
+    setLocation(buildProjectUrl(path, validatedProjectId));
   };
 
   useEffect(() => {

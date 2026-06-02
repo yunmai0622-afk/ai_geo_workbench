@@ -13,11 +13,13 @@ describe("GEO-V1.1-ProjectIdCleanup", () => {
     expect(read("client/src/lib/activeProject.ts")).toContain("项目不存在");
   });
 
-  it("无效 projectId 时跳转 /clients 并提示", () => {
+  it("无效 projectId 时清除缓存并 fallback 到第一个有效项目", () => {
     const redirect = read("client/src/hooks/useInvalidProjectRedirect.ts");
-    expect(redirect).toContain('setLocation("/clients")');
+    expect(redirect).toContain("pickFirstAccessibleProjectId");
+    expect(redirect).toContain("buildProjectUrl");
     expect(redirect).toContain("INVALID_PROJECT_MESSAGE");
     expect(redirect).toContain("clearActiveProjectId");
+    expect(read("client/src/lib/activeProject.ts")).toContain("inspectActiveProjectContext");
     expect(read("client/src/hooks/useActiveProjectSelection.ts")).toContain("useInvalidProjectRedirect");
     expect(read("client/src/App.tsx")).toContain("useInvalidProjectRedirect");
     expect(read("client/src/App.tsx")).toContain("isProjectIdAccessible");

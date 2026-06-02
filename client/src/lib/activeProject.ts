@@ -34,13 +34,66 @@ export function getActiveProjectIdFromStorage(): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-/** URL projectId 优先，其次 sessionStorage；禁止 fallback 到 projects[0] */
+/** URL projectId 优先，其次 sessionStorage；禁止 fallback 到 projects[0]（存在性校验见 resolveActiveProjectId） */
 export function getActiveProjectId(options?: { skipUrl?: boolean; search?: string }): number | null {
   if (!options?.skipUrl) {
     const fromUrl = getProjectIdFromUrl(options?.search);
     if (fromUrl) return fromUrl;
   }
   return getActiveProjectIdFromStorage();
+}
+
+export function pickFirstAccessibleProjectId(projects: readonly { id: number }[]): number | null {
+  const first = projects[0]?.id;
+  return first != null && Number.isFinite(first) && first > 0 ? first : null;
+}
+
+export type ResolveActiveProjectResult = {
+  projectId: number | null;
+  contextId: number | null;
+  staleContext: boolean;
+};
+
+/** 纯函数：解析 projectId，不读写 sessionStorage */
+export function inspectActiveProjectContext(
+  projects: readonly { id: number }[],
+  options?: { skipUrl?: boolean; search?: string },
+): ResolveActiveProjectResult {
+  const contextId = getActiveProjectId(options);
+  if (!contextId) {
+    return { projectId: null, contextId: null, staleContext: false };
+  }
+  if (isProjectIdAccessible(contextId, projects)) {
+    return { projectId: contextId, contextId, staleContext: false };
+  }
+  const fallback = pickFirstAccessibleProjectId(projects);
+  return { projectId: fallback, contextId, staleContext: true };
+}
+
+/**
+ * 解析当前上下文 projectId：URL / session 中的值必须在 projects 列表内；
+ * 无效时清除缓存并 fallback 到列表第一个有效项目。
+ */
+export function resolveActiveProjectId(
+  projects: readonly { id: number }[],
+  options?: { skipUrl?: boolean; search?: string },
+): ResolveActiveProjectResult {
+  const result = inspectActiveProjectContext(projects, options);
+  if (!result.staleContext) {
+    if (result.projectId != null) setActiveProjectId(result.projectId);
+    return result;
+  }
+  clearActiveProjectId();
+  if (result.projectId != null) setActiveProjectId(result.projectId);
+  return result;
+}
+
+/** 用户显式选择项目：写入 sessionStorage，供后续 URL 同步使用 */
+export function activateProject(projectId: number | string): number | null {
+  const id = parseProjectId(projectId);
+  if (!id) return null;
+  setActiveProjectId(id);
+  return id;
 }
 
 export function parseProjectId(value: number | string | null | undefined): number | null {

@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
-import { useActiveProjectId } from "@/hooks/useActiveProject";
+import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import {
@@ -178,11 +178,7 @@ export default function AssetCenterPage() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { data: projects = [], isLoading: projectsLoading, error: projectsError } = trpc.geo.projects.list.useQuery();
-  const { activeProjectId } = useActiveProjectId();
-  const currentProjectId = useMemo(() => {
-    if (!activeProjectId || projectsLoading) return undefined;
-    return projects.some(p => p.id === activeProjectId) ? activeProjectId : undefined;
-  }, [activeProjectId, projects, projectsLoading]);
+  const { selectedProjectId: currentProjectId } = useActiveProjectSelection();
   const currentProject = useMemo(
     () => (currentProjectId ? projects.find(p => p.id === currentProjectId) : undefined),
     [projects, currentProjectId],

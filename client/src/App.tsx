@@ -4,7 +4,7 @@ import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 import { RoutePageLoading } from "@/components/RoutePageLoading";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getActiveProjectId, buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
+import { getActiveProjectId, buildProjectUrl, isProjectIdAccessible, getSearchFromLocation } from "@/lib/activeProject";
 import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
 import {
   AiDiagnosisFlowPage,
@@ -128,9 +128,10 @@ function PrivateRoutes() {
 /** 登录后基于 activeProjectId 检查企业档案，未完成引导则进入建档页 */
 function AuthenticatedAppShell() {
   const [location] = useLocation();
+  const search = getSearchFromLocation(location);
   const { loading: authLoading, user } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, { enabled: Boolean(user) });
-  const contextProjectId = typeof window !== "undefined" ? getActiveProjectId() : null;
+  const contextProjectId = typeof window !== "undefined" ? getActiveProjectId({ search }) : null;
   useInvalidProjectRedirect({
     projectsLoading,
     projects,

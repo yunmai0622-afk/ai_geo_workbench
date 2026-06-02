@@ -8,7 +8,7 @@ const read = (rel: string) => readFileSync(resolve(projectRoot, rel), "utf-8");
 describe("GEO-V1-A Project 上下文统一", () => {
   it("ClientDashboard 进入工作台携带 projectId", () => {
     const src = read("client/src/pages/ClientDashboardPage.tsx");
-    expect(src).toContain("setActiveProjectId(projectId)");
+    expect(src).toContain("activateProject(projectId)");
     expect(src).toContain('buildProjectUrl("/workspace", projectId)');
     expect(src).not.toMatch(/handleEnter[\s\S]*setLocation\("\/"\)/);
   });
@@ -21,7 +21,8 @@ describe("GEO-V1-A Project 上下文统一", () => {
     expect(lib).toContain("buildProjectUrl");
     expect(lib).toContain("sessionStorage");
     expect(lib).toContain("projectId");
-    expect(lib).toContain("禁止 fallback 到 projects[0]");
+    expect(lib).toContain("inspectActiveProjectContext");
+    expect(lib).toContain("activateProject");
   });
 
   it("DashboardLayout 显示当前客户与切换入口", () => {
@@ -68,7 +69,7 @@ describe("GEO-V1-A Project 上下文统一", () => {
 
   it("主链路页面支持 projectId 查询参数", () => {
     const hook = read("client/src/hooks/useActiveProjectSelection.ts");
-    expect(hook).toContain("getActiveProjectId");
+    expect(hook).toContain("inspectActiveProjectContext");
     expect(hook).toContain("buildProjectUrl");
     expect(read("client/src/App.tsx")).toContain('path="/workspace"');
   });

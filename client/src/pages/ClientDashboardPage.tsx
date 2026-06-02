@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { buildProjectUrl, setActiveProjectId } from "@/lib/activeProject";
+import { activateProject, buildProjectUrl } from "@/lib/activeProject";
 import {
   deriveClientProjectCardDisplay,
   deriveClientProjectPipelineBadgeLabel,
@@ -263,7 +263,7 @@ export default function ClientDashboardPage() {
   }, [projects, search, statusFilter]);
 
   const handleEnter = (projectId: number) => {
-    setActiveProjectId(projectId);
+    activateProject(projectId);
     setLocation(buildProjectUrl("/workspace", projectId));
   };
 
@@ -321,7 +321,7 @@ export default function ClientDashboardPage() {
         return;
       }
       await utils.geo.clientDashboard.listProjectsSummary.invalidate();
-      setActiveProjectId(created.id);
+      activateProject(created.id);
       setCreateOpen(false);
       setCreateForm(emptyCreateForm());
       toast.success("企业项目已创建，请按引导完成设置");

@@ -1,10 +1,9 @@
 import {
   buildProjectUrl,
-  getActiveProjectId,
-  getActiveProjectIdFromStorage,
   getPathnameFromLocation,
   getProjectIdFromUrl,
   getSearchFromLocation,
+  inspectActiveProjectContext,
   setActiveProjectId,
 } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
@@ -26,18 +25,23 @@ export function useActiveProjectSelection() {
     [projectsRaw],
   );
 
-  const contextProjectId = useMemo(() => getActiveProjectId({ search }), [search]);
+  const inspection = useMemo(() => {
+    if (projectsLoading) {
+      return { projectId: null as number | null, contextId: null as number | null, staleContext: false };
+    }
+    return inspectActiveProjectContext(projects, { search });
+  }, [projectsLoading, projects, search]);
 
   useInvalidProjectRedirect({
     projectsLoading,
     projects,
-    contextProjectId,
+    contextProjectId: inspection.contextId,
   });
 
   const resolvedProjectId = useMemo(() => {
-    if (!contextProjectId) return undefined;
-    return projects.some(p => p.id === contextProjectId) ? contextProjectId : undefined;
-  }, [contextProjectId, projects]);
+    if (projectsLoading || inspection.staleContext) return undefined;
+    return inspection.projectId ?? undefined;
+  }, [projectsLoading, inspection]);
 
   const [selectedProjectId, setSelectedProjectIdState] = useState<number | undefined>(resolvedProjectId);
 
@@ -49,13 +53,10 @@ export function useActiveProjectSelection() {
   useEffect(() => {
     if (projectsLoading || PATHS_SKIP_URL_SYNC.has(pathname)) return;
     const fromUrl = getProjectIdFromUrl(search);
-    const fromStorage = getActiveProjectIdFromStorage();
-    const id = fromUrl ?? fromStorage;
-    if (!id || !projects.some(p => p.id === id)) return;
-    if (!fromUrl && fromStorage) {
-      setLocation(buildProjectUrl(pathname, fromStorage));
-    }
-  }, [projectsLoading, pathname, search, projects, setLocation]);
+    if (!resolvedProjectId) return;
+    if (fromUrl === resolvedProjectId) return;
+    setLocation(buildProjectUrl(pathname, resolvedProjectId));
+  }, [projectsLoading, pathname, search, resolvedProjectId, setLocation]);
 
   const setSelectedProjectId = (id?: number) => {
     if (!id) {
