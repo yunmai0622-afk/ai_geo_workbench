@@ -14,7 +14,8 @@ export type SubscriptionPlanDisplay = {
   priceLabel: string;
   priceNote?: string;
   projectLimitLabel: string;
-  featureSummary: string;
+  /** 定价页与设置页展示的套餐要点（与后端实际配额/权限一致） */
+  features: readonly string[];
   ctaLabel: string;
   highlighted?: boolean;
 };
@@ -27,7 +28,12 @@ export const SUBSCRIPTION_PLANS: readonly SubscriptionPlanDisplay[] = [
     name: "基础版",
     priceLabel: "免费",
     projectLimitLabel: "1 个项目",
-    featureSummary: "基础功能：客户管理、企业档案、AI 诊断与内容生产核心流程",
+    features: [
+      "T0 检测每小时 1 次",
+      "内容生成最多 10 篇",
+      "仅限 1 个项目",
+      "客户管理、企业档案、AI 诊断与内容生产核心流程",
+    ],
     ctaLabel: "免费开始",
   },
   {
@@ -36,7 +42,7 @@ export const SUBSCRIPTION_PLANS: readonly SubscriptionPlanDisplay[] = [
     priceLabel: "¥299",
     priceNote: "/ 月",
     projectLimitLabel: "5 个项目",
-    featureSummary: "全部功能：含内容发布、收录监测、交付报告与多项目协作",
+    features: ["无内容生成上限", "5 个项目", "优先支持"],
     ctaLabel: "即将开放",
     highlighted: true,
   },
@@ -45,7 +51,7 @@ export const SUBSCRIPTION_PLANS: readonly SubscriptionPlanDisplay[] = [
     name: "企业版",
     priceLabel: "联系我们",
     projectLimitLabel: "不限项目（按合同约定）",
-    featureSummary: "专属部署、定制集成、SLA 与专属客户成功支持",
+    features: ["专属部署、定制集成", "SLA 与专属客户成功支持"],
     ctaLabel: "联系商务",
   },
 ] as const;

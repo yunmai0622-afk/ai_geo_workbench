@@ -51,7 +51,7 @@ export default function SettingsPage() {
               {" · "}
               {currentPlan.projectLimitLabel}
             </p>
-            <p className="mt-2 text-sm text-gray-600">{currentPlan.featureSummary}</p>
+            <p className="mt-2 text-sm text-gray-600">{currentPlan.features.join(" · ")}</p>
           </div>
           <Button type="button" variant="outline" asChild>
             <a href="/pricing">查看全部套餐</a>
