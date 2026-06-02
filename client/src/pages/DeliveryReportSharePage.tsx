@@ -103,8 +103,14 @@ function DeliveryReportShareContent() {
   const projectsQuery = trpc.geo.projects.list.useQuery(undefined, { enabled });
   const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
-  const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const analysisQuery = trpc.geo.analysis.list.useQuery(
+    { projectId: projectId! },
+    { enabled },
+  );
+  const articlesQuery = trpc.geo.articles.list.useQuery(
+    { projectId: projectId! },
+    { enabled },
+  );
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const reportQuery = trpc.geo.reports.latest.useQuery(projectInput, { enabled });

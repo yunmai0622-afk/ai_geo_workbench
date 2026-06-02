@@ -161,9 +161,15 @@ export function QuestionsPage() {
   const { selectedProject, selectedProjectId, input, enabled } = useSelectedProject();
   const questions = trpc.geo.questions.list.useQuery(input, { enabled });
   const responses = trpc.geo.aiResponses.list.useQuery(input, { enabled });
-  const analyses = trpc.geo.analysis.list.useQuery(input, { enabled });
+  const analyses = trpc.geo.analysis.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const score = trpc.geo.scores.latest.useQuery(input, { enabled });
-  const tasks = trpc.geo.tasks.list.useQuery(input, { enabled });
+  const tasks = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const generateQuestions = trpc.geo.questions.generate.useMutation({ onSuccess: async () => { toast.success("客户问题已生成"); await utils.geo.questions.list.invalidate(); }, onError: toastMutationError });
   const runAnalysis = trpc.geo.analysis.run.useMutation({ onSuccess: async () => { toast.success("诊断结果已生成"); await utils.geo.analysis.list.invalidate(); }, onError: toastMutationError });
   const calculateScore = trpc.geo.scores.calculate.useMutation({ onSuccess: async () => { toast.success("内容评分已生成"); await utils.geo.scores.latest.invalidate(); }, onError: toastMutationError });
@@ -224,8 +230,14 @@ export function ArticlesPage() {
   const [location] = useLocation();
   const [selectedArticleId, setSelectedArticleId] = useState<number | undefined>();
   const isPublishing = location === "/content-publishing" || location === "/publish";
-  const topics = trpc.geo.articles.topics.list.useQuery(input, { enabled });
-  const articles = trpc.geo.articles.list.useQuery(input, { enabled });
+  const topics = trpc.geo.articles.topics.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const articles = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const qualityScores = trpc.geo.articles.latestQualityScores.useQuery(input, { enabled });
   const records = trpc.geo.articles.publishRecords.useQuery(input, { enabled });
   const assetSummary = trpc.geo.assetLibrary.summary.useQuery(input, { enabled });

@@ -95,8 +95,14 @@ export default function V1WorkbenchOverview() {
 
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
   const scoreTrendQuery = trpc.geo.scores.recent.useQuery(projectInput, { enabled });
-  const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const tasksQuery = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const articlesQuery = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
 

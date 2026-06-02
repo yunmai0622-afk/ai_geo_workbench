@@ -164,6 +164,7 @@ import {
   normalizeTargetAiPlatforms,
 } from "@shared/platformContentRules";
 import { formatPlatformRuleSummaryForGeneration } from "@shared/geoContentTaskSource";
+import { assertProjectScopedContentTask } from "./projectScopedContentTask";
 import type { GeoContentTaskGenerationTrace } from "@shared/platformContentRules";
 import {
   PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
@@ -1635,9 +1636,8 @@ const geoRouter = router({
   }),
 
   analysis: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
-      if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
       const rows = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId)).orderBy(desc(analysisResults.createdAt));
       const [responseRows, questionRows] = await Promise.all([
@@ -2093,9 +2093,8 @@ const geoRouter = router({
   }),
 
   tasks: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
-      if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
       const rows = await db
         .select()
@@ -2454,9 +2453,8 @@ const geoRouter = router({
 
   articles: router({
     topics: router({
-      list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+      list: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
         const db = await requireDb();
-        if (!input.projectId) return [];
         await requireProjectAccess(ctx, input.projectId);
         const rows = await db
           .select()
@@ -2506,9 +2504,8 @@ const geoRouter = router({
         return { success: true, count: generated.length, topics: generated } as const;
       }),
     }),
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
-      if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
       // Fix: 问题3 — 排除旧格式「如何回答…」长标题占位文章（较按 topics 时间过滤更直观、可预期）。
       const rows = await db
@@ -2983,6 +2980,12 @@ const geoRouter = router({
       if (!task || task.projectId !== topic.projectId) {
         logDuration(topic.projectId, false, "TOPIC_UNBOUND");
         throw new TRPCError({ code: "BAD_REQUEST", message: PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE });
+      }
+      if (input.contentTaskId != null) {
+        await assertProjectScopedContentTask(db, ctx, {
+          projectId: topic.projectId,
+          contentTaskId: input.contentTaskId,
+        });
       }
       const [projectQuestions, analyses, responses, assetLibrary] = await Promise.all([
         db.select().from(questions).where(eq(questions.projectId, topic.projectId)),

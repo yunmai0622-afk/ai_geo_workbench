@@ -1,5 +1,10 @@
 import { DeliveryReportCompetitorSection } from "@/components/DeliveryReportCompetitorSection";
 import { DeliveryReportShareRenewalReminderCard } from "@/components/delivery/DeliveryReportShareRenewalReminderCard";
+import {
+  DeliveryReportInternalChecklist,
+  DeliveryReportProductBody,
+  DeliveryReportStickyToolbar,
+} from "@/components/delivery/DeliveryReportProductBody";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { GeoHealthBriefCard, type GeoHealthBriefCardProps } from "@/components/delivery/GeoHealthBriefCard";
@@ -40,7 +45,9 @@ import {
   countUnpublishedArticles,
   findLatestT0FinishedAt,
 } from "@shared/geoGrowthSuggestions";
+import { buildDeliveryReportProductSnapshot } from "@shared/deliveryReportReadability";
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
+import { T1_RETEST_PLAN_DAYS } from "@shared/retestPlan";
 import { resolveT0T1ComparisonRows } from "@shared/retestComparisonDisplay";
 import { downloadDeliveryReportCsv } from "@/lib/geoDataExportDownload";
 import { downloadDeliveryReportPdf } from "@/lib/deliveryReportPdfExport";
@@ -169,9 +176,18 @@ export function DeliveryReportsCenterPage() {
   const scoreTrendQuery = trpc.geo.scores.recent.useQuery(projectInput, { enabled });
   const t0MetricsQuery = trpc.geo.scores.t0Metrics.useQuery(projectInput, { enabled });
   const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
-  const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
-  const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const analysisQuery = trpc.geo.analysis.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const tasksQuery = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const articlesQuery = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const publishStatsQuery = trpc.publishTasks.projectStats.useQuery(
     { projectId: selectedProjectId! },
@@ -599,6 +615,177 @@ export function DeliveryReportsCenterPage() {
     return lines.slice(0, 5);
   }, [growthSuggestions]);
 
+  const positiveIndicatorLines = useMemo(() => {
+    const lines: string[] = [];
+    if (mentionRateDelta != null && mentionRateDelta > 0) {
+      lines.push(`品牌提及率较 T0 提升 ${Math.round(mentionRateDelta * 100)} 个百分点`);
+    }
+    if (recommendRateDelta != null && recommendRateDelta > 0) {
+      lines.push(`品牌推荐率较 T0 提升 ${Math.round(recommendRateDelta * 100)} 个百分点`);
+    }
+    if (geoScoreDelta != null && geoScoreDelta > 0) {
+      lines.push(`GEO 分较本轮起始提升 ${geoScoreDelta} 分`);
+    }
+    if (publishWithLinkCount > 0) {
+      lines.push(`已有 ${publishWithLinkCount} 条公开链接进入监测与复测链路`);
+    }
+    if (lines.length === 0 && hasAiTestData) {
+      lines.push("已形成 AI 实测基线，可对照后续 T1/T2/T3 复测变化");
+    }
+    return lines;
+  }, [mentionRateDelta, recommendRateDelta, geoScoreDelta, publishWithLinkCount, hasAiTestData]);
+
+  const lastAiTestedAtLabel = useMemo(() => {
+    let latest: number | null = null;
+    for (const row of monitoringRows) {
+      const at = (row as { lastAiTestedAt?: string | null }).lastAiTestedAt;
+      if (!at) continue;
+      const ts = new Date(at).getTime();
+      if (!Number.isNaN(ts) && (latest == null || ts > latest)) latest = ts;
+    }
+    if (latest == null) return null;
+    return new Date(latest).toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, [monitoringRows]);
+
+  const latestPublishAt = useMemo(() => {
+    let latest: number | null = null;
+    let value: string | null = null;
+    for (const record of publishRecords) {
+      const at = record.publishedAt ?? record.publishTime ?? record.createdAt;
+      if (!at) continue;
+      const ts = new Date(at as string | Date).getTime();
+      if (!Number.isNaN(ts) && (latest == null || ts > latest)) {
+        latest = ts;
+        value = String(at);
+      }
+    }
+    return value;
+  }, [publishRecords]);
+
+  const nextRetestAtLabel = useMemo(() => {
+    if (!latestPublishAt) return null;
+    const d = new Date(latestPublishAt);
+    if (Number.isNaN(d.getTime())) return null;
+    d.setDate(d.getDate() + T1_RETEST_PLAN_DAYS);
+    return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  }, [latestPublishAt]);
+
+  const publishableArticleCount = useMemo(
+    () => articles.filter(a => String(a.status ?? "").trim() !== "已发布").length,
+    [articles],
+  );
+
+  const profileCompletionPercent = Number(
+    profile?.completionPercent ?? profile?.completion_percent ?? profile?.profileCompletion ?? 0,
+  );
+
+  const contentEvidenceRows = useMemo(() => {
+    const defaultQuestion =
+      maxProblemLine.trim() && !maxProblemLine.startsWith("暂无") ? maxProblemLine : "待关联诊断问题";
+    return contentListRows.map(row => ({
+      key: row.key,
+      title: row.title,
+      questionText: defaultQuestion,
+      platform: row.platform,
+      publishStatus: row.publishStatus,
+      publicUrl: row.publicUrl,
+      qualityStatus: row.qualityStatus,
+      retestStatus: row.retestStatus,
+    }));
+  }, [contentListRows, maxProblemLine]);
+
+  const insufficientReasonParts = useMemo(() => {
+    const parts: string[] = [];
+    if (publishRecords.length > 0 && publishWithLinkCount === 0) {
+      parts.push("尚未完成发布链接回填");
+    }
+    if (!hasCompletedT1Retest((testRoundsQuery.data ?? []) as Parameters<typeof hasCompletedT1Retest>[0])) {
+      parts.push("尚未完成 T1 复测");
+    }
+    return parts;
+  }, [publishRecords.length, publishWithLinkCount, testRoundsQuery.data]);
+
+  const productSnapshot = useMemo(
+    () =>
+      buildDeliveryReportProductSnapshot({
+        enterpriseName,
+        reportPeriod: reportMeta.reportPeriod,
+        roundGoal: reportMeta.reportRound,
+        visibilityScore: currentGeoScore ?? visibilityScore,
+        mentionRate: hasAiTestData ? aiTestAggregate.mentionRate : null,
+        recommendRate: hasAiTestData ? aiTestAggregate.recommendRate : null,
+        hasAiTestData,
+        conclusionLine: reportMeta.conclusionLine,
+        completedActionLines: completedItems,
+        nextStepFocusLines: nextRoundFocus,
+        insufficientReasonParts,
+        questionCount: aiTestAggregate.questionCount,
+        engineCount: aiTestAggregate.engineCount,
+        lastAiTestedAt: lastAiTestedAtLabel,
+        generatedArticleCount: articles.length,
+        publishableArticleCount,
+        publishedRecordCount: publishRecords.length,
+        distinctPlatformCount: countDistinctPublishPlatforms(
+          publishRecords as Array<{ publishChannel?: string | null }>,
+        ),
+        publishWithLinkCount,
+        pendingLinkCount: Math.max(0, publishRecords.length - publishWithLinkCount),
+        retestCompletedCount: retestedCount,
+        retestPendingCount: retestQueueQuery.data?.items?.length ?? 0,
+        nextRetestAtLabel,
+        geoAttributionLines: geoAttributionLines,
+        positiveIndicatorLines,
+        laggingIndicatorLines: attributionLaggingIndicators,
+        nextPriorityLine: maxProblemLine,
+        contentEvidenceRows,
+        testRounds: (testRoundsQuery.data ?? []) as Parameters<
+          typeof buildDeliveryReportProductSnapshot
+        >[0]["testRounds"],
+        citationRate,
+        latestPublishAt,
+        growthSuggestions,
+        maxProblemLine,
+        profileCompletionPercent,
+        qualityScoredCount: contentQualityQuery.data?.scoredArticleCount ?? 0,
+      }),
+    [
+      enterpriseName,
+      reportMeta,
+      currentGeoScore,
+      visibilityScore,
+      hasAiTestData,
+      aiTestAggregate,
+      completedItems,
+      nextRoundFocus,
+      insufficientReasonParts,
+      lastAiTestedAtLabel,
+      articles.length,
+      publishableArticleCount,
+      publishRecords.length,
+      publishWithLinkCount,
+      retestedCount,
+      retestQueueQuery.data,
+      nextRetestAtLabel,
+      geoAttributionLines,
+      positiveIndicatorLines,
+      attributionLaggingIndicators,
+      maxProblemLine,
+      contentEvidenceRows,
+      testRoundsQuery.data,
+      citationRate,
+      latestPublishAt,
+      growthSuggestions,
+      profileCompletionPercent,
+      contentQualityQuery.data,
+    ],
+  );
+
   if (!enabled && !projectsLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center" data-testid="delivery-report-page">
@@ -742,223 +929,49 @@ export function DeliveryReportsCenterPage() {
         </div>
       ) : null}
 
-      <div ref={reportRef} className="space-y-8 print:space-y-6">
-        <header className="space-y-3" data-testid="delivery-report-hero">
-          <h1 className="text-2xl font-bold text-gray-900">{reportMeta.reportTitle}</h1>
-          <dl className="grid gap-2 text-sm text-gray-600 sm:grid-cols-3">
-            <div>
-              <dt className="text-gray-500">报告周期</dt>
-              <dd className="font-medium text-gray-800">{reportMeta.reportPeriod}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">当前轮次</dt>
-              <dd className="font-medium text-gray-800">{reportMeta.reportRound}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">AI 搜索可见度评分</dt>
-              <dd className="font-medium text-gray-800">{visibilityScoreDisplay(visibilityScore)}</dd>
-            </div>
-          </dl>
-        </header>
-
-        <PageAnchorNav
-          testId="delivery-report-anchor-nav"
-          items={[
-            { id: "delivery-report-section-summary", label: "摘要" },
-            { id: "delivery-report-section-actions", label: "执行动作" },
-            { id: "delivery-report-section-publish-list", label: "发布清单" },
-            { id: "delivery-report-section-ai-visibility", label: "AI可见度" },
-            { id: "delivery-report-section-attribution", label: "归因分析" },
-            { id: "delivery-report-section-suggestions", label: "优化建议" },
-          ]}
+      {selectedProjectId ? (
+        <DeliveryReportStickyToolbar
+          enterpriseName={enterpriseName}
+          geoScoreLabel={visibilityScoreDisplay(currentGeoScore ?? visibilityScore)}
+          reportStatusLabel={productSnapshot.reportStatusLabel}
+          shareLinkBusy={shareLinkBusy}
+          loading={loading}
+          exportingPdf={exportingPdf}
+          shareLinkUrl={shareLinkUrl}
+          onBack={() =>
+            setLocation(
+              selectedProjectId ? buildProjectUrl("/enterprise-workspace", selectedProjectId) : "/clients",
+            )
+          }
+          onCopyShareLink={() => {
+            if (shareLinkUrl) {
+              void handleCopyShareLink(shareLinkUrl);
+              return;
+            }
+            void copyCustomerShareLink(selectedProjectId);
+          }}
+          onExportPdf={() => void handleExportDeliveryPdf()}
         />
+      ) : null}
 
-        <div
-          className="grid gap-4 rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-50/80 to-white p-5 sm:grid-cols-3"
-          data-testid="delivery-report-key-metrics"
-        >
-          <div>
-            <p className="text-sm font-medium text-gray-600">GEO 分变化</p>
-            <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight text-gray-900">
-              {geoScoreDelta != null ? `${geoScoreDelta >= 0 ? "+" : ""}${geoScoreDelta}` : "—"}
-            </p>
-            {initialGeoScore != null && currentGeoScore != null ? (
-              <p className="mt-1 text-xs text-gray-500">
-                {initialGeoScore} → {currentGeoScore}
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">发布数</p>
-            <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight text-gray-900">
-              {publishRecords.length}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">已登记发布记录</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">品牌提及率</p>
-            <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight text-gray-900">
-              {hasAiTestData ? `${Math.round(aiTestAggregate.mentionRate * 100)}%` : "—"}
-            </p>
-            {mentionRateDelta != null ? (
-              <p className="mt-1 text-xs text-gray-500">
-                较 T0 {mentionRateDelta >= 0 ? "+" : ""}
-                {Math.round(mentionRateDelta * 100)}%
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        {!hasEnoughDataForFullReport ? (
-          <P0Card className="border-amber-200 bg-amber-50 text-amber-900">
-            暂无足够数据生成完整报告，请先完成发布与复测。
-          </P0Card>
-        ) : null}
-
-        <div id="delivery-report-section-summary" className="scroll-mt-24">
-        <P0Section title="模块1：本轮交付摘要" description="回答本轮做了什么、结果如何。">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <P0MetricTile label="客户名称" value={enterpriseName} />
-            <P0MetricTile label="交付周期" value={reportMeta.reportPeriod} />
-            <P0MetricTile label="初始 GEO 分" value={initialGeoScore != null ? String(initialGeoScore) : "—"} />
-            <P0MetricTile label="当前 GEO 分" value={currentGeoScore != null ? String(currentGeoScore) : "—"} />
-            <P0MetricTile
-              label="品牌提及率变化"
-              value={
-                mentionRateDelta != null
-                  ? `${mentionRateDelta >= 0 ? "+" : ""}${Math.round(mentionRateDelta * 100)}%`
-                  : "—"
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div ref={reportRef} className="min-w-0 space-y-8 print:space-y-6" data-testid="delivery-report-hero">
+          {!loading ? (
+            <DeliveryReportProductBody
+              snapshot={productSnapshot}
+              mode="internal"
+              onNavigate={path => setLocation(path)}
+              buildProjectPath={path =>
+                selectedProjectId ? buildProjectUrl(path, selectedProjectId) : path
               }
             />
-            <P0MetricTile
-              label="推荐率变化"
-              value={
-                recommendRateDelta != null
-                  ? `${recommendRateDelta >= 0 ? "+" : ""}${Math.round(recommendRateDelta * 100)}%`
-                  : "—"
-              }
-            />
-            <P0MetricTile label="内容资产数" value={String(articles.length)} />
-            <P0MetricTile label="已发布 / 已复测" value={`${publishRecords.length} / ${retestedCount}`} />
-          </div>
-        </P0Section>
-        </div>
+          ) : null}
 
-        <div id="delivery-report-section-actions" className="scroll-mt-24">
-        <P0Section title="模块2：本轮执行动作" description="真实执行动作回放（无模拟数据）。">
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-              完成 AI 实测诊断：{hasAiTestData ? `是（${aiTestAggregate.questionCount} 题）` : "否"}
-            </li>
-            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-              生成内容资产：{articles.length} 篇
-            </li>
-            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-              已发布平台：{countDistinctPublishPlatforms(publishRecords as Array<{ publishChannel?: string | null }>)}
-            </li>
-            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-              已回填链接：{publishWithLinkCount} 条
-            </li>
-            <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-              已完成复测：{retestedCount} 条
-            </li>
-          </ul>
-        </P0Section>
-        </div>
-
-        <div id="delivery-report-section-publish-list" className="scroll-mt-24">
-        <P0Section title="模块3：发布内容清单" description="标题 / 平台 / 发布状态 / 公开链接 / 质检状态 / 复测状态。">
-          {contentListRows.length === 0 ? (
-            <P0Card className="border-dashed border-gray-300 bg-white text-center">
-              <div className="flex flex-col items-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                  <FileText className="h-5 w-5 text-gray-500" />
-                </div>
-                <p className="mt-3 text-sm font-medium text-gray-800">暂无发布记录</p>
-                <p className="mt-1 text-xs text-gray-500">请先完成内容发布并回填公开链接，再生成交付报告。</p>
-                <Button
-                  type="button"
-                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
-                  onClick={() =>
-                    selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-                  }
-                >
-                  去发布内容
-                </Button>
-              </div>
-            </P0Card>
-          ) : (
-            <ul className="space-y-3">
-              {contentListRows.map(row => (
-                <li key={row.key} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                  <p className="font-medium text-gray-900">{row.title}</p>
-                  <p className="mt-1 text-sm text-gray-600">平台：{row.platform}</p>
-                  <p className="mt-1 text-sm text-gray-600">发布状态：{row.publishStatus}</p>
-                  <p className="mt-1 text-sm text-gray-600">质检状态：{row.qualityStatus}</p>
-                  <p className="mt-1 text-sm text-gray-600">复测状态：{row.retestStatus}</p>
-                  {row.publicUrl ? (
-                    <a href={row.publicUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-blue-600 hover:underline break-all">
-                      公开链接
-                    </a>
-                  ) : (
-                    <p className="mt-2 text-sm text-amber-800">{NO_PUBLIC_LINK_HINT}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </P0Section>
-        </div>
-
-        <div id="delivery-report-section-ai-visibility" className="scroll-mt-24">
-        <P0Section title="模块4：AI 可见度变化" description="豆包 / Kimi / DeepSeek / 通义千问 / 文心一言。">
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {engineReportRows.map(row => (
-              <li key={row.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="font-medium text-gray-900">{row.label}</p>
-                <p className="mt-1 text-sm text-gray-600">状态：{row.status}</p>
-                <p className="mt-1 text-sm text-gray-600">
-                  提及率：{row.mentionRate != null ? `${Math.round(row.mentionRate * 100)}%` : "未实测"}
-                </p>
-                <p className="mt-1 text-sm text-gray-600">
-                  推荐率：{row.recommendRate != null ? `${Math.round(row.recommendRate * 100)}%` : "未实测"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </P0Section>
-        </div>
-
-        <div id="delivery-report-section-attribution" className="scroll-mt-24">
-        <P0Section title="模块5：GEO 分归因" description="为什么当前是这个分、拖后项与本轮影响。">
-          <P0Card className="space-y-2 text-sm text-gray-700">
-            {geoAttributionLines.map(line => (
-              <p key={line}>{line}</p>
-            ))}
-          </P0Card>
-          <P0Card className="space-y-2 text-sm text-gray-700">
-            <p className="font-medium text-gray-900">当前拖后腿指标</p>
-            <ul className="space-y-1">
-              {attributionLaggingIndicators.map(line => (
-                <li key={line}>- {line}</li>
-              ))}
-            </ul>
-          </P0Card>
-        </P0Section>
-        </div>
-
-        <div id="delivery-report-section-suggestions" className="scroll-mt-24">
-        <P0Section title="模块6：下一轮优化建议" description="输出 3-5 条，直接可执行。">
-          <ul className="space-y-2 text-sm text-gray-700">
-            {nextRoundFocus.map(line => (
-              <li key={line} className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-                {line}
-              </li>
-            ))}
-          </ul>
-        </P0Section>
-        </div>
-
+        <details className="rounded-xl border border-gray-200 bg-white shadow-sm print:hidden" data-testid="delivery-report-internal-diagnostics-fold">
+          <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
+            内部诊断明细（团队，可折叠）
+          </summary>
+          <div className="space-y-8 border-t border-gray-100 p-5">
         <GeoHealthBriefCard
           enterpriseName={enterpriseName}
           publishRecords={publishRecords as PublishRecordWeekRow[]}
@@ -971,146 +984,15 @@ export function DeliveryReportsCenterPage() {
           contentGapLine={maxProblemLine}
           disabled={loading || t0MetricsQuery.isLoading}
         />
-
-        <section className="space-y-4" data-testid="delivery-report-detection-scope">
-          <div className="space-y-1">
-            <h2 className={geoP0Surfaces.sectionTitle}>本期检测范围</h2>
-            <p className={geoP0Surfaces.muted}>基于当前项目已配置的测试问题、AI 平台与检测轮次汇总。</p>
-          </div>
-          {!detectionScope.hasData ? (
-            <P0Card className="text-sm text-gray-500">{metricHint("--")}</P0Card>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <P0MetricTile label="检测问题数" value={detectionScope.questionCount} />
-              <P0MetricTile label="AI 平台数" value={detectionScope.platformCount} />
-              <P0MetricTile label="每题检测轮次" value={detectionScope.detectionRounds} />
-            </div>
-          )}
-        </section>
-
-        <section className="space-y-4" data-testid="delivery-report-t0-baseline">
-          <div className="space-y-1">
-            <h2 className={geoP0Surfaces.sectionTitle}>T0 基线结果摘要</h2>
-            <p className={geoP0Surfaces.muted}>T0 基线检测完成后的汇总，用于与 T1 复测对照。</p>
-          </div>
-          {!t0BaselineSummary.hasData ? (
-            <P0Card className="text-sm text-gray-500">暂无 T0 基线数据，请先完成 T0 基线检测。</P0Card>
-          ) : (
-            <P0Card testId="delivery-report-t0-baseline-card">
-              <p className="text-sm text-gray-600">
-                {t0BaselineSummary.roundName}
-                {t0BaselineSummary.finishedAtLabel !== "—"
-                  ? ` · 完成于 ${t0BaselineSummary.finishedAtLabel}`
-                  : ""}
-              </p>
-              <ul className="mt-3 space-y-2 text-sm text-gray-800">
-                {t0BaselineSummary.summaryLines.map(line => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </P0Card>
-          )}
-        </section>
-
-        <P0Card testId="delivery-report-conclusion" className="border-sky-100 bg-sky-50/40">
-          <p className={geoP0Surfaces.sectionTitle}>一句话经营结论</p>
-          <p className="mt-2 text-sm leading-relaxed text-gray-800">{reportMeta.conclusionLine}</p>
-        </P0Card>
-
-        <P0Section title="GEO 分数趋势" description="最近 5 次内容诊断评分变化，便于对照交付周期内的提升。">
+        <P0Section title="GEO 分数趋势" description="最近评分变化，供团队对照。">
           <P0Card testId="delivery-report-score-trend">
             <GeoScoreTrendChart points={scoreTrendPoints} loading={loading} variant="light" />
           </P0Card>
         </P0Section>
-
-        <section data-testid="delivery-report-core-metrics">
-          <h2 className={`mb-3 ${geoP0Surfaces.sectionTitle}`}>核心指标</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <P0MetricTile label="品牌提及率" value={coreMetrics.mentionRate} hint={metricHint(coreMetrics.mentionRate)} />
-            <P0MetricTile label="AI 推荐率" value={coreMetrics.recommendRate} hint={metricHint(coreMetrics.recommendRate)} />
-            <P0MetricTile label="内容引用率" value={coreMetrics.citationRate} hint={metricHint(coreMetrics.citationRate)} />
-            <P0MetricTile
-              label="收录成功数"
-              value={coreMetrics.inclusionSuccessCount}
-              hint={metricHint(coreMetrics.inclusionSuccessCount)}
-            />
-            <P0MetricTile
-              label="待优化内容数"
-              value={coreMetrics.pendingOptimizeCount}
-              hint={metricHint(coreMetrics.pendingOptimizeCount)}
-            />
           </div>
-        </section>
-
-        <section className="space-y-4" data-testid="delivery-report-t0t1-comparison">
-          <div className="space-y-1">
-            <h2 className={geoP0Surfaces.sectionTitle}>T0/T1 变化对比</h2>
-            <p className={geoP0Surfaces.muted}>复用检测对比面板，展示基线与复测之间的提及频次变化。</p>
-          </div>
-          {selectedProjectId ? (
-            <RetestComparisonPanel projectId={selectedProjectId} enabled={enabled} />
-          ) : null}
-        </section>
-
-        <P0Section
-          title="竞品对比"
-          description="对比本品牌与主要竞品在 AI 实测中的提及情况，以及竞品公开内容分布。"
-        >
-          <div data-testid="delivery-report-competitor">
-            {competitorComparison ? (
-              <DeliveryReportCompetitorSection data={competitorComparison} />
-            ) : (
-              <P0Card className="text-sm text-gray-500" testId="delivery-report-competitor-empty">
-                暂无竞品档案。完成品牌建档并补充主要竞品后，可在此查看 AI 实测提及对比与内容分布建议。
-              </P0Card>
-            )}
-          </div>
-        </P0Section>
-
-        <GeoGrowthSuggestionsPanel
-          projectId={selectedProjectId}
-          suggestions={growthSuggestions}
-          loading={loading}
-          className="print:break-inside-avoid"
-        />
-
-        <p
-          className="text-sm text-gray-600 print:hidden"
-          data-testid="delivery-report-export-backup-hint"
-        >
-          建议定期导出报告数据备份。
-          <br />
-          点击「导出CSV」保存本地副本。
-        </p>
+        </details>
 
         <div className="flex flex-wrap gap-3 print:hidden" data-testid="delivery-report-actions">
-          <Button
-            type="button"
-            className={geoP0Brand.primary}
-            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}
-          >
-            生成下一轮内容计划
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className={geoP0Brand.primaryOutline}
-            onClick={() =>
-              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-            }
-          >
-            进入优化池
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className={geoP0Brand.primaryOutline}
-            data-testid="delivery-report-export-pdf"
-            disabled={loading || exportingPdf}
-            onClick={() => void handleExportDeliveryPdf()}
-          >
-            {exportingPdf ? "导出中…" : "导出报告"}
-          </Button>
           <Button
             type="button"
             variant="outline"
@@ -1123,261 +1005,19 @@ export function DeliveryReportsCenterPage() {
           </Button>
         </div>
 
-        <P0Section title="本轮完成事项" description="基于本项目中已发生的真实业务动作汇总，不含模拟数据。">
-          {completedItems.length === 0 ? (
-            <P0Card className="text-sm text-gray-500">暂无数据，完成对应步骤后展示。</P0Card>
-          ) : (
-            <ul className="space-y-2 text-sm text-gray-700">
-              {completedItems.map(line => (
-                <li key={line} className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-                  {line}
-                </li>
-              ))}
-            </ul>
-          )}
-        </P0Section>
-
-        <P0Section title="AI 平台表现" description="来自收录监测中的 AI 搜索实测结果，按引擎汇总。">
-          {!hasAiTestData ? (
-            <P0Card className="text-sm text-gray-500">{metricHint("--")}</P0Card>
-          ) : (
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {aiTestAggregate.byEngine
-                .filter(e => e.questionCount > 0)
-                .map(engine => (
-                  <li key={engine.engineName} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <p className="font-medium text-gray-900">{engine.engineName}</p>
-                    <p className="mt-1 text-sm text-gray-600">
-                      实测 {engine.questionCount} 题 · 提及率 {Math.round(engine.mentionRate * 100)}% · 推荐率{" "}
-                      {Math.round(engine.recommendRate * 100)}%
-                    </p>
-                  </li>
-                ))}
-            </ul>
-          )}
-        </P0Section>
-
-        <P0Section
-          title="内容质量"
-          description="基于已生成内容与 GEO 质检评分汇总，反映内容生产阶段质量，不承诺发布或收录结果。"
-        >
-          <div className="space-y-4" data-testid="delivery-report-content-quality">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <P0MetricTile
-                label="平均质检分"
-                value={
-                  contentQualityQuery.data?.averageScore != null
-                    ? String(contentQualityQuery.data.averageScore)
-                    : "—"
-                }
-                hint={
-                  contentQualityQuery.data
-                    ? `已评分 ${contentQualityQuery.data.scoredArticleCount} / 已生成 ${contentQualityQuery.data.generatedArticleCount} 篇`
-                    : "完成内容生成与质检后展示"
-                }
-              />
-              <P0MetricTile
-                label="已生成内容"
-                value={String(contentQualityQuery.data?.generatedArticleCount ?? 0)}
-                hint="不含仍为「待生成」的选题占位"
-              />
-              <P0MetricTile
-                label="质检未通过"
-                value={String(contentQualityQuery.data?.failedItems.length ?? 0)}
-                hint="低于参考线、合规阻断或状态为未通过"
-              />
-            </div>
-            <P0Card testId="delivery-report-content-quality-platforms">
-              <p className="text-xs font-medium text-gray-500">各平台内容质量分布</p>
-              <p className="mt-2 text-sm leading-relaxed text-gray-800">
-                {formatContentQualityPlatformDistributionLine(
-                  contentQualityQuery.data?.platformDistribution ?? [],
-                )}
-              </p>
-            </P0Card>
-            <P0Card testId="delivery-report-content-quality-failed">
-              <p className="text-xs font-medium text-gray-500">质检未通过内容</p>
-              {(contentQualityQuery.data?.failedItems.length ?? 0) === 0 ? (
-                <p className="mt-2 text-sm text-gray-600">当前无质检未通过内容。</p>
-              ) : (
-                <ul className="mt-3 space-y-2 text-sm text-gray-800">
-                  {contentQualityQuery.data!.failedItems.map((item: DeliveryReportContentQualityFailedItem) => (
-                    <li
-                      key={item.articleId}
-                      className="rounded-lg border border-red-100 bg-red-50/50 px-4 py-3"
-                    >
-                      <p className="font-medium text-gray-900">
-                        {item.title}
-                        {item.totalScore != null ? ` · ${item.totalScore} 分` : ""}
-                      </p>
-                      <p className="mt-1 text-gray-600">{item.platformLabel}</p>
-                      <p className="mt-1 text-red-900/90">{item.reasons.join("；")}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </P0Card>
-            <P0Card testId="delivery-report-content-quality-priority">
-              <p className="text-xs font-medium text-gray-500">建议优先优化</p>
-              {(contentQualityQuery.data?.priorityItems.length ?? 0) === 0 ? (
-                <p className="mt-2 text-sm text-gray-600">暂无待优先优化的低分内容。</p>
-              ) : (
-                <ul className="mt-3 space-y-2 text-sm text-gray-800">
-                  {contentQualityQuery.data!.priorityItems.map((item: DeliveryReportContentQualityPriorityItem) => (
-                    <li
-                      key={item.articleId}
-                      className="rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3"
-                    >
-                      <p className="font-medium text-gray-900">
-                        {item.title} · {item.totalScore} 分
-                      </p>
-                      <p className="mt-1 text-gray-600">{item.platformLabel}</p>
-                      <p className="mt-1 text-amber-950/90">{item.suggestion}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </P0Card>
-          </div>
-        </P0Section>
-
-        <P0Section
-          title="发布统计"
-          description="基于发布任务（publish_tasks）汇总，反映自动/客户端发布尝试与成功情况。"
-        >
-          <div className="space-y-4" data-testid="delivery-report-publish-stats">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <P0MetricTile
-                label="总发布次数"
-                value={String(publishStatsQuery.data?.totalPublishCount ?? 0)}
-                hint="项目下全部发布任务数"
-              />
-              <P0MetricTile
-                label="发布成功率"
-                value={formatPublishSuccessRatePercent(publishStatsQuery.data?.successRatePercent ?? null)}
-                hint={
-                  publishStatsQuery.data &&
-                  publishStatsQuery.data.completedCount + publishStatsQuery.data.failedCount > 0
-                    ? `成功 ${publishStatsQuery.data.completedCount} / 失败 ${publishStatsQuery.data.failedCount}`
-                    : "暂无已完成或失败的任务"
-                }
-              />
-              <P0MetricTile
-                label="本周发布数量"
-                value={String(publishStatsQuery.data?.weekPublishCount ?? 0)}
-                hint={publishStatsQuery.data?.weekRangeLabel ?? "当前自然周"}
-              />
-            </div>
-            <P0Card testId="delivery-report-publish-stats-platforms">
-              <p className="text-xs font-medium text-gray-500">各平台发布分布</p>
-              <p className="mt-2 text-sm leading-relaxed text-gray-800">
-                {formatPlatformDistributionLine(publishStatsQuery.data?.platformDistribution ?? [])}
-              </p>
-            </P0Card>
-          </div>
-        </P0Section>
-
-        <P0Section title="发布内容清单" description="已登记并回填公开链接的发布文章列表。">
-          {publishedItems.length === 0 ? (
-            <P0Card className="border-dashed border-gray-300 bg-white text-center">
-              <div className="flex flex-col items-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                  <FileText className="h-5 w-5 text-gray-500" />
-                </div>
-                <p className="mt-3 text-sm font-medium text-gray-800">暂无报告数据</p>
-                <p className="mt-1 text-xs text-gray-500">当前还没有可用于报告的发布记录，请先生成并发布内容。</p>
-                <Button
-                  type="button"
-                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
-                  onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}
-                >
-                  去生成内容
-                </Button>
-              </div>
-            </P0Card>
-          ) : (
-            <ul className="space-y-3">
-              {publishedItems.map((item, index) => (
-                <li
-                  key={`${item.title}-${item.platform}-${index}`}
-                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-                >
-                  <p className="font-medium text-gray-900">{item.title}</p>
-                  <p className="mt-1 text-sm text-gray-600">
-                    {item.platform}
-                    {item.publishedAt ? ` · ${item.publishedAt}` : ""}
-                  </p>
-                  {(item.url ?? "").trim() ? (
-                    <a
-                      href={item.url!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-block text-sm text-blue-600 hover:underline break-all"
-                    >
-                      查看公开链接
-                    </a>
-                  ) : (
-                    <p className="mt-2 text-sm text-amber-800">{NO_PUBLIC_LINK_HINT}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </P0Section>
-
-        <P0Section title="收录与复测结果" description="展示收录状态与复测队列概况，不承诺收录或排名。">
-          {monitoringRows.length === 0 ? (
-            <P0Card className="text-sm text-gray-500">暂无收录监测记录，请先完成发布并进入收录监测。</P0Card>
-          ) : (
-            <ul className="space-y-2 text-sm text-gray-700">
-              {monitoringRows.slice(0, 8).map(row => (
-                <li key={row?.id} className="rounded-lg border border-gray-100 bg-white px-4 py-3">
-                  {(row.articleTitle ?? "未命名内容").trim()} · {row.publishChannel ?? "—"} · 收录：
-                  {(row.inclusionStatus ?? "").trim() || "未检测"}
-                </li>
-              ))}
-              {(retestQueueQuery.data?.items?.length ?? 0) > 0 ? (
-                <li className="rounded-lg border border-sky-100 bg-sky-50 px-4 py-3 text-sky-900">
-                  待复测队列 {retestQueueQuery.data!.items!.length} 条，请在发布中心安排复测。
-                </li>
-              ) : null}
-            </ul>
-          )}
-        </P0Section>
-
-        <P0Section title="当前问题" description="来自最新诊断与待办任务，不含技术字段。">
-          <P0Card className="space-y-2 text-sm text-gray-700">
-            <p>
-              <span className="text-gray-500">优先缺口：</span>
-              {maxProblemLine}
-            </p>
-            {tasks.length > 0 ? (
-              <p>
-                <span className="text-gray-500">待处理优化任务：</span>
-                {tasks.length} 项（含 P0{" "}
-                {tasks.filter(t => t.priority === "P0").length} 项）
-              </p>
-            ) : (
-              <p className="text-gray-500">暂无优化任务清单</p>
-            )}
-          </P0Card>
-        </P0Section>
-
-        <P0Section title="下一轮优化建议" description="基于品牌提及率、推荐率、发布平台与 T0/T1 进度自动生成，不含 LLM 推断。">
-          <GeoGrowthSuggestionsPanel
-            projectId={selectedProjectId}
-            suggestions={growthSuggestions}
-            loading={loading}
-          />
-          <p className="mt-4 text-xs text-gray-500">
-            不承诺保证收录、排名或 AI 推荐；报告仅引用已确认事实与实测样本。
-          </p>
-        </P0Section>
-
         <P0Card testId="delivery-report-uncertainty" className="border-amber-100 bg-amber-50/60">
           <p className={geoP0Surfaces.sectionTitle}>不确定性说明</p>
           <p className="mt-2 text-sm leading-relaxed text-gray-700">{DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER}</p>
         </P0Card>
+
+        </div>
+        {selectedProjectId && !loading ? (
+          <DeliveryReportInternalChecklist
+            snapshot={productSnapshot}
+            onNavigate={path => setLocation(path)}
+            buildProjectPath={path => buildProjectUrl(path, selectedProjectId)}
+          />
+        ) : null}
       </div>
 
       {selectedProjectId ? (

@@ -903,9 +903,15 @@ export function AiDiagnosisFlowPage() {
   const { projects, selectedProjectId, selectedProject, projectInput, enabled, isLoading: projectsLoading } = selection;
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
   const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
-  const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
+  const analysisQuery = trpc.geo.analysis.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
-  const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
+  const tasksQuery = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const generateTargetQuestionsMutation = trpc.geo.questions.generateTargetQuestions.useMutation();
   const runAnalysis = trpc.geo.analysis.run.useMutation();
   const calculateScore = trpc.geo.scores.calculate.useMutation();
@@ -2286,10 +2292,22 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
   const utils = trpc.useUtils();
   const { projects, selectedProjectId, selectedProject, projectInput, enabled } = selection;
   const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
-  const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
-  const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
-  const topicsQuery = trpc.geo.articles.topics.list.useQuery(projectInput, { enabled });
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const analysisQuery = trpc.geo.analysis.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const tasksQuery = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const topicsQuery = trpc.geo.articles.topics.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const articlesQuery = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
   const contentPlanQuery = trpc.geo.contentPlans.latest.useQuery(projectInput, { enabled });
   const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
