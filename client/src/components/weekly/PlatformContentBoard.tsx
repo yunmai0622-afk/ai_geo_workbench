@@ -14,6 +14,7 @@ export type PlatformBoardRow = {
   counts: PlatformContentCounts;
   platformRole: string;
   platformGenerationGoal: string;
+  publishHint: string;
 };
 
 type Props = {
@@ -42,9 +43,10 @@ export function PlatformContentBoard({
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map(({ def, counts, platformRole, platformGenerationGoal }) => {
+        {rows.map(({ def, counts, platformRole, platformGenerationGoal, publishHint }) => {
           const countsLine = formatCountsLine(counts);
           const hasContent = counts.pendingConfirm + counts.ready + counts.published > 0;
+          const generatedCount = counts.pendingConfirm + counts.ready + counts.published;
           return (
             <P0Card key={def.key} testId={`weekly-platform-card-${def.key}`} className="flex flex-col">
               <div className="flex items-center gap-1.5">
@@ -67,12 +69,19 @@ export function PlatformContentBoard({
                 适合内容类型：<span className="text-gray-800">{def.contentTypes}</span>
               </p>
               {countsLine ? (
-                <p className="mt-3 text-xs font-medium text-gray-700" data-testid="weekly-platform-counts">
-                  {countsLine}
-                </p>
+                <>
+                  <p className="mt-3 text-xs font-medium text-gray-700" data-testid="weekly-platform-counts">
+                    待生成 {counts.pending} / 已生成 {generatedCount} / 可发布 {counts.ready} / 已发布{" "}
+                    {counts.published}
+                  </p>
+                  <p className="mt-1 text-[11px] text-gray-500">{countsLine}</p>
+                </>
               ) : (
                 <p className="mt-3 text-xs text-gray-400">暂无内容记录</p>
               )}
+              <p className="mt-2 text-xs text-blue-700" data-testid={`weekly-platform-publish-hint-${def.key}`}>
+                下一步发布提示：{publishHint}
+              </p>
               <div className="mt-4 flex flex-1 flex-col gap-2 border-t border-gray-100 pt-4">
                 <Button
                   type="button"

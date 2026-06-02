@@ -7,9 +7,18 @@ type Props = {
   taskOptions?: Array<{ id: number; label: string }>;
   selectedTaskId?: number | null;
   onSelectTaskId?: (id: number) => void;
+  platformProgress?: string;
+  nextAction?: string;
 };
 
-export function GeoContentTaskPanels({ source, taskOptions, selectedTaskId, onSelectTaskId }: Props) {
+export function GeoContentTaskPanels({
+  source,
+  taskOptions,
+  selectedTaskId,
+  onSelectTaskId,
+  platformProgress,
+  nextAction,
+}: Props) {
   const showTaskPicker = (taskOptions?.length ?? 0) > 1 && onSelectTaskId;
 
   return (
@@ -51,18 +60,40 @@ export function GeoContentTaskPanels({ source, taskOptions, selectedTaskId, onSe
           </div>
           {source.linkedQuestion ? (
             <div>
-              <dt className="font-medium text-gray-500">关联问题</dt>
+              <dt className="font-medium text-gray-500">目标问题</dt>
               <dd className="mt-1" data-testid="weekly-geo-linked-question">
                 {source.linkedQuestion}
               </dd>
             </div>
           ) : null}
           <div>
-            <dt className="font-medium text-gray-500">来源</dt>
+            <dt className="font-medium text-gray-500">任务来源</dt>
             <dd className="mt-1" data-testid="weekly-geo-task-source-label">
               {source.sourceLabel}
             </dd>
           </div>
+          <div>
+            <dt className="font-medium text-gray-500">GEO 缺口</dt>
+            <dd className="mt-1" data-testid="weekly-geo-gap-summary">
+              {source.geoGapSummary}
+            </dd>
+          </div>
+          {platformProgress ? (
+            <div>
+              <dt className="font-medium text-gray-500">平台生成进度</dt>
+              <dd className="mt-1" data-testid="weekly-platform-generation-progress">
+                {platformProgress}
+              </dd>
+            </div>
+          ) : null}
+          {nextAction ? (
+            <div>
+              <dt className="font-medium text-gray-500">下一步动作</dt>
+              <dd className="mt-1" data-testid="weekly-content-next-action">
+                {nextAction}
+              </dd>
+            </div>
+          ) : null}
         </dl>
       </P0Card>
 

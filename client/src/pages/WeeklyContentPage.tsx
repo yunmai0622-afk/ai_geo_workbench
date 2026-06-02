@@ -161,6 +161,7 @@ import {
   GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE,
   buildGeoContentTaskDisplayName,
   buildWeeklyPlatformGenerationGoal,
+  formatPlatformRuleSummaryForGeneration,
   getWeeklyPlatformContentRole,
   hasGeoDiagnosisSourceData,
   parseGeoOptimizationTaskCard,
@@ -1002,6 +1003,9 @@ export default function WeeklyContentPage() {
           contentTaskId: geoContentTaskSource?.contentTaskId ?? undefined,
           diagnosisFinding: geoContentTaskSource?.diagnosisFinding,
           geoGap: geoContentTaskSource?.geoGapSummary,
+          platformRule: formatPlatformRuleSummaryForGeneration(
+            effectiveStrategy.targetPublishPlatform,
+          ),
           questionTemplateId: selectedQuestionTemplateId ?? undefined,
         });
         await invalidateArticles();
@@ -1165,6 +1169,16 @@ export default function WeeklyContentPage() {
         counts,
         platformRole: getWeeklyPlatformContentRole(def.key),
         platformGenerationGoal: buildWeeklyPlatformGenerationGoal(def.key, linkedQuestion, sceneLabel),
+        publishHint:
+          counts.ready > 0
+            ? "本平台已有可发布内容，建议进入发布队列。"
+            : counts.pendingConfirm > 0
+              ? "本平台内容待质检确认，确认后可加入发布队列。"
+              : counts.pending > 0
+                ? "本平台仍有待生成任务，请先生成内容。"
+                : counts.published > 0
+                  ? "本平台已有发布内容，建议回填公开链接并进入复测。"
+                  : "先生成本平台内容，再推进发布与复测。",
       };
     });
   }, [
@@ -1276,6 +1290,26 @@ export default function WeeklyContentPage() {
   }, [contentCardModels, filterPlatform, filterStatus, filterContentTag, titleSearch, sortQuality]);
 
   const contentTagStats = useMemo(() => computeContentTagStats(contentCardModels), [contentCardModels]);
+  const platformProgressText = useMemo(() => {
+    const pending = platformBoardRows.reduce((sum, row) => sum + row.counts.pending, 0);
+    const generated = platformBoardRows.reduce(
+      (sum, row) => sum + row.counts.pendingConfirm + row.counts.ready + row.counts.published,
+      0,
+    );
+    const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
+    const published = platformBoardRows.reduce((sum, row) => sum + row.counts.published, 0);
+    return `待生成 ${pending} / 已生成 ${generated} / 可发布 ${publishable} / 已发布 ${published}`;
+  }, [platformBoardRows]);
+  const contentNextAction = useMemo(() => {
+    const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
+    const generated = platformBoardRows.reduce(
+      (sum, row) => sum + row.counts.pendingConfirm + row.counts.ready + row.counts.published,
+      0,
+    );
+    if (publishable > 0) return "进入平台适配发布，将可发布内容加入发布队列。";
+    if (generated > 0) return "优先完成内容质检，形成可发布资产。";
+    return "先按平台生成本轮内容资产，再进入发布队列。";
+  }, [platformBoardRows]);
 
   const averageQualityScore = useMemo(
     () => computeAverageGeoQualityScore(contentCardModels.map(card => card.qualityScore)),
@@ -2276,7 +2310,7 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">平台化内容资产</h1>
+          <h1 className="text-2xl font-bold text-gray-900">平台化内容资产（GEO 内容任务工作台）</h1>
           <p className="text-sm text-gray-500">
             根据 AI 实测缺口，按平台生成可发布、可监测、可复测的 GEO 内容资产。各平台独立生成，不支持一稿多发。
           </p>
@@ -2334,6 +2368,8 @@ export default function WeeklyContentPage() {
               taskOptions={contentTaskOptions}
               selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
               onSelectTaskId={id => setSelectedContentTaskId(id)}
+              platformProgress={platformProgressText}
+              nextAction={contentNextAction}
             />
           ) : null}
 

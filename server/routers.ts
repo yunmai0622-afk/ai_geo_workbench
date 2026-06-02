@@ -2845,6 +2845,7 @@ const geoRouter = router({
             contentTaskId: z.number().int().positive().optional(),
             diagnosisFinding: z.string().trim().max(4000).optional(),
             geoGap: z.string().trim().max(4000).optional(),
+            platformRule: z.string().trim().max(4000).optional(),
             questionTemplateId: z.number().int().positive().optional(),
           })
           .superRefine((val, ctx) => {
@@ -2957,15 +2958,18 @@ const geoRouter = router({
           const hasTrace =
             input.contentTaskId != null ||
             Boolean(input.diagnosisFinding?.trim()) ||
-            Boolean(input.geoGap?.trim());
+            Boolean(input.geoGap?.trim()) ||
+            Boolean(input.platformRule?.trim());
           if (hasTrace) {
             geoContentTaskTrace = {
               contentTaskId: input.contentTaskId ?? task.id,
               diagnosisFinding: input.diagnosisFinding?.trim(),
               geoGap: input.geoGap?.trim(),
-              platformRuleSummary: formatPlatformRuleSummaryForGeneration(
-                platformStrategy.targetPublishPlatform,
-              ),
+              platformRuleSummary:
+                input.platformRule?.trim() ||
+                formatPlatformRuleSummaryForGeneration(
+                  platformStrategy.targetPublishPlatform,
+                ),
             };
           }
         }
