@@ -3193,3 +3193,34 @@
 [2026-06-02T03:48:05.344Z] [Auth] Missing session cookie
 [2026-06-02T03:48:05.698Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-02T03:48:41.466Z] 11:48:41 PM [vite] (client) hmr update /src/index.css
+[2026-06-02T04:02:53.047Z] 12:02:53 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T04:02:53.049Z] 12:02:53 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-06-02T04:02:53.050Z] 12:02:53 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/pages/ProgressPage.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/GeoPages.tsx, /src/pages/EffectiveActionsPage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T04:02:53.051Z] 12:02:53 AM [vite] (client) hmr update /src/App.tsx, /src/components/UserFeedbackFab.tsx, /src/components/DashboardLayout.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/ProgressPage.tsx, /src/pages/OnboardingPage.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/AssetCenter.tsx, /src/pages/GeoPages.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/geo/T0ContentGapSuggestionsCard.tsx, /src/components/geo/GeoGrowthSuggestionsPanel.tsx, /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx, /src/components/project/ProjectSwitcher.tsx, /src/index.css
+[2026-06-02T04:02:53.052Z] 12:02:53 AM [vite] (client) hmr update /src/index.css, /src/pages/DemoGeo.tsx, /src/pages/DemoGeoBrowse.tsx
+[2026-06-02T04:02:53.053Z] 12:02:53 AM [vite] (client) hmr update /src/pages/DeliveryReportSharePage.tsx, /src/index.css
+[2026-06-02T04:02:53.054Z] 12:02:53 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T04:02:53.054Z] 12:02:53 AM [vite] (client) hmr update /src/pages/DemoGeoBrowse.tsx, /src/index.css
+[2026-06-02T04:02:53.058Z] 12:02:53 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-02T04:02:53.059Z] 12:02:53 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-06-02T04:02:53.059Z] 12:02:53 AM [vite] (client) hmr update /src/pages/LandingPage.tsx, /src/index.css
+[2026-06-02T04:02:53.060Z] 12:02:53 AM [vite] (client) hmr update /src/pages/LegacyOnboardingPage.tsx, /src/index.css
+[2026-06-02T04:02:53.060Z] 12:02:53 AM [vite] (client) hmr update /src/pages/PricingPage.tsx, /src/index.css
+[2026-06-02T04:02:53.061Z] 12:02:53 AM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+[2026-06-02T04:02:53.061Z] 12:02:53 AM [vite] (client) hmr update /src/pages/AdminSubscriptionPage.tsx, /src/pages/PricingPage.tsx, /src/pages/SettingsPage.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/pages/OnboardingPage.tsx, /src/components/SubscriptionUpgradePrompt.tsx
+[2026-06-02T04:02:53.172Z] 12:02:53 AM [tsx] change in ./shared/subscriptionPlans.ts Restarting...
+[2026-06-02T04:03:00.345Z] cServer running on http://localhost:3000/
+[2026-06-02T04:03:02.423Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-02T04:03:07.360Z] 12:03:07 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T04:03:22.028Z] Dev server process group stopped
+[2026-06-02T04:03:22.031Z] ELIFECYCLE  Command failed.
+[2026-06-02T04:03:22.118Z] Dev server exited with code -15
+[2026-06-02T04:03:25.070Z] Starting dev server with command: pnpm run dev
+[2026-06-02T04:03:25.894Z] 
+[2026-06-02T04:03:25.895Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-02T04:03:25.895Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-02T04:03:25.896Z] 
+[2026-06-02T04:03:33.128Z] Server running on http://localhost:3000/
+[2026-06-02T04:03:33.983Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-02T04:03:51.500Z] [Auth] Missing session cookie
+[2026-06-02T04:04:51.437Z] 12:04:51 AM [vite] (client) hmr update /src/index.css
