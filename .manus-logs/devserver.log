@@ -3448,3 +3448,95 @@
 [2026-06-02T10:40:26.770Z] 6:40:26 AM [vite] (client) hmr update /src/App.tsx, /src/components/UserFeedbackFab.tsx, /src/components/DashboardLayout.tsx, /src/pages/AssetCenter.tsx, /src/pages/OnboardingPage.tsx, /src/pages/GeoPages.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/ProgressPage.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/DeliveryReportSharePage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/geo/T0ContentGapSuggestionsCard.tsx, /src/components/geo/GeoGrowthSuggestionsPanel.tsx, /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx, /src/components/project/ProjectSwitcher.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
 [2026-06-02T10:40:26.771Z] 6:40:26 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
 [2026-06-02T10:40:26.884Z] 6:40:26 AM [tsx] unlink in ./shared/projectNavigation.ts Restarting...
+[2026-06-02T11:19:52.326Z] 7:19:52 AM [vite] (client) page reload index.html
+[2026-06-02T11:19:52.327Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.328Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.328Z] 7:19:52 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-06-02T11:19:52.329Z] 7:19:52 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-02T11:19:52.331Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerLightView.tsx
+[2026-06-02T11:19:52.332Z] 7:19:52 AM [vite] (client) hmr update /src/components/ErrorBoundary.tsx, /src/index.css
+[2026-06-02T11:19:52.332Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.333Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.333Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/auth/LoginGatePanel.tsx
+[2026-06-02T11:19:52.334Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.334Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/AdvancedMaterialsSection.tsx
+[2026-06-02T11:19:52.338Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/geo/GeoScoreTrendChart.tsx
+[2026-06-02T11:19:52.338Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/geo/P0UiPrimitives.tsx
+[2026-06-02T11:19:52.339Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.339Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx
+[2026-06-02T11:19:52.339Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T11:19:52.340Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectNextActionPanel.tsx
+[2026-06-02T11:19:52.340Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectSwitcher.tsx
+[2026-06-02T11:19:52.340Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-02T11:19:52.341Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/WorkspaceDashboardOverviewCards.tsx
+[2026-06-02T11:19:52.341Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.341Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.342Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.342Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.343Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/DashboardLayout.tsx
+[2026-06-02T11:19:52.343Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/pages/AssetCenter.tsx, /src/pages/GeoPages.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/ProgressPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T11:19:52.343Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/FirstUseHintBanner.tsx
+[2026-06-02T11:19:52.344Z] 7:19:52 AM [vite] (client) hmr update /src/App.tsx, /src/pages/DeliveryReportSharePage.tsx, /src/pages/AssetCenter.tsx, /src/pages/GeoPages.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/ProgressPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/index.css
+[2026-06-02T11:19:52.344Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T11:19:52.345Z] 7:19:52 AM [vite] (client) hmr update /src/App.tsx, /src/components/UserFeedbackFab.tsx, /src/components/DashboardLayout.tsx, /src/pages/AssetCenter.tsx, /src/pages/GeoPages.tsx, /src/pages/OnboardingPage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/pages/DeliveryReportSharePage.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/ProgressPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/pages/ClientDashboardPage.tsx, /src/components/geo/T0ContentGapSuggestionsCard.tsx, /src/components/geo/GeoGrowthSuggestionsPanel.tsx, /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx, /src/components/project/ProjectSwitcher.tsx, /src/index.css
+[2026-06-02T11:19:52.345Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/pages/KnowledgePage.tsx
+[2026-06-02T11:19:52.345Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectSwitcher.tsx
+[2026-06-02T11:19:52.346Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.346Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.346Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T11:19:52.347Z] 7:19:52 AM [vite] (client) page reload src/main.tsx
+[2026-06-02T11:19:52.347Z] 7:19:52 AM [vite] (client) hmr update /src/pages/AdminSubscriptionPage.tsx, /src/index.css
+[2026-06-02T11:19:52.347Z] 7:19:52 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-06-02T11:19:52.348Z] 7:19:52 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-06-02T11:19:52.348Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.348Z] 7:19:52 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicPage.tsx, /src/index.css
+[2026-06-02T11:19:52.349Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.349Z] 7:19:52 AM [vite] (client) hmr update /src/pages/DemoGeo.tsx, /src/index.css
+[2026-06-02T11:19:52.349Z] 7:19:52 AM [vite] (client) hmr update /src/pages/DemoGeoBrowse.tsx, /src/index.css
+[2026-06-02T11:19:52.350Z] 7:19:52 AM [vite] (client) hmr update /src/pages/EffectiveActionsPage.tsx, /src/index.css
+[2026-06-02T11:19:52.350Z] 7:19:52 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-02T11:19:52.350Z] 7:19:52 AM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-06-02T11:19:52.351Z] 7:19:52 AM [vite] (client) hmr update /src/pages/KnowledgePage.tsx, /src/index.css
+[2026-06-02T11:19:52.351Z] 7:19:52 AM [vite] (client) hmr update /src/pages/LandingPage.tsx, /src/index.css
+[2026-06-02T11:19:52.352Z] 7:19:52 AM [vite] (client) hmr update /src/pages/PricingPage.tsx, /src/index.css
+[2026-06-02T11:19:52.352Z] 7:19:52 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/index.css
+[2026-06-02T11:19:52.352Z] 7:19:52 AM [vite] (client) hmr update /src/pages/SettingsPage.tsx, /src/index.css
+[2026-06-02T11:19:52.353Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.353Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.364Z] 7:19:52 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/const.ts
+[2026-06-02T11:19:52.365Z] 7:19:52 AM [vite] (client) hmr update /src/pages/DeliveryReportPublicEvidencePage.tsx, /src/pages/DeliveryReportPublicPage.tsx, /src/pages/AiSearchEvidencePage.tsx, /src/components/DeliveryReportCustomerLightView.tsx
+[2026-06-02T11:19:52.365Z] 7:19:52 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-02T11:19:52.365Z] 7:19:52 AM [vite] (client) hmr update /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/help/PageUsageHelpButton.tsx
+[2026-06-02T11:19:52.366Z] 7:19:52 AM [vite] (client) hmr update /src/pages/TemplatesPage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-02T11:19:52.367Z] 7:19:52 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-02T11:19:52.367Z] 7:19:52 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/pages/OnboardingPage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/components/SubscriptionUpgradePrompt.tsx
+[2026-06-02T11:19:52.367Z] 7:19:52 AM [vite] (client) hmr update /src/pages/PricingPage.tsx, /src/pages/LandingPage.tsx, /src/pages/SettingsPage.tsx, /src/pages/AdminSubscriptionPage.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/OnboardingPage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/components/SubscriptionUpgradePrompt.tsx
+[2026-06-02T11:19:52.368Z] 7:19:52 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/userFacingErrors.ts
+[2026-06-02T11:19:52.368Z] 7:19:52 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/WorkspaceDashboardOverviewCards.tsx
+[2026-06-02T11:19:52.368Z] 7:19:52 AM [vite] (client) hmr update /src/pages/KnowledgePage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/help/PageUsageHelpButton.tsx
+[2026-06-02T11:19:52.369Z] 7:19:52 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-02T11:19:52.406Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.409Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.411Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectNextActionMobileDock.tsx
+[2026-06-02T11:19:52.412Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.413Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.414Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.414Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/workspace/WorkspaceInclusionMonitoringSection.tsx
+[2026-06-02T11:19:52.415Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.416Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.417Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.417Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.418Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx
+[2026-06-02T11:19:52.418Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.419Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/pages/AssetCenter.tsx
+[2026-06-02T11:19:52.420Z] 7:19:52 AM [vite] (client) page reload src/lib/projectContextCache.ts
+[2026-06-02T11:19:52.420Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.420Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.421Z] 7:19:52 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-02T11:19:52.422Z] 7:19:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-02T11:19:52.422Z] 7:19:52 AM [vite] (client) hmr update /src/pages/AdminPublishTasksPage.tsx, /src/index.css
+[2026-06-02T11:19:52.423Z] 7:19:52 AM [vite] (client) hmr update /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T11:19:52.423Z] 7:19:52 AM [vite] (client) hmr update /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T11:19:52.424Z] 7:19:52 AM [vite] (client) hmr update /src/App.tsx, /src/components/UserFeedbackFab.tsx, /src/components/DashboardLayout.tsx, /src/pages/AssetCenter.tsx, /src/pages/GeoPages.tsx, /src/pages/OnboardingPage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/pages/DeliveryReportSharePage.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/ProgressPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/pages/ClientDashboardPage.tsx, /src/components/geo/T0ContentGapSuggestionsCard.tsx, /src/components/geo/GeoGrowthSuggestionsPanel.tsx, /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx, /src/components/project/ProjectSwitcher.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-02T11:19:52.424Z] 7:19:52 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-02T11:19:52.525Z] 7:19:52 AM [tsx] unlink in ./server/routers.ts Restarting...
