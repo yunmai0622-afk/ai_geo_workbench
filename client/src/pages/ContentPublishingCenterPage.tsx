@@ -322,7 +322,7 @@ export function ContentPublishingCenterPage() {
   );
   const publishRecords = filterListWithNumericId(publishRecordsQuery.data ?? []) as PublishRecordRow[];
   const agentTasks = filterListWithNumericId(autoPublishTasksQuery.data?.tasks ?? []) as AgentTaskRow[];
-  const articleById = useMemo(() => new Map(articles.map(a => [a?.id, a])), [articles]);
+  const articleById = useMemo(() => new Map((articles ?? []).map(a => [a?.id, a])), [articles]);
 
   const hasInFlightAgentTasks = useMemo(
     () =>
@@ -344,7 +344,7 @@ export function ContentPublishingCenterPage() {
   }, [selectedProjectId]);
 
   useEffect(() => {
-    const completedIds = agentTasks.filter(t => t.status === "completed").map(t => t?.id);
+    const completedIds = (agentTasks.filter(t => t.status === "completed") ?? []).map(t => t?.id);
     if (!completedAgentTasksInitializedRef.current) {
       completedIds.forEach(id => completedAgentTaskIdsRef.current.add(id));
       completedAgentTasksInitializedRef.current = true;
@@ -356,9 +356,9 @@ export function ContentPublishingCenterPage() {
       const tasks = agentTasks.filter(t => t?.id != null && newlyCompleted.includes(t?.id));
       setPublishSuccessNotice({
         platformLabel: formatPublishSuccessPlatformPhrase(
-          tasks.map(t => publishPlatformCustomerLabel(t.platform)),
+          (tasks ?? []).map(t => publishPlatformCustomerLabel(t.platform)),
         ),
-        articleUrl: resolvePublishSuccessArticleUrl(tasks.map(t => t.resultUrl)),
+        articleUrl: resolvePublishSuccessArticleUrl((tasks ?? []).map(t => t.resultUrl)),
       });
     }
   }, [agentTasks]);
@@ -457,7 +457,7 @@ export function ContentPublishingCenterPage() {
       .length;
   }, [platformAccountGroups]);
   const availableAccountByPlatform = useMemo(() => {
-    return platformAccountGroups
+    return (platformAccountGroups ?? [])
       .map(group => {
         const count = (group.accounts ?? []).filter((a: { isEnabled: boolean }) => a.isEnabled).length;
         return `${publishPlatformCustomerLabel(group.platform)} ${count} 个`;
@@ -466,7 +466,7 @@ export function ContentPublishingCenterPage() {
   }, [platformAccountGroups]);
 
   const taskCards = useMemo(() => {
-    const cards: PublishTaskCardModel[] = agentTasks.map(task => {
+    const cards: PublishTaskCardModel[] = (agentTasks ?? []).map(task => {
       const article = articleById.get(task.articleId);
       const basis = article?.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
       const goal =
@@ -841,7 +841,7 @@ export function ContentPublishingCenterPage() {
       toast.message("发布记录加载中，请稍后再导出");
       return;
     }
-    const rows = publishRecords.map(record => {
+    const rows = (publishRecords ?? []).map(record => {
       const article = articleById.get(record.articleId ?? 0);
       const title =
         article?.title?.trim() || record.publishTitle?.trim() || `文章 #${record.articleId ?? "—"}`;
@@ -1034,7 +1034,7 @@ export function ContentPublishingCenterPage() {
                     </div>
                   ) : (
                     <div className="grid gap-3 lg:grid-cols-2">
-                      {queueTabs[tab].map(card => (
+                      {(queueTabs[tab] ?? []).map(card => (
                         <div key={card.key} className="rounded-xl border border-gray-200 bg-white p-4" data-testid={`publish-queue-card-${card.key}`}>
                           <div className="flex items-start justify-between gap-3">
                             <p className="line-clamp-2 text-sm font-semibold text-gray-900">{card.title}</p>
@@ -1274,7 +1274,7 @@ export function ContentPublishingCenterPage() {
                           <SelectValue placeholder="选择文章" />
                         </SelectTrigger>
                         <SelectContent>
-                          {publishableArticles.map(a => (
+                          {(publishableArticles ?? []).map(a => (
                             <SelectItem key={a?.id} value={String(a?.id)}>
                               {a.title?.trim() || `文章 #${a?.id}`}
                             </SelectItem>
@@ -1292,7 +1292,7 @@ export function ContentPublishingCenterPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {MANUAL_PUBLISH_PLATFORMS.map(p => (
+                          {(MANUAL_PUBLISH_PLATFORMS ?? []).map(p => (
                             <SelectItem key={p} value={p}>
                               {p}
                             </SelectItem>
