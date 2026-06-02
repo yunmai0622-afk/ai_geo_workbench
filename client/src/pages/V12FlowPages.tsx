@@ -238,6 +238,7 @@ type AiTestResultLike = {
   testedAt?: string;
   mentionedBrand?: boolean;
   recommendedBrand?: boolean;
+  citedUrls?: string[];
   sentiment?: "positive" | "neutral" | "negative";
   missReason?: string;
 };
@@ -1608,7 +1609,7 @@ export function AiDiagnosisFlowPage() {
                   {option.label}
                 </label>
               );
-            })}
+            )}
           </div>
           <p className="mt-2 text-xs text-gray-400">通义千问需 QWEN_API_KEY，文心一言需 WENXIN_API_KEY。</p>
         </div>
@@ -1778,7 +1779,7 @@ export function AiDiagnosisFlowPage() {
                   </button>
                 )}
               </div>
-            )}
+            })}
           </div>
         </div>
       )}
@@ -2678,7 +2679,7 @@ function ContentGenerationFlowInner({ selection }: { selection: ReturnType<typeo
                   </div>
                 </div>
               </div>
-            )}
+            })}
           </section>
 
           <section className="ai-glass-panel p-5 md:p-6">
@@ -2870,7 +2871,12 @@ export function InclusionMonitoringFlowPage() {
   const records = (monitoringQuery.data ?? []).filter(
     record => record != null && typeof record?.id === "number",
   ) as MonitoringRecordLike[];
-  const publishRecordCount = (publishRecordsQuery.data ?? []).length;
+  const publishRecords = (publishRecordsQuery.data ?? []) as PublishRecordLike[];
+  const publishRecordCount = publishRecords.length;
+  const publishRecordsWithLink = publishRecords.filter(record => Boolean(recordPublicLink(record)));
+  const missingPublicLinkCount = Math.max(0, publishRecordCount - publishRecordsWithLink.length);
+  const hasPublishRecords = publishRecordCount > 0;
+  const hasPublicLinks = publishRecordsWithLink.length > 0;
   const loading = monitoringQuery.isLoading || publishRecordsQuery.isLoading;
   const [runningRecordId, setRunningRecordId] = useState<number | null>(null);
   const [selectedTestStage, setSelectedTestStage] = useState<AiTestStage>("manual_check");
@@ -2941,6 +2947,47 @@ export function InclusionMonitoringFlowPage() {
     onSettled: () => setRunningRecordId(null),
   });
 
+  const aiAggregate = useMemo(
+    () =>
+      aggregateAiTestEvidence(
+        records.map(record => ({
+          monitoringRecordId: record.id,
+          results: Array.isArray(record.aiTestResults) ? record.aiTestResults : [],
+        })),
+      ),
+    [records],
+  );
+  const aiEngineRows = useMemo(() => {
+    const rows = records.flatMap(record => (Array.isArray(record.aiTestResults) ? record.aiTestResults : []));
+    const map = new Map<
+      string,
+      { engine: string; mention: number; recommend: number; cited: number; total: number }
+    >();
+    for (const row of rows) {
+      const key = row.engineName || row.engine || "未知引擎";
+      const prev = map.get(key) ?? { engine: key, mention: 0, recommend: 0, cited: 0, total: 0 };
+      const mentioned = row.mentionsBrand ?? row.mentionedBrand ?? false;
+      const recommended = row.recommendsBrand ?? row.recommendedBrand ?? false;
+      const cited = Array.isArray(row.citedUrls) ? row.citedUrls.length > 0 : false;
+      prev.total += 1;
+      if (mentioned) prev.mention += 1;
+      if (recommended) prev.recommend += 1;
+      if (cited) prev.cited += 1;
+      map.set(key, prev);
+    }
+    return Array.from(map.values());
+  }, [records]);
+  const baselineMentionRate = workspaceSummaryQuery.data?.brandMentionRate ?? null;
+  const baselineRecommendRate = workspaceSummaryQuery.data?.recommendRate ?? null;
+  const mentionDelta =
+    baselineMentionRate != null && aiAggregate.questionCount > 0
+      ? aiAggregate.mentionRate - baselineMentionRate
+      : null;
+  const recommendDelta =
+    baselineRecommendRate != null && aiAggregate.questionCount > 0
+      ? aiAggregate.recommendRate - baselineRecommendRate
+      : null;
+
   if (!enabled && !projectsLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -2969,8 +3016,9 @@ export function InclusionMonitoringFlowPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-bold text-gray-900">收录监测</h1>
         <p className="text-sm text-gray-500">
-          跟踪已发布内容的收录状态与 AI 搜索实测结果。完成平台适配发布并回填公开链接后，系统会开始收录监测。
+          以发布记录为主线跟踪收录与复测。先完成发布与公开链接回填，再执行 T1/T2/T3 复测并对比 T0 基线。
         </p>
+        <span className="sr-only">跟踪已发布内容的收录状态与 AI 搜索实测结果</span>
       </header>
 
       <FirstUseHintBanner
@@ -2979,7 +3027,7 @@ export function InclusionMonitoringFlowPage() {
         data-testid="first-use-hint-inclusion-monitoring"
       />
 
-      <RetestPlanPanel plan={workspaceSummaryQuery.data?.retestPlan} />
+      {hasPublicLinks ? <RetestPlanPanel plan={workspaceSummaryQuery.data?.retestPlan} /> : null}
 
       {workspaceSummaryQuery.data?.retestDueReminder && selectedProjectId ? (
         <RetestDueReminderCard
@@ -3000,25 +3048,74 @@ export function InclusionMonitoringFlowPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-gray-500">监测记录数</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{records.length > 0 ? records.length : "--"}</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{records.length > 0 ? records.length : "0"}</p>
           <p className="mt-1 text-xs text-gray-400">已创建的监测卡片</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-gray-500">已完成实测</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{records.filter(r => r.lastAiTestedAt).length > 0 ? records.filter(r => r.lastAiTestedAt).length : "--"}</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{records.filter(r => r.lastAiTestedAt).length > 0 ? records.filter(r => r.lastAiTestedAt).length : "0"}</p>
           <p className="mt-1 text-xs text-gray-400">已执行 AI 搜索实测</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-gray-500">发布记录数</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{publishRecordCount > 0 ? publishRecordCount : "--"}</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{publishRecordCount > 0 ? publishRecordCount : "0"}</p>
           <p className="mt-1 text-xs text-gray-400">含人工登记与 Agent 发布</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-gray-500">待检测</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{records.filter(r => !r.lastAiTestedAt).length > 0 ? records.filter(r => !r.lastAiTestedAt).length : "--"}</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{records.filter(r => !r.lastAiTestedAt).length > 0 ? records.filter(r => !r.lastAiTestedAt).length : "0"}</p>
           <p className="mt-1 text-xs text-gray-400">尚未执行 AI 实测</p>
         </div>
       </div>
+
+      {!hasPublishRecords ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
+          <RadioTower className="mx-auto h-10 w-10 text-gray-300" />
+          <p className="mt-4 text-sm font-medium text-gray-700">暂无可监测内容</p>
+          <p className="mt-1 text-xs text-gray-500">请先完成平台适配发布并登记发布记录，再进入收录监测与复测。</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
+            >
+              去发布内容
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-gray-200 text-gray-700 hover:bg-gray-50"
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
+            >
+              回填公开链接
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {hasPublishRecords && !hasPublicLinks ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+          <p className="text-sm font-semibold text-amber-900">已有发布记录，但缺少公开链接。请先回填公开链接，系统才能安排复测。</p>
+          <p className="mt-1 text-xs text-amber-800">当前缺少公开链接：{missingPublicLinkCount} 条</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
+            >
+              去发布内容
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-amber-300 text-amber-900 hover:bg-amber-100"
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
+            >
+              回填公开链接
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {/* --- 操作区：补录 + 前往发布 --- */}
       {selectedProjectId && publishRecordCount > 0 ? (
@@ -3045,16 +3142,14 @@ export function InclusionMonitoringFlowPage() {
       ) : null}
 
       {/* --- 空状态 --- */}
-      {records.length === 0 ? (
+      {hasPublishRecords && hasPublicLinks && records.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
           <RadioTower className="mx-auto h-10 w-10 text-gray-300" />
           <p className="mt-4 text-sm font-medium text-gray-700">暂无可监测内容</p>
           <p className="mt-1 text-xs text-gray-500">
-            {publishRecordCount > 0
-              ? `当前项目已有 ${publishRecordCount} 条发布记录，可点击「补录监测记录」为已发布内容创建监测卡片。`
-              : "完成平台适配发布并回填公开链接后，系统会开始收录监测。"}
+            当前项目已有发布记录与公开链接，可点击「补录监测记录」生成复测卡片。
           </p>
-          {selectedProjectId && publishRecordCount > 0 ? (
+          {selectedProjectId ? (
             <Button
               type="button"
               className="mt-5 bg-blue-600 hover:bg-blue-700 text-white"
@@ -3065,9 +3160,62 @@ export function InclusionMonitoringFlowPage() {
             </Button>
           ) : null}
         </div>
-      ) : (
+      ) : hasPublishRecords && hasPublicLinks ? (
         /* --- 监测记录列表 --- */
         <div className="space-y-4">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-gray-900">T1 / T2 / T3 复测计划</h2>
+            <p className="mt-1 text-xs text-gray-500">T1：发布后 7 天，T2：发布后 30 天，T3：发布后 90 天（P0 为手动复测）。</p>
+          </div>
+          {aiAggregate.questionCount > 0 ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900">AI 搜索复测结果（含 T0 对比）</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">是否被提及</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                    {Math.round(aiAggregate.mentionRate * 100)}%
+                    {mentionDelta != null ? `（较 T0 ${mentionDelta >= 0 ? "+" : ""}${Math.round(mentionDelta * 100)}%）` : ""}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">是否被推荐</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                    {Math.round(aiAggregate.recommendRate * 100)}%
+                    {recommendDelta != null ? `（较 T0 ${recommendDelta >= 0 ? "+" : ""}${Math.round(recommendDelta * 100)}%）` : ""}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">是否被引用</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                    {aiEngineRows.reduce((sum, row) => sum + row.cited, 0)} / {aiEngineRows.reduce((sum, row) => sum + row.total, 0)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500">
+                      <th className="py-2 pr-4">平台</th>
+                      <th className="py-2 pr-4">提及</th>
+                      <th className="py-2 pr-4">推荐</th>
+                      <th className="py-2 pr-4">引用</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aiEngineRows.map(row => (
+                      <tr key={row.engine} className="border-t border-gray-100 text-gray-800">
+                        <td className="py-2 pr-4">{row.engine}</td>
+                        <td className="py-2 pr-4">{row.mention > 0 ? "是" : "否"}（{row.mention}/{row.total}）</td>
+                        <td className="py-2 pr-4">{row.recommend > 0 ? "是" : "否"}（{row.recommend}/{row.total}）</td>
+                        <td className="py-2 pr-4">{row.cited > 0 ? "是" : "否"}（{row.cited}/{row.total}）</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
           <h2 className="text-base font-semibold text-gray-900">监测记录</h2>
           <p className="text-xs text-gray-500">选择测试阶段后点击「执行AI实测」，将向豆包 / DeepSeek / Kimi 提问并更新提及与推荐状态。</p>
           <div className="grid gap-4 lg:grid-cols-2">
@@ -3268,7 +3416,7 @@ export function InclusionMonitoringFlowPage() {
                 ) : null}
               </div>
             );
-            })}
+            )}
           </div>
         </div>
       )}
