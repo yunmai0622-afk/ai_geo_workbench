@@ -21,6 +21,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
@@ -30,7 +31,7 @@ import {
   type T0QuestionGapTagLabel,
 } from "@shared/t0QuestionGapTags";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { Library, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CircleHelp, Library, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -79,6 +80,15 @@ type QuestionGroup = {
 const MANUAL_ADD_TYPES = LIBRARY_GROUPS.map(g => ({ value: g.dbType, label: g.label }));
 
 const GROUP_DB_TYPES = new Set<string>(LIBRARY_GROUPS.map(g => g.dbType));
+const GROUP_HELP_TEXT: Record<LibraryGroupKey, string> = {
+  品牌认知: "用于判断 AI 是否能正确识别与理解品牌基本信息。",
+  行业推荐: "用于观察 AI 在行业推荐场景下是否会提及并推荐品牌。",
+  竞品对比: "用于评估 AI 对品牌与竞品优劣势的对比表现。",
+  场景需求: "用于检验 AI 在具体使用场景下是否会优先给出品牌方案。",
+  长尾转化: "用于覆盖细分需求和长尾搜索，提升被推荐机会。",
+  指定问题: "用于固定追踪关键业务问题，观察多轮 AI 实测稳定性。",
+  其他类型: "历史问题类型，建议后续按标准分组逐步整理。",
+};
 
 function isQuestionEnabled(enabled: QuestionRow["enabled"]) {
   return Number(enabled) !== 0;
@@ -107,6 +117,25 @@ type FormState = {
 
 function defaultForm(): FormState {
   return { questionText: "", questionType: "指定问题" };
+}
+
+function HelpTooltip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center text-gray-400 transition-colors hover:text-gray-600"
+          aria-label="查看说明"
+        >
+          <CircleHelp className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6} className="max-w-64 leading-relaxed">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 export default function QuestionsLibraryPage() {
@@ -293,7 +322,7 @@ export default function QuestionsLibraryPage() {
             <h1 className="text-2xl font-bold text-gray-900">问题库</h1>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            管理 AI 实测与内容诊断使用的客户问题，可按类型查看、编辑、启用或停用。
+            问题库用于 AI 实测诊断。启用的问题会进入下一轮 AI 实测，用来判断品牌是否被提及、推荐和正确理解。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">
@@ -341,17 +370,29 @@ export default function QuestionsLibraryPage() {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <P0MetricTile label="总问题数" value={String(stats.total)} hint="当前项目全部问题" />
-            <P0MetricTile label="已启用" value={String(stats.enabledCount)} hint="参与实测与诊断" />
             <P0MetricTile
-              label="已停用"
-              value={String(Math.max(stats.total - stats.enabledCount, 0))}
-              hint="暂不参与检测"
+              label="全问题数"
+              value={String(stats.total)}
+              hint="当前项目已配置的问题总数"
+              tooltip="全问题数=当前项目中所有问题，包含启用和停用状态。"
             />
             <P0MetricTile
-              label="指定问题"
+              label="已完成"
+              value={String(stats.enabledCount)}
+              hint="已启用，将进入下一轮 AI 实测"
+              tooltip="已完成=已启用的问题，会进入下一轮 AI 实测诊断流程。"
+            />
+            <P0MetricTile
+              label="已用"
+              value={String(Math.max(stats.total - stats.enabledCount, 0))}
+              hint="已停用，当前轮次不会参与 AI 实测"
+              tooltip="已用=当前停用的问题，保留在库中但不会用于本轮 AI 实测。"
+            />
+            <P0MetricTile
+              label="固定问题"
               value={String(stats.byGroup.find(g => g.key === "指定问题")?.count ?? 0)}
-              hint="AI 检索型目标问题"
+              hint="长期追踪的关键诊断问题"
+              tooltip="固定问题=指定问题分组中的稳定追踪问题，用于跨轮次对比。"
             />
           </div>
 
@@ -418,7 +459,7 @@ export default function QuestionsLibraryPage() {
                   <P0Section
                     key={group.key}
                     title={group.label}
-                    description={`共 ${group.items.length} 条${group.key === "指定问题" ? "，用于 AI 实测诊断" : ""}`}
+                    description={`共 ${group.items.length} 条。${GROUP_HELP_TEXT[group.key]}`}
                   >
                     <div className="grid gap-3">
                       {group.items.map(question => (
@@ -452,6 +493,7 @@ export default function QuestionsLibraryPage() {
                                 <Label htmlFor={`toggle-${question.id}`} className="text-xs text-gray-500">
                                   启用
                                 </Label>
+                                <HelpTooltip text="开启后该问题会进入下一轮 AI 实测；关闭后仅保留，不参与当前诊断。" />
                                 <Switch
                                   id={`toggle-${question.id}`}
                                   checked={isQuestionEnabled(question.enabled)}

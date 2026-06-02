@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import type { ReactNode } from "react";
+import { CircleHelp } from "lucide-react";
 
 export function P0Card({ children, className, testId }: { children: ReactNode; className?: string; testId?: string }) {
   return (
@@ -25,10 +27,38 @@ export function P0Section({ title, description, children }: { title: string; des
   );
 }
 
-export function P0MetricTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
+export function P0MetricTile({
+  label,
+  value,
+  hint,
+  tooltip,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tooltip?: string;
+}) {
   return (
     <div className={cn(geoP0Surfaces.card, "p-4")}>
-      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <div className="flex items-center gap-1">
+        <p className="text-xs font-medium text-gray-500">{label}</p>
+        {tooltip ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={`${label}说明`}
+                className="inline-flex items-center text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <CircleHelp className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="max-w-64 leading-relaxed">
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
+      </div>
       <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
       {hint ? <p className="mt-1 text-xs text-gray-400">{hint}</p> : null}
     </div>
