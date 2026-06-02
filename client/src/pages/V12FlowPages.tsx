@@ -1313,10 +1313,7 @@ export function AiDiagnosisFlowPage() {
     try {
       const createResult = await createT0WithQuestions.mutateAsync({
         projectId: selectedProjectId,
-        platforms:
-          selectedT0Platforms.length > 0
-            ? (selectedT0Platforms as T0AiEngineId[])
-            : [...T0_DEFAULT_PLATFORMS],
+        platforms: selectedT0Platforms.length > 0 ? (selectedT0Platforms as any) : [...T0_DEFAULT_PLATFORMS],
         runsPerQuestion: 3,
       });
       const roundId = createResult.round?.id;

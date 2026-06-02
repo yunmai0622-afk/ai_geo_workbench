@@ -60,6 +60,8 @@ describe("t0DiagnosisDisplay", () => {
     expect(display?.competitorNames).toEqual(["竞品A"]);
     expect(display?.byQuestionType).toHaveLength(2);
     expect(display?.byQuestionType[0]?.label).toBe("品牌识别类问题");
+    expect(display?.byPlatform).toHaveLength(5);
+    expect(display?.byPlatform.find(group => group.platform === "doubao")).toBeTruthy();
     expect(JSON.stringify(display)).not.toContain("questionId");
   });
 });

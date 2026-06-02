@@ -28,7 +28,7 @@ describe("V1.1 演示引导流程 /demo", () => {
   it("第一步展示海豚知道 T0 基线与样例问题", () => {
     const html = renderFlowHtml();
 
-    expect(html).toContain("GEO 总分（T0）");
+    expect(html).toContain("GEO 总分（基线）");
     expect(html).toContain("弱可见");
     expect(html).toContain("知识付费 SaaS 平台哪个好？");
     expect(html).toContain("小鹅通");
