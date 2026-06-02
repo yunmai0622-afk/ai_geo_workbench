@@ -29,7 +29,7 @@ export const SUBSCRIPTION_PLANS: readonly SubscriptionPlanDisplay[] = [
     priceLabel: "免费",
     projectLimitLabel: "1 个项目",
     features: [
-      "T0 检测每小时 1 次",
+      "T0 检测最多 3 次",
       "内容生成最多 10 篇",
       "仅限 1 个项目",
       "客户管理、企业档案、AI 诊断与内容生产核心流程",
