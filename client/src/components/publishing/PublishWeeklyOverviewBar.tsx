@@ -12,8 +12,10 @@ type Props = {
 export function PublishWeeklyOverviewBar({ stats, loading }: Props) {
   const items = [
     { label: "已生成", value: loading ? "—" : String(stats.generatedCount), testId: "publish-overview-generated" },
+    { label: "可发布", value: loading ? "—" : String(stats.publishableCount), testId: "publish-overview-publishable" },
+    { label: "已入队", value: loading ? "—" : String(stats.queuedCount), testId: "publish-overview-queued" },
     { label: "已发布", value: loading ? "—" : String(stats.publishedCount), testId: "publish-overview-published" },
-    { label: "待发布", value: loading ? "—" : String(stats.pendingCount), testId: "publish-overview-pending" },
+    { label: "待回填链接", value: loading ? "—" : String(stats.waitingLinksCount), testId: "publish-overview-waiting-links" },
     {
       label: "上次发布时间",
       value: loading ? "—" : formatPublishOverviewTime(stats.lastPublishedAt),
@@ -29,7 +31,7 @@ export function PublishWeeklyOverviewBar({ stats, loading }: Props) {
           <p className="mt-0.5 text-sm text-gray-600">统计本周已生成、已发布与待发布内容，便于安排各平台发布节奏。</p>
         </div>
       </div>
-      <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {items.map(item => (
           <div
             key={item.label}

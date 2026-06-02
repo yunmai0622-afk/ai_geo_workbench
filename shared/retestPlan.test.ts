@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildRetestPlan,
   resolveRetestDueReminder,
+  shouldShowRetestPlanAllCompleteMessage,
   shouldShowT1RetestAutoTriggerReminderFromPlan,
 } from "./retestPlan";
 import { T1_RETEST_AFTER_PUBLISH_DAYS } from "./t1RetestAutoTrigger";
@@ -82,6 +83,47 @@ describe("retestPlan", () => {
         now,
       }),
     ).toBeNull();
+  });
+
+  it("does not treat empty plan as all milestones complete (no publish baseline)", () => {
+    const plan = buildRetestPlan({
+      completedPublishTasks: [],
+      testRounds: [],
+      now,
+    });
+    expect(plan.nextSuggestion).toBeNull();
+    expect(plan.publishAt).toBeNull();
+    expect(shouldShowRetestPlanAllCompleteMessage(plan)).toBe(false);
+  });
+
+  it("shows all-complete only when publish baseline exists and T1/T2/T3 are done", () => {
+    const incomplete = buildRetestPlan(baseInput);
+    expect(shouldShowRetestPlanAllCompleteMessage(incomplete)).toBe(false);
+
+    const complete = buildRetestPlan({
+      ...baseInput,
+      testRounds: [
+        { roundType: "T1_RETEST", status: "completed", finishedAt: "2026-05-01" },
+        { roundType: "T2_RETEST", status: "completed", finishedAt: "2026-05-15" },
+        { roundType: "T3_RETEST", status: "completed", finishedAt: "2026-06-01" },
+      ],
+    });
+    expect(complete.nextSuggestion).toBeNull();
+    expect(shouldShowRetestPlanAllCompleteMessage(complete)).toBe(true);
+  });
+
+  it("does not treat all-complete without publish baseline", () => {
+    const plan = buildRetestPlan({
+      completedPublishTasks: [],
+      testRounds: [
+        { roundType: "T1_RETEST", status: "completed" },
+        { roundType: "T2_RETEST", status: "completed" },
+        { roundType: "T3_RETEST", status: "completed" },
+      ],
+      now,
+    });
+    expect(plan.nextSuggestion).toBeNull();
+    expect(shouldShowRetestPlanAllCompleteMessage(plan)).toBe(false);
   });
 
   it("aligns T1 auto trigger with plan due reminder", () => {

@@ -66,7 +66,13 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, projectId)).limit(1),
     db.select().from(projectPlatformAccounts).where(eq(projectPlatformAccounts.projectId, projectId)),
     db.select({ id: geoArticles.id }).from(geoArticles).where(eq(geoArticles.projectId, projectId)),
-    db.select({ id: geoPublishRecords.id }).from(geoPublishRecords).where(eq(geoPublishRecords.projectId, projectId)),
+    db
+      .select({
+        id: geoPublishRecords.id,
+        publishUrl: geoPublishRecords.publishUrl,
+      })
+      .from(geoPublishRecords)
+      .where(eq(geoPublishRecords.projectId, projectId)),
     db
       .select({ count: sql<number>`count(*)` })
       .from(publishTasks)
@@ -133,6 +139,12 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       : [];
 
   const profile = profileRows[0] ?? null;
+  const publishRecordWithPublicUrlCount = publishRows.filter(row => {
+    const publishUrl = typeof row.publishUrl === "string" ? row.publishUrl.trim() : "";
+    return Boolean(publishUrl);
+  }).length;
+  const waitingPublicLinkCount = Math.max(0, publishRows.length - publishRecordWithPublicUrlCount);
+
   const profileRecord = profile as Record<string, unknown> | null;
   const boundPublishAccountCount = accountRows.filter(row => isPublishReadyAccount(row)).length;
   const expiredSessionAccountCount = accountRows.filter(
@@ -176,6 +188,8 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     expiredSessionAccountCount,
     articleCount: articleRows.length,
     publishRecordCount: publishRows.length,
+    publishRecordWithPublicUrlCount,
+    waitingPublicLinkCount,
     publishTaskCount: Number(taskCountRows[0]?.count ?? 0),
     completedPublishTaskCount: Number(completedTaskCountRows[0]?.count ?? 0),
     retestPendingCount,

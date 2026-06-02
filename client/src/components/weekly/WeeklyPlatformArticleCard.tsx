@@ -57,6 +57,8 @@ export type WeeklyArticleCardModel = {
   article: Record<string, unknown>;
   publishBlockHint?: string | null;
   publishNextActionLabel?: string | null;
+  queuedForPublish?: boolean;
+  queuedStatusLabel?: string | null;
   contentReviewStatus: ContentReviewStatus;
   contentTags?: string[] | null;
 };
@@ -70,6 +72,7 @@ type Props = {
   onView: () => void;
   onRegenerate: () => void;
   onEnqueuePublish: () => void;
+  onGoPublishingPage?: () => void;
   onContentReviewStatusChange?: (status: ContentReviewStatus) => void;
 };
 
@@ -89,6 +92,7 @@ export function WeeklyPlatformArticleCard(props: Props) {
     onView,
     onRegenerate,
     onEnqueuePublish,
+    onGoPublishingPage,
     onContentReviewStatusChange,
   } = props;
   const platformLabel = model.targetPlatform?.trim() || "待指定平台";
@@ -365,7 +369,24 @@ export function WeeklyPlatformArticleCard(props: Props) {
         ) : null}
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={onView}>查看</Button>
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} disabled={disabled} onClick={onRegenerate}>重新生成</Button>
-        <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>
+        {model.queuedForPublish ? (
+          <>
+            <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-800">
+              {model.queuedStatusLabel ?? "已加入发布队列"}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              className={geoP0Brand.primary}
+              data-testid="weekly-go-publishing-page"
+              onClick={onGoPublishingPage}
+            >
+              去发布页查看
+            </Button>
+          </>
+        ) : (
+          <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>
+        )}
       </div>
     </P0Card>
   );

@@ -15,6 +15,8 @@ const baseMetrics = (): WorkspaceSummaryMetrics => ({
   expiredSessionAccountCount: 0,
   articleCount: 2,
   publishRecordCount: 0,
+  publishRecordWithPublicUrlCount: 0,
+  waitingPublicLinkCount: 0,
   publishTaskCount: 0,
   completedPublishTaskCount: 0,
   retestPendingCount: 0,

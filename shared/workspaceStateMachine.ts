@@ -96,6 +96,8 @@ export type WorkspaceSummaryMetrics = {
   expiredSessionAccountCount: number;
   articleCount: number;
   publishRecordCount: number;
+  publishRecordWithPublicUrlCount: number;
+  waitingPublicLinkCount: number;
   publishTaskCount: number;
   completedPublishTaskCount: number;
   retestPendingCount: number;

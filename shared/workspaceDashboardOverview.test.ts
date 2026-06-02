@@ -15,6 +15,8 @@ function baseMetrics(overrides: Partial<WorkspaceSummaryMetrics> = {}): Workspac
     expiredSessionAccountCount: 0,
     articleCount: 3,
     publishRecordCount: 2,
+    publishRecordWithPublicUrlCount: 2,
+    waitingPublicLinkCount: 0,
     publishTaskCount: 1,
     completedPublishTaskCount: 1,
     retestPendingCount: 0,

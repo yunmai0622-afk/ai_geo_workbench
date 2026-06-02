@@ -84,9 +84,24 @@ export type PublishPageAccountGroupInput = {
 
 export type WeeklyPublishOverviewStats = {
   generatedCount: number;
+  publishableCount: number;
+  queuedCount: number;
   publishedCount: number;
   pendingCount: number;
+  waitingLinksCount: number;
   lastPublishedAt: Date | string | number | null;
+};
+
+export type PublishPlatformVerificationStatus =
+  | "VERIFIED"
+  | "NEEDS_REAL_TEST"
+  | "MANUAL_REQUIRED"
+  | "UNSUPPORTED";
+
+export type PublishPlatformVerificationView = {
+  status: PublishPlatformVerificationStatus;
+  label: string;
+  hint: string;
 };
 
 export type PublishPagePlatformStatus =
@@ -116,6 +131,7 @@ export type PublishPagePlatformCard = {
   canPublish: boolean;
   canRetry: boolean;
   publishQueueSlug: BindingPublishPlatform | "wechat" | null;
+  verification: PublishPlatformVerificationView;
 };
 
 function startOfLocalWeek(now: Date): Date {
@@ -221,8 +237,19 @@ export function buildWeeklyPublishOverviewStats(input: {
   });
 
   let generatedCount = 0;
+  let publishableCount = 0;
+  const queuedArticleIds = new Set<number>();
   let publishedCount = 0;
   let pendingCount = 0;
+
+  for (const task of input.publishTasks) {
+    if (
+      task.articleId &&
+      (IN_FLIGHT_TASK_STATUSES.has(task.status) || task.status === "completed")
+    ) {
+      queuedArticleIds.add(task.articleId);
+    }
+  }
 
   for (const article of weekArticles) {
     const q = input.qualityByArticleId.get(article.id);
@@ -235,7 +262,13 @@ export function buildWeeklyPublishOverviewStats(input: {
     if (pass || article.title?.trim()) {
       generatedCount += 1;
       pendingCount += 1;
+      if (pass) publishableCount += 1;
     }
+  }
+  let waitingLinksCount = 0;
+  for (const record of input.publishRecords) {
+    const hasLink = Boolean(record.publishStatus === "link_backfilled");
+    if (!hasLink) waitingLinksCount += 1;
   }
 
   const recordTimes = input.publishRecords
@@ -247,10 +280,53 @@ export function buildWeeklyPublishOverviewStats(input: {
 
   return {
     generatedCount,
+    publishableCount,
+    queuedCount: queuedArticleIds.size,
     publishedCount,
     pendingCount,
+    waitingLinksCount,
     lastPublishedAt: maxTime(...recordTimes, ...taskTimes),
   };
+}
+
+function platformVerificationFor(
+  key: PublishPagePlatformKey,
+): PublishPlatformVerificationView {
+  switch (key) {
+    case "zhihu":
+      return {
+        status: "VERIFIED",
+        label: "已验证",
+        hint: "知乎基础发布链路已实机验证；封面图上传需人工确认。",
+      };
+    case "sohu":
+    case "baijiahao":
+    case "toutiao":
+    case "netease":
+      return {
+        status: "NEEDS_REAL_TEST",
+        label: "待实机验证",
+        hint: "当前平台发布能力待实机验证，如失败请转人工发布并回填链接。",
+      };
+    case "wechat":
+      return {
+        status: "MANUAL_REQUIRED",
+        label: "需人工确认",
+        hint: "公众号发布需人工流程，不阻断代运营交付。",
+      };
+    case "xiaohongshu":
+      return {
+        status: "MANUAL_REQUIRED",
+        label: "需人工确认",
+        hint: "小红书发布走人工流程，完成后请回填公开链接。",
+      };
+    default:
+      return {
+        status: "UNSUPPORTED",
+        label: "暂未支持",
+        hint: "当前平台暂未支持自动发布，请人工发布并回填链接。",
+      };
+  }
 }
 
 function statusLabelFor(status: PublishPagePlatformStatus, taskStatus?: string): string {
@@ -420,6 +496,7 @@ export function buildPublishPagePlatformCards(input: {
       canPublish: status === "ready" && articleId != null && !manualOnly && Boolean(resolved?.publishQueueSlug),
       canRetry,
       publishQueueSlug: resolved?.publishQueueSlug ?? (bindingSlug && key !== "other" ? bindingSlug : null),
+      verification: platformVerificationFor(key),
     };
   });
 }

@@ -109,6 +109,8 @@ describe("GEO-V1-C 企业工作台状态机", () => {
       expiredSessionAccountCount: 0,
       articleCount: 3,
       publishRecordCount: 2,
+      publishRecordWithPublicUrlCount: 2,
+      waitingPublicLinkCount: 0,
       publishTaskCount: 1,
       completedPublishTaskCount: 1,
       retestPendingCount: 0,

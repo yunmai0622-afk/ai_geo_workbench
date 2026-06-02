@@ -137,7 +137,7 @@ import {
 } from "@shared/weeklyContentGeneration";
 import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Search } from "lucide-react";
+import { ArrowRight, FileText, Search } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
@@ -1197,6 +1197,17 @@ export default function WeeklyContentPage() {
   const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
     const publishRecords = publishRecordsQuery.data ?? [];
     const publishTasks = publishTasksQuery.data?.tasks ?? [];
+    const latestPublishTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
+    for (const task of publishTasks) {
+      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      if (!articleId) continue;
+      const prev = latestPublishTaskByArticle.get(articleId);
+      const taskTime = new Date(task.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || taskTime >= prevTime) {
+        latestPublishTaskByArticle.set(articleId, task);
+      }
+    }
     return articles
       .filter(a => typeof a.topicId === "number")
       .map(a => {
@@ -1223,6 +1234,12 @@ export default function WeeklyContentPage() {
           ...publishBaseContext,
           article: a,
         });
+        const latestTask = latestPublishTaskByArticle.get(a.id);
+        const queuedForPublish = Boolean(
+          latestTask &&
+            latestTask.status !== "failed" &&
+            latestTask.status !== "session_expired",
+        );
         const platformKey = platformResolved.recognized
           ? normalizeWeeklyPlatformKey(platformResolved.label)
           : normalizeWeeklyPlatformKey(a.targetPlatform);
@@ -1234,6 +1251,10 @@ export default function WeeklyContentPage() {
           contentTypeLabel: resolveContentTypeLabel(a),
           publishBlockHint: publishReadiness.ready ? null : publishReadiness.message,
           publishNextActionLabel: publishReadiness.ready ? null : publishReadiness.nextActionLabel,
+          queuedForPublish,
+          queuedStatusLabel: queuedForPublish
+            ? publishTaskStatusLabel({ status: latestTask?.status ?? "pending" })
+            : null,
           contentGoal: geoContentTaskSource?.taskDisplayName ?? null,
           geoGap:
             geoContentTaskSource?.geoGapSummary ??
@@ -1296,6 +1317,14 @@ export default function WeeklyContentPage() {
   }, [contentCardModels, filterPlatform, filterStatus, filterContentTag, titleSearch, sortQuality]);
 
   const contentTagStats = useMemo(() => computeContentTagStats(contentCardModels), [contentCardModels]);
+  const queuedContentCount = useMemo(
+    () => contentCardModels.filter(card => card.queuedForPublish).length,
+    [contentCardModels],
+  );
+  const publishableContentCount = useMemo(
+    () => contentCardModels.filter(card => card.statusFilterKey === "publishable").length,
+    [contentCardModels],
+  );
   const platformProgressText = useMemo(() => {
     const pending = platformBoardRows.reduce((sum, row) => sum + row.counts.pending, 0);
     const generated = platformBoardRows.reduce(
@@ -1304,8 +1333,8 @@ export default function WeeklyContentPage() {
     );
     const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
     const published = platformBoardRows.reduce((sum, row) => sum + row.counts.published, 0);
-    return `待生成 ${pending} / 已生成 ${generated} / 可发布 ${publishable} / 已发布 ${published}`;
-  }, [platformBoardRows]);
+    return `待生成 ${pending} / 已生成 ${generated} / 可发布 ${publishable} / 已加入发布队列 ${queuedContentCount} / 已发布 ${published}`;
+  }, [platformBoardRows, queuedContentCount]);
   const contentNextAction = useMemo(() => {
     const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
     const generated = platformBoardRows.reduce(
@@ -2338,6 +2367,28 @@ export default function WeeklyContentPage() {
         </div>
       </header>
 
+      {publishableContentCount > 0 && !showDiagnosisEmpty && queriesReady ? (
+        <section
+          className="flex flex-col gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+          data-testid="weekly-publish-strong-cta"
+        >
+          <p className="text-base font-semibold text-emerald-900">
+            已有 {publishableContentCount} 篇可发布内容
+          </p>
+          <Button
+            type="button"
+            className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-700"
+            data-testid="weekly-publish-strong-cta-button"
+            onClick={() =>
+              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+            }
+          >
+            去发布
+            <ArrowRight className="ml-1.5 size-4" aria-hidden />
+          </Button>
+        </section>
+      ) : null}
+
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}
         platformLabel={publishSuccessNotice?.platformLabel ?? ""}
@@ -2390,6 +2441,27 @@ export default function WeeklyContentPage() {
               nextAction={contentNextAction}
             />
           ) : null}
+          <section
+            className="rounded-xl border border-blue-200 bg-blue-50/70 p-4"
+            data-testid="weekly-publish-next-step-panel"
+          >
+            <p className="text-sm font-semibold text-blue-900">
+              本轮已生成 {contentCardModels.length} 篇，可发布 {publishableContentCount} 篇，已加入发布队列 {queuedContentCount} 篇
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              下一步：将通过质检的内容加入发布队列，并进入平台适配发布完成发布与链接回填。
+            </p>
+            {publishableContentCount > 0 ? (
+              <Button
+                type="button"
+                className="mt-3 bg-blue-600 text-white hover:bg-blue-700"
+                data-testid="weekly-go-content-publishing-cta"
+                onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
+              >
+                去平台适配发布
+              </Button>
+            ) : null}
+          </section>
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
 
@@ -2428,6 +2500,12 @@ export default function WeeklyContentPage() {
               regenerateDisabled={anyGenerating}
             />
           ) : null}
+
+          <div
+            className="my-8 border-t-2 border-gray-300"
+            data-testid="weekly-platform-matrix-divider"
+            aria-hidden
+          />
 
           <PlatformContentBoard
             rows={platformBoardRows}
@@ -2646,6 +2724,9 @@ export default function WeeklyContentPage() {
                           if (typeof topicId === "number") void generateOne(topicId);
                         }}
                         onEnqueuePublish={() => article && openPublishDialog(article)}
+                        onGoPublishingPage={() =>
+                          selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                        }
                         onContentReviewStatusChange={status => {
                           if (!selectedProjectId) return;
                           setContentReviewStatus.mutate({

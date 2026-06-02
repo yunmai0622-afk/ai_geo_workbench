@@ -3238,7 +3238,7 @@ export function InclusionMonitoringFlowPage() {
               className="bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
             >
-              去发布内容
+              去回填链接
             </Button>
             <Button
               type="button"

@@ -67,6 +67,7 @@ export type RetestPlanMilestoneView = {
   suggestedAtLabel: string;
   status: RetestMilestoneStatus;
   statusLabel: string;
+  dueInDaysLabel: string;
 };
 
 export type RetestPlanView = {
@@ -125,6 +126,17 @@ function milestoneStatusLabel(status: RetestMilestoneStatus): string {
   if (status === "completed") return "已完成";
   if (status === "due") return "已到期，建议执行";
   return "计划中";
+}
+
+function dueInDaysLabel(
+  status: RetestMilestoneStatus,
+  daysSince: number,
+  daysAfterPublish: number,
+): string {
+  if (status === "completed") return "已完成";
+  const remaining = daysAfterPublish - daysSince;
+  if (remaining > 0) return `还有 ${remaining} 天到期`;
+  return "已到期，可执行复测";
 }
 
 function resolveMilestoneStatus(
@@ -187,6 +199,9 @@ export function buildRetestPlan(input: RetestPlanInput): RetestPlanView {
       suggestedAtLabel: publishAt ? formatRetestPlanDate(suggestedAt, now) : "待有发布记录后计算",
       status,
       statusLabel: milestoneStatusLabel(status),
+      dueInDaysLabel: publishAt
+        ? dueInDaysLabel(status, elapsed, milestone.daysAfterPublish)
+        : "待有发布记录后计算",
     };
   });
 
@@ -213,6 +228,22 @@ export function buildRetestPlan(input: RetestPlanInput): RetestPlanView {
     milestones,
     nextSuggestion,
   };
+}
+
+/** 是否存在可作为复测计划起点的真实发布完成时间 */
+export function hasRetestPlanPublishBaseline(plan: RetestPlanView): boolean {
+  return Boolean(plan.publishAt);
+}
+
+/** 三轮复测节点均标记为已完成（需配合发布基线，避免无数据时误判） */
+export function areAllRetestMilestonesCompleted(plan: RetestPlanView): boolean {
+  return (
+    plan.milestones.length > 0 && plan.milestones.every(milestone => milestone.status === "completed")
+  );
+}
+
+export function shouldShowRetestPlanAllCompleteMessage(plan: RetestPlanView): boolean {
+  return hasRetestPlanPublishBaseline(plan) && areAllRetestMilestonesCompleted(plan);
 }
 
 /** 与 T1 自动提醒一致：返回当前最早到期且未完成的复测阶段是否应为 T1 */

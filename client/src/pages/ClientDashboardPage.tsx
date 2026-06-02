@@ -119,6 +119,8 @@ function ProjectCard({
     expiredSessionAccountCount: 0,
     articleCount: project.articleCount,
     publishRecordCount: project.publishCount,
+    publishRecordWithPublicUrlCount: project.publishCount,
+    waitingPublicLinkCount: 0,
     publishTaskCount: 0,
     completedPublishTaskCount: 0,
     retestPendingCount: project.publishCount > 0 && project.aiTestCount === 0 ? 1 : 0,

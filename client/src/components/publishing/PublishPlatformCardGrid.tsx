@@ -91,6 +91,12 @@ export function PublishPlatformCardGrid({
                     失败原因：{card.failureReason}
                   </p>
                 ) : null}
+                <p
+                  className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-2.5 py-2 text-xs leading-relaxed text-blue-900"
+                  data-testid={`publish-platform-verification-${card.key}`}
+                >
+                  平台能力：{card.verification.label}。{card.verification.hint}
+                </p>
 
                 {card.manualOnly ? (
                   <p className="mt-2 text-xs text-gray-500">该平台需人工复制素材发布，并在发布记录中回填链接。</p>

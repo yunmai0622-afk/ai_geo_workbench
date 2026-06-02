@@ -543,6 +543,22 @@ export function ContentPublishingCenterPage() {
     () => platformCards.filter(card => card.canPublish).length,
     [platformCards],
   );
+  const waitingLinkTaskCount = useMemo(
+    () =>
+      agentTasks.filter(
+        task => task.status === "completed" && !(task.publishedUrl?.trim() || task.resultUrl?.trim()),
+      ).length,
+    [agentTasks],
+  );
+  const waitingLinkRecordCount = useMemo(
+    () =>
+      publishRecords.filter(record => {
+        const link = recordPublicLink(record);
+        return !link;
+      }).length,
+    [publishRecords],
+  );
+  const waitingLinkCount = waitingLinkTaskCount + waitingLinkRecordCount;
 
   const localAgentUpdateNotice = useMemo(() => {
     if (
@@ -899,6 +915,27 @@ export function ContentPublishingCenterPage() {
       {selectedProjectId ? (
         <PublishWeeklyOverviewBar stats={weeklyOverviewStats} loading={loading} />
       ) : null}
+      {selectedProjectId ? (
+        <section
+          className={`rounded-xl border p-4 ${waitingLinkCount > 0 ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}
+          data-testid="publish-waiting-links-banner"
+        >
+          {waitingLinkCount > 0 ? (
+            <>
+              <p className="text-sm font-semibold text-amber-900">
+                有 {waitingLinkCount} 条发布记录待回填公开链接
+              </p>
+              <p className="mt-1 text-xs text-amber-800">
+                系统需要公开链接才能安排 T1/T2/T3 收录与 AI 复测。请在下方已完成任务或发布记录中回填链接。
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-emerald-800">
+              已回填链接，等待 T1 复测 / T1 已完成（按收录监测结果更新）。
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}
@@ -1119,6 +1156,39 @@ export function ContentPublishingCenterPage() {
                 </TabsContent>
               ))}
             </Tabs>
+          </section>
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-platform-status-module">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">平台发布支持状态</h2>
+                <p className="mt-1 text-xs text-gray-500">
+                  已验证 / 待实机验证 / 需人工确认；待验证平台失败时请转人工发布并回填链接。
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className={geoP0Brand.primary}
+                disabled={publishAllBusy || readyPlatformCount <= 0}
+                onClick={() => void handlePublishAllPlatforms()}
+                data-testid="publish-all-ready-platforms"
+              >
+                {publishAllBusy ? "提交中…" : `一键加入发布队列（${readyPlatformCount}）`}
+              </Button>
+            </div>
+            <div className="mt-4">
+              <PublishPlatformCardGrid
+                cards={platformCards}
+                loading={loading}
+                publishingCardKey={publishingCardKey}
+                retryingTaskId={retryingTaskId}
+                onPreview={handlePlatformCardPreview}
+                onPublish={card => {
+                  void enqueuePlatformCard(card);
+                }}
+                onRetry={handlePlatformCardRetry}
+              />
+            </div>
           </section>
 
           <section className="space-y-4" data-testid="publish-config-help-module">

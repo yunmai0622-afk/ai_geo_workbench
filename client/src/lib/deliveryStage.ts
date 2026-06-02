@@ -116,20 +116,23 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
       metrics,
     };
   }
-  if (input.publishRecordCount > 0 && input.monitoringRecordCount === 0) {
+  if (input.publishRecordCount > 0 && input.waitingPublicLinkCount > 0) {
     return {
       stage: "S5_WAITING_LINKS",
       stageLabel: "待回填链接",
       stageDescription: "已有发布记录，但尚未进入公开链接回填与监测流程。",
-      blockingReasons: ["缺少公开链接或未生成监测记录。"],
-      primaryAction: { label: "回填链接", path: "/inclusion-monitoring" },
+      blockingReasons: ["缺少公开链接，无法安排 T1/T2/T3 复测。"],
+      primaryAction: { label: "回填链接", path: "/content-publishing" },
       secondaryActions: [{ label: "查看发布队列", path: "/content-publishing" }],
       todos: ["补充公开链接", "准备 T1/T2/T3 复测计划"],
       progressSteps,
       metrics,
     };
   }
-  if (!hasMonitoring(input) || input.retestPendingCount > 0) {
+  if (
+    (input.publishRecordWithPublicUrlCount > 0 && !hasMonitoring(input)) ||
+    input.retestPendingCount > 0
+  ) {
     return {
       stage: "S6_READY_FOR_MONITORING",
       stageLabel: "待复测",

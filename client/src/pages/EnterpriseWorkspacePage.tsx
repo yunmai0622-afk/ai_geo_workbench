@@ -38,7 +38,7 @@ import { useLocation } from "wouter";
 
 export default function EnterpriseWorkspacePage() {
   const [, setLocation] = useLocation();
-  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } =
+  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading, projects } =
     useActiveProjectSelection();
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
 
@@ -110,6 +110,15 @@ export default function EnterpriseWorkspacePage() {
     homeDisplay.mainChainNextAction?.ctaPath ??
     (stage && selectedProjectId ? workspaceCtaUrl(selectedProjectId, stage) : null);
   const headerCtaLabel = homeDisplay.mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
+  const waitingLinkCount = metrics?.waitingPublicLinkCount ?? 0;
+  const waitingPublishQueueCount = Math.max(
+    0,
+    (metrics?.articleCount ?? 0) - (metrics?.publishTaskCount ?? 0) - (metrics?.publishRecordCount ?? 0),
+  );
+  const showRetestTodo = Boolean((metrics?.publishRecordWithPublicUrlCount ?? 0) > 0);
+  const showWorkspaceWelcomeHint = !(
+    projects.length > 0 && Boolean(metrics?.p0ProfileComplete)
+  );
 
   if (!enabled && !projectsLoading) {
     return (
@@ -121,11 +130,13 @@ export default function EnterpriseWorkspacePage() {
 
   return (
     <div className="space-y-7" data-testid="workspace-page">
-      <FirstUseHintBanner
-        storageKey={FIRST_USE_HINT_KEYS.workspace}
-        message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
-        data-testid="first-use-hint-workspace"
-      />
+      {showWorkspaceWelcomeHint ? (
+        <FirstUseHintBanner
+          storageKey={FIRST_USE_HINT_KEYS.workspace}
+          message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
+          data-testid="first-use-hint-workspace"
+        />
+      ) : null}
       {metrics?.retestDueReminder && selectedProjectId ? (
         <RetestDueReminderCard
           reminder={metrics.retestDueReminder}
@@ -158,6 +169,58 @@ export default function EnterpriseWorkspacePage() {
         </div>
       ) : stage && metrics && selectedProjectId ? (
         <>
+          <section className="geo-card p-4" data-testid="workspace-priority-todos">
+            <h2 className="text-sm font-semibold text-gray-900">本周待办 / 今日动作</h2>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              {waitingLinkCount > 0 ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm font-medium text-amber-900">回填已发布内容的公开链接</p>
+                  <p className="mt-1 text-xs text-amber-800">
+                    已有 {waitingLinkCount} 条内容发布完成，但尚未回填公开链接。回填后系统才能安排 T1/T2/T3 复测。
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-2 bg-amber-600 text-white hover:bg-amber-700"
+                    onClick={() =>
+                      setLocation(buildProjectUrl("/content-publishing", selectedProjectId) + "&filter=waiting_links")
+                    }
+                  >
+                    去回填链接
+                  </Button>
+                </div>
+              ) : null}
+              {waitingPublishQueueCount > 0 ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <p className="text-sm font-medium text-blue-900">将可发布内容加入发布队列</p>
+                  <p className="mt-1 text-xs text-blue-800">当前仍有可发布内容未进入发布队列。</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-2 bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => setLocation(buildProjectUrl("/weekly", selectedProjectId))}
+                  >
+                    去发布内容
+                  </Button>
+                </div>
+              ) : null}
+              {showRetestTodo ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                  <p className="text-sm font-medium text-emerald-900">执行 T1/T2/T3 AI 复测</p>
+                  <p className="mt-1 text-xs text-emerald-800">已具备公开链接，可进入收录监测执行复测。</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                    onClick={() => setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}
+                  >
+                    去收录监测
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </section>
+
           <WorkspaceDashboardOverviewCards
             metrics={metrics}
             latestGeoScore={latestTrendScore}
@@ -230,7 +293,7 @@ export default function EnterpriseWorkspacePage() {
                 </div>
               </div>
             ) : null}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2.5">
               {(deliveryStage?.progressSteps ?? mainChainSteps).map(step => (
                 <button
                   key={"id" in step ? step.id : step.key}
@@ -241,14 +304,14 @@ export default function EnterpriseWorkspacePage() {
                       : null
                   }
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                    "flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[13px] font-medium transition-colors sm:max-w-md",
                     step.done
                       ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                       : "border-gray-200 bg-white text-gray-600 hover:border-blue-200 hover:bg-blue-50",
                   )}
                   data-testid={`main-chain-step-${"step" in step ? step.step : step.key}`}
                 >
-                  <span aria-hidden>{step.done ? "✅" : "⏳"}</span>
+                  <span aria-hidden className="shrink-0">{step.done ? "✅" : "⏳"}</span>
                   <span>{"name" in step ? step.name : step.label}</span>
                 </button>
               ))}

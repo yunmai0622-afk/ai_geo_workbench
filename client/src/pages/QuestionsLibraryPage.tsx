@@ -59,6 +59,37 @@ function questionGapTags(question: QuestionRow): T0QuestionGapTagLabel[] {
   );
 }
 
+type QuestionPriorityLevel = "高" | "中" | "低";
+
+function questionPriorityRank(question: QuestionRow): number {
+  const tags = questionGapTags(question);
+  if (tags.includes(T0_QUESTION_GAP_TAGS.highPriorityGap)) return 0;
+  if (tags.includes(T0_QUESTION_GAP_TAGS.competitorSuppression)) return 1;
+  if (tags.includes(T0_QUESTION_GAP_TAGS.lowRecommendRate)) return 2;
+  return 3;
+}
+
+function questionPriorityLevel(question: QuestionRow): QuestionPriorityLevel {
+  const rank = questionPriorityRank(question);
+  if (rank === 0) return "高";
+  if (rank <= 2) return "中";
+  return "低";
+}
+
+const PRIORITY_BADGE_CLASS: Record<QuestionPriorityLevel, string> = {
+  高: "border-rose-200 bg-rose-50 text-rose-800",
+  中: "border-amber-200 bg-amber-50 text-amber-800",
+  低: "border-gray-200 bg-gray-50 text-gray-600",
+};
+
+function sortQuestionsByPriority(items: QuestionRow[]): QuestionRow[] {
+  return [...items].sort((a, b) => {
+    const rankDiff = questionPriorityRank(a) - questionPriorityRank(b);
+    if (rankDiff !== 0) return rankDiff;
+    return a.id - b.id;
+  });
+}
+
 const LIBRARY_GROUPS = [
   { key: "品牌认知", dbType: "品牌认知", label: "品牌认知" },
   { key: "行业推荐", dbType: "行业推荐", label: "行业推荐" },
@@ -225,7 +256,7 @@ export default function QuestionsLibraryPage() {
   const groupedQuestions = useMemo((): QuestionGroup[] => {
     const groups: QuestionGroup[] = LIBRARY_GROUPS.map(group => ({
       ...group,
-      items: questions.filter(q => q.questionType === group.dbType),
+      items: sortQuestionsByPriority(questions.filter(q => q.questionType === group.dbType)),
     }));
     const otherItems = questions.filter(q => !GROUP_DB_TYPES.has(q.questionType));
     if (otherItems.length > 0) {
@@ -233,7 +264,7 @@ export default function QuestionsLibraryPage() {
         key: "其他类型",
         dbType: "__other__",
         label: "其他类型",
-        items: otherItems,
+        items: sortQuestionsByPriority(otherItems),
       });
     }
     return groups;
@@ -454,6 +485,12 @@ export default function QuestionsLibraryPage() {
             </P0Card>
           ) : (
             <div className="space-y-8">
+              <p
+                className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+                data-testid="questions-library-priority-hint"
+              >
+                以下问题按重要性排序，优先关注前几条；带「高」标签的为 T0 检测识别的优先缺口。
+              </p>
               {groupedQuestions.map(group =>
                 group.items.length === 0 ? null : (
                   <P0Section
@@ -468,6 +505,13 @@ export default function QuestionsLibraryPage() {
                             <div className="min-w-0 flex-1 space-y-2">
                               <p className="text-sm leading-relaxed text-gray-900">{question.questionText}</p>
                               <div className="flex flex-wrap items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${PRIORITY_BADGE_CLASS[questionPriorityLevel(question)]}`}
+                                  data-testid={`question-priority-${question.id}`}
+                                >
+                                  优先级：{questionPriorityLevel(question)}
+                                </Badge>
                                 <Badge variant="outline" className="text-xs">
                                   {resolveQuestionTypeDisplayLabel(question.questionType)}
                                 </Badge>

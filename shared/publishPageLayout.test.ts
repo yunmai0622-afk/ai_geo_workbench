@@ -43,7 +43,10 @@ describe("publishPageLayout", () => {
       now: new Date("2026-06-02T08:00:00.000Z"),
     });
     expect(stats.generatedCount).toBeGreaterThanOrEqual(1);
+    expect(stats.publishableCount).toBeGreaterThanOrEqual(1);
+    expect(stats.queuedCount).toBeGreaterThanOrEqual(0);
     expect(stats.publishedCount).toBe(1);
+    expect(stats.waitingLinksCount).toBe(0);
     expect(stats.lastPublishedAt).toBeTruthy();
   });
 
@@ -70,5 +73,7 @@ describe("publishPageLayout", () => {
     expect(zhihu?.failureReason).toContain("编辑器");
     expect(zhihu?.canRetry).toBe(true);
     expect(zhihu?.weeklyTitlePreview).toBe("知乎稿");
+    expect(zhihu?.verification.status).toBe("VERIFIED");
+    expect(zhihu?.verification.hint).toContain("封面图");
   });
 });
