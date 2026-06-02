@@ -6,7 +6,6 @@ import { getGeoArticleMinPassScore } from "./geoArticleLogic";
 import {
   geoArticleQualityScores,
   geoArticles,
-  geoInclusionMonitoringRecords,
   geoPublishRecords,
   projectPlatformAccounts,
   publishTasks,
@@ -36,7 +35,7 @@ import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/p
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { markGeoArticlePublishedAt } from "./geoArticlePublishState";
-import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
+import { ensureInclusionMonitoringRecordForPublishRecord } from "./publishRecordMonitoring";
 import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/schema";
 import { emitPublishFailedNotification, emitPublishSuccessNotification } from "./systemNotifications";
 import { retryFailedPublishTask } from "./publishTaskRetryService";
@@ -684,24 +683,15 @@ export const publishTasksRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "创建发布记录失败" });
       }
 
-      const existingMonitoringRows = await db
-        .select({ id: geoInclusionMonitoringRecords.id })
-        .from(geoInclusionMonitoringRecords)
-        .where(eq(geoInclusionMonitoringRecords.publishRecordId, publishRecordId))
-        .limit(1);
-      if (existingMonitoringRows.length === 0) {
-        await db.insert(geoInclusionMonitoringRecords).values(
-          buildInitialInclusionMonitoringRecord({
-            projectId: task.projectId,
-            articleId: task.articleId,
-            publishRecordId,
-            publicUrl: trimmedUrl,
-            qualityScore: latestScore?.totalScore ?? getGeoArticleMinPassScore(),
-            rawJsonSource: "publish_task_backfill",
-            rawJsonCreatedBy: "publishTasks.backfillPublicUrl",
-          }),
-        );
-      }
+      await ensureInclusionMonitoringRecordForPublishRecord(db, {
+        projectId: task.projectId,
+        articleId: task.articleId,
+        publishRecordId,
+        publicUrl: trimmedUrl,
+        qualityScore: latestScore?.totalScore ?? getGeoArticleMinPassScore(),
+        rawJsonSource: "publish_task_backfill",
+        rawJsonCreatedBy: "publishTasks.backfillPublicUrl",
+      });
 
       await markGeoArticlePublishedAt(db, article.id, {
         publicPath: trimmedUrl,

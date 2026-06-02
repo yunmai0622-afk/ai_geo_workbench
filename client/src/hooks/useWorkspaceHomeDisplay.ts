@@ -3,8 +3,6 @@ import {
   formatBrandMentionRate,
   formatLastAiTestLabel,
   formatRecommendRate,
-  formatT0BrandMentionRate,
-  formatT0RecommendRate,
   hasCompletedT1Retest,
   pickAiTestAggregate,
   resolveMainChainNextAction,
@@ -24,14 +22,11 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
     { enabled },
   );
   const testRoundsQuery = trpc.geo.testRounds.list.useQuery({ projectId: projectId! }, { enabled });
-  const t0MetricsQuery = trpc.geo.scores.t0Metrics.useQuery({ projectId: projectId! }, { enabled });
-  const analysisQuery = trpc.geo.analysis.list.useQuery({ projectId: projectId! }, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery({ projectId: projectId! }, { enabled });
 
   const monitoring = monitoringQuery.data ?? [];
   const publishRecords = publishRecordsQuery.data ?? [];
   const testRounds = testRoundsQuery.data ?? [];
-  const analyses = analysisQuery.data ?? [];
 
   const monitoringAggregate = useMemo(() => {
     const rows = monitoringEvidenceRows(monitoring);
@@ -53,14 +48,16 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
     return resolveMainChainNextAction(projectId, summary, testRounds);
   }, [projectId, summary, testRounds]);
 
-  const brandMentionRateText = t0MetricsQuery.data
-    ? formatT0BrandMentionRate(t0MetricsQuery.data)
-    : formatBrandMentionRate(aiTestAggregate);
-  const recommendRateText = t0MetricsQuery.data
-    ? formatT0RecommendRate(t0MetricsQuery.data)
-    : formatRecommendRate(aiTestAggregate);
+  const brandMentionRateText =
+    summary && summary.aiTestResultCount > 0 && summary.brandMentionRate != null
+      ? `${Math.round(summary.brandMentionRate * 100)}%`
+      : formatBrandMentionRate(aiTestAggregate);
+  const recommendRateText =
+    summary && summary.aiTestResultCount > 0 && summary.recommendRate != null
+      ? `${Math.round(summary.recommendRate * 100)}%`
+      : formatRecommendRate(aiTestAggregate);
   const lastAiTestLabel = formatLastAiTestLabel({
-    analyses,
+    analyses: [],
     monitoring,
     testRounds,
   });
@@ -86,12 +83,7 @@ export function useWorkspaceHomeDisplay(projectId: number | undefined, summary: 
   const inclusionMonitoringLoading =
     enabled && (monitoringQuery.isLoading || publishRecordsQuery.isLoading);
 
-  const loading =
-    enabled &&
-    (monitoringQuery.isLoading ||
-      testRoundsQuery.isLoading ||
-      t0MetricsQuery.isLoading ||
-      analysisQuery.isLoading);
+  const loading = enabled && (monitoringQuery.isLoading || testRoundsQuery.isLoading);
 
   return {
     mainChainNextAction,

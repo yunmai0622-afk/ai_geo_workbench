@@ -22,6 +22,9 @@ function formatSignedDelta(value: number): string {
 
 export function buildGeoScoreAttributionLines(metrics: WorkspaceSummaryMetrics): string[] {
   const lines: string[] = [];
+  if (metrics.aiTestResultCount <= 1) {
+    lines.push("当前仅 1 次诊断样本：归因参考性有限");
+  }
   if (metrics.brandMentionRate != null && metrics.aiTestResultCount > 0 && metrics.brandMentionRate < 0.3) {
     lines.push("品牌提及率低：影响分数");
   }
@@ -30,6 +33,9 @@ export function buildGeoScoreAttributionLines(metrics: WorkspaceSummaryMetrics):
   }
   if (metrics.articleCount <= 0 || metrics.lowQualityArticleCount > 0) {
     lines.push("内容覆盖不足：影响分数");
+  }
+  if (!lines.some(line => line.includes("影响分数"))) {
+    lines.push("当前未发现明显扣分项：分数主要由诊断样本更新驱动");
   }
   lines.push("数据来源：真实诊断数据");
   return lines;
@@ -41,7 +47,7 @@ export function formatGeoScoreChangeBadge(input: {
 }): string | null {
   if (input.latestScore == null || input.previousScore == null) return null;
   const delta = Math.round(input.latestScore - input.previousScore);
-  return `${formatSignedDelta(delta)}（较上次）`;
+  return `较上次 ${formatSignedDelta(delta)}`;
 }
 
 export function buildGeoScoreChangeReason(metrics: WorkspaceSummaryMetrics): string {

@@ -128,7 +128,7 @@ export function GeoQualityScore({
 
       {showStale ? (
         <p
-          className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
+          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
           data-testid="geo-quality-stale-hint"
         >
           {GEO_QUALITY_STALE_EDITOR_HINT}
@@ -138,9 +138,9 @@ export function GeoQualityScore({
       {displayTotal != null && displayRec ? (
         <div className="space-y-3" data-testid="geo-quality-result">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-2xl font-bold text-white" data-testid="geo-quality-total">
+            <span className="text-2xl font-bold text-gray-900" data-testid="geo-quality-total">
               {displayTotal}
-              <span className="text-base font-normal text-gray-400"> / 100</span>
+              <span className="text-base font-normal text-gray-500"> / 100</span>
             </span>
             <span
               className={`rounded-full border px-3 py-1 text-xs font-medium ${badgeClass(showStale ? null : displayRec)}`}
@@ -191,7 +191,7 @@ export function GeoQualityScore({
           </p>
         </div>
       ) : (
-        <p className="text-xs text-gray-500">尚未进行发布前质检，建议填写并保存正文后点击「重新质检」。</p>
+        <p className="text-xs text-gray-500">尚未进行发布前质检，建议填写并保存正文后点击「发布前质检」。</p>
       )}
     </div>
   );

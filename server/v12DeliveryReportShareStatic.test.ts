@@ -134,5 +134,14 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(readProjectFile("drizzle/schema.ts")).toContain("delivery_report_share_tokens");
     expect(serverShareSource).toContain("deliveryReportShareTokens");
     expect(publicSource).not.toContain("projectId");
+
+    expect(reportPageSource).toContain("复制链接");
+    expect(reportPageSource).toContain("showShareQrCode");
+    expect(reportPageSource).toContain("api.qrserver.com");
+    expect(reportPageSource).toContain("客户报告分享二维码");
+    expect(publicSource).toContain("document.title");
+    expect(publicSource).toContain("GEO 交付报告");
+    expect(lightViewSource).toContain("有效期剩余");
+    expect(lightViewSource).toContain("resolveDeliveryReportShareCountdown");
   });
 });

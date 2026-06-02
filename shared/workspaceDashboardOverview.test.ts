@@ -78,11 +78,25 @@ describe("GEO-V1.1-Dashboard-Overview 工作台数据总览", () => {
   });
 
   it("较上次变化文案按最新与上次分计算", () => {
-    expect(formatGeoScoreChangeBadge({ latestScore: 25, previousScore: 23 })).toBe("+2（较上次）");
-    expect(formatGeoScoreChangeBadge({ latestScore: 23, previousScore: 25 })).toBe("-2（较上次）");
+    expect(formatGeoScoreChangeBadge({ latestScore: 25, previousScore: 23 })).toBe("较上次 +2");
+    expect(formatGeoScoreChangeBadge({ latestScore: 23, previousScore: 25 })).toBe("较上次 -2");
   });
 
   it("变化原因在无风险项时给默认说明", () => {
     expect(buildGeoScoreChangeReason(baseMetrics())).toBe("主要由诊断样本更新带来变化");
+  });
+
+  it("单次诊断时给出样本有限说明", () => {
+    expect(
+      buildGeoScoreAttributionLines(
+        baseMetrics({
+          aiTestResultCount: 1,
+        }),
+      ),
+    ).toEqual([
+      "当前仅 1 次诊断样本：归因参考性有限",
+      "当前未发现明显扣分项：分数主要由诊断样本更新驱动",
+      "数据来源：真实诊断数据",
+    ]);
   });
 });
