@@ -34,6 +34,7 @@ import {
   resolveQualityCardView,
 } from "@shared/geoQualityScoreDisplay";
 import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
+import { PageAnchorNav } from "@/components/geo/PageAnchorNav";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
 import { mapPlatformContentErrorCategory } from "@/lib/aiTaskProgressErrors";
@@ -48,6 +49,7 @@ import {
   type WeeklyPlatformKey,
 } from "@/lib/weeklyPlatformBoard";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, getActiveProjectId, getSearchFromLocation } from "@/lib/activeProject";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
@@ -463,6 +465,8 @@ function showPublishSuccessNotification(
 
 export default function WeeklyContentPage() {
   const [location, setLocation] = useLocation();
+  const isMobile = useIsMobile();
+  const [generatedSectionOpen, setGeneratedSectionOpen] = useState(false);
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading, projects } =
     useProjectSelection();
@@ -1325,6 +1329,11 @@ export default function WeeklyContentPage() {
     () => contentCardModels.filter(card => card.statusFilterKey === "publishable").length,
     [contentCardModels],
   );
+
+  useEffect(() => {
+    setGeneratedSectionOpen(!isMobile);
+  }, [isMobile]);
+
   const platformProgressText = useMemo(() => {
     const pending = platformBoardRows.reduce((sum, row) => sum + row.counts.pending, 0);
     const generated = platformBoardRows.reduce(
@@ -2431,15 +2440,25 @@ export default function WeeklyContentPage() {
         </P0Card>
       ) : (
         <>
+          <PageAnchorNav
+            testId="weekly-content-anchor-nav"
+            items={[
+              { id: "weekly-section-content-tasks", label: "内容任务" },
+              { id: "weekly-section-platform-matrix", label: "平台矩阵" },
+              { id: "weekly-section-generated-content", label: "已生成内容" },
+            ]}
+          />
           {geoContentTaskSource ? (
-            <GeoContentTaskPanels
-              source={geoContentTaskSource}
-              taskOptions={contentTaskOptions}
-              selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
-              onSelectTaskId={id => setSelectedContentTaskId(id)}
-              platformProgress={platformProgressText}
-              nextAction={contentNextAction}
-            />
+            <div id="weekly-section-content-tasks" className="scroll-mt-24 space-y-4">
+              <GeoContentTaskPanels
+                source={geoContentTaskSource}
+                taskOptions={contentTaskOptions}
+                selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
+                onSelectTaskId={id => setSelectedContentTaskId(id)}
+                platformProgress={platformProgressText}
+                nextAction={contentNextAction}
+              />
+            </div>
           ) : null}
           <section
             className="rounded-xl border border-blue-200 bg-blue-50/70 p-4"
@@ -2522,9 +2541,30 @@ export default function WeeklyContentPage() {
           ) : null}
 
           {contentCardModels.length > 0 ? (
-            <section className="space-y-4" data-testid="weekly-content-cards">
+            <details
+              id="weekly-section-generated-content"
+              className={cn(
+                "scroll-mt-24 space-y-4",
+                isMobile && "rounded-xl border border-gray-200 bg-white shadow-sm",
+              )}
+              data-testid="weekly-content-cards"
+              open={generatedSectionOpen}
+              onToggle={e => {
+                if (isMobile) setGeneratedSectionOpen(e.currentTarget.open);
+              }}
+            >
+              <summary
+                className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-4 text-sm font-semibold text-gray-900 lg:hidden [&::-webkit-details-marker]:hidden"
+                data-testid="weekly-generated-content-mobile-summary"
+              >
+                <span>已生成内容（{contentCardModels.length} 篇）</span>
+                <span className="text-xs font-normal text-blue-600">
+                  {generatedSectionOpen ? "收起" : "展开"}
+                </span>
+              </summary>
+              <div className={cn("space-y-4", isMobile && "border-t border-gray-100 px-4 pb-4 pt-3")}>
               <div className="flex flex-col gap-3">
-                <div>
+                <div className="hidden lg:block">
                   <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
                   <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
                   {averageQualityScore != null ? (
@@ -2707,7 +2747,10 @@ export default function WeeklyContentPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div
+                  className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
+                  data-testid="weekly-content-cards-grid"
+                >
                   {displayContentCards.map(model => {
                     const article = articlesById.get(model.id);
                     const topicId = article?.topicId;
@@ -2740,7 +2783,8 @@ export default function WeeklyContentPage() {
                   })}
                 </div>
               )}
-            </section>
+              </div>
+            </details>
           ) : (
             <P0Card className="border-dashed border-gray-300 bg-white" testId="weekly-content-empty">
               <div className="flex flex-col items-center text-center">

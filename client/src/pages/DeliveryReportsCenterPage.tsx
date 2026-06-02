@@ -4,6 +4,7 @@ import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestions
 import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { GeoHealthBriefCard, type GeoHealthBriefCardProps } from "@/components/delivery/GeoHealthBriefCard";
 import type { PublishRecordWeekRow } from "@shared/geoHealthBrief";
+import { PageAnchorNav } from "@/components/geo/PageAnchorNav";
 import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
 import { RetestComparisonPanel } from "@/components/RetestComparisonPanel";
 import { Copy, FileText, Link2, QrCode } from "lucide-react";
@@ -760,12 +761,61 @@ export function DeliveryReportsCenterPage() {
           </dl>
         </header>
 
+        <PageAnchorNav
+          testId="delivery-report-anchor-nav"
+          items={[
+            { id: "delivery-report-section-summary", label: "摘要" },
+            { id: "delivery-report-section-actions", label: "执行动作" },
+            { id: "delivery-report-section-publish-list", label: "发布清单" },
+            { id: "delivery-report-section-ai-visibility", label: "AI可见度" },
+            { id: "delivery-report-section-attribution", label: "归因分析" },
+            { id: "delivery-report-section-suggestions", label: "优化建议" },
+          ]}
+        />
+
+        <div
+          className="grid gap-4 rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-50/80 to-white p-5 sm:grid-cols-3"
+          data-testid="delivery-report-key-metrics"
+        >
+          <div>
+            <p className="text-sm font-medium text-gray-600">GEO 分变化</p>
+            <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight text-gray-900">
+              {geoScoreDelta != null ? `${geoScoreDelta >= 0 ? "+" : ""}${geoScoreDelta}` : "—"}
+            </p>
+            {initialGeoScore != null && currentGeoScore != null ? (
+              <p className="mt-1 text-xs text-gray-500">
+                {initialGeoScore} → {currentGeoScore}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-600">发布数</p>
+            <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight text-gray-900">
+              {publishRecords.length}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">已登记发布记录</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-600">品牌提及率</p>
+            <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight text-gray-900">
+              {hasAiTestData ? `${Math.round(aiTestAggregate.mentionRate * 100)}%` : "—"}
+            </p>
+            {mentionRateDelta != null ? (
+              <p className="mt-1 text-xs text-gray-500">
+                较 T0 {mentionRateDelta >= 0 ? "+" : ""}
+                {Math.round(mentionRateDelta * 100)}%
+              </p>
+            ) : null}
+          </div>
+        </div>
+
         {!hasEnoughDataForFullReport ? (
           <P0Card className="border-amber-200 bg-amber-50 text-amber-900">
             暂无足够数据生成完整报告，请先完成发布与复测。
           </P0Card>
         ) : null}
 
+        <div id="delivery-report-section-summary" className="scroll-mt-24">
         <P0Section title="模块1：本轮交付摘要" description="回答本轮做了什么、结果如何。">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <P0MetricTile label="客户名称" value={enterpriseName} />
@@ -792,7 +842,9 @@ export function DeliveryReportsCenterPage() {
             <P0MetricTile label="已发布 / 已复测" value={`${publishRecords.length} / ${retestedCount}`} />
           </div>
         </P0Section>
+        </div>
 
+        <div id="delivery-report-section-actions" className="scroll-mt-24">
         <P0Section title="模块2：本轮执行动作" description="真实执行动作回放（无模拟数据）。">
           <ul className="space-y-2 text-sm text-gray-700">
             <li className="rounded-lg border border-gray-100 bg-white px-4 py-3">
@@ -812,7 +864,9 @@ export function DeliveryReportsCenterPage() {
             </li>
           </ul>
         </P0Section>
+        </div>
 
+        <div id="delivery-report-section-publish-list" className="scroll-mt-24">
         <P0Section title="模块3：发布内容清单" description="标题 / 平台 / 发布状态 / 公开链接 / 质检状态 / 复测状态。">
           {contentListRows.length === 0 ? (
             <P0Card className="border-dashed border-gray-300 bg-white text-center">
@@ -854,7 +908,9 @@ export function DeliveryReportsCenterPage() {
             </ul>
           )}
         </P0Section>
+        </div>
 
+        <div id="delivery-report-section-ai-visibility" className="scroll-mt-24">
         <P0Section title="模块4：AI 可见度变化" description="豆包 / Kimi / DeepSeek / 通义千问 / 文心一言。">
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {engineReportRows.map(row => (
@@ -871,7 +927,9 @@ export function DeliveryReportsCenterPage() {
             ))}
           </ul>
         </P0Section>
+        </div>
 
+        <div id="delivery-report-section-attribution" className="scroll-mt-24">
         <P0Section title="模块5：GEO 分归因" description="为什么当前是这个分、拖后项与本轮影响。">
           <P0Card className="space-y-2 text-sm text-gray-700">
             {geoAttributionLines.map(line => (
@@ -887,7 +945,9 @@ export function DeliveryReportsCenterPage() {
             </ul>
           </P0Card>
         </P0Section>
+        </div>
 
+        <div id="delivery-report-section-suggestions" className="scroll-mt-24">
         <P0Section title="模块6：下一轮优化建议" description="输出 3-5 条，直接可执行。">
           <ul className="space-y-2 text-sm text-gray-700">
             {nextRoundFocus.map(line => (
@@ -897,6 +957,7 @@ export function DeliveryReportsCenterPage() {
             ))}
           </ul>
         </P0Section>
+        </div>
 
         <GeoHealthBriefCard
           enterpriseName={enterpriseName}

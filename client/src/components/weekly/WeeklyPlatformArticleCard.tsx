@@ -154,14 +154,15 @@ export function WeeklyPlatformArticleCard(props: Props) {
     };
   }, []);
 
+  const articleBody = articleBodyForCopy(model.article);
+
   const copyBody = async () => {
-    const payload = articleBodyForCopy(model.article);
-    if (!payload) {
+    if (!articleBody) {
       toast.error("正文为空，无法复制");
       return;
     }
     try {
-      await navigator.clipboard.writeText(payload);
+      await navigator.clipboard.writeText(articleBody);
       if (bodyCopyTimerRef.current) clearTimeout(bodyCopyTimerRef.current);
       setBodyCopied(true);
       bodyCopyTimerRef.current = setTimeout(() => setBodyCopied(false), 2000);
@@ -170,63 +171,102 @@ export function WeeklyPlatformArticleCard(props: Props) {
     }
   };
 
+  const statusBadgeClass =
+    model.statusTone === "success"
+      ? "bg-emerald-100 text-emerald-800"
+      : model.statusTone === "warning"
+        ? "bg-amber-100 text-amber-800"
+        : model.statusTone === "info"
+          ? "bg-blue-100 text-blue-800"
+          : "bg-gray-100 text-gray-600";
+
   return (
-    <P0Card testId={`weekly-content-card-${model.id}`} className="flex h-[400px] flex-col">
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-w-0 items-start gap-3">
-          {selectable ? (
-            <Checkbox
-              checked={selected}
-              disabled={disabled || model.statusFilterKey === "published"}
-              data-testid={`weekly-card-select-${model.id}`}
-              onCheckedChange={value => onSelectedChange?.(value === true)}
-              aria-label={`选择 ${model.title}`}
-              className="mt-1"
-            />
-          ) : null}
-          {model.coverThumbnailSrc ? (
-            <img src={model.coverThumbnailSrc} alt="" className="h-16 w-12 shrink-0 rounded-md border border-gray-200 object-cover" data-testid="weekly-card-cover-thumbnail" />
-          ) : (
-            <div className="flex h-16 w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 text-[10px] text-gray-400" data-testid="weekly-card-cover-placeholder">无封面</div>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${model.statusTone === "success" ? "bg-emerald-100 text-emerald-800" : model.statusTone === "warning" ? "bg-amber-100 text-amber-800" : model.statusTone === "info" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-600"}`}>{model.statusLabel}</span>
-              <span
-                className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-800"
-                data-testid="weekly-card-platform"
-              >
-                {platformLabel}
-              </span>
+    <P0Card testId={`weekly-content-card-${model.id}`} className="flex flex-col">
+      <div className="flex min-w-0 items-start gap-3">
+        {selectable ? (
+          <Checkbox
+            checked={selected}
+            disabled={disabled || model.statusFilterKey === "published"}
+            data-testid={`weekly-card-select-${model.id}`}
+            onCheckedChange={value => onSelectedChange?.(value === true)}
+            aria-label={`选择 ${model.title}`}
+            className="mt-1"
+          />
+        ) : null}
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          data-testid={`weekly-card-expand-${model.id}`}
+          onClick={() => setExpanded(prev => !prev)}
+          aria-expanded={expanded}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass}`}
+              data-testid="weekly-card-status"
+            >
+              {model.statusLabel}
+            </span>
+            <span
+              className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-800"
+              data-testid="weekly-card-platform"
+            >
+              {platformLabel}
+            </span>
+            {expanded ? (
               <span
                 className="inline-flex rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-800"
                 data-testid="weekly-card-content-type"
               >
                 {contentTypeLabel}
               </span>
-            </div>
-            <h3 className="mt-2 line-clamp-2 text-base font-semibold text-gray-900">{model.title}</h3>
-            {model.contentTags?.length ? (
-              <div className="mt-2 flex flex-wrap gap-1.5" data-testid="weekly-card-content-tags">
-                {model.contentTags.map(tag => (
-                  <span
-                    key={tag}
-                    className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] text-violet-800"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
             ) : null}
+            <ChevronDown
+              className={cn("ml-auto h-4 w-4 shrink-0 text-gray-400 transition-transform", expanded && "rotate-180")}
+              aria-hidden
+            />
           </div>
-        </div>
-        <div
-          className={cn(
-            "relative mt-3 min-h-0 flex-1 overflow-hidden",
-            !expanded && "max-h-[180px]",
-          )}
-        >
-          <div className={cn("space-y-2 pr-1", expanded ? "overflow-y-auto" : "overflow-hidden")}>
+          <h3 className={cn("mt-2 font-semibold text-gray-900", expanded ? "line-clamp-2 text-base" : "line-clamp-1 text-sm")}>
+            {model.title}
+          </h3>
+        </button>
+      </div>
+
+      {expanded ? (
+        <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-gray-100 pt-3">
+          <div className="flex min-w-0 items-start gap-3">
+            {model.coverThumbnailSrc ? (
+              <img
+                src={model.coverThumbnailSrc}
+                alt=""
+                className="h-16 w-12 shrink-0 rounded-md border border-gray-200 object-cover"
+                data-testid="weekly-card-cover-thumbnail"
+              />
+            ) : (
+              <div
+                className="flex h-16 w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 text-[10px] text-gray-400"
+                data-testid="weekly-card-cover-placeholder"
+              >
+                无封面
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              {model.contentTags?.length ? (
+                <div className="mt-2 flex flex-wrap gap-1.5" data-testid="weekly-card-content-tags">
+                  {model.contentTags.map(tag => (
+                    <span
+                      key={tag}
+                      className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] text-violet-800"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div className="relative mt-3 min-h-0 flex-1">
+            <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
             {model.contentGoal ? <p className="text-xs text-gray-600"><span className="font-medium text-gray-500">内容目标：</span>{model.contentGoal}</p> : null}
             {model.gapLinkDisplay ? (
               <p className="text-xs text-gray-700" data-testid="weekly-card-gap-link">
@@ -265,8 +305,15 @@ export function WeeklyPlatformArticleCard(props: Props) {
                 ) : null}
               </div>
             ) : null}
-            {expanded ? (
-              <>
+            {articleBody ? (
+              <pre
+                className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs leading-relaxed text-gray-800"
+                data-testid="weekly-card-full-body"
+              >
+                {articleBody}
+              </pre>
+            ) : null}
+            <>
                 {model.qualityOptimizationSuggestions?.length ? (
                   <div
                     className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2"
@@ -337,24 +384,10 @@ export function WeeklyPlatformArticleCard(props: Props) {
                 {wechatMaterial ? (
                   <WechatMaterialCard material={wechatMaterial} disabled={disabled} />
                 ) : null}
-              </>
-            ) : null}
+            </>
+            </div>
           </div>
-          {!expanded ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-transparent" />
-          ) : null}
-        </div>
-        <button
-          type="button"
-          className="mt-1 inline-flex items-center gap-1 self-start text-[11px] font-medium text-blue-700 hover:text-blue-800"
-          data-testid={`weekly-card-expand-${model.id}`}
-          onClick={() => setExpanded(prev => !prev)}
-        >
-          {expanded ? "收起详情" : "展开详情"}
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
-        </button>
-      </div>
-      <div className="mt-3 flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 pt-3" data-testid="weekly-card-actions">
+          <div className="mt-3 flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 pt-3" data-testid="weekly-card-actions">
         {platformKey !== "wechat" && platformKey !== "xiaohongshu" ? (
           <Button
             type="button"
@@ -387,7 +420,9 @@ export function WeeklyPlatformArticleCard(props: Props) {
         ) : (
           <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>
         )}
-      </div>
+          </div>
+        </div>
+      ) : null}
     </P0Card>
   );
 }

@@ -35,14 +35,21 @@ export function PlatformContentBoard({
   onView,
 }: Props) {
   return (
-    <section className="space-y-4" data-testid="weekly-platform-board">
+    <section
+      id="weekly-section-platform-matrix"
+      className="scroll-mt-24 space-y-4"
+      data-testid="weekly-platform-board"
+    >
       <div className="space-y-1">
         <h2 className={geoP0Surfaces.sectionTitle}>平台内容矩阵</h2>
         <p className={geoP0Surfaces.muted}>
           各平台围绕同一轮 GEO 内容任务独立生成，不支持一稿多发。请按平台分别生成本轮内容资产。
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div
+        className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
+        data-testid="weekly-platform-matrix-grid"
+      >
         {rows.map(({ def, counts, platformRole, platformGenerationGoal, publishHint }) => {
           const countsLine = formatCountsLine(counts);
           const hasContent = counts.pendingConfirm + counts.ready + counts.published > 0;
