@@ -142,7 +142,20 @@ export default function EnterpriseWorkspacePage() {
           ))}
         </div>
       ) : summaryQuery.isError ? (
-        <p className="text-sm text-red-600">暂时无法加载工作台，请刷新重试。</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p>暂时无法加载工作台数据。</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => {
+              void summaryQuery.refetch();
+              void scoreTrendQuery.refetch();
+            }}
+          >
+            重试加载
+          </Button>
+        </div>
       ) : stage && metrics && selectedProjectId ? (
         <>
           <WorkspaceDashboardOverviewCards

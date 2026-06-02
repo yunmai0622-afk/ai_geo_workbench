@@ -222,6 +222,24 @@ export function DeliveryReportsCenterPage() {
     contentQualityQuery.isLoading ||
     monitoringQuery.isLoading ||
     competitorSummaryQuery.isLoading;
+  const hasLoadError =
+    scoreQuery.isError ||
+    scoreTrendQuery.isError ||
+    t0MetricsQuery.isError ||
+    summaryQuery.isError ||
+    analysisQuery.isError ||
+    tasksQuery.isError ||
+    articlesQuery.isError ||
+    publishRecordsQuery.isError ||
+    publishStatsQuery.isError ||
+    contentQualityQuery.isError ||
+    monitoringQuery.isError ||
+    retestQueueQuery.isError ||
+    rewritePoolQuery.isError ||
+    testRoundsQuery.isError ||
+    retestComparisonsQuery.isError ||
+    questionsQuery.isError ||
+    competitorSummaryQuery.isError;
 
   const score = scoreQuery.data as Record<string, unknown> | null | undefined;
   const analyses = (analysisQuery.data ?? []) as Array<Record<string, unknown>>;
@@ -687,6 +705,39 @@ export function DeliveryReportsCenterPage() {
         <div className="flex items-center gap-2 py-8 text-gray-500">
           <Spinner className="size-5 text-blue-600" />
           正在加载交付报告数据…
+        </div>
+      ) : null}
+      {hasLoadError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p>交付报告部分数据加载失败，结果可能不完整。</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => {
+              void Promise.all([
+                scoreQuery.refetch(),
+                scoreTrendQuery.refetch(),
+                t0MetricsQuery.refetch(),
+                summaryQuery.refetch(),
+                analysisQuery.refetch(),
+                tasksQuery.refetch(),
+                articlesQuery.refetch(),
+                publishRecordsQuery.refetch(),
+                publishStatsQuery.refetch(),
+                contentQualityQuery.refetch(),
+                monitoringQuery.refetch(),
+                retestQueueQuery.refetch(),
+                rewritePoolQuery.refetch(),
+                testRoundsQuery.refetch(),
+                retestComparisonsQuery.refetch(),
+                questionsQuery.refetch(),
+                competitorSummaryQuery.refetch(),
+              ]);
+            }}
+          >
+            重试加载
+          </Button>
         </div>
       ) : null}
 
