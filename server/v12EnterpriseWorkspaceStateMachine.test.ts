@@ -57,11 +57,10 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("工作台展示收录监测明细区块", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
+    const section = read("client/src/components/workspace/WorkspaceInclusionMonitoringSection.tsx");
     expect(page).toContain("WorkspaceInclusionMonitoringSection");
-    expect(page).toContain("workspace-inclusion-monitoring-section");
-    expect(read("client/src/components/workspace/WorkspaceInclusionMonitoringSection.tsx")).toContain(
-      "收录监测明细",
-    );
+    expect(section).toContain("workspace-inclusion-monitoring-section");
+    expect(section).toContain("收录监测明细");
     expect(read("shared/workspaceInclusionMonitoring.ts")).toContain("buildWorkspaceInclusionPlatformRows");
   });
 
