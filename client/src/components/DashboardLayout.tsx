@@ -26,7 +26,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
 import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
-import { BookOpen, Brain, Building2, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
+import { BookOpen, Brain, Building2, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -102,13 +102,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "围绕 AI 引用逻辑生成品牌内容",
         path: "/weekly",
         aliases: ["/weekly", "/content-generation", "/articles"],
-      },
-      {
-        icon: LayoutTemplate,
-        label: "内容模板库",
-        desc: "按平台与问题类型查看系统内置模板",
-        path: "/templates",
-        aliases: ["/templates"],
       },
     ],
   },
