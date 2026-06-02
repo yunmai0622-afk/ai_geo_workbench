@@ -82,13 +82,13 @@ function StepT0Detection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">T0 检测结果</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">基线检测结果</h1>
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          展示「{t0.brandName}」在 AI 实测诊断阶段的基线结果（{t0.testedAt} 样本，脱敏展示）。
+          展示「{t0.brandName}」在 AI 实测诊断阶段的初始结果（{t0.testedAt} 样本，脱敏展示）。
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="GEO 总分（T0）" value={`${t0.geoScore}`} hint={`可见度：${t0.visibilityLevel}`} />
+        <MetricCard label="GEO 总分（基线）" value={`${t0.geoScore}`} hint={`可见度：${t0.visibilityLevel}`} />
         <MetricCard label="客户指定问题" value={`${t0.questionCount} 条`} />
         <MetricCard label="品牌提及" value={`${t0.mentionCount} 次`} hint={`提及率 ${t0.mentionRateLabel}`} />
         <MetricCard label="品牌推荐" value={`${t0.recommendCount} 次`} hint={`推荐率 ${t0.recommendRateLabel}`} />
@@ -256,7 +256,7 @@ function StepT0T1Comparison() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">T0 → T1 效果对比</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">基线 → 优化后效果对比</h1>
         <p className="mt-2 text-sm leading-6 text-gray-600">用示例数据说明试跑前后指标变化方向（非效果承诺）。</p>
       </div>
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -264,8 +264,8 @@ function StepT0T1Comparison() {
           <thead className="bg-gray-50 text-gray-600">
             <tr>
               <th className="px-4 py-3 font-medium">指标</th>
-              <th className="px-4 py-3 font-medium">T0 基线</th>
-              <th className="px-4 py-3 font-medium">T1 试跑后</th>
+              <th className="px-4 py-3 font-medium">基线阶段</th>
+              <th className="px-4 py-3 font-medium">优化后阶段</th>
               <th className="px-4 py-3 font-medium">变化</th>
             </tr>
           </thead>

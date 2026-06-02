@@ -58,7 +58,6 @@ import { trpc } from "@/lib/trpc";
 import {
   isSubscriptionLimitMessage,
   SUBSCRIPTION_LIMIT_CONTENT_MESSAGE,
-  SUBSCRIPTION_LIMIT_T0_MESSAGE,
 } from "@shared/subscriptionLimits";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import {
@@ -76,10 +75,15 @@ import {
   formatT0Rate,
   T0_AI_ENGINE_OPTIONS,
   T0_DEFAULT_PLATFORMS,
-  type T0AiEngineId,
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
 import { T0DiagnosisVisualizationPanel } from "@/components/diagnosis/T0DiagnosisVisualizationPanel";
+import {
+  diagnosisMentionRateHint,
+  diagnosisRecommendRateHint,
+  formatAiDiagnosisDateTime,
+  resolveAiDiagnosisLastTestLabel,
+} from "@shared/aiDiagnosisResultDisplay";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
   { value: "manual_check", label: "人工复测" },
@@ -92,6 +96,7 @@ const MONITORING_TEST_STAGE_DONE_LABEL: Record<AiTestStage, string> = {
   before_publish: "发布前测试",
   after_publish: "发布后复测",
 };
+type T0PlatformSelectable = string;
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { DANGEROUS_ACTION_LABELS } from "@shared/dangerousActionConfirm";
 import { classifyGeoDiagnosisLlmError } from "@shared/geoDiagnosisLlmErrors";
@@ -557,27 +562,6 @@ type DiagnosisQuestionRow = {
   targetKeyword?: string | null;
 };
 
-function diagnosisLastRunLabel(analyses: DiagnosisAnalysisRow[]): string {
-  if (analyses.length === 0) return "暂无数据";
-  let max = NaN;
-  for (const row of analyses) {
-    if (!row) continue;
-    for (const value of [row.updatedAt, row.createdAt]) {
-      if (!value) continue;
-      const t = new Date(value).getTime();
-      if (!Number.isNaN(t)) max = Number.isNaN(max) ? t : Math.max(max, t);
-    }
-  }
-  if (Number.isNaN(max)) return "暂无数据";
-  return new Date(max).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function countDiagnosisGaps(analyses: DiagnosisAnalysisRow[]): number {
   if (analyses.length === 0) return 0;
   const withGap = analyses.filter(row => {
@@ -892,8 +876,6 @@ export function AiDiagnosisFlowPage() {
   const runAnalysis = trpc.geo.analysis.run.useMutation();
   const calculateScore = trpc.geo.scores.calculate.useMutation();
   const generateTasks = trpc.geo.tasks.generate.useMutation();
-  const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
-  const t0LimitReached = subscriptionUsageQuery.data?.atLimit.t0Detection ?? false;
   const createT0WithQuestions = trpc.geo.testRounds.createT0WithQuestions.useMutation();
   const startT0Execution = trpc.geo.testRounds.startT0Execution.useMutation();
   const resetT0Baseline = trpc.geo.testRounds.resetT0Baseline.useMutation();
@@ -911,7 +893,7 @@ export function AiDiagnosisFlowPage() {
   const [t0Message, setT0Message] = useState<string>();
   const [t0Error, setT0Error] = useState<string>();
   const [activeT0RoundId, setActiveT0RoundId] = useState<string | null>(null);
-  const [selectedT0Platforms, setSelectedT0Platforms] = useState<T0AiEngineId[]>([...T0_DEFAULT_PLATFORMS]);
+  const [selectedT0Platforms, setSelectedT0Platforms] = useState<T0PlatformSelectable[]>([...T0_DEFAULT_PLATFORMS]);
   const [diagnosisProgressErrorCategory, setDiagnosisProgressErrorCategory] = useState<
     AiTaskProgressErrorCategory | undefined
   >();
@@ -1015,6 +997,7 @@ export function AiDiagnosisFlowPage() {
     return buildT0DiagnosisResultsDisplay(
       t0Runs.map(run => ({
         questionId: run.questionId,
+        platform: run.platform,
         mentionedCompany: run.mentionedCompany,
         recommendedCompany: run.recommendedCompany,
         competitorMentioned: run.competitorMentioned,
@@ -1089,7 +1072,68 @@ export function AiDiagnosisFlowPage() {
     const limit = consoleQuestionsExpanded ? list.length : TARGET_QUESTION_PREVIEW_COUNT;
     return list.slice(0, limit);
   }, [targetQuestions, consoleQuestionsExpanded]);
-  const lastDiagnosisLabel = useMemo(() => diagnosisLastRunLabel(analyses as DiagnosisAnalysisRow[]), [analyses]);
+  const lastDiagnosisLabel = useMemo(
+    () =>
+      resolveAiDiagnosisLastTestLabel({
+        analysisTimestamps: (analyses as DiagnosisAnalysisRow[]).flatMap(row => (row ? [row.updatedAt, row.createdAt] : [])),
+        t0FinishedAt: displayT0Round?.finishedAt ?? null,
+        runTestedAtList: t0Runs.map(run => run.testedAt),
+      }),
+    [analyses, displayT0Round?.finishedAt, t0Runs],
+  );
+  const mentionPctDisplay = useMemo(() => {
+    if (scoreQuery.data?.aiVisibilityScore != null) return scoreQuery.data.aiVisibilityScore;
+    if (t0ResultsDisplay) return Math.round(t0ResultsDisplay.mentionRate * 100);
+    return null;
+  }, [scoreQuery.data?.aiVisibilityScore, t0ResultsDisplay]);
+  const recommendPctDisplay = useMemo(() => {
+    if (scoreQuery.data?.aiRecommendationScore != null) return scoreQuery.data.aiRecommendationScore;
+    if (t0ResultsDisplay) return Math.round(t0ResultsDisplay.recommendRate * 100);
+    return null;
+  }, [scoreQuery.data?.aiRecommendationScore, t0ResultsDisplay]);
+  const hasAiTestMetrics = mentionPctDisplay != null || recommendPctDisplay != null;
+  const mentionRateHint = useMemo(
+    () => diagnosisMentionRateHint(mentionPctDisplay, hasAiTestMetrics),
+    [mentionPctDisplay, hasAiTestMetrics],
+  );
+  const recommendRateHint = useMemo(
+    () => diagnosisRecommendRateHint(recommendPctDisplay, hasAiTestMetrics),
+    [recommendPctDisplay, hasAiTestMetrics],
+  );
+  const t0CompletedAtLabel = useMemo(() => {
+    if (!displayT0Round?.finishedAt) return null;
+    return formatAiDiagnosisDateTime(displayT0Round.finishedAt);
+  }, [displayT0Round?.finishedAt]);
+  const platformCards = useMemo(
+    () =>
+      T0_AI_ENGINE_OPTIONS.map(option => {
+        const stats = t0ResultsDisplay?.byPlatform.find(group => group.platform === option.id);
+        const viz = diagnosisVisualization?.platformComparison.find(item => item.platform === option.id);
+        const sampleCount = stats?.totalRuns ?? viz?.sampleCount ?? 0;
+        const mentionPct = stats ? Math.round(stats.mentionRate * 100) : (viz?.percent ?? null);
+        const recommendPct = stats ? Math.round(stats.recommendRate * 100) : null;
+        const tested = sampleCount > 0;
+        return {
+          id: option.id,
+          name: option.label,
+          icon:
+            option.id === "doubao"
+              ? "🤖"
+              : option.id === "kimi"
+                ? "🔍"
+                : option.id === "deepseek"
+                  ? "🧠"
+                  : option.id === "qwen"
+                    ? "💡"
+                    : "📝",
+          tested,
+          sampleCount,
+          mentionPct,
+          recommendPct,
+        };
+      }),
+    [diagnosisVisualization?.platformComparison, t0ResultsDisplay?.byPlatform],
+  );
   const headline = useMemo(() => buildDiagnosisHeadlineLine(scoreQuery.data ?? null, gapCount), [scoreQuery.data, gapCount]);
   const scoreDisplay =
     scoreQuery.data && typeof scoreQuery.data.totalScore === "number" ? `${scoreQuery.data.totalScore} 分` : "暂无数据";
@@ -1268,7 +1312,10 @@ export function AiDiagnosisFlowPage() {
     try {
       const createResult = await createT0WithQuestions.mutateAsync({
         projectId: selectedProjectId,
-        platforms: selectedT0Platforms.length > 0 ? [...selectedT0Platforms] : [...T0_DEFAULT_PLATFORMS],
+        platforms:
+          selectedT0Platforms.length > 0
+            ? (selectedT0Platforms as T0AiEngineId[])
+            : [...T0_DEFAULT_PLATFORMS],
         runsPerQuestion: 3,
       });
       const roundId = createResult.round?.id;
@@ -1291,7 +1338,7 @@ export function AiDiagnosisFlowPage() {
       setT0Message("T0 基线检测已启动，正在后台执行，请稍候…");
     } catch (err) {
       if (handleSubscriptionLimitMutationError(err)) {
-        setT0Error(SUBSCRIPTION_LIMIT_T0_MESSAGE);
+        setT0Error((err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "当前套餐已达 T0 检测上限，请升级套餐。"));
         return;
       }
       const raw =
@@ -1321,15 +1368,6 @@ export function AiDiagnosisFlowPage() {
       </div>
     );
   }
-
-  /* --- 平台覆盖卡片数据 --- */
-  const platformCards = [
-    { name: "豆包", icon: "🤖" },
-    { name: "Kimi", icon: "🔍" },
-    { name: "DeepSeek", icon: "🧠" },
-    { name: "通义千问", icon: "💡" },
-    { name: "文心一言", icon: "📝" },
-  ];
 
   return (
     <div className="space-y-6">
@@ -1362,15 +1400,25 @@ export function AiDiagnosisFlowPage() {
 
       {/* --- 核心指标卡 --- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-mention-rate">
           <p className="text-xs font-medium text-gray-500">品牌提及率</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{scoreQuery.data?.aiVisibilityScore != null ? `${scoreQuery.data.aiVisibilityScore}%` : "--"}</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{mentionPctDisplay != null ? `${mentionPctDisplay}%` : "--"}</p>
           <p className="mt-1 text-xs text-gray-400">AI 回答中提到品牌的比例</p>
+          {mentionRateHint ? (
+            <p className="mt-3 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-900">
+              {mentionRateHint}
+            </p>
+          ) : null}
         </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-recommend-rate">
           <p className="text-xs font-medium text-gray-500">AI 推荐率</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{scoreQuery.data?.aiRecommendationScore != null ? `${scoreQuery.data.aiRecommendationScore}%` : "--"}</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{recommendPctDisplay != null ? `${recommendPctDisplay}%` : "--"}</p>
           <p className="mt-1 text-xs text-gray-400">AI 主动推荐品牌的比例</p>
+          {recommendRateHint ? (
+            <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/80 px-3 py-2 text-xs leading-relaxed text-blue-900">
+              {recommendRateHint}
+            </p>
+          ) : null}
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-medium text-gray-500">内容覆盖评分</p>
@@ -1391,16 +1439,28 @@ export function AiDiagnosisFlowPage() {
       ) : null}
 
       {/* --- 覆盖平台卡片 --- */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-900">覆盖 AI 平台</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-platform-cards">
+        <h2 className="text-sm font-semibold text-gray-900">五大 AI 平台实测结果</h2>
+        <p className="mt-1 text-xs text-gray-500">基于 T0 基线检测真实调用；未纳入本轮的平台显示为未实测。</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {platformCards.map(p => (
-            <div key={p.name} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-              <span className="text-xl">{p.icon}</span>
-              <div>
+            <div
+              key={p.id}
+              className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+              data-testid={`ai-diagnosis-platform-${p.id}`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{p.icon}</span>
                 <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                <p className="text-xs text-gray-400">{analyses.length > 0 ? "已实测" : "未实测"}</p>
               </div>
+              {p.tested ? (
+                <div className="space-y-0.5 text-xs text-gray-600">
+                  <p>提及率 {p.mentionPct ?? 0}% · 推荐率 {p.recommendPct ?? 0}%</p>
+                  <p className="text-gray-400">样本 {p.sampleCount} 次</p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">本轮未实测</p>
+              )}
             </div>
           ))}
         </div>
@@ -1421,6 +1481,25 @@ export function AiDiagnosisFlowPage() {
           (error || pageError) ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
         }`}>
           {error || pageError || message}
+          {(error || pageError) ? (
+            <div className="mt-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void Promise.all([
+                    questionsQuery.refetch(),
+                    assetSummaryQuery.refetch(),
+                    analysisQuery.refetch(),
+                    scoreQuery.refetch(),
+                    tasksQuery.refetch(),
+                  ]);
+                }}
+              >
+                重试加载
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -1567,7 +1646,6 @@ export function AiDiagnosisFlowPage() {
               className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
               disabled={
                 !canOperate ||
-                t0LimitReached ||
                 isT0Running ||
                 running ||
                 generatingQuestions ||
@@ -1614,14 +1692,6 @@ export function AiDiagnosisFlowPage() {
           <p className="mt-2 text-xs text-gray-400">通义千问需 QWEN_API_KEY，文心一言需 WENXIN_API_KEY。</p>
         </div>
 
-        {t0LimitReached && !t0Error ? (
-          <SubscriptionUpgradePrompt
-            className="mt-4"
-            message={SUBSCRIPTION_LIMIT_T0_MESSAGE}
-            testId="ai-diagnosis-t0-limit"
-          />
-        ) : null}
-
         {(t0Message || t0Error) &&
           (t0Error && isSubscriptionLimitMessage(t0Error) ? (
             <SubscriptionUpgradePrompt className="mt-4" message={t0Error} testId="ai-diagnosis-t0-limit-error" />
@@ -1647,7 +1717,14 @@ export function AiDiagnosisFlowPage() {
         {displayT0Round?.status === "completed" && t0ResultsDisplay ? (
           <div className="mt-5 space-y-4" data-testid="ai-diagnosis-t0-results">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-medium text-gray-900">检测结果汇总</p>
+              <div>
+                <p className="text-sm font-medium text-gray-900">检测结果汇总</p>
+                {t0CompletedAtLabel ? (
+                  <p className="mt-1 text-xs text-gray-500" data-testid="ai-diagnosis-t0-completed-at">
+                    实测完成时间：{t0CompletedAtLabel}
+                  </p>
+                ) : null}
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -1689,6 +1766,38 @@ export function AiDiagnosisFlowPage() {
                 )}
               </div>
             </div>
+
+            {(Math.round(t0ResultsDisplay.mentionRate * 100) === 0 || Math.round(t0ResultsDisplay.recommendRate * 100) === 0) && (
+              <div className="space-y-2 rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-xs leading-relaxed text-amber-950">
+                {Math.round(t0ResultsDisplay.mentionRate * 100) === 0 ? (
+                  <p data-testid="ai-diagnosis-t0-mention-hint">{diagnosisMentionRateHint(0, true)}</p>
+                ) : null}
+                {Math.round(t0ResultsDisplay.recommendRate * 100) === 0 ? (
+                  <p data-testid="ai-diagnosis-t0-recommend-hint">{diagnosisRecommendRateHint(0, true)}</p>
+                ) : null}
+              </div>
+            )}
+
+            {t0ResultsDisplay.byPlatform.some(group => group.totalRuns > 0) ? (
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4" data-testid="ai-diagnosis-t0-by-platform">
+                <h3 className="text-sm font-semibold text-gray-900">分平台实测结果</h3>
+                <div className="mt-3 space-y-2">
+                  {t0ResultsDisplay.byPlatform.map(group => (
+                    <div
+                      key={group.platform}
+                      className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <span className="font-medium text-gray-900">{group.label}</span>
+                      <span className="text-xs text-gray-500">
+                        {group.totalRuns > 0
+                          ? `测试 ${group.totalRuns} 次 · 提及 ${formatT0Rate(group.mentionRate)} · 推荐 ${formatT0Rate(group.recommendRate)}`
+                          : "本轮未实测"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {t0ResultsDisplay.byQuestionType.length > 0 ? (
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
