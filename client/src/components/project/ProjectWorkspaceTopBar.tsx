@@ -29,7 +29,7 @@ export function ProjectWorkspaceTopBar({
   const [location, setLocation] = useLocation();
   const pathname = location.split("?")[0] || location;
   const pageHelpId = resolvePageUsageHelpId(pathname);
-  const topBar = resolveProjectTopBarPresentation(stageLabel, ctaStage);
+  const topBar = resolveProjectTopBarPresentation(pathname, stageLabel, ctaStage);
 
   if (!projectId) {
     return (

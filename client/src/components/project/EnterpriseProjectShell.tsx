@@ -1,8 +1,11 @@
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
+import { shouldShowPublishBindNav } from "@shared/globalNavVisibility";
+import { resolvePageNextActionSuggestion } from "@shared/pageNextActionSuggestion";
 import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
 import { useEffect, useMemo, useState } from "react";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
@@ -24,7 +27,8 @@ type Props = {
 
 export function EnterpriseProjectShell({ children }: Props) {
   const { selectedProjectId, selectedProject } = useActiveProjectSelection();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const pathname = location.split("?")[0] || location;
   const isMobile = useIsMobile();
   const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
 
@@ -76,19 +80,48 @@ export function EnterpriseProjectShell({ children }: Props) {
 
   const stageLabel = resolution ? CUSTOMER_STAGE_LABELS[resolution.currentStageId] : null;
 
-  const ctaLabel = homeDisplay.mainChainNextAction?.ctaLabel ?? resolution?.currentStage?.ctaLabel;
+  const ctaStageForTopBar = useMemo(() => {
+    const stage = resolution?.currentStage ?? null;
+    if (!stage) return null;
+    if (stage.id === "bind_publish_env" && !shouldShowPublishBindNav(pathname)) {
+      return null;
+    }
+    return stage;
+  }, [resolution?.currentStage, pathname]);
+
+  const pageNextAction = useMemo(() => {
+    const m = summaryQuery.data;
+    if (!m || pathname === "/workspace" || pathname === "/flow") return null;
+    return resolvePageNextActionSuggestion(pathname, m);
+  }, [summaryQuery.data, pathname]);
+
+  const pageNextActionPath =
+    pageNextAction && selectedProjectId
+      ? buildProjectUrl(pageNextAction.ctaPath, selectedProjectId)
+      : null;
+
+  const panelMainChain =
+    pageNextAction && pathname !== "/workspace" && pathname !== "/flow"
+      ? null
+      : homeDisplay.mainChainNextAction;
+
+  const ctaLabel =
+    pageNextAction?.ctaLabel ??
+    homeDisplay.mainChainNextAction?.ctaLabel ??
+    ctaStageForTopBar?.ctaLabel;
   const ctaPath =
+    pageNextActionPath ??
     homeDisplay.mainChainNextAction?.ctaPath ??
-    (resolution?.currentStage && selectedProjectId
-      ? workspaceCtaUrl(selectedProjectId, resolution.currentStage)
-      : null);
+    (ctaStageForTopBar && selectedProjectId ? workspaceCtaUrl(selectedProjectId, ctaStageForTopBar) : null);
   const mobileDockSummary = ctaLabel ?? stageLabel ?? "查看当前阶段建议";
 
   const nextActionPanel = (
     <ProjectNextActionPanel
       projectId={selectedProjectId}
       stage={resolution?.currentStage ?? null}
-      mainChainNextAction={homeDisplay.mainChainNextAction}
+      mainChainNextAction={panelMainChain}
+      pageNextAction={pageNextAction}
+      pageNextActionPath={pageNextActionPath}
       blockerReason={resolution?.blockerReasons[0] ?? null}
       riskHints={resolution?.riskHints ?? []}
       recentItems={recentItems}
@@ -102,12 +135,11 @@ export function EnterpriseProjectShell({ children }: Props) {
         enterpriseName={selectedProject?.enterpriseName}
         stageLabel={stageLabel}
         geoScore={summaryQuery.data?.geoScore ?? null}
-        ctaStage={resolution?.currentStage ?? null}
+        ctaStage={ctaStageForTopBar}
         projectId={selectedProjectId}
         loading={summaryQuery.isLoading && Boolean(selectedProjectId)}
       />
       <ProfileCompletenessLowHint projectId={selectedProjectId ?? null} className="mt-4" />
-      {/* 三栏：左导航(DashboardLayout) + 中间主内容 + 右侧面板(300px固定) */}
       <div className="flex gap-6 pt-6">
         <div className={isMobile ? "min-w-0 flex-1 pb-28" : "min-w-0 flex-1"}>
           {isMobile && ctaLabel && selectedProjectId && ctaPath ? (

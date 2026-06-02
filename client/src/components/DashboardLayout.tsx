@@ -26,7 +26,24 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
 import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
-import { BookOpen, Brain, Building2, FileBarChart2, FileText, Library, LineChart, LogOut, PanelLeft, Send, Settings, ShieldCheck, Sparkles, Users2 } from "lucide-react";
+import {
+  BookOpen,
+  Brain,
+  Building2,
+  FileBarChart2,
+  FileText,
+  Library,
+  LineChart,
+  Link2,
+  LogOut,
+  PanelLeft,
+  Send,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Users2,
+} from "lucide-react";
+import { shouldShowPublishBindNav } from "@shared/globalNavVisibility";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -246,6 +263,15 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const useProjectShell = !PATHS_WITHOUT_PROJECT_SHELL.has(pathname);
   const isClientsHub = pathname === "/clients";
 
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
+    { projectId: validatedProjectId! },
+    { enabled: Boolean(validatedProjectId) && useProjectShell },
+  );
+  const showBindPublishSidebarItem =
+    Boolean(validatedProjectId) &&
+    shouldShowPublishBindNav(pathname) &&
+    (workspaceSummaryQuery.data?.boundPublishAccountCount ?? 1) === 0;
+
   const navigateWithProject = (path: string) => {
     if (path === "/clients" || path.startsWith("/admin/")) {
       setLocation(path);
@@ -340,6 +366,24 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                         </SidebarMenuItem>
                       );
                     })}
+                    {group.title === "发布与监测" && showBindPublishSidebarItem ? (
+                      <SidebarMenuItem key="bind-publish-sidebar">
+                        <SidebarMenuButton
+                          isActive={pathname === "/content-publishing" || pathname === "/publish"}
+                          onClick={() => navigateWithProject("/content-publishing")}
+                          tooltip="待绑定发布"
+                          data-testid="sidebar-bind-publish-nav"
+                          className={cn(
+                            "mb-0.5 h-10 rounded-lg border border-amber-200 bg-amber-50 py-2 text-amber-900 hover:bg-amber-100",
+                            (pathname === "/content-publishing" || pathname === "/publish") &&
+                              "font-medium before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-amber-500 before:content-['']",
+                          )}
+                        >
+                          <Link2 className="h-4 w-4 shrink-0 text-amber-600" />
+                          {!isCollapsed ? <span className="truncate text-sm">待绑定发布</span> : null}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ) : null}
                   </SidebarMenu>
                 </div>
               ))}

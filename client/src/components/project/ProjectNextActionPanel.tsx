@@ -1,6 +1,7 @@
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
 import type { MainChainNextAction } from "@/lib/workspaceHomeDisplay";
+import type { PageNextActionSuggestion } from "@shared/pageNextActionSuggestion";
 import { workspaceCtaUrl, type WorkspaceStageDefinition } from "@shared/workspaceStateMachine";
 import { AlertTriangle, ArrowRight, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
@@ -15,6 +16,8 @@ type Props = {
   projectId?: number;
   stage?: WorkspaceStageDefinition | null;
   mainChainNextAction?: MainChainNextAction | null;
+  pageNextAction?: PageNextActionSuggestion | null;
+  pageNextActionPath?: string | null;
   blockerReason?: string | null;
   riskHints?: string[];
   recentItems?: RecentItem[];
@@ -33,6 +36,8 @@ export function ProjectNextActionPanel({
   projectId,
   stage,
   mainChainNextAction,
+  pageNextAction,
+  pageNextActionPath,
   blockerReason,
   riskHints = [],
   recentItems = [],
@@ -48,11 +53,15 @@ export function ProjectNextActionPanel({
       ? STAGE_ORDER[currentIdx + 1]
       : "持续优化";
 
-  const ctaLabel = mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
-  const reason = mainChainNextAction?.reason ?? blockerReason ?? stage?.blockerHint;
-  const nextStageName = mainChainNextAction?.nextStageName ?? fallbackNextStageName;
+  const ctaLabel = pageNextAction?.ctaLabel ?? mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
+  const reason =
+    pageNextAction?.reason ?? mainChainNextAction?.reason ?? blockerReason ?? stage?.blockerHint;
+  const nextStageName =
+    pageNextAction?.nextStageName ?? mainChainNextAction?.nextStageName ?? fallbackNextStageName;
   const ctaPath =
-    mainChainNextAction?.ctaPath ?? (stage && projectId ? workspaceCtaUrl(projectId, stage) : null);
+    pageNextActionPath ??
+    mainChainNextAction?.ctaPath ??
+    (stage && projectId ? workspaceCtaUrl(projectId, stage) : null);
 
   const recentSummary = recentItems
     .map(item => (item.detail ? `${item.label} ${item.detail}` : item.label))

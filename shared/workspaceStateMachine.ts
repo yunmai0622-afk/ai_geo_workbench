@@ -34,8 +34,8 @@ export const WORKSPACE_STAGES: WorkspaceStageDefinition[] = [
     label: "待绑定发布环境",
     blockerHint: "本地发布客户端未连接，或当前项目尚未绑定可发布的平台账号。",
     ctaLabel: "去绑定发布账号",
-    ctaPath: "/enterprise-profile",
-    ctaHash: "#publish-platform-accounts",
+    ctaPath: "/content-publishing",
+    ctaHash: "#publish-platform-accounts-fold",
   },
   {
     id: "complete_geo_profile",
