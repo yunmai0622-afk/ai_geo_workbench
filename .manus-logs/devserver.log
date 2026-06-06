@@ -4188,3 +4188,16 @@
 [2026-06-06T04:45:17.781Z] [Auth] Missing session cookie
 [2026-06-06T04:46:01.856Z] 12:46:01 AM [vite] (client) hmr update /src/index.css
 [2026-06-06T04:47:08.594Z] 12:47:08 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T08:17:57.053Z] 4:17:57 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T08:18:12.937Z] Dev server process group stopped
+[2026-06-06T08:18:12.940Z] ELIFECYCLE  Command failed.
+[2026-06-06T08:18:12.999Z] Dev server exited with code -15
+[2026-06-06T08:18:15.970Z] Starting dev server with command: pnpm run dev
+[2026-06-06T08:18:16.753Z] 
+[2026-06-06T08:18:16.753Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-06T08:18:16.754Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-06T08:18:16.755Z] 
+[2026-06-06T08:18:23.846Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.19/geo-local-agent-mac.zip
+[2026-06-06T08:18:23.891Z] Server running on http://localhost:3000/
+[2026-06-06T08:18:25.374Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-06T08:19:09.504Z] 4:19:09 AM [vite] (client) hmr update /src/index.css
