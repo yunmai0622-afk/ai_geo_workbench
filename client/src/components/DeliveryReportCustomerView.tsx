@@ -20,6 +20,7 @@ import {
 } from "@/lib/deliveryReportDisplay";
 import { DeliveryReportCustomerLightView } from "@/components/DeliveryReportCustomerLightView";
 import type { DeliveryReportCompetitorComparison } from "@shared/deliveryReportCompetitor";
+import type { BuildCustomerDeliverySnapshotInput } from "@/lib/buildCustomerDeliverySnapshot";
 import { useMemo, useRef, type ReactNode } from "react";
 
 export type DeliveryReportCustomerViewProps = {
@@ -49,6 +50,19 @@ export type DeliveryReportCustomerViewProps = {
   onGoMonitoring?: () => void;
   /** 公开分享页展示链接有效期（ISO）；undefined 时不展示有效期条 */
   shareExpiresAt?: string | null;
+  customerSnapshotInput?: Partial<
+    Omit<
+      BuildCustomerDeliverySnapshotInput,
+      | "enterpriseName"
+      | "brandName"
+      | "reportGeneratedAt"
+      | "conclusionLine"
+      | "visibilityScore"
+      | "aiTestAggregate"
+      | "publishedItems"
+      | "contentAssetCount"
+    >
+  >;
 };
 
 function MetricCard({ label, value, large }: { label: string; value: string; large?: boolean }) {

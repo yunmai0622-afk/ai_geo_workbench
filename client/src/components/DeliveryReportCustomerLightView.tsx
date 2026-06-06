@@ -1,41 +1,23 @@
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import {
-  buildEvidenceDetailPath,
-  formatDeltaPercent,
-  formatDeltaRank,
-  formatPercentMetric,
-  formatRankMetric,
-  type AiTestEvidenceAggregate,
-} from "@shared/aiTestEvidence";
-import {
-  buildEngineMentionSubtitle,
-  buildNextActionLines,
-  formatDeliveryReportVisibilityScore,
-  showPublishCompareSection,
-  type DeliveryReportPublishedItem,
-} from "@/lib/deliveryReportDisplay";
-import {
-  buildBossThreePoints,
-  buildDisplayReportNumber,
-  buildValueSettlementItems,
-  DELIVERY_REPORT_SERVICE_PROVIDER,
-  formatBaselinePercent,
-  formatReportDateTime,
-  mentionRateNarrative,
-  publishCompareBaselineNote,
-  recommendRateNarrative,
-  resolveVisibilityScoreTier,
-} from "@/lib/deliveryReportLightDisplay";
-import { formatDeliveryReportShareExpiryLabel, resolveDeliveryReportShareCountdown } from "@shared/deliveryReportPublicShare";
-import { useMemo, useRef, type ReactNode } from "react";
 import { DeliveryReportCustomerProductSections } from "@/components/delivery/DeliveryReportCustomerProductSections";
 import { DeliveryReportCompetitorSection } from "@/components/DeliveryReportCompetitorSection";
 import { DeliveryReportRetestHero } from "@/components/DeliveryReportRetestHero";
-import { buildDeliveryReportTitle } from "@shared/deliveryReportReadability";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { buildEvidenceDetailPath, formatDeltaPercent, formatDeltaRank, formatPercentMetric, formatRankMetric } from "@shared/aiTestEvidence";
 import type { DeliveryReportCustomerViewProps } from "@/components/DeliveryReportCustomerView";
+import { showPublishCompareSection } from "@/lib/deliveryReportDisplay";
+import {
+  buildDisplayReportNumber,
+  DELIVERY_REPORT_SERVICE_PROVIDER,
+  formatBaselinePercent,
+  formatReportDateTime,
+  publishCompareBaselineNote,
+} from "@/lib/deliveryReportLightDisplay";
+import { formatDeliveryReportShareExpiryLabel, resolveDeliveryReportShareCountdown } from "@shared/deliveryReportPublicShare";
+import { buildDeliveryReportTitle } from "@shared/deliveryReportReadability";
+import { useMemo, useRef, type ReactNode } from "react";
 
-const REPORT_TITLE = "GEO AI 搜索可见度优化交付报告";
+const REPORT_TITLE = "GEO 增长交付报告";
 
 function LightSection({
   title,
@@ -57,16 +39,6 @@ function LightSection({
   );
 }
 
-function LightMetric({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-gray-900 sm:text-2xl">{value}</p>
-      {hint ? <p className="mt-2 text-xs leading-relaxed text-gray-600">{hint}</p> : null}
-    </div>
-  );
-}
-
 export type DeliveryReportCustomerLightViewProps = DeliveryReportCustomerViewProps & {
   reportNumberSuffix?: number;
   reportNumberSeed?: string;
@@ -83,7 +55,6 @@ export function DeliveryReportCustomerLightView({
   contentAssetCount,
   aiTestAggregate,
   publishedItems = [],
-  suggestionLines,
   competitorComparison,
   loading,
   showEvidenceLinks = true,
@@ -95,11 +66,11 @@ export function DeliveryReportCustomerLightView({
   reportNumberSuffix,
   reportNumberSeed,
   shareExpiresAt,
+  customerSnapshotInput,
 }: DeliveryReportCustomerLightViewProps) {
   const evidenceRef = useRef<HTMLDivElement>(null);
   const hasAiTestData = aiTestAggregate.questionCount > 0;
-  const evidenceCount = aiTestAggregate.keySamples.length;
-
+  const assetCount = contentAssetCount ?? publishCount;
   const reportNumber = useMemo(
     () =>
       buildDisplayReportNumber({
@@ -109,99 +80,17 @@ export function DeliveryReportCustomerLightView({
       }),
     [reportNumberSuffix, reportGeneratedAt, reportNumberSeed],
   );
-
-  const bossPoints = useMemo(
-    () =>
-      buildBossThreePoints({
-        brandName,
-        publishCount,
-        questionCount: aiTestAggregate.questionCount,
-        engineCount: aiTestAggregate.engineCount,
-        mentionRate: aiTestAggregate.mentionRate,
-        recommendRate: aiTestAggregate.recommendRate,
-        hasAiTestData,
-        visibilityScore,
-      }),
-    [
-      brandName,
-      publishCount,
-      aiTestAggregate.questionCount,
-      aiTestAggregate.engineCount,
-      aiTestAggregate.mentionRate,
-      aiTestAggregate.recommendRate,
-      hasAiTestData,
-      visibilityScore,
-    ],
-  );
-
-  const assetCount = contentAssetCount ?? publishCount;
-
-  const valueItems = useMemo(
-    () =>
-      buildValueSettlementItems({
-        contentAssetCount: assetCount,
-        publishCount,
-        questionCount: aiTestAggregate.questionCount,
-        engineCount: aiTestAggregate.engineCount,
-        evidenceCount,
-        hasAiTestData,
-        publishCompare: aiTestAggregate.publishCompare,
-      }),
-    [
-      assetCount,
-      publishCount,
-      aiTestAggregate.questionCount,
-      aiTestAggregate.engineCount,
-      evidenceCount,
-      hasAiTestData,
-      aiTestAggregate.publishCompare,
-    ],
-  );
-
-  const scoreTier = useMemo(() => resolveVisibilityScoreTier(visibilityScore), [visibilityScore]);
-  const engineSubtitle = useMemo(
-    () => buildEngineMentionSubtitle(aiTestAggregate.byEngine, aiTestAggregate.mentionRate, aiTestAggregate.recommendRate),
-    [aiTestAggregate.byEngine, aiTestAggregate.mentionRate, aiTestAggregate.recommendRate],
-  );
-
-  const actionLines = useMemo(
-    () =>
-      buildNextActionLines(
-        aiTestAggregate.mentionRate,
-        aiTestAggregate.recommendRate,
-        publishCount,
-        hasAiTestData,
-        suggestionLines,
-      ).slice(0, 3),
-    [aiTestAggregate.mentionRate, aiTestAggregate.recommendRate, publishCount, hasAiTestData, suggestionLines],
-  );
-
   const showCompare = showPublishCompareSection(aiTestAggregate.publishCompare);
   const compareBaselineNote = useMemo(
     () => (showCompare ? publishCompareBaselineNote(aiTestAggregate.publishCompare) : null),
     [showCompare, aiTestAggregate.publishCompare],
   );
-
-  const scoreDisplay = formatDeliveryReportVisibilityScore(visibilityScore);
-  const mentionDisplay = formatBaselinePercent(aiTestAggregate.mentionRate, hasAiTestData);
-  const recommendDisplay = formatBaselinePercent(aiTestAggregate.recommendRate, hasAiTestData);
-  const rankDisplay = hasAiTestData
-    ? aiTestAggregate.averageRank != null
-      ? `约第 ${aiTestAggregate.averageRank.toFixed(1)} 位`
-      : "暂无稳定排名"
-    : "待实测";
-
-  const shellClass = embedded
-    ? "space-y-10 overflow-x-hidden bg-gray-50 text-gray-900"
-    : "min-h-screen overflow-x-hidden bg-gray-100 text-gray-900";
-
-  const scrollToEvidence = () => {
-    evidenceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   const shareExpiryLabel = formatDeliveryReportShareExpiryLabel(shareExpiresAt);
   const shareCountdown = resolveDeliveryReportShareCountdown(shareExpiresAt);
   const detectionConclusion = conclusionLine.trim();
+  const shellClass = embedded
+    ? "space-y-10 overflow-x-hidden bg-gray-50 text-gray-900"
+    : "min-h-screen overflow-x-hidden bg-gray-100 text-gray-900";
 
   return (
     <div className={shellClass}>
@@ -222,6 +111,34 @@ export function DeliveryReportCustomerLightView({
           </p>
         ) : null}
 
+        <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 bg-gradient-to-r from-sky-50 to-white px-5 py-6 sm:px-8 sm:py-8">
+            <p className="text-xs font-medium tracking-wide text-sky-700">{DELIVERY_REPORT_SERVICE_PROVIDER}</p>
+            <p className="mt-2 text-sm font-medium text-gray-600">{REPORT_TITLE}</p>
+            <h1 className="mt-3 text-xl font-bold leading-snug text-gray-900 sm:text-2xl">
+              {buildDeliveryReportTitle(brandName || enterpriseName)}
+            </h1>
+          </div>
+          <div className="p-5 sm:p-8">
+            <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-gray-500">客户名称</dt>
+                <dd className="mt-0.5 font-medium text-gray-900">{enterpriseName}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">报告生成时间</dt>
+                <dd className="mt-0.5 font-medium text-gray-800">{formatReportDateTime(reportGeneratedAt)}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-gray-500">报告编号</dt>
+                <dd className="mt-0.5 font-mono text-sm font-medium text-gray-800">{reportNumber}</dd>
+              </div>
+            </dl>
+          </div>
+        </header>
+
+        <DeliveryReportRetestHero publishCompare={aiTestAggregate.publishCompare} />
+
         <DeliveryReportCustomerProductSections
           enterpriseName={enterpriseName}
           brandName={brandName}
@@ -240,53 +157,8 @@ export function DeliveryReportCustomerLightView({
           publishCount={publishCount}
           contentAssetCount={assetCount}
           publishedItems={publishedItems}
+          customerSnapshotInput={customerSnapshotInput}
         />
-
-        {/* 区块 1：报告封面 */}
-        <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 bg-gradient-to-r from-sky-50 to-white px-5 py-6 sm:px-8 sm:py-8">
-            <p className="text-xs font-medium tracking-wide text-sky-700">{DELIVERY_REPORT_SERVICE_PROVIDER}</p>
-            <h1 className="mt-3 text-xl font-bold leading-snug text-gray-900 sm:text-2xl">
-              {buildDeliveryReportTitle(brandName || enterpriseName)}
-            </h1>
-          </div>
-          <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-8">
-            <div className="min-w-0 flex-1 space-y-4">
-              <div>
-                <p className="text-xs text-gray-500">客户名称</p>
-                <p className="mt-1 text-lg font-semibold text-gray-900">{enterpriseName}</p>
-                {brandName && brandName !== enterpriseName ? (
-                  <p className="mt-0.5 text-sm text-gray-600">品牌：{brandName}</p>
-                ) : null}
-              </div>
-              <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="text-gray-500">服务方</dt>
-                  <dd className="mt-0.5 font-medium text-gray-800">{DELIVERY_REPORT_SERVICE_PROVIDER}</dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500">报告生成时间</dt>
-                  <dd className="mt-0.5 font-medium text-gray-800">{formatReportDateTime(reportGeneratedAt)}</dd>
-                </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-gray-500">报告编号</dt>
-                  <dd className="mt-0.5 font-mono text-sm font-medium text-gray-800">{reportNumber}</dd>
-                </div>
-              </dl>
-            </div>
-            <div
-              className="flex h-20 w-full shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-4 sm:h-24 sm:w-28"
-              aria-hidden
-            >
-              <span className="line-clamp-3 text-center text-sm font-bold leading-tight text-gray-700">
-                {enterpriseName.slice(0, 8)}
-                {enterpriseName.length > 8 ? "…" : ""}
-              </span>
-            </div>
-          </div>
-        </header>
-
-        <DeliveryReportRetestHero publishCompare={aiTestAggregate.publishCompare} />
 
         {detectionConclusion ? (
           <LightSection title="主要检测结论" description="基于本轮内容诊断与 AI 搜索实测汇总，不含内部技术字段。">
@@ -299,63 +171,6 @@ export function DeliveryReportCustomerLightView({
           </LightSection>
         ) : null}
 
-        {/* 区块 2：老板版结论 */}
-        <LightSection title="老板先看这 3 点">
-          <ol className="space-y-3">
-            {bossPoints.map((line, i) => (
-              <li
-                key={i}
-                className="flex gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm leading-relaxed text-gray-800 shadow-sm sm:text-base"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-bold text-sky-800">
-                  {i + 1}
-                </span>
-                <span className="min-w-0 flex-1">{line}</span>
-              </li>
-            ))}
-          </ol>
-        </LightSection>
-
-        {/* 区块 3：本轮价值结算 */}
-        <LightSection title="本轮你获得了什么" description="以下为本轮交付与实测的核心产出概览。">
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {valueItems.map(item => (
-              <li key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="text-xs text-gray-500">{item.label}</p>
-                <p className="mt-1 text-sm font-semibold text-gray-900">{item.value}</p>
-              </li>
-            ))}
-          </ul>
-        </LightSection>
-
-        {/* 区块 4：AI 搜索可见度评分 */}
-        <LightSection title="AI 搜索可见度评分">
-          <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-5 sm:p-6">
-            <div className="flex flex-wrap items-end gap-3">
-              <p className="text-4xl font-bold tabular-nums text-sky-700 sm:text-5xl">
-                {scoreDisplay}
-                {visibilityScore != null ? <span className="text-2xl font-semibold text-sky-600"> 分</span> : null}
-              </p>
-              <span className="mb-1 rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-800">{scoreTier.label}</span>
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-gray-700">{scoreTier.description}</p>
-            {engineSubtitle ? <p className="mt-2 text-sm text-gray-600">{engineSubtitle}</p> : null}
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <LightMetric
-              label="品牌提及率"
-              value={mentionDisplay}
-              hint={mentionRateNarrative(aiTestAggregate.mentionRate, hasAiTestData)}
-            />
-            <LightMetric
-              label="品牌推荐率"
-              value={recommendDisplay}
-              hint={recommendRateNarrative(aiTestAggregate.recommendRate, hasAiTestData)}
-            />
-            <LightMetric label="平均排名" value={rankDisplay} />
-          </div>
-        </LightSection>
-
         {loading ? (
           <div className="flex items-center gap-2 py-8 text-gray-600">
             <Spinner className="size-5 text-blue-600" />
@@ -363,11 +178,10 @@ export function DeliveryReportCustomerLightView({
           </div>
         ) : (
           <>
-            {/* 区块 5：AI 实测证据 */}
             <LightSection title="AI 实测证据" description="以下为分引擎汇总与可核对的关键证据样例。">
               {aiTestAggregate.questionCount === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-600">
-                  暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以建立可追溯的可见度基线。
+                  原因：尚未完成 AI 搜索实测。下一步：先完成一次 AI 实测，以建立可追溯的可见度基线。
                   {showMonitoringCta && onGoMonitoring ? (
                     <Button variant="ai" className="mt-4 h-11 w-full sm:w-auto" onClick={onGoMonitoring}>
                       前往收录监测实测
@@ -379,7 +193,9 @@ export function DeliveryReportCustomerLightView({
                   <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                     <p className="text-xs font-medium text-gray-500">分引擎结果</p>
                     {aiTestAggregate.byEngine.length === 0 ? (
-                      <p className="mt-2 text-sm text-gray-600">暂无分引擎数据</p>
+                      <p className="mt-2 text-sm text-gray-600">
+                        原因：当前样本未形成分引擎数据。下一步：在收录监测补充不同引擎实测后回看该区块。
+                      </p>
                     ) : (
                       <ul className="mt-3 divide-y divide-slate-100">
                         {aiTestAggregate.byEngine.map(engine => (
@@ -397,7 +213,6 @@ export function DeliveryReportCustomerLightView({
                       </ul>
                     )}
                   </div>
-
                   {aiTestAggregate.keySamples.length > 0 ? (
                     <div ref={evidenceRef} className="scroll-mt-8 space-y-3">
                       <p className="text-sm font-medium text-gray-800">关键证据样例</p>
@@ -430,21 +245,10 @@ export function DeliveryReportCustomerLightView({
                       ))}
                     </div>
                   ) : null}
-
-                  <Button
-                    type="button"
-                    variant="ai"
-                    disabled={aiTestAggregate.keySamples.length === 0}
-                    className="h-11 w-full disabled:opacity-40 sm:w-auto"
-                    onClick={scrollToEvidence}
-                  >
-                    查看原始 AI 回答证据
-                  </Button>
                 </div>
               )}
             </LightSection>
 
-            {/* 区块 6：发布前后变化 */}
             {showCompare ? (
               <LightSection title="发布前后变化" description="用于观察内容发布后，品牌在 AI 搜索中的表现变化。">
                 {compareBaselineNote ? (
@@ -468,40 +272,40 @@ export function DeliveryReportCustomerLightView({
                           label: "品牌提及率",
                           before: aiTestAggregate.publishCompare.before.hasData
                             ? formatPercentMetric(aiTestAggregate.publishCompare.before.mentionRate)
-                            : "暂无",
+                            : "待有实测数据",
                           after: aiTestAggregate.publishCompare.after.hasData
                             ? formatPercentMetric(aiTestAggregate.publishCompare.after.mentionRate)
-                            : "暂无",
+                            : "待有实测数据",
                           change:
                             aiTestAggregate.publishCompare.before.hasData && aiTestAggregate.publishCompare.after.hasData
                               ? formatDeltaPercent(aiTestAggregate.publishCompare.changes.mentionRateDelta)
-                              : "—",
+                              : "待有对应记录",
                         },
                         {
                           label: "品牌推荐率",
                           before: aiTestAggregate.publishCompare.before.hasData
                             ? formatPercentMetric(aiTestAggregate.publishCompare.before.recommendRate)
-                            : "暂无",
+                            : "待有实测数据",
                           after: aiTestAggregate.publishCompare.after.hasData
                             ? formatPercentMetric(aiTestAggregate.publishCompare.after.recommendRate)
-                            : "暂无",
+                            : "待有实测数据",
                           change:
                             aiTestAggregate.publishCompare.before.hasData && aiTestAggregate.publishCompare.after.hasData
                               ? formatDeltaPercent(aiTestAggregate.publishCompare.changes.recommendRateDelta)
-                              : "—",
+                              : "待有对应记录",
                         },
                         {
                           label: "平均排名",
                           before: aiTestAggregate.publishCompare.before.hasData
                             ? formatRankMetric(aiTestAggregate.publishCompare.before.averageRank)
-                            : "暂无",
+                            : "待有实测数据",
                           after: aiTestAggregate.publishCompare.after.hasData
                             ? formatRankMetric(aiTestAggregate.publishCompare.after.averageRank)
-                            : "暂无",
+                            : "待有实测数据",
                           change:
                             aiTestAggregate.publishCompare.before.hasData && aiTestAggregate.publishCompare.after.hasData
                               ? formatDeltaRank(aiTestAggregate.publishCompare.changes.averageRankDelta)
-                              : "—",
+                              : "待有对应记录",
                         },
                       ].map(row => (
                         <tr key={row.label} className="border-b border-gray-100 last:border-0">
@@ -517,7 +321,6 @@ export function DeliveryReportCustomerLightView({
               </LightSection>
             ) : null}
 
-            {/* 区块 7：竞品对比 */}
             <LightSection
               title="竞品对比"
               description="对比本品牌与主要竞品在 AI 实测中的提及情况，以及竞品公开内容分布。"
@@ -526,58 +329,8 @@ export function DeliveryReportCustomerLightView({
                 <DeliveryReportCompetitorSection data={competitorComparison} />
               ) : (
                 <p className="text-sm text-gray-600" data-testid="delivery-report-competitor-empty">
-                  暂无竞品档案。完成品牌建档并补充主要竞品后，可在此查看 AI 实测提及对比与内容分布建议。
+                  原因：尚未完成竞品档案。下一步：补充主要竞品后可查看 AI 实测提及对比与内容分布建议。
                 </p>
-              )}
-            </LightSection>
-
-            {/* 区块 8：本轮新增 AI 搜索资产 */}
-            <LightSection title="本轮新增 AI 搜索资产">
-              {publishedItems.length === 0 ? (
-                <p className="text-sm text-gray-600">本轮暂无发布记录</p>
-              ) : (
-                <ul className="space-y-3">
-                  {publishedItems.map((item, index) => (
-                    <li key={`${item.title}-${index}`} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                      <p className="font-medium text-gray-900">{item.title}</p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
-                        {item.platform ? (
-                          <span className="rounded-full bg-gray-100 px-2.5 py-0.5">{item.platform}</span>
-                        ) : null}
-                        {item.publishedAt ? <span>发布时间 {item.publishedAt}</span> : null}
-                      </div>
-                      {item.url ? (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-3 inline-block min-h-11 break-all text-sm font-medium text-sky-700 underline-offset-2 hover:underline"
-                        >
-                          查看文章
-                        </a>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </LightSection>
-
-            {/* 区块 9：下一轮优化动作 */}
-            <LightSection title="下一轮优化动作">
-              {actionLines.length === 0 ? (
-                <p className="text-sm text-gray-600">建议完成更多 AI 实测后更新优化动作。</p>
-              ) : (
-                <ul className="space-y-3">
-                  {actionLines.map((line, i) => (
-                    <li
-                      key={i}
-                      className="flex gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm leading-relaxed text-gray-800"
-                    >
-                      <span className="font-bold text-emerald-700">{i + 1}.</span>
-                      <span className="min-w-0 flex-1">{line}</span>
-                    </li>
-                  ))}
-                </ul>
               )}
             </LightSection>
 

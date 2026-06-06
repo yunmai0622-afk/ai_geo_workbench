@@ -19,6 +19,13 @@ describe("GEO-V1.1 DeliveryReport Productized Readability P0", () => {
     expect(page + productBody + shared).toContain("GEO 增长交付报告");
   });
 
+  it("wires data completeness label in toolbar and checklist", () => {
+    expect(shared).toContain("computeDeliveryDataCompleteness");
+    expect(page).toContain("computeDeliveryDataCompleteness");
+    expect(page).toContain("dataCompletenessLabel");
+    expect(productBody).toContain("delivery-report-data-completeness");
+  });
+
   it("shows T0-only trend insufficient message", () => {
     expect(shared).toContain("当前仅有 T0 基线，尚不足以判断趋势变化");
     expect(productBody).toContain("delivery-report-geo-attribution");

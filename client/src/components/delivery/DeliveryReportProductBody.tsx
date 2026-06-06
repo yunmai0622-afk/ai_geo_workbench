@@ -5,7 +5,7 @@ import type {
   DeliveryReportProductSnapshot,
   DeliveryReportViewMode,
 } from "@shared/deliveryReportReadability";
-import { T0_ONLY_TREND_INSUFFICIENT_MESSAGE } from "@shared/deliveryReportReadability";
+import { computeDeliveryDataCompleteness, T0_ONLY_TREND_INSUFFICIENT_MESSAGE } from "@shared/deliveryReportReadability";
 import { ArrowLeft, FileDown, Link2, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -18,6 +18,7 @@ export function DeliveryReportStickyToolbar({
   enterpriseName,
   geoScoreLabel,
   reportStatusLabel,
+  dataCompletenessLabel,
   shareLinkBusy,
   loading,
   exportingPdf,
@@ -29,6 +30,7 @@ export function DeliveryReportStickyToolbar({
   enterpriseName: string;
   geoScoreLabel: string;
   reportStatusLabel: string;
+  dataCompletenessLabel?: string;
   shareLinkBusy: boolean;
   loading: boolean;
   exportingPdf: boolean;
@@ -52,6 +54,7 @@ export function DeliveryReportStickyToolbar({
           <p className="text-xs text-gray-500">
             GEO 分 {geoScoreLabel} · {reportStatusLabel}
           </p>
+          {dataCompletenessLabel ? <p className="text-xs text-gray-500">{dataCompletenessLabel}</p> : null}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -384,6 +387,11 @@ export function DeliveryReportInternalChecklist({
   onNavigate: NavigateHandler;
   buildProjectPath: BuildProjectPath;
 }) {
+  const completeness = computeDeliveryDataCompleteness(
+    snapshot.checklist
+      .filter(item => item.status === "待完成" && item.blockReason)
+      .map(item => item.blockReason as string),
+  );
   return (
     <aside
       className="sticky top-24 h-fit rounded-2xl border border-gray-200 bg-white p-4 shadow-sm print:hidden"
@@ -391,6 +399,9 @@ export function DeliveryReportInternalChecklist({
     >
       <h2 className="text-sm font-semibold text-gray-900">内部交付检查清单</h2>
       <p className="mt-1 text-xs text-gray-500">仅内部可见，客户分享页不展示。</p>
+      <p className="mt-2 text-xs text-gray-600" data-testid="delivery-report-data-completeness">
+        {completeness.label}
+      </p>
       <ul className="mt-4 space-y-3">
         {snapshot.checklist.map(item => (
           <li key={item.id} className="rounded-lg border border-gray-100 p-3">

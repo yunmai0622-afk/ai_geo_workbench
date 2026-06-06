@@ -25,10 +25,10 @@ export const T0_ONLY_TREND_INSUFFICIENT_MESSAGE =
 
 export const DELIVERY_INSUFFICIENT_DATA_PREFIX = "当前部分交付数据尚不完整：";
 
-const GEO_SCORE_MISSING_LABEL = "暂无数据";
-const PERCENT_MISSING_LABEL = "暂无（需先完成 AI 实测）";
-const COUNT_MISSING_LABEL = "暂无";
-const CITATION_MISSING_LABEL = "暂无（需有引用样本）";
+const GEO_SCORE_MISSING_LABEL = "待完成诊断评分";
+const PERCENT_MISSING_LABEL = "待完成 AI 实测";
+const COUNT_MISSING_LABEL = "待有对应记录";
+const CITATION_MISSING_LABEL = "待有引用样本";
 
 export type DeliveryReportViewMode = "internal" | "customer";
 
@@ -202,7 +202,7 @@ function findStageRound(
 }
 
 function formatSignalLabel(rate: number | null, hasData: boolean, positiveLabel: string): string {
-  if (!hasData || rate == null) return "暂无数据";
+  if (!hasData || rate == null) return "待有实测数据";
   if (rate > 0) return positiveLabel;
   return "未观测到";
 }
@@ -464,8 +464,30 @@ function buildFallbackPlanItems(
 
 function resolvePlanQuestion(maxProblemLine: string): string {
   const trimmed = maxProblemLine.trim();
-  if (!trimmed || trimmed.startsWith("暂无")) return "当前高意向诊断问题";
+  if (!trimmed || trimmed.startsWith("暂无") || trimmed.startsWith("待")) return "当前高意向诊断问题";
   return trimmed;
+}
+
+export type DeliveryDataCompleteness = {
+  isComplete: boolean;
+  pendingCount: number;
+  label: string;
+};
+
+export function computeDeliveryDataCompleteness(reasonParts: string[]): DeliveryDataCompleteness {
+  const pendingCount = reasonParts.map(part => part.trim()).filter(Boolean).length;
+  if (pendingCount === 0) {
+    return {
+      isComplete: true,
+      pendingCount: 0,
+      label: "数据完整度：已满足交付条件",
+    };
+  }
+  return {
+    isComplete: false,
+    pendingCount,
+    label: `数据完整度：待补齐 ${pendingCount} 项关键数据`,
+  };
 }
 
 export function buildNextRoundPlanItems(

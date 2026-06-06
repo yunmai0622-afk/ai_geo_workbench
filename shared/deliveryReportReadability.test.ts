@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDeliveryReportProductSnapshot,
+  computeDeliveryDataCompleteness,
   buildInsufficientDataReason,
   buildRetestStageRows,
   resolveTrendInsufficientMessage,
@@ -100,5 +101,18 @@ describe("deliveryReportReadability", () => {
     expect(snapshot.geoAttribution.scoreExplanation).toBeTruthy();
     expect(snapshot.nextRoundPlan.length).toBeGreaterThan(0);
     expect(snapshot.checklist.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("computes delivery data completeness label", () => {
+    expect(computeDeliveryDataCompleteness([])).toEqual({
+      isComplete: true,
+      pendingCount: 0,
+      label: "数据完整度：已满足交付条件",
+    });
+    expect(computeDeliveryDataCompleteness(["尚未完成 T1 复测", "尚未完成发布链接回填"])).toEqual({
+      isComplete: false,
+      pendingCount: 2,
+      label: "数据完整度：待补齐 2 项关键数据",
+    });
   });
 });

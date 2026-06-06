@@ -11,7 +11,7 @@ describe("C6-C delivery report light customer view", () => {
     const sharePage = read("client/src/pages/DeliveryReportSharePage.tsx");
     const customerView = read("client/src/components/DeliveryReportCustomerView.tsx");
     const lightView = read("client/src/components/DeliveryReportCustomerLightView.tsx");
-    const lightLib = read("client/src/lib/deliveryReportLightDisplay.ts");
+    const productBody = read("client/src/components/delivery/DeliveryReportProductBody.tsx");
     const flow = read("client/src/pages/V12FlowPages.tsx");
 
     expect(publicPage).toContain('variant="light"');
@@ -23,18 +23,13 @@ describe("C6-C delivery report light customer view", () => {
     expect(flow).toContain("DeliveryReportsCenterPage");
     expect(flow).not.toContain('variant="light"');
 
-    for (const text of [
-      "GEO AI 搜索可见度优化交付报告",
-      "老板先看这 3 点",
-      "本轮你获得了什么",
-      "海豚知道",
-      "报告编号",
-      "查看原始 AI 回答证据",
-      "当前处于基线阶段，AI 尚未稳定识别品牌",
-      "基线阶段（0%）",
-    ]) {
-      expect(lightView + lightLib).toContain(text);
-    }
+    expect(lightView).toContain("GEO 增长交付报告");
+    expect(productBody).toContain("delivery-report-boss-summary");
+    expect(lightView).toContain("报告编号");
+    expect(lightView).toContain("查看原始 AI 回答证据");
+    expect(lightView).not.toContain("老板先看这 3 点");
+    expect(lightView).not.toContain("本轮你获得了什么");
+    expect(lightView).not.toContain("AI 搜索可见度评分");
 
     expect(lightView).toContain("bg-gray-100");
     expect(lightView).not.toContain("ai-app-canvas");

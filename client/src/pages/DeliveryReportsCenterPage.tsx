@@ -61,6 +61,7 @@ import {
   type DeliveryReportContentQualityFailedItem,
   type DeliveryReportContentQualityPriorityItem,
 } from "@shared/deliveryReportContentQuality";
+import { computeDeliveryDataCompleteness } from "@shared/deliveryReportReadability";
 import { mapCompetitorAnalysisForDeliveryReport } from "@shared/deliveryReportCompetitor";
 import { formatDeliveryReportShareExpiryLabel, resolveDeliveryReportShareRenewalReminder } from "@shared/deliveryReportPublicShare";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -786,6 +787,16 @@ export function DeliveryReportsCenterPage() {
     ],
   );
 
+  const dataCompleteness = useMemo(
+    () =>
+      computeDeliveryDataCompleteness(
+        productSnapshot.checklist
+          .filter(item => item.status === "待完成" && item.blockReason)
+          .map(item => item.blockReason as string),
+      ),
+    [productSnapshot],
+  );
+
   if (!enabled && !projectsLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center" data-testid="delivery-report-page">
@@ -934,6 +945,7 @@ export function DeliveryReportsCenterPage() {
           enterpriseName={enterpriseName}
           geoScoreLabel={visibilityScoreDisplay(currentGeoScore ?? visibilityScore)}
           reportStatusLabel={productSnapshot.reportStatusLabel}
+          dataCompletenessLabel={dataCompleteness.label}
           shareLinkBusy={shareLinkBusy}
           loading={loading}
           exportingPdf={exportingPdf}

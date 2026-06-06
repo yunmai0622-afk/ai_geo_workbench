@@ -11,6 +11,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { aggregateAiTestEvidence, type AiTestEvidenceAggregate } from "@shared/aiTestEvidence";
 import { mapCompetitorAnalysisForDeliveryReport } from "@shared/deliveryReportCompetitor";
+import type { TestRoundSummary } from "@shared/retestComparisonDisplay";
 import { BarChart3 } from "lucide-react";
 import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
 import { useMemo, type ReactNode } from "react";
@@ -113,6 +114,14 @@ function DeliveryReportShareContent() {
   );
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
+  const testRoundsQuery = trpc.geo.testRounds.list.useQuery(
+    { projectId: projectId! },
+    { enabled },
+  );
+  const retestQueueQuery = trpc.geo.articles.retestQueue.useQuery(
+    { projectId: projectId! },
+    { enabled },
+  );
   const reportQuery = trpc.geo.reports.latest.useQuery(projectInput, { enabled });
   const competitorSummaryQuery = trpc.geo.assetLibrary.competitorAnalysisSummary.useQuery(projectInput, { enabled });
 
@@ -199,6 +208,8 @@ function DeliveryReportShareContent() {
     summaryQuery.isLoading ||
     monitoringQuery.isLoading ||
     publishRecordsQuery.isLoading ||
+    testRoundsQuery.isLoading ||
+    retestQueueQuery.isLoading ||
     competitorSummaryQuery.isLoading;
 
   return (
@@ -218,6 +229,11 @@ function DeliveryReportShareContent() {
       loading={loading}
       showEvidenceLinks
       onNavigateEvidence={path => setLocation(path)}
+      customerSnapshotInput={{
+        testRounds: (testRoundsQuery.data ?? []) as TestRoundSummary[],
+        retestCompletedCount: aiTestAggregate.publishCompare.after.questionCount,
+        retestPendingCount: retestQueueQuery.data?.items?.length ?? 0,
+      }}
     />
   );
 }

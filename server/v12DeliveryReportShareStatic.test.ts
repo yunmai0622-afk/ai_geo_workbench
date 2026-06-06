@@ -12,6 +12,7 @@ describe("delivery report share page renders customer-facing sections", () => {
     const publicSource = readProjectFile("client/src/pages/DeliveryReportPublicPage.tsx");
     const customerViewSource = readProjectFile("client/src/components/DeliveryReportCustomerView.tsx");
     const lightViewSource = readProjectFile("client/src/components/DeliveryReportCustomerLightView.tsx");
+    const productBodySource = readProjectFile("client/src/components/delivery/DeliveryReportProductBody.tsx");
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
     const reportPageSource = readProjectFile("client/src/pages/DeliveryReportsCenterPage.tsx");
     const reportUiSource = flowSource + reportPageSource;
@@ -71,12 +72,7 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(publicSource).toContain("buildDeliveryReportPublicEvidencePath");
     expect(publicSource).not.toContain("/geo/evidence/");
 
-    for (const text of [
-      "AI 搜索可见度评分",
-      "发布前后变化",
-      "本轮新增 AI 搜索资产",
-      "下一轮优化动作",
-    ]) {
+    for (const text of ["发布前后变化"]) {
       const customerPages = customerViewSource + lightViewSource + publicSource + shareSource;
       expect(customerPages).toContain(text);
     }
@@ -88,20 +84,16 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("DELIVERY_REPORT_SHARE_RENEWAL_REMINDER_DAYS");
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("resolveDeliveryReportShareRenewalReminder");
     expect(shareSource).toContain('variant="light"');
-    for (const text of [
-      "GEO AI 搜索可见度优化交付报告",
-      "老板先看这 3 点",
-      "本轮你获得了什么",
-      "查看原始 AI 回答证据",
-    ]) {
-      expect(lightViewSource + publicSource + shareSource).toContain(text);
-    }
+    expect(lightViewSource).toContain("GEO 增长交付报告");
+    expect(lightViewSource).toContain("查看原始 AI 回答证据");
+    expect(lightViewSource).not.toContain("老板先看这 3 点");
+    expect(lightViewSource).not.toContain("本轮你获得了什么");
+    expect(lightViewSource).not.toContain("AI 搜索可见度评分");
+    expect(productBodySource).toContain("delivery-report-boss-summary");
     for (const text of ["经营结论", "本轮报告摘要", "AI 搜索实测结果", "查看完整证据", "查看证据"]) {
       expect(customerViewSource).toContain(text);
     }
-    expect(lightViewSource + publicSource).toContain(
-      "暂无 AI 搜索实测数据。建议先完成一次 AI 实测，以建立可追溯的可见度基线。",
-    );
+    expect(lightViewSource + publicSource).toContain("原因：尚未完成 AI 搜索实测。下一步：先完成一次 AI 实测，以建立可追溯的可见度基线。");
     expect(flowSource).toContain("DeliveryReportsCenterPage");
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain(
       "报告链接无效或已失效，请联系服务人员重新获取",
