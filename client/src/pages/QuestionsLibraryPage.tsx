@@ -1,6 +1,11 @@
-import { P0Card, P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
+import { P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
+import { QuestionBankCurrentRoundPanel } from "@/components/questions/QuestionBankCurrentRoundPanel";
+import {
+  QuestionIntentGroupSection,
+  QuestionUnclassifiedGroupSection,
+} from "@/components/questions/QuestionIntentGroupSection";
+import { QuestionQualityStandardsPanel } from "@/components/questions/QuestionQualityStandardsPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,129 +24,34 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
-import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
 import {
-  T0_QUESTION_GAP_TAGS,
-  type T0QuestionGapTagLabel,
-} from "@shared/t0QuestionGapTags";
+  buildQuestionBankOverviewMetrics,
+  buildQuestionIntentGroupStats,
+  groupQuestionsByIntent,
+  QUESTION_INTENT_GROUPS,
+  resolveQuestionIntentLabel,
+  type QuestionBankRow,
+  type TestRoundSummary,
+} from "@shared/questionBankIntentMap";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { CircleHelp, Library, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Library, Map, Plus, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
-type QuestionRow = {
-  id: number;
-  questionText: string;
-  questionType: string;
-  enabled: number | boolean | null;
-  contentGapTags?: string[] | null;
-};
-
-const GAP_TAG_BADGE_CLASS: Record<T0QuestionGapTagLabel, string> = {
-  [T0_QUESTION_GAP_TAGS.highPriorityGap]: "border-amber-200 bg-amber-50 text-amber-800",
-  [T0_QUESTION_GAP_TAGS.competitorSuppression]: "border-rose-200 bg-rose-50 text-rose-800",
-  [T0_QUESTION_GAP_TAGS.lowRecommendRate]: "border-sky-200 bg-sky-50 text-sky-800",
-};
-
-function questionGapTags(question: QuestionRow): T0QuestionGapTagLabel[] {
-  if (!Array.isArray(question.contentGapTags)) return [];
-  return question.contentGapTags.filter(
-    (tag): tag is T0QuestionGapTagLabel =>
-      tag === T0_QUESTION_GAP_TAGS.highPriorityGap ||
-      tag === T0_QUESTION_GAP_TAGS.competitorSuppression ||
-      tag === T0_QUESTION_GAP_TAGS.lowRecommendRate,
-  );
-}
-
-type QuestionPriorityLevel = "高" | "中" | "低";
-
-function questionPriorityRank(question: QuestionRow): number {
-  const tags = questionGapTags(question);
-  if (tags.includes(T0_QUESTION_GAP_TAGS.highPriorityGap)) return 0;
-  if (tags.includes(T0_QUESTION_GAP_TAGS.competitorSuppression)) return 1;
-  if (tags.includes(T0_QUESTION_GAP_TAGS.lowRecommendRate)) return 2;
-  return 3;
-}
-
-function questionPriorityLevel(question: QuestionRow): QuestionPriorityLevel {
-  const rank = questionPriorityRank(question);
-  if (rank === 0) return "高";
-  if (rank <= 2) return "中";
-  return "低";
-}
-
-const PRIORITY_BADGE_CLASS: Record<QuestionPriorityLevel, string> = {
-  高: "border-rose-200 bg-rose-50 text-rose-800",
-  中: "border-amber-200 bg-amber-50 text-amber-800",
-  低: "border-gray-200 bg-gray-50 text-gray-600",
-};
-
-function sortQuestionsByPriority(items: QuestionRow[]): QuestionRow[] {
-  return [...items].sort((a, b) => {
-    const rankDiff = questionPriorityRank(a) - questionPriorityRank(b);
-    if (rankDiff !== 0) return rankDiff;
-    return a.id - b.id;
-  });
-}
-
-const LIBRARY_GROUPS = [
-  { key: "品牌认知", dbType: "品牌认知", label: "品牌认知" },
-  { key: "行业推荐", dbType: "行业推荐", label: "行业推荐" },
-  { key: "竞品对比", dbType: "竞品对比", label: "竞品对比" },
-  { key: "场景需求", dbType: "scenario_need", label: "场景需求" },
-  { key: "长尾转化", dbType: "long_tail_conversion", label: "长尾转化" },
-  { key: "指定问题", dbType: "指定问题", label: "指定问题" },
+const MANUAL_ADD_TYPES = [
+  { value: "品牌认知", label: "品牌认知" },
+  { value: "scenario_need", label: "场景痛点" },
+  { value: "行业推荐", label: "方案寻找" },
+  { value: "竞品对比", label: "竞品比较" },
+  { value: "long_tail_conversion", label: "购买决策" },
+  { value: "指定问题", label: "指定问题" },
 ] as const;
-
-type LibraryGroupKey = (typeof LIBRARY_GROUPS)[number]["key"] | "其他类型";
-
-type QuestionGroup = {
-  key: LibraryGroupKey;
-  dbType: string;
-  label: string;
-  items: QuestionRow[];
-};
-
-const MANUAL_ADD_TYPES = LIBRARY_GROUPS.map(g => ({ value: g.dbType, label: g.label }));
-
-const GROUP_DB_TYPES = new Set<string>(LIBRARY_GROUPS.map(g => g.dbType));
-const HIGH_PRIORITY_VISIBLE_COUNT = 8;
-
-const GROUP_HELP_TEXT: Record<LibraryGroupKey, string> = {
-  品牌认知: "用于判断 AI 是否能正确识别与理解品牌基本信息。",
-  行业推荐: "用于观察 AI 在行业推荐场景下是否会提及并推荐品牌。",
-  竞品对比: "用于评估 AI 对品牌与竞品优劣势的对比表现。",
-  场景需求: "用于检验 AI 在具体使用场景下是否会优先给出品牌方案。",
-  长尾转化: "用于覆盖细分需求和长尾搜索，提升被推荐机会。",
-  指定问题: "用于固定追踪关键业务问题，观察多轮 AI 实测稳定性。",
-  其他类型: "历史问题类型，建议后续按标准分组逐步整理。",
-};
-
-function isQuestionEnabled(enabled: QuestionRow["enabled"]) {
-  return Number(enabled) !== 0;
-}
-
-function buildGenerateMessage(result: {
-  count: number;
-  newCount?: number;
-  filteredCount?: number;
-  hadPreviousQuestions?: boolean;
-}) {
-  const n = result.newCount ?? result.count;
-  if ((result.filteredCount ?? 0) > 0) {
-    return `已过滤部分重复问题，本次生成 ${n} 个新问题。`;
-  }
-  if (result.hadPreviousQuestions) {
-    return "已生成一组新的目标客户问题。";
-  }
-  return `已生成并写入 ${result.count} 条目标客户问题。`;
-}
 
 type FormState = {
   questionText: string;
@@ -152,129 +62,48 @@ function defaultForm(): FormState {
   return { questionText: "", questionType: "指定问题" };
 }
 
-function HelpTooltip({ text }: { text: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex items-center text-gray-400 transition-colors hover:text-gray-600"
-          aria-label="查看说明"
-        >
-          <CircleHelp className="h-3.5 w-3.5" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={6} className="max-w-64 leading-relaxed">
-        {text}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-function QuestionLibraryCard({
-  question,
-  mutating,
-  onToggle,
-  onEdit,
-  onDelete,
-}: {
-  question: QuestionRow;
-  mutating: boolean;
-  onToggle: (question: QuestionRow, nextEnabled: boolean) => void;
-  onEdit: (question: QuestionRow) => void;
-  onDelete: (question: QuestionRow) => void;
+function buildGenerateMessage(result: {
+  count: number;
+  newCount?: number;
+  filteredCount?: number;
+  hadPreviousQuestions?: boolean;
 }) {
-  return (
-    <P0Card className="!p-4" testId={`question-card-${question.id}`}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-sm leading-relaxed text-gray-900">{question.questionText}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className={`text-xs ${PRIORITY_BADGE_CLASS[questionPriorityLevel(question)]}`}
-              data-testid={`question-priority-${question.id}`}
-            >
-              优先级：{questionPriorityLevel(question)}
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {resolveQuestionTypeDisplayLabel(question.questionType)}
-            </Badge>
-            {questionGapTags(question).map(tag => (
-              <Badge
-                key={`${question.id}-${tag}`}
-                variant="outline"
-                className={`text-xs ${GAP_TAG_BADGE_CLASS[tag]}`}
-                data-testid={`question-gap-tag-${question.id}-${tag}`}
-              >
-                {tag}
-              </Badge>
-            ))}
-            {!isQuestionEnabled(question.enabled) ? (
-              <Badge variant="secondary" className="text-xs text-gray-500">
-                已停用
-              </Badge>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Label htmlFor={`toggle-${question.id}`} className="text-xs text-gray-500">
-              启用
-            </Label>
-            <HelpTooltip text="开启后该问题会进入下一轮 AI 实测；关闭后仅保留，不参与当前诊断。" />
-            <Switch
-              id={`toggle-${question.id}`}
-              checked={isQuestionEnabled(question.enabled)}
-              disabled={mutating}
-              onCheckedChange={checked => onToggle(question, checked)}
-              data-testid={`question-toggle-${question.id}`}
-            />
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-500 hover:text-gray-900"
-            disabled={mutating}
-            onClick={() => onEdit(question)}
-            aria-label="编辑问题"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-red-500 hover:text-red-700"
-            disabled={mutating}
-            onClick={() => onDelete(question)}
-            aria-label="删除问题"
-            data-testid={`question-delete-${question.id}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </P0Card>
-  );
+  const n = result.newCount ?? result.count;
+  if ((result.filteredCount ?? 0) > 0) {
+    return `已过滤部分重复问题，本次生成 ${n} 个新问题。请优先启用 5-10 个高价值问题，用于下一轮 AI 实测。`;
+  }
+  if (result.hadPreviousQuestions) {
+    return "已生成一组新的目标客户问题。请优先启用 5-10 个高价值问题，用于下一轮 AI 实测。";
+  }
+  return `已生成并写入 ${result.count} 条目标客户问题。请优先启用 5-10 个高价值问题，用于下一轮 AI 实测。`;
 }
 
 export default function QuestionsLibraryPage() {
   const utils = trpc.useUtils();
+  const [, setLocation] = useLocation();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } = useActiveProjectSelection();
   const [addOpen, setAddOpen] = useState(false);
-  const [editQuestion, setEditQuestion] = useState<QuestionRow | null>(null);
+  const [editQuestion, setEditQuestion] = useState<QuestionBankRow | null>(null);
   const [form, setForm] = useState<FormState>(() => defaultForm());
-  const [showMoreQuestions, setShowMoreQuestions] = useState(false);
-
-  useEffect(() => {
-    setShowMoreQuestions(false);
-  }, [selectedProjectId]);
 
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
   const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
-  const hasProfile = Boolean(assetSummaryQuery.data?.profile);
+  const testRoundsQuery = trpc.geo.testRounds.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const tasksQuery = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const articlesQuery = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
 
   const toggleMutation = trpc.geo.questions.toggle.useMutation({
     onSuccess: async () => {
@@ -312,11 +141,20 @@ export default function QuestionsLibraryPage() {
       await utils.geo.questions.list.invalidate(projectInput);
       toast.success(buildGenerateMessage(result));
     },
-    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成问题建议失败")),
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成高质量问题失败")),
   });
 
-  const questions = (questionsQuery.data ?? []) as QuestionRow[];
-  const loading = enabled && (questionsQuery.isLoading || assetSummaryQuery.isLoading || projectsLoading);
+  const hasProfile = Boolean(assetSummaryQuery.data?.profile);
+  const questions = (questionsQuery.data ?? []) as QuestionBankRow[];
+  const articles = articlesQuery.data ?? [];
+  const loading =
+    enabled &&
+    (questionsQuery.isLoading ||
+      assetSummaryQuery.isLoading ||
+      testRoundsQuery.isLoading ||
+      tasksQuery.isLoading ||
+      articlesQuery.isLoading ||
+      projectsLoading);
   const mutating =
     toggleMutation.isPending ||
     deleteMutation.isPending ||
@@ -324,47 +162,59 @@ export default function QuestionsLibraryPage() {
     updateMutation.isPending ||
     generateMutation.isPending;
 
-  const gapTagSummary = useMemo(() => {
-    const counts = {
-      [T0_QUESTION_GAP_TAGS.highPriorityGap]: 0,
-      [T0_QUESTION_GAP_TAGS.competitorSuppression]: 0,
-      [T0_QUESTION_GAP_TAGS.lowRecommendRate]: 0,
+  const hasCompletedT0Baseline = Boolean(workspaceSummaryQuery.data?.hasCompletedT0Baseline);
+  const testRounds = testRoundsQuery.data ?? [];
+
+  const currentRound = useMemo<TestRoundSummary | null>(() => {
+    const round =
+      testRounds.find(item => item.status === "running") ??
+      testRounds.find(item => item.roundType === "T0_BASELINE" && item.status !== "failed") ??
+      null;
+    if (!round) return null;
+    const linkedQuestions = questions.filter(question => Number(question.enabled) !== 0);
+    const intentLabels = Array.from(
+      new Set(linkedQuestions.map(question => resolveQuestionIntentLabel(question)).filter(label => label !== "待分类")),
+    ).slice(0, 6);
+    return {
+      id: round.id,
+      roundType: round.roundType,
+      roundName: round.roundName,
+      status: round.status,
+      questionsCount: round.questionsCount || linkedQuestions.length,
+      intentLabels,
     };
+  }, [questions, testRounds]);
+
+  const testedQuestionIds = useMemo(() => {
+    const ids = new Set<number>();
+    if (!hasCompletedT0Baseline) return ids;
     for (const question of questions) {
-      for (const tag of questionGapTags(question)) {
-        counts[tag] += 1;
-      }
+      if (Number(question.enabled) !== 0) ids.add(question.id);
     }
-    return counts;
-  }, [questions]);
+    return ids;
+  }, [hasCompletedT0Baseline, questions]);
 
-  const stats = useMemo(() => {
-    const total = questions.length;
-    const enabledCount = questions.filter(q => isQuestionEnabled(q.enabled)).length;
-    const byGroup = LIBRARY_GROUPS.map(group => ({
-      ...group,
-      count: questions.filter(q => q.questionType === group.dbType).length,
-    }));
-    const otherCount = questions.filter(q => !GROUP_DB_TYPES.has(q.questionType)).length;
-    return { total, enabledCount, byGroup, otherCount };
-  }, [questions]);
+  const overview = useMemo(
+    () =>
+      buildQuestionBankOverviewMetrics({
+        questions,
+        currentRoundQuestionCount: currentRound?.questionsCount ?? questions.filter(q => Number(q.enabled) !== 0).length,
+        contentTaskCount: tasksQuery.data?.length ?? 0,
+        hasCompletedT0Baseline,
+      }),
+    [questions, currentRound, tasksQuery.data, hasCompletedT0Baseline],
+  );
 
-  const sortedAllQuestions = useMemo(() => sortQuestionsByPriority(questions), [questions]);
-  const primaryQuestions = useMemo(
-    () => sortedAllQuestions.slice(0, HIGH_PRIORITY_VISIBLE_COUNT),
-    [sortedAllQuestions],
-  );
-  const hiddenQuestions = useMemo(
-    () => sortedAllQuestions.slice(HIGH_PRIORITY_VISIBLE_COUNT),
-    [sortedAllQuestions],
-  );
-  const hiddenNonLowQuestions = useMemo(
-    () => hiddenQuestions.filter(q => questionPriorityLevel(q) !== "低"),
-    [hiddenQuestions],
-  );
-  const hiddenLowQuestions = useMemo(
-    () => hiddenQuestions.filter(q => questionPriorityLevel(q) === "低"),
-    [hiddenQuestions],
+  const intentGroups = useMemo(() => groupQuestionsByIntent(questions), [questions]);
+  const intentStats = useMemo(
+    () =>
+      buildQuestionIntentGroupStats({
+        questions,
+        testedQuestionIds,
+        hasCompletedT0Baseline,
+        articles,
+      }),
+    [questions, testedQuestionIds, hasCompletedT0Baseline, articles],
   );
 
   function openAddDialog() {
@@ -372,11 +222,13 @@ export default function QuestionsLibraryPage() {
     setAddOpen(true);
   }
 
-  function openEditDialog(question: QuestionRow) {
+  function openEditDialog(question: QuestionBankRow) {
     setEditQuestion(question);
     setForm({
       questionText: question.questionText,
-      questionType: GROUP_DB_TYPES.has(question.questionType) ? question.questionType : "指定问题",
+      questionType: MANUAL_ADD_TYPES.some(type => type.value === question.questionType)
+        ? question.questionType
+        : "指定问题",
     });
   }
 
@@ -411,15 +263,15 @@ export default function QuestionsLibraryPage() {
       projectId: selectedProjectId,
       questionText,
       questionType: form.questionType as (typeof MANUAL_ADD_TYPES)[number]["value"],
-      enabled: isQuestionEnabled(editQuestion.enabled),
+      enabled: Number(editQuestion.enabled) !== 0,
     });
   }
 
-  function handleToggle(question: QuestionRow, nextEnabled: boolean) {
+  function handleToggle(question: QuestionBankRow, nextEnabled: boolean) {
     toggleMutation.mutate({ id: question.id, enabled: nextEnabled });
   }
 
-  function handleDelete(question: QuestionRow) {
+  function handleDelete(question: QuestionBankRow) {
     const ok = window.confirm(`确定删除该问题？\n\n${question.questionText}`);
     if (!ok) return;
     deleteMutation.mutate({ id: question.id });
@@ -431,10 +283,15 @@ export default function QuestionsLibraryPage() {
       return;
     }
     if (!hasProfile) {
-      toast.error("请先完成企业档案建档，再生成问题建议");
+      toast.error("请先完成企业档案建档，再生成高质量问题");
       return;
     }
     generateMutation.mutate({ projectId: selectedProjectId });
+  }
+
+  function goCreateRound() {
+    if (!selectedProjectId) return;
+    setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
   }
 
   if (!enabled && !projectsLoading) {
@@ -442,16 +299,18 @@ export default function QuestionsLibraryPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="questions-intent-map-page">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Library className="h-6 w-6 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">问题库</h1>
+            <Map className="h-5 w-5 text-blue-500" />
+            <h1 className="text-2xl font-bold text-gray-900">AI 搜索问题库</h1>
           </div>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            问题库用于 AI 实测诊断。启用的问题会进入下一轮 AI 实测，用来判断品牌是否被提及、推荐和正确理解。
+          <p className="mt-1 max-w-3xl text-sm text-gray-500" data-testid="questions-page-subtitle">
+            管理目标客户会向 AI 提问的问题，用于实测品牌可见度、发现 GEO 缺口，并生成内容任务。
           </p>
+          <p className="mt-1 text-xs text-gray-500">AI 搜索需求地图 · 按客户意图组织问题优先级与下一步动作</p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">
               当前项目：<span className="font-medium text-gray-900">{selectedProject.enterpriseName}</span>
@@ -484,12 +343,23 @@ export default function QuestionsLibraryPage() {
             ) : (
               <>
                 <Sparkles className="mr-1.5 h-4 w-4" />
-                生成问题建议
+                生成高质量问题
               </>
             )}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!selectedProjectId || overview.enabledCount === 0}
+            onClick={goCreateRound}
+            data-testid="questions-library-create-round-top"
+          >
+            创建本轮实测题组
+          </Button>
         </div>
       </div>
+
+      <QuestionQualityStandardsPanel />
 
       {loading ? (
         <div className="flex min-h-[240px] items-center justify-center">
@@ -497,74 +367,70 @@ export default function QuestionsLibraryPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <P0MetricTile
-              label="全问题数"
-              value={String(stats.total)}
-              hint="当前项目已配置的问题总数"
-              tooltip="全问题数=当前项目中所有问题，包含启用和停用状态。"
-            />
-            <P0MetricTile
-              label="已启用"
-              value={String(stats.enabledCount)}
-              hint="已启用，将进入下一轮 AI 实测"
-              tooltip="已启用=当前会参与下一轮 AI 实测诊断的问题数量。"
-            />
-            <P0MetricTile
-              label="已用"
-              value={String(Math.max(stats.total - stats.enabledCount, 0))}
-              hint="已停用，当前轮次不会参与 AI 实测"
-              tooltip="已用=当前停用的问题，保留在库中但不会用于本轮 AI 实测。"
-            />
-            <P0MetricTile
-              label="固定问题"
-              value={String(stats.byGroup.find(g => g.key === "指定问题")?.count ?? 0)}
-              hint="长期追踪的关键诊断问题"
-              tooltip="固定问题=指定问题分组中的稳定追踪问题，用于跨轮次对比。"
-            />
+          <P0Section title="问题库总览" description="从问题选择、AI 实测到内容任务的当前进度">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-testid="question-bank-overview">
+              <P0MetricTile
+                label="问题总数"
+                value={String(overview.total)}
+                hint="当前项目已配置的问题总数"
+              />
+              <P0MetricTile
+                label="已启用"
+                value={String(overview.enabledCount)}
+                hint="启用后将进入下一轮 AI 实测与内容生产候选范围"
+              />
+              <P0MetricTile
+                label="本轮实测题"
+                value={String(overview.currentRoundQuestionCount)}
+                hint="当前启用并纳入实测题组的问题数量"
+              />
+              <P0MetricTile
+                label="已发现缺口"
+                value={
+                  overview.hasCompletedT0Baseline
+                    ? String(overview.gapCount)
+                    : "待完成 AI 实测后生成"
+                }
+                hint={
+                  overview.hasCompletedT0Baseline
+                    ? "T0 实测后自动标注的内容缺口数量"
+                    : "完成 AI 基线检测后展示缺口统计"
+                }
+              />
+              <P0MetricTile
+                label="已生成内容任务"
+                value={
+                  overview.contentTaskCount > 0
+                    ? String(overview.contentTaskCount)
+                    : "待选择问题后生成"
+                }
+                hint={
+                  overview.contentTaskCount > 0
+                    ? "基于诊断缺口生成的内容优化任务数"
+                    : "发现 GEO 缺口后可围绕问题生成内容"
+                }
+              />
+            </div>
+          </P0Section>
+
+          <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <p className="font-medium">生成说明</p>
+            <p className="mt-1">
+              系统将基于企业资料、目标客户、核心产品、客户痛点和 AI 实测结果，生成更接近真实 AI 搜索场景的问题。
+            </p>
           </div>
 
-          {Object.values(gapTagSummary).some(count => count > 0) ? (
-            <P0Card>
-              <p className="text-sm font-medium text-gray-900">T0 内容缺口标签</p>
-              <p className="mt-1 text-xs text-gray-500">
-                基于最近一次 T0 检测自动标注，便于优先补充内容方向。
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(Object.entries(gapTagSummary) as [T0QuestionGapTagLabel, number][]).map(([tag, count]) =>
-                  count > 0 ? (
-                    <Badge key={tag} variant="outline" className={`text-xs ${GAP_TAG_BADGE_CLASS[tag]}`}>
-                      {tag} {count}
-                    </Badge>
-                  ) : null,
-                )}
-              </div>
-            </P0Card>
-          ) : null}
-
-          {stats.byGroup.some(g => g.count > 0) ? (
-            <P0Card>
-              <p className="text-sm font-medium text-gray-900">各类型分布</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {stats.byGroup.map(group => (
-                  <Badge key={group.key} variant="secondary" className="text-xs">
-                    {group.label} {group.count}
-                  </Badge>
-                ))}
-                {stats.otherCount > 0 ? (
-                  <Badge variant="secondary" className="text-xs">
-                    其他类型 {stats.otherCount}
-                  </Badge>
-                ) : null}
-              </div>
-            </P0Card>
-          ) : null}
+          <QuestionBankCurrentRoundPanel
+            projectId={selectedProjectId ?? null}
+            currentRound={currentRound}
+            enabledQuestionCount={overview.enabledCount}
+          />
 
           {questions.length === 0 ? (
-            <P0Card className="text-center">
+            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
               <p className="text-sm font-medium text-gray-900">还没有问题</p>
               <p className="mt-2 text-sm text-gray-500">
-                可基于企业档案生成问题建议，或手动添加「指定问题」与各类诊断问题。
+                可基于企业档案生成高质量问题，或手动添加高价值客户问题，优先覆盖品牌认知、场景痛点与方案寻找。
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <Button type="button" variant="outline" onClick={openAddDialog} disabled={!selectedProjectId}>
@@ -576,91 +442,47 @@ export default function QuestionsLibraryPage() {
                   onClick={handleGenerate}
                   disabled={!selectedProjectId || !hasProfile || generateMutation.isPending}
                 >
-                  生成问题建议
+                  生成高质量问题
                 </Button>
               </div>
-            </P0Card>
-          ) : (
-            <div className="space-y-4">
-              <p
-                className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900"
-                data-testid="questions-library-priority-hint"
-              >
-                默认展示按重要性排序的前 {HIGH_PRIORITY_VISIBLE_COUNT} 条高优先级问题；其余问题可展开查看，低优先级问题默认折叠。
-              </p>
-              <P0Section
-                title="高优先级问题"
-                description={`默认展示前 ${HIGH_PRIORITY_VISIBLE_COUNT} 条，带「高」标签的为 T0 检测识别的优先缺口。`}
-              >
-                <div className="grid gap-3" data-testid="questions-library-primary-list">
-                  {primaryQuestions.map(question => (
-                    <QuestionLibraryCard
-                      key={question.id}
-                      question={question}
-                      mutating={mutating}
-                      onToggle={handleToggle}
-                      onEdit={openEditDialog}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              </P0Section>
-              {hiddenQuestions.length > 0 ? (
-                <div className="space-y-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                    data-testid="questions-library-expand-more"
-                    onClick={() => setShowMoreQuestions(prev => !prev)}
-                  >
-                    {showMoreQuestions
-                      ? "收起其余问题"
-                      : `展开其余 ${hiddenQuestions.length} 条问题`}
-                  </Button>
-                  {showMoreQuestions ? (
-                    <div className="space-y-4" data-testid="questions-library-expanded-list">
-                      {hiddenNonLowQuestions.length > 0 ? (
-                        <div className="grid gap-3">
-                          {hiddenNonLowQuestions.map(question => (
-                            <QuestionLibraryCard
-                              key={question.id}
-                              question={question}
-                              mutating={mutating}
-                              onToggle={handleToggle}
-                              onEdit={openEditDialog}
-                              onDelete={handleDelete}
-                            />
-                          ))}
-                        </div>
-                      ) : null}
-                      {hiddenLowQuestions.length > 0 ? (
-                        <details
-                          className="rounded-xl border border-gray-200 bg-gray-50/80"
-                          data-testid="questions-library-low-priority-fold"
-                        >
-                          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-800">
-                            低优先级问题（{hiddenLowQuestions.length} 条，默认折叠）
-                          </summary>
-                          <div className="grid gap-3 border-t border-gray-200 p-4">
-                            {hiddenLowQuestions.map(question => (
-                              <QuestionLibraryCard
-                                key={question.id}
-                                question={question}
-                                mutating={mutating}
-                                onToggle={handleToggle}
-                                onEdit={openEditDialog}
-                                onDelete={handleDelete}
-                              />
-                            ))}
-                          </div>
-                        </details>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
+          ) : (
+            <P0Section
+              title="问题意图分组"
+              description="按客户搜索意图查看问题质量、实测状态与内容进展"
+            >
+              <div className="space-y-3">
+                {QUESTION_INTENT_GROUPS.map(group => (
+                  <QuestionIntentGroupSection
+                    key={group.key}
+                    groupKey={group.key}
+                    label={group.label}
+                    defaultOpen={group.defaultOpen}
+                    stats={intentStats[group.key]}
+                    questions={intentGroups.grouped[group.key]}
+                    testedQuestionIds={testedQuestionIds}
+                    hasCompletedT0Baseline={hasCompletedT0Baseline}
+                    articles={articles}
+                    mutating={mutating}
+                    projectId={selectedProjectId ?? null}
+                    onToggle={handleToggle}
+                    onEdit={openEditDialog}
+                    onDelete={handleDelete}
+                  />
+                ))}
+                <QuestionUnclassifiedGroupSection
+                  questions={intentGroups.unclassified}
+                  testedQuestionIds={testedQuestionIds}
+                  hasCompletedT0Baseline={hasCompletedT0Baseline}
+                  articles={articles}
+                  mutating={mutating}
+                  projectId={selectedProjectId ?? null}
+                  onToggle={handleToggle}
+                  onEdit={openEditDialog}
+                  onDelete={handleDelete}
+                />
+              </div>
+            </P0Section>
           )}
         </>
       )}
@@ -669,7 +491,7 @@ export default function QuestionsLibraryPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>手动添加问题</DialogTitle>
-            <DialogDescription>填写客户可能向 AI 提问的内容，并选择问题类型。</DialogDescription>
+            <DialogDescription>填写客户可能向 AI 提问的内容，并选择问题意图类型。</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -718,7 +540,7 @@ export default function QuestionsLibraryPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>编辑问题</DialogTitle>
-            <DialogDescription>修改问题内容或类型，保存后立即生效。</DialogDescription>
+            <DialogDescription>修改问题内容或意图类型，保存后立即生效。</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -764,7 +586,7 @@ export default function QuestionsLibraryPage() {
 
       {!hasProfile && selectedProjectId ? (
         <p className={geoP0Surfaces.muted}>
-          提示：完成企业档案后可使用「生成问题建议」，基于品牌与行业信息自动写入指定问题。
+          提示：完成企业档案后可使用「生成高质量问题」，基于品牌与行业信息自动写入客户搜索问题。
         </p>
       ) : null}
     </div>
