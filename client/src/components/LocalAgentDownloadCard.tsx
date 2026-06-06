@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { buildLocalAgentDownloadCardServerContext } from "@/lib/localAgentDownloadCardContext";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
+import { trpc } from "@/lib/trpc";
 import type { LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync";
 import {
   inferServerHeartbeatFromPlatformAccounts,
@@ -22,6 +24,8 @@ type DownloadManifest = {
 };
 
 type Props = {
+  /** 传入后卡片自行拉取平台账号，不依赖父组件 props 时序 */
+  projectId?: number;
   platformAccounts?: ServerHeartbeatPlatformAccountRow[];
   boundPublishAccountCount?: number;
   localAgentAccountSnapshot?: LocalAgentAccountStatusEntry[];
@@ -67,8 +71,9 @@ function pickWinHref(manifest: DownloadManifest | null): string | null {
 }
 
 export function LocalAgentDownloadCard({
-  platformAccounts = [],
-  boundPublishAccountCount = 0,
+  projectId,
+  platformAccounts: platformAccountsProp = [],
+  boundPublishAccountCount: boundPublishAccountCountProp = 0,
   localAgentAccountSnapshot = [],
 }: Props) {
   const [localHttpOk, setLocalHttpOk] = useState<boolean | null>(null);
@@ -77,6 +82,30 @@ export function LocalAgentDownloadCard({
   const [hasChecked, setHasChecked] = useState(false);
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
   const [macHref, setMacHref] = useState<string | null>(null);
+
+  const accountsQuery = trpc.geo.platformAccounts.list.useQuery(
+    { projectId: projectId! },
+    { enabled: Boolean(projectId) },
+  );
+
+  const serverContextFromQuery = useMemo(
+    () => buildLocalAgentDownloadCardServerContext(accountsQuery.data?.accounts ?? []),
+    [accountsQuery.data?.accounts],
+  );
+
+  const platformAccounts = useMemo(() => {
+    if (serverContextFromQuery.platformAccounts.length > 0) {
+      return serverContextFromQuery.platformAccounts;
+    }
+    return platformAccountsProp;
+  }, [platformAccountsProp, serverContextFromQuery.platformAccounts]);
+
+  const boundPublishAccountCount = useMemo(() => {
+    if (serverContextFromQuery.boundPublishAccountCount > 0) {
+      return serverContextFromQuery.boundPublishAccountCount;
+    }
+    return boundPublishAccountCountProp;
+  }, [boundPublishAccountCountProp, serverContextFromQuery.boundPublishAccountCount]);
 
   const serverHeartbeat = useMemo(
     () => inferServerHeartbeatFromPlatformAccounts(platformAccounts),
@@ -118,6 +147,17 @@ export function LocalAgentDownloadCard({
     }
   }, []);
 
+  const resolveServerContextForDetect = useCallback(async () => {
+    if (!projectId) {
+      return {
+        platformAccounts,
+        boundPublishAccountCount,
+      };
+    }
+    const fresh = await accountsQuery.refetch();
+    return buildLocalAgentDownloadCardServerContext(fresh.data?.accounts ?? []);
+  }, [accountsQuery, boundPublishAccountCount, platformAccounts, projectId]);
+
   useEffect(() => {
     fetch("/downloads/manifest.json")
       .then(r => (r.ok ? r.json() : null))
@@ -135,14 +175,16 @@ export function LocalAgentDownloadCard({
   const winOffered = Boolean(winHref);
 
   const handleDetect = async () => {
+    const serverContext = await resolveServerContextForDetect();
+    const heartbeat = inferServerHeartbeatFromPlatformAccounts(serverContext.platformAccounts);
     const h = await refreshHealth(true);
     const nextState = resolveLocalAgentConnectionState({
-      serverHeartbeatConnected: serverHeartbeat.connected,
-      serverLastActivityAt: serverHeartbeat.lastActivityAt,
-      platformAccounts,
+      serverHeartbeatConnected: heartbeat.connected,
+      serverLastActivityAt: heartbeat.lastActivityAt,
+      platformAccounts: serverContext.platformAccounts,
       localHttpCheckResult: Boolean(h?.ok),
       localAgentAccountSnapshot,
-      boundPublishAccountCount,
+      boundPublishAccountCount: serverContext.boundPublishAccountCount,
     });
     const feedback = localAgentConnectionCheckFeedback(nextState, {
       localHttpCheckResult: Boolean(h?.ok),

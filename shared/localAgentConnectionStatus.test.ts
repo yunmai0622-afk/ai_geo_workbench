@@ -84,7 +84,7 @@ describe("localAgentConnectionStatus", () => {
     );
   });
 
-  it("active bound account without recent heartbeat timestamp still online", () => {
+  it("active server session without recent heartbeat timestamp still online", () => {
     const staleAccount = {
       ...activeAccount,
       lastSessionCheckedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
@@ -92,7 +92,7 @@ describe("localAgentConnectionStatus", () => {
     const state = resolveLocalAgentConnectionState({
       platformAccounts: [staleAccount],
       localHttpCheckResult: false,
-      boundPublishAccountCount: 1,
+      boundPublishAccountCount: 0,
     });
     expect(isLocalAgentResolvedConnected(state)).toBe(true);
     expect(localAgentDownloadCardConnectionDetail({ state, hasCheckedLocalHttp: true })).toBe(

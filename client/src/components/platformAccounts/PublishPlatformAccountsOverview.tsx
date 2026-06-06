@@ -163,6 +163,7 @@ export function PublishPlatformAccountsOverview({
       {showDownloadCard ? (
         <div className="mt-4">
           <LocalAgentDownloadCard
+            projectId={projectId}
             platformAccounts={flattenedPlatformAccounts}
             boundPublishAccountCount={boundPublishAccountCount}
           />

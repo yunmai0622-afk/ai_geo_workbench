@@ -72,6 +72,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
 
       {showDownloadCard ? (
         <LocalAgentDownloadCard
+          projectId={projectId}
           platformAccounts={flattenedPlatformAccounts}
           boundPublishAccountCount={boundPublishAccountCount}
         />

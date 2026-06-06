@@ -14,22 +14,24 @@ describe("GEO-V1.1 LocalAgentDownloadCard status hard sync P0", () => {
     expect(card).toContain("isLocalAgentResolvedConnected");
     expect(card).toContain("localAgentConnectionCheckFeedback");
     expect(card).toContain("localAgentDownloadCardConnectionDetail");
+    expect(card).toContain("geo.platformAccounts.list.useQuery");
+    expect(card).toContain("resolveServerContextForDetect");
     expect(card).not.toContain("未检测到本地发布客户端，请下载安装并启动后重试");
     expect(card).not.toContain("未检测到本地发布客户端。请先下载安装并启动");
     expect(card).not.toContain("void refreshHealth()");
     expect(card).not.toMatch(/useEffect\(\(\)\s*=>\s*\{[^}]*refreshHealth/);
   });
 
-  it("all LocalAgentDownloadCard entry points pass server context", () => {
+  it("all LocalAgentDownloadCard entry points pass projectId for self-fetch", () => {
     const publishPage = read("client/src/pages/ContentPublishingCenterPage.tsx");
     const overview = read("client/src/components/platformAccounts/PublishPlatformAccountsOverview.tsx");
     const matrix = read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
     const enterprise = read("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx");
 
-    expect(publishPage).toContain("platformAccounts={flattenedPlatformAccounts}");
-    expect(overview).toContain("platformAccounts={flattenedPlatformAccounts}");
-    expect(matrix).toContain("platformAccounts={flattenedPlatformAccounts}");
-    expect(enterprise).toContain("platformAccounts={flattenedPlatformAccounts}");
+    expect(publishPage).toContain("projectId={selectedProjectId");
+    expect(overview).toContain("projectId={projectId}");
+    expect(matrix).toContain("projectId={projectId}");
+    expect(enterprise).toContain("projectId={projectId}");
   });
 
   it("legacy offline copy removed from binding matrix", () => {

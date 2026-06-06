@@ -1215,6 +1215,7 @@ function ContentPublishingCenterPageInner() {
                   updateNotice={localAgentUpdateNotice}
                 />
                 <LocalAgentDownloadCard
+                  projectId={selectedProjectId ?? undefined}
                   platformAccounts={flattenedPlatformAccounts}
                   boundPublishAccountCount={boundPublishAccountCount}
                   localAgentAccountSnapshot={localAgentAccountSnapshot}

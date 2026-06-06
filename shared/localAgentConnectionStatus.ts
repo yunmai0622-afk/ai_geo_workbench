@@ -269,12 +269,10 @@ export function resolveLocalAgentConnectionState(
     (heartbeat.lastActivityAt == null || isRecentActivityTimestamp(heartbeat.lastActivityAt, now));
 
   const snapshotRecent = snapshotIndicatesRecentServerSync(input.localAgentAccountSnapshot, now);
-  const activeBoundServerSession =
-    (input.boundPublishAccountCount ?? 0) > 0 &&
-    hasActiveServerSessionRows(input.platformAccounts);
+  const activeServerSession = hasActiveServerSessionRows(input.platformAccounts);
 
   const serverOnline =
-    serverRecent || snapshotRecent || activeBoundServerSession || heartbeat.connected;
+    serverRecent || snapshotRecent || activeServerSession || heartbeat.connected;
 
   const localOk = input.localHttpCheckResult === true;
   const localFailed = input.localHttpCheckResult === false || input.localHttpProbeThrew === true;
