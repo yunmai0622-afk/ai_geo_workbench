@@ -13,16 +13,16 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
 
   it("首屏平台化内容生产结构", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("GEO 内容生产工作台");
+    expect(weekly).toContain("内容生产与审核工作台");
     expect(weekly).not.toContain("当前企业：");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
-    expect(taskCard).toContain("本轮内容任务");
+    expect(taskCard).toContain("本轮内容任务总览");
     expect(weekly).toContain("resolveGeoContentTaskSource");
     expect(weekly).toContain("contentTaskId:");
     expect(weekly).toContain("diagnosisFinding:");
     expect(weekly).toContain("geoGap:");
-    expect(taskCard).toContain("GEO 缺口");
-    expect(taskCard).toContain("本轮目标");
+    expect(taskCard).toContain("对应 GEO 缺口");
+    expect(taskCard).toContain("下一步建议");
     expect(weekly).not.toMatch(/本轮内容目标/);
     expect(weekly).not.toMatch(/内容策略来源/);
   });
@@ -35,13 +35,12 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
     expect(weekly).toContain("选择内容缺口");
   });
 
-  it("平台矩阵与禁止一稿多发", () => {
+  it("平台看板与禁止一稿多发", () => {
     const defs = read("client/src/lib/weeklyPlatformBoard.ts");
     for (const label of ["小红书", "知乎", "百家号", "头条号", "搜狐号", "网易号", "公众号", "其他平台"]) {
       expect(defs).toContain(label);
     }
-    expect(board).toContain("平台内容矩阵");
-    expect(board).toContain("平台内容目标");
+    expect(board).toContain("平台内容看板");
     expect(board).toContain("生成该平台内容");
     expect(board).toContain("generatingPlatformKey === def.key");
     expect(weekly).toContain("platform-content-progress");
@@ -72,7 +71,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
       "GeoArticleQualityScoreDetailPopover",
     );
     expect(read("shared/geoArticleQualityScoreDetail.ts")).toContain("实体清晰度");
-    expect(weekly).toContain("加入发布队列");
+    expect(weekly).toContain("requestEnqueuePublish");
     expect(weekly).toContain("getArticlePublishPlatform");
     expect(weekly).toContain("publish-dialog-platform-label");
     expect(weekly).not.toContain("rawAnswer");

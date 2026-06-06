@@ -36,10 +36,13 @@ describe("weeklyContentTaskStatus", () => {
       formatWeeklyContentTaskProgress({
         generatedCount: 3,
         publishReadyCount: 2,
+        pendingReviewCount: 1,
         queuedCount: 1,
         publishedCount: 0,
       }),
-    ).toBe("已生成 3 篇 / 可发布 2 篇 / 已入队 1 篇 / 已发布 0 篇");
+    ).toBe(
+      "已生成 3 篇 / 可发布 2 篇 / 待人工审核 1 篇 / 已入队 1 篇 / 已发布 0 篇",
+    );
   });
 
   it("builds assistant blockers and next steps", () => {

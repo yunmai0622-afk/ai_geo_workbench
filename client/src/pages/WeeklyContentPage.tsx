@@ -22,7 +22,12 @@ import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchG
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
 import { WeeklyAuxiliarySections } from "@/components/weekly/WeeklyAuxiliarySections";
 import { WeeklyContentDetailSheet } from "@/components/weekly/WeeklyContentDetailSheet";
+import {
+  WeeklyContentReviewConfirmDialog,
+  type WeeklyContentReviewDialogMode,
+} from "@/components/weekly/WeeklyContentReviewConfirmDialog";
 import { WeeklyContentTaskControlCard } from "@/components/weekly/WeeklyContentTaskControlCard";
+import { WeeklyLocalAgentStatusBar } from "@/components/weekly/WeeklyLocalAgentStatusBar";
 import {
   WeeklyPublishableContentList,
   type WeeklyPublishableRow,
@@ -128,10 +133,16 @@ import {
   isAccountGroupType,
 } from "@shared/contentStrategy";
 import {
-  CONTENT_REVIEW_PENDING_ENQUEUE_HINT,
   isContentReviewPending,
   normalizeContentReviewStatus,
 } from "@shared/contentReviewStatus";
+import {
+  resolveWeeklyAccountDisplayStatus,
+  resolveWeeklyAiQcDisplayStatus,
+  resolveWeeklyCoverDisplayStatus,
+  resolveWeeklyManualReviewDisplayStatus,
+  resolveWeeklyPublishDisplayStatus,
+} from "@shared/weeklyPublishableDisplay";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
 import { resolveArticleLifecycleView } from "@shared/articleLifecycle";
@@ -512,6 +523,13 @@ export default function WeeklyContentPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailModel, setDetailModel] = useState<WeeklyArticleCardModel | null>(null);
   const [detailStatus, setDetailStatus] = useState<WeeklyContentTaskStatus | null>(null);
+  const [reviewConfirmDialog, setReviewConfirmDialog] = useState<{
+    open: boolean;
+    article: ArticleRow | null;
+    confirmed: boolean;
+    mode: WeeklyContentReviewDialogMode;
+  }>({ open: false, article: null, confirmed: false, mode: "review_and_enqueue" });
+  const [reviewConfirmBusy, setReviewConfirmBusy] = useState(false);
   const [generatedSectionOpen, setGeneratedSectionOpen] = useState(false);
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading, projects } =
@@ -1252,6 +1270,9 @@ export default function WeeklyContentPage() {
         published: 0,
       };
       let platformArticle: ArticleRow | undefined;
+      let pendingReviewCount = 0;
+      let queuedCount = 0;
+      let lastGeneratedAt: Date | null = null;
       for (const topic of topics) {
         const task = typeof topic.optimizationTaskId === "number" ? tasksById.get(topic.optimizationTaskId) : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
@@ -1279,6 +1300,19 @@ export default function WeeklyContentPage() {
         if (article.status === "已发布") counts.published += 1;
         else if (pass) counts.ready += 1;
         else counts.pendingConfirm += 1;
+        if (pass && isContentReviewPending(article.contentReviewStatus)) pendingReviewCount += 1;
+        const articleTask = latestPublishTaskByArticle.get(article.id);
+        if (
+          articleTask &&
+          articleTask.status !== "failed" &&
+          articleTask.status !== "session_expired"
+        ) {
+          queuedCount += 1;
+        }
+        const createdAt = article.createdAt ? new Date(article.createdAt) : null;
+        if (createdAt && (!lastGeneratedAt || createdAt.getTime() > lastGeneratedAt.getTime())) {
+          lastGeneratedAt = createdAt;
+        }
       }
       const generating = generatingPlatformKey === def.key;
       const published = platformArticle?.status === "已发布";
@@ -1307,9 +1341,20 @@ export default function WeeklyContentPage() {
         platformArticle && typeof platformArticle.topicId === "number"
           ? topicsById.get(platformArticle.topicId)
           : undefined;
+      const lastGeneratedAtLabel = lastGeneratedAt
+        ? lastGeneratedAt.toLocaleString("zh-CN", {
+            month: "numeric",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : null;
       return {
         def,
         counts,
+        pendingReviewCount,
+        queuedCount,
+        lastGeneratedAtLabel,
         platformRole: getWeeklyPlatformContentRole(def.key),
         platformGenerationGoal: buildWeeklyPlatformGenerationGoal(def.key, linkedQuestion, sceneLabel),
         publishHint:
@@ -1323,11 +1368,8 @@ export default function WeeklyContentPage() {
                   ? "本平台已有发布内容，建议回填公开链接并进入复测。"
                   : "先生成本平台内容，再推进发布与复测。",
         status,
-        title: platformArticle?.title ?? topicForArticle?.title ?? null,
-        geoGap: geoGapDefault,
         hasContent: generatedCount > 0,
         articleId: platformArticle?.id ?? null,
-        canEnqueue: publishReady && !queued && !published,
       };
     });
   }, [
@@ -1491,30 +1533,72 @@ export default function WeeklyContentPage() {
     [contentCardModels],
   );
 
+  const pendingReviewCount = useMemo(
+    () =>
+      contentCardModels.filter(
+        c => c.publishPreflightReady && isContentReviewPending(c.contentReviewStatus),
+      ).length,
+    [contentCardModels],
+  );
+
   const taskProgress = useMemo((): WeeklyContentTaskProgress => {
     const generatedCount = contentCardModels.length;
     const publishReadyCount = contentCardModels.filter(c => c.publishPreflightReady).length;
     const queuedCount = contentCardModels.filter(c => c.queuedForPublish).length;
     const publishedCount = contentCardModels.filter(c => c.statusFilterKey === "published").length;
-    return { generatedCount, publishReadyCount, queuedCount, publishedCount };
+    return {
+      generatedCount,
+      publishReadyCount,
+      pendingReviewCount,
+      queuedCount,
+      publishedCount,
+    };
+  }, [contentCardModels, pendingReviewCount]);
+
+  const recommendedPlatforms = useMemo(() => {
+    const labels = new Set<string>();
+    for (const card of contentCardModels) {
+      if (card.targetPlatform?.trim()) labels.add(card.targetPlatform.trim());
+    }
+    if (labels.size > 0) return Array.from(labels);
+    return WEEKLY_PLATFORM_DEFS.slice(0, 4).map(d => d.label);
   }, [contentCardModels]);
 
   const publishableRows = useMemo((): WeeklyPublishableRow[] => {
     return contentCardModels
       .filter(card => card.publishPreflightReady && card.statusFilterKey !== "published")
-      .map(card => ({
-        ...card,
-        taskStatus: resolveWeeklyPlatformContentStatus({
-          hasArticle: true,
-          published: card.statusFilterKey === "published",
-          queued: card.queuedForPublish,
-          publishReady: card.publishPreflightReady,
-          article: card.article as Parameters<typeof resolveWeeklyPlatformContentStatus>[0]["article"],
-          needsRewrite: card.lifecycle?.status === "needs_revision",
-        }),
-        coverReady: Boolean(card.coverThumbnailSrc),
-        accountReady: card.publishPreflightReady === true && !card.publishBlockHint,
-      }));
+      .map(card => {
+        const platformResolved = getArticlePublishPlatform({
+          generationBasis:
+            (card.article.generationBasis as Record<string, unknown> | null | undefined) ?? null,
+          targetPlatform: card.targetPlatform,
+          publishPlatform: (card.article.publishPlatform as string | null | undefined) ?? null,
+        });
+        const queueFailed = card.queuedStatusLabel?.includes("失败") ?? false;
+        return {
+          ...card,
+          aiQcStatus: resolveWeeklyAiQcDisplayStatus(
+            card.article as Parameters<typeof resolveWeeklyAiQcDisplayStatus>[0],
+          ),
+          manualReviewStatus: resolveWeeklyManualReviewDisplayStatus(card.contentReviewStatus),
+          coverStatus: resolveWeeklyCoverDisplayStatus(
+            card.article as Parameters<typeof resolveWeeklyCoverDisplayStatus>[0],
+            platformResolved.publishQueueSlug,
+          ),
+          accountStatus: resolveWeeklyAccountDisplayStatus({
+            publishPreflightReady: card.publishPreflightReady,
+            publishBlockHint: card.publishBlockHint,
+          }),
+          publishStatus: resolveWeeklyPublishDisplayStatus({
+            published: card.statusFilterKey === "published",
+            queued: card.queuedForPublish,
+            queueFailed,
+            manualReviewPending: isContentReviewPending(card.contentReviewStatus),
+            publishPreflightReady: card.publishPreflightReady,
+          }),
+          queueFailed,
+        };
+      });
   }, [contentCardModels]);
 
   const platformProgressText = useMemo(() => {
@@ -1607,20 +1691,7 @@ export default function WeeklyContentPage() {
     return true;
   }, []);
 
-  const openPublishDialog = (article: ArticleRow) => {
-    if (blockPublishIfUnsaved(article.id)) return;
-    if (blockPublishIfQualityReject(article)) return;
-    if (articleNeedsCoverSaveHint(article)) {
-      toast.message(ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE);
-    }
-    if (isGeoQualityScoreStale(article)) {
-      toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
-    } else if (article.geoQualityRecommendation === "revise") {
-      toast.message("内容有优化空间，确认后可继续发布");
-    }
-    if (isContentReviewPending(article.contentReviewStatus)) {
-      toast.message(CONTENT_REVIEW_PENDING_ENQUEUE_HINT);
-    }
+  const preparePublishDialogForArticle = useCallback((article: ArticleRow) => {
     setPublishArticle(article);
     setManualPublishPlatform("");
     const resolved = getArticlePublishPlatform({
@@ -1642,8 +1713,84 @@ export default function WeeklyContentPage() {
     setSelectedPublishAccountIds(restoredAccounts);
     publishDialogPlatformsInitRef.current = true;
     applyPublishDialogAgentSnapshot(localAgentConnectedOnline, localAgentAccountSnapshot);
+  }, [
+    selectedProjectId,
+    localAgentConnectedOnline,
+    localAgentAccountSnapshot,
+    applyPublishDialogAgentSnapshot,
+  ]);
+
+  const openPublishDialog = (article: ArticleRow) => {
+    if (blockPublishIfUnsaved(article.id)) return;
+    if (blockPublishIfQualityReject(article)) return;
+    if (articleNeedsCoverSaveHint(article)) {
+      toast.message(ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE);
+    }
+    if (isGeoQualityScoreStale(article)) {
+      toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
+    } else if (article.geoQualityRecommendation === "revise") {
+      toast.message("内容有优化空间，确认后可继续发布");
+    }
+    preparePublishDialogForArticle(article);
     setPublishDialogOpen(true);
   };
+
+  const requestEnqueuePublish = useCallback(
+    (article: ArticleRow) => {
+      if (blockPublishIfUnsaved(article.id)) return;
+      if (blockPublishIfQualityReject(article)) return;
+      const preflight =
+        selectedProjectId != null
+          ? evaluatePublishPreflight(
+              buildArticlePublishPreflightInput(selectedProjectId, article, publishBaseContext),
+            )
+          : null;
+      if (!preflight?.ready) {
+        toast.error(
+          preflight ? formatPublishPreflightBlockMessage(preflight) : "发布前检查未通过",
+        );
+        return;
+      }
+      if (isContentReviewPending(article.contentReviewStatus)) {
+        setReviewConfirmDialog({
+          open: true,
+          article,
+          confirmed: false,
+          mode: "review_and_enqueue",
+        });
+        return;
+      }
+      if (articleNeedsCoverSaveHint(article)) {
+        toast.message(ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE);
+      }
+      if (isGeoQualityScoreStale(article)) {
+        toast.message(GEO_QUALITY_STALE_PUBLISH_HINT);
+      } else if (article.geoQualityRecommendation === "revise") {
+        toast.message("内容有优化空间，确认后可继续发布");
+      }
+      preparePublishDialogForArticle(article);
+      setPublishDialogOpen(true);
+    },
+    [
+      blockPublishIfUnsaved,
+      blockPublishIfQualityReject,
+      selectedProjectId,
+      publishBaseContext,
+      preparePublishDialogForArticle,
+    ],
+  );
+
+  const openReviewConfirmDialog = useCallback(
+    (article: ArticleRow, mode: WeeklyContentReviewDialogMode = "review_only") => {
+      setReviewConfirmDialog({
+        open: true,
+        article,
+        confirmed: false,
+        mode,
+      });
+    },
+    [],
+  );
 
   const pickPendingTopicForPlatform = useCallback(
     (platformKey: WeeklyPlatformKey, topicRows: TopicRow[], articleTopicIds: Set<number>) => {
@@ -2304,9 +2451,6 @@ export default function WeeklyContentPage() {
     if (articleNeedsCoverSaveHint(publishArticle)) {
       toast.message(ARTICLE_MISSING_COVER_PUBLISH_HINT_MESSAGE);
     }
-    if (isContentReviewPending(publishArticle.contentReviewStatus)) {
-      toast.message(CONTENT_REVIEW_PENDING_ENQUEUE_HINT);
-    }
     const articleId = publishArticle.id;
     const taskIds: number[] = [];
     try {
@@ -2335,6 +2479,104 @@ export default function WeeklyContentPage() {
     }
   };
 
+  const enqueueArticleDirectly = async (article: ArticleRow): Promise<boolean> => {
+    if (!selectedProjectId) return false;
+    if (blockPublishIfUnsaved(article.id)) return false;
+    if (blockPublishIfQualityReject(article)) return false;
+    const preflight = evaluatePublishPreflight(
+      buildArticlePublishPreflightInput(selectedProjectId, article, publishBaseContext),
+    );
+    if (!preflight?.ready) {
+      toast.error(
+        preflight ? formatPublishPreflightBlockMessage(preflight) : "发布前检查未通过",
+      );
+      return false;
+    }
+    const resolved = getArticlePublishPlatform({
+      generationBasis: article.generationBasis ?? null,
+      targetPlatform: article.targetPlatform,
+      publishPlatform: article.publishPlatform,
+    });
+    const slug =
+      resolved.publishQueueSlug && resolved.supportedByLocalAgent && !resolved.queueBlockedReason
+        ? resolved.publishQueueSlug
+        : null;
+    if (!slug || !isBindingPublishPlatform(slug)) {
+      toast.error("当前内容发布平台不可用，请检查平台绑定");
+      return false;
+    }
+    await hydratePublishDialogAgent({ syncToWeb: true });
+    const freshAccountGroups = (((await utils.geo.platformAccounts.list.fetch({ projectId: selectedProjectId }))
+      ?.accounts ?? []) as Array<{ platform: string; accounts: PlatformAccountItem[] }>);
+    const ready = (freshAccountGroups.find(g => g.platform === slug)?.accounts ?? []).filter(
+      isPublishReadyAccount,
+    ) as PlatformAccountItem[];
+    if (ready.length === 0) {
+      toast.error(publishBlockedNoAccountMessage(slug));
+      return false;
+    }
+    const stored = readLastEnqueuePublishAccountId(selectedProjectId, slug);
+    const picked =
+      (stored ? ready.find(a => a.id === stored) : null) ?? (ready.length === 1 ? ready[0]! : null);
+    if (!picked) {
+      preparePublishDialogForArticle(article);
+      setPublishDialogOpen(true);
+      return false;
+    }
+    try {
+      const res = await createPublishTask.mutateAsync({
+        articleId: article.id,
+        platform: slug,
+        projectId: selectedProjectId,
+        platformAccountId: picked.id,
+      });
+      if (res.publishMode !== "local_agent") {
+        toast.error("发布任务未走本地客户端，请联系支持团队检查配置");
+        return false;
+      }
+      rememberEnqueuePublishAccount(slug, picked.id);
+      toast.success("发布任务已发送至本地客户端，请保持客户端运行。");
+      notifyPublishEffectPrediction();
+      void pollPublishTasksUntilDone(article.id, [res.taskId]);
+      return true;
+    } catch (err) {
+      toast.error(toUserFacingErrorFromUnknown(err, "创建发布任务失败"));
+      return false;
+    }
+  };
+
+  const handleReviewConfirmSubmit = async () => {
+    const { article, confirmed, mode } = reviewConfirmDialog;
+    if (!article || !confirmed || !selectedProjectId) return;
+    setReviewConfirmBusy(true);
+    try {
+      await setContentReviewStatus.mutateAsync({
+        projectId: selectedProjectId,
+        articleId: article.id,
+        status: "已审核可发布",
+      });
+      const reviewedArticle: ArticleRow = {
+        ...article,
+        contentReviewStatus: "已审核可发布",
+      };
+      setReviewConfirmDialog({
+        open: false,
+        article: null,
+        confirmed: false,
+        mode: "review_and_enqueue",
+      });
+      if (mode === "review_only") {
+        toast.success("已标记为已审核可发布");
+        return;
+      }
+      await enqueueArticleDirectly(reviewedArticle);
+    } catch (err) {
+      toast.error(toUserFacingErrorFromUnknown(err, "人工审核确认失败"));
+    } finally {
+      setReviewConfirmBusy(false);
+    }
+  };
+
   const handleBatchEnqueuePublish = async () => {
     if (!selectedProjectId || selectedCardIds.size === 0) {
       toast.error("请先选择要加入发布队列的内容");
@@ -2345,7 +2587,6 @@ export default function WeeklyContentPage() {
     setBatchEnqueueBusy(true);
     let successCount = 0;
     let skippedCount = 0;
-    let pendingReviewEnqueuedCount = 0;
     const taskIdsByArticle = new Map<number, number[]>();
 
     try {
@@ -2374,7 +2615,12 @@ export default function WeeklyContentPage() {
           skippedCount += 1;
           continue;
         }
-        if (article.status === "已发布" || unsavedArticleIds.has(articleId) || shouldBlockPublishForGeoQuality(article)) {
+        if (
+          article.status === "已发布" ||
+          unsavedArticleIds.has(articleId) ||
+          shouldBlockPublishForGeoQuality(article) ||
+          isContentReviewPending(article.contentReviewStatus)
+        ) {
           skippedCount += 1;
           continue;
         }
@@ -2418,9 +2664,6 @@ export default function WeeklyContentPage() {
             continue;
           }
           successCount += 1;
-          if (isContentReviewPending(article.contentReviewStatus)) {
-            pendingReviewEnqueuedCount += 1;
-          }
           const existing = taskIdsByArticle.get(articleId) ?? [];
           existing.push(res.taskId);
           taskIdsByArticle.set(articleId, existing);
@@ -2431,11 +2674,6 @@ export default function WeeklyContentPage() {
 
       if (successCount > 0) {
         toast.success(`已将 ${successCount} 篇内容加入发布队列`);
-        if (pendingReviewEnqueuedCount > 0) {
-          toast.message(
-            `${pendingReviewEnqueuedCount} 篇尚未标记为「已审核可发布」，${CONTENT_REVIEW_PENDING_ENQUEUE_HINT}`,
-          );
-        }
         notifyPublishEffectPrediction();
         setSelectedCardIds(new Set());
         for (const [articleId, taskIds] of Array.from(taskIdsByArticle.entries())) {
@@ -2574,9 +2812,9 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">GEO 内容生产工作台</h1>
+          <h1 className="text-2xl font-bold text-gray-900">内容生产与审核工作台</h1>
           <p className="text-sm text-gray-500">
-            根据 AI 实测缺口，按平台生成可发布、可监测、可复用的 GEO 内容资产。
+            根据 AI 诊断缺口生成平台化内容，完成质检与人工审核后加入发布队列。
           </p>
         </div>
         <div className="relative w-full max-w-md">
@@ -2692,14 +2930,17 @@ export default function WeeklyContentPage() {
             <WeeklyContentTaskControlCard
               source={geoContentTaskSource}
               progress={taskProgress}
+              recommendedPlatforms={recommendedPlatforms}
               taskOptions={contentTaskOptions}
               selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
               onSelectTaskId={id => setSelectedContentTaskId(id)}
-              publishableCount={publishableContentCount}
+              pendingReviewCount={pendingReviewCount}
               batchBusy={batchBusy}
               onGenerateNext={() => void handleBatchGenerateAllPlatforms()}
-              onViewPublishable={() => {
-                document.getElementById("weekly-section-publishable-content")?.scrollIntoView({ behavior: "smooth" });
+              onGoReview={() => {
+                document
+                  .getElementById("weekly-section-publishable-content")
+                  ?.scrollIntoView({ behavior: "smooth" });
               }}
               onGoPublishingQueue={() =>
                 selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
@@ -2751,9 +2992,6 @@ export default function WeeklyContentPage() {
             generatingPlatformKey={generatingPlatformKey}
             onGenerate={key => void handlePlatformGenerate(key)}
             onView={handlePlatformView}
-            onEdit={handlePlatformEdit}
-            onRegenerate={handlePlatformRegenerateFromBoard}
-            onEnqueue={handlePlatformEnqueue}
           />
 
           {showDirectionEmpty ? (
@@ -2786,9 +3024,13 @@ export default function WeeklyContentPage() {
             rows={publishableRows}
             disabled={anyGenerating || batchEnqueueBusy}
             onView={openContentDetail}
+            onReviewConfirm={model => {
+              const article = articlesById.get(model.id);
+              if (article) openReviewConfirmDialog(article, "review_only");
+            }}
             onEnqueuePublish={model => {
               const article = articlesById.get(model.id);
-              if (article) openPublishDialog(article);
+              if (article) requestEnqueuePublish(article);
             }}
             onGoPublishingPage={() =>
               selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
@@ -2812,7 +3054,7 @@ export default function WeeklyContentPage() {
             }}
             onHistoryEnqueue={model => {
               const article = articlesById.get(model.id);
-              if (article) openPublishDialog(article);
+              if (article) requestEnqueuePublish(article);
             }}
             onHistoryGoPublishing={() =>
               selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
@@ -2821,45 +3063,67 @@ export default function WeeklyContentPage() {
               if (!selectedProjectId) return;
               setContentReviewStatus.mutate({ projectId: selectedProjectId, articleId, status });
             }}
+            onGoInclusionMonitoring={() =>
+              selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
+            }
           />
         </>
       )}
 
       {enabled ? (
-        <div data-testid="local-agent-publish-hint">
-          <LocalAgentConnectionPanel
-            status={localAgentConnectionStatus}
-            checking={localAgentConnectionStatus === "CHECKING"}
-            onCheckConnection={() => void checkConnection()}
-            onRefreshAccountStatus={() => void refreshLocalAgentHealth()}
-          />
-        </div>
+        <WeeklyLocalAgentStatusBar
+          status={localAgentConnectionStatus}
+          onGoPublishingPage={() =>
+            selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+          }
+        />
       ) : null}
 
       <WeeklyContentDetailSheet
         open={detailOpen}
         onOpenChange={setDetailOpen}
         model={detailModel}
-        status={detailStatus}
         disabled={anyGenerating || batchEnqueueBusy}
-        onEdit={() => {
+        onSave={() => {
           if (!detailModel) return;
           const article = articlesById.get(detailModel.id);
           if (article) openEditor(article);
         }}
-        onRegenerate={() => {
+        onMarkReviewed={() => {
           if (!detailModel) return;
           const article = articlesById.get(detailModel.id);
-          if (article && typeof article.topicId === "number") void generateOne(article.topicId);
+          if (article) openReviewConfirmDialog(article, "review_only");
         }}
         onEnqueuePublish={() => {
           if (!detailModel) return;
           const article = articlesById.get(detailModel.id);
-          if (article) openPublishDialog(article);
+          if (article) requestEnqueuePublish(article);
         }}
         onGoPublishingPage={() =>
           selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
         }
+      />
+
+      <WeeklyContentReviewConfirmDialog
+        open={reviewConfirmDialog.open}
+        articleTitle={reviewConfirmDialog.article?.title}
+        confirmed={reviewConfirmDialog.confirmed}
+        busy={reviewConfirmBusy}
+        mode={reviewConfirmDialog.mode}
+        onOpenChange={open =>
+          setReviewConfirmDialog(prev => ({
+            ...prev,
+            open,
+            ...(open ? {} : { article: null, confirmed: false }),
+          }))
+        }
+        onConfirmedChange={confirmed =>
+          setReviewConfirmDialog(prev => ({
+            ...prev,
+            confirmed,
+          }))
+        }
+        onConfirm={() => void handleReviewConfirmSubmit()}
       />
 
       {selectedProjectId && editorArticle ? (

@@ -7,7 +7,7 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("GEO-V1.1-Content-Review-Status", () => {
   it("persists contentReviewStatus on geo_articles", () => {
-    expect(read("drizzle/schema.ts")).toContain('contentReviewStatus');
+    expect(read("drizzle/schema.ts")).toContain("contentReviewStatus");
     expect(read("drizzle/0049_geo_articles_content_review_status.sql")).toContain("待审核");
   });
 
@@ -23,19 +23,25 @@ describe("GEO-V1.1-Content-Review-Status", () => {
     expect(card).toContain("contentReviewStatus");
   });
 
-  it("enqueue publish warns but does not block pending review", () => {
+  it("enqueue publish opens review confirm dialog when pending", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
-    expect(weekly).toContain("CONTENT_REVIEW_PENDING_ENQUEUE_HINT");
-    const openFn = weekly.slice(weekly.indexOf("const openPublishDialog"));
-    expect(openFn.indexOf("isContentReviewPending")).toBeGreaterThan(-1);
-    expect(openFn.indexOf("setPublishDialogOpen(true)")).toBeGreaterThan(
-      openFn.indexOf("isContentReviewPending"),
+    const publishableList = read("client/src/components/weekly/WeeklyPublishableContentList.tsx");
+    const reviewDialog = read("client/src/components/weekly/WeeklyContentReviewConfirmDialog.tsx");
+
+    expect(weekly).toContain("requestEnqueuePublish");
+    expect(weekly).toContain("WeeklyContentReviewConfirmDialog");
+    expect(reviewDialog).toContain("确认人工审核");
+    expect(reviewDialog).toContain("weekly-review-confirm-checkbox");
+    expect(read("shared/weeklyPublishableDisplay.ts")).toContain("审核并加入队列");
+
+    const requestFn = weekly.slice(weekly.indexOf("const requestEnqueuePublish"));
+    expect(requestFn.indexOf("isContentReviewPending")).toBeGreaterThan(-1);
+    expect(requestFn.indexOf("review_and_enqueue")).toBeGreaterThan(-1);
+
+    const confirmFn = weekly.slice(weekly.indexOf("const handleReviewConfirmSubmit"));
+    expect(confirmFn.indexOf('status: "已审核可发布"')).toBeGreaterThan(-1);
+    expect(confirmFn.indexOf("enqueueArticleDirectly")).toBeGreaterThan(
+      confirmFn.indexOf('status: "已审核可发布"'),
     );
-    const confirmFn = weekly.slice(weekly.indexOf("const handleConfirmPublish"));
-    expect(confirmFn.indexOf("isContentReviewPending")).toBeGreaterThan(-1);
-    const blockIdx = confirmFn.indexOf("return;");
-    const pendingHintIdx = confirmFn.indexOf("CONTENT_REVIEW_PENDING_ENQUEUE_HINT");
-    expect(pendingHintIdx).toBeGreaterThan(-1);
-    expect(confirmFn.indexOf("createPublishTask.mutateAsync")).toBeGreaterThan(pendingHintIdx);
   });
 });

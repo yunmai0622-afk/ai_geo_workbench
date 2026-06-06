@@ -5,9 +5,14 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import {
-  buildWeeklyContentAssistantBlockers,
   buildWeeklyContentAssistantNextSteps,
+  buildWeeklyContentAssistantRiskReminders,
+  buildWeeklyContentTaskNextStep,
+  type WeeklyContentAssistantStats,
 } from "@shared/weeklyContentTaskStatus";
+import { resolveWeeklyCoverDisplayStatus } from "@shared/weeklyPublishableDisplay";
+import { isContentReviewPending } from "@shared/contentReviewStatus";
+import { evaluatePublishPreflight } from "@shared/publishPreflight";
 import { WEEKLY_PLATFORM_DEFS } from "@/lib/weeklyPlatformBoard";
 import { useMemo } from "react";
 import { useLocation } from "wouter";
@@ -21,106 +26,148 @@ export function ContentProductionAssistantPanel() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
-
-  const tasksQuery = trpc.geo.tasks.list.useQuery(
+  const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
     { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const publishTasksQuery = trpc.publishTasks.listRecentByProject.useQuery(
+    { projectId: selectedProjectId!, limit: 50 },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
 
   const view = useMemo(() => {
     const articles = articlesQuery.data ?? [];
-    const platformWithArticle = new Set<string>();
-    let publishReadyCount = 0;
-    let qualityPendingCount = 0;
-    let currentTaskLabel: string | null = null;
+    const publishTasks = publishTasksQuery.data?.tasks ?? [];
+    const latestTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
+    for (const task of publishTasks) {
+      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      if (!articleId) continue;
+      const prev = latestTaskByArticle.get(articleId);
+      const taskTime = new Date(task.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || taskTime >= prevTime) latestTaskByArticle.set(articleId, task);
+    }
+
+    let pendingReviewCount = 0;
+    let pendingEnqueueCount = 0;
+    let missingCoverCount = 0;
+    const platformWithReadyAccount = new Set<string>();
+
+    for (const group of platformAccountsQuery.data?.accounts ?? []) {
+      const ready = (group.accounts ?? []).some(
+        a => a.isEnabled && a.sessionStatus === "active" && a.localProfileId && a.localAgentId,
+      );
+      if (ready) platformWithReadyAccount.add(group.platform);
+    }
 
     for (const article of articles) {
-      const platformKey = getArticlePublishPlatform({
+      if (article.status === "已发布") continue;
+      const platformResolved = getArticlePublishPlatform({
         generationBasis: article.generationBasis ?? null,
         targetPlatform: article.targetPlatform,
         publishPlatform: article.publishPlatform,
-      }).weeklyPlatformKey;
-      if (platformKey) platformWithArticle.add(platformKey);
-      if (article.status === "已发布") continue;
-      const hasQuality = article.geoQualityScore != null;
-      if (hasQuality) publishReadyCount += 1;
-      else qualityPendingCount += 1;
+      });
+      const preflight =
+        selectedProjectId != null
+          ? evaluatePublishPreflight({
+              projectId: selectedProjectId,
+              article,
+              platformAccounts: (platformAccountsQuery.data?.accounts ?? []).flatMap(g =>
+                (g.accounts ?? []).map(a => ({ ...a, platform: g.platform })),
+              ),
+            })
+          : null;
+      const ready = preflight?.ready ?? false;
+      const latestTask = latestTaskByArticle.get(article.id);
+      const queued = Boolean(
+        latestTask && latestTask.status !== "failed" && latestTask.status !== "session_expired",
+      );
+
+      if (isContentReviewPending(article.contentReviewStatus) && ready) pendingReviewCount += 1;
+      if (ready && !isContentReviewPending(article.contentReviewStatus) && !queued) {
+        pendingEnqueueCount += 1;
+      }
+      const coverStatus = resolveWeeklyCoverDisplayStatus(article, platformResolved.publishQueueSlug);
+      if (coverStatus === "未配置") missingCoverCount += 1;
     }
 
-    const ungeneratedPlatformCount = WEEKLY_PLATFORM_DEFS.filter(
-      def => !platformWithArticle.has(def.key),
-    ).length;
+    const unboundAccountPlatformCount = WEEKLY_PLATFORM_DEFS.filter(def => {
+      const slug = def.publishPlatformId;
+      return slug ? !platformWithReadyAccount.has(slug) : false;
+    }).length;
 
-    const nextUngenerated = WEEKLY_PLATFORM_DEFS.find(def => !platformWithArticle.has(def.key));
+    const stats: WeeklyContentAssistantStats = {
+      pendingReviewCount,
+      pendingEnqueueCount,
+      missingCoverCount,
+      unboundAccountPlatformCount,
+    };
 
-    const tasks = tasksQuery.data ?? [];
-    const firstTask = tasks[0];
-    if (firstTask?.taskName) {
-      currentTaskLabel = firstTask.taskName;
-    }
+    const hasData =
+      pendingReviewCount > 0 ||
+      pendingEnqueueCount > 0 ||
+      missingCoverCount > 0 ||
+      unboundAccountPlatformCount > 0;
 
     return {
-      currentTaskLabel,
-      publishReadyCount,
-      blockers: buildWeeklyContentAssistantBlockers({
-        ungeneratedPlatformCount,
-        qualityPendingCount,
-        publishReadyCount,
+      hasData,
+      stats,
+      nextStep: buildWeeklyContentTaskNextStep({
+        pendingReviewCount,
+        publishReadyCount: pendingEnqueueCount + pendingReviewCount,
+        generatedCount: articles.filter(a => a.status !== "已发布").length,
       }),
+      riskReminders: buildWeeklyContentAssistantRiskReminders(stats),
       nextSteps: buildWeeklyContentAssistantNextSteps({
-        nextUngeneratedPlatformLabel: nextUngenerated?.label ?? null,
-        qualityPendingCount,
-        publishReadyCount,
+        qualityPendingCount: 0,
+        publishReadyCount: pendingEnqueueCount + pendingReviewCount,
       }),
     };
-  }, [articlesQuery.data, tasksQuery.data]);
+  }, [articlesQuery.data, platformAccountsQuery.data, publishTasksQuery.data, selectedProjectId]);
+
+  if (!view.hasData) return null;
 
   return (
     <aside className="w-full space-y-4" data-testid="content-production-assistant-panel">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-bold text-gray-900">内容生产助手</h3>
+        <h3 className="text-sm font-bold text-gray-900">内容审核助手</h3>
 
         <div className="mt-4 space-y-4">
-          <div data-testid="content-assistant-current-task">
-            <p className="text-xs font-semibold text-gray-500">当前任务</p>
-            <p className="mt-1 text-sm text-gray-800">
-              {view.currentTaskLabel ?? "围绕 AI 诊断缺口按平台生成内容"}
-            </p>
+          <div data-testid="content-assistant-next-step">
+            <p className="text-xs font-semibold text-gray-500">下一步建议</p>
+            <p className="mt-1 text-sm text-gray-800">{view.nextStep}</p>
           </div>
 
-          <div data-testid="content-assistant-blockers">
-            <p className="text-xs font-semibold text-gray-500">当前阻断</p>
-            {view.blockers.length === 0 ? (
-              <p className="mt-1 text-sm text-gray-600">暂无阻断，可继续生成或发布。</p>
-            ) : (
-              <ul className="mt-1 space-y-1 text-sm text-gray-800">
-                {view.blockers.map(item => (
+          {view.riskReminders.length > 0 ? (
+            <div data-testid="content-assistant-risks">
+              <p className="text-xs font-semibold text-gray-500">风险提醒</p>
+              <ul className="mt-1 space-y-1 text-sm text-amber-900">
+                {view.riskReminders.map(item => (
                   <li key={item} className="flex gap-2">
-                    <span className="text-gray-400">-</span>
+                    <span>-</span>
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
+            </div>
+          ) : null}
 
-          <div data-testid="content-assistant-next-steps">
-            <p className="text-xs font-semibold text-gray-500">下一步</p>
+          <div data-testid="content-assistant-recent-stats">
+            <p className="text-xs font-semibold text-gray-500">最近数据</p>
             <ul className="mt-1 space-y-1 text-sm text-gray-800">
-              {view.nextSteps.map(item => (
-                <li key={item} className="flex gap-2">
-                  <span className="text-gray-400">-</span>
-                  <span>{item}</span>
-                </li>
-              ))}
+              {view.stats.pendingReviewCount > 0 ? (
+                <li>待审核内容 {view.stats.pendingReviewCount} 篇</li>
+              ) : null}
+              {view.stats.pendingEnqueueCount > 0 ? (
+                <li>待入队内容 {view.stats.pendingEnqueueCount} 篇</li>
+              ) : null}
+              {view.stats.missingCoverCount > 0 ? (
+                <li>未配置封面 {view.stats.missingCoverCount} 篇</li>
+              ) : null}
+              {view.stats.unboundAccountPlatformCount > 0 ? (
+                <li>未绑定账号 {view.stats.unboundAccountPlatformCount} 个平台</li>
+              ) : null}
             </ul>
-          </div>
-
-          <div data-testid="content-assistant-publishable-count">
-            <p className="text-xs font-semibold text-gray-500">可发布内容</p>
-            <p className="mt-1 text-sm font-medium text-emerald-800">
-              {view.publishReadyCount} 篇可加入发布队列
-            </p>
           </div>
 
           {selectedProjectId ? (

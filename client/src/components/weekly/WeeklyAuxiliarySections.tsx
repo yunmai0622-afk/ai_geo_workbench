@@ -6,14 +6,14 @@ import type { PlatformContentStrategyInput } from "@shared/platformContentRules"
 import type { WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
 import { WeeklyPlatformArticleCard } from "@/components/weekly/WeeklyPlatformArticleCard";
 import type { ContentReviewStatus } from "@shared/contentReviewStatus";
+import { geoP0Brand } from "@/lib/geoP0Visual";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   source: GeoContentTaskSource | null;
   platformStrategy: PlatformContentStrategyInput;
   onPlatformStrategyChange: (next: PlatformContentStrategyInput) => void;
   targetQuestionOptions: string[];
-  selectedQuestionTemplateId: number | null;
-  onQuestionTemplateChange: (id: number | null) => void;
   strategyDisabled?: boolean;
   historyCards: WeeklyArticleCardModel[];
   historyDisabled?: boolean;
@@ -22,6 +22,9 @@ type Props = {
   onHistoryEnqueue: (model: WeeklyArticleCardModel) => void;
   onHistoryGoPublishing?: () => void;
   onHistoryReviewChange?: (articleId: number, status: ContentReviewStatus) => void;
+  selectedQuestionTemplateId?: number | null;
+  onQuestionTemplateChange?: (id: number | null) => void;
+  onGoInclusionMonitoring?: () => void;
 };
 
 function CollapsibleSection({
@@ -54,8 +57,6 @@ export function WeeklyAuxiliarySections({
   platformStrategy,
   onPlatformStrategyChange,
   targetQuestionOptions,
-  selectedQuestionTemplateId,
-  onQuestionTemplateChange,
   strategyDisabled,
   historyCards,
   historyDisabled,
@@ -64,6 +65,9 @@ export function WeeklyAuxiliarySections({
   onHistoryEnqueue,
   onHistoryGoPublishing,
   onHistoryReviewChange,
+  selectedQuestionTemplateId,
+  onQuestionTemplateChange,
+  onGoInclusionMonitoring,
 }: Props) {
   return (
     <section
@@ -71,7 +75,33 @@ export function WeeklyAuxiliarySections({
       className="scroll-mt-24 space-y-3"
       data-testid="weekly-auxiliary-sections"
     >
-      <CollapsibleSection testId="weekly-aux-content-strategy" title="内容策略与平台规则">
+      <p className="text-xs text-gray-500" data-testid="weekly-inclusion-retest-hint">
+        发布完成后可在收录监测中查看复测结果。
+        {onGoInclusionMonitoring ? (
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto p-0 text-xs text-blue-700"
+            data-testid="weekly-go-inclusion-monitoring"
+            onClick={onGoInclusionMonitoring}
+          >
+            去收录监测
+          </Button>
+        ) : null}
+      </p>
+
+      {onQuestionTemplateChange ? (
+        <CollapsibleSection testId="weekly-aux-template-library" title="查看内容模板库">
+          <QuestionTemplatePicker
+            platform={platformStrategy.targetPublishPlatform}
+            value={selectedQuestionTemplateId ?? null}
+            onChange={onQuestionTemplateChange}
+            disabled={strategyDisabled}
+          />
+        </CollapsibleSection>
+      ) : null}
+
+      <CollapsibleSection testId="weekly-aux-platform-rules" title="查看平台规则">
         <PlatformContentStrategyPanel
           value={platformStrategy}
           onChange={onPlatformStrategyChange}
@@ -114,15 +144,6 @@ export function WeeklyAuxiliarySections({
           </P0Card>
         </CollapsibleSection>
       ) : null}
-
-      <CollapsibleSection testId="weekly-aux-advanced-rules" title="高级生成规则">
-        <QuestionTemplatePicker
-          platform={platformStrategy.targetPublishPlatform}
-          value={selectedQuestionTemplateId}
-          onChange={onQuestionTemplateChange}
-          disabled={strategyDisabled}
-        />
-      </CollapsibleSection>
 
       {historyCards.length > 0 ? (
         <CollapsibleSection testId="weekly-aux-history" title="历史内容记录">

@@ -69,12 +69,53 @@ export function resolveWeeklyPlatformContentStatus(input: {
 export type WeeklyContentTaskProgress = {
   generatedCount: number;
   publishReadyCount: number;
+  pendingReviewCount: number;
   queuedCount: number;
   publishedCount: number;
 };
 
 export function formatWeeklyContentTaskProgress(progress: WeeklyContentTaskProgress): string {
-  return `已生成 ${progress.generatedCount} 篇 / 可发布 ${progress.publishReadyCount} 篇 / 已入队 ${progress.queuedCount} 篇 / 已发布 ${progress.publishedCount} 篇`;
+  return `已生成 ${progress.generatedCount} 篇 / 可发布 ${progress.publishReadyCount} 篇 / 待人工审核 ${progress.pendingReviewCount} 篇 / 已入队 ${progress.queuedCount} 篇 / 已发布 ${progress.publishedCount} 篇`;
+}
+
+export function buildWeeklyContentTaskNextStep(input: {
+  pendingReviewCount: number;
+  publishReadyCount: number;
+  generatedCount: number;
+}): string {
+  if (input.pendingReviewCount > 0) {
+    return `有 ${input.pendingReviewCount} 篇内容待人工审核，建议先完成审核再加入发布队列。`;
+  }
+  if (input.publishReadyCount > 0) {
+    return `有 ${input.publishReadyCount} 篇内容可发布，可加入发布队列。`;
+  }
+  if (input.generatedCount === 0) {
+    return "按推荐平台生成首批内容，再进入质检与审核流程。";
+  }
+  return "继续生成平台内容，或等待 AI 质检完成。";
+}
+
+export type WeeklyContentAssistantStats = {
+  pendingReviewCount: number;
+  pendingEnqueueCount: number;
+  missingCoverCount: number;
+  unboundAccountPlatformCount: number;
+};
+
+export function buildWeeklyContentAssistantRiskReminders(
+  stats: WeeklyContentAssistantStats,
+): string[] {
+  const risks: string[] = [];
+  if (stats.pendingReviewCount > 0) {
+    risks.push(`${stats.pendingReviewCount} 篇内容尚未完成人工审核`);
+  }
+  if (stats.missingCoverCount > 0) {
+    risks.push(`${stats.missingCoverCount} 篇内容未配置封面`);
+  }
+  if (stats.unboundAccountPlatformCount > 0) {
+    risks.push(`${stats.unboundAccountPlatformCount} 个平台未绑定有效发布账号`);
+  }
+  return risks;
 }
 
 export function buildWeeklyContentAssistantBlockers(input: {
