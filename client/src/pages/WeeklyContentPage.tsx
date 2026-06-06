@@ -52,7 +52,6 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, getActiveProjectId, getSearchFromLocation } from "@/lib/activeProject";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
-import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import {
   BINDING_PUBLISH_PLATFORMS,
   isBindingPublishPlatform,
@@ -74,7 +73,11 @@ import {
 } from "@shared/articleAssetDraft";
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import {
-  evaluatePublishReadiness,
+  evaluatePublishPreflight,
+  formatPublishPreflightBlockMessage,
+  inferServerHeartbeatConnected,
+} from "@shared/publishPreflight";
+import {
   isPublishReadyPlatformAccount,
   type PublishReadyAccountRow,
 } from "@shared/publishReadiness";
@@ -108,10 +111,6 @@ import {
   readLastEnqueuePublishAccountId,
   writeLastEnqueuePublishAccountId,
 } from "@shared/publishEnqueueAccountSelect";
-import {
-  evaluatePrePublishChecklist,
-  formatPrePublishChecklistBlockMessage,
-} from "@shared/publishPrePublishChecklist";
 import {
   ACCOUNT_GROUP_MISMATCH_HINT,
   accountGroupsMismatch,
@@ -429,10 +428,38 @@ function isBlocked(value: number | boolean | null | undefined) {
   return value === true || value === 1;
 }
 
-function qualityPasses(article: ArticleRow, q?: QualityScoreRow) {
-  if (!q) return false;
-  if (isBlocked(q.blocked)) return false;
-  return article.status === "质检通过" || q.totalScore >= GEO_ARTICLE_MIN_PASS_SCORE;
+function buildArticlePublishPreflightInput(
+  projectId: number,
+  article: ArticleRow,
+  ctx: {
+    projectAccessible: boolean;
+    enterpriseProfileReady: boolean;
+    enterpriseProfile: Record<string, unknown> | null | undefined;
+    diagnosisReady: boolean;
+    platformAccounts: PublishReadyAccountRow[];
+    localAgentStatus: {
+      serverHeartbeatConnected: boolean;
+      browserLocalAgentConnected: boolean | null;
+      localAgentAccountSnapshot: LocalAgentAccountStatusEntry[];
+    };
+    requestedPlatform?: BindingPublishPlatform | null;
+    selectedAccount?: PublishReadyAccountRow | null;
+    selectedAccountId?: number | null;
+  },
+) {
+  return {
+    projectId,
+    article: { ...article, projectId },
+    projectAccessible: ctx.projectAccessible,
+    enterpriseProfileReady: ctx.enterpriseProfileReady,
+    enterpriseProfile: ctx.enterpriseProfile ?? null,
+    diagnosisReady: ctx.diagnosisReady,
+    platformAccounts: ctx.platformAccounts,
+    requestedPlatform: ctx.requestedPlatform ?? null,
+    selectedAccount: ctx.selectedAccount ?? null,
+    selectedAccountId: ctx.selectedAccountId ?? undefined,
+    localAgentStatus: ctx.localAgentStatus,
+  };
 }
 
 function previewText(markdown?: string | null, max = 400) {
@@ -847,55 +874,57 @@ export default function WeeklyContentPage() {
     workspaceSummaryQuery.data?.p0ProfileComplete,
   ]);
 
+  const flattenedPlatformAccounts = useMemo(
+    () => flattenPlatformAccounts(platformAccountGroups),
+    [platformAccountGroups],
+  );
+
+  const serverHeartbeatConnected = useMemo(
+    () => inferServerHeartbeatConnected(flattenedPlatformAccounts),
+    [flattenedPlatformAccounts],
+  );
+
   const publishBaseContext = useMemo(
     () => ({
       projectAccessible: Boolean(selectedProjectId),
       enterpriseProfileReady,
       enterpriseProfile: enterpriseProfileRecord ?? null,
       diagnosisReady: hasDiagnosisData,
-      localAgentConnected: localAgentOnline,
-      platformAccounts: flattenPlatformAccounts(platformAccountGroups),
-      localAgentAccountSnapshot,
+      platformAccounts: flattenedPlatformAccounts,
+      localAgentStatus: {
+        serverHeartbeatConnected,
+        browserLocalAgentConnected: localAgentOnline,
+        localAgentAccountSnapshot,
+      },
     }),
     [
       selectedProjectId,
       enterpriseProfileReady,
       enterpriseProfileRecord,
       hasDiagnosisData,
+      flattenedPlatformAccounts,
+      serverHeartbeatConnected,
       localAgentOnline,
-      platformAccountGroups,
       localAgentAccountSnapshot,
     ],
   );
 
-  const publishDialogReadinessContext = useMemo(
+  const publishDialogPreflightContext = useMemo(
     () => ({
       ...publishBaseContext,
-      localAgentConnected: publishDialogAgentOnline,
-      localAgentAccountSnapshot: publishDialogAccountSnapshot,
+      localAgentStatus: {
+        serverHeartbeatConnected,
+        browserLocalAgentConnected: publishDialogAgentOnline,
+        localAgentAccountSnapshot: publishDialogAccountSnapshot,
+      },
     }),
-    [publishBaseContext, publishDialogAgentOnline, publishDialogAccountSnapshot],
+    [
+      publishBaseContext,
+      serverHeartbeatConnected,
+      publishDialogAgentOnline,
+      publishDialogAccountSnapshot,
+    ],
   );
-
-  const activePublishReadiness = useMemo(() => {
-    if (!publishArticle) return null;
-    const requestedPlatform =
-      manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
-        ? manualPublishPlatform
-        : null;
-    const ctx = publishDialogOpen ? publishDialogReadinessContext : publishBaseContext;
-    return evaluatePublishReadiness({
-      ...ctx,
-      article: publishArticle,
-      requestedPlatform,
-    });
-  }, [
-    publishArticle,
-    publishBaseContext,
-    publishDialogReadinessContext,
-    publishDialogOpen,
-    manualPublishPlatform,
-  ]);
 
   const topics = useProjectScopedQueryRows<TopicRow>(selectedProjectId, topicsQuery) as TopicRow[];
   const topicsById = useMemo(() => new Map(topics.map(topic => [topic.id, topic] as const)), [topics]);
@@ -1202,8 +1231,13 @@ export default function WeeklyContentPage() {
           counts.pending += 1;
           continue;
         }
-        const q = scoresByArticleId.get(article.id);
-        const pass = qualityPasses(article, q);
+        const preflight =
+          selectedProjectId != null
+            ? evaluatePublishPreflight(
+                buildArticlePublishPreflightInput(selectedProjectId, article, publishBaseContext),
+              )
+            : null;
+        const pass = preflight?.ready ?? false;
         if (article.status === "已发布") counts.published += 1;
         else if (pass) counts.ready += 1;
         else counts.pendingConfirm += 1;
@@ -1233,6 +1267,8 @@ export default function WeeklyContentPage() {
     geoContentTaskSource?.linkedQuestion,
     geoContentTaskSource?.sceneLabel,
     platformStrategy.targetQuestion,
+    selectedProjectId,
+    publishBaseContext,
   ]);
 
   const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
@@ -1259,7 +1295,13 @@ export default function WeeklyContentPage() {
             : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         const q = scoresByArticleId.get(a.id);
-        const pass = qualityPasses(a, q);
+        const preflight =
+          selectedProjectId != null
+            ? evaluatePublishPreflight(
+                buildArticlePublishPreflightInput(selectedProjectId, a, publishBaseContext),
+              )
+            : null;
+        const pass = preflight?.ready ?? false;
         const published = a.status === "已发布";
         const statusView = resolveContentCardStatus({ published, publishable: pass });
         const ps = a.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
@@ -1271,10 +1313,11 @@ export default function WeeklyContentPage() {
           targetPlatform: a.targetPlatform,
           publishPlatform: a.publishPlatform,
         });
-        const publishReadiness = evaluatePublishReadiness({
-          ...publishBaseContext,
-          article: a,
-        });
+        const publishBlockHint = preflight?.ready
+          ? null
+          : preflight?.checks.find(c => c.status === "fail")?.message ??
+            preflight?.readiness?.message ??
+            null;
         const latestTask = latestPublishTaskByArticle.get(a.id);
         const queuedForPublish = Boolean(
           latestTask &&
@@ -1290,8 +1333,13 @@ export default function WeeklyContentPage() {
           targetPlatform: platformResolved.recognized ? platformResolved.label : a.targetPlatform,
           platformKey,
           contentTypeLabel: resolveContentTypeLabel(a),
-          publishBlockHint: publishReadiness.ready ? null : publishReadiness.message,
-          publishNextActionLabel: publishReadiness.ready ? null : publishReadiness.nextActionLabel,
+          publishBlockHint,
+          publishNextActionLabel: preflight?.ready
+            ? null
+            : preflight?.checks.find(c => c.status === "fail")?.action ??
+              preflight?.readiness?.nextActionLabel ??
+              null,
+          publishPreflightReady: pass,
           queuedForPublish,
           queuedStatusLabel: queuedForPublish
             ? publishTaskStatusLabel({ status: latestTask?.status ?? "pending" })
@@ -1343,6 +1391,7 @@ export default function WeeklyContentPage() {
     latestDiagnosisGap,
     geoContentTaskSource,
     publishBaseContext,
+    selectedProjectId,
     publishRecordsQuery.data,
     publishTasksQuery.data?.tasks,
   ]);
@@ -2044,18 +2093,23 @@ export default function WeeklyContentPage() {
     }
     if (blockPublishIfUnsaved(publishArticle.id)) return;
     if (blockPublishIfQualityReject(publishArticle)) return;
-    const readiness =
-      activePublishReadiness ??
-      evaluatePublishReadiness({
-        ...publishDialogReadinessContext,
-        article: publishArticle,
-      });
-    if (!readiness.ready) {
-      toast.error(readiness.message);
-      return;
-    }
-    if (activePrePublishChecklist && !activePrePublishChecklist.allPassed) {
-      toast.error(formatPrePublishChecklistBlockMessage(activePrePublishChecklist));
+    const preflight =
+      activePublishPreflight ??
+      (selectedProjectId
+        ? evaluatePublishPreflight(
+            buildArticlePublishPreflightInput(selectedProjectId, publishArticle, {
+              ...publishDialogPreflightContext,
+              requestedPlatform:
+                manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
+                  ? manualPublishPlatform
+                  : null,
+            }),
+          )
+        : null);
+    if (!preflight?.ready) {
+      toast.error(
+        preflight ? formatPublishPreflightBlockMessage(preflight) : "发布前检查未通过",
+      );
       return;
     }
     await hydratePublishDialogAgent({ syncToWeb: true });
@@ -2186,11 +2240,13 @@ export default function WeeklyContentPage() {
           skippedCount += 1;
           continue;
         }
-        const readiness = evaluatePublishReadiness({
-          ...publishBaseContext,
-          article,
-        });
-        if (!readiness.ready) {
+        const preflight =
+          selectedProjectId != null
+            ? evaluatePublishPreflight(
+                buildArticlePublishPreflightInput(selectedProjectId, article, publishBaseContext),
+              )
+            : null;
+        if (!preflight?.ready) {
           skippedCount += 1;
           continue;
         }
@@ -2209,22 +2265,6 @@ export default function WeeklyContentPage() {
         }
         const picked = pickPublishAccountFresh(slug);
         if (!picked) {
-          skippedCount += 1;
-          continue;
-        }
-        const preCheck = evaluatePrePublishChecklist({
-          title: article.title ?? "",
-          markdownContent: article.markdownContent ?? "",
-          coverBase64: article.coverBase64,
-          coverImageUrl: article.coverImageUrl,
-          platform: slug,
-          article,
-          account: { ...picked, platform: slug },
-          localAgentAccountValid: localAgentAccountSnapshot.some(
-            e => e.platform === slug && e.loginStatus === "valid",
-          ),
-        });
-        if (!preCheck.allPassed) {
           skippedCount += 1;
           continue;
         }
@@ -2299,7 +2339,7 @@ export default function WeeklyContentPage() {
   }, [publishArticle, publishPlatformResolved, manualPublishPlatform]);
 
   const publishDialogSlug = useMemo(() => {
-    const resolved = effectivePublishResolved ?? activePublishReadiness?.resolvedPlatform ?? null;
+    const resolved = effectivePublishResolved ?? null;
     if (
       resolved?.publishQueueSlug &&
       resolved.supportedByLocalAgent &&
@@ -2311,7 +2351,36 @@ export default function WeeklyContentPage() {
       return manualPublishPlatform;
     }
     return null;
-  }, [effectivePublishResolved, activePublishReadiness?.resolvedPlatform, manualPublishPlatform]);
+  }, [effectivePublishResolved, manualPublishPlatform]);
+
+  const activePublishPreflight = useMemo(() => {
+    if (!publishArticle || !selectedProjectId) return null;
+    const requestedPlatform =
+      manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
+        ? manualPublishPlatform
+        : null;
+    const account =
+      publishDialogSlug && isBindingPublishPlatform(publishDialogSlug)
+        ? pickSelectedPublishAccount(publishDialogSlug)
+        : null;
+    return evaluatePublishPreflight(
+      buildArticlePublishPreflightInput(selectedProjectId, publishArticle, {
+        ...publishDialogPreflightContext,
+        requestedPlatform,
+        selectedAccount: account
+          ? ({ ...account, platform: publishDialogSlug } as PublishReadyAccountRow)
+          : null,
+        selectedAccountId: account?.id ?? null,
+      }),
+    );
+  }, [
+    publishArticle,
+    selectedProjectId,
+    publishDialogPreflightContext,
+    manualPublishPlatform,
+    publishDialogSlug,
+    pickSelectedPublishAccount,
+  ]);
 
   const publishDialogNicknamePendingHint = useMemo(() => {
     if (!publishDialogSlug) return false;
@@ -2323,30 +2392,6 @@ export default function WeeklyContentPage() {
     return rows.some(a => a.accountName === LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME);
   }, [publishDialogAccountSnapshot, publishDialogSlug, getPublishReadyAccountsForPlatform]);
 
-  const activePrePublishChecklist = useMemo(() => {
-    if (!publishArticle || !publishDialogSlug || !isBindingPublishPlatform(publishDialogSlug)) {
-      return null;
-    }
-    const account = pickSelectedPublishAccount(publishDialogSlug);
-    const localAgentAccountValid = publishDialogAccountSnapshot.some(
-      e => e.platform === publishDialogSlug && e.loginStatus === "valid",
-    );
-    return evaluatePrePublishChecklist({
-      title: publishArticle.title ?? "",
-      markdownContent: publishArticle.markdownContent ?? "",
-      coverBase64: publishArticle.coverBase64,
-      coverImageUrl: publishArticle.coverImageUrl,
-      platform: publishDialogSlug,
-      article: publishArticle,
-      account: account ? { ...account, platform: publishDialogSlug } : null,
-      localAgentAccountValid,
-    });
-  }, [
-    publishArticle,
-    publishDialogSlug,
-    pickSelectedPublishAccount,
-    publishDialogAccountSnapshot,
-  ]);
 
   useEffect(() => {
     if (!publishDialogOpen) {
@@ -2954,16 +2999,17 @@ export default function WeeklyContentPage() {
               }
               onRefreshAccountStatus={() => void hydratePublishDialogAgent({ syncToWeb: true })}
             />
-            <PublishPrePublishChecklist checklist={activePrePublishChecklist} />
-            {activePublishReadiness && !activePublishReadiness.ready ? (
+            <PublishPrePublishChecklist preflightChecks={activePublishPreflight?.checks ?? null} />
+            {activePublishPreflight && !activePublishPreflight.ready ? (
               <p
                 className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
                 data-testid="publish-readiness-block"
               >
-                {activePublishReadiness.message}
+                {formatPublishPreflightBlockMessage(activePublishPreflight) ||
+                  activePublishPreflight.readiness?.message}
               </p>
             ) : null}
-            {activePublishReadiness?.ready &&
+            {activePublishPreflight?.ready &&
             publishArticle?.geoQualityRecommendation === "revise" ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 内容有优化空间，确认后可继续发布。
@@ -2989,10 +3035,10 @@ export default function WeeklyContentPage() {
             ))}
           </div>
           <div className="space-y-3 py-2">
-            {activePublishReadiness?.resolvedPlatform?.recognized ? (
+            {activePublishPreflight?.resolvedPlatform?.recognized ? (
               <div className="space-y-1">
                 <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
-                  发布平台：<span className="font-medium">{activePublishReadiness.platformLabel}</span>
+                  发布平台：<span className="font-medium">{activePublishPreflight.platformLabel}</span>
                   {!getArticlePublishPlatform({
                     generationBasis: publishArticle?.generationBasis ?? null,
                     targetPlatform: publishArticle?.targetPlatform,
@@ -3193,7 +3239,9 @@ export default function WeeklyContentPage() {
             ) : null}
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
-            {activePublishReadiness?.blockingCode === "PLATFORM_ACCOUNT_UNBOUND" ? (
+            {activePublishPreflight?.blockingCodes.includes("PLATFORM_ACCOUNT_VALID") &&
+            activePublishPreflight.checks.find(c => c.code === "PLATFORM_ACCOUNT_VALID")?.action ===
+              "去账号环境" ? (
               <Button
                 type="button"
                 variant="outline"
@@ -3208,10 +3256,15 @@ export default function WeeklyContentPage() {
                     .catch(() => toast.message("请在本机打开 GEO 本地发布客户端"));
                 }}
               >
-                {activePublishReadiness.nextActionLabel}
+                打开本地客户端账号环境
               </Button>
             ) : null}
-            {activePublishReadiness?.blockingCode === "ACCOUNT_STATUS_NOT_SYNCED" ? (
+            {activePublishPreflight?.checks.some(
+              c =>
+                c.status === "fail" &&
+                (c.action === "刷新账号状态" ||
+                  c.code === "PLATFORM_ACCOUNT_VALID" && c.action === "刷新账号状态"),
+            ) ? (
               <Button
                 type="button"
                 variant="outline"
@@ -3220,6 +3273,23 @@ export default function WeeklyContentPage() {
                 onClick={() => void hydratePublishDialogAgent({ syncToWeb: true })}
               >
                 刷新账号状态
+              </Button>
+            ) : null}
+            {activePublishPreflight?.checks.some(
+              c => c.status === "fail" && c.action === "检测连接",
+            ) ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-blue-500 text-blue-700"
+                data-testid="publish-readiness-check-connection"
+                onClick={() =>
+                  void checkConnection().then(result =>
+                    applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot),
+                  )
+                }
+              >
+                检测连接
               </Button>
             ) : null}
             <div className="flex w-full gap-2">
@@ -3232,8 +3302,7 @@ export default function WeeklyContentPage() {
                 disabled={
                   createPublishTask.isPending ||
                   selectedPlatforms.size === 0 ||
-                  (activePublishReadiness != null && !activePublishReadiness.ready) ||
-                  (activePrePublishChecklist != null && !activePrePublishChecklist.allPassed)
+                  (activePublishPreflight != null && !activePublishPreflight.ready)
                 }
                 onClick={() => void handleConfirmPublish()}
               >

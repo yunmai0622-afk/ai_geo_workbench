@@ -69,6 +69,26 @@ describe("publishPrePublishChecklist", () => {
     const result = evaluatePrePublishChecklist({
       title: "短标题",
       markdownContent: "太短",
+      platform: "sohu",
+      article: { geoQualityScore: 80, geoQualityRecommendation: "publish" },
+      account: {
+        platform: "sohu",
+        accountName: "a",
+        isEnabled: 1,
+        localProfileId: "p",
+        localAgentId: "a",
+        sessionStatus: "active",
+      },
+    });
+    expect(result.items.find(i => i.id === "body_min_length")?.passed).toBe(false);
+    expect(result.items.find(i => i.id === "has_cover")?.passed).toBe(false);
+    expect(articleHasPublishableCover({ coverImageUrl: " https://cdn.example.com/c.png " })).toBe(true);
+  });
+
+  it("allows zhihu without cover (cover optional for zhihu)", () => {
+    const result = evaluatePrePublishChecklist({
+      title: "知乎标题",
+      markdownContent: longBody,
       platform: "zhihu",
       article: { geoQualityScore: 80, geoQualityRecommendation: "publish" },
       account: {
@@ -80,9 +100,7 @@ describe("publishPrePublishChecklist", () => {
         sessionStatus: "active",
       },
     });
-    expect(result.items.find(i => i.id === "body_min_length")?.passed).toBe(false);
-    expect(result.items.find(i => i.id === "has_cover")?.passed).toBe(false);
-    expect(articleHasPublishableCover({ coverImageUrl: " https://cdn.example.com/c.png " })).toBe(true);
+    expect(result.items.find(i => i.id === "has_cover")?.passed).toBe(true);
   });
 
   it("allows toutiao without cover to align with local agent skipCover", () => {

@@ -57,6 +57,7 @@ export type WeeklyArticleCardModel = {
   article: Record<string, unknown>;
   publishBlockHint?: string | null;
   publishNextActionLabel?: string | null;
+  publishPreflightReady?: boolean;
   queuedForPublish?: boolean;
   queuedStatusLabel?: string | null;
   contentReviewStatus: ContentReviewStatus;
@@ -418,7 +419,7 @@ export function WeeklyPlatformArticleCard(props: Props) {
             </Button>
           </>
         ) : (
-          <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>
+          <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || model.publishPreflightReady === false || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>
         )}
           </div>
         </div>

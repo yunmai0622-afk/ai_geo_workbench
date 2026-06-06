@@ -256,11 +256,11 @@ describe("publishReadiness static wiring", () => {
     expect(router).toContain("evaluatePublishReadiness");
   });
 
-  it("WeeklyContentPage references evaluatePublishReadiness", async () => {
+  it("WeeklyContentPage references evaluatePublishPreflight", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const page = fs.readFileSync(path.join(process.cwd(), "client/src/pages/WeeklyContentPage.tsx"), "utf-8");
-    expect(page).toContain("evaluatePublishReadiness");
+    expect(page).toContain("evaluatePublishPreflight");
     expect(page).not.toMatch(/在 Web 绑定.*Cookie/i);
   });
 });

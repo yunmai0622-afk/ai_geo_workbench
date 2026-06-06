@@ -21,13 +21,13 @@ describe("GEO-V1.1-Pre-Publish-Checklist", () => {
     const panel = read("client/src/components/publishing/PublishPrePublishChecklist.tsx");
     expect(weekly).toContain("PublishPrePublishChecklist");
     expect(panel).toContain("publish-pre-checklist");
-    expect(weekly).toContain("activePrePublishChecklist");
-    expect(weekly).toContain("formatPrePublishChecklistBlockMessage");
+    expect(weekly).toContain("activePublishPreflight");
+    expect(weekly).toContain("formatPublishPreflightBlockMessage");
   });
 
   it("publishTasks.create enforces checklist server-side", () => {
     const router = read("server/publishTasksRouter.ts");
     expect(router).toContain("assertPrePublishChecklistForCreate");
-    expect(router).toContain("formatPrePublishChecklistBlockMessage");
+    expect(router).toContain("evaluatePublishPreflightForCreate");
   });
 });

@@ -1,12 +1,15 @@
 /** GEO-V1.1-Pre-Publish-Checklist：加入发布队列前的 5 项自动检查 */
 
+import { articleHasPublishableCover, type ArticleCoverSource } from "./articleCoverReadiness";
 import type { BindingPublishPlatform } from "./platformAccountVerify";
 import { PUBLISH_PLATFORM_LABELS, publishBlockedSessionExpiredMessage } from "./platformAccountVerify";
 import { countMarkdownBodyChars, ZHIHU_DRAFT_MIN_BODY_CHARS } from "./platformDraftContentQuality";
-import { getContentQualityGateStatus, type ContentQualityGateArticle } from "./contentQualityGate";
+import { getUnifiedQualityGateStatus, type ContentQualityGateArticle } from "./contentQualityGate";
 import { isGeoQualityScoreStale } from "./geoQualityStale";
 import { isPublishReadyPlatformAccount, type PublishReadyAccountRow } from "./publishReadiness";
 import { XIAOHONGSHU_NOTE_TITLE_MAX_LEN } from "./xiaohongshuMaterial";
+
+export { articleHasPublishableCover } from "./articleCoverReadiness";
 
 export type PrePublishChecklistItemId =
   | "title_within_limit"
@@ -28,7 +31,11 @@ export type PrePublishChecklistResult = {
 };
 
 export type PrePublishChecklistPlatform = BindingPublishPlatform | "wechat" | "xiaohongshu";
-export const PRE_PUBLISH_COVER_OPTIONAL_PLATFORMS: readonly PrePublishChecklistPlatform[] = ["toutiao"] as const;
+/** 不强制封面的平台（缺封面不阻断，仅 warning / pass） */
+export const PRE_PUBLISH_COVER_OPTIONAL_PLATFORMS: readonly PrePublishChecklistPlatform[] = [
+  "zhihu",
+  "toutiao",
+] as const;
 
 /** 各平台标题字数上限（按 Unicode 码点计） */
 export const PUBLISH_PLATFORM_TITLE_MAX_CHARS: Record<PrePublishChecklistPlatform, number> = {
@@ -72,18 +79,9 @@ export function getPublishPlatformMinBodyChars(platform: PrePublishChecklistPlat
   return PUBLISH_PLATFORM_MIN_BODY_CHARS[platform];
 }
 
-export function articleHasPublishableCover(article: {
-  coverBase64?: string | null;
-  coverImageUrl?: string | null;
-}): boolean {
-  return Boolean(article.coverBase64?.trim() || article.coverImageUrl?.trim());
-}
-
-export type PrePublishChecklistInput = {
+export type PrePublishChecklistInput = ArticleCoverSource & {
   title: string;
   markdownContent: string;
-  coverBase64?: string | null;
-  coverImageUrl?: string | null;
   platform: PrePublishChecklistPlatform;
   platformLabel?: string;
   article: ContentQualityGateArticle;
@@ -136,10 +134,11 @@ function evaluateBodyCheck(input: PrePublishChecklistInput, platformLabel: strin
 }
 
 function evaluateCoverCheck(input: PrePublishChecklistInput): PrePublishChecklistItem {
+  const hasCover = articleHasPublishableCover(input);
   if (PRE_PUBLISH_COVER_OPTIONAL_PLATFORMS.includes(input.platform)) {
-    return item("has_cover", true, "");
+    return item("has_cover", true, hasCover ? "" : "");
   }
-  if (articleHasPublishableCover(input)) {
+  if (hasCover) {
     return item("has_cover", true, "");
   }
   return item(
@@ -192,7 +191,7 @@ function evaluateQualityCheck(input: PrePublishChecklistInput): PrePublishCheckl
       "内容已修改，请重新质检后再发布",
     );
   }
-  const gate = getContentQualityGateStatus(input.article);
+  const gate = getUnifiedQualityGateStatus(input.article);
   if (gate.passed) {
     return item("quality_passed", true, "");
   }
