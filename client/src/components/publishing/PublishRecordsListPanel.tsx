@@ -27,6 +27,7 @@ type PublishRecordsListPanelProps = {
   onViewAllHistory?: () => void;
   /** recent：默认最近 30 条；full：展示传入的全部记录（用于历史页） */
   variant?: "recent" | "full";
+  recentLimit?: number;
 };
 
 export function PublishRecordsListPanel({
@@ -35,9 +36,12 @@ export function PublishRecordsListPanel({
   resolveTitle,
   onViewAllHistory,
   variant = "recent",
+  recentLimit,
 }: PublishRecordsListPanelProps) {
   const displayRecords =
-    variant === "full" ? sortPublishRecordsByPublishedAtDesc(records) : sliceRecentPublishRecords(records);
+    variant === "full"
+      ? sortPublishRecordsByPublishedAtDesc(records)
+      : sliceRecentPublishRecords(records, recentLimit ?? RECENT_PUBLISH_RECORDS_LIMIT);
   const showHistoryCta =
     variant === "recent" && hasMorePublishRecordsThanRecent(records) && onViewAllHistory;
 
@@ -51,7 +55,7 @@ export function PublishRecordsListPanel({
         <p className="mt-1 text-sm text-gray-500">
           {variant === "full"
             ? "展示符合筛选条件的全部发布记录。"
-            : `默认展示最近 ${RECENT_PUBLISH_RECORDS_LIMIT} 条；更早记录可在历史中按时间筛选查看。`}
+            : `默认展示最近 ${recentLimit ?? RECENT_PUBLISH_RECORDS_LIMIT} 条；更早记录可在历史中按时间筛选查看。`}
         </p>
       </div>
 

@@ -16,6 +16,8 @@ type Props = {
   ctaStage?: WorkspaceStageDefinition | null;
   projectId?: number;
   loading?: boolean;
+  onCtaClick?: () => void;
+  ctaLabelOverride?: string | null;
 };
 
 export function ProjectWorkspaceTopBar({
@@ -25,11 +27,14 @@ export function ProjectWorkspaceTopBar({
   ctaStage,
   projectId,
   loading,
+  onCtaClick,
+  ctaLabelOverride,
 }: Props) {
   const [location, setLocation] = useLocation();
   const pathname = location.split("?")[0] || location;
   const pageHelpId = resolvePageUsageHelpId(pathname);
   const topBar = resolveProjectTopBarPresentation(pathname, stageLabel, ctaStage);
+  const actionLabel = ctaLabelOverride ?? topBar.actionLabel;
 
   if (!projectId) {
     return (
@@ -83,15 +88,21 @@ export function ProjectWorkspaceTopBar({
       </div>
 
       <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
-        {ctaStage && topBar.actionLabel ? (
+        {ctaStage && actionLabel ? (
           <Button
             type="button"
             size="sm"
             className={cn("w-full rounded-xl sm:w-auto", geoP0Brand.primary)}
             data-testid="project-topbar-cta"
-            onClick={() => setLocation(workspaceCtaUrl(projectId, ctaStage))}
+            onClick={() => {
+              if (onCtaClick) {
+                onCtaClick();
+                return;
+              }
+              setLocation(workspaceCtaUrl(projectId, ctaStage));
+            }}
           >
-            {topBar.actionLabel}
+            {actionLabel}
             <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
           </Button>
         ) : null}

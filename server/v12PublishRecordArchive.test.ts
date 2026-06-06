@@ -17,8 +17,8 @@ describe("GEO-V1.1-Publish-Record-Archive", () => {
     const page = read("client/src/pages/ContentPublishingCenterPage.tsx");
     const panel = read("client/src/components/publishing/PublishRecordsListPanel.tsx");
 
-    expect(page).toContain("publish-center-tab-records");
     expect(page).toContain("PublishRecordsListPanel");
+    expect(page).toContain("recentLimit={10}");
     expect(page).toContain("/publish-records-history");
     expect(panel).toContain("publish-records-view-all-history");
     expect(panel).toContain("查看全部历史");

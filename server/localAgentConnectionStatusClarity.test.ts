@@ -17,10 +17,12 @@ describe("GEO-V1.1 Local Agent connection status clarity P0", () => {
 
   it("publish center exposes check connection entry", () => {
     const page = read("client/src/pages/ContentPublishingCenterPage.tsx");
+    const statusBar = read("client/src/components/publishing/PublishStatusBar.tsx");
     const panel = read("client/src/components/publishing/LocalAgentConnectionPanel.tsx");
-    expect(page).toContain("检测本地客户端连接");
+    expect(statusBar).toContain("检测客户端连接");
+    expect(statusBar).toContain("publish-ready-refresh");
     expect(page).toContain("useLocalAgentConnection");
-    expect(page).toContain("LocalAgentStatusCard");
+    expect(page).toContain("PublishStatusBar");
     expect(panel).toContain("local-agent-connection-panel");
     expect(page).not.toContain(LEGACY_HINT);
     expect(page).not.toMatch(/useEffect\([\s\S]*checkLocalAgentHealth/);

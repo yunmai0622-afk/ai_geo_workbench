@@ -36,7 +36,7 @@ describe("GEO-V1.1 content publishing React #185 regression", () => {
     expect(healthHook).toContain("setAgentOnline(prev => (prev === online ? prev : online))");
     expect(page).not.toContain("setInterval");
     expect(page).not.toContain("checkLocalAgentHealth");
-    expect(page).toContain('data-testid="publish-ready-refresh"');
+    expect(page).toContain("<PublishStatusBar");
     expect(page).toContain('data-testid="publish-queue-refresh"');
     expect(page).toContain("立即拉取任务");
   });
