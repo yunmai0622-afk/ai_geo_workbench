@@ -1,5 +1,7 @@
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
+import { usePublishAccountBindCta } from "@/hooks/usePublishAccountBindCta";
+import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
@@ -9,6 +11,9 @@ import { resolvePageNextActionSuggestion } from "@shared/pageNextActionSuggestio
 import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
 import { useMemo } from "react";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
+import { ContentProductionAssistantPanel } from "@/components/weekly/ContentProductionAssistantPanel";
+import { PublishAssistantPanel } from "@/components/publishing/PublishAssistantPanel";
+import { QuestionBankAssistantPanel } from "@/components/questions/QuestionBankAssistantPanel";
 import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
 import { ProfileCompletenessLowHint } from "@/components/enterpriseProfile/ProfileCompletenessLowHint";
 import { Button } from "@/components/ui/button";
@@ -29,6 +34,9 @@ export function EnterpriseProjectShell({ children }: Props) {
   const { selectedProjectId, selectedProject } = useActiveProjectSelection();
   const [location, setLocation] = useLocation();
   const pathname = location.split("?")[0] || location;
+  const isWeeklyPage = pathname === "/weekly" || pathname === "/content-generation" || pathname === "/articles";
+  const isPublishPage = pathname === "/content-publishing" || pathname === "/publish";
+  const isQuestionsPage = pathname === "/questions";
   const isMobile = useIsMobile();
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
@@ -40,9 +48,30 @@ export function EnterpriseProjectShell({ children }: Props) {
   const {
     status: localAgentConnectionStatus,
     localAgentOnline,
+    localAgentConnectedOnline,
     accountSnapshot,
     checkConnection,
+    checking: localAgentChecking,
   } = useLocalAgentConnection({ boundPublishAccountCount });
+
+  const { checking: accountHealthChecking, runCheck: runAccountHealthCheck } =
+    usePublishAccountHealthCheck(selectedProjectId ?? null, Boolean(selectedProjectId));
+
+  const publishAccountBindCta = usePublishAccountBindCta({
+    projectId: selectedProjectId,
+    boundPublishAccountCount,
+    localAgentConnectionStatus,
+    localAgentConnectedOnline,
+    localAccountSnapshotEmpty: accountSnapshot.length === 0,
+    checking: localAgentChecking || accountHealthChecking,
+    checkConnection,
+    refreshAccountStatus: async () => {
+      const result = await checkConnection();
+      if (result.online) {
+        await runAccountHealthCheck({ detectSessions: true });
+      }
+    },
+  });
 
   const resolution = useMemo(() => {
     const m = summaryQuery.data;
@@ -90,6 +119,8 @@ export function EnterpriseProjectShell({ children }: Props) {
     return stage;
   }, [resolution?.currentStage, pathname]);
 
+  const usePublishBindCtaHandler = ctaStageForTopBar?.id === "bind_publish_env";
+
   const pageNextAction = useMemo(() => {
     const m = summaryQuery.data;
     if (!m || pathname === "/workspace" || pathname === "/flow") return null;
@@ -114,7 +145,19 @@ export function EnterpriseProjectShell({ children }: Props) {
     pageNextActionPath ??
     homeDisplay.mainChainNextAction?.ctaPath ??
     (ctaStageForTopBar && selectedProjectId ? workspaceCtaUrl(selectedProjectId, ctaStageForTopBar) : null);
+  const publishBindMobileLabel = usePublishBindCtaHandler
+    ? publishAccountBindCta.ctaLabel
+    : ctaLabel;
   const mobileDockSummary = ctaLabel ?? stageLabel ?? "查看当前阶段建议";
+
+  const publishAssistantPanelProps = {
+    publishAccountBindCtaLabel: publishAccountBindCta.ctaLabel,
+    onPublishAccountBindCta: () => void publishAccountBindCta.handlePublishAccountBindCta(),
+    publishAccountBindChecking: publishAccountBindCta.checking,
+  };
+  const publishAssistantPanel = <PublishAssistantPanel {...publishAssistantPanelProps} />;
+  const contentProductionAssistantPanel = <ContentProductionAssistantPanel />;
+  const questionBankAssistantPanel = <QuestionBankAssistantPanel />;
 
   const nextActionPanel = (
     <ProjectNextActionPanel
@@ -132,6 +175,26 @@ export function EnterpriseProjectShell({ children }: Props) {
     />
   );
 
+  const projectGrowthSidebarPanel = (
+    <>
+      {nextActionPanel}
+      <GeoGrowthSuggestionsPanel
+        projectId={selectedProjectId}
+        suggestions={growthSuggestions.suggestions}
+        loading={growthSuggestions.loading}
+        variant="sidebar"
+      />
+    </>
+  );
+
+  const sidebarPanel = isPublishPage
+    ? publishAssistantPanel
+    : isWeeklyPage
+      ? contentProductionAssistantPanel
+      : isQuestionsPage
+        ? questionBankAssistantPanel
+        : projectGrowthSidebarPanel;
+
   return (
     <div className="space-y-0" data-testid="enterprise-project-shell">
       <ProjectWorkspaceTopBar
@@ -141,24 +204,37 @@ export function EnterpriseProjectShell({ children }: Props) {
         ctaStage={ctaStageForTopBar}
         projectId={selectedProjectId}
         loading={summaryQuery.isLoading && Boolean(selectedProjectId)}
+        onCtaClick={
+          usePublishBindCtaHandler
+            ? () => void publishAccountBindCta.handlePublishAccountBindCta()
+            : undefined
+        }
+        ctaLabelOverride={usePublishBindCtaHandler ? publishAccountBindCta.ctaLabel : undefined}
       />
+      {publishAccountBindCta.dialog}
       <ProfileCompletenessLowHint projectId={selectedProjectId ?? null} className="mt-4" />
       <div className="flex gap-6 pt-6">
         <div className={isMobile ? "min-w-0 flex-1 pb-28" : "min-w-0 flex-1"}>
-          {isMobile && ctaLabel && selectedProjectId && ctaPath ? (
+          {isMobile && publishBindMobileLabel && selectedProjectId && (usePublishBindCtaHandler || ctaPath) ? (
             <div
               className="mb-4 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 lg:hidden"
               data-testid="next-action-mobile-inline-cta"
             >
               <p className="text-xs font-medium text-blue-800">当前建议</p>
-              <p className="mt-1 text-sm leading-relaxed text-gray-800">{ctaLabel}</p>
+              <p className="mt-1 text-sm leading-relaxed text-gray-800">{publishBindMobileLabel}</p>
               <Button
                 type="button"
                 className={`mt-3 w-full ${geoP0Brand.primary}`}
                 data-testid="next-action-mobile-inline-button"
-                onClick={() => setLocation(ctaPath)}
+                onClick={() => {
+                  if (usePublishBindCtaHandler) {
+                    void publishAccountBindCta.handlePublishAccountBindCta();
+                    return;
+                  }
+                  if (ctaPath) setLocation(ctaPath);
+                }}
               >
-                {ctaLabel}
+                {publishBindMobileLabel}
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
             </div>
@@ -166,27 +242,15 @@ export function EnterpriseProjectShell({ children }: Props) {
           {children}
         </div>
         <div className="hidden shrink-0 lg:block" style={{ width: 300 }}>
-          <div className="sticky top-6 space-y-4">
-            {nextActionPanel}
-            <GeoGrowthSuggestionsPanel
-              projectId={selectedProjectId}
-              suggestions={growthSuggestions.suggestions}
-              loading={growthSuggestions.loading}
-              variant="sidebar"
-            />
-          </div>
+          <div className="sticky top-6 space-y-4">{sidebarPanel}</div>
         </div>
       </div>
 
       {isMobile ? (
-        <ProjectNextActionMobileDock summaryLabel={mobileDockSummary}>
-          {nextActionPanel}
-          <GeoGrowthSuggestionsPanel
-            projectId={selectedProjectId}
-            suggestions={growthSuggestions.suggestions}
-            loading={growthSuggestions.loading}
-            variant="sidebar"
-          />
+        <ProjectNextActionMobileDock
+          summaryLabel={isPublishPage ? "发布助手" : isWeeklyPage ? "内容生产助手" : isQuestionsPage ? "问题库助手" : mobileDockSummary}
+        >
+          {sidebarPanel}
         </ProjectNextActionMobileDock>
       ) : null}
     </div>

@@ -18,11 +18,15 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
-import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
-import { QuestionTemplatePicker } from "@/components/content/QuestionTemplatePicker";
 import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchGenerationPanel";
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
-import { GeoContentTaskPanels } from "@/components/weekly/GeoContentTaskPanels";
+import { WeeklyAuxiliarySections } from "@/components/weekly/WeeklyAuxiliarySections";
+import { WeeklyContentDetailSheet } from "@/components/weekly/WeeklyContentDetailSheet";
+import { WeeklyContentTaskControlCard } from "@/components/weekly/WeeklyContentTaskControlCard";
+import {
+  WeeklyPublishableContentList,
+  type WeeklyPublishableRow,
+} from "@/components/weekly/WeeklyPublishableContentList";
 import { WeeklyPlatformArticleCard, type WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
 import { resolveGeoQualityOptimizationSuggestions } from "@shared/geoQualityAutoSuggest";
 import {
@@ -31,7 +35,11 @@ import {
   resolveQualityCardView,
 } from "@shared/geoQualityScoreDisplay";
 import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
-import { PageAnchorNav } from "@/components/geo/PageAnchorNav";
+import {
+  resolveWeeklyPlatformContentStatus,
+  type WeeklyContentTaskProgress,
+  type WeeklyContentTaskStatus,
+} from "@shared/weeklyContentTaskStatus";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
 import { mapPlatformContentErrorCategory } from "@/lib/aiTaskProgressErrors";
@@ -126,7 +134,7 @@ import {
 } from "@shared/contentReviewStatus";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
-import { type resolveArticleLifecycleView } from "@shared/articleLifecycle";
+import { resolveArticleLifecycleView } from "@shared/articleLifecycle";
 import { normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import {
   buildDefaultPlatformStrategy,
@@ -501,6 +509,9 @@ function showPublishSuccessNotification(
 export default function WeeklyContentPage() {
   const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailModel, setDetailModel] = useState<WeeklyArticleCardModel | null>(null);
+  const [detailStatus, setDetailStatus] = useState<WeeklyContentTaskStatus | null>(null);
   const [generatedSectionOpen, setGeneratedSectionOpen] = useState(false);
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading, projects } =
@@ -1208,6 +1219,19 @@ export default function WeeklyContentPage() {
   const platformBoardRows = useMemo((): PlatformBoardRow[] => {
     const linkedQuestion = geoContentTaskSource?.linkedQuestion ?? platformStrategy.targetQuestion;
     const sceneLabel = geoContentTaskSource?.sceneLabel ?? "";
+    const geoGapDefault = geoContentTaskSource?.geoGapSummary ?? latestDiagnosisGap ?? null;
+    const publishTasks = publishTasksQuery.data?.tasks ?? [];
+    const latestPublishTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
+    for (const task of publishTasks) {
+      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      if (!articleId) continue;
+      const prev = latestPublishTaskByArticle.get(articleId);
+      const taskTime = new Date(task.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || taskTime >= prevTime) {
+        latestPublishTaskByArticle.set(articleId, task);
+      }
+    }
     return WEEKLY_PLATFORM_DEFS.map(def => {
       const counts: PlatformContentCounts = {
         pending: 0,
@@ -1215,6 +1239,7 @@ export default function WeeklyContentPage() {
         ready: 0,
         published: 0,
       };
+      let platformArticle: ArticleRow | undefined;
       for (const topic of topics) {
         const task = typeof topic.optimizationTaskId === "number" ? tasksById.get(topic.optimizationTaskId) : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
@@ -1231,6 +1256,7 @@ export default function WeeklyContentPage() {
           counts.pending += 1;
           continue;
         }
+        if (!platformArticle) platformArticle = article;
         const preflight =
           selectedProjectId != null
             ? evaluatePublishPreflight(
@@ -1242,6 +1268,33 @@ export default function WeeklyContentPage() {
         else if (pass) counts.ready += 1;
         else counts.pendingConfirm += 1;
       }
+      const generating = generatingPlatformKey === def.key;
+      const published = platformArticle?.status === "已发布";
+      const latestTask = platformArticle ? latestPublishTaskByArticle.get(platformArticle.id) : undefined;
+      const queued = Boolean(
+        latestTask && latestTask.status !== "failed" && latestTask.status !== "session_expired",
+      );
+      const publishReady =
+        platformArticle && selectedProjectId != null
+          ? (evaluatePublishPreflight(
+              buildArticlePublishPreflightInput(selectedProjectId, platformArticle, publishBaseContext),
+            ).ready ?? false)
+          : false;
+      const lifecycleView = platformArticle ? resolveArticleLifecycleView(platformArticle) : null;
+      const status = resolveWeeklyPlatformContentStatus({
+        hasArticle: Boolean(platformArticle),
+        generating,
+        published,
+        queued,
+        publishReady,
+        article: platformArticle ?? null,
+        needsRewrite: lifecycleView?.status === "needs_revision",
+      });
+      const generatedCount = counts.pendingConfirm + counts.ready + counts.published;
+      const topicForArticle =
+        platformArticle && typeof platformArticle.topicId === "number"
+          ? topicsById.get(platformArticle.topicId)
+          : undefined;
       return {
         def,
         counts,
@@ -1257,18 +1310,28 @@ export default function WeeklyContentPage() {
                 : counts.published > 0
                   ? "本平台已有发布内容，建议回填公开链接并进入复测。"
                   : "先生成本平台内容，再推进发布与复测。",
+        status,
+        title: platformArticle?.title ?? topicForArticle?.title ?? null,
+        geoGap: geoGapDefault,
+        hasContent: generatedCount > 0,
+        articleId: platformArticle?.id ?? null,
+        canEnqueue: publishReady && !queued && !published,
       };
     });
   }, [
     topics,
+    topicsById,
     tasksById,
     articleByTopicId,
-    scoresByArticleId,
     geoContentTaskSource?.linkedQuestion,
     geoContentTaskSource?.sceneLabel,
+    geoContentTaskSource?.geoGapSummary,
+    latestDiagnosisGap,
     platformStrategy.targetQuestion,
     selectedProjectId,
     publishBaseContext,
+    generatingPlatformKey,
+    publishTasksQuery.data?.tasks,
   ]);
 
   const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
@@ -1416,9 +1479,31 @@ export default function WeeklyContentPage() {
     [contentCardModels],
   );
 
-  useEffect(() => {
-    setGeneratedSectionOpen(!isMobile);
-  }, [isMobile]);
+  const taskProgress = useMemo((): WeeklyContentTaskProgress => {
+    const generatedCount = contentCardModels.length;
+    const publishReadyCount = contentCardModels.filter(c => c.publishPreflightReady).length;
+    const queuedCount = contentCardModels.filter(c => c.queuedForPublish).length;
+    const publishedCount = contentCardModels.filter(c => c.statusFilterKey === "published").length;
+    return { generatedCount, publishReadyCount, queuedCount, publishedCount };
+  }, [contentCardModels]);
+
+  const publishableRows = useMemo((): WeeklyPublishableRow[] => {
+    return contentCardModels
+      .filter(card => card.publishPreflightReady && card.statusFilterKey !== "published")
+      .map(card => ({
+        ...card,
+        taskStatus: resolveWeeklyPlatformContentStatus({
+          hasArticle: true,
+          published: card.statusFilterKey === "published",
+          queued: card.queuedForPublish,
+          publishReady: card.publishPreflightReady,
+          article: card.article as Parameters<typeof resolveWeeklyPlatformContentStatus>[0]["article"],
+          needsRewrite: card.lifecycle?.status === "needs_revision",
+        }),
+        coverReady: Boolean(card.coverThumbnailSrc),
+        accountReady: card.publishPreflightReady === true && !card.publishBlockHint,
+      }));
+  }, [contentCardModels]);
 
   const platformProgressText = useMemo(() => {
     const pending = platformBoardRows.reduce((sum, row) => sum + row.counts.pending, 0);
@@ -1943,8 +2028,32 @@ export default function WeeklyContentPage() {
     platformGenerationRetry != null &&
     platformProgressFailureDisplay.canRegenerate;
 
+  const openContentDetail = useCallback((model: WeeklyArticleCardModel) => {
+    setDetailModel(model);
+    setDetailStatus(
+      resolveWeeklyPlatformContentStatus({
+        hasArticle: true,
+        published: model.statusFilterKey === "published",
+        queued: model.queuedForPublish,
+        publishReady: model.publishPreflightReady,
+        article: model.article as Parameters<typeof resolveWeeklyPlatformContentStatus>[0]["article"],
+        needsRewrite: model.lifecycle?.status === "needs_revision",
+      }),
+    );
+    setDetailOpen(true);
+  }, []);
+
   const handlePlatformView = (platformKey: WeeklyPlatformKey) => {
-    const hit = articles.find(
+    const model = contentCardModels.find(c => c.platformKey === platformKey);
+    if (model) {
+      openContentDetail(model);
+      return;
+    }
+    toast.message("该平台暂无已生成内容，请先点击「生成该平台内容」");
+  };
+
+  const findArticleByPlatform = (platformKey: WeeklyPlatformKey): ArticleRow | undefined => {
+    return articles.find(
       a =>
         getArticlePublishPlatform({
           generationBasis: a.generationBasis ?? null,
@@ -1952,8 +2061,25 @@ export default function WeeklyContentPage() {
           publishPlatform: a.publishPlatform,
         }).weeklyPlatformKey === platformKey,
     );
+  };
+
+  const handlePlatformEdit = (platformKey: WeeklyPlatformKey) => {
+    const hit = findArticleByPlatform(platformKey);
     if (hit) openEditor(hit);
-    else toast.message("该平台暂无已生成内容，请先点击「生成该平台内容」");
+  };
+
+  const handlePlatformRegenerateFromBoard = (platformKey: WeeklyPlatformKey) => {
+    const hit = findArticleByPlatform(platformKey);
+    if (!hit || typeof hit.topicId !== "number") {
+      toast.message("该平台暂无已生成内容");
+      return;
+    }
+    void generateOne(hit.topicId);
+  };
+
+  const handlePlatformEnqueue = (platformKey: WeeklyPlatformKey) => {
+    const hit = findArticleByPlatform(platformKey);
+    if (hit) openPublishDialog(hit);
   };
 
   const handleRegenerateCover = async (article: ArticleRow) => {
@@ -2436,9 +2562,9 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">平台化内容资产（GEO 内容任务工作台）</h1>
+          <h1 className="text-2xl font-bold text-gray-900">平台化内容资产</h1>
           <p className="text-sm text-gray-500">
-            根据 AI 实测缺口，按平台生成可发布、可监测、可复测的 GEO 内容资产。各平台独立生成，不支持一稿多发。
+            根据 AI 实测缺口，按平台生成可发布、可监测、可复用的 GEO 内容资产。各平台独立生成，不支持一稿多发。
           </p>
         </div>
         <div className="relative w-full max-w-md">
@@ -2508,17 +2634,31 @@ export default function WeeklyContentPage() {
         </div>
       ) : showDiagnosisEmpty ? (
         <P0Card testId="weekly-no-diagnosis">
-          <p className="text-sm leading-relaxed text-gray-700" data-testid="weekly-no-diagnosis-message">
-            {GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE}
+          <p className="text-base font-semibold text-gray-900" data-testid="weekly-empty-task-title">
+            暂无内容任务
           </p>
-          <Button
-            type="button"
-            className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
-            data-testid="weekly-go-ai-diagnosis"
-            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
-          >
-            去 AI 实测诊断
-          </Button>
+          <p className="mt-2 text-sm leading-relaxed text-gray-700" data-testid="weekly-no-diagnosis-message">
+            原因：尚未完成 AI 实测诊断或未选择内容缺口。
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              data-testid="weekly-go-ai-diagnosis"
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
+            >
+              去 AI 实测诊断
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className={geoP0Brand.primaryOutline}
+              data-testid="weekly-select-content-gap"
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
+            >
+              选择内容缺口
+            </Button>
+          </div>
         </P0Card>
       ) : showProjectTasksEmpty ? (
         <P0Card testId="weekly-no-project-content-tasks">
@@ -2536,47 +2676,24 @@ export default function WeeklyContentPage() {
         </P0Card>
       ) : (
         <>
-          <PageAnchorNav
-            testId="weekly-content-anchor-nav"
-            items={[
-              { id: "weekly-section-content-tasks", label: "内容任务" },
-              { id: "weekly-section-platform-matrix", label: "平台矩阵" },
-              { id: "weekly-section-generated-content", label: "已生成内容" },
-            ]}
-          />
           {geoContentTaskSource ? (
-            <div id="weekly-section-content-tasks" className="scroll-mt-24 space-y-4">
-              <GeoContentTaskPanels
-                source={geoContentTaskSource}
-                taskOptions={contentTaskOptions}
-                selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
-                onSelectTaskId={id => setSelectedContentTaskId(id)}
-                platformProgress={platformProgressText}
-                nextAction={contentNextAction}
-              />
-            </div>
+            <WeeklyContentTaskControlCard
+              source={geoContentTaskSource}
+              progress={taskProgress}
+              taskOptions={contentTaskOptions}
+              selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
+              onSelectTaskId={id => setSelectedContentTaskId(id)}
+              publishableCount={publishableContentCount}
+              batchBusy={batchBusy}
+              onGenerateNext={() => void handleBatchGenerateAllPlatforms()}
+              onViewPublishable={() => {
+                document.getElementById("weekly-section-publishable-content")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              onGoPublishingQueue={() =>
+                selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+              }
+            />
           ) : null}
-          <section
-            className="rounded-xl border border-blue-200 bg-blue-50/70 p-4"
-            data-testid="weekly-publish-next-step-panel"
-          >
-            <p className="text-sm font-semibold text-blue-900">
-              本轮已生成 {contentCardModels.length} 篇，可发布 {publishableContentCount} 篇，已加入发布队列 {queuedContentCount} 篇
-            </p>
-            <p className="mt-1 text-xs text-blue-800">
-              下一步：将通过质检的内容加入发布队列，并进入平台适配发布完成发布与链接回填。
-            </p>
-            {publishableContentCount > 0 ? (
-              <Button
-                type="button"
-                className="mt-3 bg-blue-600 text-white hover:bg-blue-700"
-                data-testid="weekly-go-content-publishing-cta"
-                onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
-              >
-                去平台适配发布
-              </Button>
-            ) : null}
-          </section>
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
 
@@ -2616,18 +2733,15 @@ export default function WeeklyContentPage() {
             />
           ) : null}
 
-          <div
-            className="my-8 border-t-2 border-gray-300"
-            data-testid="weekly-platform-matrix-divider"
-            aria-hidden
-          />
-
           <PlatformContentBoard
             rows={platformBoardRows}
             boardBusy={batchBusy}
             generatingPlatformKey={generatingPlatformKey}
             onGenerate={key => void handlePlatformGenerate(key)}
             onView={handlePlatformView}
+            onEdit={handlePlatformEdit}
+            onRegenerate={handlePlatformRegenerateFromBoard}
+            onEnqueue={handlePlatformEnqueue}
           />
 
           {showDirectionEmpty ? (
@@ -2638,7 +2752,6 @@ export default function WeeklyContentPage() {
 
           {contentCardModels.length > 0 ? (
             <details
-              id="weekly-section-generated-content"
               className={cn(
                 "scroll-mt-24 space-y-4",
                 isMobile && "rounded-xl border border-gray-200 bg-white shadow-sm",
@@ -2659,226 +2772,226 @@ export default function WeeklyContentPage() {
                 </span>
               </summary>
               <div className={cn("space-y-4", isMobile && "border-t border-gray-100 px-4 pb-4 pt-3")}>
-              <div className="flex flex-col gap-3">
-                <div className="hidden lg:block">
-                  <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
-                  <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
-                  {averageQualityScore != null ? (
-                    <p className="mt-1 text-sm text-gray-700" data-testid="weekly-content-avg-quality">
-                      平均质检分：
-                      <span className="ml-1 font-semibold tabular-nums text-gray-900">{averageQualityScore}</span>
-                      <span className="ml-1 text-gray-500">分（共 {contentCardModels.filter(c => c.qualityScore != null).length} 篇已评分）</span>
-                    </p>
-                  ) : null}
-                </div>
-                <div
-                  className="flex gap-2 overflow-x-auto pb-1"
-                  data-testid="weekly-filter-platform"
-                  role="tablist"
-                  aria-label="按平台筛选"
-                >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={filterPlatform === "all"}
-                    data-testid="weekly-filter-platform-all"
-                    className={cn(
-                      "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
-                      filterPlatform === "all"
-                        ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
-                        : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
-                    )}
-                    onClick={() => setFilterPlatform("all")}
+                <div className="flex flex-col gap-3">
+                  <div className="hidden lg:block">
+                    <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
+                    <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
+                    {averageQualityScore != null ? (
+                      <p className="mt-1 text-sm text-gray-700" data-testid="weekly-content-avg-quality">
+                        平均质检分：
+                        <span className="ml-1 font-semibold tabular-nums text-gray-900">{averageQualityScore}</span>
+                        <span className="ml-1 text-gray-500">
+                          分（共 {contentCardModels.filter(c => c.qualityScore != null).length} 篇已评分）
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
+                  <div
+                    className="flex gap-2 overflow-x-auto pb-1"
+                    data-testid="weekly-filter-platform"
+                    role="tablist"
+                    aria-label="按平台筛选"
                   >
-                    全部
-                  </button>
-                  {WEEKLY_PLATFORM_DEFS.map(def => (
                     <button
-                      key={def.key}
                       type="button"
                       role="tab"
-                      aria-selected={filterPlatform === def.key}
-                      data-testid={`weekly-filter-platform-${def.key}`}
+                      aria-selected={filterPlatform === "all"}
+                      data-testid="weekly-filter-platform-all"
                       className={cn(
                         "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
-                        filterPlatform === def.key
+                        filterPlatform === "all"
                           ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
                           : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
                       )}
-                      onClick={() => setFilterPlatform(def.key)}
+                      onClick={() => setFilterPlatform("all")}
                     >
-                      {def.label}
+                      全部
                     </button>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
-                  <label className="sr-only" htmlFor="weekly-filter-status">
-                    按状态筛选
-                  </label>
-                  <select
-                    id="weekly-filter-status"
-                    className={aiInput}
-                    value={filterStatus}
-                    onChange={e => setFilterStatus(e.target.value as ContentCardStatusFilter)}
-                    data-testid="weekly-filter-status"
-                  >
-                    <option value="all">全部状态</option>
-                    <option value="publishable">可发布</option>
-                    <option value="draft">草稿</option>
-                    <option value="published">已发布</option>
-                  </select>
-                  <label className="sr-only" htmlFor="weekly-sort-quality">
-                    按质检分排序
-                  </label>
-                  <select
-                    id="weekly-sort-quality"
-                    className={aiInput}
-                    value={sortQuality}
-                    onChange={e => setSortQuality(e.target.value as ContentCardQualitySort)}
-                    data-testid="weekly-sort-quality"
-                  >
-                    <option value="none">默认顺序</option>
-                    <option value="desc">质检分从高到低</option>
-                    <option value="asc">质检分从低到高</option>
-                  </select>
-                  <label className="sr-only" htmlFor="weekly-filter-content-tag">
-                    按内容标签筛选
-                  </label>
-                  <select
-                    id="weekly-filter-content-tag"
-                    className={aiInput}
-                    value={filterContentTag}
-                    onChange={e => setFilterContentTag(e.target.value)}
-                    data-testid="weekly-filter-content-tag"
-                  >
-                    <option value="all">全部标签</option>
-                    {contentTagStats.map(row => (
-                      <option key={row.tag} value={row.tag}>
-                        {row.tag}（{row.count}）
-                      </option>
+                    {WEEKLY_PLATFORM_DEFS.map(def => (
+                      <button
+                        key={def.key}
+                        type="button"
+                        role="tab"
+                        aria-selected={filterPlatform === def.key}
+                        data-testid={`weekly-filter-platform-${def.key}`}
+                        className={cn(
+                          "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
+                          filterPlatform === def.key
+                            ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
+                        )}
+                        onClick={() => setFilterPlatform(def.key)}
+                      >
+                        {def.label}
+                      </button>
                     ))}
-                  </select>
-                </div>
-              </div>
-              {contentTagStats.length > 0 ? (
-                <div
-                  className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
-                  data-testid="weekly-content-tag-stats"
-                >
-                  <span className="font-medium text-gray-900">标签统计：</span>
-                  {contentTagStats.map(row => (
-                    <button
-                      key={row.tag}
-                      type="button"
-                      className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
-                        filterContentTag === row.tag
-                          ? "border-violet-600 bg-violet-600 text-white"
-                          : "border-gray-300 bg-white hover:border-violet-400"
-                      }`}
-                      onClick={() =>
-                        setFilterContentTag(prev => (prev === row.tag ? "all" : row.tag))
-                      }
-                    >
-                      {row.tag} · {row.count}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className={geoP0Brand.primaryOutline}
-                  data-testid="weekly-select-visible-cards"
-                  onClick={() => toggleSelectVisibleCards(true)}
-                >
-                  全选当前列表
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className={geoP0Brand.primaryOutline}
-                  onClick={() => setSelectedCardIds(new Set())}
-                >
-                  取消选择
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className={geoP0Brand.primary}
-                  disabled={batchEnqueueBusy || anyGenerating || selectedCardIds.size === 0}
-                  data-testid="weekly-batch-enqueue-publish"
-                  onClick={() => void handleBatchEnqueuePublish()}
-                >
-                  {batchEnqueueBusy ? "提交中…" : `批量加入发布队列（${selectedCardIds.size}）`}
-                </Button>
-              </div>
-              {displayContentCards.length === 0 ? (
-                <div
-                  className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center"
-                  data-testid="weekly-content-cards-empty"
-                >
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                    <FileText className="h-5 w-5 text-gray-500" />
                   </div>
-                  <p className="mt-3 text-sm font-medium text-gray-800">未找到匹配内容</p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    请调整筛选条件，或返回全部内容后继续编辑和发布。
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
+                    <label className="sr-only" htmlFor="weekly-filter-status">
+                      按状态筛选
+                    </label>
+                    <select
+                      id="weekly-filter-status"
+                      className={aiInput}
+                      value={filterStatus}
+                      onChange={e => setFilterStatus(e.target.value as ContentCardStatusFilter)}
+                      data-testid="weekly-filter-status"
+                    >
+                      <option value="all">全部状态</option>
+                      <option value="publishable">可发布</option>
+                      <option value="draft">草稿</option>
+                      <option value="published">已发布</option>
+                    </select>
+                    <label className="sr-only" htmlFor="weekly-sort-quality">
+                      按质检分排序
+                    </label>
+                    <select
+                      id="weekly-sort-quality"
+                      className={aiInput}
+                      value={sortQuality}
+                      onChange={e => setSortQuality(e.target.value as ContentCardQualitySort)}
+                      data-testid="weekly-sort-quality"
+                    >
+                      <option value="none">默认顺序</option>
+                      <option value="desc">质检分从高到低</option>
+                      <option value="asc">质检分从低到高</option>
+                    </select>
+                    <label className="sr-only" htmlFor="weekly-filter-content-tag">
+                      按内容标签筛选
+                    </label>
+                    <select
+                      id="weekly-filter-content-tag"
+                      className={aiInput}
+                      value={filterContentTag}
+                      onChange={e => setFilterContentTag(e.target.value)}
+                      data-testid="weekly-filter-content-tag"
+                    >
+                      <option value="all">全部标签</option>
+                      {contentTagStats.map(row => (
+                        <option key={row.tag} value={row.tag}>
+                          {row.tag}（{row.count}）
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {contentTagStats.length > 0 ? (
+                  <div
+                    className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
+                    data-testid="weekly-content-tag-stats"
+                  >
+                    <span className="font-medium text-gray-900">标签统计：</span>
+                    {contentTagStats.map(row => (
+                      <button
+                        key={row.tag}
+                        type="button"
+                        className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                          filterContentTag === row.tag
+                            ? "border-violet-600 bg-violet-600 text-white"
+                            : "border-gray-300 bg-white hover:border-violet-400"
+                        }`}
+                        onClick={() => setFilterContentTag(prev => (prev === row.tag ? "all" : row.tag))}
+                      >
+                        {row.tag} · {row.count}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
                   <Button
                     type="button"
+                    size="sm"
                     variant="outline"
-                    className="mt-4 border-gray-200 text-gray-700 hover:bg-gray-50"
-                    onClick={() => {
-                      setFilterPlatform("all");
-                      setFilterStatus("all");
-                      setFilterContentTag("all");
-                      setSortQuality("none");
-                      setTitleSearch("");
-                    }}
+                    className={geoP0Brand.primaryOutline}
+                    data-testid="weekly-select-visible-cards"
+                    onClick={() => toggleSelectVisibleCards(true)}
                   >
-                    清空筛选条件
+                    全选当前列表
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={geoP0Brand.primaryOutline}
+                    onClick={() => setSelectedCardIds(new Set())}
+                  >
+                    取消选择
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={geoP0Brand.primary}
+                    disabled={batchEnqueueBusy || anyGenerating || selectedCardIds.size === 0}
+                    data-testid="weekly-batch-enqueue-publish"
+                    onClick={() => void handleBatchEnqueuePublish()}
+                  >
+                    {batchEnqueueBusy ? "提交中…" : `批量加入发布队列（${selectedCardIds.size}）`}
                   </Button>
                 </div>
-              ) : (
-                <div
-                  className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
-                  data-testid="weekly-content-cards-grid"
-                >
-                  {displayContentCards.map(model => {
-                    const article = articlesById.get(model.id);
-                    const topicId = article?.topicId;
-                    return (
-                      <WeeklyPlatformArticleCard
-                        key={model.id}
-                        model={model}
-                        disabled={anyGenerating || batchEnqueueBusy}
-                        selectable
-                        selected={selectedCardIds.has(model.id)}
-                        onSelectedChange={(checked: boolean) => toggleCardSelection(model.id, checked)}
-                        onView={() => article && openEditor(article)}
-                        onRegenerate={() => {
-                          if (typeof topicId === "number") void generateOne(topicId);
-                        }}
-                        onEnqueuePublish={() => article && openPublishDialog(article)}
-                        onGoPublishingPage={() =>
-                          selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-                        }
-                        onContentReviewStatusChange={status => {
-                          if (!selectedProjectId) return;
-                          setContentReviewStatus.mutate({
-                            projectId: selectedProjectId,
-                            articleId: model.id,
-                            status,
-                          });
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+                {displayContentCards.length === 0 ? (
+                  <div
+                    className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center"
+                    data-testid="weekly-content-cards-empty"
+                  >
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                      <FileText className="h-5 w-5 text-gray-500" />
+                    </div>
+                    <p className="mt-3 text-sm font-medium text-gray-800">未找到匹配内容</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      请调整筛选条件，或返回全部内容后继续编辑和发布。
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-4 border-gray-200 text-gray-700 hover:bg-gray-50"
+                      onClick={() => {
+                        setFilterPlatform("all");
+                        setFilterStatus("all");
+                        setFilterContentTag("all");
+                        setSortQuality("none");
+                        setTitleSearch("");
+                      }}
+                    >
+                      清空筛选条件
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
+                    data-testid="weekly-content-cards-grid"
+                  >
+                    {displayContentCards.map(model => {
+                      const article = articlesById.get(model.id);
+                      const topicId = article?.topicId;
+                      return (
+                        <WeeklyPlatformArticleCard
+                          key={model.id}
+                          model={model}
+                          disabled={anyGenerating || batchEnqueueBusy}
+                          selectable
+                          selected={selectedCardIds.has(model.id)}
+                          onSelectedChange={(checked: boolean) => toggleCardSelection(model.id, checked)}
+                          onView={() => openContentDetail(model)}
+                          onRegenerate={() => {
+                            if (typeof topicId === "number") void generateOne(topicId);
+                          }}
+                          onEnqueuePublish={() => article && openPublishDialog(article)}
+                          onGoPublishingPage={() =>
+                            selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                          }
+                          onContentReviewStatusChange={status => {
+                            if (!selectedProjectId) return;
+                            setContentReviewStatus.mutate({
+                              projectId: selectedProjectId,
+                              articleId: model.id,
+                              status,
+                            });
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </details>
           ) : (
@@ -2888,9 +3001,7 @@ export default function WeeklyContentPage() {
                   <FileText className="h-5 w-5 text-gray-500" />
                 </div>
                 <p className="mt-3 text-sm font-medium text-gray-800">本周还没有生成内容</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  先按平台生成首批内容，再进入质检与发布流程。
-                </p>
+                <p className="mt-1 text-xs text-gray-500">先按平台生成首批内容，再进入质检与发布流程。</p>
                 <Button
                   type="button"
                   className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
@@ -2903,26 +3014,46 @@ export default function WeeklyContentPage() {
             </P0Card>
           )}
 
-          <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-              内容策略细项（可选，按单平台调整）
-            </summary>
-            <div className="space-y-4 border-t border-gray-100 p-4">
-              <PlatformContentStrategyPanel
-                value={platformStrategy}
-                onChange={setPlatformStrategy}
-                targetQuestionOptions={targetQuestionOptions}
-                disabled={anyGenerating}
-              />
-              <QuestionTemplatePicker
-                platform={platformStrategy.targetPublishPlatform}
-                value={selectedQuestionTemplateId}
-                onChange={setSelectedQuestionTemplateId}
-                disabled={anyGenerating}
-                projectId={selectedProjectId}
-              />
-            </div>
-          </details>
+          <WeeklyPublishableContentList
+            rows={publishableRows}
+            disabled={anyGenerating || batchEnqueueBusy}
+            onView={openContentDetail}
+            onEnqueuePublish={model => {
+              const article = articlesById.get(model.id);
+              if (article) openPublishDialog(article);
+            }}
+            onGoPublishingPage={() =>
+              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+            }
+          />
+
+          <WeeklyAuxiliarySections
+            source={geoContentTaskSource}
+            platformStrategy={platformStrategy}
+            onPlatformStrategyChange={setPlatformStrategy}
+            targetQuestionOptions={targetQuestionOptions}
+            selectedQuestionTemplateId={selectedQuestionTemplateId}
+            onQuestionTemplateChange={setSelectedQuestionTemplateId}
+            strategyDisabled={anyGenerating}
+            historyCards={displayContentCards}
+            historyDisabled={anyGenerating || batchEnqueueBusy}
+            onHistoryView={openContentDetail}
+            onHistoryRegenerate={model => {
+              const article = articlesById.get(model.id);
+              if (article && typeof article.topicId === "number") void generateOne(article.topicId);
+            }}
+            onHistoryEnqueue={model => {
+              const article = articlesById.get(model.id);
+              if (article) openPublishDialog(article);
+            }}
+            onHistoryGoPublishing={() =>
+              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+            }
+            onHistoryReviewChange={(articleId, status) => {
+              if (!selectedProjectId) return;
+              setContentReviewStatus.mutate({ projectId: selectedProjectId, articleId, status });
+            }}
+          />
         </>
       )}
 
@@ -2936,6 +3067,32 @@ export default function WeeklyContentPage() {
           />
         </div>
       ) : null}
+
+      <WeeklyContentDetailSheet
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        model={detailModel}
+        status={detailStatus}
+        disabled={anyGenerating || batchEnqueueBusy}
+        onEdit={() => {
+          if (!detailModel) return;
+          const article = articlesById.get(detailModel.id);
+          if (article) openEditor(article);
+        }}
+        onRegenerate={() => {
+          if (!detailModel) return;
+          const article = articlesById.get(detailModel.id);
+          if (article && typeof article.topicId === "number") void generateOne(article.topicId);
+        }}
+        onEnqueuePublish={() => {
+          if (!detailModel) return;
+          const article = articlesById.get(detailModel.id);
+          if (article) openPublishDialog(article);
+        }}
+        onGoPublishingPage={() =>
+          selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+        }
+      />
 
       {selectedProjectId && editorArticle ? (
         <ArticleAssetEditorSheet
