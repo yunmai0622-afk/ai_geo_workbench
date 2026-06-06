@@ -10,9 +10,13 @@ describe("localAgentMacZipRedirect", () => {
     const url = readMacZipRedirectUrl(root);
     const manifest = JSON.parse(
       readFileSync(resolve(root, "client/public/downloads/manifest.json"), "utf-8"),
-    ) as { macZipUrl?: string };
+    ) as { macZipUrl?: string; version?: string };
+    const localAgentPkg = JSON.parse(
+      readFileSync(resolve(root, "local-agent/package.json"), "utf-8"),
+    ) as { version?: string };
     expect(url).toBe(manifest.macZipUrl);
-    expect(url).toContain("geo-local-agent-v1.0.18");
+    expect(manifest.version).toBe(localAgentPkg.version);
+    expect(url).toContain(`geo-local-agent-v${localAgentPkg.version}`);
   });
 
   it("server index registers manifest-driven redirect", () => {

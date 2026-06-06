@@ -3,6 +3,7 @@ import { URL } from "url";
 import { AGENT_VERSION, loadOrCreateAgentMeta } from "./agentMeta";
 import { detectPlatformAccount, openLoginWindow } from "./platformActions";
 import { syncAccountAfterDetect } from "./accountSync";
+import { buildLocalAgentCorsHeaders } from "./cors";
 import { LOCAL_AGENT_BINDING_PLATFORMS } from "./platforms/publisherFactory";
 import { createPlatformProfile } from "./profileManager";
 import { readAccounts } from "./storage";
@@ -10,13 +11,21 @@ import { readAccounts } from "./storage";
 export const LOCAL_AGENT_HOST = "127.0.0.1";
 export const LOCAL_AGENT_PORT = 39888;
 
-function sendJson(res: http.ServerResponse, status: number, body: unknown) {
+function readRequestOrigin(req: http.IncomingMessage): string | undefined {
+  const raw = req.headers.origin;
+  return typeof raw === "string" ? raw : undefined;
+}
+
+function sendOptions(res: http.ServerResponse, origin: string | undefined) {
+  res.writeHead(204, buildLocalAgentCorsHeaders(origin));
+  res.end();
+}
+
+function sendJson(res: http.ServerResponse, status: number, body: unknown, origin: string | undefined) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    ...buildLocalAgentCorsHeaders(origin),
   });
   res.end(payload);
 }
@@ -33,15 +42,27 @@ export type LocalAgentServerHooks = {
   onFocusAccountsTab?: () => void;
 };
 
-export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Server {
+export type LocalAgentServerOptions = {
+  host?: string;
+  port?: number;
+};
+
+export function startLocalAgentServer(
+  hooks?: LocalAgentServerHooks,
+  options?: LocalAgentServerOptions,
+): http.Server {
+  const host = options?.host ?? LOCAL_AGENT_HOST;
+  const port = options?.port ?? LOCAL_AGENT_PORT;
   const server = http.createServer(async (req, res) => {
     if (!req.url || !req.method) {
-      sendJson(res, 400, { ok: false, message: "bad_request" });
+      sendJson(res, 400, { ok: false, message: "bad_request" }, readRequestOrigin(req));
       return;
     }
 
+    const origin = readRequestOrigin(req);
+
     if (req.method === "OPTIONS") {
-      sendJson(res, 204, {});
+      sendOptions(res, origin);
       return;
     }
 
@@ -51,28 +72,38 @@ export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Serve
     try {
       if (req.method === "POST" && pathname === "/ui/focus-accounts") {
         hooks?.onFocusAccountsTab?.();
-        sendJson(res, 200, { ok: true, message: "已切换到账号环境" });
+        sendJson(res, 200, { ok: true, message: "已切换到账号环境" }, origin);
         return;
       }
 
       if (req.method === "GET" && pathname === "/health") {
         const meta = loadOrCreateAgentMeta();
-        sendJson(res, 200, {
-          ok: true,
-          agentId: meta.agentId,
-          version: AGENT_VERSION,
-          platform: process.platform,
-          startedAt: meta.lastStartedAt,
-          supportedPlatforms: LOCAL_AGENT_BINDING_PLATFORMS,
-        });
+        sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            agentId: meta.agentId,
+            version: AGENT_VERSION,
+            platform: process.platform,
+            startedAt: meta.lastStartedAt,
+            supportedPlatforms: LOCAL_AGENT_BINDING_PLATFORMS,
+          },
+          origin,
+        );
         return;
       }
 
       if (req.method === "GET" && pathname === "/accounts") {
         const data = readAccounts();
-        sendJson(res, 200, {
-          accounts: data.accounts.map(({ profilePath: _p, ...rest }) => rest),
-        });
+        sendJson(
+          res,
+          200,
+          {
+            accounts: data.accounts.map(({ profilePath: _p, ...rest }) => rest),
+          },
+          origin,
+        );
         return;
       }
 
@@ -85,10 +116,15 @@ export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Serve
         }>(req);
         const platform = body.platform as (typeof LOCAL_AGENT_BINDING_PLATFORMS)[number] | undefined;
         if (!platform || !LOCAL_AGENT_BINDING_PLATFORMS.includes(platform)) {
-          sendJson(res, 400, {
-            ok: false,
-            message: `platform 须为 ${LOCAL_AGENT_BINDING_PLATFORMS.join(" / ")} 之一`,
-          });
+          sendJson(
+            res,
+            400,
+            {
+              ok: false,
+              message: `platform 须为 ${LOCAL_AGENT_BINDING_PLATFORMS.join(" / ")} 之一`,
+            },
+            origin,
+          );
           return;
         }
         const account = createPlatformProfile(platform, {
@@ -97,15 +133,20 @@ export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Serve
           accountGroup: body.accountGroup ?? null,
         });
         const login = await openLoginWindow(account.profileId);
-        sendJson(res, login.ok ? 200 : 400, {
-          ok: login.ok,
-          profileId: account.profileId,
-          platform: account.platform,
-          sessionStatus: account.sessionStatus,
-          message: login.ok
-            ? "已创建账号环境，正在打开登录页，请在浏览器中完成登录"
-            : `已创建账号环境，但打开浏览器失败：${login.message}`,
-        });
+        sendJson(
+          res,
+          login.ok ? 200 : 400,
+          {
+            ok: login.ok,
+            profileId: account.profileId,
+            platform: account.platform,
+            sessionStatus: account.sessionStatus,
+            message: login.ok
+              ? "已创建账号环境，正在打开登录页，请在浏览器中完成登录"
+              : `已创建账号环境，但打开浏览器失败：${login.message}`,
+          },
+          origin,
+        );
         return;
       }
 
@@ -113,19 +154,24 @@ export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Serve
       if (req.method === "POST" && openLoginMatch) {
         const profileId = decodeURIComponent(openLoginMatch[1]!);
         const result = await openLoginWindow(profileId);
-        sendJson(res, result.ok ? 200 : 400, {
-          ok: result.ok,
-          profileId,
-          message: result.message,
-          step: result.step,
-        });
+        sendJson(
+          res,
+          result.ok ? 200 : 400,
+          {
+            ok: result.ok,
+            profileId,
+            message: result.message,
+            step: result.step,
+          },
+          origin,
+        );
         return;
       }
 
       if (req.method === "POST" && pathname === "/poll-once") {
         const { pollOnce } = await import("./pollingManager");
         const result = await pollOnce();
-        sendJson(res, 200, { ok: true, ...result });
+        sendJson(res, 200, { ok: true, ...result }, origin);
         return;
       }
 
@@ -145,36 +191,46 @@ export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Serve
                   : result.step === "selector_not_found"
                     ? "selector_not_found"
                     : "account_not_detected";
-          sendJson(res, 400, {
-            ok: false,
-            errorType,
-            message: result.message,
-            profileId,
-            platform: acc?.platform,
-          });
+          sendJson(
+            res,
+            400,
+            {
+              ok: false,
+              errorType,
+              message: result.message,
+              profileId,
+              platform: acc?.platform,
+            },
+            origin,
+          );
           return;
         }
-        sendJson(res, 200, {
-          ok: true,
-          profileId,
-          platform: acc?.platform ?? null,
-          accountName: result.data?.accountName ?? null,
-          sessionStatus: "active",
-        });
+        sendJson(
+          res,
+          200,
+          {
+            ok: true,
+            profileId,
+            platform: acc?.platform ?? null,
+            accountName: result.data?.accountName ?? null,
+            sessionStatus: "active",
+          },
+          origin,
+        );
         void syncAccountAfterDetect(profileId).catch(err => {
           console.warn("[local-agent] account status sync failed", err instanceof Error ? err.message : err);
         });
         return;
       }
 
-      sendJson(res, 404, { ok: false, message: "not_found" });
+      sendJson(res, 404, { ok: false, message: "not_found" }, origin);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       if (message.includes("profile_not_found")) {
-        sendJson(res, 404, { ok: false, errorType: "profile_not_found", message });
+        sendJson(res, 404, { ok: false, errorType: "profile_not_found", message }, origin);
         return;
       }
-      sendJson(res, 500, { ok: false, message });
+      sendJson(res, 500, { ok: false, message }, origin);
     }
   });
 
@@ -182,8 +238,8 @@ export function startLocalAgentServer(hooks?: LocalAgentServerHooks): http.Serve
     console.error(`[local-agent] HTTP listen error:`, err);
   });
 
-  server.listen(LOCAL_AGENT_PORT, LOCAL_AGENT_HOST, () => {
-    console.log(`[local-agent] HTTP http://${LOCAL_AGENT_HOST}:${LOCAL_AGENT_PORT}`);
+  server.listen(port, host, () => {
+    console.log(`[local-agent] HTTP http://${host}:${port}`);
   });
 
   return server;

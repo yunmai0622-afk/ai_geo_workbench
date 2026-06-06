@@ -41,14 +41,195 @@ export type LocalAgentAccountSnapshotRow = {
   lastCheckedAt: string | null;
 };
 
+export type LocalAgentHealthProbeDebug = {
+  healthUrl: string;
+  fetchStatus: "ok" | "http_error" | "network_error";
+  fetchErrorName?: string;
+  fetchErrorMessage?: string;
+  isCorsLikely: boolean;
+  isPrivateNetworkLikely: boolean;
+  responseStatus?: number;
+  responseBodySummary?: string;
+  preflightStatus?: number;
+  preflightAllowOrigin?: string | null;
+  preflightAllowPrivateNetwork?: string | null;
+};
+
 const LOCAL_AGENT_UNAVAILABLE_MESSAGE = "无法连接本地发布客户端";
 
 /** 合并多组件同时触发的健康探测，避免重复请求 */
 const HEALTH_PROBE_CACHE_MS = 2500;
 let healthProbeCache: { at: number; value: LocalAgentHealth | null } | null = null;
+let lastHealthProbeDebug: LocalAgentHealthProbeDebug | null = null;
 
 export function resetLocalAgentHealthProbeCache(): void {
   healthProbeCache = null;
+  lastHealthProbeDebug = null;
+}
+
+export function getLastLocalAgentHealthProbeDebug(): LocalAgentHealthProbeDebug | null {
+  return lastHealthProbeDebug;
+}
+
+function resolveBrowserOrigin(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return window.location.origin;
+}
+
+function summarizeResponseBody(text: string, maxLen = 160): string {
+  const trimmed = text.replace(/\s+/g, " ").trim();
+  if (!trimmed) return "(empty)";
+  return trimmed.length > maxLen ? `${trimmed.slice(0, maxLen)}…` : trimmed;
+}
+
+export function classifyLocalAgentFetchFailure(input: {
+  fetchErrorName?: string;
+  fetchErrorMessage?: string;
+  pageOrigin?: string;
+  preflightAllowOrigin?: string | null;
+  preflightAllowPrivateNetwork?: string | null;
+  preflightStatus?: number;
+}): Pick<LocalAgentHealthProbeDebug, "isCorsLikely" | "isPrivateNetworkLikely"> {
+  const message = `${input.fetchErrorName ?? ""} ${input.fetchErrorMessage ?? ""}`.toLowerCase();
+  const preflightFailed =
+    input.preflightStatus != null && (input.preflightStatus < 200 || input.preflightStatus >= 300);
+  const missingPrivateNetwork = input.preflightAllowPrivateNetwork !== "true";
+  const originMismatch =
+    Boolean(input.pageOrigin) &&
+    input.preflightAllowOrigin != null &&
+    input.preflightAllowOrigin !== input.pageOrigin;
+  const missingOrigin = Boolean(input.pageOrigin) && !input.preflightAllowOrigin;
+
+  const isPrivateNetworkLikely =
+    missingPrivateNetwork ||
+    preflightFailed ||
+    message.includes("private network") ||
+    message.includes("local network");
+
+  const isCorsLikely =
+    missingOrigin ||
+    originMismatch ||
+    message.includes("cors") ||
+    (message.includes("failed to fetch") && !isPrivateNetworkLikely);
+
+  return { isCorsLikely, isPrivateNetworkLikely };
+}
+
+async function probeOptionsPreflight(
+  url: string,
+  origin: string | undefined,
+): Promise<Pick<
+  LocalAgentHealthProbeDebug,
+  "preflightStatus" | "preflightAllowOrigin" | "preflightAllowPrivateNetwork"
+>> {
+  if (!origin) {
+    return {
+      preflightStatus: undefined,
+      preflightAllowOrigin: null,
+      preflightAllowPrivateNetwork: null,
+    };
+  }
+  try {
+    const res = await fetch(url, {
+      method: "OPTIONS",
+      headers: {
+        Origin: origin,
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Private-Network": "true",
+      },
+      cache: "no-store",
+    });
+    return {
+      preflightStatus: res.status,
+      preflightAllowOrigin: res.headers.get("access-control-allow-origin"),
+      preflightAllowPrivateNetwork: res.headers.get("access-control-allow-private-network"),
+    };
+  } catch {
+    return {
+      preflightStatus: undefined,
+      preflightAllowOrigin: null,
+      preflightAllowPrivateNetwork: null,
+    };
+  }
+}
+
+export async function probeLocalAgentHealthDetailed(options?: {
+  force?: boolean;
+}): Promise<{ health: LocalAgentHealth | null; debug: LocalAgentHealthProbeDebug }> {
+  const now = Date.now();
+  if (
+    !options?.force &&
+    healthProbeCache &&
+    now - healthProbeCache.at < HEALTH_PROBE_CACHE_MS &&
+    lastHealthProbeDebug
+  ) {
+    return { health: healthProbeCache.value, debug: lastHealthProbeDebug };
+  }
+
+  const healthUrl = LOCAL_AGENT_DIRECT_HEALTH_URL;
+  const pageOrigin = resolveBrowserOrigin();
+  const preflight = await probeOptionsPreflight(healthUrl, pageOrigin);
+
+  let health: LocalAgentHealth | null = null;
+  let fetchStatus: LocalAgentHealthProbeDebug["fetchStatus"] = "network_error";
+  let fetchErrorName: string | undefined;
+  let fetchErrorMessage: string | undefined;
+  let responseStatus: number | undefined;
+  let responseBodySummary: string | undefined;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(healthUrl, {
+      signal: controller.signal,
+      mode: "cors",
+      cache: "no-store",
+    });
+    clearTimeout(timer);
+    responseStatus = res.status;
+    const bodyText = await res.text();
+    responseBodySummary = summarizeResponseBody(bodyText);
+    if (res.ok) {
+      try {
+        const data = JSON.parse(bodyText) as LocalAgentHealth;
+        health = data.ok ? data : null;
+        fetchStatus = health ? "ok" : "http_error";
+      } catch {
+        fetchStatus = "http_error";
+      }
+    } else {
+      fetchStatus = "http_error";
+    }
+  } catch (e) {
+    fetchStatus = "network_error";
+    fetchErrorName = e instanceof Error ? e.name : "Error";
+    fetchErrorMessage = e instanceof Error ? e.message : String(e);
+  }
+
+  const { isCorsLikely, isPrivateNetworkLikely } = classifyLocalAgentFetchFailure({
+    fetchErrorName,
+    fetchErrorMessage,
+    pageOrigin,
+    preflightAllowOrigin: preflight.preflightAllowOrigin,
+    preflightAllowPrivateNetwork: preflight.preflightAllowPrivateNetwork,
+    preflightStatus: preflight.preflightStatus,
+  });
+
+  const debug: LocalAgentHealthProbeDebug = {
+    healthUrl,
+    fetchStatus,
+    fetchErrorName,
+    fetchErrorMessage,
+    isCorsLikely,
+    isPrivateNetworkLikely,
+    responseStatus,
+    responseBodySummary,
+    ...preflight,
+  };
+
+  healthProbeCache = { at: now, value: health };
+  lastHealthProbeDebug = debug;
+  return { health, debug };
 }
 
 async function agentFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -99,35 +280,8 @@ export async function checkLocalAgentHealth(options?: {
   /** 用户点击「重试检测」等场景跳过短时缓存 */
   force?: boolean;
 }): Promise<LocalAgentHealth | null> {
-  const now = Date.now();
-  if (
-    !options?.force &&
-    healthProbeCache &&
-    now - healthProbeCache.at < HEALTH_PROBE_CACHE_MS
-  ) {
-    return healthProbeCache.value;
-  }
-
-  let value: LocalAgentHealth | null = null;
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(LOCAL_AGENT_DIRECT_HEALTH_URL, {
-      signal: controller.signal,
-      mode: "cors",
-      cache: "no-store",
-    });
-    clearTimeout(timer);
-    if (res.ok) {
-      const data = (await res.json()) as LocalAgentHealth;
-      value = data.ok ? data : null;
-    }
-  } catch {
-    value = null;
-  }
-
-  healthProbeCache = { at: now, value };
-  return value;
+  const { health } = await probeLocalAgentHealthDetailed(options);
+  return health;
 }
 
 export async function createPlatformProfile(input: {

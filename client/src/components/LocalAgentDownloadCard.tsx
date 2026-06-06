@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { buildLocalAgentDownloadCardServerContext } from "@/lib/localAgentDownloadCardContext";
-import { checkLocalAgentHealth, listLocalAgentAccountSnapshots } from "@/lib/localAgentClient";
+import { checkLocalAgentHealth, listLocalAgentAccountSnapshots, probeLocalAgentHealthDetailed, type LocalAgentHealthProbeDebug } from "@/lib/localAgentClient";
 import { trpc } from "@/lib/trpc";
 import type { LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync";
 import {
@@ -88,6 +88,7 @@ export function LocalAgentDownloadCard({
   const [checking, setChecking] = useState(false);
   const [refreshingAccounts, setRefreshingAccounts] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
+  const [probeDebug, setProbeDebug] = useState<LocalAgentHealthProbeDebug | null>(null);
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
   const [macHref, setMacHref] = useState<string | null>(null);
   const [localSnapshot, setLocalSnapshot] = useState<LocalAgentAccountStatusEntry[]>(
@@ -178,7 +179,8 @@ export function LocalAgentDownloadCard({
   const refreshHealth = useCallback(async (force = false) => {
     setChecking(true);
     try {
-      const h = await checkLocalAgentHealth(force ? { force: true } : undefined);
+      const { health: h, debug } = await probeLocalAgentHealthDetailed(force ? { force: true } : undefined);
+      setProbeDebug(debug);
       setHealth(h);
       const ok = Boolean(h?.ok);
       setLocalHttpOk(ok);
@@ -508,6 +510,22 @@ export function LocalAgentDownloadCard({
             <div>reason: {debugInfo.reason}</div>
             <div>accountsQueryStatus: {accountsQuery.status}</div>
             <div>propsPlatformAccountsCount: {platformAccountsProp.length}</div>
+            {probeDebug ? (
+              <>
+                <div className="mt-2 font-semibold text-violet-900">fetch probe</div>
+                <div>healthUrl: {probeDebug.healthUrl}</div>
+                <div>fetchStatus: {probeDebug.fetchStatus}</div>
+                <div>fetchErrorName: {probeDebug.fetchErrorName ?? "—"}</div>
+                <div>fetchErrorMessage: {probeDebug.fetchErrorMessage ?? "—"}</div>
+                <div>isCorsLikely: {String(probeDebug.isCorsLikely)}</div>
+                <div>isPrivateNetworkLikely: {String(probeDebug.isPrivateNetworkLikely)}</div>
+                <div>responseStatus: {probeDebug.responseStatus ?? "—"}</div>
+                <div>responseBodySummary: {probeDebug.responseBodySummary ?? "—"}</div>
+                <div>preflightStatus: {probeDebug.preflightStatus ?? "—"}</div>
+                <div>preflightAllowOrigin: {probeDebug.preflightAllowOrigin ?? "—"}</div>
+                <div>preflightAllowPrivateNetwork: {probeDebug.preflightAllowPrivateNetwork ?? "—"}</div>
+              </>
+            ) : null}
           </dl>
         </details>
       ) : null}
