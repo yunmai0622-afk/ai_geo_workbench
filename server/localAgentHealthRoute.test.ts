@@ -19,7 +19,7 @@ describe("localAgentHealthRoute", () => {
     expect(shared).toContain("LOCAL_AGENT_DIRECT_HEALTH_URL");
     expect(shared).toContain('LOCAL_AGENT_BROWSER_HEALTH_URL = "/api/local-agent/health"');
     expect(client).toContain("LOCAL_AGENT_DIRECT_HEALTH_URL");
-    expect(client).toMatch(/fetch\(LOCAL_AGENT_DIRECT_HEALTH_URL/);
+    expect(client).toContain("const healthUrl = LOCAL_AGENT_DIRECT_HEALTH_URL");
     expect(client).toContain("healthProbeCache");
   });
 });

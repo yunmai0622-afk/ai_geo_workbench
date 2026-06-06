@@ -156,3 +156,17 @@ export async function syncKnownProjectAccountStatuses(): Promise<void> {
     }
   }
 }
+
+/** 与服务端心跳窗口对齐：连接成功后定期刷新 lastSessionCheckedAt */
+const SERVER_HEARTBEAT_SYNC_INTERVAL_MS = 2 * 60 * 1000;
+let lastServerHeartbeatSyncAt = 0;
+
+/** Agent 与服务端建立连接后，将账号状态同步到 project_platform_accounts（服务端心跳） */
+export async function syncServerHeartbeatOnConnect(options?: { force?: boolean }): Promise<void> {
+  const now = Date.now();
+  if (!options?.force && now - lastServerHeartbeatSyncAt < SERVER_HEARTBEAT_SYNC_INTERVAL_MS) {
+    return;
+  }
+  lastServerHeartbeatSyncAt = now;
+  await syncKnownProjectAccountStatuses();
+}

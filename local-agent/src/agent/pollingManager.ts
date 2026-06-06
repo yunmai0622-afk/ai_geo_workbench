@@ -1,3 +1,4 @@
+import { syncServerHeartbeatOnConnect } from "./accountSync";
 import { readAgentConfig, writeAgentConfig } from "./agentConfig";
 import { formatGeoServerConnectionError } from "./localAgentServerUrl";
 import { pruneOldTaskLogs } from "./taskLogStore";
@@ -75,6 +76,12 @@ export async function pollOnce(): Promise<{ processed: number; message: string }
       const res = await pollTasks(cfg.localAgentId);
       tasks = res.tasks.slice(0, cfg.maxTasksPerCycle);
       setConnectionResult(true, null);
+      void syncServerHeartbeatOnConnect().catch(err => {
+        log(
+          `服务端心跳同步失败：${err instanceof Error ? err.message : String(err)}`,
+          true,
+        );
+      });
     } catch (e) {
       const { userMessage, diagnosticDetail } = formatGeoServerConnectionError(e, cfg.serverUrl);
       setConnectionResult(false, userMessage);

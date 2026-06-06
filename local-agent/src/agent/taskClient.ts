@@ -1,3 +1,4 @@
+import { syncServerHeartbeatOnConnect } from "./accountSync";
 import { readAgentConfig } from "./agentConfig";
 import { formatGeoServerConnectionError } from "./localAgentServerUrl";
 
@@ -135,6 +136,7 @@ export async function testServerConnection(): Promise<{
   const cfg = readAgentConfig();
   try {
     await pollTasks(cfg.localAgentId);
+    await syncServerHeartbeatOnConnect({ force: true });
     return { ok: true, message: `已连接 ${cfg.serverUrl}` };
   } catch (e) {
     const { userMessage, diagnosticDetail } = formatGeoServerConnectionError(e, cfg.serverUrl);

@@ -44,5 +44,21 @@ describe("Local agent account sync to web P0", () => {
   it("local agent detect triggers account status sync", () => {
     expect(localMain).toContain("syncAccountAfterDetect");
   });
+
+  it("local agent writes server heartbeat when connected to GEO server", () => {
+    const accountSync = read("local-agent/src/agent/accountSync.ts");
+    const polling = read("local-agent/src/agent/pollingManager.ts");
+    const taskClient = read("local-agent/src/agent/taskClient.ts");
+    const connStatus = read("shared/localAgentConnectionStatus.ts");
+
+    expect(accountSync).toContain("syncServerHeartbeatOnConnect");
+    expect(accountSync).toContain("agent.syncAccountStatuses");
+    expect(polling).toContain("syncServerHeartbeatOnConnect");
+    expect(taskClient).toContain("syncServerHeartbeatOnConnect");
+    expect(syncSvc).toContain("lastSessionCheckedAt");
+    expect(connStatus).toContain("lastSessionCheckedAt");
+    expect(connStatus).toContain("localAgentId");
+    expect(connStatus).toContain('sessionStatus === "active"');
+  });
 });
 
