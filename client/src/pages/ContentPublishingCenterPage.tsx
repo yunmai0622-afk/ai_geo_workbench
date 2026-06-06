@@ -905,7 +905,7 @@ function ContentPublishingCenterPageInner() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-gray-900">发布任务指挥台</h1>
           <p className="text-sm text-gray-500">
-            先看有多少内容待发布、哪些可以发、哪些被阻断，再决定下一步操作。将已确认的内容发送到本地发布助手，由本机登录账号完成平台发布；账号和 Cookie 只保存在本机。发布后在此回填公开链接。
+            先看有多少内容待发布、哪些可以发、哪些被阻断，再决定下一步操作。将已确认的内容发送到本地发布助手，由本机登录账号完成平台发布；账号和 Cookie 只保存在本机。发布后在此回填公开链接。按平台独立发布，不支持一稿多发。
           </p>
         </div>
         <Button

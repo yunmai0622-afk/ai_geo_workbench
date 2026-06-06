@@ -158,11 +158,14 @@ assertContains('App 路由', sources.app, 'WeeklyContentPage');
 assertContains('App 路由', sources.app, 'path="/weekly"');
 const publishPage =
   read('client/src/pages/ContentPublishingCenterPage.tsx') +
+  read('client/src/components/publishing/PublishStatusBar.tsx') +
   read('client/src/components/publishing/PublishTaskColumnBoard.tsx') +
   read('client/src/components/publishing/LocalAgentStatusCard.tsx');
 for (const item of [
-  '平台适配发布',
+  '发布任务指挥台',
   'publish-center-page',
+  'publish-status-bar',
+  'publish-task-queue-module',
   'local-agent-status-card',
   'publish-task-columns',
   'createManualPublishRecord',
