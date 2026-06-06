@@ -79,13 +79,13 @@ describe("contentQualityGate publish integration", () => {
 
   it("publishTasksRouter uses unified publish readiness", () => {
     const router = read("server/publishTasksRouter.ts");
-    expect(router).toContain("evaluatePublishPreflight");
+    expect(router).toContain("evaluatePublishReadiness");
     expect(router).toContain("assertPublishReadinessForCreate");
   });
 
   it("WeeklyContentPage uses unified publish readiness for dialog", () => {
     const page = read("client/src/pages/WeeklyContentPage.tsx");
-    expect(page).toContain("evaluatePublishPreflight");
+    expect(page).toContain("evaluatePublishReadiness");
     expect(page).toContain("publish-readiness-block");
     expect(page).toContain("border-amber-200 bg-amber-50");
     expect(page).toContain("text-amber-800");

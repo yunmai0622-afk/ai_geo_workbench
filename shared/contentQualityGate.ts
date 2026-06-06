@@ -22,10 +22,6 @@ export type ContentQualityGateArticle = {
   lifecycleStatus?: string | null;
   lifecycleEvents?: unknown;
   status?: string | null;
-  /** 部分 API/卡片使用的扁平质检状态 */
-  qualityStatus?: string | null;
-  qualityPasses?: boolean | null;
-  latestQualityResult?: { status?: string | null } | null;
 };
 
 const LIFECYCLE_QA_PASSED: ArticleLifecycleStatus[] = [
@@ -37,13 +33,6 @@ const LIFECYCLE_QA_PASSED: ArticleLifecycleStatus[] = [
   "draft_saved",
   "published",
 ];
-
-const LIFECYCLE_STATUS_STRING_PASSED = new Set([
-  "quality_passed",
-  "publish_ready",
-  "quality_checked",
-  "pending_publish",
-]);
 
 const LIFECYCLE_QA_FAILED: ArticleLifecycleStatus[] = ["needs_revision", "failed"];
 
@@ -93,31 +82,9 @@ function hasLegacyQualityFail(article: ContentQualityGateArticle): boolean {
   return LEGACY_FAILED_STATUSES.has(legacy);
 }
 
-function hasUnifiedQualityPassSignals(article: ContentQualityGateArticle): boolean {
-  if (article.qualityPasses === true) return true;
-  const qualityStatus = (article.qualityStatus ?? "").trim().toLowerCase();
-  if (qualityStatus === "passed" || qualityStatus === "pass") return true;
-  const latestStatus = (article.latestQualityResult?.status ?? "").trim().toLowerCase();
-  if (latestStatus === "passed" || latestStatus === "pass") return true;
-  const lifecycle = (article.lifecycleStatus ?? "").trim().toLowerCase();
-  if (LIFECYCLE_STATUS_STRING_PASSED.has(lifecycle)) return true;
-  return false;
-}
-
-/** 统一质检门禁（卡片 / 弹窗 / 服务端 create 共用） */
-export function getUnifiedQualityGateStatus(
-  article: ContentQualityGateArticle | null | undefined,
-): ContentQualityGateStatus {
-  return getContentQualityGateStatus(article);
-}
-
 export function getContentQualityGateStatus(article: ContentQualityGateArticle | null | undefined): ContentQualityGateStatus {
   if (!article) {
     return { passed: false, reason: "unknown", message: MESSAGES.unknown };
-  }
-
-  if (isGeoQualityScoreStale(article)) {
-    return { passed: false, reason: "failed", message: "内容已修改，请重新质检后再发布" };
   }
 
   if (
@@ -126,10 +93,6 @@ export function getContentQualityGateStatus(article: ContentQualityGateArticle |
     !isGeoQualityScoreStale(article)
   ) {
     return { passed: false, reason: "failed", message: MESSAGES.failed };
-  }
-
-  if (hasUnifiedQualityPassSignals(article)) {
-    return { passed: true, reason: "passed", message: MESSAGES.passed };
   }
 
   if (hasStructuredGeoQualityPass(article)) {

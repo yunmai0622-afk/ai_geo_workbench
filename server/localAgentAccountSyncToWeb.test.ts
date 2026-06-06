@@ -37,8 +37,7 @@ describe("Local agent account sync to web P0", () => {
     expect(weekly).toContain("useLocalAgentConnection");
     expect(connHook).toContain("listLocalAgentAccountSnapshots");
     expect(weekly).toContain("刷新账号状态");
-    expect(weekly).toContain("evaluatePublishPreflight");
-    expect(weekly).toContain("PLATFORM_ACCOUNT_VALID");
+    expect(weekly).toContain("ACCOUNT_STATUS_NOT_SYNCED");
   });
 
   it("local agent detect triggers account status sync", () => {

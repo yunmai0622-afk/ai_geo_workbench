@@ -23,7 +23,6 @@ import { isValidStoredCoverBase64, parseStoredCoverBase64, resolveArticleCoverBa
 import { buildPublishCoverImageUrl, parseDataUrlCover } from "@shared/publishCoverPayload";
 import {
   BINDING_PUBLISH_PLATFORMS,
-  type BindingPublishPlatform,
   isBindingPublishPlatform,
   PUBLISH_PLATFORM_LABELS,
   publishBlockedNoLocalProfileMessage,
@@ -32,10 +31,6 @@ import {
 } from "@shared/platformAccountVerify";
 import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import {
-  evaluatePublishPreflightForCreate,
-  formatPublishPreflightBlockMessage,
-} from "@shared/publishPreflight";
 import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
@@ -51,6 +46,11 @@ import {
   PUBLISH_QUEUE_DUPLICATE_RETRY_MESSAGE,
 } from "@shared/publishQueueDedup";
 import { buildDeliveryReportPublishStats } from "@shared/deliveryReportPublishStats";
+import {
+  evaluatePrePublishChecklist,
+  formatPrePublishChecklistBlockMessage,
+  type PrePublishChecklistPlatform,
+} from "@shared/publishPrePublishChecklist";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -138,28 +138,18 @@ async function assertPublishReadinessForCreate(
     platformAccounts,
     requestedPlatform: isBindingPublishPlatform(input.platform) ? input.platform : null,
     skipLocalAgentConnectionCheck: true,
-    serverHeartbeatConnected: platformAccounts.some(
-      row =>
-        Boolean(row.localAgentId?.trim()) &&
-        Boolean(row.localProfileId?.trim()) &&
-        row.sessionStatus === "active",
-    ),
   });
   if (!readiness.ready) {
-    const code = readiness.blockingCode ?? "WORKSPACE_READY";
-    throw new TRPCError({ code: "BAD_REQUEST", message: `[${code}] ${readiness.message}` });
+    throw new TRPCError({ code: "BAD_REQUEST", message: readiness.message });
   }
   return readiness;
 }
 
 async function assertPrePublishChecklistForCreate(
-  db: Awaited<ReturnType<typeof requireDbConn>>,
   input: {
-    projectId: number;
     article: typeof geoArticles.$inferSelect;
     platform: z.infer<typeof publishPlatformSlugEnum>;
     boundAccount: {
-      id: number;
       platform: string;
       accountName: string | null;
       isEnabled: boolean | number | null;
@@ -169,44 +159,34 @@ async function assertPrePublishChecklistForCreate(
     };
   },
 ) {
-  const platform = input.platform as BindingPublishPlatform;
-  const accountRows = await db
-    .select()
-    .from(projectPlatformAccounts)
-    .where(eq(projectPlatformAccounts.projectId, input.projectId));
-  const platformAccounts: PublishReadyAccountRow[] = accountRows.map(row => ({
-    platform: row.platform,
-    accountName: row.accountName,
-    isEnabled: row.isEnabled,
-    localProfileId: row.localProfileId,
-    localAgentId: row.localAgentId,
-    sessionStatus: row.sessionStatus,
-  }));
-  const preflight = evaluatePublishPreflightForCreate({
-    projectId: input.projectId,
-    article: {
-      ...input.article,
-      projectId: input.article.projectId,
-      generationBasis: (input.article.generationBasis ?? null) as Record<string, unknown> | null,
-    },
+  const platform = input.platform as PrePublishChecklistPlatform;
+  const checklist = evaluatePrePublishChecklist({
+    title: input.article.title ?? "",
+    markdownContent: input.article.markdownContent ?? "",
+    coverBase64: input.article.coverBase64,
+    coverImageUrl: input.article.coverImageUrl,
     platform,
-    platformAccounts,
-    boundAccount: { ...input.boundAccount, platform },
-    selectedAccountId: input.boundAccount.id,
-    localAgentStatus: {
-      serverHeartbeatConnected: platformAccounts.some(
-        (row: PublishReadyAccountRow) =>
-          Boolean(row.localAgentId?.trim()) &&
-          Boolean(row.localProfileId?.trim()) &&
-          row.sessionStatus === "active",
-      ),
-      browserLocalAgentConnected: true,
+    article: {
+      geoQualityScore: input.article.geoQualityScore,
+      geoQualityRecommendation: input.article.geoQualityRecommendation,
+      geoQualityStale: input.article.geoQualityStale,
+      lifecycleStatus: input.article.lifecycleStatus,
+      lifecycleEvents: input.article.lifecycleEvents,
+      status: input.article.status,
+    },
+    account: {
+      platform: input.boundAccount.platform,
+      accountName: input.boundAccount.accountName,
+      isEnabled: input.boundAccount.isEnabled,
+      localProfileId: input.boundAccount.localProfileId,
+      localAgentId: input.boundAccount.localAgentId,
+      sessionStatus: input.boundAccount.sessionStatus,
     },
   });
-  if (!preflight.canCreatePublishTask) {
+  if (!checklist.allPassed) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: formatPublishPreflightBlockMessage(preflight) || "发布前检查未通过",
+      message: formatPrePublishChecklistBlockMessage(checklist),
     });
   }
 }
@@ -372,8 +352,7 @@ export const publishTasksRouter = router({
         });
       }
 
-      await assertPrePublishChecklistForCreate(db, {
-        projectId: input.projectId,
+      await assertPrePublishChecklistForCreate({
         article,
         platform: input.platform,
         boundAccount,

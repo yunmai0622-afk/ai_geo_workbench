@@ -12,17 +12,15 @@ describe("GEO-V1.1-BackfillVerify — 发布记录回填链接", () => {
   const monitoring = read("server/publishRecordMonitoring.ts");
 
   it("已完成队列展示回填链接入口", () => {
-    expect(page).toContain("publish-queue-tab-completed");
-    expect(page).toContain('tab.key === "completed"');
-    expect(page).toContain("card.taskId");
+    expect(page).toContain('data-testid="publish-queue-tab-completed"');
+    expect(page).toContain('tab === "completed" && card.taskId');
     expect(page).toContain("回填链接");
     expect(page).toContain("handleBackfillTaskLink");
     expect(page).toContain("backfillPublicUrl");
   });
 
   it("人工发布记录在已完成队列也可回填", () => {
-    expect(page).toContain('tab.key === "completed"');
-    expect(page).toContain("card.recordId");
+    expect(page).toContain('tab === "completed" && card.recordId');
     expect(page).toContain("updateManualPublishRecord");
   });
 

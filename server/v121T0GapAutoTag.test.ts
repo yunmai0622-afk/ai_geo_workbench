@@ -21,10 +21,7 @@ describe("GEO-V1.1-T0-Gap-Auto-Tag", () => {
   it("persists contentGapTags on questions and shows on library page", () => {
     expect(read("drizzle/schema.ts")).toContain("contentGapTags");
     const library = read("client/src/pages/QuestionsLibraryPage.tsx");
-    const card = read("client/src/components/questions/QuestionBankCard.tsx");
-    const intentLib = read("shared/questionBankIntentMap.ts");
-    expect(intentLib).toContain("contentGapTags");
-    expect(intentLib).toContain("T0_QUESTION_GAP_TAGS");
-    expect(card).toContain("question-test-status-");
+    expect(library).toContain("contentGapTags");
+    expect(library).toContain("T0_QUESTION_GAP_TAGS");
   });
 });

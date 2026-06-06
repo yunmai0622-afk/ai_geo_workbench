@@ -4157,34 +4157,3 @@
 [2026-06-06T03:53:39.530Z] 11:53:39 PM [vite] (client) hmr update /src/index.css
 [2026-06-06T03:53:47.076Z] 11:53:47 PM [vite] (client) hmr update /src/index.css
 [2026-06-06T03:54:12.654Z] 11:54:12 PM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.261Z] 12:44:16 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
-[2026-06-06T04:44:16.262Z] 12:44:16 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectWorkspaceTopBar.tsx
-[2026-06-06T04:44:16.262Z] 12:44:16 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.263Z] 12:44:16 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishRecordsListPanel.tsx
-[2026-06-06T04:44:16.270Z] 12:44:16 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.270Z] 12:44:16 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.271Z] 12:44:16 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.271Z] 12:44:16 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.272Z] 12:44:16 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.272Z] 12:44:16 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.272Z] 12:44:16 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/index.css
-[2026-06-06T04:44:16.273Z] 12:44:16 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:44:16.278Z] 12:44:16 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
-[2026-06-06T04:44:16.278Z] 12:44:16 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
-[2026-06-06T04:44:16.389Z] 12:44:16 AM [tsx] change in ./shared/publishReadiness.ts Restarting...
-[2026-06-06T04:44:23.354Z] cServer running on http://localhost:3000/
-[2026-06-06T04:44:37.148Z] Dev server process group stopped
-[2026-06-06T04:44:37.151Z] ELIFECYCLE  Command failed.
-[2026-06-06T04:44:37.210Z] Dev server exited with code -15
-[2026-06-06T04:44:40.162Z] Starting dev server with command: pnpm run dev
-[2026-06-06T04:44:41.081Z] 
-[2026-06-06T04:44:41.082Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
-[2026-06-06T04:44:41.083Z] > NODE_ENV=development tsx watch server/_core/index.ts
-[2026-06-06T04:44:41.083Z] 
-[2026-06-06T04:44:48.312Z] 12:44:48 AM [vite] (client) Re-optimizing dependencies because lockfile has changed
-[2026-06-06T04:44:48.340Z] Server running on http://localhost:3000/
-[2026-06-06T04:44:58.158Z] [Auth] Missing session cookie
-[2026-06-06T04:44:58.506Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-[2026-06-06T04:45:17.781Z] [Auth] Missing session cookie
-[2026-06-06T04:46:01.856Z] 12:46:01 AM [vite] (client) hmr update /src/index.css
-[2026-06-06T04:47:08.594Z] 12:47:08 AM [vite] (client) hmr update /src/index.css

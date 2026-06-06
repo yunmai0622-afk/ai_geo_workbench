@@ -25,24 +25,29 @@ describe("Phase3 publish center Local Agent UI", () => {
     expect(flow).not.toContain("export function ContentPublishingFlowPage");
   });
 
-  it("first screen highlights publish task queue command center", () => {
+  it("first screen highlights Local Agent task center", () => {
     for (const text of [
       "publish-center-page",
       "平台适配发布",
-      "PublishStatusBar",
-      "publish-task-queue-module",
-      "publish-queue-tab-pending",
+      "publish-weekly-overview-bar",
       "publish-platform-card-grid",
       "publish-all-platforms",
+      "local-agent-status-card",
+      "localAgentConnectionCopy",
+      "publish-task-columns",
+      "publish-column-pending",
+      "publish-column-active",
+      "publish-column-done",
       "publish-center-steps-panel",
     ]) {
-      expect(publishUi + page).toContain(text);
+      expect(publishUi).toContain(text);
     }
-    expect(page).toContain("待发布");
-    expect(page).toContain("发布中");
-    expect(page).toContain("需要处理");
-    expect(page).toContain("查看内容");
-    expect(page).toContain("回填链接");
+    expect(publishUi).toContain("待处理");
+    expect(publishUi).toContain("处理中 / 需确认");
+    expect(publishUi).toContain("已完成");
+    expect(publishUi).toContain("预览内容");
+    expect(publishUi).toContain("开始本地发布");
+    expect(publishUi).toContain("填写公开链接");
   });
 
   it("chrome extension and retest pools are folded, not first-screen heroes", () => {

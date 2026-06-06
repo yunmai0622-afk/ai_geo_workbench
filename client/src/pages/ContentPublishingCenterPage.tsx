@@ -1,18 +1,19 @@
+import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PlatformPublishSuccessRatePanel } from "@/components/publishing/PlatformPublishSuccessRatePanel";
 import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformStatusOverview";
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
+import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
-import {
-  PublishStatusBar,
-  resolvePublishStatusLocalAgentLabel,
-} from "@/components/publishing/PublishStatusBar";
+import { PublishWeeklyOverviewBar } from "@/components/publishing/PublishWeeklyOverviewBar";
 import { PublishPlatformCardGrid } from "@/components/publishing/PublishPlatformCardGrid";
+import { PublishActionSidePanel } from "@/components/publishing/PublishActionSidePanel";
 import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { PublishRecordsCalendar } from "@/components/publishing/PublishRecordsCalendar";
+import { PublishAccountSessionAlert } from "@/components/publishing/PublishAccountSessionAlert";
 import { PublishRecordsListPanel } from "@/components/publishing/PublishRecordsListPanel";
 import { PublishCenterErrorBoundary } from "@/components/publishing/PublishCenterErrorBoundary";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
@@ -33,25 +34,19 @@ import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { buildPublishingViewModel } from "@/lib/buildPublishingViewModel";
-import {
-  asArray,
-  PUBLISH_QUEUE_EMPTY_HINTS,
-  PUBLISH_QUEUE_EMPTY_LABELS,
-  type PublishQueueTabKey,
-} from "@/lib/contentPublishingSafeData";
+import { asArray, PUBLISH_QUEUE_EMPTY_LABELS } from "@/lib/contentPublishingSafeData";
+import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
+import { recordPublicLink, publishStatusLabel } from "@/lib/assetProgressDisplay";
+import { downloadPublishRecordsCsv } from "@/lib/geoDataExportDownload";
+import { formatPublishedAtLabel } from "@/lib/deliveryReportDisplay";
+import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import {
   fetchLocalAgentDownloadManifest,
   pickLocalAgentDownloadHref,
 } from "@/lib/localAgentDownloadManifest";
 import { isLocalAgentClientOutdated } from "@shared/localAgentVersionCompare";
-import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
-import { recordPublicLink, publishStatusLabel } from "@/lib/assetProgressDisplay";
-import { downloadPublishRecordsCsv } from "@/lib/geoDataExportDownload";
-import { formatPublishedAtLabel } from "@/lib/deliveryReportDisplay";
-import { geoP0Brand } from "@/lib/geoP0Visual";
 import { type PublishTaskCardModel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
-import { articleHasPublishableCover } from "@shared/articleCoverReadiness";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { type PublishPagePlatformCard } from "@shared/publishPageLayout";
 import {
@@ -308,6 +303,8 @@ function ContentPublishingCenterPageInner() {
   const [manualLink, setManualLink] = useState("");
   const [savingManual, setSavingManual] = useState(false);
 
+  const [manifestVersion, setManifestVersion] = useState<string | null>(null);
+  const [manifestDownloadHref, setManifestDownloadHref] = useState<string | null>(null);
   const [linkDraftById, setLinkDraftById] = useState<Record<number, string>>({});
   const [savingRowId, setSavingRowId] = useState<number | null>(null);
   const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
@@ -383,8 +380,6 @@ function ContentPublishingCenterPageInner() {
 
   const { checking: accountHealthChecking, runCheck: runAccountHealthCheck } =
     usePublishAccountHealthCheck(selectedProjectId ?? null, enabled);
-  const [manifestVersion, setManifestVersion] = useState<string | null>(null);
-  const [manifestDownloadHref, setManifestDownloadHref] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
@@ -459,53 +454,16 @@ function ContentPublishingCenterPageInner() {
     taskCards,
     queueTabs,
     platformCards,
+    weeklyOverviewStats,
     boundPublishAccountCount,
     boundPlatformCount,
+    availableAccountByPlatform,
     readyPlatformCount,
     qualityByArticleId,
     agentTaskDerivedState,
   } = publishingViewModel;
 
-  const { pendingCount, abnormalCount } = agentTaskDerivedState;
-
-  const PUBLISH_QUEUE_TABS: Array<{
-    key: PublishQueueTabKey;
-    label: string;
-    testId: string;
-  }> = [
-    { key: "pending", label: "待发布", testId: "publish-queue-tab-pending" },
-    { key: "active", label: "发布中", testId: "publish-queue-tab-active" },
-    { key: "needs_attention", label: "需要处理", testId: "publish-queue-tab-needs-attention" },
-    { key: "completed", label: "已完成", testId: "publish-queue-tab-completed" },
-    { key: "failed", label: "失败", testId: "publish-queue-tab-failed" },
-  ];
-
-  function qualityStatusLabel(card: PublishTaskCardModel): string {
-    if (!card.articleId) return "未关联内容";
-    const score = qualityByArticleId.get(card.articleId);
-    if (!score) return "未质检";
-    return isQualityPassed(score) ? `通过（${score.totalScore} 分）` : `未通过（${score.totalScore} 分）`;
-  }
-
-  function coverStatusLabel(card: PublishTaskCardModel): string {
-    if (!card.articleId) return "未关联内容";
-    const article = articleById.get(card.articleId);
-    if (!article) return "内容缺失";
-    return articleHasPublishableCover(article) ? "封面就绪" : "封面待补齐";
-  }
-
-  function taskNextActionLabel(card: PublishTaskCardModel, tab: PublishQueueTabKey): string {
-    if (tab === "pending") return "发送到客户端并完成发布确认";
-    if (tab === "active") return "在客户端继续处理并回传状态";
-    if (tab === "needs_attention") {
-      return card.canRetry ? "优先重试，失败后标记人工发布" : "标记人工发布并登记结果";
-    }
-    if (tab === "failed") {
-      return card.canRetry ? "先重试，仍失败则标记人工发布" : "标记人工发布并回填链接";
-    }
-    if (card.publishedUrl) return "已完成，等待收录监测推进";
-    return "回填公开链接以进入收录监测";
-  }
+  const { pendingCount, failedCount, waitingLinkCount } = agentTaskDerivedState;
 
   const manualArticleSelectValue = useMemo(() => {
     if (publishableArticles.length === 0) return undefined;
@@ -528,7 +486,7 @@ function ContentPublishingCenterPageInner() {
     status: localAgentConnectionStatus,
     statusSnapshot: localAgentStatusSnapshot,
     checkConnection,
-    clientVersion,
+    clientVersion: localAgentClientVersion,
     localAgentConnectedOnline,
     localAgentOnline,
   } = useLocalAgentConnection({
@@ -555,16 +513,6 @@ function ContentPublishingCenterPageInner() {
 
   const checkingAgent =
     localAgentConnectionStatus === "CHECKING" || accountHealthChecking;
-
-  const localAgentUpdateNotice = useMemo(() => {
-    if (!clientVersion || !manifestVersion || !manifestDownloadHref) return null;
-    if (!isLocalAgentClientOutdated(clientVersion, manifestVersion)) return null;
-    return {
-      clientVersion,
-      manifestVersion,
-      downloadHref: manifestDownloadHref,
-    };
-  }, [clientVersion, manifestVersion, manifestDownloadHref]);
 
   const enabledQueries = useMemo(
     () => ({
@@ -595,6 +543,28 @@ function ContentPublishingCenterPageInner() {
         ].join("\n"),
     );
   }
+
+  const localAgentUpdateNotice = useMemo(() => {
+    if (
+      !localAgentConnectedOnline ||
+      !localAgentClientVersion ||
+      !manifestVersion ||
+      !manifestDownloadHref ||
+      !isLocalAgentClientOutdated(localAgentClientVersion, manifestVersion)
+    ) {
+      return null;
+    }
+    return {
+      clientVersion: localAgentClientVersion,
+      manifestVersion,
+      downloadHref: manifestDownloadHref,
+    };
+  }, [
+    localAgentConnectedOnline,
+    localAgentClientVersion,
+    manifestVersion,
+    manifestDownloadHref,
+  ]);
 
   const loading =
     articlesQuery.isLoading || scoresQuery.isLoading || publishRecordsQuery.isLoading || autoPublishTasksQuery.isLoading;
@@ -668,20 +638,6 @@ function ContentPublishingCenterPageInner() {
     } finally {
       setSavingRowId(null);
     }
-  }
-
-  function openArticleContent(card: PublishTaskCardModel) {
-    if (!card.articleId) {
-      toast.message("暂无可查看内容");
-      return;
-    }
-    const article = articleById.get(card.articleId);
-    if (!article) {
-      toast.message("暂无可查看内容，请刷新后重试");
-      return;
-    }
-    setEditorArticle(article);
-    setEditorOpen(true);
   }
 
   function openPreview(card: PublishTaskCardModel) {
@@ -887,10 +843,6 @@ function ContentPublishingCenterPageInner() {
   }
 
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
-  const localAgentLabel = resolvePublishStatusLocalAgentLabel(
-    localAgentConnectionStatus,
-    localAgentConnectedOnline,
-  );
 
   function handleExportPublishRecordsCsv() {
     if (loading) {
@@ -921,7 +873,7 @@ function ContentPublishingCenterPageInner() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-gray-900">平台适配发布</h1>
           <p className="text-sm text-gray-500">
-            通过 Local Agent 在本地完成发布，降低登录、验证码和平台风控风险。将已确认的内容发送到本地发布助手，由本机登录账号完成平台发布。账号和 Cookie 只保存在本机。按平台独立发布，需人工确认，不支持自动发布或一稿多发。
+            通过 Local Agent 在本地完成发布，降低登录、验证码和平台风控风险。按平台独立发布，需人工确认，不支持自动发布或一稿多发。
           </p>
         </div>
         <Button
@@ -936,6 +888,12 @@ function ContentPublishingCenterPageInner() {
         </Button>
       </header>
 
+      <FirstUseHintBanner
+        storageKey={FIRST_USE_HINT_KEYS.contentPublishing}
+        message="发布前请确保本地客户端已启动并连接"
+        data-testid="first-use-hint-content-publishing"
+      />
+
       {publishDataLoadFailed ? (
         <div
           className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
@@ -946,28 +904,46 @@ function ContentPublishingCenterPageInner() {
         </div>
       ) : null}
 
-      <section
-        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-        data-testid="publish-ready-status-module"
-      >
-        <h2 className="text-base font-semibold text-gray-900">发布准备状态</h2>
-        <p className="mt-1 text-xs text-gray-500">先确认客户端与账号，再处理任务队列。</p>
-        <div className="mt-4">
-          <PublishStatusBar
-            localAgentLabel={localAgentLabel}
-            readyAccountCount={boundPublishAccountCount}
-            pendingTaskCount={pendingCount}
-            abnormalTaskCount={abnormalCount}
-            checking={checkingAgent}
-            showDisconnectedHint={!localAgentConnectedOnline}
-            onCheckConnection={() => {
-              setLastUserAction("check_local_agent");
-              void checkConnection();
-            }}
-            onRefreshAccountStatus={() => void refreshAgentHealth()}
-          />
+      {selectedProjectId ? (
+        <PublishAccountSessionAlert
+          projectId={selectedProjectId}
+          groups={platformAccountGroups}
+          checking={accountHealthChecking}
+          agentOnline={localAgentOnline}
+          onAfterRelogin={() => void runAccountHealthCheck({ detectSessions: true })}
+        />
+      ) : null}
+
+      {selectedProjectId ? (
+        <PublishWeeklyOverviewBar stats={weeklyOverviewStats} loading={loading} />
+      ) : null}
+      {selectedProjectId ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PlatformStatusOverview projectId={selectedProjectId} />
+          <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
         </div>
-      </section>
+      ) : null}
+      {selectedProjectId ? (
+        <section
+          className={`rounded-xl border p-4 ${waitingLinkCount > 0 ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}
+          data-testid="publish-waiting-links-banner"
+        >
+          {waitingLinkCount > 0 ? (
+            <>
+              <p className="text-sm font-semibold text-amber-900">
+                有 {waitingLinkCount} 条发布记录待回填公开链接
+              </p>
+              <p className="mt-1 text-xs text-amber-800">
+                系统需要公开链接才能安排 T1/T2/T3 收录与 AI 复测。请在下方已完成任务或发布记录中回填链接。
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-emerald-800">
+              已回填链接，等待 T1 复测 / T1 已完成（按收录监测结果更新）。
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}
@@ -976,6 +952,54 @@ function ContentPublishingCenterPageInner() {
         onDismiss={() => setPublishSuccessNotice(null)}
       />
 
+      <Tabs defaultValue="tasks" className="space-y-4">
+        <TabsList className="flex w-full gap-2 overflow-x-auto print:hidden">
+          <TabsTrigger value="tasks" data-testid="publish-center-tab-tasks" className="shrink-0">
+            发布任务
+          </TabsTrigger>
+          <TabsTrigger value="records" data-testid="publish-center-tab-records" className="shrink-0">
+            发布记录
+          </TabsTrigger>
+          <TabsTrigger value="calendar" data-testid="publish-calendar-tab" className="shrink-0">
+            发布日历
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="records" className="mt-0">
+          <PublishRecordsListPanel
+            records={publishRecords}
+            loading={publishRecordsQuery.isLoading}
+            resolveTitle={record => {
+              const article = articleById.get(record.articleId ?? 0);
+              return (
+                article?.title?.trim() ||
+                record.publishTitle?.trim() ||
+                `文章 #${record.articleId ?? "—"}`
+              );
+            }}
+            onViewAllHistory={() =>
+              selectedProjectId &&
+              setLocation(buildProjectUrl("/publish-records-history", selectedProjectId))
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-0">
+          <PublishRecordsCalendar
+            records={publishRecords}
+            loading={publishRecordsQuery.isLoading}
+            resolveTitle={record => {
+              const article = articleById.get(record.articleId ?? 0);
+              return (
+                article?.title?.trim() ||
+                record.publishTitle?.trim() ||
+                `文章 #${record.articleId ?? "—"}`
+              );
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="tasks" className="mt-0">
       {loading ? (
         <div className="flex items-center gap-2 py-12 text-gray-500">
           <Spinner className="size-5 text-blue-600" />
@@ -983,11 +1007,68 @@ function ContentPublishingCenterPageInner() {
         </div>
       ) : (
         <div className="space-y-6">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-ready-status-module">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">发布准备状态</h2>
+                <p className="mt-1 text-xs text-gray-500">先确认客户端与账号，再推进任务队列。</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className={geoP0Brand.primaryOutline}
+                onClick={() => {
+                  setLastUserAction("check_local_agent");
+                  void refreshAgentHealth();
+                }}
+                disabled={checkingAgent || accountHealthChecking}
+                data-testid="publish-ready-refresh"
+              >
+                检测本地客户端连接
+              </Button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Local Agent</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {localAgentConnectedOnline ? "已连接" : localAgentOnline === false ? "未连接" : "待检测"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">可用账号</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {availableAccountByPlatform.length > 0 ? availableAccountByPlatform.join(" / ") : "暂无可用账号"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">待发布任务数</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{pendingCount}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">失败任务数</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{failedCount}</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <LocalAgentStatusCard
+                status={localAgentConnectionStatus}
+                statusSnapshot={localAgentStatusSnapshot}
+                checking={checkingAgent}
+                onCheckConnection={() => {
+                  setLastUserAction("check_local_agent");
+                  void checkConnection();
+                }}
+                onRefreshAccountStatus={() => void refreshAgentHealth()}
+                updateNotice={localAgentUpdateNotice}
+              />
+            </div>
+          </section>
+
           <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-task-queue-module">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold text-gray-900">发布任务队列</h2>
-                <p className="mt-1 text-xs text-gray-500">先处理任务队列，再查看辅助状态与诊断信息。</p>
+                <p className="mt-1 text-xs text-gray-500">按队列状态处理任务，优先清理失败与待确认任务。</p>
               </div>
               <Button
                 type="button"
@@ -1003,45 +1084,20 @@ function ContentPublishingCenterPageInner() {
             </div>
             <Tabs defaultValue="pending" className="mt-4 space-y-4">
               <TabsList className="flex w-full gap-2 overflow-x-auto">
-                {PUBLISH_QUEUE_TABS.map(tab => (
-                  <TabsTrigger
-                    key={tab.key}
-                    value={tab.key}
-                    data-testid={tab.testId}
-                    className="shrink-0"
-                  >
-                    {tab.label}
-                  </TabsTrigger>
-                ))}
+                <TabsTrigger value="pending" data-testid="publish-queue-tab-pending" className="shrink-0">待发布</TabsTrigger>
+                <TabsTrigger value="active" data-testid="publish-queue-tab-active" className="shrink-0">发布中/待确认</TabsTrigger>
+                <TabsTrigger value="failed" data-testid="publish-queue-tab-failed" className="shrink-0">失败</TabsTrigger>
+                <TabsTrigger value="completed" data-testid="publish-queue-tab-completed" className="shrink-0">已完成</TabsTrigger>
               </TabsList>
-              {PUBLISH_QUEUE_TABS.map(tab => (
-                <TabsContent key={tab.key} value={tab.key} className="mt-0">
-                  {queueTabs[tab.key].length === 0 ? (
-                    <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-5">
-                      <p className="text-sm font-medium text-gray-900">
-                        {PUBLISH_QUEUE_EMPTY_LABELS[tab.key]}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-600">
-                        {PUBLISH_QUEUE_EMPTY_HINTS[tab.key].reason}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {PUBLISH_QUEUE_EMPTY_HINTS[tab.key].nextStep}
-                      </p>
-                      {tab.key === "pending" && selectedProjectId ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className={`mt-3 ${geoP0Brand.primaryOutline}`}
-                          onClick={() => setLocation(buildProjectUrl("/weekly", selectedProjectId))}
-                        >
-                          去生成/选择内容
-                        </Button>
-                      ) : null}
+              {(["pending", "active", "failed", "completed"] as const).map(tab => (
+                <TabsContent key={tab} value={tab} className="mt-0">
+                  {queueTabs[tab].length === 0 ? (
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                      {PUBLISH_QUEUE_EMPTY_LABELS[tab]}
                     </div>
                   ) : (
                     <div className="grid gap-3 lg:grid-cols-2">
-                      {(queueTabs[tab.key] ?? []).map(card => (
+                      {(queueTabs[tab] ?? []).map(card => (
                         <div key={card.key} className="rounded-xl border border-gray-200 bg-white p-4" data-testid={`publish-queue-card-${card.key}`}>
                           <div className="flex items-start justify-between gap-3">
                             <p className="line-clamp-2 text-sm font-semibold text-gray-900">{card.title}</p>
@@ -1050,17 +1106,14 @@ function ContentPublishingCenterPageInner() {
                             </span>
                           </div>
                           <dl className="mt-3 space-y-1.5 text-xs text-gray-600">
-                            <div className="flex gap-2"><dt className="text-gray-500">平台</dt><dd>{card.platformLabel}</dd></div>
-                            <div className="flex gap-2"><dt className="text-gray-500">发布账号</dt><dd>{card.accountLabel}</dd></div>
-                            <div className="flex gap-2"><dt className="text-gray-500">质检状态</dt><dd>{qualityStatusLabel(card)}</dd></div>
-                            <div className="flex gap-2"><dt className="text-gray-500">封面状态</dt><dd>{coverStatusLabel(card)}</dd></div>
-                            <div className="flex gap-2"><dt className="text-gray-500">当前状态</dt><dd>{card.statusLabel}</dd></div>
-                            <div className="flex gap-2"><dt className="text-gray-500">下一步动作</dt><dd>{taskNextActionLabel(card, tab.key)}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">发布平台</dt><dd>{card.platformLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">账号状态</dt><dd>{card.accountLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">任务状态</dt><dd>{card.statusLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">失败原因</dt><dd>{card.errorMessage ?? "无"}</dd></div>
                           </dl>
                           <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
                             <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={() => openPreview(card)}>预览</Button>
-                            <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={() => openArticleContent(card)}>查看内容</Button>
-                            {(tab.key === "pending" || tab.key === "active") ? (
+                            {tab === "pending" ? (
                               <Button type="button" size="sm" className={geoP0Brand.primary} onClick={() => startLocalPublish(card)}>开始发布</Button>
                             ) : null}
                             {card.canRetry && card.taskId ? (
@@ -1068,8 +1121,7 @@ function ContentPublishingCenterPageInner() {
                                 {retryingTaskId === card.taskId ? "重试中…" : "重试"}
                               </Button>
                             ) : null}
-                            {(tab.key === "completed" || tab.key === "failed" || tab.key === "needs_attention") &&
-                            card.taskId ? (
+                            {tab === "completed" && card.taskId ? (
                               <>
                                 {card.publishedUrl ? (
                                   <a
@@ -1097,8 +1149,7 @@ function ContentPublishingCenterPageInner() {
                                 </Button>
                               </>
                             ) : null}
-                            {(tab.key === "completed" || tab.key === "failed" || tab.key === "needs_attention") &&
-                            card.recordId ? (
+                            {tab === "completed" && card.recordId ? (
                               <>
                                 <Button
                                   type="button"
@@ -1123,17 +1174,6 @@ function ContentPublishingCenterPageInner() {
                                 </Button>
                               </>
                             ) : null}
-                            {(tab.key === "failed" || tab.key === "needs_attention") ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className={geoP0Brand.primaryOutline}
-                                onClick={() => markAbnormal(card)}
-                              >
-                                标记人工发布
-                              </Button>
-                            ) : null}
                           </div>
                         </div>
                       ))}
@@ -1143,43 +1183,42 @@ function ContentPublishingCenterPageInner() {
               ))}
             </Tabs>
           </section>
-          <PublishRecordsListPanel
-            records={publishRecords}
-            loading={publishRecordsQuery.isLoading}
-            recentLimit={10}
-            resolveTitle={record => {
-              const article = articleById.get(record.articleId ?? 0);
-              return (
-                article?.title?.trim() ||
-                record.publishTitle?.trim() ||
-                `文章 #${record.articleId ?? "—"}`
-              );
-            }}
-            onViewAllHistory={() =>
-              selectedProjectId &&
-              setLocation(buildProjectUrl("/publish-records-history", selectedProjectId))
-            }
-          />
-
-          <section className="space-y-4" data-testid="publish-auxiliary-fold">
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-platform-status-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                平台状态总览
-              </summary>
-              <div className="border-t border-gray-100 p-5">
-                {selectedProjectId ? <PlatformStatusOverview projectId={selectedProjectId} /> : null}
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-platform-status-module">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">平台发布支持状态</h2>
+                <p className="mt-1 text-xs text-gray-500">
+                  已验证 / 待实机验证 / 需人工确认；待验证平台失败时请转人工发布并回填链接。
+                </p>
               </div>
-            </details>
+              <Button
+                type="button"
+                size="sm"
+                className={geoP0Brand.primary}
+                disabled={publishAllBusy || readyPlatformCount <= 0}
+                onClick={() => void handlePublishAllPlatforms()}
+                data-testid="publish-all-ready-platforms"
+              >
+                {publishAllBusy ? "提交中…" : `一键加入发布队列（${readyPlatformCount}）`}
+              </Button>
+            </div>
+            <div className="mt-4">
+              <PublishPlatformCardGrid
+                cards={platformCards}
+                loading={loading}
+                publishingCardKey={publishingCardKey}
+                retryingTaskId={retryingTaskId}
+                onPreview={handlePlatformCardPreview}
+                onPublish={card => {
+                  void enqueuePlatformCard(card);
+                }}
+                onRetry={handlePlatformCardRetry}
+              />
+            </div>
+          </section>
 
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-success-rate-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                发布成功率趋势
-              </summary>
-              <div className="border-t border-gray-100 p-5">
-                {selectedProjectId ? <PlatformPublishSuccessRatePanel projectId={selectedProjectId} /> : null}
-              </div>
-            </details>
-
+          <section className="space-y-4" data-testid="publish-config-help-module">
+            <h2 className="text-base font-semibold text-gray-900">发布配置与帮助</h2>
             <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-platform-accounts-fold">
               <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
                 管理发布账号
@@ -1202,42 +1241,8 @@ function ContentPublishingCenterPageInner() {
               <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
                 下载 Local Agent
               </summary>
-              <div className="space-y-4 border-t border-gray-100 p-5">
-                <LocalAgentStatusCard
-                  status={localAgentConnectionStatus}
-                  statusSnapshot={localAgentStatusSnapshot}
-                  checking={checkingAgent}
-                  onCheckConnection={() => {
-                    setLastUserAction("check_local_agent");
-                    void checkConnection();
-                  }}
-                  onRefreshAccountStatus={() => void refreshAgentHealth()}
-                  updateNotice={localAgentUpdateNotice}
-                />
-                <LocalAgentDownloadCard />
-              </div>
-            </details>
-
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-calendar-fold">
-              <summary
-                className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800"
-                data-testid="publish-calendar-tab"
-              >
-                发布日历
-              </summary>
               <div className="border-t border-gray-100 p-5">
-                <PublishRecordsCalendar
-                  records={publishRecords}
-                  loading={publishRecordsQuery.isLoading}
-                  resolveTitle={record => {
-                    const article = articleById.get(record.articleId ?? 0);
-                    return (
-                      article?.title?.trim() ||
-                      record.publishTitle?.trim() ||
-                      `文章 #${record.articleId ?? "—"}`
-                    );
-                  }}
-                />
+                <LocalAgentDownloadCard />
               </div>
             </details>
 
@@ -1347,124 +1352,82 @@ function ContentPublishingCenterPageInner() {
 
             <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-manual-register-fold">
               <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                人工登记发布记录
+                人工登记发布记录（可选）
               </summary>
-              <div className="border-t border-gray-100 p-5">
-                <section className="rounded-lg border border-gray-100 p-4">
-                  <h3 className="text-sm font-medium text-gray-800">人工登记发布记录（可选）</h3>
-                  <div className="mt-3 space-y-4 text-sm text-gray-600">
-                    <p>若内容已在平台外发布，可在此登记公开链接，与 Local Agent 任务相互独立。每次仅登记一个平台。</p>
-                    {publishableArticles.length === 0 ? (
-                      <p className="text-gray-500">
-                        暂无可选文章，请先在平台化内容生产完成质量检查（≥ {GEO_ARTICLE_MIN_PASS_SCORE} 分）。
-                      </p>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>选择文章</Label>
-                          <Select
-                            value={manualArticleSelectValue}
-                            onValueChange={v => setManualArticleId(Number(v))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="选择文章" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(publishableArticles ?? []).map(a => (
-                                <SelectItem key={a?.id} value={String(a?.id)}>
-                                  {a.title?.trim() || `文章 #${a?.id}`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>发布平台</Label>
-                          <Select
-                            value={manualPlatform}
-                            onValueChange={v => setManualPlatform(v as ManualPublishPlatform)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {MANUAL_PUBLISH_PLATFORMS.map(p => (
-                                <SelectItem key={p} value={p}>
-                                  {p}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2 sm:col-span-2">
-                          <Label>公开链接（可选）</Label>
-                          <Input
-                            placeholder="人工发布后粘贴平台公开链接"
-                            value={manualLink}
-                            onChange={e => setManualLink(e.target.value)}
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className={geoP0Brand.primary}
-                          disabled={savingManual || !selectedProjectId}
-                          onClick={() => void handleSaveManualRecord()}
-                        >
-                          {savingManual ? "保存中…" : "保存发布记录"}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </section>
-              </div>
-            </details>
-
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-advanced-diagnostics-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                高级诊断与补充操作
-              </summary>
-              <div className="space-y-5 border-t border-gray-100 p-5">
-                <section className="rounded-lg border border-gray-100 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-800">平台发布支持状态</h3>
-                      <p className="mt-1 text-xs text-gray-500">
-                        已验证 / 待实机验证 / 需人工确认；待验证平台失败时请转人工发布并回填链接。
-                      </p>
+              <div className="space-y-4 border-t border-gray-100 p-5 text-sm text-gray-600">
+                <p>若内容已在平台外发布，可在此登记公开链接，与 Local Agent 任务相互独立。每次仅登记一个平台。</p>
+                {publishableArticles.length === 0 ? (
+                  <p className="text-gray-500">
+                    暂无可选文章，请先在平台化内容生产完成质量检查（≥ {GEO_ARTICLE_MIN_PASS_SCORE} 分）。
+                  </p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>选择文章</Label>
+                      <Select
+                        value={manualArticleSelectValue}
+                        onValueChange={v => setManualArticleId(Number(v))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择文章" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(publishableArticles ?? []).map(a => (
+                            <SelectItem key={a?.id} value={String(a?.id)}>
+                              {a.title?.trim() || `文章 #${a?.id}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>发布平台</Label>
+                      <Select
+                        value={manualPlatform}
+                        onValueChange={v => setManualPlatform(v as ManualPublishPlatform)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MANUAL_PUBLISH_PLATFORMS.map(p => (
+                            <SelectItem key={p} value={p}>
+                              {p}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label>公开链接（可选）</Label>
+                      <Input
+                        placeholder="人工发布后粘贴平台公开链接"
+                        value={manualLink}
+                        onChange={e => setManualLink(e.target.value)}
+                      />
                     </div>
                     <Button
                       type="button"
                       size="sm"
                       className={geoP0Brand.primary}
-                      disabled={publishAllBusy || readyPlatformCount <= 0}
-                      onClick={() => void handlePublishAllPlatforms()}
-                      data-testid="publish-all-ready-platforms"
+                      disabled={savingManual || !selectedProjectId}
+                      onClick={() => void handleSaveManualRecord()}
                     >
-                      {publishAllBusy ? "提交中…" : `一键加入发布队列（${readyPlatformCount}）`}
+                      {savingManual ? "保存中…" : "保存发布记录"}
                     </Button>
                   </div>
-                  <div className="mt-4">
-                    <PublishPlatformCardGrid
-                      cards={platformCards}
-                      loading={loading}
-                      publishingCardKey={publishingCardKey}
-                      retryingTaskId={retryingTaskId}
-                      onPreview={handlePlatformCardPreview}
-                      onPublish={card => {
-                        void enqueuePlatformCard(card);
-                      }}
-                      onRetry={handlePlatformCardRetry}
-                    />
-                  </div>
-                </section>
-
-                <LocalAgentPublishStepsPanel projectId={selectedProjectId} />
+                )}
+                <p className="text-gray-500">
+                  已登记记录请在上方「发布记录」标签页查看；超过 30 条时可使用「查看全部历史」按时间筛选。
+                </p>
               </div>
             </details>
+            <LocalAgentPublishStepsPanel projectId={selectedProjectId} />
           </section>
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       {selectedProjectId && editorArticle ? (
         <ArticleAssetEditorSheet

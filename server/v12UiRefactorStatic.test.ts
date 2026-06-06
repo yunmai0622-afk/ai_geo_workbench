@@ -174,8 +174,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     }
     expect(publishSource).not.toContain("trpc.geo.articles.publish.useMutation");
     expect(publishSource).toContain("publishTasks.create");
-    expect(publishSource).toContain("PublishStatusBar");
-    expect(publishSource).toContain("publish-task-queue-module");
+    expect(publishSource).toContain("PublishWeeklyOverviewBar");
     expect(
       publishSource + readProjectFile("client/src/components/publishing/PublishActionSidePanel.tsx"),
     ).toContain("一键发布所有平台");

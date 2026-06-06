@@ -85,8 +85,6 @@ export type PublishReadinessInput = {
   diagnosisReady?: boolean;
   article?: PublishReadinessArticle | null;
   localAgentConnected?: boolean | null;
-  /** 服务端已感知 Local Agent 在线（DB 有 active 会话） */
-  serverHeartbeatConnected?: boolean | null;
   /** 当前项目下启用账号（可按平台过滤） */
   platformAccounts?: PublishReadyAccountRow[];
   /** 服务端 create 入参平台；缺省则用文章解析结果 */
@@ -356,30 +354,9 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
   }
 
   if (!input.skipLocalAgentConnectionCheck && input.localAgentConnected !== true) {
-    const serverHeartbeat =
-      input.serverHeartbeatConnected ??
-      (input.platformAccounts ?? []).some(
-        row =>
-          Boolean(row.localAgentId?.trim()) &&
-          Boolean(row.localProfileId?.trim()) &&
-          row.sessionStatus === "active",
-      );
-    debugReasons.push(`localAgentConnected=${String(input.localAgentConnected)}`);
-    if (serverHeartbeat) {
-      return blocked({
-        blockingCode: "LOCAL_AGENT_DISCONNECTED",
-        message:
-          "客户端已启动并连接服务端，但当前浏览器尚未检测到本机客户端。请点击「检测连接」。",
-        nextActionLabel: "检测连接",
-        nextActionTarget: "refresh_agent_status",
-        platform,
-        platformLabel,
-        debugReasons,
-        resolvedPlatform: resolved,
-      });
-    }
     const connectionStatus: LocalAgentConnectionStatus =
       input.localAgentConnected === false ? "DISCONNECTED" : "UNKNOWN";
+    debugReasons.push(`localAgentConnected=${String(input.localAgentConnected)}`);
     const copy = localAgentConnectionCopy(connectionStatus);
     return blocked({
       blockingCode: "LOCAL_AGENT_DISCONNECTED",

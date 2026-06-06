@@ -17,16 +17,15 @@ describe("GEO-V1.1-MobileFix", () => {
     expect(dock).toContain("lg:hidden");
   });
 
-  it("平台化内容资产页：平台矩阵首屏 + 历史内容默认折叠", () => {
+  it("平台化内容资产页：平台矩阵单列 + 已生成内容移动端默认折叠", () => {
     const board = read("client/src/components/weekly/PlatformContentBoard.tsx");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
-    const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
     expect(board).toContain("weekly-platform-matrix-grid");
     expect(board).toContain("grid-cols-1");
     expect(board).toContain("lg:grid-cols-2");
-    expect(weekly).toContain("WeeklyContentTaskControlCard");
-    expect(auxiliary).toContain("历史内容记录");
-    expect(auxiliary).toMatch(/open=\{defaultOpen \? undefined : false\}/);
-    expect(weekly).toContain("WeeklyContentDetailSheet");
+    expect(weekly).toContain("weekly-generated-content-mobile-summary");
+    expect(weekly).toContain("generatedSectionOpen");
+    expect(weekly).toContain("weekly-content-cards-grid");
+    expect(weekly).toContain("grid-cols-1");
   });
 });

@@ -19,12 +19,7 @@ import { buildPublishPlatformAccountOverview } from "@shared/publishPlatformAcco
 import { buildPublishPlatformStatusOverview } from "@shared/publishPlatformStatusOverview";
 import { isPublishReadyPlatformAccount } from "@shared/publishReadiness";
 
-export type PublishQueueTabKey =
-  | "pending"
-  | "active"
-  | "needs_attention"
-  | "failed"
-  | "completed";
+export type PublishQueueTabKey = "pending" | "active" | "failed" | "completed";
 
 type ArticleRow = {
   id: number;
@@ -79,8 +74,6 @@ export type AgentTaskDerivedState = {
   hasInFlightAgentTasks: boolean;
   pendingCount: number;
   failedCount: number;
-  needsAttentionCount: number;
-  abnormalCount: number;
   waitingLinkTaskCount: number;
   waitingLinkRecordCount: number;
   waitingLinkCount: number;
@@ -116,16 +109,10 @@ function queueTabFromCard(card: PublishTaskCardModel): PublishQueueTabKey {
   if (
     card.statusRaw === "failed" ||
     card.statusRaw === "publish_failed" ||
+    card.statusRaw === "session_expired" ||
     card.retryExhausted
   ) {
     return "failed";
-  }
-  if (
-    card.statusRaw === "manual_required" ||
-    card.statusRaw === "draft_saved" ||
-    card.statusRaw === "session_expired"
-  ) {
-    return "needs_attention";
   }
   if (
     card.statusRaw === "pending" ||
@@ -134,7 +121,12 @@ function queueTabFromCard(card: PublishTaskCardModel): PublishQueueTabKey {
   ) {
     return "pending";
   }
-  if (card.statusRaw === "agent_processing" || card.statusRaw === "processing") {
+  if (
+    card.statusRaw === "agent_processing" ||
+    card.statusRaw === "processing" ||
+    card.statusRaw === "manual_required" ||
+    card.statusRaw === "draft_saved"
+  ) {
     return "active";
   }
   return "completed";
@@ -178,7 +170,6 @@ export function buildPublishingViewModel(input: PublishingViewModelInput): Publi
   const queueTabs: Record<PublishQueueTabKey, PublishTaskCardModel[]> = {
     pending: [],
     active: [],
-    needs_attention: [],
     failed: [],
     completed: [],
   };
@@ -263,8 +254,6 @@ export function buildPublishingViewModel(input: PublishingViewModelInput): Publi
       hasInFlightAgentTasks,
       pendingCount: queueTabs.pending.length,
       failedCount: queueTabs.failed.length,
-      needsAttentionCount: queueTabs.needs_attention.length,
-      abnormalCount: queueTabs.failed.length + queueTabs.needs_attention.length,
       waitingLinkTaskCount,
       waitingLinkRecordCount,
       waitingLinkCount: waitingLinkTaskCount + waitingLinkRecordCount,
