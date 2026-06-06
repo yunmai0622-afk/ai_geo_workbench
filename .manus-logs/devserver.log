@@ -4201,3 +4201,25 @@
 [2026-06-06T08:18:23.891Z] Server running on http://localhost:3000/
 [2026-06-06T08:18:25.374Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-06T08:19:09.504Z] 4:19:09 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:25:52.931Z] 5:25:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:25:52.932Z] 5:25:52 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/ContentProductionAssistantPanel.tsx
+[2026-06-06T09:25:52.933Z] 5:25:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:25:52.934Z] 5:25:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:25:52.936Z] 5:25:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:25:52.936Z] 5:25:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:25:52.937Z] 5:25:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:25:52.938Z] 5:25:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:25:52.946Z] 5:25:52 AM [vite] (client) hmr update /src/components/weekly/ContentProductionAssistantPanel.tsx
+[2026-06-06T09:26:08.077Z] 5:26:08 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T09:26:24.976Z] Dev server process group stopped
+[2026-06-06T09:26:24.979Z] ELIFECYCLE  Command failed.
+[2026-06-06T09:26:25.044Z] Dev server exited with code -15
+[2026-06-06T09:26:28.010Z] Starting dev server with command: pnpm run dev
+[2026-06-06T09:26:28.831Z] 
+[2026-06-06T09:26:28.832Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-06T09:26:28.832Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-06T09:26:28.832Z] 
+[2026-06-06T09:26:36.201Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.19/geo-local-agent-mac.zip
+[2026-06-06T09:26:36.240Z] Server running on http://localhost:3000/
+[2026-06-06T09:26:38.229Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-06T09:27:35.501Z] 5:27:35 AM [vite] (client) hmr update /src/index.css
