@@ -11,7 +11,7 @@ import {
   diagnosisQuestions,
   publishRecords,
 } from "@/lib/demoGeoData";
-import { BarChart3, CheckCircle2, ChevronRight } from "lucide-react";
+import { BarChart3, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 
@@ -82,13 +82,13 @@ function StepT0Detection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">T0 检测结果</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">基线检测结果</h1>
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          展示「{t0.brandName}」在 AI 实测诊断阶段的基线结果（{t0.testedAt} 样本，脱敏展示）。
+          展示「{t0.brandName}」在 AI 实测诊断阶段的初始结果（{t0.testedAt} 样本，脱敏展示）。
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="GEO 总分（T0）" value={`${t0.geoScore}`} hint={`可见度：${t0.visibilityLevel}`} />
+        <MetricCard label="GEO 总分（基线）" value={`${t0.geoScore}`} hint={`可见度：${t0.visibilityLevel}`} />
         <MetricCard label="客户指定问题" value={`${t0.questionCount} 条`} />
         <MetricCard label="品牌提及" value={`${t0.mentionCount} 次`} hint={`提及率 ${t0.mentionRateLabel}`} />
         <MetricCard label="品牌推荐" value={`${t0.recommendCount} 次`} hint={`推荐率 ${t0.recommendRateLabel}`} />
@@ -240,10 +240,9 @@ function StepPublishRecords() {
           <h2 className="mt-3 text-lg font-semibold text-gray-900">{record.title}</h2>
           <p className="mt-2 text-sm text-gray-600">{record.notes}</p>
           <p className="mt-3 text-sm">
-            <span className="text-gray-500">公开链接：</span>
-            <a className="text-blue-600 underline underline-offset-2" href={record.publicPath}>
-              {record.publicPath}
-            </a>
+            <span className="text-gray-500">发布路径：</span>
+            <span className="text-gray-800">{record.publicPath}</span>
+            <span className="mt-1 block text-xs text-gray-500">Demo 仅展示样板路径，不跳转至后台发布页。</span>
           </p>
           <p className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-600">第三方素材：{record.thirdPartyMaterial}</p>
         </article>
@@ -257,7 +256,7 @@ function StepT0T1Comparison() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">T0 → T1 效果对比</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">基线 → 优化后效果对比</h1>
         <p className="mt-2 text-sm leading-6 text-gray-600">用示例数据说明试跑前后指标变化方向（非效果承诺）。</p>
       </div>
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -265,8 +264,8 @@ function StepT0T1Comparison() {
           <thead className="bg-gray-50 text-gray-600">
             <tr>
               <th className="px-4 py-3 font-medium">指标</th>
-              <th className="px-4 py-3 font-medium">T0 基线</th>
-              <th className="px-4 py-3 font-medium">T1 试跑后</th>
+              <th className="px-4 py-3 font-medium">基线阶段</th>
+              <th className="px-4 py-3 font-medium">优化后阶段</th>
               <th className="px-4 py-3 font-medium">变化</th>
             </tr>
           </thead>
@@ -335,6 +334,10 @@ export default function DemoGeoPage() {
     setStep(s => s + 1);
   };
 
+  const handlePrev = () => {
+    if (step > 1) setStep(s => s - 1);
+  };
+
   return (
     <DemoShell>
       {finished ? (
@@ -347,12 +350,24 @@ export default function DemoGeoPage() {
           {step === 3 ? <StepContentAssets /> : null}
           {step === 4 ? <StepPublishRecords /> : null}
           {step === 5 ? <StepT0T1Comparison /> : null}
-          <div className="mt-10 flex flex-col items-stretch gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-between">
-            <p className="text-xs leading-5 text-gray-500">{demoProject.riskNotice}</p>
-            <Button type="button" className="shrink-0 bg-blue-600 text-white hover:bg-blue-700 sm:min-w-[140px]" onClick={handleNext}>
-              {step >= TOTAL_STEPS ? "完成演示" : "下一步"}
-              <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
-            </Button>
+          <div className="mt-10 flex flex-col items-stretch gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="order-2 text-xs leading-5 text-gray-500 sm:order-1 sm:max-w-md">{demoProject.riskNotice}</p>
+            <div className="order-1 flex gap-3 sm:order-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={step <= 1}
+                className="shrink-0 sm:min-w-[120px]"
+                onClick={handlePrev}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" aria-hidden />
+                上一步
+              </Button>
+              <Button type="button" className="shrink-0 bg-blue-600 text-white hover:bg-blue-700 sm:min-w-[140px]" onClick={handleNext}>
+                {step >= TOTAL_STEPS ? "完成演示" : "下一步"}
+                <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
+              </Button>
+            </div>
           </div>
         </>
       )}

@@ -7,7 +7,9 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("GEO-V1.1 delivery report experimental upgrade", () => {
   const page = read("client/src/pages/DeliveryReportsCenterPage.tsx");
+  const productBody = read("client/src/components/delivery/DeliveryReportProductBody.tsx");
   const shared = read("shared/deliveryReportExperimentalDisplay.ts");
+  const reportUi = page + productBody;
 
   it("defines experimental report modules in shared display", () => {
     expect(shared).toContain("DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER");
@@ -28,12 +30,14 @@ describe("GEO-V1.1 delivery report experimental upgrade", () => {
       "delivery-report-uncertainty",
       "DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER",
     ]) {
-      expect(page).toContain(text);
+      expect(reportUi).toContain(text);
     }
   });
 
-  it("keeps browser print export for PDF", () => {
-    expect(page).toContain("window.print()");
-    expect(page).toContain("导出报告");
+  it("keeps real PDF export for delivery report", () => {
+    expect(page).toContain("downloadDeliveryReportPdf");
+    expect(reportUi).toContain("delivery-report-export-pdf");
+    expect(reportUi).toContain("导出 PDF");
+    expect(page).not.toContain("window.print()");
   });
 });

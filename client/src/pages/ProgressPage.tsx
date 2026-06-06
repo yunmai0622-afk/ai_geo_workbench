@@ -70,9 +70,15 @@ export default function ProgressPage() {
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } = useProjectSelection();
 
   const scoresQuery = trpc.geo.scores.list.useQuery(projectInput, { enabled });
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const articlesQuery = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
-  const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
+  const tasksQuery = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
 
   const scores = (scoresQuery.data ?? []) as ScoreRow[];

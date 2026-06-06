@@ -68,7 +68,7 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     const report =
       read("client/src/pages/DeliveryReportsCenterPage.tsx") +
       read("client/src/lib/deliveryReportProductDisplay.ts");
-    expect(report).toContain("GEO 实验型交付报告");
+    expect(report).toContain("GEO 增长交付报告");
     expect(v12 + report).toContain('buildProjectUrl("/content-publishing"');
     expect(v12).toContain('buildProjectUrl("/delivery-reports"');
     expect(report).toContain('buildProjectUrl("/inclusion-monitoring"');

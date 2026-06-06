@@ -35,6 +35,7 @@ import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/p
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { markGeoArticlePublishedAt } from "./geoArticlePublishState";
+import { ensureInclusionMonitoringRecordForPublishRecord } from "./publishRecordMonitoring";
 import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/schema";
 import { emitPublishFailedNotification, emitPublishSuccessNotification } from "./systemNotifications";
 import { retryFailedPublishTask } from "./publishTaskRetryService";
@@ -582,6 +583,7 @@ export const publishTasksRouter = router({
           expectedAccountName: publishTasks.expectedAccountName,
           localProfileId: publishTasks.localProfileId,
           resultUrl: publishTasks.resultUrl,
+          publishedUrl: publishTasks.publishedUrl,
           draftUrl: publishTasks.draftUrl,
           agentErrorType: publishTasks.agentErrorType,
           agentErrorMessage: publishTasks.agentErrorMessage,
@@ -603,6 +605,99 @@ export const publishTasksRouter = router({
           retryExhausted: isPublishRetryExhausted(row),
         })),
       } as const;
+    }),
+
+  backfillPublicUrl: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        taskId: z.number().int().positive(),
+        publicUrl: z.string().trim().url().max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDbConn();
+      const ownerUserId = getCurrentUserId(ctx);
+      await requireProjectAccessConn(db, ownerUserId, input.projectId);
+
+      const taskRows = await db.select().from(publishTasks).where(eq(publishTasks.id, input.taskId)).limit(1);
+      const task = taskRows[0];
+      if (!task || task.projectId !== input.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "发布任务不存在" });
+      }
+      if (task.status !== "completed") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "仅已完成任务可回填公开链接" });
+      }
+
+      const trimmedUrl = input.publicUrl.trim();
+      await db.update(publishTasks).set({ publishedUrl: trimmedUrl }).where(eq(publishTasks.id, task.id));
+
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, task.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article || article.projectId !== input.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "内容不存在或不属于当前项目" });
+      }
+
+      const scoreRows = await db
+        .select()
+        .from(geoArticleQualityScores)
+        .where(eq(geoArticleQualityScores.articleId, article.id))
+        .orderBy(desc(geoArticleQualityScores.createdAt))
+        .limit(1);
+      const latestScore = scoreRows[0];
+      const channel = PLATFORM_TO_PUBLISH_CHANNEL[task.platform as z.infer<typeof publishPlatformSlugEnum>];
+      if (!channel) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "当前发布平台暂不支持回填公开链接" });
+      }
+
+      const existingPublishRecordRows = await db
+        .select()
+        .from(geoPublishRecords)
+        .where(and(eq(geoPublishRecords.projectId, input.projectId), eq(geoPublishRecords.articleId, task.articleId)))
+        .orderBy(desc(geoPublishRecords.createdAt))
+        .limit(20);
+      const matchedPublishRecord =
+        existingPublishRecordRows.find(row => row.publishUrl.trim() === trimmedUrl) ?? existingPublishRecordRows[0];
+
+      const publishRecordId = matchedPublishRecord
+        ? matchedPublishRecord.id
+        : (
+            await db
+              .insert(geoPublishRecords)
+              .values({
+                projectId: task.projectId,
+                articleId: task.articleId,
+                optimizationTaskId: article.optimizationTaskId,
+                publishChannel: channel,
+                publishTitle: task.articleTitle,
+                publishUrl: trimmedUrl,
+                publishStatus: "已发布",
+                qualityScore: latestScore?.totalScore ?? getGeoArticleMinPassScore(),
+                needRetest: 1,
+                notes: "发布完成后人工回填公开链接",
+              })
+              .$returningId()
+          )[0]?.id;
+
+      if (!publishRecordId) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "创建发布记录失败" });
+      }
+
+      await ensureInclusionMonitoringRecordForPublishRecord(db, {
+        projectId: task.projectId,
+        articleId: task.articleId,
+        publishRecordId,
+        publicUrl: trimmedUrl,
+        qualityScore: latestScore?.totalScore ?? getGeoArticleMinPassScore(),
+        rawJsonSource: "publish_task_backfill",
+        rawJsonCreatedBy: "publishTasks.backfillPublicUrl",
+      });
+
+      await markGeoArticlePublishedAt(db, article.id, {
+        publicPath: trimmedUrl,
+      });
+
+      return { ok: true, taskId: task.id, publishRecordId } as const;
     }),
 
   retry: protectedProcedure

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { GEO_UNIFIED_MAIN_PIPELINE_STEPS } from "../shared/workspaceMainChain";
 import {
   COCKPIT_PIPELINE_STEPS,
-  GEO_MAIN_PIPELINE_STEPS,
   resolveMainPipelineStepStatuses,
 } from "../client/src/lib/geoProductPositioning";
 
 describe("geoProductPositioning", () => {
   it("主链路为 8 步", () => {
-    expect(GEO_MAIN_PIPELINE_STEPS).toHaveLength(8);
+    expect(GEO_UNIFIED_MAIN_PIPELINE_STEPS).toHaveLength(8);
     expect(COCKPIT_PIPELINE_STEPS).toHaveLength(8);
   });
 
@@ -36,7 +36,7 @@ describe("geoProductPositioning", () => {
       hasCompletedT1Retest: false,
       p0ProfileComplete: false,
     });
-    const aiStep = steps.find(s => s.id === "ai_search_test");
+    const aiStep = steps.find(s => s.id === "ai_search_test_t0");
     expect(aiStep?.status).toBe("未开始");
     expect(aiStep?.nextAction).toContain("暂无实测结果");
   });

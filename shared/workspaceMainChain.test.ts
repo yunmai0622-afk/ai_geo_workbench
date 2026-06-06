@@ -15,6 +15,8 @@ const baseMetrics = (): WorkspaceSummaryMetrics => ({
   expiredSessionAccountCount: 0,
   articleCount: 2,
   publishRecordCount: 0,
+  publishRecordWithPublicUrlCount: 0,
+  waitingPublicLinkCount: 0,
   publishTaskCount: 0,
   completedPublishTaskCount: 0,
   retestPendingCount: 0,
@@ -51,13 +53,13 @@ describe("workspaceMainChain", () => {
     expect(steps.every(step => step.done)).toBe(true);
     expect(steps.map(step => step.name)).toEqual([
       "企业资料建档",
-      "AI基线检测",
+      "AI搜索现状实测（T0基线）",
+      "品牌资产补全",
       "内容资产生成",
-      "平台发布",
-      "收录监测",
-      "T1复测",
-      "效果对比",
-      "交付报告",
+      "平台适配发布",
+      "收录与引用监测（T1/T2/T3复测）",
+      "GEO评分与竞品对比",
+      "交付报告与下一轮优化",
     ]);
   });
 

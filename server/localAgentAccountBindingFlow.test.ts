@@ -43,10 +43,12 @@ describe("Local-Agent-Account-Binding-Flow-P0", () => {
   });
 
   it("selectedPlatform 与不支持平台处理", () => {
+    const uxCopy = read("local-agent/src/renderer/uxCopy.js");
     expect(appJs).toContain('let selectedPlatform = "zhihu"');
     expect(appJs).toContain("PENDING_PLATFORMS");
-    expect(appJs).toContain("暂未接入");
-    expect(main).toContain("暂未接入账号环境创建");
+    expect(appJs).toContain("isPending");
+    expect(uxCopy).toContain("平台即将支持");
+    expect(main).toContain("即将支持账号环境创建");
   });
 
   it("账号环境侧栏展示搜狐/百家号/头条/网易并可创建", () => {

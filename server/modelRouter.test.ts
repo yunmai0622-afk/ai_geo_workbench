@@ -21,13 +21,13 @@ describe("modelRouter", () => {
   it("rejects unimplemented claude client with clear error", async () => {
     vi.stubEnv("QUALITY_REVIEW_MODEL", "claude");
     const router = new ModelRouter();
-    await expect(router.callModel("quality_review", "test")).rejects.toThrow("Claude 模型暂未接入");
+    await expect(router.callModel("quality_review", "test")).rejects.toThrow("Claude 模型即将支持");
   });
 
   it("rejects unimplemented gpt client with clear error", async () => {
     vi.stubEnv("QUALITY_REVIEW_MODEL", "gpt");
     const router = new ModelRouter();
-    await expect(router.callModel("quality_review", "test")).rejects.toThrow("GPT 模型暂未接入");
+    await expect(router.callModel("quality_review", "test")).rejects.toThrow("GPT 模型即将支持");
   });
 
   it("calls mocked client and returns string", async () => {

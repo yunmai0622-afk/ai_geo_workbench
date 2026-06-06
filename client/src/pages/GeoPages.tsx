@@ -161,9 +161,15 @@ export function QuestionsPage() {
   const { selectedProject, selectedProjectId, input, enabled } = useSelectedProject();
   const questions = trpc.geo.questions.list.useQuery(input, { enabled });
   const responses = trpc.geo.aiResponses.list.useQuery(input, { enabled });
-  const analyses = trpc.geo.analysis.list.useQuery(input, { enabled });
+  const analyses = trpc.geo.analysis.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const score = trpc.geo.scores.latest.useQuery(input, { enabled });
-  const tasks = trpc.geo.tasks.list.useQuery(input, { enabled });
+  const tasks = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const generateQuestions = trpc.geo.questions.generate.useMutation({ onSuccess: async () => { toast.success("客户问题已生成"); await utils.geo.questions.list.invalidate(); }, onError: toastMutationError });
   const runAnalysis = trpc.geo.analysis.run.useMutation({ onSuccess: async () => { toast.success("诊断结果已生成"); await utils.geo.analysis.list.invalidate(); }, onError: toastMutationError });
   const calculateScore = trpc.geo.scores.calculate.useMutation({ onSuccess: async () => { toast.success("内容评分已生成"); await utils.geo.scores.latest.invalidate(); }, onError: toastMutationError });
@@ -224,8 +230,14 @@ export function ArticlesPage() {
   const [location] = useLocation();
   const [selectedArticleId, setSelectedArticleId] = useState<number | undefined>();
   const isPublishing = location === "/content-publishing" || location === "/publish";
-  const topics = trpc.geo.articles.topics.list.useQuery(input, { enabled });
-  const articles = trpc.geo.articles.list.useQuery(input, { enabled });
+  const topics = trpc.geo.articles.topics.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const articles = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const qualityScores = trpc.geo.articles.latestQualityScores.useQuery(input, { enabled });
   const records = trpc.geo.articles.publishRecords.useQuery(input, { enabled });
   const assetSummary = trpc.geo.assetLibrary.summary.useQuery(input, { enabled });
@@ -404,7 +416,7 @@ export function ArticlesPage() {
             <div className="rounded-2xl border border-gray-200 bg-white/[0.03] p-4"><p className="font-medium text-white">引用友好片段</p><div className="mt-2 space-y-2">{selectedSnippets.map((snippet, index) => <div key={index} className="rounded-xl bg-white p-3"><p className="text-blue-700">{textValue(snippet.question, `片段 ${index + 1}`)}</p><p className="mt-1 text-gray-400">{textValue(snippet.answer)}</p></div>)}{selectedSnippets.length === 0 ? <p className="text-gray-400">暂无引用片段。</p> : null}</div></div>
             <div className="rounded-2xl border border-gray-200 bg-white/[0.03] p-4"><p className="font-medium text-white">质量与一致性</p><p className="mt-2">质量评分：{selectedScore?.totalScore ?? "待评分"}</p><p className="mt-1">一致性评分：{(selectedArticle.consistencyCheck as Row | null)?.score ?? "待检查"}</p><p className="mt-1">发布阻断：{selectedCheck?.blockReasons.length ? selectedCheck.blockReasons.join("；") : "暂无"}</p></div>
           </div>
-          <div className="flex flex-wrap gap-2"><Button onClick={() => qualityCheck.mutate({ articleId: selectedArticle.id })} disabled={qualityCheck.isPending || !(selectedArticle.status === "已生成" || selectedArticle.status === "待质检" || selectedArticle.status === "需人工审核")} className="bg-blue-600 text-white hover:bg-blue-700">重新检查</Button><Button onClick={() => optimizeArticle.mutate({ articleId: selectedArticle.id, mode: "FAQ", reason: "用户在详情页要求补齐 FAQ 版本" })} disabled={optimizeArticle.isPending} variant="outline" className="border-gray-200 text-gray-900 hover:bg-gray-100">生成 FAQ 优化版</Button><Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} variant="outline" className="border-gray-200 text-gray-900 hover:bg-gray-100">进入发布页</Button></div>
+          <div className="flex flex-wrap gap-2"><Button onClick={() => qualityCheck.mutate({ articleId: selectedArticle.id })} disabled={qualityCheck.isPending || !(selectedArticle.status === "已生成" || selectedArticle.status === "待质检" || selectedArticle.status === "需人工审核" || selectedArticle.status === "质检未通过")} className="bg-blue-600 text-white hover:bg-blue-700">重新检查</Button><Button onClick={() => optimizeArticle.mutate({ articleId: selectedArticle.id, mode: "FAQ", reason: "用户在详情页要求补齐 FAQ 版本" })} disabled={optimizeArticle.isPending} variant="outline" className="border-gray-200 text-gray-900 hover:bg-gray-100">生成 FAQ 优化版</Button><Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} variant="outline" className="border-gray-200 text-gray-900 hover:bg-gray-100">进入发布页</Button></div>
         </div>
       </InfoCard> : null}
       <div className="flex gap-3"><Button onClick={() => selectedProjectId && generateTopics.mutate({ projectId: selectedProjectId })} disabled={!selectedProjectId || generateTopics.isPending} className="bg-blue-600 text-white hover:bg-blue-700">生成推荐选题</Button><Button onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} variant="outline" className="border-gray-200 text-gray-900 hover:bg-gray-100">进入内容发布</Button></div>

@@ -269,7 +269,7 @@ ipcMain.handle("agent:createPlatformProfile", async (_e, platform: string) => {
   if (!allowed.includes(platform as StoredPlatform)) {
     const pendingMsg =
       platform === "xiaohongshu" || platform === "wechat"
-        ? `平台「${platform}」暂未接入账号环境创建，当前支持：知乎、搜狐号、百家号、头条号、网易号`
+        ? `平台「${platform}」即将支持账号环境创建，当前支持：知乎、搜狐号、百家号、头条号、网易号`
         : `不支持的平台: ${platform}`;
     return { ok: false, message: pendingMsg };
   }

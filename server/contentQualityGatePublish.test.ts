@@ -87,8 +87,8 @@ describe("contentQualityGate publish integration", () => {
     const page = read("client/src/pages/WeeklyContentPage.tsx");
     expect(page).toContain("evaluatePublishReadiness");
     expect(page).toContain("publish-readiness-block");
-    expect(page).toContain("border-green-200 bg-green-50");
-    expect(page).toContain("text-green-700");
+    expect(page).toContain("border-amber-200 bg-amber-50");
+    expect(page).toContain("text-amber-800");
     expect(page).not.toContain("AiStatusBadge tone=\"success\"");
   });
 });

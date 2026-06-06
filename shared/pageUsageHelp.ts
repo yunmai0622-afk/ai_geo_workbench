@@ -1,4 +1,4 @@
-import { MAIN_CHAIN_STEPS } from "./workspaceMainChain";
+import { GEO_UNIFIED_MAIN_PIPELINE_STEPS } from "./workspaceMainChain";
 import { PLATFORM_CONTENT_GUIDELINES, formatPlatformContentGuidelineLine } from "./platformContentGuidelines";
 
 /** GEO-V1.1：主要页面静态使用说明（仅前端展示） */
@@ -70,7 +70,7 @@ export const PAGE_USAGE_HELP: Record<PageUsageHelpId, PageUsageHelpContent> = {
     sections: [
       {
         heading: "8 步主链路",
-        lines: MAIN_CHAIN_STEPS.map((step, index) => `${index + 1}. ${step.name}`),
+        lines: GEO_UNIFIED_MAIN_PIPELINE_STEPS.map((step, index) => `${index + 1}. ${step.title}`),
       },
       {
         heading: "步骤与阶段状态",

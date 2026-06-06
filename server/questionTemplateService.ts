@@ -1,7 +1,10 @@
 import {
+  fillTemplateWithProjectProfile,
+  type TemplateProjectLike,
+} from "@shared/templateProjectProfileFill";
+import {
   BUILTIN_QUESTION_TEMPLATES,
-  buildQuestionTemplateVariables,
-  fillQuestionTemplatePrompt,
+  type QuestionTemplateFieldKey,
 } from "@shared/questionContentTemplates";
 import type { getDb } from "./db";
 
@@ -15,6 +18,14 @@ export type QuestionTemplateRow = {
   questionType: string;
   promptTemplate: string;
   description?: string | null;
+};
+
+export type QuestionTemplatePreviewPayload = {
+  template: QuestionTemplateRow;
+  enterpriseName: string;
+  filledPrompt: string;
+  usedFields: QuestionTemplateFieldKey[];
+  missingFieldLabels: string[];
 };
 
 const BUILTIN_ROWS: QuestionTemplateRow[] = BUILTIN_QUESTION_TEMPLATES.map((seed, index) => ({
@@ -37,24 +48,33 @@ export async function getQuestionTemplateById(_db: Db, id: number): Promise<Ques
   return BUILTIN_ROWS.find(row => row.id === id) ?? null;
 }
 
+export function buildQuestionTemplatePreview(
+  template: Pick<QuestionTemplateRow, "id" | "title" | "platform" | "questionType" | "promptTemplate"> & Partial<Pick<QuestionTemplateRow, "slug" | "description">>,
+  project: TemplateProjectLike,
+  profile?: Record<string, unknown> | null,
+): QuestionTemplatePreviewPayload {
+  const filled = fillTemplateWithProjectProfile(template.promptTemplate, { project, profile: profile ?? null });
+  return {
+    template: {
+      id: template.id,
+      slug: template.slug ?? `builtin-${template.id}`,
+      title: template.title,
+      platform: template.platform,
+      questionType: template.questionType,
+      promptTemplate: template.promptTemplate,
+      description: template.description ?? null,
+    },
+    enterpriseName: filled.enterpriseName,
+    filledPrompt: filled.filledPrompt,
+    usedFields: filled.usedFields,
+    missingFieldLabels: filled.missingFieldLabels,
+  };
+}
+
 export function resolveFilledQuestionTemplatePrompt(
   template: Pick<QuestionTemplateRow, "promptTemplate">,
-  project: {
-    enterpriseName: string;
-    productIntro?: string | null;
-    targetCustomers?: string | null;
-    industry?: string | null;
-    coreSellingPoints?: string | null;
-  },
+  project: TemplateProjectLike,
+  profile?: Record<string, unknown> | null,
 ): string {
-  return fillQuestionTemplatePrompt(
-    template.promptTemplate,
-    buildQuestionTemplateVariables({
-      brand: project.enterpriseName,
-      product: project.productIntro,
-      targetCustomer: project.targetCustomers,
-      industry: project.industry,
-      coreAdvantage: project.coreSellingPoints,
-    }),
-  );
+  return fillTemplateWithProjectProfile(template.promptTemplate, { project, profile: profile ?? null }).filledPrompt;
 }

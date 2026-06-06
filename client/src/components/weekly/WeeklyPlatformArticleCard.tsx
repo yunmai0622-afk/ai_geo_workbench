@@ -9,7 +9,7 @@ import {
   contentReviewStatusBadgeClass,
   type ContentReviewStatus,
 } from "@shared/contentReviewStatus";
-import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
+import { geoP0Brand } from "@/lib/geoP0Visual";
 import { normalizeWeeklyPlatformKey } from "@/lib/weeklyPlatformBoard";
 import type { GeoQualityCardView } from "@shared/geoQualityScoreDisplay";
 import { shouldBlockPublishForGeoQuality } from "@shared/geoQualityStale";
@@ -21,6 +21,8 @@ import { resolveXiaohongshuMaterial } from "@shared/xiaohongshuMaterial";
 import { resolveWechatMaterial } from "@shared/wechatMaterial";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { XiaohongshuMaterialCard } from "@/components/weekly/XiaohongshuMaterialCard";
 import { WechatMaterialCard } from "@/components/weekly/WechatMaterialCard";
 
@@ -55,6 +57,8 @@ export type WeeklyArticleCardModel = {
   article: Record<string, unknown>;
   publishBlockHint?: string | null;
   publishNextActionLabel?: string | null;
+  queuedForPublish?: boolean;
+  queuedStatusLabel?: string | null;
   contentReviewStatus: ContentReviewStatus;
   contentTags?: string[] | null;
 };
@@ -68,6 +72,7 @@ type Props = {
   onView: () => void;
   onRegenerate: () => void;
   onEnqueuePublish: () => void;
+  onGoPublishingPage?: () => void;
   onContentReviewStatusChange?: (status: ContentReviewStatus) => void;
 };
 
@@ -87,6 +92,7 @@ export function WeeklyPlatformArticleCard(props: Props) {
     onView,
     onRegenerate,
     onEnqueuePublish,
+    onGoPublishingPage,
     onContentReviewStatusChange,
   } = props;
   const platformLabel = model.targetPlatform?.trim() || "待指定平台";
@@ -139,6 +145,7 @@ export function WeeklyPlatformArticleCard(props: Props) {
     });
   }, [platformKey, model.article, model.title]);
   const [bodyCopied, setBodyCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const bodyCopyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
@@ -147,14 +154,15 @@ export function WeeklyPlatformArticleCard(props: Props) {
     };
   }, []);
 
+  const articleBody = articleBodyForCopy(model.article);
+
   const copyBody = async () => {
-    const payload = articleBodyForCopy(model.article);
-    if (!payload) {
+    if (!articleBody) {
       toast.error("正文为空，无法复制");
       return;
     }
     try {
-      await navigator.clipboard.writeText(payload);
+      await navigator.clipboard.writeText(articleBody);
       if (bodyCopyTimerRef.current) clearTimeout(bodyCopyTimerRef.current);
       setBodyCopied(true);
       bodyCopyTimerRef.current = setTimeout(() => setBodyCopied(false), 2000);
@@ -163,9 +171,18 @@ export function WeeklyPlatformArticleCard(props: Props) {
     }
   };
 
+  const statusBadgeClass =
+    model.statusTone === "success"
+      ? "bg-emerald-100 text-emerald-800"
+      : model.statusTone === "warning"
+        ? "bg-amber-100 text-amber-800"
+        : model.statusTone === "info"
+          ? "bg-blue-100 text-blue-800"
+          : "bg-gray-100 text-gray-600";
+
   return (
     <P0Card testId={`weekly-content-card-${model.id}`} className="flex flex-col">
-      <div className="flex min-w-0 flex-1 items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         {selectable ? (
           <Checkbox
             checked={selected}
@@ -176,141 +193,201 @@ export function WeeklyPlatformArticleCard(props: Props) {
             className="mt-1"
           />
         ) : null}
-        {model.coverThumbnailSrc ? (
-          <img src={model.coverThumbnailSrc} alt="" className="h-16 w-12 shrink-0 rounded-md border border-gray-200 object-cover" data-testid="weekly-card-cover-thumbnail" />
-        ) : (
-          <div className="flex h-16 w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 text-[10px] text-gray-400" data-testid="weekly-card-cover-placeholder">无封面</div>
-        )}
-        <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          className="min-w-0 flex-1 text-left"
+          data-testid={`weekly-card-expand-${model.id}`}
+          onClick={() => setExpanded(prev => !prev)}
+          aria-expanded={expanded}
+        >
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${model.statusTone === "success" ? "bg-emerald-100 text-emerald-800" : model.statusTone === "warning" ? "bg-amber-100 text-amber-800" : model.statusTone === "info" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-600"}`}>{model.statusLabel}</span>
-            <span className="text-xs text-gray-500" data-testid="weekly-card-platform">{platformLabel}</span>
-            <span className="text-xs text-gray-500" data-testid="weekly-card-content-type">{contentTypeLabel}</span>
+            <span
+              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass}`}
+              data-testid="weekly-card-status"
+            >
+              {model.statusLabel}
+            </span>
+            <span
+              className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-800"
+              data-testid="weekly-card-platform"
+            >
+              {platformLabel}
+            </span>
+            {expanded ? (
+              <span
+                className="inline-flex rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-800"
+                data-testid="weekly-card-content-type"
+              >
+                {contentTypeLabel}
+              </span>
+            ) : null}
+            <ChevronDown
+              className={cn("ml-auto h-4 w-4 shrink-0 text-gray-400 transition-transform", expanded && "rotate-180")}
+              aria-hidden
+            />
           </div>
-          <h3 className="mt-2 line-clamp-2 text-base font-semibold text-gray-900">{model.title}</h3>
-          {model.contentTags?.length ? (
-            <div className="mt-2 flex flex-wrap gap-1.5" data-testid="weekly-card-content-tags">
-              {model.contentTags.map(tag => (
-                <span
-                  key={tag}
-                  className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] text-violet-800"
-                >
-                  {tag}
-                </span>
-              ))}
+          <h3 className={cn("mt-2 font-semibold text-gray-900", expanded ? "line-clamp-2 text-base" : "line-clamp-1 text-sm")}>
+            {model.title}
+          </h3>
+        </button>
+      </div>
+
+      {expanded ? (
+        <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-gray-100 pt-3">
+          <div className="flex min-w-0 items-start gap-3">
+            {model.coverThumbnailSrc ? (
+              <img
+                src={model.coverThumbnailSrc}
+                alt=""
+                className="h-16 w-12 shrink-0 rounded-md border border-gray-200 object-cover"
+                data-testid="weekly-card-cover-thumbnail"
+              />
+            ) : (
+              <div
+                className="flex h-16 w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 text-[10px] text-gray-400"
+                data-testid="weekly-card-cover-placeholder"
+              >
+                无封面
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              {model.contentTags?.length ? (
+                <div className="mt-2 flex flex-wrap gap-1.5" data-testid="weekly-card-content-tags">
+                  {model.contentTags.map(tag => (
+                    <span
+                      key={tag}
+                      className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] text-violet-800"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
-          ) : null}
-        </div>
-      </div>
-      {model.contentGoal ? <p className="mt-2 text-xs text-gray-600"><span className="font-medium text-gray-500">内容目标：</span>{model.contentGoal}</p> : null}
-      {model.gapLinkDisplay ? (
-        <p className="mt-1 text-xs text-gray-700" data-testid="weekly-card-gap-link">
-          {model.gapLinkDisplay}
-        </p>
-      ) : model.geoGap ? (
-        <p className="mt-1 text-xs text-gray-600" data-testid="weekly-card-geo-gap">
-          <span className="font-medium text-gray-500">对应 GEO 缺口：</span>
-          {model.geoGap}
-        </p>
-      ) : null}
-      {model.questionMentionRateChange?.summaryLine ? (
-        <p className="mt-1 text-xs text-blue-800" data-testid="weekly-card-mention-rate-change">
-          {model.questionMentionRateChange.summaryLine}
-        </p>
-      ) : null}
-      {model.keywords?.length ? <p className="mt-1 text-xs text-gray-600"><span className="font-medium text-gray-500">关键词：</span>{model.keywords.join("、")}</p> : null}
-      {model.strategySummary ? <p className="mt-2 text-xs text-gray-500" data-testid="article-strategy-summary">{model.strategySummary}</p> : null}
-      {model.qualityView ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="weekly-card-quality">
-          <span className="text-sm text-gray-600">质检分</span>
-          <GeoArticleQualityScoreDetailPopover
-            qualityRow={model.qualityScoreRow}
-            testId={`weekly-card-quality-detail-${model.id}`}
-          >
-            <span className="text-sm font-semibold tabular-nums text-gray-900">{model.qualityView.score}</span>
-          </GeoArticleQualityScoreDetailPopover>
-          <span
-            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${model.qualityView.tier.badgeClassName}`}
-            data-testid="weekly-card-quality-tier"
-          >
-            {model.qualityView.tier.label}
-          </span>
-          {model.qualityView.staleLabel ? (
-            <span className="text-xs text-amber-700">{model.qualityView.staleLabel}</span>
-          ) : null}
-        </div>
-      ) : null}
-      {model.qualityOptimizationSuggestions?.length ? (
-        <div
-          className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2"
-          data-testid="weekly-card-quality-suggestions"
-        >
-          <p className="text-xs font-medium text-amber-900">优化建议</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs leading-relaxed text-amber-900">
-            {model.qualityOptimizationSuggestions.map(suggestion => (
-              <li key={suggestion}>{suggestion}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {model.qualityFailHints?.length ? (
-        <div className="mt-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2" data-testid="weekly-card-quality-fail-hints">
-          <p className="text-xs font-medium text-red-900">质检未通过</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs leading-relaxed text-red-800">
-            {model.qualityFailHints.map(hint => (
-              <li key={hint}>{hint}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {model.publishedAtLabel ? (
-        <p className="mt-2 text-xs text-emerald-800" data-testid="weekly-card-published-at">
-          {model.publishedAtLabel}
-        </p>
-      ) : null}
-      {model.publishLink ? (
-        <p className="mt-2 text-xs text-gray-600"><span className="font-medium text-gray-500">发布链接：</span>
-          <a href={model.publishLink} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline-offset-2 hover:underline" data-testid="weekly-card-publish-link">查看已发布内容</a>
-        </p>
-      ) : null}
-      {model.lifecycle ? <div className="mt-2"><ArticleLifecyclePanel articleId={model.id} article={model.article as Parameters<typeof ArticleLifecyclePanel>[0]["article"]} lifecycle={model.lifecycle} compact /></div> : null}
-      {model.publishBlockHint ? <p className="mt-3 text-xs text-amber-800" data-testid="weekly-card-publish-readiness">{model.publishBlockHint}{model.publishNextActionLabel ? <span className="mt-1 block font-medium">下一步：{model.publishNextActionLabel}</span> : null}</p> : null}
-      <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="weekly-card-content-review">
-        <span className="text-xs font-medium text-gray-500">审核状态</span>
-        <span
-          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${contentReviewStatusBadgeClass(model.contentReviewStatus)}`}
-          data-testid="weekly-card-content-review-badge"
-        >
-          {model.contentReviewStatus}
-        </span>
-        <Select
-          value={model.contentReviewStatus}
-          disabled={disabled}
-          onValueChange={value => onContentReviewStatusChange?.(value as ContentReviewStatus)}
-        >
-          <SelectTrigger
-            className="h-8 w-[9.5rem] text-xs"
-            data-testid="weekly-card-content-review-status"
-            aria-label={`${model.title} 审核状态`}
-          >
-            <SelectValue placeholder="选择审核状态" />
-          </SelectTrigger>
-          <SelectContent>
-            {CONTENT_REVIEW_STATUSES.map(status => (
-              <SelectItem key={status} value={status} className="text-xs">
-                {status}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {xiaohongshuMaterial ? (
-        <XiaohongshuMaterialCard className="mt-3" material={xiaohongshuMaterial} disabled={disabled} />
-      ) : null}
-      {wechatMaterial ? (
-        <WechatMaterialCard className="mt-3" material={wechatMaterial} disabled={disabled} />
-      ) : null}
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+          </div>
+          <div className="relative mt-3 min-h-0 flex-1">
+            <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+            {model.contentGoal ? <p className="text-xs text-gray-600"><span className="font-medium text-gray-500">内容目标：</span>{model.contentGoal}</p> : null}
+            {model.gapLinkDisplay ? (
+              <p className="text-xs text-gray-700" data-testid="weekly-card-gap-link">
+                {model.gapLinkDisplay}
+              </p>
+            ) : model.geoGap ? (
+              <p className="text-xs text-gray-600" data-testid="weekly-card-geo-gap">
+                <span className="font-medium text-gray-500">对应 GEO 缺口：</span>
+                {model.geoGap}
+              </p>
+            ) : null}
+            {model.questionMentionRateChange?.summaryLine ? (
+              <p className="text-xs text-blue-800" data-testid="weekly-card-mention-rate-change">
+                {model.questionMentionRateChange.summaryLine}
+              </p>
+            ) : null}
+            {model.keywords?.length ? <p className="line-clamp-2 text-xs text-gray-600"><span className="font-medium text-gray-500">关键词：</span>{model.keywords.join("、")}</p> : null}
+            {model.strategySummary ? <p className="line-clamp-2 text-xs text-gray-500" data-testid="article-strategy-summary">{model.strategySummary}</p> : null}
+            {model.qualityView ? (
+              <div className="flex flex-wrap items-center gap-2" data-testid="weekly-card-quality">
+                <span className="text-sm text-gray-600">质检分</span>
+                <GeoArticleQualityScoreDetailPopover
+                  qualityRow={model.qualityScoreRow}
+                  testId={`weekly-card-quality-detail-${model.id}`}
+                >
+                  <span className="text-sm font-semibold tabular-nums text-gray-900">{model.qualityView.score}</span>
+                </GeoArticleQualityScoreDetailPopover>
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${model.qualityView.tier.badgeClassName}`}
+                  data-testid="weekly-card-quality-tier"
+                >
+                  {model.qualityView.tier.label}
+                </span>
+                {model.qualityView.staleLabel ? (
+                  <span className="text-xs text-amber-700">{model.qualityView.staleLabel}</span>
+                ) : null}
+              </div>
+            ) : null}
+            {articleBody ? (
+              <pre
+                className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs leading-relaxed text-gray-800"
+                data-testid="weekly-card-full-body"
+              >
+                {articleBody}
+              </pre>
+            ) : null}
+            <>
+                {model.qualityOptimizationSuggestions?.length ? (
+                  <div
+                    className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2"
+                    data-testid="weekly-card-quality-suggestions"
+                  >
+                    <p className="text-xs font-medium text-amber-900">优化建议</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs leading-relaxed text-amber-900">
+                      {model.qualityOptimizationSuggestions.map(suggestion => (
+                        <li key={suggestion}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {model.qualityFailHints?.length ? (
+                  <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-2" data-testid="weekly-card-quality-fail-hints">
+                    <p className="text-xs font-medium text-red-900">质检未通过</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs leading-relaxed text-red-800">
+                      {model.qualityFailHints.map(hint => (
+                        <li key={hint}>{hint}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {model.publishedAtLabel ? (
+                  <p className="text-xs text-emerald-800" data-testid="weekly-card-published-at">
+                    {model.publishedAtLabel}
+                  </p>
+                ) : null}
+                {model.publishLink ? (
+                  <p className="text-xs text-gray-600"><span className="font-medium text-gray-500">发布链接：</span>
+                    <a href={model.publishLink} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline-offset-2 hover:underline" data-testid="weekly-card-publish-link">查看已发布内容</a>
+                  </p>
+                ) : null}
+                {model.lifecycle ? <div><ArticleLifecyclePanel articleId={model.id} article={model.article as Parameters<typeof ArticleLifecyclePanel>[0]["article"]} lifecycle={model.lifecycle} compact /></div> : null}
+                {model.publishBlockHint ? <p className="text-xs text-amber-800" data-testid="weekly-card-publish-readiness">{model.publishBlockHint}{model.publishNextActionLabel ? <span className="mt-1 block font-medium">下一步：{model.publishNextActionLabel}</span> : null}</p> : null}
+                <div className="flex flex-wrap items-center gap-2" data-testid="weekly-card-content-review">
+                  <span className="text-xs font-medium text-gray-500">审核状态</span>
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${contentReviewStatusBadgeClass(model.contentReviewStatus)}`}
+                    data-testid="weekly-card-content-review-badge"
+                  >
+                    {model.contentReviewStatus}
+                  </span>
+                  <Select
+                    value={model.contentReviewStatus}
+                    disabled={disabled}
+                    onValueChange={value => onContentReviewStatusChange?.(value as ContentReviewStatus)}
+                  >
+                    <SelectTrigger
+                      className="h-8 w-[9.5rem] text-xs"
+                      data-testid="weekly-card-content-review-status"
+                      aria-label={`${model.title} 审核状态`}
+                    >
+                      <SelectValue placeholder="选择审核状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONTENT_REVIEW_STATUSES.map(status => (
+                        <SelectItem key={status} value={status} className="text-xs">
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {xiaohongshuMaterial ? (
+                  <XiaohongshuMaterialCard material={xiaohongshuMaterial} disabled={disabled} />
+                ) : null}
+                {wechatMaterial ? (
+                  <WechatMaterialCard material={wechatMaterial} disabled={disabled} />
+                ) : null}
+            </>
+            </div>
+          </div>
+          <div className="mt-3 flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 pt-3" data-testid="weekly-card-actions">
         {platformKey !== "wechat" && platformKey !== "xiaohongshu" ? (
           <Button
             type="button"
@@ -325,9 +402,27 @@ export function WeeklyPlatformArticleCard(props: Props) {
         ) : null}
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={onView}>查看</Button>
         <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} disabled={disabled} onClick={onRegenerate}>重新生成</Button>
-        <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>
-      </div>
-      <p className={`mt-2 ${geoP0Surfaces.muted}`}>平台 {platformKey} · 各平台独立稿件，不支持一稿多发</p>
+        {model.queuedForPublish ? (
+          <>
+            <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-800">
+              {model.queuedStatusLabel ?? "已加入发布队列"}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              className={geoP0Brand.primary}
+              data-testid="weekly-go-publishing-page"
+              onClick={onGoPublishingPage}
+            >
+              去发布页查看
+            </Button>
+          </>
+        ) : (
+          <Button type="button" size="sm" className={geoP0Brand.primary} disabled={disabled || shouldBlockPublishForGeoQuality(model.article as { geoQualityScore?: number | null; geoQualityRecommendation?: string | null; geoQualityStale?: boolean | number | null })} data-testid="weekly-enqueue-publish" onClick={onEnqueuePublish}>加入发布队列</Button>
+        )}
+          </div>
+        </div>
+      ) : null}
     </P0Card>
   );
 }

@@ -1,13 +1,26 @@
 import { P0MetricTile } from "@/components/geo/P0UiPrimitives";
-import { formatWorkspaceOverviewValues } from "@shared/workspaceDashboardOverview";
+import {
+  buildGeoScoreAttributionLines,
+  buildGeoScoreChangeReason,
+  formatGeoScoreChangeBadge,
+  formatWorkspaceOverviewValues,
+} from "@shared/workspaceDashboardOverview";
 import type { WorkspaceSummaryMetrics } from "@shared/workspaceStateMachine";
 
 type Props = {
   metrics: WorkspaceSummaryMetrics;
+  latestGeoScore: number | null;
+  previousGeoScore: number | null;
 };
 
-export function WorkspaceDashboardOverviewCards({ metrics }: Props) {
+export function WorkspaceDashboardOverviewCards({ metrics, latestGeoScore, previousGeoScore }: Props) {
   const values = formatWorkspaceOverviewValues(metrics);
+  const attributionLines = buildGeoScoreAttributionLines(metrics);
+  const scoreChangeText = formatGeoScoreChangeBadge({
+    latestScore: latestGeoScore,
+    previousScore: previousGeoScore,
+  });
+  const changeReason = scoreChangeText ? buildGeoScoreChangeReason(metrics) : null;
 
   return (
     <section
@@ -19,13 +32,30 @@ export function WorkspaceDashboardOverviewCards({ metrics }: Props) {
         <P0MetricTile label="内容资产" value={values.articleCountText} />
       </div>
       <div data-testid="workspace-overview-publishes">
-        <P0MetricTile label="发布次数" value={values.publishCountText} />
+        <P0MetricTile
+          label="发布次数"
+          value={values.publishCountText}
+          hint={values.publishCountHint}
+        />
       </div>
       <div data-testid="workspace-overview-mention-rate">
-        <P0MetricTile label="AI提及率" value={values.aiMentionRateText} />
+        <P0MetricTile
+          label="AI提及率"
+          value={values.aiMentionRateText}
+          hint={values.aiMentionRateHint}
+        />
       </div>
       <div data-testid="workspace-overview-geo-score">
-        <P0MetricTile label="GEO评分" value={values.geoScoreText} />
+        <P0MetricTile
+          label="GEO评分"
+          value={values.geoScoreText}
+          hint={[
+            scoreChangeText ? `${scoreChangeText} · ${changeReason}` : null,
+            ...attributionLines,
+          ]
+            .filter(Boolean)
+            .join("；")}
+        />
       </div>
     </section>
   );

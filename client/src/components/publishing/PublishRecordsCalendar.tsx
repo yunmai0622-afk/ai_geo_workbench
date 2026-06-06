@@ -17,7 +17,7 @@ type PublishRecordsCalendarProps = {
 };
 
 export function PublishRecordsCalendar({
-  records,
+  records = [],
   resolveTitle,
   loading = false,
 }: PublishRecordsCalendarProps) {

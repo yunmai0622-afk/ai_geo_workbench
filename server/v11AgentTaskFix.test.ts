@@ -38,7 +38,7 @@ describe("GEO-V1.1-AgentTaskFix", () => {
     const dash = read("local-agent/src/agent/dashboard.ts");
     expect(dash).toContain("createdAt: recentFailed.createdAt");
     const ui = read("local-agent/src/renderer/app.js");
-    expect(ui).toContain("agentFinishedAt || d.recentFailure.createdAt");
-    expect(ui).toMatch(/添加\$\{label\}账号/);
+    expect(ui).toContain("d.recentFailure.agentFinishedAt || d.recentFailure.createdAt");
+    expect(ui).toMatch(/添加\$\{label\}环境|创建\$\{label\}账号环境/);
   });
 });

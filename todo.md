@@ -1,4 +1,4 @@
-# Project TODO
+# Project Tasks
 
 - [x] 建立 8 张业务数据表：projects、questions、ai_responses、analysis_results、geo_scores、optimization_tasks、content_templates、reports
 - [x] 实现项目管理页：新建、编辑、删除、列表展示企业项目

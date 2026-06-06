@@ -14,18 +14,18 @@ export type WeeklyPlatformDef = {
 
 export const WEEKLY_PLATFORM_DEFS: WeeklyPlatformDef[] = [
   {
-    key: "xiaohongshu",
-    label: "小红书",
-    goal: "补齐种草场景下的品牌识别与推荐缺口",
-    contentTypes: "种草推荐、场景笔记",
-    publishPlatformId: "xiaohongshu",
-  },
-  {
     key: "zhihu",
     label: "知乎",
     goal: "用问答结构覆盖目标搜索问题，提升引用概率",
     contentTypes: "问题回答、经验分享",
     publishPlatformId: "zhihu",
+  },
+  {
+    key: "xiaohongshu",
+    label: "小红书",
+    goal: "补齐种草场景下的品牌识别与推荐缺口",
+    contentTypes: "种草推荐、场景笔记",
+    publishPlatformId: "xiaohongshu",
   },
   {
     key: "baijiahao",

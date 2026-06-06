@@ -9,6 +9,8 @@ export const GEO_CONTENT_TASK_DIAGNOSIS_SOURCE_LABEL = "最近一次 AI 实测�
 export const GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE =
   "请先完成 AI 实测诊断，系统将根据诊断结果生成内容任务。";
 
+export { PROJECT_SCOPED_CONTENT_TASK_EMPTY_FOR_PROJECT_MESSAGE as GEO_CONTENT_TASK_EMPTY_FOR_PROJECT_MESSAGE } from "./geoProjectScopedContentTask";
+
 export type ParsedGeoOptimizationTaskCard = {
   articleTitle: string;
   keyPoints: string[];

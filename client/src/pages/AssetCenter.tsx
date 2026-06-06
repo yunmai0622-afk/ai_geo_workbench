@@ -5,6 +5,7 @@ import {
   type FiveMinuteBasicValues,
 } from "@/components/enterpriseProfile/FiveMinuteBasicOnboardingSection";
 import { ProfileAiUnderstandingPreview } from "@/components/enterpriseProfile/ProfileAiUnderstandingPreview";
+import { ProfileCompletenessHeader } from "@/components/enterpriseProfile/ProfileCompletenessHeader";
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { ProfileUploadAssistSection } from "@/components/enterpriseProfile/ProfileUploadAssistSection";
 import type { ProfileApplyPatch } from "@/components/enterpriseProfile/ProfileIntakePanel";
@@ -18,23 +19,29 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
-import { useActiveProjectId } from "@/hooks/useActiveProject";
+import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import {
   ENTERPRISE_INDUSTRY_OPTIONS,
   resolveIndustryFromStored,
 } from "@shared/enterpriseProfileIndustry";
-import { toUserFacingErrorFromUnknown, toUserFacingQueryError } from "@shared/userFacingErrors";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { ProfileCompletenessHeader } from "@/components/enterpriseProfile/ProfileCompletenessHeader";
 import { evaluateEnterpriseProfileCompletenessFromForm } from "@shared/enterpriseProfileCompleteness";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  PROFILE_CORE_LOAD_FAILED_MESSAGE,
+  PROFILE_NON_CRITICAL_SUMMARY_HINT,
+  profileSaveFailureMessage,
+  shouldShowProfileCoreLoadFailure,
+  shouldShowProfileNonCriticalSummaryHint,
+} from "@/lib/enterpriseProfileLoadDisplay";
 
 type SummaryLike = {
   profile?: Record<string, unknown> | null;
@@ -177,18 +184,17 @@ function buildFitCustomersValue(tags: string[], industry: string, scale: string)
 export default function AssetCenterPage() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
-  const { data: projects = [], isLoading: projectsLoading, error: projectsError } = trpc.geo.projects.list.useQuery();
-  const { activeProjectId } = useActiveProjectId();
-  const currentProjectId = useMemo(() => {
-    if (!activeProjectId || projectsLoading) return undefined;
-    return projects.some(p => p.id === activeProjectId) ? activeProjectId : undefined;
-  }, [activeProjectId, projects, projectsLoading]);
+  const {
+    selectedProjectId: currentProjectId,
+    selectedProject: activeSelectionProject,
+    projects,
+    projectsLoading,
+  } = useActiveProjectSelection();
   const currentProject = useMemo(
-    () => (currentProjectId ? projects.find(p => p.id === currentProjectId) : undefined),
-    [projects, currentProjectId],
+    () => activeSelectionProject ?? (currentProjectId ? projects.find(p => p.id === currentProjectId) : undefined),
+    [activeSelectionProject, projects, currentProjectId],
   );
   const [message, setMessage] = useState<string>();
-  const [error, setError] = useState<string>();
 
   const [brandName, setBrandName] = useState("");
   const [brandShortName, setBrandShortName] = useState("");
@@ -247,7 +253,10 @@ export default function AssetCenterPage() {
   const projectInput = useMemo(() => ({ projectId: currentProjectId! }), [currentProjectId]);
   const { data: summaryData, isLoading, isFetched, error: summaryError } = trpc.geo.assetLibrary.summary.useQuery(
     projectInput,
-    { enabled: Boolean(currentProjectId) },
+    {
+      enabled: Boolean(currentProjectId),
+      retry: 1,
+    },
   );
   const summary = summaryData as SummaryLike | undefined;
   const profile = summary?.profile ?? null;
@@ -455,7 +464,6 @@ export default function AssetCenterPage() {
     () => faqItems.filter(f => f.question.trim() && f.answer.trim()).length,
     [faqItems],
   );
-
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -613,6 +621,32 @@ export default function AssetCenterPage() {
     ],
   );
 
+  const aiUnderstandabilityHint = useMemo(() => {
+    if (profileCompleteness.percent >= 85) return "AI 可较完整理解品牌定位，可直接进入实测诊断。";
+    if (profileCompleteness.percent >= 60) return "AI 已具备基础理解，建议补齐缺失字段后再诊断。";
+    return "当前 AI 可理解度较低，建议先补齐核心资料后再启动诊断。";
+  }, [profileCompleteness.percent]);
+
+  const hasRenderableProfile = useMemo(() => {
+    const p = profile as Record<string, unknown> | null;
+    if (p && (textField(p.brandName) || textField(p.enterpriseName))) return true;
+    if (brandName.trim() || oneLiner.trim() || productDesc.trim()) return true;
+    return profileCompleteness.percent > 0;
+  }, [profile, brandName, oneLiner, productDesc, profileCompleteness.percent]);
+
+  const coreProfileLoadFailed = shouldShowProfileCoreLoadFailure({
+    summaryError: Boolean(summaryError),
+    hasSummaryData: Boolean(summaryData),
+    isFetched,
+    hasRenderableProfile,
+  });
+
+  const showNonCriticalSummaryHint = shouldShowProfileNonCriticalSummaryHint({
+    summaryError: Boolean(summaryError),
+    hasRenderableProfile,
+    profileCompletenessPercent: profileCompleteness.percent,
+  });
+
   const computeProfileSectionStatuses = useMemo(() => {
     const brandDone =
       Boolean(brandName.trim()) && Boolean(industryTagValue.trim()) && Boolean(productDesc.trim());
@@ -670,7 +704,6 @@ export default function AssetCenterPage() {
       : "待完善";
 
   const loading = projectsLoading || isLoading;
-  const queryError = toUserFacingQueryError(projectsError?.message || summaryError?.message);
   const saving =
     upsertProfile.isPending ||
     createCustomerCase.isPending ||
@@ -679,6 +712,7 @@ export default function AssetCenterPage() {
   async function refreshSummary() {
     if (!currentProjectId) return;
     await Promise.all([
+      utils.geo.projects.list.invalidate(),
       utils.geo.assetLibrary.summary.invalidate({ projectId: currentProjectId }),
       utils.geo.workspace.summary.invalidate({ projectId: currentProjectId }),
     ]);
@@ -686,13 +720,12 @@ export default function AssetCenterPage() {
 
   async function runSave(label: string, fn: () => Promise<unknown>) {
     setMessage(undefined);
-    setError(undefined);
     try {
       await fn();
       await refreshSummary();
       setMessage(`${label}已保存。`);
     } catch (e) {
-      setError(toUserFacingErrorFromUnknown(e, "保存失败"));
+      toast.error(profileSaveFailureMessage(toUserFacingErrorFromUnknown(e, "保存失败")));
     }
   }
 
@@ -722,7 +755,6 @@ export default function AssetCenterPage() {
   async function saveFiveMinuteAndStartDiagnosis() {
     if (!currentProjectId) return;
     setMessage(undefined);
-    setError(undefined);
     try {
       if (!brandName.trim()) throw new Error("请填写企业名称");
       if (!industryTagValue.trim()) throw new Error("请选择所属行业");
@@ -739,7 +771,7 @@ export default function AssetCenterPage() {
       setMessage("品牌资产建档已保存。");
       setLocation(buildProjectUrl("/ai-diagnosis", currentProjectId));
     } catch (e) {
-      setError(toUserFacingErrorFromUnknown(e, "保存失败"));
+      toast.error(profileSaveFailureMessage(toUserFacingErrorFromUnknown(e, "保存失败")));
     }
   }
 
@@ -777,52 +809,52 @@ export default function AssetCenterPage() {
           <p className="text-sm text-gray-400">正在加载…</p>
         </div>
       ) : null}
-      {queryError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{queryError}</div>
+      {!loading && coreProfileLoadFailed ? (
+        <div
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-800"
+          role="alert"
+          data-testid="enterprise-profile-core-load-failed"
+        >
+          <p>{PROFILE_CORE_LOAD_FAILED_MESSAGE}</p>
+          <Button type="button" variant="outline" className="mt-3" onClick={() => void refreshSummary()}>
+            刷新重试
+          </Button>
+        </div>
+      ) : null}
+      {showNonCriticalSummaryHint ? (
+        <p
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="status"
+          data-testid="enterprise-profile-summary-load-hint"
+        >
+          {PROFILE_NON_CRITICAL_SUMMARY_HINT}
+          <Button
+            type="button"
+            variant="link"
+            className="ml-1 h-auto p-0 text-amber-900 underline"
+            onClick={() => void refreshSummary()}
+            disabled={loading}
+          >
+            重试加载
+          </Button>
+        </p>
       ) : null}
       {message ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{message}</div>
       ) : null}
-      {error ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div> : null}
 
-      {currentProjectId ? (
+      {currentProjectId && !coreProfileLoadFailed ? (
         <>
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="profile" data-testid="asset-tab-profile">
-                品牌建档
-              </TabsTrigger>
-              <TabsTrigger value="competitor-analysis" data-testid="asset-tab-competitor-analysis">
-                竞品分析
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="profile" className="mt-6 space-y-6">
-          <ProfileCompletenessHeader completeness={profileCompleteness} />
-
-          {/* ═══ 主体两栏：左核心字段 + 右 AI 预览 ═══ */}
-          <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-            {/* 左侧：核心字段 */}
-            <div className="space-y-6" ref={basicSectionRef}>
-              <FiveMinuteBasicOnboardingSection
-                values={fiveMinuteValues}
-                onChange={applyFiveMinutePatch}
-                keywords={keywords}
-                keywordDraft={keywordDraft}
-                onKeywordDraftChange={setKeywordDraft}
-                onAddKeyword={addKeyword}
-                onRemoveKeyword={removeKeyword}
-                missingFieldKeys={profileCompleteness.missingKeys}
-              />
-
-              {aiFilledFields.size > 0 ? (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                  部分字段已由 AI 解析填入，请核对核心建档字段后点击「保存并开始 AI 实测诊断」。
+          <div className="mt-6 space-y-6">
+            <section
+              className="sticky top-20 z-20 rounded-xl border border-blue-100 bg-white/95 p-4 shadow-sm backdrop-blur"
+              data-testid="profile-layout-sticky-overview"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-700">资料完成度 {profileCompleteness.percent}%</p>
+                  <p className="text-xs text-gray-500">AI 可理解度：{aiUnderstandabilityHint}</p>
                 </div>
-              ) : null}
-
-              {/* 主按钮 */}
-              <div className="flex flex-wrap gap-3">
                 <Button
                   type="button"
                   className={cn("rounded-xl px-6", geoP0Brand.primary)}
@@ -834,47 +866,134 @@ export default function AssetCenterPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
-            </div>
+            </section>
 
-            {/* 右侧：AI 理解预览（sticky） */}
-            <div className="hidden lg:block">
-              <div className="sticky top-24">
-                <ProfileAiUnderstandingPreview model={aiPreviewModel} />
+            <ProfileCompletenessHeader completeness={profileCompleteness} />
+
+            <details open className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-core">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">核心资料</summary>
+              <div className="space-y-4 border-t border-gray-100 p-5" ref={basicSectionRef}>
+                <FiveMinuteBasicOnboardingSection
+                  values={fiveMinuteValues}
+                  onChange={applyFiveMinutePatch}
+                  keywords={keywords}
+                  keywordDraft={keywordDraft}
+                  onKeywordDraftChange={setKeywordDraft}
+                  onAddKeyword={addKeyword}
+                  onRemoveKeyword={removeKeyword}
+                  missingFieldKeys={profileCompleteness.missingKeys}
+                />
+                {aiFilledFields.size > 0 ? (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                    部分字段已由 AI 解析填入，请核对核心建档字段后点击「开始 AI 实测诊断」。
+                  </div>
+                ) : null}
+                <div className="lg:hidden">
+                  <ProfileAiUnderstandingPreview model={aiPreviewModel} />
+                </div>
               </div>
-            </div>
-          </div>
+            </details>
 
-          {/* 移动端 AI 预览 */}
-          <div className="lg:hidden">
-            <ProfileAiUnderstandingPreview model={aiPreviewModel} />
-          </div>
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-publish-accounts">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">发布账号概览</summary>
+              <div className="border-t border-gray-100 p-5">
+                <PublishPlatformAccountsOverview projectId={currentProjectId} />
+              </div>
+            </details>
 
-          {/* ═══ 发布账号绑定状态（只读 + 本地客户端引导） ═══ */}
-          <PublishPlatformAccountsOverview projectId={currentProjectId} />
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-brand-assets">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">品牌资产</summary>
+              <div className="border-t border-gray-100 p-5" ref={intakeSectionRef}>
+                <ProfileUploadAssistSection
+                  projectId={currentProjectId}
+                  enterpriseName={currentProject?.enterpriseName ?? ""}
+                  disabled={loading || saving}
+                  showPendingSaveHint={aiFilledFields.size > 0}
+                  current={{
+                    brandName,
+                    industryTagValue,
+                    productDesc,
+                    mainChannel,
+                    targetCustomer,
+                    customerPains,
+                    competitors,
+                    hasCaseContent: caseRows.some(r => r.customerBackground.trim() || r.executionProcess.trim()),
+                  }}
+                  onApply={handleApplyAnalysis}
+                />
+              </div>
+            </details>
 
-          {/* ═══ 资料上传辅助 ═══ */}
-          <div ref={intakeSectionRef}>
-            <ProfileUploadAssistSection
-              projectId={currentProjectId}
-              enterpriseName={currentProject?.enterpriseName ?? ""}
-              disabled={loading || saving}
-              showPendingSaveHint={aiFilledFields.size > 0}
-              current={{
-                brandName,
-                industryTagValue,
-                productDesc,
-                mainChannel,
-                targetCustomer,
-                customerPains,
-                competitors,
-                hasCaseContent: caseRows.some(r => r.customerBackground.trim() || r.executionProcess.trim()),
-              }}
-              onApply={handleApplyAnalysis}
-            />
-          </div>
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-competitor-info">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">竞品信息</summary>
+              <div className="space-y-4 border-t border-gray-100 p-5">
+                <label className="block space-y-1 text-sm">
+                  <span className="text-gray-600">常被比较的竞品</span>
+                  <div className="flex flex-wrap gap-2">
+                    {competitors.map(c => (
+                      <span
+                        key={c}
+                        className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                      >
+                        {c}
+                        <button type="button" className="text-gray-400 hover:text-red-500" onClick={() => setCompetitors(competitors.filter(x => x !== c))}>
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <Input
+                      className="max-w-[220px]"
+                      value={competitorDraft}
+                      onChange={e => setCompetitorDraft(e.target.value)}
+                      placeholder="输入后回车"
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addCompetitor();
+                        }
+                      }}
+                    />
+                    <Button type="button" size="sm" variant="outline" onClick={addCompetitor}>
+                      添加
+                    </Button>
+                  </div>
+                </label>
+                <label className="block space-y-1 text-sm">
+                  <span className="text-gray-600">我们的差异</span>
+                  <Input value={competitorDifferenceText} onChange={e => setCompetitorDifferenceText(e.target.value)} />
+                </label>
+                <label className="block space-y-1 text-sm">
+                  <span className="text-gray-600">不承诺什么</span>
+                  <Input
+                    value={unfitCustomers}
+                    onChange={e => setUnfitCustomers(e.target.value)}
+                    placeholder="如不承诺效果、不适用于某类客户"
+                  />
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={saving}
+                  onClick={() =>
+                    void runSave("竞品差异", async () => {
+                      await upsertProfile.mutateAsync(basePayloadWithExtras());
+                    })
+                  }
+                >
+                  保存竞品信息
+                </Button>
+                <CompetitorAnalysisSection
+                  projectId={currentProjectId}
+                  brandName={brandName || currentProject?.enterpriseName || ""}
+                />
+              </div>
+            </details>
 
-          {/* ═══ 高级素材（默认折叠） ═══ */}
-          <AdvancedMaterialsSection
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-advanced-materials">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">高级素材</summary>
+              <div className="border-t border-gray-100 p-5">
+                <AdvancedMaterialsSection
             caseCount={caseRows.length}
             trustCount={trustMaterialCount}
             faqCount={faqFilledCount}
@@ -927,18 +1046,11 @@ export default function AssetCenterPage() {
                 await upsertProfile.mutateAsync(basePayloadWithExtras());
               })
             }
+            showCompetitorSection={false}
           />
-
-          {/* 发布环境配置已移至 /content-publishing，此处只做轻提示 */}
-            </TabsContent>
-
-            <TabsContent value="competitor-analysis" className="mt-6">
-              <CompetitorAnalysisSection
-                projectId={currentProjectId}
-                brandName={brandName || currentProject?.enterpriseName || ""}
-              />
-            </TabsContent>
-          </Tabs>
+              </div>
+            </details>
+          </div>
         </>
       ) : null}
     </div>

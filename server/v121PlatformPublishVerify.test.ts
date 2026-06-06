@@ -45,10 +45,13 @@ describe("GEO-V1.1 Platform publish verify (sohu/baijiahao/toutiao)", () => {
     expect(src).not.toContain("skipCover: true");
   });
 
-  it("toutiao publisher skips cover but uses iframe fill", () => {
+  it("toutiao publisher skips cover and fills editor on main page", () => {
     const src = read("local-agent/src/agent/platforms/toutiaoPublisher.ts");
     expect(src).toContain("skipCover: true");
-    expect(src).toContain("fillFirstSelectorInPageOrFrames");
+    expect(src).toContain("fillToutiaoTitle");
+    expect(src).toContain("fillToutiaoContent");
+    expect(src).toContain("fillFirstSelector");
+    expect(src).not.toContain("fillFirstSelectorInPageOrFrames");
     expect(src).toContain("extractToutiaoPublicUrl");
   });
 

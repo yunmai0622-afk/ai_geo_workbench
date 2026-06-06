@@ -41,21 +41,20 @@ describe("C4-B publish records and progress value display", () => {
     expect(publishSection).not.toContain("资产发布记录");
   });
 
-  it("progress page renders AI search asset progress", () => {
+  it("legacy progress routes redirect to workspace without mounting ProgressPage", () => {
+    const app = read("client/src/App.tsx");
+    const redirect = read("client/src/components/LegacyAssetProgressRedirect.tsx");
+    expect(app).toContain("LegacyAssetProgressRedirect");
+    expect(app).not.toContain("ProgressPage");
+    expect(redirect).toContain('buildProjectUrl("/workspace"');
     for (const text of [
-      "资产进展看板",
       "资产进展总览",
       "内容资产漏斗",
-      "平台覆盖",
-      "AI 实测进展",
-      "下一轮资产建设重点",
-      "品牌提及率",
-      "品牌推荐率",
+      "inclusionMonitoringRecords",
+      "aggregateAiTestEvidence",
     ]) {
       expect(progress).toContain(text);
     }
-    expect(progress).toContain("inclusionMonitoringRecords");
-    expect(progress).toContain("aggregateAiTestEvidence");
   });
 
   it("publish and progress pages do not expose internal field labels in customer copy", () => {

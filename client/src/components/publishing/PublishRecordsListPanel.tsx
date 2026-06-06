@@ -30,7 +30,7 @@ type PublishRecordsListPanelProps = {
 };
 
 export function PublishRecordsListPanel({
-  records,
+  records = [],
   loading = false,
   resolveTitle,
   onViewAllHistory,

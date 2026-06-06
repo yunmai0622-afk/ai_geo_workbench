@@ -14,20 +14,93 @@ export type TestRoundRow = {
   finishedAt?: Date | string | null;
 };
 
-export const MAIN_CHAIN_STEPS = [
-  { id: "profile", name: "企业资料建档", path: "/enterprise-profile" },
-  { id: "t0_baseline", name: "AI基线检测", path: "/ai-diagnosis" },
-  { id: "content", name: "内容资产生成", path: "/weekly" },
-  { id: "publish", name: "平台发布", path: "/content-publishing" },
-  { id: "monitoring", name: "收录监测", path: "/inclusion-monitoring" },
-  { id: "t1_retest", name: "T1复测", path: "/ai-diagnosis" },
-  { id: "comparison", name: "效果对比", path: "/ai-diagnosis" },
-  { id: "report", name: "交付报告", path: "/delivery-reports" },
+export type UnifiedMainPipelineStep = {
+  id:
+    | "profile_basics"
+    | "ai_search_test_t0"
+    | "brand_assets"
+    | "content_assets"
+    | "platform_publish"
+    | "inclusion_monitor_retest"
+    | "geo_score"
+    | "delivery_report";
+  title: string;
+  shortLabel: string;
+  customerDescription: string;
+  emptyHint: string;
+  path: string;
+};
+
+export const GEO_UNIFIED_MAIN_PIPELINE_STEPS: readonly UnifiedMainPipelineStep[] = [
+  {
+    id: "profile_basics",
+    title: "企业资料建档",
+    shortLabel: "建档",
+    customerDescription: "录入企业基础信息，让系统知道品牌是谁、卖什么、服务谁。",
+    emptyHint: "请先完成企业资料建档。",
+    path: "/enterprise-profile",
+  },
+  {
+    id: "ai_search_test_t0",
+    title: "AI搜索现状实测（T0基线）",
+    shortLabel: "实测",
+    customerDescription: "在豆包、Kimi、DeepSeek 等平台发起真实提问，查看品牌是否被提及与推荐。",
+    emptyHint: "暂无实测结果，请先发起 AI 搜索实测。",
+    path: "/ai-diagnosis",
+  },
+  {
+    id: "brand_assets",
+    title: "品牌资产补全",
+    shortLabel: "资产",
+    customerDescription: "补充案例、背书、竞品与希望被 AI 推荐的问题，提升 AI 理解与引用质量。",
+    emptyHint: "建议补充品牌资产，帮助 AI 更准确理解企业。",
+    path: "/enterprise-profile",
+  },
+  {
+    id: "content_assets",
+    title: "内容资产生成",
+    shortLabel: "内容",
+    customerDescription: "围绕实测缺口生成适配平台的内容资产，提升理解与推荐概率，而非堆数量。",
+    emptyHint: "暂无内容资产，请先完成实测诊断后再生成。",
+    path: "/weekly",
+  },
+  {
+    id: "platform_publish",
+    title: "平台适配发布",
+    shortLabel: "发布",
+    customerDescription: "按平台策略人工确认发布或登记发布结果，不做一键全网群发。",
+    emptyHint: "暂无发布记录，请完成内容后登记或执行发布。",
+    path: "/content-publishing",
+  },
+  {
+    id: "inclusion_monitor_retest",
+    title: "收录与引用监测（T1/T2/T3复测）",
+    shortLabel: "监测",
+    customerDescription: "跟踪内容收录、AI 引用、品牌提及与推荐，并按 T1/T2/T3 节奏复测验证变化。",
+    emptyHint: "暂无监测结果，请先完成发布记录并发起复测。",
+    path: "/inclusion-monitoring",
+  },
+  {
+    id: "geo_score",
+    title: "GEO评分与竞品对比",
+    shortLabel: "评分",
+    customerDescription: "查看本轮 GEO 评分与竞品对比，识别可见性差距。",
+    emptyHint: "暂无 GEO 评分，请先完成 AI 搜索实测。",
+    path: "/ai-diagnosis",
+  },
+  {
+    id: "delivery_report",
+    title: "交付报告与下一轮优化",
+    shortLabel: "交付",
+    customerDescription: "整理本轮执行摘要、问题清单与优化建议，推进下一轮提升。",
+    emptyHint: "暂无可交付报告，请先积累实测、发布与监测数据。",
+    path: "/delivery-reports",
+  },
 ] as const;
 
 export type MainChainStepView = {
   step: number;
-  id: (typeof MAIN_CHAIN_STEPS)[number]["id"];
+  id: (typeof GEO_UNIFIED_MAIN_PIPELINE_STEPS)[number]["id"];
   name: string;
   path: string;
   done: boolean;
@@ -96,24 +169,39 @@ export function toMainChainProgressInput(
 }
 
 export function resolveMainChainSteps(input: MainChainProgressInput): MainChainStepView[] {
-  const doneFlags = [
-    input.profileCompletionPercent >= 80,
-    input.hasCompletedT0Baseline,
-    input.articleCount > 0,
-    input.completedPublishTaskCount > 0,
-    input.monitoringRecordCount > 0,
-    input.hasCompletedT1Retest,
-    input.retestComparisonCount > 0,
-    input.reportCount > 0,
-  ];
+  return GEO_UNIFIED_MAIN_PIPELINE_STEPS.map((step, index) => {
+    const done = (() => {
+      switch (step.id) {
+        case "profile_basics":
+          return input.profileCompletionPercent >= 80;
+        case "ai_search_test_t0":
+          return input.hasCompletedT0Baseline;
+        case "brand_assets":
+          return input.profileCompletionPercent >= 70;
+        case "content_assets":
+          return input.articleCount > 0;
+        case "platform_publish":
+          return input.completedPublishTaskCount > 0;
+        case "inclusion_monitor_retest":
+          return input.monitoringRecordCount > 0 || input.hasCompletedT1Retest;
+        case "geo_score":
+          return input.retestComparisonCount > 0;
+        case "delivery_report":
+          return input.reportCount > 0;
+        default:
+          return false;
+      }
+    })();
 
-  return MAIN_CHAIN_STEPS.map((step, index) => ({
-    step: index + 1,
-    id: step.id,
-    name: step.name,
-    path: step.path,
-    done: doneFlags[index] ?? false,
-  }));
+    return {
+      step: index + 1,
+      id: step.id,
+      name: step.title,
+      shortLabel: step.shortLabel,
+      path: step.path,
+      done,
+    };
+  });
 }
 
 export function resolveMainChainNextActionPaths(

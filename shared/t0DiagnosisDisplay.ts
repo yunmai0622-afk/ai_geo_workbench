@@ -27,6 +27,7 @@ const QUESTION_TYPE_CUSTOMER_LABELS: Record<string, string> = {
 
 export type T0DiagnosisRunRow = AiTestRunMetricRow & {
   questionId: number;
+  platform?: string;
   competitorMentioned?: boolean;
   competitorNames?: string[];
 };
@@ -51,7 +52,61 @@ export type T0DiagnosisResultsDisplay = {
   competitorAppearances: number;
   competitorNames: string[];
   byQuestionType: T0QuestionTypeGroup[];
+  byPlatform: T0PlatformResultGroup[];
 };
+
+export const T0_DIAGNOSIS_PLATFORM_ORDER = ["doubao", "kimi", "deepseek", "qwen", "wenxin"] as const;
+
+export type T0PlatformResultGroup = {
+  platform: string;
+  label: string;
+  totalRuns: number;
+  mentionedCount: number;
+  recommendedCount: number;
+  mentionRate: number;
+  recommendRate: number;
+};
+
+function normalizeT0Platform(platform: string): string {
+  const key = platform.trim().toLowerCase();
+  if (key === "doubao" || key === "豆包") return "doubao";
+  if (key === "kimi") return "kimi";
+  if (key === "deepseek") return "deepseek";
+  if (key === "qwen" || key === "通义千问" || key === "通义") return "qwen";
+  if (key === "wenxin" || key === "文心一言" || key === "文心") return "wenxin";
+  return key;
+}
+
+export function buildT0PlatformResultGroups(
+  runs: Array<{
+    platform: string;
+    mentionedCompany: boolean;
+    recommendedCompany: boolean;
+  }>,
+): T0PlatformResultGroup[] {
+  const labelByPlatform = new Map(T0_AI_ENGINE_OPTIONS.map(option => [option.id, option.label]));
+  const buckets = new Map<string, typeof runs>();
+  for (const run of runs) {
+    const platform = normalizeT0Platform(run.platform);
+    const bucket = buckets.get(platform) ?? [];
+    bucket.push(run);
+    buckets.set(platform, bucket);
+  }
+
+  return T0_DIAGNOSIS_PLATFORM_ORDER.map(platform => {
+    const groupRuns = buckets.get(platform) ?? [];
+    const metrics = aggregateT0AiTestRunMetrics(groupRuns);
+    return {
+      platform,
+      label: labelByPlatform.get(platform as T0AiEngineId) ?? platform,
+      totalRuns: metrics?.totalRuns ?? 0,
+      mentionedCount: metrics?.mentionedCount ?? 0,
+      recommendedCount: metrics?.recommendedCount ?? 0,
+      mentionRate: metrics?.mentionRate ?? 0,
+      recommendRate: metrics?.recommendRate ?? 0,
+    };
+  });
+}
 
 export type T0QuestionProgress = {
   currentQuestion: number;
@@ -153,10 +208,19 @@ export function buildT0DiagnosisResultsDisplay(
     })
     .sort((a, b) => b.totalRuns - a.totalRuns || a.label.localeCompare(b.label, "zh-CN"));
 
+  const byPlatform = buildT0PlatformResultGroups(
+    runs.map(run => ({
+      platform: run.platform ?? "",
+      mentionedCompany: run.mentionedCompany,
+      recommendedCompany: run.recommendedCompany,
+    })),
+  );
+
   return {
     ...overall,
     competitorAppearances,
     competitorNames,
     byQuestionType,
+    byPlatform,
   };
 }

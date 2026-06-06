@@ -37,13 +37,12 @@ describe("Agent-4 local publish client productization", () => {
 
   it("renderer has overview, tasks, diagnostics and settings tabs", () => {
     const html = read("local-agent/src/renderer/index.html");
-    for (const tab of ["总览", "账号环境", "发布任务", "诊断", "设置"]) {
+    for (const tab of ["状态总览", "账号环境", "发布任务", "诊断与设置"]) {
       expect(html).toContain(tab);
     }
-    expect(html).toContain('data-tab="settings"');
-    expect(html).toContain("panel-settings");
-    const diagSlice = html.slice(html.indexOf("panel-diagnostics"), html.indexOf("panel-settings"));
-    expect(diagSlice).not.toContain("btn-save-settings");
+    expect(html).toContain('data-tab="diag-settings"');
+    expect(html).toContain("panel-diag-settings");
+    expect(html).toContain("btn-save-settings");
     const appJs = read("local-agent/src/renderer/app.js");
     expect(appJs).toContain("deleteProfile");
     expect(appJs).toContain("最后检查：");

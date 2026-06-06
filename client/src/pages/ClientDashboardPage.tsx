@@ -21,14 +21,19 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { buildProjectUrl, setActiveProjectId } from "@/lib/activeProject";
+import { activateProject, buildProjectUrl } from "@/lib/activeProject";
 import {
   deriveClientProjectCardDisplay,
   deriveClientProjectPipelineBadgeLabel,
-  formatBrandMentionRate,
+  formatClientProjectMentionRate,
   formatGeoScore,
   formatMeasuredAt,
 } from "@/lib/projectWorkspaceDisplay";
+import {
+  buildStageActionUrl,
+  formatStageActionLabel,
+  resolveDeliveryStageView,
+} from "@/lib/deliveryStage";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { trpc } from "@/lib/trpc";
@@ -98,6 +103,7 @@ function matchFilter(project: ProjectSummary, filter: FilterKey): boolean {
 function ProjectCard({
   project,
   onEnter,
+  metricsLoading,
   showArchived,
   onArchive,
   onUnarchive,
@@ -105,16 +111,64 @@ function ProjectCard({
 }: {
   project: ProjectSummary;
   onEnter: (id: number) => void;
+  metricsLoading: boolean;
   showArchived: boolean;
   onArchive: (id: number) => void;
   onUnarchive: (id: number) => void;
   archivePending: boolean;
 }) {
+  const [, setLocation] = useLocation();
   const { nextStep } = deriveClientProjectCardDisplay(project);
   const pipelineBadgeLabel = deriveClientProjectPipelineBadgeLabel(project);
+  const deliveryStage = resolveDeliveryStageView({
+    profileCompletionPercent: project.status === "created" ? 0 : 100,
+    boundPublishAccountCount: 0,
+    expiredSessionAccountCount: 0,
+    articleCount: project.articleCount,
+    publishRecordCount: project.publishCount,
+    publishRecordWithPublicUrlCount: project.publishCount,
+    waitingPublicLinkCount: 0,
+    publishTaskCount: 0,
+    completedPublishTaskCount: 0,
+    retestPendingCount: project.publishCount > 0 && project.aiTestCount === 0 ? 1 : 0,
+    rewriteOpenCount: 0,
+    aiTestResultCount: project.aiTestCount,
+    monitoringRecordCount: project.aiTestCount > 0 ? 1 : 0,
+    retestComparisonCount: 0,
+    reportCount: project.publishCount > 0 && project.aiTestCount > 0 ? 1 : 0,
+    geoScore: project.latestGeoScore,
+    brandMentionRate: project.t0BrandMentionRate,
+    recommendRate: null,
+    lowQualityArticleCount: 0,
+    hasAnalysis: project.lastDiagnosisAt != null,
+    hasGeoScore: project.latestGeoScore != null,
+    hasCompletedT0Baseline: project.aiTestCount > 0,
+    hasCompletedT1Retest: project.aiTestCount > 0,
+    showT1RetestAutoTriggerReminder: false,
+    retestPlan: {
+      publishAt: null,
+      publishAtLabel: null,
+      milestones: [],
+      nextSuggestion: null,
+    },
+    retestDueReminder: null,
+    p0ProfileComplete: project.status !== "created",
+    t0ContentGapSuggestions: null,
+    localAgentOnline: null,
+  });
+  // 未知阶段主按钮回退文案：进入工作台
+  const actionLabel = formatStageActionLabel(deliveryStage.stage);
+  const stageActionUrl = buildStageActionUrl(deliveryStage.stage, project.id);
+  const todoCount = deliveryStage.todos.length;
+  const riskCount = deliveryStage.blockingReasons.length;
   const geoScore = formatGeoScore(project.latestGeoScore);
-  const mentionRateText =
-    project.t0BrandMentionRate != null ? formatBrandMentionRate(project.t0BrandMentionRate) : "--";
+  const hasAiTestData = project.aiTestCount > 0 || project.lastDiagnosisAt != null;
+  const mentionRateText = formatClientProjectMentionRate({
+    mentionRate: project.t0BrandMentionRate,
+    hasAiTestData,
+    loading: metricsLoading,
+  });
+  const mentionRateIsPlaceholder = mentionRateText === "未实测" || mentionRateText === "加载中";
   const industryLabel =
     project.industry?.trim() && project.industry !== "待补充" ? project.industry.trim() : "未填写行业";
   const lastMeasuredLabel = formatMeasuredAt(project.lastMeasuredAt ?? project.lastDiagnosisAt) ?? "暂无";
@@ -186,7 +240,13 @@ function ProjectCard({
         </div>
         <div>
           <p className="text-xs font-medium text-gray-500">品牌提及率</p>
-          <p className="text-sm font-bold tabular-nums text-gray-900" data-testid="client-project-mention-rate">
+          <p
+            className={cn(
+              "text-sm font-bold tabular-nums text-gray-900",
+              mentionRateIsPlaceholder && "text-xs font-medium text-gray-500 tabular-nums",
+            )}
+            data-testid="client-project-mention-rate"
+          >
             {mentionRateText}
           </p>
         </div>
@@ -200,6 +260,14 @@ function ProjectCard({
         <span className="font-medium text-gray-400">下一步：</span>
         {nextStep}
       </p>
+      <div className="mb-4 flex items-center gap-2 text-xs">
+        <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700" data-testid="client-project-todo-count">
+          待办 {todoCount}
+        </span>
+        <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700" data-testid="client-project-risk-count">
+          风险 {riskCount}
+        </span>
+      </div>
 
       <div className="mt-auto flex sm:justify-end">
         <button
@@ -208,10 +276,11 @@ function ProjectCard({
           data-testid="enter-workspace-button"
           onClick={e => {
             e.stopPropagation();
-            onEnter(project.id);
+            setLocation(stageActionUrl);
           }}
         >
-          进入工作台
+          <span className="sr-only">{actionLabel}</span>
+          {actionLabel}
           <ArrowRight className="h-3 w-3" />
         </button>
       </div>
@@ -263,7 +332,7 @@ export default function ClientDashboardPage() {
   }, [projects, search, statusFilter]);
 
   const handleEnter = (projectId: number) => {
-    setActiveProjectId(projectId);
+    activateProject(projectId);
     setLocation(buildProjectUrl("/workspace", projectId));
   };
 
@@ -321,7 +390,7 @@ export default function ClientDashboardPage() {
         return;
       }
       await utils.geo.clientDashboard.listProjectsSummary.invalidate();
-      setActiveProjectId(created.id);
+      activateProject(created.id);
       setCreateOpen(false);
       setCreateForm(emptyCreateForm());
       toast.success("企业项目已创建，请按引导完成设置");
@@ -469,6 +538,7 @@ export default function ClientDashboardPage() {
               key={project.id}
               project={project}
               onEnter={handleEnter}
+              metricsLoading={isLoading}
               showArchived={showArchived}
               onArchive={id =>
                 dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.archiveProject, () => handleArchive(id))

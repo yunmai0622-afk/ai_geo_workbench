@@ -8,7 +8,6 @@ const PLATFORM_LABELS = {
   wechat: "公众号",
 };
 
-/** 与 BINDING_PUBLISH_PLATFORMS 对齐 */
 const CREATABLE_PLATFORMS = new Set(["zhihu", "sohu", "baijiahao", "toutiao", "netease"]);
 const PENDING_PLATFORMS = new Set(["xiaohongshu", "wechat"]);
 
@@ -30,7 +29,6 @@ const LOG_DETAIL_EMPTY_TEXT = "暂无任务日志，选择一条发布任务查�
 const LOG_DETAIL_RAW_EMPTY_TEXT = "选择任务后可查看原始技术日志";
 const LIVE_LOG_EMPTY_TEXT = "暂无实时输出";
 
-/** 轮询空闲类消息：合并为单行「最后检查」 */
 const IDLE_LOG_KEYS = new Map([
   ["暂无待处理任务", "暂无任务"],
   ["正在执行任务，跳过本轮", "正在执行任务，跳过本轮"],
@@ -40,6 +38,7 @@ let liveLogIdleLine = null;
 let liveLogLines = [];
 
 const TaskLogDisplay = () => globalThis.PublishTaskLogDisplay ?? {};
+const Ux = () => globalThis.LocalAgentUx ?? {};
 
 function $(sel) {
   return document.querySelector(sel);
@@ -80,7 +79,7 @@ function accountCardTitle(acc) {
     return "未检测到账号昵称";
   }
   if (acc.accountName && acc.displayNameVerified === true) return acc.accountName;
-  if (acc.sessionStatus === "active") return `${acc.platform || "平台"}账号（昵称待识别）`;
+  if (acc.sessionStatus === "active") return `${PLATFORM_LABELS[acc.platform] ?? acc.platform}账号（昵称待识别）`;
   return "未检测到账号昵称";
 }
 
@@ -90,31 +89,38 @@ function sessionStatusLabel(status) {
   return "未检测";
 }
 
-function isDetectFailure(acc) {
-  if (acc.sessionStatus === "active") return false;
-  const msg = (acc.lastDetectMessage ?? "").trim();
-  if (!msg) return acc.sessionStatus === "unknown";
-  if (/^检测成功/.test(msg)) return false;
-  return true;
+function heroStatusCssClass(hero) {
+  const fn = Ux().heroStatusCssClass;
+  return typeof fn === "function" ? fn(hero) : hero?.cssClass ?? "status-idle";
 }
 
-function sessionBadge(acc) {
-  if (acc.sessionStatus === "active") {
-    return '<span class="pill ok">登录有效</span>';
-  }
-  if (acc.sessionStatus === "expired") {
-    return '<span class="pill danger">登录失效</span>';
-  }
-  if (isDetectFailure(acc)) {
-    return '<span class="pill fail">检测失败</span>';
-  }
-  return '<span class="pill muted">未检测</span>';
+function pendingTaskCount(d) {
+  const fn = Ux().pendingTaskCount;
+  return typeof fn === "function" ? fn(d ?? dashboard) : (d ?? dashboard)?.pendingTaskCount ?? 0;
 }
 
-function techLastError(acc) {
-  const msg = (acc.lastDetectMessage ?? "").trim();
-  if (!msg || /^检测成功/.test(msg)) return "";
-  return msg;
+function buildDiagSummaryText(d) {
+  const fn = Ux().buildDiagSummaryText;
+  return typeof fn === "function" ? fn(d ?? dashboard) : "";
+}
+
+function formatOpenWriteResult(r, sourceLabel) {
+  const head = sourceLabel ? `[${sourceLabel}] ` : "";
+  if (r.ok) {
+    return `${head}${r.message || "已打开发布页"}`;
+  }
+  const et = r.errorType ?? r.step ?? "unknown";
+  if (et === "manual_required") {
+    return `${head}${r.message || "未能自动进入发布页，已打开平台首页，请手动进入"}`;
+  }
+  if (et === "login_required" || et === "session_expired") {
+    return `${head}发布页打开失败，请先完成登录`;
+  }
+  return `${head}发布页打开失败：${r.message || "请确认账号已登录"}`;
+}
+
+function openWriteIsError(r) {
+  return !r.ok && r.errorType !== "manual_required";
 }
 
 function formatLastCheckTime(date) {
@@ -199,87 +205,9 @@ function setLogDetailContent(el, text) {
   el.classList.remove("is-empty");
 }
 
-/** 打开发布页结果展示 */
-function formatOpenWriteResult(r, sourceLabel) {
-  const head = sourceLabel ? `[${sourceLabel}] ` : "";
-  if (r.ok) {
-    return `${head}${r.message || "已打开发布页"}`;
-  }
-  const et = r.errorType ?? r.step ?? "unknown";
-  if (et === "manual_required") {
-    return `${head}${r.message || "未能自动进入发布页，已打开平台首页，请手动进入"}`;
-  }
-  if (et === "login_required" || et === "session_expired") {
-    return `${head}发布页打开失败，请先完成登录`;
-  }
-  return `${head}发布页打开失败：${r.message || "请确认账号已登录"}`;
-}
-
-function openWriteIsError(r) {
-  return !r.ok && r.errorType !== "manual_required";
-}
-
-/* ===== 状态判断 ===== */
-function computeOverallStatus(d) {
-  const localOk = d.localHttp?.ok && !d.localHttp?.startupError;
-  const serverOk = d.serverConnected;
-  const hasAccounts = d.accountTotal > 0;
-  const hasActive = d.accountActive > 0;
-  const isPolling = d.polling?.isPolling;
-
-  if (!localOk) {
-    return { status: "error", title: "客户端异常", desc: "本地服务未正常启动，请尝试重启客户端" };
-  }
-  if (!serverOk) {
-    return { status: "warning", title: "服务端未连接", desc: "无法连接 GEO 服务端，请检查网络或联系管理员" };
-  }
-  if (!hasAccounts) {
-    return { status: "idle", title: "等待配置", desc: "请先添加平台账号环境，完成登录后即可接收发布任务" };
-  }
-  if (!hasActive) {
-    return { status: "warning", title: "账号需登录", desc: "所有账号登录已失效，请重新登录后再接收任务" };
-  }
-  if (isPolling) {
-    return { status: "running", title: "正在运行", desc: "客户端正在自动接收并执行发布任务" };
-  }
-  return { status: "ready", title: "准备就绪", desc: "所有条件已满足，可以开始接收发布任务" };
-}
-
-/* ===== 发布准备流程 ===== */
-function computePrepSteps(d) {
-  const localOk = d.localHttp?.ok && !d.localHttp?.startupError;
-  const serverOk = d.serverConnected;
-  const hasAccounts = d.accountTotal > 0;
-  const hasActive = d.accountActive > 0;
-  const isPolling = d.polling?.isPolling;
-
-  return [
-    {
-      title: "启动客户端",
-      desc: "本地服务正常运行",
-      state: localOk ? "done" : "active",
-    },
-    {
-      title: "连接服务端",
-      desc: "与 GEO 服务端通信正常",
-      state: !localOk ? "pending" : serverOk ? "done" : "active",
-    },
-    {
-      title: "添加账号",
-      desc: "至少添加一个平台账号",
-      state: !serverOk ? "pending" : hasAccounts ? "done" : "active",
-    },
-    {
-      title: "登录有效",
-      desc: "至少一个账号登录有效",
-      state: !hasAccounts ? "pending" : hasActive ? "done" : "active",
-    },
-    {
-      title: "开始接收",
-      desc: "自动接收发布任务",
-      state: !hasActive ? "pending" : isPolling ? "done" : "active",
-    },
-  ];
+function sessionBadge(acc) {
+  const meta = Ux().sessionBadgeMeta?.(acc) ?? { text: "未检测", pillClass: "muted" };
+  return `<span class="pill ${meta.pillClass}">${escapeHtml(meta.text)}</span>`;
 }
 
 function renderUpdateNotice(d) {
@@ -300,56 +228,109 @@ function renderUpdateNotice(d) {
   const btn = $("#btn-download-update");
   if (btn) {
     btn.onclick = () =>
-      void window.agentApi.openExternalUrl(notice.downloadUrl).then(r => {
+      void window.agentApi.openExternalUrl(notice.downloadUrl).then((r) => {
         if (!r.ok) appendLiveLog(r.message ?? "打开下载链接失败", true);
       });
   }
 }
 
-/* ===== Render: Overview ===== */
+function renderHeaderMetrics() {
+  const el = $("#hdr-metrics");
+  if (!el || !dashboard) return;
+  const hero = Ux().computeHeroStatus?.(dashboard) ?? { title: "—" };
+  const chips = Ux().headerMetricChips?.(dashboard, hero) ?? [];
+  el.innerHTML = chips
+    .map(
+      (c) =>
+        `<span class="hdr-metric-chip"><span class="hdr-metric-label">${escapeHtml(c.label)}</span><span class="hdr-metric-value">${escapeHtml(c.value)}</span></span>`,
+    )
+    .join("");
+}
+
+function bindHeroActionButton(btn, action) {
+  btn.onclick = () => {
+    if (action.id === "poll") {
+      void window.agentApi.pollOnce().then((r) => {
+        appendLiveLog(r.message, false);
+        refresh();
+      });
+      return;
+    }
+    if (action.id === "accounts") {
+      switchToTab("accounts");
+      return;
+    }
+    if (action.id === "diag" || action.id === "restart_hint") {
+      switchToTab("diag-settings");
+    }
+  };
+}
+
+function renderHeroActions(hero) {
+  const el = $("#hero-actions");
+  if (!el) return;
+  const actions = Ux().heroActionsFor?.(hero) ?? [];
+  el.innerHTML = "";
+  for (const action of actions) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = action.label;
+    if (action.primary) btn.className = "primary";
+    bindHeroActionButton(btn, action);
+    el.appendChild(btn);
+  }
+}
+
 function renderOverview() {
   const d = dashboard;
   renderUpdateNotice(d);
-  const overall = computeOverallStatus(d);
+  const hero = Ux().computeHeroStatus?.(d) ?? { title: "检测中", desc: "", hdrStatus: "unknown", cssClass: "status-idle" };
 
-  // Header badge
   const hdrStatus = $("#hdr-status");
-  hdrStatus.textContent = overall.title;
-  hdrStatus.setAttribute("data-status", overall.status === "idle" ? "warning" : overall.status);
+  if (hdrStatus) {
+    hdrStatus.textContent = hero.title;
+    hdrStatus.setAttribute("data-status", hero.hdrStatus ?? "unknown");
+  }
 
-  // Hero card
+  renderHeaderMetrics();
+
   const heroEl = $("#status-hero");
-  const statusClass = overall.status === "idle" ? "status-idle" : `status-${overall.status}`;
-  heroEl.innerHTML = `
+  if (heroEl) {
+    const statusClass = heroStatusCssClass(hero);
+    heroEl.innerHTML = `
     <div class="hero-card ${statusClass}">
-      <p class="hero-title">${escapeHtml(overall.title)}</p>
-      <p class="hero-desc">${escapeHtml(overall.desc)}</p>
+      <p class="hero-title">${escapeHtml(hero.title)}</p>
+      <p class="hero-desc">${escapeHtml(hero.desc)}</p>
       <div class="hero-metrics">
         <div class="hero-metric"><span class="hero-metric-label">账号总数</span><span class="hero-metric-value">${d.accountTotal}</span></div>
-        <div class="hero-metric"><span class="hero-metric-label">登录有效</span><span class="hero-metric-value">${d.accountActive}</span></div>
-        <div class="hero-metric"><span class="hero-metric-label">待处理任务</span><span class="hero-metric-value">${d.pendingTaskCount}</span></div>
-        <div class="hero-metric"><span class="hero-metric-label">今日已处理</span><span class="hero-metric-value">${d.todayTaskCount}</span></div>
+        <div class="hero-metric"><span class="hero-metric-label">可发布</span><span class="hero-metric-value">${d.accountActive}</span></div>
+        <div class="hero-metric"><span class="hero-metric-label">待处理任务</span><span class="hero-metric-value">${pendingTaskCount(d)}</span></div>
+        <div class="hero-metric"><span class="hero-metric-label">今日任务</span><span class="hero-metric-value">${d.todayTaskCount}</span></div>
       </div>
     </div>
   `;
+  }
 
-  // Prep steps
-  const steps = computePrepSteps(d);
+  renderHeroActions(hero);
+
+  const steps = Ux().computePrepSteps?.(d) ?? [];
   const stepsEl = $("#prep-steps");
-  stepsEl.innerHTML = steps
-    .map(
-      (s, i) => `
+  if (stepsEl) {
+    stepsEl.innerHTML = steps
+      .map(
+        (s, i) => `
     <div class="prep-step ${s.state}">
       <span class="prep-step-num">${s.state === "done" ? "✓" : i + 1}</span>
       <span class="prep-step-title">${escapeHtml(s.title)}</span>
       <span class="prep-step-desc">${escapeHtml(s.desc)}</span>
     </div>
-  `
-    )
-    .join("");
+  `,
+      )
+      .join("");
+  }
 
-  // Recent activity
   const actEl = $("#recent-activity");
+  if (!actEl) return;
   const activities = [];
   if (d.recentFailure) {
     const errHint = TaskLogDisplay().customerizeTaskError
@@ -363,47 +344,45 @@ function renderOverview() {
   if (d.polling?.lastPollAt) {
     activities.push({
       time: d.polling.lastPollAt,
-      text: "最近一次任务拉取",
+      text: "最近一次从 GEO Web 拉取任务",
     });
   }
   if (activities.length === 0) {
-    actEl.innerHTML = '<p class="activity-empty">暂无动态，客户端启动后将自动记录</p>';
+    actEl.innerHTML = '<p class="activity-empty">暂无动态，客户端运行后将在此显示</p>';
   } else {
     actEl.innerHTML = activities
       .map(
         (a) =>
-          `<div class="activity-item"><span class="activity-time">${fmtDateShort(a.time)}</span><span class="activity-text">${escapeHtml(a.text)}</span></div>`
+          `<div class="activity-item"><span class="activity-time">${fmtDateShort(a.time)}</span><span class="activity-text">${escapeHtml(a.text)}</span></div>`,
       )
       .join("");
   }
 }
 
-/* ===== Render: Diagnostics ===== */
-function renderDiagnostics() {
+function renderDiagSettings() {
   const d = dashboard;
-  const lh = d.localHttp ?? { ok: false, url: "—", error: "未知", agentId: null, startedAt: null, startupError: null };
-  const localOk = lh.ok && !lh.startupError;
-  const connOk = d.serverConnected;
-
-  const localMsg = localOk
-    ? `本地服务正常 · 启动于 ${fmtTime(lh.startedAt)} · v${lh.version ?? d.appVersion}`
-    : `本地服务异常：${lh.startupError ?? lh.error ?? "请重新启动客户端"}`;
-  const diagLocal = $("#diag-local-http");
-  if (diagLocal) {
-    diagLocal.textContent = localMsg;
-    diagLocal.className = localOk ? "conn-line ok" : "conn-line err";
-  }
-
-  const serverMsg = connOk
-    ? `GEO 服务端连接正常 · 最近同步 ${fmtTime(d.polling.lastPollAt)}`
-    : `GEO 服务端连接异常：${d.serverError ?? "未知"}`;
-  const diagServer = $("#diag-server-conn");
-  if (diagServer) {
-    diagServer.textContent = serverMsg;
-    diagServer.className = connOk ? "conn-line ok" : "conn-line err";
-  }
-
+  if (!d) return;
   syncLiveLogIdleFromDashboard(d);
+
+  const grid = $("#diag-summary-grid");
+  if (grid) {
+    const rows = Ux().buildDiagSummaryRows?.(d) ?? [];
+    grid.innerHTML = rows
+      .map(
+        (r) => `
+      <div class="diag-summary-row">
+        <dt>${escapeHtml(r.label)}</dt>
+        <dd class="${r.ok ? "ok-text" : "warn-text"}">${escapeHtml(r.value)}</dd>
+      </div>`,
+      )
+      .join("");
+  }
+
+  const meta = $("#diag-tech-meta");
+  if (meta) {
+    const lh = d.localHttp ?? {};
+    meta.textContent = `设备 ${d.platformInfo?.hostname ?? "—"} · 本地 ${lh.url ?? "—"} · Agent ${d.config?.localAgentId ?? "—"}`;
+  }
 }
 
 function renderSettings() {
@@ -424,40 +403,44 @@ function renderSettings() {
   if (setAuto) setAuto.checked = cfg.autoStartPolling;
   const setData = $("#set-data-dir");
   if (setData) setData.value = d.dataDir;
+
+  const labelEl = $("#set-auto-poll-label");
+  if (labelEl && Ux().SETTINGS?.autoPollLabel) {
+    labelEl.textContent = Ux().SETTINGS.autoPollLabel;
+  }
+  const hintEl = $("#set-auto-poll-hint");
+  if (hintEl) {
+    hintEl.textContent = Ux().settingsAutoPollHint?.(cfg.autoStartPolling) ?? "";
+  }
 }
 
-/* ===== Render: Accounts (Left-Right Layout) ===== */
 let selectedPlatform = "zhihu";
+
+function platformSidebarStatusClass(statusText) {
+  if (statusText === Ux().PLATFORM_SIDEBAR?.ready) return "status-bound";
+  if (statusText === Ux().PLATFORM_SIDEBAR?.relogin) return "status-relogin";
+  if (statusText === Ux().PLATFORM_SIDEBAR?.pending) return "status-pending";
+  return "status-unbound";
+}
 
 function renderAccounts() {
   const order = ["zhihu", "xiaohongshu", "sohu", "baijiahao", "toutiao", "netease", "wechat"];
-  // Render left sidebar
   const platformListEl = $("#platform-list");
   if (!platformListEl) return;
   platformListEl.innerHTML = "";
   for (const platform of order) {
     const list = dashboard.accounts.filter((a) => a.platform === platform);
     const count = list.length;
-    const hasActive = list.some((a) => a.sessionStatus === "active");
     const isPendingPlatform = PENDING_PLATFORMS.has(platform);
-    let statusText = isPendingPlatform ? "暂未接入" : "未绑定";
-    let statusClass = "status-unbound";
-    if (count > 0 && hasActive) {
-      statusText = "已绑定";
-      statusClass = "status-bound";
-    } else if (count > 0 && !hasActive) {
-      statusText = "需重新登录";
-      statusClass = "status-relogin";
-    }
+    const statusText = Ux().platformSidebarStatus?.(platform, list, isPendingPlatform) ?? "未配置";
+    const statusClass = platformSidebarStatusClass(statusText);
     const li = document.createElement("li");
     li.className = `platform-item ${platform === selectedPlatform ? "active" : ""}`;
     li.setAttribute("data-platform", platform);
-    const pendingTag = "";
     li.innerHTML = `
       <span class="platform-item-name">${PLATFORM_LABELS[platform]}</span>
-      <span class="platform-item-count">${count} 个账号</span>
-      <span class="platform-item-status ${statusClass}">${statusText}</span>
-      ${pendingTag}
+      <span class="platform-item-count">${count} 个环境</span>
+      <span class="platform-item-status ${statusClass}">${escapeHtml(statusText)}</span>
     `;
     li.onclick = () => {
       selectedPlatform = platform;
@@ -465,8 +448,6 @@ function renderAccounts() {
     };
     platformListEl.appendChild(li);
   }
-
-  // Render right side
   renderAccountsMain();
 }
 
@@ -481,16 +462,16 @@ function renderAccountsMain() {
   const canCreate = CREATABLE_PLATFORMS.has(platform);
   const isPending = PENDING_PLATFORMS.has(platform);
   const hasAccounts = list.length > 0;
-  const createBtnLabel = hasAccounts ? `添加${label}账号` : `创建${label}账号环境`;
+  const createBtnLabel = hasAccounts ? `添加${label}环境` : `创建${label}账号环境`;
 
   headerEl.innerHTML = `
     <div class="accounts-main-title-row">
       <div>
         <h3 class="accounts-main-title">${label}账号环境</h3>
-        <p class="accounts-main-desc">在这里管理本机${label}登录环境。登录状态仅保存在本机，不上传密码或 Cookie。</p>
+        <p class="accounts-main-desc">登录状态仅保存在本机。完成登录后请点击账号卡片上的「${escapeHtml(Ux().ACCOUNT_META?.refreshSyncBtn ?? "刷新并同步账号状态")}」。</p>
         ${
           isPending
-            ? `<p class="accounts-main-desc warn-text">平台「${label}」暂未接入账号环境创建。</p>`
+            ? `<p class="accounts-main-desc warn-text">平台「${label}」${Ux().PLATFORM_SIDEBAR?.pending ?? "暂未接入"}，请等待后续版本。</p>`
             : ""
         }
       </div>
@@ -509,16 +490,19 @@ function renderAccountsMain() {
     contentEl.innerHTML = `
       <div class="accounts-empty-state">
         <p class="accounts-empty-title">暂无${label}账号环境</p>
-        <p class="accounts-empty-desc">请点击上方按钮创建${label}账号环境，并在打开的浏览器窗口中完成登录。</p>
+        <p class="accounts-empty-desc">请点击上方按钮创建环境，在浏览器窗口完成登录后刷新并同步账号状态。</p>
       </div>
     `;
     return;
   }
 
+  const meta = Ux().ACCOUNT_META ?? {};
   for (const acc of list) {
     const card = document.createElement("div");
     card.className = "account-card";
     const title = escapeHtml(accountCardTitle(acc));
+    const webSync = Ux().accountWebSyncLabel?.(acc, dashboard.serverConnected) ?? "—";
+    const publishCap = Ux().accountPublishCapabilityLabel?.(acc, isPending) ?? "—";
     card.innerHTML = `
       <div class="acc-head">
         <div class="acc-title-wrap">
@@ -527,9 +511,10 @@ function renderAccountsMain() {
         ${sessionBadge(acc)}
       </div>
       <dl class="acc-meta-grid">
+        <div class="acc-meta-row"><dt>${escapeHtml(meta.webSync ?? "Web 同步")}</dt><dd>${escapeHtml(webSync)}</dd></div>
+        <div class="acc-meta-row"><dt>${escapeHtml(meta.publishCap ?? "发布能力")}</dt><dd>${escapeHtml(publishCap)}</dd></div>
         <div class="acc-meta-row"><dt>登录状态</dt><dd>${sessionStatusLabel(acc.sessionStatus)}</dd></div>
         <div class="acc-meta-row"><dt>最近检测</dt><dd>${fmtDateShort(acc.lastCheckedAt)}</dd></div>
-        <div class="acc-meta-row"><dt>最近发布</dt><dd>${fmtDateShort(acc.lastPublishAt)}</dd></div>
       </dl>
       <div class="btn-row compact acc-actions"></div>
     `;
@@ -542,14 +527,15 @@ function renderAccountsMain() {
       b.onclick = () => void fn();
       actions.appendChild(b);
     };
-    mk("打开账号环境", "primary", async () => {
-      const r = await window.agentApi.openLoginWindow(acc.profileId);
+    mk(meta.refreshSyncBtn ?? "刷新并同步账号状态", "primary", async () => {
+      appendLiveLog("正在检测并同步账号状态…", false);
+      const r = await window.agentApi.detectAccount(acc.profileId);
       appendLiveLog(r.message, !r.ok);
       await refresh();
     });
-    mk("重新检测", "", async () => {
-      const r = await window.agentApi.detectAccount(acc.profileId);
-      appendLiveLog(r.ok ? r.message : r.message, !r.ok);
+    mk("打开账号环境", "", async () => {
+      const r = await window.agentApi.openLoginWindow(acc.profileId);
+      appendLiveLog(r.message, !r.ok);
       await refresh();
     });
     mk("删除", "danger-btn", async () => {
@@ -562,23 +548,59 @@ function renderAccountsMain() {
   }
 }
 
-/* ===== Render: Tasks ===== */
-function renderTasks() {
-  const tbody = $("#tasks-table tbody");
-  tbody.innerHTML = "";
-  if (!dashboard.serverTasks.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="7" class="muted center">暂无发布任务，任务由 GEO Web 服务端自动下发</td>`;
-    tbody.appendChild(tr);
+function renderTasksEmptyState() {
+  const emptyEl = $("#tasks-empty");
+  const wrapEl = $("#tasks-table-wrap");
+  if (!emptyEl || !wrapEl) return;
+  const empty = Ux().TASKS_EMPTY ?? {};
+  const hasTasks = dashboard.serverTasks.length > 0;
+  if (hasTasks) {
+    emptyEl.hidden = true;
+    wrapEl.hidden = false;
     return;
   }
+  emptyEl.hidden = false;
+  wrapEl.hidden = true;
+  emptyEl.innerHTML = `
+    <p class="tasks-empty-title">${escapeHtml(empty.title ?? "暂无发布任务")}</p>
+    <p class="tasks-empty-body">${escapeHtml(empty.body ?? "")}</p>
+    <p class="tasks-empty-hint muted">${escapeHtml(empty.hint ?? "")}</p>
+    <div class="btn-row compact">
+      <button type="button" id="btn-tasks-empty-poll" class="primary">${escapeHtml(empty.ctaPoll ?? "立即拉取任务")}</button>
+      <button type="button" id="btn-tasks-empty-geo">${escapeHtml(empty.ctaGeo ?? "去 GEO Web")}</button>
+    </div>
+  `;
+  const pollBtn = $("#btn-tasks-empty-poll");
+  if (pollBtn) {
+    pollBtn.onclick = () =>
+      void window.agentApi.pollOnce().then((r) => {
+        appendLiveLog(r.message, false);
+        refresh();
+      });
+  }
+  const geoBtn = $("#btn-tasks-empty-geo");
+  if (geoBtn) {
+    geoBtn.onclick = () =>
+      void window.agentApi.openGeoWeb("publishRecords").then((r) => {
+        appendLiveLog(r.ok ? "已在浏览器打开发布记录" : r.message ?? "打开失败", !r.ok);
+      });
+  }
+}
+
+function renderTasks() {
+  renderTasksEmptyState();
+  const tbody = $("#tasks-table tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!dashboard.serverTasks.length) return;
+
   for (const t of dashboard.serverTasks) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${t.id}</td>
       <td>${PLATFORM_LABELS[t.platform] ?? t.platform}</td>
-      <td>${t.expectedAccountName ?? "—"}</td>
-      <td title="${(t.articleTitle || "").replace(/"/g, "&quot;")}">${(t.articleTitle || "").slice(0, 24)}</td>
+      <td>${escapeHtml(t.expectedAccountName ?? "—")}</td>
+      <td title="${escapeHtml(t.articleTitle || "")}">${escapeHtml((t.articleTitle || "").slice(0, 24))}</td>
       <td>${STATUS_LABELS[t.status] ?? t.status}</td>
       <td>${fmtDateShort(t.createdAt)}</td>
       <td class="actions-cell"></td>
@@ -594,10 +616,12 @@ function renderTasks() {
     };
     mk("执行记录", () => {
       selectedLogTaskId = t.id;
-      document.querySelector('.tab[data-tab="diagnostics"]').click();
+      switchToTab("diag-settings");
+      const fold = $("#diag-tech-fold");
+      if (fold) fold.open = true;
       renderLogDetail(t.id);
     });
-    mk("重试", async () => {
+    mk("重试拉取", async () => {
       const r = await window.agentApi.pollOnce();
       appendLiveLog(r.message, false);
       await refresh();
@@ -613,7 +637,6 @@ function renderTasks() {
   }
 }
 
-/* ===== Render: Log ===== */
 function renderLogSelect() {
   const sel = $("#log-task-select");
   if (!sel) return;
@@ -665,7 +688,6 @@ async function renderLogDetail(taskId) {
   }
 }
 
-/* ===== Main refresh ===== */
 async function refresh() {
   try {
     dashboard = await window.agentApi.getDashboard();
@@ -673,20 +695,21 @@ async function refresh() {
     renderAccounts();
     renderTasks();
     renderLogSelect();
-    renderDiagnostics();
+    renderDiagSettings();
+    renderHeaderMetrics();
     renderSettings();
     if (selectedLogTaskId) renderLogDetail(selectedLogTaskId);
     else {
       setLogDetailEmpty($("#log-detail"), LOG_DETAIL_EMPTY_TEXT);
       setLogDetailEmpty($("#log-detail-raw"), LOG_DETAIL_RAW_EMPTY_TEXT);
     }
-    $("#hdr-version").textContent = `v${dashboard.appVersion}`;
+    const ver = $("#hdr-version");
+    if (ver) ver.textContent = `v${dashboard.appVersion}`;
   } catch (e) {
     appendLiveLog(e instanceof Error ? e.message : String(e), true);
   }
 }
 
-/* ===== Tabs ===== */
 function switchToTab(tabId) {
   const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
   if (btn) btn.click();
@@ -718,7 +741,7 @@ async function handleCreatePlatformProfile(platform) {
   }
   const label = PLATFORM_LABELS[platform] ?? platform;
   if (PENDING_PLATFORMS.has(platform)) {
-    appendLiveLog(`平台「${label}」暂未接入账号环境创建，请等待后续版本`, true);
+    appendLiveLog(`平台「${label}」暂未接入，请等待后续版本`, true);
     return;
   }
   if (!CREATABLE_PLATFORMS.has(platform)) {
@@ -735,7 +758,6 @@ async function handleCreatePlatformProfile(platform) {
   }
 }
 
-/* ===== Event bindings ===== */
 const btnTestConn = $("#btn-test-conn");
 if (btnTestConn) {
   btnTestConn.onclick = () =>
@@ -748,12 +770,6 @@ if (btnTestConn) {
     });
 }
 
-const btnStartPoll = $("#btn-start-poll");
-if (btnStartPoll) btnStartPoll.onclick = () => void window.agentApi.startPolling().then(() => refresh());
-
-const btnStopPoll = $("#btn-stop-poll");
-if (btnStopPoll) btnStopPoll.onclick = () => void window.agentApi.stopPolling().then(() => refresh());
-
 const btnPollOnce = $("#btn-poll-once");
 if (btnPollOnce) {
   btnPollOnce.onclick = () =>
@@ -763,7 +779,26 @@ if (btnPollOnce) {
     });
 }
 
-// data-create buttons now use inline onclick in renderAccountsMain()
+const btnPollOnceDiag = $("#btn-poll-once-diag");
+if (btnPollOnceDiag) {
+  btnPollOnceDiag.onclick = () =>
+    void window.agentApi.pollOnce().then((r) => {
+      appendLiveLog(r.message, false);
+      refresh();
+    });
+}
+
+const btnCopyDiagSummary = $("#btn-copy-diag-summary");
+if (btnCopyDiagSummary) {
+  btnCopyDiagSummary.onclick = () => {
+    const text = buildDiagSummaryText(dashboard);
+    if (!text) {
+      appendLiveLog("暂无诊断信息", true);
+      return;
+    }
+    navigator.clipboard.writeText(text).then(() => appendLiveLog("已复制诊断摘要", false));
+  };
+}
 
 const logSelect = $("#log-task-select");
 if (logSelect) {
@@ -815,6 +850,14 @@ if (btnSaveSettings) {
       });
 }
 
+const setAutoPoll = $("#set-auto-poll");
+if (setAutoPoll) {
+  setAutoPoll.onchange = () => {
+    const hintEl = $("#set-auto-poll-hint");
+    if (hintEl) hintEl.textContent = Ux().settingsAutoPollHint?.(setAutoPoll.checked) ?? "";
+  };
+}
+
 const btnResetServerOnline = $("#btn-reset-server-online");
 if (btnResetServerOnline) {
   btnResetServerOnline.onclick = () =>
@@ -847,16 +890,13 @@ function bindOpenGeoWeb(buttonId, target, label) {
 }
 
 bindOpenGeoWeb("btn-open-geo-publish", "publishRecords", "发布记录");
-const btnOpenGeoBind = document.getElementById("btn-open-geo-bind");
-if (btnOpenGeoBind) {
-  const labelEl = btnOpenGeoBind.querySelector(".action-label");
-  if (labelEl) labelEl.textContent = "配置账号环境";
-  const descEl = btnOpenGeoBind.querySelector(".action-desc");
-  if (descEl) descEl.textContent = "在本机创建平台登录环境（不上传 Cookie）";
-  btnOpenGeoBind.onclick = () => switchToTab("accounts");
-}
 bindOpenGeoWeb("btn-open-geo-weekly", "contentProduction", "内容生产");
 bindOpenGeoWeb("btn-tasks-open-geo-publish", "publishRecords", "发布记录");
+
+const btnOpenGeoBind = document.getElementById("btn-open-geo-bind");
+if (btnOpenGeoBind) {
+  btnOpenGeoBind.onclick = () => switchToTab("accounts");
+}
 
 initTabs();
 if (window.agentApi.onFocusTab) {

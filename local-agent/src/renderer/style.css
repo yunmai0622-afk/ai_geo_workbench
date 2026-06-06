@@ -112,6 +112,46 @@ body {
   color: #7dd3fc;
 }
 
+.hdr-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  max-width: min(100%, 420px);
+}
+
+.hdr-metric-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  min-width: 4.5em;
+}
+
+.hdr-metric-label {
+  font-size: 0.62rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.hdr-metric-value {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.hero-actions {
+  margin: 0 0 16px;
+}
+
+.hero-actions:empty {
+  display: none;
+}
+
 /* ===== Tabs ===== */
 .tabs {
   display: flex;
@@ -972,6 +1012,94 @@ th {
 
 .platform-item-status.status-relogin {
   color: #fcd34d;
+}
+
+.platform-item-status.status-pending {
+  color: #b45309;
+}
+
+.tasks-empty {
+  text-align: center;
+  padding: 32px 20px;
+  margin-bottom: 16px;
+  background: #1e293b;
+  border: 1px dashed #334155;
+  border-radius: 12px;
+}
+
+.tasks-empty-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.tasks-empty-body,
+.tasks-empty-hint {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #94a3b8;
+}
+
+.diag-summary-grid {
+  margin: 0 0 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.diag-summary-row {
+  display: grid;
+  grid-template-columns: 7em 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 0.85rem;
+  padding: 8px 10px;
+  background: #0f172a;
+  border-radius: 8px;
+}
+
+.diag-summary-row dt {
+  margin: 0;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.diag-summary-row dd {
+  margin: 0;
+}
+
+.settings-hint {
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.diag-tech-fold {
+  margin-bottom: 16px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #0f172a;
+}
+
+.diag-tech-fold > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  list-style: none;
+}
+
+.diag-tech-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.diag-tech-fold[open] > summary {
+  border-bottom: 1px solid #334155;
+}
+
+.diag-tech-meta {
+  font-size: 0.72rem;
+  margin: 8px 0 0;
 }
 
 .accounts-main {

@@ -18,20 +18,23 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
+    expect(layoutSource).toContain('title: "项目"');
+    expect(layoutSource).not.toContain('title: "增长总览"');
     for (const label of [
       "企业项目",
       "项目工作台",
       "品牌资产建档",
       "AI 实测诊断",
+      "问题库",
       "平台化内容资产",
       "平台适配发布",
       "收录监测",
-      "资产进展",
       "交付报告",
+      "使用指南",
     ]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
-    for (const forbidden of ["总览", "内容生成", "内容发布", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心", "资产进展看板", "AI 内容诊断", "内容资产生产", "资产发布记录", "客户交付报告"]) {
+    for (const forbidden of ["总览", "内容生成", "内容发布", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心", "资产进展看板", "AI 内容诊断", "内容资产生产", "资产发布记录", "客户交付报告", "资产进展", "有效动作"]) {
       expect(layoutSource).not.toContain(`label: "${forbidden}"`);
     }
   });
@@ -43,10 +46,12 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(appSource).toContain('path="/articles"');
     expect(appSource).toMatch(/path="\/articles"[\s\S]*Redirect to="\/weekly"/);
     expect(appSource).toMatch(/path="\/tasks"[\s\S]*Redirect to="\/weekly"/);
-    expect(appSource).toContain("ProgressPage");
+    expect(appSource).toContain("LegacyAssetProgressRedirect");
     expect(appSource).toContain("OnboardingPage");
     expect(appSource).toContain('path="/weekly"');
     expect(appSource).toContain('path="/progress"');
+    expect(appSource).toMatch(/path="\/progress"[\s\S]*LegacyAssetProgressRedirect/);
+    expect(appSource).not.toContain("ProgressPage");
     expect(appSource).toContain('path="/legacy/onboarding"');
     expect(appSource).toContain('path="/onboarding" component={OnboardingPage}');
     expect(appSource).toContain("profileHasBrand");
@@ -73,6 +78,16 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("企业档案页呈现 5 分钟建档结构", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
+    expect(assetSource).toContain("geo.assetLibrary.summary.useQuery");
+    expect(assetSource).toContain("enterpriseProfileLoadDisplay");
+    expect(assetSource).toContain("enterprise-profile-summary-load-hint");
+    expect(assetSource).toContain("enterprise-profile-core-load-failed");
+    expect(assetSource).not.toContain("hasBlockingLoadError");
+    const publishOverview = readProjectFile(
+      "client/src/components/platformAccounts/PublishPlatformAccountsOverview.tsx",
+    );
+    expect(publishOverview).toContain("geo.platformAccounts.list.useQuery");
+    expect(publishOverview).not.toContain("text-red-600");
     for (const text of [
       "品牌资产建档",
       "FiveMinuteBasicOnboardingSection",
@@ -86,8 +101,24 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(assetSource).not.toContain("AiPageHero");
   });
 
+  it("项目顶栏合并阶段徽标与主操作按钮", () => {
+    const topBar = readProjectFile("client/src/components/project/ProjectWorkspaceTopBar.tsx");
+    expect(topBar).toContain("resolveProjectTopBarPresentation");
+    expect(topBar).toContain("project-topbar-cta");
+  });
+
   it("AI 诊断页客户化展示目标问题、诊断结果、评分、任务和下一步建议", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
+    const titleIdx = flowSource.indexOf("<h1 className=\"text-2xl font-bold text-gray-900\">AI 实测诊断</h1>");
+    const coreIdx = flowSource.indexOf("data-testid=\"ai-diagnosis-core-summary\"");
+    const nextIdx = flowSource.indexOf("data-testid=\"ai-diagnosis-next-content-actions\"");
+    const t0Idx = flowSource.indexOf("data-testid=\"ai-diagnosis-t0-baseline\"");
+    expect(titleIdx).toBeGreaterThan(-1);
+    expect(coreIdx).toBeGreaterThan(titleIdx);
+    expect(nextIdx).toBeGreaterThan(coreIdx);
+    expect(t0Idx).toBeGreaterThan(nextIdx);
+    expect(flowSource).toContain("data-testid=\"ai-diagnosis-t0-baseline\"");
+    expect(flowSource).toContain("data-testid=\"ai-diagnosis-load-hint\"");
     for (const text of [
       "内容诊断",
       "目标客户问题",
@@ -142,7 +173,11 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       expect(publishSource).toContain(text);
     }
     expect(publishSource).not.toContain("trpc.geo.articles.publish.useMutation");
-    expect(publishSource).not.toContain("publishTasks.create");
+    expect(publishSource).toContain("publishTasks.create");
+    expect(publishSource).toContain("PublishWeeklyOverviewBar");
+    expect(
+      publishSource + readProjectFile("client/src/components/publishing/PublishActionSidePanel.tsx"),
+    ).toContain("一键发布所有平台");
   });
 
   it("收录监测页展示已发布内容监测卡片和有限样本风险", () => {

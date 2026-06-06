@@ -15,6 +15,11 @@ import {
   evaluateGeoProfileP0Readiness,
 } from "./geoProfileP0Readiness";
 import {
+  localAgentConnectionCopy,
+  localAgentConnectionRiskHint,
+  type LocalAgentConnectionStatus,
+} from "./localAgentConnectionStatus";
+import {
   isBindingPublishPlatform,
   PUBLISH_PLATFORM_LABELS,
   type BindingPublishPlatform,
@@ -114,7 +119,8 @@ const MESSAGES = {
   qualityFailed: "当前内容未通过发布前质检，请先修改并重新质检。",
   qualityStale: "当前内容编辑后尚未重新质检，请重新质检后发布。",
   qualityUnknown: "当前内容质检状态不明确，请刷新或重新质检。",
-  localAgentDisconnected: "请先打开 GEO 本地发布客户端，并刷新连接状态。",
+  localAgentDisconnected: localAgentConnectionCopy("DISCONNECTED").description,
+  localAgentUnknown: localAgentConnectionCopy("UNKNOWN").description,
 } as const;
 
 export function isPublishReadyPlatformAccount(row: PublishReadyAccountRow): boolean {
@@ -129,7 +135,7 @@ export function isPublishReadyPlatformAccount(row: PublishReadyAccountRow): bool
 }
 
 function platformUnsupportedMessage(label: string): string {
-  return `本篇内容识别为「${label}」，当前本地客户端暂未接入该平台发布，请先人工发布或等待接入。`;
+  return `本篇内容识别为「${label}」，当前本地客户端即将支持该平台发布，请先人工发布或等待支持。`;
 }
 
 function platformAccountUnboundMessage(label: string): string {
@@ -347,13 +353,19 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
     });
   }
 
-  if (!input.skipLocalAgentConnectionCheck && input.localAgentConnected === false) {
-    debugReasons.push("localAgentConnected=false");
+  if (!input.skipLocalAgentConnectionCheck && input.localAgentConnected !== true) {
+    const connectionStatus: LocalAgentConnectionStatus =
+      input.localAgentConnected === false ? "DISCONNECTED" : "UNKNOWN";
+    debugReasons.push(`localAgentConnected=${String(input.localAgentConnected)}`);
+    const copy = localAgentConnectionCopy(connectionStatus);
     return blocked({
       blockingCode: "LOCAL_AGENT_DISCONNECTED",
-      message: MESSAGES.localAgentDisconnected,
-      nextActionLabel: "打开本地客户端",
-      nextActionTarget: "open_local_agent",
+      message:
+        connectionStatus === "UNKNOWN"
+          ? (localAgentConnectionRiskHint("UNKNOWN") ?? MESSAGES.localAgentUnknown)
+          : (localAgentConnectionRiskHint("DISCONNECTED") ?? MESSAGES.localAgentDisconnected),
+      nextActionLabel: copy.primaryButton ?? "检测本地客户端连接",
+      nextActionTarget: connectionStatus === "UNKNOWN" ? "refresh_agent_status" : "open_local_agent",
       platform,
       platformLabel,
       debugReasons,
@@ -438,21 +450,27 @@ export function buildWorkspacePublishRiskHints(input: {
   p0ProfileComplete: boolean;
   boundPublishAccountCount: number;
   localAgentOnline: boolean | null | undefined;
+  localAgentConnectionStatus?: LocalAgentConnectionStatus;
+  localAccountSnapshotEmpty?: boolean;
 }): string[] {
   const hints: string[] = [];
-  if (!input.p0ProfileComplete) {
-    hints.push(MESSAGES.profileIncomplete);
-  }
-  if (input.boundPublishAccountCount === 0) {
-    if (input.localAgentOnline === false) {
-      hints.push(MESSAGES.localAgentDisconnected);
-    } else {
-      hints.push(
-        "尚未在本地发布客户端配置可发布账号。请打开客户端「账号环境」创建并登录，再返回本页刷新状态。",
-      );
-    }
-  } else if (input.localAgentOnline === false) {
-    hints.push(MESSAGES.localAgentDisconnected);
+  if (!input.p0ProfileComplete) hints.push(MESSAGES.profileIncomplete);
+  const connectionStatus: LocalAgentConnectionStatus =
+    input.localAgentConnectionStatus ??
+    (input.localAgentOnline === true
+      ? "CONNECTED"
+      : input.localAgentOnline === false
+        ? "DISCONNECTED"
+        : "UNKNOWN");
+  const agentHint = localAgentConnectionRiskHint(connectionStatus, {
+    boundPublishAccountCount: input.boundPublishAccountCount,
+    localAccountSnapshotEmpty: input.localAccountSnapshotEmpty,
+  });
+  if (agentHint) hints.push(agentHint);
+  if (input.boundPublishAccountCount === 0 && connectionStatus === "CONNECTED" && !agentHint) {
+    hints.push(
+      "尚未在本地发布客户端配置可发布账号。请打开客户端「账号环境」创建并登录，再返回本页刷新状态。",
+    );
   }
   return hints;
 }

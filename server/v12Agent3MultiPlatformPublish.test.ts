@@ -60,6 +60,8 @@ describe("Agent-3 multi-platform local publish", () => {
   it("zhihu publisher uploads cover and clicks publish", () => {
     const zhihu = read("local-agent/src/agent/platforms/zhihuPublisher.ts");
     expect(zhihu).toContain("uploadZhihuCover");
+    expect(zhihu).toContain("封面上传失败，请手动在知乎编辑器中添加封面后发布");
+    expect(zhihu).toContain('errorType: "cover_upload_failed"');
     expect(zhihu).toContain("attemptPublishArticle");
     expect(zhihu).toContain('"publish_article"');
     expect(zhihu).toContain('status: "completed"');
@@ -84,7 +86,8 @@ describe("Agent-3 multi-platform local publish", () => {
     expect(mpExt).toContain("click_publish_button");
     expect(mpExt).toContain("extract_public_url");
     expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).toContain("skipCover: true");
-    expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).toContain(
+    expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).toContain("fillToutiaoContent");
+    expect(read("local-agent/src/agent/platforms/toutiaoPublisher.ts")).not.toContain(
       "fillFirstSelectorInPageOrFrames",
     );
   });

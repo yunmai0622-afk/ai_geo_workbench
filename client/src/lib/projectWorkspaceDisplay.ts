@@ -90,8 +90,24 @@ export function deriveClientProjectEightStepLabel(project: ClientProjectCardInpu
 }
 
 export function formatBrandMentionRate(rate: number | null | undefined): string {
-  if (rate == null || Number.isNaN(rate)) return "--";
+  if (rate == null || Number.isNaN(rate)) return "完成AI实测后显示";
   return `${Math.round(rate * 100)}%`;
+}
+
+export type ClientProjectMentionRateInput = {
+  mentionRate: number | null | undefined;
+  hasAiTestData: boolean;
+  loading?: boolean;
+};
+
+/** 客户项目卡片：品牌提及率展示（不伪造、不用无意义 --） */
+export function formatClientProjectMentionRate(input: ClientProjectMentionRateInput): string {
+  if (input.loading) return "加载中";
+  if (input.mentionRate != null && !Number.isNaN(input.mentionRate)) {
+    return `${Math.round(input.mentionRate * 100)}%`;
+  }
+  if (input.hasAiTestData) return "0%";
+  return "未实测";
 }
 
 export function formatMeasuredAt(value: Date | string | null | undefined): string | null {

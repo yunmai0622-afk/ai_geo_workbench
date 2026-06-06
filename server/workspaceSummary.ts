@@ -14,6 +14,11 @@ import {
   testRounds,
 } from "../drizzle/schema";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
+import {
+  geoScorePercentToRate,
+  resolveBrandMentionRate,
+  resolveRecommendRate,
+} from "@shared/brandMentionRateResolver";
 import { buildRetestPlan, resolveRetestDueReminder } from "@shared/retestPlan";
 import { shouldShowT1RetestAutoTriggerReminder } from "@shared/t1RetestAutoTrigger";
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
@@ -66,7 +71,13 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, projectId)).limit(1),
     db.select().from(projectPlatformAccounts).where(eq(projectPlatformAccounts.projectId, projectId)),
     db.select({ id: geoArticles.id }).from(geoArticles).where(eq(geoArticles.projectId, projectId)),
-    db.select({ id: geoPublishRecords.id }).from(geoPublishRecords).where(eq(geoPublishRecords.projectId, projectId)),
+    db
+      .select({
+        id: geoPublishRecords.id,
+        publishUrl: geoPublishRecords.publishUrl,
+      })
+      .from(geoPublishRecords)
+      .where(eq(geoPublishRecords.projectId, projectId)),
     db
       .select({ count: sql<number>`count(*)` })
       .from(publishTasks)
@@ -84,8 +95,23 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       })
       .from(publishTasks)
       .where(and(eq(publishTasks.projectId, projectId), eq(publishTasks.status, "completed"))),
-    db.select({ id: analysisResults.id }).from(analysisResults).where(eq(analysisResults.projectId, projectId)).limit(1),
-    db.select({ totalScore: geoScores.totalScore }).from(geoScores).where(eq(geoScores.projectId, projectId)).orderBy(desc(geoScores.createdAt)).limit(1),
+    db
+      .select({
+        mentionsEnterprise: analysisResults.mentionsEnterprise,
+        recommendsEnterprise: analysisResults.recommendsEnterprise,
+      })
+      .from(analysisResults)
+      .where(eq(analysisResults.projectId, projectId)),
+    db
+      .select({
+        totalScore: geoScores.totalScore,
+        aiVisibilityScore: geoScores.aiVisibilityScore,
+        aiRecommendationScore: geoScores.aiRecommendationScore,
+      })
+      .from(geoScores)
+      .where(eq(geoScores.projectId, projectId))
+      .orderBy(desc(geoScores.createdAt))
+      .limit(1),
     db
       .select({
         id: geoInclusionMonitoringRecords.id,
@@ -133,6 +159,12 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       : [];
 
   const profile = profileRows[0] ?? null;
+  const publishRecordWithPublicUrlCount = publishRows.filter(row => {
+    const publishUrl = typeof row.publishUrl === "string" ? row.publishUrl.trim() : "";
+    return Boolean(publishUrl);
+  }).length;
+  const waitingPublicLinkCount = Math.max(0, publishRows.length - publishRecordWithPublicUrlCount);
+
   const profileRecord = profile as Record<string, unknown> | null;
   const boundPublishAccountCount = accountRows.filter(row => isPublishReadyAccount(row)).length;
   const expiredSessionAccountCount = accountRows.filter(
@@ -161,13 +193,34 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
   ).length;
   const rewriteOpenCount = rewriteItems.length;
   const monitoringQuestionCount = aiAggregate.questionCount;
-  const aiTestResultCount = t0Metrics?.totalRuns ?? monitoringQuestionCount;
-  const brandMentionRate =
-    t0Metrics?.mentionRate ??
-    (monitoringQuestionCount > 0 ? aiAggregate.mentionRate : null);
-  const recommendRate =
-    t0Metrics?.recommendRate ??
-    (monitoringQuestionCount > 0 ? aiAggregate.recommendRate : null);
+  const analysisCount = analysisRows.length;
+  const analysisMentionRate =
+    analysisCount > 0
+      ? analysisRows.filter(row => row.mentionsEnterprise === 1).length / analysisCount
+      : null;
+  const analysisRecommendRate =
+    analysisCount > 0
+      ? analysisRows.filter(row => row.recommendsEnterprise === 1).length / analysisCount
+      : null;
+  const latestScore = scoreRows[0] ?? null;
+  const aiTestResultCount =
+    t0Metrics?.totalRuns ?? (monitoringQuestionCount > 0 ? monitoringQuestionCount : analysisCount);
+  const geoScoreMentionRate = geoScorePercentToRate(latestScore?.aiVisibilityScore);
+  const geoScoreRecommendRate = geoScorePercentToRate(latestScore?.aiRecommendationScore);
+  const brandMentionRate = resolveBrandMentionRate({
+    t0MentionRate: t0Metrics?.mentionRate,
+    monitoringMentionRate: monitoringQuestionCount > 0 ? aiAggregate.mentionRate : null,
+    monitoringQuestionCount,
+    geoScoreMentionRate,
+    analysisMentionRate,
+  });
+  const recommendRate = resolveRecommendRate({
+    t0RecommendRate: t0Metrics?.recommendRate,
+    monitoringRecommendRate: monitoringQuestionCount > 0 ? aiAggregate.recommendRate : null,
+    monitoringQuestionCount,
+    geoScoreRecommendRate,
+    analysisRecommendRate,
+  });
 
   return {
     enterpriseName: profile?.enterpriseName ?? null,
@@ -176,6 +229,8 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     expiredSessionAccountCount,
     articleCount: articleRows.length,
     publishRecordCount: publishRows.length,
+    publishRecordWithPublicUrlCount,
+    waitingPublicLinkCount,
     publishTaskCount: Number(taskCountRows[0]?.count ?? 0),
     completedPublishTaskCount: Number(completedTaskCountRows[0]?.count ?? 0),
     retestPendingCount,
@@ -184,11 +239,11 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     monitoringRecordCount: monitoringRows.length,
     retestComparisonCount: Number(retestComparisonCountRows[0]?.count ?? 0),
     reportCount: Number(reportCountRows[0]?.count ?? 0),
-    geoScore: scoreRows[0]?.totalScore ?? null,
+    geoScore: latestScore?.totalScore ?? null,
+    hasAnalysis: analysisCount > 0,
     brandMentionRate,
     recommendRate,
     lowQualityArticleCount,
-    hasAnalysis: analysisRows.length > 0,
     hasGeoScore: scoreRows.length > 0,
     hasCompletedT0Baseline: hasCompletedT0Baseline(testRoundRows),
     hasCompletedT1Retest: hasCompletedT1Retest(testRoundRows),

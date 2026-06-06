@@ -1,10 +1,13 @@
 import {
+  buildProjectUrl,
   clearActiveProjectId,
   getActiveProjectId,
   getPathnameFromLocation,
   getSearchFromLocation,
   INVALID_PROJECT_MESSAGE,
   isProjectIdAccessible,
+  pickFirstAccessibleProjectId,
+  setActiveProjectId,
 } from "@/lib/activeProject";
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
@@ -43,22 +46,26 @@ type Options = {
 };
 
 /**
- * URL / session 中的 projectId 不在当前用户项目列表时，清理上下文并跳转 /clients。
+ * URL / session 中的 projectId 不在当前用户项目列表时，清理上下文；
+ * 有可用项目时 fallback 到列表第一项并修正 URL，否则跳转 /clients。
  */
 export function useInvalidProjectRedirect(options: Options) {
   const [location, setLocation] = useLocation();
   const pathname = getPathnameFromLocation(location);
-  const redirectedRef = useRef(false);
+  const search = getSearchFromLocation(location);
+  const handledRef = useRef(false);
 
   const contextProjectId =
     options.contextProjectId !== undefined
       ? options.contextProjectId
-      : getActiveProjectId({ search: getSearchFromLocation(location) });
+      : getActiveProjectId({ search });
 
   const invalidProjectContext =
     !options.projectsLoading &&
     contextProjectId != null &&
     !isProjectIdAccessible(contextProjectId, options.projects);
+
+  const fallbackProjectId = pickFirstAccessibleProjectId(options.projects);
 
   useEffect(() => {
     if (!invalidProjectContext) return;
@@ -71,15 +78,34 @@ export function useInvalidProjectRedirect(options: Options) {
       if (contextProjectId != null) clearActiveProjectId();
       return;
     }
-    if (redirectedRef.current) return;
-    redirectedRef.current = true;
+    if (handledRef.current) return;
+    handledRef.current = true;
     clearActiveProjectId();
+
+    if (fallbackProjectId != null) {
+      setActiveProjectId(fallbackProjectId);
+      if (!hasShownInvalidProjectToast()) {
+        markInvalidProjectToastShown();
+        toast.error(INVALID_PROJECT_MESSAGE);
+      }
+      const targetPath = pathname === "/clients" ? "/workspace" : pathname;
+      setLocation(buildProjectUrl(targetPath, fallbackProjectId));
+      return;
+    }
+
     if (!hasShownInvalidProjectToast()) {
       markInvalidProjectToastShown();
       toast.error(INVALID_PROJECT_MESSAGE);
     }
     setLocation("/clients");
-  }, [invalidProjectContext, pathname, setLocation, contextProjectId]);
+  }, [
+    invalidProjectContext,
+    pathname,
+    setLocation,
+    contextProjectId,
+    fallbackProjectId,
+    search,
+  ]);
 
-  return { invalidProjectContext };
+  return { invalidProjectContext, fallbackProjectId };
 }

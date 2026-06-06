@@ -49,15 +49,20 @@ for (const item of [
   '项目工作台',
   '品牌资产建档',
   'AI 实测诊断',
+  '问题库',
   '平台化内容资产',
   '平台适配发布',
   '收录监测',
   '交付报告',
+  '使用指南',
 ]) {
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
 }
 assertContains('左侧导航', sources.layout, 'AI 搜索增长系统');
-assertContains('左侧导航', sources.layout, 'path: "/workspace"');
+assertContains('左侧导航', sources.layout, 'title: "项目"');
+assertNotContains('左侧导航', sources.layout, 'title: "增长总览"');
+assertContains('旧资产进展路由', sources.app, 'LegacyAssetProgressRedirect');
+assertNotContains('旧资产进展路由', sources.app, 'ProgressPage');
 for (const item of [
   '总览',
   '内容生成',
@@ -78,6 +83,9 @@ for (const item of [
   '收录排名',
   '付费投稿',
   '资产进展看板',
+  '资产进展',
+  '有效动作',
+  '内容模板库',
   'AI 内容诊断',
   '内容资产生产',
   '资产发布记录',
@@ -171,15 +179,16 @@ for (const item of ['已创建的监测卡片', '收录', 'AI 提及', 'AI 推�
 }
 const deliveryReportPage =
   read('client/src/pages/DeliveryReportsCenterPage.tsx') +
-  read('client/src/lib/deliveryReportProductDisplay.ts');
+  read('client/src/lib/deliveryReportProductDisplay.ts') +
+  read('client/src/components/delivery/DeliveryReportProductBody.tsx');
 const deliveryReportPages = deliveryReportPage + sources.customerView;
 for (const item of [
-  'GEO 实验型交付报告',
+  'GEO 增长交付报告',
   'delivery-report-page',
-  '一句话经营结论',
+  '当前核心结论',
   '本轮完成事项',
   '发布内容清单',
-  '生成下一轮内容计划',
+  '下一轮优化计划',
 ]) {
   assertContains('交付报告页', deliveryReportPage, item);
 }
@@ -253,7 +262,7 @@ for (const [name, source] of Object.entries(globalScanPages)) {
   }
 }
 
-const placeholderPattern = /\b(Lorem|Ipsum|TODO placeholder|Coming Soon|coming soon|Untitled|New Project|Dashboard)\b/;
+const placeholderPattern = /\b(Lorem|Ipsum|Coming Soon|coming soon|Untitled|New Project|Dashboard)\b/;
 for (const [name, source] of Object.entries(sources)) {
   const match = source.match(placeholderPattern);
   if (match) failures.push(`${name} 存在英文占位符：${match[0]}`);

@@ -1,18 +1,21 @@
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
-import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformStatusOverview";
 import { PlatformPublishSuccessRatePanel } from "@/components/publishing/PlatformPublishSuccessRatePanel";
+import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformStatusOverview";
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
-import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
+import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
+import { PublishWeeklyOverviewBar } from "@/components/publishing/PublishWeeklyOverviewBar";
+import { PublishPlatformCardGrid } from "@/components/publishing/PublishPlatformCardGrid";
+import { PublishActionSidePanel } from "@/components/publishing/PublishActionSidePanel";
 import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { PublishRecordsCalendar } from "@/components/publishing/PublishRecordsCalendar";
 import { PublishAccountSessionAlert } from "@/components/publishing/PublishAccountSessionAlert";
 import { PublishRecordsListPanel } from "@/components/publishing/PublishRecordsListPanel";
-import { PublishTaskColumnBoard } from "@/components/publishing/PublishTaskColumnBoard";
+import { PublishCenterErrorBoundary } from "@/components/publishing/PublishCenterErrorBoundary";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,8 +30,11 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { buildProjectUrl } from "@/lib/activeProject";
+import { buildPublishingViewModel } from "@/lib/buildPublishingViewModel";
+import { asArray, PUBLISH_QUEUE_EMPTY_LABELS } from "@/lib/contentPublishingSafeData";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { recordPublicLink, publishStatusLabel } from "@/lib/assetProgressDisplay";
 import { downloadPublishRecordsCsv } from "@/lib/geoDataExportDownload";
@@ -38,16 +44,23 @@ import {
   fetchLocalAgentDownloadManifest,
   pickLocalAgentDownloadHref,
 } from "@/lib/localAgentDownloadManifest";
-import { checkLocalAgentHealth } from "@/lib/localAgentClient";
 import { isLocalAgentClientOutdated } from "@shared/localAgentVersionCompare";
-import {
-  mapAgentTaskToCard,
-  mapManualRecordToCard,
-  type PublishColumnId,
-  type PublishTaskCardModel,
-} from "@/lib/publishCenterDisplay";
+import { type PublishTaskCardModel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
+import { type PublishPagePlatformCard } from "@shared/publishPageLayout";
+import {
+  REVIEW_QUEUE_STATUS_LABELS,
+  REVIEW_TYPE_LABELS,
+  type ReviewQueueStatus,
+  type ReviewType,
+} from "@shared/reviewQueue";
+import {
+  isLocalAgentPublishTaskResult,
+  pickReadyAccountForPlatform,
+  publishBlockedReasonForPlatform,
+  resolveEnqueuePlatformSlug,
+} from "@/lib/publishCenterEnqueue";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import {
   formatPublishSuccessPlatformPhrase,
@@ -65,8 +78,13 @@ type PublishSuccessNotice = {
 type ArticleRow = {
   id: number;
   title?: string | null;
+  status?: string | null;
+  targetPlatform?: string | null;
+  publishPlatform?: string | null;
   markdownContent?: string | null;
   generationBasis?: Record<string, unknown> | null;
+  publishedAt?: Date | string | null;
+  lastPublishRecordAt?: Date | string | null;
 };
 
 type QualityScoreRow = {
@@ -107,12 +125,39 @@ type AgentTaskRow = {
   agentErrorMessage?: string | null;
   draftUrl?: string | null;
   resultUrl?: string | null;
+  publishedUrl?: string | null;
   agentFinishedAt?: Date | string | number | null;
   agentPickedAt?: Date | string | number | null;
   createdAt?: Date | string | number | null;
   retryCount?: number | null;
   canRetry?: boolean;
   retryExhausted?: boolean;
+};
+
+type RetestQueueItemRow = {
+  queueId?: number;
+  articleId?: number;
+  title?: string | null;
+  reviewType?: string | null;
+  triggerStatus?: string | null;
+  status?: string | null;
+  scheduledAt?: Date | string | number | null;
+};
+
+type InclusionMonitoringRow = {
+  articleId?: number;
+  publicUrl?: string | null;
+};
+
+type RewritePoolItemRow = {
+  articleId: number;
+  poolId?: number | null;
+  title?: string | null;
+  reason?: string | null;
+  source?: string | null;
+  articleStatus?: string | null;
+  publishTaskStatus?: string | null;
+  suggestionText?: string | null;
 };
 
 function hasNumericId<T extends { id?: unknown }>(
@@ -155,13 +200,70 @@ function toDatetimeLocalInput(value?: Date | string | number | null): string {
   return copy.toISOString().slice(0, 16);
 }
 
+function formatDateTimeText(value?: Date | string | number | null): string {
+  if (!value) return "未设置";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "未设置";
+  return d.toLocaleString("zh-CN", { hour12: false });
+}
+
+function retestStatusLabel(status?: string | null): string {
+  if (!status) return "未知状态";
+  if ((status as ReviewQueueStatus) in REVIEW_QUEUE_STATUS_LABELS) {
+    return REVIEW_QUEUE_STATUS_LABELS[status as ReviewQueueStatus];
+  }
+  return status;
+}
+
+function retestTypeLabel(type?: string | null): string {
+  if (!type) return "未分类";
+  if ((type as ReviewType) in REVIEW_TYPE_LABELS) {
+    return REVIEW_TYPE_LABELS[type as ReviewType];
+  }
+  return type;
+}
+
+function rewriteSourceLabel(source?: string | null): string {
+  switch (source) {
+    case "quality_reject":
+      return "基础质检拒绝";
+    case "geo_quality_reject":
+      return "发布前质检 reject";
+    case "publish_failed":
+      return "发布失败";
+    case "session_expired":
+      return "登录态失效";
+    case "manual_required_stale":
+      return "人工确认超时";
+    case "ai_test_no_brand":
+      return "AI 提及不足";
+    case "inclusion_failed":
+      return "收录复测失败";
+    case "quality_check_fail":
+      return "自动质检未通过";
+    default:
+      return source?.trim() || "未标注来源";
+  }
+}
+
 export function ContentPublishingCenterPage() {
-  const [, setLocation] = useLocation();
+  return (
+    <PublishCenterErrorBoundary>
+      <ContentPublishingCenterPageInner />
+    </PublishCenterErrorBoundary>
+  );
+}
+
+function ContentPublishingCenterPageInner() {
+  const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } =
     useActiveProjectSelection();
 
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const articlesQuery = trpc.geo.articles.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.publishRecords.listWithStatus.useQuery(
     { projectId: selectedProjectId! },
@@ -171,6 +273,7 @@ export function ContentPublishingCenterPage() {
     { projectId: selectedProjectId!, limit: 30 },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const refetchAutoPublishTasks = autoPublishTasksQuery.refetch;
   const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
@@ -193,56 +296,57 @@ export function ContentPublishingCenterPage() {
   const createManualPublishRecord = trpc.geo.articles.createManualPublishRecord.useMutation();
   const updateManualPublishRecord = trpc.geo.articles.updateManualPublishRecord.useMutation();
   const retryPublishTask = trpc.publishTasks.retry.useMutation();
-  const [manualArticleId, setManualArticleId] = useState<number | "">("");
+  const backfillTaskPublicUrl = trpc.publishTasks.backfillPublicUrl.useMutation();
+  const createPublishTask = trpc.publishTasks.create.useMutation();
+  const [manualArticleId, setManualArticleId] = useState<number | undefined>(undefined);
   const [manualPlatform, setManualPlatform] = useState<ManualPublishPlatform>("知乎");
   const [manualLink, setManualLink] = useState("");
   const [savingManual, setSavingManual] = useState(false);
 
-  const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
-  const [localAgentClientVersion, setLocalAgentClientVersion] = useState<string | null>(null);
   const [manifestVersion, setManifestVersion] = useState<string | null>(null);
   const [manifestDownloadHref, setManifestDownloadHref] = useState<string | null>(null);
-  const [checkingAgent, setCheckingAgent] = useState(false);
   const [linkDraftById, setLinkDraftById] = useState<Record<number, string>>({});
   const [savingRowId, setSavingRowId] = useState<number | null>(null);
   const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
+  const [publishingCardKey, setPublishingCardKey] = useState<string | null>(null);
+  const [publishAllBusy, setPublishAllBusy] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
   const [publishSuccessNotice, setPublishSuccessNotice] = useState<PublishSuccessNotice | null>(null);
   const completedAgentTaskIdsRef = useRef<Set<number>>(new Set());
   const completedAgentTasksInitializedRef = useRef(false);
-
-  const articles = filterListWithNumericId(articlesQuery.data ?? []) as ArticleRow[];
-  const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
-  const publishableArticles = useMemo(
-    () => articles.filter(a => isQualityPassed(articleLatestQuality(a?.id, scores))),
-    [articles, scores],
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  const [lastUserAction, setLastUserAction] = useState("page_open");
+  const debugEnabled = useMemo(
+    () => new URLSearchParams(location.split("?")[1] ?? "").get("debug") === "1",
+    [location],
   );
-  const publishRecords = filterListWithNumericId(publishRecordsQuery.data ?? []) as PublishRecordRow[];
-  const agentTasks = filterListWithNumericId(autoPublishTasksQuery.data?.tasks ?? []) as AgentTaskRow[];
-  const articleById = useMemo(() => new Map(articles.map(a => [a?.id, a])), [articles]);
 
-  const hasInFlightAgentTasks = useMemo(
-    () =>
-      agentTasks.some(
-        t =>
-          t.status !== "completed" &&
-          t.status !== "failed" &&
-          t.status !== "draft_saved" &&
-          t.status !== "session_expired" &&
-          t.status !== "manual_required",
-      ),
-    [agentTasks],
+  const articles = useMemo(
+    () => filterListWithNumericId(asArray<ArticleRow>(articlesQuery.data)) as ArticleRow[],
+    [articlesQuery.data],
   );
+  const scores = useMemo(() => asArray<QualityScoreRow>(scoresQuery.data), [scoresQuery.data]);
+  const publishRecords = useMemo(
+    () => filterListWithNumericId(asArray<PublishRecordRow>(publishRecordsQuery.data)) as PublishRecordRow[],
+    [publishRecordsQuery.data],
+  );
+  const agentTasks = useMemo(
+    () => filterListWithNumericId(asArray<AgentTaskRow>(autoPublishTasksQuery.data?.tasks)) as AgentTaskRow[],
+    [autoPublishTasksQuery.data?.tasks],
+  );
+  const articleById = useMemo(() => new Map((articles ?? []).map(a => [a?.id, a])), [articles]);
 
   useEffect(() => {
     completedAgentTaskIdsRef.current = new Set();
     completedAgentTasksInitializedRef.current = false;
     setPublishSuccessNotice(null);
+    setManualArticleId(undefined);
   }, [selectedProjectId]);
 
   useEffect(() => {
-    const completedIds = agentTasks.filter(t => t.status === "completed").map(t => t?.id);
+    const completedIds = ((agentTasks ?? []).filter(t => t.status === "completed") ?? []).map(t => t?.id);
     if (!completedAgentTasksInitializedRef.current) {
       completedIds.forEach(id => completedAgentTaskIdsRef.current.add(id));
       completedAgentTasksInitializedRef.current = true;
@@ -251,27 +355,22 @@ export function ContentPublishingCenterPage() {
     const newlyCompleted = completedIds.filter(id => !completedAgentTaskIdsRef.current.has(id));
     if (newlyCompleted.length > 0) {
       newlyCompleted.forEach(id => completedAgentTaskIdsRef.current.add(id));
-      const tasks = agentTasks.filter(t => t?.id != null && newlyCompleted.includes(t?.id));
-      setPublishSuccessNotice({
-        platformLabel: formatPublishSuccessPlatformPhrase(
-          tasks.map(t => publishPlatformCustomerLabel(t.platform)),
-        ),
-        articleUrl: resolvePublishSuccessArticleUrl(tasks.map(t => t.resultUrl)),
-      });
+      const tasks = (agentTasks ?? []).filter(t => t?.id != null && newlyCompleted.includes(t?.id));
+      const platformLabel = formatPublishSuccessPlatformPhrase(
+        (tasks ?? []).map(t => publishPlatformCustomerLabel(t.platform)),
+      );
+      const articleUrl = resolvePublishSuccessArticleUrl((tasks ?? []).map(t => t.resultUrl));
+      setPublishSuccessNotice(prev =>
+        prev?.platformLabel === platformLabel && prev?.articleUrl === articleUrl
+          ? prev
+          : { platformLabel, articleUrl },
+      );
     }
   }, [agentTasks]);
 
-  useEffect(() => {
-    if (!enabled || !hasInFlightAgentTasks) return;
-    const timer = setInterval(() => {
-      void autoPublishTasksQuery.refetch();
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [enabled, hasInFlightAgentTasks, autoPublishTasksQuery]);
-
   const autoInclusionByArticleAndUrl = useMemo(() => {
     const keys = new Set<string>();
-    for (const row of inclusionMonitoringQuery.data ?? []) {
+    for (const row of asArray<InclusionMonitoringRow>(inclusionMonitoringQuery.data)) {
       const articleId = typeof row.articleId === "number" ? row.articleId : null;
       const url = typeof row.publicUrl === "string" ? row.publicUrl.trim() : "";
       if (articleId && url) keys.add(`${articleId}:${url}`);
@@ -279,124 +378,175 @@ export function ContentPublishingCenterPage() {
     return keys;
   }, [inclusionMonitoringQuery.data]);
 
-  const { checking: accountHealthChecking, agentOnline: accountHealthAgentOnline, runCheck: runAccountHealthCheck } =
+  const { checking: accountHealthChecking, runCheck: runAccountHealthCheck } =
     usePublishAccountHealthCheck(selectedProjectId ?? null, enabled);
-
-  const refreshAgentHealth = useCallback(async () => {
-    setCheckingAgent(true);
-    try {
-      const h = await checkLocalAgentHealth({ force: true });
-      setLocalAgentOnline(h?.ok ?? false);
-      setLocalAgentClientVersion(h?.version?.trim() ? h.version.trim() : null);
-      await runAccountHealthCheck({ detectSessions: true });
-      if (!h?.ok && selectedProjectId) {
-        await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
-      }
-    } catch {
-      setLocalAgentOnline(false);
-      setLocalAgentClientVersion(null);
-    } finally {
-      setCheckingAgent(false);
-    }
-  }, [runAccountHealthCheck, selectedProjectId, utils.geo.platformAccounts.list]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    const h = checkLocalAgentHealth();
-    void h.then(health => {
-      setLocalAgentOnline(health?.ok ?? false);
-      setLocalAgentClientVersion(health?.version?.trim() ? health.version.trim() : null);
-    });
-  }, [enabled, selectedProjectId]);
-
-  useEffect(() => {
-    if (accountHealthAgentOnline != null) {
-      setLocalAgentOnline(accountHealthAgentOnline);
-    }
-  }, [accountHealthAgentOnline]);
 
   useEffect(() => {
     if (!enabled) return;
     void fetchLocalAgentDownloadManifest().then(manifest => {
-      const version = manifest?.version?.trim();
-      setManifestVersion(version || null);
-      setManifestDownloadHref(pickLocalAgentDownloadHref(manifest));
+      const version = manifest?.version?.trim() || null;
+      const href = pickLocalAgentDownloadHref(manifest);
+      setManifestVersion(prev => (prev === version ? prev : version));
+      setManifestDownloadHref(prev => (prev === href ? prev : href));
     });
   }, [enabled]);
 
   useEffect(() => {
-    if (publishableArticles.length === 0) {
-      setManualArticleId("");
-      return;
-    }
-    const current = typeof manualArticleId === "number" ? manualArticleId : undefined;
-    if (current == null || !publishableArticles.some(a => a?.id === current)) {
-      setManualArticleId(publishableArticles[0]?.id ?? "");
-    }
-  }, [publishableArticles, manualArticleId]);
-
-  useEffect(() => {
     setLinkDraftById(prev => {
+      let changed = false;
       const next = { ...prev };
-      for (const r of publishRecords) {
+      for (const r of publishRecords ?? []) {
         const url = recordPublicLink(r);
         const recordId = r?.id;
         if (recordId == null) continue;
-        if (next[recordId] === undefined) next[recordId] = url;
+        if (next[recordId] === undefined) {
+          next[recordId] = url;
+          changed = true;
+        }
       }
-      return next;
+      return changed ? next : prev;
     });
   }, [publishRecords]);
 
-  const platformAccountGroups = platformAccountsQuery.data?.accounts ?? [];
+  const platformAccountGroups = useMemo(() => {
+    const accounts = platformAccountsQuery.data?.accounts;
+    if (!Array.isArray(accounts)) return [];
+    return accounts.map(group => ({
+      ...group,
+      accounts: Array.isArray(group.accounts) ? group.accounts : [],
+    }));
+  }, [platformAccountsQuery.data?.accounts]);
+  const retestQueueItems = useMemo(
+    () => asArray<RetestQueueItemRow>(retestQueueQuery.data?.items),
+    [retestQueueQuery.data?.items],
+  );
+  const rewritePoolItems = useMemo(
+    () => asArray<RewritePoolItemRow>(rewritePoolQuery.data?.items),
+    [rewritePoolQuery.data?.items],
+  );
 
-  const boundPlatformCount = useMemo(() => {
-    return platformAccountGroups.filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled))
-      .length;
-  }, [platformAccountGroups]);
+  const publishingViewModel = useMemo(
+    () =>
+      buildPublishingViewModel({
+        projectId: selectedProjectId,
+        articles,
+        scores,
+        publishRecords,
+        agentTasks,
+        accountGroups: platformAccountGroups,
+        articleById,
+        autoInclusionByArticleAndUrl,
+      }),
+    [
+      selectedProjectId,
+      articles,
+      scores,
+      publishRecords,
+      agentTasks,
+      platformAccountGroups,
+      articleById,
+      autoInclusionByArticleAndUrl,
+    ],
+  );
 
-  const taskCards = useMemo(() => {
-    const cards: PublishTaskCardModel[] = agentTasks.map(task => {
-      const article = articleById.get(task.articleId);
-      const basis = article?.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
-      const goal =
-        typeof basis?.geoEnhancementGoal === "string"
-          ? basis.geoEnhancementGoal
-          : typeof article?.generationBasis?.geoEnhancementGoal === "string"
-            ? (article.generationBasis.geoEnhancementGoal as string)
-            : null;
-      const publishedUrl = task.resultUrl?.trim() || "";
-      const autoInclusionMonitoring =
-        task.status === "completed" &&
-        Boolean(publishedUrl) &&
-        autoInclusionByArticleAndUrl.has(`${task.articleId}:${publishedUrl}`);
-      return mapAgentTaskToCard(task, goal, { autoInclusionMonitoring });
-    });
-    for (const record of publishRecords) {
-      const article = record.articleId ? articleById.get(record.articleId) : undefined;
-      const mapped = mapManualRecordToCard(record, article?.title);
-      if (mapped) cards.push(mapped);
+  const {
+    publishableArticles,
+    taskCards,
+    queueTabs,
+    platformCards,
+    weeklyOverviewStats,
+    boundPublishAccountCount,
+    boundPlatformCount,
+    availableAccountByPlatform,
+    readyPlatformCount,
+    qualityByArticleId,
+    agentTaskDerivedState,
+  } = publishingViewModel;
+
+  const { pendingCount, failedCount, waitingLinkCount } = agentTaskDerivedState;
+
+  const manualArticleSelectValue = useMemo(() => {
+    if (publishableArticles.length === 0) return undefined;
+    if (
+      manualArticleId != null &&
+      publishableArticles.some(a => a?.id === manualArticleId)
+    ) {
+      return String(manualArticleId);
     }
-    return cards;
-  }, [agentTasks, publishRecords, articleById, autoInclusionByArticleAndUrl]);
+    const fallbackId = publishableArticles[0]?.id;
+    return fallbackId != null ? String(fallbackId) : undefined;
+  }, [publishableArticles, manualArticleId]);
+  const effectiveManualArticleId = useMemo(() => {
+    if (!manualArticleSelectValue) return undefined;
+    const parsed = Number.parseInt(manualArticleSelectValue, 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [manualArticleSelectValue]);
 
-  const columns = useMemo(() => {
-    const out: Record<PublishColumnId, PublishTaskCardModel[]> = {
-      pending: [],
-      active: [],
-      done: [],
-    };
-    for (const card of taskCards) {
-      out[card.column].push(card);
+  const {
+    status: localAgentConnectionStatus,
+    statusSnapshot: localAgentStatusSnapshot,
+    checkConnection,
+    clientVersion: localAgentClientVersion,
+    localAgentConnectedOnline,
+    localAgentOnline,
+  } = useLocalAgentConnection({
+    boundPublishAccountCount,
+    boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
+    pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
+  });
+
+  const refreshAgentHealth = useCallback(async () => {
+    setLastUserAction("refresh_agent_health");
+    const result = await checkConnection();
+    if (result.online) {
+      setLastUserAction("refresh_account_status");
+      await runAccountHealthCheck({ detectSessions: true });
+    } else if (selectedProjectId) {
+      await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
     }
-    return out;
-  }, [taskCards]);
+  }, [checkConnection, runAccountHealthCheck, selectedProjectId, utils.geo.platformAccounts.list]);
 
-  const pendingCount = columns.pending.length;
+  const refreshPublishTasks = useCallback(() => {
+    setLastUserAction("refresh_publish_tasks");
+    void refetchAutoPublishTasks();
+  }, [refetchAutoPublishTasks]);
+
+  const checkingAgent =
+    localAgentConnectionStatus === "CHECKING" || accountHealthChecking;
+
+  const enabledQueries = useMemo(
+    () => ({
+      articles: enabled && Boolean(selectedProjectId),
+      scores: enabled,
+      publishRecords: enabled && Boolean(selectedProjectId),
+      publishTasks: enabled && Boolean(selectedProjectId),
+      platformAccounts: enabled && Boolean(selectedProjectId),
+    }),
+    [enabled, selectedProjectId],
+  );
+
+  if (debugEnabled) {
+    console.info(
+      "[GEO content-publishing debug]\n" +
+        [
+          `- projectId: ${selectedProjectId ?? "—"}`,
+          `- renderCount: ${renderCountRef.current}`,
+          `- agentHealthStatus: ${localAgentConnectionStatus}`,
+          `- accountsCount: ${platformAccountGroups.reduce((n, g) => n + (g.accounts?.length ?? 0), 0)}`,
+          `- tasksCount: ${agentTasks.length}`,
+          `- recordsCount: ${publishRecords.length}`,
+          `- activeTab: tasks`,
+          `- isCheckingAccount: ${accountHealthChecking}`,
+          `- isSyncingAccount: ${accountHealthChecking}`,
+          `- enabledQueries: articles=${enabledQueries.articles} scores=${enabledQueries.scores} publishRecords=${enabledQueries.publishRecords} publishTasks=${enabledQueries.publishTasks} platformAccounts=${enabledQueries.platformAccounts}`,
+          `- lastUserAction: ${lastUserAction}`,
+        ].join("\n"),
+    );
+  }
 
   const localAgentUpdateNotice = useMemo(() => {
     if (
-      !localAgentOnline ||
+      !localAgentConnectedOnline ||
       !localAgentClientVersion ||
       !manifestVersion ||
       !manifestDownloadHref ||
@@ -410,7 +560,7 @@ export function ContentPublishingCenterPage() {
       downloadHref: manifestDownloadHref,
     };
   }, [
-    localAgentOnline,
+    localAgentConnectedOnline,
     localAgentClientVersion,
     manifestVersion,
     manifestDownloadHref,
@@ -419,7 +569,15 @@ export function ContentPublishingCenterPage() {
   const loading =
     articlesQuery.isLoading || scoresQuery.isLoading || publishRecordsQuery.isLoading || autoPublishTasksQuery.isLoading;
 
-  async function handleSaveRowLink(recordId: number) {
+  const publishDataLoadFailed =
+    !loading &&
+    enabled &&
+    (articlesQuery.isError ||
+      scoresQuery.isError ||
+      publishRecordsQuery.isError ||
+      autoPublishTasksQuery.isError);
+
+  async function handleSaveRowLink(recordId: number, explicitDraft?: string) {
     if (!selectedProjectId) return;
     const record = publishRecords.find(r => r?.id === recordId);
     if (!record?.articleId) return;
@@ -429,7 +587,7 @@ export function ContentPublishingCenterPage() {
       toast.error("该记录缺少平台信息，无法更新链接。");
       return;
     }
-    const draft = (linkDraftById[recordId] ?? "").trim();
+    const draft = (explicitDraft ?? linkDraftById[recordId] ?? "").trim();
     setSavingRowId(recordId);
     try {
       await updateManualPublishRecord.mutateAsync({
@@ -444,9 +602,39 @@ export function ContentPublishingCenterPage() {
         notes: publishRecordNoticeText(record.notes),
       });
       await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
-      toast.success("链接已更新");
+      await inclusionMonitoringQuery.refetch();
+      toast.success(
+        draft ? "已回填公开链接，并已生成收录监测计划" : "链接已更新",
+      );
     } catch (e) {
       toast.error(toUserFacingErrorFromUnknown(e, "更新链接失败"));
+    } finally {
+      setSavingRowId(null);
+    }
+  }
+
+  async function handleBackfillTaskLink(taskId: number, currentLink?: string | null) {
+    if (!selectedProjectId) return;
+    const draft = window.prompt("请输入公开链接", currentLink?.trim() || "");
+    if (draft == null) return;
+    const link = draft.trim();
+    if (!link) {
+      toast.error("请输入公开链接");
+      return;
+    }
+    setSavingRowId(taskId);
+    try {
+      await backfillTaskPublicUrl.mutateAsync({
+        projectId: selectedProjectId,
+        taskId,
+        publicUrl: link,
+      });
+      await autoPublishTasksQuery.refetch();
+      await utils.geo.publishRecords.listWithStatus.invalidate({ projectId: selectedProjectId });
+      await inclusionMonitoringQuery.refetch();
+      toast.success("已回填公开链接，并已生成收录监测计划");
+    } catch (e) {
+      toast.error(toUserFacingErrorFromUnknown(e, "回填公开链接失败"));
     } finally {
       setSavingRowId(null);
     }
@@ -469,7 +657,7 @@ export function ContentPublishingCenterPage() {
   }
 
   function startLocalPublish(card: PublishTaskCardModel) {
-    if (localAgentOnline === false) {
+    if (!localAgentConnectedOnline) {
       toast.error("Local Agent 未连接，请先下载并启动客户端");
       return;
     }
@@ -482,7 +670,102 @@ export function ContentPublishingCenterPage() {
   }
 
   function markAbnormal(card: PublishTaskCardModel) {
-    toast.error(card.errorMessage || card.statusLabel || "发布异常，请查看状态说明或联系交付同学");
+    toast.error(card.errorMessage || card.statusLabel || "发布异常，请查看状态说明或联系支持团队");
+  }
+
+  async function enqueuePlatformCard(card: PublishPagePlatformCard): Promise<boolean> {
+    if (!selectedProjectId || !card.articleId) return false;
+    const slug = resolveEnqueuePlatformSlug(card);
+    if (!slug) {
+      toast.message(`${card.label} 需人工发布，请复制素材后登记发布记录`);
+      return false;
+    }
+    if (!localAgentConnectedOnline) {
+      toast.error("Local Agent 未连接，请先下载并启动客户端");
+      return false;
+    }
+    const account = pickReadyAccountForPlatform(platformAccountGroups, slug);
+    if (!account) {
+      const blocked = publishBlockedReasonForPlatform(platformAccountGroups, slug);
+      toast.error(blocked);
+      return false;
+    }
+    setPublishingCardKey(card.key);
+    try {
+      const res = await createPublishTask.mutateAsync({
+        articleId: card.articleId,
+        platform: slug,
+        projectId: selectedProjectId,
+        platformAccountId: account.id,
+      });
+      if (!isLocalAgentPublishTaskResult(res)) {
+        toast.error("发布任务未走本地客户端，请联系支持团队检查配置");
+        return false;
+      }
+      await autoPublishTasksQuery.refetch();
+      toast.success(`${card.label} 已加入本地发布队列`);
+      return true;
+    } catch (e) {
+      toast.error(toUserFacingErrorFromUnknown(e, "加入发布队列失败"));
+      return false;
+    } finally {
+      setPublishingCardKey(null);
+    }
+  }
+
+  async function handlePublishAllPlatforms() {
+    if (!selectedProjectId) return;
+    const targets = platformCards.filter(card => card.canPublish);
+    if (targets.length === 0) {
+      toast.error("当前没有可一键发布的平台内容，请先生成并通过质量检查");
+      return;
+    }
+    if (!localAgentConnectedOnline) {
+      toast.error("Local Agent 未连接，请先下载并启动客户端");
+      return;
+    }
+    setPublishAllBusy(true);
+    let ok = 0;
+    let fail = 0;
+    try {
+      for (const card of targets) {
+        const success = await enqueuePlatformCard(card);
+        if (success) ok += 1;
+        else fail += 1;
+      }
+      if (ok > 0) {
+        toast.success(`已将 ${ok} 个平台内容加入本地发布队列`);
+      }
+      if (fail > 0 && ok > 0) {
+        toast.message(`${fail} 个平台未能加入队列，请检查账号绑定与内容状态`);
+      } else if (fail > 0 && ok === 0) {
+        toast.error("未能加入发布队列，请检查各平台账号与内容状态");
+      }
+    } finally {
+      setPublishAllBusy(false);
+    }
+  }
+
+  function handlePlatformCardPreview(card: PublishPagePlatformCard) {
+    if (card.previewUrl) {
+      window.open(card.previewUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (card.articleId) {
+      const article = articleById.get(card.articleId);
+      if (article) {
+        setEditorArticle(article);
+        setEditorOpen(true);
+        return;
+      }
+    }
+    toast.message("暂无可预览内容，请先在平台化内容生产完成生成");
+  }
+
+  function handlePlatformCardRetry(card: PublishPagePlatformCard) {
+    if (!card.taskId) return;
+    const taskCard = taskCards.find(t => t.taskId === card.taskId);
+    if (taskCard) void handleRetryPublishTask(taskCard);
   }
 
   async function handleRetryPublishTask(card: PublishTaskCardModel) {
@@ -512,7 +795,7 @@ export function ContentPublishingCenterPage() {
 
   async function handleSaveManualRecord() {
     if (!selectedProjectId) return;
-    const articleId = typeof manualArticleId === "number" ? manualArticleId : undefined;
+    const articleId = effectiveManualArticleId;
     if (!articleId) {
       toast.error("请选择一篇文章");
       return;
@@ -566,7 +849,7 @@ export function ContentPublishingCenterPage() {
       toast.message("发布记录加载中，请稍后再导出");
       return;
     }
-    const rows = publishRecords.map(record => {
+    const rows = (publishRecords ?? []).map(record => {
       const article = articleById.get(record.articleId ?? 0);
       const title =
         article?.title?.trim() || record.publishTitle?.trim() || `文章 #${record.articleId ?? "—"}`;
@@ -611,22 +894,55 @@ export function ContentPublishingCenterPage() {
         data-testid="first-use-hint-content-publishing"
       />
 
+      {publishDataLoadFailed ? (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="alert"
+          data-testid="publish-center-load-failed"
+        >
+          发布状态暂时无法加载，请稍后重试。
+        </div>
+      ) : null}
+
       {selectedProjectId ? (
         <PublishAccountSessionAlert
           projectId={selectedProjectId}
           groups={platformAccountGroups}
           checking={accountHealthChecking}
-          agentOnline={accountHealthAgentOnline ?? localAgentOnline}
+          agentOnline={localAgentOnline}
           onAfterRelogin={() => void runAccountHealthCheck({ detectSessions: true })}
         />
       ) : null}
 
       {selectedProjectId ? (
-        <PlatformStatusOverview projectId={selectedProjectId} />
+        <PublishWeeklyOverviewBar stats={weeklyOverviewStats} loading={loading} />
       ) : null}
-
       {selectedProjectId ? (
-        <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PlatformStatusOverview projectId={selectedProjectId} />
+          <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
+        </div>
+      ) : null}
+      {selectedProjectId ? (
+        <section
+          className={`rounded-xl border p-4 ${waitingLinkCount > 0 ? "border-amber-300 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}
+          data-testid="publish-waiting-links-banner"
+        >
+          {waitingLinkCount > 0 ? (
+            <>
+              <p className="text-sm font-semibold text-amber-900">
+                有 {waitingLinkCount} 条发布记录待回填公开链接
+              </p>
+              <p className="mt-1 text-xs text-amber-800">
+                系统需要公开链接才能安排 T1/T2/T3 收录与 AI 复测。请在下方已完成任务或发布记录中回填链接。
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-emerald-800">
+              已回填链接，等待 T1 复测 / T1 已完成（按收录监测结果更新）。
+            </p>
+          )}
+        </section>
       ) : null}
 
       <PublishSuccessNotificationCard
@@ -637,14 +953,14 @@ export function ContentPublishingCenterPage() {
       />
 
       <Tabs defaultValue="tasks" className="space-y-4">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3 print:hidden">
-          <TabsTrigger value="tasks" data-testid="publish-center-tab-tasks">
+        <TabsList className="flex w-full gap-2 overflow-x-auto print:hidden">
+          <TabsTrigger value="tasks" data-testid="publish-center-tab-tasks" className="shrink-0">
             发布任务
           </TabsTrigger>
-          <TabsTrigger value="records" data-testid="publish-center-tab-records">
+          <TabsTrigger value="records" data-testid="publish-center-tab-records" className="shrink-0">
             发布记录
           </TabsTrigger>
-          <TabsTrigger value="calendar" data-testid="publish-calendar-tab">
+          <TabsTrigger value="calendar" data-testid="publish-calendar-tab" className="shrink-0">
             发布日历
           </TabsTrigger>
         </TabsList>
@@ -690,44 +1006,245 @@ export function ContentPublishingCenterPage() {
           正在加载发布任务…
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[1fr_260px]">
-          <div className="space-y-6 min-w-0">
-            <LocalAgentStatusCard
-              status={{
-                connected: localAgentOnline,
-                browserReady: localAgentOnline,
-                boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
-                pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
-              }}
-              checking={checkingAgent || accountHealthChecking}
-              onRefresh={() => void refreshAgentHealth()}
-              updateNotice={localAgentUpdateNotice}
-            />
+        <div className="space-y-6">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-ready-status-module">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">发布准备状态</h2>
+                <p className="mt-1 text-xs text-gray-500">先确认客户端与账号，再推进任务队列。</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className={geoP0Brand.primaryOutline}
+                onClick={() => {
+                  setLastUserAction("check_local_agent");
+                  void refreshAgentHealth();
+                }}
+                disabled={checkingAgent || accountHealthChecking}
+                data-testid="publish-ready-refresh"
+              >
+                检测本地客户端连接
+              </Button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">Local Agent</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {localAgentConnectedOnline ? "已连接" : localAgentOnline === false ? "未连接" : "待检测"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">可用账号</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {availableAccountByPlatform.length > 0 ? availableAccountByPlatform.join(" / ") : "暂无可用账号"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">待发布任务数</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{pendingCount}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">失败任务数</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{failedCount}</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <LocalAgentStatusCard
+                status={localAgentConnectionStatus}
+                statusSnapshot={localAgentStatusSnapshot}
+                checking={checkingAgent}
+                onCheckConnection={() => {
+                  setLastUserAction("check_local_agent");
+                  void checkConnection();
+                }}
+                onRefreshAccountStatus={() => void refreshAgentHealth()}
+                updateNotice={localAgentUpdateNotice}
+              />
+            </div>
+          </section>
 
-            <PublishPlatformAccountsOverview
-              projectId={selectedProjectId!}
-              showDownloadCard={false}
-            />
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-task-queue-module">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">发布任务队列</h2>
+                <p className="mt-1 text-xs text-gray-500">按队列状态处理任务，优先清理失败与待确认任务。</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className={geoP0Brand.primaryOutline}
+                disabled={autoPublishTasksQuery.isFetching}
+                onClick={refreshPublishTasks}
+                data-testid="publish-queue-refresh"
+              >
+                {autoPublishTasksQuery.isFetching ? "刷新中…" : "立即拉取任务"}
+              </Button>
+            </div>
+            <Tabs defaultValue="pending" className="mt-4 space-y-4">
+              <TabsList className="flex w-full gap-2 overflow-x-auto">
+                <TabsTrigger value="pending" data-testid="publish-queue-tab-pending" className="shrink-0">待发布</TabsTrigger>
+                <TabsTrigger value="active" data-testid="publish-queue-tab-active" className="shrink-0">发布中/待确认</TabsTrigger>
+                <TabsTrigger value="failed" data-testid="publish-queue-tab-failed" className="shrink-0">失败</TabsTrigger>
+                <TabsTrigger value="completed" data-testid="publish-queue-tab-completed" className="shrink-0">已完成</TabsTrigger>
+              </TabsList>
+              {(["pending", "active", "failed", "completed"] as const).map(tab => (
+                <TabsContent key={tab} value={tab} className="mt-0">
+                  {queueTabs[tab].length === 0 ? (
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                      {PUBLISH_QUEUE_EMPTY_LABELS[tab]}
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {(queueTabs[tab] ?? []).map(card => (
+                        <div key={card.key} className="rounded-xl border border-gray-200 bg-white p-4" data-testid={`publish-queue-card-${card.key}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="line-clamp-2 text-sm font-semibold text-gray-900">{card.title}</p>
+                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${card.statusBadgeClass}`}>
+                              {card.statusLabel}
+                            </span>
+                          </div>
+                          <dl className="mt-3 space-y-1.5 text-xs text-gray-600">
+                            <div className="flex gap-2"><dt className="text-gray-500">发布平台</dt><dd>{card.platformLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">账号状态</dt><dd>{card.accountLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">任务状态</dt><dd>{card.statusLabel}</dd></div>
+                            <div className="flex gap-2"><dt className="text-gray-500">失败原因</dt><dd>{card.errorMessage ?? "无"}</dd></div>
+                          </dl>
+                          <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                            <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={() => openPreview(card)}>预览</Button>
+                            {tab === "pending" ? (
+                              <Button type="button" size="sm" className={geoP0Brand.primary} onClick={() => startLocalPublish(card)}>开始发布</Button>
+                            ) : null}
+                            {card.canRetry && card.taskId ? (
+                              <Button type="button" size="sm" className={geoP0Brand.primary} onClick={() => void handleRetryPublishTask(card)} disabled={retryingTaskId === card.taskId}>
+                                {retryingTaskId === card.taskId ? "重试中…" : "重试"}
+                              </Button>
+                            ) : null}
+                            {tab === "completed" && card.taskId ? (
+                              <>
+                                {card.publishedUrl ? (
+                                  <a
+                                    href={card.publishedUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center text-xs text-blue-600 hover:underline"
+                                  >
+                                    链接预览
+                                  </a>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className={geoP0Brand.primaryOutline}
+                                  disabled={savingRowId === card.taskId}
+                                  onClick={() => void handleBackfillTaskLink(card.taskId!, card.publishedUrl)}
+                                >
+                                  {savingRowId === card.taskId
+                                    ? "保存中…"
+                                    : card.publishedUrl
+                                      ? "编辑链接"
+                                      : "回填链接"}
+                                </Button>
+                              </>
+                            ) : null}
+                            {tab === "completed" && card.recordId ? (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className={geoP0Brand.primaryOutline}
+                                  disabled={savingRowId === card.recordId}
+                                  onClick={async () => {
+                                    const draft = window.prompt(
+                                      "请输入公开链接",
+                                      (linkDraftById[card.recordId!] ?? card.publishedUrl ?? "").trim(),
+                                    );
+                                    if (draft == null) return;
+                                    await handleSaveRowLink(card.recordId!, draft);
+                                  }}
+                                >
+                                  {savingRowId === card.recordId
+                                    ? "保存中…"
+                                    : card.publishedUrl
+                                      ? "编辑链接"
+                                      : "回填链接"}
+                                </Button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          </section>
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-platform-status-module">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">平台发布支持状态</h2>
+                <p className="mt-1 text-xs text-gray-500">
+                  已验证 / 待实机验证 / 需人工确认；待验证平台失败时请转人工发布并回填链接。
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className={geoP0Brand.primary}
+                disabled={publishAllBusy || readyPlatformCount <= 0}
+                onClick={() => void handlePublishAllPlatforms()}
+                data-testid="publish-all-ready-platforms"
+              >
+                {publishAllBusy ? "提交中…" : `一键加入发布队列（${readyPlatformCount}）`}
+              </Button>
+            </div>
+            <div className="mt-4">
+              <PublishPlatformCardGrid
+                cards={platformCards}
+                loading={loading}
+                publishingCardKey={publishingCardKey}
+                retryingTaskId={retryingTaskId}
+                onPreview={handlePlatformCardPreview}
+                onPublish={card => {
+                  void enqueuePlatformCard(card);
+                }}
+                onRetry={handlePlatformCardRetry}
+              />
+            </div>
+          </section>
 
-            <LocalAccountBindingGuideCard
-              localAgentOnline={localAgentOnline}
-              boundPlatformCount={boundPlatformCount}
-              checking={checkingAgent || accountHealthChecking}
-              onRefresh={() => void refreshAgentHealth()}
-            />
+          <section className="space-y-4" data-testid="publish-config-help-module">
+            <h2 className="text-base font-semibold text-gray-900">发布配置与帮助</h2>
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-platform-accounts-fold">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
+                管理发布账号
+              </summary>
+              <div className="space-y-4 border-t border-gray-100 p-5">
+                <PublishPlatformAccountsOverview
+                  projectId={selectedProjectId!}
+                  showDownloadCard={false}
+                />
+                <LocalAccountBindingGuideCard
+                  localAgentOnline={localAgentOnline}
+                  boundPlatformCount={boundPlatformCount}
+                  checking={checkingAgent || accountHealthChecking}
+                  onRefresh={() => void refreshAgentHealth()}
+                />
+              </div>
+            </details>
 
-            <PublishTaskColumnBoard
-              columns={columns}
-              linkDraftByRecordId={linkDraftById}
-              savingRecordId={savingRowId}
-              retryingTaskId={retryingTaskId}
-              onPreview={openPreview}
-              onStartPublish={startLocalPublish}
-              onSaveLink={handleSaveRowLink}
-              onMarkAbnormal={markAbnormal}
-              onRetryTask={card => void handleRetryPublishTask(card)}
-              onLinkDraftChange={(id, v) => setLinkDraftById(d => ({ ...d, [id]: v }))}
-            />
+            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-local-agent-download-fold">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
+                下载 Local Agent
+              </summary>
+              <div className="border-t border-gray-100 p-5">
+                <LocalAgentDownloadCard />
+              </div>
+            </details>
 
             <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-retest-rewrite-fold">
               <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
@@ -736,30 +1253,57 @@ export function ContentPublishingCenterPage() {
               <div className="grid gap-4 border-t border-gray-100 p-5 lg:grid-cols-2">
                 <div>
                   <h3 className="text-sm font-medium text-gray-800">待复测队列</h3>
-                  {(retestQueueQuery.data?.items ?? []).length === 0 ? (
+                  {retestQueueItems.length === 0 ? (
                     <p className="mt-2 text-sm text-gray-500">暂无待复测内容</p>
                   ) : (
                     <ul className="mt-2 space-y-2 text-sm text-gray-700">
-                      {(retestQueueQuery.data?.items ?? []).map(item => (
+                      {retestQueueItems.map(item => (
                         <li key={item.queueId ?? item.articleId} className="rounded-lg border border-gray-100 p-3">
                           <p className="font-medium">{item.title}</p>
-                          {selectedProjectId && item.queueId ? (
+                          {selectedProjectId && typeof item.queueId === "number" ? (
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
                               className={`mt-2 ${geoP0Brand.primaryOutline}`}
                               disabled={triggerReview.isPending}
-                              onClick={() =>
-                                void triggerReview.mutateAsync({
-                                  projectId: selectedProjectId,
-                                  queueId: item.queueId,
-                                })
-                              }
+                              onClick={() => {
+                                const queueId = item.queueId;
+                                if (queueId == null) return;
+                                void triggerReview
+                                  .mutateAsync({
+                                    projectId: selectedProjectId,
+                                    queueId,
+                                  })
+                                  .then(() => {
+                                    toast.success("已触发复测，状态更新为“复测进行中”");
+                                  })
+                                  .catch(e => {
+                                    toast.error(toUserFacingErrorFromUnknown(e, "触发复测失败"));
+                                  });
+                              }}
                             >
                               手动触发复测
                             </Button>
                           ) : null}
+                          <dl className="mt-2 grid grid-cols-1 gap-1 text-xs text-gray-500">
+                            <div className="flex gap-2">
+                              <dt>复测类型</dt>
+                              <dd>{retestTypeLabel(item.reviewType)}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>触发状态</dt>
+                              <dd>{item.triggerStatus || "未记录"}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>当前状态</dt>
+                              <dd>{retestStatusLabel(item.status)}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>计划时间</dt>
+                              <dd>{formatDateTimeText(item.scheduledAt)}</dd>
+                            </div>
+                          </dl>
                         </li>
                       ))}
                     </ul>
@@ -767,17 +1311,37 @@ export function ContentPublishingCenterPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-800">重写池</h3>
-                  {(rewritePoolQuery.data?.items ?? []).length === 0 ? (
+                  {rewritePoolItems.length === 0 ? (
                     <p className="mt-2 text-sm text-gray-500">暂无待重写条目</p>
                   ) : (
                     <ul className="mt-2 space-y-2 text-sm text-gray-700">
-                      {(rewritePoolQuery.data?.items ?? []).map(item => (
+                      {rewritePoolItems.map(item => (
                         <li
                           key={`${item.articleId}-${item.poolId ?? 0}`}
                           className="rounded-lg border border-gray-100 p-3"
                         >
                           <p className="font-medium">{item.title}</p>
                           <p className="mt-1 text-xs text-gray-500">{item.reason}</p>
+                          <dl className="mt-2 grid grid-cols-1 gap-1 text-xs text-gray-500">
+                            <div className="flex gap-2">
+                              <dt>触发来源</dt>
+                              <dd>{rewriteSourceLabel(item.source)}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>文章状态</dt>
+                              <dd>{item.articleStatus || "未记录"}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt>任务状态</dt>
+                              <dd>{item.publishTaskStatus || "无发布任务"}</dd>
+                            </div>
+                            {item.suggestionText?.trim() ? (
+                              <div className="flex gap-2">
+                                <dt>改写建议</dt>
+                                <dd className="line-clamp-2">{item.suggestionText.trim()}</dd>
+                              </div>
+                            ) : null}
+                          </dl>
                         </li>
                       ))}
                     </ul>
@@ -801,14 +1365,14 @@ export function ContentPublishingCenterPage() {
                     <div className="space-y-2">
                       <Label>选择文章</Label>
                       <Select
-                        value={String(manualArticleId)}
+                        value={manualArticleSelectValue}
                         onValueChange={v => setManualArticleId(Number(v))}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="选择文章" />
                         </SelectTrigger>
                         <SelectContent>
-                          {publishableArticles.map(a => (
+                          {(publishableArticles ?? []).map(a => (
                             <SelectItem key={a?.id} value={String(a?.id)}>
                               {a.title?.trim() || `文章 #${a?.id}`}
                             </SelectItem>
@@ -858,20 +1422,8 @@ export function ContentPublishingCenterPage() {
                 </p>
               </div>
             </details>
-
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-local-agent-download-fold">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                下载 Local Agent
-              </summary>
-              <div className="border-t border-gray-100 p-5">
-                <LocalAgentDownloadCard />
-              </div>
-            </details>
-
-
-          </div>
-
-          <LocalAgentPublishStepsPanel projectId={selectedProjectId} />
+            <LocalAgentPublishStepsPanel projectId={selectedProjectId} />
+          </section>
         </div>
       )}
         </TabsContent>

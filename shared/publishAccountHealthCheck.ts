@@ -32,7 +32,7 @@ export function collectExpiredPublishAccounts(
   const out: PublishAccountHealthAccount[] = [];
   for (const group of groups) {
     if (!isBindingPublishPlatform(group.platform)) continue;
-    for (const account of group.accounts) {
+    for (const account of group.accounts ?? []) {
       if (!account.isEnabled) continue;
       if (!isPublishAccountSessionExpired(account.sessionStatus)) continue;
       out.push({
@@ -53,7 +53,7 @@ export function collectBoundProfileIdsForHealthCheck(
 ): string[] {
   const ids = new Set<string>();
   for (const group of groups) {
-    for (const account of group.accounts) {
+    for (const account of group.accounts ?? []) {
       if (!account.isEnabled) continue;
       const profileId = account.localProfileId?.trim();
       if (profileId) ids.add(profileId);

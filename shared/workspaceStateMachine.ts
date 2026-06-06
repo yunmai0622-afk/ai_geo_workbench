@@ -1,7 +1,10 @@
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
+import { isLegacyOrphanProjectId } from "./projectNavigation";
 import type { RetestDueReminder, RetestPlanView } from "./retestPlan";
 import type { T0ContentGapSuggestionsResult } from "./t0ContentGapSuggestions";
 import { isP0GeoProfileCompleteFromRecord } from "./geoProfileP0Readiness";
+import { localAgentConnectionRiskHint, mapBooleanOnlineToConnectionStatus } from "./localAgentConnectionStatus";
+import type { LocalAgentConnectionStatus } from "./localAgentConnectionStatus";
 import { buildWorkspacePublishRiskHints } from "./publishReadiness";
 import { workspacePublishAccountRiskHint } from "./localAgentAccountBinding";
 
@@ -33,8 +36,8 @@ export const WORKSPACE_STAGES: WorkspaceStageDefinition[] = [
     label: "待绑定发布环境",
     blockerHint: "本地发布客户端未连接，或当前项目尚未绑定可发布的平台账号。",
     ctaLabel: "去绑定发布账号",
-    ctaPath: "/enterprise-profile",
-    ctaHash: "#publish-platform-accounts",
+    ctaPath: "/content-publishing",
+    ctaHash: "#publish-platform-accounts-fold",
   },
   {
     id: "complete_geo_profile",
@@ -95,6 +98,8 @@ export type WorkspaceSummaryMetrics = {
   expiredSessionAccountCount: number;
   articleCount: number;
   publishRecordCount: number;
+  publishRecordWithPublicUrlCount: number;
+  waitingPublicLinkCount: number;
   publishTaskCount: number;
   completedPublishTaskCount: number;
   retestPendingCount: number;
@@ -125,6 +130,8 @@ export type WorkspaceSummaryMetrics = {
 export type WorkspaceStageResolutionInput = WorkspaceSummaryMetrics & {
   /** 由浏览器检测 Local Agent；未检测时为 null */
   localAgentOnline: boolean | null;
+  localAgentConnectionStatus?: LocalAgentConnectionStatus;
+  localAccountSnapshotEmpty?: boolean;
 };
 
 export type WorkspaceStageResolution = {
@@ -145,12 +152,19 @@ export function isP0GeoProfileComplete(profile: Record<string, unknown> | null |
 }
 
 export function buildWorkspaceRiskHints(input: WorkspaceStageResolutionInput): string[] {
+  const connectionStatus =
+    input.localAgentConnectionStatus ?? mapBooleanOnlineToConnectionStatus(input.localAgentOnline);
   const hints: string[] = buildWorkspacePublishRiskHints({
     p0ProfileComplete: input.p0ProfileComplete,
     boundPublishAccountCount: input.boundPublishAccountCount,
     localAgentOnline: input.localAgentOnline,
+    localAgentConnectionStatus: connectionStatus,
+    localAccountSnapshotEmpty: input.localAccountSnapshotEmpty,
   });
-  if (input.localAgentOnline === false && input.boundPublishAccountCount > 0) {
+  if (
+    (connectionStatus === "DISCONNECTED" || connectionStatus === "ERROR") &&
+    input.boundPublishAccountCount > 0
+  ) {
     hints.push("本地发布客户端未连接，发布任务无法下发。");
   }
   if (input.expiredSessionAccountCount > 0) hints.push(`有 ${input.expiredSessionAccountCount} 个账号登录状态失效，请重新登录。`);
@@ -163,8 +177,11 @@ export function buildWorkspaceRiskHints(input: WorkspaceStageResolutionInput): s
 }
 
 export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): WorkspaceStageResolution {
+  const connectionStatus =
+    input.localAgentConnectionStatus ?? mapBooleanOnlineToConnectionStatus(input.localAgentOnline);
   const publishEnvReady =
-    input.boundPublishAccountCount > 0 && input.localAgentOnline !== false;
+    input.boundPublishAccountCount > 0 &&
+    (connectionStatus === "CONNECTED" || connectionStatus === "CONNECTED_ACCOUNT_NOT_SYNCED");
   const blockerReasons: string[] = [];
   const riskHints = buildWorkspaceRiskHints(input);
 
@@ -184,7 +201,12 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
     currentStageId = "bind_publish_env";
     if (input.localAgentOnline === false) blockerReasons.push("本地发布客户端未连接。");
     if (input.boundPublishAccountCount === 0) {
-      blockerReasons.push(workspacePublishAccountRiskHint(input.localAgentOnline));
+      const hint = localAgentConnectionRiskHint(connectionStatus, {
+        boundPublishAccountCount: input.boundPublishAccountCount,
+        localAccountSnapshotEmpty: input.localAccountSnapshotEmpty,
+      });
+      if (hint) blockerReasons.push(hint);
+      else blockerReasons.push(workspacePublishAccountRiskHint(input.localAgentOnline));
     }
   } else if (input.publishRecordCount === 0 && input.publishTaskCount === 0) {
     currentStageId = "publish_content";
@@ -231,6 +253,9 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
 }
 
 export function workspaceCtaUrl(projectId: number, stage: WorkspaceStageDefinition): string {
+  if (isLegacyOrphanProjectId(projectId)) {
+    return stage.ctaPath;
+  }
   const base = `${stage.ctaPath}?projectId=${projectId}`;
   return stage.ctaHash ? `${base}${stage.ctaHash}` : base;
 }

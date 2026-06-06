@@ -14,6 +14,22 @@ export type DeliveryReportPublicPublishedItem = {
 /** 客户报告分享链接默认有效天数 */
 export const DELIVERY_REPORT_SHARE_VALIDITY_DAYS = 30;
 
+/** 到期前多少天在内部页面显示续期提醒 */
+export const DELIVERY_REPORT_SHARE_RENEWAL_REMINDER_DAYS = 7;
+
+export const DELIVERY_REPORT_SHARE_RENEWAL_CTA_LABEL = "一键续期";
+
+export type DeliveryReportShareRenewalReminder = {
+  message: string;
+  ctaLabel: string;
+  daysRemaining: number;
+};
+
+export type DeliveryReportShareCountdown = {
+  daysRemaining: number;
+  expired: boolean;
+};
+
 export function computeDeliveryReportShareExpiresAt(from: Date = new Date()): Date {
   const expiresAt = new Date(from);
   expiresAt.setDate(expiresAt.getDate() + DELIVERY_REPORT_SHARE_VALIDITY_DAYS);
@@ -25,6 +41,47 @@ export function formatDeliveryReportShareExpiryLabel(expiresAt: string | Date | 
   const date = typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
   if (Number.isNaN(date.getTime())) return "—";
   return `有效期至 ${date.toLocaleString("zh-CN", { dateStyle: "long", timeStyle: "short" })}`;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function resolveDeliveryReportShareCountdown(
+  shareExpiresAt: string | Date | null | undefined,
+  now: Date = new Date(),
+): DeliveryReportShareCountdown | null {
+  if (!shareExpiresAt) return null;
+  const expiry = typeof shareExpiresAt === "string" ? new Date(shareExpiresAt) : shareExpiresAt;
+  if (Number.isNaN(expiry.getTime())) return null;
+  const msRemaining = expiry.getTime() - now.getTime();
+  if (msRemaining <= 0) {
+    return { daysRemaining: 0, expired: true };
+  }
+  return {
+    daysRemaining: Math.ceil(msRemaining / MS_PER_DAY),
+    expired: false,
+  };
+}
+
+export function resolveDeliveryReportShareRenewalReminder(
+  shareExpiresAt: string | Date | null | undefined,
+  now: Date = new Date(),
+): DeliveryReportShareRenewalReminder | null {
+  if (!shareExpiresAt) return null;
+  const expiry = typeof shareExpiresAt === "string" ? new Date(shareExpiresAt) : shareExpiresAt;
+  if (Number.isNaN(expiry.getTime())) return null;
+
+  const msRemaining = expiry.getTime() - now.getTime();
+  if (msRemaining <= 0) return null;
+
+  const daysRemaining = Math.ceil(msRemaining / MS_PER_DAY);
+  if (daysRemaining > DELIVERY_REPORT_SHARE_RENEWAL_REMINDER_DAYS) return null;
+
+  const expiryDateLabel = expiry.toLocaleString("zh-CN", { dateStyle: "long", timeStyle: "short" });
+  return {
+    message: `客户报告链接将于 ${daysRemaining} 天后过期（${expiryDateLabel}），建议续期后继续使用同一链接，无需重新发给客户。`,
+    ctaLabel: DELIVERY_REPORT_SHARE_RENEWAL_CTA_LABEL,
+    daysRemaining,
+  };
 }
 
 export type DeliveryReportPublicSharePayload = {

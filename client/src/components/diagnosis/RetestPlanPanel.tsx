@@ -1,4 +1,4 @@
-import type { RetestPlanView } from "@shared/retestPlan";
+import { shouldShowRetestPlanAllCompleteMessage, type RetestPlanView } from "@shared/retestPlan";
 import { AlertCircle, CalendarClock, CheckCircle2, Clock3 } from "lucide-react";
 
 type Props = {
@@ -14,6 +14,8 @@ function statusIcon(status: RetestPlanView["milestones"][number]["status"]) {
 
 export function RetestPlanPanel({ plan, testId = "retest-plan-panel" }: Props) {
   if (!plan) return null;
+
+  const showAllComplete = shouldShowRetestPlanAllCompleteMessage(plan);
 
   return (
     <section
@@ -49,6 +51,7 @@ export function RetestPlanPanel({ plan, testId = "retest-plan-panel" }: Props) {
                   <span className="ml-2 text-xs font-normal text-gray-500">{item?.scheduleHint ?? ""}</span>
                 </p>
                 <p className="mt-0.5 text-sm text-gray-600">建议时间：{item?.suggestedAtLabel ?? "待定"}</p>
+                <p className="mt-0.5 text-xs text-gray-500">{item?.dueInDaysLabel ?? ""}</p>
               </div>
             </div>
             <span
@@ -73,11 +76,15 @@ export function RetestPlanPanel({ plan, testId = "retest-plan-panel" }: Props) {
         >
           下次复测建议：{plan.nextSuggestion.title}，建议时间 {plan.nextSuggestion.suggestedAtLabel}。
         </p>
-      ) : (
+      ) : showAllComplete ? (
         <p className="mt-4 text-sm text-emerald-700" data-testid="retest-plan-all-complete">
           三轮复测计划均已完成，可继续在交付报告中查看对比结果。
         </p>
-      )}
+      ) : !plan.publishAt ? (
+        <p className="mt-4 text-sm text-gray-600" data-testid="retest-plan-awaiting-publish">
+          完成首次发布并回填公开链接后，系统将自动计算 T1/T2/T3 复测时间节点。
+        </p>
+      ) : null}
     </section>
   );
 }

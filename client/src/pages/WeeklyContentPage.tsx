@@ -1,3 +1,4 @@
+import { LocalAgentConnectionPanel } from "@/components/publishing/LocalAgentConnectionPanel";
 import { PublishPrePublishChecklist } from "@/components/publishing/PublishPrePublishChecklist";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
@@ -5,6 +6,7 @@ import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { aiInput } from "@/lib/aiProductUi";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -15,11 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
-import {
-  checkLocalAgentHealth,
-  focusLocalAgentAccountsTab,
-  listLocalAgentAccountSnapshots,
-} from "@/lib/localAgentClient";
+import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
 import PlatformContentStrategyPanel from "@/components/PlatformContentStrategyPanel";
 import { QuestionTemplatePicker } from "@/components/content/QuestionTemplatePicker";
 import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchGenerationPanel";
@@ -33,6 +31,7 @@ import {
   resolveQualityCardView,
 } from "@shared/geoQualityScoreDisplay";
 import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
+import { PageAnchorNav } from "@/components/geo/PageAnchorNav";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
 import { mapPlatformContentErrorCategory } from "@/lib/aiTaskProgressErrors";
@@ -46,7 +45,10 @@ import {
   type PlatformContentCounts,
   type WeeklyPlatformKey,
 } from "@/lib/weeklyPlatformBoard";
+import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useProjectScopedQueryRows } from "@/hooks/useProjectScopedQueryRows";
+import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, getActiveProjectId, getSearchFromLocation } from "@/lib/activeProject";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
@@ -71,7 +73,11 @@ import {
   ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE,
 } from "@shared/articleAssetDraft";
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
-import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
+import {
+  evaluatePublishReadiness,
+  isPublishReadyPlatformAccount,
+  type PublishReadyAccountRow,
+} from "@shared/publishReadiness";
 import {
   getGeoQualityLabel,
   type GeoQualityRecommendation,
@@ -136,7 +142,7 @@ import {
 } from "@shared/weeklyContentGeneration";
 import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { ArrowRight, FileText, Search } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
@@ -157,14 +163,20 @@ import {
   resolvePendingPlatformTopic,
 } from "@shared/platformTopicAllocation";
 import {
+  GEO_CONTENT_TASK_EMPTY_FOR_PROJECT_MESSAGE,
   GEO_CONTENT_TASK_NO_DIAGNOSIS_MESSAGE,
   buildGeoContentTaskDisplayName,
   buildWeeklyPlatformGenerationGoal,
+  formatPlatformRuleSummaryForGeneration,
   getWeeklyPlatformContentRole,
   hasGeoDiagnosisSourceData,
   parseGeoOptimizationTaskCard,
   resolveGeoContentTaskSource,
 } from "@shared/geoContentTaskSource";
+import {
+  isContentTaskIdInProjectTaskList,
+  PROJECT_SCOPED_CONTENT_TASK_STALE_CLIENT_MESSAGE,
+} from "@shared/geoProjectScopedContentTask";
 import {
   PLATFORM_CONTENT_PROGRESS_HINT_90S,
   PLATFORM_CONTENT_PROGRESS_STAGES,
@@ -461,6 +473,8 @@ function showPublishSuccessNotification(
 
 export default function WeeklyContentPage() {
   const [location, setLocation] = useLocation();
+  const isMobile = useIsMobile();
+  const [generatedSectionOpen, setGeneratedSectionOpen] = useState(false);
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading, projects } =
     useProjectSelection();
@@ -468,11 +482,13 @@ export default function WeeklyContentPage() {
   const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
   const contentLimitReached = subscriptionUsageQuery.data?.atLimit.contentArticle ?? false;
 
-  const tasksQuery = trpc.geo.tasks.list.useQuery(projectInput, { enabled });
+  const scopedListInput = { projectId: selectedProjectId! };
+  const scopedListEnabled = Boolean(selectedProjectId);
+  const tasksQuery = trpc.geo.tasks.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
-  const analysisQuery = trpc.geo.analysis.list.useQuery(projectInput, { enabled });
-  const topicsQuery = trpc.geo.articles.topics.list.useQuery(projectInput, { enabled });
-  const articlesQuery = trpc.geo.articles.list.useQuery(projectInput, { enabled });
+  const analysisQuery = trpc.geo.analysis.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
+  const topicsQuery = trpc.geo.articles.topics.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
+  const articlesQuery = trpc.geo.articles.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
   const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
@@ -529,8 +545,6 @@ export default function WeeklyContentPage() {
     null,
   );
   const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
-  const [localAgentOnline, setLocalAgentOnline] = useState<boolean | null>(null);
-  const [localAgentAccountSnapshot, setLocalAgentAccountSnapshot] = useState<LocalAgentAccountStatusEntry[]>([]);
   /** 发布弹窗内冻结的 Agent 状态，避免打开期间反复 sync/invalidate 导致抖动 */
   const [publishDialogAgentOnline, setPublishDialogAgentOnline] = useState<boolean | null>(null);
   const [publishDialogAccountSnapshot, setPublishDialogAccountSnapshot] = useState<
@@ -601,68 +615,6 @@ export default function WeeklyContentPage() {
     Boolean(a.localAgentId?.trim()) &&
     a.sessionStatus === "active";
 
-  const readLocalAgentSnapshot = useCallback(async () => {
-    const h = await checkLocalAgentHealth();
-    const online = h?.ok ?? false;
-    if (!online) {
-      return { health: h, online: false, snapshot: [] as LocalAgentAccountStatusEntry[] };
-    }
-    try {
-      const snapshot = await listLocalAgentAccountSnapshots();
-      return { health: h, online: true, snapshot };
-    } catch {
-      return { health: h, online: true, snapshot: [] as LocalAgentAccountStatusEntry[] };
-    }
-  }, []);
-
-  const applyGlobalAgentSnapshot = useCallback((online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
-    setLocalAgentOnline(online);
-    setLocalAgentAccountSnapshot(snapshot);
-  }, []);
-
-  const applyPublishDialogAgentSnapshot = useCallback(
-    (online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
-      setPublishDialogAgentOnline(online);
-      setPublishDialogAccountSnapshot(snapshot);
-    },
-    [],
-  );
-
-  /** 仅读取本地 Agent 快照，不触发 Web 同步（避免弹窗抖动） */
-  const hydratePublishDialogAgent = useCallback(
-    async (options?: { syncToWeb?: boolean }) => {
-      const { health, online, snapshot } = await readLocalAgentSnapshot();
-      applyPublishDialogAgentSnapshot(online, snapshot);
-      applyGlobalAgentSnapshot(online, snapshot);
-      if (options?.syncToWeb && online && selectedProjectId && health && snapshot.length > 0) {
-        try {
-          await syncLocalAgentSnapshot.mutateAsync({
-            agentId: health.agentId,
-            projectId: selectedProjectId,
-            accounts: snapshot,
-          });
-          await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
-        } catch {
-          // 同步失败不阻断弹窗；状态已由本地快照更新
-        }
-      }
-      return health;
-    },
-    [
-      readLocalAgentSnapshot,
-      applyPublishDialogAgentSnapshot,
-      applyGlobalAgentSnapshot,
-      selectedProjectId,
-      syncLocalAgentSnapshot,
-      utils.geo.platformAccounts.list,
-    ],
-  );
-
-  const refreshLocalAgentHealth = useCallback(
-    () => hydratePublishDialogAgent({ syncToWeb: true }),
-    [hydratePublishDialogAgent],
-  );
-
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
 
@@ -673,6 +625,72 @@ export default function WeeklyContentPage() {
         accounts: PlatformAccountItem[];
       }>,
     [platformAccountsQuery.data],
+  );
+
+  const boundPublishAccountCount = useMemo(() => {
+    let count = 0;
+    for (const group of platformAccountGroups) {
+      for (const account of group.accounts ?? []) {
+        if (isPublishReadyPlatformAccount({ ...account, platform: group.platform })) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  }, [platformAccountGroups]);
+
+  const {
+    status: localAgentConnectionStatus,
+    checkConnection,
+    accountSnapshot: localAgentAccountSnapshot,
+    localAgentConnectedOnline,
+    localAgentOnline,
+  } = useLocalAgentConnection({ boundPublishAccountCount });
+
+  const applyPublishDialogAgentSnapshot = useCallback(
+    (online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
+      setPublishDialogAgentOnline(online);
+      setPublishDialogAccountSnapshot(snapshot);
+    },
+    [],
+  );
+
+  const hydratePublishDialogAgent = useCallback(
+    async (options?: { syncToWeb?: boolean }) => {
+      const result = await checkConnection();
+      applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot);
+      if (
+        options?.syncToWeb &&
+        result.online &&
+        selectedProjectId &&
+        result.health &&
+        result.accountSnapshot.length > 0
+      ) {
+        try {
+          await syncLocalAgentSnapshot.mutateAsync({
+            agentId: result.health.agentId,
+            projectId: selectedProjectId,
+            accounts: result.accountSnapshot,
+          });
+          await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
+        } catch {
+          // 同步失败不阻断弹窗；状态已由本地快照更新
+        }
+      }
+      return result.health;
+    },
+    [
+      applyPublishDialogAgentSnapshot,
+      checkConnection,
+      selectedProjectId,
+      syncLocalAgentSnapshot,
+      utils.geo.platformAccounts.list,
+    ],
+  );
+
+  const refreshLocalAgentHealth = useCallback(
+    () => hydratePublishDialogAgent({ syncToWeb: true }),
+    [hydratePublishDialogAgent],
   );
 
   const getAllEnabledAccountsForPlatform = useCallback(
@@ -749,8 +767,8 @@ export default function WeeklyContentPage() {
     return out;
   }, [publishArticle, selectedPlatforms, pickSelectedPublishAccount]);
 
-  const tasks = (tasksQuery.data ?? []) as TaskRow[];
-  const analyses = (analysisQuery.data ?? []) as AnalysisRow[];
+  const tasks = useProjectScopedQueryRows<TaskRow>(selectedProjectId, tasksQuery) as TaskRow[];
+  const analyses = useProjectScopedQueryRows<AnalysisRow>(selectedProjectId, analysisQuery) as AnalysisRow[];
   const geoContentTaskSource = useMemo(
     () =>
       resolveGeoContentTaskSource({
@@ -879,13 +897,16 @@ export default function WeeklyContentPage() {
     manualPublishPlatform,
   ]);
 
-  const topics = (topicsQuery.data ?? []) as TopicRow[];
+  const topics = useProjectScopedQueryRows<TopicRow>(selectedProjectId, topicsQuery) as TopicRow[];
+  const topicsById = useMemo(() => new Map(topics.map(topic => [topic.id, topic] as const)), [topics]);
+  const tasksById = useMemo(() => new Map(tasks.map(task => [task.id, task] as const)), [tasks]);
   const taskIdSet = useMemo(() => taskIdSetFromList(tasks.map(t => t.id)), [tasks]);
   const staleTopicCount = useMemo(() => countStaleTopics(topics, taskIdSet), [topics, taskIdSet]);
   const hasStaleTopics = staleTopicCount > 0;
-  const articles = (articlesQuery.data ?? []) as ArticleRow[];
+  const articles = useProjectScopedQueryRows<ArticleRow>(selectedProjectId, articlesQuery) as ArticleRow[];
   const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
 
+  const articlesById = useMemo(() => new Map(articles.map(a => [a.id, a] as const)), [articles]);
   const scoresByArticleId = useMemo(() => new Map(scores.map(s => [s.articleId, s] as const)), [scores]);
 
   const articleByTopicId = useMemo(() => {
@@ -908,6 +929,7 @@ export default function WeeklyContentPage() {
   const queriesReady =
     enabled && !tasksQuery.isLoading && !topicsQuery.isLoading && !analysisQuery.isLoading;
   const showDiagnosisEmpty = queriesReady && !hasDiagnosisData;
+  const showProjectTasksEmpty = queriesReady && hasDiagnosisData && tasks.length === 0;
   const showDirectionEmpty =
     queriesReady &&
     hasDiagnosisData &&
@@ -927,6 +949,23 @@ export default function WeeklyContentPage() {
     setPlatformBatchRunning(false);
     setPublishSuccessNotice(null);
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId || !tasksQuery.isFetched) return;
+    if (
+      selectedContentTaskId != null &&
+      !isContentTaskIdInProjectTaskList(selectedContentTaskId, tasks)
+    ) {
+      setSelectedContentTaskId(null);
+      toast.message(PROJECT_SCOPED_CONTENT_TASK_STALE_CLIENT_MESSAGE);
+    }
+  }, [selectedProjectId, tasksQuery.isFetched, tasks, selectedContentTaskId]);
+
+  const resolvedContentTaskIdForGenerate = useMemo(() => {
+    const candidate = selectedContentTaskId ?? geoContentTaskSource?.contentTaskId ?? null;
+    if (!isContentTaskIdInProjectTaskList(candidate, tasks)) return undefined;
+    return candidate ?? undefined;
+  }, [selectedContentTaskId, geoContentTaskSource?.contentTaskId, tasks]);
 
   useEffect(() => {
     if (!enabled || !queriesReady) return;
@@ -998,9 +1037,12 @@ export default function WeeklyContentPage() {
           targetQuestion: effectiveStrategy.targetQuestion.trim(),
           geoEnhancementGoal: effectiveStrategy.geoEnhancementGoal,
           targetAiPlatforms: [...effectiveStrategy.targetAiPlatforms],
-          contentTaskId: geoContentTaskSource?.contentTaskId ?? undefined,
+          contentTaskId: resolvedContentTaskIdForGenerate,
           diagnosisFinding: geoContentTaskSource?.diagnosisFinding,
           geoGap: geoContentTaskSource?.geoGapSummary,
+          platformRule: formatPlatformRuleSummaryForGeneration(
+            effectiveStrategy.targetPublishPlatform,
+          ),
           questionTemplateId: selectedQuestionTemplateId ?? undefined,
         });
         await invalidateArticles();
@@ -1027,7 +1069,14 @@ export default function WeeklyContentPage() {
         });
       }
     },
-    [generateArticleMutation, invalidateArticles, platformStrategy, geoContentTaskSource, selectedQuestionTemplateId],
+    [
+      generateArticleMutation,
+      invalidateArticles,
+      platformStrategy,
+      geoContentTaskSource,
+      resolvedContentTaskIdForGenerate,
+      selectedQuestionTemplateId,
+    ],
   );
 
   const handleGenerateOne = (topicId: number) => {
@@ -1138,7 +1187,7 @@ export default function WeeklyContentPage() {
         published: 0,
       };
       for (const topic of topics) {
-        const task = tasks.find(t => t.id === topic.optimizationTaskId);
+        const task = typeof topic.optimizationTaskId === "number" ? tasksById.get(topic.optimizationTaskId) : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         const article = articleByTopicId.get(topic.id);
         const platformKey = article
@@ -1164,11 +1213,21 @@ export default function WeeklyContentPage() {
         counts,
         platformRole: getWeeklyPlatformContentRole(def.key),
         platformGenerationGoal: buildWeeklyPlatformGenerationGoal(def.key, linkedQuestion, sceneLabel),
+        publishHint:
+          counts.ready > 0
+            ? "本平台已有可发布内容，建议进入发布队列。"
+            : counts.pendingConfirm > 0
+              ? "本平台内容待质检确认，确认后可加入发布队列。"
+              : counts.pending > 0
+                ? "本平台仍有待生成任务，请先生成内容。"
+                : counts.published > 0
+                  ? "本平台已有发布内容，建议回填公开链接并进入复测。"
+                  : "先生成本平台内容，再推进发布与复测。",
       };
     });
   }, [
     topics,
-    tasks,
+    tasksById,
     articleByTopicId,
     scoresByArticleId,
     geoContentTaskSource?.linkedQuestion,
@@ -1179,11 +1238,25 @@ export default function WeeklyContentPage() {
   const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
     const publishRecords = publishRecordsQuery.data ?? [];
     const publishTasks = publishTasksQuery.data?.tasks ?? [];
+    const latestPublishTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
+    for (const task of publishTasks) {
+      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      if (!articleId) continue;
+      const prev = latestPublishTaskByArticle.get(articleId);
+      const taskTime = new Date(task.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || taskTime >= prevTime) {
+        latestPublishTaskByArticle.set(articleId, task);
+      }
+    }
     return articles
       .filter(a => typeof a.topicId === "number")
       .map(a => {
-        const topic = topics.find(t => t.id === a.topicId);
-        const task = topic ? tasks.find(t => t.id === topic.optimizationTaskId) : undefined;
+        const topic = typeof a.topicId === "number" ? topicsById.get(a.topicId) : undefined;
+        const task =
+          topic && typeof topic.optimizationTaskId === "number"
+            ? tasksById.get(topic.optimizationTaskId)
+            : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
         const q = scoresByArticleId.get(a.id);
         const pass = qualityPasses(a, q);
@@ -1202,6 +1275,12 @@ export default function WeeklyContentPage() {
           ...publishBaseContext,
           article: a,
         });
+        const latestTask = latestPublishTaskByArticle.get(a.id);
+        const queuedForPublish = Boolean(
+          latestTask &&
+            latestTask.status !== "failed" &&
+            latestTask.status !== "session_expired",
+        );
         const platformKey = platformResolved.recognized
           ? normalizeWeeklyPlatformKey(platformResolved.label)
           : normalizeWeeklyPlatformKey(a.targetPlatform);
@@ -1213,6 +1292,10 @@ export default function WeeklyContentPage() {
           contentTypeLabel: resolveContentTypeLabel(a),
           publishBlockHint: publishReadiness.ready ? null : publishReadiness.message,
           publishNextActionLabel: publishReadiness.ready ? null : publishReadiness.nextActionLabel,
+          queuedForPublish,
+          queuedStatusLabel: queuedForPublish
+            ? publishTaskStatusLabel({ status: latestTask?.status ?? "pending" })
+            : null,
           contentGoal: geoContentTaskSource?.taskDisplayName ?? null,
           geoGap:
             geoContentTaskSource?.geoGapSummary ??
@@ -1254,8 +1337,8 @@ export default function WeeklyContentPage() {
       });
   }, [
     articles,
-    topics,
-    tasks,
+    topicsById,
+    tasksById,
     scoresByArticleId,
     latestDiagnosisGap,
     geoContentTaskSource,
@@ -1275,25 +1358,44 @@ export default function WeeklyContentPage() {
   }, [contentCardModels, filterPlatform, filterStatus, filterContentTag, titleSearch, sortQuality]);
 
   const contentTagStats = useMemo(() => computeContentTagStats(contentCardModels), [contentCardModels]);
+  const queuedContentCount = useMemo(
+    () => contentCardModels.filter(card => card.queuedForPublish).length,
+    [contentCardModels],
+  );
+  const publishableContentCount = useMemo(
+    () => contentCardModels.filter(card => card.statusFilterKey === "publishable").length,
+    [contentCardModels],
+  );
+
+  useEffect(() => {
+    setGeneratedSectionOpen(!isMobile);
+  }, [isMobile]);
+
+  const platformProgressText = useMemo(() => {
+    const pending = platformBoardRows.reduce((sum, row) => sum + row.counts.pending, 0);
+    const generated = platformBoardRows.reduce(
+      (sum, row) => sum + row.counts.pendingConfirm + row.counts.ready + row.counts.published,
+      0,
+    );
+    const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
+    const published = platformBoardRows.reduce((sum, row) => sum + row.counts.published, 0);
+    return `待生成 ${pending} / 已生成 ${generated} / 可发布 ${publishable} / 已加入发布队列 ${queuedContentCount} / 已发布 ${published}`;
+  }, [platformBoardRows, queuedContentCount]);
+  const contentNextAction = useMemo(() => {
+    const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
+    const generated = platformBoardRows.reduce(
+      (sum, row) => sum + row.counts.pendingConfirm + row.counts.ready + row.counts.published,
+      0,
+    );
+    if (publishable > 0) return "进入平台适配发布，将可发布内容加入发布队列。";
+    if (generated > 0) return "优先完成内容质检，形成可发布资产。";
+    return "先按平台生成本轮内容资产，再进入发布队列。";
+  }, [platformBoardRows]);
 
   const averageQualityScore = useMemo(
     () => computeAverageGeoQualityScore(contentCardModels.map(card => card.qualityScore)),
     [contentCardModels],
   );
-
-  const platformFilterOptions = useMemo(() => {
-    const keys = new Set<string>();
-    for (const card of contentCardModels) {
-      if (card.platformKey) keys.add(card.platformKey);
-      else if (card.targetPlatform?.trim()) keys.add(card.targetPlatform.trim());
-    }
-    return Array.from(keys)
-      .map(key => {
-        const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === key);
-        return { value: key, label: def?.label ?? key };
-      })
-      .sort((a, b) => a.label.localeCompare(b.label, "zh-CN"));
-  }, [contentCardModels]);
 
   const toggleCardSelection = useCallback((articleId: number, checked: boolean) => {
     setSelectedCardIds(prev => {
@@ -1393,7 +1495,7 @@ export default function WeeklyContentPage() {
     }
     setSelectedPublishAccountIds(restoredAccounts);
     publishDialogPlatformsInitRef.current = true;
-    void hydratePublishDialogAgent({ syncToWeb: false });
+    applyPublishDialogAgentSnapshot(localAgentConnectedOnline, localAgentAccountSnapshot);
     setPublishDialogOpen(true);
   };
 
@@ -2027,7 +2129,7 @@ export default function WeeklyContentPage() {
         taskIds.push(res.taskId);
         rememberEnqueuePublishAccount(slug, picked.id);
         if (res.publishMode !== "local_agent") {
-          toast.error("发布任务未走本地客户端，请联系交付同学检查配置");
+          toast.error("发布任务未走本地客户端，请联系支持团队检查配置");
           return;
         }
       }
@@ -2289,7 +2391,7 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">平台化内容资产</h1>
+          <h1 className="text-2xl font-bold text-gray-900">平台化内容资产（GEO 内容任务工作台）</h1>
           <p className="text-sm text-gray-500">
             根据 AI 实测缺口，按平台生成可发布、可监测、可复测的 GEO 内容资产。各平台独立生成，不支持一稿多发。
           </p>
@@ -2311,6 +2413,28 @@ export default function WeeklyContentPage() {
         </div>
       </header>
 
+      {publishableContentCount > 0 && !showDiagnosisEmpty && queriesReady ? (
+        <section
+          className="flex flex-col gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+          data-testid="weekly-publish-strong-cta"
+        >
+          <p className="text-base font-semibold text-emerald-900">
+            已有 {publishableContentCount} 篇可发布内容
+          </p>
+          <Button
+            type="button"
+            className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-700"
+            data-testid="weekly-publish-strong-cta-button"
+            onClick={() =>
+              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+            }
+          >
+            去发布
+            <ArrowRight className="ml-1.5 size-4" aria-hidden />
+          </Button>
+        </section>
+      ) : null}
+
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}
         platformLabel={publishSuccessNotice?.platformLabel ?? ""}
@@ -2319,7 +2443,19 @@ export default function WeeklyContentPage() {
       />
 
       {tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
-        <p className="text-sm text-red-700">暂时无法加载，请刷新重试</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p>暂时无法加载内容任务数据。</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => {
+              void Promise.all([tasksQuery.refetch(), topicsQuery.refetch(), articlesQuery.refetch()]);
+            }}
+          >
+            重试加载
+          </Button>
+        </div>
       ) : !queriesReady || preparingTopics || generateTopicsMutation.isPending ? (
         <div className="flex flex-col items-center gap-3 py-16 text-gray-500">
           <Spinner className="size-6 text-blue-600" />
@@ -2339,16 +2475,63 @@ export default function WeeklyContentPage() {
             去 AI 实测诊断
           </Button>
         </P0Card>
+      ) : showProjectTasksEmpty ? (
+        <P0Card testId="weekly-no-project-content-tasks">
+          <p className="text-sm leading-relaxed text-gray-700" data-testid="weekly-no-project-content-tasks-message">
+            {GEO_CONTENT_TASK_EMPTY_FOR_PROJECT_MESSAGE}
+          </p>
+          <Button
+            type="button"
+            className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
+            data-testid="weekly-go-ai-diagnosis-from-empty-tasks"
+            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
+          >
+            去 AI 实测诊断
+          </Button>
+        </P0Card>
       ) : (
         <>
+          <PageAnchorNav
+            testId="weekly-content-anchor-nav"
+            items={[
+              { id: "weekly-section-content-tasks", label: "内容任务" },
+              { id: "weekly-section-platform-matrix", label: "平台矩阵" },
+              { id: "weekly-section-generated-content", label: "已生成内容" },
+            ]}
+          />
           {geoContentTaskSource ? (
-            <GeoContentTaskPanels
-              source={geoContentTaskSource}
-              taskOptions={contentTaskOptions}
-              selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
-              onSelectTaskId={id => setSelectedContentTaskId(id)}
-            />
+            <div id="weekly-section-content-tasks" className="scroll-mt-24 space-y-4">
+              <GeoContentTaskPanels
+                source={geoContentTaskSource}
+                taskOptions={contentTaskOptions}
+                selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
+                onSelectTaskId={id => setSelectedContentTaskId(id)}
+                platformProgress={platformProgressText}
+                nextAction={contentNextAction}
+              />
+            </div>
           ) : null}
+          <section
+            className="rounded-xl border border-blue-200 bg-blue-50/70 p-4"
+            data-testid="weekly-publish-next-step-panel"
+          >
+            <p className="text-sm font-semibold text-blue-900">
+              本轮已生成 {contentCardModels.length} 篇，可发布 {publishableContentCount} 篇，已加入发布队列 {queuedContentCount} 篇
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              下一步：将通过质检的内容加入发布队列，并进入平台适配发布完成发布与链接回填。
+            </p>
+            {publishableContentCount > 0 ? (
+              <Button
+                type="button"
+                className="mt-3 bg-blue-600 text-white hover:bg-blue-700"
+                data-testid="weekly-go-content-publishing-cta"
+                onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
+              >
+                去平台适配发布
+              </Button>
+            ) : null}
+          </section>
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
 
@@ -2388,6 +2571,12 @@ export default function WeeklyContentPage() {
             />
           ) : null}
 
+          <div
+            className="my-8 border-t-2 border-gray-300"
+            data-testid="weekly-platform-matrix-divider"
+            aria-hidden
+          />
+
           <PlatformContentBoard
             rows={platformBoardRows}
             boardBusy={batchBusy}
@@ -2403,9 +2592,30 @@ export default function WeeklyContentPage() {
           ) : null}
 
           {contentCardModels.length > 0 ? (
-            <section className="space-y-4" data-testid="weekly-content-cards">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div>
+            <details
+              id="weekly-section-generated-content"
+              className={cn(
+                "scroll-mt-24 space-y-4",
+                isMobile && "rounded-xl border border-gray-200 bg-white shadow-sm",
+              )}
+              data-testid="weekly-content-cards"
+              open={generatedSectionOpen}
+              onToggle={e => {
+                if (isMobile) setGeneratedSectionOpen(e.currentTarget.open);
+              }}
+            >
+              <summary
+                className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-4 text-sm font-semibold text-gray-900 lg:hidden [&::-webkit-details-marker]:hidden"
+                data-testid="weekly-generated-content-mobile-summary"
+              >
+                <span>已生成内容（{contentCardModels.length} 篇）</span>
+                <span className="text-xs font-normal text-blue-600">
+                  {generatedSectionOpen ? "收起" : "展开"}
+                </span>
+              </summary>
+              <div className={cn("space-y-4", isMobile && "border-t border-gray-100 px-4 pb-4 pt-3")}>
+              <div className="flex flex-col gap-3">
+                <div className="hidden lg:block">
                   <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
                   <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
                   {averageQualityScore != null ? (
@@ -2416,24 +2626,47 @@ export default function WeeklyContentPage() {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
-                  <label className="sr-only" htmlFor="weekly-filter-platform">
-                    按平台筛选
-                  </label>
-                  <select
-                    id="weekly-filter-platform"
-                    className={aiInput}
-                    value={filterPlatform}
-                    onChange={e => setFilterPlatform(e.target.value)}
-                    data-testid="weekly-filter-platform"
+                <div
+                  className="flex gap-2 overflow-x-auto pb-1"
+                  data-testid="weekly-filter-platform"
+                  role="tablist"
+                  aria-label="按平台筛选"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={filterPlatform === "all"}
+                    data-testid="weekly-filter-platform-all"
+                    className={cn(
+                      "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
+                      filterPlatform === "all"
+                        ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
+                    )}
+                    onClick={() => setFilterPlatform("all")}
                   >
-                    <option value="all">全部平台</option>
-                    {platformFilterOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    全部
+                  </button>
+                  {WEEKLY_PLATFORM_DEFS.map(def => (
+                    <button
+                      key={def.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={filterPlatform === def.key}
+                      data-testid={`weekly-filter-platform-${def.key}`}
+                      className={cn(
+                        "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
+                        filterPlatform === def.key
+                          ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
+                      )}
+                      onClick={() => setFilterPlatform(def.key)}
+                    >
+                      {def.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
                   <label className="sr-only" htmlFor="weekly-filter-status">
                     按状态筛选
                   </label>
@@ -2538,15 +2771,39 @@ export default function WeeklyContentPage() {
                 </Button>
               </div>
               {displayContentCards.length === 0 ? (
-                <p className="text-sm text-gray-500" data-testid="weekly-content-cards-empty">
-                  {titleSearch.trim() || filterContentTag !== "all"
-                    ? "未找到匹配内容"
-                    : "当前筛选条件下暂无内容"}
-                </p>
+                <div
+                  className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center"
+                  data-testid="weekly-content-cards-empty"
+                >
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                    <FileText className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-gray-800">未找到匹配内容</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    请调整筛选条件，或返回全部内容后继续编辑和发布。
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-4 border-gray-200 text-gray-700 hover:bg-gray-50"
+                    onClick={() => {
+                      setFilterPlatform("all");
+                      setFilterStatus("all");
+                      setFilterContentTag("all");
+                      setSortQuality("none");
+                      setTitleSearch("");
+                    }}
+                  >
+                    清空筛选条件
+                  </Button>
+                </div>
               ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div
+                  className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
+                  data-testid="weekly-content-cards-grid"
+                >
                   {displayContentCards.map(model => {
-                    const article = articles.find(a => a.id === model.id);
+                    const article = articlesById.get(model.id);
                     const topicId = article?.topicId;
                     return (
                       <WeeklyPlatformArticleCard
@@ -2561,6 +2818,9 @@ export default function WeeklyContentPage() {
                           if (typeof topicId === "number") void generateOne(topicId);
                         }}
                         onEnqueuePublish={() => article && openPublishDialog(article)}
+                        onGoPublishingPage={() =>
+                          selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                        }
                         onContentReviewStatusChange={status => {
                           if (!selectedProjectId) return;
                           setContentReviewStatus.mutate({
@@ -2574,8 +2834,29 @@ export default function WeeklyContentPage() {
                   })}
                 </div>
               )}
-            </section>
-          ) : null}
+              </div>
+            </details>
+          ) : (
+            <P0Card className="border-dashed border-gray-300 bg-white" testId="weekly-content-empty">
+              <div className="flex flex-col items-center text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                  <FileText className="h-5 w-5 text-gray-500" />
+                </div>
+                <p className="mt-3 text-sm font-medium text-gray-800">本周还没有生成内容</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  先按平台生成首批内容，再进入质检与发布流程。
+                </p>
+                <Button
+                  type="button"
+                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={batchBusy}
+                  onClick={() => void handleBatchGenerateAllPlatforms()}
+                >
+                  生成平台内容
+                </Button>
+              </div>
+            </P0Card>
+          )}
 
           <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
             <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
@@ -2601,14 +2882,13 @@ export default function WeeklyContentPage() {
       )}
 
       {enabled ? (
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm" data-testid="local-agent-publish-hint">
-          <p className="font-medium text-gray-800">本地发布客户端</p>
-          <p className="mt-1 text-xs text-gray-500">
-            发布任务将发送至本机 GEO 本地发布客户端。请保持客户端运行并接收发布任务；任务状态为「等待本地客户端处理」时表示已入队。
-          </p>
-          {localAgentOnline === false ? (
-            <p className="mt-2 text-xs text-amber-600">当前未检测到客户端在线，发布将被阻断。</p>
-          ) : null}
+        <div data-testid="local-agent-publish-hint">
+          <LocalAgentConnectionPanel
+            status={localAgentConnectionStatus}
+            checking={localAgentConnectionStatus === "CHECKING"}
+            onCheckConnection={() => void checkConnection()}
+            onRefreshAccountStatus={() => void refreshLocalAgentHealth()}
+          />
         </div>
       ) : null}
 
@@ -2660,25 +2940,20 @@ export default function WeeklyContentPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-              <p className="mt-2 text-xs text-blue-700">
-                任务将发送至本地 GEO 发布客户端，由本篇对应平台账号执行填稿。
-              </p>
-              <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-blue-800">
-                客户端状态：
-                {publishDialogAgentOnline === true ? (
-                  <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                    已连接
-                  </span>
-                ) : publishDialogAgentOnline === false ? (
-                  <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                    未连接
-                  </span>
-                ) : (
-                  <span className="text-gray-500">检测中…</span>
-                )}
-              </p>
-            </div>
+            <p className="text-xs text-gray-600">
+              任务将发送至本地 GEO 发布客户端，由本篇对应平台账号执行填稿。
+            </p>
+            <LocalAgentConnectionPanel
+              status={localAgentConnectionStatus}
+              checking={localAgentConnectionStatus === "CHECKING"}
+              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 shadow-none"
+              onCheckConnection={() =>
+                void checkConnection().then((result) =>
+                  applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot),
+                )
+              }
+              onRefreshAccountStatus={() => void hydratePublishDialogAgent({ syncToWeb: true })}
+            />
             <PublishPrePublishChecklist checklist={activePrePublishChecklist} />
             {activePublishReadiness && !activePublishReadiness.ready ? (
               <p

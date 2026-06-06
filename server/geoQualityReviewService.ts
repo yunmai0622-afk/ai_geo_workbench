@@ -76,7 +76,7 @@ export async function runContentQualityReview(
     modelName = resp.modelName;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("暂未接入")) {
+    if (msg.includes("即将支持")) {
       throw new TRPCError({ code: "BAD_REQUEST", message: msg });
     }
     console.error("[GEO质检] 模型调用失败", e);

@@ -107,7 +107,7 @@ export default function AdminSubscriptionPage() {
               <Input
                 id="admin-subscription-email"
                 type="search"
-                placeholder="developer@example.com"
+                placeholder="请输入客户邮箱"
                 value={emailQuery}
                 onChange={e => setEmailQuery(e.target.value)}
                 data-testid="admin-subscription-email"

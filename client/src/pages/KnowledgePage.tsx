@@ -1,9 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  GEO_MAIN_PIPELINE_STEPS,
-  GEO_PRODUCT_MAIN_POSITIONING,
-  GEO_PRODUCT_SUB_POSITIONING,
-} from "@/lib/geoProductPositioning";
+import { GEO_PRODUCT_MAIN_POSITIONING, GEO_PRODUCT_SUB_POSITIONING } from "@/lib/geoProductPositioning";
+import { GEO_UNIFIED_MAIN_PIPELINE_STEPS } from "@shared/workspaceMainChain";
 import { useEffect } from "react";
 
 const WHY_GEO_POINTS = [
@@ -77,11 +74,11 @@ export default function KnowledgePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">主链路说明（8 步）</CardTitle>
-          <CardDescription>按顺序推进，每步对应工作台中的具体页面</CardDescription>
+          <CardDescription>按顺序推进，每步对应工作台中的具体功能模块</CardDescription>
         </CardHeader>
         <CardContent>
           <ol className="space-y-4">
-            {GEO_MAIN_PIPELINE_STEPS.map((step, index) => (
+            {GEO_UNIFIED_MAIN_PIPELINE_STEPS.map((step, index) => (
               <li key={step.id} className="flex gap-3 text-sm" data-testid={`knowledge-step-${index + 1}`}>
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700">
                   {index + 1}

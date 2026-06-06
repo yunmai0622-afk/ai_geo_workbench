@@ -115,13 +115,13 @@ export function createDefaultModelClients(): Record<ModelProviderName, ModelClie
     claude: {
       name: "claude",
       call: async () => {
-        throw new Error("Claude 模型暂未接入");
+        throw new Error("Claude 模型即将支持");
       },
     },
     gpt: {
       name: "gpt",
       call: async () => {
-        throw new Error("GPT 模型暂未接入");
+        throw new Error("GPT 模型即将支持");
       },
     },
   };

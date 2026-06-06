@@ -23,10 +23,25 @@ import { Link } from "wouter";
 import LoginGatePanel from "@/components/auth/LoginGatePanel";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
-import { buildProjectUrl } from "@/lib/activeProject";
+import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
+import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, BookOpen, Brain, Building2, ClipboardList, FileBarChart2, FileText, LayoutTemplate, Library, LineChart, LogOut, PanelLeft, Send, Settings, Sparkles, Users2 } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import {
+  BookOpen,
+  Brain,
+  Building2,
+  FileBarChart2,
+  FileText,
+  Library,
+  LineChart,
+  LogOut,
+  PanelLeft,
+  Send,
+  Settings,
+  Sparkles,
+  Users2,
+} from "lucide-react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { cn } from "@/lib/utils";
@@ -40,6 +55,8 @@ const PATHS_WITHOUT_PROJECT_SHELL = new Set([
   "/knowledge",
   "/settings",
   "/admin/config",
+  "/admin/publish-tasks",
+  "/admin/subscription",
   "/admin/stats",
 ]);
 
@@ -62,15 +79,10 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/clients",
         aliases: ["/clients"],
       },
-    ],
-  },
-  {
-    title: "增长总览",
-    items: [
       {
         icon: Sparkles,
         label: "项目工作台",
-        desc: "当前企业的交付作战台",
+        desc: "查看项目主链进展与下一步动作",
         path: "/workspace",
         aliases: ["/workspace", "/flow"],
       },
@@ -107,13 +119,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/weekly",
         aliases: ["/weekly", "/content-generation", "/articles"],
       },
-      {
-        icon: LayoutTemplate,
-        label: "内容模板库",
-        desc: "按平台与问题类型查看系统内置模板",
-        path: "/templates",
-        aliases: ["/templates"],
-      },
     ],
   },
   {
@@ -133,17 +138,10 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/inclusion-monitoring",
         aliases: ["/inclusion-monitoring", "/monitoring"],
       },
-      {
-        icon: BarChart3,
-        label: "资产进展",
-        desc: "查看内容漏斗与发布实测进展",
-        path: "/progress",
-        aliases: ["/progress"],
-      },
     ],
   },
   {
-    title: "客户交付",
+    title: "交付",
     items: [
       {
         icon: FileBarChart2,
@@ -152,18 +150,21 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/delivery-reports",
         aliases: ["/delivery-reports", "/reports"],
       },
+    ],
+  },
+  {
+    title: "设置",
+    items: [
       {
-        icon: ClipboardList,
-        label: "有效动作",
-        desc: "记录和查看已执行动作的效果判断",
-        path: "/effective-actions",
-        aliases: ["/effective-actions"],
+        icon: BookOpen,
+        label: "使用指南",
+        desc: "查看系统使用说明与操作指引",
+        path: "/knowledge",
+        aliases: ["/knowledge"],
       },
     ],
   },
 ];
-
-const allMenuItems = navGroups.flatMap(g => g.items);
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 292;
@@ -187,7 +188,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!loading && !user) {
-      document.title = "登录 - GEO增长工作台";
+      document.title = "登录 - GEO 增长工作台";
     }
   }, [loading, user]);
 
@@ -222,26 +223,33 @@ type DashboardLayoutContentProps = {
 function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { activeProjectId } = useActiveProjectId({ syncUrl: false });
-  const { data: projects = [] } = trpc.geo.projects.list.useQuery();
-  const activeProject = projects.find(project => project.id === activeProjectId);
+  const { activeProjectId } = useActiveProjectId();
+  const { data: projectsRaw = [] } = trpc.geo.projects.list.useQuery();
+  const navigableProjects = useMemo(() => filterNavigableProjects(projectsRaw), [projectsRaw]);
+  const validatedProjectId = useMemo(() => {
+    if (!activeProjectId) return null;
+    return isProjectIdAccessible(activeProjectId, navigableProjects) ? activeProjectId : null;
+  }, [activeProjectId, navigableProjects]);
+  const activeProject = navigableProjects.find(project => project.id === validatedProjectId);
   const projectName = activeProject?.enterpriseName;
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = location.split("?")[0] || location;
+  const visibleNavGroups = navGroups;
+  const allMenuItems = useMemo(() => visibleNavGroups.flatMap(g => g.items), [visibleNavGroups]);
   const activeMenuItem = allMenuItems.find(item => item.aliases.includes(pathname));
   const isMobile = useIsMobile();
   const useProjectShell = !PATHS_WITHOUT_PROJECT_SHELL.has(pathname);
   const isClientsHub = pathname === "/clients";
 
   const navigateWithProject = (path: string) => {
-    if (path === "/clients") {
+    if (path === "/clients" || path.startsWith("/admin/")) {
       setLocation(path);
       return;
     }
-    setLocation(buildProjectUrl(path, activeProjectId));
+    setLocation(buildProjectUrl(path, validatedProjectId));
   };
 
   useEffect(() => {
@@ -300,7 +308,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </SidebarHeader>
 
             <SidebarContent className="gap-0 bg-white">
-              {navGroups.map(group => (
+              {visibleNavGroups.map(group => (
                 <div key={group.title} className="px-2 py-2">
                   {!isCollapsed ? (
                     <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
@@ -336,29 +344,6 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             </SidebarContent>
 
             <SidebarFooter className="border-t border-gray-200 bg-white p-3">
-              <SidebarMenu className="mb-2">
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={pathname === "/knowledge"}
-                    onClick={() => setLocation("/knowledge")}
-                    tooltip="使用指南"
-                    data-testid="sidebar-knowledge-link"
-                    className={cn(
-                      "h-10 rounded-lg border border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                      pathname === "/knowledge" &&
-                        "border-blue-100 bg-blue-50 font-medium text-blue-800",
-                    )}
-                  >
-                    <BookOpen
-                      className={cn(
-                        "h-4 w-4 shrink-0",
-                        pathname === "/knowledge" ? "text-blue-600" : "text-gray-400",
-                      )}
-                    />
-                    {!isCollapsed ? <span className="truncate text-sm">使用指南</span> : null}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
               <div className="flex items-center gap-2">
                 <Link href="/settings" className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 hover:text-blue-600 group-data-[collapsible=icon]:hidden" data-testid="sidebar-settings-link">设置</Link>
                 <DropdownMenu>
@@ -402,7 +387,9 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
           <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-2">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9" />
-              <span className="text-gray-900">{activeMenuItem?.label ?? "菜单"}</span>
+              <span className="max-w-[220px] truncate text-sm font-medium text-gray-900">
+                {activeMenuItem?.label ?? "菜单"}
+              </span>
             </div>
           </div>
         ) : null}

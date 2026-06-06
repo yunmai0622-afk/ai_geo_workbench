@@ -3,6 +3,7 @@ import {
   GEO_CSV_UTF8_BOM,
   buildDeliveryReportCsvContent,
   buildGeoReportCsvFilename,
+  buildGeoReportPdfFilename,
   buildGeoT0ResultCsvFilename,
   buildPublishRecordsCsvContent,
   buildT0ResultsCsvContent,
@@ -19,6 +20,12 @@ describe("geoDataExport", () => {
   it("buildGeoReportCsvFilename uses project name and date", () => {
     expect(buildGeoReportCsvFilename("Acme Corp", new Date("2026-06-01T12:00:00Z"))).toBe(
       "geo-report-Acme Corp-2026-06-01.csv",
+    );
+  });
+
+  it("buildGeoReportPdfFilename uses project name and date", () => {
+    expect(buildGeoReportPdfFilename("Acme Corp", new Date("2026-06-01T12:00:00Z"))).toBe(
+      "geo-report-Acme Corp-2026-06-01.pdf",
     );
   });
 

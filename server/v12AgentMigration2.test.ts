@@ -15,7 +15,7 @@ describe("Agent-Migration-2 local agent publish main path", () => {
     expect(weekly).toContain("publishBlockedNoLocalProfileMessage");
     expect(weekly).toContain("publishBlockedSessionExpiredMessage");
     expect(weekly).toContain("getPublishReadyAccountsForPlatform");
-    expect(weekly).toContain("checkLocalAgentHealth");
+    expect(weekly).toContain("useLocalAgentConnection");
   });
 
   it("publishTasks.create always pending_agent for binding platforms", () => {

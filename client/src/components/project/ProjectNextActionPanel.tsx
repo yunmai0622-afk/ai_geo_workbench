@@ -1,8 +1,14 @@
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
 import type { MainChainNextAction } from "@/lib/workspaceHomeDisplay";
+import type { PageNextActionSuggestion } from "@shared/pageNextActionSuggestion";
+import {
+  localAgentConnectionCopy,
+  type LocalAgentConnectionStatus,
+} from "@shared/localAgentConnectionStatus";
 import { workspaceCtaUrl, type WorkspaceStageDefinition } from "@shared/workspaceStateMachine";
-import { AlertTriangle, ArrowRight, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowRight, RefreshCw, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -15,28 +21,31 @@ type Props = {
   projectId?: number;
   stage?: WorkspaceStageDefinition | null;
   mainChainNextAction?: MainChainNextAction | null;
+  pageNextAction?: PageNextActionSuggestion | null;
+  pageNextActionPath?: string | null;
   blockerReason?: string | null;
   riskHints?: string[];
   recentItems?: RecentItem[];
   loading?: boolean;
+  localAgentConnectionStatus?: LocalAgentConnectionStatus;
+  onCheckLocalAgentConnection?: () => void;
 };
 
 /**
  * 右侧下一步面板 — 顾问卡风格
- * 结构：
- * 1. 下一步建议（当前最该做什么 + 为什么 + 做完进入哪阶段 + CTA）
- * 2. 风险提醒
- * 3. 最近结果
- * 无数据时隐藏对应区块
  */
 export function ProjectNextActionPanel({
   projectId,
   stage,
   mainChainNextAction,
+  pageNextAction,
+  pageNextActionPath,
   blockerReason,
   riskHints = [],
   recentItems = [],
   loading,
+  localAgentConnectionStatus,
+  onCheckLocalAgentConnection,
 }: Props) {
   const [, setLocation] = useLocation();
 
@@ -48,18 +57,25 @@ export function ProjectNextActionPanel({
       ? STAGE_ORDER[currentIdx + 1]
       : "持续优化";
 
-  const ctaLabel = mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
-  const reason = mainChainNextAction?.reason ?? blockerReason ?? stage?.blockerHint;
-  const nextStageName = mainChainNextAction?.nextStageName ?? fallbackNextStageName;
+  const ctaLabel = pageNextAction?.ctaLabel ?? mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
+  const reason =
+    pageNextAction?.reason ?? mainChainNextAction?.reason ?? blockerReason ?? stage?.blockerHint;
+  const nextStageName =
+    pageNextAction?.nextStageName ?? mainChainNextAction?.nextStageName ?? fallbackNextStageName;
   const ctaPath =
-    mainChainNextAction?.ctaPath ?? (stage && projectId ? workspaceCtaUrl(projectId, stage) : null);
+    pageNextActionPath ??
+    mainChainNextAction?.ctaPath ??
+    (stage && projectId ? workspaceCtaUrl(projectId, stage) : null);
+
+  const recentSummary = recentItems
+    .map(item => (item.detail ? `${item.label} ${item.detail}` : item.label))
+    .join(" · ");
 
   return (
     <aside
       className="w-full space-y-4"
       data-testid="project-next-action-panel"
     >
-      {/* ═══ 下一步建议 ═══ */}
       <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/60 p-5">
         <div className="mb-3 flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 shadow-sm shadow-blue-600/20">
@@ -72,15 +88,12 @@ export function ProjectNextActionPanel({
         ) : ctaLabel && projectId && ctaPath ? (
           <div className="space-y-3">
             <p className="text-[13px] font-medium leading-relaxed text-gray-800">{ctaLabel}</p>
-
             {reason ? (
               <p className="text-[12px] leading-relaxed text-gray-600">原因：{reason}</p>
             ) : null}
-
             <p className="text-[12px] text-gray-500">
               完成后进入：<span className="font-medium text-blue-700">{nextStageName}</span>
             </p>
-
             <button
               type="button"
               className={cn(
@@ -97,19 +110,48 @@ export function ProjectNextActionPanel({
         ) : (
           <p className="text-sm text-gray-400">请选择企业项目后查看建议</p>
         )}
+        {localAgentConnectionStatus &&
+        onCheckLocalAgentConnection &&
+        (localAgentConnectionStatus === "UNKNOWN" ||
+          localAgentConnectionStatus === "DISCONNECTED" ||
+          localAgentConnectionStatus === "ERROR") ? (
+          <div
+            className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-3"
+            data-testid="next-action-local-agent-detect"
+          >
+            <p className="text-xs font-medium text-amber-900">
+              {localAgentConnectionCopy(localAgentConnectionStatus).title}
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-amber-800">
+              {localAgentConnectionCopy(localAgentConnectionStatus).description}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-2 w-full border-amber-400 text-amber-900"
+              data-testid="next-action-check-local-agent"
+              onClick={onCheckLocalAgentConnection}
+            >
+              <RefreshCw className="mr-1.5 size-3.5" />
+              {localAgentConnectionCopy(localAgentConnectionStatus).primaryButton ?? "检测本地客户端连接"}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
-      {/* ═══ 风险提醒 ═══ */}
       {riskHints.length > 0 ? (
-        <div
-          className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4"
+        <details
+          open
+          className="rounded-2xl border border-amber-200 bg-amber-50/60"
           data-testid="next-action-risks"
         >
-          <div className="mb-2.5 flex items-center gap-2">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
             <h3 className="text-[13px] font-semibold text-amber-800">风险提醒</h3>
-          </div>
-          <ul className="space-y-1.5">
+            <span className="ml-auto text-[11px] text-amber-700">{riskHints.length} 项</span>
+          </summary>
+          <ul className="space-y-1.5 border-t border-amber-200/60 px-4 pb-3 pt-2">
             {riskHints.map(hint => (
               <li key={hint} className="flex gap-2 text-[12px] leading-relaxed text-amber-900/90">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
@@ -117,21 +159,13 @@ export function ProjectNextActionPanel({
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       ) : null}
 
-      {/* ═══ 最近结果 ═══ */}
-      {recentItems.length > 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4" data-testid="next-action-recent">
-          <h4 className="mb-3 text-[13px] font-semibold text-gray-700">最近数据</h4>
-          <div className="space-y-2.5">
-            {recentItems.map(item => (
-              <div key={item.label} className="flex items-center justify-between gap-2 text-[12px]">
-                <span className="text-gray-500">{item.label}</span>
-                <span className="font-medium tabular-nums text-gray-900">{item.detail ?? "—"}</span>
-              </div>
-            ))}
-          </div>
+      {recentSummary ? (
+        <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3" data-testid="next-action-recent">
+          <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">最近数据</h4>
+          <p className="text-[11px] leading-relaxed text-gray-600">{recentSummary}</p>
         </div>
       ) : null}
     </aside>

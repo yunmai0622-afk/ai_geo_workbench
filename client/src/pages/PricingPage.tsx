@@ -80,10 +80,12 @@ export default function PricingPage() {
                 </div>
                 <p className="mt-3 text-sm font-medium text-gray-700">{plan.projectLimitLabel}</p>
                 <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-gray-600">
-                  <li className="flex gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" aria-hidden />
-                    <span>{plan.featureSummary}</span>
-                  </li>
+                  {plan.features.map(feature => (
+                    <li key={feature} className="flex gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" aria-hidden />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
                 </ul>
                 {plan.id === "enterprise" ? (
                   <Button variant="outline" className="mt-6 w-full" asChild>

@@ -17,6 +17,7 @@ describe("V1.1 演示引导流程 /demo", () => {
     expect(html).toContain("无需登录");
     expect(html).toContain("T0 检测结果");
     expect(html).toContain("下一步");
+    expect(html).toContain("上一步");
     expect(html).toContain(`第 1 / ${demoFlowStepTitles.length} 步`);
 
     for (const title of demoFlowStepTitles) {
@@ -27,7 +28,7 @@ describe("V1.1 演示引导流程 /demo", () => {
   it("第一步展示海豚知道 T0 基线与样例问题", () => {
     const html = renderFlowHtml();
 
-    expect(html).toContain("GEO 总分（T0）");
+    expect(html).toContain("GEO 总分（基线）");
     expect(html).toContain("弱可见");
     expect(html).toContain("知识付费 SaaS 平台哪个好？");
     expect(html).toContain("小鹅通");
@@ -50,13 +51,15 @@ describe("V1.2 外部只读 Demo 全模块浏览 /demo/geo", () => {
     }
   });
 
-  it("页面级渲染包含只读提示、十个禁用写操作按钮和公开内容页链接", () => {
+  it("页面级渲染包含只读提示、十个禁用写操作按钮和公开内容页路径文案", () => {
     const html = renderBrowseHtml();
     const readonlyHint = "Demo 演示模式仅支持查看，不支持修改。";
 
     expect(html).toContain(readonlyHint);
     expect(html).toContain("本页面不提供登录、编辑、生成、发布、删除、保存或更新状态能力");
     expect(html).toContain("/geo/content/1/180001");
+    expect(html).not.toMatch(/href="\/geo\/content\/1\/180001"/);
+    expect(html).toContain("Demo 仅展示样板路径，不跳转至后台发布页。");
 
     for (const operation of disabledOperations) {
       const escapedOperation = operation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

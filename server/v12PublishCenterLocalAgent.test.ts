@@ -12,7 +12,11 @@ describe("Phase3 publish center Local Agent UI", () => {
   const board = read("client/src/components/publishing/PublishTaskColumnBoard.tsx");
   const statusCard = read("client/src/components/publishing/LocalAgentStatusCard.tsx");
   const stepsPanel = read("client/src/components/publishing/LocalAgentPublishStepsPanel.tsx");
-  const publishUi = page + board + statusCard + stepsPanel + display;
+  const overviewBar = read("client/src/components/publishing/PublishWeeklyOverviewBar.tsx");
+  const cardGrid = read("client/src/components/publishing/PublishPlatformCardGrid.tsx");
+  const sidePanel = read("client/src/components/publishing/PublishActionSidePanel.tsx");
+  const publishUi =
+    page + overviewBar + board + statusCard + stepsPanel + display + cardGrid + sidePanel;
 
   it("re-exports publish center from V12FlowPages", () => {
     expect(flow).toContain(
@@ -25,8 +29,11 @@ describe("Phase3 publish center Local Agent UI", () => {
     for (const text of [
       "publish-center-page",
       "平台适配发布",
-      "Local Agent 状态",
+      "publish-weekly-overview-bar",
+      "publish-platform-card-grid",
+      "publish-all-platforms",
       "local-agent-status-card",
+      "localAgentConnectionCopy",
       "publish-task-columns",
       "publish-column-pending",
       "publish-column-active",
@@ -52,11 +59,11 @@ describe("Phase3 publish center Local Agent UI", () => {
     expect(page).not.toContain("下载 Chrome 插件");
   });
 
-  it("keeps manual publish mutations without auto publish", () => {
+  it("keeps manual publish mutations without built-in GEO page auto publish", () => {
     expect(page).toContain("createManualPublishRecord");
     expect(page).toContain("updateManualPublishRecord");
+    expect(page).toContain("publishTasks.create");
     expect(page).not.toContain("trpc.geo.articles.publish.useMutation");
-    expect(page).not.toContain("publishTasks.create");
   });
 
   it("does not expose engineering fields in customer UI", () => {

@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { buildProjectUrl, setActiveProjectId } from "@/lib/activeProject";
+import { activateProject, buildProjectUrl } from "@/lib/activeProject";
 import { formatGeoScore } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ export function ProjectSwitcher({
 
   const handleSelect = (projectId: number) => {
     if (projectId === currentProjectId) return;
-    setActiveProjectId(projectId);
+    activateProject(projectId);
     if (pathname === "/clients" || pathname === "/onboarding") {
       setLocation(buildProjectUrl("/workspace", projectId));
       return;

@@ -41,7 +41,7 @@ const CUSTOMER_MESSAGES: Record<PublishErrorType, string> = {
   submit_failed: "已点击发布/保存，但未检测到成功结果。",
   category_required: "平台要求选择分类或栏目，请人工补全后重试。",
   timeout: "操作超时，请检查网络与页面加载后重试。",
-  unknown: "发布失败，请查看调试日志或联系交付同学。",
+  unknown: "发布失败，请查看日志或联系支持团队。",
 };
 
 export function customerMessageForPublishError(errorType: string, step?: string): string {

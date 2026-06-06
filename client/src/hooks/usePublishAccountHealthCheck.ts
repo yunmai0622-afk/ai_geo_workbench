@@ -8,7 +8,7 @@ import {
   collectBoundProfileIdsForHealthCheck,
   filterSnapshotEntriesForProfiles,
 } from "@shared/publishAccountHealthCheck";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 type RunOptions = {
   /** 是否对绑定账号执行本地 detect（打开页时默认 true） */
@@ -39,7 +39,7 @@ export function usePublishAccountHealthCheck(projectId: number | null, enabled: 
         const health = await checkLocalAgentHealth();
         const online = Boolean(health?.ok);
         if (runId !== runIdRef.current) return;
-        setAgentOnline(online);
+        setAgentOnline(prev => (prev === online ? prev : online));
 
         if (!online || !health) {
           setLastCheckedAt(new Date());
@@ -77,14 +77,6 @@ export function usePublishAccountHealthCheck(projectId: number | null, enabled: 
     },
     [enabled, projectId, syncSnapshot, utils.geo.platformAccounts.list],
   );
-
-  const runCheckRef = useRef(runCheck);
-  runCheckRef.current = runCheck;
-
-  useEffect(() => {
-    if (!enabled || !projectId) return;
-    void runCheckRef.current({ detectSessions: true });
-  }, [enabled, projectId]);
 
   return {
     checking,

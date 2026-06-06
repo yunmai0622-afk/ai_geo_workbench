@@ -32,7 +32,9 @@ class ErrorBoundary extends Component<Props, State> {
 
             <h2 className="text-xl mb-3">页面遇到了意外问题</h2>
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-              请刷新页面后重试。若问题持续出现，请联系交付同学协助排查。
+              请刷新页面后重试。若问题持续出现，请联系客服获取帮助。
+              <br />
+              联系邮箱：523245782@qq.com
             </p>
 
             <button

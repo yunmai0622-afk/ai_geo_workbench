@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { filterNavigableProjects } from "@shared/projectNavigation";
 import { GEO_SYNTHETIC_AI_RESPONSE_PREFIX, isSyntheticGeoRawAnswer } from "@shared/geoSyntheticResponse";
 import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionMapping";
 import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
@@ -15,14 +16,17 @@ import { ensureProjectsOwnerUserIdColumnOnce } from "./ensureProjectsOwnerUserId
 import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
 import { mergeLinkAccessIntoRawJson } from "@shared/inclusionMonitoringDisplay";
 import { aggregateT0AiTestRunMetrics } from "@shared/t0AiTestRunMetrics";
+import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
+import { geoScorePercentToRate, resolveBrandMentionRate } from "@shared/brandMentionRateResolver";
 import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, not } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, not, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { adminConfigRouter } from "./adminConfigRouter";
+import { adminPublishTasksRouter } from "./adminPublishTasksRouter";
 import { adminStatsRouter } from "./adminStatsRouter";
 import { adminSubscriptionRouter } from "./adminSubscriptionRouter";
 import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
@@ -63,6 +67,7 @@ import {
   platformAuthorizationConfigs,
   publishStrategies,
   projects,
+  publishTasks,
   questions,
   reports,
   aiTestRuns,
@@ -130,6 +135,7 @@ import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkfl
 import { runContentQualityReview } from "./geoQualityReviewService";
 import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
+import { ensureInclusionMonitoringRecordForPublishRecord } from "./publishRecordMonitoring";
 import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
 import {
@@ -143,6 +149,7 @@ import { emitT1RetestCompleteNotification } from "./systemNotifications";
 import {
   getQuestionTemplateById,
   listQuestionTemplates,
+  buildQuestionTemplatePreview,
   resolveFilledQuestionTemplatePrompt,
 } from "./questionTemplateService";
 import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
@@ -157,6 +164,7 @@ import {
   normalizeTargetAiPlatforms,
 } from "@shared/platformContentRules";
 import { formatPlatformRuleSummaryForGeneration } from "@shared/geoContentTaskSource";
+import { assertProjectScopedContentTask } from "./projectScopedContentTask";
 import type { GeoContentTaskGenerationTrace } from "@shared/platformContentRules";
 import {
   PLATFORM_CONTENT_NO_AI_DIAGNOSIS_MESSAGE,
@@ -183,6 +191,7 @@ import {
   getOrCreateShareTokenForProject,
   getShareLinkStatusForProject,
   regenerateShareLinkForProject,
+  renewShareLinkForProject,
   resolveShareTokenProjectId,
 } from "./deliveryReportPublicShare";
 import { buildProjectDeliveryReportContentQuality } from "./deliveryReportContentQuality";
@@ -196,7 +205,6 @@ import { assertContentGenerationRateLimit, assertT0DetectionRateLimit } from "./
 import {
   assertCanCreateProject,
   assertCanGenerateContent,
-  assertCanRunT0Detection,
   getSubscriptionUsageSnapshot,
 } from "./subscriptionLimits";
 import { writeAuditLog } from "./auditLog";
@@ -1117,7 +1125,8 @@ const geoRouter = router({
         .orderBy(desc(projects.createdAt));
 
       const projectIds = accessibleIds;
-      const [articleRows, publishRows, monitoringRows, analysisRows, scoreRows, t0RoundRows] = await Promise.all([
+      const [articleRows, publishRows, completedPublishTaskRows, monitoringRows, analysisRows, scoreRows, t0RoundRows] =
+        await Promise.all([
         db
           .select({ projectId: geoArticles.projectId })
           .from(geoArticles)
@@ -1128,7 +1137,16 @@ const geoRouter = router({
           .where(inArray(geoPublishRecords.projectId, projectIds)),
         db
           .select({
+            projectId: publishTasks.projectId,
+            count: sql<number>`count(*)`,
+          })
+          .from(publishTasks)
+          .where(and(inArray(publishTasks.projectId, projectIds), eq(publishTasks.status, "completed")))
+          .groupBy(publishTasks.projectId),
+        db
+          .select({
             projectId: geoInclusionMonitoringRecords.projectId,
+            monitoringRecordId: geoInclusionMonitoringRecords.id,
             aiTestResults: geoInclusionMonitoringRecords.aiTestResults,
           })
           .from(geoInclusionMonitoringRecords)
@@ -1137,6 +1155,7 @@ const geoRouter = router({
           .select({
             projectId: analysisResults.projectId,
             createdAt: analysisResults.createdAt,
+            mentionsEnterprise: analysisResults.mentionsEnterprise,
           })
           .from(analysisResults)
           .where(inArray(analysisResults.projectId, projectIds))
@@ -1145,6 +1164,7 @@ const geoRouter = router({
           .select({
             projectId: geoScores.projectId,
             score: geoScores.totalScore,
+            aiVisibilityScore: geoScores.aiVisibilityScore,
             createdAt: geoScores.createdAt,
           })
           .from(geoScores)
@@ -1170,25 +1190,48 @@ const geoRouter = router({
       for (const r of articleRows) {
         articleCountMap.set(r.projectId, (articleCountMap.get(r.projectId) ?? 0) + 1);
       }
-      const publishCountMap = new Map<number, number>();
+      const publishRecordCountMap = new Map<number, number>();
       for (const r of publishRows) {
-        publishCountMap.set(r.projectId, (publishCountMap.get(r.projectId) ?? 0) + 1);
+        publishRecordCountMap.set(r.projectId, (publishRecordCountMap.get(r.projectId) ?? 0) + 1);
+      }
+      const completedPublishTaskCountMap = new Map<number, number>();
+      for (const r of completedPublishTaskRows) {
+        completedPublishTaskCountMap.set(r.projectId, Number(r.count ?? 0));
       }
       const aiTestCountMap = new Map<number, number>();
+      const monitoringEvidenceByProject = new Map<
+        number,
+        Array<{ monitoringRecordId: number; results: unknown[] }>
+      >();
       for (const r of monitoringRows) {
         const results = Array.isArray(r.aiTestResults) ? r.aiTestResults : [];
         aiTestCountMap.set(r.projectId, (aiTestCountMap.get(r.projectId) ?? 0) + results.length);
+        const evidence = monitoringEvidenceByProject.get(r.projectId) ?? [];
+        evidence.push({
+          monitoringRecordId: r.monitoringRecordId,
+          results,
+        });
+        monitoringEvidenceByProject.set(r.projectId, evidence);
       }
       const lastDiagnosisMap = new Map<number, Date>();
+      const analysisMentionTotals = new Map<number, { mentioned: number; total: number }>();
       for (const r of analysisRows) {
         if (!lastDiagnosisMap.has(r.projectId)) {
           lastDiagnosisMap.set(r.projectId, r.createdAt);
         }
+        const bucket = analysisMentionTotals.get(r.projectId) ?? { mentioned: 0, total: 0 };
+        bucket.total += 1;
+        if (r.mentionsEnterprise === 1) bucket.mentioned += 1;
+        analysisMentionTotals.set(r.projectId, bucket);
       }
       const latestScoreMap = new Map<number, number>();
+      const latestGeoVisibilityMap = new Map<number, number>();
       for (const r of scoreRows) {
         if (!latestScoreMap.has(r.projectId)) {
           latestScoreMap.set(r.projectId, r.score ?? 0);
+          if (r.aiVisibilityScore != null) {
+            latestGeoVisibilityMap.set(r.projectId, r.aiVisibilityScore);
+          }
         }
       }
 
@@ -1250,6 +1293,25 @@ const geoRouter = router({
               : lastDiagnosisAt
             : t0?.finishedAt ?? lastDiagnosisAt ?? null;
 
+        const analysisTotals = analysisMentionTotals.get(p.id);
+        const analysisMentionRate =
+          analysisTotals && analysisTotals.total > 0
+            ? analysisTotals.mentioned / analysisTotals.total
+            : null;
+        const monitoringEvidence = monitoringEvidenceByProject.get(p.id) ?? [];
+        const monitoringAggregate = aggregateAiTestEvidence(monitoringEvidence);
+        const monitoringQuestionCount = monitoringAggregate.questionCount;
+        const brandMentionRate = resolveBrandMentionRate({
+          t0MentionRate: t0?.mentionRate ?? null,
+          monitoringQuestionCount,
+          monitoringMentionRate:
+            monitoringQuestionCount > 0 ? monitoringAggregate.mentionRate : null,
+          geoScoreMentionRate: geoScorePercentToRate(latestGeoVisibilityMap.get(p.id)),
+          analysisMentionRate,
+        });
+        const manualPublishCount = publishRecordCountMap.get(p.id) ?? 0;
+        const agentPublishCount = completedPublishTaskCountMap.get(p.id) ?? 0;
+
         return {
           id: p.id,
           enterpriseName: p.enterpriseName,
@@ -1261,12 +1323,12 @@ const geoRouter = router({
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
           articleCount: articleCountMap.get(p.id) ?? 0,
-          publishCount: publishCountMap.get(p.id) ?? 0,
+          publishCount: manualPublishCount + agentPublishCount,
           aiTestCount: aiTestCountMap.get(p.id) ?? 0,
           lastDiagnosisAt,
           lastMeasuredAt,
           latestGeoScore: latestScoreMap.get(p.id) ?? null,
-          t0BrandMentionRate: t0?.mentionRate ?? null,
+          t0BrandMentionRate: brandMentionRate,
         };
       });
     }),
@@ -1281,7 +1343,7 @@ const geoRouter = router({
         .from(projects)
         .where(and(eq(projects.ownerUserId, userId), isNull(projects.archivedAt)))
         .orderBy(desc(projects.createdAt));
-      return filterRowsWithNumericId(rows);
+      return filterNavigableProjects(filterRowsWithNumericId(rows));
     }),
     archive: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -1299,7 +1361,7 @@ const geoRouter = router({
       await ensureProjectsOwnerUserIdColumnOnce();
       const db = await requireDb();
       const ownerUserId = getCurrentUserId(ctx);
-      await assertCanCreateProject(db, ownerUserId);
+      await assertCanCreateProject(db, ownerUserId, ctx.user!.role);
       let projectId = 0;
       try {
         const inserted = await db.insert(projects).values({ ...input, ownerUserId }).$returningId();
@@ -1574,9 +1636,8 @@ const geoRouter = router({
   }),
 
   analysis: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
-      if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
       const rows = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId)).orderBy(desc(analysisResults.createdAt));
       const [responseRows, questionRows] = await Promise.all([
@@ -2032,9 +2093,8 @@ const geoRouter = router({
   }),
 
   tasks: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
-      if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
       const rows = await db
         .select()
@@ -2120,14 +2180,20 @@ const geoRouter = router({
       .input(z.object({ templateId: z.number().int().positive(), projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         const db = await requireDb();
-        const project = await requireProjectAccess(ctx, input.projectId);
+        const projectRow = await requireProjectAccess(ctx, input.projectId);
         const template = await getQuestionTemplateById(db, input.templateId);
         if (!template) {
           throw new TRPCError({ code: "NOT_FOUND", message: "内容模板不存在" });
         }
+        const assetLibrary = await getAssetLibraryContext(input.projectId);
+        const profile = assetLibrary.profile ?? null;
+        const preview = buildQuestionTemplatePreview(template, projectRow, profile);
         return {
-          template,
-          filledPrompt: resolveFilledQuestionTemplatePrompt(template, project),
+          template: preview.template,
+          enterpriseName: preview.enterpriseName,
+          filledPrompt: preview.filledPrompt,
+          usedFields: preview.usedFields,
+          missingFieldLabels: preview.missingFieldLabels,
         };
       }),
   }),
@@ -2222,6 +2288,20 @@ const geoRouter = router({
         const db = await requireDb();
         await requireProjectAccess(ctx, input.projectId);
         const { token: shareToken, expiresAt } = await regenerateShareLinkForProject(db, input.projectId);
+        const sharePath = buildDeliveryReportPublicPath(shareToken);
+        return {
+          success: true,
+          sharePath,
+          shareToken,
+          shareExpiresAt: expiresAt.toISOString(),
+        } as const;
+      }),
+    renewShareLink: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const { token: shareToken, expiresAt } = await renewShareLinkForProject(db, input.projectId);
         const sharePath = buildDeliveryReportPublicPath(shareToken);
         return {
           success: true,
@@ -2373,9 +2453,8 @@ const geoRouter = router({
 
   articles: router({
     topics: router({
-      list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+      list: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
         const db = await requireDb();
-        if (!input.projectId) return [];
         await requireProjectAccess(ctx, input.projectId);
         const rows = await db
           .select()
@@ -2425,9 +2504,8 @@ const geoRouter = router({
         return { success: true, count: generated.length, topics: generated } as const;
       }),
     }),
-    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const db = await requireDb();
-      if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
       // Fix: 问题3 — 排除旧格式「如何回答…」长标题占位文章（较按 topics 时间过滤更直观、可预期）。
       const rows = await db
@@ -2714,13 +2792,25 @@ const geoRouter = router({
         ].filter(Boolean).join("\n"),
         publishedAt,
       }).$returningId();
+      const publishRecordId = inserted[0]?.id ?? 0;
       if (input.publishStatus === "published" || input.publishStatus === "link_backfilled") {
         await markGeoArticlePublishedAt(db, article.id, {
           publishedAt,
           publicPath: input.publishUrl.trim(),
         });
+        if (publishRecordId > 0) {
+          await ensureInclusionMonitoringRecordForPublishRecord(db, {
+            projectId: input.projectId,
+            articleId: article.id,
+            publishRecordId,
+            publicUrl: input.publishUrl.trim(),
+            qualityScore: latestScore.totalScore,
+            rawJsonSource: "manual_publish_record",
+            rawJsonCreatedBy: "geo.articles.createManualPublishRecord",
+          });
+        }
       }
-      return { success: true, id: inserted[0]?.id ?? 0 } as const;
+      return { success: true, id: publishRecordId } as const;
     }),
     updateManualPublishRecord: protectedProcedure.input(manualPublishRecordInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -2763,6 +2853,15 @@ const geoRouter = router({
         await markGeoArticlePublishedAt(db, article.id, {
           publishedAt,
           publicPath: input.publishUrl.trim(),
+        });
+        await ensureInclusionMonitoringRecordForPublishRecord(db, {
+          projectId: input.projectId,
+          articleId: article.id,
+          publishRecordId: input.id,
+          publicUrl: input.publishUrl.trim(),
+          qualityScore: record.qualityScore ?? getGeoArticleMinPassScore(),
+          rawJsonSource: "manual_publish_record",
+          rawJsonCreatedBy: "geo.articles.updateManualPublishRecord",
         });
       }
       return { success: true, id: input.id } as const;
@@ -2829,6 +2928,7 @@ const geoRouter = router({
             contentTaskId: z.number().int().positive().optional(),
             diagnosisFinding: z.string().trim().max(4000).optional(),
             geoGap: z.string().trim().max(4000).optional(),
+            platformRule: z.string().trim().max(4000).optional(),
             questionTemplateId: z.number().int().positive().optional(),
           })
           .superRefine((val, ctx) => {
@@ -2854,8 +2954,8 @@ const geoRouter = router({
       .mutation(async ({ ctx, input }) => {
       const userId = getCurrentUserId(ctx);
       const dbForLimit = await requireDb();
-      await assertCanGenerateContent(dbForLimit, userId);
-      await assertContentGenerationRateLimit(userId);
+      await assertCanGenerateContent(dbForLimit, userId, ctx.user!.role);
+      await assertContentGenerationRateLimit(userId, ctx.user!.role);
       const startedAtMs = Date.now();
       let stepStartMs = startedAtMs;
       const stepTimings: GeoArticlesGenerateStepTimings = {};
@@ -2880,6 +2980,12 @@ const geoRouter = router({
       if (!task || task.projectId !== topic.projectId) {
         logDuration(topic.projectId, false, "TOPIC_UNBOUND");
         throw new TRPCError({ code: "BAD_REQUEST", message: PLATFORM_CONTENT_TOPIC_UNBOUND_MESSAGE });
+      }
+      if (input.contentTaskId != null) {
+        await assertProjectScopedContentTask(db, ctx, {
+          projectId: topic.projectId,
+          contentTaskId: input.contentTaskId,
+        });
       }
       const [projectQuestions, analyses, responses, assetLibrary] = await Promise.all([
         db.select().from(questions).where(eq(questions.projectId, topic.projectId)),
@@ -2941,15 +3047,18 @@ const geoRouter = router({
           const hasTrace =
             input.contentTaskId != null ||
             Boolean(input.diagnosisFinding?.trim()) ||
-            Boolean(input.geoGap?.trim());
+            Boolean(input.geoGap?.trim()) ||
+            Boolean(input.platformRule?.trim());
           if (hasTrace) {
             geoContentTaskTrace = {
               contentTaskId: input.contentTaskId ?? task.id,
               diagnosisFinding: input.diagnosisFinding?.trim(),
               geoGap: input.geoGap?.trim(),
-              platformRuleSummary: formatPlatformRuleSummaryForGeneration(
-                platformStrategy.targetPublishPlatform,
-              ),
+              platformRuleSummary:
+                input.platformRule?.trim() ||
+                formatPlatformRuleSummaryForGeneration(
+                  platformStrategy.targetPublishPlatform,
+                ),
             };
           }
         }
@@ -2963,7 +3072,7 @@ const geoRouter = router({
           questionTemplateReference = {
             id: template.id,
             title: template.title,
-            filledPrompt: resolveFilledQuestionTemplatePrompt(template, project),
+            filledPrompt: resolveFilledQuestionTemplatePrompt(template, project, assetLibrary.profile ?? null),
           };
         }
         draft = await generateGeoArticleDraft({
@@ -3407,18 +3516,26 @@ ${article.markdownContent}`,
         throw new TRPCError({ code: "NOT_FOUND", message: "内容不存在或尚未发布" });
       }
       const project = await getProjectRowConn(db, article.projectId);
+      const projectForPublicBase = {
+        enterpriseName: project.enterpriseName,
+        industry: project.industry,
+        website: project.website,
+        targetCustomers: project.targetCustomers,
+        productIntro: project.productIntro,
+        coreSellingPoints: project.coreSellingPoints,
+      };
       const profileRows = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, article.projectId)).limit(1);
       const prof = profileRows[0];
       const projectForPublic = prof
         ? {
-            ...project,
+            ...projectForPublicBase,
             brandName: prof.brandName ?? undefined,
             targetCustomer: prof.targetCustomer ?? undefined,
             productDesc: prof.productDesc ?? undefined,
             productServiceIntro: prof.productServiceIntro ?? undefined,
             oneLiner: prof.oneLiner ?? undefined,
           }
-        : project;
+        : projectForPublicBase;
       const scoreRows = await db.select().from(geoArticleQualityScores).where(eq(geoArticleQualityScores.articleId, article.id)).orderBy(desc(geoArticleQualityScores.createdAt)).limit(1);
       return { article, project: projectForPublic, qualityScore: scoreRows[0] ?? null } as const;
     }),
@@ -3794,7 +3911,6 @@ ${article.markdownContent}`,
       .mutation(async ({ ctx, input }) => {
         await requireProjectAccess(ctx, input.projectId);
         const db = await requireDb();
-        await assertCanRunT0Detection(db, getCurrentUserId(ctx));
         await assertT0DetectionRateLimit(input.projectId, {
           id: getCurrentUserId(ctx),
           role: ctx.user!.role,
@@ -4106,7 +4222,7 @@ ${article.markdownContent}`,
   subscription: router({
     usage: protectedProcedure.query(async ({ ctx }) => {
       const db = await requireDb();
-      return getSubscriptionUsageSnapshot(db, getCurrentUserId(ctx));
+      return getSubscriptionUsageSnapshot(db, getCurrentUserId(ctx), ctx.user!.role);
     }),
   }),
 });
@@ -4114,6 +4230,7 @@ ${article.markdownContent}`,
 export const appRouter = router({
   agent: agentRouter,
   adminConfig: adminConfigRouter,
+  adminPublishTasks: adminPublishTasksRouter,
   adminStats: adminStatsRouter,
   adminSubscription: adminSubscriptionRouter,
   system: systemRouter,

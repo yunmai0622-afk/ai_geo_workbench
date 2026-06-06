@@ -50,7 +50,7 @@ describe("V1.2 外部只读 Demo 数据", () => {
     }
   });
 
-  it("只读 Demo 明确禁用所有写操作且保留公开内容页链接", () => {
+  it("只读 Demo 明确禁用所有写操作且保留公开内容页路径文案", () => {
     expect(disabledOperations).toEqual([
       "新建项目",
       "编辑资料",

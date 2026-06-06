@@ -25,7 +25,7 @@ const VALUE_POINTS = [
 
 export default function LandingPage() {
   useEffect(() => {
-    document.title = `${AUTH_PRODUCT_NAME} - 让你的企业被 AI 搜索推荐`;
+    document.title = "GEO 增长工作台 - AI 搜索增长系统";
   }, []);
 
   return (

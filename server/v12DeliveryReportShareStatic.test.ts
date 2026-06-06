@@ -43,9 +43,15 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(reportPageSource).toContain("createShareLink");
     expect(reportPageSource).toContain("disableShareLink");
     expect(reportPageSource).toContain("regenerateShareLink");
+    expect(reportPageSource).toContain("renewShareLink");
+    expect(reportPageSource).toContain("DeliveryReportShareRenewalReminderCard");
+    expect(readProjectFile("client/src/components/delivery/DeliveryReportShareRenewalReminderCard.tsx")).toContain(
+      "delivery-report-share-renewal-reminder",
+    );
+    expect(reportPageSource).toContain("链接已续期");
     expect(reportPageSource).toContain("重新生成链接");
     expect(reportPageSource).toContain("禁用链接");
-    expect(reportPageSource).toContain("新链接已生成并复制");
+    expect(reportPageSource).toContain("新链接已生成，旧链接已失效");
     expect(reportPageSource).toContain("客户报告链接已禁用");
     expect(reportPageSource).toContain("确定要禁用当前客户报告链接吗？");
     expect(reportPageSource).toContain("禁用后，客户将无法通过原链接查看报告和证据");
@@ -60,6 +66,7 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(routerSource).toContain("publicEvidence");
     expect(routerSource).toContain("disableShareLink");
     expect(routerSource).toContain("regenerateShareLink");
+    expect(routerSource).toContain("renewShareLink");
     expect(routerSource).toContain("publicProcedure");
     expect(publicSource).toContain("buildDeliveryReportPublicEvidencePath");
     expect(publicSource).not.toContain("/geo/evidence/");
@@ -78,6 +85,8 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(lightViewSource).toContain("主要检测结论");
     expect(lightViewSource).toContain("delivery-report-public-share-expiry");
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("DELIVERY_REPORT_SHARE_VALIDITY_DAYS");
+    expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("DELIVERY_REPORT_SHARE_RENEWAL_REMINDER_DAYS");
+    expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("resolveDeliveryReportShareRenewalReminder");
     expect(shareSource).toContain('variant="light"');
     for (const text of [
       "GEO AI 搜索可见度优化交付报告",
@@ -125,5 +134,14 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(readProjectFile("drizzle/schema.ts")).toContain("delivery_report_share_tokens");
     expect(serverShareSource).toContain("deliveryReportShareTokens");
     expect(publicSource).not.toContain("projectId");
+
+    expect(reportPageSource).toContain("复制链接");
+    expect(reportPageSource).toContain("showShareQrCode");
+    expect(reportPageSource).toContain("api.qrserver.com");
+    expect(reportPageSource).toContain("客户报告分享二维码");
+    expect(publicSource).toContain("document.title");
+    expect(publicSource).toContain("GEO 交付报告");
+    expect(lightViewSource).toContain("有效期剩余");
+    expect(lightViewSource).toContain("resolveDeliveryReportShareCountdown");
   });
 });

@@ -26,13 +26,10 @@ describe("GEO-V1.1-AgentDiagFix", () => {
     expect(html).toContain("log-detail-customer is-empty");
   });
 
-  it("settings moved to dedicated tab panel", () => {
+  it("settings merged into diag-settings panel", () => {
     const html = read("local-agent/src/renderer/index.html");
-    const diagEnd = html.indexOf("</section>", html.indexOf("panel-diagnostics"));
-    const settingsStart = html.indexOf("panel-settings");
-    expect(settingsStart).toBeGreaterThan(diagEnd);
-    const diagSlice = html.slice(html.indexOf("panel-diagnostics"), diagEnd);
-    expect(diagSlice).not.toContain("btn-save-settings");
-    expect(html.slice(settingsStart)).toContain("btn-save-settings");
+    expect(html).toContain("panel-diag-settings");
+    expect(html).toContain("btn-save-settings");
+    expect(html).not.toContain("panel-settings");
   });
 });

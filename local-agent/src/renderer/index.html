@@ -10,67 +10,60 @@
     <header class="app-header">
       <div class="header-left">
         <h1>GEO 本地发布助手</h1>
-        <p class="subtitle">管理本机发布账号，自动接收并执行 GEO 内容发布任务</p>
+        <p class="subtitle">GEO Web 的本地发布执行器：管理本机平台登录、接收发布任务、填充内容并回传状态</p>
       </div>
       <div class="header-right">
         <div id="update-notice" class="update-notice" hidden></div>
+        <div id="hdr-metrics" class="hdr-metrics" aria-label="运行状态摘要"></div>
         <span id="hdr-version" class="badge">v—</span>
         <span id="hdr-status" class="badge status-badge" data-status="unknown">检测中</span>
       </div>
     </header>
 
     <nav class="tabs" role="tablist">
-      <button type="button" class="tab active" data-tab="overview">总览</button>
+      <button type="button" class="tab active" data-tab="overview">状态总览</button>
       <button type="button" class="tab" data-tab="accounts">账号环境</button>
       <button type="button" class="tab" data-tab="tasks">发布任务</button>
-      <button type="button" class="tab" data-tab="diagnostics">诊断</button>
-      <button type="button" class="tab" data-tab="settings">设置</button>
+      <button type="button" class="tab" data-tab="diag-settings">诊断与设置</button>
     </nav>
 
     <main class="tab-panels">
-      <!-- ===== 总览 ===== -->
       <section id="panel-overview" class="panel active" role="tabpanel">
-        <!-- 状态主卡片 -->
         <div id="status-hero" class="status-hero"></div>
-
-        <!-- 发布准备流程 -->
+        <div id="hero-actions" class="hero-actions btn-row compact"></div>
         <div class="section-title">发布准备流程</div>
         <div id="prep-steps" class="prep-steps"></div>
-
-        <!-- 快捷入口 -->
-        <div class="section-title">快捷操作</div>
+        <div class="section-title">在 GEO Web 继续操作</div>
         <div class="quick-actions">
           <button type="button" id="btn-open-geo-publish" class="action-card">
             <span class="action-icon">📤</span>
-            <span class="action-label">查看发布记录</span>
-            <span class="action-desc">在 GEO Web 查看所有发布状态</span>
+            <span class="action-label">去 GEO Web 加入发布队列</span>
+            <span class="action-desc">平台适配发布 · 发布记录</span>
           </button>
           <button type="button" id="btn-open-geo-weekly" class="action-card">
             <span class="action-icon">📝</span>
-            <span class="action-label">内容生产</span>
-            <span class="action-desc">在 GEO Web 生成待发布内容</span>
+            <span class="action-label">去 GEO Web 生成内容</span>
+            <span class="action-desc">内容生产与选题</span>
           </button>
           <button type="button" id="btn-open-geo-bind" class="action-card">
             <span class="action-icon">🔗</span>
-            <span class="action-label">绑定发布账号</span>
-            <span class="action-desc">在 GEO Web 管理平台账号</span>
+            <span class="action-label">管理账号环境</span>
+            <span class="action-desc">在本机创建平台登录环境</span>
           </button>
         </div>
-
-        <!-- 最近动态 -->
         <div class="section-title">最近动态</div>
         <div id="recent-activity" class="recent-activity"></div>
       </section>
 
-      <!-- ===== 账号环境 ===== -->
       <section id="panel-accounts" class="panel" role="tabpanel" hidden>
+        <div class="panel-intro">
+          <p>管理本机各平台登录环境。完成登录后请「刷新并同步账号状态」以便 GEO Web 识别可用账号。</p>
+        </div>
         <div class="accounts-layout">
-          <!-- 左侧：平台选择区 -->
           <aside class="accounts-sidebar">
             <h3 class="sidebar-title">发布平台</h3>
             <ul id="platform-list" class="platform-list"></ul>
           </aside>
-          <!-- 右侧：账号管理区 -->
           <div class="accounts-main">
             <div id="accounts-main-header" class="accounts-main-header"></div>
             <div id="accounts-main-content" class="accounts-main-content"></div>
@@ -78,16 +71,16 @@
         </div>
       </section>
 
-      <!-- ===== 发布任务 ===== -->
       <section id="panel-tasks" class="panel" role="tabpanel" hidden>
         <div class="panel-intro">
-          <p>发布任务由 GEO Web 服务端下发，客户端自动接收并执行。如任务失败或需人工确认，可在下方查看详情。</p>
+          <p>发布任务由 GEO Web 下发到本客户端执行。客户端会填充内容，最终发布需在平台页面人工确认。</p>
         </div>
         <div class="btn-row compact">
           <button type="button" id="btn-tasks-open-geo-publish" class="primary">在 GEO Web 查看发布记录</button>
           <button type="button" id="btn-poll-once">立即拉取任务</button>
         </div>
-        <div class="table-wrap">
+        <div id="tasks-empty" class="tasks-empty" hidden></div>
+        <div id="tasks-table-wrap" class="table-wrap">
           <table id="tasks-table">
             <thead>
               <tr>
@@ -105,71 +98,64 @@
         </div>
       </section>
 
-      <!-- ===== 诊断 ===== -->
-      <section id="panel-diagnostics" class="panel" role="tabpanel" hidden>
+      <section id="panel-diag-settings" class="panel" role="tabpanel" hidden>
         <div class="panel-intro">
-          <p>查看连接状态、任务执行记录与实时输出。如遇发布失败，请先在此查看步骤说明；需要技术支持时可复制日志发给交付同学。</p>
+          <p>先确认本机服务与 GEO Web 连接是否正常；需要技术支持时可复制诊断信息或导出诊断包。</p>
         </div>
-
-        <!-- 连接诊断 -->
-        <div class="diag-section">
-          <h3>连接状态</h3>
-          <p id="diag-local-http" class="conn-line"></p>
-          <p id="diag-server-conn" class="conn-line"></p>
+        <div class="diag-section diag-user-section">
+          <h3>普通排查</h3>
+          <dl id="diag-summary-grid" class="diag-summary-grid"></dl>
           <div class="btn-row compact">
-            <button type="button" id="btn-test-conn" class="primary">测试服务端连接</button>
-            <button type="button" id="btn-start-poll">开始接收任务</button>
-            <button type="button" id="btn-stop-poll">暂停接收任务</button>
+            <button type="button" id="btn-test-conn" class="primary">测试 Web 连接</button>
+            <button type="button" id="btn-copy-diag-summary">复制诊断信息</button>
+            <button type="button" id="btn-poll-once-diag">手动拉取任务</button>
           </div>
         </div>
-
-        <!-- 任务日志（客户可读） -->
-        <div class="diag-section">
-          <h3>任务执行记录</h3>
-          <p class="diag-hint">选择一条发布任务，查看逐步执行说明（已隐藏内部调试信息）。</p>
-          <div class="btn-row compact">
-            <button type="button" id="btn-copy-logs">复制日志（含技术详情）</button>
+        <details class="diag-tech-fold" id="diag-tech-fold">
+          <summary>技术排查（默认折叠）</summary>
+          <div class="diag-section">
+            <h3>任务执行记录</h3>
+            <p class="diag-hint">选择一条发布任务，查看逐步执行说明。</p>
+            <div class="btn-row compact">
+              <button type="button" id="btn-copy-logs">复制日志（含技术详情）</button>
+            </div>
+            <label class="log-select-label">选择任务 <select id="log-task-select"></select></label>
+            <pre id="log-detail" class="log-detail log-detail-customer is-empty">暂无任务日志，选择一条发布任务查看执行详情</pre>
+            <details class="log-raw-fold">
+              <summary>查看原始技术日志</summary>
+              <pre id="log-detail-raw" class="log-detail log-detail-raw is-empty">选择任务后可查看原始技术日志</pre>
+            </details>
           </div>
-          <label class="log-select-label">选择任务 <select id="log-task-select"></select></label>
-          <pre id="log-detail" class="log-detail log-detail-customer is-empty">暂无任务日志，选择一条发布任务查看执行详情</pre>
-          <details class="log-raw-fold">
-            <summary>查看原始技术日志</summary>
-            <pre id="log-detail-raw" class="log-detail log-detail-raw is-empty">选择任务后可查看原始技术日志</pre>
-          </details>
-        </div>
-
-        <!-- 实时日志（技术人员） -->
-        <div class="diag-section">
-          <h3>实时输出</h3>
-          <p class="diag-hint muted">客户端运行时的简要输出；空闲轮询状态会合并为一条「最后检查」记录。</p>
-          <pre id="live-log" class="live-log is-empty">暂无实时输出</pre>
-        </div>
-      </section>
-
-      <!-- ===== 设置 ===== -->
-      <section id="panel-settings" class="panel" role="tabpanel" hidden>
-        <div class="panel-intro">
-          <p>管理客户端数据目录、轮询与服务端连接等选项。修改后请点击「保存设置」生效。</p>
-        </div>
+          <div class="diag-section">
+            <h3>实时输出</h3>
+            <p class="diag-hint muted">客户端运行时的简要输出；空闲轮询会合并为「最后检查」记录。</p>
+            <pre id="live-log" class="live-log is-empty">暂无实时输出</pre>
+          </div>
+          <p id="diag-tech-meta" class="diag-tech-meta muted"></p>
+        </details>
         <div class="diag-section settings-panel">
           <h3>客户端设置</h3>
-          <form id="settings-form" class="form-grid">
-            <label class="check"><input type="checkbox" id="set-auto-poll" /> 启动后自动开始接收任务</label>
-            <label>数据目录 <input type="text" id="set-data-dir" readonly /></label>
+          <form id="settings-form" class="form-grid settings-basic">
+            <label class="check">
+              <input type="checkbox" id="set-auto-poll" />
+              <span id="set-auto-poll-label">启动后自动拉取 GEO Web 下发的发布任务</span>
+            </label>
+            <p id="set-auto-poll-hint" class="settings-hint muted"></p>
           </form>
           <details class="dev-config-panel">
-            <summary>高级配置（技术人员专用）</summary>
+            <summary>高级配置（技术人员，默认折叠）</summary>
             <div class="dev-config-body">
               <form id="settings-form-dev" class="form-grid">
-                <label>GEO 服务地址 <input type="text" id="set-server-url" /></label>
+                <label>GEO Web 服务地址 <input type="text" id="set-server-url" /></label>
                 <label>API 密钥（可选） <input type="password" id="set-api-key" autocomplete="off" /></label>
                 <label>设备标识（只读） <input type="text" id="set-agent-id" readonly /></label>
                 <label>轮询间隔（秒） <input type="number" id="set-poll-sec" min="5" max="300" /></label>
                 <label>每轮最多处理任务数 <input type="number" id="set-max-tasks" min="1" max="3" /></label>
                 <label>日志保留天数 <input type="number" id="set-log-days" min="1" max="90" /></label>
+                <label>数据目录 <input type="text" id="set-data-dir" readonly /></label>
               </form>
               <div class="btn-row compact">
-                <button type="button" id="btn-reset-server-online" class="secondary">使用线上 GEO 服务地址</button>
+                <button type="button" id="btn-reset-server-online" class="secondary">使用线上 GEO Web 地址</button>
               </div>
             </div>
           </details>
@@ -184,6 +170,7 @@
     </main>
 
     <script src="publishTaskLogDisplay.js"></script>
+    <script src="uxCopy.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

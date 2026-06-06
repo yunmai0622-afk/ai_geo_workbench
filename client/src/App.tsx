@@ -4,7 +4,16 @@ import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 import { RoutePageLoading } from "@/components/RoutePageLoading";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getActiveProjectId, buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
+import {
+  activateProject,
+  buildProjectUrl,
+  getActiveProjectId,
+  getSearchFromLocation,
+  isProjectIdAccessible,
+  resolveActiveProjectId,
+} from "@/lib/activeProject";
+import { nukeStaleProjectContextCache } from "@/lib/projectContextCache";
+import { filterNavigableProjects } from "@shared/projectNavigation";
 import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
 import {
   AiDiagnosisFlowPage,
@@ -15,7 +24,7 @@ import {
 } from "@/lib/lazyPages";
 import { trpc } from "@/lib/trpc";
 import NotFound from "@/pages/NotFound";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { GeoIntroModal } from "./components/GeoIntroModal";
@@ -32,7 +41,7 @@ import AiSearchEvidencePage from "./pages/AiSearchEvidencePage";
 import DeliveryReportPublicEvidencePage from "./pages/DeliveryReportPublicEvidencePage";
 import DeliveryReportPublicPage from "./pages/DeliveryReportPublicPage";
 import DeliveryReportSharePage from "./pages/DeliveryReportSharePage";
-import ProgressPage from "./pages/ProgressPage";
+import LegacyAssetProgressRedirect from "./components/LegacyAssetProgressRedirect";
 import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
 import EffectiveActionsPage from "./pages/EffectiveActionsPage";
@@ -46,6 +55,7 @@ import SystemStatusPage from "./pages/SystemStatusPage";
 import SettingsPage from "./pages/SettingsPage";
 import { PublishRecordsHistoryPage } from "./pages/PublishRecordsHistoryPage";
 import AdminConfigPage from "./pages/AdminConfigPage";
+import AdminPublishTasksPage from "./pages/AdminPublishTasksPage";
 import AdminStatsPage from "./pages/AdminStatsPage";
 import AdminSubscriptionPage from "./pages/AdminSubscriptionPage";
 
@@ -58,6 +68,7 @@ function profileHasBrand(profile: unknown): boolean {
 function isAdminShellPath(pathname: string): boolean {
   return (
     pathname === "/admin/config" ||
+    pathname === "/admin/publish-tasks" ||
     pathname === "/admin/stats" ||
     pathname === "/admin/subscription"
   );
@@ -71,6 +82,7 @@ function PrivateRoutes() {
         <Route path="/clients" component={ClientDashboardPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/admin/config" component={AdminConfigPage} />
+        <Route path="/admin/publish-tasks" component={AdminPublishTasksPage} />
         <Route path="/admin/stats" component={AdminStatsPage} />
         <Route path="/admin/subscription" component={AdminSubscriptionPage} />
         <Route path="/knowledge" component={KnowledgePage} />
@@ -90,7 +102,10 @@ function PrivateRoutes() {
         </Route>
         <Route path="/ai-diagnosis" component={AiDiagnosisFlowPage} />
         <Route path="/weekly" component={WeeklyContentPage} />
-        <Route path="/progress" component={ProgressPage} />
+        <Route path="/progress" component={LegacyAssetProgressRedirect} />
+        <Route path="/asset-progress" component={LegacyAssetProgressRedirect} />
+        <Route path="/assets-progress" component={LegacyAssetProgressRedirect} />
+        <Route path="/asset-dashboard" component={LegacyAssetProgressRedirect} />
         <Route path="/content-generation">
           <Redirect to="/weekly" />
         </Route>
@@ -127,10 +142,32 @@ function PrivateRoutes() {
 
 /** 登录后基于 activeProjectId 检查企业档案，未完成引导则进入建档页 */
 function AuthenticatedAppShell() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const search = getSearchFromLocation(location);
   const { loading: authLoading, user } = useAuth();
-  const { data: projects = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, { enabled: Boolean(user) });
-  const contextProjectId = typeof window !== "undefined" ? getActiveProjectId() : null;
+  const { data: projectsRaw = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, {
+    enabled: Boolean(user),
+  });
+  const projects = useMemo(() => filterNavigableProjects(projectsRaw), [projectsRaw]);
+  const contextProjectId = typeof window !== "undefined" ? getActiveProjectId({ search }) : null;
+  const healedLegacyCacheRef = useRef(false);
+
+  useEffect(() => {
+    nukeStaleProjectContextCache();
+  }, []);
+
+  useEffect(() => {
+    if (!user || projectsLoading || projects.length === 0 || healedLegacyCacheRef.current) return;
+    const resolved = resolveActiveProjectId(projects, { search });
+    if (!resolved.staleContext || resolved.projectId == null) return;
+    healedLegacyCacheRef.current = true;
+    activateProject(resolved.projectId);
+    const pathname = location.split("?")[0] || location;
+    if (pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname)) {
+      setLocation(buildProjectUrl(pathname, resolved.projectId));
+    }
+  }, [user, projectsLoading, projects, search, location, setLocation]);
+
   useInvalidProjectRedirect({
     projectsLoading,
     projects,
@@ -154,6 +191,10 @@ function AuthenticatedAppShell() {
     Boolean(user) &&
     (projectsLoading || (Boolean(activeProjectId) && summaryQuery.isLoading));
 
+  if (user && !projectsLoading && (pathname === "/" || pathname === "/home")) {
+    return <Redirect to={projects.length === 0 ? "/onboarding" : "/clients"} />;
+  }
+
   if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname)) {
     return (
       <DashboardLayout>
@@ -162,9 +203,9 @@ function AuthenticatedAppShell() {
     );
   }
 
-  // P0：/clients 为唯一新建/选项目入口；无项目时仍允许进入客户项目管理台空状态
+  // 首次登录无项目时强制进入 onboarding，避免进入无上下文页面
   if (user && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
-    return <Redirect to="/clients" />;
+    return <Redirect to="/onboarding" />;
   }
 
   if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
@@ -216,6 +257,10 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    nukeStaleProjectContextCache();
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">

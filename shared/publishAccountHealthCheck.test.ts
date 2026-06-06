@@ -24,6 +24,15 @@ describe("publishAccountHealthCheck", () => {
     expect(expired[0]?.accountName).toBe("A");
   });
 
+  it("tolerates missing nested accounts arrays", () => {
+    expect(collectExpiredPublishAccounts([{ platform: "zhihu", accounts: undefined as unknown as [] }])).toEqual(
+      [],
+    );
+    expect(collectBoundProfileIdsForHealthCheck([{ platform: "zhihu", accounts: undefined as unknown as [] }])).toEqual(
+      [],
+    );
+  });
+
   it("collects profile ids for enabled bound accounts", () => {
     expect(
       collectBoundProfileIdsForHealthCheck([

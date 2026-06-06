@@ -38,7 +38,7 @@ export function LocalAccountBindingGuideCard({
       <p className="text-sm font-semibold text-amber-900">{LOCAL_AGENT_ACCOUNT_BINDING_TITLE}</p>
       <p className="mt-2 text-sm leading-relaxed text-amber-800">{LOCAL_AGENT_ACCOUNT_BINDING_BODY}</p>
       <p className="mt-2 text-xs text-amber-700/90">
-        当前可在客户端创建：{formatCreatablePlatformList()}。暂未接入：{formatPendingPlatformList()}。
+        当前可在客户端创建：{formatCreatablePlatformList()}。即将支持：{formatPendingPlatformList()}。
       </p>
       {showNotConnected ? (
         <p className="mt-2 text-sm text-amber-800" data-testid="local-agent-not-connected-hint">
