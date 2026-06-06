@@ -16,8 +16,6 @@ describe("GEO-V1.1-Content-Tags", () => {
   it("router endpoints and weekly UI", () => {
     expect(read("server/routers.ts")).toContain("updateContentTags:");
     expect(read("server/routers.ts")).toContain("contentTagStats:");
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("weekly-filter-content-tag");
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("weekly-content-tag-stats");
     expect(read("client/src/components/ArticleAssetEditorSheet.tsx")).toContain("article-content-tags");
   });
 });

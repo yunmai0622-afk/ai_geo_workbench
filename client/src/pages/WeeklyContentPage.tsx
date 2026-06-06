@@ -27,7 +27,7 @@ import {
   WeeklyPublishableContentList,
   type WeeklyPublishableRow,
 } from "@/components/weekly/WeeklyPublishableContentList";
-import { WeeklyPlatformArticleCard, type WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
+import type { WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
 import { resolveGeoQualityOptimizationSuggestions } from "@shared/geoQualityAutoSuggest";
 import {
   computeAverageGeoQualityScore,
@@ -2562,9 +2562,9 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">平台化内容资产</h1>
+          <h1 className="text-2xl font-bold text-gray-900">GEO 内容生产工作台</h1>
           <p className="text-sm text-gray-500">
-            根据 AI 实测缺口，按平台生成可发布、可监测、可复用的 GEO 内容资产。各平台独立生成，不支持一稿多发。
+            根据 AI 实测缺口，按平台生成可发布、可监测、可复用的 GEO 内容资产。
           </p>
         </div>
         <div className="relative w-full max-w-md">
@@ -2750,251 +2750,7 @@ export default function WeeklyContentPage() {
             </P0Card>
           ) : null}
 
-          {contentCardModels.length > 0 ? (
-            <details
-              className={cn(
-                "scroll-mt-24 space-y-4",
-                isMobile && "rounded-xl border border-gray-200 bg-white shadow-sm",
-              )}
-              data-testid="weekly-content-cards"
-              open={generatedSectionOpen}
-              onToggle={e => {
-                if (isMobile) setGeneratedSectionOpen(e.currentTarget.open);
-              }}
-            >
-              <summary
-                className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-4 text-sm font-semibold text-gray-900 lg:hidden [&::-webkit-details-marker]:hidden"
-                data-testid="weekly-generated-content-mobile-summary"
-              >
-                <span>已生成内容（{contentCardModels.length} 篇）</span>
-                <span className="text-xs font-normal text-blue-600">
-                  {generatedSectionOpen ? "收起" : "展开"}
-                </span>
-              </summary>
-              <div className={cn("space-y-4", isMobile && "border-t border-gray-100 px-4 pb-4 pt-3")}>
-                <div className="flex flex-col gap-3">
-                  <div className="hidden lg:block">
-                    <h2 className={geoP0Surfaces.sectionTitle}>已生成内容</h2>
-                    <p className={geoP0Surfaces.muted}>按平台独立管理；无真实质检分时不展示评分。</p>
-                    {averageQualityScore != null ? (
-                      <p className="mt-1 text-sm text-gray-700" data-testid="weekly-content-avg-quality">
-                        平均质检分：
-                        <span className="ml-1 font-semibold tabular-nums text-gray-900">{averageQualityScore}</span>
-                        <span className="ml-1 text-gray-500">
-                          分（共 {contentCardModels.filter(c => c.qualityScore != null).length} 篇已评分）
-                        </span>
-                      </p>
-                    ) : null}
-                  </div>
-                  <div
-                    className="flex gap-2 overflow-x-auto pb-1"
-                    data-testid="weekly-filter-platform"
-                    role="tablist"
-                    aria-label="按平台筛选"
-                  >
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={filterPlatform === "all"}
-                      data-testid="weekly-filter-platform-all"
-                      className={cn(
-                        "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
-                        filterPlatform === "all"
-                          ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
-                          : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
-                      )}
-                      onClick={() => setFilterPlatform("all")}
-                    >
-                      全部
-                    </button>
-                    {WEEKLY_PLATFORM_DEFS.map(def => (
-                      <button
-                        key={def.key}
-                        type="button"
-                        role="tab"
-                        aria-selected={filterPlatform === def.key}
-                        data-testid={`weekly-filter-platform-${def.key}`}
-                        className={cn(
-                          "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
-                          filterPlatform === def.key
-                            ? "border-blue-400 bg-blue-50 font-medium text-blue-800"
-                            : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50",
-                        )}
-                        onClick={() => setFilterPlatform(def.key)}
-                      >
-                        {def.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2" data-testid="weekly-content-filters">
-                    <label className="sr-only" htmlFor="weekly-filter-status">
-                      按状态筛选
-                    </label>
-                    <select
-                      id="weekly-filter-status"
-                      className={aiInput}
-                      value={filterStatus}
-                      onChange={e => setFilterStatus(e.target.value as ContentCardStatusFilter)}
-                      data-testid="weekly-filter-status"
-                    >
-                      <option value="all">全部状态</option>
-                      <option value="publishable">可发布</option>
-                      <option value="draft">草稿</option>
-                      <option value="published">已发布</option>
-                    </select>
-                    <label className="sr-only" htmlFor="weekly-sort-quality">
-                      按质检分排序
-                    </label>
-                    <select
-                      id="weekly-sort-quality"
-                      className={aiInput}
-                      value={sortQuality}
-                      onChange={e => setSortQuality(e.target.value as ContentCardQualitySort)}
-                      data-testid="weekly-sort-quality"
-                    >
-                      <option value="none">默认顺序</option>
-                      <option value="desc">质检分从高到低</option>
-                      <option value="asc">质检分从低到高</option>
-                    </select>
-                    <label className="sr-only" htmlFor="weekly-filter-content-tag">
-                      按内容标签筛选
-                    </label>
-                    <select
-                      id="weekly-filter-content-tag"
-                      className={aiInput}
-                      value={filterContentTag}
-                      onChange={e => setFilterContentTag(e.target.value)}
-                      data-testid="weekly-filter-content-tag"
-                    >
-                      <option value="all">全部标签</option>
-                      {contentTagStats.map(row => (
-                        <option key={row.tag} value={row.tag}>
-                          {row.tag}（{row.count}）
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                {contentTagStats.length > 0 ? (
-                  <div
-                    className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
-                    data-testid="weekly-content-tag-stats"
-                  >
-                    <span className="font-medium text-gray-900">标签统计：</span>
-                    {contentTagStats.map(row => (
-                      <button
-                        key={row.tag}
-                        type="button"
-                        className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
-                          filterContentTag === row.tag
-                            ? "border-violet-600 bg-violet-600 text-white"
-                            : "border-gray-300 bg-white hover:border-violet-400"
-                        }`}
-                        onClick={() => setFilterContentTag(prev => (prev === row.tag ? "all" : row.tag))}
-                      >
-                        {row.tag} · {row.count}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className={geoP0Brand.primaryOutline}
-                    data-testid="weekly-select-visible-cards"
-                    onClick={() => toggleSelectVisibleCards(true)}
-                  >
-                    全选当前列表
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className={geoP0Brand.primaryOutline}
-                    onClick={() => setSelectedCardIds(new Set())}
-                  >
-                    取消选择
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className={geoP0Brand.primary}
-                    disabled={batchEnqueueBusy || anyGenerating || selectedCardIds.size === 0}
-                    data-testid="weekly-batch-enqueue-publish"
-                    onClick={() => void handleBatchEnqueuePublish()}
-                  >
-                    {batchEnqueueBusy ? "提交中…" : `批量加入发布队列（${selectedCardIds.size}）`}
-                  </Button>
-                </div>
-                {displayContentCards.length === 0 ? (
-                  <div
-                    className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center"
-                    data-testid="weekly-content-cards-empty"
-                  >
-                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                      <FileText className="h-5 w-5 text-gray-500" />
-                    </div>
-                    <p className="mt-3 text-sm font-medium text-gray-800">未找到匹配内容</p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      请调整筛选条件，或返回全部内容后继续编辑和发布。
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="mt-4 border-gray-200 text-gray-700 hover:bg-gray-50"
-                      onClick={() => {
-                        setFilterPlatform("all");
-                        setFilterStatus("all");
-                        setFilterContentTag("all");
-                        setSortQuality("none");
-                        setTitleSearch("");
-                      }}
-                    >
-                      清空筛选条件
-                    </Button>
-                  </div>
-                ) : (
-                  <div
-                    className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
-                    data-testid="weekly-content-cards-grid"
-                  >
-                    {displayContentCards.map(model => {
-                      const article = articlesById.get(model.id);
-                      const topicId = article?.topicId;
-                      return (
-                        <WeeklyPlatformArticleCard
-                          key={model.id}
-                          model={model}
-                          disabled={anyGenerating || batchEnqueueBusy}
-                          selectable
-                          selected={selectedCardIds.has(model.id)}
-                          onSelectedChange={(checked: boolean) => toggleCardSelection(model.id, checked)}
-                          onView={() => openContentDetail(model)}
-                          onRegenerate={() => {
-                            if (typeof topicId === "number") void generateOne(topicId);
-                          }}
-                          onEnqueuePublish={() => article && openPublishDialog(article)}
-                          onGoPublishingPage={() =>
-                            selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-                          }
-                          onContentReviewStatusChange={status => {
-                            if (!selectedProjectId) return;
-                            setContentReviewStatus.mutate({
-                              projectId: selectedProjectId,
-                              articleId: model.id,
-                              status,
-                            });
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </details>
-          ) : (
+          {contentCardModels.length === 0 ? (
             <P0Card className="border-dashed border-gray-300 bg-white" testId="weekly-content-empty">
               <div className="flex flex-col items-center text-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
@@ -3012,7 +2768,7 @@ export default function WeeklyContentPage() {
                 </Button>
               </div>
             </P0Card>
-          )}
+          ) : null}
 
           <WeeklyPublishableContentList
             rows={publishableRows}

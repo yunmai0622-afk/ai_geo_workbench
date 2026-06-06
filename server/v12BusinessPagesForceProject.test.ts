@@ -33,7 +33,7 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(weekly).not.toContain("projects[0]");
     expect(weekly).not.toContain("BusinessPageProjectHeader");
     expect(read("client/src/components/DashboardLayout.tsx")).toContain("EnterpriseProjectShell");
-    expect(weekly).toContain("平台化内容资产");
+    expect(weekly).toContain("GEO 内容生产工作台");
     expect(weekly).toContain("生成该平台内容");
     expect(weekly).not.toContain("生成内容资产");
     expect(weekly).not.toMatch(/批量生成/);
