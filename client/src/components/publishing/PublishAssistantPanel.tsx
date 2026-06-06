@@ -2,6 +2,7 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { buildPublishingViewModel } from "@/lib/buildPublishingViewModel";
+import { flattenPlatformAccountsForServerHeartbeat } from "@/lib/localAgentServerContext";
 import { asArray } from "@/lib/contentPublishingSafeData";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
@@ -115,6 +116,11 @@ export function PublishAssistantPanel({
   const { checking: accountHealthChecking, runCheck: runAccountHealthCheck } =
     usePublishAccountHealthCheck(selectedProjectId ?? null, enabled);
 
+  const flattenedPlatformAccounts = useMemo(
+    () => flattenPlatformAccountsForServerHeartbeat(accountGroups),
+    [accountGroups],
+  );
+
   const {
     status: localAgentConnectionStatus,
     checkConnection,
@@ -123,6 +129,7 @@ export function PublishAssistantPanel({
     boundPublishAccountCount,
     boundPlatformCount: accountsQuery.isLoading ? null : accountGroups.filter(g => (g.accounts ?? []).some(a => a.isEnabled)).length,
     pendingTaskCount: tasksQuery.isLoading ? null : viewModel?.agentTaskDerivedState.pendingCount ?? null,
+    platformAccounts: flattenedPlatformAccounts,
   });
 
   const expiredAccounts = useMemo(

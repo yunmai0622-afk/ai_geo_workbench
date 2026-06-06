@@ -1,3 +1,6 @@
+import type { LocalAgentAccountStatusEntry } from "./localAgentAccountSync";
+import { isLocalAgentAccountEntryValid } from "./localAgentAccountSync";
+
 /** Web 侧 Local Agent 连接状态（与 local-agent 进程无关，仅描述浏览器探测结果） */
 
 export const LOCAL_AGENT_CONNECTION_STATUSES = [
@@ -146,4 +149,214 @@ export function resolveConnectionStatusAfterHealthProbe(input: {
     return "CONNECTED_ACCOUNT_NOT_SYNCED";
   }
   return "CONNECTED";
+}
+
+/** 服务端心跳有效时间窗口（5 分钟） */
+export const LOCAL_AGENT_SERVER_HEARTBEAT_WINDOW_MS = 5 * 60 * 1000;
+
+export const LOCAL_AGENT_RESOLVED_CONNECTION_STATES = [
+  "CONNECTED_CONFIRMED",
+  "CONNECTED_BY_SERVER_HEARTBEAT",
+  "CONNECTED_BY_LOCAL_HTTP",
+  "UNKNOWN_NEEDS_CHECK",
+  "DISCONNECTED",
+  "CHECK_FAILED",
+] as const;
+
+export type LocalAgentResolvedConnectionState =
+  (typeof LOCAL_AGENT_RESOLVED_CONNECTION_STATES)[number];
+
+export type ServerHeartbeatPlatformAccountRow = {
+  localAgentId?: string | null;
+  localProfileId?: string | null;
+  sessionStatus?: string | null;
+  lastSessionCheckedAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+};
+
+export type ResolveLocalAgentConnectionStateInput = {
+  serverHeartbeatConnected?: boolean | null;
+  serverLastActivityAt?: string | Date | null;
+  platformAccounts?: ServerHeartbeatPlatformAccountRow[];
+  localHttpCheckResult?: boolean | null;
+  localHttpProbeThrew?: boolean;
+  localAgentAccountSnapshot?: LocalAgentAccountStatusEntry[];
+  boundPublishAccountCount?: number;
+};
+
+export type ServerHeartbeatInference = {
+  connected: boolean;
+  lastActivityAt: string | null;
+};
+
+function parseActivityTimestamp(value: string | Date | null | undefined): number | null {
+  if (value == null) return null;
+  const at = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isFinite(at) ? at : null;
+}
+
+function isRecentActivityTimestamp(value: string | Date | null | undefined, now = Date.now()): boolean {
+  const at = parseActivityTimestamp(value);
+  if (at == null) return true;
+  return now - at <= LOCAL_AGENT_SERVER_HEARTBEAT_WINDOW_MS;
+}
+
+function rowIndicatesServerHeartbeat(row: ServerHeartbeatPlatformAccountRow): boolean {
+  return (
+    Boolean(row.localAgentId?.trim()) &&
+    Boolean(row.localProfileId?.trim()) &&
+    row.sessionStatus === "active"
+  );
+}
+
+/** 从 DB 平台账号推断服务端是否近期感知到 Local Agent 在线 */
+export function inferServerHeartbeatFromPlatformAccounts(
+  accounts: ServerHeartbeatPlatformAccountRow[] | undefined,
+  now = Date.now(),
+): ServerHeartbeatInference {
+  let lastActivityAt: number | null = null;
+  let connected = false;
+  for (const row of accounts ?? []) {
+    if (!rowIndicatesServerHeartbeat(row)) continue;
+    const candidates = [row.lastSessionCheckedAt, row.updatedAt].map(parseActivityTimestamp);
+    const rowActivity = candidates.find(v => v != null) ?? null;
+    if (rowActivity != null) {
+      lastActivityAt = lastActivityAt == null ? rowActivity : Math.max(lastActivityAt, rowActivity);
+    }
+    if (isRecentActivityTimestamp(row.lastSessionCheckedAt ?? row.updatedAt, now)) {
+      connected = true;
+    }
+  }
+  return {
+    connected,
+    lastActivityAt: lastActivityAt != null ? new Date(lastActivityAt).toISOString() : null,
+  };
+}
+
+function snapshotIndicatesRecentServerSync(
+  snapshot: LocalAgentAccountStatusEntry[] | undefined,
+  now = Date.now(),
+): boolean {
+  return (snapshot ?? []).some(
+    entry => isLocalAgentAccountEntryValid(entry) && isRecentActivityTimestamp(entry.lastCheckedAt, now),
+  );
+}
+
+/** 统一 Local Agent 连接状态（Web / 发布前检查 / 工作台共用） */
+export function resolveLocalAgentConnectionState(
+  input: ResolveLocalAgentConnectionStateInput,
+  now = Date.now(),
+): LocalAgentResolvedConnectionState {
+  const heartbeat =
+    input.serverHeartbeatConnected != null
+      ? {
+          connected: Boolean(input.serverHeartbeatConnected),
+          lastActivityAt:
+            input.serverLastActivityAt != null
+              ? new Date(input.serverLastActivityAt).toISOString()
+              : null,
+        }
+      : inferServerHeartbeatFromPlatformAccounts(input.platformAccounts, now);
+
+  const serverRecent =
+    heartbeat.connected &&
+    (heartbeat.lastActivityAt == null || isRecentActivityTimestamp(heartbeat.lastActivityAt, now));
+
+  const snapshotRecent = snapshotIndicatesRecentServerSync(input.localAgentAccountSnapshot, now);
+  const serverOnline =
+    serverRecent ||
+    snapshotRecent ||
+    ((input.boundPublishAccountCount ?? 0) > 0 && heartbeat.connected);
+
+  const localOk = input.localHttpCheckResult === true;
+  const localFailed = input.localHttpCheckResult === false || input.localHttpProbeThrew === true;
+
+  if (serverOnline && localOk) return "CONNECTED_CONFIRMED";
+  if (serverOnline) return "CONNECTED_BY_SERVER_HEARTBEAT";
+  if (localOk) return "CONNECTED_BY_LOCAL_HTTP";
+  if (localFailed) return input.localHttpProbeThrew ? "CHECK_FAILED" : "DISCONNECTED";
+  if (input.localHttpCheckResult == null) return "UNKNOWN_NEEDS_CHECK";
+  return "DISCONNECTED";
+}
+
+export function isLocalAgentResolvedConnected(state: LocalAgentResolvedConnectionState): boolean {
+  return (
+    state === "CONNECTED_CONFIRMED" ||
+    state === "CONNECTED_BY_SERVER_HEARTBEAT" ||
+    state === "CONNECTED_BY_LOCAL_HTTP"
+  );
+}
+
+export function mapResolvedStateToConnectionStatus(
+  state: LocalAgentResolvedConnectionState,
+  localProbeStatus?: LocalAgentConnectionStatus,
+): LocalAgentConnectionStatus {
+  if (localProbeStatus === "CHECKING") return "CHECKING";
+  if (localProbeStatus === "CONNECTED_ACCOUNT_NOT_SYNCED" && isLocalAgentResolvedConnected(state)) {
+    return "CONNECTED_ACCOUNT_NOT_SYNCED";
+  }
+  switch (state) {
+    case "CONNECTED_CONFIRMED":
+    case "CONNECTED_BY_SERVER_HEARTBEAT":
+    case "CONNECTED_BY_LOCAL_HTTP":
+      return localProbeStatus === "CONNECTED_ACCOUNT_NOT_SYNCED"
+        ? "CONNECTED_ACCOUNT_NOT_SYNCED"
+        : "CONNECTED";
+    case "CHECK_FAILED":
+      return "ERROR";
+    case "DISCONNECTED":
+      return "DISCONNECTED";
+    case "UNKNOWN_NEEDS_CHECK":
+    default:
+      return "UNKNOWN";
+  }
+}
+
+export function resolvePublishStatusLocalAgentLabelFromResolved(
+  state: LocalAgentResolvedConnectionState,
+): string {
+  if (isLocalAgentResolvedConnected(state)) {
+    if (state === "CONNECTED_BY_SERVER_HEARTBEAT") return "已连接（服务端）";
+    return "已连接";
+  }
+  if (state === "CHECK_FAILED" || state === "DISCONNECTED") return "未连接";
+  return "未检测";
+}
+
+export type LocalAgentConnectionCheckFeedback = {
+  kind: "success" | "info" | "error";
+  message: string;
+};
+
+/** 「检测客户端」按钮反馈文案 */
+export function localAgentConnectionCheckFeedback(
+  state: LocalAgentResolvedConnectionState,
+): LocalAgentConnectionCheckFeedback {
+  if (state === "CONNECTED_CONFIRMED" || state === "CONNECTED_BY_LOCAL_HTTP") {
+    return { kind: "success", message: "本地发布助手已连接" };
+  }
+  if (state === "CONNECTED_BY_SERVER_HEARTBEAT") {
+    return {
+      kind: "info",
+      message:
+        "已检测到本地发布助手在线，可继续发布。若无法自动拉取任务，请在客户端点击「立即拉取任务」。",
+    };
+  }
+  if (state === "UNKNOWN_NEEDS_CHECK") {
+    return { kind: "info", message: "尚未检测本地客户端连接状态，请确认客户端已打开后重试" };
+  }
+  return {
+    kind: "error",
+    message: "未检测到本地发布助手，请打开客户端后重试。",
+  };
+}
+
+export function localAgentResolvedConnectionRiskHint(
+  state: LocalAgentResolvedConnectionState,
+  context: LocalAgentRiskHintContext = {},
+): string | null {
+  if (state === "CONNECTED_BY_SERVER_HEARTBEAT") {
+    return "本地发布助手已通过服务端确认在线。若任务未自动出现，请在客户端点击「立即拉取任务」。";
+  }
+  return localAgentConnectionRiskHint(mapResolvedStateToConnectionStatus(state), context);
 }

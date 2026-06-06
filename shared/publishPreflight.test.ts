@@ -160,7 +160,7 @@ describe("evaluatePublishPreflight", () => {
     expect(result.selectedPlatform).toBe("zhihu");
   });
 
-  it("server heartbeat without browser blocks LOCAL_AGENT_CONNECTED only", () => {
+  it("server heartbeat without browser does not block when account valid", () => {
     const result = evaluatePublishPreflight({
       projectId,
       article: zhihuArticle({ coverImageUrl: "https://x.test/c.png" }),
@@ -172,9 +172,12 @@ describe("evaluatePublishPreflight", () => {
       },
       selectedAccount: zhihuReadyAccount,
     });
-    expect(result.blockingCodes).toContain("LOCAL_AGENT_CONNECTED");
+    expect(result.blockingCodes).not.toContain("LOCAL_AGENT_CONNECTED");
+    const agentCheck = result.checks.find(c => c.code === "LOCAL_AGENT_CONNECTED");
+    expect(agentCheck?.status).not.toBe("fail");
     expect(result.blockingCodes).not.toContain("COVER_READY");
     expect(result.blockingCodes).not.toContain("QUALITY_PASSED");
+    expect(result.ready).toBe(true);
   });
 
   it("inferServerHeartbeatConnected from active DB accounts", () => {

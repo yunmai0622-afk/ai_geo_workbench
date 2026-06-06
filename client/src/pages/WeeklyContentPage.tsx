@@ -677,13 +677,21 @@ export default function WeeklyContentPage() {
     return count;
   }, [platformAccountGroups]);
 
+  const flattenedPlatformAccounts = useMemo(
+    () => flattenPlatformAccounts(platformAccountGroups),
+    [platformAccountGroups],
+  );
+
   const {
     status: localAgentConnectionStatus,
     checkConnection,
     accountSnapshot: localAgentAccountSnapshot,
     localAgentConnectedOnline,
     localAgentOnline,
-  } = useLocalAgentConnection({ boundPublishAccountCount });
+  } = useLocalAgentConnection({
+    boundPublishAccountCount,
+    platformAccounts: flattenedPlatformAccounts,
+  });
 
   const applyPublishDialogAgentSnapshot = useCallback(
     (online: boolean, snapshot: LocalAgentAccountStatusEntry[]) => {
@@ -730,6 +738,15 @@ export default function WeeklyContentPage() {
     () => hydratePublishDialogAgent({ syncToWeb: true }),
     [hydratePublishDialogAgent],
   );
+
+  const runCheckConnectionWithFeedback = useCallback(async () => {
+    const result = await checkConnection();
+    applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot);
+    if (result.feedback.kind === "success") toast.success(result.feedback.message);
+    else if (result.feedback.kind === "info") toast.message(result.feedback.message);
+    else toast.error(result.feedback.message);
+    return result;
+  }, [applyPublishDialogAgentSnapshot, checkConnection]);
 
   const getAllEnabledAccountsForPlatform = useCallback(
     (slug: string) => {
@@ -885,11 +902,6 @@ export default function WeeklyContentPage() {
     workspaceSummaryQuery.data?.p0ProfileComplete,
   ]);
 
-  const flattenedPlatformAccounts = useMemo(
-    () => flattenPlatformAccounts(platformAccountGroups),
-    [platformAccountGroups],
-  );
-
   const serverHeartbeatConnected = useMemo(
     () => inferServerHeartbeatConnected(flattenedPlatformAccounts),
     [flattenedPlatformAccounts],
@@ -904,7 +916,7 @@ export default function WeeklyContentPage() {
       platformAccounts: flattenedPlatformAccounts,
       localAgentStatus: {
         serverHeartbeatConnected,
-        browserLocalAgentConnected: localAgentOnline,
+        browserLocalAgentConnected: localAgentConnectedOnline ? true : localAgentOnline,
         localAgentAccountSnapshot,
       },
     }),
@@ -2905,11 +2917,7 @@ export default function WeeklyContentPage() {
               status={localAgentConnectionStatus}
               checking={localAgentConnectionStatus === "CHECKING"}
               className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 shadow-none"
-              onCheckConnection={() =>
-                void checkConnection().then((result) =>
-                  applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot),
-                )
-              }
+              onCheckConnection={() => void runCheckConnectionWithFeedback()}
               onRefreshAccountStatus={() => void hydratePublishDialogAgent({ syncToWeb: true })}
             />
             <PublishPrePublishChecklist preflightChecks={activePublishPreflight?.checks ?? null} />
@@ -3196,11 +3204,7 @@ export default function WeeklyContentPage() {
                 variant="outline"
                 className="w-full border-blue-500 text-blue-700"
                 data-testid="publish-readiness-check-connection"
-                onClick={() =>
-                  void checkConnection().then(result =>
-                    applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot),
-                  )
-                }
+                onClick={() => void runCheckConnectionWithFeedback()}
               >
                 检测连接
               </Button>

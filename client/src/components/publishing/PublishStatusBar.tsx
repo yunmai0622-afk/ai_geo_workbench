@@ -1,6 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { geoP0Brand } from "@/lib/geoP0Visual";
-import type { LocalAgentConnectionStatus } from "@shared/localAgentConnectionStatus";
+import {
+  resolvePublishStatusLocalAgentLabelFromResolved,
+  type LocalAgentConnectionStatus,
+  type LocalAgentResolvedConnectionState,
+} from "@shared/localAgentConnectionStatus";
 
 type Props = {
   localAgentLabel: string;
@@ -94,7 +98,11 @@ export function PublishStatusBar({
 export function resolvePublishStatusLocalAgentLabel(
   status: LocalAgentConnectionStatus,
   connectedOnline: boolean,
+  resolvedState?: LocalAgentResolvedConnectionState,
 ): string {
+  if (resolvedState) {
+    return resolvePublishStatusLocalAgentLabelFromResolved(resolvedState);
+  }
   if (connectedOnline) return "已连接";
   if (status === "DISCONNECTED" || status === "ERROR") return "未连接";
   return "未检测";

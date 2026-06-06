@@ -12,6 +12,11 @@ import {
   type LocalAgentAccountStatusEntry,
 } from "./localAgentAccountSync";
 import {
+  inferServerHeartbeatFromPlatformAccounts,
+  isLocalAgentResolvedConnected,
+  resolveLocalAgentConnectionState,
+} from "./localAgentConnectionStatus";
+import {
   isBindingPublishPlatform,
   PUBLISH_PLATFORM_LABELS,
   publishBlockedSessionExpiredMessage,
@@ -114,12 +119,7 @@ function check(
 }
 
 export function inferServerHeartbeatConnected(accounts: PublishReadyAccountRow[] | undefined): boolean {
-  return (accounts ?? []).some(
-    row =>
-      Boolean(row.localAgentId?.trim()) &&
-      Boolean(row.localProfileId?.trim()) &&
-      row.sessionStatus === "active",
-  );
+  return inferServerHeartbeatFromPlatformAccounts(accounts).connected;
 }
 
 function resolveBrowserConnected(status?: LocalAgentStatusInput): boolean | null {
@@ -182,12 +182,32 @@ function buildLocalAgentCheck(input: {
     return check("LOCAL_AGENT_CONNECTED", label, "pass", "服务端已跳过本机连接检测");
   }
   const browser = resolveBrowserConnected(input.status);
+  const heartbeat = inferServerHeartbeatFromPlatformAccounts(input.platformAccounts);
   const serverHeartbeat =
-    input.status?.serverHeartbeatConnected ?? inferServerHeartbeatConnected(input.platformAccounts);
+    input.status?.serverHeartbeatConnected ?? heartbeat.connected;
   const snapshot = input.status?.localAgentAccountSnapshot ?? [];
   const platformLabel = input.platformLabel;
+  const resolved = resolveLocalAgentConnectionState({
+    serverHeartbeatConnected: serverHeartbeat,
+    serverLastActivityAt: heartbeat.lastActivityAt,
+    platformAccounts: input.platformAccounts,
+    localHttpCheckResult: browser,
+    localAgentAccountSnapshot: snapshot,
+    boundPublishAccountCount: (input.platformAccounts ?? []).filter(row =>
+      isPublishReadyPlatformAccount(row),
+    ).length,
+  });
+  const connected = isLocalAgentResolvedConnected(resolved);
 
-  if (input.accountValid && browser === true) {
+  if (connected && input.accountValid) {
+    if (resolved === "CONNECTED_BY_SERVER_HEARTBEAT" && browser !== true) {
+      return check(
+        "LOCAL_AGENT_CONNECTED",
+        label,
+        "warning",
+        "已检测到本地发布助手在线，可继续发布。若无法自动拉取任务，请在客户端点击「立即拉取任务」。",
+      );
+    }
     return check(
       "LOCAL_AGENT_CONNECTED",
       label,
@@ -195,16 +215,7 @@ function buildLocalAgentCheck(input: {
       `本地客户端已连接，${platformLabel}账号已登录有效。`,
     );
   }
-  if (serverHeartbeat && browser !== true) {
-    return check(
-      "LOCAL_AGENT_CONNECTED",
-      label,
-      "fail",
-      "客户端已启动并连接服务端，但当前浏览器尚未检测到本机客户端。请点击「检测连接」。",
-      "检测连接",
-    );
-  }
-  if (browser === true && snapshot.length === 0 && !inferServerHeartbeatConnected(input.platformAccounts)) {
+  if (connected && !input.accountValid) {
     return check(
       "LOCAL_AGENT_CONNECTED",
       label,
@@ -213,7 +224,7 @@ function buildLocalAgentCheck(input: {
       "刷新账号状态",
     );
   }
-  if (browser === true && !input.accountValid) {
+  if (browser === true && snapshot.length === 0 && !serverHeartbeat) {
     return check(
       "LOCAL_AGENT_CONNECTED",
       label,
@@ -222,12 +233,12 @@ function buildLocalAgentCheck(input: {
       "刷新账号状态",
     );
   }
-  if (browser === false) {
+  if (browser === false && !connected) {
     return check(
       "LOCAL_AGENT_CONNECTED",
       label,
       "fail",
-      "未检测到本地客户端。请确认 GEO 本地发布客户端已打开，并点击「检测连接」。",
+      "未检测到本地发布助手，请打开客户端后重试。",
       "检测连接",
     );
   }
@@ -268,6 +279,19 @@ export function evaluatePublishPreflight(input: EvaluatePublishPreflightInput): 
   }
 
   const browserConnected = resolveBrowserConnected(input.localAgentStatus);
+  const heartbeat = inferServerHeartbeatFromPlatformAccounts(input.platformAccounts);
+  const serverHeartbeatConnected =
+    input.localAgentStatus?.serverHeartbeatConnected ?? heartbeat.connected;
+  const resolvedConnection = resolveLocalAgentConnectionState({
+    serverHeartbeatConnected,
+    serverLastActivityAt: heartbeat.lastActivityAt,
+    platformAccounts: input.platformAccounts,
+    localHttpCheckResult: browserConnected,
+    localAgentAccountSnapshot: input.localAgentStatus?.localAgentAccountSnapshot,
+    boundPublishAccountCount: (input.platformAccounts ?? []).filter(row =>
+      isPublishReadyPlatformAccount(row),
+    ).length,
+  });
   const readinessInput: PublishReadinessInput = {
     projectAccessible: input.projectAccessible ?? true,
     enterpriseProfileReady: input.enterpriseProfileReady ?? true,
@@ -277,7 +301,11 @@ export function evaluatePublishPreflight(input: EvaluatePublishPreflightInput): 
     platformAccounts: input.platformAccounts,
     requestedPlatform: input.requestedPlatform ?? null,
     skipLocalAgentConnectionCheck: input.skipLocalAgentConnectionCheck ?? false,
-    localAgentConnected: browserConnected,
+    localAgentConnected:
+      isLocalAgentResolvedConnected(resolvedConnection) || browserConnected === true
+        ? true
+        : browserConnected,
+    serverHeartbeatConnected,
     localAgentAccountSnapshot: input.localAgentStatus?.localAgentAccountSnapshot,
   };
   const readiness = evaluatePublishReadiness(readinessInput);

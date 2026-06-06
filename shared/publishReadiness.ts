@@ -15,8 +15,12 @@ import {
   evaluateGeoProfileP0Readiness,
 } from "./geoProfileP0Readiness";
 import {
+  inferServerHeartbeatFromPlatformAccounts,
+  isLocalAgentResolvedConnected,
   localAgentConnectionCopy,
   localAgentConnectionRiskHint,
+  localAgentResolvedConnectionRiskHint,
+  resolveLocalAgentConnectionState,
   type LocalAgentConnectionStatus,
 } from "./localAgentConnectionStatus";
 import {
@@ -355,38 +359,37 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
     });
   }
 
-  if (!input.skipLocalAgentConnectionCheck && input.localAgentConnected !== true) {
-    const serverHeartbeat =
-      input.serverHeartbeatConnected ??
-      (input.platformAccounts ?? []).some(
-        row =>
-          Boolean(row.localAgentId?.trim()) &&
-          Boolean(row.localProfileId?.trim()) &&
-          row.sessionStatus === "active",
-      );
-    debugReasons.push(`localAgentConnected=${String(input.localAgentConnected)}`);
-    if (serverHeartbeat) {
-      return blocked({
-        blockingCode: "LOCAL_AGENT_DISCONNECTED",
-        message:
-          "客户端已启动并连接服务端，但当前浏览器尚未检测到本机客户端。请点击「检测连接」。",
-        nextActionLabel: "检测连接",
-        nextActionTarget: "refresh_agent_status",
-        platform,
-        platformLabel,
-        debugReasons,
-        resolvedPlatform: resolved,
-      });
-    }
+  const heartbeat = inferServerHeartbeatFromPlatformAccounts(input.platformAccounts);
+  const connectionResolved = resolveLocalAgentConnectionState({
+    serverHeartbeatConnected: input.serverHeartbeatConnected ?? heartbeat.connected,
+    serverLastActivityAt: heartbeat.lastActivityAt,
+    platformAccounts: input.platformAccounts,
+    localHttpCheckResult: input.localAgentConnected ?? null,
+    localAgentAccountSnapshot: input.localAgentAccountSnapshot,
+    boundPublishAccountCount: (input.platformAccounts ?? []).filter(isPublishReadyPlatformAccount).length,
+  });
+  const agentEffectivelyConnected = isLocalAgentResolvedConnected(connectionResolved);
+
+  if (!input.skipLocalAgentConnectionCheck && !agentEffectivelyConnected) {
+    debugReasons.push(
+      `localAgentResolved=${connectionResolved}`,
+      `localAgentConnected=${String(input.localAgentConnected)}`,
+    );
     const connectionStatus: LocalAgentConnectionStatus =
       input.localAgentConnected === false ? "DISCONNECTED" : "UNKNOWN";
     const copy = localAgentConnectionCopy(connectionStatus);
+    const riskHint =
+      localAgentResolvedConnectionRiskHint(connectionResolved, {
+        boundPublishAccountCount: (input.platformAccounts ?? []).filter(isPublishReadyPlatformAccount)
+          .length,
+        localAccountSnapshotEmpty: (input.localAgentAccountSnapshot?.length ?? 0) === 0,
+      }) ??
+      (connectionStatus === "UNKNOWN"
+        ? (localAgentConnectionRiskHint("UNKNOWN") ?? MESSAGES.localAgentUnknown)
+        : (localAgentConnectionRiskHint("DISCONNECTED") ?? MESSAGES.localAgentDisconnected));
     return blocked({
       blockingCode: "LOCAL_AGENT_DISCONNECTED",
-      message:
-        connectionStatus === "UNKNOWN"
-          ? (localAgentConnectionRiskHint("UNKNOWN") ?? MESSAGES.localAgentUnknown)
-          : (localAgentConnectionRiskHint("DISCONNECTED") ?? MESSAGES.localAgentDisconnected),
+      message: riskHint,
       nextActionLabel: copy.primaryButton ?? "检测本地客户端连接",
       nextActionTarget: connectionStatus === "UNKNOWN" ? "refresh_agent_status" : "open_local_agent",
       platform,
@@ -419,13 +422,14 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
   const readyCount = countReadyAccountsForPlatform(input.platformAccounts, publishSlug);
   const localValidPlatforms = filterValidLocalAgentPlatforms(input.localAgentAccountSnapshot ?? []);
   const localHasValid = localValidPlatforms.includes(publishSlug);
+  const agentReachable = agentEffectivelyConnected || input.localAgentConnected === true;
   if (readyCount === 0) {
     const label = PUBLISH_PLATFORM_LABELS[publishSlug] ?? platformLabel;
-    if (input.localAgentConnected === true && localHasValid) {
+    if (agentReachable && localHasValid) {
       debugReasons.push(`platformAccount:local_valid:${publishSlug}`);
       return readyResult(platform, label, resolved, debugReasons);
     }
-    if (input.localAgentConnected === true && Array.isArray(input.localAgentAccountSnapshot) && input.localAgentAccountSnapshot.length === 0) {
+    if (agentReachable && Array.isArray(input.localAgentAccountSnapshot) && input.localAgentAccountSnapshot.length === 0) {
       debugReasons.push(`platformAccount:not_synced_empty:${publishSlug}`);
       return blocked({
         blockingCode: "ACCOUNT_STATUS_NOT_SYNCED",
@@ -438,7 +442,7 @@ export function evaluatePublishReadiness(input: PublishReadinessInput): PublishR
         resolvedPlatform: resolved,
       });
     }
-    if (input.localAgentConnected === true && (input.localAgentAccountSnapshot?.length ?? 0) > 0 && !localHasValid) {
+    if (agentReachable && (input.localAgentAccountSnapshot?.length ?? 0) > 0 && !localHasValid) {
       debugReasons.push(`platformAccount:not_synced:${publishSlug}`);
       return blocked({
         blockingCode: "ACCOUNT_STATUS_NOT_SYNCED",

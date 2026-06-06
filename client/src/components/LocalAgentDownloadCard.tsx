@@ -1,7 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
+import {
+  inferServerHeartbeatFromPlatformAccounts,
+  isLocalAgentResolvedConnected,
+  localAgentConnectionCheckFeedback,
+  resolveLocalAgentConnectionState,
+  type LocalAgentResolvedConnectionState,
+  type ServerHeartbeatPlatformAccountRow,
+} from "@shared/localAgentConnectionStatus";
 import { Download, Loader2, RefreshCw, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type DownloadManifest = {
@@ -9,6 +17,11 @@ type DownloadManifest = {
   macZipUrl?: string | null;
   winZipUrl?: string | null;
   winSetupUrl?: string | null;
+};
+
+type Props = {
+  platformAccounts?: ServerHeartbeatPlatformAccountRow[];
+  boundPublishAccountCount?: number;
 };
 
 function isValidDownloadUrl(url: string | null | undefined): url is string {
@@ -50,18 +63,48 @@ function pickWinHref(manifest: DownloadManifest | null): string | null {
   return null;
 }
 
-export function LocalAgentDownloadCard() {
+export function LocalAgentDownloadCard({
+  platformAccounts = [],
+  boundPublishAccountCount = 0,
+}: Props) {
+  const [localHttpOk, setLocalHttpOk] = useState<boolean | null>(null);
   const [health, setHealth] = useState<Awaited<ReturnType<typeof checkLocalAgentHealth>>>(null);
   const [checking, setChecking] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
   const [macHref, setMacHref] = useState<string | null>(null);
 
+  const serverHeartbeat = useMemo(
+    () => inferServerHeartbeatFromPlatformAccounts(platformAccounts),
+    [platformAccounts],
+  );
+
+  const resolvedState = useMemo(
+    (): LocalAgentResolvedConnectionState =>
+      resolveLocalAgentConnectionState({
+        serverHeartbeatConnected: serverHeartbeat.connected,
+        serverLastActivityAt: serverHeartbeat.lastActivityAt,
+        platformAccounts,
+        localHttpCheckResult: localHttpOk,
+        boundPublishAccountCount,
+      }),
+    [
+      boundPublishAccountCount,
+      localHttpOk,
+      platformAccounts,
+      serverHeartbeat.connected,
+      serverHeartbeat.lastActivityAt,
+    ],
+  );
+
+  const connectedOnline = isLocalAgentResolvedConnected(resolvedState);
+
   const refreshHealth = useCallback(async (force = false) => {
     setChecking(true);
     try {
       const h = await checkLocalAgentHealth(force ? { force: true } : undefined);
       setHealth(h);
+      setLocalHttpOk(Boolean(h?.ok));
       return h;
     } finally {
       setHasChecked(true);
@@ -88,12 +131,28 @@ export function LocalAgentDownloadCard() {
 
   const handleDetect = async () => {
     const h = await refreshHealth(true);
-    if (h) {
-      toast.success("客户端已连接");
-    } else {
-      toast.error("未检测到本地发布客户端，请下载安装并启动后重试");
-    }
+    const nextState = resolveLocalAgentConnectionState({
+      serverHeartbeatConnected: serverHeartbeat.connected,
+      serverLastActivityAt: serverHeartbeat.lastActivityAt,
+      platformAccounts,
+      localHttpCheckResult: Boolean(h?.ok),
+      boundPublishAccountCount,
+    });
+    const feedback = localAgentConnectionCheckFeedback(nextState);
+    if (feedback.kind === "success") toast.success(feedback.message);
+    else if (feedback.kind === "info") toast.message(feedback.message);
+    else toast.error(feedback.message);
   };
+
+  const connectionDetail = connectedOnline
+    ? health
+      ? `客户端已连接 · v${health.version}`
+      : resolvedState === "CONNECTED_BY_SERVER_HEARTBEAT"
+        ? "已通过服务端心跳确认在线，可继续发布"
+        : "客户端已连接"
+    : hasChecked
+      ? "未检测到本地发布助手，请打开客户端后重试。"
+      : "正在检测客户端…";
 
   const macOffered = Boolean(macHref);
   const macIsZip = Boolean(macHref && /\.zip(\?|$)/i.test(macHref));
@@ -106,7 +165,6 @@ export function LocalAgentDownloadCard() {
       id="local-agent-download"
       data-testid="local-agent-download-card"
     >
-      {/* Header: title + status */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-gray-900">下载 GEO 本地发布客户端</h3>
@@ -114,7 +172,7 @@ export function LocalAgentDownloadCard() {
             用于托管本机发布账号环境，自动接收 GEO Web 下发的发布任务。不保存平台密码，不上传 Cookie。
           </p>
         </div>
-        {health ? (
+        {connectedOnline ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" data-testid="local-agent-connected">
             <CheckCircle2 className="size-3.5" />
             已连接
@@ -127,22 +185,14 @@ export function LocalAgentDownloadCard() {
         )}
       </div>
 
-      {/* Connection detail */}
       <p className="mt-3 text-sm text-gray-600">
-        {health ? (
-          <span data-testid="local-agent-health-detail">
-            客户端已连接 · v{health.version}
-          </span>
+        {connectedOnline ? (
+          <span data-testid="local-agent-health-detail">{connectionDetail}</span>
         ) : (
-          <span data-testid="local-agent-health-offline">
-            {hasChecked
-              ? "未检测到本地发布客户端，请下载安装并启动后重试"
-              : "正在检测客户端…"}
-          </span>
+          <span data-testid="local-agent-health-offline">{connectionDetail}</span>
         )}
       </p>
 
-      {/* Action buttons */}
       <div className="mt-4 flex flex-wrap gap-2">
         {macOffered && macHref ? (
           <Button type="button" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" asChild data-testid="download-mac-agent">
@@ -188,7 +238,6 @@ export function LocalAgentDownloadCard() {
         </Button>
       </div>
 
-      {/* Mac install help - collapsible */}
       <details className="mt-4 rounded-lg border border-amber-200 bg-amber-50 text-sm" data-testid="mac-install-gatekeeper-hint">
         <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 font-medium text-amber-800 [&::-webkit-details-marker]:hidden">
           <ChevronDown className="size-4 transition-transform [[open]>&]:rotate-180" />
@@ -224,7 +273,6 @@ export function LocalAgentDownloadCard() {
         </div>
       </details>
 
-      {/* Technical info - collapsed by default */}
       {health ? (
         <details className="mt-3 text-xs text-gray-500">
           <summary className="cursor-pointer hover:text-gray-700 [&::-webkit-details-marker]:hidden">

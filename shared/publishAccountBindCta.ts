@@ -1,4 +1,8 @@
-import type { LocalAgentConnectionStatus } from "./localAgentConnectionStatus";
+import {
+  isLocalAgentResolvedConnected,
+  type LocalAgentConnectionStatus,
+  type LocalAgentResolvedConnectionState,
+} from "./localAgentConnectionStatus";
 
 export type PublishAccountBindCtaState =
   | "not_connected"
@@ -9,6 +13,7 @@ export type PublishAccountBindCtaState =
 export type PublishAccountBindCtaInput = {
   localAgentConnectionStatus: LocalAgentConnectionStatus;
   localAgentConnectedOnline: boolean;
+  localAgentResolvedState?: LocalAgentResolvedConnectionState;
   boundPublishAccountCount: number;
   localAccountSnapshotEmpty?: boolean;
 };
@@ -19,7 +24,11 @@ export function resolvePublishAccountBindCtaState(
   if (input.boundPublishAccountCount > 0) {
     return "bound";
   }
-  if (!input.localAgentConnectedOnline) {
+  const connected =
+    input.localAgentConnectedOnline ||
+    (input.localAgentResolvedState != null &&
+      isLocalAgentResolvedConnected(input.localAgentResolvedState));
+  if (!connected) {
     return "not_connected";
   }
   if (input.localAgentConnectionStatus === "CONNECTED_ACCOUNT_NOT_SYNCED") {

@@ -5,7 +5,10 @@ import {
   fetchLocalAgentDownloadManifest,
   pickLocalAgentDownloadHref,
 } from "@/lib/localAgentDownloadManifest";
-import type { LocalAgentConnectionStatus } from "@shared/localAgentConnectionStatus";
+import type {
+  LocalAgentConnectionStatus,
+  LocalAgentResolvedConnectionState,
+} from "@shared/localAgentConnectionStatus";
 import {
   publishAccountBindCtaLabel,
   resolvePublishAccountBindCtaState,
@@ -32,6 +35,7 @@ type Input = {
   boundPublishAccountCount: number;
   localAgentConnectionStatus: LocalAgentConnectionStatus;
   localAgentConnectedOnline: boolean;
+  localAgentResolvedState?: LocalAgentResolvedConnectionState;
   localAccountSnapshotEmpty?: boolean;
   checking?: boolean;
   checkConnection: () => Promise<LocalAgentConnectionCheckResult>;
@@ -47,6 +51,7 @@ export function usePublishAccountBindCta(input: Input) {
       resolvePublishAccountBindCtaState({
         localAgentConnectionStatus: input.localAgentConnectionStatus,
         localAgentConnectedOnline: input.localAgentConnectedOnline,
+        localAgentResolvedState: input.localAgentResolvedState,
         boundPublishAccountCount: input.boundPublishAccountCount,
         localAccountSnapshotEmpty: input.localAccountSnapshotEmpty,
       }),
@@ -55,6 +60,7 @@ export function usePublishAccountBindCta(input: Input) {
       input.localAccountSnapshotEmpty,
       input.localAgentConnectedOnline,
       input.localAgentConnectionStatus,
+      input.localAgentResolvedState,
     ],
   );
 
@@ -130,13 +136,14 @@ export function usePublishAccountBindCta(input: Input) {
       const result = await input.checkConnection();
       if (result.online) {
         setDialogMode(null);
-        toast.success("本地发布助手已连接");
+        if (result.feedback.kind === "success") toast.success(result.feedback.message);
+        else toast.message(result.feedback.message);
         if (result.status === "CONNECTED_ACCOUNT_NOT_SYNCED") {
           await runRefreshAccountStatus();
         }
         return;
       }
-      toast.error("仍未检测到本地发布助手，请确认客户端已打开");
+      toast.error(result.feedback.message);
     } finally {
       setActionChecking(false);
     }

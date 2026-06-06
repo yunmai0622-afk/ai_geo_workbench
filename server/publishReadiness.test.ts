@@ -209,14 +209,26 @@ describe("publishReadiness evaluatePublishReadiness", () => {
     expect(r.blockingCode).toBe("DIAGNOSIS_REQUIRED");
   });
 
-  it("local agent disconnected → LOCAL_AGENT_DISCONNECTED", () => {
+  it("local agent disconnected without server heartbeat → LOCAL_AGENT_DISCONNECTED", () => {
     const r = evaluatePublishReadiness({
       ...baseContext,
       localAgentConnected: false,
       article: zhihuArticle(),
-      platformAccounts: [zhihuReadyAccount],
+      platformAccounts: [],
     });
     expect(r.blockingCode).toBe("LOCAL_AGENT_DISCONNECTED");
+  });
+
+  it("server heartbeat online without browser local check allows publish", () => {
+    const r = evaluatePublishReadiness({
+      ...baseContext,
+      localAgentConnected: false,
+      serverHeartbeatConnected: true,
+      article: zhihuArticle(),
+      platformAccounts: [zhihuReadyAccount],
+    });
+    expect(r.ready).toBe(true);
+    expect(r.blockingCode).toBeNull();
   });
 
   it("risk hint matches blocking message for unbound account", () => {

@@ -1,5 +1,6 @@
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
+import { flattenPlatformAccountsForServerHeartbeat } from "@/lib/localAgentServerContext";
 import { usePublishAccountBindCta } from "@/hooks/usePublishAccountBindCta";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
@@ -45,14 +46,26 @@ export function EnterpriseProjectShell({ children }: Props) {
   );
 
   const boundPublishAccountCount = summaryQuery.data?.boundPublishAccountCount ?? 0;
+  const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const flattenedPlatformAccounts = useMemo(
+    () => flattenPlatformAccountsForServerHeartbeat(platformAccountsQuery.data?.accounts ?? []),
+    [platformAccountsQuery.data?.accounts],
+  );
   const {
     status: localAgentConnectionStatus,
+    resolvedState: localAgentResolvedState,
     localAgentOnline,
     localAgentConnectedOnline,
     accountSnapshot,
     checkConnection,
     checking: localAgentChecking,
-  } = useLocalAgentConnection({ boundPublishAccountCount });
+  } = useLocalAgentConnection({
+    boundPublishAccountCount,
+    platformAccounts: flattenedPlatformAccounts,
+  });
 
   const { checking: accountHealthChecking, runCheck: runAccountHealthCheck } =
     usePublishAccountHealthCheck(selectedProjectId ?? null, Boolean(selectedProjectId));
@@ -62,6 +75,7 @@ export function EnterpriseProjectShell({ children }: Props) {
     boundPublishAccountCount,
     localAgentConnectionStatus,
     localAgentConnectedOnline,
+    localAgentResolvedState,
     localAccountSnapshotEmpty: accountSnapshot.length === 0,
     checking: localAgentChecking || accountHealthChecking,
     checkConnection,

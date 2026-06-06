@@ -30,6 +30,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
+import { flattenPlatformAccountsForServerHeartbeat } from "@/lib/localAgentServerContext";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { buildPublishingViewModel } from "@/lib/buildPublishingViewModel";
@@ -421,6 +422,11 @@ function ContentPublishingCenterPageInner() {
       accounts: Array.isArray(group.accounts) ? group.accounts : [],
     }));
   }, [platformAccountsQuery.data?.accounts]);
+
+  const flattenedPlatformAccounts = useMemo(
+    () => flattenPlatformAccountsForServerHeartbeat(platformAccountGroups),
+    [platformAccountGroups],
+  );
   const retestQueueItems = useMemo(
     () => asArray<RetestQueueItemRow>(retestQueueQuery.data?.items),
     [retestQueueQuery.data?.items],
@@ -526,6 +532,7 @@ function ContentPublishingCenterPageInner() {
 
   const {
     status: localAgentConnectionStatus,
+    resolvedState: localAgentResolvedState,
     statusSnapshot: localAgentStatusSnapshot,
     checkConnection,
     clientVersion,
@@ -535,7 +542,16 @@ function ContentPublishingCenterPageInner() {
     boundPublishAccountCount,
     boundPlatformCount: platformAccountsQuery.isLoading ? null : boundPlatformCount,
     pendingTaskCount: autoPublishTasksQuery.isLoading ? null : pendingCount,
+    platformAccounts: flattenedPlatformAccounts,
   });
+
+  const runCheckConnectionWithFeedback = useCallback(async () => {
+    const result = await checkConnection();
+    if (result.feedback.kind === "success") toast.success(result.feedback.message);
+    else if (result.feedback.kind === "info") toast.message(result.feedback.message);
+    else toast.error(result.feedback.message);
+    return result;
+  }, [checkConnection]);
 
   const refreshAgentHealth = useCallback(async () => {
     setLastUserAction("refresh_agent_health");
@@ -686,7 +702,7 @@ function ContentPublishingCenterPageInner() {
 
   function startLocalPublish(card: PublishTaskCardModel) {
     if (!localAgentConnectedOnline) {
-      toast.error("Local Agent 未连接，请先下载并启动客户端");
+      toast.error("未检测到本地发布助手，请打开客户端后重试。");
       return;
     }
     if (card.taskId) {
@@ -709,7 +725,7 @@ function ContentPublishingCenterPageInner() {
       return false;
     }
     if (!localAgentConnectedOnline) {
-      toast.error("Local Agent 未连接，请先下载并启动客户端");
+      toast.error("未检测到本地发布助手，请打开客户端后重试。");
       return false;
     }
     const account = pickReadyAccountForPlatform(platformAccountGroups, slug);
@@ -749,7 +765,7 @@ function ContentPublishingCenterPageInner() {
       return;
     }
     if (!localAgentConnectedOnline) {
-      toast.error("Local Agent 未连接，请先下载并启动客户端");
+      toast.error("未检测到本地发布助手，请打开客户端后重试。");
       return;
     }
     setPublishAllBusy(true);
@@ -874,6 +890,7 @@ function ContentPublishingCenterPageInner() {
   const localAgentLabel = resolvePublishStatusLocalAgentLabel(
     localAgentConnectionStatus,
     localAgentConnectedOnline,
+    localAgentResolvedState,
   );
 
   function handleExportPublishRecordsCsv() {
@@ -939,7 +956,7 @@ function ContentPublishingCenterPageInner() {
         showDisconnectedHint={!localAgentConnectedOnline}
         onCheckConnection={() => {
           setLastUserAction("check_local_agent");
-          void checkConnection();
+          void runCheckConnectionWithFeedback();
         }}
         onRefreshAccountStatus={() => void refreshAgentHealth()}
       />
@@ -1191,12 +1208,15 @@ function ContentPublishingCenterPageInner() {
                   checking={checkingAgent}
                   onCheckConnection={() => {
                     setLastUserAction("check_local_agent");
-                    void checkConnection();
+                    void runCheckConnectionWithFeedback();
                   }}
                   onRefreshAccountStatus={() => void refreshAgentHealth()}
                   updateNotice={localAgentUpdateNotice}
                 />
-                <LocalAgentDownloadCard />
+                <LocalAgentDownloadCard
+                  platformAccounts={flattenedPlatformAccounts}
+                  boundPublishAccountCount={boundPublishAccountCount}
+                />
               </div>
             </details>
 
