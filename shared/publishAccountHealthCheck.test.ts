@@ -5,6 +5,7 @@ import {
   filterSnapshotEntriesForProfiles,
   formatPublishAccountLastValidAt,
   isPublishAccountSessionExpired,
+  selectSnapshotEntriesForProjectSync,
 } from "./publishAccountHealthCheck";
 import type { LocalAgentAccountStatusEntry } from "./localAgentAccountSync";
 
@@ -67,6 +68,29 @@ describe("publishAccountHealthCheck", () => {
       },
     ];
     expect(filterSnapshotEntriesForProfiles(snapshots, ["p1"]).map(e => e.profileId)).toEqual(["p1"]);
+  });
+
+  it("selectSnapshotEntriesForProjectSync syncs all valid when no bound profiles", () => {
+    const snapshots: LocalAgentAccountStatusEntry[] = [
+      {
+        platform: "zhihu",
+        profileId: "p1",
+        displayName: "A",
+        displayNameVerified: true,
+        loginStatus: "valid",
+        lastCheckedAt: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        platform: "zhihu",
+        profileId: "p9",
+        displayName: null,
+        displayNameVerified: false,
+        loginStatus: "invalid",
+        lastCheckedAt: "2026-06-01T00:00:00.000Z",
+      },
+    ];
+    expect(selectSnapshotEntriesForProjectSync(snapshots, []).map(e => e.profileId)).toEqual(["p1"]);
+    expect(selectSnapshotEntriesForProjectSync(snapshots, ["p1"]).map(e => e.profileId)).toEqual(["p1"]);
   });
 
   it("formats last valid time for customer copy", () => {

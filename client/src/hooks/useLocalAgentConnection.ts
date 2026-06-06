@@ -8,6 +8,7 @@ import type { LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync
 import {
   inferServerHeartbeatFromPlatformAccounts,
   isLocalAgentResolvedConnected,
+  deriveLocalAgentUiConnectionStatus,
   localAgentConnectionCheckFeedback,
   mapResolvedStateToConnectionStatus,
   readCachedLocalAgentConnectionStatus,
@@ -72,8 +73,21 @@ export function useLocalAgentConnection(input: {
   );
 
   const status = useMemo(
-    () => mapResolvedStateToConnectionStatus(resolvedState, probeStatus),
-    [probeStatus, resolvedState],
+    () =>
+      deriveLocalAgentUiConnectionStatus({
+        resolvedState,
+        boundPublishAccountCount: input.boundPublishAccountCount,
+        localAgentAccountSnapshot: accountSnapshot,
+        localHttpCheckResult: lastLocalHttpOk,
+        probeStatus: probeStatus === "CHECKING" ? "CHECKING" : probeStatus,
+      }),
+    [
+      accountSnapshot,
+      input.boundPublishAccountCount,
+      lastLocalHttpOk,
+      probeStatus,
+      resolvedState,
+    ],
   );
 
   const localAgentConnectedOnline = isLocalAgentResolvedConnected(resolvedState);

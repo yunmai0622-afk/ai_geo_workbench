@@ -565,6 +565,17 @@ function ContentPublishingCenterPageInner() {
     }
   }, [checkConnection, runAccountHealthCheck, selectedProjectId, utils.geo.platformAccounts.list]);
 
+  const initialAgentCheckProjectRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!enabled || selectedProjectId == null) return;
+    if (initialAgentCheckProjectRef.current === selectedProjectId) return;
+    initialAgentCheckProjectRef.current = selectedProjectId;
+    void (async () => {
+      await checkConnection();
+      await runAccountHealthCheck({ detectSessions: true });
+    })();
+  }, [checkConnection, enabled, runAccountHealthCheck, selectedProjectId]);
+
   const refreshPublishTasks = useCallback(() => {
     setLastUserAction("refresh_publish_tasks");
     void refetchAutoPublishTasks();

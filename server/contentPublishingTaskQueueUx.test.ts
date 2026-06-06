@@ -81,11 +81,9 @@ describe("GEO-V1.1 content publishing task queue UX P0", () => {
     expect(page).toContain("去生成/选择内容");
   });
 
-  it("页面打开不自动检测 Local Agent 或刷新账号", () => {
-    expect(connHook).not.toContain("useEffect");
-    expect(healthHook).not.toContain("useEffect");
-    expect(page).not.toMatch(/useEffect\(\(\) => \{[\s\S]{0,500}?checkLocalAgentHealth/);
-    expect(page).not.toMatch(/useEffect\(\(\) => \{[\s\S]{0,500}?runAccountHealthCheck/);
+  it("页面打开按项目自动检测 Local Agent 并尝试同步账号", () => {
+    expect(page).toMatch(/initialAgentCheckProjectRef/);
+    expect(page).toMatch(/runAccountHealthCheck\(\{ detectSessions: true \}\)/);
     expect(publishUi).toContain("检测客户端连接");
     expect(publishUi).toContain("刷新账号状态");
   });

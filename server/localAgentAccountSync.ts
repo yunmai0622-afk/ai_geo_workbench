@@ -4,6 +4,7 @@ import { z } from "zod";
 import { projectPlatformAccounts } from "../drizzle/schema";
 import { isBindingPublishPlatform } from "@shared/platformAccountVerify";
 import { requireProjectAccessConn } from "./projectAccess";
+import { logLocalAgentConnection } from "./localAgentConnectionLog";
 import { bindLocalAgentAccount, requireDbConn } from "./projectPlatformAccounts";
 
 type LocalAgentAccountStatusEntry = {
@@ -105,6 +106,26 @@ export async function syncLocalAgentAccountStatuses(
         lastSessionCheckedAt: new Date(entry.lastCheckedAt),
       })
       .where(eq(projectPlatformAccounts.id, existing.id));
+  }
+
+  logLocalAgentConnection("syncAccountStatuses", {
+    projectId,
+    userId: ownerUserId,
+    accountCount: input.accounts.length,
+    synced,
+    hasLocalAgentId: Boolean(input.agentId?.trim()),
+  });
+  for (const entry of input.accounts) {
+    logLocalAgentConnection("syncAccountEntry", {
+      projectId,
+      userId: ownerUserId,
+      platform: entry.platform,
+      hasLocalAgentId: Boolean(input.agentId?.trim()),
+      hasLocalProfileId: Boolean(entry.profileId?.trim()),
+      loginStatus: entry.loginStatus,
+      lastCheckedAt: entry.lastCheckedAt,
+      sessionStatus: isLocalAgentAccountEntryValid(entry) ? "active" : entry.loginStatus,
+    });
   }
 
   return { success: true, synced, projectId } as const;

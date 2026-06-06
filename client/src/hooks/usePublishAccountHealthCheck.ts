@@ -6,7 +6,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import {
   collectBoundProfileIdsForHealthCheck,
-  filterSnapshotEntriesForProfiles,
+  selectSnapshotEntriesForProjectSync,
 } from "@shared/publishAccountHealthCheck";
 import { useCallback, useRef, useState } from "react";
 
@@ -59,7 +59,7 @@ export function usePublishAccountHealthCheck(projectId: number | null, enabled: 
 
         const snapshots = await listLocalAgentAccountSnapshots();
         if (runId !== runIdRef.current) return;
-        const entries = filterSnapshotEntriesForProfiles(snapshots, profileIds);
+        const entries = selectSnapshotEntriesForProjectSync(snapshots, profileIds);
         if (entries.length > 0) {
           await syncSnapshot.mutateAsync({
             agentId: health.agentId,

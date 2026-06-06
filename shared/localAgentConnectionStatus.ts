@@ -46,7 +46,7 @@ export const LOCAL_AGENT_CONNECTION_COPY: Record<LocalAgentConnectionStatus, Loc
   },
   CONNECTED_ACCOUNT_NOT_SYNCED: {
     title: "客户端已连接，账号状态待同步",
-    description: "请刷新账号状态，系统会读取本地客户端中已登录的平台账号。",
+    description: "本地助手在线，但当前项目尚未同步发布账号，请点击刷新账号状态。",
     primaryButton: "刷新账号状态",
     secondaryButton: null,
   },
@@ -340,6 +340,9 @@ export const LOCAL_AGENT_SERVER_ONLINE_LOCAL_HTTP_FAILED_MESSAGE =
 export const LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE =
   "已检测到本地发布助手在线，可继续发布。";
 
+export const LOCAL_AGENT_PROJECT_ACCOUNT_NOT_SYNCED_DETAIL =
+  "本地助手在线，但当前项目尚未同步发布账号，请点击刷新账号状态。";
+
 /** 「检测客户端」按钮反馈文案 */
 export function localAgentConnectionCheckFeedback(
   state: LocalAgentResolvedConnectionState,
@@ -381,7 +384,11 @@ export function localAgentDownloadCardConnectionDetail(input: {
   state: LocalAgentResolvedConnectionState;
   healthVersion?: string | null;
   hasCheckedLocalHttp?: boolean;
+  uiConnectionStatus?: LocalAgentConnectionStatus;
 }): string {
+  if (input.uiConnectionStatus === "CONNECTED_ACCOUNT_NOT_SYNCED") {
+    return LOCAL_AGENT_PROJECT_ACCOUNT_NOT_SYNCED_DETAIL;
+  }
   if (!isLocalAgentResolvedConnected(input.state)) {
     return input.hasCheckedLocalHttp
       ? "未检测到本地发布助手，请打开客户端后重试。"
@@ -394,4 +401,32 @@ export function localAgentDownloadCardConnectionDetail(input: {
     return LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE;
   }
   return "客户端已连接";
+}
+
+/** Web UI 连接态：区分「客户端在线」与「当前项目账号已同步」 */
+export function deriveLocalAgentUiConnectionStatus(input: {
+  resolvedState: LocalAgentResolvedConnectionState;
+  boundPublishAccountCount: number;
+  localAgentAccountSnapshot?: LocalAgentAccountStatusEntry[];
+  localHttpCheckResult?: boolean | null;
+  probeStatus?: LocalAgentConnectionStatus;
+}): LocalAgentConnectionStatus {
+  if (input.probeStatus === "CHECKING") return "CHECKING";
+  if (!isLocalAgentResolvedConnected(input.resolvedState)) {
+    return mapResolvedStateToConnectionStatus(input.resolvedState, input.probeStatus);
+  }
+  const snapshot = input.localAgentAccountSnapshot ?? [];
+  const hasValidLocalSnapshot = snapshot.some(isLocalAgentAccountEntryValid);
+  const serverHasBoundAccounts = input.boundPublishAccountCount > 0;
+  if (!serverHasBoundAccounts) {
+    if (hasValidLocalSnapshot || input.localHttpCheckResult === true) {
+      return "CONNECTED_ACCOUNT_NOT_SYNCED";
+    }
+  } else if (input.localHttpCheckResult === true && snapshot.length === 0) {
+    return "CONNECTED_ACCOUNT_NOT_SYNCED";
+  }
+  if (input.probeStatus === "CONNECTED_ACCOUNT_NOT_SYNCED") {
+    return "CONNECTED_ACCOUNT_NOT_SYNCED";
+  }
+  return mapResolvedStateToConnectionStatus(input.resolvedState, input.probeStatus);
 }

@@ -1,17 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { buildLocalAgentDownloadCardServerContext } from "@/lib/localAgentDownloadCardContext";
-import { checkLocalAgentHealth } from "@/lib/localAgentClient";
+import { checkLocalAgentHealth, listLocalAgentAccountSnapshots } from "@/lib/localAgentClient";
 import { trpc } from "@/lib/trpc";
 import type { LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync";
 import {
+  deriveLocalAgentUiConnectionStatus,
   inferServerHeartbeatFromPlatformAccounts,
   isLocalAgentResolvedConnected,
   localAgentConnectionCheckFeedback,
+  localAgentConnectionCopy,
   localAgentDownloadCardConnectionDetail,
+  resolveConnectionStatusAfterHealthProbe,
   resolveLocalAgentConnectionState,
+  type LocalAgentConnectionStatus,
   type LocalAgentResolvedConnectionState,
   type ServerHeartbeatPlatformAccountRow,
 } from "@shared/localAgentConnectionStatus";
+import { selectSnapshotEntriesForProjectSync } from "@shared/publishAccountHealthCheck";
 import { Download, Loader2, RefreshCw, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -79,9 +84,16 @@ export function LocalAgentDownloadCard({
   const [localHttpOk, setLocalHttpOk] = useState<boolean | null>(null);
   const [health, setHealth] = useState<Awaited<ReturnType<typeof checkLocalAgentHealth>>>(null);
   const [checking, setChecking] = useState(false);
+  const [refreshingAccounts, setRefreshingAccounts] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
   const [macHref, setMacHref] = useState<string | null>(null);
+  const [localSnapshot, setLocalSnapshot] = useState<LocalAgentAccountStatusEntry[]>(
+    localAgentAccountSnapshot,
+  );
+
+  const syncSnapshot = trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
+  const utils = trpc.useUtils();
 
   const accountsQuery = trpc.geo.platformAccounts.list.useQuery(
     { projectId: projectId! },
@@ -107,6 +119,11 @@ export function LocalAgentDownloadCard({
     return boundPublishAccountCountProp;
   }, [boundPublishAccountCountProp, serverContextFromQuery.boundPublishAccountCount]);
 
+  const effectiveSnapshot = useMemo(() => {
+    if (localSnapshot.length > 0) return localSnapshot;
+    return localAgentAccountSnapshot;
+  }, [localAgentAccountSnapshot, localSnapshot]);
+
   const serverHeartbeat = useMemo(
     () => inferServerHeartbeatFromPlatformAccounts(platformAccounts),
     [platformAccounts],
@@ -119,12 +136,12 @@ export function LocalAgentDownloadCard({
         serverLastActivityAt: serverHeartbeat.lastActivityAt,
         platformAccounts,
         localHttpCheckResult: localHttpOk,
-        localAgentAccountSnapshot,
+        localAgentAccountSnapshot: effectiveSnapshot,
         boundPublishAccountCount,
       }),
     [
       boundPublishAccountCount,
-      localAgentAccountSnapshot,
+      effectiveSnapshot,
       localHttpOk,
       platformAccounts,
       serverHeartbeat.connected,
@@ -132,20 +149,53 @@ export function LocalAgentDownloadCard({
     ],
   );
 
+  const probeStatus = useMemo((): LocalAgentConnectionStatus | undefined => {
+    if (localHttpOk == null) return undefined;
+    return resolveConnectionStatusAfterHealthProbe({
+      ok: localHttpOk,
+      accountSnapshotCount: effectiveSnapshot.length,
+      boundPublishAccountCount,
+    });
+  }, [boundPublishAccountCount, effectiveSnapshot.length, localHttpOk]);
+
+  const uiConnectionStatus = useMemo(
+    () =>
+      deriveLocalAgentUiConnectionStatus({
+        resolvedState,
+        boundPublishAccountCount,
+        localAgentAccountSnapshot: effectiveSnapshot,
+        localHttpCheckResult: localHttpOk,
+        probeStatus,
+      }),
+    [boundPublishAccountCount, effectiveSnapshot, localHttpOk, probeStatus, resolvedState],
+  );
+
   const connectedOnline = isLocalAgentResolvedConnected(resolvedState);
+  const accountNotSynced = uiConnectionStatus === "CONNECTED_ACCOUNT_NOT_SYNCED";
 
   const refreshHealth = useCallback(async (force = false) => {
     setChecking(true);
     try {
       const h = await checkLocalAgentHealth(force ? { force: true } : undefined);
       setHealth(h);
-      setLocalHttpOk(Boolean(h?.ok));
+      const ok = Boolean(h?.ok);
+      setLocalHttpOk(ok);
+      if (ok) {
+        const snapshot = await listLocalAgentAccountSnapshots();
+        setLocalSnapshot(snapshot);
+      } else {
+        setLocalSnapshot([]);
+      }
       return h;
     } finally {
       setHasChecked(true);
       setChecking(false);
     }
   }, []);
+
+  useEffect(() => {
+    void refreshHealth();
+  }, [refreshHealth]);
 
   const resolveServerContextForDetect = useCallback(async () => {
     if (!projectId) {
@@ -178,12 +228,14 @@ export function LocalAgentDownloadCard({
     const serverContext = await resolveServerContextForDetect();
     const heartbeat = inferServerHeartbeatFromPlatformAccounts(serverContext.platformAccounts);
     const h = await refreshHealth(true);
+    const snapshot = h?.ok ? await listLocalAgentAccountSnapshots() : [];
+    if (snapshot.length > 0) setLocalSnapshot(snapshot);
     const nextState = resolveLocalAgentConnectionState({
       serverHeartbeatConnected: heartbeat.connected,
       serverLastActivityAt: heartbeat.lastActivityAt,
       platformAccounts: serverContext.platformAccounts,
       localHttpCheckResult: Boolean(h?.ok),
-      localAgentAccountSnapshot,
+      localAgentAccountSnapshot: snapshot.length > 0 ? snapshot : effectiveSnapshot,
       boundPublishAccountCount: serverContext.boundPublishAccountCount,
     });
     const feedback = localAgentConnectionCheckFeedback(nextState, {
@@ -194,11 +246,50 @@ export function LocalAgentDownloadCard({
     else toast.error(feedback.message);
   };
 
+  const handleRefreshAccountStatus = async () => {
+    if (!projectId) {
+      toast.error("请先选择项目后再刷新账号状态");
+      return;
+    }
+    setRefreshingAccounts(true);
+    try {
+      const h = await refreshHealth(true);
+      if (!h?.ok) {
+        toast.error("未检测到本地发布助手，请打开客户端后重试");
+        return;
+      }
+      const serverContext = await resolveServerContextForDetect();
+      const snapshots = await listLocalAgentAccountSnapshots();
+      setLocalSnapshot(snapshots);
+      const profileIds = serverContext.platformAccounts
+        .map(row => row.localProfileId?.trim())
+        .filter((id): id is string => Boolean(id));
+      const entries = selectSnapshotEntriesForProjectSync(snapshots, profileIds);
+      if (entries.length === 0) {
+        toast.message("本地客户端暂无有效发布账号，请先在客户端登录账号");
+        return;
+      }
+      await syncSnapshot.mutateAsync({
+        agentId: h.agentId,
+        projectId,
+        accounts: entries,
+      });
+      await utils.geo.platformAccounts.list.invalidate({ projectId });
+      toast.success("账号状态已同步到当前项目");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "刷新账号状态失败");
+    } finally {
+      setRefreshingAccounts(false);
+    }
+  };
+
   const connectionDetail = localAgentDownloadCardConnectionDetail({
     state: resolvedState,
     healthVersion: health?.version,
     hasCheckedLocalHttp: hasChecked,
+    uiConnectionStatus,
   });
+  const uiCopy = localAgentConnectionCopy(uiConnectionStatus);
 
   const macOffered = Boolean(macHref);
   const macIsZip = Boolean(macHref && /\.zip(\?|$)/i.test(macHref));
@@ -219,10 +310,17 @@ export function LocalAgentDownloadCard({
           </p>
         </div>
         {connectedOnline ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" data-testid="local-agent-connected">
-            <CheckCircle2 className="size-3.5" />
-            已连接
-          </span>
+          accountNotSynced ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700" data-testid="local-agent-account-not-synced">
+              <AlertCircle className="size-3.5" />
+              在线 · 待同步
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" data-testid="local-agent-connected">
+              <CheckCircle2 className="size-3.5" />
+              已连接
+            </span>
+          )
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700" data-testid="local-agent-offline">
             <AlertCircle className="size-3.5" />
@@ -232,12 +330,28 @@ export function LocalAgentDownloadCard({
       </div>
 
       <p className="mt-3 text-sm text-gray-600">
-        {connectedOnline ? (
+        {connectedOnline || accountNotSynced ? (
           <span data-testid="local-agent-health-detail">{connectionDetail}</span>
         ) : (
           <span data-testid="local-agent-health-offline">{connectionDetail}</span>
         )}
       </p>
+
+      {accountNotSynced ? (
+        <div className="mt-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-testid="refresh-local-agent-account-status"
+            disabled={refreshingAccounts || checking}
+            onClick={() => void handleRefreshAccountStatus()}
+          >
+            {refreshingAccounts ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 size-3.5" />}
+            {uiCopy.primaryButton ?? "刷新账号状态"}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
         {macOffered && macHref ? (

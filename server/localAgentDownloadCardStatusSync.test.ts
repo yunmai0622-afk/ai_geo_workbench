@@ -11,15 +11,18 @@ describe("GEO-V1.1 LocalAgentDownloadCard status hard sync P0", () => {
 
   it("LocalAgentDownloadCard uses unified resolved state, not HTTP-only", () => {
     expect(card).toContain("resolveLocalAgentConnectionState");
+    expect(card).toContain("deriveLocalAgentUiConnectionStatus");
     expect(card).toContain("isLocalAgentResolvedConnected");
     expect(card).toContain("localAgentConnectionCheckFeedback");
     expect(card).toContain("localAgentDownloadCardConnectionDetail");
     expect(card).toContain("geo.platformAccounts.list.useQuery");
     expect(card).toContain("resolveServerContextForDetect");
+    expect(card).toContain("refresh-local-agent-account-status");
+    expect(card).toContain("selectSnapshotEntriesForProjectSync");
     expect(card).not.toContain("未检测到本地发布客户端，请下载安装并启动后重试");
     expect(card).not.toContain("未检测到本地发布客户端。请先下载安装并启动");
-    expect(card).not.toContain("void refreshHealth()");
-    expect(card).not.toMatch(/useEffect\(\(\)\s*=>\s*\{[^}]*refreshHealth/);
+    expect(card).toContain("void refreshHealth()");
+    expect(card).toMatch(/useEffect\(\(\)\s*=>\s*\{[^}]*refreshHealth/);
   });
 
   it("all LocalAgentDownloadCard entry points pass projectId for self-fetch", () => {

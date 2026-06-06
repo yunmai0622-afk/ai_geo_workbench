@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveLocalAgentUiConnectionStatus,
   inferServerHeartbeatFromPlatformAccounts,
   isLocalAgentResolvedConnected,
   localAgentConnectionCheckFeedback,
   localAgentConnectionCopy,
   localAgentConnectionRiskHint,
   localAgentDownloadCardConnectionDetail,
+  LOCAL_AGENT_PROJECT_ACCOUNT_NOT_SYNCED_DETAIL,
   LOCAL_AGENT_SERVER_ONLINE_LOCAL_HTTP_FAILED_MESSAGE,
   LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE,
   resolveConnectionStatusAfterHealthProbe,
@@ -143,5 +145,45 @@ describe("localAgentConnectionStatus", () => {
     expect(
       localAgentConnectionRiskHint("CONNECTED", { boundPublishAccountCount: 1 }),
     ).toBeNull();
+  });
+
+  it("deriveLocalAgentUiConnectionStatus marks project account not synced", () => {
+    const state = resolveLocalAgentConnectionState({
+      platformAccounts: [],
+      localHttpCheckResult: true,
+      localAgentAccountSnapshot: [
+        {
+          platform: "zhihu",
+          profileId: "p1",
+          displayName: "A",
+          displayNameVerified: true,
+          loginStatus: "valid",
+          lastCheckedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    expect(
+      deriveLocalAgentUiConnectionStatus({
+        resolvedState: state,
+        boundPublishAccountCount: 0,
+        localHttpCheckResult: true,
+        localAgentAccountSnapshot: [
+          {
+            platform: "zhihu",
+            profileId: "p1",
+            displayName: "A",
+            displayNameVerified: true,
+            loginStatus: "valid",
+            lastCheckedAt: new Date().toISOString(),
+          },
+        ],
+      }),
+    ).toBe("CONNECTED_ACCOUNT_NOT_SYNCED");
+    expect(
+      localAgentDownloadCardConnectionDetail({
+        state,
+        uiConnectionStatus: "CONNECTED_ACCOUNT_NOT_SYNCED",
+      }),
+    ).toBe(LOCAL_AGENT_PROJECT_ACCOUNT_NOT_SYNCED_DETAIL);
   });
 });

@@ -18,6 +18,7 @@ import {
   localAgentAccountStatusPayloadSchema,
   syncLocalAgentAccountStatuses,
 } from "./localAgentAccountSync";
+import { logLocalAgentConnection, logResolvedLocalAgentConnectionState } from "./localAgentConnectionLog";
 
 const accountGroupZod = z.enum(ACCOUNT_GROUP_TYPES).optional().nullable();
 const accountRoleZod = z.enum(PUBLISH_IDENTITIES).optional().nullable();
@@ -60,7 +61,27 @@ export const projectPlatformAccountsRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await requireDbConn();
       await requireProjectAccess(ctx, input.projectId);
-      return { accounts: await listProjectPlatformAccountsForProject(db, input.projectId) } as const;
+      const accounts = await listProjectPlatformAccountsForProject(db, input.projectId);
+      const flatRows = accounts.flatMap(group =>
+        (group.accounts ?? []).map(account => ({
+          localAgentId: account.localAgentId,
+          localProfileId: account.localProfileId,
+          sessionStatus: account.sessionStatus,
+          lastSessionCheckedAt: account.lastSessionCheckedAt,
+        })),
+      );
+      logLocalAgentConnection("platformAccounts.list", {
+        projectId: input.projectId,
+        userId: ctx.user!.id,
+        accountCount: flatRows.length,
+      });
+      logResolvedLocalAgentConnectionState({
+        source: "platformAccounts.list",
+        projectId: input.projectId,
+        userId: ctx.user!.id,
+        platformAccounts: flatRows,
+      });
+      return { accounts } as const;
     }),
 
   create: protectedProcedure
@@ -209,6 +230,14 @@ export const projectPlatformAccountsRouter = router({
         throw new Error("缺少 projectId");
       }
       await requireProjectAccess(ctx, input.projectId);
-      return syncLocalAgentAccountStatuses(ctx.user!.id, input);
+      const result = await syncLocalAgentAccountStatuses(ctx.user!.id, input);
+      logLocalAgentConnection("syncLocalAgentSnapshot", {
+        projectId: input.projectId,
+        userId: ctx.user!.id,
+        accountCount: input.accounts.length,
+        synced: result.synced,
+        hasLocalAgentId: Boolean(input.agentId?.trim()),
+      });
+      return result;
     }),
 });

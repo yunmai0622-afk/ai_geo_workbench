@@ -1,4 +1,5 @@
 import type { LocalAgentAccountStatusEntry } from "./localAgentAccountSync";
+import { isLocalAgentAccountEntryValid } from "./localAgentAccountSync";
 import { PUBLISH_PLATFORM_LABELS, type BindingPublishPlatform, isBindingPublishPlatform } from "./platformAccountVerify";
 
 export type PublishAccountHealthAccount = {
@@ -69,6 +70,17 @@ export function filterSnapshotEntriesForProfiles(
   if (profileIds.length === 0) return [];
   const set = new Set(profileIds);
   return snapshots.filter(entry => set.has(entry.profileId));
+}
+
+/** 选择应写入当前 projectId 的本地账号快照（无绑定账号时同步全部 valid 条目） */
+export function selectSnapshotEntriesForProjectSync(
+  snapshots: ReadonlyArray<LocalAgentAccountStatusEntry>,
+  boundProfileIds: ReadonlyArray<string>,
+): LocalAgentAccountStatusEntry[] {
+  if (boundProfileIds.length > 0) {
+    return filterSnapshotEntriesForProfiles(snapshots, boundProfileIds);
+  }
+  return snapshots.filter(isLocalAgentAccountEntryValid);
 }
 
 export function formatPublishAccountLastValidAt(value: Date | string | null | undefined): string {
