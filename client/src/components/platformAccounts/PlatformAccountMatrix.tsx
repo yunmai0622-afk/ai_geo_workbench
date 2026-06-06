@@ -9,6 +9,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
+import { flattenPlatformAccountsForServerHeartbeat } from "@/lib/localAgentServerContext";
+import { isPublishReadyPlatformAccount } from "@shared/publishReadiness";
+import { useMemo } from "react";
 import { aiGlassPanel, aiInput, aiOutlineBtn, aiPrimaryBtn } from "@/lib/aiProductUi";
 import { cn } from "@/lib/utils";
 import { PUBLISH_IDENTITY_OPTIONS } from "@shared/contentStrategy";
@@ -33,6 +36,31 @@ type Props = {
 export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Props) {
   const b = usePlatformAccountBinding(projectId);
   const platformLabel = PUBLISH_PLATFORM_LABELS[b.selectedPlatform];
+  const accountGroups = b.accountsQuery.data?.accounts ?? [];
+  const flattenedPlatformAccounts = useMemo(
+    () => flattenPlatformAccountsForServerHeartbeat(accountGroups),
+    [accountGroups],
+  );
+  const boundPublishAccountCount = useMemo(() => {
+    let count = 0;
+    for (const group of accountGroups) {
+      for (const account of group.accounts ?? []) {
+        if (
+          isPublishReadyPlatformAccount({
+            platform: group.platform,
+            accountName: account.accountName,
+            isEnabled: account.isEnabled,
+            localProfileId: account.localProfileId,
+            localAgentId: account.localAgentId,
+            sessionStatus: account.sessionStatus,
+          })
+        ) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  }, [accountGroups]);
   return (
     <div className="space-y-4" data-testid="platform-account-matrix">
       <div>
@@ -42,7 +70,12 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
         </p>
       </div>
 
-      {showDownloadCard ? <LocalAgentDownloadCard /> : null}
+      {showDownloadCard ? (
+        <LocalAgentDownloadCard
+          platformAccounts={flattenedPlatformAccounts}
+          boundPublishAccountCount={boundPublishAccountCount}
+        />
+      ) : null}
 
       <div className="rounded-xl border border-blue-400/25 bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-800">
         请先启动 GEO 本地发布客户端，再点击右上角「绑定{platformLabel}账号」。登录仅在本地客户端窗口完成。
@@ -56,7 +89,7 @@ export function PlatformAccountMatrix({ projectId, showDownloadCard = true }: Pr
 
       {b.bindStep === "agent_offline" ? (
         <div className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">
-          <p>未检测到本地发布客户端。请先下载安装并启动 GEO 发布客户端后重试。</p>
+          <p>{b.bindStatusText || "未检测到本地发布助手，请打开客户端后重试。"}</p>
           <Button
             type="button"
             size="sm"

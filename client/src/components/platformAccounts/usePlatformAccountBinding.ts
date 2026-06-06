@@ -4,6 +4,14 @@ import {
   detectLocalAgentAccount,
   openLocalAgentLogin,
 } from "@/lib/localAgentClient";
+import { flattenPlatformAccountsForServerHeartbeat } from "@/lib/localAgentServerContext";
+import {
+  inferServerHeartbeatFromPlatformAccounts,
+  isLocalAgentResolvedConnected,
+  localAgentConnectionCheckFeedback,
+  resolveLocalAgentConnectionState,
+} from "@shared/localAgentConnectionStatus";
+import { isPublishReadyPlatformAccount } from "@shared/publishReadiness";
 import { trpc } from "@/lib/trpc";
 import {
   ACCOUNT_GROUP_OPTIONS,
@@ -149,13 +157,50 @@ export function usePlatformAccountBinding(projectId: number) {
   };
 
   const retryAgentHealth = async (): Promise<boolean> => {
+    const groups = accountsQuery.data?.accounts ?? [];
+    const platformAccounts = flattenPlatformAccountsForServerHeartbeat(groups);
+    let boundPublishAccountCount = 0;
+    for (const group of groups) {
+      for (const account of group.accounts ?? []) {
+        if (
+          isPublishReadyPlatformAccount({
+            platform: group.platform,
+            accountName: account.accountName,
+            isEnabled: account.isEnabled,
+            localProfileId: account.localProfileId,
+            localAgentId: account.localAgentId,
+            sessionStatus: account.sessionStatus,
+          })
+        ) {
+          boundPublishAccountCount += 1;
+        }
+      }
+    }
     const health = await checkLocalAgentHealth({ force: true });
-    if (!health) {
+    const localOk = Boolean(health?.ok);
+    const heartbeat = inferServerHeartbeatFromPlatformAccounts(platformAccounts);
+    const resolved = resolveLocalAgentConnectionState({
+      serverHeartbeatConnected: heartbeat.connected,
+      serverLastActivityAt: heartbeat.lastActivityAt,
+      platformAccounts,
+      localHttpCheckResult: localOk,
+      boundPublishAccountCount,
+    });
+    if (!isLocalAgentResolvedConnected(resolved)) {
       setBindStep("agent_offline");
-      setBindStatusText("未检测到本地发布客户端。请先下载安装并启动 GEO 发布客户端后重试。");
+      setBindStatusText(localAgentConnectionCheckFeedback(resolved).message);
       return false;
     }
-    setLocalAgentId(health.agentId);
+    if (!localOk) {
+      setBindStep("agent_offline");
+      setBindStatusText(
+        localAgentConnectionCheckFeedback(resolved, { localHttpCheckResult: false }).message,
+      );
+      return false;
+    }
+    setBindStep("idle");
+    setBindStatusText("");
+    setLocalAgentId(health!.agentId);
     return true;
   };
 
@@ -166,7 +211,6 @@ export function usePlatformAccountBinding(projectId: number) {
     setBindStatusText("正在检测本地发布客户端…");
     try {
       if (!(await retryAgentHealth())) {
-        toast.error("请先下载安装并启动本地发布客户端");
         return;
       }
       setBindStep("creating");

@@ -6,7 +6,9 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { flattenPlatformAccountsForServerHeartbeat } from "@/lib/localAgentServerContext";
 import { buildPublishPlatformAccountOverview } from "@shared/publishPlatformAccountOverview";
+import { isPublishReadyPlatformAccount } from "@shared/publishReadiness";
 import { toUserFacingError } from "@shared/userFacingErrors";
 import { ExternalLink } from "lucide-react";
 import { useMemo } from "react";
@@ -31,6 +33,31 @@ export function PublishPlatformAccountsOverview({
   }, [accountsQuery.data]);
 
   const boundCount = rows.filter(r => r.bound).length;
+  const accountGroups = accountsQuery.data?.accounts ?? [];
+  const flattenedPlatformAccounts = useMemo(
+    () => flattenPlatformAccountsForServerHeartbeat(accountGroups),
+    [accountGroups],
+  );
+  const boundPublishAccountCount = useMemo(() => {
+    let count = 0;
+    for (const group of accountGroups) {
+      for (const account of group.accounts ?? []) {
+        if (
+          isPublishReadyPlatformAccount({
+            platform: group.platform,
+            accountName: account.accountName,
+            isEnabled: account.isEnabled,
+            localProfileId: account.localProfileId,
+            localAgentId: account.localAgentId,
+            sessionStatus: account.sessionStatus,
+          })
+        ) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  }, [accountGroups]);
 
   return (
     <div id="publish-platform-accounts" className={cn("scroll-mt-28", className)}>
@@ -135,7 +162,10 @@ export function PublishPlatformAccountsOverview({
 
       {showDownloadCard ? (
         <div className="mt-4">
-          <LocalAgentDownloadCard />
+          <LocalAgentDownloadCard
+            platformAccounts={flattenedPlatformAccounts}
+            boundPublishAccountCount={boundPublishAccountCount}
+          />
         </div>
       ) : null}
     </P0Card>

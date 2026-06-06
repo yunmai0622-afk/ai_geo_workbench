@@ -15,14 +15,14 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = {
-  localAgentOnline: boolean | null;
+  localAgentConnectedOnline: boolean;
   boundPlatformCount: number;
   checking?: boolean;
   onRefresh?: () => void;
 };
 
 export function LocalAccountBindingGuideCard({
-  localAgentOnline,
+  localAgentConnectedOnline,
   boundPlatformCount,
   checking,
   onRefresh,
@@ -30,8 +30,8 @@ export function LocalAccountBindingGuideCard({
   const needsGuide = boundPlatformCount === 0;
   if (!needsGuide) return null;
 
-  const showNotConnected = localAgentOnline === false;
-  const showConnectedNoAccount = localAgentOnline === true && boundPlatformCount === 0;
+  const showNotConnected = !localAgentConnectedOnline;
+  const showConnectedNoAccount = localAgentConnectedOnline && boundPlatformCount === 0;
 
   return (
     <P0Card testId="local-account-binding-guide" className="border-amber-200 bg-amber-50/80">

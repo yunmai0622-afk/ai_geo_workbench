@@ -7,6 +7,7 @@ type PlatformAccountGroup = {
     localProfileId?: string | null;
     sessionStatus?: string | null;
     lastSessionCheckedAt?: string | Date | null;
+    updatedAt?: string | Date | null;
   }> | null;
 };
 
@@ -22,6 +23,7 @@ export function flattenPlatformAccountsForServerHeartbeat(
         localProfileId: account.localProfileId,
         sessionStatus: account.sessionStatus,
         lastSessionCheckedAt: account.lastSessionCheckedAt,
+        updatedAt: account.updatedAt,
       });
     }
   }

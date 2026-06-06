@@ -5,6 +5,9 @@ import {
   localAgentConnectionCheckFeedback,
   localAgentConnectionCopy,
   localAgentConnectionRiskHint,
+  localAgentDownloadCardConnectionDetail,
+  LOCAL_AGENT_SERVER_ONLINE_LOCAL_HTTP_FAILED_MESSAGE,
+  LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE,
   resolveConnectionStatusAfterHealthProbe,
   resolveLocalAgentConnectionState,
 } from "./localAgentConnectionStatus";
@@ -70,8 +73,31 @@ describe("localAgentConnectionStatus", () => {
     });
     expect(state).toBe("CONNECTED_BY_SERVER_HEARTBEAT");
     expect(isLocalAgentResolvedConnected(state)).toBe(true);
-    expect(localAgentConnectionCheckFeedback(state).kind).toBe("info");
-    expect(localAgentConnectionCheckFeedback(state).message).not.toMatch(/未检测到/);
+    expect(localAgentConnectionCheckFeedback(state, { localHttpCheckResult: false }).kind).toBe(
+      "info",
+    );
+    expect(localAgentConnectionCheckFeedback(state, { localHttpCheckResult: false }).message).toBe(
+      LOCAL_AGENT_SERVER_ONLINE_LOCAL_HTTP_FAILED_MESSAGE,
+    );
+    expect(localAgentConnectionCheckFeedback(state, { localHttpCheckResult: false }).message).not.toMatch(
+      /未检测到/,
+    );
+  });
+
+  it("active bound account without recent heartbeat timestamp still online", () => {
+    const staleAccount = {
+      ...activeAccount,
+      lastSessionCheckedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    };
+    const state = resolveLocalAgentConnectionState({
+      platformAccounts: [staleAccount],
+      localHttpCheckResult: false,
+      boundPublishAccountCount: 1,
+    });
+    expect(isLocalAgentResolvedConnected(state)).toBe(true);
+    expect(localAgentDownloadCardConnectionDetail({ state, hasCheckedLocalHttp: true })).toBe(
+      LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE,
+    );
   });
 
   it("server heartbeat + local HTTP → confirmed", () => {

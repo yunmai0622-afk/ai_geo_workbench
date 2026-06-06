@@ -201,12 +201,18 @@ function isRecentActivityTimestamp(value: string | Date | null | undefined, now 
   return now - at <= LOCAL_AGENT_SERVER_HEARTBEAT_WINDOW_MS;
 }
 
-function rowIndicatesServerHeartbeat(row: ServerHeartbeatPlatformAccountRow): boolean {
+export function rowIndicatesServerHeartbeat(row: ServerHeartbeatPlatformAccountRow): boolean {
   return (
     Boolean(row.localAgentId?.trim()) &&
     Boolean(row.localProfileId?.trim()) &&
     row.sessionStatus === "active"
   );
+}
+
+export function hasActiveServerSessionRows(
+  accounts: ServerHeartbeatPlatformAccountRow[] | undefined,
+): boolean {
+  return (accounts ?? []).some(rowIndicatesServerHeartbeat);
 }
 
 /** 从 DB 平台账号推断服务端是否近期感知到 Local Agent 在线 */
@@ -263,10 +269,12 @@ export function resolveLocalAgentConnectionState(
     (heartbeat.lastActivityAt == null || isRecentActivityTimestamp(heartbeat.lastActivityAt, now));
 
   const snapshotRecent = snapshotIndicatesRecentServerSync(input.localAgentAccountSnapshot, now);
+  const activeBoundServerSession =
+    (input.boundPublishAccountCount ?? 0) > 0 &&
+    hasActiveServerSessionRows(input.platformAccounts);
+
   const serverOnline =
-    serverRecent ||
-    snapshotRecent ||
-    ((input.boundPublishAccountCount ?? 0) > 0 && heartbeat.connected);
+    serverRecent || snapshotRecent || activeBoundServerSession || heartbeat.connected;
 
   const localOk = input.localHttpCheckResult === true;
   const localFailed = input.localHttpCheckResult === false || input.localHttpProbeThrew === true;
@@ -328,18 +336,27 @@ export type LocalAgentConnectionCheckFeedback = {
   message: string;
 };
 
+export const LOCAL_AGENT_SERVER_ONLINE_LOCAL_HTTP_FAILED_MESSAGE =
+  "已检测到本地发布助手在线；本地直接检测未通过，但不影响任务下发。若任务未出现，请在客户端点击「立即拉取任务」。";
+
+export const LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE =
+  "已检测到本地发布助手在线，可继续发布。";
+
 /** 「检测客户端」按钮反馈文案 */
 export function localAgentConnectionCheckFeedback(
   state: LocalAgentResolvedConnectionState,
+  options?: { localHttpCheckResult?: boolean | null },
 ): LocalAgentConnectionCheckFeedback {
   if (state === "CONNECTED_CONFIRMED" || state === "CONNECTED_BY_LOCAL_HTTP") {
     return { kind: "success", message: "本地发布助手已连接" };
   }
   if (state === "CONNECTED_BY_SERVER_HEARTBEAT") {
+    const localFailed = options?.localHttpCheckResult === false;
     return {
       kind: "info",
-      message:
-        "已检测到本地发布助手在线，可继续发布。若无法自动拉取任务，请在客户端点击「立即拉取任务」。",
+      message: localFailed
+        ? LOCAL_AGENT_SERVER_ONLINE_LOCAL_HTTP_FAILED_MESSAGE
+        : `${LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE}若无法自动拉取任务，请在客户端点击「立即拉取任务」。`,
     };
   }
   if (state === "UNKNOWN_NEEDS_CHECK") {
@@ -359,4 +376,24 @@ export function localAgentResolvedConnectionRiskHint(
     return "本地发布助手已通过服务端确认在线。若任务未自动出现，请在客户端点击「立即拉取任务」。";
   }
   return localAgentConnectionRiskHint(mapResolvedStateToConnectionStatus(state), context);
+}
+
+/** 下载卡片 / 帮助区主提示文案 */
+export function localAgentDownloadCardConnectionDetail(input: {
+  state: LocalAgentResolvedConnectionState;
+  healthVersion?: string | null;
+  hasCheckedLocalHttp?: boolean;
+}): string {
+  if (!isLocalAgentResolvedConnected(input.state)) {
+    return input.hasCheckedLocalHttp
+      ? "未检测到本地发布助手，请打开客户端后重试。"
+      : "尚未检测本地客户端连接状态，可点击「检测客户端」确认。";
+  }
+  if (input.healthVersion?.trim()) {
+    return `客户端已连接 · v${input.healthVersion.trim()}`;
+  }
+  if (input.state === "CONNECTED_BY_SERVER_HEARTBEAT") {
+    return LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE;
+  }
+  return "客户端已连接";
 }

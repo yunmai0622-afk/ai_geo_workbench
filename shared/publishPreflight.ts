@@ -14,6 +14,8 @@ import {
 import {
   inferServerHeartbeatFromPlatformAccounts,
   isLocalAgentResolvedConnected,
+  LOCAL_AGENT_SERVER_ONLINE_LOCAL_HTTP_FAILED_MESSAGE,
+  LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE,
   resolveLocalAgentConnectionState,
 } from "./localAgentConnectionStatus";
 import {
@@ -205,7 +207,9 @@ function buildLocalAgentCheck(input: {
         "LOCAL_AGENT_CONNECTED",
         label,
         "warning",
-        "已检测到本地发布助手在线，可继续发布。若无法自动拉取任务，请在客户端点击「立即拉取任务」。",
+        browser === false
+          ? LOCAL_AGENT_SERVER_ONLINE_LOCAL_HTTP_FAILED_MESSAGE
+          : `${LOCAL_AGENT_SERVER_ONLINE_READY_MESSAGE}若无法自动拉取任务，请在客户端点击「立即拉取任务」。`,
       );
     }
     return check(

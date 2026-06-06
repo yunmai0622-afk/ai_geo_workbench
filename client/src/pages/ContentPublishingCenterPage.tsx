@@ -536,6 +536,7 @@ function ContentPublishingCenterPageInner() {
     statusSnapshot: localAgentStatusSnapshot,
     checkConnection,
     clientVersion,
+    accountSnapshot: localAgentAccountSnapshot,
     localAgentConnectedOnline,
     localAgentOnline,
   } = useLocalAgentConnection({
@@ -1189,7 +1190,7 @@ function ContentPublishingCenterPageInner() {
                   showDownloadCard={false}
                 />
                 <LocalAccountBindingGuideCard
-                  localAgentOnline={localAgentOnline}
+                  localAgentConnectedOnline={localAgentConnectedOnline}
                   boundPlatformCount={boundPlatformCount}
                   checking={checkingAgent || accountHealthChecking}
                   onRefresh={() => void refreshAgentHealth()}
@@ -1216,6 +1217,7 @@ function ContentPublishingCenterPageInner() {
                 <LocalAgentDownloadCard
                   platformAccounts={flattenedPlatformAccounts}
                   boundPublishAccountCount={boundPublishAccountCount}
+                  localAgentAccountSnapshot={localAgentAccountSnapshot}
                 />
               </div>
             </details>

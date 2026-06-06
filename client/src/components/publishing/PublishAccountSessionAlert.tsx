@@ -18,7 +18,7 @@ type Props = {
   projectId: number;
   groups: ReadonlyArray<PublishAccountHealthGroup>;
   checking?: boolean;
-  agentOnline?: boolean | null;
+  localAgentConnectedOnline?: boolean;
   onAfterRelogin?: () => void;
   className?: string;
 };
@@ -27,7 +27,7 @@ export function PublishAccountSessionAlert({
   projectId,
   groups = [],
   checking = false,
-  agentOnline = null,
+  localAgentConnectedOnline = false,
   onAfterRelogin,
   className,
 }: Props) {
@@ -67,8 +67,8 @@ export function PublishAccountSessionAlert({
           <div>
             <p className="text-sm font-semibold text-red-800">发布账号登录已失效</p>
             <p className="mt-1 text-sm text-red-700/90">
-              {agentOnline === false
-                ? "本地发布客户端未连接，无法自动检测；请先启动客户端后刷新本页。"
+              {!localAgentConnectedOnline
+                ? "本地发布助手未连接，无法自动检测；请先打开客户端后刷新本页。"
                 : "以下账号需重新登录后才能继续发布。登录完成后可点击「刷新检测」更新状态。"}
             </p>
           </div>

@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { checkLocalAgentHealth } from "@/lib/localAgentClient";
+import type { LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync";
 import {
   inferServerHeartbeatFromPlatformAccounts,
   isLocalAgentResolvedConnected,
   localAgentConnectionCheckFeedback,
+  localAgentDownloadCardConnectionDetail,
   resolveLocalAgentConnectionState,
   type LocalAgentResolvedConnectionState,
   type ServerHeartbeatPlatformAccountRow,
@@ -22,6 +24,7 @@ type DownloadManifest = {
 type Props = {
   platformAccounts?: ServerHeartbeatPlatformAccountRow[];
   boundPublishAccountCount?: number;
+  localAgentAccountSnapshot?: LocalAgentAccountStatusEntry[];
 };
 
 function isValidDownloadUrl(url: string | null | undefined): url is string {
@@ -66,6 +69,7 @@ function pickWinHref(manifest: DownloadManifest | null): string | null {
 export function LocalAgentDownloadCard({
   platformAccounts = [],
   boundPublishAccountCount = 0,
+  localAgentAccountSnapshot = [],
 }: Props) {
   const [localHttpOk, setLocalHttpOk] = useState<boolean | null>(null);
   const [health, setHealth] = useState<Awaited<ReturnType<typeof checkLocalAgentHealth>>>(null);
@@ -86,10 +90,12 @@ export function LocalAgentDownloadCard({
         serverLastActivityAt: serverHeartbeat.lastActivityAt,
         platformAccounts,
         localHttpCheckResult: localHttpOk,
+        localAgentAccountSnapshot,
         boundPublishAccountCount,
       }),
     [
       boundPublishAccountCount,
+      localAgentAccountSnapshot,
       localHttpOk,
       platformAccounts,
       serverHeartbeat.connected,
@@ -113,7 +119,6 @@ export function LocalAgentDownloadCard({
   }, []);
 
   useEffect(() => {
-    void refreshHealth();
     fetch("/downloads/manifest.json")
       .then(r => (r.ok ? r.json() : null))
       .then((m: DownloadManifest | null) => {
@@ -124,7 +129,7 @@ export function LocalAgentDownloadCard({
         setManifest(null);
         setMacHref(null);
       });
-  }, [refreshHealth]);
+  }, []);
 
   const winHref = pickWinHref(manifest);
   const winOffered = Boolean(winHref);
@@ -136,23 +141,22 @@ export function LocalAgentDownloadCard({
       serverLastActivityAt: serverHeartbeat.lastActivityAt,
       platformAccounts,
       localHttpCheckResult: Boolean(h?.ok),
+      localAgentAccountSnapshot,
       boundPublishAccountCount,
     });
-    const feedback = localAgentConnectionCheckFeedback(nextState);
+    const feedback = localAgentConnectionCheckFeedback(nextState, {
+      localHttpCheckResult: Boolean(h?.ok),
+    });
     if (feedback.kind === "success") toast.success(feedback.message);
     else if (feedback.kind === "info") toast.message(feedback.message);
     else toast.error(feedback.message);
   };
 
-  const connectionDetail = connectedOnline
-    ? health
-      ? `客户端已连接 · v${health.version}`
-      : resolvedState === "CONNECTED_BY_SERVER_HEARTBEAT"
-        ? "已通过服务端心跳确认在线，可继续发布"
-        : "客户端已连接"
-    : hasChecked
-      ? "未检测到本地发布助手，请打开客户端后重试。"
-      : "正在检测客户端…";
+  const connectionDetail = localAgentDownloadCardConnectionDetail({
+    state: resolvedState,
+    healthVersion: health?.version,
+    hasCheckedLocalHttp: hasChecked,
+  });
 
   const macOffered = Boolean(macHref);
   const macIsZip = Boolean(macHref && /\.zip(\?|$)/i.test(macHref));

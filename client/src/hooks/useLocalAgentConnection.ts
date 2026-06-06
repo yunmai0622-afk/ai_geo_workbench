@@ -118,7 +118,9 @@ export function useLocalAgentConnection(input: {
       const nextStatus = mapResolvedStateToConnectionStatus(nextResolved, nextProbeStatus);
       setProbeStatus(nextProbeStatus);
       writeCachedLocalAgentConnectionStatus(nextProbeStatus);
-      const feedback = localAgentConnectionCheckFeedback(nextResolved);
+      const feedback = localAgentConnectionCheckFeedback(nextResolved, {
+        localHttpCheckResult: localOk,
+      });
       return {
         status: nextStatus,
         resolvedState: nextResolved,
@@ -150,7 +152,9 @@ export function useLocalAgentConnection(input: {
       writeCachedLocalAgentConnectionStatus(nextProbeStatus);
       setClientVersion(null);
       setAccountSnapshot([]);
-      const feedback = localAgentConnectionCheckFeedback(nextResolved);
+      const feedback = localAgentConnectionCheckFeedback(nextResolved, {
+        localHttpCheckResult: false,
+      });
       return {
         status: nextStatus,
         resolvedState: nextResolved,

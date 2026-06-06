@@ -199,7 +199,9 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
     blockerReasons.push("当前项目尚无内容资产。");
   } else if (!publishEnvReady) {
     currentStageId = "bind_publish_env";
-    if (input.localAgentOnline === false) blockerReasons.push("本地发布客户端未连接。");
+    if (connectionStatus === "DISCONNECTED" || connectionStatus === "ERROR") {
+      blockerReasons.push("本地发布客户端未连接。");
+    }
     if (input.boundPublishAccountCount === 0) {
       const hint = localAgentConnectionRiskHint(connectionStatus, {
         boundPublishAccountCount: input.boundPublishAccountCount,
