@@ -254,7 +254,7 @@ describe("zhihuIdentityResolver publish gate wiring", () => {
 
   it("publishTasks.create does not block on nickname mismatch alone", () => {
     const router = read("server/publishTasksRouter.ts");
-    expect(router).toContain("evaluatePublishReadiness");
+    expect(router).toContain("evaluatePublishPreflight");
     expect(router).not.toMatch(/昵称不一致.*blockingCode/);
   });
 

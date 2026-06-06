@@ -77,10 +77,11 @@ describe("contentQualityGate publish integration", () => {
     expect(gate.reason).toBe("passed");
   });
 
-  it("publishTasksRouter uses unified publish readiness", () => {
+  it("publishTasksRouter uses unified publish preflight", () => {
     const router = read("server/publishTasksRouter.ts");
     expect(router).toContain("evaluatePublishPreflight");
     expect(router).toContain("assertPublishReadinessForCreate");
+    expect(router).toContain("formatPublishPreflightBlockMessage");
   });
 
   it("WeeklyContentPage uses unified publish readiness for dialog", () => {

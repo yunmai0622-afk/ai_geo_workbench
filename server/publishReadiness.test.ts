@@ -249,11 +249,11 @@ describe("publishReadiness evaluatePublishReadiness", () => {
 });
 
 describe("publishReadiness static wiring", () => {
-  it("publishTasksRouter references evaluatePublishReadiness", async () => {
+  it("publishTasksRouter references evaluatePublishPreflight", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const router = fs.readFileSync(path.join(process.cwd(), "server/publishTasksRouter.ts"), "utf-8");
-    expect(router).toContain("evaluatePublishReadiness");
+    expect(router).toContain("evaluatePublishPreflight");
   });
 
   it("WeeklyContentPage references evaluatePublishPreflight", async () => {

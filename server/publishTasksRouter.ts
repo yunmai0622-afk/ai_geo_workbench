@@ -33,10 +33,13 @@ import {
 import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
+  evaluatePublishPreflight,
   evaluatePublishPreflightForCreate,
   formatPublishPreflightBlockMessage,
+  inferServerHeartbeatConnected,
+  type PublishPreflightCheckCode,
 } from "@shared/publishPreflight";
-import { evaluatePublishReadiness, type PublishReadyAccountRow } from "@shared/publishReadiness";
+import { type PublishReadyAccountRow } from "@shared/publishReadiness";
 import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { markGeoArticlePublishedAt } from "./geoArticlePublishState";
@@ -126,30 +129,51 @@ async function assertPublishReadinessForCreate(
     localAgentId: row.localAgentId,
     sessionStatus: row.sessionStatus,
   }));
-  const readiness = evaluatePublishReadiness({
+  const earlyCreateBlockingCodes = new Set<PublishPreflightCheckCode>([
+    "WORKSPACE_READY",
+    "ARTICLE_PLATFORM_MATCH",
+    "PLATFORM_SUPPORTED",
+    "QUALITY_PASSED",
+    "COVER_READY",
+    "TITLE_WITHIN_LIMIT",
+    "BODY_MIN_LENGTH",
+  ]);
+  const preflight = evaluatePublishPreflight({
+    projectId: input.projectId,
+    article: {
+      ...input.article,
+      projectId: input.article.projectId,
+      generationBasis: (input.article.generationBasis ?? null) as Record<string, unknown> | null,
+    },
     projectAccessible: true,
     enterpriseProfileReady: isP0GeoProfileCompleteFromRecord(profileRecord),
     enterpriseProfile: profileRecord,
     diagnosisReady: analysisRows.length > 0 || scoreRows.length > 0,
-    article: {
-      ...input.article,
-      generationBasis: (input.article.generationBasis ?? null) as Record<string, unknown> | null,
-    },
     platformAccounts,
     requestedPlatform: isBindingPublishPlatform(input.platform) ? input.platform : null,
     skipLocalAgentConnectionCheck: true,
-    serverHeartbeatConnected: platformAccounts.some(
-      row =>
-        Boolean(row.localAgentId?.trim()) &&
-        Boolean(row.localProfileId?.trim()) &&
-        row.sessionStatus === "active",
-    ),
+    localAgentStatus: {
+      serverHeartbeatConnected: inferServerHeartbeatConnected(platformAccounts),
+      browserLocalAgentConnected: true,
+    },
   });
-  if (!readiness.ready) {
-    const code = readiness.blockingCode ?? "WORKSPACE_READY";
-    throw new TRPCError({ code: "BAD_REQUEST", message: `[${code}] ${readiness.message}` });
+  const earlyBlocking = preflight.blockingCodes.filter(code => earlyCreateBlockingCodes.has(code));
+  if (earlyBlocking.length > 0) {
+    const failedChecks = preflight.checks.filter(
+      c => c.status === "fail" && earlyBlocking.includes(c.code),
+    );
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        formatPublishPreflightBlockMessage({
+          ...preflight,
+          blockingCodes: earlyBlocking,
+          checks: failedChecks,
+          ready: false,
+          canCreatePublishTask: false,
+        }) || "发布前检查未通过",
+    });
   }
-  return readiness;
 }
 
 async function assertPrePublishChecklistForCreate(
