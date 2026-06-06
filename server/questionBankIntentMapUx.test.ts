@@ -16,7 +16,7 @@ describe("GEO-V1.1-QuestionBank-IntentMap-UX-P0", () => {
   const intentLib = read("shared/questionBankIntentMap.ts");
 
   it("页面标题与副标题体现 AI 搜索问题库 / 需求地图", () => {
-    expect(page).toContain("AI 搜索问题库");
+    expect(page).toContain("AI 搜索问题库 / AI 搜索需求地图");
     expect(page).toContain("AI 搜索需求地图");
     expect(page).toContain("questions-page-subtitle");
     expect(page).toContain("实测品牌可见度、发现 GEO 缺口，并生成内容任务");
@@ -43,6 +43,7 @@ describe("GEO-V1.1-QuestionBank-IntentMap-UX-P0", () => {
     expect(card).toContain("question-priority-");
     expect(card).toContain("question-test-status-");
     expect(card).toContain("question-content-status-");
+    expect(card).toContain("question-next-action-");
     expect(card).toContain("启用后将进入下一轮 AI 实测与内容生产候选范围");
   });
 
@@ -65,10 +66,21 @@ describe("GEO-V1.1-QuestionBank-IntentMap-UX-P0", () => {
   it("右侧问题库助手替代通用下一步建议", () => {
     expect(assistant).toContain("问题库助手");
     expect(assistant).toContain("question-bank-assistant-panel");
+    expect(assistant).toContain("question-assistant-next-action");
     expect(assistant).toContain("创建本轮实测题组");
     expect(assistant).toContain("去 AI 实测诊断");
     expect(shell).toContain("QuestionBankAssistantPanel");
     expect(shell).toContain("isQuestionsPage");
+  });
+
+  it("问题质量标准默认折叠", () => {
+    expect(qualityPanel).toContain("question-quality-standards-summary");
+    expect(qualityPanel).not.toMatch(/<details\s+open/);
+  });
+
+  it("本轮实测题组按钮去 AI 实测诊断", () => {
+    expect(roundPanel).toContain("去 AI 实测诊断");
+    expect(roundPanel).toContain("question-bank-round-ai-test");
   });
 
   it("保留启用/禁用与人工添加，不暴露技术字段", () => {

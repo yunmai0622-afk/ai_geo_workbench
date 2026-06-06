@@ -296,6 +296,46 @@ export function buildQuestionBankAssistantBlockers(input: {
   return blockers;
 }
 
+export function resolveQuestionNextAction(input: {
+  question: QuestionBankRow;
+  testedQuestionIds: ReadonlySet<number>;
+  hasCompletedT0Baseline: boolean;
+  articles: QuestionArticleLink[];
+}): string {
+  const enabled = Number(input.question.enabled) !== 0;
+  if (!enabled) return "启用问题";
+  const testStatus = resolveQuestionTestStatus(
+    input.question,
+    input.testedQuestionIds,
+    input.hasCompletedT0Baseline,
+  );
+  const contentStatus = resolveQuestionContentStatus(input.question, input.articles);
+  if (testStatus === "发现缺口" && contentStatus === "未生成") return "围绕缺口生成内容";
+  if (testStatus === "未测") return "去 AI 实测诊断";
+  if (contentStatus === "未生成") return "生成平台化内容";
+  if (contentStatus === "已生成") return "进入发布流程";
+  if (contentStatus === "待复测") return "安排复测";
+  if (contentStatus === "已发布") return "查看发布效果";
+  return "查看实测结果";
+}
+
+export function resolveQuestionBankAssistantNextAction(input: {
+  totalQuestions: number;
+  enabledCount: number;
+  hasCurrentRound: boolean;
+  roundStatus?: string | null;
+  hasCompletedT0Baseline: boolean;
+  gapCount: number;
+}): string {
+  if (input.totalQuestions === 0) return "生成或手动添加高价值问题";
+  if (input.enabledCount === 0) return "启用 5-10 个高价值问题";
+  if (!input.hasCurrentRound) return "创建本轮实测题组";
+  if (input.roundStatus === "running") return "查看 AI 实测进度";
+  if (!input.hasCompletedT0Baseline) return "完成 T0 基线检测";
+  if (input.gapCount > 0) return "围绕缺口生成内容任务";
+  return "查看实测结果并规划内容";
+}
+
 export const QUESTION_BANK_ASSISTANT_SUGGESTIONS = [
   "优先选择 5-10 个高价值问题建立 T0 基线",
   "覆盖品牌认知、场景痛点、方案寻找三类问题",

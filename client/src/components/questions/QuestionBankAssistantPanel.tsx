@@ -5,8 +5,10 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import {
   buildQuestionBankAssistantBlockers,
+  buildQuestionBankOverviewMetrics,
   countQuestionsMissingIntent,
   QUESTION_BANK_ASSISTANT_SUGGESTIONS,
+  resolveQuestionBankAssistantNextAction,
   type QuestionBankRow,
 } from "@shared/questionBankIntentMap";
 import { useMemo } from "react";
@@ -25,6 +27,14 @@ export function QuestionBankAssistantPanel() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const tasksQuery = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
 
   const view = useMemo(() => {
     const questions = (questionsQuery.data ?? []) as QuestionBankRow[];
@@ -34,14 +44,29 @@ export function QuestionBankAssistantPanel() {
       rounds.find(round => round.roundType === "T0_BASELINE") ??
       null;
     const missingIntentCount = countQuestionsMissingIntent(questions);
+    const hasCompletedT0Baseline = Boolean(workspaceSummaryQuery.data?.hasCompletedT0Baseline);
+    const overview = buildQuestionBankOverviewMetrics({
+      questions,
+      currentRoundQuestionCount: currentRound?.questionsCount ?? questions.filter(q => Number(q.enabled) !== 0).length,
+      contentTaskCount: tasksQuery.data?.length ?? 0,
+      hasCompletedT0Baseline,
+    });
     return {
       blockers: buildQuestionBankAssistantBlockers({
         hasCurrentRound: Boolean(currentRound),
         missingIntentCount,
       }),
       suggestions: [...QUESTION_BANK_ASSISTANT_SUGGESTIONS],
+      nextAction: resolveQuestionBankAssistantNextAction({
+        totalQuestions: overview.total,
+        enabledCount: overview.enabledCount,
+        hasCurrentRound: Boolean(currentRound),
+        roundStatus: currentRound?.status ?? null,
+        hasCompletedT0Baseline,
+        gapCount: overview.gapCount,
+      }),
     };
-  }, [questionsQuery.data, testRoundsQuery.data]);
+  }, [questionsQuery.data, testRoundsQuery.data, workspaceSummaryQuery.data, tasksQuery.data]);
 
   function goAiDiagnosis() {
     if (!selectedProjectId) return;
@@ -80,6 +105,11 @@ export function QuestionBankAssistantPanel() {
                 ))}
               </ul>
             )}
+          </div>
+
+          <div data-testid="question-assistant-next-action">
+            <p className="text-xs font-semibold text-gray-500">下一步动作</p>
+            <p className="mt-1 text-sm text-gray-800">{view.nextAction}</p>
           </div>
 
           <div className="space-y-2">

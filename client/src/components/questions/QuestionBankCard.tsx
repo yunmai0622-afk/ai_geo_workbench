@@ -9,6 +9,7 @@ import {
   resolveQuestionContentStatus,
   resolveQuestionContentStatusHint,
   resolveQuestionIntentLabel,
+  resolveQuestionNextAction,
   resolveQuestionPriorityLevel,
   resolveQuestionSourceLabel,
   resolveQuestionTestStatus,
@@ -73,6 +74,12 @@ export function QuestionBankCard({
   const contentStatus = resolveQuestionContentStatus(question, articles);
   const testHint = resolveQuestionTestStatusHint(testStatus);
   const contentHint = resolveQuestionContentStatusHint(contentStatus);
+  const nextAction = resolveQuestionNextAction({
+    question,
+    testedQuestionIds,
+    hasCompletedT0Baseline,
+    articles,
+  });
 
   return (
     <P0Card className="!p-4" testId={`question-card-${question.id}`}>
@@ -126,6 +133,9 @@ export function QuestionBankCard({
               {contentHint}
             </p>
           ) : null}
+          <p className="text-xs text-gray-600" data-testid={`question-next-action-${question.id}`}>
+            下一步动作：{nextAction}
+          </p>
         </div>
 
         <div className="flex shrink-0 flex-col gap-3 sm:min-w-[220px]">

@@ -305,7 +305,7 @@ export default function QuestionsLibraryPage() {
           <div className="flex items-center gap-2">
             <Library className="h-6 w-6 text-blue-600" />
             <Map className="h-5 w-5 text-blue-500" />
-            <h1 className="text-2xl font-bold text-gray-900">AI 搜索问题库</h1>
+            <h1 className="text-2xl font-bold text-gray-900">AI 搜索问题库 / AI 搜索需求地图</h1>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-gray-500" data-testid="questions-page-subtitle">
             管理目标客户会向 AI 提问的问题，用于实测品牌可见度、发现 GEO 缺口，并生成内容任务。

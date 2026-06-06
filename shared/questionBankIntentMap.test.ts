@@ -4,6 +4,7 @@ import {
   groupQuestionsByIntent,
   resolveQuestionContentStatus,
   resolveQuestionIntentGroupKey,
+  resolveQuestionNextAction,
   resolveQuestionPriorityLevel,
   resolveQuestionSourceLabel,
   resolveQuestionTestStatus,
@@ -84,5 +85,33 @@ describe("questionBankIntentMap", () => {
       new Set([1]),
       true,
     )).toBe("已覆盖");
+  });
+
+  it("derives next action from real question state", () => {
+    const disabled = { id: 1, questionText: "x", questionType: "品牌认知", enabled: 0 };
+    expect(
+      resolveQuestionNextAction({
+        question: disabled,
+        testedQuestionIds: new Set(),
+        hasCompletedT0Baseline: false,
+        articles: [],
+      }),
+    ).toBe("启用问题");
+
+    const gap = {
+      id: 2,
+      questionText: "如何选型？",
+      questionType: "指定问题",
+      enabled: 1,
+      contentGapTags: ["高优先级缺口"],
+    };
+    expect(
+      resolveQuestionNextAction({
+        question: gap,
+        testedQuestionIds: new Set([2]),
+        hasCompletedT0Baseline: true,
+        articles: [],
+      }),
+    ).toBe("围绕缺口生成内容");
   });
 });

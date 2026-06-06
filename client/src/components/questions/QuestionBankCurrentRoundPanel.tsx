@@ -82,7 +82,7 @@ export function QuestionBankCurrentRoundPanel({ projectId, currentRound, enabled
             disabled={!projectId}
             onClick={goAiDiagnosis}
           >
-            {currentRound.status === "completed" ? "查看实测结果" : "开始 AI 实测"}
+            "去 AI 实测诊断"
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
           {currentRound.status === "completed" ? (

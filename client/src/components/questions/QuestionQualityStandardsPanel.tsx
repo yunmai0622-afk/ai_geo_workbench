@@ -7,7 +7,7 @@ import {
 export function QuestionQualityStandardsPanel() {
   return (
     <P0Card data-testid="question-quality-standards">
-      <details open>
+      <details>
         <summary className="cursor-pointer text-sm font-semibold text-gray-900">
           什么是高质量 GEO 问题？
         </summary>
