@@ -20,6 +20,7 @@ describe("GEO-V1.1-Platform-Status-Overview", () => {
     expect(layout).toContain("公众号");
     expect(publish).toContain("PublishWeeklyOverviewBar");
     expect(publish).toContain("PublishPlatformCardGrid");
-    expect(publish).toContain("buildWeeklyPublishOverviewStats");
+    expect(publish).toContain("buildPublishingViewModel");
+    expect(layout).toContain("buildWeeklyPublishOverviewStats");
   });
 });

@@ -2,6 +2,7 @@ import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { LocalAgentDownloadCard } from "@/components/LocalAgentDownloadCard";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PlatformPublishSuccessRatePanel } from "@/components/publishing/PlatformPublishSuccessRatePanel";
+import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformStatusOverview";
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentStatusCard } from "@/components/publishing/LocalAgentStatusCard";
@@ -32,6 +33,7 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { buildProjectUrl } from "@/lib/activeProject";
+import { buildPublishingViewModel } from "@/lib/buildPublishingViewModel";
 import { asArray, PUBLISH_QUEUE_EMPTY_LABELS } from "@/lib/contentPublishingSafeData";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { recordPublicLink, publishStatusLabel } from "@/lib/assetProgressDisplay";
@@ -43,19 +45,10 @@ import {
   pickLocalAgentDownloadHref,
 } from "@/lib/localAgentDownloadManifest";
 import { isLocalAgentClientOutdated } from "@shared/localAgentVersionCompare";
-import { isPublishReadyPlatformAccount } from "@shared/publishReadiness";
-import {
-  mapAgentTaskToCard,
-  mapManualRecordToCard,
-  type PublishTaskCardModel,
-} from "@/lib/publishCenterDisplay";
+import { type PublishTaskCardModel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
-import {
-  buildPublishPagePlatformCards,
-  buildWeeklyPublishOverviewStats,
-  type PublishPagePlatformCard,
-} from "@shared/publishPageLayout";
+import { type PublishPagePlatformCard } from "@shared/publishPageLayout";
 import {
   REVIEW_QUEUE_STATUS_LABELS,
   REVIEW_TYPE_LABELS,
@@ -140,8 +133,6 @@ type AgentTaskRow = {
   canRetry?: boolean;
   retryExhausted?: boolean;
 };
-
-type QueueTabKey = "pending" | "active" | "failed" | "completed";
 
 type RetestQueueItemRow = {
   queueId?: number;
@@ -255,33 +246,6 @@ function rewriteSourceLabel(source?: string | null): string {
   }
 }
 
-function queueTabFromCard(card: PublishTaskCardModel): QueueTabKey {
-  if (
-    card.statusRaw === "failed" ||
-    card.statusRaw === "publish_failed" ||
-    card.statusRaw === "session_expired" ||
-    card.retryExhausted
-  ) {
-    return "failed";
-  }
-  if (
-    card.statusRaw === "pending" ||
-    card.statusRaw === "pending_agent" ||
-    card.statusRaw === "copied"
-  ) {
-    return "pending";
-  }
-  if (
-    card.statusRaw === "agent_processing" ||
-    card.statusRaw === "processing" ||
-    card.statusRaw === "manual_required" ||
-    card.statusRaw === "draft_saved"
-  ) {
-    return "active";
-  }
-  return "completed";
-}
-
 export function ContentPublishingCenterPage() {
   return (
     <PublishCenterErrorBoundary>
@@ -291,7 +255,7 @@ export function ContentPublishingCenterPage() {
 }
 
 function ContentPublishingCenterPageInner() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } =
     useActiveProjectSelection();
@@ -351,32 +315,19 @@ function ContentPublishingCenterPageInner() {
   const [publishSuccessNotice, setPublishSuccessNotice] = useState<PublishSuccessNotice | null>(null);
   const completedAgentTaskIdsRef = useRef<Set<number>>(new Set());
   const completedAgentTasksInitializedRef = useRef(false);
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  const [lastUserAction, setLastUserAction] = useState("page_open");
+  const debugEnabled = useMemo(
+    () => new URLSearchParams(location.split("?")[1] ?? "").get("debug") === "1",
+    [location],
+  );
 
   const articles = useMemo(
     () => filterListWithNumericId(asArray<ArticleRow>(articlesQuery.data)) as ArticleRow[],
     [articlesQuery.data],
   );
   const scores = useMemo(() => asArray<QualityScoreRow>(scoresQuery.data), [scoresQuery.data]);
-  const publishableArticles = useMemo(
-    () => articles.filter(a => isQualityPassed(articleLatestQuality(a?.id, scores))),
-    [articles, scores],
-  );
-  const manualArticleSelectValue = useMemo(() => {
-    if (publishableArticles.length === 0) return undefined;
-    if (
-      manualArticleId != null &&
-      publishableArticles.some(a => a?.id === manualArticleId)
-    ) {
-      return String(manualArticleId);
-    }
-    const fallbackId = publishableArticles[0]?.id;
-    return fallbackId != null ? String(fallbackId) : undefined;
-  }, [publishableArticles, manualArticleId]);
-  const effectiveManualArticleId = useMemo(() => {
-    if (!manualArticleSelectValue) return undefined;
-    const parsed = Number.parseInt(manualArticleSelectValue, 10);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }, [manualArticleSelectValue]);
   const publishRecords = useMemo(
     () => filterListWithNumericId(asArray<PublishRecordRow>(publishRecordsQuery.data)) as PublishRecordRow[],
     [publishRecordsQuery.data],
@@ -386,19 +337,6 @@ function ContentPublishingCenterPageInner() {
     [autoPublishTasksQuery.data?.tasks],
   );
   const articleById = useMemo(() => new Map((articles ?? []).map(a => [a?.id, a])), [articles]);
-
-  const hasInFlightAgentTasks = useMemo(
-    () =>
-      (agentTasks ?? []).some(
-        t =>
-          t.status !== "completed" &&
-          t.status !== "failed" &&
-          t.status !== "draft_saved" &&
-          t.status !== "session_expired" &&
-          t.status !== "manual_required",
-      ),
-    [agentTasks],
-  );
 
   useEffect(() => {
     completedAgentTaskIdsRef.current = new Set();
@@ -418,22 +356,17 @@ function ContentPublishingCenterPageInner() {
     if (newlyCompleted.length > 0) {
       newlyCompleted.forEach(id => completedAgentTaskIdsRef.current.add(id));
       const tasks = (agentTasks ?? []).filter(t => t?.id != null && newlyCompleted.includes(t?.id));
-      setPublishSuccessNotice({
-        platformLabel: formatPublishSuccessPlatformPhrase(
-          (tasks ?? []).map(t => publishPlatformCustomerLabel(t.platform)),
-        ),
-        articleUrl: resolvePublishSuccessArticleUrl((tasks ?? []).map(t => t.resultUrl)),
-      });
+      const platformLabel = formatPublishSuccessPlatformPhrase(
+        (tasks ?? []).map(t => publishPlatformCustomerLabel(t.platform)),
+      );
+      const articleUrl = resolvePublishSuccessArticleUrl((tasks ?? []).map(t => t.resultUrl));
+      setPublishSuccessNotice(prev =>
+        prev?.platformLabel === platformLabel && prev?.articleUrl === articleUrl
+          ? prev
+          : { platformLabel, articleUrl },
+      );
     }
   }, [agentTasks]);
-
-  useEffect(() => {
-    if (!enabled || !hasInFlightAgentTasks) return;
-    const timer = setInterval(() => {
-      void refetchAutoPublishTasks();
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [enabled, hasInFlightAgentTasks, refetchAutoPublishTasks]);
 
   const autoInclusionByArticleAndUrl = useMemo(() => {
     const keys = new Set<string>();
@@ -477,74 +410,77 @@ function ContentPublishingCenterPageInner() {
 
   const platformAccountGroups = useMemo(() => {
     const accounts = platformAccountsQuery.data?.accounts;
-    return Array.isArray(accounts) ? accounts : [];
+    if (!Array.isArray(accounts)) return [];
+    return accounts.map(group => ({
+      ...group,
+      accounts: Array.isArray(group.accounts) ? group.accounts : [],
+    }));
   }, [platformAccountsQuery.data?.accounts]);
+  const retestQueueItems = useMemo(
+    () => asArray<RetestQueueItemRow>(retestQueueQuery.data?.items),
+    [retestQueueQuery.data?.items],
+  );
+  const rewritePoolItems = useMemo(
+    () => asArray<RewritePoolItemRow>(rewritePoolQuery.data?.items),
+    [rewritePoolQuery.data?.items],
+  );
 
-  const boundPublishAccountCount = useMemo(() => {
-    let count = 0;
-    for (const group of platformAccountGroups) {
-      for (const account of group.accounts ?? []) {
-        if (isPublishReadyPlatformAccount({ ...account, platform: group.platform })) {
-          count += 1;
-        }
-      }
+  const publishingViewModel = useMemo(
+    () =>
+      buildPublishingViewModel({
+        projectId: selectedProjectId,
+        articles,
+        scores,
+        publishRecords,
+        agentTasks,
+        accountGroups: platformAccountGroups,
+        articleById,
+        autoInclusionByArticleAndUrl,
+      }),
+    [
+      selectedProjectId,
+      articles,
+      scores,
+      publishRecords,
+      agentTasks,
+      platformAccountGroups,
+      articleById,
+      autoInclusionByArticleAndUrl,
+    ],
+  );
+
+  const {
+    publishableArticles,
+    taskCards,
+    queueTabs,
+    platformCards,
+    weeklyOverviewStats,
+    boundPublishAccountCount,
+    boundPlatformCount,
+    availableAccountByPlatform,
+    readyPlatformCount,
+    qualityByArticleId,
+    agentTaskDerivedState,
+  } = publishingViewModel;
+
+  const { pendingCount, failedCount, waitingLinkCount } = agentTaskDerivedState;
+
+  const manualArticleSelectValue = useMemo(() => {
+    if (publishableArticles.length === 0) return undefined;
+    if (
+      manualArticleId != null &&
+      publishableArticles.some(a => a?.id === manualArticleId)
+    ) {
+      return String(manualArticleId);
     }
-    return count;
-  }, [platformAccountGroups]);
-
-  const boundPlatformCount = useMemo(() => {
-    return (platformAccountGroups ?? []).filter(g => (g.accounts ?? []).some((a: { isEnabled: boolean }) => a.isEnabled))
-      .length;
-  }, [platformAccountGroups]);
-  const availableAccountByPlatform = useMemo(() => {
-    return (platformAccountGroups ?? [])
-      .map(group => {
-        const count = (group.accounts ?? []).filter((a: { isEnabled: boolean }) => a.isEnabled).length;
-        return `${publishPlatformCustomerLabel(group.platform)} ${count} 个`;
-      })
-      .filter(Boolean);
-  }, [platformAccountGroups]);
-
-  const taskCards = useMemo(() => {
-    const cards: PublishTaskCardModel[] = (agentTasks ?? []).map(task => {
-      const article = articleById.get(task.articleId);
-      const basis = article?.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
-      const goal =
-        typeof basis?.geoEnhancementGoal === "string"
-          ? basis.geoEnhancementGoal
-          : typeof article?.generationBasis?.geoEnhancementGoal === "string"
-            ? (article.generationBasis.geoEnhancementGoal as string)
-            : null;
-      const publishedUrl = task.resultUrl?.trim() || "";
-      const autoInclusionMonitoring =
-        task.status === "completed" &&
-        Boolean(publishedUrl) &&
-        autoInclusionByArticleAndUrl.has(`${task.articleId}:${publishedUrl}`);
-      return mapAgentTaskToCard(task, goal, { autoInclusionMonitoring });
-    });
-    for (const record of publishRecords ?? []) {
-      const article = record.articleId ? articleById.get(record.articleId) : undefined;
-      const mapped = mapManualRecordToCard(record, article?.title);
-      if (mapped) cards.push(mapped);
-    }
-    return cards;
-  }, [agentTasks, publishRecords, articleById, autoInclusionByArticleAndUrl]);
-
-  const queueTabs = useMemo(() => {
-    const out: Record<QueueTabKey, PublishTaskCardModel[]> = {
-      pending: [],
-      active: [],
-      failed: [],
-      completed: [],
-    };
-    for (const card of taskCards) {
-      out[queueTabFromCard(card)].push(card);
-    }
-    return out;
-  }, [taskCards]);
-
-  const pendingCount = queueTabs.pending.length;
-  const failedCount = queueTabs.failed.length;
+    const fallbackId = publishableArticles[0]?.id;
+    return fallbackId != null ? String(fallbackId) : undefined;
+  }, [publishableArticles, manualArticleId]);
+  const effectiveManualArticleId = useMemo(() => {
+    if (!manualArticleSelectValue) return undefined;
+    const parsed = Number.parseInt(manualArticleSelectValue, 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [manualArticleSelectValue]);
 
   const {
     status: localAgentConnectionStatus,
@@ -560,70 +496,53 @@ function ContentPublishingCenterPageInner() {
   });
 
   const refreshAgentHealth = useCallback(async () => {
+    setLastUserAction("refresh_agent_health");
     const result = await checkConnection();
     if (result.online) {
+      setLastUserAction("refresh_account_status");
       await runAccountHealthCheck({ detectSessions: true });
     } else if (selectedProjectId) {
       await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
     }
   }, [checkConnection, runAccountHealthCheck, selectedProjectId, utils.geo.platformAccounts.list]);
 
+  const refreshPublishTasks = useCallback(() => {
+    setLastUserAction("refresh_publish_tasks");
+    void refetchAutoPublishTasks();
+  }, [refetchAutoPublishTasks]);
+
   const checkingAgent =
     localAgentConnectionStatus === "CHECKING" || accountHealthChecking;
 
-  const qualityByArticleId = useMemo(() => {
-    const map = new Map<number, QualityScoreRow>();
-    for (const score of scores) {
-      if (typeof score.articleId === "number") map.set(score.articleId, score);
-    }
-    return map;
-  }, [scores]);
-
-  const weeklyOverviewStats = useMemo(
-    () =>
-      buildWeeklyPublishOverviewStats({
-        articles,
-        qualityByArticleId,
-        minPassScore: GEO_ARTICLE_MIN_PASS_SCORE,
-        publishRecords,
-        publishTasks: agentTasks,
-      }),
-    [articles, qualityByArticleId, publishRecords, agentTasks],
+  const enabledQueries = useMemo(
+    () => ({
+      articles: enabled && Boolean(selectedProjectId),
+      scores: enabled,
+      publishRecords: enabled && Boolean(selectedProjectId),
+      publishTasks: enabled && Boolean(selectedProjectId),
+      platformAccounts: enabled && Boolean(selectedProjectId),
+    }),
+    [enabled, selectedProjectId],
   );
 
-  const platformCards = useMemo(
-    () =>
-      buildPublishPagePlatformCards({
-        articles,
-        qualityByArticleId,
-        minPassScore: GEO_ARTICLE_MIN_PASS_SCORE,
-        publishRecords,
-        publishTasks: agentTasks,
-        accountGroups: platformAccountGroups,
-      }),
-    [articles, qualityByArticleId, publishRecords, agentTasks, platformAccountGroups],
-  );
-
-  const readyPlatformCount = useMemo(
-    () => platformCards.filter(card => card.canPublish).length,
-    [platformCards],
-  );
-  const waitingLinkTaskCount = useMemo(
-    () =>
-      (agentTasks ?? []).filter(
-        task => task.status === "completed" && !(task.publishedUrl?.trim() || task.resultUrl?.trim()),
-      ).length,
-    [agentTasks],
-  );
-  const waitingLinkRecordCount = useMemo(
-    () =>
-      (publishRecords ?? []).filter(record => {
-        const link = recordPublicLink(record);
-        return !link;
-      }).length,
-    [publishRecords],
-  );
-  const waitingLinkCount = waitingLinkTaskCount + waitingLinkRecordCount;
+  if (debugEnabled) {
+    console.info(
+      "[GEO content-publishing debug]\n" +
+        [
+          `- projectId: ${selectedProjectId ?? "—"}`,
+          `- renderCount: ${renderCountRef.current}`,
+          `- agentHealthStatus: ${localAgentConnectionStatus}`,
+          `- accountsCount: ${platformAccountGroups.reduce((n, g) => n + (g.accounts?.length ?? 0), 0)}`,
+          `- tasksCount: ${agentTasks.length}`,
+          `- recordsCount: ${publishRecords.length}`,
+          `- activeTab: tasks`,
+          `- isCheckingAccount: ${accountHealthChecking}`,
+          `- isSyncingAccount: ${accountHealthChecking}`,
+          `- enabledQueries: articles=${enabledQueries.articles} scores=${enabledQueries.scores} publishRecords=${enabledQueries.publishRecords} publishTasks=${enabledQueries.publishTasks} platformAccounts=${enabledQueries.platformAccounts}`,
+          `- lastUserAction: ${lastUserAction}`,
+        ].join("\n"),
+    );
+  }
 
   const localAgentUpdateNotice = useMemo(() => {
     if (
@@ -981,7 +900,7 @@ function ContentPublishingCenterPageInner() {
           role="alert"
           data-testid="publish-center-load-failed"
         >
-          发布任务暂时无法加载，请稍后重试。
+          发布状态暂时无法加载，请稍后重试。
         </div>
       ) : null}
 
@@ -997,6 +916,12 @@ function ContentPublishingCenterPageInner() {
 
       {selectedProjectId ? (
         <PublishWeeklyOverviewBar stats={weeklyOverviewStats} loading={loading} />
+      ) : null}
+      {selectedProjectId ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PlatformStatusOverview projectId={selectedProjectId} />
+          <PlatformPublishSuccessRatePanel projectId={selectedProjectId} />
+        </div>
       ) : null}
       {selectedProjectId ? (
         <section
@@ -1092,7 +1017,10 @@ function ContentPublishingCenterPageInner() {
                 type="button"
                 variant="outline"
                 className={geoP0Brand.primaryOutline}
-                onClick={() => void refreshAgentHealth()}
+                onClick={() => {
+                  setLastUserAction("check_local_agent");
+                  void refreshAgentHealth();
+                }}
                 disabled={checkingAgent || accountHealthChecking}
                 data-testid="publish-ready-refresh"
               >
@@ -1126,7 +1054,10 @@ function ContentPublishingCenterPageInner() {
                 status={localAgentConnectionStatus}
                 statusSnapshot={localAgentStatusSnapshot}
                 checking={checkingAgent}
-                onCheckConnection={() => void checkConnection()}
+                onCheckConnection={() => {
+                  setLastUserAction("check_local_agent");
+                  void checkConnection();
+                }}
                 onRefreshAccountStatus={() => void refreshAgentHealth()}
                 updateNotice={localAgentUpdateNotice}
               />
@@ -1134,8 +1065,23 @@ function ContentPublishingCenterPageInner() {
           </section>
 
           <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-task-queue-module">
-            <h2 className="text-base font-semibold text-gray-900">发布任务队列</h2>
-            <p className="mt-1 text-xs text-gray-500">按队列状态处理任务，优先清理失败与待确认任务。</p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">发布任务队列</h2>
+                <p className="mt-1 text-xs text-gray-500">按队列状态处理任务，优先清理失败与待确认任务。</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className={geoP0Brand.primaryOutline}
+                disabled={autoPublishTasksQuery.isFetching}
+                onClick={refreshPublishTasks}
+                data-testid="publish-queue-refresh"
+              >
+                {autoPublishTasksQuery.isFetching ? "刷新中…" : "立即拉取任务"}
+              </Button>
+            </div>
             <Tabs defaultValue="pending" className="mt-4 space-y-4">
               <TabsList className="flex w-full gap-2 overflow-x-auto">
                 <TabsTrigger value="pending" data-testid="publish-queue-tab-pending" className="shrink-0">待发布</TabsTrigger>
@@ -1307,11 +1253,11 @@ function ContentPublishingCenterPageInner() {
               <div className="grid gap-4 border-t border-gray-100 p-5 lg:grid-cols-2">
                 <div>
                   <h3 className="text-sm font-medium text-gray-800">待复测队列</h3>
-                  {asArray<RetestQueueItemRow>(retestQueueQuery.data?.items).length === 0 ? (
+                  {retestQueueItems.length === 0 ? (
                     <p className="mt-2 text-sm text-gray-500">暂无待复测内容</p>
                   ) : (
                     <ul className="mt-2 space-y-2 text-sm text-gray-700">
-                      {asArray<RetestQueueItemRow>(retestQueueQuery.data?.items).map(item => (
+                      {retestQueueItems.map(item => (
                         <li key={item.queueId ?? item.articleId} className="rounded-lg border border-gray-100 p-3">
                           <p className="font-medium">{item.title}</p>
                           {selectedProjectId && typeof item.queueId === "number" ? (
@@ -1365,11 +1311,11 @@ function ContentPublishingCenterPageInner() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-800">重写池</h3>
-                  {asArray<RewritePoolItemRow>(rewritePoolQuery.data?.items).length === 0 ? (
+                  {rewritePoolItems.length === 0 ? (
                     <p className="mt-2 text-sm text-gray-500">暂无待重写条目</p>
                   ) : (
                     <ul className="mt-2 space-y-2 text-sm text-gray-700">
-                      {asArray<RewritePoolItemRow>(rewritePoolQuery.data?.items).map(item => (
+                      {rewritePoolItems.map(item => (
                         <li
                           key={`${item.articleId}-${item.poolId ?? 0}`}
                           className="rounded-lg border border-gray-100 p-3"

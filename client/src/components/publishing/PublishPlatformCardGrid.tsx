@@ -38,7 +38,7 @@ type Props = {
 };
 
 export function PublishPlatformCardGrid({
-  cards,
+  cards = [],
   loading,
   publishingCardKey,
   retryingTaskId,

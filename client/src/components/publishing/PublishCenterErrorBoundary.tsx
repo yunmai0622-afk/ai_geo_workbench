@@ -24,7 +24,15 @@ export class PublishCenterErrorBoundary extends Component<Props, State> {
             role="alert"
             data-testid="publish-center-render-fallback"
           >
-            发布任务暂时无法加载，请稍后重试。
+            <p>发布状态暂时无法加载，请稍后重试。</p>
+            <button
+              type="button"
+              className="mt-3 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100"
+              data-testid="publish-center-render-retry"
+              onClick={() => window.location.reload()}
+            >
+              刷新页面
+            </button>
           </div>
         </div>
       );

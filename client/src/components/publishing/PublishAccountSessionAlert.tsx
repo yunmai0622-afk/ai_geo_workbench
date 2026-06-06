@@ -25,7 +25,7 @@ type Props = {
 
 export function PublishAccountSessionAlert({
   projectId,
-  groups,
+  groups = [],
   checking = false,
   agentOnline = null,
   onAfterRelogin,

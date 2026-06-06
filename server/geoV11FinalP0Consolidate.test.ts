@@ -10,7 +10,7 @@ describe("GEO-V1.1 Final P0 consolidate", () => {
     const page = read("client/src/pages/ContentPublishingCenterPage.tsx");
     expect(page).toContain("contentPublishingSafeData");
     expect(page).toContain("publish-center-load-failed");
-    expect(page).toContain("发布任务暂时无法加载，请稍后重试");
+    expect(page).toContain("发布状态暂时无法加载，请稍后重试");
   });
 
   it("enterprise profile distinguishes core failure from non-critical summary errors", () => {
