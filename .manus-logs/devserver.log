@@ -4126,3 +4126,30 @@
 [2026-06-06T03:40:40.122Z] 11:40:40 PM [tsx] unlink in ./shared/templateProjectProfileFill.ts Restarting...
 [2026-06-06T03:44:17.008Z] 11:44:17 PM [vite] (client) page reload index.html
 [2026-06-06T03:44:17.204Z] 11:44:17 PM [tsx] unlink in ./shared/templateProjectProfileFill.ts Restarting...
+[2026-06-06T03:44:24.312Z] cServer running on http://localhost:3000/
+[2026-06-06T03:45:11.301Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-06T03:46:42.453Z] 11:46:42 PM [vite] (client) hmr update /src/index.css
+[2026-06-06T03:46:48.902Z] 11:46:48 PM [vite] (client) hmr update /src/index.css
+[2026-06-06T03:47:11.264Z] 11:47:11 PM [vite] (client) hmr update /src/index.css
+[2026-06-06T03:47:12.451Z] 11:47:12 PM [vite] (client) hmr update /src/index.css
+[2026-06-06T03:47:32.165Z] Dev server process group stopped
+[2026-06-06T03:47:32.167Z] ELIFECYCLE  Command failed.
+[2026-06-06T03:47:32.209Z] Dev server exited with code -15
+[2026-06-06T03:47:35.175Z] Starting dev server with command: pnpm run dev
+[2026-06-06T03:47:35.952Z] 
+[2026-06-06T03:47:35.953Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-06T03:47:35.953Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-06T03:47:35.954Z] 
+[2026-06-06T03:47:43.323Z] Server running on http://localhost:3000/
+[2026-06-06T03:48:04.843Z] cServer running on http://localhost:3000/
+[2026-06-06T03:48:14.183Z] 11:48:14 PM [vite] (client) page reload index.html
+[2026-06-06T03:49:06.530Z] Dev server process group stopped
+[2026-06-06T03:49:06.532Z] ELIFECYCLE  Command failed.
+[2026-06-06T03:49:06.579Z] Dev server exited with code -15
+[2026-06-06T03:49:09.542Z] Starting dev server with command: pnpm run dev
+[2026-06-06T03:49:10.385Z] 
+[2026-06-06T03:49:10.386Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-06T03:49:10.387Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-06T03:49:10.387Z] 
+[2026-06-06T03:49:17.689Z] 11:49:17 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+[2026-06-06T03:49:17.723Z] Server running on http://localhost:3000/
