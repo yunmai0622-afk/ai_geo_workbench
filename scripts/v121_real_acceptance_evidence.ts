@@ -1,4 +1,6 @@
+import "dotenv/config";
 import fs from "node:fs";
+import { findDolphinAcceptanceProject } from "../shared/dolphinAcceptanceProject";
 import path from "node:path";
 import { desc, eq } from "drizzle-orm";
 import { appRouter } from "../server/routers";
@@ -93,7 +95,7 @@ async function main() {
   const publicCaller = createPublicCaller();
   const runId = `v121-${Date.now()}`;
 
-  const project = (await db.select().from(projects).where(eq(projects.enterpriseName, "海豚知道")).orderBy(desc(projects.createdAt)).limit(1))[0];
+  const project = await findDolphinAcceptanceProject(db);
   assert(project, "未找到海豚知道项目，请先运行 P0 主链路脚本");
   const projectId = project.id;
 

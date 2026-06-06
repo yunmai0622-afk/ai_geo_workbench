@@ -1,4 +1,6 @@
+import "dotenv/config";
 import { and, desc, eq, inArray } from "drizzle-orm";
+import { findDolphinAcceptanceProject } from "../shared/dolphinAcceptanceProject";
 import { appRouter } from "../server/routers";
 import { getDb } from "../server/db";
 import {
@@ -85,7 +87,7 @@ async function firstOrInsert<T>(
 
 async function ensureProject(db: Awaited<ReturnType<typeof getDb>>, caller: ReturnType<typeof createProtectedCaller>) {
   assert(db, "数据库不可用");
-  const load = async () => (await db.select().from(projects).where(eq(projects.enterpriseName, "海豚知道")).orderBy(desc(projects.createdAt)).limit(1))[0];
+  const load = async () => findDolphinAcceptanceProject(db);
   const before = await load();
   return firstOrInsert(
     before,
