@@ -27,7 +27,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       "AI 实测诊断",
       "问题库",
       "平台化内容资产",
-      "平台适配发布",
+      "发布任务指挥台",
       "收录监测",
       "交付报告",
       "使用指南",
@@ -153,7 +153,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
   it("发布中心页保留人工登记与列表，不出现平台授权配置字段", () => {
     const publishSource = readProjectFile("client/src/pages/ContentPublishingCenterPage.tsx");
     for (const text of [
-      "平台适配发布",
+      "发布任务指挥台",
       "人工登记发布记录",
       "createManualPublishRecord",
       "updateManualPublishRecord",

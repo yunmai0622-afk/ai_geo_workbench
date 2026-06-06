@@ -684,22 +684,6 @@ function ContentPublishingCenterPageInner() {
     setEditorOpen(true);
   }
 
-  function openPreview(card: PublishTaskCardModel) {
-    if (card.previewUrl) {
-      window.open(card.previewUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-    if (card.articleId) {
-      const article = articleById.get(card.articleId);
-      if (article) {
-        setEditorArticle(article);
-        setEditorOpen(true);
-        return;
-      }
-    }
-    toast.message("暂无可预览内容，请先在平台化内容生产完成生成");
-  }
-
   function startLocalPublish(card: PublishTaskCardModel) {
     if (!localAgentConnectedOnline) {
       toast.error("Local Agent 未连接，请先下载并启动客户端");
@@ -919,9 +903,9 @@ function ContentPublishingCenterPageInner() {
     <div className="space-y-6 pb-12" data-testid="publish-center-page">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">平台适配发布</h1>
+          <h1 className="text-2xl font-bold text-gray-900">发布任务指挥台</h1>
           <p className="text-sm text-gray-500">
-            通过 Local Agent 在本地完成发布，降低登录、验证码和平台风控风险。将已确认的内容发送到本地发布助手，由本机登录账号完成平台发布。账号和 Cookie 只保存在本机。按平台独立发布，需人工确认，不支持自动发布或一稿多发。
+            先看有多少内容待发布、哪些可以发、哪些被阻断，再决定下一步操作。将已确认的内容发送到本地发布助手，由本机登录账号完成平台发布；账号和 Cookie 只保存在本机。发布后在此回填公开链接。
           </p>
         </div>
         <Button
@@ -946,28 +930,19 @@ function ContentPublishingCenterPageInner() {
         </div>
       ) : null}
 
-      <section
-        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-        data-testid="publish-ready-status-module"
-      >
-        <h2 className="text-base font-semibold text-gray-900">发布准备状态</h2>
-        <p className="mt-1 text-xs text-gray-500">先确认客户端与账号，再处理任务队列。</p>
-        <div className="mt-4">
-          <PublishStatusBar
-            localAgentLabel={localAgentLabel}
-            readyAccountCount={boundPublishAccountCount}
-            pendingTaskCount={pendingCount}
-            abnormalTaskCount={abnormalCount}
-            checking={checkingAgent}
-            showDisconnectedHint={!localAgentConnectedOnline}
-            onCheckConnection={() => {
-              setLastUserAction("check_local_agent");
-              void checkConnection();
-            }}
-            onRefreshAccountStatus={() => void refreshAgentHealth()}
-          />
-        </div>
-      </section>
+      <PublishStatusBar
+        localAgentLabel={localAgentLabel}
+        readyAccountCount={boundPublishAccountCount}
+        pendingTaskCount={pendingCount}
+        abnormalTaskCount={abnormalCount}
+        checking={checkingAgent}
+        showDisconnectedHint={!localAgentConnectedOnline}
+        onCheckConnection={() => {
+          setLastUserAction("check_local_agent");
+          void checkConnection();
+        }}
+        onRefreshAccountStatus={() => void refreshAgentHealth()}
+      />
 
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}
@@ -1058,11 +1033,18 @@ function ContentPublishingCenterPageInner() {
                             <div className="flex gap-2"><dt className="text-gray-500">下一步动作</dt><dd>{taskNextActionLabel(card, tab.key)}</dd></div>
                           </dl>
                           <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-                            <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={() => openPreview(card)}>预览</Button>
-                            <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={() => openArticleContent(card)}>查看内容</Button>
                             {(tab.key === "pending" || tab.key === "active") ? (
-                              <Button type="button" size="sm" className={geoP0Brand.primary} onClick={() => startLocalPublish(card)}>开始发布</Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className={geoP0Brand.primary}
+                                data-testid={`publish-queue-send-client-${card.key}`}
+                                onClick={() => startLocalPublish(card)}
+                              >
+                                发送到客户端
+                              </Button>
                             ) : null}
+                            <Button type="button" size="sm" variant="outline" className={geoP0Brand.primaryOutline} onClick={() => openArticleContent(card)}>查看内容</Button>
                             {card.canRetry && card.taskId ? (
                               <Button type="button" size="sm" className={geoP0Brand.primary} onClick={() => void handleRetryPublishTask(card)} disabled={retryingTaskId === card.taskId}>
                                 {retryingTaskId === card.taskId ? "重试中…" : "重试"}
@@ -1173,7 +1155,7 @@ function ContentPublishingCenterPageInner() {
 
             <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-success-rate-fold">
               <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-                发布成功率趋势
+                各平台发布成功率
               </summary>
               <div className="border-t border-gray-100 p-5">
                 {selectedProjectId ? <PlatformPublishSuccessRatePanel projectId={selectedProjectId} /> : null}

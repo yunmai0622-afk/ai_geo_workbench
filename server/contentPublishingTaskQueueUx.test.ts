@@ -98,10 +98,12 @@ describe("GEO-V1.1 content publishing task queue UX P0", () => {
   });
 
   it("客户化副标题与任务卡字段", () => {
+    expect(page).toContain("发布任务指挥台");
     expect(page).toContain("将已确认的内容发送到本地发布助手");
     expect(page).toContain("账号和 Cookie 只保存在本机");
     expect(page).toContain("质检状态");
     expect(page).toContain("封面状态");
+    expect(page).toContain("发送到客户端");
     expect(page).toContain("发送到客户端并完成发布确认");
     expect(page).toContain("回填链接");
     expect(page).toContain("标记人工发布");

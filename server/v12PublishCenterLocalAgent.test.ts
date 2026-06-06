@@ -28,7 +28,7 @@ describe("Phase3 publish center Local Agent UI", () => {
   it("first screen highlights publish task queue command center", () => {
     for (const text of [
       "publish-center-page",
-      "平台适配发布",
+      "发布任务指挥台",
       "PublishStatusBar",
       "publish-task-queue-module",
       "publish-queue-tab-pending",

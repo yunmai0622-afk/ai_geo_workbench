@@ -61,7 +61,7 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(v12).toContain("ContentPublishingFlowPage");
     expect(v12).toContain("InclusionMonitoringFlowPage");
     expect(v12).toContain("DeliveryReportsFlowPage");
-    expect(publish).toContain("平台适配发布");
+    expect(publish).toContain("发布任务指挥台");
     expect(publish).toContain("local-agent-status-card");
     expect(publish).toContain("publish-retest-rewrite-fold");
     expect(v12).toContain("跟踪已发布内容的收录状态与 AI 搜索实测结果");
