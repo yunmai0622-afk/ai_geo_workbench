@@ -15,6 +15,10 @@ const manifestPath = path.join(downloadsDir, "manifest.json");
 
 const card = fs.readFileSync(cardPath, "utf-8");
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+const localAgentPkg = JSON.parse(
+  fs.readFileSync(path.join(root, "local-agent/package.json"), "utf-8"),
+);
+const expectedVersion = localAgentPkg.version?.trim() ?? "";
 const mainUi = [
   card,
   fs.readFileSync(path.join(root, "client/src/components/PlatformAccountBindingSection.tsx"), "utf-8"),
@@ -34,26 +38,55 @@ function fail(msg) {
 }
 
 const MIN_ZIP_BYTES = 50 * 1024 * 1024;
+const DEFAULT_RELATIVE_ZIP = "/downloads/geo-local-agent-mac.zip";
+const macZipExternal = manifest.macZipExternal === true;
 
-if (fs.existsSync(macZip)) ok("geo-local-agent-mac.zip exists");
-else fail("missing geo-local-agent-mac.zip");
+if (!expectedVersion) fail("local-agent/package.json missing version");
+else ok(`local-agent version ${expectedVersion}`);
+
+if (manifest.version === expectedVersion) ok(`manifest.version matches local-agent (${expectedVersion})`);
+else fail(`manifest.version=${manifest.version} expected ${expectedVersion}`);
+
+if (String(manifest.macZipUrl ?? "").includes(`geo-local-agent-v${expectedVersion}`)) {
+  ok(`manifest.macZipUrl points to v${expectedVersion}`);
+} else if (manifest.macZipUrl === DEFAULT_RELATIVE_ZIP) {
+  ok("manifest.macZipUrl uses local relative path (dev)");
+} else {
+  fail(`manifest.macZipUrl does not point to v${expectedVersion}: ${manifest.macZipUrl}`);
+}
+
+if (macZipExternal) {
+  ok("manifest.macZipExternal=true（外链 Release，本地 zip 可选）");
+} else if (fs.existsSync(macZip)) {
+  ok("geo-local-agent-mac.zip exists");
+} else {
+  fail("missing geo-local-agent-mac.zip");
+}
 
 if (fs.existsSync(macZip)) {
   const size = fs.statSync(macZip).size;
   if (size > MIN_ZIP_BYTES) ok(`zip size ${(size / 1024 / 1024).toFixed(1)}MB > 50MB`);
   else fail(`zip too small: ${size} bytes`);
-}
 
-const unzip = spawnSync("unzip", ["-t", macZip], { encoding: "utf-8" });
-if (unzip.status === 0 && /No errors detected/i.test(unzip.stdout + unzip.stderr)) {
-  ok("unzip -t passed");
-} else {
-  fail(`unzip -t failed: ${unzip.stderr || unzip.stdout}`);
-}
+  const unzip = spawnSync("unzip", ["-t", macZip], { encoding: "utf-8" });
+  if (unzip.status === 0 && /No errors detected/i.test(unzip.stdout + unzip.stderr)) {
+    ok("unzip -t passed");
+  } else {
+    fail(`unzip -t failed: ${unzip.stderr || unzip.stdout}`);
+  }
 
-const DEFAULT_RELATIVE_ZIP = "/downloads/geo-local-agent-mac.zip";
-const PRODUCTION_MAC_ZIP_URL =
-  "https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.0/geo-local-agent-mac.zip";
+  if (macZipExternal && typeof manifest.macZipSha256 === "string") {
+    const localSha = spawnSync("shasum", ["-a", "256", macZip], { encoding: "utf-8" });
+    const hash = localSha.stdout.trim().split(/\s+/)[0]?.toLowerCase();
+    if (hash && hash !== manifest.macZipSha256.toLowerCase()) {
+      ok("local zip sha differs from manifest (external Release mode; server redirects to manifest URL)");
+    } else if (hash === manifest.macZipSha256.toLowerCase()) {
+      ok("local zip sha matches manifest");
+    }
+  }
+} else if (!macZipExternal) {
+  fail("missing geo-local-agent-mac.zip");
+}
 
 if (manifest.macZipUrl === DEFAULT_RELATIVE_ZIP) {
   ok("manifest.macZipUrl -> /downloads/geo-local-agent-mac.zip (local dev)");
@@ -66,10 +99,17 @@ if (manifest.macZipUrl === DEFAULT_RELATIVE_ZIP) {
   fail(`manifest.macZipUrl unexpected: ${manifest.macZipUrl}`);
 }
 
-if (manifest.macZipUrl === PRODUCTION_MAC_ZIP_URL || manifest.macZipUrl === DEFAULT_RELATIVE_ZIP) {
-  ok("manifest macZipUrl is allowed production/local value");
+if (manifest.macZipUrl === DEFAULT_RELATIVE_ZIP) {
+  ok("manifest macZipUrl is local relative path");
 } else if (/^https?:\/\/.+\.zip/i.test(manifest.macZipUrl ?? "")) {
   ok("manifest macZipUrl is HTTPS release URL");
+}
+
+const indexTs = fs.readFileSync(path.join(root, "server/_core/index.ts"), "utf-8");
+if (indexTs.includes("readMacZipRedirectUrl")) {
+  ok("server redirects /downloads/geo-local-agent-mac.zip via manifest");
+} else {
+  fail("server missing manifest-driven mac zip redirect");
 }
 
 if (typeof manifest.macZipSha256 === "string" && /^[a-f0-9]{64}$/i.test(manifest.macZipSha256)) {

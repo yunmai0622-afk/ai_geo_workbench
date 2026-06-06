@@ -18,6 +18,7 @@ import { ensureGeoQualityColumns } from "../ensureGeoQualityColumns";
 import { ensureProjectsOwnerUserIdColumn } from "../ensureProjectsOwnerUserId";
 import { diagnoseLlmProviderEnv, formatMissingLlmEnvServerLog } from "../../shared/llmEnvDiagnostics";
 import { loadGeoSystemConfig } from "../geoSystemConfigStore";
+import { readMacZipRedirectUrl } from "../localAgentMacZipRedirect";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -58,10 +59,12 @@ async function startServer() {
   registerLocalAgentHealthRoute(app);
   registerOAuthRoutes(app);
 
-  // Server-side redirect for mac zip download (GitHub Release)
+  // 直连 /downloads/geo-local-agent-mac.zip 一律重定向到 manifest.macZipUrl（避免静态旧 zip 与 manifest 分叉）
+  const macZipRedirectUrl = readMacZipRedirectUrl();
   app.get("/downloads/geo-local-agent-mac.zip", (_req, res) => {
-    res.redirect(302, "https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.18/geo-local-agent-mac.zip");
+    res.redirect(302, readMacZipRedirectUrl());
   });
+  console.log(`[downloads] /downloads/geo-local-agent-mac.zip -> ${macZipRedirectUrl}`);
 
   // tRPC API
   app.use(

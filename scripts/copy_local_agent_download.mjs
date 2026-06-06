@@ -201,21 +201,25 @@ const macApp = findMacAppBundle(releaseDir);
 const prevBeforeCopy = readExistingManifest();
 const preserveExternalMac = shouldPreserveExternalMacManifest(prevBeforeCopy);
 
-if (macApp && !externalMacZip) {
+if (macApp && !externalMacZip && !preserveExternalMac) {
   const dest = path.join(outDir, "geo-local-agent-mac.zip");
   packageMacAppZip(macApp, dest);
   copied.push(dest);
   const localSha = sha256File(dest);
   const localSize = fs.statSync(dest).size;
-  if (!preserveExternalMac) {
-    manifestExtras.macZipSha256 = localSha;
-    manifestExtras.macZipSizeBytes = localSize;
-    manifestExtras.macZipUrl = DEFAULT_MAC_ZIP;
-    console.log(`[copy] ditto zip from ${path.relative(root, macApp)} sha256=${localSha}`);
-  } else {
+  manifestExtras.macZipSha256 = localSha;
+  manifestExtras.macZipSizeBytes = localSize;
+  manifestExtras.macZipUrl = DEFAULT_MAC_ZIP;
+  console.log(`[copy] ditto zip from ${path.relative(root, macApp)} sha256=${localSha}`);
+} else if (macApp && !externalMacZip && preserveExternalMac) {
+  const dest = path.join(outDir, "geo-local-agent-mac.zip");
+  if (fs.existsSync(dest)) {
+    fs.unlinkSync(dest);
     console.log(
-      `[copy] ditto zip -> ${path.relative(root, dest)}（保留外链 manifest macZipUrl/sha256/size；本地 sha256=${localSha}）`,
+      `[copy] 外链 Release 模式：已删除 ${path.relative(root, dest)}，避免静态直链与 manifest 分叉`,
     );
+  } else {
+    console.log("[copy] 外链 Release 模式：跳过本地 mac zip 打包");
   }
 } else if (!externalMacZip) {
   const zipMac = files.find(f => f.endsWith("-mac.zip") && !f.endsWith(".blockmap"));
