@@ -74,7 +74,7 @@ describe("P2-B one-click auth account detect", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weekly).not.toMatch(/Chrome\s*插件|重载插件|下载插件/);
     expect(weekly).toContain("发布任务已发送至本地客户端");
-    expect(weekly).toContain("checkLocalAgentHealth");
+    expect(weekly).toContain("useLocalAgentConnection");
   });
 
   it("platform account matrix uses local agent HTTP not extension auth", () => {

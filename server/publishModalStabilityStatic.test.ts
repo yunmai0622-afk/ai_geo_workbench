@@ -8,9 +8,12 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("publish modal stability static", () => {
   it("WeeklyContentPage 弹窗打开不自动 sync 到 Web", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
-    expect(weekly).toContain("hydratePublishDialogAgent({ syncToWeb: false })");
     expect(weekly).toContain("publishDialogAccountSnapshot");
-    expect(weekly).not.toMatch(/useEffect\(\(\) => \{[\s\S]*publishDialogOpen[\s\S]*refreshLocalAgentHealth/);
+    expect(weekly).toContain("LocalAgentConnectionPanel");
+    expect(weekly).not.toContain("hydratePublishDialogAgent({ syncToWeb: false })");
+    expect(weekly).not.toMatch(
+      /\[[^\]]*publishDialogOpen[^\]]*hydratePublishDialogAgent|\[[^\]]*hydratePublishDialogAgent[^\]]*publishDialogOpen/,
+    );
   });
 
   it("刷新账号状态由用户触发且可 syncToWeb", () => {

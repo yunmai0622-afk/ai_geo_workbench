@@ -75,7 +75,7 @@ export default function TemplatesPage() {
           ))}</div></section>
         ))}</div>
       )}
-      <TemplateFillPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} projectId={selectedProjectId} preview={previewData} loading={previewLoading} />
+      <TemplateFillPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} projectId={selectedProjectId ?? null} preview={previewData} loading={previewLoading} />
     </div>
   );
 }

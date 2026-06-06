@@ -28,13 +28,16 @@ describe("GEO-V1.1 content publishing React #185 regression", () => {
   it("avoids query-object polling deps and one-shot account health auto sync", () => {
     expect(page).toContain("refetchAutoPublishTasks");
     expect(page).not.toContain("autoPublishTasksQuery]);");
-    expect(healthHook).toContain("autoRunKeyRef");
+    expect(healthHook).not.toContain("autoRunKeyRef");
+    expect(healthHook).not.toContain("useEffect");
     expect(healthHook).toContain("setAgentOnline(prev => (prev === online ? prev : online))");
   });
 
   it("guards local agent online state updates", () => {
-    expect(page).toContain("setLocalAgentOnline(prev =>");
-    expect(page).toContain("prev === accountHealthAgentOnline ? prev : accountHealthAgentOnline");
+    const connHook = read("client/src/hooks/useLocalAgentConnection.ts");
+    expect(page).toContain("useLocalAgentConnection");
+    expect(connHook).toContain("checkLocalAgentHealth");
+    expect(connHook).not.toContain("useEffect");
   });
 
   it("supports project-scoped publish URL path", () => {

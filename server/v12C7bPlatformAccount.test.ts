@@ -79,7 +79,7 @@ describe("C7-B project platform account binding", () => {
     expect(binding).not.toContain("GEO_START_AUTH");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weekly).toContain("发布任务已发送至本地客户端");
-    expect(weekly).toContain("checkLocalAgentHealth");
+    expect(weekly).toContain("useLocalAgentConnection");
     expect(weekly).not.toMatch(/Chrome\s*插件|重载插件/);
     expect(read("drizzle/meta/_journal.json")).toContain("0023_project_platform_accounts");
   });

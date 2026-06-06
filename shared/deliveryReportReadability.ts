@@ -12,7 +12,6 @@ import {
   T1_RETEST_PLAN_DAYS,
 } from "./retestPlan";
 import {
-  GEO_UNIFIED_MAIN_PIPELINE_STEPS,
   hasCompletedT0Baseline,
   hasCompletedT1Retest,
   hasCompletedT2Retest,
@@ -502,6 +501,8 @@ export function buildInternalChecklist(
     BuildDeliveryReportProductSnapshotInput,
     | "profileCompletionPercent"
     | "hasAiTestData"
+    | "generatedArticleCount"
+    | "qualityScoredCount"
     | "publishedRecordCount"
     | "publishWithLinkCount"
     | "testRounds"
@@ -510,14 +511,20 @@ export function buildInternalChecklist(
 ): InternalChecklistItem[] {
   const t0Done = hasCompletedT0Baseline(input.testRounds) || input.hasAiTestData;
   const t1Done = hasCompletedT1Retest(input.testRounds);
+  const t2Done = hasCompletedT2Retest(input.testRounds);
+  const t3Done = hasCompletedT3Retest(input.testRounds);
   const profileDone = input.profileCompletionPercent >= 80;
-  const publishDone = input.publishedRecordCount > 0;
+  const contentDone = input.generatedArticleCount > 0;
+  const qualityDone = input.qualityScoredCount > 0;
+  const publishTaskDone = input.publishedRecordCount > 0;
   const linkDone = input.publishWithLinkCount > 0;
+  const retestStagesDone = t1Done || t2Done || t3Done;
+  const reportDeliverable = t0Done && (linkDone || retestStagesDone);
 
   return [
     {
       id: "profile",
-      label: GEO_UNIFIED_MAIN_PIPELINE_STEPS.find(step => step.id === "profile_basics")?.title ?? "企业资料建档",
+      label: "企业资料已完成",
       status: profileDone ? "已完成" : "待完成",
       blockReason: profileDone ? null : "企业资料完成度不足 80%",
       ctaPath: "/enterprise-profile",
@@ -525,41 +532,59 @@ export function buildInternalChecklist(
     },
     {
       id: "t0",
-      label: GEO_UNIFIED_MAIN_PIPELINE_STEPS.find(step => step.id === "ai_search_test_t0")?.title ?? "T0 基线实测",
+      label: "T0 AI 诊断已完成",
       status: t0Done ? "已完成" : "待完成",
-      blockReason: t0Done ? null : "尚未完成 AI 搜索 T0 实测",
+      blockReason: t0Done ? null : "尚未完成 AI 搜索 T0 基线实测",
       ctaPath: "/ai-diagnosis",
-      ctaLabel: "去实测",
+      ctaLabel: "去诊断",
     },
     {
-      id: "publish",
-      label: GEO_UNIFIED_MAIN_PIPELINE_STEPS.find(step => step.id === "platform_publish")?.title ?? "平台适配发布",
-      status: publishDone && linkDone ? "已完成" : "待完成",
-      blockReason:
-        publishDone && !linkDone
-          ? "已登记发布但缺少公开链接"
-          : !publishDone
-            ? "尚无发布记录"
-            : null,
+      id: "content",
+      label: "内容资产已生成",
+      status: contentDone ? "已完成" : "待完成",
+      blockReason: contentDone ? null : "尚未生成平台化内容资产",
+      ctaPath: "/weekly",
+      ctaLabel: "去生成",
+    },
+    {
+      id: "quality",
+      label: "内容已质检",
+      status: qualityDone ? "已完成" : "待完成",
+      blockReason: qualityDone ? null : "尚无已质检评分的内容",
+      ctaPath: "/weekly",
+      ctaLabel: "去质检",
+    },
+    {
+      id: "publish-task",
+      label: "发布任务已创建",
+      status: publishTaskDone ? "已完成" : "待完成",
+      blockReason: publishTaskDone ? null : "尚无发布登记记录",
       ctaPath: "/content-publishing",
-      ctaLabel: publishDone ? "去回填链接" : "去发布",
+      ctaLabel: "去发布",
     },
     {
-      id: "t1",
-      label: "T1 复测（发布后验证）",
-      status: t1Done ? "已完成" : "待完成",
-      blockReason: t1Done ? null : input.insufficientReasonParts.find(part => part.includes("T1")) ?? "尚未完成 T1 复测",
+      id: "public-link",
+      label: "公开链接已回填",
+      status: linkDone ? "已完成" : "待完成",
+      blockReason: linkDone ? null : "发布完成后尚未回填公开链接",
+      ctaPath: "/content-publishing",
+      ctaLabel: "去回填链接",
+    },
+    {
+      id: "retest-stages",
+      label: "T1/T2/T3 复测状态",
+      status: retestStagesDone ? "已完成" : "待完成",
+      blockReason: retestStagesDone
+        ? null
+        : input.insufficientReasonParts.find(part => part.includes("T1")) ?? "尚未完成 T1 复测",
       ctaPath: "/inclusion-monitoring",
       ctaLabel: "去复测",
     },
     {
       id: "delivery",
-      label: GEO_UNIFIED_MAIN_PIPELINE_STEPS.find(step => step.id === "delivery_report")?.title ?? "交付报告",
-      status: t0Done && (linkDone || t1Done) ? "已完成" : "待完成",
-      blockReason:
-        t0Done && (linkDone || t1Done)
-          ? null
-          : "需先积累实测、发布或复测数据后再对外交付",
+      label: "报告可交付",
+      status: reportDeliverable ? "已完成" : "待完成",
+      blockReason: reportDeliverable ? null : "需先积累实测、发布或复测数据后再对外交付",
       ctaPath: "/delivery-reports",
       ctaLabel: "查看报告",
     },

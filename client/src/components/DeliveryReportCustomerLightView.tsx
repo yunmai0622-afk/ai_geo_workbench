@@ -29,8 +29,10 @@ import {
 } from "@/lib/deliveryReportLightDisplay";
 import { formatDeliveryReportShareExpiryLabel, resolveDeliveryReportShareCountdown } from "@shared/deliveryReportPublicShare";
 import { useMemo, useRef, type ReactNode } from "react";
+import { DeliveryReportCustomerProductSections } from "@/components/delivery/DeliveryReportCustomerProductSections";
 import { DeliveryReportCompetitorSection } from "@/components/DeliveryReportCompetitorSection";
 import { DeliveryReportRetestHero } from "@/components/DeliveryReportRetestHero";
+import { buildDeliveryReportTitle } from "@shared/deliveryReportReadability";
 import type { DeliveryReportCustomerViewProps } from "@/components/DeliveryReportCustomerView";
 
 const REPORT_TITLE = "GEO AI 搜索可见度优化交付报告";
@@ -220,11 +222,33 @@ export function DeliveryReportCustomerLightView({
           </p>
         ) : null}
 
+        <DeliveryReportCustomerProductSections
+          enterpriseName={enterpriseName}
+          brandName={brandName}
+          reportPeriod={
+            reportGeneratedAt
+              ? `截至 ${reportGeneratedAt.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })}`
+              : "交付周期待更新"
+          }
+          conclusionLine={conclusionLine}
+          visibilityScore={visibilityScore}
+          mentionRate={hasAiTestData ? aiTestAggregate.mentionRate : null}
+          recommendRate={hasAiTestData ? aiTestAggregate.recommendRate : null}
+          hasAiTestData={hasAiTestData}
+          questionCount={aiTestAggregate.questionCount}
+          engineCount={aiTestAggregate.engineCount}
+          publishCount={publishCount}
+          contentAssetCount={assetCount}
+          publishedItems={publishedItems}
+        />
+
         {/* 区块 1：报告封面 */}
         <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-100 bg-gradient-to-r from-sky-50 to-white px-5 py-6 sm:px-8 sm:py-8">
             <p className="text-xs font-medium tracking-wide text-sky-700">{DELIVERY_REPORT_SERVICE_PROVIDER}</p>
-            <h1 className="mt-3 text-xl font-bold leading-snug text-gray-900 sm:text-2xl">{REPORT_TITLE}</h1>
+            <h1 className="mt-3 text-xl font-bold leading-snug text-gray-900 sm:text-2xl">
+              {buildDeliveryReportTitle(brandName || enterpriseName)}
+            </h1>
           </div>
           <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-8">
             <div className="min-w-0 flex-1 space-y-4">

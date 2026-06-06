@@ -43,9 +43,11 @@ describe("Local-Agent-Account-Binding-Flow-P0", () => {
   });
 
   it("selectedPlatform 与不支持平台处理", () => {
+    const uxCopy = read("local-agent/src/renderer/uxCopy.js");
     expect(appJs).toContain('let selectedPlatform = "zhihu"');
     expect(appJs).toContain("PENDING_PLATFORMS");
-    expect(appJs).toContain("即将支持");
+    expect(appJs).toContain("isPending");
+    expect(uxCopy).toContain("平台即将支持");
     expect(main).toContain("即将支持账号环境创建");
   });
 

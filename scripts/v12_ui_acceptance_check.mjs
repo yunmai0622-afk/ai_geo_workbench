@@ -178,15 +178,16 @@ for (const item of ['已创建的监测卡片', '收录', 'AI 提及', 'AI 推�
 }
 const deliveryReportPage =
   read('client/src/pages/DeliveryReportsCenterPage.tsx') +
-  read('client/src/lib/deliveryReportProductDisplay.ts');
+  read('client/src/lib/deliveryReportProductDisplay.ts') +
+  read('client/src/components/delivery/DeliveryReportProductBody.tsx');
 const deliveryReportPages = deliveryReportPage + sources.customerView;
 for (const item of [
-  'GEO 实验型交付报告',
+  'GEO 增长交付报告',
   'delivery-report-page',
-  '一句话经营结论',
+  '当前核心结论',
   '本轮完成事项',
   '发布内容清单',
-  '生成下一轮内容计划',
+  '下一轮优化计划',
 ]) {
   assertContains('交付报告页', deliveryReportPage, item);
 }

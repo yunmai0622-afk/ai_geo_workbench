@@ -26,7 +26,7 @@ type MonitoringRow = {
 };
 
 function formatPercent(rate: number, hasData: boolean): string {
-  if (!hasData) return "--";
+  if (!hasData) return "暂无（需先完成 AI 实测）";
   return `${Math.round(rate * 100)}%`;
 }
 
@@ -60,15 +60,16 @@ export function buildDeliveryReportMeta(params: {
   const { enterpriseName, reportGeneratedAt, analysisCount, hasAiTestData, hasPublishWithLink, visibilityScore, mentionRate, recommendRate, maxProblemLine } =
     params;
 
-  const reportTitle = `${enterpriseName} GEO 实验型交付报告`;
+  const reportTitle = `${enterpriseName} GEO 增长交付报告`;
 
-  let reportPeriod = "--";
+  let reportPeriod = "交付周期待更新（完成首条发布或评分后自动显示）";
   if (reportGeneratedAt && !Number.isNaN(reportGeneratedAt.getTime())) {
     const end = reportGeneratedAt.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
     reportPeriod = `截至 ${end}`;
   }
 
-  const reportRound = analysisCount > 0 ? `第 ${analysisCount} 轮诊断` : "--";
+  const reportRound =
+    analysisCount > 0 ? `第 ${analysisCount} 轮诊断` : "首轮 GEO 增长交付（待完成 T0 基线）";
 
   const hasEnoughForConclusion = hasAiTestData && (hasPublishWithLink || visibilityScore != null);
   let conclusionLine = DELIVERY_INSUFFICIENT_CONCLUSION;
@@ -105,21 +106,23 @@ export function buildDeliveryCoreMetrics(params: {
   const inclusionCount = countInclusionSuccess(monitoringRows);
 
   return {
-    mentionRate: hasAiTest ? formatPercent(aggregate.mentionRate, true) : "--",
-    recommendRate: hasAiTest ? formatPercent(aggregate.recommendRate, true) : "--",
-    citationRate: citation != null ? formatPercent(citation, true) : "--",
-    inclusionSuccessCount: inclusionCount != null ? String(inclusionCount) : "--",
-    pendingOptimizeCount: pendingOptimizeCount > 0 ? String(pendingOptimizeCount) : "--",
+    mentionRate: hasAiTest ? formatPercent(aggregate.mentionRate, true) : "暂无（需先完成 AI 实测）",
+    recommendRate: hasAiTest ? formatPercent(aggregate.recommendRate, true) : "暂无（需先完成 AI 实测）",
+    citationRate: citation != null ? formatPercent(citation, true) : "暂无（需有引用样本）",
+    inclusionSuccessCount:
+      inclusionCount != null ? String(inclusionCount) : "暂无（需先进入收录监测）",
+    pendingOptimizeCount:
+      pendingOptimizeCount > 0 ? String(pendingOptimizeCount) : "暂无待优化项",
   };
 }
 
 export function metricHint(value: string): string | undefined {
-  if (value === "--") return DELIVERY_METRIC_EMPTY_HINT;
+  if (value.startsWith("暂无")) return DELIVERY_METRIC_EMPTY_HINT;
   return undefined;
 }
 
 export function formatCountOrEmpty(count: number | null): string {
-  if (count == null || count === 0) return "--";
+  if (count == null || count === 0) return "暂无";
   return String(count);
 }
 
