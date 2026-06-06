@@ -29,7 +29,7 @@ describe("Agent-1 Web + local-agent account binding", () => {
     expect(ui).toContain("checkLocalAgentHealth");
     expect(ui).not.toContain("127.0.0.1:39888");
     expect(read("shared/localAgent.ts")).toContain("39888");
-    expect(read("client/src/lib/localAgentClient.ts")).toContain("LOCAL_AGENT_BROWSER_HEALTH_URL");
+    expect(read("client/src/lib/localAgentClient.ts")).toContain("LOCAL_AGENT_DIRECT_HEALTH_URL");
     expect(ui).not.toContain("GEO_START_AUTH");
     expect(ui).not.toContain("一键授权");
     expect(ui).not.toContain("绑定当前登录账号");

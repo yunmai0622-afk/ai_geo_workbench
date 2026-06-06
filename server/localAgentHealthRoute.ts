@@ -3,7 +3,10 @@ import { LOCAL_AGENT_BASE_URL, LOCAL_AGENT_HEALTH_PATH } from "@shared/localAgen
 
 const HEALTH_TIMEOUT_MS = 4000;
 
-/** 浏览器经同源代理探测本机 Agent，避免 Console 出现 ERR_CONNECTION_REFUSED */
+/**
+ * 同源代理：仅在同机部署时有效（dev server 与 Agent 同机）。
+ * 远端生产环境浏览器应直连 http://127.0.0.1:39888/health，勿依赖此路由判断用户 Agent 在线。
+ */
 export function registerLocalAgentHealthRoute(app: Express) {
   app.get("/api/local-agent/health", async (_req: Request, res: Response) => {
     try {

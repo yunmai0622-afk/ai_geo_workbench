@@ -430,3 +430,57 @@ export function deriveLocalAgentUiConnectionStatus(input: {
   }
   return mapResolvedStateToConnectionStatus(input.resolvedState, input.probeStatus);
 }
+
+export type LocalAgentConnectionDebugInfo = {
+  projectId: number | null;
+  platformAccountsCount: number;
+  accountSnapshotCount: number;
+  boundPublishAccountCount: number;
+  resolvedState: LocalAgentResolvedConnectionState;
+  uiConnectionStatus: LocalAgentConnectionStatus;
+  hasServerHeartbeat: boolean;
+  hasValidAccountSnapshot: boolean;
+  localHttpCheckStatus: boolean | null;
+  reason: string;
+};
+
+export function buildLocalAgentConnectionDebugInfo(input: {
+  projectId?: number | null;
+  platformAccounts?: ServerHeartbeatPlatformAccountRow[];
+  localAgentAccountSnapshot?: LocalAgentAccountStatusEntry[];
+  boundPublishAccountCount?: number;
+  localHttpCheckResult?: boolean | null;
+  resolvedState: LocalAgentResolvedConnectionState;
+  uiConnectionStatus: LocalAgentConnectionStatus;
+}): LocalAgentConnectionDebugInfo {
+  const platformAccounts = input.platformAccounts ?? [];
+  const snapshot = input.localAgentAccountSnapshot ?? [];
+  const heartbeat = inferServerHeartbeatFromPlatformAccounts(platformAccounts);
+  const hasValidAccountSnapshot = snapshot.some(isLocalAgentAccountEntryValid);
+  let reason = "unknown";
+  if (input.uiConnectionStatus === "CONNECTED_ACCOUNT_NOT_SYNCED") {
+    reason = "local_or_server_online_but_project_accounts_not_synced";
+  } else if (isLocalAgentResolvedConnected(input.resolvedState)) {
+    reason = "connected";
+  } else if (input.localHttpCheckResult === false && !heartbeat.connected) {
+    reason = "local_http_failed_and_no_server_heartbeat";
+  } else if (input.localHttpCheckResult === false && heartbeat.connected) {
+    reason = "local_http_failed_but_server_heartbeat_ok";
+  } else if (input.localHttpCheckResult == null && !heartbeat.connected) {
+    reason = "not_checked_yet_or_pending";
+  } else {
+    reason = `resolved=${input.resolvedState}`;
+  }
+  return {
+    projectId: input.projectId ?? null,
+    platformAccountsCount: platformAccounts.length,
+    accountSnapshotCount: snapshot.length,
+    boundPublishAccountCount: input.boundPublishAccountCount ?? 0,
+    resolvedState: input.resolvedState,
+    uiConnectionStatus: input.uiConnectionStatus,
+    hasServerHeartbeat: heartbeat.connected,
+    hasValidAccountSnapshot,
+    localHttpCheckStatus: input.localHttpCheckResult ?? null,
+    reason,
+  };
+}

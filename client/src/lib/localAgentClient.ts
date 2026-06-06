@@ -1,6 +1,6 @@
 import {
   LOCAL_AGENT_BASE_URL,
-  LOCAL_AGENT_BROWSER_HEALTH_URL,
+  LOCAL_AGENT_DIRECT_HEALTH_URL,
 } from "@shared/localAgent";
 import {
   mapLocalStoredAccountToStatusEntry,
@@ -112,9 +112,9 @@ export async function checkLocalAgentHealth(options?: {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(LOCAL_AGENT_BROWSER_HEALTH_URL, {
+    const res = await fetch(LOCAL_AGENT_DIRECT_HEALTH_URL, {
       signal: controller.signal,
-      credentials: "include",
+      mode: "cors",
       cache: "no-store",
     });
     clearTimeout(timer);

@@ -4,12 +4,14 @@ import { checkLocalAgentHealth, listLocalAgentAccountSnapshots } from "@/lib/loc
 import { trpc } from "@/lib/trpc";
 import type { LocalAgentAccountStatusEntry } from "@shared/localAgentAccountSync";
 import {
+  buildLocalAgentConnectionDebugInfo,
   deriveLocalAgentUiConnectionStatus,
   inferServerHeartbeatFromPlatformAccounts,
   isLocalAgentResolvedConnected,
   localAgentConnectionCheckFeedback,
   localAgentConnectionCopy,
   localAgentDownloadCardConnectionDetail,
+  LOCAL_AGENT_PROJECT_ACCOUNT_NOT_SYNCED_DETAIL,
   resolveConnectionStatusAfterHealthProbe,
   resolveLocalAgentConnectionState,
   type LocalAgentConnectionStatus,
@@ -238,6 +240,22 @@ export function LocalAgentDownloadCard({
       localAgentAccountSnapshot: snapshot.length > 0 ? snapshot : effectiveSnapshot,
       boundPublishAccountCount: serverContext.boundPublishAccountCount,
     });
+    const nextProbeStatus = resolveConnectionStatusAfterHealthProbe({
+      ok: Boolean(h?.ok),
+      accountSnapshotCount: snapshot.length,
+      boundPublishAccountCount: serverContext.boundPublishAccountCount,
+    });
+    const nextUiStatus = deriveLocalAgentUiConnectionStatus({
+      resolvedState: nextState,
+      boundPublishAccountCount: serverContext.boundPublishAccountCount,
+      localAgentAccountSnapshot: snapshot.length > 0 ? snapshot : effectiveSnapshot,
+      localHttpCheckResult: Boolean(h?.ok),
+      probeStatus: nextProbeStatus,
+    });
+    if (nextUiStatus === "CONNECTED_ACCOUNT_NOT_SYNCED") {
+      toast.message(LOCAL_AGENT_PROJECT_ACCOUNT_NOT_SYNCED_DETAIL);
+      return;
+    }
     const feedback = localAgentConnectionCheckFeedback(nextState, {
       localHttpCheckResult: Boolean(h?.ok),
     });
@@ -290,6 +308,33 @@ export function LocalAgentDownloadCard({
     uiConnectionStatus,
   });
   const uiCopy = localAgentConnectionCopy(uiConnectionStatus);
+
+  const debugEnabled = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("debugLocalAgent") === "1";
+  }, []);
+
+  const debugInfo = useMemo(
+    () =>
+      buildLocalAgentConnectionDebugInfo({
+        projectId: projectId ?? null,
+        platformAccounts,
+        localAgentAccountSnapshot: effectiveSnapshot,
+        boundPublishAccountCount,
+        localHttpCheckResult: localHttpOk,
+        resolvedState,
+        uiConnectionStatus,
+      }),
+    [
+      boundPublishAccountCount,
+      effectiveSnapshot,
+      localHttpOk,
+      platformAccounts,
+      projectId,
+      resolvedState,
+      uiConnectionStatus,
+    ],
+  );
 
   const macOffered = Boolean(macHref);
   const macIsZip = Boolean(macHref && /\.zip(\?|$)/i.test(macHref));
@@ -444,6 +489,26 @@ export function LocalAgentDownloadCard({
           <div className="mt-1 rounded border border-gray-100 bg-gray-50 px-3 py-2 font-mono text-[11px] text-gray-500">
             客户端 ID：{health.agentId} · 版本：v{health.version}
           </div>
+        </details>
+      ) : null}
+
+      {debugEnabled ? (
+        <details className="mt-3 rounded-lg border border-violet-200 bg-violet-50 text-xs" data-testid="local-agent-debug-panel" open>
+          <summary className="cursor-pointer px-4 py-3 font-medium text-violet-900">Local Agent Debug</summary>
+          <dl className="grid gap-1 border-t border-violet-200 px-4 py-3 font-mono text-[11px] text-violet-950">
+            <div>projectId: {String(debugInfo.projectId)}</div>
+            <div>platformAccountsCount: {debugInfo.platformAccountsCount}</div>
+            <div>accountSnapshotCount: {debugInfo.accountSnapshotCount}</div>
+            <div>boundPublishAccountCount: {debugInfo.boundPublishAccountCount}</div>
+            <div>resolvedState: {debugInfo.resolvedState}</div>
+            <div>uiConnectionStatus: {debugInfo.uiConnectionStatus}</div>
+            <div>hasServerHeartbeat: {String(debugInfo.hasServerHeartbeat)}</div>
+            <div>hasValidAccountSnapshot: {String(debugInfo.hasValidAccountSnapshot)}</div>
+            <div>localHttpCheckStatus: {String(debugInfo.localHttpCheckStatus)}</div>
+            <div>reason: {debugInfo.reason}</div>
+            <div>accountsQueryStatus: {accountsQuery.status}</div>
+            <div>propsPlatformAccountsCount: {platformAccountsProp.length}</div>
+          </dl>
         </details>
       ) : null}
     </div>

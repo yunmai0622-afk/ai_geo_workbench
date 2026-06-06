@@ -19,6 +19,8 @@ describe("GEO-V1.1 LocalAgentDownloadCard status hard sync P0", () => {
     expect(card).toContain("resolveServerContextForDetect");
     expect(card).toContain("refresh-local-agent-account-status");
     expect(card).toContain("selectSnapshotEntriesForProjectSync");
+    expect(card).toContain("debugLocalAgent");
+    expect(card).toContain("local-agent-debug-panel");
     expect(card).not.toContain("未检测到本地发布客户端，请下载安装并启动后重试");
     expect(card).not.toContain("未检测到本地发布客户端。请先下载安装并启动");
     expect(card).toContain("void refreshHealth()");
