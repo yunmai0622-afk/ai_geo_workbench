@@ -4315,3 +4315,57 @@
 [2026-06-06T06:44:59.972Z] 2:44:59 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx
 [2026-06-06T06:44:59.972Z] 2:44:59 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/weeklyContentTaskStatus.ts
 [2026-06-06T06:45:00.084Z] 2:45:00 AM [tsx] unlink in ./shared/publishPreflight.ts Restarting...
+[2026-06-06T06:58:25.024Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.024Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.025Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerLightView.tsx
+[2026-06-06T06:58:25.026Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerView.tsx
+[2026-06-06T06:58:25.026Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-06T06:58:25.027Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/delivery/DeliveryReportCustomerProductSections.tsx
+[2026-06-06T06:58:25.027Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/delivery/DeliveryReportProductBody.tsx
+[2026-06-06T06:58:25.027Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.028Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.029Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx
+[2026-06-06T06:58:25.029Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.029Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-06T06:58:25.030Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-06T06:58:25.030Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.030Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.031Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.031Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishRecordsListPanel.tsx
+[2026-06-06T06:58:25.031Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.032Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.032Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/publishing/PublishAssistantPanel.tsx
+[2026-06-06T06:58:25.032Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishAssistantPanel.tsx
+[2026-06-06T06:58:25.033Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.033Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishAssistantPanel.tsx
+[2026-06-06T06:58:25.033Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.034Z] 2:58:25 AM [vite] (client) hmr update /src/pages/DeliveryReportSharePage.tsx, /src/index.css
+[2026-06-06T06:58:25.034Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.034Z] 2:58:25 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/index.css
+[2026-06-06T06:58:25.035Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.038Z] 2:58:25 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-06T06:58:25.041Z] 2:58:25 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx
+[2026-06-06T06:58:25.041Z] 2:58:25 AM [vite] (client) hmr update /src/components/DeliveryReportCustomerLightView.tsx, /src/components/delivery/DeliveryReportCustomerProductSections.tsx, /src/components/delivery/DeliveryReportProductBody.tsx
+[2026-06-06T06:58:25.042Z] 2:58:25 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx, /src/components/publishing/PublishAccountBindDialog.tsx, /src/components/publishing/PublishStatusBar.tsx
+[2026-06-06T06:58:25.042Z] 2:58:25 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/publishing/PublishAssistantPanel.tsx
+[2026-06-06T06:58:25.043Z] 2:58:25 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-06T06:58:25.096Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishAccountBindDialog.tsx
+[2026-06-06T06:58:25.096Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishAssistantPanel.tsx
+[2026-06-06T06:58:25.097Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishStatusBar.tsx
+[2026-06-06T06:58:25.097Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/questions/QuestionBankAssistantPanel.tsx
+[2026-06-06T06:58:25.098Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/questions/QuestionBankCard.tsx
+[2026-06-06T06:58:25.098Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/questions/QuestionBankCurrentRoundPanel.tsx
+[2026-06-06T06:58:25.099Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/questions/QuestionIntentGroupSection.tsx
+[2026-06-06T06:58:25.099Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/questions/QuestionQualityStandardsPanel.tsx
+[2026-06-06T06:58:25.099Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/ContentProductionAssistantPanel.tsx
+[2026-06-06T06:58:25.100Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.100Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.100Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.101Z] 2:58:25 AM [vite] (client) hmr update /src/index.css
+[2026-06-06T06:58:25.101Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-06T06:58:25.101Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/delivery/DeliveryReportCustomerProductSections.tsx
+[2026-06-06T06:58:25.102Z] 2:58:25 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx
+[2026-06-06T06:58:25.102Z] 2:58:25 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/publishAccountBindCta.ts
+[2026-06-06T06:58:25.102Z] 2:58:25 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx
+[2026-06-06T06:58:25.103Z] 2:58:25 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/weeklyContentTaskStatus.ts
+[2026-06-06T06:58:25.219Z] 2:58:25 AM [tsx] unlink in ./shared/publishPreflight.ts Restarting...
