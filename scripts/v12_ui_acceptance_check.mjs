@@ -59,7 +59,8 @@ for (const item of [
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
 }
 assertContains('左侧导航', sources.layout, 'AI 搜索增长系统');
-assertContains('左侧导航', sources.layout, 'title: "增长总览"');
+assertContains('左侧导航', sources.layout, 'title: "项目"');
+assertNotContains('左侧导航', sources.layout, 'title: "增长总览"');
 assertContains('旧资产进展路由', sources.app, 'LegacyAssetProgressRedirect');
 assertNotContains('旧资产进展路由', sources.app, 'ProgressPage');
 for (const item of [

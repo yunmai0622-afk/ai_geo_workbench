@@ -79,11 +79,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/clients",
         aliases: ["/clients"],
       },
-    ],
-  },
-  {
-    title: "增长总览",
-    items: [
       {
         icon: Sparkles,
         label: "项目工作台",

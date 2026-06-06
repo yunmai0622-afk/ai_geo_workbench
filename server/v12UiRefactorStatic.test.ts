@@ -18,7 +18,8 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    expect(layoutSource).toContain('title: "增长总览"');
+    expect(layoutSource).toContain('title: "项目"');
+    expect(layoutSource).not.toContain('title: "增长总览"');
     for (const label of [
       "企业项目",
       "项目工作台",
