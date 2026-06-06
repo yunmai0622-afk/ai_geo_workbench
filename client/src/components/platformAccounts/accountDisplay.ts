@@ -1,3 +1,4 @@
+import { isPendingAccountDisplayName } from "@shared/localAgentAccountSync";
 import type { AccountRow } from "./types";
 
 export function sessionTone(status: string | null): "success" | "warning" | "neutral" {
@@ -31,7 +32,10 @@ export function formatTime(value: Date | string | null): string {
 }
 
 export function displayAccountName(row: AccountRow): string {
-  return row.accountName?.trim() || "未检测到昵称";
+  const name = row.accountName?.trim();
+  if (name && !isPendingAccountDisplayName(name)) return name;
+  if (row.sessionStatus === "active") return "账号已登录";
+  return "未检测到昵称";
 }
 
 export function lastPublishDisplay(row: AccountRow): string {

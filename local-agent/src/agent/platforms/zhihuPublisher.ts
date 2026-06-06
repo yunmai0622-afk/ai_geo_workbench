@@ -1601,8 +1601,8 @@ export class ZhihuPublisher extends BasePlatformPublisher {
 
       if (!name) {
         if (stored?.sessionStatus === "active") {
-          name = task.expectedAccountName?.trim() || "昵称待识别";
-          logs.push(stepLog("detect_account", "ok", "已登录，昵称待识别，继续填稿"));
+          name = task.expectedAccountName?.trim() || "账号已登录";
+          logs.push(stepLog("detect_account", "ok", "已登录，账号已登录，继续填稿"));
         } else {
           return {
             status: "failed",
@@ -1628,7 +1628,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         !accountNamesMatch(task.expectedAccountName, name)
       ) {
         logs.push(
-          stepLog("detect_account", "ok", "昵称待识别：已跳过昵称比对，按登录有效继续发布"),
+          stepLog("detect_account", "ok", "账号已登录：已跳过昵称比对，按登录有效继续发布"),
         );
       }
 

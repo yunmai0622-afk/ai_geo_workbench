@@ -2,6 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { projectPlatformAccounts } from "../drizzle/schema";
+import {
+  LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME,
+  resolveSyncAccountDisplayName,
+} from "@shared/localAgentAccountSync";
 import { isBindingPublishPlatform } from "@shared/platformAccountVerify";
 import { requireProjectAccessConn } from "./projectAccess";
 import { logLocalAgentConnection } from "./localAgentConnectionLog";
@@ -24,10 +28,6 @@ type LocalAgentAccountStatusPayload = {
 
 function isLocalAgentAccountEntryValid(entry: LocalAgentAccountStatusEntry): boolean {
   return entry.loginStatus === "valid" && isBindingPublishPlatform(entry.platform);
-}
-
-function resolveSyncAccountDisplayName(entry: Pick<LocalAgentAccountStatusEntry, "displayName">): string {
-  return entry.displayName?.trim() || "昵称待识别";
 }
 
 export const localAgentAccountStatusEntrySchema = z.object({
@@ -90,7 +90,9 @@ export async function syncLocalAgentAccountStatuses(
         localProfileId: entry.profileId,
         sessionStatus: "active",
         isEnabled: true,
-        notes: entry.displayNameVerified ? null : "昵称待识别（由本地客户端同步）",
+        notes: entry.displayNameVerified
+          ? null
+          : `${LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME}（由本地客户端同步）`,
       });
       synced += 1;
       continue;

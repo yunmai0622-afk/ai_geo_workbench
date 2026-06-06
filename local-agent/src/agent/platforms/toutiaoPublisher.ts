@@ -1,4 +1,5 @@
 import type { Page } from "playwright";
+import { detectMpPlatformNickname } from "./mpAccountNicknameDetect";
 import {
   BasePlatformPublisher,
   fillFirstSelector,
@@ -10,8 +11,6 @@ import {
   executeMpPublishTask,
   type MpPublishArticleConfig,
 } from "./mpPublishExtensions";
-
-const SKIP = /头条|登录|注册|首页|logo|消息/i;
 
 /** 头条号发布按钮备选（主文档 Playwright 直操编辑器，不依赖跨域 iframe） */
 export const TOUTIAO_PUBLISH_BUTTON_SELECTORS = [
@@ -64,27 +63,7 @@ export class ToutiaoPublisher extends BasePlatformPublisher {
   }
 
   async detectAccount(page: Page): Promise<string | null> {
-    return page.evaluate(skipPattern => {
-      const SKIP_RE = new RegExp(skipPattern, "i");
-      function pick(text: string | null | undefined): string | null {
-        const t = (text ?? "").trim();
-        if (!t || t.length < 2 || t.length > 40) return null;
-        if (SKIP_RE.test(t)) return null;
-        return t;
-      }
-      const candidates: string[] = [];
-      for (const el of Array.from(
-        document.querySelectorAll('[class*="user"], [class*="name"], .user-name, .nickname, .author-name'),
-      )) {
-        const t = pick(el.textContent);
-        if (t) candidates.push(t);
-      }
-      for (const el of Array.from(document.querySelectorAll("img[alt], [title], [aria-label]"))) {
-        const t = pick(el.getAttribute("alt")) ?? pick(el.getAttribute("title"));
-        if (t) candidates.push(t);
-      }
-      return candidates[0] ?? null;
-    }, SKIP.source);
+    return detectMpPlatformNickname(page, "toutiao");
   }
 
   protected titleSelectors(): string[] {

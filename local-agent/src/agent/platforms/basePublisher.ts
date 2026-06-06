@@ -61,12 +61,12 @@ export function accountNamesMatch(expected: string, detected: string): boolean {
   return a.includes(b) || b.includes(a);
 }
 
-/** 占位昵称（待识别）不参与发布前昵称一致性阻断 */
+/** 占位昵称（已登录但未识别真实昵称）不参与发布前昵称一致性阻断 */
 export function isPendingPublishAccountName(name: string | null | undefined): boolean {
   const t = (name ?? "").trim();
   if (!t) return false;
-  if (t === "昵称待识别") return true;
-  return t.endsWith("（昵称待识别）");
+  if (t === "账号已登录" || t === "昵称待识别") return true;
+  return t.endsWith("（账号已登录）") || t.endsWith("（昵称待识别）");
 }
 
 export function shouldBlockPublishForAccountNameMismatch(
@@ -192,11 +192,27 @@ export abstract class BasePlatformPublisher {
       const name = await this.detectAccount(page);
       const now = new Date().toISOString();
       if (!name) {
-        updateAccount(profileId, { accountName: null, sessionStatus: "unknown", lastCheckedAt: now });
-        return { ok: false, accountName: null, message: "未能检测到账号昵称", errorType: "account_not_detected" };
+        const pendingMsg =
+          "已登录，但暂未识别真实昵称。可点击「重新检测」刷新；不影响发布与 Web 同步。";
+        updateAccount(profileId, {
+          accountName: null,
+          displayNameVerified: false,
+          displayNameSource: "unknown",
+          sessionStatus: "active",
+          lastCheckedAt: now,
+          lastDetectMessage: pendingMsg,
+        });
+        return { ok: true, accountName: null, message: pendingMsg };
       }
 
-      updateAccount(profileId, { accountName: name, sessionStatus: "active", lastCheckedAt: now });
+      updateAccount(profileId, {
+        accountName: name,
+        displayNameVerified: true,
+        displayNameSource: "platform_dom",
+        sessionStatus: "active",
+        lastCheckedAt: now,
+        lastDetectMessage: `检测成功：${name}`,
+      });
       return { ok: true, accountName: name, message: `检测到账号：${name}` };
     } catch (e) {
       return {
@@ -257,18 +273,23 @@ export abstract class BasePlatformPublisher {
         };
       }
 
-      const detected = await this.detectAccount(page);
+      let detected = await this.detectAccount(page);
       logs.push(
         stepLog("detect_account", detected ? "ok" : "failed", detected ?? "未识别到昵称"),
       );
 
       if (!detected) {
-        return {
-          status: "failed",
-          errorType: "account_unknown",
-          errorMessage: "无法识别当前登录账号",
-          logs,
-        };
+        if (isPendingPublishAccountName(task.expectedAccountName)) {
+          detected = task.expectedAccountName?.trim() || "账号已登录";
+          logs.push(stepLog("detect_account", "ok", "已登录，账号已登录，继续填稿"));
+        } else {
+          return {
+            status: "failed",
+            errorType: "account_unknown",
+            errorMessage: "无法识别当前登录账号",
+            logs,
+          };
+        }
       }
 
       if (shouldBlockPublishForAccountNameMismatch(task.expectedAccountName, detected)) {
@@ -289,7 +310,7 @@ export abstract class BasePlatformPublisher {
           stepLog(
             "detect_account",
             "ok",
-            "昵称待识别：已跳过昵称比对，按登录有效继续发布",
+            "账号已登录：已跳过昵称比对，按登录有效继续发布",
           ),
         );
       }

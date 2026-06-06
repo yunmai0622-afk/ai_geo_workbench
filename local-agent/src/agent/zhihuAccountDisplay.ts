@@ -28,7 +28,7 @@ export function pickZhihuVerifiedNickname(_candidates: ZhihuNicknameCandidate[])
     displayName: null,
     displayNameVerified: false,
     displayNameSource: "unknown",
-    message: "已登录，昵称待识别（未能从知乎个人入口稳定提取，请点「重新检测」）",
+    message: "已登录，账号已登录（未能从知乎个人入口稳定提取，请点「重新检测」）",
   };
 }
 
@@ -44,7 +44,7 @@ export function formatZhihuAccountCardTitle(
     return account.accountName;
   }
   if (account.sessionStatus === "active") {
-    return `${platformLabel}账号（昵称待识别）`;
+    return "账号已登录";
   }
   return "未检测到账号昵称";
 }

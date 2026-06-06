@@ -4,14 +4,13 @@ import {
   type LocalPublishResult,
   type LocalPublishTask,
 } from "./basePublisher";
+import { detectMpPlatformNickname } from "./mpAccountNicknameDetect";
 import {
   attemptMpPublishArticle,
   executeMpPublishTask,
   type MpPublishArticleConfig,
   uploadPlatformCover,
 } from "./mpPublishExtensions";
-
-const SKIP = /百度|百家号|登录|注册|首页|logo/i;
 
 /** 百家号写作页发布按钮备选：cheetah 主按钮 + role=button 文案「发布」 */
 export const BAIJIAHAO_PUBLISH_BUTTON_SELECTORS = [
@@ -68,32 +67,7 @@ export class BaijiahaoPublisher extends BasePlatformPublisher {
   }
 
   async detectAccount(page: Page): Promise<string | null> {
-    return page.evaluate(skipPattern => {
-      const SKIP_RE = new RegExp(skipPattern, "i");
-      function pick(text: string | null | undefined): string | null {
-        const t = (text ?? "").trim();
-        if (!t || t.length < 2 || t.length > 40) return null;
-        if (SKIP_RE.test(t)) return null;
-        return t;
-      }
-      const candidates: string[] = [];
-      for (const sel of [
-        '[class*="user-name"]',
-        '[class*="account"]',
-        ".cheetah-user-name",
-        ".user-info",
-      ]) {
-        for (const el of Array.from(document.querySelectorAll(sel))) {
-          const t = pick(el.textContent);
-          if (t) candidates.push(t);
-        }
-      }
-      for (const el of Array.from(document.querySelectorAll("img[alt], [title]"))) {
-        const t = pick(el.getAttribute("alt")) ?? pick(el.getAttribute("title"));
-        if (t) candidates.push(t);
-      }
-      return candidates[0] ?? null;
-    }, SKIP.source);
+    return detectMpPlatformNickname(page, "baijiahao");
   }
 
   protected titleSelectors(): string[] {

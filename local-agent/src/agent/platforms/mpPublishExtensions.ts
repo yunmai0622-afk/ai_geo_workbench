@@ -2,6 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import type { Page } from "playwright";
+import { getAccountByProfileId } from "../storage";
 import { getOrLaunchContext } from "./browserSession";
 import {
   accountNamesMatch,
@@ -487,7 +488,7 @@ export async function executeMpPublishTask(
       };
     }
 
-    const detected = await hooks.detectAccount(page);
+    let detected = await hooks.detectAccount(page);
     logs.push(
       stepLog(
         "detect_account",
@@ -497,12 +498,18 @@ export async function executeMpPublishTask(
     );
 
     if (!detected) {
-      return {
-        status: "failed",
-        errorType: "account_unknown",
-        errorMessage: `[${mpConfig.platformTag}] 无法识别当前登录账号，请确认已登录且后台首页可显示昵称`,
-        logs,
-      };
+      const stored = getAccountByProfileId(profileId);
+      if (isPendingPublishAccountName(task.expectedAccountName) || stored?.sessionStatus === "active") {
+        detected = task.expectedAccountName?.trim() || "账号已登录";
+        logs.push(stepLog("detect_account", "ok", "已登录，账号已登录，继续填稿"));
+      } else {
+        return {
+          status: "failed",
+          errorType: "account_unknown",
+          errorMessage: `[${mpConfig.platformTag}] 无法识别当前登录账号，请确认已登录且后台首页可显示昵称`,
+          logs,
+        };
+      }
     }
 
     if (shouldBlockPublishForAccountNameMismatch(task.expectedAccountName, detected)) {
@@ -520,7 +527,7 @@ export async function executeMpPublishTask(
       !accountNamesMatch(task.expectedAccountName, detected)
     ) {
       logs.push(
-        stepLog("detect_account", "ok", "昵称待识别：已跳过昵称比对，按登录有效继续发布"),
+        stepLog("detect_account", "ok", "账号已登录：已跳过昵称比对，按登录有效继续发布"),
       );
     }
 

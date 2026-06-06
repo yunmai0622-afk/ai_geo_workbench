@@ -125,7 +125,7 @@ describe("evaluatePublishPreflight", () => {
           {
             platform: "zhihu",
             profileId: "zhihu_1",
-            displayName: "昵称待识别",
+            displayName: "账号已登录",
             displayNameVerified: false,
             loginStatus: "valid",
             lastCheckedAt: new Date().toISOString(),

@@ -4,14 +4,13 @@ import {
   type LocalPublishResult,
   type LocalPublishTask,
 } from "./basePublisher";
+import { detectMpPlatformNickname } from "./mpAccountNicknameDetect";
 import {
   attemptMpPublishArticle,
   executeMpPublishTask,
   type MpPublishArticleConfig,
   uploadPlatformCover,
 } from "./mpPublishExtensions";
-
-const SKIP = /搜狐|登录|注册|首页|消息|设置|logo/i;
 
 /** 搜狐号写作页发布按钮备选：底部/顶部「发布」「发布文章」 */
 export const SOHU_PUBLISH_BUTTON_SELECTORS = [
@@ -72,27 +71,7 @@ export class SohuPublisher extends BasePlatformPublisher {
   }
 
   async detectAccount(page: Page): Promise<string | null> {
-    return page.evaluate(skipPattern => {
-      const SKIP_RE = new RegExp(skipPattern, "i");
-      function pick(text: string | null | undefined): string | null {
-        const t = (text ?? "").trim();
-        if (!t || t.length < 2 || t.length > 40) return null;
-        if (SKIP_RE.test(t)) return null;
-        return t;
-      }
-      const candidates: string[] = [];
-      for (const el of Array.from(
-        document.querySelectorAll('[class*="user"], [class*="nick"], [class*="name"], .user-name, .nickname'),
-      )) {
-        const t = pick(el.textContent);
-        if (t) candidates.push(t);
-      }
-      for (const el of Array.from(document.querySelectorAll("img[alt], [title], [aria-label]"))) {
-        const t = pick(el.getAttribute("alt")) ?? pick(el.getAttribute("title"));
-        if (t) candidates.push(t);
-      }
-      return candidates[0] ?? null;
-    }, SKIP.source);
+    return detectMpPlatformNickname(page, "sohu");
   }
 
   protected titleSelectors(): string[] {

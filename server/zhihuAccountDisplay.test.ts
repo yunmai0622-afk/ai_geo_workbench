@@ -39,7 +39,7 @@ describe("zhihuAccountDisplay", () => {
       displayNameVerified: false,
       sessionStatus: "active",
     });
-    expect(title).toBe("知乎账号（昵称待识别）");
+    expect(title).toBe("账号已登录");
   });
 
   it("已验证昵称显示真实名称", () => {

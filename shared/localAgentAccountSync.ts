@@ -28,13 +28,15 @@ export type LocalAgentAccountStatusPayload = {
   accounts: LocalAgentAccountStatusEntry[];
 };
 
-export const LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME = "昵称待识别";
+export const LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME = "账号已登录";
 
 /** Web/DB 占位昵称：不参与发布前昵称一致性阻断 */
 export function isPendingAccountDisplayName(name: string | null | undefined): boolean {
   const t = (name ?? "").trim();
   if (!t) return false;
   if (t === LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME) return true;
+  if (t === "昵称待识别") return true;
+  if (t.endsWith("（账号已登录）")) return true;
   if (t.endsWith("（昵称待识别）")) return true;
   return false;
 }

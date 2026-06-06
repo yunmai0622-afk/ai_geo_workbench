@@ -25,6 +25,6 @@ describe("publish modal stability static", () => {
   it("local-agent 发布不因昵称待识别阻断", () => {
     const zhihu = read("local-agent/src/agent/platforms/zhihuPublisher.ts");
     expect(zhihu).toContain("shouldBlockPublishForAccountNameMismatch");
-    expect(zhihu).toContain("昵称待识别，继续填稿");
+    expect(zhihu).toContain("账号已登录，继续填稿");
   });
 });
