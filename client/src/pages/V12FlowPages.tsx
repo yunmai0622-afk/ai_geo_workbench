@@ -1167,8 +1167,9 @@ export function AiDiagnosisFlowPage() {
     return formatAiDiagnosisDateTime(displayT0Round.finishedAt);
   }, [displayT0Round?.finishedAt]);
   const platformCards = useMemo(() => {
+    const aggregationRuns = visualizationRuns.length > 0 ? visualizationRuns : t0Runs;
     const performanceRows = aggregateAiPlatformPerformance(
-      t0Runs.map(run => ({
+      aggregationRuns.map(run => ({
         platform: run.platform,
         mentionedCompany: run.mentionedCompany,
         recommendedCompany: run.recommendedCompany,
@@ -1194,7 +1195,7 @@ export function AiDiagnosisFlowPage() {
       mentionCount: row.mentionCount,
       recommendCount: row.recommendCount,
     }));
-  }, [t0Runs]);
+  }, [t0Runs, visualizationRuns]);
   const headline = useMemo(() => buildDiagnosisHeadlineLine(scoreQuery.data ?? null, gapCount), [scoreQuery.data, gapCount]);
   const awarenessLevel = useMemo(() => diagnosisAwarenessLevel(scoreQuery.data ?? null), [scoreQuery.data]);
   const nextStepSuggestion = useMemo(

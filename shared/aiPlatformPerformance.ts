@@ -3,7 +3,7 @@ import { T0_AI_ENGINE_OPTIONS, T0_DIAGNOSIS_PLATFORM_ORDER, normalizeT0Platform 
 export type AiPlatformPerformanceStatus =
   | "未实测"
   | "未覆盖"
-  | "已提及"
+  | "已提及，推荐不足"
   | "已推荐"
   | "竞品占优";
 
@@ -37,7 +37,7 @@ function resolvePlatformStatus(input: {
   if (input.mentionCount <= 0) return "未覆盖";
   if (input.competitorCount > input.recommendCount) return "竞品占优";
   if (input.recommendCount > 0) return "已推荐";
-  return "已提及";
+  return "已提及，推荐不足";
 }
 
 function buildPlatformSummary(
