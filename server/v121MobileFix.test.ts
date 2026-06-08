@@ -21,12 +21,13 @@ describe("GEO-V1.1-MobileFix", () => {
     const board = read("client/src/components/weekly/PlatformContentBoard.tsx");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
+    const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
     expect(board).toContain("weekly-platform-matrix-grid");
     expect(board).toContain("grid-cols-1");
     expect(board).toContain("lg:grid-cols-2");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
     expect(auxiliary).toContain("历史内容记录");
-    expect(auxiliary).toMatch(/open=\{defaultOpen \? undefined : false\}/);
+    expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
     expect(weekly).toContain("WeeklyContentDetailSheet");
   });
 });

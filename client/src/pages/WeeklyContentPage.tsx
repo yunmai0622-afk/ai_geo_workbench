@@ -27,6 +27,9 @@ import {
   type WeeklyContentReviewDialogMode,
 } from "@/components/weekly/WeeklyContentReviewConfirmDialog";
 import { WeeklyContentTaskControlCard } from "@/components/weekly/WeeklyContentTaskControlCard";
+import { WeeklyContentPreviewPanel } from "@/components/weekly/WeeklyContentPreviewPanel";
+import { WeeklyContentStatusBar } from "@/components/weekly/WeeklyContentStatusBar";
+import { WeeklyCollapsibleSection } from "@/components/weekly/WeeklyCollapsibleSection";
 import { WeeklyLocalAgentStatusBar } from "@/components/weekly/WeeklyLocalAgentStatusBar";
 import {
   WeeklyPublishableContentList,
@@ -41,10 +44,12 @@ import {
 } from "@shared/geoQualityScoreDisplay";
 import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
 import {
+  buildWeeklyContentTaskNextStep,
   resolveWeeklyPlatformContentStatus,
   type WeeklyContentTaskProgress,
   type WeeklyContentTaskStatus,
 } from "@shared/weeklyContentTaskStatus";
+import { CUSTOMER_STAGE_LABELS, deriveClientProjectCardDisplay } from "@/lib/projectWorkspaceDisplay";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
 import { mapPlatformContentErrorCategory } from "@/lib/aiTaskProgressErrors";
@@ -1277,6 +1282,7 @@ export default function WeeklyContentPage() {
       let pendingReviewCount = 0;
       let queuedCount = 0;
       let lastGeneratedAt: Date | null = null;
+      let lastPublishedAt: Date | null = null;
       for (const topic of topics) {
         const task = typeof topic.optimizationTaskId === "number" ? tasksById.get(topic.optimizationTaskId) : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
@@ -1301,8 +1307,19 @@ export default function WeeklyContentPage() {
               )
             : null;
         const pass = preflight?.ready ?? false;
-        if (article.status === "已发布") counts.published += 1;
-        else if (pass) counts.ready += 1;
+        if (article.status === "已发布") {
+          counts.published += 1;
+          const publishedAt = article.publishedAt ?? article.lastPublishRecordAt ?? article.createdAt;
+          if (publishedAt) {
+            const publishedDate = new Date(publishedAt);
+            if (
+              !Number.isNaN(publishedDate.getTime()) &&
+              (!lastPublishedAt || publishedDate.getTime() > lastPublishedAt.getTime())
+            ) {
+              lastPublishedAt = publishedDate;
+            }
+          }
+        } else if (pass) counts.ready += 1;
         else counts.pendingConfirm += 1;
         if (pass && isContentReviewPending(article.contentReviewStatus)) pendingReviewCount += 1;
         const articleTask = latestPublishTaskByArticle.get(article.id);
@@ -1345,20 +1362,24 @@ export default function WeeklyContentPage() {
         platformArticle && typeof platformArticle.topicId === "number"
           ? topicsById.get(platformArticle.topicId)
           : undefined;
-      const lastGeneratedAtLabel = lastGeneratedAt
-        ? lastGeneratedAt.toLocaleString("zh-CN", {
-            month: "numeric",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : null;
+      const formatBoardTimeLabel = (value: Date | null) =>
+        value
+          ? value.toLocaleString("zh-CN", {
+              month: "numeric",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : null;
+      const lastGeneratedAtLabel = formatBoardTimeLabel(lastGeneratedAt);
+      const lastPublishedAtLabel = formatBoardTimeLabel(lastPublishedAt);
       return {
         def,
         counts,
         pendingReviewCount,
         queuedCount,
         lastGeneratedAtLabel,
+        lastPublishedAtLabel,
         platformRole: getWeeklyPlatformContentRole(def.key),
         platformGenerationGoal: buildWeeklyPlatformGenerationGoal(def.key, linkedQuestion, sceneLabel),
         publishHint:
@@ -1566,6 +1587,40 @@ export default function WeeklyContentPage() {
       publishedCount,
     };
   }, [contentCardModels, pendingReviewCount, enqueueReadyCount]);
+
+  const customerStageLabel = useMemo(() => {
+    const metrics = workspaceSummaryQuery.data;
+    if (!metrics || !selectedProjectId) return CUSTOMER_STAGE_LABELS.generate_content;
+    const projectStatus = metrics.hasAnalysis
+      ? "analysis_done"
+      : metrics.hasGeoScore
+        ? "score_done"
+        : metrics.aiTestResultCount > 0
+          ? "responses_imported"
+          : "";
+    return deriveClientProjectCardDisplay({
+      status: projectStatus,
+      articleCount: metrics.articleCount,
+      publishCount: metrics.publishRecordCount,
+      latestGeoScore: metrics.geoScore,
+      aiTestCount: metrics.aiTestResultCount,
+    }).stageLabel;
+  }, [workspaceSummaryQuery.data, selectedProjectId]);
+
+  const statusBarNextStep = useMemo(
+    () =>
+      buildWeeklyContentTaskNextStep({
+        pendingReviewCount: taskProgress.pendingReviewCount,
+        publishReadyCount: taskProgress.publishReadyCount,
+        generatedCount: taskProgress.generatedCount,
+      }),
+    [taskProgress],
+  );
+
+  const previewCards = useMemo(
+    () => displayContentCards.filter(card => card.statusFilterKey !== "published").slice(0, 6),
+    [displayContentCards],
+  );
 
   const recommendedPlatforms = useMemo(() => {
     const labels = new Set<string>();
@@ -2970,6 +3025,21 @@ export default function WeeklyContentPage() {
         </P0Card>
       ) : (
         <>
+          <WeeklyContentStatusBar
+            stageLabel={customerStageLabel}
+            nextStep={statusBarNextStep}
+            primaryDisabled={batchBusy}
+            onPrimaryAction={() => {
+              if (pendingReviewCount > 0 || enqueueReadyCount > 0) {
+                document
+                  .getElementById("weekly-section-publishable-content")
+                  ?.scrollIntoView({ behavior: "smooth" });
+                return;
+              }
+              void handleBatchGenerateAllPlatforms();
+            }}
+          />
+
           {geoContentTaskSource ? (
             <WeeklyContentTaskControlCard
               source={geoContentTaskSource}
@@ -2994,6 +3064,8 @@ export default function WeeklyContentPage() {
               }}
             />
           ) : null}
+
+          <WeeklyContentPreviewPanel cards={previewCards} onView={openContentDetail} />
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
 
@@ -3044,12 +3116,14 @@ export default function WeeklyContentPage() {
             </P0Card>
           ) : null}
 
-          <PlatformBatchGenerationPanel
-            queue={platformBatchQueue}
-            running={platformBatchRunning}
-            onStartBatch={() => void handleBatchGenerateAllPlatforms()}
-            onRetry={handleRetryPlatformBatchItem}
-          />
+          <WeeklyCollapsibleSection testId="weekly-aux-advanced-enhancement" title="高级内容增强">
+            <PlatformBatchGenerationPanel
+              queue={platformBatchQueue}
+              running={platformBatchRunning}
+              onStartBatch={() => void handleBatchGenerateAllPlatforms()}
+              onRetry={handleRetryPlatformBatchItem}
+            />
+          </WeeklyCollapsibleSection>
 
           {platformContentProgress.status !== "idle" && activePlatformProgressLabel ? (
             <AiTaskProgressCard

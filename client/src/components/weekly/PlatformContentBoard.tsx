@@ -20,6 +20,7 @@ export type PlatformBoardRow = {
   pendingReviewCount: number;
   queuedCount: number;
   lastGeneratedAtLabel?: string | null;
+  lastPublishedAtLabel?: string | null;
   platformRole: string;
   platformGenerationGoal: string;
   publishHint: string;
@@ -50,26 +51,23 @@ export function PlatformContentBoard({
       data-testid="weekly-platform-board"
     >
       <div className="space-y-1">
-        <h2 className={geoP0Surfaces.sectionTitle}>平台生成入口</h2>
-        <p className={geoP0Surfaces.muted}>按平台生成内容，查看各平台生成与入队进度。</p>
+        <h2 className={geoP0Surfaces.sectionTitle}>平台发布计划</h2>
+        <p className={geoP0Surfaces.muted}>按平台查看待发布进度，生成并推进各平台内容。</p>
       </div>
-      <div
-        className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
-        data-testid="weekly-platform-matrix-grid"
-      >
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2" data-testid="weekly-platform-matrix-grid">
         {rows.map(
           ({
             def,
             counts,
-            pendingReviewCount,
-            queuedCount,
             lastGeneratedAtLabel,
+            lastPublishedAtLabel,
             status,
             hasContent,
           }) => {
-            const generatedCount = counts.pendingConfirm + counts.ready + counts.published;
+            const pendingPublishCount = counts.ready;
             const statusLabel = weeklyContentTaskStatusLabel(status);
             const isGenerating = status === "GENERATING" || generatingPlatformKey === def.key;
+            const recentPublishLabel = lastPublishedAtLabel ?? lastGeneratedAtLabel ?? "暂无";
 
             return (
               <P0Card key={def.key} testId={`weekly-platform-card-${def.key}`} className="flex flex-col">
@@ -94,27 +92,17 @@ export function PlatformContentBoard({
                 </div>
                 <dl className="mt-3 space-y-1 text-xs text-gray-600">
                   <div className="flex justify-between gap-2">
-                    <dt>已生成</dt>
-                    <dd className="font-medium text-gray-800">{generatedCount}</dd>
+                    <dt>待发布</dt>
+                    <dd className="font-medium text-gray-800" data-testid={`weekly-platform-pending-${def.key}`}>
+                      {pendingPublishCount}
+                    </dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt>可入队</dt>
-                    <dd className="font-medium text-gray-800">{counts.ready}</dd>
+                    <dt>最近发布</dt>
+                    <dd className="text-gray-700" data-testid={`weekly-platform-recent-${def.key}`}>
+                      {recentPublishLabel}
+                    </dd>
                   </div>
-                  <div className="flex justify-between gap-2">
-                    <dt>待审核</dt>
-                    <dd className="font-medium text-gray-800">{pendingReviewCount}</dd>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <dt>已入队</dt>
-                    <dd className="font-medium text-gray-800">{queuedCount}</dd>
-                  </div>
-                  {lastGeneratedAtLabel ? (
-                    <div className="flex justify-between gap-2 pt-1">
-                      <dt>最近生成</dt>
-                      <dd className="text-gray-700">{lastGeneratedAtLabel}</dd>
-                    </div>
-                  ) : null}
                 </dl>
                 <div className="mt-4 flex flex-1 flex-col gap-2 border-t border-gray-100 pt-4">
                   <Button
@@ -128,17 +116,22 @@ export function PlatformContentBoard({
                     {isGenerating ? "生成中…" : "生成该平台内容"}
                   </Button>
                   {hasContent ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className={geoP0Brand.primaryOutline}
-                      disabled={boardBusy}
-                      data-testid={`weekly-view-${def.key}`}
-                      onClick={() => onView(def.key)}
-                    >
-                      查看内容
-                    </Button>
+                    <details className="text-sm">
+                      <summary className="cursor-pointer text-xs font-medium text-gray-500">更多操作</summary>
+                      <div className="mt-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className={geoP0Brand.primaryOutline}
+                          disabled={boardBusy}
+                          data-testid={`weekly-view-${def.key}`}
+                          onClick={() => onView(def.key)}
+                        >
+                          查看内容
+                        </Button>
+                      </div>
+                    </details>
                   ) : null}
                 </div>
               </P0Card>

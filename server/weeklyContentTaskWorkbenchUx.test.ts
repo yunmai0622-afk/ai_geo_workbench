@@ -12,6 +12,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   const detailSheet = read("client/src/components/weekly/WeeklyContentDetailSheet.tsx");
   const publishableList = read("client/src/components/weekly/WeeklyPublishableContentList.tsx");
   const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
+  const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
   const assistant = read("client/src/components/weekly/ContentProductionAssistantPanel.tsx");
   const shell = read("client/src/components/project/EnterpriseProjectShell.tsx");
   const statusLib = read("shared/weeklyContentTaskStatus.ts");
@@ -22,24 +23,24 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
     expect(weekly).toContain("WeeklyContentTaskControlCard");
     expect(taskCard).toContain("本轮任务总览");
     expect(weekly).toContain("PlatformContentBoard");
-    expect(board).toContain("平台生成入口");
+    expect(board).toContain("平台发布计划");
     expect(board).toContain("weekly-platform-status-");
   });
 
   it("完整正文不默认大面积展开", () => {
     expect(detailSheet).toContain("weekly-detail-full-body");
-    expect(detailSheet).toContain("查看完整正文");
+    expect(detailSheet).toContain("展开全文");
     expect(detailSheet).toContain("<details");
     expect(weekly).not.toContain("weekly-section-generated-content");
     expect(weekly).toContain("WeeklyContentDetailSheet");
   });
 
   it("辅助信息默认折叠", () => {
-    expect(auxiliary).toContain("查看平台规则");
-    expect(auxiliary).toContain("AI 可见度目标");
-    expect(auxiliary).toContain("查看内容模板库");
+    expect(auxiliary).toContain("平台规则");
+    expect(auxiliary).toContain("AI 实测跟踪");
+    expect(auxiliary).toContain("内容模板库");
     expect(auxiliary).toContain("历史内容记录");
-    expect(auxiliary).toMatch(/open=\{defaultOpen \? undefined : false\}/);
+    expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
     expect(weekly).toContain("WeeklyAuxiliarySections");
   });
 

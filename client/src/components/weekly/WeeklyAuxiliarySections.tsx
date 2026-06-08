@@ -5,6 +5,7 @@ import type { GeoContentTaskSource } from "@shared/geoContentTaskSource";
 import type { PlatformContentStrategyInput } from "@shared/platformContentRules";
 import type { WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
 import { WeeklyPlatformArticleCard } from "@/components/weekly/WeeklyPlatformArticleCard";
+import { WeeklyCollapsibleSection } from "@/components/weekly/WeeklyCollapsibleSection";
 import type { ContentReviewStatus } from "@shared/contentReviewStatus";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { Button } from "@/components/ui/button";
@@ -26,31 +27,6 @@ type Props = {
   onQuestionTemplateChange?: (id: number | null) => void;
   onGoInclusionMonitoring?: () => void;
 };
-
-function CollapsibleSection({
-  testId,
-  title,
-  defaultOpen = false,
-  children,
-}: {
-  testId: string;
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <details
-      className="rounded-xl border border-gray-200 bg-white shadow-sm"
-      data-testid={testId}
-      open={defaultOpen ? undefined : false}
-    >
-      <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800 [&::-webkit-details-marker]:hidden">
-        {title}
-      </summary>
-      <div className="space-y-4 border-t border-gray-100 p-4">{children}</div>
-    </details>
-  );
-}
 
 export function WeeklyAuxiliarySections({
   source,
@@ -91,27 +67,27 @@ export function WeeklyAuxiliarySections({
       </p>
 
       {onQuestionTemplateChange ? (
-        <CollapsibleSection testId="weekly-aux-template-library" title="查看内容模板库">
+        <WeeklyCollapsibleSection testId="weekly-aux-template-library" title="内容模板库">
           <QuestionTemplatePicker
             platform={platformStrategy.targetPublishPlatform}
             value={selectedQuestionTemplateId ?? null}
             onChange={onQuestionTemplateChange}
             disabled={strategyDisabled}
           />
-        </CollapsibleSection>
+        </WeeklyCollapsibleSection>
       ) : null}
 
-      <CollapsibleSection testId="weekly-aux-platform-rules" title="查看平台规则">
+      <WeeklyCollapsibleSection testId="weekly-aux-platform-rules" title="平台规则">
         <PlatformContentStrategyPanel
           value={platformStrategy}
           onChange={onPlatformStrategyChange}
           targetQuestionOptions={targetQuestionOptions}
           disabled={strategyDisabled}
         />
-      </CollapsibleSection>
+      </WeeklyCollapsibleSection>
 
       {source ? (
-        <CollapsibleSection testId="weekly-aux-ai-diagnosis" title="AI 可见度目标">
+        <WeeklyCollapsibleSection testId="weekly-aux-ai-diagnosis" title="AI 实测跟踪">
           <P0Card testId="weekly-ai-diagnosis-basis-collapsed">
             <dl className="space-y-3 text-sm text-gray-800">
               <div>
@@ -142,11 +118,11 @@ export function WeeklyAuxiliarySections({
               </div>
             </dl>
           </P0Card>
-        </CollapsibleSection>
+        </WeeklyCollapsibleSection>
       ) : null}
 
       {historyCards.length > 0 ? (
-        <CollapsibleSection testId="weekly-aux-history" title="历史内容记录">
+        <WeeklyCollapsibleSection testId="weekly-aux-history" title="历史内容记录">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {historyCards.map(model => (
               <WeeklyPlatformArticleCard
@@ -165,7 +141,7 @@ export function WeeklyAuxiliarySections({
               />
             ))}
           </div>
-        </CollapsibleSection>
+        </WeeklyCollapsibleSection>
       ) : null}
     </section>
   );

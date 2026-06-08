@@ -74,6 +74,160 @@ function statusBadgeClass(value: string, tone: "neutral" | "ok" | "warn" | "bad"
   }
 }
 
+function resolveSourceLabel(row: WeeklyPublishableRow): string {
+  return row.contentTypeLabel?.trim() || "内容任务";
+}
+
+function resolveStatusSummary(row: WeeklyPublishableRow): string {
+  const parts = [row.aiQcStatus, row.manualReviewStatus, row.publishStatus].filter(Boolean);
+  return parts.join(" · ");
+}
+
+function PendingContentCard({
+  row,
+  disabled,
+  onView,
+  onReviewConfirm,
+  onEnqueuePublish,
+  onGoPublishingPage,
+  onEdit,
+}: {
+  row: WeeklyPublishableRow;
+  disabled?: boolean;
+  onView: (model: WeeklyArticleCardModel) => void;
+  onReviewConfirm: (model: WeeklyArticleCardModel) => void;
+  onEnqueuePublish: (model: WeeklyArticleCardModel) => void;
+  onGoPublishingPage?: () => void;
+  onEdit?: (model: WeeklyArticleCardModel) => void;
+}) {
+  const manualPending = row.manualReviewStatus === "未审核";
+  const buttonKind = resolveWeeklyEnqueueButtonKind({
+    published: row.publishStatus === "已发布",
+    queued: row.queuedForPublish,
+    queueFailed: row.queueFailed,
+    aiQcStatus: row.aiQcStatus,
+    manualReviewPending: manualPending,
+    publishPreflightReady: row.publishPreflightReady,
+  });
+  const enqueueLabel = weeklyEnqueueButtonLabel(buttonKind);
+  const enqueueDisabled =
+    disabled ||
+    buttonKind === "blocked_qc" ||
+    buttonKind === "queued" ||
+    buttonKind === "published" ||
+    buttonKind === "failed";
+  const qcFailed = row.aiQcStatus === "未通过" || row.aiQcStatus === "未质检";
+
+  let primaryLabel: string | null = null;
+  let primaryAction: (() => void) | null = null;
+  let primaryDisabled = disabled;
+
+  if (manualPending && row.aiQcStatus === "通过") {
+    primaryLabel = "审核内容";
+    primaryAction = () => onReviewConfirm(row);
+  } else if (!manualPending && buttonKind === "enqueue") {
+    primaryLabel = "加入发布队列";
+    primaryAction = () => onEnqueuePublish(row);
+    primaryDisabled = enqueueDisabled;
+  } else if (buttonKind === "queued") {
+    primaryLabel = "查看发布任务";
+    primaryAction = onGoPublishingPage ?? null;
+  } else if (buttonKind === "failed") {
+    primaryLabel = "查看失败原因";
+    primaryAction = () => onView(row);
+  } else if (qcFailed) {
+    primaryLabel = "查看并修改";
+    primaryAction = () => (onEdit ? onEdit(row) : onView(row));
+  }
+
+  return (
+    <P0Card testId={`weekly-publishable-card-${row.id}`} className="flex flex-col gap-3">
+      <div className="min-w-0">
+        <h3 className="text-base font-semibold text-gray-900">{row.title}</h3>
+        <dl className="mt-2 grid gap-2 text-sm text-gray-700 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium text-gray-500">来源</dt>
+            <dd data-testid={`weekly-publishable-source-${row.id}`}>{resolveSourceLabel(row)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-gray-500">目标平台</dt>
+            <dd data-testid={`weekly-publishable-platform-${row.id}`}>{row.targetPlatform ?? "—"}</dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-medium text-gray-500">当前状态</dt>
+            <dd className="mt-1 flex flex-wrap items-center gap-2">
+              <span
+                className={statusBadgeClass(
+                  row.aiQcStatus,
+                  row.aiQcStatus === "通过" ? "ok" : row.aiQcStatus === "未通过" ? "bad" : "warn",
+                )}
+                data-testid={`weekly-publishable-ai-qc-${row.id}`}
+              >
+                AI质检 {row.aiQcStatus}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
+                  contentReviewStatusBadgeClass(
+                    row.manualReviewStatus === "已审核" ? "已审核可发布" : "待审核",
+                  ),
+                )}
+                data-testid={`weekly-publishable-manual-review-${row.id}`}
+              >
+                人工审核 {row.manualReviewStatus}
+              </span>
+              <span
+                className="text-xs text-gray-600"
+                data-testid={`weekly-publishable-publish-status-${row.id}`}
+              >
+                {row.publishStatus}
+              </span>
+            </dd>
+          </div>
+        </dl>
+        <p className="sr-only">{resolveStatusSummary(row)}</p>
+      </div>
+      <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+        {primaryLabel && primaryAction ? (
+          <Button
+            type="button"
+            size="sm"
+            className={geoP0Brand.primary}
+            disabled={primaryDisabled}
+            data-testid={`weekly-publishable-primary-${row.id}`}
+            onClick={primaryAction}
+          >
+            {primaryLabel}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className={geoP0Brand.primaryOutline}
+          data-testid={`weekly-publishable-view-${row.id}`}
+          onClick={() => onView(row)}
+        >
+          查看详情
+        </Button>
+        {manualPending && row.aiQcStatus === "通过" && buttonKind !== "blocked_qc" ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={geoP0Brand.primaryOutline}
+            disabled={enqueueDisabled}
+            data-testid={`weekly-publishable-enqueue-${row.id}`}
+            onClick={() => onEnqueuePublish(row)}
+          >
+            {enqueueLabel}
+          </Button>
+        ) : null}
+      </div>
+    </P0Card>
+  );
+}
+
 export function WeeklyPublishableContentList({
   rows,
   disabled,
@@ -167,169 +321,19 @@ export function WeeklyPublishableContentList({
           <p className="mt-1 text-sm text-gray-600">{emptyMessages[activeTab].hint}</p>
         </P0Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50 text-xs font-medium text-gray-500">
-              <tr>
-                <th className="px-4 py-3">平台</th>
-                <th className="px-4 py-3">标题</th>
-                <th className="px-4 py-3">AI质检</th>
-                <th className="px-4 py-3">人工审核</th>
-                <th className="px-4 py-3">封面</th>
-                <th className="px-4 py-3">账号</th>
-                <th className="px-4 py-3">发布状态</th>
-                <th className="px-4 py-3">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredRows.map(row => {
-                const manualPending = row.manualReviewStatus === "未审核";
-                const buttonKind = resolveWeeklyEnqueueButtonKind({
-                  published: row.publishStatus === "已发布",
-                  queued: row.queuedForPublish,
-                  queueFailed: row.queueFailed,
-                  aiQcStatus: row.aiQcStatus,
-                  manualReviewPending: manualPending,
-                  publishPreflightReady: row.publishPreflightReady,
-                });
-                const enqueueLabel = weeklyEnqueueButtonLabel(buttonKind);
-                const enqueueDisabled =
-                  disabled ||
-                  buttonKind === "blocked_qc" ||
-                  buttonKind === "queued" ||
-                  buttonKind === "published" ||
-                  buttonKind === "failed";
-                const qcFailed = row.aiQcStatus === "未通过" || row.aiQcStatus === "未质检";
-
-                return (
-                  <tr key={row.id} data-testid={`weekly-publishable-row-${row.id}`}>
-                    <td className="px-4 py-3 text-gray-800">{row.targetPlatform ?? "—"}</td>
-                    <td className="max-w-[12rem] truncate px-4 py-3 font-medium text-gray-900">
-                      {row.title}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={statusBadgeClass(
-                          row.aiQcStatus,
-                          row.aiQcStatus === "通过" ? "ok" : row.aiQcStatus === "未通过" ? "bad" : "warn",
-                        )}
-                        data-testid={`weekly-publishable-ai-qc-${row.id}`}
-                      >
-                        {row.aiQcStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
-                          contentReviewStatusBadgeClass(
-                            row.manualReviewStatus === "已审核" ? "已审核可发布" : "待审核",
-                          ),
-                        )}
-                        data-testid={`weekly-publishable-manual-review-${row.id}`}
-                      >
-                        {row.manualReviewStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{row.coverStatus}</td>
-                    <td className="px-4 py-3 text-gray-700">{row.accountStatus}</td>
-                    <td
-                      className="px-4 py-3 text-gray-700"
-                      data-testid={`weekly-publishable-publish-status-${row.id}`}
-                    >
-                      {row.publishStatus}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className={geoP0Brand.primaryOutline}
-                          data-testid={`weekly-publishable-view-${row.id}`}
-                          onClick={() => onView(row)}
-                        >
-                          查看
-                        </Button>
-                        {qcFailed ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className={geoP0Brand.primaryOutline}
-                            data-testid={`weekly-publishable-edit-${row.id}`}
-                            onClick={() => (onEdit ? onEdit(row) : onView(row))}
-                          >
-                            查看并修改
-                          </Button>
-                        ) : null}
-                        {manualPending && row.aiQcStatus === "通过" ? (
-                          <>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className={geoP0Brand.primaryOutline}
-                              disabled={disabled}
-                              data-testid={`weekly-publishable-review-${row.id}`}
-                              onClick={() => onReviewConfirm(row)}
-                            >
-                              审核内容
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              className={geoP0Brand.primary}
-                              disabled={enqueueDisabled}
-                              data-testid={`weekly-publishable-enqueue-${row.id}`}
-                              onClick={() => onEnqueuePublish(row)}
-                            >
-                              {enqueueLabel}
-                            </Button>
-                          </>
-                        ) : null}
-                        {!manualPending && buttonKind === "enqueue" ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            className={geoP0Brand.primary}
-                            disabled={enqueueDisabled}
-                            data-testid={`weekly-publishable-enqueue-${row.id}`}
-                            onClick={() => onEnqueuePublish(row)}
-                          >
-                            加入发布队列
-                          </Button>
-                        ) : null}
-                        {buttonKind === "queued" ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            className={geoP0Brand.primary}
-                            data-testid={`weekly-publishable-go-task-${row.id}`}
-                            onClick={onGoPublishingPage}
-                          >
-                            查看发布任务
-                          </Button>
-                        ) : null}
-                        {buttonKind === "failed" ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className={geoP0Brand.primaryOutline}
-                            data-testid={`weekly-publishable-failure-${row.id}`}
-                            onClick={() => onView(row)}
-                          >
-                            查看失败原因
-                          </Button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="grid gap-4" data-testid="weekly-publishable-card-list">
+          {filteredRows.map(row => (
+            <PendingContentCard
+              key={row.id}
+              row={row}
+              disabled={disabled}
+              onView={onView}
+              onReviewConfirm={onReviewConfirm}
+              onEnqueuePublish={onEnqueuePublish}
+              onGoPublishingPage={onGoPublishingPage}
+              onEdit={onEdit}
+            />
+          ))}
         </div>
       )}
     </section>

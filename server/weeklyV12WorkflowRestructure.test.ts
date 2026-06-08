@@ -14,6 +14,7 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
   const taskCard = read("client/src/components/weekly/WeeklyContentTaskControlCard.tsx");
   const board = read("client/src/components/weekly/PlatformContentBoard.tsx");
   const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
+  const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
 
   it("weekly page title and three-screen structure", () => {
     expect(weekly).toContain("GEO 内容生产工作台");
@@ -22,7 +23,7 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
     expect(weekly).toContain("PlatformContentBoard");
     expect(taskCard).toContain("本轮任务总览");
     expect(publishableList).toContain("待处理内容");
-    expect(board).toContain("平台生成入口");
+    expect(board).toContain("平台发布计划");
   });
 
   it("pending content list has four tabs", () => {
@@ -68,9 +69,9 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
   });
 
   it("auxiliary sections collapsed and inclusion hint", () => {
-    expect(auxiliary).toContain("查看平台规则");
-    expect(auxiliary).toContain("查看内容模板库");
-    expect(auxiliary).toMatch(/open=\{defaultOpen \? undefined : false\}/);
+    expect(auxiliary).toContain("平台规则");
+    expect(auxiliary).toContain("内容模板库");
+    expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
     expect(auxiliary).toContain("收录复测中心");
     expect(auxiliary).toContain("T1/T2/T3");
   });

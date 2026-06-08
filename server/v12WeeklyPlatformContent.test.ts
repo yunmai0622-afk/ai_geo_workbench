@@ -40,7 +40,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
     for (const label of ["小红书", "知乎", "百家号", "头条号", "搜狐号", "网易号", "公众号", "其他平台"]) {
       expect(defs).toContain(label);
     }
-    expect(board).toContain("平台生成入口");
+    expect(board).toContain("平台发布计划");
     expect(board).toContain("生成该平台内容");
     expect(board).toContain("generatingPlatformKey === def.key");
     expect(weekly).toContain("platform-content-progress");

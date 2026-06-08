@@ -13,6 +13,7 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
   const localAgentBar = read("client/src/components/weekly/WeeklyLocalAgentStatusBar.tsx");
   const assistant = read("client/src/components/weekly/ContentProductionAssistantPanel.tsx");
   const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
+  const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
   const taskCard = read("client/src/components/weekly/WeeklyContentTaskControlCard.tsx");
   const board = read("client/src/components/weekly/PlatformContentBoard.tsx");
 
@@ -23,7 +24,7 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
     expect(weekly).toContain("WeeklyPublishableContentList");
     expect(weekly).toContain("WeeklyContentDetailSheet");
     expect(taskCard).toContain("本轮任务总览");
-    expect(board).toContain("平台生成入口");
+    expect(board).toContain("平台发布计划");
   });
 
   it("does not show long body by default on main page", () => {
@@ -76,10 +77,10 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
   });
 
   it("auxiliary sections downgraded", () => {
-    expect(auxiliary).toContain("查看平台规则");
-    expect(auxiliary).toContain("查看内容模板库");
+    expect(auxiliary).toContain("平台规则");
+    expect(auxiliary).toContain("内容模板库");
     expect(auxiliary).toContain("收录复测中心");
-    expect(auxiliary).toMatch(/open=\{defaultOpen \? undefined : false\}/);
+    expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
   });
 
   it("assistant panel shows task-relevant stats", () => {

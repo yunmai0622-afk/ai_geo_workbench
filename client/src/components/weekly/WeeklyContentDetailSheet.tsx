@@ -114,7 +114,7 @@ export function WeeklyContentDetailSheet({
           {body ? (
             <details className="rounded-lg border border-gray-200 bg-gray-50" data-testid="weekly-detail-full-body">
               <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-800">
-                查看完整正文
+                展开全文
               </summary>
               <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap border-t border-gray-200 px-4 py-3 text-xs leading-relaxed text-gray-800">
                 {body}
