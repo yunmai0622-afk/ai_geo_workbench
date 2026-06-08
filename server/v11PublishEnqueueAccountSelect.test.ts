@@ -10,7 +10,7 @@ describe("GEO-V1.1-Account-Select-Polish", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     const labels = read("shared/publishEnqueueAccountSelect.ts");
     expect(weekly).toContain("formatPublishEnqueueAccountOptionLabel");
-    expect(weekly).toContain("publishEnqueueLoginStatusLabel");
+    expect(labels).toContain("publishEnqueueLoginStatusLabel");
     expect(labels).toContain("最近发布");
     expect(labels).toContain("需重新登录");
   });

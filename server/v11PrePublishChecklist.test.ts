@@ -16,11 +16,13 @@ describe("GEO-V1.1-Pre-Publish-Checklist", () => {
     expect(mod).toContain("evaluatePrePublishChecklist");
   });
 
-  it("weekly publish dialog shows checklist and blocks confirm", () => {
+  it("weekly publish dialog shows checklist summary and blocks confirm", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     const panel = read("client/src/components/publishing/PublishPrePublishChecklist.tsx");
     expect(weekly).toContain("PublishPrePublishChecklist");
+    expect(weekly).toContain('variant="summary"');
     expect(panel).toContain("publish-pre-checklist");
+    expect(panel).toContain("publish-pre-checklist-summary");
     expect(weekly).toContain("activePublishPreflight");
     expect(weekly).toContain("formatPublishPreflightBlockMessage");
   });

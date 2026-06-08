@@ -9,7 +9,7 @@ describe("publish modal stability static", () => {
   it("WeeklyContentPage 弹窗打开不自动 sync 到 Web", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weekly).toContain("publishDialogAccountSnapshot");
-    expect(weekly).toContain("LocalAgentConnectionPanel");
+    expect(weekly).not.toContain("LocalAgentConnectionPanel");
     expect(weekly).not.toContain("hydratePublishDialogAgent({ syncToWeb: false })");
     expect(weekly).not.toMatch(
       /\[[^\]]*publishDialogOpen[^\]]*hydratePublishDialogAgent|\[[^\]]*hydratePublishDialogAgent[^\]]*publishDialogOpen/,

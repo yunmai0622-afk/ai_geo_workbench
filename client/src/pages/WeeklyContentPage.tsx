@@ -1,4 +1,3 @@
-import { LocalAgentConnectionPanel } from "@/components/publishing/LocalAgentConnectionPanel";
 import { PublishPrePublishChecklist } from "@/components/publishing/PublishPrePublishChecklist";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
@@ -110,10 +109,7 @@ import {
   shouldBlockPublishForGeoQuality,
 } from "@shared/geoQualityStale";
 import { getPublishTimeSuggest } from "@shared/publishTimeSuggest";
-import {
-  formatPublishEffectPrediction,
-  PUBLISH_EFFECT_PREDICTION_LINES,
-} from "@shared/publishEffectPrediction";
+import { formatPublishEffectPrediction } from "@shared/publishEffectPrediction";
 import {
   formatPublishSuccessBody,
   formatPublishSuccessPlatformPhrase,
@@ -123,7 +119,6 @@ import {
 } from "@shared/publishSuccessNotification";
 import {
   formatPublishEnqueueAccountOptionLabel,
-  publishEnqueueLoginStatusLabel,
   PUBLISH_ENQUEUE_RELOGIN_ACTION_LABEL,
   PUBLISH_ENQUEUE_SESSION_EXPIRED_HINT,
   readLastEnqueuePublishAccountId,
@@ -765,15 +760,6 @@ export default function WeeklyContentPage() {
     () => hydratePublishDialogAgent({ syncToWeb: true }),
     [hydratePublishDialogAgent],
   );
-
-  const runCheckConnectionWithFeedback = useCallback(async () => {
-    const result = await checkConnection();
-    applyPublishDialogAgentSnapshot(result.online, result.accountSnapshot);
-    if (result.feedback.kind === "success") toast.success(result.feedback.message);
-    else if (result.feedback.kind === "info") toast.message(result.feedback.message);
-    else toast.error(result.feedback.message);
-    return result;
-  }, [applyPublishDialogAgentSnapshot, checkConnection]);
 
   const getAllEnabledAccountsForPlatform = useCallback(
     (slug: string) => {
@@ -3294,333 +3280,250 @@ export default function WeeklyContentPage() {
       </Dialog>
 
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-        <DialogContent className="border-gray-200 bg-white text-gray-900 sm:max-w-md" data-testid="publish-to-platform-dialog">
-          <DialogHeader>
+        <DialogContent
+          className="flex max-h-[min(80vh,400px)] flex-col gap-0 border-gray-200 bg-white p-0 text-gray-900 sm:max-w-md"
+          data-testid="publish-to-platform-dialog"
+        >
+          <DialogHeader className="shrink-0 border-b border-gray-100 px-6 py-4">
             <DialogTitle>加入发布队列</DialogTitle>
             <DialogDescription className="text-gray-500">
-              {publishArticle?.title ?? "当前文章"} · 各平台内容独立，本篇不支持一稿多发
+              确认发布目标后提交至本地客户端 · 各平台内容独立，本篇不支持一稿多发
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-xs text-gray-600">
-              任务将发送至本地 GEO 发布客户端，由本篇对应平台账号执行填稿。
-            </p>
-            <LocalAgentConnectionPanel
-              status={localAgentConnectionStatus}
-              checking={localAgentConnectionStatus === "CHECKING"}
-              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 shadow-none"
-              onCheckConnection={() => void runCheckConnectionWithFeedback()}
-              onRefreshAccountStatus={() => void hydratePublishDialogAgent({ syncToWeb: true })}
-            />
-            <PublishPrePublishChecklist preflightChecks={activePublishPreflight?.checks ?? null} />
-            {activePublishPreflight && !activePublishPreflight.ready ? (
-              <p
-                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-                data-testid="publish-readiness-block"
-              >
-                {formatPublishPreflightBlockMessage(activePublishPreflight) ||
-                  activePublishPreflight.readiness?.message}
-              </p>
-            ) : null}
-            {activePublishPreflight?.ready &&
-            publishArticle?.geoQualityRecommendation === "revise" ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                内容有优化空间，确认后可继续发布。
-              </p>
-            ) : null}
-            {publishDialogNicknamePendingHint ? (
-              <p
-                className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900"
-                data-testid="publish-dialog-nickname-pending-hint"
-              >
-                当前账号已登录有效，但暂未识别真实昵称。可继续发布，或点击重新检测刷新昵称。
-              </p>
-            ) : null}
-            {publishAccountGroupWarnings.map(w => (
-              <p
-                key={w.slug}
-                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800"
-                data-testid="account-group-mismatch-hint"
-              >
-                <span className="font-medium">{w.platformLabel}：</span>
-                {w.message}
-              </p>
-            ))}
-          </div>
-          <div className="space-y-3 py-2">
-            {activePublishPreflight?.resolvedPlatform?.recognized ? (
-              <div className="space-y-1">
-                <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
-                  发布平台：<span className="font-medium">{activePublishPreflight.platformLabel}</span>
-                  {!getArticlePublishPlatform({
-                    generationBasis: publishArticle?.generationBasis ?? null,
-                    targetPlatform: publishArticle?.targetPlatform,
-                    publishPlatform: publishArticle?.publishPlatform,
-                  }).recognized && manualPublishPlatform ? (
-                    <span className="ml-1 text-xs text-amber-700">（手动指定）</span>
-                  ) : null}
-                </p>
-                {publishDialogSlug ? (
-                  <p
-                    className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700"
-                    data-testid="publish-time-suggest"
-                  >
-                    <span className="font-medium text-gray-900">建议发布时间：</span>
-                    {getPublishTimeSuggest(publishDialogSlug)}
-                  </p>
-                ) : null}
-                {publishDialogSlug && isBindingPublishPlatform(publishDialogSlug) ? (
-                  (() => {
-                    const selectable = getEnqueueSelectableAccountsForPlatform(publishDialogSlug);
-                    const picked = pickSelectedPublishAccount(publishDialogSlug);
-                    const localEntry = publishDialogAccountSnapshot.find(
-                      e => e.platform === publishDialogSlug && e.loginStatus === "valid",
-                    );
-                    if (selectable.length === 0 && !localEntry) return null;
-                    const accountNameLabel =
-                      picked?.accountName ??
-                      selectable[0]?.accountName ??
-                      (localEntry?.displayNameVerified && localEntry.displayName
-                        ? localEntry.displayName
-                        : LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME);
-                    const statusLabel = picked
-                      ? publishEnqueueLoginStatusLabel(picked.sessionStatus)
-                      : selectable[0]
-                        ? publishEnqueueLoginStatusLabel(selectable[0].sessionStatus)
-                        : "有效";
-                    return (
-                      <p className="text-xs text-gray-600" data-testid="publish-dialog-account-status">
-                        账号名称：{accountNameLabel}
-                        <span className="ml-2">登录状态：{statusLabel}</span>
-                      </p>
-                    );
-                  })()
-                ) : null}
-              </div>
-            ) : (
-              <div className="space-y-2" data-testid="publish-dialog-platform-unknown">
-                <p className="text-sm text-amber-800">
-                  本篇为历史内容或未写入发布平台，无法自动识别。请手动选择发布平台后继续：
-                </p>
-                <label className="block text-xs font-medium text-gray-600" htmlFor="manual-publish-platform">
-                  手动指定发布平台
-                </label>
-                <select
-                  id="manual-publish-platform"
-                  className={aiInput}
-                  value={manualPublishPlatform}
-                  onChange={e => setManualPublishPlatform(e.target.value as BindingPublishPlatform | "")}
-                  data-testid="manual-publish-platform-select"
-                >
-                  <option value="">请选择</option>
-                  {PUBLISH_QUEUE_PLATFORMS.map(p => (
-                    <option key={p.slug} value={p.slug}>
-                      {p.label}
-                    </option>
-                  ))}
-                  <option value="" disabled>
-                    — 以下平台请人工发布 —
-                  </option>
-                  <option value="xiaohongshu" disabled>
-                    小红书（本地客户端暂不支持自动发布）
-                  </option>
-                  <option value="wechat" disabled>
-                    公众号（请使用资产发布记录人工登记）
-                  </option>
-                </select>
-              </div>
-            )}
-            <div
-              className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900"
-              data-testid="publish-effect-prediction"
-            >
-              <p className="font-medium text-emerald-950">发布后效果预期</p>
-              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-emerald-900">
-                {PUBLISH_EFFECT_PREDICTION_LINES.map(line => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-            {publishDialogSlug ? (
-              PUBLISH_QUEUE_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
-              const selectableAccounts = isBindingPublishPlatform(p.slug)
-                ? getEnqueueSelectableAccountsForPlatform(p.slug)
-                : [];
-              const readyAccounts = isBindingPublishPlatform(p.slug) ? getPublishReadyAccountsForPlatform(p.slug) : [];
-              const legacyAccounts = isBindingPublishPlatform(p.slug)
-                ? selectableAccounts.filter(a => !a.localProfileId?.trim() || !a.localAgentId?.trim())
-                : [];
-              const selected = isBindingPublishPlatform(p.slug) ? pickSelectedPublishAccount(p.slug) : null;
-              const needsPick = selectableAccounts.length > 1 && !selectedPublishAccountIds[p.slug];
-              const sessionExpired =
-                selected != null &&
-                isBindingPublishPlatform(p.slug) &&
-                selected.sessionStatus === "expired";
-              const renderAccountSummary = (a: PlatformAccountItem) =>
-                formatPublishEnqueueAccountOptionLabel({
-                  accountName: a.accountName,
-                  sessionStatus: a.sessionStatus,
-                  lastLoginAt: a.lastLoginAt ?? null,
-                });
-              return (
-                <div key={p.slug} className="flex flex-col gap-2 rounded-lg border border-gray-200 px-3 py-2">
-                  <span className="text-sm font-medium">{p.label}</span>
-                  {isBindingPublishPlatform(p.slug) ? (
-                    <div className="space-y-2">
-                      {selectableAccounts.length === 0 ? (
-                        <span className="text-xs text-amber-600">无可发布账号（需绑定本地环境且登录有效）</span>
-                      ) : selectableAccounts.length === 1 ? (
-                        <span className="text-xs text-gray-600" data-testid="publish-dialog-single-account">
-                          发布账号：{renderAccountSummary(selectableAccounts[0]!)}
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-xs text-gray-500">选择发布账号（必选）</span>
-                          <select
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-                            value={selectedPublishAccountIds[p.slug] ?? ""}
-                            onChange={e => {
-                              const accountId = Number(e.target.value);
-                              if (!accountId) return;
-                              rememberEnqueuePublishAccount(p.slug, accountId);
-                            }}
-                            onClick={e => e.stopPropagation()}
-                            data-testid="publish-dialog-account-select"
-                          >
-                            <option value="">请选择账号</option>
-                            {selectableAccounts.map(a => (
-                              <option key={a.id} value={a.id}>
-                                {renderAccountSummary(a)}
-                              </option>
-                            ))}
-                          </select>
-                          {selected ? (
-                            <span className="text-xs text-gray-600">
-                              已选：{renderAccountSummary(selected)}
-                            </span>
-                          ) : null}
-                        </>
-                      )}
-                      {sessionExpired ? (
-                        <div
-                          className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
-                          data-testid="publish-enqueue-session-expired"
-                        >
-                          <p className="text-xs text-amber-900">{PUBLISH_ENQUEUE_SESSION_EXPIRED_HINT}</p>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="border-amber-500 text-amber-800"
-                            data-testid="publish-enqueue-relogin"
-                            onClick={() => {
-                              void focusLocalAgentAccountsTab()
-                                .then(r => {
-                                  if (r.ok) toast.success("已切换到本地客户端「账号环境」");
-                                  else toast.error(toUserFacingError(r.message, "请手动打开本地客户端"));
-                                })
-                                .catch(() => toast.message("请在本机打开 GEO 本地发布客户端"));
-                            }}
-                          >
-                            {PUBLISH_ENQUEUE_RELOGIN_ACTION_LABEL}
-                          </Button>
-                        </div>
-                      ) : null}
-                      {legacyAccounts.length > 0 ? (
-                        <p className="text-xs text-amber-600">
-                          {legacyAccounts.length} 个账号需在企业档案重新绑定本地客户端后方可发布。
-                        </p>
-                      ) : null}
-                      {needsPick ? (
-                        <span className="text-xs text-red-600">该平台有多个账号，请选择后再发布</span>
-                      ) : null}
-                      {selected && !isPublishReadyAccount(selected) && !sessionExpired ? (
-                        <span className="text-xs text-amber-600">
-                          当前账号尚未就绪，请完成本地绑定并检测登录态后再发布。
-                        </span>
-                      ) : null}
-                      {readyAccounts.length === 0 && selectableAccounts.length > 0 && !sessionExpired ? (
-                        <span className="text-xs text-amber-600">暂无可直接发布的账号，请检查登录状态与本地绑定。</span>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <span className="pl-7 text-xs text-gray-500">无需绑定平台账号</span>
-                  )}
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <section className="space-y-3" data-testid="publish-dialog-target-section">
+              <p className="text-xs font-medium text-gray-500">发布目标</p>
+              <div className="space-y-2 rounded-lg border border-gray-200 px-3 py-2">
+                <div>
+                  <p className="text-xs text-gray-500">文章标题</p>
+                  <p className="text-sm font-medium text-gray-900">{publishArticle?.title ?? "当前文章"}</p>
                 </div>
-              );
-            })
-            ) : null}
-          </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-col">
-            {activePublishPreflight?.blockingCodes.includes("PLATFORM_ACCOUNT_VALID") &&
-            activePublishPreflight.checks.find(c => c.code === "PLATFORM_ACCOUNT_VALID")?.action ===
-              "去账号环境" ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-amber-500 text-amber-700"
-                data-testid="publish-readiness-open-accounts"
-                onClick={() => {
-                  void focusLocalAgentAccountsTab()
-                    .then(r => {
-                      if (r.ok) toast.success("已切换到本地客户端「账号环境」");
-                      else toast.error(toUserFacingError(r.message, "请手动打开本地客户端"));
+                {activePublishPreflight?.resolvedPlatform?.recognized ? (
+                  <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
+                    发布平台：
+                    <span className="font-medium">{activePublishPreflight.platformLabel}</span>
+                    {!getArticlePublishPlatform({
+                      generationBasis: publishArticle?.generationBasis ?? null,
+                      targetPlatform: publishArticle?.targetPlatform,
+                      publishPlatform: publishArticle?.publishPlatform,
+                    }).recognized && manualPublishPlatform ? (
+                      <span className="ml-1 text-xs text-amber-700">（手动指定）</span>
+                    ) : null}
+                  </p>
+                ) : (
+                  <div className="space-y-2" data-testid="publish-dialog-platform-unknown">
+                    <p className="text-sm text-amber-800">
+                      本篇为历史内容或未写入发布平台，无法自动识别。请手动选择发布平台后继续：
+                    </p>
+                    <label className="block text-xs font-medium text-gray-600" htmlFor="manual-publish-platform">
+                      手动指定发布平台
+                    </label>
+                    <select
+                      id="manual-publish-platform"
+                      className={aiInput}
+                      value={manualPublishPlatform}
+                      onChange={e => setManualPublishPlatform(e.target.value as BindingPublishPlatform | "")}
+                      data-testid="manual-publish-platform-select"
+                    >
+                      <option value="">请选择</option>
+                      {PUBLISH_QUEUE_PLATFORMS.map(p => (
+                        <option key={p.slug} value={p.slug}>
+                          {p.label}
+                        </option>
+                      ))}
+                      <option value="" disabled>
+                        — 以下平台请人工发布 —
+                      </option>
+                      <option value="xiaohongshu" disabled>
+                        小红书（本地客户端暂不支持自动发布）
+                      </option>
+                      <option value="wechat" disabled>
+                        公众号（请使用资产发布记录人工登记）
+                      </option>
+                    </select>
+                  </div>
+                )}
+                {publishDialogSlug
+                  ? PUBLISH_QUEUE_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
+                      const selectableAccounts = isBindingPublishPlatform(p.slug)
+                        ? getEnqueueSelectableAccountsForPlatform(p.slug)
+                        : [];
+                      const readyAccounts = isBindingPublishPlatform(p.slug)
+                        ? getPublishReadyAccountsForPlatform(p.slug)
+                        : [];
+                      const legacyAccounts = isBindingPublishPlatform(p.slug)
+                        ? selectableAccounts.filter(
+                            a => !a.localProfileId?.trim() || !a.localAgentId?.trim(),
+                          )
+                        : [];
+                      const selected = isBindingPublishPlatform(p.slug)
+                        ? pickSelectedPublishAccount(p.slug)
+                        : null;
+                      const needsPick =
+                        selectableAccounts.length > 1 && !selectedPublishAccountIds[p.slug];
+                      const sessionExpired =
+                        selected != null &&
+                        isBindingPublishPlatform(p.slug) &&
+                        selected.sessionStatus === "expired";
+                      const renderAccountSummary = (a: PlatformAccountItem) =>
+                        formatPublishEnqueueAccountOptionLabel({
+                          accountName: a.accountName,
+                          sessionStatus: a.sessionStatus,
+                          lastLoginAt: a.lastLoginAt ?? null,
+                        });
+                      return (
+                        <div key={p.slug} className="space-y-2">
+                          {isBindingPublishPlatform(p.slug) ? (
+                            <>
+                              {selectableAccounts.length === 0 ? (
+                                <span className="text-xs text-amber-600">
+                                  无可发布账号（需绑定本地环境且登录有效）
+                                </span>
+                              ) : selectableAccounts.length === 1 ? (
+                                <span className="text-xs text-gray-600" data-testid="publish-dialog-single-account">
+                                  发布账号：{renderAccountSummary(selectableAccounts[0]!)}
+                                </span>
+                              ) : (
+                                <>
+                                  <label
+                                    className="block text-xs text-gray-500"
+                                    htmlFor={`publish-account-${p.slug}`}
+                                  >
+                                    发布账号
+                                  </label>
+                                  <select
+                                    id={`publish-account-${p.slug}`}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                                    value={selectedPublishAccountIds[p.slug] ?? ""}
+                                    onChange={e => {
+                                      const accountId = Number(e.target.value);
+                                      if (!accountId) return;
+                                      rememberEnqueuePublishAccount(p.slug, accountId);
+                                    }}
+                                    onClick={e => e.stopPropagation()}
+                                    data-testid="publish-dialog-account-select"
+                                  >
+                                    <option value="">请选择账号</option>
+                                    {selectableAccounts.map(a => (
+                                      <option key={a.id} value={a.id}>
+                                        {renderAccountSummary(a)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {selected ? (
+                                    <span className="text-xs text-gray-600">
+                                      已选：{renderAccountSummary(selected)}
+                                    </span>
+                                  ) : null}
+                                </>
+                              )}
+                              {sessionExpired ? (
+                                <div
+                                  className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                                  data-testid="publish-enqueue-session-expired"
+                                >
+                                  <p className="text-xs text-amber-900">{PUBLISH_ENQUEUE_SESSION_EXPIRED_HINT}</p>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-amber-500 text-amber-800"
+                                    data-testid="publish-enqueue-relogin"
+                                    onClick={() => {
+                                      void focusLocalAgentAccountsTab()
+                                        .then(r => {
+                                          if (r.ok) toast.success("已切换到本地客户端「账号环境」");
+                                          else toast.error(toUserFacingError(r.message, "请手动打开本地客户端"));
+                                        })
+                                        .catch(() => toast.message("请在本机打开 GEO 本地发布客户端"));
+                                    }}
+                                  >
+                                    {PUBLISH_ENQUEUE_RELOGIN_ACTION_LABEL}
+                                  </Button>
+                                </div>
+                              ) : null}
+                              {legacyAccounts.length > 0 ? (
+                                <p className="text-xs text-amber-600">
+                                  {legacyAccounts.length} 个账号需在企业档案重新绑定本地客户端后方可发布。
+                                </p>
+                              ) : null}
+                              {needsPick ? (
+                                <span className="text-xs text-red-600">该平台有多个账号，请选择后再发布</span>
+                              ) : null}
+                              {selected && !isPublishReadyAccount(selected) && !sessionExpired ? (
+                                <span className="text-xs text-amber-600">
+                                  当前账号尚未就绪，请完成本地绑定并检测登录态后再发布。
+                                </span>
+                              ) : null}
+                              {readyAccounts.length === 0 &&
+                              selectableAccounts.length > 0 &&
+                              !sessionExpired ? (
+                                <span className="text-xs text-amber-600">
+                                  暂无可直接发布的账号，请检查登录状态与本地绑定。
+                                </span>
+                              ) : null}
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-500">无需绑定平台账号</span>
+                          )}
+                          <p className="text-xs text-gray-500" data-testid="publish-time-suggest">
+                            建议发布时间：{getPublishTimeSuggest(publishDialogSlug)}
+                          </p>
+                        </div>
+                      );
                     })
-                    .catch(() => toast.message("请在本机打开 GEO 本地发布客户端"));
-                }}
-              >
-                打开本地客户端账号环境
-              </Button>
-            ) : null}
-            {activePublishPreflight?.checks.some(
-              c =>
-                c.status === "fail" &&
-                (c.action === "刷新账号状态" ||
-                  c.code === "PLATFORM_ACCOUNT_VALID" && c.action === "刷新账号状态"),
-            ) ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-blue-500 text-blue-700"
-                data-testid="publish-readiness-refresh-status"
-                onClick={() => void hydratePublishDialogAgent({ syncToWeb: true })}
-              >
-                刷新账号状态
-              </Button>
-            ) : null}
-            {activePublishPreflight?.checks.some(
-              c => c.status === "fail" && c.action === "检测连接",
-            ) ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-blue-500 text-blue-700"
-                data-testid="publish-readiness-check-connection"
-                onClick={() => void runCheckConnectionWithFeedback()}
-              >
-                检测连接
-              </Button>
-            ) : null}
-            <div className="flex w-full gap-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setPublishDialogOpen(false)}>
-                取消
-              </Button>
-              <Button
-                type="button"
-                className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
-                disabled={
-                  createPublishTask.isPending ||
-                  selectedPlatforms.size === 0 ||
-                  (activePublishPreflight != null && !activePublishPreflight.ready)
-                }
-                onClick={() => void handleConfirmPublish()}
-              >
-                {createPublishTask.isPending ? "提交中..." : "确认加入队列"}
-              </Button>
-            </div>
+                  : null}
+              </div>
+            </section>
+            <section className="space-y-2" data-testid="publish-dialog-check-section">
+              <p className="text-xs font-medium text-gray-500">检查结果</p>
+              <PublishPrePublishChecklist
+                variant="summary"
+                preflightChecks={activePublishPreflight?.checks ?? null}
+                blockingCodes={activePublishPreflight?.blockingCodes}
+              />
+              {activePublishPreflight && !activePublishPreflight.ready ? (
+                <p className="text-xs text-red-700" data-testid="publish-readiness-block">
+                  {formatPublishPreflightBlockMessage(activePublishPreflight) ||
+                    activePublishPreflight.readiness?.message}
+                </p>
+              ) : null}
+              {activePublishPreflight?.ready && publishArticle?.geoQualityRecommendation === "revise" ? (
+                <p className="text-xs text-amber-600">内容有优化空间，确认后可继续发布。</p>
+              ) : null}
+              {publishDialogNicknamePendingHint ? (
+                <p className="text-xs text-amber-600" data-testid="publish-dialog-nickname-pending-hint">
+                  当前账号已登录有效，但暂未识别真实昵称，可继续发布。
+                </p>
+              ) : null}
+              {publishAccountGroupWarnings.map(w => (
+                <p key={w.slug} className="text-xs text-red-700" data-testid="account-group-mismatch-hint">
+                  <span className="font-medium">{w.platformLabel}：</span>
+                  {w.message}
+                </p>
+              ))}
+            </section>
+          </div>
+          <DialogFooter className="sticky bottom-0 shrink-0 gap-2 border-t border-gray-100 bg-white px-6 py-4 sm:flex-row">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setPublishDialogOpen(false)}>
+              取消
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+              disabled={
+                createPublishTask.isPending ||
+                selectedPlatforms.size === 0 ||
+                (activePublishPreflight != null && !activePublishPreflight.ready)
+              }
+              onClick={() => void handleConfirmPublish()}
+            >
+              {createPublishTask.isPending ? "提交中..." : "确认发布"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

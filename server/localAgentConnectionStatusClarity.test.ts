@@ -31,10 +31,8 @@ describe("GEO-V1.1 Local Agent connection status clarity P0", () => {
   it("weekly publish dialog exposes check connection entry", () => {
     const page = read("client/src/pages/WeeklyContentPage.tsx");
     expect(page).toContain("publish-to-platform-dialog");
-    expect(page).toContain("LocalAgentConnectionPanel");
-    expect(read("client/src/components/publishing/LocalAgentConnectionPanel.tsx")).toContain(
-      "local-agent-connection-panel",
-    );
+    expect(page).toContain("WeeklyLocalAgentStatusBar");
+    expect(page).not.toContain("<LocalAgentConnectionPanel");
     expect(page).not.toContain(LEGACY_HINT);
   });
 

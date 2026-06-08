@@ -33,12 +33,13 @@ describe("Local agent account sync to web P0", () => {
 
   it("weekly publish dialog supports refresh when status not synced", () => {
     const connHook = read("client/src/hooks/useLocalAgentConnection.ts");
-    expect(weekly).toContain("publish-readiness-refresh-status");
+    const publishing = read("client/src/pages/ContentPublishingCenterPage.tsx");
+    expect(weekly).not.toContain("publish-readiness-refresh-status");
+    expect(publishing).toContain("useLocalAgentConnection");
     expect(weekly).toContain("useLocalAgentConnection");
     expect(connHook).toContain("listLocalAgentAccountSnapshots");
-    expect(weekly).toContain("刷新账号状态");
+    expect(weekly).toContain("hydratePublishDialogAgent");
     expect(weekly).toContain("evaluatePublishPreflight");
-    expect(weekly).toContain("PLATFORM_ACCOUNT_VALID");
   });
 
   it("local agent detect triggers account status sync", () => {
