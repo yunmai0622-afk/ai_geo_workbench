@@ -11,8 +11,10 @@ import {
 describe("publishSuccessNotification", () => {
   it("formats title, body, link label and next step", () => {
     expect(PUBLISH_SUCCESS_NOTIFICATION_TITLE).toBe("发布成功");
-    expect(formatPublishSuccessBody("知乎")).toBe("文章已发布到知乎");
-    expect(PUBLISH_SUCCESS_VIEW_ARTICLE_LABEL).toBe("点击查看文章");
+    expect(formatPublishSuccessBody("知乎")).toBe(
+      "文章已发布到 知乎，建议 7 天后执行 AI 复测，确认内容是否被收录并影响 AI 推荐结果。",
+    );
+    expect(PUBLISH_SUCCESS_VIEW_ARTICLE_LABEL).toBe("查看文章");
     expect(PUBLISH_SUCCESS_NEXT_STEP).toBe("建议7天后执行复测");
   });
 

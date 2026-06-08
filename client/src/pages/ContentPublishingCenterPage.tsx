@@ -5,11 +5,12 @@ import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformSt
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
-import { PublishTaskQueueTable } from "@/components/publishing/PublishTaskQueueTable";
+import { PublishTaskQueueTable, type PublishExecutionTabKey } from "@/components/publishing/PublishTaskQueueTable";
 import {
   cardsForExecutionTab,
   PUBLISH_EXECUTION_EMPTY_HINTS,
   PUBLISH_EXECUTION_TABS,
+  resolveDefaultPublishExecutionTab,
 } from "@/lib/publishExecutionTabs";
 import {
   PublishStatusBar,
@@ -320,6 +321,7 @@ function ContentPublishingCenterPageInner() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
   const [publishSuccessNotice, setPublishSuccessNotice] = useState<PublishSuccessNotice | null>(null);
+  const [executionTab, setExecutionTab] = useState<PublishExecutionTabKey>("pending");
   const completedAgentTaskIdsRef = useRef<Set<number>>(new Set());
   const completedAgentTasksInitializedRef = useRef(false);
   const renderCountRef = useRef(0);
@@ -350,6 +352,7 @@ function ContentPublishingCenterPageInner() {
     completedAgentTasksInitializedRef.current = false;
     setPublishSuccessNotice(null);
     setManualArticleId(undefined);
+    setExecutionTab("pending");
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -482,6 +485,24 @@ function ContentPublishingCenterPageInner() {
   } = agentTaskDerivedState;
   const activeTaskCount = queueTabs.active.length;
 
+  const publishedTabCount = useMemo(
+    () => cardsForExecutionTab("published", queueTabs).length,
+    [queueTabs],
+  );
+  const waitingLinksTabCount = useMemo(
+    () => cardsForExecutionTab("waiting_links", queueTabs).length,
+    [queueTabs],
+  );
+  const defaultExecutionTab = useMemo(
+    () =>
+      resolveDefaultPublishExecutionTab({
+        publishedCount: publishedTabCount,
+        waitingLinksCount: waitingLinksTabCount,
+        hasActiveSuccessNotice: Boolean(publishSuccessNotice),
+      }),
+    [publishedTabCount, waitingLinksTabCount, publishSuccessNotice],
+  );
+
   const manualArticleSelectValue = useMemo(() => {
     if (publishableArticles.length === 0) return undefined;
     if (
@@ -603,6 +624,15 @@ function ContentPublishingCenterPageInner() {
       scoresQuery.isError ||
       publishRecordsQuery.isError ||
       autoPublishTasksQuery.isError);
+
+  useEffect(() => {
+    if (loading) return;
+    setExecutionTab(defaultExecutionTab);
+  }, [loading, defaultExecutionTab]);
+
+  useEffect(() => {
+    if (publishSuccessNotice) setExecutionTab("published");
+  }, [publishSuccessNotice]);
 
   async function handleSaveRowLink(recordId: number, explicitDraft?: string) {
     if (!selectedProjectId) return;
@@ -972,6 +1002,10 @@ function ContentPublishingCenterPageInner() {
         platformLabel={publishSuccessNotice?.platformLabel ?? ""}
         articleUrl={publishSuccessNotice?.articleUrl}
         onDismiss={() => setPublishSuccessNotice(null)}
+        onGoToInclusionMonitoring={() =>
+          selectedProjectId &&
+          setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
+        }
       />
 
       {loading ? (
@@ -986,7 +1020,7 @@ function ContentPublishingCenterPageInner() {
               <h2 className="text-base font-semibold text-gray-900">发布任务队列</h2>
               <p className="mt-1 text-xs text-gray-500">按状态处理待发布、发布中与失败任务。</p>
             </div>
-            <Tabs defaultValue="pending" className="mt-4 space-y-4">
+            <Tabs value={executionTab} onValueChange={value => setExecutionTab(value as PublishExecutionTabKey)} className="mt-4 space-y-4">
               <TabsList className="flex w-full gap-2 overflow-x-auto">
                 {PUBLISH_EXECUTION_TABS.map(tab => (
                   <TabsTrigger
@@ -1011,19 +1045,46 @@ function ContentPublishingCenterPageInner() {
                       <p className="mt-1 text-xs text-gray-600">
                         {PUBLISH_EXECUTION_EMPTY_HINTS[tab.key].reason}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {PUBLISH_EXECUTION_EMPTY_HINTS[tab.key].nextStep}
-                      </p>
+                      {PUBLISH_EXECUTION_EMPTY_HINTS[tab.key].nextStep ? (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {PUBLISH_EXECUTION_EMPTY_HINTS[tab.key].nextStep}
+                        </p>
+                      ) : null}
                       {tab.key === "pending" && selectedProjectId ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className={`mt-3 ${geoP0Brand.primaryOutline}`}
-                          onClick={() => setLocation(buildProjectUrl("/weekly", selectedProjectId))}
-                        >
-                          去生成/选择内容
-                        </Button>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={geoP0Brand.primaryOutline}
+                            data-testid="publish-empty-go-weekly"
+                            onClick={() => setLocation(buildProjectUrl("/weekly", selectedProjectId))}
+                          >
+                            去生成新内容
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={geoP0Brand.primaryOutline}
+                            data-testid="publish-empty-view-published"
+                            onClick={() => setExecutionTab("published")}
+                          >
+                            查看已发布
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={geoP0Brand.primaryOutline}
+                            data-testid="publish-empty-go-inclusion"
+                            onClick={() =>
+                              setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
+                            }
+                          >
+                            去收录监测
+                          </Button>
+                        </div>
                       ) : null}
                     </div>
                   ) : (

@@ -3,6 +3,7 @@ import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { buildPublishingViewModel } from "@/lib/buildPublishingViewModel";
 import { flattenPlatformAccountsForServerHeartbeat } from "@/lib/localAgentServerContext";
 import { asArray } from "@/lib/contentPublishingSafeData";
+import { resolveRecentPublishSidebarSummary } from "@/lib/publishExecutionTabs";
 import { resolvePublishStatusLocalAgentLabel } from "@/components/publishing/PublishStatusBar";
 import { trpc } from "@/lib/trpc";
 import { useMemo } from "react";
@@ -30,6 +31,22 @@ export function PublishAssistantPanel({
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const inclusionMonitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+
+  const autoInclusionByArticleAndUrl = useMemo(() => {
+    const keys = new Set<string>();
+    for (const row of asArray<{ articleId?: number; publicUrl?: string | null }>(
+      inclusionMonitoringQuery.data,
+    )) {
+      const articleId = typeof row.articleId === "number" ? row.articleId : null;
+      const url = typeof row.publicUrl === "string" ? row.publicUrl.trim() : "";
+      if (articleId && url) keys.add(`${articleId}:${url}`);
+    }
+    return keys;
+  }, [inclusionMonitoringQuery.data]);
 
   const accountGroups = useMemo(() => {
     const accounts = accountsQuery.data?.accounts;
@@ -60,9 +77,9 @@ export function PublishAssistantPanel({
       agentTasks: asArray(tasksQuery.data?.tasks),
       accountGroups,
       articleById: new Map(),
-      autoInclusionByArticleAndUrl: new Set(),
+      autoInclusionByArticleAndUrl,
     });
-  }, [selectedProjectId, tasksQuery.data?.tasks, publishRecordsQuery.data, accountGroups]);
+  }, [selectedProjectId, tasksQuery.data?.tasks, publishRecordsQuery.data, accountGroups, autoInclusionByArticleAndUrl]);
 
   const flattenedPlatformAccounts = useMemo(
     () => flattenPlatformAccountsForServerHeartbeat(accountGroups),
@@ -90,6 +107,16 @@ export function PublishAssistantPanel({
   const failedCount = viewModel?.agentTaskDerivedState.failedCount ?? 0;
   const waitingLinkCount = viewModel?.agentTaskDerivedState.waitingLinkCount ?? 0;
 
+  const recentPublishSummary = useMemo(
+    () =>
+      resolveRecentPublishSidebarSummary({
+        agentTasks: asArray(tasksQuery.data?.tasks),
+        publishRecords: asArray(publishRecordsQuery.data),
+        autoInclusionByArticleAndUrl,
+      }),
+    [tasksQuery.data?.tasks, publishRecordsQuery.data, autoInclusionByArticleAndUrl],
+  );
+
   return (
     <aside className="w-full space-y-4" data-testid="publish-assistant-panel">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -110,6 +137,18 @@ export function PublishAssistantPanel({
           <div data-testid="publish-sidebar-waiting-links">
             <dt className="text-xs font-semibold text-gray-500">待回填链接数</dt>
             <dd className="mt-0.5 font-semibold text-gray-900">{waitingLinkCount}</dd>
+          </div>
+          <div data-testid="publish-sidebar-recent-publish">
+            <dt className="text-xs font-semibold text-gray-500">最近发布</dt>
+            <dd className="mt-0.5 font-semibold text-gray-900">
+              {recentPublishSummary?.recentLabel ?? "暂无发布记录"}
+            </dd>
+          </div>
+          <div data-testid="publish-sidebar-recent-next-step">
+            <dt className="text-xs font-semibold text-gray-500">下一步</dt>
+            <dd className="mt-0.5 font-semibold text-gray-900">
+              {recentPublishSummary?.nextStepLabel ?? "—"}
+            </dd>
           </div>
         </dl>
       </div>

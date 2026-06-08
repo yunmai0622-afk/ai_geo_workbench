@@ -28,8 +28,10 @@ describe("GEO-V1.2 content publishing task queue UX P0", () => {
     expect(statusBar).toContain("发布失败数量");
   });
 
-  it("默认 Tab 为待发布", () => {
-    expect(page).toContain('defaultValue="pending"');
+  it("默认 Tab 按发布成功 / 待回填 / 待发布优先级切换", () => {
+    expect(page).toContain("resolveDefaultPublishExecutionTab");
+    expect(page).toContain('value={executionTab}');
+    expect(executionTabs).toContain("resolveDefaultPublishExecutionTab");
     expect(executionTabs).toContain("publish-queue-tab-pending");
     expect(executionTabs).toContain("待发布");
     expect(executionTabs).toContain("publish-queue-tab-waiting-links");
@@ -62,8 +64,17 @@ describe("GEO-V1.2 content publishing task queue UX P0", () => {
 
   it("空任务状态包含原因、下一步与去生成按钮", () => {
     expect(page).toContain("PUBLISH_EXECUTION_EMPTY_HINTS");
-    expect(executionTabs).toContain("当前项目还没有加入发布队列的内容");
-    expect(page).toContain("去生成/选择内容");
+    expect(executionTabs).toContain("当前没有待发布任务");
+    expect(page).toContain("去生成新内容");
+    expect(page).toContain("publish-empty-view-published");
+    expect(page).toContain("publish-empty-go-inclusion");
+  });
+
+  it("右侧摘要展示最近发布与下一步", () => {
+    expect(assistant).toContain("最近发布");
+    expect(assistant).toContain("下一步");
+    expect(assistant).toContain("暂无发布记录");
+    expect(assistant).toContain("resolveRecentPublishSidebarSummary");
   });
 
   it("页面打开按项目自动检测 Local Agent 并尝试同步账号", () => {

@@ -1,6 +1,8 @@
 import type { PublishTaskCardModel } from "@/lib/publishCenterDisplay";
+import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import type { PublishQueueTabKey } from "@/lib/contentPublishingSafeData";
 import type { PublishExecutionTabKey } from "@/components/publishing/PublishTaskQueueTable";
+import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 
 export const PUBLISH_EXECUTION_TABS: Array<{
   key: PublishExecutionTabKey;
@@ -20,8 +22,8 @@ export const PUBLISH_EXECUTION_EMPTY_HINTS: Record<
 > = {
   pending: {
     title: "暂无待发布任务",
-    reason: "当前项目还没有加入发布队列的内容。",
-    nextStep: "去平台化内容资产页选择内容并加入发布队列。",
+    reason: "当前没有待发布任务。你可以继续生成新内容，或查看已发布内容的收录状态。",
+    nextStep: "",
   },
   active: {
     title: "暂无发布中任务",
@@ -44,6 +46,107 @@ export const PUBLISH_EXECUTION_EMPTY_HINTS: Record<
     nextStep: "发布完成后回填公开链接以进入收录监测。",
   },
 };
+
+export function resolveDefaultPublishExecutionTab(input: {
+  publishedCount: number;
+  waitingLinksCount: number;
+  hasActiveSuccessNotice?: boolean;
+}): PublishExecutionTabKey {
+  if (input.hasActiveSuccessNotice || input.publishedCount > 0) return "published";
+  if (input.waitingLinksCount > 0) return "waiting_links";
+  return "pending";
+}
+
+function parsePublishTimestamp(value: Date | string | number | null | undefined): number {
+  if (value == null) return 0;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+export type RecentPublishSidebarInput = {
+  agentTasks: Array<{
+    articleId: number;
+    status: string;
+    platform: string;
+    resultUrl?: string | null;
+    publishedUrl?: string | null;
+    agentFinishedAt?: Date | string | number | null;
+    createdAt?: Date | string | number | null;
+  }>;
+  publishRecords: Array<{
+    articleId?: number | null;
+    publishChannel?: string | null;
+    publishStatus?: string | null;
+    publishUrl?: string | null;
+    publicUrl?: string | null;
+    publishedAt?: Date | string | number | null;
+  }>;
+  autoInclusionByArticleAndUrl?: Set<string>;
+};
+
+export function resolveRecentPublishSidebarSummary(
+  input: RecentPublishSidebarInput,
+): { recentLabel: string; nextStepLabel: string } | null {
+  type Candidate = {
+    platformLabel: string;
+    statusLabel: string;
+    timestamp: number;
+    hasPublicLink: boolean;
+    inInclusionMonitoring: boolean;
+  };
+
+  const candidates: Candidate[] = [];
+
+  for (const task of input.agentTasks) {
+    if (task.status !== "completed") continue;
+    const publishedUrl = task.resultUrl?.trim() || task.publishedUrl?.trim() || "";
+    const hasPublicLink = Boolean(publishedUrl);
+    const inInclusionMonitoring = Boolean(
+      hasPublicLink &&
+        input.autoInclusionByArticleAndUrl?.has(`${task.articleId}:${publishedUrl}`),
+    );
+    candidates.push({
+      platformLabel: publishPlatformCustomerLabel(task.platform),
+      statusLabel: publishTaskStatusCustomerLabel({ status: task.status }),
+      timestamp: parsePublishTimestamp(task.agentFinishedAt ?? task.createdAt),
+      hasPublicLink,
+      inInclusionMonitoring,
+    });
+  }
+
+  for (const record of input.publishRecords) {
+    const link = record.publicUrl?.trim() || record.publishUrl?.trim() || "";
+    const hasPublicLink = Boolean(link);
+    const articleId = typeof record.articleId === "number" ? record.articleId : null;
+    const inInclusionMonitoring = Boolean(
+      articleId && link && input.autoInclusionByArticleAndUrl?.has(`${articleId}:${link}`),
+    );
+    const statusRaw = record.publishStatus?.trim() || "";
+    const statusLabel = hasPublicLink
+      ? statusRaw || "已发布"
+      : "待回填链接";
+    candidates.push({
+      platformLabel: record.publishChannel?.trim() || "未标注平台",
+      statusLabel,
+      timestamp: parsePublishTimestamp(record.publishedAt),
+      hasPublicLink,
+      inInclusionMonitoring,
+    });
+  }
+
+  if (candidates.length === 0) return null;
+
+  const latest = candidates.sort((a, b) => b.timestamp - a.timestamp)[0]!;
+  const nextStepLabel =
+    latest.inInclusionMonitoring || (latest.hasPublicLink && latest.statusLabel === "已发布")
+      ? "7天后复测"
+      : "收录监测";
+
+  return {
+    recentLabel: `${latest.platformLabel} · ${latest.statusLabel}`,
+    nextStepLabel,
+  };
+}
 
 export function cardsForExecutionTab(
   key: PublishExecutionTabKey,

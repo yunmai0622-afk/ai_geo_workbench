@@ -12,7 +12,7 @@ describe("GEO-V1.1-Post-Publish-Reminder", () => {
     expect(page).toContain("PublishSuccessNotificationCard");
     expect(page).not.toContain("PostPublishReminderCard");
     expect(card).toContain("PUBLISH_SUCCESS_NOTIFICATION_TITLE");
-    expect(card).toContain("PUBLISH_SUCCESS_NEXT_STEP");
+    expect(card).toContain("PUBLISH_SUCCESS_GO_TO_INCLUSION_LABEL");
     expect(card).toContain("PUBLISH_SUCCESS_VIEW_ARTICLE_LABEL");
   });
 });
