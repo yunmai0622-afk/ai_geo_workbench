@@ -346,6 +346,13 @@ V1.0 必须至少支持：
 - 完成标准：脚本从零创建项目，走企业档案、资料来源、AI 回答、诊断、评分、任务、内容计划、文章、质检、反同质化、人工确认发布、发布记录、报告，并断言没有触碰 V1.0 禁止范围。
 - 禁止扩展：mock 数据、跳过真实 LLM、跳过真实 DB、跳过人工确认边界。
 
+#### GEO-V1.3 核心页面 smoke（轻量，不替代 runtime）
+
+- 命令：`pnpm accept:v1:taskflow-pages-smoke`（需另开终端 `pnpm dev` 或 `pnpm start`）
+- 环境变量：`BASE_URL`（默认 `http://127.0.0.1:3000`）、`SMOKE_PROJECT_ID`（默认 `90001`）
+- 服务未起时默认 **SKIP**（exit 0），不会阻断 static 验收。
+- `accept:v1:sellable:runtime` 仍需 `DATABASE_URL`；配置后执行 `pnpm accept:v1:sellable:runtime` 做 DB 全链路验收。
+
 ### Phase 10：部署与销售交付收口
 
 - 目标：环境配置、部署说明、销售演示路径、客户交付边界。

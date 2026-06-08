@@ -114,7 +114,7 @@ export async function detectMpPlatformNickname(
           if (text.length > 40) scanText(text);
         }
         try {
-          const w = window as Record<string, unknown>;
+          const w = window as unknown as Record<string, unknown>;
           for (const stateKey of ["__INITIAL_STATE__", "__NUXT__", "initialState", "pageData"]) {
             const state = w[stateKey];
             if (state) scanText(JSON.stringify(state));

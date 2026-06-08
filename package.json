@@ -20,6 +20,7 @@
     "accept:v1:sellable:static": "node scripts/accept_v1_sellable_static.mjs",
     "accept:v1:sellable:runtime": "node scripts/accept_v1_sellable_runtime.mjs",
     "accept:v1:sellable": "pnpm accept:v1:sellable:static && pnpm accept:v1:sellable:runtime",
+    "accept:v1:taskflow-pages-smoke": "node scripts/geo_v13_taskflow_pages_smoke.mjs",
     "accept:content-publishing:react185": "node scripts/content_publishing_react185_acceptance.mjs",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "db:migrate": "drizzle-kit migrate",
