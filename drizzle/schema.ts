@@ -1003,3 +1003,49 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 export type GeoSystemConfig = typeof geoSystemConfig.$inferSelect;
 export type InsertGeoSystemConfig = typeof geoSystemConfig.$inferInsert;
+
+/** 品牌信源图谱：各平台信源记录（P1-B） */
+export const brandSourceRecords = mysqlTable("brand_source_records", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  platform: varchar("platform", { length: 64 }).notNull(),
+  platformName: varchar("platformName", { length: 255 }),
+  url: varchar("url", { length: 2000 }),
+  isPubliclyAccessible: boolean("isPubliclyAccessible").default(false).notNull(),
+  containsBrandName: boolean("containsBrandName").default(false).notNull(),
+  containsOfficialSite: boolean("containsOfficialSite").default(false).notNull(),
+  containsCoreKeywords: boolean("containsCoreKeywords").default(false).notNull(),
+  aiCitationConfirmed: boolean("aiCitationConfirmed").default(false).notNull(),
+  isCrossSourceConsistent: boolean("isCrossSourceConsistent").default(false).notNull(),
+  notes: text("notes"),
+  lastVerifiedAt: timestamp("lastVerifiedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+/** 实体锚点配置：每个项目一份（P1-B） */
+export const entityAnchors = mysqlTable(
+  "entity_anchors",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    brandName: varchar("brandName", { length: 255 }),
+    companyName: varchar("companyName", { length: 255 }),
+    coreBusiness: text("coreBusiness"),
+    targetCustomer: text("targetCustomer"),
+    coreKeywords: json("coreKeywords").$type<string[]>().notNull().default([]),
+    officialSite: varchar("officialSite", { length: 500 }),
+    founderName: varchar("founderName", { length: 255 }),
+    typicalCases: text("typicalCases"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    projectIdUnique: uniqueIndex("entity_anchors_project_id_unique").on(table.projectId),
+  }),
+);
+
+export type BrandSourceRecord = typeof brandSourceRecords.$inferSelect;
+export type InsertBrandSourceRecord = typeof brandSourceRecords.$inferInsert;
+export type EntityAnchor = typeof entityAnchors.$inferSelect;
+export type InsertEntityAnchor = typeof entityAnchors.$inferInsert;

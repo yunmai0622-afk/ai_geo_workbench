@@ -46,6 +46,7 @@ import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
 import EffectiveActionsPage from "./pages/EffectiveActionsPage";
 import QuestionsLibraryPage from "./pages/QuestionsLibraryPage";
+import SourceGraphPage from "./pages/SourceGraphPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import KnowledgePage from "./pages/KnowledgePage";
 import LandingPage from "./pages/LandingPage";
@@ -119,6 +120,7 @@ function PrivateRoutes() {
         <Route path="/assets" component={AssetCenterPage} />
         <Route path="/diagnosis" component={AiDiagnosisFlowPage} />
         <Route path="/questions" component={QuestionsLibraryPage} />
+        <Route path="/source-graph" component={SourceGraphPage} />
         <Route path="/templates" component={TemplatesPage} />
         <Route path="/responses" component={ResponsesPage} />
         <Route path="/analysis" component={AnalysisPage} />

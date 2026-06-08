@@ -45,6 +45,7 @@ import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
+import { brandSourceGraphRouter } from "./brandSourceGraphRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
 import { deleteGeoArticleCascade } from "./geoArticleDelete";
@@ -4386,6 +4387,8 @@ ${article.markdownContent}`,
   }),
 
   platformAccounts: projectPlatformAccountsRouter,
+
+  brandSourceGraph: brandSourceGraphRouter,
 
   subscription: router({
     usage: protectedProcedure.query(async ({ ctx }) => {

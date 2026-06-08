@@ -34,6 +34,7 @@ import {
   FileText,
   Library,
   LineChart,
+  Network,
   LogOut,
   PanelLeft,
   Send,
@@ -111,6 +112,13 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "查看、编辑与管理 AI 实测问题",
         path: "/questions",
         aliases: ["/questions"],
+      },
+      {
+        icon: Network,
+        label: "品牌信源图谱",
+        desc: "录入各平台信源并维护实体一致性",
+        path: "/source-graph",
+        aliases: ["/source-graph"],
       },
       {
         icon: FileText,

@@ -16,6 +16,7 @@ import { ContentProductionAssistantPanel } from "@/components/weekly/ContentProd
 import { InclusionMonitoringAssistantPanel } from "@/components/inclusion-monitoring/InclusionMonitoringAssistantPanel";
 import { PublishAssistantPanel } from "@/components/publishing/PublishAssistantPanel";
 import { QuestionBankAssistantPanel } from "@/components/questions/QuestionBankAssistantPanel";
+import { SourceGraphAssistantPanel } from "@/components/source-graph/SourceGraphAssistantPanel";
 import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
 import { ProfileCompletenessLowHint } from "@/components/enterpriseProfile/ProfileCompletenessLowHint";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ export function EnterpriseProjectShell({ children }: Props) {
   const isInclusionMonitoringPage =
     pathname === "/inclusion-monitoring" || pathname === "/monitoring";
   const isQuestionsPage = pathname === "/questions";
+  const isSourceGraphPage = pathname === "/source-graph";
   const isMobile = useIsMobile();
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
@@ -176,6 +178,7 @@ export function EnterpriseProjectShell({ children }: Props) {
   const contentProductionAssistantPanel = <ContentProductionAssistantPanel />;
   const inclusionMonitoringAssistantPanel = <InclusionMonitoringAssistantPanel />;
   const questionBankAssistantPanel = <QuestionBankAssistantPanel />;
+  const sourceGraphAssistantPanel = <SourceGraphAssistantPanel />;
 
   const nextActionPanel = (
     <ProjectNextActionPanel
@@ -213,7 +216,9 @@ export function EnterpriseProjectShell({ children }: Props) {
         ? inclusionMonitoringAssistantPanel
         : isQuestionsPage
           ? questionBankAssistantPanel
-          : projectGrowthSidebarPanel;
+          : isSourceGraphPage
+            ? sourceGraphAssistantPanel
+            : projectGrowthSidebarPanel;
 
   return (
     <div className="space-y-0" data-testid="enterprise-project-shell">
@@ -277,7 +282,9 @@ export function EnterpriseProjectShell({ children }: Props) {
                   ? "收录复测助手"
                   : isQuestionsPage
                     ? "问题库助手"
-                    : mobileDockSummary
+                    : isSourceGraphPage
+                      ? "信源图谱助手"
+                      : mobileDockSummary
           }
         >
           {sidebarPanel}
