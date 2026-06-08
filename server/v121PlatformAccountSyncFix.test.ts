@@ -7,7 +7,11 @@ import {
   mapStoredSessionToLoginStatus,
   resolveSyncAccountDisplayName,
 } from "@shared/localAgentAccountSync";
-import { MP_NICKNAME_DOM_SELECTORS } from "../local-agent/src/agent/platforms/mpAccountNicknameDetect";
+import {
+  MP_NICKNAME_DOM_SELECTORS,
+  MP_NICKNAME_FALLBACK_URLS,
+  MP_PLATFORM_PENDING_LABEL,
+} from "../local-agent/src/agent/platforms/mpAccountNicknameDetect";
 
 const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
@@ -34,10 +38,16 @@ describe("GEO-V1.1-PlatformAccountSyncFix", () => {
   });
 
   it("各平台昵称选择器已集中定义", () => {
+    const nick = read("local-agent/src/agent/platforms/mpAccountNicknameDetect.ts");
+    expect(nick).toContain("MP_NICKNAME_PRIORITY_DOM_SELECTORS");
+    expect(nick).toContain("MP_NICKNAME_FALLBACK_URLS");
+    expect(nick).toContain("isInvalidMpNickname");
     expect(MP_NICKNAME_DOM_SELECTORS.sohu.length).toBeGreaterThan(3);
     expect(MP_NICKNAME_DOM_SELECTORS.baijiahao.length).toBeGreaterThan(5);
     expect(MP_NICKNAME_DOM_SELECTORS.toutiao).toContain('[class*="username"]');
     expect(MP_NICKNAME_DOM_SELECTORS.netease).toContain('[class*="nickname"]');
+    expect(MP_NICKNAME_FALLBACK_URLS.sohu?.length).toBeGreaterThan(0);
+    expect(MP_PLATFORM_PENDING_LABEL.sohu).toContain("昵称待识别");
   });
 
   it("mp 发布流在已登录时允许昵称占位继续", () => {

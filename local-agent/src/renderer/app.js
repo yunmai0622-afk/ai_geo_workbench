@@ -72,9 +72,14 @@ function taskFinalStatusLabel(status) {
   return labels[status] ?? STATUS_LABELS[status] ?? status ?? "进行中";
 }
 
+function accountPendingNicknameLabel(acc) {
+  const label = PLATFORM_LABELS[acc.platform] ?? acc.platform;
+  return `${label}账号（昵称待识别）`;
+}
+
 function accountCardTitle(acc) {
   if (acc.displayNameVerified === true && acc.accountName) return acc.accountName;
-  if (acc.sessionStatus === "active") return "账号已登录";
+  if (acc.sessionStatus === "active") return accountPendingNicknameLabel(acc);
   return "未检测到账号昵称";
 }
 
@@ -498,10 +503,15 @@ function renderAccountsMain() {
     const title = escapeHtml(accountCardTitle(acc));
     const webSync = Ux().accountWebSyncLabel?.(acc, dashboard.serverConnected) ?? "—";
     const publishCap = Ux().accountPublishCapabilityLabel?.(acc, isPending) ?? "—";
+    const pendingNicknameHint =
+      acc.sessionStatus === "active" && !(acc.displayNameVerified === true && acc.accountName)
+        ? `<p class="accounts-main-desc muted">已识别登录状态，暂未识别账号昵称，可进入账号主页后点击刷新同步。</p>`
+        : "";
     card.innerHTML = `
       <div class="acc-head">
         <div class="acc-title-wrap">
-          <strong class="acc-title ${acc.accountName ? "" : "warn-text"}">${title}</strong>
+          <strong class="acc-title ${acc.displayNameVerified === true && acc.accountName ? "" : "warn-text"}">${title}</strong>
+          ${pendingNicknameHint}
         </div>
         ${sessionBadge(acc)}
       </div>
