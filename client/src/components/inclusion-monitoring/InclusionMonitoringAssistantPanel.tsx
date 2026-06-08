@@ -2,6 +2,7 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { formatMentionDelta } from "@/lib/inclusionMonitoringDisplay";
 import { trpc } from "@/lib/trpc";
 import { recordPublicLink } from "@/lib/assetProgressDisplay";
+import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
 import { useMemo } from "react";
 
 export function InclusionMonitoringAssistantPanel() {
@@ -25,10 +26,20 @@ export function InclusionMonitoringAssistantPanel() {
   }, [publishRecordsQuery.data]);
 
   const mentionDeltaLabel = useMemo(() => {
+    const records = monitoringQuery.data ?? [];
+    const aiAggregate = aggregateAiTestEvidence(
+      records.map(record => ({
+        monitoringRecordId: record.id,
+        results: Array.isArray(record.aiTestResults) ? record.aiTestResults : [],
+      })),
+    );
     const baseline = summaryQuery.data?.brandMentionRate ?? null;
-    if (baseline == null) return "暂无数据";
-    return formatMentionDelta(0);
-  }, [summaryQuery.data?.brandMentionRate]);
+    const mentionDelta =
+      baseline != null && aiAggregate.questionCount > 0
+        ? aiAggregate.mentionRate - baseline
+        : null;
+    return formatMentionDelta(mentionDelta);
+  }, [monitoringQuery.data, summaryQuery.data?.brandMentionRate]);
 
   const nextRetestLabel =
     summaryQuery.data?.retestPlan?.nextSuggestion?.suggestedAtLabel ?? "暂无计划";

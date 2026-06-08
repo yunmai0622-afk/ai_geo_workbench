@@ -13,6 +13,7 @@ import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
 import { useMemo } from "react";
 import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { ContentProductionAssistantPanel } from "@/components/weekly/ContentProductionAssistantPanel";
+import { InclusionMonitoringAssistantPanel } from "@/components/inclusion-monitoring/InclusionMonitoringAssistantPanel";
 import { PublishAssistantPanel } from "@/components/publishing/PublishAssistantPanel";
 import { QuestionBankAssistantPanel } from "@/components/questions/QuestionBankAssistantPanel";
 import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
@@ -37,6 +38,8 @@ export function EnterpriseProjectShell({ children }: Props) {
   const pathname = location.split("?")[0] || location;
   const isWeeklyPage = pathname === "/weekly" || pathname === "/content-generation" || pathname === "/articles";
   const isPublishPage = pathname === "/content-publishing" || pathname === "/publish";
+  const isInclusionMonitoringPage =
+    pathname === "/inclusion-monitoring" || pathname === "/monitoring";
   const isQuestionsPage = pathname === "/questions";
   const isMobile = useIsMobile();
 
@@ -171,6 +174,7 @@ export function EnterpriseProjectShell({ children }: Props) {
   };
   const publishAssistantPanel = <PublishAssistantPanel {...publishAssistantPanelProps} />;
   const contentProductionAssistantPanel = <ContentProductionAssistantPanel />;
+  const inclusionMonitoringAssistantPanel = <InclusionMonitoringAssistantPanel />;
   const questionBankAssistantPanel = <QuestionBankAssistantPanel />;
 
   const nextActionPanel = (
@@ -205,9 +209,11 @@ export function EnterpriseProjectShell({ children }: Props) {
     ? publishAssistantPanel
     : isWeeklyPage
       ? contentProductionAssistantPanel
-      : isQuestionsPage
-        ? questionBankAssistantPanel
-        : projectGrowthSidebarPanel;
+      : isInclusionMonitoringPage
+        ? inclusionMonitoringAssistantPanel
+        : isQuestionsPage
+          ? questionBankAssistantPanel
+          : projectGrowthSidebarPanel;
 
   return (
     <div className="space-y-0" data-testid="enterprise-project-shell">
@@ -262,7 +268,17 @@ export function EnterpriseProjectShell({ children }: Props) {
 
       {isMobile ? (
         <ProjectNextActionMobileDock
-          summaryLabel={isPublishPage ? "发布助手" : isWeeklyPage ? "内容生产助手" : isQuestionsPage ? "问题库助手" : mobileDockSummary}
+          summaryLabel={
+            isPublishPage
+              ? "发布助手"
+              : isWeeklyPage
+                ? "内容生产助手"
+                : isInclusionMonitoringPage
+                  ? "收录复测助手"
+                  : isQuestionsPage
+                    ? "问题库助手"
+                    : mobileDockSummary
+          }
         >
           {sidebarPanel}
         </ProjectNextActionMobileDock>
