@@ -181,6 +181,17 @@ export const questions = mysqlTable("questions", {
   enabled: int("enabled").default(1).notNull(),
   /** T0 检测完成后自动标注的内容缺口标签（客户可读文案） */
   contentGapTags: json("contentGapTags").$type<string[]>(),
+  /** P1-A AI 搜索问题池类型：brand_search / category_recommend / scene_need / comparison / long_tail / geo_region */
+  searchPoolType: varchar("searchPoolType", { length: 64 }),
+  targetKeywords: json("targetKeywords").$type<string[]>(),
+  targetCustomerScene: text("targetCustomerScene"),
+  relatedGeoGap: text("relatedGeoGap"),
+  relatedContentTask: boolean("relatedContentTask").default(false).notNull(),
+  requiredSourceTypes: json("requiredSourceTypes").$type<string[]>(),
+  requiredEntityAnchors: json("requiredEntityAnchors").$type<string[]>(),
+  priorityLevel: varchar("priorityLevel", { length: 16 }),
+  lastTestResult: varchar("lastTestResult", { length: 32 }),
+  lastTestedAt: timestamp("lastTestedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

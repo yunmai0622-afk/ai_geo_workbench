@@ -2,6 +2,12 @@ import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { filterNavigableProjects } from "@shared/projectNavigation";
+import {
+  filterQuestionsRequiringEntityAnchor,
+  filterQuestionsRequiringSourceType,
+  mapSearchPoolTypeToLegacyQuestionType,
+  type SearchPoolQuestionType,
+} from "@shared/questionSearchPool";
 import { GEO_SYNTHETIC_AI_RESPONSE_PREFIX, isSyntheticGeoRawAnswer } from "@shared/geoSyntheticResponse";
 import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionMapping";
 import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
@@ -249,16 +255,84 @@ const projectInput = z.object({
   coreKeywords: z.array(z.string()).default([]),
 });
 
+const searchPoolQuestionTypes = [
+  "brand_search",
+  "category_recommend",
+  "scene_need",
+  "comparison",
+  "long_tail",
+  "geo_region",
+] as const;
+
+const searchPoolPriorityLevels = ["high", "medium", "low"] as const;
+
+const requiredSourceTypeValues = [
+  "official_site",
+  "case_page",
+  "zhihu",
+  "xiaohongshu",
+  "media",
+  "third_party",
+] as const;
+
+const requiredEntityAnchorValues = [
+  "brand_name",
+  "business",
+  "target_customer",
+  "keywords",
+  "website",
+  "case",
+] as const;
+
+const questionPoolFields = z.object({
+  searchPoolType: z.enum(searchPoolQuestionTypes).optional().nullable(),
+  targetKeywords: z.array(z.string()).optional().default([]),
+  targetCustomerScene: z.string().optional().nullable(),
+  relatedGeoGap: z.string().optional().nullable(),
+  relatedContentTask: z.boolean().optional().default(false),
+  requiredSourceTypes: z.array(z.enum(requiredSourceTypeValues)).optional().default([]),
+  requiredEntityAnchors: z.array(z.enum(requiredEntityAnchorValues)).optional().default([]),
+  priorityLevel: z.enum(searchPoolPriorityLevels).optional().nullable(),
+  lastTestResult: z.string().optional().nullable(),
+  lastTestedAt: z.string().optional().nullable(),
+});
+
 const questionInput = z.object({
   projectId: z.number().int().positive(),
   questionText: z.string().min(1, "请输入问题"),
-  questionType: z.enum(questionTypes),
+  questionType: z.enum(questionTypes).optional(),
   targetKeyword: z.string().optional().nullable(),
   intentLevel: z.string().optional().default("高"),
   businessValue: z.number().int().min(1).max(5).optional().default(5),
   source: z.enum(questionSources).optional().default("manual"),
   enabled: z.boolean().default(true),
-});
+}).merge(questionPoolFields);
+
+function normalizeQuestionPoolDbFields(input: z.infer<typeof questionPoolFields>) {
+  return {
+    searchPoolType: input.searchPoolType ?? null,
+    targetKeywords: input.targetKeywords ?? [],
+    targetCustomerScene: input.targetCustomerScene?.trim() || null,
+    relatedGeoGap: input.relatedGeoGap?.trim() || null,
+    relatedContentTask: input.relatedContentTask ?? false,
+    requiredSourceTypes: input.requiredSourceTypes ?? [],
+    requiredEntityAnchors: input.requiredEntityAnchors ?? [],
+    priorityLevel: input.priorityLevel ?? null,
+    lastTestResult: input.lastTestResult ?? null,
+    lastTestedAt: input.lastTestedAt ? new Date(input.lastTestedAt) : null,
+  };
+}
+
+function resolveLegacyQuestionTypeForPoolInput(input: {
+  questionType?: (typeof questionTypes)[number];
+  searchPoolType?: SearchPoolQuestionType | null;
+}): (typeof questionTypes)[number] {
+  if (input.questionType) return input.questionType;
+  if (input.searchPoolType) {
+    return mapSearchPoolTypeToLegacyQuestionType(input.searchPoolType) as (typeof questionTypes)[number];
+  }
+  return "指定问题";
+}
 
 const manualQuestionImportRow = z.object({
   questionText: z.string().min(1, "请输入问题"),
@@ -1420,7 +1494,19 @@ const geoRouter = router({
     create: protectedProcedure.input(questionInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await requireProjectAccess(ctx, input.projectId);
-      await db.insert(questions).values({ ...input, targetKeyword: input.targetKeyword?.trim() || null, intentLevel: input.intentLevel ?? "高", businessValue: input.businessValue ?? 5, source: input.source ?? "manual", enabled: input.enabled ? 1 : 0 });
+      const poolFields = normalizeQuestionPoolDbFields(input);
+      const questionType = resolveLegacyQuestionTypeForPoolInput(input);
+      await db.insert(questions).values({
+        projectId: input.projectId,
+        questionText: input.questionText,
+        questionType,
+        targetKeyword: input.targetKeyword?.trim() || null,
+        intentLevel: input.intentLevel ?? "高",
+        businessValue: input.businessValue ?? 5,
+        source: input.source ?? "manual",
+        enabled: input.enabled ? 1 : 0,
+        ...poolFields,
+      });
       await updateProjectStatus(input.projectId, "questions_ready");
       return { success: true } as const;
     }),
@@ -1431,7 +1517,19 @@ const geoRouter = router({
       if (values.projectId !== ownedProjectId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "无权将问题迁移到其它客户项目" });
       }
-      await db.update(questions).set({ ...values, targetKeyword: values.targetKeyword?.trim() || null, intentLevel: values.intentLevel ?? "高", businessValue: values.businessValue ?? 5, source: values.source ?? "manual", enabled: values.enabled ? 1 : 0 }).where(eq(questions.id, id));
+      const poolFields = normalizeQuestionPoolDbFields(values);
+      const questionType = resolveLegacyQuestionTypeForPoolInput(values);
+      await db.update(questions).set({
+        projectId: values.projectId,
+        questionText: values.questionText,
+        questionType,
+        targetKeyword: values.targetKeyword?.trim() || null,
+        intentLevel: values.intentLevel ?? "高",
+        businessValue: values.businessValue ?? 5,
+        source: values.source ?? "manual",
+        enabled: values.enabled ? 1 : 0,
+        ...poolFields,
+      }).where(eq(questions.id, id));
       return { success: true } as const;
     }),
     toggle: protectedProcedure.input(z.object({ id: z.number().int().positive(), enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
@@ -1595,6 +1693,76 @@ const geoRouter = router({
       await updateProjectStatus(input.projectId, "questions_ready");
       return { success: true, count: rows.length, typeDistribution: byType } as const;
     }),
+    togglePriority: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireQuestionAccess(ctx, input.id);
+        const rows = await db.select({ priorityLevel: questions.priorityLevel }).from(questions).where(eq(questions.id, input.id)).limit(1);
+        const nextPriority = rows[0]?.priorityLevel === "high" ? null : "high";
+        await db.update(questions).set({ priorityLevel: nextPriority }).where(eq(questions.id, input.id));
+        return { success: true, priorityLevel: nextPriority } as const;
+      }),
+    addToDiagnosisRound: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), questionId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        await requireQuestionAccess(ctx, input.questionId);
+        await db.update(questions).set({ enabled: 1 }).where(eq(questions.id, input.questionId));
+        const runningRounds = await db
+          .select()
+          .from(testRounds)
+          .where(and(eq(testRounds.projectId, input.projectId), eq(testRounds.status, "running")))
+          .orderBy(desc(testRounds.createdAt))
+          .limit(1);
+        const round = runningRounds[0];
+        if (!round) {
+          return { success: true, bound: false } as const;
+        }
+        const existing = await db
+          .select({ questionId: roundQuestions.questionId })
+          .from(roundQuestions)
+          .where(and(eq(roundQuestions.roundId, round.id), eq(roundQuestions.questionId, input.questionId)))
+          .limit(1);
+        if (existing.length === 0) {
+          await db.insert(roundQuestions).values({
+            id: randomUUID(),
+            roundId: round.id,
+            questionId: input.questionId,
+          });
+          const countRows = await db
+            .select({ questionId: roundQuestions.questionId })
+            .from(roundQuestions)
+            .where(eq(roundQuestions.roundId, round.id));
+          await db.update(testRounds).set({ questionsCount: countRows.length }).where(eq(testRounds.id, round.id));
+        }
+        return { success: true, bound: true, roundId: round.id } as const;
+      }),
+    getQuestionsRequiringSourceType: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), sourceType: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db
+          .select()
+          .from(questions)
+          .where(eq(questions.projectId, input.projectId))
+          .orderBy(desc(questions.createdAt));
+        return filterQuestionsRequiringSourceType(filterRowsWithNumericId(rows), input.sourceType);
+      }),
+    getQuestionsRequiringEntityAnchor: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), anchor: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db
+          .select()
+          .from(questions)
+          .where(eq(questions.projectId, input.projectId))
+          .orderBy(desc(questions.createdAt));
+        return filterQuestionsRequiringEntityAnchor(filterRowsWithNumericId(rows), input.anchor);
+      }),
   }),
 
   aiResponses: router({
