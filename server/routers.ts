@@ -6,10 +6,12 @@ import {
   filterQuestionsRequiringEntityAnchor,
   filterQuestionsRequiringSourceType,
   mapSearchPoolTypeToLegacyQuestionType,
+  normalizeSearchPoolType,
   type SearchPoolQuestionType,
 } from "@shared/questionSearchPool";
 import { GEO_SYNTHETIC_AI_RESPONSE_PREFIX, isSyntheticGeoRawAnswer } from "@shared/geoSyntheticResponse";
 import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionMapping";
+import { generateRuleBasedSearchPoolQuestions } from "@shared/searchPoolQuestionGenerator";
 import type { GeoQuestionTemplateReference } from "@shared/questionContentTemplates";
 import { CREATE_PROJECT_FAILED_USER_MESSAGE } from "@shared/userFacingMutationErrors";
 import { CONTENT_REVIEW_STATUSES } from "@shared/contentReviewStatus";
@@ -51,6 +53,12 @@ import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
 import { deleteGeoArticleCascade } from "./geoArticleDelete";
 import { resetProjectT0Baseline } from "./resetT0Baseline";
+import {
+  buildQuestionContentTaskExecutionSuggestion,
+  loadSearchPoolEnriched,
+  questionHasContentTask,
+  questionTaskMarker,
+} from "./questionSearchPoolService";
 
 import {
   aiResponses,
@@ -267,6 +275,12 @@ const searchPoolQuestionTypes = [
   "comparison",
   "long_tail",
   "geo_region",
+  "brand_direct",
+  "category_recommendation",
+  "scenario_need",
+  "competitor_compare",
+  "industry_location",
+  "long_tail_pain",
 ] as const;
 
 const searchPoolPriorityLevels = ["high", "medium", "low"] as const;
@@ -315,7 +329,7 @@ const questionInput = z.object({
 
 function normalizeQuestionPoolDbFields(input: z.infer<typeof questionPoolFields>) {
   return {
-    searchPoolType: input.searchPoolType ?? null,
+    searchPoolType: normalizeSearchPoolType(input.searchPoolType) ?? null,
     targetKeywords: input.targetKeywords ?? [],
     targetCustomerScene: input.targetCustomerScene?.trim() || null,
     relatedGeoGap: input.relatedGeoGap?.trim() || null,
@@ -330,11 +344,12 @@ function normalizeQuestionPoolDbFields(input: z.infer<typeof questionPoolFields>
 
 function resolveLegacyQuestionTypeForPoolInput(input: {
   questionType?: (typeof questionTypes)[number];
-  searchPoolType?: SearchPoolQuestionType | null;
+  searchPoolType?: string | null;
 }): (typeof questionTypes)[number] {
   if (input.questionType) return input.questionType;
-  if (input.searchPoolType) {
-    return mapSearchPoolTypeToLegacyQuestionType(input.searchPoolType) as (typeof questionTypes)[number];
+  const normalizedPoolType = normalizeSearchPoolType(input.searchPoolType);
+  if (normalizedPoolType) {
+    return mapSearchPoolTypeToLegacyQuestionType(normalizedPoolType) as (typeof questionTypes)[number];
   }
   return "指定问题";
 }
@@ -1767,6 +1782,136 @@ const geoRouter = router({
           .where(eq(questions.projectId, input.projectId))
           .orderBy(desc(questions.createdAt));
         return filterQuestionsRequiringEntityAnchor(filterRowsWithNumericId(rows), input.anchor);
+      }),
+    listSearchPool: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        return loadSearchPoolEnriched(db, input.projectId);
+      }),
+    generateSearchPool: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        const project = await requireProjectAccess(ctx, input.projectId);
+        const profileRows = await db
+          .select()
+          .from(enterpriseGeoProfiles)
+          .where(eq(enterpriseGeoProfiles.projectId, input.projectId))
+          .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+          .limit(1);
+        const mapped = extractProfileForQuestionGeneration({
+          profile: (profileRows[0] ?? null) as Record<string, unknown> | null,
+          project,
+        });
+        const generated = generateRuleBasedSearchPoolQuestions(mapped);
+        if (!generated.readiness.ready) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `请先完善企业档案：${generated.readiness.missingFields.join("、")}`,
+          });
+        }
+        await db
+          .delete(questions)
+          .where(and(eq(questions.projectId, input.projectId), eq(questions.source, "ai_generated")));
+        if (generated.questions.length > 0) {
+          await db.insert(questions).values(
+            generated.questions.map(item => ({
+              projectId: input.projectId,
+              questionText: item.questionText,
+              questionType: mapSearchPoolTypeToLegacyQuestionType(item.searchPoolType) as (typeof questionTypes)[number],
+              targetKeyword: null,
+              intentLevel: "高",
+              businessValue: 5,
+              source: "ai_generated" as const,
+              enabled: 1,
+              searchPoolType: item.searchPoolType,
+              targetKeywords: mapped.keywords.slice(0, 5),
+              targetCustomerScene: item.targetCustomerScene ?? null,
+              relatedGeoGap: item.relatedGeoGap,
+              relatedContentTask: false,
+              requiredSourceTypes: [],
+              requiredEntityAnchors: item.requiredEntityAnchors,
+              priorityLevel: null,
+              lastTestResult: null,
+              lastTestedAt: null,
+            })),
+          );
+        }
+        await updateProjectStatus(input.projectId, "questions_ready");
+        return {
+          success: true,
+          count: generated.questions.length,
+          newCount: generated.questions.length,
+          filteredCount: 0,
+          hadPreviousQuestions: true,
+        } as const;
+      }),
+    createContentTaskFromQuestion: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          questionId: z.number().int().positive(),
+          priority: z.enum(["P0", "P1"]).optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        await requireQuestionAccess(ctx, input.questionId);
+        const payload = await loadSearchPoolEnriched(db, input.projectId);
+        const question = payload.questions.find(item => item.id === input.questionId);
+        if (!question) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "问题不存在" });
+        }
+        const taskRows = await db
+          .select({
+            id: optimizationTasks.id,
+            taskName: optimizationTasks.taskName,
+            generationReason: optimizationTasks.generationReason,
+            executionSuggestion: optimizationTasks.executionSuggestion,
+          })
+          .from(optimizationTasks)
+          .where(eq(optimizationTasks.projectId, input.projectId));
+        const articleRows = await db
+          .select({ status: geoArticles.status, generationBasis: geoArticles.generationBasis })
+          .from(geoArticles)
+          .where(eq(geoArticles.projectId, input.projectId));
+        if (
+          questionHasContentTask(question, taskRows, articleRows.map(row => ({
+            status: row.status,
+            generationBasis: row.generationBasis,
+          })))
+        ) {
+          throw new TRPCError({ code: "CONFLICT", message: "该问题已有关联内容任务" });
+        }
+        const autoPriority =
+          question.priorityLevel === "high" ||
+          question.lastTestResult === "competitor_won" ||
+          question.lastTestResult === "not_mentioned"
+            ? "P0"
+            : "P1";
+        const priority = input.priority ?? autoPriority;
+        const marker = questionTaskMarker(input.questionId);
+        const taskName = `围绕「${question.questionText.trim().slice(0, 18)}」补齐行业文章`;
+        const generationReason = `${question.diagnosisGap}（${marker}）`;
+        const insertResult = await db.insert(optimizationTasks).values({
+          projectId: input.projectId,
+          taskType: "行业文章",
+          taskName,
+          priority,
+          generationReason,
+          executionSuggestion: buildQuestionContentTaskExecutionSuggestion(question),
+          expectedImpact: "将问题池诊断缺口转化为可被 AI 引用与推荐的行业文章。",
+          status: "todo",
+        });
+        const taskId = Number(insertResult[0]?.insertId);
+        await db
+          .update(questions)
+          .set({ relatedContentTask: true })
+          .where(and(eq(questions.id, input.questionId), eq(questions.projectId, input.projectId)));
+        return { success: true, taskId } as const;
       }),
   }),
 

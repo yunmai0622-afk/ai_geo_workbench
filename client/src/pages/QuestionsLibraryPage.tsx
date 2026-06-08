@@ -10,6 +10,7 @@ import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -22,17 +23,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
+import type { EnrichedSearchPoolQuestion } from "@shared/questionSearchPoolEnrichment";
 import {
-  buildQuestionPoolGapOverview,
   formatQuestionPoolGapMetricValue,
   groupQuestionsBySearchPoolType,
   isQuestionPoolPriority,
-  resolveQuestionPoolAiPerformanceLabel,
-  resolveQuestionPoolContentStatusLabel,
   resolveSearchPoolTypeLabel,
   resolveSourceTypeLabel,
   SEARCH_POOL_QUESTION_TYPES,
-  type SearchPoolQuestionRow,
+  type SearchPoolQuestionType,
 } from "@shared/questionSearchPool";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { Library, Plus, Sparkles, Star } from "lucide-react";
@@ -68,24 +67,19 @@ export default function QuestionsLibraryPage() {
   const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading } = useActiveProjectSelection();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
-  const [editQuestion, setEditQuestion] = useState<SearchPoolQuestionRow | null>(null);
+  const [editQuestion, setEditQuestion] = useState<EnrichedSearchPoolQuestion | null>(null);
   const [formInitial, setFormInitial] = useState<QuestionPoolFormState>(() => defaultQuestionPoolForm());
   const [activeTab, setActiveTab] = useState<string>(SEARCH_POOL_QUESTION_TYPES[0].value);
 
-  const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
+  const searchPoolQuery = trpc.geo.questions.listSearchPool.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
-  const tasksQuery = trpc.geo.tasks.list.useQuery(
-    { projectId: selectedProjectId! },
-    { enabled: enabled && Boolean(selectedProjectId) },
-  );
-  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
-    { projectId: selectedProjectId! },
-    { enabled: enabled && Boolean(selectedProjectId) },
-  );
 
   const createMutation = trpc.geo.questions.create.useMutation({
     onSuccess: async () => {
-      await utils.geo.questions.list.invalidate(projectInput);
+      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
       toast.success("问题已添加");
       setDrawerOpen(false);
     },
@@ -93,29 +87,35 @@ export default function QuestionsLibraryPage() {
   });
   const updateMutation = trpc.geo.questions.update.useMutation({
     onSuccess: async () => {
-      await utils.geo.questions.list.invalidate(projectInput);
+      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
       toast.success("问题已更新");
       setDrawerOpen(false);
       setEditQuestion(null);
     },
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "更新失败")),
   });
-  const generateMutation = trpc.geo.questions.generateTargetQuestions.useMutation({
+  const generateMutation = trpc.geo.questions.generateSearchPool.useMutation({
     onSuccess: async result => {
-      await utils.geo.questions.list.invalidate(projectInput);
+      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
       toast.success(buildGenerateMessage(result));
     },
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成高质量问题失败")),
   });
   const togglePriorityMutation = trpc.geo.questions.togglePriority.useMutation({
     onSuccess: async () => {
-      await utils.geo.questions.list.invalidate(projectInput);
+      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
     },
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "更新优先级失败")),
   });
+  const toggleEnableMutation = trpc.geo.questions.toggle.useMutation({
+    onSuccess: async () => {
+      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
+    },
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "更新启用状态失败")),
+  });
   const addToRoundMutation = trpc.geo.questions.addToDiagnosisRound.useMutation({
     onSuccess: async result => {
-      await utils.geo.questions.list.invalidate(projectInput);
+      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
       if (result.bound) {
         toast.success("已加入本轮诊断");
       } else {
@@ -125,31 +125,40 @@ export default function QuestionsLibraryPage() {
     },
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "加入诊断失败")),
   });
+  const createContentTaskMutation = trpc.geo.questions.createContentTaskFromQuestion.useMutation({
+    onSuccess: async result => {
+      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
+      toast.success("已生成内容任务");
+      if (selectedProjectId) {
+        const suffix = result.taskId ? `&taskId=${result.taskId}` : "";
+        setLocation(`${buildProjectUrl("/weekly", selectedProjectId)}${suffix}`);
+      }
+    },
+    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成内容任务失败")),
+  });
 
+  const poolPayload = searchPoolQuery.data;
+  const questions = poolPayload?.questions ?? [];
+  const gapOverview = poolPayload?.overview;
+  const groupStats = poolPayload?.groupStats;
+  const hasDiagnosisData = poolPayload?.hasDiagnosisData ?? false;
   const hasProfile = Boolean(assetSummaryQuery.data?.profile);
-  const questions = (questionsQuery.data ?? []) as SearchPoolQuestionRow[];
-  const loading = enabled && (questionsQuery.isLoading || assetSummaryQuery.isLoading || projectsLoading);
+  const loading = enabled && (searchPoolQuery.isLoading || assetSummaryQuery.isLoading || projectsLoading);
   const mutating =
     createMutation.isPending ||
     updateMutation.isPending ||
     generateMutation.isPending ||
     togglePriorityMutation.isPending ||
-    addToRoundMutation.isPending;
+    toggleEnableMutation.isPending ||
+    addToRoundMutation.isPending ||
+    createContentTaskMutation.isPending;
 
-  const gapOverview = useMemo(() => {
-    const hasDiagnosisData = Boolean(
-      workspaceSummaryQuery.data?.hasAnalysis ||
-        workspaceSummaryQuery.data?.hasCompletedT0Baseline ||
-        workspaceSummaryQuery.data?.hasGeoScore,
-    );
-    return buildQuestionPoolGapOverview({
-      questions,
-      contentTaskCount: tasksQuery.data?.length ?? 0,
-      hasDiagnosisData,
-    });
-  }, [questions, tasksQuery.data, workspaceSummaryQuery.data]);
-  const grouped = useMemo(() => groupQuestionsBySearchPoolType(questions), [questions]);
-  const hasDiagnosisData = gapOverview.hasDiagnosisData;
+  const grouped = useMemo(() => {
+    return groupQuestionsBySearchPoolType(questions) as Record<
+      SearchPoolQuestionType,
+      EnrichedSearchPoolQuestion[]
+    >;
+  }, [questions]);
 
   function openCreateDrawer() {
     setDrawerMode("create");
@@ -158,7 +167,7 @@ export default function QuestionsLibraryPage() {
     setDrawerOpen(true);
   }
 
-  function openEditDrawer(question: SearchPoolQuestionRow) {
+  function openEditDrawer(question: EnrichedSearchPoolQuestion) {
     setDrawerMode("edit");
     setEditQuestion(question);
     setFormInitial(questionToPoolForm(question));
@@ -199,12 +208,12 @@ export default function QuestionsLibraryPage() {
     generateMutation.mutate({ projectId: selectedProjectId });
   }
 
-  function handleAddToRound(question: SearchPoolQuestionRow) {
+  function handleAddToRound(question: EnrichedSearchPoolQuestion) {
     if (!selectedProjectId) return;
     addToRoundMutation.mutate({ projectId: selectedProjectId, questionId: question.id });
   }
 
-  function handleCreateContentTask(question: SearchPoolQuestionRow) {
+  function handleCreateContentTask(question: EnrichedSearchPoolQuestion) {
     if (!selectedProjectId) {
       toast.error("请先选择企业项目");
       return;
@@ -216,10 +225,10 @@ export default function QuestionsLibraryPage() {
       setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
       return;
     }
-    setLocation(`${buildProjectUrl("/weekly", selectedProjectId)}&questionId=${question.id}`);
+    createContentTaskMutation.mutate({ projectId: selectedProjectId, questionId: question.id });
   }
 
-  function handleViewQuestionEvidence(question: SearchPoolQuestionRow) {
+  function handleViewQuestionEvidence(question: EnrichedSearchPoolQuestion) {
     if (!hasDiagnosisData || !question.lastTestResult) {
       toast.message("暂无诊断证据，请先执行 AI 实测诊断");
       return;
@@ -228,8 +237,12 @@ export default function QuestionsLibraryPage() {
     setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
   }
 
-  function handleTogglePriority(question: SearchPoolQuestionRow) {
+  function handleTogglePriority(question: EnrichedSearchPoolQuestion) {
     togglePriorityMutation.mutate({ id: question.id });
+  }
+
+  function handleToggleEnabled(question: EnrichedSearchPoolQuestion, enabledNext: boolean) {
+    toggleEnableMutation.mutate({ id: question.id, enabled: enabledNext });
   }
 
   if (!enabled && !projectsLoading) {
@@ -298,35 +311,35 @@ export default function QuestionsLibraryPage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="question-pool-overview">
               <P0MetricTile
                 label="核心问题总数"
-                value={String(gapOverview.totalQuestions)}
+                value={String(gapOverview?.totalQuestions ?? 0)}
                 hint="当前项目问题池总量"
               />
               <P0MetricTile
                 label="已启用问题"
-                value={String(gapOverview.enabledQuestions)}
+                value={String(gapOverview?.enabledQuestions ?? 0)}
                 hint="已纳入实测/内容流程的问题"
               />
               <P0MetricTile
                 label="已发现缺口"
-                value={formatQuestionPoolGapMetricValue(gapOverview.uncoveredQuestions, hasDiagnosisData)}
+                value={formatQuestionPoolGapMetricValue(gapOverview?.uncoveredQuestions ?? 0, hasDiagnosisData)}
                 hint="未提及或竞品占优的问题"
               />
               <P0MetricTile
                 label="竞品占优"
                 value={formatQuestionPoolGapMetricValue(
-                  gapOverview.competitorDominatedQuestions,
+                  gapOverview?.competitorDominatedQuestions ?? 0,
                   hasDiagnosisData,
                 )}
                 hint="最近实测竞品表现更强"
               />
               <P0MetricTile
                 label="已生成内容任务"
-                value={String(gapOverview.generatedContentTasks)}
+                value={String(gapOverview?.generatedContentTasks ?? 0)}
                 hint="来自诊断的优化任务数量"
               />
               <P0MetricTile
                 label="本轮重点问题"
-                value={String(gapOverview.priorityQuestions)}
+                value={String(gapOverview?.priorityQuestions ?? 0)}
                 hint="优先级为高的问题数量"
               />
             </div>
@@ -335,30 +348,43 @@ export default function QuestionsLibraryPage() {
           <P0Section title="问题分组" description="按 AI 搜索问题类型浏览">
             <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="question-pool-tabs">
               <TabsList className="flex w-full flex-wrap gap-1">
-                {SEARCH_POOL_QUESTION_TYPES.map(type => (
-                  <TabsTrigger
-                    key={type.value}
-                    value={type.value}
-                    data-testid={`question-pool-tab-${type.value}`}
-                  >
-                    {type.label} ({grouped[type.value].length})
-                  </TabsTrigger>
-                ))}
+                {SEARCH_POOL_QUESTION_TYPES.map(type => {
+                  const stats = groupStats?.[type.value];
+                  return (
+                    <TabsTrigger
+                      key={type.value}
+                      value={type.value}
+                      data-testid={`question-pool-tab-${type.value}`}
+                    >
+                      {type.label} ({stats?.total ?? grouped[type.value].length})
+                    </TabsTrigger>
+                  );
+                })}
               </TabsList>
-              {SEARCH_POOL_QUESTION_TYPES.map(type => (
-                <TabsContent key={type.value} value={type.value} className="mt-4">
-                  <QuestionPoolTable
-                    questions={grouped[type.value]}
-                    hasDiagnosisData={hasDiagnosisData}
-                    mutating={mutating}
-                    onAddToRound={handleAddToRound}
-                    onCreateContentTask={handleCreateContentTask}
-                    onViewEvidence={handleViewQuestionEvidence}
-                    onTogglePriority={handleTogglePriority}
-                    onEdit={openEditDrawer}
-                  />
-                </TabsContent>
-              ))}
+              {SEARCH_POOL_QUESTION_TYPES.map(type => {
+                const stats = groupStats?.[type.value];
+                return (
+                  <TabsContent key={type.value} value={type.value} className="mt-4 space-y-2">
+                    {stats ? (
+                      <p className="text-xs text-gray-500" data-testid={`question-pool-group-stats-${type.value}`}>
+                        启用 {stats.enabled} · 已实测 {hasDiagnosisData ? stats.tested : "暂无诊断数据"} · 缺口{" "}
+                        {hasDiagnosisData ? stats.gapCount : "暂无诊断数据"} · 内容就绪 {stats.contentReadyCount}
+                      </p>
+                    ) : null}
+                    <QuestionPoolTable
+                      questions={grouped[type.value]}
+                      hasDiagnosisData={hasDiagnosisData}
+                      mutating={mutating}
+                      onAddToRound={handleAddToRound}
+                      onCreateContentTask={handleCreateContentTask}
+                      onViewEvidence={handleViewQuestionEvidence}
+                      onTogglePriority={handleTogglePriority}
+                      onToggleEnabled={handleToggleEnabled}
+                      onEdit={openEditDrawer}
+                    />
+                  </TabsContent>
+                );
+              })}
             </Tabs>
           </P0Section>
         </>
@@ -383,14 +409,15 @@ export default function QuestionsLibraryPage() {
 }
 
 type TableProps = {
-  questions: SearchPoolQuestionRow[];
+  questions: EnrichedSearchPoolQuestion[];
   hasDiagnosisData: boolean;
   mutating: boolean;
-  onAddToRound: (question: SearchPoolQuestionRow) => void;
-  onCreateContentTask: (question: SearchPoolQuestionRow) => void;
-  onViewEvidence: (question: SearchPoolQuestionRow) => void;
-  onTogglePriority: (question: SearchPoolQuestionRow) => void;
-  onEdit: (question: SearchPoolQuestionRow) => void;
+  onAddToRound: (question: EnrichedSearchPoolQuestion) => void;
+  onCreateContentTask: (question: EnrichedSearchPoolQuestion) => void;
+  onViewEvidence: (question: EnrichedSearchPoolQuestion) => void;
+  onTogglePriority: (question: EnrichedSearchPoolQuestion) => void;
+  onToggleEnabled: (question: EnrichedSearchPoolQuestion, enabled: boolean) => void;
+  onEdit: (question: EnrichedSearchPoolQuestion) => void;
 };
 
 function QuestionPoolTable({
@@ -401,6 +428,7 @@ function QuestionPoolTable({
   onCreateContentTask,
   onViewEvidence,
   onTogglePriority,
+  onToggleEnabled,
   onEdit,
 }: TableProps) {
   if (questions.length === 0) {
@@ -418,8 +446,10 @@ function QuestionPoolTable({
           <TableRow>
             <TableHead>问题内容</TableHead>
             <TableHead>类型</TableHead>
+            <TableHead>诊断缺口</TableHead>
             <TableHead>AI 表现</TableHead>
             <TableHead>内容状态</TableHead>
+            <TableHead>启用</TableHead>
             <TableHead>本轮重点</TableHead>
             <TableHead>需要强化的信源</TableHead>
             <TableHead className="text-right">操作</TableHead>
@@ -430,14 +460,22 @@ function QuestionPoolTable({
             <TableRow key={question.id} data-testid={`question-pool-row-${question.id}`}>
               <TableCell className="max-w-xs whitespace-normal">{question.questionText}</TableCell>
               <TableCell>{resolveSearchPoolTypeLabel(question.searchPoolType)}</TableCell>
+              <TableCell className="max-w-[10rem] whitespace-normal text-sm text-gray-700">
+                {question.diagnosisGap}
+              </TableCell>
               <TableCell data-testid={`question-ai-performance-${question.id}`}>
-                {resolveQuestionPoolAiPerformanceLabel({
-                  lastTestResult: question.lastTestResult,
-                  hasDiagnosisData,
-                })}
+                {hasDiagnosisData ? question.aiPerformanceLabel : "暂无诊断数据"}
               </TableCell>
               <TableCell data-testid={`question-content-status-${question.id}`}>
-                {resolveQuestionPoolContentStatusLabel(question)}
+                {question.contentStatus}
+              </TableCell>
+              <TableCell>
+                <Switch
+                  checked={Number(question.enabled) !== 0}
+                  disabled={mutating}
+                  data-testid={`question-toggle-enabled-${question.id}`}
+                  onCheckedChange={checked => onToggleEnabled(question, checked)}
+                />
               </TableCell>
               <TableCell>
                 {isQuestionPoolPriority(question) ? (
@@ -482,7 +520,7 @@ function QuestionPoolTable({
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={mutating}
+                    disabled={mutating || question.hasContentTask}
                     data-testid={`question-create-task-${question.id}`}
                     onClick={() => onCreateContentTask(question)}
                   >

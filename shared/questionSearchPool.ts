@@ -236,3 +236,73 @@ export function parseTargetKeywordsInput(raw: string): string[] {
 export function formatTargetKeywordsInput(keywords?: string[] | null): string {
   return (keywords ?? []).join("、");
 }
+
+/** 规则生成器每类默认条数 */
+export const SEARCH_POOL_DEFAULT_COUNTS: Record<SearchPoolQuestionType, number> = {
+  brand_search: 5,
+  category_recommend: 5,
+  scene_need: 6,
+  comparison: 5,
+  long_tail: 5,
+  geo_region: 4,
+};
+
+export const SEARCH_POOL_TOTAL_DEFAULT = Object.values(SEARCH_POOL_DEFAULT_COUNTS).reduce(
+  (sum, count) => sum + count,
+  0,
+);
+
+const LEGACY_POOL_TYPE_ALIASES: Record<string, SearchPoolQuestionType> = {
+  brand_direct: "brand_search",
+  category_recommendation: "category_recommend",
+  scenario_need: "scene_need",
+  competitor_compare: "comparison",
+  industry_location: "geo_region",
+  long_tail_pain: "long_tail",
+};
+
+export function normalizeSearchPoolType(raw?: string | null): SearchPoolQuestionType | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const canonical = SEARCH_POOL_QUESTION_TYPES.find(type => type.value === trimmed)?.value;
+  if (canonical) return canonical;
+  return LEGACY_POOL_TYPE_ALIASES[trimmed] ?? null;
+}
+
+export type SearchPoolGroupStats = {
+  total: number;
+  enabled: number;
+  tested: number;
+  gapCount: number;
+  contentReadyCount: number;
+};
+
+export function buildSearchPoolGroupStats(
+  questions: SearchPoolQuestionRow[],
+  hasDiagnosisData: boolean,
+): Record<SearchPoolQuestionType, SearchPoolGroupStats> {
+  const grouped = groupQuestionsBySearchPoolType(questions);
+  return Object.fromEntries(
+    SEARCH_POOL_QUESTION_TYPES.map(type => {
+      const bucket = grouped[type.value];
+      return [
+        type.value,
+        {
+          total: bucket.length,
+          enabled: bucket.filter(q => Number(q.enabled) !== 0).length,
+          tested: hasDiagnosisData ? bucket.filter(q => Boolean(q.lastTestResult)).length : 0,
+          gapCount: hasDiagnosisData
+            ? bucket.filter(
+                q =>
+                  q.lastTestResult === "not_mentioned" ||
+                  q.lastTestResult === "competitor_won" ||
+                  (Number(q.enabled) !== 0 && !q.lastTestResult),
+              ).length
+            : 0,
+          contentReadyCount: bucket.filter(q => Boolean(q.relatedContentTask)).length,
+        },
+      ];
+    }),
+  ) as Record<SearchPoolQuestionType, SearchPoolGroupStats>;
+}
