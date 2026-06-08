@@ -63,14 +63,14 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(v12).toContain("DeliveryReportsFlowPage");
     expect(publish).toContain("发布执行中心");
     expect(publish).toContain("local-agent-status-card");
-    expect(publish).toContain("publish-retest-rewrite-fold");
-    expect(v12).toContain("跟踪已发布内容的收录状态与 AI 搜索实测结果");
+    expect(publish).toContain("publish-account-client-fold");
+    expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain("收录复测中心");
     const report =
       read("client/src/pages/DeliveryReportsCenterPage.tsx") +
       read("client/src/lib/deliveryReportProductDisplay.ts");
     expect(report).toContain("GEO 增长交付报告");
     expect(v12 + report).toContain('buildProjectUrl("/content-publishing"');
-    expect(v12).toContain('buildProjectUrl("/delivery-reports"');
+    expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain('buildProjectUrl("/delivery-reports"');
     expect(report).toContain('buildProjectUrl("/inclusion-monitoring"');
   });
 

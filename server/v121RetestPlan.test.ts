@@ -17,11 +17,10 @@ describe("GEO-V1.1-T2-T3-Retest-Plan", () => {
 
   it("workspace summary exposes retest plan and inclusion monitoring renders plan panel", () => {
     const summary = read("server/workspaceSummary.ts");
-    const monitoring = read("client/src/pages/V12FlowPages.tsx");
+    const monitoring = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
     expect(summary).toContain("retestPlan");
     expect(summary).toContain("retestDueReminder");
-    expect(monitoring).toContain("RetestPlanPanel");
     expect(monitoring).toContain("inclusion-monitoring-retest-due-reminder");
-    expect(monitoring).toContain("RetestPlanPanel");
+    expect(monitoring).toContain("下一次复测时间");
   });
 });

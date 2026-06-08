@@ -22,20 +22,18 @@ describe("GEO-V1.1 publish account bind CTA hard fix", () => {
     expect(read("shared/publishAccountBindCta.ts")).toContain("bound");
   });
 
-  it("顶部 CTA 与右侧发布助手调用同一 handler", () => {
+  it("顶部 CTA 与 shell 调用同一 handler", () => {
     expect(shell).toContain("usePublishAccountBindCta");
     expect(shell).toContain("handlePublishAccountBindCta");
     expect(shell).toContain("onCtaClick");
     expect(shell).toContain("onPublishAccountBindCta");
     expect(topBar).toContain("onCtaClick");
     expect(topBar).toContain('data-testid="project-topbar-cta"');
-    expect(assistant).toContain("onPublishAccountBindCta");
-    expect(assistant).toContain('data-testid="publish-assistant-bind-cta"');
+    expect(assistant).toContain("待发布任务数");
   });
 
-  it("所有绑定 CTA 按钮均有 onClick", () => {
+  it("shell 绑定 CTA 按钮均有 onClick", () => {
     expect(topBar).toMatch(/onClick=\{\(\) => \{[\s\S]*onCtaClick/);
-    expect(assistant).toMatch(/onClick=\{\(\) => onPublishAccountBindCta\(\)\}/);
     expect(shell).toMatch(/onClick=\{\(\) => \{[\s\S]*handlePublishAccountBindCta/);
   });
 

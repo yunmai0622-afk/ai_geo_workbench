@@ -15,8 +15,10 @@ describe("Phase3 publish center Local Agent UI", () => {
   const overviewBar = read("client/src/components/publishing/PublishWeeklyOverviewBar.tsx");
   const cardGrid = read("client/src/components/publishing/PublishPlatformCardGrid.tsx");
   const sidePanel = read("client/src/components/publishing/PublishActionSidePanel.tsx");
+  const queueTable = read("client/src/components/publishing/PublishTaskQueueTable.tsx");
+  const executionTabs = read("client/src/lib/publishExecutionTabs.ts");
   const publishUi =
-    page + overviewBar + board + statusCard + stepsPanel + display + cardGrid + sidePanel;
+    page + overviewBar + board + statusCard + stepsPanel + display + cardGrid + sidePanel + queueTable + executionTabs;
 
   it("re-exports publish center from V12FlowPages", () => {
     expect(flow).toContain(
@@ -25,29 +27,28 @@ describe("Phase3 publish center Local Agent UI", () => {
     expect(flow).not.toContain("export function ContentPublishingFlowPage");
   });
 
-  it("first screen highlights publish task queue command center", () => {
+  it("first screen highlights publish execution center and task queue", () => {
     for (const text of [
       "publish-center-page",
-      "发布任务指挥台",
+      "发布执行中心",
       "PublishStatusBar",
       "publish-task-queue-module",
       "publish-queue-tab-pending",
-      "publish-platform-card-grid",
-      "publish-all-platforms",
-      "publish-center-steps-panel",
+      "PublishTaskQueueTable",
+      "LocalAgentPublishStepsPanel",
     ]) {
       expect(publishUi + page).toContain(text);
     }
     expect(page).toContain("待发布");
     expect(page).toContain("发布中");
-    expect(page).toContain("需要处理");
-    expect(page).toContain("查看内容");
-    expect(page).toContain("回填链接");
+    expect(page).toContain("失败");
+    expect(queueTable).toContain("查看任务");
+    expect(queueTable).toContain("回填链接");
   });
 
-  it("chrome extension and retest pools are folded, not first-screen heroes", () => {
-    expect(page).toContain("publish-retest-rewrite-fold");
-    expect(page).toContain("发布后复测 · 重写池");
+  it("account client tools are folded, not first-screen heroes", () => {
+    expect(page).toContain("publish-account-client-fold");
+    expect(page).toContain("账号与客户端");
     expect(page).not.toContain("AiPageHero");
     expect(page).not.toContain("资产发布记录");
     expect(page).not.toContain("browser-extension.zip");

@@ -31,14 +31,15 @@ describe("GEO-V1.1 content publishing React #185 regression", () => {
   });
 
   it("does not auto-run account health, local agent probe, or task polling on mount", () => {
+    const statusBar = read("client/src/components/publishing/PublishStatusBar.tsx");
     expect(healthHook).not.toContain("useEffect");
     expect(healthHook).not.toContain("autoRunKeyRef");
     expect(healthHook).toContain("setAgentOnline(prev => (prev === online ? prev : online))");
     expect(page).not.toContain("setInterval");
     expect(page).not.toContain("checkLocalAgentHealth");
     expect(page).toContain("<PublishStatusBar");
-    expect(page).toContain('data-testid="publish-queue-refresh"');
-    expect(page).toContain("立即拉取任务");
+    expect(statusBar).toContain('data-testid="publish-queue-refresh"');
+    expect(statusBar).toContain("立即拉取任务");
   });
 
   it("guards local agent online state updates and exposes debug logging", () => {

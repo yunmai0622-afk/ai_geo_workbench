@@ -19,8 +19,8 @@ describe("GEO-V1.1 Local Agent connection status clarity P0", () => {
     const page = read("client/src/pages/ContentPublishingCenterPage.tsx");
     const statusBar = read("client/src/components/publishing/PublishStatusBar.tsx");
     const panel = read("client/src/components/publishing/LocalAgentConnectionPanel.tsx");
-    expect(statusBar).toContain("检测客户端连接");
-    expect(statusBar).toContain("publish-ready-refresh");
+    expect(statusBar).toContain("打开客户端");
+    expect(statusBar).toContain("publish-open-client");
     expect(page).toContain("useLocalAgentConnection");
     expect(page).toContain("PublishStatusBar");
     expect(panel).toContain("local-agent-connection-panel");

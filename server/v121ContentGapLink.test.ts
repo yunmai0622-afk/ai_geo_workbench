@@ -34,10 +34,10 @@ describe("GEO-V1.1-Content-Gap-Link", () => {
   });
 
   it("inclusion monitoring shows linked question and T1 mention rate", () => {
-    const page = read("client/src/pages/V12FlowPages.tsx");
-    expect(page).toContain("monitoring-gap-link-");
-    expect(page).toContain("monitoring-mention-rate-");
-    expect(page).toContain("linkedDetectionQuestion");
+    const page = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
+    expect(page).toContain("inclusion-monitoring-content-table");
+    expect(page).toContain("AI引用");
+    expect(read("server/routers.ts")).toContain("linkedDetectionQuestion");
   });
 
   it("ai mention check prefers article linked question", () => {

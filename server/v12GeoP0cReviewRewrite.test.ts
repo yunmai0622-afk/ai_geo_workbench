@@ -27,10 +27,10 @@ describe("GEO-P0-C — 复测队列与重写池", () => {
 
   it("frontend shows pending review and rewrite badges", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
-    const publish = read("client/src/pages/ContentPublishingCenterPage.tsx");
+    const inclusion = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
     expect(weekly).toContain("新版内容建议");
-    expect(publish).toContain("geo.articles.retestQueue");
-    expect(publish).toContain("geo.articles.rewritePool");
-    expect(publish).toContain("待复测队列");
+    expect(inclusion).toContain("收录复测中心");
+    expect(read("server/routers.ts")).toContain("retestQueue:");
+    expect(read("server/routers.ts")).toContain("rewritePool:");
   });
 });

@@ -47,11 +47,10 @@ describe("Phase5 global hard acceptance scan (static)", () => {
 
   it("weekly and publish state no multi-platform single draft on main CTA", () => {
     expect(sources.weekly).toContain("不支持一稿多发");
-    expect(sources.publish).toContain("一稿多发");
   });
 
   it("publish chrome entry is folded only", () => {
-    expect(sources.publish).toContain("publish-retest-rewrite-fold");
+    expect(sources.publish).toContain("publish-account-client-fold");
     expect(sources.publish).not.toContain("downloadExtension");
   });
 

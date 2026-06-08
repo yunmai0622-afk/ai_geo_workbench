@@ -28,7 +28,7 @@ describe("C4-B publish records and progress value display", () => {
 
   it("publish center renders Local Agent task board", () => {
     for (const text of [
-      "发布任务指挥台",
+      "发布执行中心",
       "publish-task-columns",
       "local-agent-status-card",
       "publish-center-steps-panel",

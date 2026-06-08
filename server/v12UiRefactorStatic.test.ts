@@ -153,7 +153,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
   it("发布中心页保留人工登记与列表，不出现平台授权配置字段", () => {
     const publishSource = readProjectFile("client/src/pages/ContentPublishingCenterPage.tsx");
     for (const text of [
-      "发布任务指挥台",
+      "发布执行中心",
       "人工登记发布记录",
       "createManualPublishRecord",
       "updateManualPublishRecord",
@@ -181,21 +181,20 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     ).toContain("一键发布所有平台");
   });
 
-  it("收录监测页展示已发布内容监测卡片和有限样本风险", () => {
-    const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
+  it("收录监测页展示已发布内容监测表", () => {
+    const inclusionSource = readProjectFile("client/src/pages/InclusionMonitoringCenterPage.tsx");
     for (const text of [
-      "收录监测",
-      "已创建的监测卡片",
-      "收录",
-      "AI 提及",
-      "AI 推荐",
-      "最近检测：",
-      "链接可访问性：",
-      "建议操作：",
-      "执行AI实测",
-      "监测结果来自有限样本",
+      "收录复测中心",
+      "已发布内容监测表",
+      "T1状态",
+      "T2状态",
+      "T3状态",
+      "AI引用",
+      "执行复测",
+      "查看证据",
+      "下一轮优化建议",
     ]) {
-      expect(flowSource).toContain(text);
+      expect(inclusionSource).toContain(text);
     }
   });
 

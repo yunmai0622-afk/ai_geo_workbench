@@ -159,26 +159,28 @@ assertContains('App 路由', sources.app, 'path="/weekly"');
 const publishPage =
   read('client/src/pages/ContentPublishingCenterPage.tsx') +
   read('client/src/components/publishing/PublishStatusBar.tsx') +
+  read('client/src/components/publishing/PublishTaskQueueTable.tsx') +
   read('client/src/components/publishing/PublishTaskColumnBoard.tsx') +
   read('client/src/components/publishing/LocalAgentStatusCard.tsx');
+const inclusionPage = read('client/src/pages/InclusionMonitoringCenterPage.tsx');
 for (const item of [
-  '发布任务指挥台',
+  '发布执行中心',
   'publish-center-page',
-  'publish-status-bar',
+  'publish-status-overview',
   'publish-task-queue-module',
   'local-agent-status-card',
-  'publish-task-columns',
+  'publish-task-queue-table',
   'createManualPublishRecord',
   'updateManualPublishRecord',
-  'publish-retest-rewrite-fold',
+  'publish-account-client-fold',
 ]) {
   assertContains('发布中心页', publishPage, item);
 }
 for (const item of ['连接发布平台', '可由交付人员配置', '风险边界', '支持方式', 'browser-extension.zip', '下载 Chrome 插件']) {
   assertNotContains('发布中心页', publishPage, item);
 }
-for (const item of ['已创建的监测卡片', '收录', 'AI 提及', 'AI 推荐', '最近检测：', '当前建议', '监测结果来自有限样本']) {
-  assertContains('收录监测页', sources.flow, item);
+for (const item of ['收录复测中心', '已发布内容监测表', 'T1状态', 'T2状态', 'T3状态', 'AI引用', '执行复测', '查看证据', '下一轮优化建议']) {
+  assertContains('收录监测页', inclusionPage, item);
 }
 const deliveryReportPage =
   read('client/src/pages/DeliveryReportsCenterPage.tsx') +
