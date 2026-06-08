@@ -49,6 +49,10 @@ export default function EnterpriseWorkspacePage() {
   const scoreTrendQuery = trpc.geo.scores.recent.useQuery(projectInput, {
     enabled: Boolean(selectedProjectId),
   });
+  const feedbackSummaryQuery = trpc.geo.feedbackLoop.getRetestFeedbackSummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
 
   useEffect(() => {
     const enterpriseName = selectedProject?.enterpriseName?.trim() || "企业";
@@ -224,6 +228,40 @@ export default function EnterpriseWorkspacePage() {
             latestGeoScore={latestTrendScore}
             previousGeoScore={previousTrendScore}
           />
+
+          <section className="geo-card p-5" data-testid="workspace-business-results">
+            <h2 className="text-sm font-semibold text-gray-900">经营结果</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div data-testid="workspace-last-retest">
+                <p className="text-[11px] font-medium text-gray-400">上次复测</p>
+                <p className="mt-0.5 text-sm font-semibold text-gray-900">
+                  {feedbackSummaryQuery.isLoading
+                    ? "加载中…"
+                    : feedbackSummaryQuery.data?.lastRetestAt
+                      ? new Date(feedbackSummaryQuery.data.lastRetestAt).toLocaleString("zh-CN", {
+                          hour12: false,
+                        })
+                      : "暂无复测记录"}
+                </p>
+              </div>
+              <div data-testid="workspace-question-pool-coverage">
+                <p className="text-[11px] font-medium text-gray-400">问题池覆盖率</p>
+                <p className="mt-0.5 text-sm font-semibold text-gray-900">
+                  {feedbackSummaryQuery.isLoading
+                    ? "加载中…"
+                    : `${feedbackSummaryQuery.data?.questionPoolCoveragePercent ?? 0}%`}
+                </p>
+              </div>
+              <div data-testid="workspace-source-consistency">
+                <p className="text-[11px] font-medium text-gray-400">信源一致性</p>
+                <p className="mt-0.5 text-sm font-semibold text-gray-900">
+                  {feedbackSummaryQuery.isLoading
+                    ? "加载中…"
+                    : `${feedbackSummaryQuery.data?.sourceConsistencyScore ?? 0} 分`}
+                </p>
+              </div>
+            </div>
+          </section>
 
           <section className="geo-card p-5" data-testid="workspace-geo-score-trend">
             <GeoScoreTrendChart

@@ -23,6 +23,7 @@ import {
   type AiTestStage,
 } from "@shared/aiTestEvidence";
 import { publishLinkAccessLabel } from "@shared/inclusionMonitoringDisplay";
+import { formatSuggestionPriorityLabel } from "@shared/retestFeedbackLoop";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { RadioTower } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -104,6 +105,10 @@ export function InclusionMonitoringCenterPage() {
   const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
+  );
+  const feedbackSummaryQuery = trpc.geo.feedbackLoop.getRetestFeedbackSummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled },
   );
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
@@ -191,7 +196,8 @@ export function InclusionMonitoringCenterPage() {
 
   const selectedRecord = records.find(r => r.id === selectedRecordId) ?? null;
 
-  const optimizationItems = useMemo(() => {
+  const nextRoundSuggestions = feedbackSummaryQuery.data?.nextRoundSuggestions ?? [];
+  const fallbackOptimizationItems = useMemo(() => {
     const items: string[] = [];
     if (missingPublicLinkCount > 0) {
       items.push(`需要补 ${missingPublicLinkCount} 条公开链接后再安排复测`);
@@ -200,21 +206,11 @@ export function InclusionMonitoringCenterPage() {
     if (untested > 0) {
       items.push(`有 ${untested} 篇已发布内容尚未执行复测`);
     }
-    const lowMention = records.filter(r => r.aiMentionStatus === "未提及" || r.aiMentionStatus === "未检测");
-    if (lowMention.length > 0) {
-      items.push(`${lowMention.length} 篇内容 AI 尚未提及，建议补充 FAQ/案例类内容`);
-    }
-    const platforms = new Set(
-      publishRecords.map(r => (r.publishChannel ?? "").trim()).filter(Boolean),
-    );
-    if (platforms.size > 0) {
-      items.push(`建议继续在 ${Array.from(platforms).slice(0, 3).join("、")} 等平台发布`);
-    }
     if (items.length === 0) {
-      items.push("当前监测样本正常，可进入交付报告汇总结果");
+      items.push("完成 T1/T2/T3 复测后，系统将基于问题池与信源图谱生成下一轮优化建议");
     }
     return items;
-  }, [missingPublicLinkCount, records, publishRecords]);
+  }, [missingPublicLinkCount, records]);
 
   if (!enabled && !projectsLoading) {
     return (
@@ -563,22 +559,64 @@ export function InclusionMonitoringCenterPage() {
         data-testid="inclusion-monitoring-optimization-section"
       >
         <h2 className="text-base font-semibold text-gray-900">下一轮优化建议</h2>
-        <ul className="mt-3 space-y-2 text-sm text-gray-700">
-          {optimizationItems.map(item => (
-            <li key={item} className="flex gap-2">
-              <span className="text-gray-400">-</span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
+        <p className="mt-1 text-xs text-gray-500">
+          综合信源图谱增强建议、问题池未覆盖题与最近复测下降项，生成可执行的内容任务。
+        </p>
+        {feedbackSummaryQuery.isLoading ? (
+          <div className="mt-4 flex items-center gap-2 text-sm text-gray-500">
+            <Spinner className="size-4 text-blue-600" />
+            正在加载优化建议…
+          </div>
+        ) : nextRoundSuggestions.length > 0 ? (
+          <ul className="mt-4 space-y-4">
+            {nextRoundSuggestions.map((item, index) => (
+              <li
+                key={`${item.description}-${index}`}
+                className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-800"
+                data-testid={`inclusion-optimization-suggestion-${index}`}
+              >
+                <p className="font-medium text-gray-900">
+                  [优先级 {formatSuggestionPriorityLabel(item.priority)}] {item.description}
+                </p>
+                {item.relatedQuestions.length > 0 ? (
+                  <p className="mt-2 text-xs text-gray-600">
+                    → 对应未覆盖问题：{item.relatedQuestions.join("、")}
+                  </p>
+                ) : null}
+                {item.relatedSources.length > 0 ? (
+                  <p className="mt-1 text-xs text-gray-600">
+                    → 对应薄弱信源：{item.relatedSources.join("、")}
+                  </p>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  className={`mt-3 h-8 ${geoP0Brand.primary}`}
+                  data-testid={`inclusion-optimization-action-${index}`}
+                  onClick={() => {
+                    if (!selectedProjectId) return;
+                    const gapMatch = /[?&]gapType=([^&]+)/.exec(item.actionUrl);
+                    const gapType = gapMatch?.[1];
+                    const base = buildProjectUrl("/weekly", selectedProjectId);
+                    setLocation(gapType ? `${base}&gapType=${encodeURIComponent(gapType)}` : base);
+                  }}
+                >
+                  生成内容任务
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="mt-3 space-y-2 text-sm text-gray-700">
+            {fallbackOptimizationItems.map(item => (
+              <li key={item} className="flex gap-2">
+                <span className="text-gray-400">-</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            className={geoP0Brand.primary}
-            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}
-          >
-            进入下一轮内容任务
-          </Button>
           <Button
             type="button"
             variant="outline"

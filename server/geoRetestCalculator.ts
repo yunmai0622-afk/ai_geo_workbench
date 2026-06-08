@@ -11,6 +11,7 @@ import {
 } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAiEngineDisplayName, normalizePlatformToAiEngine } from "./geoAiMentionCheck";
+import { applyRetestFeedbackFromRound } from "./retestFeedbackLoopService";
 
 function isCompareRetestRound(roundType: string): boolean {
   return roundType === "T1_RETEST" || roundType === "T2_RETEST" || roundType === "T3_RETEST";
@@ -268,6 +269,13 @@ export async function calculateRetestComparison(
     );
 
   await db.insert(retestComparisons).values(rowsToInsert);
+
+  const completedAt = compareRound.finishedAt ?? new Date();
+  try {
+    await applyRetestFeedbackFromRound(db, projectId, compareRoundId, completedAt);
+  } catch (err) {
+    console.warn("[retest-feedback-loop] apply failed", compareRoundId, err);
+  }
 
   return db
     .select()

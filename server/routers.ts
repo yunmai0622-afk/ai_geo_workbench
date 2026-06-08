@@ -46,6 +46,7 @@ import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
 import { brandSourceGraphRouter } from "./brandSourceGraphRouter";
+import { feedbackLoopRouter } from "./feedbackLoopRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
 import { deleteGeoArticleCascade } from "./geoArticleDelete";
@@ -163,6 +164,7 @@ import {
 } from "./questionTemplateService";
 import { resolveLatestT0AiTestRunMetrics } from "./t0AiTestRunMetrics";
 import { calculateRetestComparison } from "./geoRetestCalculator";
+import { applyRetestFeedbackFromRound } from "./retestFeedbackLoopService";
 import { ACCOUNT_GROUP_TYPES, CONTENT_ASSET_TYPES, PUBLISH_IDENTITIES } from "@shared/contentStrategy";
 import { resolveArticleListPublishFields } from "@shared/articlePublishPlatform";
 import {
@@ -4041,6 +4043,17 @@ ${article.markdownContent}`,
         if (input.roundType === "T1_RETEST" && input.status === "completed") {
           void emitT1RetestCompleteNotification(db, input.projectId, input.roundName).catch(err => console.warn("[notifications] T1 failed", id, err));
         }
+        if (
+          (input.roundType === "T1_RETEST" ||
+            input.roundType === "T2_RETEST" ||
+            input.roundType === "T3_RETEST") &&
+          input.status === "completed"
+        ) {
+          const finishedAt = input.finishedAt ? new Date(input.finishedAt) : new Date();
+          void applyRetestFeedbackFromRound(db, input.projectId, id, finishedAt).catch(err =>
+            console.warn("[retest-feedback-loop] create hook failed", id, err),
+          );
+        }
         return { success: true, id } as const;
       }),
     list: protectedProcedure
@@ -4477,6 +4490,8 @@ ${article.markdownContent}`,
   platformAccounts: projectPlatformAccountsRouter,
 
   brandSourceGraph: brandSourceGraphRouter,
+
+  feedbackLoop: feedbackLoopRouter,
 
   subscription: router({
     usage: protectedProcedure.query(async ({ ctx }) => {
