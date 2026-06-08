@@ -2,6 +2,7 @@ import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
 import { isLegacyOrphanProjectId } from "./projectNavigation";
 import type { RetestDueReminder, RetestPlanView } from "./retestPlan";
 import type { T0ContentGapSuggestionsResult } from "./t0ContentGapSuggestions";
+import type { WorkspaceTodayTask } from "./workspaceTodayTasks";
 import { isP0GeoProfileCompleteFromRecord } from "./geoProfileP0Readiness";
 import { localAgentConnectionRiskHint, mapBooleanOnlineToConnectionStatus } from "./localAgentConnectionStatus";
 import type { LocalAgentConnectionStatus } from "./localAgentConnectionStatus";
@@ -125,6 +126,12 @@ export type WorkspaceSummaryMetrics = {
   p0ProfileComplete: boolean;
   /** T0 完成后基于 ai_test_runs 的内容缺口建议 */
   t0ContentGapSuggestions?: T0ContentGapSuggestionsResult | null;
+  /** 最近一次诊断/实测完成时间 */
+  lastDiagnosisAt?: Date | string | null;
+  /** 已生成但未进入发布队列/未登记发布的内容数 */
+  pendingPublishContentCount?: number;
+  /** 工作台今日任务卡片 */
+  todayTasks?: WorkspaceTodayTask[];
 };
 
 export type WorkspaceStageResolutionInput = WorkspaceSummaryMetrics & {

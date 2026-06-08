@@ -20,10 +20,12 @@ describe("GEO-V1.2-P1-A-QuestionBank-UX", () => {
   it("问题池概览与六类 Tab", () => {
     expect(page).toContain("question-pool-overview");
     expect(page).toContain("核心问题总数");
-    expect(page).toContain("已覆盖");
-    expect(page).toContain("未提及品牌");
+    expect(page).toContain("已发现缺口");
+    expect(page).toContain("已启用问题");
     expect(page).toContain("竞品占优");
+    expect(page).toContain("已生成内容任务");
     expect(page).toContain("本轮重点问题");
+    expect(page).toContain("暂无诊断数据");
     expect(page).toContain("question-pool-tabs");
     expect(page).toContain("SEARCH_POOL_QUESTION_TYPES");
     expect(read("shared/questionSearchPool.ts")).toContain("品牌认知");

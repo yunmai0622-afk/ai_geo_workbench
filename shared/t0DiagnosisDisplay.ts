@@ -67,7 +67,7 @@ export type T0PlatformResultGroup = {
   recommendRate: number;
 };
 
-function normalizeT0Platform(platform: string): string {
+export function normalizeT0Platform(platform: string): string {
   const key = platform.trim().toLowerCase();
   if (key === "doubao" || key === "豆包") return "doubao";
   if (key === "kimi") return "kimi";

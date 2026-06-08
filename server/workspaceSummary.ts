@@ -23,6 +23,11 @@ import { buildRetestPlan, resolveRetestDueReminder } from "@shared/retestPlan";
 import { shouldShowT1RetestAutoTriggerReminder } from "@shared/t1RetestAutoTrigger";
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
 import { isP0GeoProfileComplete } from "@shared/workspaceStateMachine";
+import {
+  buildWorkspaceTodayTasks,
+  resolveLastDiagnosisTimestamp,
+  type WorkspaceTodayTask,
+} from "@shared/workspaceTodayTasks";
 import { getGeoArticleMinPassScore } from "./geoArticleLogic";
 import { listPostPublishRetestQueue, listRewritePool } from "./postPublishWorkflow";
 import { calculateProfileCompletionScore } from "./assetLibrary";
@@ -99,6 +104,8 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
       .select({
         mentionsEnterprise: analysisResults.mentionsEnterprise,
         recommendsEnterprise: analysisResults.recommendsEnterprise,
+        createdAt: analysisResults.createdAt,
+        updatedAt: analysisResults.updatedAt,
       })
       .from(analysisResults)
       .where(eq(analysisResults.projectId, projectId)),
@@ -222,7 +229,18 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     analysisRecommendRate,
   });
 
-  return {
+  const lastDiagnosisAt = resolveLastDiagnosisTimestamp({
+    analysisTimestamps: analysisRows.flatMap(row => [row.updatedAt, row.createdAt]),
+    completedRoundFinishedAt: testRoundRows
+      .filter(round => round.status === "completed")
+      .map(round => round.finishedAt),
+  });
+  const pendingPublishContentCount = Math.max(
+    0,
+    articleRows.length - Number(taskCountRows[0]?.count ?? 0) - publishRows.length,
+  );
+
+  const summaryMetrics = {
     enterpriseName: profile?.enterpriseName ?? null,
     profileCompletionPercent: profile?.completionScore ?? calculateProfileCompletionScore(profile),
     boundPublishAccountCount,
@@ -260,5 +278,17 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     })(),
     p0ProfileComplete: isP0GeoProfileComplete(profileRecord),
     t0ContentGapSuggestions,
+    lastDiagnosisAt,
+    pendingPublishContentCount,
+  } as const;
+
+  const todayTasks: WorkspaceTodayTask[] = buildWorkspaceTodayTasks({
+    projectId,
+    ...summaryMetrics,
+  });
+
+  return {
+    ...summaryMetrics,
+    todayTasks,
   } as const;
 }

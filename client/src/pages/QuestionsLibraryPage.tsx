@@ -23,10 +23,12 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import {
-  buildSearchPoolOverviewMetrics,
+  buildQuestionPoolGapOverview,
+  formatQuestionPoolGapMetricValue,
   groupQuestionsBySearchPoolType,
-  resolveLastTestResultLabel,
-  resolveSearchPoolPriorityLabel,
+  isQuestionPoolPriority,
+  resolveQuestionPoolAiPerformanceLabel,
+  resolveQuestionPoolContentStatusLabel,
   resolveSearchPoolTypeLabel,
   resolveSourceTypeLabel,
   SEARCH_POOL_QUESTION_TYPES,
@@ -72,6 +74,14 @@ export default function QuestionsLibraryPage() {
 
   const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
   const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
+  const tasksQuery = trpc.geo.tasks.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
 
   const createMutation = trpc.geo.questions.create.useMutation({
     onSuccess: async () => {
@@ -126,8 +136,20 @@ export default function QuestionsLibraryPage() {
     togglePriorityMutation.isPending ||
     addToRoundMutation.isPending;
 
-  const overview = useMemo(() => buildSearchPoolOverviewMetrics(questions), [questions]);
+  const gapOverview = useMemo(() => {
+    const hasDiagnosisData = Boolean(
+      workspaceSummaryQuery.data?.hasAnalysis ||
+        workspaceSummaryQuery.data?.hasCompletedT0Baseline ||
+        workspaceSummaryQuery.data?.hasGeoScore,
+    );
+    return buildQuestionPoolGapOverview({
+      questions,
+      contentTaskCount: tasksQuery.data?.length ?? 0,
+      hasDiagnosisData,
+    });
+  }, [questions, tasksQuery.data, workspaceSummaryQuery.data]);
   const grouped = useMemo(() => groupQuestionsBySearchPoolType(questions), [questions]);
+  const hasDiagnosisData = gapOverview.hasDiagnosisData;
 
   function openCreateDrawer() {
     setDrawerMode("create");
@@ -183,8 +205,27 @@ export default function QuestionsLibraryPage() {
   }
 
   function handleCreateContentTask(question: SearchPoolQuestionRow) {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId) {
+      toast.error("请先选择企业项目");
+      return;
+    }
+    if (!hasDiagnosisData) {
+      toast.message("暂无诊断数据，请先执行 AI 实测诊断", {
+        description: "完成诊断后可围绕问题缺口生成内容任务。",
+      });
+      setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
+      return;
+    }
     setLocation(`${buildProjectUrl("/weekly", selectedProjectId)}&questionId=${question.id}`);
+  }
+
+  function handleViewQuestionEvidence(question: SearchPoolQuestionRow) {
+    if (!hasDiagnosisData || !question.lastTestResult) {
+      toast.message("暂无诊断证据，请先执行 AI 实测诊断");
+      return;
+    }
+    if (!selectedProjectId) return;
+    setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
   }
 
   function handleTogglePriority(question: SearchPoolQuestionRow) {
@@ -254,22 +295,38 @@ export default function QuestionsLibraryPage() {
       ) : (
         <>
           <P0Section title="问题池概览" description="核心问题覆盖与本轮重点">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-testid="question-pool-overview">
-              <P0MetricTile label="核心问题总数" value={String(overview.total)} hint="当前项目问题池总量" />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="question-pool-overview">
               <P0MetricTile
-                label="已覆盖"
-                value={String(overview.covered)}
-                hint="最近实测结果为已提及或已推荐"
+                label="核心问题总数"
+                value={String(gapOverview.totalQuestions)}
+                hint="当前项目问题池总量"
               />
               <P0MetricTile
-                label="未提及品牌"
-                value={String(overview.notMentioned)}
-                hint="最近实测未提及本品牌"
+                label="已启用问题"
+                value={String(gapOverview.enabledQuestions)}
+                hint="已纳入实测/内容流程的问题"
               />
-              <P0MetricTile label="竞品占优" value={String(overview.competitorWon)} hint="最近实测竞品占优" />
+              <P0MetricTile
+                label="已发现缺口"
+                value={formatQuestionPoolGapMetricValue(gapOverview.uncoveredQuestions, hasDiagnosisData)}
+                hint="未提及或竞品占优的问题"
+              />
+              <P0MetricTile
+                label="竞品占优"
+                value={formatQuestionPoolGapMetricValue(
+                  gapOverview.competitorDominatedQuestions,
+                  hasDiagnosisData,
+                )}
+                hint="最近实测竞品表现更强"
+              />
+              <P0MetricTile
+                label="已生成内容任务"
+                value={String(gapOverview.generatedContentTasks)}
+                hint="来自诊断的优化任务数量"
+              />
               <P0MetricTile
                 label="本轮重点问题"
-                value={String(overview.highPriority)}
+                value={String(gapOverview.priorityQuestions)}
                 hint="优先级为高的问题数量"
               />
             </div>
@@ -292,9 +349,11 @@ export default function QuestionsLibraryPage() {
                 <TabsContent key={type.value} value={type.value} className="mt-4">
                   <QuestionPoolTable
                     questions={grouped[type.value]}
+                    hasDiagnosisData={hasDiagnosisData}
                     mutating={mutating}
                     onAddToRound={handleAddToRound}
                     onCreateContentTask={handleCreateContentTask}
+                    onViewEvidence={handleViewQuestionEvidence}
                     onTogglePriority={handleTogglePriority}
                     onEdit={openEditDrawer}
                   />
@@ -325,18 +384,22 @@ export default function QuestionsLibraryPage() {
 
 type TableProps = {
   questions: SearchPoolQuestionRow[];
+  hasDiagnosisData: boolean;
   mutating: boolean;
   onAddToRound: (question: SearchPoolQuestionRow) => void;
   onCreateContentTask: (question: SearchPoolQuestionRow) => void;
+  onViewEvidence: (question: SearchPoolQuestionRow) => void;
   onTogglePriority: (question: SearchPoolQuestionRow) => void;
   onEdit: (question: SearchPoolQuestionRow) => void;
 };
 
 function QuestionPoolTable({
   questions,
+  hasDiagnosisData,
   mutating,
   onAddToRound,
   onCreateContentTask,
+  onViewEvidence,
   onTogglePriority,
   onEdit,
 }: TableProps) {
@@ -355,9 +418,9 @@ function QuestionPoolTable({
           <TableRow>
             <TableHead>问题内容</TableHead>
             <TableHead>类型</TableHead>
-            <TableHead>优先级</TableHead>
-            <TableHead>最近实测结果</TableHead>
-            <TableHead>内容任务</TableHead>
+            <TableHead>AI 表现</TableHead>
+            <TableHead>内容状态</TableHead>
+            <TableHead>本轮重点</TableHead>
             <TableHead>需要强化的信源</TableHead>
             <TableHead className="text-right">操作</TableHead>
           </TableRow>
@@ -367,17 +430,22 @@ function QuestionPoolTable({
             <TableRow key={question.id} data-testid={`question-pool-row-${question.id}`}>
               <TableCell className="max-w-xs whitespace-normal">{question.questionText}</TableCell>
               <TableCell>{resolveSearchPoolTypeLabel(question.searchPoolType)}</TableCell>
+              <TableCell data-testid={`question-ai-performance-${question.id}`}>
+                {resolveQuestionPoolAiPerformanceLabel({
+                  lastTestResult: question.lastTestResult,
+                  hasDiagnosisData,
+                })}
+              </TableCell>
+              <TableCell data-testid={`question-content-status-${question.id}`}>
+                {resolveQuestionPoolContentStatusLabel(question)}
+              </TableCell>
               <TableCell>
-                {question.priorityLevel === "high" ? (
-                  <Badge className="border-rose-200 bg-rose-50 text-rose-800">高</Badge>
+                {isQuestionPoolPriority(question) ? (
+                  <Badge className="border-rose-200 bg-rose-50 text-rose-800">是</Badge>
                 ) : (
-                  resolveSearchPoolPriorityLabel(question.priorityLevel)
+                  "否"
                 )}
               </TableCell>
-              <TableCell data-testid={`question-last-test-${question.id}`}>
-                {resolveLastTestResultLabel(question.lastTestResult)}
-              </TableCell>
-              <TableCell>{question.relatedContentTask ? "已关联" : "未关联"}</TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
                   {(question.requiredSourceTypes ?? []).map(sourceType => (
@@ -390,6 +458,16 @@ function QuestionPoolTable({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex flex-wrap justify-end gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={mutating}
+                    data-testid={`question-view-evidence-${question.id}`}
+                    onClick={() => onViewEvidence(question)}
+                  >
+                    查看证据
+                  </Button>
                   <Button
                     type="button"
                     size="sm"

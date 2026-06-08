@@ -34,6 +34,7 @@ import {
   workspaceAiMentionRateHint,
 } from "@shared/workspaceDashboardOverview";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
+import type { WorkspaceTodayTask, WorkspaceTodayTaskStatus } from "@shared/workspaceTodayTasks";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useLocation } from "wouter";
@@ -112,12 +113,7 @@ export default function EnterpriseWorkspacePage() {
     homeDisplay.mainChainNextAction?.ctaPath ??
     (stage && selectedProjectId ? workspaceCtaUrl(selectedProjectId, stage) : null);
   const headerCtaLabel = homeDisplay.mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
-  const waitingLinkCount = metrics?.waitingPublicLinkCount ?? 0;
-  const waitingPublishQueueCount = Math.max(
-    0,
-    (metrics?.articleCount ?? 0) - (metrics?.publishTaskCount ?? 0) - (metrics?.publishRecordCount ?? 0),
-  );
-  const showRetestTodo = Boolean((metrics?.publishRecordWithPublicUrlCount ?? 0) > 0);
+  const todayTasks = metrics?.todayTasks ?? [];
   const brandMentionRateHint = metrics ? workspaceAiMentionRateHint(metrics) : undefined;
   const publishOverview = useMemo(
     () => (metrics ? formatWorkspacePublishCount(metrics) : null),
@@ -173,54 +169,21 @@ export default function EnterpriseWorkspacePage() {
         <>
           <section className="geo-card p-4" data-testid="workspace-priority-todos">
             <h2 className="text-sm font-semibold text-gray-900">本周待办 / 今日动作</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              {waitingLinkCount > 0 ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-sm font-medium text-amber-900">回填已发布内容的公开链接</p>
-                  <p className="mt-1 text-xs text-amber-800">
-                    已有 {waitingLinkCount} 条内容发布完成，但尚未回填公开链接。回填后系统才能安排 T1/T2/T3 复测。
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="mt-2 bg-amber-600 text-white hover:bg-amber-700"
-                    onClick={() =>
-                      setLocation(buildProjectUrl("/content-publishing", selectedProjectId) + "&filter=waiting_links")
-                    }
-                  >
-                    去回填链接
-                  </Button>
-                </div>
-              ) : null}
-              {waitingPublishQueueCount > 0 ? (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                  <p className="text-sm font-medium text-blue-900">将可发布内容加入发布队列</p>
-                  <p className="mt-1 text-xs text-blue-800">当前仍有可发布内容未进入发布队列。</p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="mt-2 bg-blue-600 text-white hover:bg-blue-700"
-                    onClick={() => setLocation(buildProjectUrl("/weekly", selectedProjectId))}
-                  >
-                    去发布内容
-                  </Button>
-                </div>
-              ) : null}
-              {showRetestTodo ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                  <p className="text-sm font-medium text-emerald-900">执行 T1/T2/T3 AI 复测</p>
-                  <p className="mt-1 text-xs text-emerald-800">已具备公开链接，可进入收录监测执行复测。</p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="mt-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                    onClick={() => setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}
-                  >
-                    去收录监测
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+            {todayTasks.length === 0 ? (
+              <p className="mt-3 text-sm text-gray-500" data-testid="workspace-today-tasks-empty">
+                暂无待处理任务
+              </p>
+            ) : (
+              <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {todayTasks.map(task => (
+                  <TodayTaskCard
+                    key={task.key}
+                    task={task}
+                    onAction={() => setLocation(task.targetPath)}
+                  />
+                ))}
+              </div>
+            )}
           </section>
 
           <WorkspaceDashboardOverviewCards
@@ -439,6 +402,72 @@ export default function EnterpriseWorkspacePage() {
       ) : null}
     </div>
   );
+}
+
+function TodayTaskCard({
+  task,
+  onAction,
+}: {
+  task: WorkspaceTodayTask;
+  onAction: () => void;
+}) {
+  const palette = todayTaskPalette(task.status);
+  return (
+    <div
+      className={cn("rounded-lg border p-3", palette.card)}
+      data-testid={`workspace-today-task-${task.key}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-medium text-gray-900">{task.title}</p>
+        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", palette.badge)}>
+          {todayTaskStatusLabel(task.status)}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-gray-600">
+        {task.count > 0 ? `${task.count} 项 · ` : ""}
+        {task.reason}
+      </p>
+      <Button
+        type="button"
+        size="sm"
+        className={cn("mt-2", palette.button)}
+        disabled={task.status === "blocked"}
+        data-testid={`workspace-today-task-action-${task.key}`}
+        onClick={onAction}
+      >
+        {task.actionLabel}
+      </Button>
+    </div>
+  );
+}
+
+function todayTaskStatusLabel(status: WorkspaceTodayTaskStatus): string {
+  if (status === "blocked") return "待前置";
+  if (status === "todo") return "待处理";
+  if (status === "ready") return "可执行";
+  return "已完成";
+}
+
+function todayTaskPalette(status: WorkspaceTodayTaskStatus) {
+  if (status === "blocked") {
+    return {
+      card: "border-gray-200 bg-gray-50",
+      badge: "bg-gray-100 text-gray-600",
+      button: "bg-gray-300 text-gray-500",
+    };
+  }
+  if (status === "todo") {
+    return {
+      card: "border-amber-200 bg-amber-50",
+      badge: "bg-amber-100 text-amber-800",
+      button: "bg-amber-600 text-white hover:bg-amber-700",
+    };
+  }
+  return {
+    card: "border-blue-200 bg-blue-50",
+    badge: "bg-blue-100 text-blue-800",
+    button: "bg-blue-600 text-white hover:bg-blue-700",
+  };
 }
 
 function MetricCell({

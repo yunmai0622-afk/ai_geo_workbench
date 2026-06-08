@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildQuestionPoolGapOverview,
   buildSearchPoolOverviewMetrics,
   filterQuestionsRequiringEntityAnchor,
   filterQuestionsRequiringSourceType,
+  formatQuestionPoolGapMetricValue,
   groupQuestionsBySearchPoolType,
   mapSearchPoolTypeToLegacyQuestionType,
   parseTargetKeywordsInput,
@@ -81,5 +83,22 @@ describe("questionSearchPool", () => {
 
   it("parses target keywords input", () => {
     expect(parseTargetKeywordsInput("GEO, 品牌,认知")).toEqual(["GEO", "品牌", "认知"]);
+  });
+
+  it("builds gap overview with diagnosis guard", () => {
+    const withDiagnosis = buildQuestionPoolGapOverview({
+      questions: sampleQuestions,
+      contentTaskCount: 4,
+      hasDiagnosisData: true,
+    });
+    expect(withDiagnosis.uncoveredQuestions).toBe(2);
+    expect(withDiagnosis.generatedContentTasks).toBe(4);
+
+    const withoutDiagnosis = buildQuestionPoolGapOverview({
+      questions: sampleQuestions,
+      contentTaskCount: 0,
+      hasDiagnosisData: false,
+    });
+    expect(formatQuestionPoolGapMetricValue(withoutDiagnosis.uncoveredQuestions, false)).toBe("暂无诊断数据");
   });
 });

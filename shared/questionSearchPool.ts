@@ -107,6 +107,26 @@ export function resolveSourceTypeLabel(sourceType: string): string {
   return SOURCE_TYPE_LABEL[sourceType] ?? sourceType;
 }
 
+export type QuestionPoolGapOverview = {
+  totalQuestions: number;
+  enabledQuestions: number;
+  uncoveredQuestions: number;
+  competitorDominatedQuestions: number;
+  generatedContentTasks: number;
+  priorityQuestions: number;
+  hasDiagnosisData: boolean;
+};
+
+export type QuestionPoolAiPerformanceLabel =
+  | "暂无诊断数据"
+  | "未实测"
+  | "未提及"
+  | "已提及"
+  | "已推荐"
+  | "竞品占优";
+
+export type QuestionPoolContentStatusLabel = "未生成" | "已生成" | "已发布" | "待复测";
+
 export function buildSearchPoolOverviewMetrics(questions: SearchPoolQuestionRow[]) {
   return {
     total: questions.length,
@@ -117,6 +137,66 @@ export function buildSearchPoolOverviewMetrics(questions: SearchPoolQuestionRow[
     competitorWon: questions.filter(q => q.lastTestResult === "competitor_won").length,
     highPriority: questions.filter(q => q.priorityLevel === "high").length,
   };
+}
+
+export function buildQuestionPoolGapOverview(input: {
+  questions: SearchPoolQuestionRow[];
+  contentTaskCount: number;
+  hasDiagnosisData: boolean;
+}): QuestionPoolGapOverview {
+  const enabledQuestions = input.questions.filter(q => Number(q.enabled) !== 0).length;
+  const uncoveredQuestions = input.hasDiagnosisData
+    ? input.questions.filter(
+        q =>
+          q.lastTestResult === "not_mentioned" ||
+          q.lastTestResult === "competitor_won" ||
+          (Number(q.enabled) !== 0 && !q.lastTestResult),
+      ).length
+    : 0;
+  const competitorDominatedQuestions = input.hasDiagnosisData
+    ? input.questions.filter(q => q.lastTestResult === "competitor_won").length
+    : 0;
+
+  return {
+    totalQuestions: input.questions.length,
+    enabledQuestions,
+    uncoveredQuestions,
+    competitorDominatedQuestions,
+    generatedContentTasks: input.contentTaskCount,
+    priorityQuestions: input.questions.filter(q => q.priorityLevel === "high").length,
+    hasDiagnosisData: input.hasDiagnosisData,
+  };
+}
+
+export function resolveQuestionPoolAiPerformanceLabel(input: {
+  lastTestResult?: string | null;
+  hasDiagnosisData: boolean;
+}): QuestionPoolAiPerformanceLabel {
+  if (!input.hasDiagnosisData) return "暂无诊断数据";
+  if (!input.lastTestResult) return "未实测";
+  if (input.lastTestResult === "mentioned") return "已提及";
+  if (input.lastTestResult === "recommended") return "已推荐";
+  if (input.lastTestResult === "not_mentioned") return "未提及";
+  if (input.lastTestResult === "competitor_won") return "竞品占优";
+  return "未实测";
+}
+
+export function resolveQuestionPoolContentStatusLabel(question: SearchPoolQuestionRow): QuestionPoolContentStatusLabel {
+  if (question.relatedContentTask) return "已生成";
+  return "未生成";
+}
+
+export function formatQuestionPoolGapMetricValue(
+  value: number,
+  hasDiagnosisData: boolean,
+  options?: { allowZero?: boolean },
+): string {
+  if (!hasDiagnosisData && !options?.allowZero) return "暂无诊断数据";
+  return String(value);
+}
+
+export function isQuestionPoolPriority(question: SearchPoolQuestionRow): boolean {
+  return question.priorityLevel === "high";
 }
 
 export function groupQuestionsBySearchPoolType(questions: SearchPoolQuestionRow[]) {

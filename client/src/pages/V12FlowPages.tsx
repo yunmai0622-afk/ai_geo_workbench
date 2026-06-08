@@ -94,6 +94,7 @@ import {
   buildT0StartConfirmCopy,
   countEnabledQuestionsForT0,
 } from "@shared/aiDiagnosisManualT0Gate";
+import { aggregateAiPlatformPerformance } from "@shared/aiPlatformPerformance";
 
 const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
   { value: "manual_check", label: "人工复测" },
@@ -1072,6 +1073,7 @@ export function AiDiagnosisFlowPage() {
   const [t0ConfirmOpen, setT0ConfirmOpen] = useState(false);
   const [rerunConfirmOpen, setRerunConfirmOpen] = useState(false);
   const t0CompletionHandledRef = useRef<string | null>(null);
+  const diagnosisEvidenceRef = useRef<HTMLDetailsElement>(null);
   const enabledQuestionCount = useMemo(() => countEnabledQuestionsForT0(questions), [questions]);
   const hasT0BaselineResult = Boolean(latestCompletedT0Round);
   const t0StartConfirmCopy = useMemo(
@@ -1164,36 +1166,35 @@ export function AiDiagnosisFlowPage() {
     if (!displayT0Round?.finishedAt) return null;
     return formatAiDiagnosisDateTime(displayT0Round.finishedAt);
   }, [displayT0Round?.finishedAt]);
-  const platformCards = useMemo(
-    () =>
-      T0_AI_ENGINE_OPTIONS.map(option => {
-        const stats = t0ResultsDisplay?.byPlatform.find(group => group.platform === option.id);
-        const viz = diagnosisVisualization?.platformComparison.find(item => item.platform === option.id);
-        const sampleCount = stats?.totalRuns ?? viz?.sampleCount ?? 0;
-        const mentionPct = stats ? Math.round(stats.mentionRate * 100) : (viz?.percent ?? null);
-        const recommendPct = stats ? Math.round(stats.recommendRate * 100) : null;
-        const tested = sampleCount > 0;
-        return {
-          id: option.id,
-          name: option.label,
-          icon:
-            option.id === "doubao"
-              ? "🤖"
-              : option.id === "kimi"
-                ? "🔍"
-                : option.id === "deepseek"
-                  ? "🧠"
-                  : option.id === "qwen"
-                    ? "💡"
-                    : "📝",
-          tested,
-          sampleCount,
-          mentionPct,
-          recommendPct,
-        };
-      }),
-    [diagnosisVisualization?.platformComparison, t0ResultsDisplay?.byPlatform],
-  );
+  const platformCards = useMemo(() => {
+    const performanceRows = aggregateAiPlatformPerformance(
+      t0Runs.map(run => ({
+        platform: run.platform,
+        mentionedCompany: run.mentionedCompany,
+        recommendedCompany: run.recommendedCompany,
+        competitorMentioned: run.competitorMentioned,
+        hasSourceLinks: run.hasSourceLinks,
+      })),
+    );
+    const iconByPlatform: Record<string, string> = {
+      doubao: "🤖",
+      kimi: "🔍",
+      deepseek: "🧠",
+      qwen: "💡",
+      wenxin: "📝",
+    };
+    return performanceRows.map(row => ({
+      id: row.platformId,
+      name: row.platformName,
+      icon: iconByPlatform[row.platformId] ?? "🤖",
+      tested: row.testedCount > 0,
+      status: row.status,
+      summary: row.summary,
+      testedCount: row.testedCount,
+      mentionCount: row.mentionCount,
+      recommendCount: row.recommendCount,
+    }));
+  }, [t0Runs]);
   const headline = useMemo(() => buildDiagnosisHeadlineLine(scoreQuery.data ?? null, gapCount), [scoreQuery.data, gapCount]);
   const awarenessLevel = useMemo(() => diagnosisAwarenessLevel(scoreQuery.data ?? null), [scoreQuery.data]);
   const nextStepSuggestion = useMemo(
@@ -1214,6 +1215,43 @@ export function AiDiagnosisFlowPage() {
       : "开始 AI 内容诊断";
   const visibleGapCards = gapsExpanded ? gapCardsAll : gapCardsPreview;
   const visibleQuestionCards = questionsExpanded ? questionCardsAll : questionCardsPreview;
+
+  async function handleGenerateContentTasks() {
+    if (!selectedProjectId) return;
+    setMessage(undefined);
+    setError(undefined);
+    try {
+      const result = await generateTasks.mutateAsync({ projectId: selectedProjectId });
+      await utils.geo.tasks.list.invalidate({ projectId: selectedProjectId });
+      toast.success(`已生成 ${result.count} 个内容任务，可进入内容生产页继续。`);
+      setLocation(buildProjectUrl("/weekly", selectedProjectId));
+    } catch (err) {
+      const raw =
+        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "生成内容任务失败";
+      toast.error(customerErrorMessage(raw));
+      setError(customerErrorMessage(raw));
+    }
+  }
+
+  function handleViewDiagnosisEvidence() {
+    if (analyses.length === 0 && t0Runs.length === 0) {
+      toast.message("暂无诊断证据，请先执行 AI 实测诊断");
+      return;
+    }
+    if (analyses.length > 0) {
+      const node = diagnosisEvidenceRef.current;
+      if (node) {
+        node.open = true;
+        node.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      return;
+    }
+    const t0Node = document.querySelector('[data-testid="ai-diagnosis-t0-' + 'baseline"]');
+    if (t0Node instanceof HTMLDetailsElement) {
+      t0Node.open = true;
+      t0Node.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   async function executeDiagnosisPipeline(projectId: number) {
     setDiagnosisProgressErrorCategory(undefined);
@@ -1546,6 +1584,27 @@ export function AiDiagnosisFlowPage() {
           </div>
           <p className="mt-3 text-sm leading-relaxed text-gray-700">{nextStepSuggestion}</p>
           <p className="mt-2 text-sm font-medium leading-relaxed text-gray-800">{headline}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canOperate || running || analyses.length === 0}
+              data-testid="ai-diagnosis-generate-content-tasks"
+              onClick={() => void handleGenerateContentTasks()}
+            >
+              生成内容任务
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="ai-diagnosis-view-evidence"
+              onClick={handleViewDiagnosisEvidence}
+            >
+              查看诊断证据
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1738,7 +1797,7 @@ export function AiDiagnosisFlowPage() {
 
       {/* --- 覆盖平台卡片 --- */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-platform-cards">
-        <h2 className="text-sm font-semibold text-gray-900">五大 AI 平台实测结果</h2>
+        <h2 className="text-sm font-semibold text-gray-900">五大 AI 平台实测概览</h2>
         <p className="mt-1 text-xs text-gray-500">基于 T0 基线检测真实调用；未纳入本轮的平台显示为未实测。</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {platformCards.map(p => (
@@ -1751,14 +1810,15 @@ export function AiDiagnosisFlowPage() {
                 <span className="text-xl">{p.icon}</span>
                 <p className="text-sm font-medium text-gray-900">{p.name}</p>
               </div>
+              <p className="text-xs font-medium text-gray-700" data-testid={`ai-diagnosis-platform-status-${p.id}`}>
+                {p.status}
+              </p>
+              <p className="text-xs leading-relaxed text-gray-500">{p.summary}</p>
               {p.tested ? (
-                <div className="space-y-0.5 text-xs text-gray-600">
-                  <p>提及率 {p.mentionPct ?? 0}% · 推荐率 {p.recommendPct ?? 0}%</p>
-                  <p className="text-gray-400">样本 {p.sampleCount} 次</p>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400">本轮未实测</p>
-              )}
+                <p className="text-[11px] text-gray-400">
+                  实测 {p.testedCount} 次 · 提及 {p.mentionCount} · 推荐 {p.recommendCount}
+                </p>
+              ) : null}
             </div>
           ))}
         </div>
@@ -2202,7 +2262,7 @@ export function AiDiagnosisFlowPage() {
 
       {/* --- 完整诊断明细（折叠） --- */}
       {analyses.length > 0 && (
-        <details className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <details ref={diagnosisEvidenceRef} className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <summary className="cursor-pointer list-none px-5 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 [&::-webkit-details-marker]:hidden">
             <span className="inline-flex items-center gap-2">
               <ChevronDown className="h-4 w-4" />
