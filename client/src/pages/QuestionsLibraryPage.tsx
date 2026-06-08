@@ -1,10 +1,7 @@
-import { P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
-import { QuestionBankCurrentRoundPanel } from "@/components/questions/QuestionBankCurrentRoundPanel";
 import {
   QuestionIntentGroupSection,
   QuestionUnclassifiedGroupSection,
 } from "@/components/questions/QuestionIntentGroupSection";
-import { QuestionQualityStandardsPanel } from "@/components/questions/QuestionQualityStandardsPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +24,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
-import { geoP0Surfaces } from "@/lib/geoP0Visual";
+
 import { trpc } from "@/lib/trpc";
 import {
   buildQuestionBankOverviewMetrics,
@@ -39,7 +36,7 @@ import {
   type TestRoundSummary,
 } from "@shared/questionBankIntentMap";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { Library, Map, Plus, Sparkles } from "lucide-react";
+import { Library, Plus, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -300,158 +297,134 @@ export default function QuestionsLibraryPage() {
 
   return (
     <div className="space-y-6" data-testid="questions-intent-map-page">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Library className="h-6 w-6 text-blue-600" />
-            <Map className="h-5 w-5 text-blue-500" />
-            <h1 className="text-2xl font-bold text-gray-900">AI 搜索问题库 / AI 搜索需求地图</h1>
-          </div>
-          <p className="mt-1 max-w-3xl text-sm text-gray-500" data-testid="questions-page-subtitle">
-            管理目标客户会向 AI 提问的问题，用于实测品牌可见度、发现 GEO 缺口，并生成内容任务。
-          </p>
-          <p className="mt-1 text-xs text-gray-500">AI 搜索需求地图 · 按客户意图组织问题优先级与下一步动作</p>
-          {selectedProject?.enterpriseName ? (
-            <p className="mt-2 text-sm text-gray-600">
-              当前项目：<span className="font-medium text-gray-900">{selectedProject.enterpriseName}</span>
+
+      {/* ═══════════ BLOCK 1: 第一屏 — 覆盖状况 + 本轮重点 + 主按钮 ═══════════ */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">AI 搜索问题池</h1>
+            <p className="mt-1 text-sm text-gray-500" data-testid="questions-page-subtitle">
+              管理目标客户会向 AI 提问的问题，发现 GEO 缺口并生成内容任务
             </p>
+          </div>
+          {selectedProject?.enterpriseName ? (
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-600">
+              {selectedProject.enterpriseName}
+            </span>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
+
+        {/* 覆盖指标 */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="question-bank-overview">
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center">
+            <p className="text-[11px] text-gray-500">问题总数</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{overview.total || "--"}</p>
+          </div>
+          <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-center">
+            <p className="text-[11px] text-gray-500">已启用 / 用于诊断</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600">{overview.enabledCount || "--"}</p>
+          </div>
+          <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center">
+            <p className="text-[11px] text-gray-500">已发现缺口</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700">
+              {overview.hasCompletedT0Baseline ? overview.gapCount : "--"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-center">
+            <p className="text-[11px] text-gray-500">已生成内容任务</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700">
+              {overview.contentTaskCount > 0 ? overview.contentTaskCount : "--"}
+            </p>
+          </div>
+        </div>
+
+        {/* 本轮重点提示 */}
+        {currentRound && (
+          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+            <p className="text-xs font-medium text-indigo-800">本轮实测题组</p>
+            <p className="mt-1 text-sm text-gray-700">
+              已纳入 <span className="font-semibold text-indigo-700">{currentRound.questionsCount}</span> 个问题
+              {currentRound.intentLabels.length > 0 && (
+                <span className="text-gray-500"> · 覆盖意图：{currentRound.intentLabels.join("、")}</span>
+              )}
+            </p>
+          </div>
+        )}
+
+        {/* 主按钮区 */}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <Button
             type="button"
-            variant="outline"
-            disabled={!selectedProjectId || mutating}
-            onClick={openAddDialog}
-            data-testid="questions-library-add"
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            手动添加问题
-          </Button>
-          <Button
-            type="button"
-            className="bg-blue-600 text-white hover:bg-blue-700"
+            className="h-11 bg-blue-600 text-white hover:bg-blue-700"
             disabled={!selectedProjectId || !hasProfile || mutating}
             onClick={handleGenerate}
             data-testid="questions-library-generate"
           >
             {generateMutation.isPending ? (
-              <>
-                <Spinner className="mr-1.5 h-4 w-4" />
-                生成中…
-              </>
+              <><Spinner className="mr-1.5 h-4 w-4" />生成中…</>
             ) : (
-              <>
-                <Sparkles className="mr-1.5 h-4 w-4" />
-                生成高质量问题
-              </>
+              <><Sparkles className="mr-1.5 h-4 w-4" />生成内容任务</>
             )}
           </Button>
           <Button
             type="button"
             variant="outline"
+            className="h-11 border-gray-300 text-gray-700 hover:bg-gray-50"
             disabled={!selectedProjectId || overview.enabledCount === 0}
             onClick={goCreateRound}
             data-testid="questions-library-create-round-top"
           >
-            创建本轮实测题组
+            标记重点
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 border-gray-300 text-gray-700 hover:bg-gray-50"
+            disabled={!selectedProjectId || mutating}
+            onClick={openAddDialog}
+            data-testid="questions-library-add"
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            手动添加
           </Button>
         </div>
+
+        {/* 建档未完成提醒 */}
+        {!hasProfile && selectedProjectId && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            完成企业档案后可使用「生成内容任务」，基于品牌与行业信息自动写入客户搜索问题。
+          </div>
+        )}
       </div>
 
-      <QuestionQualityStandardsPanel />
-
+      {/* ═══════════ BLOCK 2: 问题意图分组（主体内容） ═══════════ */}
       {loading ? (
         <div className="flex min-h-[240px] items-center justify-center">
           <Spinner className="h-8 w-8 text-blue-600" />
         </div>
       ) : (
         <>
-          <P0Section title="问题库总览" description="从问题选择、AI 实测到内容任务的当前进度">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-testid="question-bank-overview">
-              <P0MetricTile
-                label="问题总数"
-                value={String(overview.total)}
-                hint="当前项目已配置的问题总数"
-              />
-              <P0MetricTile
-                label="已启用"
-                value={String(overview.enabledCount)}
-                hint="启用后将进入下一轮 AI 实测与内容生产候选范围"
-              />
-              <P0MetricTile
-                label="本轮实测题"
-                value={String(overview.currentRoundQuestionCount)}
-                hint="当前启用并纳入实测题组的问题数量"
-              />
-              <P0MetricTile
-                label="已发现缺口"
-                value={
-                  overview.hasCompletedT0Baseline
-                    ? String(overview.gapCount)
-                    : "待完成 AI 实测后生成"
-                }
-                hint={
-                  overview.hasCompletedT0Baseline
-                    ? "T0 实测后自动标注的内容缺口数量"
-                    : "完成 AI 基线检测后展示缺口统计"
-                }
-              />
-              <P0MetricTile
-                label="已生成内容任务"
-                value={
-                  overview.contentTaskCount > 0
-                    ? String(overview.contentTaskCount)
-                    : "待选择问题后生成"
-                }
-                hint={
-                  overview.contentTaskCount > 0
-                    ? "基于诊断缺口生成的内容优化任务数"
-                    : "发现 GEO 缺口后可围绕问题生成内容"
-                }
-              />
-            </div>
-          </P0Section>
-
-          <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-            <p className="font-medium">生成说明</p>
-            <p className="mt-1">
-              系统将基于企业资料、目标客户、核心产品、客户痛点和 AI 实测结果，生成更接近真实 AI 搜索场景的问题。
-            </p>
-          </div>
-
-          <QuestionBankCurrentRoundPanel
-            projectId={selectedProjectId ?? null}
-            currentRound={currentRound}
-            enabledQuestionCount={overview.enabledCount}
-          />
-
           {questions.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-              <p className="text-sm font-medium text-gray-900">还没有问题</p>
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
+              <Library className="mx-auto h-8 w-8 text-gray-300" />
+              <p className="mt-4 text-sm font-medium text-gray-700">还没有问题</p>
               <p className="mt-2 text-sm text-gray-500">
-                可基于企业档案生成高质量问题，或手动添加高价值客户问题，优先覆盖品牌认知、场景痛点与方案寻找。
+                可基于企业档案生成高质量问题，或手动添加高价值客户问题
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <Button type="button" variant="outline" onClick={openAddDialog} disabled={!selectedProjectId}>
                   手动添加问题
                 </Button>
-                <Button
-                  type="button"
-                  className="bg-blue-600 text-white hover:bg-blue-700"
-                  onClick={handleGenerate}
-                  disabled={!selectedProjectId || !hasProfile || generateMutation.isPending}
-                >
+                <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleGenerate} disabled={!selectedProjectId || !hasProfile || generateMutation.isPending}>
                   生成高质量问题
                 </Button>
               </div>
             </div>
           ) : (
-            <P0Section
-              title="问题意图分组"
-              description="按客户搜索意图查看问题质量、实测状态与内容进展"
-            >
-              <div className="space-y-3">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-900">按客户意图分组</h2>
+              <p className="mt-1 text-xs text-gray-500">查看问题质量、实测状态与内容进展</p>
+              <div className="mt-4 space-y-3">
                 {QUESTION_INTENT_GROUPS.map(group => (
                   <QuestionIntentGroupSection
                     key={group.key}
@@ -482,7 +455,7 @@ export default function QuestionsLibraryPage() {
                   onDelete={handleDelete}
                 />
               </div>
-            </P0Section>
+            </div>
           )}
         </>
       )}
@@ -584,11 +557,6 @@ export default function QuestionsLibraryPage() {
         </DialogContent>
       </Dialog>
 
-      {!hasProfile && selectedProjectId ? (
-        <p className={geoP0Surfaces.muted}>
-          提示：完成企业档案后可使用「生成高质量问题」，基于品牌与行业信息自动写入客户搜索问题。
-        </p>
-      ) : null}
     </div>
   );
 }

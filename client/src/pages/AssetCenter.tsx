@@ -798,7 +798,7 @@ export default function AssetCenterPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-bold text-gray-900">品牌资产建档</h1>
         <p className="text-sm text-gray-500">
-          用 5 分钟补齐 AI 理解企业所需的核心信息，完成后即可开始 AI 实测诊断。
+          补齐 AI 理解企业所需的核心信息，完成后即可开始 AI 实测诊断。
         </p>
       </header>
 
@@ -845,19 +845,36 @@ export default function AssetCenterPage() {
 
       {currentProjectId && !coreProfileLoadFailed ? (
         <>
-          <div className="mt-6 space-y-6">
+          <div className="mt-4 space-y-5">
+            {/* ═══ 区块一：建档状态总览 ═══ */}
             <section
-              className="sticky top-20 z-20 rounded-xl border border-blue-100 bg-white/95 p-4 shadow-sm backdrop-blur"
+              className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
               data-testid="profile-layout-sticky-overview"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-700">资料完成度 {profileCompleteness.percent}%</p>
-                  <p className="text-xs text-gray-500">AI 可理解度：{aiUnderstandabilityHint}</p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-700">资料完成度</span>
+                    <span className="text-2xl font-bold text-blue-600">{profileCompleteness.percent}%</span>
+                  </div>
+                  <p className="text-xs text-gray-500">{aiUnderstandabilityHint}</p>
+                  {profileCompleteness.missingKeys.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="text-xs text-gray-400">待补充：</span>
+                      {profileCompleteness.missingKeys.slice(0, 5).map(k => (
+                        <span key={k} className="rounded-md bg-amber-50 px-2 py-0.5 text-xs text-amber-700 border border-amber-200">
+                          {k}
+                        </span>
+                      ))}
+                      {profileCompleteness.missingKeys.length > 5 && (
+                        <span className="text-xs text-gray-400">等 {profileCompleteness.missingKeys.length} 项</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <Button
                   type="button"
-                  className={cn("rounded-xl px-6", geoP0Brand.primary)}
+                  className={cn("rounded-xl px-6 whitespace-nowrap", geoP0Brand.primary)}
                   disabled={saving || loading}
                   data-testid="save-profile-start-diagnosis"
                   onClick={() => void saveFiveMinuteAndStartDiagnosis()}
@@ -868,11 +885,13 @@ export default function AssetCenterPage() {
               </div>
             </section>
 
-            <ProfileCompletenessHeader completeness={profileCompleteness} />
-
-            <details open className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-core">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">核心资料</summary>
-              <div className="space-y-4 border-t border-gray-100 p-5" ref={basicSectionRef}>
+            {/* ═══ 区块二：核心资料（默认展开） ═══ */}
+            <section className="rounded-2xl border border-gray-100 bg-white shadow-sm" data-testid="profile-fold-core">
+              <div className="px-5 py-4 border-b border-gray-50">
+                <h2 className="text-sm font-semibold text-gray-800">核心资料</h2>
+                <p className="text-xs text-gray-400 mt-0.5">AI 理解品牌的最小必要信息</p>
+              </div>
+              <div className="space-y-4 p-5" ref={basicSectionRef}>
                 <FiveMinuteBasicOnboardingSection
                   values={fiveMinuteValues}
                   onChange={applyFiveMinutePatch}
@@ -885,25 +904,22 @@ export default function AssetCenterPage() {
                 />
                 {aiFilledFields.size > 0 ? (
                   <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                    部分字段已由 AI 解析填入，请核对核心建档字段后点击「开始 AI 实测诊断」。
+                    部分字段已由 AI 解析填入，请核对后点击「保存并开始 AI 实测诊断」。
                   </div>
                 ) : null}
                 <div className="lg:hidden">
                   <ProfileAiUnderstandingPreview model={aiPreviewModel} />
                 </div>
               </div>
-            </details>
+            </section>
 
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-publish-accounts">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">发布账号概览</summary>
-              <div className="border-t border-gray-100 p-5">
-                <PublishPlatformAccountsOverview projectId={currentProjectId} />
-              </div>
-            </details>
-
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-brand-assets">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">品牌资产</summary>
-              <div className="border-t border-gray-100 p-5" ref={intakeSectionRef}>
+            {/* ═══ 区块三：补充资料（折叠） ═══ */}
+            <details className="rounded-2xl border border-gray-100 bg-white shadow-sm" data-testid="profile-fold-brand-assets">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 rounded-2xl">
+                品牌资产上传
+                <span className="ml-2 text-xs font-normal text-gray-400">可选，上传后 AI 自动解析填充</span>
+              </summary>
+              <div className="border-t border-gray-50 p-5" ref={intakeSectionRef}>
                 <ProfileUploadAssistSection
                   projectId={currentProjectId}
                   enterpriseName={currentProject?.enterpriseName ?? ""}
@@ -924,9 +940,12 @@ export default function AssetCenterPage() {
               </div>
             </details>
 
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-competitor-info">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">竞品信息</summary>
-              <div className="space-y-4 border-t border-gray-100 p-5">
+            <details className="rounded-2xl border border-gray-100 bg-white shadow-sm" data-testid="profile-fold-competitor-info">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 rounded-2xl">
+                竞品信息
+                <span className="ml-2 text-xs font-normal text-gray-400">{competitors.length > 0 ? `已录入 ${competitors.length} 个竞品` : "可选"}</span>
+              </summary>
+              <div className="space-y-4 border-t border-gray-50 p-5">
                 <label className="block space-y-1 text-sm">
                   <span className="text-gray-600">常被比较的竞品</span>
                   <div className="flex flex-wrap gap-2">
@@ -990,64 +1009,79 @@ export default function AssetCenterPage() {
               </div>
             </details>
 
-            <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-advanced-materials">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">高级素材</summary>
-              <div className="border-t border-gray-100 p-5">
+            <details className="rounded-2xl border border-gray-100 bg-white shadow-sm" data-testid="profile-fold-publish-accounts">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 rounded-2xl">
+                发布账号概览
+                <span className="ml-2 text-xs font-normal text-gray-400">已绑定的平台账号</span>
+              </summary>
+              <div className="border-t border-gray-50 p-5">
+                <PublishPlatformAccountsOverview projectId={currentProjectId} />
+              </div>
+            </details>
+
+            <details className="rounded-2xl border border-gray-100 bg-white shadow-sm" data-testid="profile-fold-advanced-materials">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 rounded-2xl">
+                高级素材
+                <span className="ml-2 text-xs font-normal text-gray-400">
+                  案例 {caseRows.length} · 信任素材 {trustMaterialCount} · FAQ {faqFilledCount}
+                </span>
+              </summary>
+              <div className="border-t border-gray-50 p-5">
                 <AdvancedMaterialsSection
-            caseCount={caseRows.length}
-            trustCount={trustMaterialCount}
-            faqCount={faqFilledCount}
-            casesChoice={casesChoice}
-            onCasesChoice={setCasesChoice}
-            caseRows={caseRows}
-            onCaseRowsChange={setCaseRows}
-            onSaveCase={async (row, idx) => {
-              await runSave("客户案例", async () => {
-                await saveCustomerCaseRow(row, idx);
-              });
-            }}
-            onSaveChoiceNone={async () => {
-              await runSave("案例选择", async () => {
-                await upsertProfile.mutateAsync({ ...basePayloadWithExtras(), hasCases: false });
-              });
-            }}
-            onDeleteCase={idx => setCaseRows(rows => rows.filter((_, i) => i !== idx))}
-            caseStatus={computeProfileSectionStatuses.cases.label === "已完成" ? "已完成" : "待完善"}
-            trustStatus={trustStatus}
-            saving={saving}
-            competitors={competitors}
-            competitorDraft={competitorDraft}
-            onCompetitorDraftChange={setCompetitorDraft}
-            onAddCompetitor={addCompetitor}
-            onRemoveCompetitor={c => setCompetitors(competitors.filter(x => x !== c))}
-            competitorDifferenceText={competitorDifferenceText}
-            onCompetitorDifferenceChange={setCompetitorDifferenceText}
-            unfitCustomers={unfitCustomers}
-            onUnfitCustomersChange={setUnfitCustomers}
-            authorityText={authorityText}
-            onAuthorityTextChange={setAuthorityText}
-            partnersText={partnersText}
-            onPartnersTextChange={setPartnersText}
-            credentialsText={credentialsText}
-            onCredentialsTextChange={setCredentialsText}
-            mediaText={mediaText}
-            onMediaTextChange={setMediaText}
-            reviewsText={reviewsText}
-            onReviewsTextChange={setReviewsText}
-            faqItems={faqItems}
-            onFaqItemsChange={setFaqItems}
-            onSaveTrust={() =>
-              void runSave("信任素材", async () => {
-                await upsertProfile.mutateAsync(basePayloadWithExtras());
-              })
-            }
-            onSaveCompetitor={() =>
-              void runSave("竞品差异", async () => {
-                await upsertProfile.mutateAsync(basePayloadWithExtras());
-              })
-            }
-            showCompetitorSection={false}
-          />
+                  caseCount={caseRows.length}
+                  trustCount={trustMaterialCount}
+                  faqCount={faqFilledCount}
+                  casesChoice={casesChoice}
+                  onCasesChoice={setCasesChoice}
+                  caseRows={caseRows}
+                  onCaseRowsChange={setCaseRows}
+                  onSaveCase={async (row, idx) => {
+                    await runSave("客户案例", async () => {
+                      await saveCustomerCaseRow(row, idx);
+                    });
+                  }}
+                  onSaveChoiceNone={async () => {
+                    await runSave("案例选择", async () => {
+                      await upsertProfile.mutateAsync({ ...basePayloadWithExtras(), hasCases: false });
+                    });
+                  }}
+                  onDeleteCase={idx => setCaseRows(rows => rows.filter((_, i) => i !== idx))}
+                  caseStatus={computeProfileSectionStatuses.cases.label === "已完成" ? "已完成" : "待完善"}
+                  trustStatus={trustStatus}
+                  saving={saving}
+                  competitors={competitors}
+                  competitorDraft={competitorDraft}
+                  onCompetitorDraftChange={setCompetitorDraft}
+                  onAddCompetitor={addCompetitor}
+                  onRemoveCompetitor={c => setCompetitors(competitors.filter(x => x !== c))}
+                  competitorDifferenceText={competitorDifferenceText}
+                  onCompetitorDifferenceChange={setCompetitorDifferenceText}
+                  unfitCustomers={unfitCustomers}
+                  onUnfitCustomersChange={setUnfitCustomers}
+                  authorityText={authorityText}
+                  onAuthorityTextChange={setAuthorityText}
+                  partnersText={partnersText}
+                  onPartnersTextChange={setPartnersText}
+                  credentialsText={credentialsText}
+                  onCredentialsTextChange={setCredentialsText}
+                  mediaText={mediaText}
+                  onMediaTextChange={setMediaText}
+                  reviewsText={reviewsText}
+                  onReviewsTextChange={setReviewsText}
+                  faqItems={faqItems}
+                  onFaqItemsChange={setFaqItems}
+                  onSaveTrust={() =>
+                    void runSave("信任素材", async () => {
+                      await upsertProfile.mutateAsync(basePayloadWithExtras());
+                    })
+                  }
+                  onSaveCompetitor={() =>
+                    void runSave("竞品差异", async () => {
+                      await upsertProfile.mutateAsync(basePayloadWithExtras());
+                    })
+                  }
+                  showCompetitorSection={false}
+                />
               </div>
             </details>
           </div>

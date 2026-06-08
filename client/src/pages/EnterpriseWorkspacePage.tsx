@@ -34,7 +34,7 @@ import {
   workspaceAiMentionRateHint,
 } from "@shared/workspaceDashboardOverview";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock } from "lucide-react";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useLocation } from "wouter";
 
@@ -129,7 +129,7 @@ export default function EnterpriseWorkspacePage() {
   }
 
   return (
-    <div className="space-y-7" data-testid="workspace-page">
+    <div className="space-y-5" data-testid="workspace-page">
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.workspace}
         message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
@@ -147,11 +147,11 @@ export default function EnterpriseWorkspacePage() {
       {summaryQuery.isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4" data-testid="workspace-dashboard-overview-loading">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="geo-card h-[88px] animate-pulse bg-gray-50" aria-hidden />
+            <div key={i} className="h-[88px] animate-pulse rounded-2xl bg-gray-100" aria-hidden />
           ))}
         </div>
       ) : summaryQuery.isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
           <p>暂时无法加载工作台数据。</p>
           <Button
             type="button"
@@ -167,19 +167,65 @@ export default function EnterpriseWorkspacePage() {
         </div>
       ) : stage && metrics && selectedProjectId ? (
         <>
-          <section className="geo-card p-4" data-testid="workspace-priority-todos">
-            <h2 className="text-sm font-semibold text-gray-900">本周待办 / 今日动作</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
+          {/* ═══ 区块一：当前交付阶段 ═══ */}
+          <section
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            data-testid="workspace-delivery-stage-card"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-gray-400">客户项目</p>
+                <h1 className="mt-1 text-xl font-bold text-gray-900" data-testid="workspace-enterprise-name">
+                  {selectedProject?.enterpriseName ?? "当前企业"}
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {stageLabel ? (
+                    <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200">
+                      当前阶段：{stageLabel}
+                    </span>
+                  ) : null}
+                  {deliveryStage ? (
+                    <span className="text-sm text-gray-600">{deliveryStage.stageDescription}</span>
+                  ) : null}
+                </div>
+                {deliveryStage?.blockingReasons && deliveryStage.blockingReasons.length > 0 ? (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <span>当前阻断：{deliveryStage.blockingReasons.join("；")}</span>
+                  </div>
+                ) : null}
+              </div>
+              {headerCtaPath && headerCtaLabel ? (
+                <Button
+                  type="button"
+                  className="rounded-xl bg-blue-600 px-6 text-white shadow-sm hover:bg-blue-700"
+                  data-testid="workspace-primary-cta"
+                  onClick={() => setLocation(headerCtaPath)}
+                >
+                  {headerCtaLabel}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+          </section>
+
+          {/* ═══ 区块二：今日待办 ═══ */}
+          <section
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            data-testid="workspace-priority-todos"
+          >
+            <h2 className="text-base font-semibold text-gray-900">今日待办</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {waitingLinkCount > 0 ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-sm font-medium text-amber-900">回填已发布内容的公开链接</p>
-                  <p className="mt-1 text-xs text-amber-800">
-                    已有 {waitingLinkCount} 条内容发布完成，但尚未回填公开链接。回填后系统才能安排 T1/T2/T3 复测。
+                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+                  <p className="text-sm font-medium text-gray-800">回填已发布内容的公开链接</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {waitingLinkCount} 条内容待回填，回填后系统安排复测
                   </p>
                   <Button
                     type="button"
                     size="sm"
-                    className="mt-2 bg-amber-600 text-white hover:bg-amber-700"
+                    className="mt-3 rounded-lg bg-amber-600 text-white hover:bg-amber-700"
                     onClick={() =>
                       setLocation(buildProjectUrl("/content-publishing", selectedProjectId) + "&filter=waiting_links")
                     }
@@ -189,109 +235,53 @@ export default function EnterpriseWorkspacePage() {
                 </div>
               ) : null}
               {waitingPublishQueueCount > 0 ? (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                  <p className="text-sm font-medium text-blue-900">将可发布内容加入发布队列</p>
-                  <p className="mt-1 text-xs text-blue-800">当前仍有可发布内容未进入发布队列。</p>
+                <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                  <p className="text-sm font-medium text-gray-800">处理待发布内容</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {waitingPublishQueueCount} 篇内容可加入发布队列
+                  </p>
                   <Button
                     type="button"
                     size="sm"
-                    className="mt-2 bg-blue-600 text-white hover:bg-blue-700"
+                    className="mt-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
                     onClick={() => setLocation(buildProjectUrl("/weekly", selectedProjectId))}
                   >
-                    去发布内容
+                    去处理内容
                   </Button>
                 </div>
               ) : null}
               {showRetestTodo ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                  <p className="text-sm font-medium text-emerald-900">执行 T1/T2/T3 AI 复测</p>
-                  <p className="mt-1 text-xs text-emerald-800">已具备公开链接，可进入收录监测执行复测。</p>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+                  <p className="text-sm font-medium text-gray-800">执行 AI 复测</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    已有公开链接的内容可进行收录复测
+                  </p>
                   <Button
                     type="button"
                     size="sm"
-                    className="mt-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                    className="mt-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
                     onClick={() => setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))}
                   >
-                    去收录监测
+                    去收录复测
                   </Button>
+                </div>
+              ) : null}
+              {waitingLinkCount === 0 && waitingPublishQueueCount === 0 && !showRetestTodo ? (
+                <div className="col-span-full flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  当前无紧急待办，可继续推进下一阶段
                 </div>
               ) : null}
             </div>
           </section>
 
-          <WorkspaceDashboardOverviewCards
-            metrics={metrics}
-            latestGeoScore={latestTrendScore}
-            previousGeoScore={previousTrendScore}
-          />
-
-          <section className="geo-card p-5" data-testid="workspace-geo-score-trend">
-            <GeoScoreTrendChart
-              points={scoreTrendPoints}
-              loading={scoreTrendQuery.isLoading}
-              variant="light"
-              data-testid="workspace-geo-score-trend-chart"
-            />
-          </section>
-
-          <WorkspaceInclusionMonitoringSection
-            loading={homeDisplay.inclusionMonitoringLoading}
-            platformRows={homeDisplay.inclusionPlatformRows}
-            publishRecordCount={homeDisplay.publishRecordCount}
-            monitoringRecordCount={homeDisplay.monitoringRecordCount}
-            onOpenMonitoring={() =>
-              setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
-            }
-            onOpenPublishing={() =>
-              setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-            }
-          />
-
-          {metrics.t0ContentGapSuggestions ? (
-            <T0ContentGapSuggestionsCard
-              projectId={selectedProjectId}
-              suggestions={metrics.t0ContentGapSuggestions}
-            />
-          ) : null}
-
-          {/* ═══ 8 步主链路进度 ═══ */}
-          <section className="geo-card p-5" data-testid="workspace-main-chain-progress">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[12px] font-medium text-gray-400">交付指挥中心</p>
-                <h1 className={cn(geoTypography.pageTitle, "mt-0.5")} data-testid="workspace-enterprise-name">
-                  {selectedProject?.enterpriseName ?? "当前企业"}
-                </h1>
-              </div>
-              {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
-            </div>
-            {deliveryStage ? (
-              <div
-                className="mb-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4"
-                data-testid="workspace-delivery-stage-card"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-blue-900">
-                    当前阶段：{deliveryStage.stageLabel}
-                  </p>
-                  <span className="text-xs text-blue-700">{deliveryStage.stage}</span>
-                </div>
-                <p className="mt-1 text-sm text-blue-800">{deliveryStage.stageDescription}</p>
-                {deliveryStage.blockingReasons.length > 0 ? (
-                  <p className="mt-2 text-xs text-blue-700">
-                    阻断原因：{deliveryStage.blockingReasons.join("；")}
-                  </p>
-                ) : null}
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-700">
-                  {deliveryStage.todos.map(todo => (
-                    <span key={todo} className="rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                      {todo}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {/* ═══ 区块三：交付进度 ═══ */}
+          <section
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            data-testid="workspace-main-chain-progress"
+          >
+            <h2 className="text-base font-semibold text-gray-900">交付进度</h2>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {(deliveryStage?.progressSteps ?? mainChainSteps).map(step => (
                 <button
                   key={"id" in step ? step.id : step.key}
@@ -302,10 +292,10 @@ export default function EnterpriseWorkspacePage() {
                       : null
                   }
                   className={cn(
-                    "flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[12px] font-medium transition-colors sm:text-[13px]",
+                    "flex min-w-0 items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left text-[13px] font-medium transition-colors",
                     step.done
                       ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-blue-200 hover:bg-blue-50",
+                      : "border-gray-200 bg-gray-50 text-gray-600 hover:border-blue-200 hover:bg-blue-50",
                   )}
                   data-testid={`main-chain-step-${"step" in step ? step.step : step.key}`}
                 >
@@ -325,64 +315,87 @@ export default function EnterpriseWorkspacePage() {
             </div>
           </section>
 
-          {/* ═══ 数据摘要 + 快速操作 ═══ */}
-          <section className="geo-card p-6" data-testid="workspace-header-card">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-              <MetricCell
-                label="GEO 分"
-                value={formatGeoScore(metrics.geoScore)}
-                labelSuffix={<GeoScoreWeightExplanationHelp />}
-                hintLines={[
-                  geoScoreChangeText ? `${geoScoreChangeText} · ${geoScoreChangeReason}` : null,
-                  ...geoScoreAttributions,
-                ].filter((line): line is string => Boolean(line))}
-              />
-              <MetricCell
-                label="品牌提及率"
-                value={homeDisplay.brandMentionRateText}
-                hintLines={brandMentionRateHint ? [brandMentionRateHint] : []}
-              />
-              <MetricCell label="推荐率" value={homeDisplay.recommendRateText} />
-              <MetricCell label="最近实测" value={homeDisplay.lastAiTestLabel} />
-              <MetricCell
-                label="内容资产"
-                value={metrics.articleCount > 0 ? `${metrics.articleCount} 篇` : "--"}
-              />
-              <MetricCell
-                label="发布记录"
-                value={
-                  publishOverview && metrics.publishRecordCount + metrics.completedPublishTaskCount > 0
-                    ? publishOverview.text.replace("次", " 次")
-                    : "--"
-                }
-                hintLines={publishOverview?.hint ? [publishOverview.hint] : []}
-              />
-            </div>
+          {/* ═══ 区块四（折叠）：数据概览 ═══ */}
+          <details className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <summary className="cursor-pointer px-6 py-4 text-base font-semibold text-gray-900">
+              数据概览
+            </summary>
+            <div className="border-t border-gray-100 px-6 py-5 space-y-5">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                <MetricCell
+                  label="GEO 分"
+                  value={formatGeoScore(metrics.geoScore)}
+                  labelSuffix={<GeoScoreWeightExplanationHelp />}
+                  hintLines={[
+                    geoScoreChangeText ? `${geoScoreChangeText} · ${geoScoreChangeReason}` : null,
+                    ...geoScoreAttributions,
+                  ].filter((line): line is string => Boolean(line))}
+                />
+                <MetricCell
+                  label="品牌提及率"
+                  value={homeDisplay.brandMentionRateText}
+                  hintLines={brandMentionRateHint ? [brandMentionRateHint] : []}
+                />
+                <MetricCell label="推荐率" value={homeDisplay.recommendRateText} />
+                <MetricCell label="最近实测" value={homeDisplay.lastAiTestLabel} />
+                <MetricCell
+                  label="内容资产"
+                  value={metrics.articleCount > 0 ? `${metrics.articleCount} 篇` : "--"}
+                />
+                <MetricCell
+                  label="发布记录"
+                  value={
+                    publishOverview && metrics.publishRecordCount + metrics.completedPublishTaskCount > 0
+                      ? publishOverview.text.replace("次", " 次")
+                      : "--"
+                  }
+                  hintLines={publishOverview?.hint ? [publishOverview.hint] : []}
+                />
+              </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
               {resolution.riskHints.length > 0 ? (
-                <div className="flex items-center gap-2 text-[13px] text-amber-700">
+                <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-[13px] text-amber-700">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>{resolution.riskHints[0]}</span>
                 </div>
-              ) : (
-                <span className="text-[13px] text-gray-400">
-                  {homeDisplay.mainChainNextAction?.reason ?? resolution.blockerReasons[0]}
-                </span>
-              )}
-              {headerCtaPath && headerCtaLabel ? (
-                <Button
-                  type="button"
-                  className={cn("rounded-xl px-5", geoP0Brand.primary)}
-                  data-testid="workspace-primary-cta"
-                  onClick={() => setLocation(headerCtaPath)}
-                >
-                  {headerCtaLabel}
-                  <ArrowRight className="ml-2 size-4" />
-                </Button>
               ) : null}
+
+              <GeoScoreTrendChart
+                points={scoreTrendPoints}
+                loading={scoreTrendQuery.isLoading}
+                variant="light"
+                data-testid="workspace-geo-score-trend-chart"
+              />
             </div>
-          </section>
+          </details>
+
+          {/* ═══ 折叠：收录监测概览 ═══ */}
+          <details className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <summary className="cursor-pointer px-6 py-4 text-base font-semibold text-gray-900">
+              收录监测概览
+            </summary>
+            <div className="border-t border-gray-100 px-6 py-5">
+              <WorkspaceInclusionMonitoringSection
+                loading={homeDisplay.inclusionMonitoringLoading}
+                platformRows={homeDisplay.inclusionPlatformRows}
+                publishRecordCount={homeDisplay.publishRecordCount}
+                monitoringRecordCount={homeDisplay.monitoringRecordCount}
+                onOpenMonitoring={() =>
+                  setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
+                }
+                onOpenPublishing={() =>
+                  setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                }
+              />
+            </div>
+          </details>
+
+          {metrics.t0ContentGapSuggestions ? (
+            <T0ContentGapSuggestionsCard
+              projectId={selectedProjectId}
+              suggestions={metrics.t0ContentGapSuggestions}
+            />
+          ) : null}
         </>
       ) : metrics === undefined && selectedProjectId ? (
         <P0Card testId="workspace-profile-zero" className="py-12 text-center">
@@ -391,7 +404,7 @@ export default function EnterpriseWorkspacePage() {
           </p>
           <Button
             type="button"
-            className={cn("mt-4 rounded-xl", geoP0Brand.primary)}
+            className="mt-4 rounded-xl bg-blue-600 px-6 text-white hover:bg-blue-700"
             onClick={() => setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId))}
           >
             去建档
@@ -420,7 +433,7 @@ function MetricCell({
         <p className="text-[11px] font-medium text-gray-400">{label}</p>
         {labelSuffix}
       </div>
-      <p className="mt-0.5 text-base font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
+      <p className="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-gray-900">{value}</p>
       {hintLines.length > 0 ? (
         <ul className="mt-1 space-y-0.5 text-[11px] leading-4 text-gray-500">
           {hintLines.map((line, index) => (

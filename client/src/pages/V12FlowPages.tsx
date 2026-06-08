@@ -1490,291 +1490,131 @@ export function AiDiagnosisFlowPage() {
           void handleRunDiagnosis();
         }}
       />
-      {/* --- 页面标题区 --- */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">AI 实测诊断</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          检测企业在豆包、Kimi、DeepSeek、通义千问、文心一言等 AI 平台中的品牌提及、推荐和内容引用情况
-        </p>
-      </div>
 
-      {(analyses.length > 0 || scoreQuery.data || t0ResultsDisplay) && (
-        <div
-          className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-white to-white p-5 shadow-md sm:p-6"
-          data-testid="ai-diagnosis-core-summary"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-bold text-gray-900">核心诊断结论</h2>
-            <span className="rounded-full border border-blue-200 bg-blue-100 px-2.5 py-1 text-[10px] font-medium text-blue-700">
-              诊断流程产出
+      {/* ═══════════ BLOCK 1: 第一屏 — 诊断结论 + 状态 + 主按钮 ═══════════ */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">AI 实测诊断</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              检测品牌在豆包、Kimi、DeepSeek、通义千问、文心一言中的 AI 可见性
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+              complete ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+              analyses.length > 0 ? "bg-blue-50 text-blue-700 border border-blue-200" :
+              "bg-gray-100 text-gray-600 border border-gray-200"
+            }`}>
+              {complete ? "诊断已完成" : analyses.length > 0 ? "部分完成" : "未诊断"}
             </span>
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-blue-100 bg-white p-3 text-center sm:p-4">
-              <p className="text-[11px] text-gray-500">GEO 分</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600" data-testid="ai-diagnosis-core-geo-score">
-                {scoreDisplay}
-              </p>
-            </div>
-            <div className="rounded-xl border border-amber-100 bg-white p-3 text-center sm:p-4">
-              <p className="text-[11px] text-gray-500">内容缺口数</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700" data-testid="ai-diagnosis-core-gap-count">
-                {gapCount}
-              </p>
-            </div>
-            <div className="rounded-xl border border-emerald-100 bg-white p-3 text-center sm:p-4">
-              <p className="text-[11px] text-gray-500">推荐方向数</p>
-              <p
-                className="mt-1 text-2xl font-bold tabular-nums text-emerald-700"
-                data-testid="ai-diagnosis-core-recommend-directions"
-              >
-                {recommendDirectionCount}
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-xs text-gray-500">AI 对品牌的认知评级</p>
-              <p className="mt-1 text-lg font-bold text-blue-600">{awarenessLevel}</p>
-            </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-4 sm:col-span-2">
-              <p className="text-xs text-gray-500">主要问题一句话概括</p>
-              <p className="mt-1 text-sm font-medium leading-6 text-gray-800">{primaryIssueLine}</p>
-            </div>
-          </div>
-          <p className="mt-3 text-sm leading-relaxed text-gray-700">{nextStepSuggestion}</p>
-          <p className="mt-2 text-sm font-medium leading-relaxed text-gray-800">{headline}</p>
-        </div>
-      )}
-
-      <div
-        className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
-        data-testid="ai-diagnosis-next-content-actions"
-      >
-        <h2 className="text-sm font-semibold text-gray-900">下一步内容资产动作</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {DIAGNOSIS_NEXT_ACTIONS.map((action, idx) => (
-            <div key={action.title} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs text-gray-400">动作 {idx + 1}</p>
-              <p className="mt-2 text-sm font-medium text-gray-800">{action.title}</p>
-              <p className="mt-1 text-xs text-gray-500">{action.hint}</p>
-            </div>
-          ))}
-        </div>
-        {complete && (
-          <p className="mt-4 text-sm text-emerald-600">诊断已完成，可以进入内容资产生产。</p>
-        )}
-        <Button
-          type="button"
-          className="mt-4 h-11 bg-blue-600 hover:bg-blue-700 text-white"
-          disabled={!complete}
-          onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}
-        >
-          去生成内容资产
-        </Button>
-      </div>
-
-      <FirstUseHintBanner
-        storageKey={FIRST_USE_HINT_KEYS.aiDiagnosis}
-        message="点击「开始 T0 基线检测」并在确认后开始真实平台实测"
-        data-testid="first-use-hint-ai-diagnosis"
-      />
-
-      <div
-        className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5 shadow-sm"
-        data-testid="ai-diagnosis-t0-manual-gate"
-      >
-        {isT0Running ? (
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-indigo-950">T0 检测进行中</p>
-            {t0Progress ? (
-              <p className="text-sm text-indigo-900" data-testid="ai-diagnosis-t0-progress">
-                正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
-              </p>
-            ) : (
-              <p className="text-sm text-indigo-900">正在准备检测任务，请稍候…</p>
+            {lastDiagnosisLabel !== "暂无" && (
+              <span className="text-xs text-gray-400">最近：{lastDiagnosisLabel}</span>
             )}
-            <p className="text-xs text-indigo-800">检测由您确认后启动；刷新页面不会自动发起新检测。</p>
+          </div>
+        </div>
+
+        {/* 核心指标 */}
+        {(analyses.length > 0 || scoreQuery.data || t0ResultsDisplay) ? (
+          <div className="mt-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-center">
+                <p className="text-[11px] text-gray-500">GEO 综合分</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600" data-testid="ai-diagnosis-core-geo-score">{scoreDisplay}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center" data-testid="ai-diagnosis-mention-rate">
+                <p className="text-[11px] text-gray-500">品牌提及率</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{mentionPctDisplay != null ? `${mentionPctDisplay}%` : "--"}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center" data-testid="ai-diagnosis-recommend-rate">
+                <p className="text-[11px] text-gray-500">AI 推荐率</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{recommendPctDisplay != null ? `${recommendPctDisplay}%` : "--"}</p>
+              </div>
+              <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center" data-testid="ai-diagnosis-core-gap-count">
+                <p className="text-[11px] text-gray-500">内容缺口</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700">{gapCount}</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">{awarenessLevel}</span>
+                <p className="text-sm text-gray-700">{primaryIssueLine}</p>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-gray-500">{nextStepSuggestion}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center">
+            <Brain className="mx-auto h-8 w-8 text-gray-300" />
+            <p className="mt-3 text-sm text-gray-500">尚未完成首次诊断，点击下方按钮开始</p>
+          </div>
+        )}
+
+        {/* 主按钮区 */}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {!complete ? (
+            <Button
+              type="button"
+              className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={!canOperate || targetQuestions.length === 0 || running || generatingQuestions || isT0Running}
+              data-testid="ai-diagnosis-run-content-diagnosis"
+              onClick={requestRunContentDiagnosis}
+            >
+              保存并开始 AI 诊断
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => {
+                const el = document.querySelector('[data-testid="ai-diagnosis-detail-section"]');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              查看诊断证据
+            </Button>
+          )}
+          {complete && (
             <Button
               type="button"
               variant="outline"
-              className="border-indigo-300 bg-white text-indigo-900 hover:bg-indigo-100"
-              data-testid="ai-diagnosis-refresh-t0-status"
-              disabled={testRoundsQuery.isFetching || activeT0RoundQuery.isFetching}
-              onClick={() => void refreshT0Status()}
+              className="h-11 border-gray-300 text-gray-700 hover:bg-gray-50"
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId))}
             >
-              {testRoundsQuery.isFetching || activeT0RoundQuery.isFetching ? "正在刷新…" : "刷新状态"}
+              去处理内容
             </Button>
-          </div>
-        ) : hasT0BaselineResult ? (
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-gray-900">已有 T0 基线结果</p>
-            <p className="text-sm text-gray-600">
-              可查看下方明细；如需重新实测，请确认检测范围与预计耗时后再开始。
-            </p>
+          )}
+          {!hasT0BaselineResult && !isT0Running && (
             <Button
               type="button"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              data-testid="ai-diagnosis-restart-t0"
-              disabled={!canOperate || t0StartingMutation || running || generatingQuestions || enabledQuestionCount === 0}
-              onClick={requestStartT0Baseline}
-            >
-              重新诊断
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-gray-900">尚未完成 T0 基线检测</p>
-            <p className="text-sm text-gray-600">
-              T0 基线检测会基于当前问题库，在已接入 AI 平台中真实提问，用于建立品牌可见度初始基线。
-            </p>
-            <Button
-              type="button"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              data-testid="ai-diagnosis-start-t0-gate"
-              disabled={
-                !canOperate ||
-                t0StartingMutation ||
-                running ||
-                generatingQuestions ||
-                enabledQuestionCount === 0 ||
-                selectedT0Platforms.length === 0
-              }
+              variant="outline"
+              className="h-11 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+              disabled={!canOperate || enabledQuestionCount === 0 || selectedT0Platforms.length === 0}
               onClick={requestStartT0Baseline}
             >
               开始 T0 基线检测
             </Button>
+          )}
+        </div>
+
+        {/* 建档未完成提醒 */}
+        {selectedProjectId && !hasProfile && !assetSummaryQuery.isLoading && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            当前项目还没有完成品牌资产建档，请先前往建档页补齐核心信息后再运行诊断。
           </div>
         )}
       </div>
 
-      {/* --- 诊断状态 + 最近实测时间 --- */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-          complete ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-          analyses.length > 0 ? "bg-blue-50 text-blue-700 border border-blue-200" :
-          "bg-gray-100 text-gray-600 border border-gray-200"
-        }`}>
-          {complete ? "诊断已完成" : analyses.length > 0 ? "部分完成" : "未诊断"}
-        </span>
-        <span className="text-xs text-gray-500">最近实测：{lastDiagnosisLabel}</span>
-      </div>
-
-      {showDiagnosisLoadHint ? (
-        <div
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-          role="status"
-          data-testid="ai-diagnosis-load-hint"
-        >
-          <p>{pageError}</p>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-3 border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
-            onClick={() => {
-              void Promise.all([
-                questionsQuery.refetch(),
-                assetSummaryQuery.refetch(),
-                analysisQuery.refetch(),
-                scoreQuery.refetch(),
-                tasksQuery.refetch(),
-              ]);
-            }}
-          >
-            重试加载
-          </Button>
-        </div>
-      ) : null}
-
-      {/* --- 核心指标卡 --- */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-mention-rate">
-          <p className="text-xs font-medium text-gray-500">品牌提及率</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{mentionPctDisplay != null ? `${mentionPctDisplay}%` : "--"}</p>
-          <p className="mt-1 text-xs text-gray-400">AI 回答中提到品牌的比例</p>
-          {mentionRateHint ? (
-            <p className="mt-3 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-900">
-              {mentionRateHint}
-            </p>
-          ) : null}
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-recommend-rate">
-          <p className="text-xs font-medium text-gray-500">AI 推荐率</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{recommendPctDisplay != null ? `${recommendPctDisplay}%` : "--"}</p>
-          <p className="mt-1 text-xs text-gray-400">AI 主动推荐品牌的比例</p>
-          {recommendRateHint ? (
-            <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/80 px-3 py-2 text-xs leading-relaxed text-blue-900">
-              {recommendRateHint}
-            </p>
-          ) : null}
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">内容覆盖评分</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{scoreDisplay}</p>
-          <p className="mt-1 text-xs text-gray-400">综合可见性评分</p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">覆盖问题数</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{targetQuestions.length > 0 ? `${targetQuestions.length}` : "--"}</p>
-          <p className="mt-1 text-xs text-gray-400">已纳入诊断的目标问题</p>
-        </div>
-      </div>
-
-      {diagnosisVisualization ? (
-        <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm">
-          <T0DiagnosisVisualizationPanel visualization={diagnosisVisualization} />
-        </div>
-      ) : null}
-
-      {/* --- 覆盖平台卡片 --- */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-platform-cards">
-        <h2 className="text-sm font-semibold text-gray-900">五大 AI 平台实测结果</h2>
-        <p className="mt-1 text-xs text-gray-500">基于 T0 基线检测真实调用；未纳入本轮的平台显示为未实测。</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {platformCards.map(p => (
-            <div
-              key={p.id}
-              className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
-              data-testid={`ai-diagnosis-platform-${p.id}`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xl">{p.icon}</span>
-                <p className="text-sm font-medium text-gray-900">{p.name}</p>
-              </div>
-              {p.tested ? (
-                <div className="space-y-0.5 text-xs text-gray-600">
-                  <p>提及率 {p.mentionPct ?? 0}% · 推荐率 {p.recommendPct ?? 0}%</p>
-                  <p className="text-gray-400">样本 {p.sampleCount} 次</p>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400">本轮未实测</p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* --- 无数据空状态 --- */}
-      {!loading && analyses.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
-          <Brain className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-4 text-sm font-medium text-gray-700">暂无 AI 实测结果</p>
-          <p className="mt-1 text-xs text-gray-500">完成品牌资产建档后，可以发起首次 AI 搜索可见性诊断。</p>
-        </div>
-      )}
-
-      {/* --- 操作状态提示 --- */}
+      {/* 操作状态提示 */}
       {(message || error) && (
-        <div
-          className={`rounded-xl border px-4 py-3 text-sm ${
-            error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-          }`}
-        >
+        <div className={`rounded-xl border px-4 py-3 text-sm ${
+          error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+        }`}>
           {error || message}
         </div>
       )}
 
-      {/* --- AI 实测诊断进度 --- */}
+      {/* AI 诊断进度 */}
       {diagnosisProgress.status !== "idle" ? (
         <AiTaskProgressCard
           testId="ai-diagnosis-progress"
@@ -1784,505 +1624,324 @@ export function AiDiagnosisFlowPage() {
           elapsedSec={diagnosisProgress.elapsedSec}
           hint30s={AI_DIAGNOSIS_PROGRESS_HINT_30S}
           hint60s={AI_DIAGNOSIS_PROGRESS_HINT_60S}
-          status={
-            diagnosisProgress.isFailed ? "failed" : diagnosisProgress.isSuccess ? "success" : "running"
-          }
+          status={diagnosisProgress.isFailed ? "failed" : diagnosisProgress.isSuccess ? "success" : "running"}
           errorCategory={diagnosisProgressErrorCategory}
           errorMessage={error}
         />
       ) : null}
 
-      {/* --- 建档未完成提醒 --- */}
-      {selectedProjectId && !hasProfile && !assetSummaryQuery.isLoading && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          当前项目还没有完成品牌资产建档，请先前往建档页补齐核心信息后再运行诊断。
+      {showDiagnosisLoadHint ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status" data-testid="ai-diagnosis-load-hint">
+          <p>{pageError}</p>
+          <Button type="button" variant="outline" className="mt-3 border-amber-300 bg-white text-amber-900 hover:bg-amber-100" onClick={() => { void Promise.all([questionsQuery.refetch(), assetSummaryQuery.refetch(), analysisQuery.refetch(), scoreQuery.refetch(), tasksQuery.refetch()]); }}>重试加载</Button>
         </div>
-      )}
+      ) : null}
 
-      <div className="flex items-center gap-2">
-        <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-700">
-          诊断流程
-        </span>
-        <p className="text-xs text-gray-500">分析结论链路：输入问题 到 运行诊断 到 生成结论与任务</p>
-      </div>
+      <FirstUseHintBanner storageKey={FIRST_USE_HINT_KEYS.aiDiagnosis} message="点击「保存并开始 AI 诊断」发起首次诊断" data-testid="first-use-hint-ai-diagnosis" />
 
-      {/* --- 诊断流程控制台（浅色版） --- */}
-      <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-900">诊断流程</h2>
-        <p className="mt-1 text-xs text-gray-500">按步骤完成输入与诊断，产出分析结论与优化任务</p>
-
-        {/* 步骤指示器 */}
-        <div className="mt-5 flex items-center gap-1">
-          {DIAGNOSIS_CONSOLE_STEPS.map((step, idx) => (
-            <div key={step.title} className="flex items-center gap-1">
-              <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-                idx <= stepActiveIndex ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400"
-              }`}>{idx + 1}</div>
-              <span className={`hidden text-xs sm:inline ${idx <= stepActiveIndex ? "text-gray-900 font-medium" : "text-gray-400"}`}>{step.title}</span>
-              {idx < DIAGNOSIS_CONSOLE_STEPS.length - 1 && <div className={`mx-1 h-px w-4 sm:w-8 ${idx < stepActiveIndex ? "bg-blue-600" : "bg-gray-200"}`} />}
-            </div>
-          ))}
-        </div>
-
-        {/* 操作区 */}
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          {/* 目标客户问题 */}
-          <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium text-gray-500">Step 2 · 目标客户问题</p>
-                <p className="mt-1 text-xs text-gray-400">基于企业档案生成客户会在 AI 中搜索的问题</p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void handleGenerateTargetQuestions()}
-                disabled={!canOperate || generatingQuestions || running}
-                variant="outline"
-                className="shrink-0 border-gray-300 text-gray-700 hover:bg-gray-100"
-              >
-                {generatingQuestions ? "正在生成…" : "重新生成"}
-              </Button>
-            </div>
-            {targetQuestions.length === 0 ? (
-              <p className="mt-4 text-sm text-gray-400">暂无问题，点击「重新生成」</p>
-            ) : (
-              <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-                {consoleQuestionPreview.map(q => {
-                  if (!q || typeof q?.id !== "number") return null;
-                  const meta = parseStoredQuestionMeta(q.targetKeyword ?? null);
-                  const typeLabel = targetQuestionIntentLabel(meta.intent, meta.disadvantaged);
-                  return (
-                    <div key={q?.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
-                      <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${meta.disadvantaged ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{typeLabel}</span>
-                      <p className="mt-1 text-sm text-gray-700">{q.questionText}</p>
-                    </div>
-                  );
-                })}
-                {targetQuestions.length > TARGET_QUESTION_PREVIEW_COUNT && (
-                  <button type="button" className="text-xs text-blue-600 hover:text-blue-700" onClick={() => setConsoleQuestionsExpanded(v => !v)}>
-                    {consoleQuestionsExpanded ? "收起" : `展开全部（${targetQuestions.length}）`}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 运行诊断 */}
-          <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-            <p className="text-xs font-medium text-gray-500">Step 4 · 运行 AI 实测诊断</p>
-            <div className="mt-3 grid gap-2 grid-cols-2">
-              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-                <p className="text-[10px] text-gray-400">已准备问题</p>
-                <p className="mt-1 text-sm font-semibold text-gray-900">{targetQuestions.length > 0 ? `${targetQuestions.length} 个` : "--"}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-                <p className="text-[10px] text-gray-400">诊断将产出</p>
-                <p className="mt-1 text-xs text-gray-600">结论 + 缺口 + 任务</p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              className="mt-4 h-11 w-full bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={!canOperate || targetQuestions.length === 0 || running || generatingQuestions || isT0Running}
-              data-testid="ai-diagnosis-run-content-diagnosis"
-              onClick={requestRunContentDiagnosis}
-            >
-              {diagnoseBtnLabel}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* --- T0 基线真实检测（紧凑可折叠，不抢占首屏） --- */}
-      <details
-        className="group rounded-xl border border-indigo-100 bg-white shadow-sm"
-        data-testid="ai-diagnosis-t0-baseline"
-        open={Boolean(isT0Running || t0StartingMutation)}
-      >
-        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
-          <span className="inline-flex items-center gap-2">
-            <ChevronDown className="h-4 w-4 text-indigo-600 transition-transform group-open:rotate-180" />
-            T0 基线真实检测
-          </span>
-          <span className="text-xs font-normal text-gray-500">
-            {displayT0Round?.status === "completed"
-              ? "已完成 · 展开查看明细"
-              : isT0Running
-                ? "检测进行中…"
-                : "真实平台实测入口"}
-          </span>
-        </summary>
-        <div className="space-y-4 border-t border-indigo-50 px-4 pb-4 pt-2">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs text-gray-500">
-              调用真实 AI 平台实测并沉淀原始数据，与上方内容诊断流程并行保留。
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {hasT0BaselineToReset ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0 border-red-200 text-red-700 hover:bg-red-50"
-                disabled={!canOperate || isT0Running || resetT0Baseline.isPending}
-                data-testid="ai-diagnosis-reset-t0"
-                onClick={() =>
-                  dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.resetT0Detection, () =>
-                    handleResetT0Baseline(),
-                  )
-                }
-              >
-                {resetT0Baseline.isPending ? "正在重置…" : "重置T0检测"}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
-              disabled={
-                !canOperate ||
-                isT0Running ||
-                running ||
-                generatingQuestions ||
-                selectedT0Platforms.length === 0 ||
-                enabledQuestionCount === 0
-              }
-              onClick={requestStartT0Baseline}
-              data-testid="ai-diagnosis-start-t0"
-            >
-              {t0StartingMutation
-                ? "正在启动 T0 检测…"
-                : isT0Running
-                  ? "T0 检测进行中…"
-                  : hasT0BaselineResult
-                    ? "重新诊断"
-                    : "开始 T0 基线检测"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-4" data-testid="ai-diagnosis-t0-platform-select">
-          <p className="text-xs font-medium text-gray-500">实测平台（多选）</p>
-          <div className="mt-2 flex flex-wrap gap-3">
-            {T0_AI_ENGINE_OPTIONS.map(option => {
-              const checked = selectedT0Platforms.includes(option?.id);
-              return (
-                <label
-                  key={option?.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800"
-                >
-                  <input
-                    type="checkbox"
-                    className="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={checked}
-                    disabled={isT0Running || t0StartingMutation}
-                    onChange={() => {
-                      setSelectedT0Platforms(prev => {
-                        if (checked) {
-                          const next = prev.filter(id => id !== option?.id);
-                          return next.length > 0 ? next : prev;
-                        }
-                        return [...prev, option?.id];
-                      });
-                    }}
-                  />
-                  {option.label}
-                </label>
-              );
-            })}
-          </div>
-          <p className="mt-2 text-xs text-gray-400">通义千问需 QWEN_API_KEY，文心一言需 WENXIN_API_KEY。</p>
-        </div>
-
-        {(t0Message || t0Error) &&
-          (t0Error && isSubscriptionLimitMessage(t0Error) ? (
-            <SubscriptionUpgradePrompt className="mt-4" message={t0Error} testId="ai-diagnosis-t0-limit-error" />
-          ) : (
-            <div
-              className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
-                t0Error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-              }`}
-            >
-              {t0Error || t0Message}
-            </div>
-          ))}
-
-        {isT0Running ? (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {t0Progress ? (
-              <div
-                className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"
-                data-testid="ai-diagnosis-t0-progress-detail"
-              >
-                正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
-              </div>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="border-indigo-300 text-indigo-900"
-              data-testid="ai-diagnosis-refresh-t0-status-detail"
-              disabled={testRoundsQuery.isFetching || activeT0RoundQuery.isFetching}
-              onClick={() => void refreshT0Status()}
-            >
-              刷新状态
-            </Button>
-          </div>
-        ) : null}
-
-        {displayT0Round?.status === "completed" && t0ResultsDisplay ? (
-          <div className="mt-5 space-y-4" data-testid="ai-diagnosis-t0-results">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-900">检测结果汇总</p>
-                {t0CompletedAtLabel ? (
-                  <p className="mt-1 text-xs text-gray-500" data-testid="ai-diagnosis-t0-completed-at">
-                    实测完成时间：{t0CompletedAtLabel}
-                  </p>
-                ) : null}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                data-testid="ai-diagnosis-t0-export-csv"
-                disabled={t0RunsQuery.isLoading || !selectedProjectId}
-                onClick={handleExportT0ResultsCsv}
-              >
-                导出检测结果
-              </Button>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs text-gray-500">总测试次数</p>
-                <p className="mt-1 text-xl font-bold text-gray-900">{t0ResultsDisplay.totalRuns}</p>
-              </div>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs text-gray-500">品牌提及</p>
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {t0ResultsDisplay.mentionedCount} 次 · {formatT0Rate(t0ResultsDisplay.mentionRate)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs text-gray-500">品牌推荐</p>
-                <p className="mt-1 text-xl font-bold text-gray-900">
-                  {t0ResultsDisplay.recommendedCount} 次 · {formatT0Rate(t0ResultsDisplay.recommendRate)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs text-gray-500">竞品出现</p>
-                <p className="mt-1 text-xl font-bold text-gray-900">{t0ResultsDisplay.competitorAppearances} 次</p>
-                {t0ResultsDisplay.competitorNames.length > 0 ? (
-                  <p className="mt-1 text-xs text-gray-500 line-clamp-2">
-                    {t0ResultsDisplay.competitorNames.join("、")}
-                  </p>
+      {/* ═══════════ BLOCK 2: AI 平台实测概览 ═══════════ */}
+      {(hasAiTestMetrics || platformCards.some(p => p.tested)) && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="ai-diagnosis-platform-cards">
+          <h2 className="text-sm font-semibold text-gray-900">五大 AI 平台实测概览</h2>
+          <p className="mt-1 text-xs text-gray-500">基于 T0 基线检测真实调用结果</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {platformCards.map(p => (
+              <div key={p.id} className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3" data-testid={`ai-diagnosis-platform-${p.id}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{p.icon}</span>
+                  <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                </div>
+                {p.tested ? (
+                  <div className="space-y-0.5 text-xs text-gray-600">
+                    <p>提及 {p.mentionPct ?? 0}% · 推荐 {p.recommendPct ?? 0}%</p>
+                    <p className="text-gray-400">样本 {p.sampleCount} 次</p>
+                  </div>
                 ) : (
-                  <p className="mt-1 text-xs text-gray-400">暂未提及竞品</p>
+                  <p className="text-xs text-gray-400">本轮未实测</p>
                 )}
               </div>
-            </div>
-
-            {(Math.round(t0ResultsDisplay.mentionRate * 100) === 0 || Math.round(t0ResultsDisplay.recommendRate * 100) === 0) && (
-              <div className="space-y-2 rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-xs leading-relaxed text-amber-950">
-                {Math.round(t0ResultsDisplay.mentionRate * 100) === 0 ? (
-                  <p data-testid="ai-diagnosis-t0-mention-hint">{diagnosisMentionRateHint(0, true)}</p>
-                ) : null}
-                {Math.round(t0ResultsDisplay.recommendRate * 100) === 0 ? (
-                  <p data-testid="ai-diagnosis-t0-recommend-hint">{diagnosisRecommendRateHint(0, true)}</p>
-                ) : null}
-              </div>
-            )}
-
-            {t0ResultsDisplay.byPlatform.some(group => group.totalRuns > 0) ? (
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4" data-testid="ai-diagnosis-t0-by-platform">
-                <h3 className="text-sm font-semibold text-gray-900">分平台实测结果</h3>
-                <div className="mt-3 space-y-2">
-                  {t0ResultsDisplay.byPlatform.map(group => (
-                    <div
-                      key={group.platform}
-                      className="flex flex-col gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <span className="font-medium text-gray-900">{group.label}</span>
-                      <span className="text-xs text-gray-500">
-                        {group.totalRuns > 0
-                          ? `测试 ${group.totalRuns} 次 · 提及 ${formatT0Rate(group.mentionRate)} · 推荐 ${formatT0Rate(group.recommendRate)}`
-                          : "本轮未实测"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {t0ResultsDisplay.byQuestionType.length > 0 ? (
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">按问题类型分组</h3>
-                <div className="mt-3 space-y-2">
-                  {t0ResultsDisplay.byQuestionType.map(group => (
-                    <div
-                      key={group.questionType}
-                      className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700"
-                    >
-                      <p className="font-medium text-gray-900">{group.label}</p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        测试 {group.totalRuns} 次 · 提及 {group.mentionedCount} 次（{formatT0Rate(group.mentionRate)}）
-                        · 推荐 {group.recommendedCount} 次（{formatT0Rate(group.recommendRate)}）
-                        · 竞品出现 {group.competitorAppearances} 次
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            ))}
           </div>
-        ) : displayT0Round?.status === "completed" && !t0ResultsDisplay ? (
-          <p className="mt-4 text-sm text-gray-500">T0 检测已完成，但暂无可展示的实测记录。</p>
-        ) : null}
-        </div>
-      </details>
-
-      {/* --- 内容缺口与目标问题 --- */}
-      {analyses.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900">内容缺口</h3>
-            {gapCardsPreview.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-400">暂无内容缺口</p>
-            ) : (
-              <div className="mt-3 space-y-2">
-                {visibleGapCards.map(card => (
-                  <div key={card?.id} className="rounded-lg border-l-4 border-l-amber-400 border border-gray-100 bg-gray-50 p-3">
-                    <p className="text-sm font-medium text-gray-800 line-clamp-1">{card.title}</p>
-                    <p className="mt-1 text-xs text-gray-500 line-clamp-2">{card.detail}</p>
-                  </div>
-                ))}
-                {gapCardsAll.length > 5 && (
-                  <button type="button" className="text-xs text-blue-600 hover:text-blue-700" onClick={() => setGapsExpanded(v => !v)}>
-                    {gapsExpanded ? "收起" : `查看全部（${gapCardsAll.length}）`}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900">目标问题</h3>
-            {questionCardsPreview.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-400">暂无目标问题</p>
-            ) : (
-              <div className="mt-3 space-y-2">
-                {visibleQuestionCards.map(card => (
-                  <div key={card?.id} className="rounded-lg border-l-4 border-l-blue-400 border border-gray-100 bg-gray-50 p-3">
-                    <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${card.disadvantaged ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{card.intentLabel}</span>
-                    <p className="mt-1 text-sm text-gray-700">{card.title}</p>
-                  </div>
-                ))}
-                {targetQuestions.length > TARGET_QUESTION_PREVIEW_COUNT && (
-                  <button type="button" className="text-xs text-blue-600 hover:text-blue-700" onClick={() => setQuestionsExpanded(v => !v)}>
-                    {questionsExpanded ? "收起" : `展开全部（${targetQuestions.length}）`}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          {mentionRateHint && <p className="mt-3 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-900">{mentionRateHint}</p>}
+          {recommendRateHint && <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50/80 px-3 py-2 text-xs leading-relaxed text-blue-900">{recommendRateHint}</p>}
         </div>
       )}
 
-      {/* --- 完整诊断明细（折叠） --- */}
+      {diagnosisVisualization ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <T0DiagnosisVisualizationPanel visualization={diagnosisVisualization} />
+        </div>
+      ) : null}
+
+      {/* ═══════════ BLOCK 3: 内容缺口 + 优化方向 ═══════════ */}
       {analyses.length > 0 && (
-        <details className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-medium text-gray-600 hover:text-gray-900 [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-2">
-              <ChevronDown className="h-4 w-4" />
-              完整诊断明细
-            </span>
-          </summary>
-          <div className="space-y-6 border-t border-gray-100 px-5 pb-6 pt-4">
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-900">内容缺口与优化方向</h2>
+          <p className="mt-1 text-xs text-gray-500">诊断发现的品牌内容空白及推荐补充方向</p>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
-              <h3 className="font-semibold text-gray-900">内容覆盖评分</h3>
-              {scoreQuery.data ? (
-                <div className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
-                  <p>
-                    总分 {scoreQuery.data.totalScore} · 等级 {scoreQuery.data.visibilityLevel} · AI 提及{" "}
-                    {scoreQuery.data.aiVisibilityScore} · AI 推荐 {scoreQuery.data.aiRecommendationScore}
-                  </p>
-                  <p>{scoreReason(scoreQuery.data)}</p>
-                  <p>{scoreFactors(scoreQuery.data)}</p>
-                </div>
+              <p className="text-xs font-medium text-gray-500 mb-2">缺口清单（{gapCardsAll.length}）</p>
+              {gapCardsPreview.length === 0 ? (
+                <p className="text-sm text-gray-400">暂无内容缺口</p>
               ) : (
-                <p className="mt-2 text-sm text-gray-400">当前还没有生成内容覆盖评分。</p>
+                <div className="space-y-2">
+                  {visibleGapCards.map(card => (
+                    <div key={card?.id} className="rounded-lg border-l-4 border-l-amber-400 border border-gray-100 bg-gray-50 p-3">
+                      <p className="text-sm font-medium text-gray-800 line-clamp-1">{card.title}</p>
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">{card.detail}</p>
+                    </div>
+                  ))}
+                  {gapCardsAll.length > 5 && (
+                    <button type="button" className="text-xs text-blue-600 hover:text-blue-700" onClick={() => setGapsExpanded(v => !v)}>
+                      {gapsExpanded ? "收起" : `查看全部（${gapCardsAll.length}）`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-
             <div>
-              <h3 className="font-semibold text-gray-900">诊断结果</h3>
-              <div className="mt-3 space-y-3">
-                {analyses.map(item => {
-                  if (!item || typeof item?.id !== "number") return null;
-                  const detail = diagnosisJson(item) as Record<string, unknown>;
-                  const v12 = diagnosisV12DisplayFields(detail);
-                  return (
-                    <div key={item?.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
-                      <p className="font-medium text-gray-800">客户问题：{diagnosisText(detail.questionText, "未关联客户问题")}</p>
-                      <div className="mt-3 grid gap-2 md:grid-cols-2">
-                        <p>AI 是否提及品牌：{yesNo(item.mentionsEnterprise)}</p>
-                        <p>AI 是否推荐品牌：{yesNo(item.recommendsEnterprise)}</p>
-                        <p>竞品：{listText(item.recommendedCompetitors)}</p>
-                        <p>用户意图：{diagnosisText(detail.userIntent)}</p>
-                      </div>
-                      <p className="mt-2">内容缺口：{item.contentGap || "暂无"}</p>
-                      <p>优化建议：{item.optimizationSuggestion || "暂无"}</p>
-                      {v12.suggestedTitle && (
-                        <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3">
-                          <p className="text-xs text-blue-600">建议标题：《{v12.suggestedTitle}》</p>
-                          {v12.coreTheses.length > 0 && (
-                            <ul className="mt-1 list-disc pl-5 text-xs text-gray-600">
-                              {v12.coreTheses.map((t, idx) => <li key={idx}>{t}</li>)}
-                            </ul>
-                          )}
-                          {v12.recommendedPlatforms.length > 0 && (
-                            <p className="mt-1 text-xs text-gray-500">推荐平台：{v12.recommendedPlatforms.join("、")}</p>
-                          )}
-                        </div>
-                      )}
+              <p className="text-xs font-medium text-gray-500 mb-2">目标问题（{targetQuestions.length}）</p>
+              {questionCardsPreview.length === 0 ? (
+                <p className="text-sm text-gray-400">暂无目标问题</p>
+              ) : (
+                <div className="space-y-2">
+                  {visibleQuestionCards.map(card => (
+                    <div key={card?.id} className="rounded-lg border-l-4 border-l-blue-400 border border-gray-100 bg-gray-50 p-3">
+                      <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${card.disadvantaged ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{card.intentLabel}</span>
+                      <p className="mt-1 text-sm text-gray-700">{card.title}</p>
                     </div>
+                  ))}
+                  {targetQuestions.length > TARGET_QUESTION_PREVIEW_COUNT && (
+                    <button type="button" className="text-xs text-blue-600 hover:text-blue-700" onClick={() => setQuestionsExpanded(v => !v)}>
+                      {questionsExpanded ? "收起" : `展开全部（${targetQuestions.length}）`}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════ BLOCK 4: 诊断操作台（折叠） ═══════════ */}
+      <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="ai-diagnosis-detail-section">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+            诊断操作台与明细
+          </span>
+          <span className="text-xs font-normal text-gray-400">问题生成 · T0 检测 · 完整结论</span>
+        </summary>
+        <div className="space-y-6 border-t border-gray-100 px-5 pb-6 pt-4">
+
+          {/* 问题生成 + 诊断运行 */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium text-gray-500">目标客户问题</p>
+                  <p className="mt-1 text-xs text-gray-400">基于企业档案生成客户会在 AI 中搜索的问题</p>
+                </div>
+                <Button type="button" size="sm" onClick={() => void handleGenerateTargetQuestions()} disabled={!canOperate || generatingQuestions || running} variant="outline" className="shrink-0 border-gray-300 text-gray-700 hover:bg-gray-100">
+                  {generatingQuestions ? "正在生成…" : "重新生成"}
+                </Button>
+              </div>
+              {targetQuestions.length === 0 ? (
+                <p className="mt-4 text-sm text-gray-400">暂无问题，点击「重新生成」</p>
+              ) : (
+                <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
+                  {consoleQuestionPreview.map(q => {
+                    if (!q || typeof q?.id !== "number") return null;
+                    const meta = parseStoredQuestionMeta(q.targetKeyword ?? null);
+                    const typeLabel = targetQuestionIntentLabel(meta.intent, meta.disadvantaged);
+                    return (
+                      <div key={q?.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                        <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${meta.disadvantaged ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{typeLabel}</span>
+                        <p className="mt-1 text-sm text-gray-700">{q.questionText}</p>
+                      </div>
+                    );
+                  })}
+                  {targetQuestions.length > TARGET_QUESTION_PREVIEW_COUNT && (
+                    <button type="button" className="text-xs text-blue-600 hover:text-blue-700" onClick={() => setConsoleQuestionsExpanded(v => !v)}>
+                      {consoleQuestionsExpanded ? "收起" : `展开全部（${targetQuestions.length}）`}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <p className="text-xs font-medium text-gray-500">运行 AI 实测诊断</p>
+              <div className="mt-3 grid gap-2 grid-cols-2">
+                <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                  <p className="text-[10px] text-gray-400">已准备问题</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">{targetQuestions.length > 0 ? `${targetQuestions.length} 个` : "--"}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                  <p className="text-[10px] text-gray-400">诊断将产出</p>
+                  <p className="mt-1 text-xs text-gray-600">结论 + 缺口 + 任务</p>
+                </div>
+              </div>
+              <Button type="button" className="mt-4 h-11 w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={!canOperate || targetQuestions.length === 0 || running || generatingQuestions || isT0Running} data-testid="ai-diagnosis-run-content-diagnosis" onClick={requestRunContentDiagnosis}>
+                {diagnoseBtnLabel}
+              </Button>
+            </div>
+          </div>
+
+          {/* T0 基线检测 */}
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 p-4" data-testid="ai-diagnosis-t0-baseline">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">T0 基线真实检测</p>
+                <p className="mt-1 text-xs text-gray-500">调用真实 AI 平台实测并沉淀原始数据</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {hasT0BaselineToReset && (
+                  <Button type="button" variant="outline" className="shrink-0 border-red-200 text-red-700 hover:bg-red-50" disabled={!canOperate || isT0Running || resetT0Baseline.isPending} data-testid="ai-diagnosis-reset-t0" onClick={() => dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.resetT0Detection, () => handleResetT0Baseline())}>
+                    {resetT0Baseline.isPending ? "正在重置…" : "重置T0检测"}
+                  </Button>
+                )}
+                <Button type="button" className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white" disabled={!canOperate || isT0Running || running || generatingQuestions || selectedT0Platforms.length === 0 || enabledQuestionCount === 0} onClick={requestStartT0Baseline} data-testid="ai-diagnosis-start-t0">
+                  {t0StartingMutation ? "正在启动…" : isT0Running ? "检测进行中…" : hasT0BaselineResult ? "重新诊断" : "开始 T0 基线检测"}
+                </Button>
+              </div>
+            </div>
+            <div className="mt-4" data-testid="ai-diagnosis-t0-platform-select">
+              <p className="text-xs font-medium text-gray-500">实测平台（多选）</p>
+              <div className="mt-2 flex flex-wrap gap-3">
+                {T0_AI_ENGINE_OPTIONS.map(option => {
+                  const checked = selectedT0Platforms.includes(option?.id);
+                  return (
+                    <label key={option?.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800">
+                      <input type="checkbox" className="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={checked} disabled={isT0Running || t0StartingMutation} onChange={() => { setSelectedT0Platforms(prev => { if (checked) { const next = prev.filter(id => id !== option?.id); return next.length > 0 ? next : prev; } return [...prev, option?.id]; }); }} />
+                      {option.label}
+                    </label>
                   );
                 })}
               </div>
             </div>
+            {(t0Message || t0Error) && (t0Error && isSubscriptionLimitMessage(t0Error) ? (
+              <SubscriptionUpgradePrompt className="mt-4" message={t0Error} testId="ai-diagnosis-t0-limit-error" />
+            ) : (
+              <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${t0Error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{t0Error || t0Message}</div>
+            ))}
+            {isT0Running && (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {t0Progress ? (
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800" data-testid="ai-diagnosis-t0-progress-detail">正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题</div>
+                ) : null}
+                <Button type="button" variant="outline" size="sm" className="border-indigo-300 text-indigo-900" data-testid="ai-diagnosis-refresh-t0-status-detail" disabled={testRoundsQuery.isFetching || activeT0RoundQuery.isFetching} onClick={() => void refreshT0Status()}>刷新状态</Button>
+              </div>
+            )}
+            {displayT0Round?.status === "completed" && t0ResultsDisplay ? (
+              <div className="mt-5 space-y-4" data-testid="ai-diagnosis-t0-results">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">检测结果汇总</p>
+                    {t0CompletedAtLabel && <p className="mt-1 text-xs text-gray-500" data-testid="ai-diagnosis-t0-completed-at">完成时间：{t0CompletedAtLabel}</p>}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="shrink-0" data-testid="ai-diagnosis-t0-export-csv" disabled={t0RunsQuery.isLoading || !selectedProjectId} onClick={handleExportT0ResultsCsv}>导出检测结果</Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-xs text-gray-500">总测试</p><p className="mt-1 text-lg font-bold text-gray-900">{t0ResultsDisplay.totalRuns} 次</p></div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-xs text-gray-500">品牌提及</p><p className="mt-1 text-lg font-bold text-gray-900">{t0ResultsDisplay.mentionedCount} 次 · {formatT0Rate(t0ResultsDisplay.mentionRate)}</p></div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-xs text-gray-500">品牌推荐</p><p className="mt-1 text-lg font-bold text-gray-900">{t0ResultsDisplay.recommendedCount} 次 · {formatT0Rate(t0ResultsDisplay.recommendRate)}</p></div>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-xs text-gray-500">竞品出现</p><p className="mt-1 text-lg font-bold text-gray-900">{t0ResultsDisplay.competitorAppearances} 次</p>{t0ResultsDisplay.competitorNames.length > 0 && <p className="mt-1 text-xs text-gray-500 line-clamp-1">{t0ResultsDisplay.competitorNames.join("、")}</p>}</div>
+                </div>
+                {t0ResultsDisplay.byPlatform.some(g => g.totalRuns > 0) && (
+                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-4" data-testid="ai-diagnosis-t0-by-platform">
+                    <h3 className="text-xs font-semibold text-gray-700">分平台明细</h3>
+                    <div className="mt-2 space-y-1">
+                      {t0ResultsDisplay.byPlatform.map(group => (
+                        <div key={group.platform} className="flex flex-col gap-0.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                          <span className="font-medium text-gray-900">{group.label}</span>
+                          <span className="text-xs text-gray-500">{group.totalRuns > 0 ? `${group.totalRuns} 次 · 提及 ${formatT0Rate(group.mentionRate)} · 推荐 ${formatT0Rate(group.recommendRate)}` : "未实测"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : displayT0Round?.status === "completed" && !t0ResultsDisplay ? (
+              <p className="mt-4 text-sm text-gray-500">T0 检测已完成，但暂无可展示的实测记录。</p>
+            ) : null}
+          </div>
 
-            <div>
-              <h3 className="font-semibold text-gray-900">优化任务</h3>
-              {tasks.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-400">当前还没有优化任务。请先运行诊断。</p>
-              ) : (
-                <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                  {tasks.map(task => {
-                    if (!task || typeof task?.id !== "number") return null;
-                    const card = parseGeoTaskCard(task.executionSuggestion);
+          {/* 完整诊断明细 */}
+          {analyses.length > 0 && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold text-gray-900">内容覆盖评分</h3>
+                {scoreQuery.data ? (
+                  <div className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
+                    <p>总分 {scoreQuery.data.totalScore} · 等级 {scoreQuery.data.visibilityLevel} · AI 提及 {scoreQuery.data.aiVisibilityScore} · AI 推荐 {scoreQuery.data.aiRecommendationScore}</p>
+                    <p>{scoreReason(scoreQuery.data)}</p>
+                    <p>{scoreFactors(scoreQuery.data)}</p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-400">当前还没有生成内容覆盖评分。</p>
+                )}
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">诊断结果</h3>
+                <div className="mt-3 space-y-3">
+                  {analyses.map(item => {
+                    if (!item || typeof item?.id !== "number") return null;
+                    const detail = diagnosisJson(item) as Record<string, unknown>;
+                    const v12 = diagnosisV12DisplayFields(detail);
                     return (
-                      <div key={task?.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
-                        <p className="font-medium text-gray-800">{task.taskName}</p>
-                        <p className="mt-1 text-blue-600 text-xs">优先级：{task.priority || "待评估"}</p>
-                        <p className="text-xs">解决问题：{task.generationReason || "补齐诊断发现的内容缺口"}</p>
-                        {card && (
-                          <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3 space-y-1">
-                            <p className="text-xs"><span className="text-gray-400">建议标题：</span>《{card.articleTitle}》</p>
-                            <p className="text-xs"><span className="text-gray-400">关键词：</span>{card.targetKeywords.join("、")}</p>
-                            <p className="text-xs"><span className="text-gray-400">平台：</span>{card.recommendedPlatform.join("、")}</p>
+                      <div key={item?.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+                        <p className="font-medium text-gray-800">客户问题：{diagnosisText(detail.questionText, "未关联客户问题")}</p>
+                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                          <p>AI 是否提及品牌：{yesNo(item.mentionsEnterprise)}</p>
+                          <p>AI 是否推荐品牌：{yesNo(item.recommendsEnterprise)}</p>
+                          <p>竞品：{listText(item.recommendedCompetitors)}</p>
+                          <p>用户意图：{diagnosisText(detail.userIntent)}</p>
+                        </div>
+                        <p className="mt-2">内容缺口：{item.contentGap || "暂无"}</p>
+                        <p>优化建议：{item.optimizationSuggestion || "暂无"}</p>
+                        {v12.suggestedTitle && (
+                          <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3">
+                            <p className="text-xs text-blue-600">建议标题：《{v12.suggestedTitle}》</p>
+                            {v12.coreTheses.length > 0 && <ul className="mt-1 list-disc pl-5 text-xs text-gray-600">{v12.coreTheses.map((t, idx) => <li key={idx}>{t}</li>)}</ul>}
+                            {v12.recommendedPlatforms.length > 0 && <p className="mt-1 text-xs text-gray-500">推荐平台：{v12.recommendedPlatforms.join("、")}</p>}
                           </div>
                         )}
                       </div>
                     );
                   })}
                 </div>
-              )}
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">优化任务</h3>
+                {tasks.length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-400">当前还没有优化任务。请先运行诊断。</p>
+                ) : (
+                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                    {tasks.map(task => {
+                      if (!task || typeof task?.id !== "number") return null;
+                      const card = parseGeoTaskCard(task.executionSuggestion);
+                      return (
+                        <div key={task?.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+                          <p className="font-medium text-gray-800">{task.taskName}</p>
+                          <p className="mt-1 text-blue-600 text-xs">优先级：{task.priority || "待评估"}</p>
+                          <p className="text-xs">解决问题：{task.generationReason || "补齐诊断发现的内容缺口"}</p>
+                          {card && (
+                            <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3 space-y-1">
+                              <p className="text-xs"><span className="text-gray-400">建议标题：</span>《{card.articleTitle}》</p>
+                              <p className="text-xs"><span className="text-gray-400">关键词：</span>{card.targetKeywords.join("、")}</p>
+                              <p className="text-xs"><span className="text-gray-400">平台：</span>{card.recommendedPlatform.join("、")}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </details>
-      )}
+          )}
+        </div>
+      </details>
     </div>
   );
 }
