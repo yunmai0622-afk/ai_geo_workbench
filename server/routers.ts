@@ -145,6 +145,8 @@ import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { ensureInclusionMonitoringRecordForPublishRecord } from "./publishRecordMonitoring";
 import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
 import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
+import { getQuestionPoolTestSummary, startQuestionPoolTest } from "./questionPoolTestExecutor";
+import { buildRoundComparison } from "@shared/testRoundComparison";
 import {
   filterAiTestRunRows,
   filterRoundQuestionLinks,
@@ -4138,6 +4140,92 @@ ${article.markdownContent}`,
           });
         }
         return { success: true, deletedRoundCount: result.deletedRoundCount } as const;
+      }),
+  }),
+
+  questionPoolTest: router({
+    summary: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        return getQuestionPoolTestSummary(db, input.projectId);
+      }),
+    start: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          platforms: z.array(z.string().min(1)).optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const result = await startQuestionPoolTest(db, input.projectId, input.platforms);
+        if ("error" in result) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "已有进行中的问题池实测，请等待完成后再发起",
+          });
+        }
+        return { success: true, roundId: result.roundId, status: result.status } as const;
+      }),
+  }),
+
+  testComparison: router({
+    compare: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          roundAId: z.string().uuid(),
+          roundBId: z.string().uuid(),
+        }),
+      )
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const { round: roundA } = await requireTestRoundAccess(ctx, input.roundAId);
+        const { round: roundB } = await requireTestRoundAccess(ctx, input.roundBId);
+        if (roundA.projectId !== input.projectId || roundB.projectId !== input.projectId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "检测轮次不属于当前项目" });
+        }
+
+        const [runsA, runsB, questionRows] = await Promise.all([
+          db.select().from(aiTestRuns).where(eq(aiTestRuns.roundId, input.roundAId)),
+          db.select().from(aiTestRuns).where(eq(aiTestRuns.roundId, input.roundBId)),
+          db
+            .select({ id: questions.id, questionText: questions.questionText })
+            .from(questions)
+            .where(eq(questions.projectId, input.projectId)),
+        ]);
+
+        const questionTextById = new Map(questionRows.map(row => [row.id, row.questionText]));
+        return buildRoundComparison(
+          input.roundAId,
+          input.roundBId,
+          filterAiTestRunRows(runsA),
+          filterAiTestRunRows(runsB),
+          questionTextById,
+        );
+      }),
+    listComparableRounds: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const rows = await db
+          .select()
+          .from(testRounds)
+          .where(and(eq(testRounds.projectId, input.projectId), eq(testRounds.status, "completed")))
+          .orderBy(desc(testRounds.finishedAt), desc(testRounds.createdAt));
+        return filterTestRoundRows(rows).map(round => ({
+          id: round.id,
+          roundName: round.roundName,
+          roundType: round.roundType,
+          finishedAt: round.finishedAt,
+          scheduledType: round.scheduledType ?? null,
+          sourceQuestionPoolSize: round.sourceQuestionPoolSize ?? null,
+        }));
       }),
   }),
 

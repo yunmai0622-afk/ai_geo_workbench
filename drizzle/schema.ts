@@ -204,6 +204,21 @@ export const aiResponses = mysqlTable("ai_responses", {
   aiPlatform: aiPlatformEnum.notNull(),
   rawAnswer: text("rawAnswer").notNull(),
   checkedAt: timestamp("checkedAt").notNull(),
+  /** P1-C：规则抽取 — 是否提及品牌 */
+  extractedMentioned: boolean("extractedMentioned"),
+  /** P1-C：规则抽取 — 是否推荐品牌 */
+  extractedRecommended: boolean("extractedRecommended"),
+  /** P1-C：规则抽取 — 引用来源列表 */
+  extractedCitations: json("extractedCitations").$type<string[]>(),
+  /** P1-C：规则抽取 — 出现的竞品名 */
+  extractedCompetitors: json("extractedCompetitors").$type<string[]>(),
+  /** P1-C：规则抽取 — positive/neutral/negative */
+  extractedSentiment: varchar("extractedSentiment", { length: 16 }),
+  /** P1-C：抽取方式 rule/ai */
+  extractionMethod: varchar("extractionMethod", { length: 16 }),
+  extractedAt: timestamp("extractedAt"),
+  /** P1-C：对应 questions.searchPoolType */
+  questionPoolType: varchar("questionPoolType", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -780,6 +795,14 @@ export const testRounds = mysqlTable("test_rounds", {
   runsPerQuestion: int("runsPerQuestion").default(3).notNull(),
   startedAt: timestamp("startedAt"),
   finishedAt: timestamp("finishedAt"),
+  /** P1-C：本轮来自问题池的题目数 */
+  sourceQuestionPoolSize: int("sourceQuestionPoolSize"),
+  /** P1-C：本轮测试的平台列表（与 platforms 并存，便于问题池实测筛选） */
+  platformsIncluded: json("platformsIncluded").$type<string[]>(),
+  /** P1-C：触发类型 manual/t1/t2/t3/weekly */
+  scheduledType: varchar("scheduledType", { length: 32 }),
+  /** P1-C：对比基准轮次 ID */
+  comparedToRoundId: varchar("comparedToRoundId", { length: 36 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

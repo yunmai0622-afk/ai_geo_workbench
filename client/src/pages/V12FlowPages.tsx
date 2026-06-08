@@ -27,6 +27,8 @@ import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderC
 import { RetestPlanPanel } from "@/components/diagnosis/RetestPlanPanel";
 import { AiDiagnosisRerunConfirmDialog } from "@/components/diagnosis/AiDiagnosisRerunConfirmDialog";
 import { AiDiagnosisT0ConfirmDialog } from "@/components/diagnosis/AiDiagnosisT0ConfirmDialog";
+import { QuestionPoolTestPanel } from "@/components/diagnosis/QuestionPoolTestPanel";
+import { TestComparisonPanel } from "@/components/diagnosis/TestComparisonPanel";
 import { DangerousActionConfirmDialog } from "@/components/DangerousActionConfirmDialog";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
@@ -1579,6 +1581,14 @@ export function AiDiagnosisFlowPage() {
         message="点击「开始 T0 基线检测」并在确认后开始真实平台实测"
         data-testid="first-use-hint-ai-diagnosis"
       />
+
+      <QuestionPoolTestPanel
+        projectId={selectedProjectId ?? null}
+        enabled={enabled}
+        canOperate={canOperate}
+      />
+
+      <TestComparisonPanel projectId={selectedProjectId ?? null} enabled={enabled} />
 
       <div
         className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5 shadow-sm"
