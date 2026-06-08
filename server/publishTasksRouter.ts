@@ -54,8 +54,13 @@ import {
   PUBLISH_QUEUE_DUPLICATE_RETRY_MESSAGE,
 } from "@shared/publishQueueDedup";
 import { buildDeliveryReportPublishStats } from "@shared/deliveryReportPublishStats";
+import { mapReviewEnqueueCustomerMessage, REVIEW_ENQUEUE_SUCCESS_MESSAGE } from "@shared/reviewEnqueueErrors";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
+
+function throwReviewEnqueueBadRequest(raw: string): never {
+  throw new TRPCError({ code: "BAD_REQUEST", message: mapReviewEnqueueCustomerMessage(raw) });
+}
 
 type PublishChannelLabel =
   | "知乎"
@@ -259,6 +264,93 @@ async function assertNoDuplicatePublishQueueTask(
   }
 }
 
+type PublishTaskCreateContext = {
+  db: Awaited<ReturnType<typeof requireDbConn>>;
+  userId: number;
+  projectId: number;
+  articleId: number;
+  article: typeof geoArticles.$inferSelect;
+  platform: BindingPublishPlatform;
+  boundAccount: {
+    id: number;
+    accountName: string | null;
+    localAgentId: string | null;
+    localProfileId: string | null;
+  };
+  project: { enterpriseName: string | null };
+};
+
+async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
+  const brandLabel = String(ctx.project.enterpriseName ?? "海豚知道").trim() || "海豚知道";
+  const effectiveCoverBase64 = resolveArticleCoverBase64ForPublish(ctx.article, brandLabel);
+  const rawCoverImageUrl = ctx.article.coverImageUrl?.trim() ?? "";
+  if (!effectiveCoverBase64 && !rawCoverImageUrl) {
+    console.warn(`[封面图] 文章 ${ctx.articleId} 暂无封面且无法合成，任务将仅含正文`);
+  } else if (effectiveCoverBase64) {
+    try {
+      const parsed = parseStoredCoverBase64(effectiveCoverBase64);
+      const payload = parsed?.base64 ?? effectiveCoverBase64;
+      const coverBytes = Buffer.from(payload, "base64").length;
+      if (coverBytes > 100 * 1024) {
+        console.warn(
+          `[封面图] 文章 ${ctx.articleId} coverBase64 约 ${coverBytes} bytes，超过 100KB，仍写入任务`,
+        );
+      }
+    } catch {
+      console.warn(`[封面图] 文章 ${ctx.articleId} coverBase64 无法解码，仍尝试写入任务`);
+    }
+    if (!ctx.article.coverBase64?.trim() || !isValidStoredCoverBase64(ctx.article.coverBase64)) {
+      await ctx.db
+        .update(geoArticles)
+        .set({ coverBase64: effectiveCoverBase64 })
+        .where(eq(geoArticles.id, ctx.articleId));
+    }
+  }
+
+  const coverImageUrl = buildPublishCoverImageUrl(effectiveCoverBase64, ctx.article.coverImageUrl);
+  const apiKey = await ensureUserExtensionApiKey(ctx.userId);
+  const inserted = await ctx.db
+    .insert(publishTasks)
+    .values({
+      projectId: ctx.projectId,
+      projectName: ctx.project.enterpriseName,
+      articleId: ctx.articleId,
+      platform: ctx.platform,
+      status: "pending_agent",
+      platformAccountId: ctx.boundAccount.id,
+      expectedAccountName: ctx.boundAccount.accountName,
+      accountVerificationStatus: "matched",
+      articleTitle: ctx.article.title,
+      articleContent: ctx.article.markdownContent ?? "",
+      coverImageUrl: coverImageUrl ?? undefined,
+      apiKey,
+      localAgentId: ctx.boundAccount.localAgentId,
+      localProfileId: ctx.boundAccount.localProfileId,
+    })
+    .$returningId();
+  if (!coverImageUrl) {
+    console.warn(`[封面图] 任务 ${inserted[0]?.id ?? "?"} 暂无封面，将仅发布正文`);
+  }
+  const taskId = inserted[0]?.id ?? 0;
+  if (taskId > 0) {
+    await appendArticleLifecycleEvent(ctx.db, ctx.articleId, {
+      status: "pending_publish",
+      source: "publish_task_create",
+      message: `已创建 ${PUBLISH_PLATFORM_LABELS[ctx.platform]} 本地 Agent 发布任务`,
+      taskId,
+      platform: ctx.platform,
+      publishTaskStatus: "pending_agent",
+    });
+  }
+  return {
+    taskId,
+    coverImageUrl: coverImageUrl ?? null,
+    hasCover: Boolean(coverImageUrl),
+    platformAccountId: ctx.boundAccount.id,
+    publishMode: "local_agent" as const,
+  };
+}
+
 async function attachCoverImagePayload(coverImageUrl: string | null, origin: string) {
   const resolvedUrl = resolveCoverImageUrl(coverImageUrl, origin);
   if (!resolvedUrl) {
@@ -354,34 +446,6 @@ export const publishTasksRouter = router({
         platformAccountId: input.platformAccountId,
       });
 
-      const brandLabel = String(project.enterpriseName ?? "海豚知道").trim() || "海豚知道";
-      const effectiveCoverBase64 = resolveArticleCoverBase64ForPublish(article, brandLabel);
-      const rawCoverImageUrl = article.coverImageUrl?.trim() ?? "";
-      if (!effectiveCoverBase64 && !rawCoverImageUrl) {
-        console.warn(`[封面图] 文章 ${input.articleId} 暂无封面且无法合成，任务将仅含正文`);
-      } else if (effectiveCoverBase64) {
-        try {
-          const parsed = parseStoredCoverBase64(effectiveCoverBase64);
-          const payload = parsed?.base64 ?? effectiveCoverBase64;
-          const coverBytes = Buffer.from(payload, "base64").length;
-          if (coverBytes > 100 * 1024) {
-            console.warn(
-              `[封面图] 文章 ${input.articleId} coverBase64 约 ${coverBytes} bytes，超过 100KB，仍写入任务`,
-            );
-          }
-        } catch {
-          console.warn(`[封面图] 文章 ${input.articleId} coverBase64 无法解码，仍尝试写入任务`);
-        }
-        if (!article.coverBase64?.trim() || !isValidStoredCoverBase64(article.coverBase64)) {
-          await db
-            .update(geoArticles)
-            .set({ coverBase64: effectiveCoverBase64 })
-            .where(eq(geoArticles.id, input.articleId));
-        }
-      }
-
-      const coverImageUrl = buildPublishCoverImageUrl(effectiveCoverBase64, article.coverImageUrl);
-
       if (!boundAccount.localAgentId?.trim() || !boundAccount.localProfileId?.trim()) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -409,48 +473,156 @@ export const publishTasksRouter = router({
         platformAccountId: boundAccount.id,
       });
 
-      const apiKey = await ensureUserExtensionApiKey(ctx.user!.id);
-      const inserted = await db
-        .insert(publishTasks)
-        .values({
-          projectId: input.projectId,
-          projectName: project.enterpriseName,
-          articleId: input.articleId,
-          platform: input.platform,
-          status: "pending_agent",
-          platformAccountId: boundAccount.id,
-          expectedAccountName: boundAccount.accountName,
-          accountVerificationStatus: "matched",
-          articleTitle: article.title,
-          articleContent: article.markdownContent ?? "",
-          coverImageUrl: coverImageUrl ?? undefined,
-          apiKey,
-          localAgentId: boundAccount.localAgentId,
-          localProfileId: boundAccount.localProfileId,
-        })
-        .$returningId();
-      if (!coverImageUrl) {
-        console.warn(`[封面图] 任务 ${inserted[0]?.id ?? "?"} 暂无封面，将仅发布正文`);
-      }
-      const taskId = inserted[0]?.id ?? 0;
-      if (taskId > 0) {
-        await appendArticleLifecycleEvent(db, input.articleId, {
-          status: "pending_publish",
-          source: "publish_task_create",
-          message: `已创建 ${PUBLISH_PLATFORM_LABELS[input.platform]} 本地 Agent 发布任务`,
-          taskId,
-          platform: input.platform,
-          publishTaskStatus: "pending_agent",
-        });
-      }
+      const created = await insertPublishTaskRecord({
+        db,
+        userId: ctx.user!.id,
+        projectId: input.projectId,
+        articleId: input.articleId,
+        article,
+        platform: input.platform,
+        boundAccount,
+        project,
+      });
       return {
-        taskId,
-        coverImageUrl: coverImageUrl ?? null,
-        hasCover: Boolean(coverImageUrl),
+        taskId: created.taskId,
+        coverImageUrl: created.coverImageUrl,
+        hasCover: created.hasCover,
         projectName: project.enterpriseName,
         platformLabel: PUBLISH_PLATFORM_LABELS[input.platform],
         expectedAccountName: boundAccount.accountName ?? null,
         publishMode: "local_agent" as const,
+      } as const;
+    }),
+
+  reviewAndEnqueueArticle: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        articleId: z.number().int().positive(),
+        platform: publishPlatformSlugEnum,
+        confirmManualReview: z.literal(true),
+        platformAccountId: z.number().int().positive().optional().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDbConn();
+      const ownerUserId = getCurrentUserId(ctx);
+      await requireProjectAccessConn(db, ownerUserId, input.projectId);
+
+      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+      const article = articleRows[0];
+      if (!article || article.projectId !== input.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+      }
+
+      try {
+        await assertPublishReadinessForCreate(db, {
+          projectId: input.projectId,
+          article,
+          platform: input.platform,
+        });
+      } catch (err) {
+        if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
+        throw err;
+      }
+
+      const articlePlatform = getArticlePublishPlatform({
+        generationBasis: article.generationBasis ?? null,
+      });
+      if (!articlePlatform.recognized || !articlePlatform.publishQueueSlug) {
+        throwReviewEnqueueBadRequest("内容平台缺失：请重新生成该平台内容");
+      }
+      if (articlePlatform.publishQueueSlug !== input.platform) {
+        throwReviewEnqueueBadRequest("内容平台缺失：请重新生成该平台内容");
+      }
+
+      if (!isBindingPublishPlatform(input.platform)) {
+        throwReviewEnqueueBadRequest("该平台请先在企业档案绑定本地发布账号后，通过本地客户端发布");
+      }
+
+      let boundAccount;
+      try {
+        boundAccount = await resolvePublishPlatformAccount(db, {
+          projectId: input.projectId,
+          platform: input.platform,
+          platformAccountId: input.platformAccountId ?? null,
+        });
+      } catch (err) {
+        if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
+        throw err;
+      }
+
+      if (!boundAccount.localAgentId?.trim() || !boundAccount.localProfileId?.trim()) {
+        throwReviewEnqueueBadRequest(publishBlockedNoLocalProfileMessage(input.platform));
+      }
+
+      if (boundAccount.sessionStatus !== "active") {
+        throwReviewEnqueueBadRequest(publishBlockedSessionExpiredMessage(input.platform));
+      }
+
+      try {
+        await assertPrePublishChecklistForCreate(db, {
+          projectId: input.projectId,
+          article,
+          platform: input.platform,
+          boundAccount,
+        });
+      } catch (err) {
+        if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
+        throw err;
+      }
+
+      try {
+        await assertNoDuplicatePublishQueueTask(db, {
+          articleId: input.articleId,
+          platform: input.platform,
+          platformAccountId: boundAccount.id,
+        });
+      } catch (err) {
+        if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
+        throw err;
+      }
+
+      const project = await requireProjectAccessConn(db, ownerUserId, input.projectId);
+
+      let created;
+      try {
+        created = await insertPublishTaskRecord({
+          db,
+          userId: ctx.user!.id,
+          projectId: input.projectId,
+          articleId: input.articleId,
+          article,
+          platform: input.platform,
+          boundAccount,
+          project,
+        });
+      } catch (err) {
+        console.error("[reviewAndEnqueueArticle] create publish task failed", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: mapReviewEnqueueCustomerMessage("服务端异常"),
+        });
+      }
+
+      if (created.taskId <= 0) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: mapReviewEnqueueCustomerMessage("服务端异常"),
+        });
+      }
+
+      await db
+        .update(geoArticles)
+        .set({ contentReviewStatus: "已审核可发布" })
+        .where(eq(geoArticles.id, input.articleId));
+
+      return {
+        publishTaskId: created.taskId,
+        status: "pending_agent" as const,
+        message: REVIEW_ENQUEUE_SUCCESS_MESSAGE,
+        platformAccountId: created.platformAccountId,
+        publishMode: created.publishMode,
       } as const;
     }),
 

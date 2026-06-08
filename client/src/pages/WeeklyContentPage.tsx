@@ -137,6 +137,10 @@ import {
   normalizeContentReviewStatus,
 } from "@shared/contentReviewStatus";
 import {
+  mapReviewEnqueueCustomerMessage,
+  REVIEW_ENQUEUE_SUCCESS_MESSAGE,
+} from "@shared/reviewEnqueueErrors";
+import {
   resolveWeeklyAccountDisplayStatus,
   resolveWeeklyAiQcDisplayStatus,
   resolveWeeklyCoverDisplayStatus,
@@ -569,12 +573,12 @@ export default function WeeklyContentPage() {
   const generateTasksMutation = trpc.geo.tasks.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
+  const reviewAndEnqueueArticle = trpc.publishTasks.reviewAndEnqueueArticle.useMutation();
   const syncLocalAgentSnapshot = trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
   const updateGeneratedArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
   const setContentReviewStatus = trpc.geo.articles.setContentReviewStatus.useMutation({
     onSuccess: async () => {
       await invalidateArticles();
-      toast.success("审核状态已更新");
     },
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "更新审核状态失败")),
   });
@@ -2550,28 +2554,82 @@ export default function WeeklyContentPage() {
     if (!article || !confirmed || !selectedProjectId) return;
     setReviewConfirmBusy(true);
     try {
-      await setContentReviewStatus.mutateAsync({
+      if (mode === "review_only") {
+        await setContentReviewStatus.mutateAsync({
+          projectId: selectedProjectId,
+          articleId: article.id,
+          status: "已审核可发布",
+        });
+        setReviewConfirmDialog({
+          open: false,
+          article: null,
+          confirmed: false,
+          mode: "review_and_enqueue",
+        });
+        toast.success("已标记为已审核可发布");
+        return;
+      }
+
+      const resolved = getArticlePublishPlatform({
+        generationBasis: article.generationBasis ?? null,
+        targetPlatform: article.targetPlatform,
+        publishPlatform: article.publishPlatform,
+      });
+      const slug =
+        resolved.publishQueueSlug && resolved.supportedByLocalAgent && !resolved.queueBlockedReason
+          ? resolved.publishQueueSlug
+          : null;
+      if (!slug || !isBindingPublishPlatform(slug)) {
+        toast.error(mapReviewEnqueueCustomerMessage("内容平台缺失：请重新生成该平台内容"));
+        return;
+      }
+
+      await hydratePublishDialogAgent({ syncToWeb: true });
+      const freshAccountGroups = (((await utils.geo.platformAccounts.list.fetch({
+        projectId: selectedProjectId,
+      }))
+        ?.accounts ?? []) as Array<{ platform: string; accounts: PlatformAccountItem[] }>);
+      const ready = (freshAccountGroups.find(g => g.platform === slug)?.accounts ?? []).filter(
+        isPublishReadyAccount,
+      ) as PlatformAccountItem[];
+      if (ready.length === 0) {
+        toast.error(mapReviewEnqueueCustomerMessage(publishBlockedNoAccountMessage(slug)));
+        return;
+      }
+      const stored = readLastEnqueuePublishAccountId(selectedProjectId, slug);
+      const picked =
+        (stored ? ready.find(a => a.id === stored) : null) ?? (ready.length === 1 ? ready[0]! : null);
+      if (!picked) {
+        toast.error(mapReviewEnqueueCustomerMessage(publishMustSelectAccountMessage(slug)));
+        preparePublishDialogForArticle(article);
+        setPublishDialogOpen(true);
+        return;
+      }
+
+      const res = await reviewAndEnqueueArticle.mutateAsync({
         projectId: selectedProjectId,
         articleId: article.id,
-        status: "已审核可发布",
+        platform: slug,
+        confirmManualReview: true,
+        platformAccountId: picked.id,
       });
-      const reviewedArticle: ArticleRow = {
-        ...article,
-        contentReviewStatus: "已审核可发布",
-      };
       setReviewConfirmDialog({
         open: false,
         article: null,
         confirmed: false,
         mode: "review_and_enqueue",
       });
-      if (mode === "review_only") {
-        toast.success("已标记为已审核可发布");
-        return;
-      }
-      await enqueueArticleDirectly(reviewedArticle);
+      rememberEnqueuePublishAccount(slug, res.platformAccountId);
+      toast.success(REVIEW_ENQUEUE_SUCCESS_MESSAGE);
+      notifyPublishEffectPrediction();
+      void pollPublishTasksUntilDone(article.id, [res.publishTaskId]);
+      await invalidateArticles();
     } catch (err) {
-      toast.error(toUserFacingErrorFromUnknown(err, "人工审核确认失败"));
+      const raw =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message ?? "")
+          : "";
+      toast.error(mapReviewEnqueueCustomerMessage(raw) || "审核并加入发布队列失败");
     } finally {
       setReviewConfirmBusy(false);
     }
@@ -3061,7 +3119,10 @@ export default function WeeklyContentPage() {
             }
             onHistoryReviewChange={(articleId, status) => {
               if (!selectedProjectId) return;
-              setContentReviewStatus.mutate({ projectId: selectedProjectId, articleId, status });
+              setContentReviewStatus.mutate(
+                { projectId: selectedProjectId, articleId, status },
+                { onSuccess: () => toast.success("审核状态已更新") },
+              );
             }}
             onGoInclusionMonitoring={() =>
               selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))

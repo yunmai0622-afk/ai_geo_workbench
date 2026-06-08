@@ -79,6 +79,12 @@ export const API_DOC_SECTIONS: ApiDocSection[] = [
     description: "本地 Agent 发布队列、任务状态与扩展程序对接。",
     entries: [
       { path: "publishTasks.create", type: "mutation", auth: "protected", summary: "创建本地 Agent 发布任务" },
+      {
+        path: "publishTasks.reviewAndEnqueueArticle",
+        type: "mutation",
+        auth: "protected",
+        summary: "人工审核通过并原子加入发布队列",
+      },
       { path: "publishTasks.listRecentByProject", type: "query", auth: "protected", summary: "项目近期发布任务" },
       { path: "publishTasks.latestByArticle", type: "query", auth: "protected", summary: "文章最新发布任务" },
       { path: "publishTasks.retry", type: "mutation", auth: "protected", summary: "重试失败发布任务" },

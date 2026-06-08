@@ -39,9 +39,8 @@ describe("GEO-V1.1-Content-Review-Status", () => {
     expect(requestFn.indexOf("review_and_enqueue")).toBeGreaterThan(-1);
 
     const confirmFn = weekly.slice(weekly.indexOf("const handleReviewConfirmSubmit"));
-    expect(confirmFn.indexOf('status: "已审核可发布"')).toBeGreaterThan(-1);
-    expect(confirmFn.indexOf("enqueueArticleDirectly")).toBeGreaterThan(
-      confirmFn.indexOf('status: "已审核可发布"'),
-    );
+    expect(confirmFn).toContain("reviewAndEnqueueArticle.mutateAsync");
+    expect(confirmFn).toContain('mode === "review_only"');
+    expect(confirmFn).toContain("setContentReviewStatus.mutateAsync");
   });
 });

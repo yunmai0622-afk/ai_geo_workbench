@@ -49,8 +49,8 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
     expect(reviewDialog).toContain("确认并加入发布队列");
     expect(weekly).toContain("requestEnqueuePublish");
     expect(weekly).toContain("handleReviewConfirmSubmit");
-    expect(weekly).toContain('status: "已审核可发布"');
-    expect(weekly).toContain("enqueueArticleDirectly");
+    expect(weekly).toContain("reviewAndEnqueueArticle.mutateAsync");
+    expect(weekly).toContain("REVIEW_ENQUEUE_SUCCESS_MESSAGE");
   });
 
   it("AI QC reject cannot enqueue from list button kind", () => {
