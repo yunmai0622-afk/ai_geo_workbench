@@ -164,7 +164,7 @@ import {
 } from "@shared/weeklyContentGeneration";
 import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, FileText, Search } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
@@ -1532,15 +1532,22 @@ export default function WeeklyContentPage() {
     () => contentCardModels.filter(card => card.queuedForPublish).length,
     [contentCardModels],
   );
-  const publishableContentCount = useMemo(
-    () => contentCardModels.filter(card => card.statusFilterKey === "publishable").length,
-    [contentCardModels],
-  );
-
   const pendingReviewCount = useMemo(
     () =>
       contentCardModels.filter(
         c => c.publishPreflightReady && isContentReviewPending(c.contentReviewStatus),
+      ).length,
+    [contentCardModels],
+  );
+
+  const enqueueReadyCount = useMemo(
+    () =>
+      contentCardModels.filter(
+        c =>
+          c.publishPreflightReady &&
+          !isContentReviewPending(c.contentReviewStatus) &&
+          !c.queuedForPublish &&
+          c.statusFilterKey !== "published",
       ).length,
     [contentCardModels],
   );
@@ -1554,10 +1561,11 @@ export default function WeeklyContentPage() {
       generatedCount,
       publishReadyCount,
       pendingReviewCount,
+      enqueueReadyCount,
       queuedCount,
       publishedCount,
     };
-  }, [contentCardModels, pendingReviewCount]);
+  }, [contentCardModels, pendingReviewCount, enqueueReadyCount]);
 
   const recommendedPlatforms = useMemo(() => {
     const labels = new Set<string>();
@@ -1570,7 +1578,7 @@ export default function WeeklyContentPage() {
 
   const publishableRows = useMemo((): WeeklyPublishableRow[] => {
     return contentCardModels
-      .filter(card => card.publishPreflightReady && card.statusFilterKey !== "published")
+      .filter(card => card.statusFilterKey !== "published")
       .map(card => {
         const platformResolved = getArticlePublishPlatform({
           generationBasis:
@@ -2870,9 +2878,9 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">内容生产与审核工作台</h1>
+          <h1 className="text-2xl font-bold text-gray-900">GEO 内容生产工作台</h1>
           <p className="text-sm text-gray-500">
-            根据 AI 诊断缺口生成平台化内容，完成质检与人工审核后加入发布队列。
+            查看本轮内容任务，生成平台内容，完成审核后加入发布队列。
           </p>
         </div>
         <div className="relative w-full max-w-md">
@@ -2891,28 +2899,6 @@ export default function WeeklyContentPage() {
           />
         </div>
       </header>
-
-      {publishableContentCount > 0 && !showDiagnosisEmpty && queriesReady ? (
-        <section
-          className="flex flex-col gap-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-          data-testid="weekly-publish-strong-cta"
-        >
-          <p className="text-base font-semibold text-emerald-900">
-            已有 {publishableContentCount} 篇可发布内容
-          </p>
-          <Button
-            type="button"
-            className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-700"
-            data-testid="weekly-publish-strong-cta-button"
-            onClick={() =>
-              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-            }
-          >
-            去发布
-            <ArrowRight className="ml-1.5 size-4" aria-hidden />
-          </Button>
-        </section>
-      ) : null}
 
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}
@@ -2993,6 +2979,7 @@ export default function WeeklyContentPage() {
               selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
               onSelectTaskId={id => setSelectedContentTaskId(id)}
               pendingReviewCount={pendingReviewCount}
+              enqueueReadyCount={enqueueReadyCount}
               batchBusy={batchBusy}
               onGenerateNext={() => void handleBatchGenerateAllPlatforms()}
               onGoReview={() => {
@@ -3000,13 +2987,62 @@ export default function WeeklyContentPage() {
                   .getElementById("weekly-section-publishable-content")
                   ?.scrollIntoView({ behavior: "smooth" });
               }}
-              onGoPublishingQueue={() =>
-                selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-              }
+              onGoEnqueue={() => {
+                document
+                  .getElementById("weekly-section-publishable-content")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
             />
           ) : null}
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
+
+          <WeeklyPublishableContentList
+            rows={publishableRows}
+            disabled={anyGenerating || batchEnqueueBusy}
+            onView={openContentDetail}
+            onReviewConfirm={model => {
+              const article = articlesById.get(model.id);
+              if (article) openReviewConfirmDialog(article, "review_only");
+            }}
+            onEnqueuePublish={model => {
+              const article = articlesById.get(model.id);
+              if (article) requestEnqueuePublish(article);
+            }}
+            onGoPublishingPage={() =>
+              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+            }
+            onEdit={model => {
+              const article = articlesById.get(model.id);
+              if (article) openEditor(article);
+            }}
+          />
+
+          {showDirectionEmpty ? (
+            <P0Card>
+              <p className="text-sm text-gray-700">正在根据 AI 诊断准备内容方向，请稍候…</p>
+            </P0Card>
+          ) : null}
+
+          {contentCardModels.length === 0 ? (
+            <P0Card className="border-dashed border-gray-300 bg-white" testId="weekly-content-empty">
+              <div className="flex flex-col items-center text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+                  <FileText className="h-5 w-5 text-gray-500" />
+                </div>
+                <p className="mt-3 text-sm font-medium text-gray-800">本周还没有生成内容</p>
+                <p className="mt-1 text-xs text-gray-500">先按平台生成首批内容，再进入质检与审核流程。</p>
+                <Button
+                  type="button"
+                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={batchBusy}
+                  onClick={() => void handleBatchGenerateAllPlatforms()}
+                >
+                  生成平台内容
+                </Button>
+              </div>
+            </P0Card>
+          ) : null}
 
           <PlatformBatchGenerationPanel
             queue={platformBatchQueue}
@@ -3050,49 +3086,6 @@ export default function WeeklyContentPage() {
             generatingPlatformKey={generatingPlatformKey}
             onGenerate={key => void handlePlatformGenerate(key)}
             onView={handlePlatformView}
-          />
-
-          {showDirectionEmpty ? (
-            <P0Card>
-              <p className="text-sm text-gray-700">正在根据 AI 诊断准备内容方向，请稍候…</p>
-            </P0Card>
-          ) : null}
-
-          {contentCardModels.length === 0 ? (
-            <P0Card className="border-dashed border-gray-300 bg-white" testId="weekly-content-empty">
-              <div className="flex flex-col items-center text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                  <FileText className="h-5 w-5 text-gray-500" />
-                </div>
-                <p className="mt-3 text-sm font-medium text-gray-800">本周还没有生成内容</p>
-                <p className="mt-1 text-xs text-gray-500">先按平台生成首批内容，再进入质检与发布流程。</p>
-                <Button
-                  type="button"
-                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
-                  disabled={batchBusy}
-                  onClick={() => void handleBatchGenerateAllPlatforms()}
-                >
-                  生成平台内容
-                </Button>
-              </div>
-            </P0Card>
-          ) : null}
-
-          <WeeklyPublishableContentList
-            rows={publishableRows}
-            disabled={anyGenerating || batchEnqueueBusy}
-            onView={openContentDetail}
-            onReviewConfirm={model => {
-              const article = articlesById.get(model.id);
-              if (article) openReviewConfirmDialog(article, "review_only");
-            }}
-            onEnqueuePublish={model => {
-              const article = articlesById.get(model.id);
-              if (article) requestEnqueuePublish(article);
-            }}
-            onGoPublishingPage={() =>
-              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-            }
           />
 
           <WeeklyAuxiliarySections

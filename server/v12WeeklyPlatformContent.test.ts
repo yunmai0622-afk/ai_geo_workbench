@@ -13,16 +13,16 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
 
   it("首屏平台化内容生产结构", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("内容生产与审核工作台");
+    expect(weekly).toContain("GEO 内容生产工作台");
     expect(weekly).not.toContain("当前企业：");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
-    expect(taskCard).toContain("本轮内容任务总览");
+    expect(taskCard).toContain("本轮任务总览");
     expect(weekly).toContain("resolveGeoContentTaskSource");
     expect(weekly).toContain("contentTaskId:");
     expect(weekly).toContain("diagnosisFinding:");
     expect(weekly).toContain("geoGap:");
-    expect(taskCard).toContain("对应 GEO 缺口");
-    expect(taskCard).toContain("下一步建议");
+    expect(taskCard).toContain("GEO 缺口");
+    expect(taskCard).toContain("下一步动作");
     expect(weekly).not.toMatch(/本轮内容目标/);
     expect(weekly).not.toMatch(/内容策略来源/);
   });
@@ -40,7 +40,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
     for (const label of ["小红书", "知乎", "百家号", "头条号", "搜狐号", "网易号", "公众号", "其他平台"]) {
       expect(defs).toContain(label);
     }
-    expect(board).toContain("平台内容看板");
+    expect(board).toContain("平台生成入口");
     expect(board).toContain("生成该平台内容");
     expect(board).toContain("generatingPlatformKey === def.key");
     expect(weekly).toContain("platform-content-progress");

@@ -4,10 +4,8 @@ import { geoP0Brand, geoP0Surfaces } from "@/lib/geoP0Visual";
 import type { GeoContentTaskSource } from "@shared/geoContentTaskSource";
 import {
   buildWeeklyContentTaskNextStep,
-  formatWeeklyContentTaskProgress,
   type WeeklyContentTaskProgress,
 } from "@shared/weeklyContentTaskStatus";
-import { ArrowRight } from "lucide-react";
 
 type Props = {
   source: GeoContentTaskSource;
@@ -17,10 +15,11 @@ type Props = {
   selectedTaskId?: number | null;
   onSelectTaskId?: (id: number) => void;
   pendingReviewCount: number;
+  enqueueReadyCount: number;
   batchBusy?: boolean;
   onGenerateNext?: () => void;
   onGoReview?: () => void;
-  onGoPublishingQueue?: () => void;
+  onGoEnqueue?: () => void;
 };
 
 export function WeeklyContentTaskControlCard({
@@ -31,10 +30,11 @@ export function WeeklyContentTaskControlCard({
   selectedTaskId,
   onSelectTaskId,
   pendingReviewCount,
+  enqueueReadyCount,
   batchBusy,
   onGenerateNext,
   onGoReview,
-  onGoPublishingQueue,
+  onGoEnqueue,
 }: Props) {
   const showTaskPicker = (taskOptions?.length ?? 0) > 1 && onSelectTaskId;
   const nextStep = buildWeeklyContentTaskNextStep({
@@ -42,11 +42,13 @@ export function WeeklyContentTaskControlCard({
     publishReadyCount: progress.publishReadyCount,
     generatedCount: progress.generatedCount,
   });
-  const primaryIsReview = pendingReviewCount > 0 && onGoReview;
+
+  const primaryAction: "review" | "enqueue" | "generate" =
+    pendingReviewCount > 0 ? "review" : enqueueReadyCount > 0 ? "enqueue" : "generate";
 
   return (
     <P0Card testId="weekly-content-task-control">
-      <p className={geoP0Surfaces.sectionTitle}>本轮内容任务总览</p>
+      <p className={geoP0Surfaces.sectionTitle}>本轮任务总览</p>
       {showTaskPicker ? (
         <div className="mt-3">
           <label className="text-xs font-medium text-gray-500" htmlFor="weekly-content-task-select">
@@ -69,12 +71,6 @@ export function WeeklyContentTaskControlCard({
       ) : null}
       <dl className="mt-3 grid gap-3 text-sm text-gray-800 sm:grid-cols-2">
         <div>
-          <dt className="font-medium text-gray-500">本轮任务名称</dt>
-          <dd className="mt-1 font-medium text-gray-900" data-testid="weekly-task-display-name">
-            {source.taskDisplayName}
-          </dd>
-        </div>
-        <div>
           <dt className="font-medium text-gray-500">来源</dt>
           <dd className="mt-1" data-testid="weekly-task-source-label">
             {source.sourceLabel}
@@ -89,7 +85,7 @@ export function WeeklyContentTaskControlCard({
           </div>
         ) : null}
         <div>
-          <dt className="font-medium text-gray-500">对应 GEO 缺口</dt>
+          <dt className="font-medium text-gray-500">GEO 缺口</dt>
           <dd className="mt-1" data-testid="weekly-task-geo-gap">
             {source.geoGapSummary}
           </dd>
@@ -102,21 +98,45 @@ export function WeeklyContentTaskControlCard({
             </dd>
           </div>
         ) : null}
-        <div className="sm:col-span-2">
-          <dt className="font-medium text-gray-500">进度统计</dt>
-          <dd className="mt-1 font-medium text-gray-900" data-testid="weekly-task-progress">
-            {formatWeeklyContentTaskProgress(progress)}
+        <div>
+          <dt className="font-medium text-gray-500">已生成</dt>
+          <dd className="mt-1 font-medium text-gray-900" data-testid="weekly-task-generated-count">
+            {progress.generatedCount}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-gray-500">待审核</dt>
+          <dd className="mt-1 font-medium text-gray-900" data-testid="weekly-task-pending-review-count">
+            {progress.pendingReviewCount}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-gray-500">可入队</dt>
+          <dd className="mt-1 font-medium text-gray-900" data-testid="weekly-task-enqueue-ready-count">
+            {progress.enqueueReadyCount ?? enqueueReadyCount}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-gray-500">已入队</dt>
+          <dd className="mt-1 font-medium text-gray-900" data-testid="weekly-task-queued-count">
+            {progress.queuedCount}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-gray-500">已发布</dt>
+          <dd className="mt-1 font-medium text-gray-900" data-testid="weekly-task-published-count">
+            {progress.publishedCount}
           </dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="font-medium text-gray-500">下一步建议</dt>
+          <dt className="font-medium text-gray-500">下一步动作</dt>
           <dd className="mt-1 text-gray-700" data-testid="weekly-task-next-step">
             {nextStep}
           </dd>
         </div>
       </dl>
       <div className="mt-4 flex flex-wrap gap-2">
-        {primaryIsReview ? (
+        {primaryAction === "review" && onGoReview ? (
           <Button
             type="button"
             size="sm"
@@ -126,7 +146,19 @@ export function WeeklyContentTaskControlCard({
           >
             去审核内容（{pendingReviewCount}）
           </Button>
-        ) : onGenerateNext ? (
+        ) : null}
+        {primaryAction === "enqueue" && onGoEnqueue ? (
+          <Button
+            type="button"
+            size="sm"
+            className={geoP0Brand.primary}
+            data-testid="weekly-go-enqueue-content"
+            onClick={onGoEnqueue}
+          >
+            加入发布队列（{enqueueReadyCount}）
+          </Button>
+        ) : null}
+        {primaryAction === "generate" && onGenerateNext ? (
           <Button
             type="button"
             size="sm"
@@ -135,32 +167,7 @@ export function WeeklyContentTaskControlCard({
             data-testid="weekly-generate-next-content"
             onClick={onGenerateNext}
           >
-            生成下一批内容
-          </Button>
-        ) : null}
-        {!primaryIsReview && pendingReviewCount > 0 && onGoReview ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className={geoP0Brand.primaryOutline}
-            data-testid="weekly-go-review-content-secondary"
-            onClick={onGoReview}
-          >
-            去审核内容（{pendingReviewCount}）
-          </Button>
-        ) : null}
-        {onGoPublishingQueue ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className={geoP0Brand.primaryOutline}
-            data-testid="weekly-go-publishing-queue"
-            onClick={onGoPublishingQueue}
-          >
-            去发布队列
-            <ArrowRight className="ml-1.5 size-4" aria-hidden />
+            生成平台内容
           </Button>
         ) : null}
       </div>

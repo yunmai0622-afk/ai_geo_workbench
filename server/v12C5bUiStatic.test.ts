@@ -9,7 +9,7 @@ describe("C5-B content production page product UI", () => {
   const page = read("client/src/pages/WeeklyContentPage.tsx");
 
   it("uses platform production first screen", () => {
-    expect(page).toContain("内容生产与审核工作台");
+    expect(page).toContain("GEO 内容生产工作台");
     expect(page).toContain("PlatformContentBoard");
     expect(page).toContain("生成该平台内容");
     expect(page).not.toMatch(/AI 内容资产生产控制台|生成内容资产|ai-segmented/);
@@ -17,7 +17,7 @@ describe("C5-B content production page product UI", () => {
 
   it("uses publishable list and compact local agent status", () => {
     expect(read("client/src/components/weekly/WeeklyPublishableContentList.tsx")).toContain(
-      "可发布内容",
+      "待处理内容",
     );
     expect(page).toContain("WeeklyPublishableContentList");
     expect(page).toContain("requestEnqueuePublish");

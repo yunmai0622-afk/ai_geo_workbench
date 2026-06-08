@@ -13,6 +13,7 @@ import {
 } from "@shared/weeklyPublishableDisplay";
 import { contentReviewStatusBadgeClass } from "@shared/contentReviewStatus";
 import { cn } from "@/lib/utils";
+import { useMemo, useState } from "react";
 
 export type WeeklyPublishableRow = WeeklyArticleCardModel & {
   aiQcStatus: WeeklyAiQcDisplayStatus;
@@ -23,13 +24,40 @@ export type WeeklyPublishableRow = WeeklyArticleCardModel & {
   queueFailed?: boolean;
 };
 
+export type WeeklyPendingContentTab = "pending_review" | "enqueue_ready" | "queued" | "needs_modify";
+
+const TAB_DEFS: Array<{ key: WeeklyPendingContentTab; label: string; testId: string }> = [
+  { key: "pending_review", label: "待审核", testId: "weekly-tab-pending-review" },
+  { key: "enqueue_ready", label: "可入队", testId: "weekly-tab-enqueue-ready" },
+  { key: "queued", label: "已入队", testId: "weekly-tab-queued" },
+  { key: "needs_modify", label: "需修改", testId: "weekly-tab-needs-modify" },
+];
+
+export function classifyWeeklyPendingContentTab(row: WeeklyPublishableRow): WeeklyPendingContentTab | null {
+  if (row.aiQcStatus === "未通过" || row.aiQcStatus === "未质检") return "needs_modify";
+  if (row.queueFailed) return "needs_modify";
+  if (row.queuedForPublish || row.publishStatus === "已入队") return "queued";
+  if (row.manualReviewStatus === "未审核" && row.aiQcStatus === "通过") return "pending_review";
+  if (
+    row.manualReviewStatus === "已审核" &&
+    !row.queuedForPublish &&
+    row.publishPreflightReady &&
+    row.publishStatus !== "已发布"
+  ) {
+    return "enqueue_ready";
+  }
+  return null;
+}
+
 type Props = {
   rows: WeeklyPublishableRow[];
   disabled?: boolean;
+  initialTab?: WeeklyPendingContentTab;
   onView: (model: WeeklyArticleCardModel) => void;
   onReviewConfirm: (model: WeeklyArticleCardModel) => void;
   onEnqueuePublish: (model: WeeklyArticleCardModel) => void;
   onGoPublishingPage?: () => void;
+  onEdit?: (model: WeeklyArticleCardModel) => void;
 };
 
 function statusBadgeClass(value: string, tone: "neutral" | "ok" | "warn" | "bad"): string {
@@ -49,11 +77,53 @@ function statusBadgeClass(value: string, tone: "neutral" | "ok" | "warn" | "bad"
 export function WeeklyPublishableContentList({
   rows,
   disabled,
+  initialTab = "pending_review",
   onView,
   onReviewConfirm,
   onEnqueuePublish,
   onGoPublishingPage,
+  onEdit,
 }: Props) {
+  const [activeTab, setActiveTab] = useState<WeeklyPendingContentTab>(initialTab);
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<WeeklyPendingContentTab, number> = {
+      pending_review: 0,
+      enqueue_ready: 0,
+      queued: 0,
+      needs_modify: 0,
+    };
+    for (const row of rows) {
+      const tab = classifyWeeklyPendingContentTab(row);
+      if (tab) counts[tab] += 1;
+    }
+    return counts;
+  }, [rows]);
+
+  const filteredRows = useMemo(
+    () => rows.filter(row => classifyWeeklyPendingContentTab(row) === activeTab),
+    [rows, activeTab],
+  );
+
+  const emptyMessages: Record<WeeklyPendingContentTab, { title: string; hint: string }> = {
+    pending_review: {
+      title: "暂无待审核内容",
+      hint: "通过 AI 质检的内容将出现在此，请完成人工审核。",
+    },
+    enqueue_ready: {
+      title: "暂无可入队内容",
+      hint: "完成人工审核且发布检查通过的内容可加入发布队列。",
+    },
+    queued: {
+      title: "暂无已入队内容",
+      hint: "加入发布队列后的内容将在此展示，可前往发布执行中心跟进。",
+    },
+    needs_modify: {
+      title: "暂无需修改内容",
+      hint: "AI 质检未通过或需重写的内容将出现在此。",
+    },
+  };
+
   return (
     <section
       id="weekly-section-publishable-content"
@@ -61,15 +131,40 @@ export function WeeklyPublishableContentList({
       data-testid="weekly-publishable-content-list"
     >
       <div className="space-y-1">
-        <h2 className={geoP0Surfaces.sectionTitle}>可发布内容</h2>
-        <p className={geoP0Surfaces.muted}>通过 AI 质检的内容在此审核并加入发布队列。</p>
+        <h2 className={geoP0Surfaces.sectionTitle}>待处理内容</h2>
+        <p className={geoP0Surfaces.muted}>按审核与入队状态处理内容，完成质检与人工审核后加入发布队列。</p>
       </div>
 
-      {rows.length === 0 ? (
-        <P0Card testId="weekly-publishable-empty">
-          <p className="text-sm font-medium text-gray-800">暂无可发布内容</p>
-          <p className="mt-1 text-sm text-gray-600">原因：内容尚未生成或未通过 AI 质检。</p>
-          <p className="mt-1 text-xs text-gray-500">下一步：先生成并完成平台内容质检。</p>
+      <div
+        className="flex flex-wrap gap-2 border-b border-gray-200 pb-2"
+        role="tablist"
+        data-testid="weekly-pending-content-tabs"
+      >
+        {TAB_DEFS.map(tab => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+              activeTab === tab.key
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200",
+            )}
+            data-testid={tab.testId}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+            {tabCounts[tab.key] > 0 ? `（${tabCounts[tab.key]}）` : ""}
+          </button>
+        ))}
+      </div>
+
+      {filteredRows.length === 0 ? (
+        <P0Card testId={`weekly-publishable-empty-${activeTab}`}>
+          <p className="text-sm font-medium text-gray-800">{emptyMessages[activeTab].title}</p>
+          <p className="mt-1 text-sm text-gray-600">{emptyMessages[activeTab].hint}</p>
         </P0Card>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -87,7 +182,7 @@ export function WeeklyPublishableContentList({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {rows.map(row => {
+              {filteredRows.map(row => {
                 const manualPending = row.manualReviewStatus === "未审核";
                 const buttonKind = resolveWeeklyEnqueueButtonKind({
                   published: row.publishStatus === "已发布",
@@ -104,6 +199,7 @@ export function WeeklyPublishableContentList({
                   buttonKind === "queued" ||
                   buttonKind === "published" ||
                   buttonKind === "failed";
+                const qcFailed = row.aiQcStatus === "未通过" || row.aiQcStatus === "未质检";
 
                 return (
                   <tr key={row.id} data-testid={`weekly-publishable-row-${row.id}`}>
@@ -137,7 +233,10 @@ export function WeeklyPublishableContentList({
                     </td>
                     <td className="px-4 py-3 text-gray-700">{row.coverStatus}</td>
                     <td className="px-4 py-3 text-gray-700">{row.accountStatus}</td>
-                    <td className="px-4 py-3 text-gray-700" data-testid={`weekly-publishable-publish-status-${row.id}`}>
+                    <td
+                      className="px-4 py-3 text-gray-700"
+                      data-testid={`weekly-publishable-publish-status-${row.id}`}
+                    >
                       {row.publishStatus}
                     </td>
                     <td className="px-4 py-3">
@@ -152,30 +251,44 @@ export function WeeklyPublishableContentList({
                         >
                           查看
                         </Button>
-                        {manualPending && row.aiQcStatus === "通过" ? (
+                        {qcFailed ? (
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
                             className={geoP0Brand.primaryOutline}
-                            disabled={disabled}
-                            data-testid={`weekly-publishable-review-${row.id}`}
-                            onClick={() => onReviewConfirm(row)}
+                            data-testid={`weekly-publishable-edit-${row.id}`}
+                            onClick={() => (onEdit ? onEdit(row) : onView(row))}
                           >
-                            审核确认
+                            查看并修改
                           </Button>
                         ) : null}
-                        {buttonKind === "queued" ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            className={geoP0Brand.primary}
-                            data-testid={`weekly-publishable-go-${row.id}`}
-                            onClick={onGoPublishingPage}
-                          >
-                            去发布
-                          </Button>
-                        ) : (
+                        {manualPending && row.aiQcStatus === "通过" ? (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className={geoP0Brand.primaryOutline}
+                              disabled={disabled}
+                              data-testid={`weekly-publishable-review-${row.id}`}
+                              onClick={() => onReviewConfirm(row)}
+                            >
+                              审核内容
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className={geoP0Brand.primary}
+                              disabled={enqueueDisabled}
+                              data-testid={`weekly-publishable-enqueue-${row.id}`}
+                              onClick={() => onEnqueuePublish(row)}
+                            >
+                              {enqueueLabel}
+                            </Button>
+                          </>
+                        ) : null}
+                        {!manualPending && buttonKind === "enqueue" ? (
                           <Button
                             type="button"
                             size="sm"
@@ -184,9 +297,32 @@ export function WeeklyPublishableContentList({
                             data-testid={`weekly-publishable-enqueue-${row.id}`}
                             onClick={() => onEnqueuePublish(row)}
                           >
-                            {enqueueLabel}
+                            加入发布队列
                           </Button>
-                        )}
+                        ) : null}
+                        {buttonKind === "queued" ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className={geoP0Brand.primary}
+                            data-testid={`weekly-publishable-go-task-${row.id}`}
+                            onClick={onGoPublishingPage}
+                          >
+                            查看发布任务
+                          </Button>
+                        ) : null}
+                        {buttonKind === "failed" ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={geoP0Brand.primaryOutline}
+                            data-testid={`weekly-publishable-failure-${row.id}`}
+                            onClick={() => onView(row)}
+                          >
+                            查看失败原因
+                          </Button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

@@ -17,13 +17,13 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
   const board = read("client/src/components/weekly/PlatformContentBoard.tsx");
 
   it("workbench title and four-section structure", () => {
-    expect(weekly).toContain("内容生产与审核工作台");
+    expect(weekly).toContain("GEO 内容生产工作台");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
     expect(weekly).toContain("PlatformContentBoard");
     expect(weekly).toContain("WeeklyPublishableContentList");
     expect(weekly).toContain("WeeklyContentDetailSheet");
-    expect(taskCard).toContain("本轮内容任务总览");
-    expect(board).toContain("平台内容看板");
+    expect(taskCard).toContain("本轮任务总览");
+    expect(board).toContain("平台生成入口");
   });
 
   it("does not show long body by default on main page", () => {
@@ -37,7 +37,7 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
     expect(publishableList).toContain("人工审核");
     expect(publishableList).toContain("AI质检");
     expect(display).toContain("审核并加入队列");
-    expect(publishableList).toContain("审核确认");
+    expect(publishableList).toContain("审核内容");
     expect(publishableList).toContain("weekly-publishable-manual-review-");
     expect(publishableList).toContain("weeklyEnqueueButtonLabel");
   });
@@ -72,21 +72,21 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
     expect(mainSection).not.toContain("local-agent-publish-hint");
     expect(mainSection).not.toContain("<LocalAgentConnectionPanel");
     expect(localAgentBar).toContain("本地发布助手");
-    expect(localAgentBar).toContain("去平台适配发布页处理");
+    expect(localAgentBar).toContain("去发布执行中心处理");
   });
 
   it("auxiliary sections downgraded", () => {
     expect(auxiliary).toContain("查看平台规则");
     expect(auxiliary).toContain("查看内容模板库");
-    expect(auxiliary).toContain("收录监测");
+    expect(auxiliary).toContain("收录复测中心");
     expect(auxiliary).toMatch(/open=\{defaultOpen \? undefined : false\}/);
   });
 
   it("assistant panel shows task-relevant stats", () => {
     expect(assistant).toContain("待审核内容");
-    expect(assistant).toContain("待入队内容");
-    expect(assistant).toContain("未配置封面");
-    expect(assistant).toContain("未绑定账号");
+    expect(assistant).toContain("可入队内容");
+    expect(assistant).toContain("缺封面内容");
+    expect(assistant).toContain("账号异常提醒");
   });
 
   it("detail sheet has review and enqueue actions", () => {

@@ -37,6 +37,7 @@ describe("weeklyContentTaskStatus", () => {
         generatedCount: 3,
         publishReadyCount: 2,
         pendingReviewCount: 1,
+        enqueueReadyCount: 1,
         queuedCount: 1,
         publishedCount: 0,
       }),

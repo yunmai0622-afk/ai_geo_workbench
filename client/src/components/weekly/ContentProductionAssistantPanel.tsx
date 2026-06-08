@@ -1,12 +1,7 @@
-import { Button } from "@/components/ui/button";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
-import { buildProjectUrl } from "@/lib/activeProject";
-import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import {
-  buildWeeklyContentAssistantNextSteps,
-  buildWeeklyContentAssistantRiskReminders,
   buildWeeklyContentTaskNextStep,
   type WeeklyContentAssistantStats,
 } from "@shared/weeklyContentTaskStatus";
@@ -15,12 +10,9 @@ import { isContentReviewPending } from "@shared/contentReviewStatus";
 import { evaluatePublishPreflight } from "@shared/publishPreflight";
 import { WEEKLY_PLATFORM_DEFS } from "@/lib/weeklyPlatformBoard";
 import { useMemo } from "react";
-import { useLocation } from "wouter";
-import { ArrowRight } from "lucide-react";
 
 export function ContentProductionAssistantPanel() {
   const { selectedProjectId, enabled } = useActiveProjectSelection();
-  const [, setLocation] = useLocation();
 
   const articlesQuery = trpc.geo.articles.list.useQuery(
     { projectId: selectedProjectId! },
@@ -103,86 +95,48 @@ export function ContentProductionAssistantPanel() {
       unboundAccountPlatformCount,
     };
 
-    const hasData =
-      pendingReviewCount > 0 ||
-      pendingEnqueueCount > 0 ||
-      missingCoverCount > 0 ||
-      unboundAccountPlatformCount > 0;
+    const nextStep = buildWeeklyContentTaskNextStep({
+      pendingReviewCount,
+      publishReadyCount: pendingEnqueueCount + pendingReviewCount,
+      generatedCount: articles.filter(a => a.status !== "已发布").length,
+    });
 
-    return {
-      hasData,
-      stats,
-      nextStep: buildWeeklyContentTaskNextStep({
-        pendingReviewCount,
-        publishReadyCount: pendingEnqueueCount + pendingReviewCount,
-        generatedCount: articles.filter(a => a.status !== "已发布").length,
-      }),
-      riskReminders: buildWeeklyContentAssistantRiskReminders(stats),
-      nextSteps: buildWeeklyContentAssistantNextSteps({
-        qualityPendingCount: 0,
-        publishReadyCount: pendingEnqueueCount + pendingReviewCount,
-      }),
-    };
+    return { stats, nextStep, unboundAccountPlatformCount };
   }, [articlesQuery.data, platformAccountsQuery.data, publishTasksQuery.data, selectedProjectId]);
 
-  if (!view.hasData) return null;
+  if (!enabled || !selectedProjectId) return null;
 
   return (
     <aside className="w-full space-y-4" data-testid="content-production-assistant-panel">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-bold text-gray-900">内容审核助手</h3>
+        <h3 className="text-sm font-bold text-gray-900">内容生产助手</h3>
 
-        <div className="mt-4 space-y-4">
-          <div data-testid="content-assistant-next-step">
-            <p className="text-xs font-semibold text-gray-500">下一步建议</p>
-            <p className="mt-1 text-sm text-gray-800">{view.nextStep}</p>
+        <dl className="mt-4 space-y-3 text-sm text-gray-800">
+          <div data-testid="content-assistant-pending-review">
+            <dt className="text-xs font-semibold text-gray-500">待审核内容</dt>
+            <dd className="mt-0.5 font-medium">{view.stats.pendingReviewCount} 篇</dd>
           </div>
-
-          {view.riskReminders.length > 0 ? (
-            <div data-testid="content-assistant-risks">
-              <p className="text-xs font-semibold text-gray-500">风险提醒</p>
-              <ul className="mt-1 space-y-1 text-sm text-amber-900">
-                {view.riskReminders.map(item => (
-                  <li key={item} className="flex gap-2">
-                    <span>-</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
+          <div data-testid="content-assistant-pending-enqueue">
+            <dt className="text-xs font-semibold text-gray-500">可入队内容</dt>
+            <dd className="mt-0.5 font-medium">{view.stats.pendingEnqueueCount} 篇</dd>
+          </div>
+          <div data-testid="content-assistant-missing-cover">
+            <dt className="text-xs font-semibold text-gray-500">缺封面内容</dt>
+            <dd className="mt-0.5 font-medium">{view.stats.missingCoverCount} 篇</dd>
+          </div>
+          {view.unboundAccountPlatformCount > 0 ? (
+            <div data-testid="content-assistant-account-warning">
+              <dt className="text-xs font-semibold text-gray-500">账号异常提醒</dt>
+              <dd className="mt-0.5 text-amber-900">
+                {view.unboundAccountPlatformCount} 个平台未绑定有效发布账号
+              </dd>
             </div>
           ) : null}
-
-          <div data-testid="content-assistant-recent-stats">
-            <p className="text-xs font-semibold text-gray-500">最近数据</p>
-            <ul className="mt-1 space-y-1 text-sm text-gray-800">
-              {view.stats.pendingReviewCount > 0 ? (
-                <li>待审核内容 {view.stats.pendingReviewCount} 篇</li>
-              ) : null}
-              {view.stats.pendingEnqueueCount > 0 ? (
-                <li>待入队内容 {view.stats.pendingEnqueueCount} 篇</li>
-              ) : null}
-              {view.stats.missingCoverCount > 0 ? (
-                <li>未配置封面 {view.stats.missingCoverCount} 篇</li>
-              ) : null}
-              {view.stats.unboundAccountPlatformCount > 0 ? (
-                <li>未绑定账号 {view.stats.unboundAccountPlatformCount} 个平台</li>
-              ) : null}
-            </ul>
+          <div data-testid="content-assistant-next-step">
+            <dt className="text-xs font-semibold text-gray-500">下一步动作</dt>
+            <dd className="mt-0.5 text-gray-700">{view.nextStep}</dd>
           </div>
-
-          {selectedProjectId ? (
-            <Button
-              type="button"
-              size="sm"
-              className={`w-full ${geoP0Brand.primary}`}
-              data-testid="content-assistant-go-publishing-queue"
-              onClick={() => setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
-            >
-              去发布队列
-              <ArrowRight className="ml-1.5 size-4" aria-hidden />
-            </Button>
-          ) : null}
-        </div>
+        </dl>
       </div>
     </aside>
   );

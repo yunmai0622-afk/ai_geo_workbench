@@ -26,7 +26,7 @@ describe("C3-D global AI product UI", () => {
     for (const text of [
       "AI 搜索增长总览",
       "内容诊断",
-      "内容生产与审核工作台",
+      "GEO 内容生产工作台",
       "项目工作台",
       "客户交付报告",
     ]) {

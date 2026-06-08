@@ -50,8 +50,8 @@ export function PlatformContentBoard({
       data-testid="weekly-platform-board"
     >
       <div className="space-y-1">
-        <h2 className={geoP0Surfaces.sectionTitle}>平台内容看板</h2>
-        <p className={geoP0Surfaces.muted}>按平台查看生成与审核进度，默认不展开正文。</p>
+        <h2 className={geoP0Surfaces.sectionTitle}>平台生成入口</h2>
+        <p className={geoP0Surfaces.muted}>按平台生成内容，查看各平台生成与入队进度。</p>
       </div>
       <div
         className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3"
@@ -98,7 +98,7 @@ export function PlatformContentBoard({
                     <dd className="font-medium text-gray-800">{generatedCount}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt>可发布</dt>
+                    <dt>可入队</dt>
                     <dd className="font-medium text-gray-800">{counts.ready}</dd>
                   </div>
                   <div className="flex justify-between gap-2">

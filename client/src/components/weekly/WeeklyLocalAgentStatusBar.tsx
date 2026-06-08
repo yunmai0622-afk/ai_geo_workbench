@@ -30,7 +30,7 @@ export function WeeklyLocalAgentStatusBar({ status, onGoPublishingPage }: Props)
           data-testid="weekly-go-platform-publishing"
           onClick={onGoPublishingPage}
         >
-          去平台适配发布页处理
+          去发布执行中心处理
           <ArrowRight className="ml-1.5 size-4" aria-hidden />
         </Button>
       ) : null}

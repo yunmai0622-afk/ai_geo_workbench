@@ -70,6 +70,7 @@ export type WeeklyContentTaskProgress = {
   generatedCount: number;
   publishReadyCount: number;
   pendingReviewCount: number;
+  enqueueReadyCount: number;
   queuedCount: number;
   publishedCount: number;
 };

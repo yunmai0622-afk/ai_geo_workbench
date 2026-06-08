@@ -18,11 +18,11 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
 
   it("首屏任务总控卡与平台看板", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("内容生产与审核工作台");
+    expect(weekly).toContain("GEO 内容生产工作台");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
-    expect(taskCard).toContain("本轮内容任务总览");
+    expect(taskCard).toContain("本轮任务总览");
     expect(weekly).toContain("PlatformContentBoard");
-    expect(board).toContain("平台内容看板");
+    expect(board).toContain("平台生成入口");
     expect(board).toContain("weekly-platform-status-");
   });
 
@@ -53,11 +53,11 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   });
 
   it("可发布内容列表与右侧面板", () => {
-    expect(publishableList).toContain("可发布内容");
+    expect(publishableList).toContain("待处理内容");
     expect(publishableList).toContain("人工审核");
-    expect(publishableList).toContain("暂无可发布内容");
+    expect(publishableList).toContain("暂无待审核内容");
     expect(weekly).toContain("WeeklyPublishableContentList");
-    expect(assistant).toContain("内容审核助手");
+    expect(assistant).toContain("内容生产助手");
     expect(shell).toContain("ContentProductionAssistantPanel");
     expect(shell).toContain("isWeeklyPage");
   });
@@ -67,7 +67,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
     expect(weekly).toContain("weekly-select-content-gap");
     expect(board).toContain("weekly-generate-");
     expect(weekly).toContain("requestEnqueuePublish");
-    expect(taskCard).toContain("weekly-go-publishing-queue");
+    expect(taskCard).toContain("weekly-go-enqueue-content");
     expect(weekly).not.toContain("rawAnswer");
     expect(weekly).not.toContain("taskId:");
     expect(weekly).not.toMatch(/\bprovider\b/);
@@ -76,7 +76,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   });
 
   it("副标题与业务文案", () => {
-    expect(weekly).toContain("根据 AI 诊断缺口生成平台化内容，完成质检与人工审核后加入发布队列");
+    expect(weekly).toContain("查看本轮内容任务，生成平台内容，完成审核后加入发布队列");
     expect(auxiliary).not.toMatch(/Prompt 写入规则/);
   });
 });
