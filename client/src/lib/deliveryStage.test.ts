@@ -1,9 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStageActionUrl,
+  formatDeliveryStageCustomerLabel,
   formatStageActionLabel,
   resolveStageActionPath,
 } from "./deliveryStage";
+
+describe("formatDeliveryStageCustomerLabel", () => {
+  it("maps S1–S8 engineering enums to customer-facing status labels", () => {
+    expect(formatDeliveryStageCustomerLabel("S1_PROFILE_INCOMPLETE")).toBe("待完善企业档案");
+    expect(formatDeliveryStageCustomerLabel("S2_READY_FOR_DIAGNOSIS")).toBe("待启动 AI 诊断");
+    expect(formatDeliveryStageCustomerLabel("S3_READY_FOR_CONTENT")).toBe("待生成内容");
+    expect(formatDeliveryStageCustomerLabel("S4_READY_FOR_PUBLISH")).toBe("待发布内容");
+    expect(formatDeliveryStageCustomerLabel("S5_WAITING_LINKS")).toBe("内容发布中");
+    expect(formatDeliveryStageCustomerLabel("S6_READY_FOR_MONITORING")).toBe("待收录复测");
+    expect(formatDeliveryStageCustomerLabel("S7_READY_FOR_REPORT")).toBe("待生成交付报告");
+    expect(formatDeliveryStageCustomerLabel("S8_DELIVERED_OR_NEXT_ROUND")).toBe("已完成交付");
+    expect(formatDeliveryStageCustomerLabel("S4_READY_FOR_PUBLISH")).not.toContain("S4_");
+  });
+});
 
 describe("formatStageActionLabel", () => {
   it("maps S1–S8 to stage-specific CTA labels", () => {

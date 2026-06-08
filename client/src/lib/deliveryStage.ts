@@ -171,6 +171,22 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
   };
 }
 
+/** 交付阶段枚举 → 客户可读状态（不暴露 S*_ 工程字段） */
+export const DELIVERY_STAGE_CUSTOMER_LABELS: Record<DeliveryStageId, string> = {
+  S1_PROFILE_INCOMPLETE: "待完善企业档案",
+  S2_READY_FOR_DIAGNOSIS: "待启动 AI 诊断",
+  S3_READY_FOR_CONTENT: "待生成内容",
+  S4_READY_FOR_PUBLISH: "待发布内容",
+  S5_WAITING_LINKS: "内容发布中",
+  S6_READY_FOR_MONITORING: "待收录复测",
+  S7_READY_FOR_REPORT: "待生成交付报告",
+  S8_DELIVERED_OR_NEXT_ROUND: "已完成交付",
+};
+
+export function formatDeliveryStageCustomerLabel(stage: DeliveryStageId): string {
+  return DELIVERY_STAGE_CUSTOMER_LABELS[stage] ?? "进行中";
+}
+
 /** 客户项目卡片主按钮文案（未知阶段回退「进入工作台」） */
 export function formatStageActionLabel(stage: DeliveryStageId): string {
   const map: Record<DeliveryStageId, string> = {

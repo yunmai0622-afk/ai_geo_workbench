@@ -20,7 +20,7 @@ import {
 } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { resolveDeliveryStageView } from "@/lib/deliveryStage";
+import { formatDeliveryStageCustomerLabel, resolveDeliveryStageView } from "@/lib/deliveryStage";
 import {
   resolveMainChainSteps,
   toMainChainProgressInput,
@@ -275,7 +275,9 @@ export default function EnterpriseWorkspacePage() {
                   <p className="text-sm font-semibold text-blue-900">
                     当前阶段：{deliveryStage.stageLabel}
                   </p>
-                  <span className="text-xs text-blue-700">{deliveryStage.stage}</span>
+                  <span className="text-xs text-blue-700" data-testid="workspace-delivery-stage-badge">
+                    {formatDeliveryStageCustomerLabel(deliveryStage.stage)}
+                  </span>
                 </div>
                 <p className="mt-1 text-sm text-blue-800">{deliveryStage.stageDescription}</p>
                 {deliveryStage.blockingReasons.length > 0 ? (
