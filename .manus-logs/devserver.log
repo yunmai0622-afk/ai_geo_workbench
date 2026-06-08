@@ -4223,3 +4223,58 @@
 [2026-06-06T09:26:36.240Z] Server running on http://localhost:3000/
 [2026-06-06T09:26:38.229Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-06T09:27:35.501Z] 5:27:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.450Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.452Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.453Z] 10:44:32 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-08T02:44:32.453Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerLightView.tsx
+[2026-06-08T02:44:32.456Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportCustomerView.tsx
+[2026-06-08T02:44:32.457Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-08T02:44:32.458Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/delivery/DeliveryReportCustomerProductSections.tsx
+[2026-06-08T02:44:32.458Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/delivery/DeliveryReportProductBody.tsx
+[2026-06-08T02:44:32.459Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.459Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.459Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx
+[2026-06-08T02:44:32.460Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.460Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.460Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-08T02:44:32.461Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-08T02:44:32.461Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.462Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.462Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.463Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishRecordsListPanel.tsx
+[2026-06-08T02:44:32.476Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.476Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.477Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-08T02:44:32.477Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.479Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.480Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.480Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.480Z] 10:44:32 PM [vite] (client) hmr update /src/index.css, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-08T02:44:32.481Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.481Z] 10:44:32 PM [vite] (client) hmr update /src/pages/DeliveryReportSharePage.tsx, /src/index.css
+[2026-06-08T02:44:32.482Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.482Z] 10:44:32 PM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/index.css
+[2026-06-08T02:44:32.483Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.484Z] 10:44:32 PM [vite] (client) hmr update /src/index.css
+[2026-06-08T02:44:32.484Z] 10:44:32 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-08T02:44:32.485Z] 10:44:32 PM [vite] (client) hmr update /src/components/DeliveryReportCustomerLightView.tsx, /src/components/delivery/DeliveryReportCustomerProductSections.tsx, /src/components/delivery/DeliveryReportProductBody.tsx
+[2026-06-08T02:44:32.485Z] 10:44:32 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-08T02:44:32.486Z] 10:44:32 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx, /src/pages/TemplatesPage.tsx, /src/components/templates/TemplateFillPreviewDialog.tsx, /src/pages/EffectiveActionsPage.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-08T02:44:32.486Z] 10:44:32 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-08T02:44:32.486Z] 10:44:32 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-08T02:44:32.487Z] 10:44:32 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-08T02:44:32.706Z] 10:44:32 PM [tsx] change in ./shared/localAgentAccountSync.ts Restarting...
+[2026-06-08T02:44:39.797Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.18/geo-local-agent-mac.zip
+[2026-06-08T02:44:39.833Z] Server running on http://localhost:3000/
+[2026-06-08T02:45:03.905Z] Dev server process group stopped
+[2026-06-08T02:45:03.908Z] ELIFECYCLE  Command failed.
+[2026-06-08T02:45:03.952Z] Dev server exited with code -15
+[2026-06-08T02:45:06.945Z] Starting dev server with command: pnpm run dev
+[2026-06-08T02:45:07.755Z] 
+[2026-06-08T02:45:07.756Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-08T02:45:07.756Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-08T02:45:07.757Z] 
+[2026-06-08T02:45:15.115Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.19/geo-local-agent-mac.zip
+[2026-06-08T02:45:15.151Z] Server running on http://localhost:3000/
+[2026-06-08T02:45:25.920Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-08T02:46:11.864Z] 10:46:11 PM [vite] (client) hmr update /src/index.css
