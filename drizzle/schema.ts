@@ -1027,19 +1027,51 @@ export type InsertAuditLog = typeof auditLogs.$inferInsert;
 export type GeoSystemConfig = typeof geoSystemConfig.$inferSelect;
 export type InsertGeoSystemConfig = typeof geoSystemConfig.$inferInsert;
 
+export const brandSourceRiskLevelEnum = mysqlEnum("brand_source_risk_level", ["low", "medium", "high"]);
+
+export const entityAnchorTypeEnum = mysqlEnum("entity_anchor_type", [
+  "brand_name",
+  "company_name",
+  "main_business",
+  "target_customer",
+  "core_product",
+  "official_url",
+  "target_keywords",
+  "customer_proof",
+]);
+
+export const entityConsistencyStatusEnum = mysqlEnum("entity_consistency_status", [
+  "consistent",
+  "partial",
+  "missing",
+  "conflict",
+]);
+
+export const sourceEnhancementStatusEnum = mysqlEnum("source_enhancement_status", [
+  "pending",
+  "accepted",
+  "content_task_created",
+  "ignored",
+  "verified",
+]);
+
 /** 品牌信源图谱：各平台信源记录（P1-B） */
 export const brandSourceRecords = mysqlTable("brand_source_records", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
   platform: varchar("platform", { length: 64 }).notNull(),
+  sourceName: varchar("sourceName", { length: 255 }),
   platformName: varchar("platformName", { length: 255 }),
   url: varchar("url", { length: 2000 }),
   isPubliclyAccessible: boolean("isPubliclyAccessible").default(false).notNull(),
   containsBrandName: boolean("containsBrandName").default(false).notNull(),
+  containsBusinessDescription: boolean("containsBusinessDescription").default(false).notNull(),
   containsOfficialSite: boolean("containsOfficialSite").default(false).notNull(),
   containsCoreKeywords: boolean("containsCoreKeywords").default(false).notNull(),
   aiCitationConfirmed: boolean("aiCitationConfirmed").default(false).notNull(),
   isCrossSourceConsistent: boolean("isCrossSourceConsistent").default(false).notNull(),
+  riskLevel: brandSourceRiskLevelEnum.default("low").notNull(),
+  riskNotes: text("riskNotes"),
   notes: text("notes"),
   lastVerifiedAt: timestamp("lastVerifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1068,7 +1100,51 @@ export const entityAnchors = mysqlTable(
   }),
 );
 
+/** 实体一致性检查结果（P1-B） */
+export const entityConsistencyChecks = mysqlTable(
+  "entity_consistency_checks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    anchorType: entityAnchorTypeEnum.notNull(),
+    standardValue: text("standardValue"),
+    observedValues: json("observedValues").$type<string[]>().notNull().default([]),
+    status: entityConsistencyStatusEnum.notNull(),
+    score: int("score").notNull(),
+    issueSummary: text("issueSummary"),
+    suggestion: text("suggestion"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    projectAnchorUnique: uniqueIndex("entity_consistency_checks_project_anchor_unique").on(
+      table.projectId,
+      table.anchorType,
+    ),
+  }),
+);
+
+/** 信源内容增强建议（P1-B） */
+export const sourceEnhancementSuggestions = mysqlTable("source_enhancement_suggestions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  suggestionTitle: varchar("suggestionTitle", { length: 255 }).notNull(),
+  gapType: varchar("gapType", { length: 64 }).notNull(),
+  targetPlatform: varchar("targetPlatform", { length: 64 }),
+  targetKeywords: json("targetKeywords").$type<string[]>().notNull().default([]),
+  contentDirection: text("contentDirection").notNull(),
+  priority: taskPriorityEnum.notNull(),
+  status: sourceEnhancementStatusEnum.default("pending").notNull(),
+  linkedTaskId: int("linkedTaskId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type BrandSourceRecord = typeof brandSourceRecords.$inferSelect;
 export type InsertBrandSourceRecord = typeof brandSourceRecords.$inferInsert;
 export type EntityAnchor = typeof entityAnchors.$inferSelect;
 export type InsertEntityAnchor = typeof entityAnchors.$inferInsert;
+export type EntityConsistencyCheck = typeof entityConsistencyChecks.$inferSelect;
+export type InsertEntityConsistencyCheck = typeof entityConsistencyChecks.$inferInsert;
+export type SourceEnhancementSuggestion = typeof sourceEnhancementSuggestions.$inferSelect;
+export type InsertSourceEnhancementSuggestion = typeof sourceEnhancementSuggestions.$inferInsert;

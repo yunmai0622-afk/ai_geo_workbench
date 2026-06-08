@@ -1,29 +1,19 @@
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { trpc } from "@/lib/trpc";
-import {
-  buildBrandSourceOverviewMetrics,
-  computeConsistencyScore,
-  pickSidebarMainGaps,
-  type BrandSourceRecordRow,
-} from "@shared/brandSourceGraph";
+import { computePageTopMetrics, type BrandSourceRecordRow } from "@shared/brandSourceGraph";
 import { useMemo } from "react";
-
-function formatVerifiedAt(value: Date | string | null | undefined): string {
-  if (!value) return "尚未验证";
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "尚未验证";
-  return date.toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function SourceGraphAssistantPanel() {
   const { selectedProjectId, enabled } = useActiveProjectSelection();
 
+  const metricsQuery = trpc.geo.brandSourceGraph.getPageMetrics.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const checksQuery = trpc.geo.brandSourceGraph.getEntityConsistencyChecks.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const sourcesQuery = trpc.geo.brandSourceGraph.getBrandSources.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
@@ -31,15 +21,21 @@ export function SourceGraphAssistantPanel() {
 
   const view = useMemo(() => {
     const records = (sourcesQuery.data ?? []) as BrandSourceRecordRow[];
-    const overview = buildBrandSourceOverviewMetrics(records);
-    const score = computeConsistencyScore(records);
+    const checks = checksQuery.data ?? [];
+    const metrics =
+      metricsQuery.data ??
+      computePageTopMetrics(records, checks.map(item => ({ ...item, anchorLabel: item.anchorLabel ?? item.anchorType })));
+    const mainGaps = checks
+      .filter(item => item.status === "missing" || item.status === "conflict")
+      .map(item => item.issueSummary)
+      .slice(0, 2);
     return {
-      consistencyScore: overview.consistencyScore,
-      incompleteCount: overview.incompleteCount,
-      latestVerifiedAt: overview.latestVerifiedAt,
-      mainGaps: pickSidebarMainGaps(score.mainIssues, 2),
+      consistencyScore: metrics.entityConsistency,
+      incompleteCount: metrics.priorityFixCount,
+      latestVerifiedAt: null,
+      mainGaps,
     };
-  }, [sourcesQuery.data]);
+  }, [metricsQuery.data, checksQuery.data, sourcesQuery.data]);
 
   return (
     <aside className="w-full space-y-4" data-testid="source-graph-assistant-panel">
@@ -47,13 +43,13 @@ export function SourceGraphAssistantPanel() {
         <h3 className="text-sm font-bold text-gray-900">信源图谱助手</h3>
         <dl className="mt-4 space-y-3 text-sm">
           <div>
-            <dt className="text-gray-500">实体一致性评分</dt>
+            <dt className="text-gray-500">实体一致性</dt>
             <dd className="mt-1 text-2xl font-bold text-blue-600" data-testid="sidebar-consistency-score">
               {view.consistencyScore}
             </dd>
           </div>
           <div>
-            <dt className="text-gray-500">待完善信源数</dt>
+            <dt className="text-gray-500">优先修复项</dt>
             <dd className="mt-1 font-semibold text-gray-900" data-testid="sidebar-incomplete-count">
               {view.incompleteCount}
             </dd>
@@ -61,7 +57,7 @@ export function SourceGraphAssistantPanel() {
           <div>
             <dt className="text-gray-500">最近验证时间</dt>
             <dd className="mt-1 text-gray-900" data-testid="sidebar-latest-verified">
-              {formatVerifiedAt(view.latestVerifiedAt)}
+              请在信源列表中标记
             </dd>
           </div>
           <div>

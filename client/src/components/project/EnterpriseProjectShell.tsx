@@ -42,7 +42,7 @@ export function EnterpriseProjectShell({ children }: Props) {
   const isInclusionMonitoringPage =
     pathname === "/inclusion-monitoring" || pathname === "/monitoring";
   const isQuestionsPage = pathname === "/questions";
-  const isSourceGraphPage = pathname === "/source-graph";
+  const isSourceGraphPage = pathname === "/brand-source-graph" || pathname === "/source-graph";
   const isMobile = useIsMobile();
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(

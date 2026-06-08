@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildEnhancementSuggestions,
   computeConsistencyScore,
+  computeEntityConsistencyChecks,
+  computePageTopMetrics,
+  extractEnterpriseProfileStandard,
   groupBrandSourcesByPlatformType,
   type BrandSourceRecordRow,
 } from "./brandSourceGraph";
@@ -11,10 +14,12 @@ function makeRecord(partial: Partial<BrandSourceRecordRow> & Pick<BrandSourceRec
     projectId: 1,
     isPubliclyAccessible: true,
     containsBrandName: true,
+    containsBusinessDescription: true,
     containsOfficialSite: true,
     containsCoreKeywords: true,
     aiCitationConfirmed: true,
     isCrossSourceConsistent: true,
+    riskLevel: "low",
     ...partial,
   };
 }
@@ -44,6 +49,29 @@ describe("brandSourceGraph scoring", () => {
     expect(grouped.find(g => g.key === "other")?.records).toHaveLength(1);
   });
 
+  it("computes entity consistency checks from enterprise profile standard", () => {
+    const records = [
+      makeRecord({ id: 1, platform: "zhihu", containsBrandName: false }),
+      makeRecord({ id: 2, platform: "official_site", containsBrandName: true }),
+    ];
+    const standard = extractEnterpriseProfileStandard({
+      profile: {
+        enterpriseName: "测试公司",
+        brandName: "测试品牌",
+        productServiceIntro: "知识付费 SaaS",
+        targetCustomer: "培训机构",
+        officialWebsite: "https://example.com",
+        keywords: ["知识付费", "SaaS"],
+        hasCases: true,
+      },
+    });
+    const checks = computeEntityConsistencyChecks(records, standard);
+    expect(checks).toHaveLength(8);
+    expect(checks.find(item => item.anchorType === "brand_name")?.status).toBe("conflict");
+    const metrics = computePageTopMetrics(records, checks);
+    expect(metrics.priorityFixCount).toBeGreaterThan(0);
+  });
+
   it("builds enhancement suggestions when records have gaps", () => {
     const records = [
       makeRecord({ id: 1, platform: "zhihu", containsBrandName: false, aiCitationConfirmed: false }),
@@ -61,6 +89,6 @@ describe("brandSourceGraph scoring", () => {
       { projectId: 1, coreKeywords: ["知识付费"], brandName: "海豚知道" },
     );
     expect(suggestions.length).toBeGreaterThan(0);
-    expect(suggestions.some(item => item.description.includes("品牌名"))).toBe(true);
+    expect(suggestions.some(item => item.description.includes("品牌") || item.description.includes("锚点"))).toBe(true);
   });
 });

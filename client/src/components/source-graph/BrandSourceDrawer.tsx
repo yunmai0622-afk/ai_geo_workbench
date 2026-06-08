@@ -29,14 +29,15 @@ import { useEffect, useState } from "react";
 
 export type BrandSourceFormState = {
   platform: string;
+  sourceName: string;
   platformName: string;
   url: string;
   isPubliclyAccessible: boolean;
   containsBrandName: boolean;
+  containsBusinessDescription: boolean;
   containsOfficialSite: boolean;
   containsCoreKeywords: boolean;
   aiCitationConfirmed: boolean;
-  isCrossSourceConsistent: boolean;
   notes: string;
   lastVerifiedAt: string;
 };
@@ -44,14 +45,15 @@ export type BrandSourceFormState = {
 export function defaultBrandSourceForm(): BrandSourceFormState {
   return {
     platform: "official_site",
+    sourceName: "",
     platformName: "",
     url: "",
     isPubliclyAccessible: false,
     containsBrandName: false,
+    containsBusinessDescription: false,
     containsOfficialSite: false,
     containsCoreKeywords: false,
     aiCitationConfirmed: false,
-    isCrossSourceConsistent: false,
     notes: "",
     lastVerifiedAt: "",
   };
@@ -60,14 +62,15 @@ export function defaultBrandSourceForm(): BrandSourceFormState {
 export function recordToBrandSourceForm(record: BrandSourceRecordRow): BrandSourceFormState {
   return {
     platform: record.platform,
+    sourceName: record.sourceName ?? "",
     platformName: record.platformName ?? "",
     url: record.url ?? "",
     isPubliclyAccessible: record.isPubliclyAccessible,
     containsBrandName: record.containsBrandName,
+    containsBusinessDescription: record.containsBusinessDescription ?? false,
     containsOfficialSite: record.containsOfficialSite,
     containsCoreKeywords: record.containsCoreKeywords,
     aiCitationConfirmed: record.aiCitationConfirmed,
-    isCrossSourceConsistent: record.isCrossSourceConsistent,
     notes: record.notes ?? "",
     lastVerifiedAt: record.lastVerifiedAt
       ? new Date(record.lastVerifiedAt).toISOString().slice(0, 16)
@@ -100,11 +103,11 @@ export function BrandSourceDrawer({ open, mode, saving, initial, onOpenChange, o
       <DrawerContent data-testid="brand-source-drawer">
         <DrawerHeader>
           <DrawerTitle>{mode === "create" ? "添加信源" : "编辑信源"}</DrawerTitle>
-          <DrawerDescription>录入平台信源 URL 与六项一致性指标，供人工验证与评分。</DrawerDescription>
+          <DrawerDescription>录入公开链接并手动标记六项指标，系统会据此评估 AI 识别稳定性。</DrawerDescription>
         </DrawerHeader>
         <div className="space-y-4 px-4 pb-2">
           <div className="space-y-2">
-            <Label htmlFor="brand-source-platform">平台</Label>
+            <Label htmlFor="brand-source-platform">信源类型</Label>
             <Select
               value={form.platform}
               onValueChange={value => setForm(current => ({ ...current, platform: value }))}
@@ -120,6 +123,17 @@ export function BrandSourceDrawer({ open, mode, saving, initial, onOpenChange, o
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="brand-source-name">信源名称</Label>
+            <Input
+              id="brand-source-name"
+              data-testid="brand-source-form-name"
+              value={form.sourceName}
+              onChange={e => setForm(current => ({ ...current, sourceName: e.target.value }))}
+              placeholder="例如：官方知乎专栏"
+            />
           </div>
 
           {form.platform === "other" ? (

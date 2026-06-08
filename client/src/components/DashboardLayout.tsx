@@ -116,9 +116,9 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
       {
         icon: Network,
         label: "品牌信源图谱",
-        desc: "录入各平台信源并维护实体一致性",
-        path: "/source-graph",
-        aliases: ["/source-graph"],
+        desc: "检查各平台信源与实体一致性",
+        path: "/brand-source-graph",
+        aliases: ["/brand-source-graph", "/source-graph"],
       },
       {
         icon: FileText,
