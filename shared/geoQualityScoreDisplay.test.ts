@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildUnifiedQualityGateArticle,
   computeAverageGeoQualityScore,
+  dedupeLatestQualityScoreRows,
   getGeoQualityScoreTier,
+  resolveEffectiveGeoQualityScore,
   resolveFriendlyQualityFailHints,
   resolveQualityCardView,
 } from "./geoQualityScoreDisplay";
@@ -52,5 +55,22 @@ describe("geoQualityScoreDisplay", () => {
   it("averages scored cards only", () => {
     expect(computeAverageGeoQualityScore([90, 70, null])).toBe(80);
     expect(computeAverageGeoQualityScore([null, undefined])).toBeNull();
+  });
+
+  it("prefers fresh article geo score over legacy row", () => {
+    const article = { geoQualityScore: 88, geoQualityRecommendation: "publish", geoQualityStale: 0 };
+    expect(resolveEffectiveGeoQualityScore(article, { totalScore: 70 })).toBe(88);
+    const unified = buildUnifiedQualityGateArticle(article, { totalScore: 70 });
+    expect(unified.qualityPasses).toBe(true);
+  });
+
+  it("dedupes latest quality rows per article", () => {
+    const rows = dedupeLatestQualityScoreRows([
+      { articleId: 1, totalScore: 88 },
+      { articleId: 1, totalScore: 70 },
+      { articleId: 2, totalScore: 60 },
+    ]);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.totalScore).toBe(88);
   });
 });

@@ -512,8 +512,8 @@ export function evaluatePublishPreflight(input: EvaluatePublishPreflightInput): 
 export function formatPublishPreflightBlockMessage(result: PublishPreflightResult): string {
   const failed = result.checks.filter(c => c.status === "fail");
   if (failed.length === 0) return "";
-  const primary = failed[0]!;
-  return `[${primary.code}] ${primary.message}`;
+  const messages = failed.map(c => c.message.trim()).filter(Boolean);
+  return messages.join("；");
 }
 
 export function publishPreflightBlockingCodeFromError(message: string): PublishPreflightCheckCode | null {

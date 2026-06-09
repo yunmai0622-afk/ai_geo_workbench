@@ -17,7 +17,7 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
   const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
 
   it("weekly page title and three-screen structure", () => {
-    expect(weekly).toContain("GEO 内容生产工作台");
+    expect(weekly).toContain("内容生产工作台");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
     expect(weekly).toContain("WeeklyPublishableContentList");
     expect(weekly).toContain("PlatformContentBoard");

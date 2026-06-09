@@ -1,12 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import type { GeoQualityReviewResult } from "@shared/geoQualityReview";
-import { parseAndNormalizeGeoQualityReview } from "@shared/geoQualityReview";
+import { parseAndNormalizeGeoQualityReview, getGeoQualityLabel } from "@shared/geoQualityReview";
 import { geoArticles, geoArticleTopics, projects } from "../drizzle/schema";
 import type { getDb } from "./db";
 import { buildQualityReviewPrompt } from "./geoQualityPrompt";
 import { defaultModelRouter } from "./modelRouter";
 import { recordRewriteFromQualityReject } from "./rewritePoolService";
+import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 
 type Db = Awaited<ReturnType<typeof getDb>>;
 
@@ -114,6 +115,25 @@ export async function runContentQualityReview(
       reason: `GEO 发布前质检 reject（${result.total} 分）`,
       source: "geo_quality_reject",
     });
+    try {
+      await appendArticleLifecycleEvent(db, input.articleId, {
+        status: "needs_revision",
+        source: "geo_quality_review",
+        message: `GEO 发布前质检 ${result.total} 分 · ${getGeoQualityLabel(result.recommendation)}`,
+      });
+    } catch (lifecycleErr) {
+      console.error("[GEO质检] 写入 lifecycle 失败（质检结果已保存）", lifecycleErr);
+    }
+  } else {
+    try {
+      await appendArticleLifecycleEvent(db, input.articleId, {
+        status: "quality_checked",
+        source: "geo_quality_review",
+        message: `GEO 发布前质检 ${result.total} 分 · ${getGeoQualityLabel(result.recommendation)}`,
+      });
+    } catch (lifecycleErr) {
+      console.error("[GEO质检] 写入 lifecycle 失败（质检结果已保存）", lifecycleErr);
+    }
   }
 
   return { result, modelName, reviewedAt };

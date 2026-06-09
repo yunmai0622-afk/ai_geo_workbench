@@ -1,4 +1,6 @@
+import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
 import { getContentQualityGateStatus, type ContentQualityGateArticle } from "./contentQualityGate";
+import type { GeoQualityRecommendation } from "./geoQualityReview";
 import {
   GEO_QUALITY_DIMENSION_META,
   GEO_QUALITY_DIMENSION_ORDER,
@@ -60,6 +62,117 @@ export type GeoQualityDisplayArticle = ContentQualityGateArticle & {
   geoQualityDetail?: unknown;
   geoQualityStale?: boolean | number | null;
 };
+
+export type GeoLegacyQualityScoreRow = {
+  articleId?: number;
+  totalScore?: number | null;
+  blocked?: number | boolean | null;
+  blockReasons?: string[] | null;
+  isPass?: boolean | null;
+};
+
+function hasComplianceBlockReasons(reasons: string[]): boolean {
+  return reasons.some(reason => /禁用词|禁止承诺|合规/.test(reason));
+}
+
+function inferRecommendationFromLegacyRow(
+  row: GeoLegacyQualityScoreRow | null | undefined,
+  score: number | null,
+): GeoQualityRecommendation | null {
+  if (!row || score == null) return null;
+  const reasons = Array.isArray(row.blockReasons) ? row.blockReasons : [];
+  if (row.blocked || hasComplianceBlockReasons(reasons) || score < GEO_ARTICLE_MIN_PASS_SCORE) {
+    return "reject";
+  }
+  if (score >= 80) return "publish";
+  return "revise";
+}
+
+export function dedupeLatestQualityScoreRows<T extends { articleId?: number }>(rows: T[]): T[] {
+  const seen = new Set<number>();
+  const out: T[] = [];
+  for (const row of rows) {
+    const id = row.articleId;
+    if (id == null) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(row);
+  }
+  return out;
+}
+
+/** 列表 / 卡片 / 入队门禁共用的质检总分 */
+export function resolveEffectiveGeoQualityScore(
+  article: GeoQualityDisplayArticle,
+  legacyRow?: GeoLegacyQualityScoreRow | null,
+): number | null {
+  if (!isGeoQualityScoreStale(article) && article.geoQualityScore != null) {
+    return article.geoQualityScore;
+  }
+  if (legacyRow?.totalScore != null) return legacyRow.totalScore;
+  return article.geoQualityScore ?? null;
+}
+
+export function resolveEffectiveGeoQualityRecommendation(
+  article: GeoQualityDisplayArticle,
+  legacyRow?: GeoLegacyQualityScoreRow | null,
+  score?: number | null,
+): GeoQualityRecommendation | null {
+  const effectiveScore = score ?? resolveEffectiveGeoQualityScore(article, legacyRow);
+  const fromArticle = (article.geoQualityRecommendation ?? "").trim();
+  if (!isGeoQualityScoreStale(article) && fromArticle) {
+    return fromArticle as GeoQualityRecommendation;
+  }
+  return inferRecommendationFromLegacyRow(legacyRow, effectiveScore);
+}
+
+export function resolveQualityBlockingIssues(
+  article: GeoQualityDisplayArticle,
+  legacyRow?: GeoLegacyQualityScoreRow | null,
+): string[] {
+  const unified = buildUnifiedQualityGateArticle(article, legacyRow);
+  const hints = resolveFriendlyQualityFailHints(unified);
+  const reasons = Array.isArray(legacyRow?.blockReasons) ? legacyRow.blockReasons : [];
+  const compliance = reasons.filter(r => /禁用词|禁止承诺|合规/.test(r));
+  const merged = [...compliance, ...hints];
+  const unique: string[] = [];
+  for (const item of merged) {
+    const text = item.trim();
+    if (!text || unique.includes(text)) continue;
+    unique.push(text);
+    if (unique.length >= 5) break;
+  }
+  if (unique.length > 0) return unique;
+  const gate = getContentQualityGateStatus(unified);
+  if (!gate.passed && gate.message) return [gate.message];
+  return [];
+}
+
+export function buildUnifiedQualityGateArticle(
+  article: GeoQualityDisplayArticle,
+  legacyRow?: GeoLegacyQualityScoreRow | null,
+): GeoQualityDisplayArticle {
+  const score = resolveEffectiveGeoQualityScore(article, legacyRow);
+  const recommendation = resolveEffectiveGeoQualityRecommendation(article, legacyRow, score);
+  const blockReasons = Array.isArray(legacyRow?.blockReasons) ? legacyRow.blockReasons : [];
+  const complianceBlocked = hasComplianceBlockReasons(blockReasons);
+  const stale = isGeoQualityScoreStale(article);
+  const qualityPasses =
+    !stale &&
+    score != null &&
+    score >= GEO_ARTICLE_MIN_PASS_SCORE &&
+    recommendation !== "reject" &&
+    !complianceBlocked &&
+    !legacyRow?.blocked;
+
+  return {
+    ...article,
+    geoQualityScore: score,
+    geoQualityRecommendation: recommendation ?? article.geoQualityRecommendation,
+    qualityPasses,
+    qualityStatus: qualityPasses ? "passed" : article.qualityStatus,
+  };
+}
 
 function parseGeoQualityDetail(detail: unknown): GeoQualityReviewResult | null {
   if (!detail || typeof detail !== "object") return null;
@@ -141,10 +254,15 @@ export function resolveFriendlyQualityFailHints(article: GeoQualityDisplayArticl
   return hints.slice(0, 3);
 }
 
-export function resolveQualityCardView(article: GeoQualityDisplayArticle): GeoQualityCardView | null {
-  if (article.geoQualityScore == null || !article.geoQualityRecommendation) return null;
-  const score = article.geoQualityScore;
-  const staleLabel = isGeoQualityScoreStale(article) ? "待重新质检" : null;
+export function resolveQualityCardView(
+  article: GeoQualityDisplayArticle,
+  legacyRow?: GeoLegacyQualityScoreRow | null,
+): GeoQualityCardView | null {
+  const unified = buildUnifiedQualityGateArticle(article, legacyRow);
+  const score = unified.geoQualityScore;
+  const recommendation = unified.geoQualityRecommendation;
+  if (score == null || !recommendation) return null;
+  const staleLabel = isGeoQualityScoreStale(unified) ? "待重新质检" : null;
   return {
     score,
     tier: getGeoQualityScoreTier(score),

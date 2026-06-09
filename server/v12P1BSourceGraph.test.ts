@@ -52,7 +52,7 @@ describe("GEO-V1.2-P1-B-Source-Graph-MVP", () => {
     expect(page).toContain("source-graph-suggestions");
     expect(page).toContain("BrandSourceDrawer");
     expect(page).toContain("生成该平台内容");
-    expect(page).toContain('buildProjectUrl("/weekly"');
+    expect(page).toContain("buildWeeklyContentEntryUrl");
     expect(page).toContain("source-graph-empty-sources");
     expect(page).toContain("entity-consistency-empty");
     expect(page).toContain("source-graph-suggestions-empty");

@@ -13,7 +13,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
 
   it("首屏平台化内容生产结构", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("GEO 内容生产工作台");
+    expect(weekly).toContain("内容生产工作台");
     expect(weekly).not.toContain("当前企业：");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
     expect(taskCard).toContain("本轮任务总览");

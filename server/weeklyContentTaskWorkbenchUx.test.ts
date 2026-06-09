@@ -19,7 +19,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
 
   it("首屏任务总控卡与平台看板", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("GEO 内容生产工作台");
+    expect(weekly).toContain("内容生产工作台");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
     expect(taskCard).toContain("本轮任务总览");
     expect(weekly).toContain("PlatformContentBoard");

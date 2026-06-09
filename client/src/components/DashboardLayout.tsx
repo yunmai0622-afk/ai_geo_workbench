@@ -134,7 +134,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
       },
       {
         icon: FileText,
-        label: "GEO 内容生产工作台",
+        label: "内容生产工作台",
         desc: "围绕 AI 引用逻辑生成品牌内容",
         path: "/weekly",
         aliases: ["/weekly", "/content-generation", "/articles"],

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { buildProjectUrl } from "@/lib/activeProject";
+import { buildWeeklyContentEntryUrl } from "@shared/weeklyContentEntryContext";
 import {
   resolveQuestionContentStatus,
   resolveQuestionContentStatusHint,
@@ -185,7 +186,17 @@ export function QuestionBankCard({
               size="sm"
               disabled={!projectId}
               data-testid={`question-generate-content-${question.id}`}
-              onClick={() => projectId && setLocation(buildProjectUrl("/weekly", projectId))}
+              onClick={() =>
+                projectId &&
+                setLocation(
+                  buildWeeklyContentEntryUrl(projectId, {
+                    questionId: question.id,
+                    questionText: question.questionText,
+                    sourceType: "question_pool",
+                    autoGenerate: true,
+                  }),
+                )
+              }
             >
               <Sparkles className="mr-1 h-3.5 w-3.5" />
               生成内容

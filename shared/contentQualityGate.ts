@@ -111,48 +111,63 @@ export function getUnifiedQualityGateStatus(
   return getContentQualityGateStatus(article);
 }
 
+/** 统一 lifecycle / qualityStatus 字符串，供门禁判断 */
+export function normalizeGeoQualityFields(article: ContentQualityGateArticle): ContentQualityGateArticle {
+  const qualityStatus = (article.qualityStatus ?? "").trim();
+  const lifecycleStatus = (article.lifecycleStatus ?? "").trim();
+  const recommendation = (article.geoQualityRecommendation ?? "").trim();
+  return {
+    ...article,
+    qualityStatus: qualityStatus || null,
+    lifecycleStatus: lifecycleStatus || null,
+    geoQualityRecommendation: recommendation || null,
+  };
+}
+
 export function getContentQualityGateStatus(article: ContentQualityGateArticle | null | undefined): ContentQualityGateStatus {
   if (!article) {
     return { passed: false, reason: "unknown", message: MESSAGES.unknown };
   }
 
-  if (isGeoQualityScoreStale(article)) {
+  const normalized = normalizeGeoQualityFields(article);
+
+  if (isGeoQualityScoreStale(normalized)) {
     return { passed: false, reason: "failed", message: "内容已修改，请重新质检后再发布" };
   }
 
   if (
-    article.geoQualityRecommendation === "reject" &&
-    article.geoQualityScore != null &&
-    !isGeoQualityScoreStale(article)
+    normalized.geoQualityRecommendation === "reject" &&
+    normalized.geoQualityScore != null &&
+    !isGeoQualityScoreStale(normalized)
   ) {
     return { passed: false, reason: "failed", message: MESSAGES.failed };
   }
 
-  if (hasUnifiedQualityPassSignals(article)) {
+  if (hasUnifiedQualityPassSignals(normalized)) {
     return { passed: true, reason: "passed", message: MESSAGES.passed };
   }
 
-  if (hasStructuredGeoQualityPass(article)) {
+  if (hasStructuredGeoQualityPass(normalized)) {
     return { passed: true, reason: "passed", message: MESSAGES.passed };
   }
 
-  if (hasLifecycleQualityPass(article)) {
+  if (hasLifecycleQualityPass(normalized)) {
     return { passed: true, reason: "passed", message: MESSAGES.passed };
   }
 
-  if (hasLegacyQualityPass(article)) {
+  if (hasLegacyQualityPass(normalized)) {
     return { passed: true, reason: "passed", message: MESSAGES.passed };
   }
 
-  if (hasLifecycleQualityFail(article)) {
+  if (hasLifecycleQualityFail(normalized)) {
     return { passed: false, reason: "failed", message: MESSAGES.failed };
   }
 
-  if (hasLegacyQualityFail(article)) {
+  if (hasLegacyQualityFail(normalized)) {
     return { passed: false, reason: "failed", message: MESSAGES.failed };
   }
 
-  const lifecycleStatus = article.lifecycleStatus?.trim();
+  const lifecycleStatus = normalized.lifecycleStatus?.trim();
   if (
     !lifecycleStatus ||
     lifecycleStatus === "generated" ||
@@ -161,7 +176,7 @@ export function getContentQualityGateStatus(article: ContentQualityGateArticle |
     return { passed: false, reason: "missing", message: MESSAGES.missing };
   }
 
-  if (!article.geoQualityScore && !article.geoQualityRecommendation) {
+  if (!normalized.geoQualityScore && !normalized.geoQualityRecommendation) {
     return { passed: false, reason: "missing", message: MESSAGES.missing };
   }
 

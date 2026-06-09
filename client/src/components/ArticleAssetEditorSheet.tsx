@@ -3,9 +3,9 @@ import { DangerousActionConfirmDialog } from "@/components/DangerousActionConfir
 import { useDangerousActionConfirm } from "@/hooks/useDangerousActionConfirm";
 import { ArticleContentEditMeta } from "@/components/ArticleContentEditMeta";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
-import { GeoArticleQualityScoreDetailPopover } from "@/components/GeoArticleQualityScoreDetailPopover";
 import { GeoQualityScore, type GeoQualityInitialState } from "@/components/GeoQualityScore";
-import { type GeoQualityReviewResult } from "@shared/geoQualityReview";
+import { type GeoQualityReviewResult, getGeoQualityLabel } from "@shared/geoQualityReview";
+import { isContentQualityPassed } from "@shared/contentQualityGate";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { aiInput } from "@/lib/aiProductUi";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { trpc } from "@/lib/trpc";
+import { mapArticleAssetSaveError } from "@shared/articleAssetSaveErrors";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import {
   ARTICLE_SAVED_PUBLISH_HINT_MESSAGE,
@@ -53,6 +54,7 @@ import {
   parseContentTagsInput,
 } from "@shared/geoArticleContentTags";
 import { DANGEROUS_ACTION_LABELS } from "@shared/dangerousActionConfirm";
+import { isGeoQualityScoreStale } from "@shared/geoQualityStale";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -119,15 +121,6 @@ export function ArticleAssetEditorSheet({
   const updateArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
   const deleteArticle = trpc.geo.articles.deleteContent.useMutation();
   const dangerousConfirm = useDangerousActionConfirm();
-  const qualityScoresQuery = trpc.geo.articles.latestQualityScores.useQuery(
-    { projectId },
-    { enabled: open && Boolean(article?.id) },
-  );
-  const articleQualityRow = useMemo(() => {
-    if (!article?.id) return null;
-    const rows = qualityScoresQuery.data ?? [];
-    return rows.find(row => row.articleId === article.id) ?? null;
-  }, [article?.id, qualityScoresQuery.data]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [template, setTemplate] = useState<ArticleCoverTemplateId>("ai-tech");
@@ -324,6 +317,24 @@ export function ArticleAssetEditorSheet({
     }
   };
 
+  const unifiedQualityScore = qualityInitial?.score ?? article?.geoQualityScore ?? null;
+  const unifiedQualityRecommendation =
+    (qualityInitial?.recommendation as GeoQualityReviewResult["recommendation"] | null | undefined) ??
+    (article?.geoQualityRecommendation as GeoQualityReviewResult["recommendation"] | null | undefined) ??
+    null;
+  const unifiedQualityStale = Boolean(qualityInitial?.stale ?? article?.geoQualityStale);
+  const unifiedQualityGateArticle = useMemo(() => {
+    if (!article) return null;
+    return {
+      ...article,
+      geoQualityScore: unifiedQualityScore,
+      geoQualityRecommendation: unifiedQualityRecommendation,
+      geoQualityStale: unifiedQualityStale,
+    };
+  }, [article, unifiedQualityRecommendation, unifiedQualityScore, unifiedQualityStale]);
+  const unifiedQualityPassed =
+    unifiedQualityGateArticle != null ? isContentQualityPassed(unifiedQualityGateArticle) : null;
+
   const handleSave = async () => {
     if (!article || isSaving || updateArticle.isPending) return;
     if (!title.trim() || !content.trim()) {
@@ -363,7 +374,7 @@ export function ArticleAssetEditorSheet({
       onSaved?.();
       onOpenChange(false);
     } catch (e) {
-      const msg = toUserFacingErrorFromUnknown(e, "保存失败");
+      const msg = mapArticleAssetSaveError(e, "保存失败");
       if (msg.includes("封面")) {
         setCoverError(msg);
       }
@@ -524,7 +535,7 @@ export function ArticleAssetEditorSheet({
             />
           </div>
 
-          {article && articleQualityRow?.totalScore != null ? (
+          {article && unifiedQualityScore != null && unifiedQualityRecommendation ? (
             <div
               className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700"
               data-testid="article-geo-quality-score-summary"
@@ -532,14 +543,18 @@ export function ArticleAssetEditorSheet({
               <p className="text-xs font-medium text-gray-500">内容 GEO 质检（质量检查记录）</p>
               <p className="mt-1">
                 质检总分：
-                <GeoArticleQualityScoreDetailPopover
-                  qualityRow={articleQualityRow}
-                  testId="article-editor-geo-quality-detail"
-                >
-                  <span className="font-semibold text-gray-900">{articleQualityRow.totalScore} 分</span>
-                </GeoArticleQualityScoreDetailPopover>
-                <span className="ml-2 text-xs text-gray-500">点击查看五项评分明细</span>
+                <span className="font-semibold text-gray-900">{unifiedQualityScore} 分</span>
+                <span className="ml-2 text-xs text-gray-500">
+                  {unifiedQualityStale
+                    ? "待重新质检"
+                    : getGeoQualityLabel(unifiedQualityRecommendation)}
+                  {" · "}
+                  {unifiedQualityPassed ? "质检通过" : "质检未通过"}
+                </span>
               </p>
+              {unifiedQualityStale ? (
+                <p className="mt-2 text-xs text-amber-800">正文已修改，请重新进行发布前质检后再发布。</p>
+              ) : null}
             </div>
           ) : null}
 

@@ -38,10 +38,22 @@ import {
 import type { WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
 import { resolveGeoQualityOptimizationSuggestions } from "@shared/geoQualityAutoSuggest";
 import {
+  buildUnifiedQualityGateArticle,
   computeAverageGeoQualityScore,
+  dedupeLatestQualityScoreRows,
+  resolveEffectiveGeoQualityScore,
   resolveFriendlyQualityFailHints,
+  resolveQualityBlockingIssues,
   resolveQualityCardView,
 } from "@shared/geoQualityScoreDisplay";
+import {
+  parseWeeklyContentEntryContext,
+  resolveWeeklyContentSourceTypeLabel,
+  WEEKLY_CONTENT_ENTRY_TASK_LABEL,
+  WEEKLY_CONTENT_MISSING_QUESTION_MESSAGE,
+  type WeeklyContentEntryContext,
+} from "@shared/weeklyContentEntryContext";
+import { PLATFORM_PRODUCT_NAME, PLATFORM_PRODUCT_SUBTITLE } from "@/components/auth/authMarketing";
 import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
 import {
   buildWeeklyContentTaskNextStep,
@@ -350,7 +362,30 @@ type QualityScoreRow = {
   articleId?: number;
   totalScore: number;
   blocked?: number | boolean | null;
+  blockReasons?: string[] | null;
 };
+
+function resolveArticleLinkedQuestionText(
+  article: ArticleRow | null | undefined,
+  questions: Array<{ id?: number; questionText?: string | null }>,
+): string | null {
+  if (!article) return null;
+  const basis = article.generationBasis ?? {};
+  const entryText =
+    typeof basis.entryQuestionText === "string" ? basis.entryQuestionText.trim() : "";
+  if (entryText) return entryText;
+  const sourceQuestionId =
+    typeof basis.sourceQuestionId === "number" ? basis.sourceQuestionId : null;
+  if (sourceQuestionId != null) {
+    const matched = questions.find(q => q.id === sourceQuestionId);
+    const text = matched?.questionText?.trim();
+    if (text) return text;
+  }
+  const customerQuestion =
+    typeof basis.customerQuestion === "string" ? basis.customerQuestion.trim() : "";
+  if (customerQuestion) return customerQuestion;
+  return null;
+}
 
 const PUBLISH_QUEUE_PLATFORMS = BINDING_PUBLISH_PLATFORMS.map(slug => ({
   slug,
@@ -623,6 +658,9 @@ export default function WeeklyContentPage() {
   );
   const [selectedQuestionTemplateId, setSelectedQuestionTemplateId] = useState<number | null>(null);
   const [selectedContentTaskId, setSelectedContentTaskId] = useState<number | null>(null);
+  const [entryContext, setEntryContext] = useState<WeeklyContentEntryContext>({});
+  const entryContextRef = useRef<WeeklyContentEntryContext>({});
+  const entryAutoGenerateHandledRef = useRef(false);
   const [generatingPlatformKey, setGeneratingPlatformKey] = useState<WeeklyPlatformKey | null>(null);
   const [platformBatchQueue, setPlatformBatchQueue] = useState<PlatformBatchQueueItem[] | null>(null);
   const [platformBatchRunning, setPlatformBatchRunning] = useState(false);
@@ -646,6 +684,35 @@ export default function WeeklyContentPage() {
   const [sortQuality, setSortQuality] = useState<ContentCardQualitySort>("none");
   const [selectedCardIds, setSelectedCardIds] = useState<Set<number>>(() => new Set());
   const [batchEnqueueBusy, setBatchEnqueueBusy] = useState(false);
+
+  useEffect(() => {
+    const parsed = parseWeeklyContentEntryContext(getSearchFromLocation(location));
+    setEntryContext(parsed);
+    entryContextRef.current = parsed;
+    entryAutoGenerateHandledRef.current = false;
+  }, [location]);
+
+  useEffect(() => {
+    if (entryContext.taskId != null) {
+      setSelectedContentTaskId(entryContext.taskId);
+    }
+    if (entryContext.questionText?.trim()) {
+      const q = entryContext.questionText.trim();
+      setPlatformStrategy(prev => (prev.targetQuestion.trim() === q ? prev : { ...prev, targetQuestion: q }));
+    }
+    if (entryContext.platform) {
+      const key = normalizeWeeklyPlatformKey(entryContext.platform);
+      setFilterPlatform(key);
+    }
+    if (entryContext.articleId != null) {
+      setGeneratedSectionOpen(true);
+    }
+  }, [
+    entryContext.taskId,
+    entryContext.questionText,
+    entryContext.platform,
+    entryContext.articleId,
+  ]);
 
   useEffect(() => {
     if (t0GapDeepLinkHandledRef.current) return;
@@ -971,10 +1038,31 @@ export default function WeeklyContentPage() {
   const staleTopicCount = useMemo(() => countStaleTopics(topics, taskIdSet), [topics, taskIdSet]);
   const hasStaleTopics = staleTopicCount > 0;
   const articles = useProjectScopedQueryRows<ArticleRow>(selectedProjectId, articlesQuery) as ArticleRow[];
-  const scores = (scoresQuery.data ?? []) as QualityScoreRow[];
+  const scores = dedupeLatestQualityScoreRows((scoresQuery.data ?? []) as QualityScoreRow[]);
 
   const articlesById = useMemo(() => new Map(articles.map(a => [a.id, a] as const)), [articles]);
   const scoresByArticleId = useMemo(() => new Map(scores.map(s => [s.articleId, s] as const)), [scores]);
+
+  const evaluateArticlePublishPreflight = useCallback(
+    (
+      article: ArticleRow,
+      ctxOverrides?: Partial<
+        Parameters<typeof buildArticlePublishPreflightInput>[2]
+      >,
+    ) => {
+      if (selectedProjectId == null) return null;
+      const legacyRow = scoresByArticleId.get(article.id) ?? null;
+      return evaluatePublishPreflight({
+        ...buildArticlePublishPreflightInput(
+          selectedProjectId,
+          article,
+          { ...publishBaseContext, ...ctxOverrides },
+        ),
+        qualityResult: buildUnifiedQualityGateArticle(article, legacyRow),
+      });
+    },
+    [selectedProjectId, publishBaseContext, scoresByArticleId],
+  );
 
   const articleByTopicId = useMemo(() => {
     const map = new Map<number, ArticleRow>();
@@ -1095,6 +1183,7 @@ export default function WeeklyContentPage() {
       }
       setGeneratingTopicIds(prev => new Set(prev).add(topicId));
       try {
+        const ctx = entryContextRef.current;
         const data = await generateArticleMutation.mutateAsync({
           topicId,
           targetPublishPlatform: effectiveStrategy.targetPublishPlatform,
@@ -1104,13 +1193,15 @@ export default function WeeklyContentPage() {
           targetQuestion: effectiveStrategy.targetQuestion.trim(),
           geoEnhancementGoal: effectiveStrategy.geoEnhancementGoal,
           targetAiPlatforms: [...effectiveStrategy.targetAiPlatforms],
-          contentTaskId: resolvedContentTaskIdForGenerate,
-          diagnosisFinding: geoContentTaskSource?.diagnosisFinding,
-          geoGap: geoContentTaskSource?.geoGapSummary,
+          contentTaskId: resolvedContentTaskIdForGenerate ?? ctx.taskId ?? undefined,
+          diagnosisFinding: geoContentTaskSource?.diagnosisFinding ?? ctx.relatedGeoGap,
+          geoGap: geoContentTaskSource?.geoGapSummary ?? ctx.relatedGeoGap,
           platformRule: formatPlatformRuleSummaryForGeneration(
             effectiveStrategy.targetPublishPlatform,
           ),
           questionTemplateId: selectedQuestionTemplateId ?? undefined,
+          questionId: ctx.questionId ?? undefined,
+          sourceType: ctx.sourceType ?? undefined,
         });
         await invalidateArticles();
         const userNotice = data.userNotice ?? null;
@@ -1288,12 +1379,7 @@ export default function WeeklyContentPage() {
           continue;
         }
         if (!platformArticle) platformArticle = article;
-        const preflight =
-          selectedProjectId != null
-            ? evaluatePublishPreflight(
-                buildArticlePublishPreflightInput(selectedProjectId, article, publishBaseContext),
-              )
-            : null;
+        const preflight = evaluateArticlePublishPreflight(article);
         const pass = preflight?.ready ?? false;
         if (article.status === "已发布") {
           counts.published += 1;
@@ -1331,9 +1417,7 @@ export default function WeeklyContentPage() {
       );
       const publishReady =
         platformArticle && selectedProjectId != null
-          ? (evaluatePublishPreflight(
-              buildArticlePublishPreflightInput(selectedProjectId, platformArticle, publishBaseContext),
-            ).ready ?? false)
+          ? (evaluateArticlePublishPreflight(platformArticle)?.ready ?? false)
           : false;
       const lifecycleView = platformArticle ? resolveArticleLifecycleView(platformArticle) : null;
       const status = resolveWeeklyPlatformContentStatus({
@@ -1428,12 +1512,8 @@ export default function WeeklyContentPage() {
           ? card.recommendedPlatform.join("、")
           : null;
         const q = scoresByArticleId.get(a.id);
-        const preflight =
-          selectedProjectId != null
-            ? evaluatePublishPreflight(
-                buildArticlePublishPreflightInput(selectedProjectId, a, publishBaseContext),
-              )
-            : null;
+        const unifiedQualityArticle = buildUnifiedQualityGateArticle(a, q ?? null);
+        const preflight = evaluateArticlePublishPreflight(a);
         const pass = preflight?.ready ?? false;
         const published = a.status === "已发布";
         const statusView = resolveContentCardStatus({ published, publishable: pass });
@@ -1490,10 +1570,10 @@ export default function WeeklyContentPage() {
           statusLabel: statusView.label,
           statusTone: statusView.tone,
           statusFilterKey: statusView.filterKey,
-          qualityView: resolveQualityCardView(a),
-          qualityFailHints: resolveFriendlyQualityFailHints(a),
+          qualityView: resolveQualityCardView(a, q ?? null),
+          qualityFailHints: resolveFriendlyQualityFailHints(unifiedQualityArticle),
           qualityOptimizationSuggestions: resolveGeoQualityOptimizationSuggestions(a),
-          qualityScore: a.geoQualityScore ?? q?.totalScore ?? null,
+          qualityScore: resolveEffectiveGeoQualityScore(a, q ?? null),
           qualityScoreRow: q ?? null,
           strategySummary: formatArticleStrategySummary(a),
           coverThumbnailSrc: resolveArticleCoverPreviewSrc(a),
@@ -1693,6 +1773,36 @@ export default function WeeklyContentPage() {
     [contentCardModels],
   );
 
+  const entryMotherArticle = useMemo(() => {
+    if (entryContext.articleId == null) return null;
+    return articlesById.get(entryContext.articleId) ?? null;
+  }, [entryContext.articleId, articlesById]);
+
+  const entryLinkedQuestionText = useMemo(() => {
+    if (entryContext.questionText?.trim()) return entryContext.questionText.trim();
+    if (entryContext.questionId != null) {
+      const fromList = (questionsQuery.data ?? []).find(
+        (q: { id?: number }) => q.id === entryContext.questionId,
+      ) as { questionText?: string } | undefined;
+      const text = fromList?.questionText?.trim();
+      if (text) return text;
+    }
+    return resolveArticleLinkedQuestionText(entryMotherArticle, questionsQuery.data ?? []);
+  }, [
+    entryContext.questionText,
+    entryContext.questionId,
+    entryMotherArticle,
+    questionsQuery.data,
+  ]);
+
+  const showEntryContextBanner = Boolean(
+    entryContext.questionId ||
+      entryContext.questionText ||
+      entryContext.taskId ||
+      entryContext.articleId ||
+      entryContext.sourceType,
+  );
+
   const toggleCardSelection = useCallback((articleId: number, checked: boolean) => {
     setSelectedCardIds(prev => {
       const next = new Set(prev);
@@ -1805,16 +1915,12 @@ export default function WeeklyContentPage() {
     (article: ArticleRow) => {
       if (blockPublishIfUnsaved(article.id)) return;
       if (blockPublishIfQualityReject(article)) return;
-      const preflight =
-        selectedProjectId != null
-          ? evaluatePublishPreflight(
-              buildArticlePublishPreflightInput(selectedProjectId, article, publishBaseContext),
-            )
-          : null;
+      const legacyQuality = scoresByArticleId.get(article.id) ?? null;
+      const preflight = evaluateArticlePublishPreflight(article);
       if (!preflight?.ready) {
-        toast.error(
-          preflight ? formatPublishPreflightBlockMessage(preflight) : "发布前检查未通过",
-        );
+        const blocking = resolveQualityBlockingIssues(article, legacyQuality);
+        const detail = preflight ? formatPublishPreflightBlockMessage(preflight) : "";
+        toast.error([detail, blocking.join("；")].filter(Boolean).join("；") || "发布前检查未通过");
         return;
       }
       if (isContentReviewPending(article.contentReviewStatus)) {
@@ -1922,6 +2028,15 @@ export default function WeeklyContentPage() {
       if (platformKey === "xiaohongshu") {
         strategyOverride.contentStrategyType = "seeding";
         setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
+      }
+
+      const entryCtx = entryContextRef.current;
+      if (entryCtx.articleId != null) {
+        const articleList = (await utils.geo.articles.list.fetch({ projectId })) as ArticleRow[];
+        const mother = articleList.find(a => a?.id === entryCtx.articleId);
+        if (mother?.topicId) {
+          return { ok: true, topicId: mother.topicId, strategyOverride };
+        }
       }
 
       const reloadTopicGenerationSnapshot = async () => {
@@ -2499,15 +2614,13 @@ export default function WeeklyContentPage() {
     const preflight =
       activePublishPreflight ??
       (selectedProjectId
-        ? evaluatePublishPreflight(
-            buildArticlePublishPreflightInput(selectedProjectId, publishArticle, {
-              ...publishDialogPreflightContext,
-              requestedPlatform:
-                manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
-                  ? manualPublishPlatform
-                  : null,
-            }),
-          )
+        ? evaluateArticlePublishPreflight(publishArticle, {
+            ...publishDialogPreflightContext,
+            requestedPlatform:
+              manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
+                ? manualPublishPlatform
+                : null,
+          })
         : null);
     if (!preflight?.ready) {
       toast.error(
@@ -2601,9 +2714,7 @@ export default function WeeklyContentPage() {
     if (!selectedProjectId) return false;
     if (blockPublishIfUnsaved(article.id)) return false;
     if (blockPublishIfQualityReject(article)) return false;
-    const preflight = evaluatePublishPreflight(
-      buildArticlePublishPreflightInput(selectedProjectId, article, publishBaseContext),
-    );
+    const preflight = evaluateArticlePublishPreflight(article);
     if (!preflight?.ready) {
       toast.error(
         preflight ? formatPublishPreflightBlockMessage(preflight) : "发布前检查未通过",
@@ -2796,12 +2907,7 @@ export default function WeeklyContentPage() {
           skippedCount += 1;
           continue;
         }
-        const preflight =
-          selectedProjectId != null
-            ? evaluatePublishPreflight(
-                buildArticlePublishPreflightInput(selectedProjectId, article, publishBaseContext),
-              )
-            : null;
+        const preflight = evaluateArticlePublishPreflight(article);
         if (!preflight?.ready) {
           skippedCount += 1;
           continue;
@@ -2911,16 +3017,14 @@ export default function WeeklyContentPage() {
       publishDialogSlug && isBindingPublishPlatform(publishDialogSlug)
         ? pickSelectedPublishAccount(publishDialogSlug)
         : null;
-    return evaluatePublishPreflight(
-      buildArticlePublishPreflightInput(selectedProjectId, publishArticle, {
-        ...publishDialogPreflightContext,
-        requestedPlatform,
-        selectedAccount: account
-          ? ({ ...account, platform: publishDialogSlug } as PublishReadyAccountRow)
-          : null,
-        selectedAccountId: account?.id ?? null,
-      }),
-    );
+    return evaluateArticlePublishPreflight(publishArticle, {
+      ...publishDialogPreflightContext,
+      requestedPlatform,
+      selectedAccount: account
+        ? ({ ...account, platform: publishDialogSlug } as PublishReadyAccountRow)
+        : null,
+      selectedAccountId: account?.id ?? null,
+    });
   }, [
     publishArticle,
     selectedProjectId,
@@ -2928,6 +3032,7 @@ export default function WeeklyContentPage() {
     manualPublishPlatform,
     publishDialogSlug,
     pickSelectedPublishAccount,
+    evaluateArticlePublishPreflight,
   ]);
 
   const publishDialogNicknamePendingHint = useMemo(() => {
@@ -2984,7 +3089,10 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">GEO 内容生产工作台</h1>
+          <h1 className="text-2xl font-bold text-gray-900">内容生产工作台</h1>
+          <p className="text-sm text-gray-500">
+            {PLATFORM_PRODUCT_NAME} · {PLATFORM_PRODUCT_SUBTITLE}
+          </p>
           <p className="text-sm text-gray-500">
             查看本轮内容任务，生成平台内容，完成审核后加入发布队列。
           </p>
@@ -3005,6 +3113,40 @@ export default function WeeklyContentPage() {
           />
         </div>
       </header>
+
+      {showEntryContextBanner ? (
+        <P0Card
+          className="border-blue-100 bg-blue-50/60"
+          testId="weekly-content-entry-context"
+        >
+          <p className="text-sm font-medium text-gray-900">
+            当前内容来源：{resolveWeeklyContentSourceTypeLabel(entryContext.sourceType)}
+          </p>
+          {entryContext.questionId == null &&
+          entryContext.sourceType &&
+          !entryLinkedQuestionText ? (
+            <p className="mt-2 text-sm text-amber-800">{WEEKLY_CONTENT_MISSING_QUESTION_MESSAGE}</p>
+          ) : entryLinkedQuestionText ? (
+            <p className="mt-2 text-sm text-gray-700">
+              关联问题：{entryLinkedQuestionText}
+              {entryContext.questionId != null ? `（#${entryContext.questionId}）` : ""}
+            </p>
+          ) : null}
+          {entryMotherArticle ? (
+            <p className="mt-2 text-sm text-gray-700">
+              母稿标题：{entryMotherArticle.title ?? "未命名内容"}
+              {entryContext.platform
+                ? ` · 当前平台：${
+                    WEEKLY_PLATFORM_DEFS.find(
+                      d => d.key === normalizeWeeklyPlatformKey(entryContext.platform!),
+                    )?.label ?? entryContext.platform
+                  }`
+                : ""}
+            </p>
+          ) : null}
+          <p className="mt-2 text-sm text-gray-600">当前任务：{WEEKLY_CONTENT_ENTRY_TASK_LABEL}</p>
+        </P0Card>
+      ) : null}
 
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}

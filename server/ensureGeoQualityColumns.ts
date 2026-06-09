@@ -15,6 +15,10 @@ const GEO_ARTICLE_QUALITY_COLUMNS: Array<{ name: string; ddl: string }> = [
   { name: "publishIdentity", ddl: "ADD COLUMN `publishIdentity` varchar(50) NULL" },
   { name: "recommendedAccountGroup", ddl: "ADD COLUMN `recommendedAccountGroup` varchar(50) NULL" },
   { name: "contentTags", ddl: "ADD COLUMN `contentTags` json NULL" },
+  { name: "lifecycleStatus", ddl: "ADD COLUMN `lifecycleStatus` varchar(32) NULL DEFAULT 'generated'" },
+  { name: "lifecycleEvents", ddl: "ADD COLUMN `lifecycleEvents` json NULL" },
+  { name: "contentEditedAt", ddl: "ADD COLUMN `contentEditedAt` timestamp NULL" },
+  { name: "contentReviewStatus", ddl: "ADD COLUMN `contentReviewStatus` varchar(32) NULL DEFAULT '待审核'" },
 ];
 
 const PROJECT_PLATFORM_ACCOUNT_COLUMNS: Array<{ name: string; ddl: string }> = [

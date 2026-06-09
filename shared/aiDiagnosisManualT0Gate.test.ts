@@ -12,9 +12,12 @@ describe("aiDiagnosisManualT0Gate", () => {
   });
 
   it("builds T0 start confirm copy with scope fields", () => {
-    const copy = buildT0StartConfirmCopy({ questionCount: 12, platformCount: 3, runsPerQuestion: 3 });
+    const copy = buildT0StartConfirmCopy({ questionCount: 3, platformCount: 2, runsPerQuestion: 3 });
     expect(copy.title).toContain("T0");
     expect(copy.confirmLabel).toBe("确认开始检测");
+    const longCopy = buildT0StartConfirmCopy({ questionCount: 12, platformCount: 3, runsPerQuestion: 3 });
+    expect(longCopy.backgroundMode).toBe(true);
+    expect(longCopy.confirmLabel).toBe("创建检测任务并在后台执行");
   });
 
   it("builds rerun confirm copy", () => {

@@ -34,9 +34,16 @@ export function AiDiagnosisT0ConfirmDialog({ open, copy, pending, onOpenChange, 
                 <ul className="mt-2 list-inside list-disc space-y-1">
                   <li data-testid="ai-diagnosis-t0-confirm-question-count">启用问题：{copy.questionCount} 个</li>
                   <li data-testid="ai-diagnosis-t0-confirm-platform-count">检测平台：{copy.platformCount} 个</li>
-                  <li data-testid="ai-diagnosis-t0-confirm-estimated-minutes">预计耗时：约 {copy.estimatedMinutes} 分钟</li>
+                  <li data-testid="ai-diagnosis-t0-confirm-estimated-minutes">
+                    {copy.estimatedMinutesLabel ?? `预计耗时：约 ${copy.estimatedMinutes} 分钟`}
+                  </li>
                 </ul>
                 <p className="mt-2 text-xs leading-relaxed text-gray-600">{copy.footerNote}</p>
+                {copy.backgroundMode ? (
+                  <p className="mt-2 text-xs leading-relaxed text-indigo-800">
+                    可查看检测进度，或稍后刷新结果；无需一直停留在此页面等待。
+                  </p>
+                ) : null}
               </div>
             </div>
           </AlertDialogDescription>

@@ -143,6 +143,11 @@ import {
 } from "./articleGapLink";
 import { buildArticleGapLinkContext } from "@shared/articleGapLink";
 import { resolveArticleLifecycleView } from "@shared/articleLifecycle";
+import { isContentQualityPassed } from "@shared/contentQualityGate";
+import {
+  buildUnifiedQualityGateArticle,
+  dedupeLatestQualityScoreRows,
+} from "@shared/geoQualityScoreDisplay";
 import {
   applyGeoArticleGenerationHistoryRestore,
   buildGeoArticleGenerationHistory,
@@ -3150,7 +3155,8 @@ const geoRouter = router({
       // Fix: 问题1 — isPass 与「仅合规类阻断」一致，避免高分仍显示未通过。
       const hasComplianceBlock = (reasons: string[]) =>
         reasons.some(reason => /禁用词|禁止承诺|合规/.test(reason));
-      return rows.map(row => {
+      const deduped = dedupeLatestQualityScoreRows(rows);
+      return deduped.map(row => {
         const blockReasons = Array.isArray(row.blockReasons) ? row.blockReasons : [];
         const isPass = row.totalScore >= 60 && !hasComplianceBlock(blockReasons);
         return { ...row, isPass };
@@ -3339,6 +3345,8 @@ const geoRouter = router({
             geoGap: z.string().trim().max(4000).optional(),
             platformRule: z.string().trim().max(4000).optional(),
             questionTemplateId: z.number().int().positive().optional(),
+            questionId: z.number().int().positive().optional(),
+            sourceType: z.string().trim().max(64).optional(),
           })
           .superRefine((val, ctx) => {
             const hasPlatform = Boolean(val.targetPublishPlatform);
@@ -3537,10 +3545,18 @@ const geoRouter = router({
         analyses: analysisScope,
         projectQuestions,
       });
+      const generationBasisWithContext = {
+        ...(draft.generationBasis ?? {}),
+        ...(input.contentTaskId != null ? { contentTaskId: input.contentTaskId } : {}),
+        ...(input.questionId != null ? { sourceQuestionId: input.questionId } : {}),
+        ...(input.sourceType?.trim() ? { sourceType: input.sourceType.trim() } : {}),
+        ...(input.targetQuestion?.trim() ? { entryQuestionText: input.targetQuestion.trim() } : {}),
+      };
       const inserted = await db
         .insert(geoArticles)
         .values({
           ...draft,
+          generationBasis: generationBasisWithContext,
           targetQuestionId: gapLink?.roundQuestionId?.trim() ? gapLink.roundQuestionId : null,
           targetGapType: gapLink?.gapType ?? null,
         })

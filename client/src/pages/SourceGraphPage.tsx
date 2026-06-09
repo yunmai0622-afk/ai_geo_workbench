@@ -11,6 +11,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
 import { buildProjectUrl } from "@/lib/activeProject";
+import {
+  buildWeeklyContentEntryUrl,
+  type WeeklyContentEntryContext,
+} from "@shared/weeklyContentEntryContext";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import {
@@ -149,8 +153,12 @@ export default function SourceGraphPage() {
         toast.success("已生成内容任务");
       }
       if (selectedProjectId) {
-        const suffix = result.taskId ? `&taskId=${result.taskId}` : "";
-        setLocation(`${buildProjectUrl("/weekly", selectedProjectId)}${suffix}`);
+        const entryPayload: WeeklyContentEntryContext = {
+          sourceType: "brand_source",
+          autoGenerate: true,
+        };
+        if (result.taskId) entryPayload.taskId = result.taskId;
+        setLocation(buildWeeklyContentEntryUrl(selectedProjectId, entryPayload));
       }
     },
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成内容任务失败")),
@@ -214,8 +222,9 @@ export default function SourceGraphPage() {
 
   function goWeeklyWithTask(taskId?: number | null) {
     if (!selectedProjectId) return;
-    const suffix = taskId ? `&taskId=${taskId}` : "";
-    setLocation(`${buildProjectUrl("/weekly", selectedProjectId)}${suffix}`);
+    const entryPayload: WeeklyContentEntryContext = { sourceType: "brand_source" };
+    if (taskId) entryPayload.taskId = taskId;
+    setLocation(buildWeeklyContentEntryUrl(selectedProjectId, entryPayload));
   }
 
   if (!enabled && !projectsLoading) {

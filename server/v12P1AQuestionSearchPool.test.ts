@@ -42,7 +42,7 @@ describe("GEO-V1.2-P1-A-Question-Search-Pool", () => {
     expect(page).toContain("生成内容任务");
     expect(page).toContain("标记重点");
     expect(page).toContain("QuestionSearchPoolDrawer");
-    expect(page).toContain('buildProjectUrl("/weekly"');
+    expect(page).toContain("buildWeeklyContentEntryUrl");
     expect(page).not.toContain("rawAnswer");
   });
 

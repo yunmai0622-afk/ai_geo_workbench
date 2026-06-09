@@ -22,6 +22,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
+import {
+  buildWeeklyContentEntryUrl,
+  type WeeklyContentEntryContext,
+} from "@shared/weeklyContentEntryContext";
 import { trpc } from "@/lib/trpc";
 import type { EnrichedSearchPoolQuestion } from "@shared/questionSearchPoolEnrichment";
 import {
@@ -70,6 +74,7 @@ export default function QuestionsLibraryPage() {
   const [editQuestion, setEditQuestion] = useState<EnrichedSearchPoolQuestion | null>(null);
   const [formInitial, setFormInitial] = useState<QuestionPoolFormState>(() => defaultQuestionPoolForm());
   const [activeTab, setActiveTab] = useState<string>(SEARCH_POOL_QUESTION_TYPES[0].value);
+  const [pendingContentQuestion, setPendingContentQuestion] = useState<EnrichedSearchPoolQuestion | null>(null);
 
   const searchPoolQuery = trpc.geo.questions.listSearchPool.useQuery(
     { projectId: selectedProjectId! },
@@ -129,9 +134,21 @@ export default function QuestionsLibraryPage() {
     onSuccess: async result => {
       await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
       toast.success("已生成内容任务");
-      if (selectedProjectId) {
-        const suffix = result.taskId ? `&taskId=${result.taskId}` : "";
-        setLocation(`${buildProjectUrl("/weekly", selectedProjectId)}${suffix}`);
+      if (selectedProjectId && pendingContentQuestion) {
+        const entryPayload: WeeklyContentEntryContext = {
+          questionId: pendingContentQuestion.id,
+          questionText: pendingContentQuestion.questionText,
+          sourceType: "search_pool",
+          relatedGeoGap: pendingContentQuestion.diagnosisGap,
+          autoGenerate: true,
+        };
+        if (result.taskId) entryPayload.taskId = result.taskId;
+        setLocation(buildWeeklyContentEntryUrl(selectedProjectId, entryPayload));
+        setPendingContentQuestion(null);
+      } else if (selectedProjectId) {
+        const fallbackEntry: WeeklyContentEntryContext = {};
+        if (result.taskId) fallbackEntry.taskId = result.taskId;
+        setLocation(buildWeeklyContentEntryUrl(selectedProjectId, fallbackEntry));
       }
     },
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成内容任务失败")),
@@ -225,6 +242,7 @@ export default function QuestionsLibraryPage() {
       setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
       return;
     }
+    setPendingContentQuestion(question);
     createContentTaskMutation.mutate({ projectId: selectedProjectId, questionId: question.id });
   }
 
