@@ -12,6 +12,10 @@ import {
   type OnboardingWizardCompleteness,
 } from "@shared/onboardingWizardCompleteness";
 import {
+  buildOnboardingCompletenessReport,
+  type OnboardingCompletenessReport,
+} from "@shared/onboardingCompletenessReport";
+import {
   mergeGeoGoalNotesPayload,
   parseGeoGoalNotesPayload,
   type QuestionGuideExamples,
@@ -53,28 +57,73 @@ export type ProfileUpsertLike = Record<string, unknown> & {
   geoGoalNotes?: string | null;
 };
 
-export async function loadWizardCompletenessContext(
-  db: DbClient,
-  projectId: number,
-  profile: Record<string, unknown> | null,
-): Promise<OnboardingWizardCompleteness> {
+async function loadWizardCompletenessRawContext(db: DbClient, projectId: number) {
   const [questionRows, caseRows, trustEvidenceRows, sourceRows] = await Promise.all([
     db.select({ id: questions.id }).from(questions).where(eq(questions.projectId, projectId)),
     db.select({ id: customerCases.id }).from(customerCases).where(eq(customerCases.projectId, projectId)),
-    db.select({ id: trustEvidenceItems.id }).from(trustEvidenceItems).where(eq(trustEvidenceItems.projectId, projectId)),
+    db
+      .select({
+        id: trustEvidenceItems.id,
+        verificationStatus: trustEvidenceItems.verificationStatus,
+      })
+      .from(trustEvidenceItems)
+      .where(eq(trustEvidenceItems.projectId, projectId)),
     db
       .select({ platform: brandSourceRecords.platform })
       .from(brandSourceRecords)
       .where(eq(brandSourceRecords.projectId, projectId)),
   ]);
-  const platforms = new Set(sourceRows.map(r => r.platform).filter(Boolean));
-  return evaluateOnboardingWizardCompleteness({
-    profile,
+  const platforms = [...new Set(sourceRows.map(r => r.platform).filter(Boolean))] as string[];
+  const verifiedTrustEvidenceCount = trustEvidenceRows.filter(row => row.verificationStatus === "verified").length;
+  return {
     questionCount: questionRows.length,
     customerCaseCount: caseRows.length,
     trustEvidenceCount: trustEvidenceRows.length,
+    verifiedTrustEvidenceCount,
     brandSourceCount: sourceRows.length,
-    brandSourcePlatformCount: platforms.size,
+    brandSourcePlatforms: platforms,
+  };
+}
+
+export async function loadWizardCompletenessContext(
+  db: DbClient,
+  projectId: number,
+  profile: Record<string, unknown> | null,
+): Promise<OnboardingWizardCompleteness> {
+  const ctx = await loadWizardCompletenessRawContext(db, projectId);
+  return evaluateOnboardingWizardCompleteness({
+    profile,
+    questionCount: ctx.questionCount,
+    customerCaseCount: ctx.customerCaseCount,
+    trustEvidenceCount: ctx.trustEvidenceCount,
+    brandSourceCount: ctx.brandSourceCount,
+    brandSourcePlatformCount: ctx.brandSourcePlatforms.length,
+  });
+}
+
+export async function loadOnboardingCompletenessReport(
+  db: DbClient,
+  projectId: number,
+): Promise<OnboardingCompletenessReport> {
+  const profiles = await db
+    .select()
+    .from(enterpriseGeoProfiles)
+    .where(eq(enterpriseGeoProfiles.projectId, projectId))
+    .limit(1);
+  const profile = profiles[0] ?? null;
+  const ctx = await loadWizardCompletenessRawContext(db, projectId);
+  const questionGuide = parseGeoGoalNotesPayload(profile?.geoGoalNotes ?? null).questionGuide;
+  return buildOnboardingCompletenessReport({
+    profile,
+    questionCount: ctx.questionCount,
+    customerCaseCount: ctx.customerCaseCount,
+    trustEvidenceCount: ctx.trustEvidenceCount,
+    verifiedTrustEvidenceCount: ctx.verifiedTrustEvidenceCount,
+    brandSourceCount: ctx.brandSourceCount,
+    brandSourcePlatforms: ctx.brandSourcePlatforms,
+    questionGuide,
+    wizardStep: profile?.wizardStep,
+    lastUpdatedAt: profile?.updatedAt,
   });
 }
 

@@ -261,6 +261,7 @@ import {
 import {
   buildGeoGoalNotesForUpsert,
   finalizeProfileUpsert,
+  loadOnboardingCompletenessReport,
   loadWizardCompletenessContext,
 } from "./onboardingWizardLogic";
 import { parseGeoGoalNotesPayload } from "@shared/onboardingWizardGeoGoalNotes";
@@ -1275,6 +1276,16 @@ const geoRouter = router({
         await requireProjectAccess(ctx, input.projectId);
         const metrics = await fetchWorkspaceSummaryMetrics(db, input.projectId);
         return metrics;
+      }),
+  }),
+
+  onboarding: router({
+    getCompletenessReport: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        return loadOnboardingCompletenessReport(db, input.projectId);
       }),
   }),
 

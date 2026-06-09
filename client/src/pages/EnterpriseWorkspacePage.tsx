@@ -54,6 +54,10 @@ export default function EnterpriseWorkspacePage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
+  const completenessReportQuery = trpc.geo.onboarding.getCompletenessReport.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
 
   useEffect(() => {
     const enterpriseName = selectedProject?.enterpriseName?.trim() || "企业";
@@ -223,6 +227,42 @@ export default function EnterpriseWorkspacePage() {
                     : `${feedbackSummaryQuery.data?.sourceConsistencyScore ?? 0} 分`}
                 </p>
               </div>
+            </div>
+            <div className="mt-4 space-y-2 border-t border-gray-100 pt-4" data-testid="workspace-profile-completeness">
+              <p className="text-sm font-semibold text-gray-900">
+                建档完整度：
+                {completenessReportQuery.isLoading
+                  ? "加载中…"
+                  : `${completenessReportQuery.data?.totalScore ?? metrics.profileCompletionPercent ?? 0}%`}
+              </p>
+              <p className="text-sm text-gray-600">
+                主要缺口：
+                {completenessReportQuery.isLoading ? (
+                  "加载中…"
+                ) : (completenessReportQuery.data?.topMissingItems ?? []).length > 0 ? (
+                  (completenessReportQuery.data?.topMissingItems ?? []).map(item => (
+                    <span
+                      key={item}
+                      className="ml-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900"
+                    >
+                      {item}
+                    </span>
+                  ))
+                ) : (
+                  <span className="ml-1 text-gray-500">暂无显著缺口</span>
+                )}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-lg"
+                data-testid="workspace-go-complete-profile"
+                onClick={() => setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId))}
+              >
+                去完善建档
+                <ArrowRight className="ml-1.5 size-3.5" />
+              </Button>
             </div>
           </section>
 

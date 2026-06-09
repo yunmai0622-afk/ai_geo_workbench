@@ -18,6 +18,7 @@ describe("Enterprise-Profile-Simplify-V1", () => {
   it("wizard has eight navigable steps", () => {
     const shell = read("client/src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx");
     expect(shell).toContain("ONBOARDING_WIZARD_STEPS");
+    expect(shell).toContain("wizard-dimension-scores");
     expect(read("shared/onboardingWizardSteps.ts")).toContain("title: \"90 天 GEO 目标\"");
   });
 

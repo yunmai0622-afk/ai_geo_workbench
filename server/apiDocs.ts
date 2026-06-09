@@ -45,6 +45,7 @@ export const API_DOC_SECTIONS: ApiDocSection[] = [
       { path: "geo.projects.unarchive", type: "mutation", auth: "protected", summary: "取消归档" },
       { path: "geo.projects.delete", type: "mutation", auth: "protected", summary: "删除项目及关联数据" },
       { path: "geo.workspace.summary", type: "query", auth: "protected", summary: "企业工作台摘要" },
+      { path: "geo.onboarding.getCompletenessReport", type: "query", auth: "protected", summary: "8 步建档完整度标准报告" },
       { path: "geo.clientDashboard.listProjectsSummary", type: "query", auth: "protected", summary: "客户看板项目聚合摘要" },
       { path: "geo.assetLibrary.summary", type: "query", auth: "protected", summary: "企业资产库完成度与风险提示" },
       { path: "geo.platformAccounts.list", type: "query", auth: "protected", summary: "项目平台账号列表" },

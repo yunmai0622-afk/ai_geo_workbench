@@ -130,6 +130,10 @@ export default function AssetCenterPage() {
     projectInput,
     { enabled: Boolean(currentProjectId), retry: 1 },
   );
+  const completenessReportQuery = trpc.geo.onboarding.getCompletenessReport.useQuery(projectInput, {
+    enabled: Boolean(currentProjectId),
+    retry: 1,
+  });
   const summary = summaryData as SummaryLike | undefined;
   const profile = summary?.profile ?? null;
 
@@ -196,7 +200,23 @@ export default function AssetCenterPage() {
   }, [hydrateFromProfile, currentProjectId, isFetched]);
 
   const wizardCompleteness = summary?.wizardCompleteness;
-  const completionScore = wizardCompleteness?.completionScore ?? summary?.completionScore ?? 0;
+  const completenessReport = completenessReportQuery.data;
+  const completionScore =
+    completenessReport?.totalScore ?? wizardCompleteness?.completionScore ?? summary?.completionScore ?? 0;
+  const dimensionScores = useMemo(() => {
+    const dims = completenessReport?.dimensions;
+    if (!dims) return undefined;
+    return [
+      { step: dims.brandIdentity.step, title: dims.brandIdentity.title, score: dims.brandIdentity.score },
+      { step: dims.categoryPositioning.step, title: dims.categoryPositioning.title, score: dims.categoryPositioning.score },
+      { step: dims.targetCustomer.step, title: dims.targetCustomer.title, score: dims.targetCustomer.score },
+      { step: dims.questionCoverage.step, title: dims.questionCoverage.title, score: dims.questionCoverage.score },
+      { step: dims.competitorInfo.step, title: dims.competitorInfo.title, score: dims.competitorInfo.score },
+      { step: dims.trustEvidence.step, title: dims.trustEvidence.title, score: dims.trustEvidence.score },
+      { step: dims.sourceGraph.step, title: dims.sourceGraph.title, score: dims.sourceGraph.score },
+      { step: dims.geoGoal.step, title: dims.geoGoal.title, score: dims.geoGoal.score },
+    ];
+  }, [completenessReport]);
   const customerCaseCount = summary?.counts?.customerCases ?? 0;
   const trustEvidenceCount = summary?.counts?.trustEvidenceItems ?? 0;
   const brandSourceCount = summary?.counts?.brandSources ?? 0;
@@ -297,6 +317,7 @@ export default function AssetCenterPage() {
       utils.geo.projects.list.invalidate(),
       utils.geo.assetLibrary.summary.invalidate({ projectId: currentProjectId }),
       utils.geo.workspace.summary.invalidate({ projectId: currentProjectId }),
+      utils.geo.onboarding.getCompletenessReport.invalidate({ projectId: currentProjectId }),
     ]);
   }
 
@@ -378,6 +399,7 @@ export default function AssetCenterPage() {
             currentStep={currentStep}
             stepComplete={stepComplete}
             completionScore={completionScore}
+            dimensionScores={dimensionScores}
             onStepSelect={setCurrentStep}
           >
             <WizardStepHeader meta={stepMeta} />
