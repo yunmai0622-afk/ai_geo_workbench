@@ -2,6 +2,8 @@
  * 8 步 GEO 品牌资产建档向导：步骤元数据（硬编码文案）
  */
 
+import type { QuestionGuideExamples } from "./onboardingWizardGeoGoalNotes";
+
 export type OnboardingWizardStepMeta = {
   step: number;
   title: string;
@@ -37,11 +39,12 @@ export const ONBOARDING_WIZARD_STEPS: OnboardingWizardStepMeta[] = [
   },
   {
     step: 4,
-    title: "AI 搜索问题引导",
-    purpose: "明确客户会怎么问 AI",
+    title: "客户会怎么问 AI？",
+    purpose:
+      "系统会根据这些问题测试豆包、Kimi、DeepSeek 等 AI 平台是否认识你、是否推荐你，以及是否推荐了竞品。",
     whyImportant:
-      "这些问题将进入 AI 搜索问题池，系统会测试豆包、Kimi、DeepSeek 等平台是否提到或推荐你。",
-    systemUsage: "保存后自动在问题池生成对应检索问题，无需直接操作问题库底层。",
+      "客户在购买前会向 AI 提问；你补充的问题越贴近真实场景，基线实测与后续内容任务越精准。",
+    systemUsage: "保存后将自动写入 AI 搜索问题池，并作为发布后 T1/T2/T3 复测基准。",
   },
   {
     step: 5,
@@ -82,3 +85,76 @@ export const ONBOARDING_WIZARD_PAGE_SUBTITLE =
   "帮助 AI 正确理解企业是谁、做什么、服务谁、凭什么值得推荐。";
 
 export const ONBOARDING_TARGET_PLATFORMS = ["豆包", "Kimi", "DeepSeek", "通义", "文心", "ChatGPT", "Perplexity"] as const;
+
+/** Step4：这些问题会用于 */
+export const ONBOARDING_QUESTION_GUIDE_USAGE_ITEMS = [
+  "生成 AI 搜索问题池",
+  "执行多平台 AI 基线实测",
+  "判断品牌提及率、推荐率和竞品出现率",
+  "生成后续内容任务",
+  "作为发布后 T1/T2/T3 复测基准",
+] as const;
+
+export type OnboardingQuestionGuideCategoryKey = keyof QuestionGuideExamples;
+
+export type OnboardingQuestionGuideCategoryMeta = {
+  key: OnboardingQuestionGuideCategoryKey;
+  label: string;
+  description: string;
+  examples: readonly string[];
+  placeholder: string;
+};
+
+/** Step4：五类问题的客户化名称、说明与示例 */
+export const ONBOARDING_QUESTION_GUIDE_CATEGORIES: readonly OnboardingQuestionGuideCategoryMeta[] = [
+  {
+    key: "brandSearch",
+    label: "客户直接搜你",
+    description: "客户已经知道你的品牌，直接问 AI 了解你。",
+    examples: ["海豚知道是做什么的？", "海豚知道靠谱吗？", "海豚知道适合哪些知识付费老师？"],
+    placeholder: "例如：海豚知道适合哪些知识付费老师？",
+  },
+  {
+    key: "categoryRecommend",
+    label: "客户找同类服务",
+    description: "客户不知道你是谁，只是在找某类服务商。",
+    examples: [
+      "知识付费系统哪家公司好？",
+      "知识付费 SaaS 平台怎么选？",
+      "适合知识主播的课程交付系统有哪些？",
+    ],
+    placeholder: "例如：知识付费系统哪家公司好？",
+  },
+  {
+    key: "sceneNeed",
+    label: "客户带着问题找方案",
+    description: "客户先描述自己的问题，希望 AI 推荐解决方案。",
+    examples: ["课程卖不出去怎么提升转化？", "学员完课率低怎么办？", "知识付费团队怎么做私域运营？"],
+    placeholder: "例如：学员完课率低怎么办？",
+  },
+  {
+    key: "comparison",
+    label: "客户拿你和竞品对比",
+    description: "客户已经在比较多个服务商，希望 AI 帮他判断。",
+    examples: [
+      "海豚知道和某某平台哪个好？",
+      "海豚知道和传统知识付费系统有什么区别？",
+      "海豚知道适合中小团队还是大机构？",
+    ],
+    placeholder: "例如：海豚知道和某某平台哪个好？",
+  },
+  {
+    key: "longTail",
+    label: "客户用具体痛点提问",
+    description: "客户用非常具体的问题表达需求，这类问题更接近成交场景。",
+    examples: [
+      "学员年龄偏大，AI 推荐学习路径有用吗？",
+      "知识付费课程交付混乱怎么解决？",
+      "知识主播怎么用 AI 提升复购？",
+    ],
+    placeholder: "例如：知识主播怎么提升复购？",
+  },
+] as const;
+
+export const ONBOARDING_QUESTION_GUIDE_MIN_COUNT = 3;
+export const ONBOARDING_QUESTION_GUIDE_TARGET_MAX = 5;

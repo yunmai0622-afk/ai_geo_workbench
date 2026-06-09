@@ -10,6 +10,10 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
   const asset = readProjectFile("client/src/pages/AssetCenter.tsx");
   const profileUi = readEnterpriseProfileUi();
   const panels = readProjectFile("client/src/components/enterpriseProfile/wizard/WizardStepPanels.tsx");
+  const questionGuideStep = readProjectFile(
+    "client/src/components/enterpriseProfile/wizard/WizardQuestionGuideStep.tsx",
+  );
+  const wizardSteps = readProjectFile("shared/onboardingWizardSteps.ts");
   const caseLib = readProjectFile("client/src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx");
   const binding =
     readProjectFile("client/src/components/PlatformAccountBindingSection.tsx") +
@@ -33,9 +37,16 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
   });
 
   it("向导步骤包含核心建档字段", () => {
-    for (const text of ["品牌名称", "核心产品/服务", "目标客户", "竞品对比示例"]) {
+    for (const text of ["品牌名称", "核心产品/服务", "目标客户"]) {
       expect(panels).toContain(text);
     }
+    expect(wizardSteps).toContain("客户会怎么问 AI？");
+    for (const text of ["客户直接搜你", "客户找同类服务", "客户拿你和竞品对比"]) {
+      expect(wizardSteps).toContain(text);
+    }
+    expect(questionGuideStep).toContain("根据资料生成问题");
+    expect(questionGuideStep).toContain("wizard-question-auto-generate");
+    expect(panels).toContain("WizardQuestionGuideStep");
     expect(profileUi).toContain("wizard-save-draft");
     expect(asset).not.toContain("保存企业基础信息");
   });

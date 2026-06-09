@@ -7,6 +7,7 @@ import { ONBOARDING_TARGET_PLATFORMS } from "@shared/onboardingWizardSteps";
 import type { QuestionGuideExamples } from "@shared/onboardingWizardGeoGoalNotes";
 import { TrustEvidenceManager } from "@/components/enterpriseProfile/TrustEvidenceManager";
 import { MultiValueInput } from "./MultiValueInput";
+import { WizardQuestionGuideStep } from "./WizardQuestionGuideStep";
 
 const inputClass = "h-10 rounded-lg border-gray-200 bg-white text-gray-900 shadow-sm";
 
@@ -98,22 +99,6 @@ export function WizardStepPanels({
   const removeFromList = (key: keyof WizardFormState, value: string) => {
     const list = form[key] as string[];
     onFormChange({ [key]: list.filter(x => x !== value) } as Partial<WizardFormState>);
-  };
-
-  const addGuide = (guideKey: keyof QuestionGuideExamples, draftKey: keyof Drafts, draft: string) => {
-    const t = draft.trim();
-    if (!t) return;
-    const next = { ...form.questionGuide, [guideKey]: [...form.questionGuide[guideKey], t] };
-    onFormChange({ questionGuide: next });
-    onDraftChange({ [draftKey]: "" } as Partial<Drafts>);
-  };
-
-  const removeGuide = (guideKey: keyof QuestionGuideExamples, value: string) => {
-    const next = {
-      ...form.questionGuide,
-      [guideKey]: form.questionGuide[guideKey].filter(x => x !== value),
-    };
-    onFormChange({ questionGuide: next });
   };
 
   if (step === 1) {
@@ -231,35 +216,13 @@ export function WizardStepPanels({
   }
 
   if (step === 4) {
-    const guideFields: Array<{
-      key: keyof QuestionGuideExamples;
-      draftKey: keyof Drafts;
-      label: string;
-      hint: string;
-    }> = [
-      { key: "brandSearch", draftKey: "brandSearchDraft", label: "品牌直搜示例", hint: "客户会直接搜你的品牌名" },
-      { key: "categoryRecommend", draftKey: "categoryRecommendDraft", label: "品类推荐示例", hint: "客户会问哪家好" },
-      { key: "sceneNeed", draftKey: "sceneNeedDraft", label: "场景需求示例", hint: "客户描述问题找方案" },
-      { key: "comparison", draftKey: "comparisonDraft", label: "竞品对比示例", hint: "客户拿你和谁比" },
-      { key: "longTail", draftKey: "longTailDraft", label: "长尾痛点示例", hint: "客户用具体问题表达需求" },
-    ];
     return (
-      <div className="space-y-5" data-testid="wizard-step-4">
-        {guideFields.map(field => (
-          <label key={field.key} className="block space-y-1">
-            <FieldLabel>{field.label}</FieldLabel>
-            <p className="text-xs text-gray-400">{field.hint}</p>
-            <MultiValueInput
-              values={form.questionGuide[field.key]}
-              draft={drafts[field.draftKey]}
-              onDraftChange={v => onDraftChange({ [field.draftKey]: v } as Partial<Drafts>)}
-              onAdd={() => addGuide(field.key, field.draftKey, drafts[field.draftKey])}
-              onRemove={v => removeGuide(field.key, v)}
-              testId={`wizard-guide-${field.key}`}
-            />
-          </label>
-        ))}
-      </div>
+      <WizardQuestionGuideStep
+        form={form}
+        drafts={drafts}
+        onFormChange={onFormChange}
+        onDraftChange={onDraftChange}
+      />
     );
   }
 
