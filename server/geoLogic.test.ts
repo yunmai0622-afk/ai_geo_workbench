@@ -157,7 +157,7 @@ describe("GEO 评分与等级", () => {
     expect(reviewedScore.totalScore).toBe(85);
     expect(reviewedScore.aiRecommendationScore).toBe(100);
     expect(questionTypes).toContain("指定问题");
-    expect(questionSources).toEqual(["ai_generated", "manual", "csv"]);
+    expect(questionSources).toEqual(["ai_generated", "manual", "csv", "onboarding_wizard"]);
     expect(score.calculationDetail.weights).toEqual({
       aiVisibility: "25%",
       aiRecommendation: "25%",

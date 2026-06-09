@@ -16,7 +16,6 @@ describe("GEO-V1.1-Platform-Account-Binding-UI", () => {
     expect(overview).toContain("LocalAgentDownloadCard");
     expect(overview).not.toContain("bindLocalAgentAccount");
     expect(overview).not.toContain("startBindPublishAccount");
-    expect(asset).toContain("PublishPlatformAccountsOverview");
     expect(publish).toContain("PublishPlatformAccountsOverview");
     expect(read("shared/publishPlatformAccountOverview.ts")).toContain("BINDING_PUBLISH_PLATFORMS");
   });

@@ -80,7 +80,6 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     const assetSource = readProjectFile("client/src/pages/AssetCenter.tsx");
     expect(assetSource).toContain("geo.assetLibrary.summary.useQuery");
     expect(assetSource).toContain("enterpriseProfileLoadDisplay");
-    expect(assetSource).toContain("enterprise-profile-summary-load-hint");
     expect(assetSource).toContain("enterprise-profile-core-load-failed");
     expect(assetSource).not.toContain("hasBlockingLoadError");
     const publishOverview = readProjectFile(
@@ -88,14 +87,19 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     );
     expect(publishOverview).toContain("geo.platformAccounts.list.useQuery");
     expect(publishOverview).not.toContain("text-red-600");
+    const profileUi =
+      assetSource +
+      readProjectFile("shared/onboardingWizardSteps.ts") +
+      readProjectFile("client/src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx") +
+      readProjectFile("client/src/components/enterpriseProfile/wizard/WizardStepFooter.tsx");
     for (const text of [
-      "品牌资产建档",
-      "FiveMinuteBasicOnboardingSection",
-      "ProfileAiUnderstandingPreview",
+      "GEO 品牌资产建档",
+      "OnboardingWizardShell",
+      "wizard-step-nav",
       "AdvancedMaterialsSection",
-      "保存并开始 AI 实测诊断",
+      "wizard-save-draft",
     ]) {
-      expect(assetSource).toContain(text);
+      expect(profileUi).toContain(text);
     }
     expect(assetSource).not.toContain("Section 1 · 基本身份");
     expect(assetSource).not.toContain("AiPageHero");

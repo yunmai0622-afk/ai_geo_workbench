@@ -9,7 +9,7 @@ const readProjectFile = (relativePath: string) => readFileSync(resolve(projectRo
 describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
   const asset = readProjectFile("client/src/pages/AssetCenter.tsx");
   const profileUi = readEnterpriseProfileUi();
-  const publishEnv = readProjectFile("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx");
+  const panels = readProjectFile("client/src/components/enterpriseProfile/wizard/WizardStepPanels.tsx");
   const caseLib = readProjectFile("client/src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx");
   const binding =
     readProjectFile("client/src/components/PlatformAccountBindingSection.tsx") +
@@ -18,13 +18,10 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
     readProjectFile("client/src/components/platformAccounts/PlatformAccountTable.tsx");
   const downloadCard = readProjectFile("client/src/components/LocalAgentDownloadCard.tsx");
 
-  it("页面标题与首屏 5 分钟建档", () => {
-    expect(profileUi).toContain("品牌资产建档");
-    expect(asset).toContain("PublishPlatformAccountsOverview");
-    expect(asset.indexOf("<FiveMinuteBasicOnboardingSection")).toBeGreaterThan(-1);
-    expect(publishEnv.indexOf("LocalAgentDownloadCard")).toBeLessThan(
-      publishEnv.indexOf("PlatformAccountBindingSection"),
-    );
+  it("页面标题与 8 步向导首屏", () => {
+    expect(profileUi).toContain("GEO 品牌资产建档");
+    expect(profileUi).toContain("OnboardingWizardShell");
+    expect(profileUi).toContain("wizard-step-nav");
   });
 
   it("本地客户端下载与账号绑定文案", () => {
@@ -35,21 +32,11 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
     expect(asset).not.toMatch(/下载 Chrome 插件|browser-extension\.zip/);
   });
 
-  it("5 分钟建档包含核心 P0 字段", () => {
-    const basic = readProjectFile("client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx");
-    for (const text of [
-      "企业名称",
-      "所属行业",
-      "一句话介绍",
-      "核心产品 / 服务",
-      "目标客户",
-      "主要解决的问题",
-      "核心优势",
-      "希望被 AI 推荐的关键词",
-    ]) {
-      expect(basic).toContain(text);
+  it("向导步骤包含核心建档字段", () => {
+    for (const text of ["品牌名称", "核心产品/服务", "目标客户", "竞品对比示例"]) {
+      expect(panels).toContain(text);
     }
-    expect(asset).toContain("保存并开始 AI 实测诊断");
+    expect(profileUi).toContain("wizard-save-draft");
     expect(asset).not.toContain("保存企业基础信息");
   });
 
@@ -59,13 +46,6 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
     expect(advanced).toContain("advanced-materials-collapsed");
     expect(caseLib).toContain("customer-case-editor-fields");
     expect(asset).not.toContain("保存本条案例");
-  });
-
-  it("AI 理解预览", () => {
-    expect(readProjectFile("client/src/components/enterpriseProfile/ProfileAiUnderstandingPreview.tsx")).toContain(
-      "AI 当前会这样理解你的企业",
-    );
-    expect(asset).not.toContain("GeoMaterialPreviewSection");
   });
 
   it("主视觉不暴露 profileId", () => {

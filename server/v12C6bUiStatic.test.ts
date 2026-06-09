@@ -17,10 +17,10 @@ describe("C6-B enterprise profile flow order", () => {
     expect(page).toContain("选择或新建客户项目");
   });
 
-  it("hides onboarding blocks without selected project", () => {
+  it("hides wizard without selected project", () => {
     expect(page).toMatch(/if \(!currentProjectId && !projectsLoading\)/);
     expect(page).toMatch(/currentProjectId && !coreProfileLoadFailed \? \(/);
-    expect(profileUi).toContain("FiveMinuteBasicOnboardingSection");
+    expect(profileUi).toContain("OnboardingWizardShell");
   });
 
   it("places new project as secondary when projects exist", () => {
@@ -30,18 +30,8 @@ describe("C6-B enterprise profile flow order", () => {
     expect(read("client/src/pages/OnboardingPage.tsx")).toContain('Redirect to="/clients"');
   });
 
-  it("shows basic onboarding then publish account overview when project selected", () => {
-    expect(profileUi).toContain("PublishPlatformAccountsOverview");
-    const basicBlock = page.indexOf("<FiveMinuteBasicOnboardingSection");
-    const accountsBlock = page.indexOf("<PublishPlatformAccountsOverview");
-    const uploadBlock = page.indexOf("<ProfileUploadAssistSection");
-    expect(basicBlock).toBeGreaterThan(-1);
-    expect(accountsBlock).toBeGreaterThan(-1);
-    expect(basicBlock).toBeLessThan(accountsBlock);
-    expect(accountsBlock).toBeLessThan(uploadBlock);
-  });
-
-  it("auto switches after create with hint message", () => {
-    expect(page).toContain("品牌资产建档已保存");
+  it("shows wizard when project selected", () => {
+    expect(profileUi).toContain("wizard-step-nav");
+    expect(page).toContain("WizardStepPanels");
   });
 });

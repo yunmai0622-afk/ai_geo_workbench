@@ -6,12 +6,12 @@ const root = resolve(import.meta.dirname, "..");
 /** Manus 改版后企业建档相关 UI 分布在页面与 section 组件中 */
 const ENTERPRISE_PROFILE_UI_FILES = [
   "client/src/pages/AssetCenter.tsx",
-  "client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx",
-  "client/src/components/enterpriseProfile/ProfileUploadAssistSection.tsx",
-  "client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx",
+  "shared/onboardingWizardSteps.ts",
+  "client/src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx",
+  "client/src/components/enterpriseProfile/wizard/WizardStepFooter.tsx",
+  "client/src/components/enterpriseProfile/wizard/WizardStepPanels.tsx",
   "client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx",
-  "client/src/components/enterpriseProfile/ProfileAiUnderstandingPreview.tsx",
-  "client/src/components/platformAccounts/PublishPlatformAccountsOverview.tsx",
+  "client/src/components/enterpriseProfile/TrustEvidenceManager.tsx",
 ] as const;
 
 export function readEnterpriseProfileUi(): string {

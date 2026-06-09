@@ -8,8 +8,13 @@ export const generatedQuestionTypes = [...GEO_T0_QUESTION_BANK_TYPES] as const;
 /** 历史库中可能仍存在旧类型，查询与展示需兼容 */
 export const legacyQuestionTypes = ["痛点解决", "价格选型", "高意向成交"] as const;
 export const questionTypes = [...generatedQuestionTypes, ...legacyQuestionTypes, "指定问题"] as const;
-export const questionSources = ["ai_generated", "manual", "csv"] as const;
-export const questionSourceLabels: Record<(typeof questionSources)[number], string> = { ai_generated: "AI 生成", manual: "手动指定", csv: "CSV 导入" };
+export const questionSources = ["ai_generated", "manual", "csv", "onboarding_wizard"] as const;
+export const questionSourceLabels: Record<(typeof questionSources)[number], string> = {
+  ai_generated: "AI 生成",
+  manual: "手动指定",
+  csv: "CSV 导入",
+  onboarding_wizard: "建档向导",
+};
 export const aiPlatforms = ["ChatGPT", "DeepSeek", "豆包", "Kimi", "通义", "文心", "Perplexity", "其他"] as const;
 export const taskTypes = ["官网首页", "产品页", "竞品对比页", "FAQ", "客户案例", "行业文章", "社媒内容"] as const;
 export const templateTypes = ["官网首页模板", "FAQ 模板", "竞品对比页模板", "客户案例页模板", "行业选型文章模板"] as const;

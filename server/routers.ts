@@ -48,6 +48,7 @@ import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
 import { brandSourceGraphRouter } from "./brandSourceGraphRouter";
+import { trustEvidenceRouter } from "./trustEvidenceRouter";
 import { feedbackLoopRouter } from "./feedbackLoopRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
@@ -70,6 +71,8 @@ import {
   competitorProfiles,
   contentStyleProfiles,
   customerCases,
+  trustEvidenceItems,
+  brandSourceRecords,
   enterpriseGeoProfiles,
   geoArticleQualityScores,
   geoArticleTopics,
@@ -255,6 +258,12 @@ import {
   summarizeTextToStructuredSummary,
   validateCustomerCaseInput,
 } from "./assetLibrary";
+import {
+  buildGeoGoalNotesForUpsert,
+  finalizeProfileUpsert,
+  loadWizardCompletenessContext,
+} from "./onboardingWizardLogic";
+import { parseGeoGoalNotesPayload } from "@shared/onboardingWizardGeoGoalNotes";
 
 const projectInput = z.object({
   enterpriseName: z.string().min(1, "请输入企业名称"),
@@ -698,6 +707,24 @@ const enterpriseProfileInput = z.object({
   oneLiner: optionalText,
   keyPoints: z.array(z.string()).optional(),
   keywords: z.array(z.string()).optional(),
+  wizardStep: z.number().int().min(0).max(8).optional(),
+  targetMentionRate: z.number().int().min(0).max(100).nullable().optional(),
+  targetRecommendationRate: z.number().int().min(0).max(100).nullable().optional(),
+  targetPlatforms: z.array(z.string()).optional(),
+  targetQuestionCategories: z.array(z.string()).optional(),
+  targetCompetitorsToBeat: z.array(z.string()).optional(),
+  monthlyContentCapacity: z.number().int().positive().nullable().optional(),
+  internalOwnerName: optionalText,
+  geoGoalNotes: optionalText,
+  questionGuide: z
+    .object({
+      brandSearch: z.array(z.string()).default([]),
+      categoryRecommend: z.array(z.string()).default([]),
+      sceneNeed: z.array(z.string()).default([]),
+      comparison: z.array(z.string()).default([]),
+      longTail: z.array(z.string()).default([]),
+    })
+    .optional(),
 });
 
 const assetSourceBaseInput = z.object({
@@ -825,14 +852,20 @@ const geoAssetRouter = router({
       } as const;
     }
     await requireProjectAccess(ctx, input.projectId);
-    const [profiles, sources, cases, rules, styles, strategies, authorizations] = await Promise.all([
+    const [profiles, sources, cases, trustEvidenceRows, rules, styles, strategies, authorizations, brandSources, questionCountRows] = await Promise.all([
       db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1),
       db.select().from(geoAssetSources).where(eq(geoAssetSources.projectId, input.projectId)).orderBy(desc(geoAssetSources.createdAt)),
       db.select().from(customerCases).where(eq(customerCases.projectId, input.projectId)).orderBy(desc(customerCases.createdAt)),
+      db.select({ id: trustEvidenceItems.id }).from(trustEvidenceItems).where(eq(trustEvidenceItems.projectId, input.projectId)),
       db.select().from(complianceRules).where(eq(complianceRules.projectId, input.projectId)).orderBy(desc(complianceRules.createdAt)),
       db.select().from(contentStyleProfiles).where(eq(contentStyleProfiles.projectId, input.projectId)).orderBy(desc(contentStyleProfiles.createdAt)),
       db.select().from(publishStrategies).where(eq(publishStrategies.projectId, input.projectId)).orderBy(desc(publishStrategies.createdAt)),
       db.select().from(platformAuthorizationConfigs).where(eq(platformAuthorizationConfigs.projectId, input.projectId)).orderBy(desc(platformAuthorizationConfigs.createdAt)),
+      db
+        .select({ platform: brandSourceRecords.platform })
+        .from(brandSourceRecords)
+        .where(eq(brandSourceRecords.projectId, input.projectId)),
+      db.select({ id: questions.id }).from(questions).where(eq(questions.projectId, input.projectId)),
     ]);
     let competitors: (typeof competitorProfiles.$inferSelect)[] = [];
     try {
@@ -849,10 +882,27 @@ const geoAssetRouter = router({
       competitors = [];
     }
     const profile = profiles[0] ?? null;
-    const completionScore = profile?.completionScore ?? calculateProfileCompletionScore(profile);
+    const brandSourcePlatformCount = new Set(brandSources.map(r => r.platform).filter(Boolean)).size;
+    const wizardCompleteness = await loadWizardCompletenessContext(db, input.projectId, profile);
+    const completionScore = profile?.completionScore ?? wizardCompleteness.completionScore;
     const usableAssetCount = sources.filter(source => source.canUseForGeneration && source.manuallyConfirmed).length;
     const realCaseCount = cases.filter(item => item.caseType === "真实案例" && item.verificationStatus === "已确认").length;
-      const counts = { assetSources: sources.length, usableAssets: usableAssetCount, customerCases: cases.length, realCases: realCaseCount, competitors: competitors.length, complianceRules: rules.length, styleProfiles: styles.length, publishStrategies: strategies.length, platformAuthorizations: authorizations.length };
+      const counts = {
+        assetSources: sources.length,
+        usableAssets: usableAssetCount,
+        customerCases: cases.length,
+        realCases: realCaseCount,
+        competitors: competitors.length,
+        complianceRules: rules.length,
+        styleProfiles: styles.length,
+        publishStrategies: strategies.length,
+        platformAuthorizations: authorizations.length,
+        brandSources: brandSources.length,
+        brandSourcePlatforms: brandSourcePlatformCount,
+        trustEvidenceItems: trustEvidenceRows.length,
+        questions: questionCountRows.length,
+      };
+      const questionGuide = parseGeoGoalNotesPayload(profile?.geoGoalNotes ?? null).questionGuide;
       const riskReminders = [
         usableAssetCount === 0 ? "暂无已确认且允许用于内容生成的资料，后续文章不能直接引用客户资料。" : "已有可用于内容生成的客户资料，后续文章应强制引用。",
       realCaseCount === 0 ? "暂无已确认真实案例，系统不得编造客户案例、结果数据或客户反馈。" : "已有已确认真实案例，引用时仍需遵守公开授权和敏感信息规则。",
@@ -868,6 +918,8 @@ const geoAssetRouter = router({
       return {
         profile,
         completionScore,
+        wizardCompleteness,
+        questionGuide,
         nextAction,
         riskReminders,
         counts,
@@ -883,9 +935,17 @@ const geoAssetRouter = router({
   upsertProfile: protectedProcedure.input(enterpriseProfileInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     await requireProjectAccess(ctx, input.projectId);
-    const completionScore = calculateProfileCompletionScore(input);
     const existing = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
-    const raw = { ...input, completionScore } as Record<string, unknown>;
+    const existingGeoGoalNotes = existing[0]?.geoGoalNotes ?? null;
+    const mergedGeoGoalNotes = buildGeoGoalNotesForUpsert(existingGeoGoalNotes, {
+      goalNotes: input.geoGoalNotes,
+      questionGuide: input.questionGuide,
+    });
+    const { questionGuide: _qg, ...profileInput } = input;
+    const raw = {
+      ...profileInput,
+      ...(mergedGeoGoalNotes !== undefined ? { geoGoalNotes: mergedGeoGoalNotes } : {}),
+    } as Record<string, unknown>;
     const values = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) as typeof raw;
     let profileId = existing[0]?.id ?? 0;
     if (existing[0]) {
@@ -894,6 +954,17 @@ const geoAssetRouter = router({
       const inserted = await db.insert(enterpriseGeoProfiles).values(values as never).$returningId();
       profileId = inserted[0]?.id ?? 0;
     }
+    const finalizeInput = {
+      ...profileInput,
+      geoGoalNotes: mergedGeoGoalNotes ?? existingGeoGoalNotes,
+    };
+    const { completeness, anchorResult, questionSync } = await finalizeProfileUpsert(
+      db,
+      input.projectId,
+      finalizeInput,
+      existingGeoGoalNotes,
+    );
+    const completionScore = completeness.completionScore;
     const productIntro = String(input.productDesc ?? input.productServiceIntro ?? input.oneLiner ?? input.productIntro ?? "").trim();
     const targetCustomers = String(input.targetCustomer ?? input.targetCustomers ?? "").trim();
     const coreSellingPoints = String(
@@ -909,7 +980,14 @@ const geoAssetRouter = router({
         coreSellingPoints: coreSellingPoints || undefined,
       })
       .where(eq(projects.id, input.projectId));
-    return { success: true, id: profileId, completionScore } as const;
+    return {
+      success: true,
+      id: profileId,
+      completionScore,
+      wizardCompleteness: completeness,
+      entityAnchorSync: anchorResult,
+      questionsAdded: questionSync.addedCount,
+    } as const;
   }),
   addTextSource: protectedProcedure.input(assetTextInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
@@ -4636,6 +4714,8 @@ ${article.markdownContent}`,
   platformAccounts: projectPlatformAccountsRouter,
 
   brandSourceGraph: brandSourceGraphRouter,
+
+  trustEvidence: trustEvidenceRouter,
 
   feedbackLoop: feedbackLoopRouter,
 

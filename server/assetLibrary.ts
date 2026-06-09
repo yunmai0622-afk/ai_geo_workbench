@@ -1,4 +1,4 @@
-import { evaluateEnterpriseProfileCompletenessFromProfile } from "@shared/enterpriseProfileCompleteness";
+import { evaluateOnboardingWizardCompleteness } from "@shared/onboardingWizardCompleteness";
 
 export const assetSourceTypes = [
   "企业基础资料",
@@ -60,8 +60,24 @@ export function summarizeTextToStructuredSummary(text: string | undefined | null
   };
 }
 
-export function calculateProfileCompletionScore(profile: EnterpriseProfileLike | null | undefined): number {
-  return evaluateEnterpriseProfileCompletenessFromProfile(profile).percent;
+export function calculateProfileCompletionScore(
+  profile: EnterpriseProfileLike | null | undefined,
+  context?: {
+    questionCount?: number;
+    customerCaseCount?: number;
+    trustEvidenceCount?: number;
+    brandSourceCount?: number;
+    brandSourcePlatformCount?: number;
+  },
+): number {
+  return evaluateOnboardingWizardCompleteness({
+    profile,
+    questionCount: context?.questionCount ?? 0,
+    customerCaseCount: context?.customerCaseCount ?? 0,
+    trustEvidenceCount: context?.trustEvidenceCount ?? 0,
+    brandSourceCount: context?.brandSourceCount ?? 0,
+    brandSourcePlatformCount: context?.brandSourcePlatformCount ?? 0,
+  }).completionScore;
 }
 
 export function assertNoPlainCredentialKeys(input: Record<string, unknown>) {

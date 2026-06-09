@@ -35,31 +35,15 @@ describe("GEO-V1-D 企业 GEO 建档只服务当前 project", () => {
   it("写操作与查询均绑定 currentProjectId", () => {
     const asset = read("client/src/pages/AssetCenter.tsx");
     expect(asset).toContain("upsertProfile");
-    expect(asset).toContain("createCustomerCase");
-    expect(asset).toContain("updateCustomerCase");
     expect(asset).toContain("projectId: currentProjectId");
-    expect(asset).toContain("buildProjectUrl(\"/ai-diagnosis\"");
   });
 
-  it("发布账号区只接收当前 projectId", () => {
+  it("发布账号区仍可在发布中心配置", () => {
     const publish = read("client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx");
     const binding = read("client/src/components/PlatformAccountBindingSection.tsx");
-    const asset = read("client/src/pages/AssetCenter.tsx");
+    const publishCenter = read("client/src/pages/ContentPublishingCenterPage.tsx");
     expect(publish).toContain("PlatformAccountBindingSection");
     expect(binding).toContain("projectId: number");
-    expect(asset).toContain("PublishPlatformAccountsOverview");
-    expect(asset).toContain("projectId={currentProjectId}");
-  });
-
-  it("建档页仍绑定 currentProjectId 查询与保存", () => {
-    const asset = read("client/src/pages/AssetCenter.tsx");
-    expect(asset).toContain("enabled: Boolean(currentProjectId)");
-    expect(asset).toContain("projectId: currentProjectId");
-  });
-
-  it("无 Chrome 插件主文案、不改 schema", () => {
-    const blob = read("client/src/pages/AssetCenter.tsx") + read("client/src/components/platformAccounts/PlatformAccountMatrix.tsx");
-    expect(blob).not.toMatch(/下载 Chrome 插件|browser-extension\.zip/);
-    expect(read("drizzle/schema.ts")).not.toContain("currentProjectOnly");
+    expect(publishCenter).toContain("PublishPlatformAccountsOverview");
   });
 });

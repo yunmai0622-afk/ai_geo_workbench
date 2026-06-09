@@ -53,10 +53,13 @@ describe("V1.0 客户主路径静态回归", () => {
 
   it("企业档案页为档案配置台结构并保留保存入口", () => {
     const assetCenterSource = readProjectFile("client/src/pages/AssetCenter.tsx");
-    for (const text of ["品牌资产建档", "FiveMinuteBasicOnboardingSection", "保存并开始 AI 实测诊断", "AdvancedMaterialsSection"]) {
-      expect(assetCenterSource).toContain(text);
+    const profileUi =
+      assetCenterSource +
+      readProjectFile("shared/onboardingWizardSteps.ts") +
+      readProjectFile("client/src/components/enterpriseProfile/wizard/WizardStepFooter.tsx");
+    for (const text of ["GEO 品牌资产建档", "OnboardingWizardShell", "wizard-save-draft", "AdvancedMaterialsSection"]) {
+      expect(profileUi).toContain(text);
     }
-    expect(assetCenterSource).toContain("ProfileAiUnderstandingPreview");
     expect(assetCenterSource).not.toContain("内容风格");
     expect(assetCenterSource).not.toContain("平台授权配置占位");
   });

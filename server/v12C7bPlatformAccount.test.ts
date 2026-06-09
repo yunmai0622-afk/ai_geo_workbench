@@ -57,7 +57,7 @@ describe("C7-B project platform account binding", () => {
     expect(read("client/src/components/platformAccounts/usePlatformAccountBinding.ts")).toContain(
       "绑定${PUBLISH_PLATFORM_LABELS[selectedPlatform]}账号",
     );
-    expect(read("client/src/pages/AssetCenter.tsx")).toContain("PublishPlatformAccountsOverview");
+    expect(read("client/src/pages/ContentPublishingCenterPage.tsx")).toContain("PublishPlatformAccountsOverview");
   });
 
   it("C7-B-Fix: migration and rollout hints", () => {

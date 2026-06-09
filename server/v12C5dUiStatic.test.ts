@@ -10,20 +10,17 @@ describe("C5-D enterprise profile page product UI", () => {
   const page = read("client/src/pages/AssetCenter.tsx");
   const profileUi = readEnterpriseProfileUi();
 
-  it("uses simplified GEO onboarding layout with publish env on top", () => {
-    expect(profileUi).toContain("品牌资产建档");
-    expect(profileUi).toContain("FiveMinuteBasicOnboardingSection");
-    expect(profileUi).toContain("ProfileUploadAssistSection");
+  it("uses 8-step GEO wizard layout", () => {
+    expect(profileUi).toContain("GEO 品牌资产建档");
+    expect(profileUi).toContain("OnboardingWizardShell");
+    expect(profileUi).toContain("wizard-step-nav");
     expect(profileUi).toContain("AdvancedMaterialsSection");
-    expect(profileUi).toContain("PublishPlatformAccountsOverview");
     expect(page).not.toContain("Section 1 · 基本身份");
     expect(page).not.toContain("GeoStatusGuide");
   });
 
-  it("keeps save handlers unchanged", () => {
+  it("keeps save handlers", () => {
     expect(page).toContain("upsertProfile.mutateAsync");
-    expect(page).toContain("createCustomerCase.mutateAsync");
-    expect(page).toContain("保存并开始 AI 实测诊断");
-    expect(profileUi).toContain("EnterprisePublishEnvironmentSection");
+    expect(profileUi).toContain("wizard-save-draft");
   });
 });

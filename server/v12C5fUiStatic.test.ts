@@ -14,6 +14,6 @@ describe("C5-F sidebar label alignment", () => {
     expect(layout).toContain("补齐企业被 AI 理解的基础信息");
     expect(layout).toContain('path: "/enterprise-profile"');
     expect(layout).not.toContain('label: "我的信息"');
-    expect(profileUi).toContain("品牌资产建档");
+    expect(profileUi).toContain("GEO 品牌资产建档");
   });
 });

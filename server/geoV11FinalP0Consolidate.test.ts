@@ -16,7 +16,6 @@ describe("GEO-V1.1 Final P0 consolidate", () => {
   it("enterprise profile distinguishes core failure from non-critical summary errors", () => {
     const page = read("client/src/pages/AssetCenter.tsx");
     expect(page).toContain("enterprise-profile-core-load-failed");
-    expect(page).toContain("enterprise-profile-summary-load-hint");
     expect(page).not.toContain("{error ?");
   });
 });

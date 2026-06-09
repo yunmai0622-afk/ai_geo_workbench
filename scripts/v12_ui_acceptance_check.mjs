@@ -21,12 +21,12 @@ const sources = {
   guide: read('client/src/components/GeoStatusGuide.tsx'),
   assets:
     read('client/src/pages/AssetCenter.tsx') +
-    read('client/src/components/enterpriseProfile/FiveMinuteBasicOnboardingSection.tsx') +
-    read('client/src/components/enterpriseProfile/ProfileUploadAssistSection.tsx') +
-    read('client/src/components/enterpriseProfile/EnterprisePublishEnvironmentSection.tsx') +
+    read('shared/onboardingWizardSteps.ts') +
+    read('client/src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx') +
+    read('client/src/components/enterpriseProfile/wizard/WizardStepFooter.tsx') +
+    read('client/src/components/enterpriseProfile/wizard/WizardStepPanels.tsx') +
     read('client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx') +
-    read('client/src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx') +
-    read('client/src/components/enterpriseProfile/GeoMaterialPreviewSection.tsx'),
+    read('client/src/components/enterpriseProfile/CustomerCaseLibrarySection.tsx'),
 };
 
 const failures = [];
@@ -103,11 +103,10 @@ for (const item of ['当前阶段', '完成度', '下一步动作', '为什么�
   assertContains('状态引导条组件', sources.guide, item);
 }
 for (const item of [
-  '品牌资产建档',
-  '保存并开始 AI 实测诊断',
-  'FiveMinuteBasicOnboardingSection',
-  'ProfileAiUnderstandingPreview',
-  'ProfileUploadAssistSection',
+  'GEO 品牌资产建档',
+  'OnboardingWizardShell',
+  'wizard-step-nav',
+  'wizard-save-draft',
   'AdvancedMaterialsSection',
   'enterprise-profile-page',
 ]) {

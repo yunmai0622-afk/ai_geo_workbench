@@ -12,7 +12,9 @@ describe("C6-A enterprise profile AI intake", () => {
   const analyze = read("server/enterpriseProfileAnalyze.ts");
 
   it("renders AI document upload entry", () => {
-    expect(page).toContain("ProfileUploadAssistSection");
+    expect(read("client/src/components/enterpriseProfile/ProfileUploadAssistSection.tsx")).toContain(
+      "ProfileUploadAssistSection",
+    );
     expect(panel).toContain("上传企业资料");
     expect(panel).toContain("AI 解析并填充档案");
     expect(panel).toContain("先上传企业资料");
@@ -44,7 +46,6 @@ describe("C6-A enterprise profile AI intake", () => {
     expect(panel).not.toContain("rawAnswer");
     expect(panel).not.toMatch(/JSON\.stringify\(analysis/);
     expect(page).not.toContain("SYSTEM_PROMPT");
-    expect(page).toContain("aiFilledFields");
     expect(panel).toContain("AI 已填充");
   });
 });

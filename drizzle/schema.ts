@@ -42,7 +42,7 @@ export const questionTypeEnum = mysqlEnum("questionType", [
   "long_tail_conversion",
 ]);
 
-export const questionSourceEnum = mysqlEnum("source", ["ai_generated", "manual", "csv"]);
+export const questionSourceEnum = mysqlEnum("source", ["ai_generated", "manual", "csv", "onboarding_wizard"]);
 
 export const aiPlatformEnum = mysqlEnum("aiPlatform", [
   "ChatGPT",
@@ -146,6 +146,21 @@ export const geoAssetTrustLevelEnum = mysqlEnum("trustLevel", ["高", "中", "�
 export const geoAssetParseStatusEnum = mysqlEnum("parseStatus", ["待解析", "已解析", "解析失败", "人工确认"]);
 export const customerCaseTypeEnum = mysqlEnum("caseType", ["真实案例", "待补充案例线索"]);
 export const customerCaseVerificationStatusEnum = mysqlEnum("verificationStatus", ["待确认", "已确认", "不可公开", "信息不足"]);
+export const trustEvidenceTypeEnum = mysqlEnum("evidenceType", [
+  "case",
+  "certificate",
+  "media_coverage",
+  "customer_review",
+  "partnership",
+  "award",
+  "data_proof",
+  "other",
+]);
+export const trustEvidenceVerificationStatusEnum = mysqlEnum("verificationStatus", [
+  "draft",
+  "verified",
+  "rejected",
+]);
 export const publishReviewModeEnum = mysqlEnum("reviewMode", ["全人工审核", "高分自动发布", "全自动发布"]);
 export const platformAuthorizationStatusEnum = mysqlEnum("authorizationStatus", ["未配置", "待人工授权", "已授权", "已失效", "无需授权"]);
 
@@ -547,6 +562,16 @@ export const enterpriseGeoProfiles = mysqlTable("enterprise_geo_profiles", {
   keyPoints: json("keyPoints").$type<string[] | null>(),
   keywords: json("keywords").$type<string[] | null>(),
   completionScore: int("completionScore").default(0).notNull(),
+  wizardStep: int("wizardStep").default(0).notNull(),
+  wizardCompletedAt: timestamp("wizardCompletedAt"),
+  targetMentionRate: int("targetMentionRate"),
+  targetRecommendationRate: int("targetRecommendationRate"),
+  targetPlatforms: json("targetPlatforms").$type<string[]>().notNull().default([]),
+  targetQuestionCategories: json("targetQuestionCategories").$type<string[]>().notNull().default([]),
+  targetCompetitorsToBeat: json("targetCompetitorsToBeat").$type<string[]>().notNull().default([]),
+  monthlyContentCapacity: int("monthlyContentCapacity"),
+  internalOwnerName: varchar("internalOwnerName", { length: 255 }),
+  geoGoalNotes: text("geoGoalNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -569,6 +594,23 @@ export const geoAssetSources = mysqlTable("geo_asset_sources", {
   canUseForGeneration: int("canUseForGeneration").default(0).notNull(),
   manuallyConfirmed: int("manuallyConfirmed").default(0).notNull(),
   parsedAt: timestamp("parsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const trustEvidenceItems = mysqlTable("trust_evidence_items", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  evidenceType: trustEvidenceTypeEnum.notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  summary: text("summary"),
+  content: text("content"),
+  sourceUrl: varchar("sourceUrl", { length: 2000 }),
+  isPublic: boolean("isPublic").default(true).notNull(),
+  verificationStatus: trustEvidenceVerificationStatusEnum.default("draft").notNull(),
+  displayOrder: int("displayOrder").default(0).notNull(),
+  linkedCustomerCaseId: int("linkedCustomerCaseId"),
+  metadata: json("metadata").$type<Record<string, unknown> | null>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -994,6 +1036,8 @@ export type EnterpriseGeoProfile = typeof enterpriseGeoProfiles.$inferSelect;
 export type InsertEnterpriseGeoProfile = typeof enterpriseGeoProfiles.$inferInsert;
 export type GeoAssetSource = typeof geoAssetSources.$inferSelect;
 export type InsertGeoAssetSource = typeof geoAssetSources.$inferInsert;
+export type TrustEvidenceItem = typeof trustEvidenceItems.$inferSelect;
+export type InsertTrustEvidenceItem = typeof trustEvidenceItems.$inferInsert;
 export type CustomerCase = typeof customerCases.$inferSelect;
 export type InsertCustomerCase = typeof customerCases.$inferInsert;
 export type CompetitorProfile = typeof competitorProfiles.$inferSelect;
@@ -1092,6 +1136,9 @@ export const entityAnchors = mysqlTable(
     officialSite: varchar("officialSite", { length: 500 }),
     founderName: varchar("founderName", { length: 255 }),
     typicalCases: text("typicalCases"),
+    manualOverride: boolean("manualOverride").default(false).notNull(),
+    lastSyncedFrom: varchar("lastSyncedFrom", { length: 64 }),
+    lastSyncedAt: timestamp("lastSyncedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
