@@ -4628,3 +4628,40 @@
 [2026-06-09T18:37:40.891Z] 2:37:40 PM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/trustEvidence.ts
 [2026-06-09T18:37:40.891Z] 2:37:40 PM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx
 [2026-06-09T18:37:41.002Z] 2:37:40 PM [tsx] unlink in ./shared/workspaceTodayTasks.ts Restarting...
+[2026-06-09T18:42:51.359Z] 2:42:51 PM [vite] (client) page reload index.html
+[2026-06-09T18:42:51.360Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.360Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.361Z] 2:42:51 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-06-09T18:42:51.361Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.362Z] 2:42:51 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-09T18:42:51.362Z] 2:42:51 PM [vite] (client) hmr update /src/components/GeoIntroModal.tsx, /src/index.css
+[2026-06-09T18:42:51.363Z] 2:42:51 PM [vite] (client) hmr update /src/index.css, /src/pages/PricingPage.tsx, /src/pages/DemoGeo.tsx, /src/pages/LandingPage.tsx, /src/pages/DemoGeoBrowse.tsx, /src/components/auth/AuthMarketingPanel.tsx
+[2026-06-09T18:42:51.363Z] 2:42:51 PM [vite] (client) hmr update /src/index.css, /src/components/clients/ClientsHubTopBar.tsx
+[2026-06-09T18:42:51.363Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.364Z] 2:42:51 PM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/AdvancedMaterialsSection.tsx
+[2026-06-09T18:42:51.364Z] 2:42:51 PM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-09T18:42:51.365Z] 2:42:51 PM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishAssistantPanel.tsx
+[2026-06-09T18:42:51.365Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.366Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.366Z] 2:42:51 PM [vite] (client) hmr update /src/index.css, /src/components/questions/QuestionBankCard.tsx
+[2026-06-09T18:42:51.366Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.367Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.367Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.367Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.368Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.368Z] 2:42:51 PM [vite] (client) hmr update /src/index.css, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx
+[2026-06-09T18:42:51.368Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.369Z] 2:42:51 PM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-06-09T18:42:51.369Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.369Z] 2:42:51 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-09T18:42:51.370Z] 2:42:51 PM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-06-09T18:42:51.370Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.370Z] 2:42:51 PM [vite] (client) hmr update /src/pages/KnowledgePage.tsx, /src/index.css
+[2026-06-09T18:42:51.371Z] 2:42:51 PM [vite] (client) hmr update /src/pages/LandingPage.tsx, /src/index.css
+[2026-06-09T18:42:51.371Z] 2:42:51 PM [vite] (client) hmr update /src/pages/LegacyOnboardingPage.tsx, /src/index.css
+[2026-06-09T18:42:51.371Z] 2:42:51 PM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/index.css
+[2026-06-09T18:42:51.372Z] 2:42:51 PM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/index.css
+[2026-06-09T18:42:51.372Z] 2:42:51 PM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+[2026-06-09T18:42:51.372Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:51.373Z] 2:42:51 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:42:54.831Z] 2:42:54 PM [vite] (client) hmr update /src/index.css
