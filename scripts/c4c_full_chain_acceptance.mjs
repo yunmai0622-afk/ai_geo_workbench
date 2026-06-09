@@ -43,7 +43,7 @@ const INTERNAL_BTNS = [
 ];
 
 const CHECKS = {
-  dashboard: ["AI 搜索增长", "工作台"],
+  dashboard: ["AI 品牌经营系统", "持续提升企业在 AI 搜索中的识别、信任与推荐"],
   weekly: [...WEEKLY_CONTENT_PAGE_LABELS, ...WEEKLY_CONTENT_PAGE_RENDERED_SEGMENT_LABELS],
   publish: [
     "AI 搜索资产发布记录",

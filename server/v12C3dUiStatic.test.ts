@@ -13,7 +13,15 @@ describe("C3-D global AI product UI", () => {
     expect(css).toContain("ai-glass-card");
     expect(css).toContain("ai-metric-card");
     const marketing = read("client/src/components/auth/authMarketing.ts");
+    const indexHtml = read("client/index.html");
+    expect(marketing).toContain("AI 品牌经营系统");
     expect(marketing).toContain("持续提升企业在 AI 搜索中的识别、信任与推荐");
+    for (const legacy of ["GEO 增长工作台", "GEO增长工作台", "AI 搜索增长系统", "AI搜索增长系统"]) {
+      expect(marketing).not.toContain(legacy);
+      expect(layout).not.toContain(legacy);
+      expect(indexHtml).not.toContain(legacy);
+    }
+    expect(layout).toContain("PLATFORM_PRODUCT_NAME");
     expect(layout).toContain("PLATFORM_PRODUCT_SUBTITLE");
     expect(layout).toContain("geoP0Surfaces.pageProject");
   });

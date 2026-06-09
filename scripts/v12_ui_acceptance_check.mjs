@@ -61,6 +61,11 @@ for (const item of [
 assertContains('左侧导航', sources.layout, 'PLATFORM_PRODUCT_SUBTITLE');
 assertContains('平台品牌文案', read('client/src/components/auth/authMarketing.ts'), '持续提升企业在 AI 搜索中的识别、信任与推荐');
 assertContains('平台品牌文案', read('client/src/components/auth/authMarketing.ts'), 'AI 品牌经营系统');
+for (const forbidden of ['GEO 增长工作台', 'GEO增长工作台', 'AI 搜索增长系统', 'AI搜索增长系统']) {
+  assertNotContains('平台品牌文案', read('client/src/components/auth/authMarketing.ts'), forbidden);
+  assertNotContains('左侧导航', sources.layout, forbidden);
+  assertNotContains('index.html', read('client/index.html'), forbidden);
+}
 assertContains('左侧导航', sources.layout, 'title: "项目"');
 assertNotContains('左侧导航', sources.layout, 'title: "增长总览"');
 assertContains('旧资产进展路由', sources.app, 'LegacyAssetProgressRedirect');

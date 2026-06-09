@@ -105,7 +105,7 @@ async function seedAssetLibrary(caller: ReturnType<typeof createProtectedCaller>
     salesChannels: ["官网", "人工顾问", "内容页"],
     commonQuestions: ["企业做 GEO 优化应该从哪里开始？", "AI 自动化服务如何选择供应商？"],
     purchaseDecisionFactors: ["业务场景理解", "交付经验", "资料真实可引用", "复测闭环"],
-    productIntro: "AI 自动化系统和企业 GEO 增长工作台。",
+    productIntro: "AI 自动化系统和企业 AI 品牌经营系统。",
     featureNotes: "品牌说明/特征备注：强调真实资料、人工审核和不承诺绝对排名。",
     serviceProcess: "企业资料整理、AI 诊断、优化任务、内容生成、质检和人工审核。",
     deliveryPlan: "按项目阶段交付诊断结果、文章草稿和质检记录。",
