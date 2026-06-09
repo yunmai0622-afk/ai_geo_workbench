@@ -4360,3 +4360,63 @@
 [2026-06-09T07:46:40.267Z] 3:46:40 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/brandSourceGraph.ts
 [2026-06-09T07:46:40.268Z] 3:46:40 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx
 [2026-06-09T07:46:40.328Z] 3:46:40 AM [tsx] unlink in ./shared/workspaceTodayTasks.ts Restarting...
+[2026-06-09T09:33:39.027Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.029Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.031Z] 5:33:39 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-06-09T09:33:39.032Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/ArticleAssetEditorSheet.tsx
+[2026-06-09T09:33:39.032Z] 5:33:39 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-09T09:33:39.034Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/AdvancedMaterialsSection.tsx
+[2026-06-09T09:33:39.034Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-09T09:33:39.034Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishAssistantPanel.tsx
+[2026-06-09T09:33:39.036Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.036Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishSuccessNotificationCard.tsx
+[2026-06-09T09:33:39.039Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.039Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.040Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.040Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.041Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.042Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx
+[2026-06-09T09:33:39.043Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishAssistantPanel.tsx, /src/pages/ContentPublishingCenterPage.tsx
+[2026-06-09T09:33:39.044Z] 5:33:39 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-06-09T09:33:39.044Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/pages/ContentPublishingCenterPage.tsx
+[2026-06-09T09:33:39.045Z] 5:33:39 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-09T09:33:39.045Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/pages/InclusionMonitoringCenterPage.tsx
+[2026-06-09T09:33:39.045Z] 5:33:39 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/index.css
+[2026-06-09T09:33:39.046Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/pages/V12FlowPages.tsx
+[2026-06-09T09:33:39.046Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.052Z] 5:33:39 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx, /src/components/ArticleAssetEditorSheet.tsx
+[2026-06-09T09:33:39.053Z] 5:33:39 AM [vite] (client) hmr update /src/pages/ContentPublishingCenterPage.tsx, /src/components/publishing/PublishSuccessNotificationCard.tsx
+[2026-06-09T09:33:39.053Z] 5:33:39 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx
+[2026-06-09T09:33:39.054Z] 5:33:39 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-09T09:33:39.181Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/diagnosis/QuestionPoolTestPanel.tsx
+[2026-06-09T09:33:39.182Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/diagnosis/TestComparisonPanel.tsx
+[2026-06-09T09:33:39.183Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/TrustEvidenceDrawer.tsx
+[2026-06-09T09:33:39.184Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/TrustEvidenceManager.tsx
+[2026-06-09T09:33:39.184Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/MultiValueInput.tsx
+[2026-06-09T09:33:39.185Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx
+[2026-06-09T09:33:39.185Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/WizardStepFooter.tsx
+[2026-06-09T09:33:39.186Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/WizardStepHeader.tsx
+[2026-06-09T09:33:39.187Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/WizardStepPanels.tsx
+[2026-06-09T09:33:39.187Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/maturity/MaturityAssistantPanel.tsx
+[2026-06-09T09:33:39.189Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/questions/QuestionSearchPoolDrawer.tsx
+[2026-06-09T09:33:39.189Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/source-graph/BrandSourceDrawer.tsx
+[2026-06-09T09:33:39.190Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/components/source-graph/SourceGraphAssistantPanel.tsx
+[2026-06-09T09:33:39.191Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.192Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.193Z] 5:33:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-09T09:33:39.193Z] 5:33:39 AM [vite] (client) hmr update /src/index.css, /src/pages/AssetCenter.tsx, /src/pages/V12FlowPages.tsx
+[2026-06-09T09:33:39.194Z] 5:33:39 AM [vite] (client) hmr update /src/pages/MaturityDetailPage.tsx, /src/index.css
+[2026-06-09T09:33:39.195Z] 5:33:39 AM [vite] (client) hmr update /src/pages/SourceGraphPage.tsx, /src/index.css
+[2026-06-09T09:33:39.195Z] 5:33:39 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx
+[2026-06-09T09:33:39.195Z] 5:33:39 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/brandSourceGraph.ts
+[2026-06-09T09:33:39.196Z] 5:33:39 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/geoMaturityScoring.ts
+[2026-06-09T09:33:39.196Z] 5:33:39 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/maturityDetailDisplay.ts
+[2026-06-09T09:33:39.196Z] 5:33:39 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/onboardingCompletenessReport.ts
+[2026-06-09T09:33:39.197Z] 5:33:39 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx
+[2026-06-09T09:33:39.197Z] 5:33:39 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx
+[2026-06-09T09:33:39.198Z] 5:33:39 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx
+[2026-06-09T09:33:39.198Z] 5:33:39 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx
+[2026-06-09T09:33:39.199Z] 5:33:39 AM [vite] (client) hmr update /src/pages/InclusionMonitoringCenterPage.tsx
+[2026-06-09T09:33:39.199Z] 5:33:39 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/testRoundComparison.ts
+[2026-06-09T09:33:39.199Z] 5:33:39 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/trustEvidence.ts
+[2026-06-09T09:33:39.236Z] 5:33:39 AM [tsx] unlink in ./server/routers.ts Restarting...
