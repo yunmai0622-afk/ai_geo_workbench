@@ -35,4 +35,12 @@ describe("GEO-V1.3-WeeklyFix-P0", () => {
     expect(platform).toContain("inferPlatformFromThirdPartyMaterials");
     expect(platform).toContain("thirdPartyMaterials");
   });
+
+  it("detail sheet exposes recheck quality button when qc failed", () => {
+    expect(detailSheet).toContain("weekly-detail-recheck-quality");
+    expect(detailSheet).toContain("重新质检");
+    expect(detailSheet).toContain("contentQualityReview");
+    expect(detailSheet).toContain("weekly-detail-ai-qc-hint");
+    expect(weekly).toContain("onQualityReviewed");
+  });
 });

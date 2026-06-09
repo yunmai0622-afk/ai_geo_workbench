@@ -1,5 +1,6 @@
 import { GeoArticleQualityScoreDetailPopover } from "@/components/GeoArticleQualityScoreDetailPopover";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Sheet,
   SheetContent,
@@ -9,8 +10,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { geoP0Brand } from "@/lib/geoP0Visual";
+import { trpc } from "@/lib/trpc";
 import type { WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
+import { getContentQualityGateStatus } from "@shared/contentQualityGate";
+import { getGeoQualityLabel } from "@shared/geoQualityReview";
+import { isGeoQualityScoreStale } from "@shared/geoQualityStale";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
+import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import {
   resolveWeeklyAiQcDisplayStatus,
   resolveWeeklyEnqueueButtonKind,
@@ -20,11 +26,13 @@ import {
 import { contentReviewStatusBadgeClass } from "@shared/contentReviewStatus";
 import { cn } from "@/lib/utils";
 import { useRef } from "react";
+import { toast } from "sonner";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   model: WeeklyArticleCardModel | null;
+  projectId?: number | null;
   disabled?: boolean;
   coverGenerating?: boolean;
   onSave: () => void;
@@ -32,6 +40,7 @@ type Props = {
   onEnqueuePublish: () => void;
   onGenerateCover?: () => void;
   onUploadCover?: (file: File) => void;
+  onQualityReviewed?: () => void;
   onGoPublishingPage?: () => void;
 };
 
@@ -51,6 +60,7 @@ export function WeeklyContentDetailSheet({
   open,
   onOpenChange,
   model,
+  projectId,
   disabled,
   coverGenerating,
   onSave,
@@ -58,15 +68,40 @@ export function WeeklyContentDetailSheet({
   onEnqueuePublish,
   onGenerateCover,
   onUploadCover,
+  onQualityReviewed,
   onGoPublishingPage,
 }: Props) {
   const coverUploadInputRef = useRef<HTMLInputElement>(null);
+  const reviewMutation = trpc.geo.articles.contentQualityReview.useMutation();
 
   if (!model) return null;
 
   const body = articleBodyPreview(model.article);
   const summary = articleBodySummary(body);
   const aiQcStatus = resolveWeeklyAiQcDisplayStatus(model.article);
+  const qualityGate = getContentQualityGateStatus(model.article);
+  const qualityStale = isGeoQualityScoreStale(model.article);
+  const showRecheckButton =
+    projectId != null &&
+    (aiQcStatus === "未通过" || aiQcStatus === "未质检" || qualityStale);
+  const recheckLabel =
+    model.qualityView?.score != null ||
+    (typeof model.article.geoQualityScore === "number" && model.article.geoQualityScore != null)
+      ? "重新质检"
+      : "发布前质检";
+
+  const runQualityReview = async () => {
+    if (!projectId) return;
+    try {
+      const data = await reviewMutation.mutateAsync({ articleId: model.id, projectId });
+      if (data.result) {
+        toast.success(`质检完成：${data.result.total} 分 · ${getGeoQualityLabel(data.result.recommendation)}`);
+        onQualityReviewed?.();
+      }
+    } catch (e) {
+      toast.error(toUserFacingErrorFromUnknown(e, "质检失败，请稍后重试"));
+    }
+  };
   const manualReviewStatus = resolveWeeklyManualReviewDisplayStatus(model.contentReviewStatus);
   const manualPending = manualReviewStatus === "未审核";
   const buttonKind = resolveWeeklyEnqueueButtonKind({
@@ -82,7 +117,6 @@ export function WeeklyContentDetailSheet({
     buttonKind === "blocked_qc" ||
     buttonKind === "queued" ||
     buttonKind === "published";
-  const coverMissing = !model.coverThumbnailSrc;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -190,7 +224,7 @@ export function WeeklyContentDetailSheet({
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div data-testid="weekly-detail-ai-qc">
               <p className="text-xs font-medium text-gray-500">AI 质检结果</p>
-              <div className="mt-1 flex items-center gap-2">
+              <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="text-gray-800">{aiQcStatus}</span>
                 {model.qualityView ? (
                   <GeoArticleQualityScoreDetailPopover
@@ -203,6 +237,31 @@ export function WeeklyContentDetailSheet({
                   </GeoArticleQualityScoreDetailPopover>
                 ) : null}
               </div>
+              {!qualityGate.passed && qualityGate.message ? (
+                <p className="mt-2 text-xs text-amber-800" data-testid="weekly-detail-ai-qc-hint">
+                  {qualityGate.message}
+                </p>
+              ) : null}
+              {showRecheckButton ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className={cn("mt-2", geoP0Brand.primaryOutline)}
+                  disabled={disabled || reviewMutation.isPending}
+                  data-testid="weekly-detail-recheck-quality"
+                  onClick={() => void runQualityReview()}
+                >
+                  {reviewMutation.isPending ? (
+                    <>
+                      <Spinner className="mr-2 size-4" />
+                      质检中…
+                    </>
+                  ) : (
+                    recheckLabel
+                  )}
+                </Button>
+              ) : null}
             </div>
             <div data-testid="weekly-detail-manual-review">
               <p className="text-xs font-medium text-gray-500">人工审核状态</p>

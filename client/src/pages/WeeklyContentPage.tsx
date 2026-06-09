@@ -1531,6 +1531,12 @@ export default function WeeklyContentPage() {
     publishTasksQuery.data?.tasks,
   ]);
 
+  useEffect(() => {
+    if (!detailOpen || detailModel == null) return;
+    const updated = contentCardModels.find(card => card.id === detailModel.id);
+    if (updated) setDetailModel(updated);
+  }, [contentCardModels, detailOpen, detailModel?.id]);
+
   const displayContentCards = useMemo((): WeeklyArticleCardModel[] => {
     const filtered = filterWeeklyContentCards<WeeklyArticleCardModel>(contentCardModels, {
       platform: filterPlatform,
@@ -3256,8 +3262,10 @@ export default function WeeklyContentPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         model={detailModel}
+        projectId={selectedProjectId}
         disabled={anyGenerating || batchEnqueueBusy}
         coverGenerating={detailModel ? regeneratingCoverIds.has(detailModel.id) : false}
+        onQualityReviewed={() => void invalidateArticles()}
         onSave={() => {
           if (!detailModel) return;
           const article = articlesById.get(detailModel.id);
