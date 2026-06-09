@@ -1,4 +1,8 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import {
+  PLATFORM_PRODUCT_NAME,
+  PLATFORM_PRODUCT_SUBTITLE,
+} from "@/components/auth/authMarketing";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
@@ -11,7 +15,7 @@ export function ClientsHubTopBar() {
     <header className={`-mx-4 -mt-4 mb-8 flex items-center justify-between px-6 md:-mx-6 lg:-mx-8 lg:px-8 ${geoP0Surfaces.topBar}`} data-testid="clients-hub-top-bar">
       <div className="flex items-center gap-2.5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shadow-sm shadow-blue-600/20"><span className="text-sm font-bold text-white">G</span></div>
-        <div><p className="text-[15px] font-bold tracking-tight text-gray-900">GEO 增长工作台</p><p className="text-[11px] text-gray-400">AI 搜索增长系统</p></div>
+        <div><p className="text-[15px] font-bold tracking-tight text-gray-900">{PLATFORM_PRODUCT_NAME}</p><p className="text-[11px] text-gray-400">{PLATFORM_PRODUCT_SUBTITLE}</p></div>
       </div>
       <div className="flex items-center gap-2">
         <Link href="/settings" className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-blue-600" data-testid="clients-hub-settings-link">设置</Link>

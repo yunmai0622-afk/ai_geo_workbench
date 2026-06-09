@@ -15,7 +15,9 @@ describe("C5-A global product UI overhaul", () => {
 
   it("uses grouped product navigation labels", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain("AI 搜索增长系统");
+    const marketing = read("client/src/components/auth/authMarketing.ts");
+    expect(marketing).toContain("持续提升企业在 AI 搜索中的识别、信任与推荐");
+    expect(layout).toContain("PLATFORM_PRODUCT_SUBTITLE");
     expect(layout).toContain('label: "项目工作台"');
     expect(layout).toContain("GEO 内容生产工作台");
     expect(layout).toContain("平台适配发布");

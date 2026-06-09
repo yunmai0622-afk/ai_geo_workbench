@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { GEO_PRODUCT_MAIN_POSITIONING, GEO_PRODUCT_SUB_POSITIONING } from "@/lib/geoProductPositioning";
 import { GEO_UNIFIED_MAIN_PIPELINE_STEPS } from "@shared/workspaceMainChain";
 import { useEffect } from "react";
@@ -34,7 +35,7 @@ const FAQ_ITEMS = [
 
 export default function KnowledgePage() {
   useEffect(() => {
-    document.title = "使用指南 - GEO增长工作台";
+    document.title = `使用指南 - ${PLATFORM_PRODUCT_NAME}`;
   }, []);
 
   return (

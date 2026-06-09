@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,7 +53,7 @@ export function GeoIntroModal() {
           <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
             <Sparkles className="size-5" aria-hidden />
           </div>
-          <DialogTitle className="text-xl font-bold text-gray-900">欢迎使用GEO增长工作台</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-gray-900">欢迎使用{PLATFORM_PRODUCT_NAME}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 text-sm leading-relaxed text-gray-600">
           <p>

@@ -1,4 +1,5 @@
 import AuthPageLayout from "@/components/auth/AuthPageLayout";
+import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ function registerErrorMessage(err: unknown): string {
 
 export default function RegisterPage() {
   useEffect(() => {
-    document.title = "注册账号 - GEO增长工作台";
+    document.title = `注册账号 - ${PLATFORM_PRODUCT_NAME}`;
   }, []);
 
   const [, setLocation] = useLocation();

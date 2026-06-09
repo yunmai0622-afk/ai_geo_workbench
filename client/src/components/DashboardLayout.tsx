@@ -21,6 +21,10 @@ import {
 } from "@/components/ui/sidebar";
 import { Link } from "wouter";
 import LoginGatePanel from "@/components/auth/LoginGatePanel";
+import {
+  PLATFORM_PRODUCT_NAME,
+  PLATFORM_PRODUCT_SUBTITLE,
+} from "@/components/auth/authMarketing";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
@@ -204,7 +208,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!loading && !user) {
-      document.title = "登录 - GEO 增长工作台";
+      document.title = `登录 - ${PLATFORM_PRODUCT_NAME}`;
     }
   }, [loading, user]);
 
@@ -316,8 +320,8 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                 </button>
                 {!isCollapsed ? (
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-bold text-gray-900">GEO 增长工作台</span>
-                    <span className="block truncate text-[11px] text-gray-400">AI 搜索增长系统</span>
+                    <span className="block truncate text-sm font-bold text-gray-900">{PLATFORM_PRODUCT_NAME}</span>
+                    <span className="block truncate text-[11px] text-gray-400">{PLATFORM_PRODUCT_SUBTITLE}</span>
                   </div>
                 ) : null}
               </div>

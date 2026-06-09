@@ -3,6 +3,7 @@ import { GeoScoreWeightExplanationHelp } from "@/components/geo/GeoScoreWeightEx
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { T0ContentGapSuggestionsCard } from "@/components/geo/T0ContentGapSuggestionsCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
+import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { WorkspaceDashboardOverviewCards } from "@/components/project/WorkspaceDashboardOverviewCards";
 import { WorkspaceInclusionMonitoringSection } from "@/components/workspace/WorkspaceInclusionMonitoringSection";
@@ -164,7 +165,7 @@ export default function EnterpriseWorkspacePage() {
     <div className="space-y-7" data-testid="workspace-page">
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.workspace}
-        message="欢迎使用GEO增长工作台，从左侧菜单开始你的第一步"
+        message={`欢迎使用${PLATFORM_PRODUCT_NAME}，从左侧菜单开始你的第一步`}
         data-testid="first-use-hint-workspace"
       />
       {metrics?.retestDueReminder && selectedProjectId ? (

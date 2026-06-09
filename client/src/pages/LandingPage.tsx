@@ -1,5 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { AUTH_PRODUCT_NAME } from "@/components/auth/authMarketing";
+import {
+  AUTH_PRODUCT_NAME,
+  PLATFORM_PRODUCT_NAME,
+  PLATFORM_PRODUCT_SUBTITLE,
+} from "@/components/auth/authMarketing";
 import { SUBSCRIPTION_CONTACT_EMAIL } from "@shared/subscriptionPlans";
 import { BarChart3, LineChart, Search, Sparkles } from "lucide-react";
 import { useEffect } from "react";
@@ -25,7 +29,7 @@ const VALUE_POINTS = [
 
 export default function LandingPage() {
   useEffect(() => {
-    document.title = "GEO 增长工作台 - AI 搜索增长系统";
+    document.title = `${PLATFORM_PRODUCT_NAME} - ${PLATFORM_PRODUCT_SUBTITLE}`;
   }, []);
 
   return (

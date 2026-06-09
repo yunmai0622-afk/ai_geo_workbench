@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getLoginUrl, isLoginConfigured } from "@/const";
@@ -289,7 +290,7 @@ export default function LegacyOnboardingPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12 text-gray-900">
         <div className="w-full max-w-[500px]">
-          <p className="text-center text-sm font-medium tracking-wide text-blue-600/90">GEO 增长工作台</p>
+          <p className="text-center text-sm font-medium tracking-wide text-blue-600/90">{PLATFORM_PRODUCT_NAME}</p>
           <h1 className="mt-6 text-center text-[28px] font-semibold leading-tight text-white">让AI持续为你推荐精准客户</h1>
           <p className="mt-3 text-center text-sm text-gray-400">填写3个信息，系统自动生成你的第一篇内容</p>
 

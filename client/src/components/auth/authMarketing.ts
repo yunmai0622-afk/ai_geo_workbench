@@ -1,9 +1,12 @@
 /** 登录 / 注册页左侧产品介绍（固定产品文案，非企业档案字段） */
 
-export const AUTH_PRODUCT_NAME = "GEO 增长工作台";
+export const PLATFORM_PRODUCT_NAME = "AI 品牌经营系统";
 
-export const AUTH_PRODUCT_TAGLINE =
-  "帮助企业持续提升在豆包、Kimi、DeepSeek 等 AI 搜索中的品牌可见度。";
+export const PLATFORM_PRODUCT_SUBTITLE = "持续提升企业在 AI 搜索中的识别、信任与推荐";
+
+export const AUTH_PRODUCT_NAME = PLATFORM_PRODUCT_NAME;
+
+export const AUTH_PRODUCT_TAGLINE = PLATFORM_PRODUCT_SUBTITLE;
 
 export const AUTH_PRODUCT_SELLING_POINTS = [
   "从企业档案到问题库、内容资产的一体化 GEO 增长流程",

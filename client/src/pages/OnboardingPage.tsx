@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -283,7 +284,7 @@ export default function OnboardingPage() {
         <header className="space-y-4 text-center">
           <div className="flex items-center justify-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold text-white">G</div>
-            <span className="text-lg font-bold text-gray-900">GEO 增长工作台</span>
+            <span className="text-lg font-bold text-gray-900">{PLATFORM_PRODUCT_NAME}</span>
           </div>
           <p className="text-sm text-gray-500">3 步完成首个企业项目设置，开始 AI 搜索可见性检测</p>
           <OnboardingProgressBar currentStep={step} />

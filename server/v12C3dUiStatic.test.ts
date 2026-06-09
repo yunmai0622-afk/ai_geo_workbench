@@ -12,7 +12,9 @@ describe("C3-D global AI product UI", () => {
     expect(css).toContain("ai-app-canvas");
     expect(css).toContain("ai-glass-card");
     expect(css).toContain("ai-metric-card");
-    expect(layout).toContain("AI 搜索增长系统");
+    const marketing = read("client/src/components/auth/authMarketing.ts");
+    expect(marketing).toContain("持续提升企业在 AI 搜索中的识别、信任与推荐");
+    expect(layout).toContain("PLATFORM_PRODUCT_SUBTITLE");
     expect(layout).toContain("geoP0Surfaces.pageProject");
   });
 
