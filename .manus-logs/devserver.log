@@ -4278,3 +4278,46 @@
 [2026-06-08T02:45:15.151Z] Server running on http://localhost:3000/
 [2026-06-08T02:45:25.920Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-08T02:46:11.864Z] 10:46:11 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.041Z] 3:00:39 PM [vite] (client) page reload index.html
+[2026-06-09T19:00:39.042Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.042Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.043Z] 3:00:39 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-06-09T19:00:39.043Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.045Z] 3:00:39 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-09T19:00:39.045Z] 3:00:39 PM [vite] (client) hmr update /src/components/GeoIntroModal.tsx, /src/index.css
+[2026-06-09T19:00:39.045Z] 3:00:39 PM [vite] (client) hmr update /src/index.css, /src/pages/DemoGeo.tsx, /src/pages/DemoGeoBrowse.tsx, /src/pages/PricingPage.tsx, /src/pages/LandingPage.tsx, /src/components/auth/AuthMarketingPanel.tsx
+[2026-06-09T19:00:39.046Z] 3:00:39 PM [vite] (client) hmr update /src/index.css, /src/components/clients/ClientsHubTopBar.tsx
+[2026-06-09T19:00:39.046Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.047Z] 3:00:39 PM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/AdvancedMaterialsSection.tsx
+[2026-06-09T19:00:39.049Z] 3:00:39 PM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-09T19:00:39.049Z] 3:00:39 PM [vite] (client) hmr update /src/index.css, /src/components/publishing/PublishAssistantPanel.tsx
+[2026-06-09T19:00:39.049Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.050Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.050Z] 3:00:39 PM [vite] (client) hmr update /src/index.css, /src/components/questions/QuestionBankCard.tsx
+[2026-06-09T19:00:39.051Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.051Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.052Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.052Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.052Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.053Z] 3:00:39 PM [vite] (client) hmr update /src/index.css, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx
+[2026-06-09T19:00:39.053Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.054Z] 3:00:39 PM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-06-09T19:00:39.054Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.054Z] 3:00:39 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-09T19:00:39.055Z] 3:00:39 PM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-06-09T19:00:39.055Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.056Z] 3:00:39 PM [vite] (client) hmr update /src/pages/KnowledgePage.tsx, /src/index.css
+[2026-06-09T19:00:39.056Z] 3:00:39 PM [vite] (client) hmr update /src/pages/LandingPage.tsx, /src/index.css
+[2026-06-09T19:00:39.056Z] 3:00:39 PM [vite] (client) hmr update /src/pages/LegacyOnboardingPage.tsx, /src/index.css
+[2026-06-09T19:00:39.073Z] 3:00:39 PM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/index.css
+[2026-06-09T19:00:39.074Z] 3:00:39 PM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/index.css
+[2026-06-09T19:00:39.075Z] 3:00:39 PM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+[2026-06-09T19:00:39.075Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.075Z] 3:00:39 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T19:00:39.076Z] 3:00:39 PM [vite] (client) hmr update /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-09T19:00:39.076Z] 3:00:39 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/components/LocalAgentDownloadCard.tsx
+[2026-06-09T19:00:39.076Z] 3:00:39 PM [vite] (client) hmr update /src/components/weekly/ContentProductionAssistantPanel.tsx
+[2026-06-09T19:00:39.077Z] 3:00:39 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-09T19:00:39.127Z] 3:00:39 PM [tsx] change in ./server/routers.ts Restarting...
+[2026-06-09T19:00:47.278Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-09T19:00:47.313Z] Server running on http://localhost:3000/
