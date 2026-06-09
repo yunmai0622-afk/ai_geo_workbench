@@ -1,4 +1,4 @@
-import { boolean, mediumtext, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, mediumtext, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -276,7 +276,7 @@ export const geoScores = mysqlTable("geo_scores", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-/** GEO V2.0：AI 品牌成熟度 6 维评分（每项目保留最新一条） */
+/** GEO V2.0：AI 品牌成熟度 6 维评分（每项目可存多条历史记录） */
 export const geoMaturityScores = mysqlTable(
   "geo_maturity_scores",
   {
@@ -295,7 +295,10 @@ export const geoMaturityScores = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
-    projectUnique: uniqueIndex("geo_maturity_scores_project_unique").on(table.projectId),
+    projectCalculatedIdx: index("geo_maturity_scores_project_calculated_idx").on(
+      table.projectId,
+      table.calculatedAt,
+    ),
   }),
 );
 

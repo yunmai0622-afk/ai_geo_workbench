@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import {
@@ -124,6 +125,7 @@ export default function AssetCenterPage() {
   const [caseRows, setCaseRows] = useState<CaseDraft[]>([]);
 
   const upsertProfile = trpc.geo.assetLibrary.upsertProfile.useMutation();
+  const { triggerMaturityCalculate } = useMaturityAutoCalculate(currentProjectId);
 
   const projectInput = useMemo(() => ({ projectId: currentProjectId! }), [currentProjectId]);
   const { data: summaryData, isLoading, isFetched, error: summaryError } = trpc.geo.assetLibrary.summary.useQuery(
@@ -326,6 +328,13 @@ export default function AssetCenterPage() {
     try {
       await upsertProfile.mutateAsync(buildPayload(step));
       await refreshSummary();
+      if (step === 8 && currentProjectId) {
+        toast.success("建档完成！正在计算 AI 品牌成熟度...");
+        await triggerMaturityCalculate({ silent: true });
+        setLocation(buildProjectUrl("/maturity", currentProjectId));
+        return;
+      }
+      void triggerMaturityCalculate({ silent: true });
       setMessage("草稿已保存。");
     } catch (e) {
       toast.error(profileSaveFailureMessage(toUserFacingErrorFromUnknown(e, "保存失败")));

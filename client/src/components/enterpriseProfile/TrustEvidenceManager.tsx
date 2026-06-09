@@ -6,6 +6,7 @@ import {
   type TrustEvidenceFormState,
 } from "@/components/enterpriseProfile/TrustEvidenceDrawer";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
 import { trpc } from "@/lib/trpc";
 import {
   TRUST_EVIDENCE_TYPE_GROUPS,
@@ -109,6 +110,7 @@ export function TrustEvidenceManager({ projectId: projectIdProp, embedded = fals
     enabled: enabled && Boolean(projectId),
   });
 
+  const { triggerMaturityCalculate } = useMaturityAutoCalculate(projectId);
   const createMutation = trpc.geo.trustEvidence.createTrustEvidence.useMutation();
   const updateMutation = trpc.geo.trustEvidence.updateTrustEvidence.useMutation();
   const deleteMutation = trpc.geo.trustEvidence.deleteTrustEvidence.useMutation();
@@ -158,6 +160,7 @@ export function TrustEvidenceManager({ projectId: projectIdProp, embedded = fals
       }
       setDrawerOpen(false);
       await invalidate();
+      void triggerMaturityCalculate({ silent: true });
     } catch (error) {
       toast.error(toUserFacingErrorFromUnknown(error));
     }
@@ -169,6 +172,7 @@ export function TrustEvidenceManager({ projectId: projectIdProp, embedded = fals
       await deleteMutation.mutateAsync({ id: item.id });
       toast.success("已删除");
       await invalidate();
+      void triggerMaturityCalculate({ silent: true });
     } catch (error) {
       toast.error(toUserFacingErrorFromUnknown(error));
     }

@@ -49,6 +49,7 @@ export const API_DOC_SECTIONS: ApiDocSection[] = [
       { path: "geo.maturity.calculateAndSave", type: "mutation", auth: "protected", summary: "计算并保存 AI 品牌成熟度 6 维评分" },
       { path: "geo.maturity.getLatest", type: "query", auth: "protected", summary: "读取项目最新成熟度评分记录" },
       { path: "geo.maturity.getMaturityReport", type: "query", auth: "protected", summary: "AI 品牌成熟度完整报告（含阶段与建议）" },
+      { path: "geo.maturity.getHistory", type: "query", auth: "protected", summary: "读取项目成熟度历史记录（默认最近 10 条）" },
       { path: "geo.clientDashboard.listProjectsSummary", type: "query", auth: "protected", summary: "客户看板项目聚合摘要" },
       { path: "geo.assetLibrary.summary", type: "query", auth: "protected", summary: "企业资产库完成度与风险提示" },
       { path: "geo.platformAccounts.list", type: "query", auth: "protected", summary: "项目平台账号列表" },

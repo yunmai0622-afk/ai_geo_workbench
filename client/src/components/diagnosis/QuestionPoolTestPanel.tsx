@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
 import { trpc } from "@/lib/trpc";
 import { toUserFacingQueryError } from "@shared/userFacingErrors";
+import { useEffect, useRef } from "react";
 
 function formatLastTestTime(value: string | null | undefined): string {
   if (!value) return "尚未发起";
@@ -17,9 +19,17 @@ export function QuestionPoolTestPanel(props: {
 }) {
   const { projectId, enabled, canOperate } = props;
   const utils = trpc.useUtils();
+  const { triggerMaturityCalculate } = useMaturityAutoCalculate(projectId);
+  const wasRunningRef = useRef(false);
   const summaryQuery = trpc.geo.questionPoolTest.summary.useQuery(
     { projectId: projectId! },
-    { enabled: enabled && Boolean(projectId) },
+    {
+      enabled: enabled && Boolean(projectId),
+      refetchInterval: query => {
+        const running = Boolean(query.state.data?.runningRoundId);
+        return running ? 5000 : false;
+      },
+    },
   );
   const startMutation = trpc.geo.questionPoolTest.start.useMutation({
     onSuccess: async () => {
@@ -34,6 +44,18 @@ export function QuestionPoolTestPanel(props: {
 
   const summary = summaryQuery.data;
   const isRunning = Boolean(summary?.runningRoundId) || startMutation.isPending;
+
+  useEffect(() => {
+    if (isRunning) {
+      wasRunningRef.current = true;
+      return;
+    }
+    if (wasRunningRef.current && projectId) {
+      wasRunningRef.current = false;
+      void triggerMaturityCalculate({ silent: true });
+    }
+  }, [isRunning, projectId, triggerMaturityCalculate]);
+
   const errorMessage = startMutation.error
     ? toUserFacingQueryError(startMutation.error.message, "发起实测失败，请稍后重试")
     : summaryQuery.error

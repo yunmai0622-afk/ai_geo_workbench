@@ -35,6 +35,7 @@ import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePromp
 import { useDangerousActionConfirm } from "@/hooks/useDangerousActionConfirm";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection, type ProjectOption } from "@/hooks/useActiveProjectSelection";
+import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { downloadT0ResultsCsv } from "@/lib/geoDataExportDownload";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
@@ -915,6 +916,7 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const { triggerMaturityCalculate } = useMaturityAutoCalculate(selectedProjectId);
   const tasksQuery = trpc.geo.tasks.list.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
@@ -1119,10 +1121,11 @@ export function AiDiagnosisFlowPage() {
     if (displayT0Round.status === "completed") {
       setT0Message("T0 基线检测已完成，以下为真实 AI 平台实测结果。");
       setT0Error(undefined);
+      void triggerMaturityCalculate({ silent: true });
     } else {
       setT0Error("T0 基线检测未成功完成，请稍后重试或联系支持。");
     }
-  }, [displayT0Round?.id, displayT0Round?.status, selectedProjectId, utils]);
+  }, [displayT0Round?.id, displayT0Round?.status, selectedProjectId, utils, triggerMaturityCalculate]);
 
   const gapCount = useMemo(() => countDiagnosisGaps(analyses as DiagnosisAnalysisRow[]), [analyses]);
   const recommendDirectionCount = tasks.length;

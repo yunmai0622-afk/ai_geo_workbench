@@ -4,7 +4,7 @@ import {
   calculateGeoMaturityScores,
   type GeoMaturityReport,
 } from "@shared/geoMaturityScoring";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   aiTestRuns,
@@ -88,6 +88,17 @@ function rowToReport(row: typeof geoMaturityScores.$inferSelect): GeoMaturityRep
   return buildMaturityReport({ scores, calculatedAt: row.calculatedAt });
 }
 
+async function fetchLatestMaturityRow(projectId: number) {
+  const db = await requireDb();
+  const rows = await db
+    .select()
+    .from(geoMaturityScores)
+    .where(eq(geoMaturityScores.projectId, projectId))
+    .orderBy(desc(geoMaturityScores.calculatedAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export const geoMaturityRouter = router({
   calculateAndSave: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive() }))
@@ -98,13 +109,7 @@ export const geoMaturityRouter = router({
       const scores = calculateGeoMaturityScores(context);
       const now = new Date();
 
-      const existing = await db
-        .select({ id: geoMaturityScores.id })
-        .from(geoMaturityScores)
-        .where(eq(geoMaturityScores.projectId, input.projectId))
-        .limit(1);
-
-      const values = {
+      await db.insert(geoMaturityScores).values({
         projectId: input.projectId,
         totalScore: scores.totalScore,
         brandIdentityScore: scores.brandIdentityScore,
@@ -115,16 +120,7 @@ export const geoMaturityRouter = router({
         aiTestPerformanceScore: scores.aiTestPerformanceScore,
         calculationDetail: scores.calculationDetail,
         calculatedAt: now,
-      };
-
-      if (existing[0]) {
-        await db
-          .update(geoMaturityScores)
-          .set(values)
-          .where(eq(geoMaturityScores.id, existing[0].id));
-      } else {
-        await db.insert(geoMaturityScores).values(values);
-      }
+      });
 
       return buildMaturityReport({ scores, calculatedAt: now });
     }),
@@ -133,27 +129,35 @@ export const geoMaturityRouter = router({
     .input(z.object({ projectId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
       await requireProjectAccess(ctx, input.projectId);
+      return fetchLatestMaturityRow(input.projectId);
+    }),
+
+  getHistory: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        limit: z.number().int().min(1).max(50).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await requireProjectAccess(ctx, input.projectId);
       const db = await requireDb();
+      const limit = input.limit ?? 10;
       const rows = await db
         .select()
         .from(geoMaturityScores)
         .where(eq(geoMaturityScores.projectId, input.projectId))
-        .limit(1);
-      if (!rows[0]) return null;
-      return rows[0];
+        .orderBy(desc(geoMaturityScores.calculatedAt))
+        .limit(limit);
+      return rows;
     }),
 
   getMaturityReport: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
       await requireProjectAccess(ctx, input.projectId);
-      const db = await requireDb();
-      const rows = await db
-        .select()
-        .from(geoMaturityScores)
-        .where(eq(geoMaturityScores.projectId, input.projectId))
-        .limit(1);
-      if (!rows[0]) return null;
-      return rowToReport(rows[0]);
+      const row = await fetchLatestMaturityRow(input.projectId);
+      if (!row) return null;
+      return rowToReport(row);
     }),
 });

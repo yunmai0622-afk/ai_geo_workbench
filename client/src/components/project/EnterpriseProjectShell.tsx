@@ -17,6 +17,7 @@ import { InclusionMonitoringAssistantPanel } from "@/components/inclusion-monito
 import { PublishAssistantPanel } from "@/components/publishing/PublishAssistantPanel";
 import { QuestionBankAssistantPanel } from "@/components/questions/QuestionBankAssistantPanel";
 import { SourceGraphAssistantPanel } from "@/components/source-graph/SourceGraphAssistantPanel";
+import { MaturityAssistantPanel } from "@/components/maturity/MaturityAssistantPanel";
 import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
 import { ProfileCompletenessLowHint } from "@/components/enterpriseProfile/ProfileCompletenessLowHint";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export function EnterpriseProjectShell({ children }: Props) {
     pathname === "/inclusion-monitoring" || pathname === "/monitoring";
   const isQuestionsPage = pathname === "/questions";
   const isSourceGraphPage = pathname === "/brand-source-graph" || pathname === "/source-graph";
+  const isMaturityPage = pathname === "/maturity";
   const isMobile = useIsMobile();
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
@@ -208,17 +210,20 @@ export function EnterpriseProjectShell({ children }: Props) {
     </>
   );
 
-  const sidebarPanel = isPublishPage
-    ? publishAssistantPanel
-    : isWeeklyPage
-      ? contentProductionAssistantPanel
-      : isInclusionMonitoringPage
-        ? inclusionMonitoringAssistantPanel
-        : isQuestionsPage
-          ? questionBankAssistantPanel
-          : isSourceGraphPage
-            ? sourceGraphAssistantPanel
-            : projectGrowthSidebarPanel;
+  const maturityAssistantPanel = <MaturityAssistantPanel />;
+  const sidebarPanel = isMaturityPage
+    ? maturityAssistantPanel
+    : isPublishPage
+      ? publishAssistantPanel
+      : isWeeklyPage
+        ? contentProductionAssistantPanel
+        : isInclusionMonitoringPage
+          ? inclusionMonitoringAssistantPanel
+          : isQuestionsPage
+            ? questionBankAssistantPanel
+            : isSourceGraphPage
+              ? sourceGraphAssistantPanel
+              : projectGrowthSidebarPanel;
 
   return (
     <div className="space-y-0" data-testid="enterprise-project-shell">
@@ -274,17 +279,19 @@ export function EnterpriseProjectShell({ children }: Props) {
       {isMobile ? (
         <ProjectNextActionMobileDock
           summaryLabel={
-            isPublishPage
-              ? "发布助手"
-              : isWeeklyPage
-                ? "内容生产助手"
-                : isInclusionMonitoringPage
-                  ? "收录复测助手"
-                  : isQuestionsPage
-                    ? "问题库助手"
-                    : isSourceGraphPage
-                      ? "信源图谱助手"
-                      : mobileDockSummary
+            isMaturityPage
+              ? "成熟度助手"
+              : isPublishPage
+                ? "发布助手"
+                : isWeeklyPage
+                  ? "内容生产助手"
+                  : isInclusionMonitoringPage
+                    ? "收录复测助手"
+                    : isQuestionsPage
+                      ? "问题库助手"
+                      : isSourceGraphPage
+                        ? "信源图谱助手"
+                        : mobileDockSummary
           }
         >
           {sidebarPanel}

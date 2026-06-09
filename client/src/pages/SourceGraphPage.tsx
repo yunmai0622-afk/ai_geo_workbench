@@ -9,6 +9,7 @@ import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
@@ -77,6 +78,7 @@ export default function SourceGraphPage() {
   const [, setLocation] = useLocation();
   const { selectedProjectId, selectedProject, enabled, projectsLoading } = useActiveProjectSelection();
   const projectQueryInput = { projectId: selectedProjectId! };
+  const { triggerMaturityCalculate } = useMaturityAutoCalculate(selectedProjectId);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
@@ -108,6 +110,7 @@ export default function SourceGraphPage() {
   const createSourceMutation = trpc.geo.brandSourceGraph.createBrandSource.useMutation({
     onSuccess: async () => {
       await invalidateAll();
+      void triggerMaturityCalculate({ silent: true });
       toast.success("信源已添加");
       setDrawerOpen(false);
     },
@@ -116,6 +119,7 @@ export default function SourceGraphPage() {
   const updateSourceMutation = trpc.geo.brandSourceGraph.updateBrandSource.useMutation({
     onSuccess: async () => {
       await invalidateAll();
+      void triggerMaturityCalculate({ silent: true });
       toast.success("信源已更新");
       setDrawerOpen(false);
       setEditRecord(null);

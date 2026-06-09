@@ -230,7 +230,7 @@ export default function EnterpriseWorkspacePage() {
                   size="sm"
                   className="rounded-lg"
                   data-testid="workspace-maturity-view-report"
-                  onClick={() => setLocation(buildProjectUrl("/maturity-report", selectedProjectId))}
+                  onClick={() => setLocation(buildProjectUrl("/maturity", selectedProjectId))}
                 >
                   查看完整成熟度报告
                   <ArrowRight className="ml-1.5 size-3.5" />

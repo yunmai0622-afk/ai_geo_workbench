@@ -14,6 +14,11 @@ describe("GEO-V2.0-P0-E Maturity Score", () => {
     expect(migration).toContain("geo_maturity_scores_project_unique");
   });
 
+  it("migration 0065 removes unique constraint for history support", () => {
+    const migration = read("drizzle/0065_geo_maturity_scores_history.sql");
+    expect(migration).toContain("DROP INDEX `geo_maturity_scores_project_unique`");
+  });
+
   it("defines geoMaturityScores in drizzle schema", () => {
     const schema = read("drizzle/schema.ts");
     expect(schema).toContain('export const geoMaturityScores = mysqlTable');
@@ -21,7 +26,7 @@ describe("GEO-V2.0-P0-E Maturity Score", () => {
     expect(schema).toContain("GeoMaturityScore");
   });
 
-  it("exposes geo.maturity router with three procedures", () => {
+  it("exposes geo.maturity router with maturity procedures", () => {
     const routers = read("server/routers.ts");
     expect(routers).toContain("geoMaturityRouter");
     expect(routers).toContain("maturity: geoMaturityRouter");
@@ -29,6 +34,7 @@ describe("GEO-V2.0-P0-E Maturity Score", () => {
     expect(maturityRouter).toContain("calculateAndSave:");
     expect(maturityRouter).toContain("getLatest:");
     expect(maturityRouter).toContain("getMaturityReport:");
+    expect(maturityRouter).toContain("getHistory:");
   });
 
   it("implements 6-dimension scoring and stage definitions in shared layer", () => {
