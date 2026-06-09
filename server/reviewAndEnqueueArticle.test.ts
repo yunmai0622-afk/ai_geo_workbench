@@ -87,4 +87,21 @@ describe("GEO-V1.1-Review-And-Enqueue-Atomic-Fix-P0", () => {
     expect(router).toContain("PUBLISH_QUEUE_DUPLICATE_MESSAGE");
     expect(read("shared/reviewEnqueueErrors.ts")).toContain("duplicateTask");
   });
+
+  it("logs structured server errors for review enqueue 500 diagnosis", () => {
+    expect(router).toContain("logReviewEnqueueError");
+    expect(router).toContain("formatReviewEnqueueError");
+    expect(router).toContain("throwReviewEnqueueInternal");
+    expect(router).toContain("update contentReviewStatus after publish task created");
+    expect(router).toContain("appendArticleLifecycleEvent");
+    expect(router).toContain("insert publish_tasks returned no id");
+  });
+
+  it("includes migration patch for review enqueue missing columns", () => {
+    const migration = read("drizzle/0061_review_enqueue_schema_fix.sql");
+    expect(migration).toContain("lifecycleStatus");
+    expect(migration).toContain("lifecycleEvents");
+    expect(migration).toContain("contentReviewStatus");
+    expect(migration).toContain("localAgentId");
+  });
 });

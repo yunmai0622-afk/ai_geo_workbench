@@ -62,6 +62,44 @@ function throwReviewEnqueueBadRequest(raw: string): never {
   throw new TRPCError({ code: "BAD_REQUEST", message: mapReviewEnqueueCustomerMessage(raw) });
 }
 
+function formatReviewEnqueueError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const extra = err as Error & { code?: string; errno?: number; sqlMessage?: string; sql?: string };
+  return [
+    extra.message,
+    extra.code ? `code=${extra.code}` : "",
+    extra.errno != null ? `errno=${extra.errno}` : "",
+    extra.sqlMessage ? `sqlMessage=${extra.sqlMessage}` : "",
+    extra.sql ? `sql=${extra.sql}` : "",
+    extra.stack,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function logReviewEnqueueError(
+  step: string,
+  context: Record<string, unknown>,
+  err: unknown,
+): void {
+  console.error(`[reviewAndEnqueueArticle] ${step}`, {
+    ...context,
+    error: formatReviewEnqueueError(err),
+  });
+}
+
+function throwReviewEnqueueInternal(step: string, context: Record<string, unknown>, err?: unknown): never {
+  if (err !== undefined) {
+    logReviewEnqueueError(step, context, err);
+  } else {
+    console.error(`[reviewAndEnqueueArticle] ${step}`, context);
+  }
+  throw new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: mapReviewEnqueueCustomerMessage("服务端异常"),
+  });
+}
+
 type PublishChannelLabel =
   | "知乎"
   | "头条号"
@@ -281,6 +319,14 @@ type PublishTaskCreateContext = {
 };
 
 async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
+  const logCtx = {
+    projectId: ctx.projectId,
+    articleId: ctx.articleId,
+    platform: ctx.platform,
+    platformAccountId: ctx.boundAccount.id,
+    userId: ctx.userId,
+  };
+
   const brandLabel = String(ctx.project.enterpriseName ?? "海豚知道").trim() || "海豚知道";
   const effectiveCoverBase64 = resolveArticleCoverBase64ForPublish(ctx.article, brandLabel);
   const rawCoverImageUrl = ctx.article.coverImageUrl?.trim() ?? "";
@@ -300,39 +346,89 @@ async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
       console.warn(`[封面图] 文章 ${ctx.articleId} coverBase64 无法解码，仍尝试写入任务`);
     }
     if (!ctx.article.coverBase64?.trim() || !isValidStoredCoverBase64(ctx.article.coverBase64)) {
-      await ctx.db
-        .update(geoArticles)
-        .set({ coverBase64: effectiveCoverBase64 })
-        .where(eq(geoArticles.id, ctx.articleId));
+      try {
+        await ctx.db
+          .update(geoArticles)
+          .set({ coverBase64: effectiveCoverBase64 })
+          .where(eq(geoArticles.id, ctx.articleId));
+      } catch (err) {
+        logReviewEnqueueError("persist article coverBase64", logCtx, err);
+        throw err;
+      }
     }
   }
 
   const coverImageUrl = buildPublishCoverImageUrl(effectiveCoverBase64, ctx.article.coverImageUrl);
-  const apiKey = await ensureUserExtensionApiKey(ctx.userId);
-  const inserted = await ctx.db
-    .insert(publishTasks)
-    .values({
-      projectId: ctx.projectId,
-      projectName: ctx.project.enterpriseName,
-      articleId: ctx.articleId,
-      platform: ctx.platform,
-      status: "pending_agent",
-      platformAccountId: ctx.boundAccount.id,
-      expectedAccountName: ctx.boundAccount.accountName,
-      accountVerificationStatus: "matched",
-      articleTitle: ctx.article.title,
-      articleContent: ctx.article.markdownContent ?? "",
-      coverImageUrl: coverImageUrl ?? undefined,
-      apiKey,
-      localAgentId: ctx.boundAccount.localAgentId,
-      localProfileId: ctx.boundAccount.localProfileId,
-    })
-    .$returningId();
-  if (!coverImageUrl) {
-    console.warn(`[封面图] 任务 ${inserted[0]?.id ?? "?"} 暂无封面，将仅发布正文`);
+
+  let apiKey: string;
+  try {
+    apiKey = await ensureUserExtensionApiKey(ctx.userId);
+  } catch (err) {
+    logReviewEnqueueError("ensureUserExtensionApiKey", logCtx, err);
+    throw err;
   }
-  const taskId = inserted[0]?.id ?? 0;
-  if (taskId > 0) {
+
+  const articleTitle = String(ctx.article.title ?? "").trim();
+  const articleContent = String(ctx.article.markdownContent ?? "");
+  if (!articleTitle) {
+    throw new Error(`文章 ${ctx.articleId} 标题为空，无法创建发布任务`);
+  }
+
+  let inserted: Array<{ id: number }>;
+  try {
+    inserted = await ctx.db
+      .insert(publishTasks)
+      .values({
+        projectId: ctx.projectId,
+        projectName: ctx.project.enterpriseName,
+        articleId: ctx.articleId,
+        platform: ctx.platform,
+        status: "pending_agent",
+        platformAccountId: ctx.boundAccount.id,
+        expectedAccountName: ctx.boundAccount.accountName,
+        accountVerificationStatus: "matched",
+        articleTitle,
+        articleContent,
+        coverImageUrl: coverImageUrl ?? undefined,
+        apiKey,
+        localAgentId: ctx.boundAccount.localAgentId,
+        localProfileId: ctx.boundAccount.localProfileId,
+      })
+      .$returningId();
+  } catch (err) {
+    logReviewEnqueueError("insert publish_tasks", logCtx, err);
+    throw err;
+  }
+
+  let taskId = inserted[0]?.id ?? 0;
+  if (taskId <= 0) {
+    const latestRows = await ctx.db
+      .select({ id: publishTasks.id })
+      .from(publishTasks)
+      .where(
+        and(
+          eq(publishTasks.articleId, ctx.articleId),
+          eq(publishTasks.platform, ctx.platform),
+          eq(publishTasks.platformAccountId, ctx.boundAccount.id),
+        ),
+      )
+      .orderBy(desc(publishTasks.createdAt))
+      .limit(1);
+    taskId = latestRows[0]?.id ?? 0;
+    if (taskId <= 0) {
+      throwReviewEnqueueInternal("insert publish_tasks returned no id", logCtx);
+    }
+    console.warn("[reviewAndEnqueueArticle] insert publish_tasks used fallback task id lookup", {
+      ...logCtx,
+      taskId,
+    });
+  }
+
+  if (!coverImageUrl) {
+    console.warn(`[封面图] 任务 ${taskId} 暂无封面，将仅发布正文`);
+  }
+
+  try {
     await appendArticleLifecycleEvent(ctx.db, ctx.articleId, {
       status: "pending_publish",
       source: "publish_task_create",
@@ -341,7 +437,11 @@ async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
       platform: ctx.platform,
       publishTaskStatus: "pending_agent",
     });
+  } catch (err) {
+    logReviewEnqueueError("appendArticleLifecycleEvent", { ...logCtx, taskId }, err);
+    throw err;
   }
+
   return {
     taskId,
     coverImageUrl: coverImageUrl ?? null,
@@ -505,125 +605,147 @@ export const publishTasksRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const db = await requireDbConn();
-      const ownerUserId = getCurrentUserId(ctx);
-      await requireProjectAccessConn(db, ownerUserId, input.projectId);
-
-      const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
-      const article = articleRows[0];
-      if (!article || article.projectId !== input.projectId) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
-      }
+      const logCtx = {
+        projectId: input.projectId,
+        articleId: input.articleId,
+        platform: input.platform,
+        platformAccountId: input.platformAccountId ?? null,
+        userId: ctx.user?.id ?? null,
+      };
 
       try {
-        await assertPublishReadinessForCreate(db, {
-          projectId: input.projectId,
-          article,
-          platform: input.platform,
+        const db = await requireDbConn();
+        const ownerUserId = getCurrentUserId(ctx);
+        await requireProjectAccessConn(db, ownerUserId, input.projectId);
+
+        const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
+        const article = articleRows[0];
+        if (!article || article.projectId !== input.projectId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "未找到属于当前项目的内容" });
+        }
+
+        try {
+          await assertPublishReadinessForCreate(db, {
+            projectId: input.projectId,
+            article,
+            platform: input.platform,
+          });
+        } catch (err) {
+          if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
+          logReviewEnqueueError("assertPublishReadinessForCreate", logCtx, err);
+          throw err;
+        }
+
+        const articlePlatform = getArticlePublishPlatform({
+          generationBasis: article.generationBasis ?? null,
         });
+        if (!articlePlatform.recognized || !articlePlatform.publishQueueSlug) {
+          throwReviewEnqueueBadRequest("内容平台缺失：请重新生成该平台内容");
+        }
+        if (articlePlatform.publishQueueSlug !== input.platform) {
+          throwReviewEnqueueBadRequest("内容平台缺失：请重新生成该平台内容");
+        }
+
+        if (!isBindingPublishPlatform(input.platform)) {
+          throwReviewEnqueueBadRequest("该平台请先在企业档案绑定本地发布账号后，通过本地客户端发布");
+        }
+
+        let boundAccount;
+        try {
+          boundAccount = await resolvePublishPlatformAccount(db, {
+            projectId: input.projectId,
+            platform: input.platform,
+            platformAccountId: input.platformAccountId ?? null,
+          });
+        } catch (err) {
+          if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
+          logReviewEnqueueError("resolvePublishPlatformAccount", logCtx, err);
+          throw err;
+        }
+
+        if (!boundAccount.localAgentId?.trim() || !boundAccount.localProfileId?.trim()) {
+          throwReviewEnqueueBadRequest(publishBlockedNoLocalProfileMessage(input.platform));
+        }
+
+        if (boundAccount.sessionStatus !== "active") {
+          throwReviewEnqueueBadRequest(publishBlockedSessionExpiredMessage(input.platform));
+        }
+
+        try {
+          await assertPrePublishChecklistForCreate(db, {
+            projectId: input.projectId,
+            article,
+            platform: input.platform,
+            boundAccount,
+          });
+        } catch (err) {
+          if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
+          logReviewEnqueueError("assertPrePublishChecklistForCreate", logCtx, err);
+          throw err;
+        }
+
+        try {
+          await assertNoDuplicatePublishQueueTask(db, {
+            articleId: input.articleId,
+            platform: input.platform,
+            platformAccountId: boundAccount.id,
+          });
+        } catch (err) {
+          if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
+          logReviewEnqueueError("assertNoDuplicatePublishQueueTask", logCtx, err);
+          throw err;
+        }
+
+        const project = await requireProjectAccessConn(db, ownerUserId, input.projectId);
+
+        let created;
+        try {
+          created = await insertPublishTaskRecord({
+            db,
+            userId: ctx.user!.id,
+            projectId: input.projectId,
+            articleId: input.articleId,
+            article,
+            platform: input.platform,
+            boundAccount,
+            project,
+          });
+        } catch (err) {
+          if (err instanceof TRPCError) throw err;
+          throwReviewEnqueueInternal("create publish task", logCtx, err);
+        }
+
+        if (created.taskId <= 0) {
+          throwReviewEnqueueInternal("create publish task returned empty taskId", {
+            ...logCtx,
+            taskId: created.taskId,
+          });
+        }
+
+        try {
+          await db
+            .update(geoArticles)
+            .set({ contentReviewStatus: "已审核可发布" })
+            .where(eq(geoArticles.id, input.articleId));
+        } catch (err) {
+          throwReviewEnqueueInternal(
+            "update contentReviewStatus after publish task created",
+            { ...logCtx, taskId: created.taskId },
+            err,
+          );
+        }
+
+        return {
+          publishTaskId: created.taskId,
+          status: "pending_agent" as const,
+          message: REVIEW_ENQUEUE_SUCCESS_MESSAGE,
+          platformAccountId: created.platformAccountId,
+          publishMode: created.publishMode,
+        } as const;
       } catch (err) {
-        if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
-        throw err;
+        if (err instanceof TRPCError) throw err;
+        throwReviewEnqueueInternal("unexpected", logCtx, err);
       }
-
-      const articlePlatform = getArticlePublishPlatform({
-        generationBasis: article.generationBasis ?? null,
-      });
-      if (!articlePlatform.recognized || !articlePlatform.publishQueueSlug) {
-        throwReviewEnqueueBadRequest("内容平台缺失：请重新生成该平台内容");
-      }
-      if (articlePlatform.publishQueueSlug !== input.platform) {
-        throwReviewEnqueueBadRequest("内容平台缺失：请重新生成该平台内容");
-      }
-
-      if (!isBindingPublishPlatform(input.platform)) {
-        throwReviewEnqueueBadRequest("该平台请先在企业档案绑定本地发布账号后，通过本地客户端发布");
-      }
-
-      let boundAccount;
-      try {
-        boundAccount = await resolvePublishPlatformAccount(db, {
-          projectId: input.projectId,
-          platform: input.platform,
-          platformAccountId: input.platformAccountId ?? null,
-        });
-      } catch (err) {
-        if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
-        throw err;
-      }
-
-      if (!boundAccount.localAgentId?.trim() || !boundAccount.localProfileId?.trim()) {
-        throwReviewEnqueueBadRequest(publishBlockedNoLocalProfileMessage(input.platform));
-      }
-
-      if (boundAccount.sessionStatus !== "active") {
-        throwReviewEnqueueBadRequest(publishBlockedSessionExpiredMessage(input.platform));
-      }
-
-      try {
-        await assertPrePublishChecklistForCreate(db, {
-          projectId: input.projectId,
-          article,
-          platform: input.platform,
-          boundAccount,
-        });
-      } catch (err) {
-        if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
-        throw err;
-      }
-
-      try {
-        await assertNoDuplicatePublishQueueTask(db, {
-          articleId: input.articleId,
-          platform: input.platform,
-          platformAccountId: boundAccount.id,
-        });
-      } catch (err) {
-        if (err instanceof TRPCError) throwReviewEnqueueBadRequest(err.message);
-        throw err;
-      }
-
-      const project = await requireProjectAccessConn(db, ownerUserId, input.projectId);
-
-      let created;
-      try {
-        created = await insertPublishTaskRecord({
-          db,
-          userId: ctx.user!.id,
-          projectId: input.projectId,
-          articleId: input.articleId,
-          article,
-          platform: input.platform,
-          boundAccount,
-          project,
-        });
-      } catch (err) {
-        console.error("[reviewAndEnqueueArticle] create publish task failed", err);
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: mapReviewEnqueueCustomerMessage("服务端异常"),
-        });
-      }
-
-      if (created.taskId <= 0) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: mapReviewEnqueueCustomerMessage("服务端异常"),
-        });
-      }
-
-      await db
-        .update(geoArticles)
-        .set({ contentReviewStatus: "已审核可发布" })
-        .where(eq(geoArticles.id, input.articleId));
-
-      return {
-        publishTaskId: created.taskId,
-        status: "pending_agent" as const,
-        message: REVIEW_ENQUEUE_SUCCESS_MESSAGE,
-        platformAccountId: created.platformAccountId,
-        publishMode: created.publishMode,
-      } as const;
     }),
 
   verifyPublishTask: publicProcedure
