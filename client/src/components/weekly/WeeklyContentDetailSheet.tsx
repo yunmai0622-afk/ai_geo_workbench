@@ -19,15 +19,19 @@ import {
 } from "@shared/weeklyPublishableDisplay";
 import { contentReviewStatusBadgeClass } from "@shared/contentReviewStatus";
 import { cn } from "@/lib/utils";
+import { useRef } from "react";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   model: WeeklyArticleCardModel | null;
   disabled?: boolean;
+  coverGenerating?: boolean;
   onSave: () => void;
   onMarkReviewed: () => void;
   onEnqueuePublish: () => void;
+  onGenerateCover?: () => void;
+  onUploadCover?: (file: File) => void;
   onGoPublishingPage?: () => void;
 };
 
@@ -48,11 +52,16 @@ export function WeeklyContentDetailSheet({
   onOpenChange,
   model,
   disabled,
+  coverGenerating,
   onSave,
   onMarkReviewed,
   onEnqueuePublish,
+  onGenerateCover,
+  onUploadCover,
   onGoPublishingPage,
 }: Props) {
+  const coverUploadInputRef = useRef<HTMLInputElement>(null);
+
   if (!model) return null;
 
   const body = articleBodyPreview(model.article);
@@ -73,6 +82,7 @@ export function WeeklyContentDetailSheet({
     buttonKind === "blocked_qc" ||
     buttonKind === "queued" ||
     buttonKind === "published";
+  const coverMissing = !model.coverThumbnailSrc;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -100,7 +110,48 @@ export function WeeklyContentDetailSheet({
           ) : (
             <div data-testid="weekly-detail-cover">
               <p className="text-xs font-medium text-gray-500">封面</p>
-              <p className="mt-1 text-sm text-gray-600">未配置封面</p>
+              <p className="mt-1 text-sm text-gray-600">未配置封面，生成或上传后可加入发布队列。</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {onGenerateCover ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={geoP0Brand.primary}
+                    disabled={disabled || coverGenerating}
+                    data-testid="weekly-detail-generate-cover"
+                    onClick={onGenerateCover}
+                  >
+                    {coverGenerating ? "正在生成封面…" : "生成封面图"}
+                  </Button>
+                ) : null}
+                {onUploadCover ? (
+                  <>
+                    <input
+                      ref={coverUploadInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      data-testid="weekly-detail-cover-upload-input"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) onUploadCover(file);
+                        e.target.value = "";
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className={geoP0Brand.primaryOutline}
+                      disabled={disabled || coverGenerating}
+                      data-testid="weekly-detail-upload-cover"
+                      onClick={() => coverUploadInputRef.current?.click()}
+                    >
+                      上传封面图
+                    </Button>
+                  </>
+                ) : null}
+              </div>
             </div>
           )}
 

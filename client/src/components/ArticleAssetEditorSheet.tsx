@@ -610,14 +610,17 @@ export function ArticleAssetEditorSheet({
               className="border-gray-200 text-gray-700"
               disabled={coverGenerating}
               onClick={() => void regenerateCover()}
+              data-testid="article-asset-generate-cover-button"
             >
               {coverGenerating ? (
                 <>
                   <Spinner className="mr-2 size-4" />
                   正在生成封面…
                 </>
-              ) : (
+              ) : coverBase64Draft || coverPreview ? (
                 "重新生成封面"
+              ) : (
+                "生成封面图"
               )}
             </Button>
           </div>

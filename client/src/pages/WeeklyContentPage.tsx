@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
+import { encodeStoredCoverBase64, type StoredCoverMime } from "@shared/articleCoverBase64";
 import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
 import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchGenerationPanel";
 import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
@@ -328,6 +329,7 @@ type ArticleRow = {
   publishedAt?: Date | string | null;
   lastPublishRecordAt?: Date | string | null;
   generationBasis?: Record<string, unknown> | null;
+  thirdPartyMaterials?: Record<string, string> | null;
   contentTags?: string[] | null;
   lifecycle?: ReturnType<typeof resolveArticleLifecycleView>;
   postPublish?: {
@@ -1422,6 +1424,9 @@ export default function WeeklyContentPage() {
             ? tasksById.get(topic.optimizationTaskId)
             : undefined;
         const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
+        const taskRecommendedPlatform = card?.recommendedPlatform?.length
+          ? card.recommendedPlatform.join("、")
+          : null;
         const q = scoresByArticleId.get(a.id);
         const preflight =
           selectedProjectId != null
@@ -1440,6 +1445,8 @@ export default function WeeklyContentPage() {
           generationBasis: a.generationBasis ?? null,
           targetPlatform: a.targetPlatform,
           publishPlatform: a.publishPlatform,
+          taskRecommendedPlatform,
+          thirdPartyMaterials: a.thirdPartyMaterials ?? null,
         });
         const publishBlockHint = preflight?.ready
           ? null
@@ -2316,9 +2323,61 @@ export default function WeeklyContentPage() {
         coverImageUrl: null,
       });
       await invalidateArticles();
-      toast.success("封面已重新生成");
+      toast.success("封面已生成并保存");
     } catch (err) {
       toast.error(toUserFacingErrorFromUnknown(err, "封面生成失败，可重试"));
+    } finally {
+      setRegeneratingCoverIds(prev => {
+        const next = new Set(prev);
+        next.delete(article.id);
+        return next;
+      });
+    }
+  };
+
+  const handleUploadCover = async (article: ArticleRow, file: File) => {
+    if (!selectedProjectId) return;
+    const title = (article.title ?? "").trim();
+    const content = (article.markdownContent ?? "").trim();
+    if (!title || !content) {
+      toast.error("请先通过「编辑内容」填写标题与正文");
+      return;
+    }
+    const mime: StoredCoverMime =
+      file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/webp"
+        ? (file.type as StoredCoverMime)
+        : "image/png";
+    setRegeneratingCoverIds(prev => new Set(prev).add(article.id));
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          if (typeof result !== "string") {
+            reject(new Error("无法读取封面文件"));
+            return;
+          }
+          const comma = result.indexOf(",");
+          resolve(comma >= 0 ? result.slice(comma + 1) : result);
+        };
+        reader.onerror = () => reject(new Error("无法读取封面文件"));
+        reader.readAsDataURL(file);
+      });
+      const coverBase64 = encodeStoredCoverBase64({ mime, base64 });
+      const template = normalizeArticleCoverTemplateId(article.coverTemplate);
+      await updateGeneratedArticle.mutateAsync({
+        projectId: selectedProjectId,
+        articleId: article.id,
+        title,
+        content,
+        coverTemplate: template,
+        coverBase64,
+        coverImageUrl: null,
+      });
+      await invalidateArticles();
+      toast.success("封面已上传并保存");
+    } catch (err) {
+      toast.error(toUserFacingErrorFromUnknown(err, "封面上传失败，可重试"));
     } finally {
       setRegeneratingCoverIds(prev => {
         const next = new Set(prev);
@@ -3198,6 +3257,7 @@ export default function WeeklyContentPage() {
         onOpenChange={setDetailOpen}
         model={detailModel}
         disabled={anyGenerating || batchEnqueueBusy}
+        coverGenerating={detailModel ? regeneratingCoverIds.has(detailModel.id) : false}
         onSave={() => {
           if (!detailModel) return;
           const article = articlesById.get(detailModel.id);
@@ -3212,6 +3272,16 @@ export default function WeeklyContentPage() {
           if (!detailModel) return;
           const article = articlesById.get(detailModel.id);
           if (article) requestEnqueuePublish(article);
+        }}
+        onGenerateCover={() => {
+          if (!detailModel) return;
+          const article = articlesById.get(detailModel.id);
+          if (article) void handleRegenerateCover(article);
+        }}
+        onUploadCover={file => {
+          if (!detailModel) return;
+          const article = articlesById.get(detailModel.id);
+          if (article) void handleUploadCover(article, file);
         }}
         onGoPublishingPage={() =>
           selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))

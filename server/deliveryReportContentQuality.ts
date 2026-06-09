@@ -63,6 +63,7 @@ export async function buildProjectDeliveryReportContentQuality(db: Db, projectId
       generationBasis: article.generationBasis ?? null,
       taskRecommendedPlatform: taskRecommendedPlatform || null,
       articleType: article.articleType,
+      thirdPartyMaterials: article.thirdPartyMaterials ?? null,
     });
     return {
       id: article.id,

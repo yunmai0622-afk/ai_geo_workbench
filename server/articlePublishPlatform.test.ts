@@ -68,4 +68,37 @@ describe("articlePublishPlatform", () => {
     expect(resolved.supportedByLocalAgent).toBe(true);
     expect(resolved.queueBlockedReason).toBeNull();
   });
+
+  it("prefers 搜狐号 over 公众号 when task card lists both", () => {
+    const resolved = normalizePublishPlatform("公众号、搜狐号");
+    expect(resolved.slug).toBe("sohu");
+    expect(resolved.label).toBe("搜狐号");
+  });
+
+  it("infers sohu from thirdPartyMaterials when task recommends 公众号", () => {
+    const fields = resolveArticleListPublishFields({
+      taskRecommendedPlatform: "公众号",
+      thirdPartyMaterials: {
+        "搜狐号版": "【标题】测试\n【正文】这是一篇搜狐号定向稿件，包含足够长度的正文内容用于识别平台。",
+      },
+    });
+    expect(fields.publishPlatform).toBe("sohu");
+    expect(fields.targetPlatform).toBe("搜狐号");
+  });
+
+  it("getArticlePublishPlatform prefers generation basis over misleading task platform", () => {
+    const strategy = buildDefaultPlatformStrategy({
+      targetPublishPlatform: "sohu",
+      targetQuestion: "行业问题",
+    });
+    const resolved = getArticlePublishPlatform({
+      generationBasis: {
+        platformContentStrategy: buildPlatformContentStrategyMeta(strategy) as unknown as Record<string, unknown>,
+      },
+      taskRecommendedPlatform: "公众号",
+      targetPlatform: "公众号",
+    });
+    expect(resolved.slug).toBe("sohu");
+    expect(resolved.label).toBe("搜狐号");
+  });
 });

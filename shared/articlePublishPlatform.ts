@@ -46,7 +46,20 @@ export type ArticlePublishPlatformSource = {
   taskRecommendedPlatform?: string | null;
   generationBasis?: Record<string, unknown> | null;
   lifecycle?: { platform?: string | null } | null;
+  thirdPartyMaterials?: Record<string, string> | null;
 };
+
+/** 按发布平台优先级匹配展示名 / 素材键（搜狐等须在「公众号」子串匹配之前） */
+const PLATFORM_LABEL_MATCH_ORDER: PublishPlatformId[] = [
+  "sohu",
+  "netease",
+  "toutiao",
+  "baijiahao",
+  "zhihu",
+  "xiaohongshu",
+  "wechat",
+  "other",
+];
 
 const LOCAL_AGENT_AUTO_PUBLISH_PLATFORMS = new Set<BindingPublishPlatform>([
   "zhihu",
@@ -73,6 +86,31 @@ function labelForSlug(slug: ArticlePublishPlatformSlug): string {
   return slug;
 }
 
+function matchPlatformIdFromLabels(raw: string): PublishPlatformId | null {
+  for (const id of PLATFORM_LABEL_MATCH_ORDER) {
+    const rule = PLATFORM_CONTENT_RULES[id];
+    if (raw.includes(rule.label) || raw === rule.materialKey) {
+      return id;
+    }
+  }
+  return null;
+}
+
+function inferPlatformFromThirdPartyMaterials(
+  materials?: Record<string, string> | null,
+): PublishPlatformId | null {
+  if (!materials) return null;
+  for (const id of PLATFORM_LABEL_MATCH_ORDER) {
+    const key = getPlatformRule(id).materialKey;
+    const text = materials[key]?.trim();
+    if (text && text.length > 20) return id;
+  }
+  if (materials["百家号/头条号版"]?.trim()) {
+    return "baijiahao";
+  }
+  return null;
+}
+
 /** 将任意平台文本规范为统一 slug + 展示名 */
 export function normalizePublishPlatform(input: string | null | undefined): ResolvedArticlePublishPlatform {
   const raw = (input ?? "").trim();
@@ -91,17 +129,20 @@ export function normalizePublishPlatform(input: string | null | undefined): Reso
 
   const lower = raw.toLowerCase();
 
+  if (isPublishPlatformId(lower)) {
+    return finalizeResolved(lower);
+  }
+
+  const fromLabels = matchPlatformIdFromLabels(raw);
+  if (fromLabels) {
+    return finalizeResolved(fromLabels);
+  }
+
   if (lower.includes("小红书") || lower.includes("xiaohongshu") || lower === "redbook") {
     return finalizeResolved("xiaohongshu");
   }
-  if (lower.includes("公众号") || lower.includes("微信") || lower === "wechat") {
-    return finalizeResolved("wechat");
-  }
   if (lower === "other" || lower.includes("其他平台")) {
     return finalizeResolved("other");
-  }
-  if (isPublishPlatformId(lower)) {
-    return finalizeResolved(lower);
   }
   if (lower.includes("知乎") || lower === "zhihu") {
     return finalizeResolved("zhihu");
@@ -118,12 +159,8 @@ export function normalizePublishPlatform(input: string | null | undefined): Reso
   if (lower.includes("百家") || lower === "baijiahao") {
     return finalizeResolved("baijiahao");
   }
-
-  for (const id of Object.keys(PLATFORM_CONTENT_RULES) as PublishPlatformId[]) {
-    const rule = PLATFORM_CONTENT_RULES[id];
-    if (raw.includes(rule.label) || raw === rule.materialKey) {
-      return finalizeResolved(id);
-    }
+  if (lower.includes("公众号") || lower.includes("微信") || lower === "wechat") {
+    return finalizeResolved("wechat");
   }
 
   return {
@@ -215,9 +252,11 @@ function readPlatformFromGenerationBasis(basis?: Record<string, unknown> | null)
 
 /** 按优先级从文章记录解析发布平台 */
 export function getArticlePublishPlatform(article: ArticlePublishPlatformSource): ResolvedArticlePublishPlatform {
+  const fromMaterials = inferPlatformFromThirdPartyMaterials(article.thirdPartyMaterials);
   const candidates: Array<string | null | undefined> = [
     readPlatformFromGenerationBasis(article.generationBasis),
     article.publishPlatform,
+    fromMaterials,
     article.targetPlatform,
     article.taskRecommendedPlatform,
     typeof article.lifecycle?.platform === "string" ? article.lifecycle.platform : null,
@@ -246,9 +285,13 @@ export function resolveArticleListPublishFields(input: {
   generationBasis?: Record<string, unknown> | null;
   taskRecommendedPlatform?: string | null;
   articleType?: string | null;
+  thirdPartyMaterials?: Record<string, string> | null;
 }): { targetPlatform: string | null; publishPlatform: PublishPlatformId | null } {
-  const fromBasis = readPlatformFromGenerationBasis(input.generationBasis);
-  const resolved = normalizePublishPlatform(fromBasis ?? input.taskRecommendedPlatform ?? input.articleType);
+  const resolved = getArticlePublishPlatform({
+    generationBasis: input.generationBasis,
+    taskRecommendedPlatform: input.taskRecommendedPlatform,
+    thirdPartyMaterials: input.thirdPartyMaterials,
+  });
   const publishPlatform = isPublishPlatformId(resolved.slug) ? resolved.slug : null;
   return {
     targetPlatform: resolved.recognized ? resolved.label : input.taskRecommendedPlatform?.trim() || null,

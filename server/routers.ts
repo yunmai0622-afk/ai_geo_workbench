@@ -2876,6 +2876,7 @@ const geoRouter = router({
           generationBasis: article.generationBasis ?? null,
           taskRecommendedPlatform: taskRecommendedPlatform || null,
           articleType: article.articleType,
+          thirdPartyMaterials: article.thirdPartyMaterials ?? null,
         });
         const contentType = (card?.contentType && card.contentType.trim()) || article.articleType;
         const lifecycle = resolveArticleLifecycleView(article);
