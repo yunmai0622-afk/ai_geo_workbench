@@ -35,9 +35,28 @@ import {
 } from "@shared/workspaceDashboardOverview";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
 import type { WorkspaceTodayTask, WorkspaceTodayTaskStatus } from "@shared/workspaceTodayTasks";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BadgeCheck,
+  Bot,
+  Globe,
+  MessageCircleQuestion,
+  RefreshCw,
+  ShieldCheck,
+  Target,
+} from "lucide-react";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useLocation } from "wouter";
+
+const MATURITY_DIMENSION_ICONS: Record<string, typeof BadgeCheck> = {
+  brandIdentity: BadgeCheck,
+  categoryPositioning: Target,
+  questionCoverage: MessageCircleQuestion,
+  sourceGraph: Globe,
+  trustEvidence: ShieldCheck,
+  aiTestPerformance: Bot,
+};
 
 export default function EnterpriseWorkspacePage() {
   const [, setLocation] = useLocation();
@@ -58,6 +77,15 @@ export default function EnterpriseWorkspacePage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
+  const maturityReportQuery = trpc.geo.maturity.getMaturityReport.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const calculateMaturityMutation = trpc.geo.maturity.calculateAndSave.useMutation({
+    onSuccess: () => {
+      void maturityReportQuery.refetch();
+    },
+  });
 
   useEffect(() => {
     const enterpriseName = selectedProject?.enterpriseName?.trim() || "企业";
@@ -171,6 +199,76 @@ export default function EnterpriseWorkspacePage() {
         </div>
       ) : stage && metrics && selectedProjectId ? (
         <>
+          <section
+            className="geo-card border-2 border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-white p-5"
+            data-testid="workspace-maturity-hero"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[12px] font-medium text-blue-600">AI 品牌成熟度</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums text-blue-700">
+                  {maturityReportQuery.isLoading || calculateMaturityMutation.isPending
+                    ? "计算中…"
+                    : maturityReportQuery.data
+                      ? `${maturityReportQuery.data.totalScore} 分`
+                      : "暂无评分"}
+                </p>
+                {maturityReportQuery.data ? (
+                  <>
+                    <p className="mt-2 text-sm font-semibold text-gray-900">
+                      阶段：{maturityReportQuery.data.stage}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600">{maturityReportQuery.data.stageDesc}</p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">点击「重新计算」生成 AI 品牌成熟度评分</p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-lg"
+                  data-testid="workspace-maturity-view-report"
+                  onClick={() => setLocation(buildProjectUrl("/maturity-report", selectedProjectId))}
+                >
+                  查看完整成熟度报告
+                  <ArrowRight className="ml-1.5 size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg"
+                  disabled={calculateMaturityMutation.isPending}
+                  data-testid="workspace-maturity-recalculate"
+                  onClick={() => calculateMaturityMutation.mutate({ projectId: selectedProjectId })}
+                >
+                  <RefreshCw className="mr-1.5 size-3.5" />
+                  重新计算
+                </Button>
+              </div>
+            </div>
+            {maturityReportQuery.data ? (
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                {maturityReportQuery.data.dimensions.map(dimension => {
+                  const Icon = MATURITY_DIMENSION_ICONS[dimension.key] ?? BadgeCheck;
+                  return (
+                    <div
+                      key={dimension.key}
+                      className="flex flex-col items-center rounded-xl border border-gray-100 bg-white p-3 text-center"
+                      data-testid={`workspace-maturity-dimension-${dimension.key}`}
+                    >
+                      <Icon className="size-5 text-blue-500" aria-hidden />
+                      <p className="mt-2 text-[10px] font-medium text-gray-500">{dimension.label}</p>
+                      <p className="mt-0.5 text-sm font-bold tabular-nums text-gray-900">{dimension.score}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
+
           <section className="geo-card p-4" data-testid="workspace-priority-todos">
             <h2 className="text-sm font-semibold text-gray-900">本周待办 / 今日动作</h2>
             {todayTasks.length === 0 ? (

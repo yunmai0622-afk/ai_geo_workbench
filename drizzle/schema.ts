@@ -276,6 +276,29 @@ export const geoScores = mysqlTable("geo_scores", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** GEO V2.0：AI 品牌成熟度 6 维评分（每项目保留最新一条） */
+export const geoMaturityScores = mysqlTable(
+  "geo_maturity_scores",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    totalScore: int("totalScore").notNull(),
+    brandIdentityScore: int("brandIdentityScore"),
+    categoryPositioningScore: int("categoryPositioningScore"),
+    questionCoverageScore: int("questionCoverageScore"),
+    sourceGraphScore: int("sourceGraphScore"),
+    trustEvidenceScore: int("trustEvidenceScore"),
+    aiTestPerformanceScore: int("aiTestPerformanceScore"),
+    calculationDetail: json("calculationDetail").$type<Record<string, unknown>>(),
+    calculatedAt: timestamp("calculatedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    projectUnique: uniqueIndex("geo_maturity_scores_project_unique").on(table.projectId),
+  }),
+);
+
 export const optimizationTasks = mysqlTable("optimization_tasks", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
@@ -1012,6 +1035,8 @@ export type AnalysisResult = typeof analysisResults.$inferSelect;
 export type InsertAnalysisResult = typeof analysisResults.$inferInsert;
 export type GeoScore = typeof geoScores.$inferSelect;
 export type InsertGeoScore = typeof geoScores.$inferInsert;
+export type GeoMaturityScore = typeof geoMaturityScores.$inferSelect;
+export type InsertGeoMaturityScore = typeof geoMaturityScores.$inferInsert;
 export type OptimizationTask = typeof optimizationTasks.$inferSelect;
 export type InsertOptimizationTask = typeof optimizationTasks.$inferInsert;
 export type QuestionTemplate = typeof questionTemplates.$inferSelect;

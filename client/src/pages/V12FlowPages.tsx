@@ -911,6 +911,10 @@ export function AiDiagnosisFlowPage() {
     { enabled: enabled && Boolean(selectedProjectId) },
   );
   const scoreQuery = trpc.geo.scores.latest.useQuery(projectInput, { enabled });
+  const maturityReportQuery = trpc.geo.maturity.getMaturityReport.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const tasksQuery = trpc.geo.tasks.list.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
@@ -1208,6 +1212,9 @@ export function AiDiagnosisFlowPage() {
   }, [gapCardsPreview, headline]);
   const scoreDisplay =
     scoreQuery.data && typeof scoreQuery.data.totalScore === "number" ? `${scoreQuery.data.totalScore} 分` : "暂无数据";
+  const maturityDisplay = maturityReportQuery.data
+    ? `${maturityReportQuery.data.totalScore} 分（${maturityReportQuery.data.stage}）`
+    : "暂无数据";
   const stepActiveIndex = complete ? 3 : analyses.length > 0 ? 2 : targetQuestions.length > 0 ? 1 : hasProfile ? 0 : 0;
   const diagnoseBtnLabel = running
     ? "正在运行 AI 实测诊断"
@@ -1550,7 +1557,16 @@ export function AiDiagnosisFlowPage() {
               诊断流程产出
             </span>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-indigo-100 bg-white p-3 text-center sm:p-4">
+              <p className="text-[11px] text-gray-500">AI 品牌成熟度</p>
+              <p
+                className="mt-1 text-lg font-bold tabular-nums text-indigo-700 sm:text-xl"
+                data-testid="ai-diagnosis-core-maturity-score"
+              >
+                {maturityDisplay}
+              </p>
+            </div>
             <div className="rounded-xl border border-blue-100 bg-white p-3 text-center sm:p-4">
               <p className="text-[11px] text-gray-500">GEO 分</p>
               <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600" data-testid="ai-diagnosis-core-geo-score">

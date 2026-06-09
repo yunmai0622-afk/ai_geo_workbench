@@ -49,6 +49,7 @@ import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
 import { brandSourceGraphRouter } from "./brandSourceGraphRouter";
 import { trustEvidenceRouter } from "./trustEvidenceRouter";
+import { geoMaturityRouter } from "./geoMaturityRouter";
 import { feedbackLoopRouter } from "./feedbackLoopRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
@@ -4727,6 +4728,8 @@ ${article.markdownContent}`,
   brandSourceGraph: brandSourceGraphRouter,
 
   trustEvidence: trustEvidenceRouter,
+
+  maturity: geoMaturityRouter,
 
   feedbackLoop: feedbackLoopRouter,
 
