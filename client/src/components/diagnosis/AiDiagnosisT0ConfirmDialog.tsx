@@ -30,20 +30,37 @@ export function AiDiagnosisT0ConfirmDialog({ open, copy, pending, onOpenChange, 
             <div className="space-y-3 text-sm text-gray-600">
               <p data-testid="ai-diagnosis-t0-confirm-intro">{copy.intro}</p>
               <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-800">
-                <p className="font-medium text-gray-900">检测范围：</p>
+                <p className="font-medium text-gray-900">本次将检测：</p>
                 <ul className="mt-2 list-inside list-disc space-y-1">
-                  <li data-testid="ai-diagnosis-t0-confirm-question-count">启用问题：{copy.questionCount} 个</li>
-                  <li data-testid="ai-diagnosis-t0-confirm-platform-count">检测平台：{copy.platformCount} 个</li>
-                  <li data-testid="ai-diagnosis-t0-confirm-estimated-minutes">
-                    {copy.estimatedMinutesLabel ?? `预计耗时：约 ${copy.estimatedMinutes} 分钟`}
+                  <li data-testid="ai-diagnosis-t0-confirm-question-count">
+                    {copy.questionCount} 个客户常问问题
+                  </li>
+                  <li data-testid="ai-diagnosis-t0-confirm-platform-count">{copy.platformCount} 个 AI 平台</li>
+                  <li data-testid="ai-diagnosis-t0-confirm-analysis-count">
+                    约 {copy.analysisCount} 次 AI 回答分析
                   </li>
                 </ul>
-                <p className="mt-2 text-xs leading-relaxed text-gray-600">{copy.footerNote}</p>
-                {copy.backgroundMode ? (
-                  <p className="mt-2 text-xs leading-relaxed text-indigo-800">
-                    可查看检测进度，或稍后刷新结果；无需一直停留在此页面等待。
+                {copy.estimatedMinutesLabel ? (
+                  <p
+                    className="mt-2 text-xs leading-relaxed text-indigo-800"
+                    data-testid="ai-diagnosis-t0-confirm-estimated-minutes"
+                  >
+                    {copy.estimatedMinutesLabel}
                   </p>
+                ) : copy.footerNote ? (
+                  <p className="mt-2 text-xs leading-relaxed text-gray-600">{copy.footerNote}</p>
                 ) : null}
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-800">
+                <p className="font-medium text-gray-900">完成后你将看到：</p>
+                <ul
+                  className="mt-2 list-inside list-disc space-y-1"
+                  data-testid="ai-diagnosis-t0-confirm-completion-outcomes"
+                >
+                  {copy.completionOutcomes.map(item => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
               </div>
             </div>
           </AlertDialogDescription>

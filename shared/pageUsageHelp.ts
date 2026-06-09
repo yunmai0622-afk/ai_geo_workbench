@@ -29,31 +29,31 @@ const WORKSPACE_STEP_STATUS_LINES = [
 
 const AI_DIAGNOSIS_SECTIONS: PageUsageHelpSection[] = [
   {
-    heading: "T0 基线检测",
+    heading: "优化前检测",
     lines: [
-      "建档完成后首次在豆包、Kimi、DeepSeek 等平台批量提问，衡量品牌被提及、被推荐的基础水平。",
-      "结果用于 GEO 评分、内容缺口建议与后续对比基线；可多次执行，以最近一次完成为准。",
+      "开始服务前，了解 AI 当前是否推荐你。",
+      "建档完成后在豆包、Kimi、DeepSeek 等平台批量提问，建立优化前基线；可多次执行，以最近一次完成为准。",
     ],
   },
   {
-    heading: "T1 复测",
+    heading: "7天后复测",
     lines: [
-      "以最近一次平台发布完成日为起点，建议第 7 天执行。",
-      "对比发布前后品牌在 AI 回答中的提及与推荐变化，验证首轮内容动作是否生效。",
+      "发布内容后观察是否被 AI 识别。",
+      "以最近一次平台发布完成日为起点，对比发布前后品牌在 AI 回答中的提及与推荐变化。",
     ],
   },
   {
-    heading: "T2 复测",
+    heading: "14天后复测",
     lines: [
-      "建议发布后第 30 天执行，观察中期收录与引用趋势。",
-      "适合判断内容是否持续被 AI 引用，而不仅是短期波动。",
+      "观察提及率和推荐率变化。",
+      "验证首轮内容动作是否持续生效，识别仍需补强的问答场景。",
     ],
   },
   {
-    heading: "T3 复测",
+    heading: "30天后复测",
     lines: [
-      "建议发布后第 90 天执行，用于季度级效果复盘。",
-      "与交付报告、有效动作记录配合，向客户说明长期 GEO 投入产出。",
+      "形成月度趋势和交付报告。",
+      "与有效动作记录配合，向客户说明 GEO 投入产出与后续优化方向。",
     ],
   },
 ];
@@ -81,7 +81,7 @@ export const PAGE_USAGE_HELP: Record<PageUsageHelpId, PageUsageHelpContent> = {
   "ai-diagnosis": {
     id: "ai-diagnosis",
     title: "AI 实测诊断使用说明",
-    intro: "本页通过真实 AI 提问检测品牌在生成式搜索中的可见度；T0 建立基线，T1/T2/T3 按发布节奏复测。",
+    intro: "本页通过真实 AI 提问检测品牌在生成式搜索中的可见度；优化前检测建立基线，发布内容后按 7/14/30 天节奏复测。",
     sections: AI_DIAGNOSIS_SECTIONS,
   },
   "content-generation": {

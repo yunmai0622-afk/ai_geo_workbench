@@ -94,6 +94,7 @@ import {
   buildAiDiagnosisRerunConfirmCopy,
   buildT0StartConfirmCopy,
   countEnabledQuestionsForT0,
+  AI_DIAGNOSIS_RETEST_STAGE_COPY,
 } from "@shared/aiDiagnosisManualT0Gate";
 import { aggregateAiPlatformPerformance } from "@shared/aiPlatformPerformance";
 
@@ -1666,6 +1667,29 @@ export function AiDiagnosisFlowPage() {
         enabled={enabled}
         canOperate={canOperate}
       />
+
+      <div
+        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        data-testid="ai-diagnosis-retest-stages"
+      >
+        <p className="text-sm font-semibold text-gray-900">检测与复测节奏</p>
+        <p className="mt-1 text-xs text-gray-500">了解各阶段目标，按节奏推进 AI 可见度优化。</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {AI_DIAGNOSIS_RETEST_STAGE_COPY.map(stage => (
+            <div
+              key={stage.tag}
+              className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+              data-testid={`ai-diagnosis-retest-stage-${stage.tag.toLowerCase()}`}
+            >
+              <span className="inline-flex rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                {stage.tag}
+              </span>
+              <p className="mt-2 text-sm font-medium text-gray-900">{stage.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-gray-600">{stage.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <TestComparisonPanel projectId={selectedProjectId ?? null} enabled={enabled} />
 
