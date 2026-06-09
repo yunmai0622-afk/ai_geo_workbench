@@ -4702,3 +4702,16 @@
 [2026-06-09T18:50:51.830Z] 2:50:51 PM [vite] (client) hmr update /src/index.css
 [2026-06-09T18:50:51.830Z] 2:50:51 PM [vite] (client) hmr update /src/index.css
 [2026-06-09T18:50:55.332Z] 2:50:55 PM [vite] (client) hmr update /src/index.css
+[2026-06-09T18:53:36.718Z] 2:53:36 PM [vite] (client) page reload index.html
+[2026-06-09T18:53:36.719Z] 2:53:36 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-09T18:53:36.719Z] 2:53:36 PM [vite] (client) hmr update /src/components/GeoIntroModal.tsx, /src/index.css
+[2026-06-09T18:53:36.720Z] 2:53:36 PM [vite] (client) hmr update /src/index.css, /src/pages/PricingPage.tsx, /src/pages/DemoGeo.tsx, /src/pages/LandingPage.tsx, /src/pages/DemoGeoBrowse.tsx, /src/components/auth/AuthMarketingPanel.tsx
+[2026-06-09T18:53:36.720Z] 2:53:36 PM [vite] (client) hmr update /src/index.css, /src/components/clients/ClientsHubTopBar.tsx
+[2026-06-09T18:53:36.721Z] 2:53:36 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-09T18:53:36.723Z] 2:53:36 PM [vite] (client) hmr update /src/pages/GeoPages.tsx, /src/index.css
+[2026-06-09T18:53:36.724Z] 2:53:36 PM [vite] (client) hmr update /src/pages/KnowledgePage.tsx, /src/index.css
+[2026-06-09T18:53:36.724Z] 2:53:36 PM [vite] (client) hmr update /src/pages/LandingPage.tsx, /src/index.css
+[2026-06-09T18:53:36.724Z] 2:53:36 PM [vite] (client) hmr update /src/pages/LegacyOnboardingPage.tsx, /src/index.css
+[2026-06-09T18:53:36.725Z] 2:53:36 PM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/index.css
+[2026-06-09T18:53:36.725Z] 2:53:36 PM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+[2026-06-09T18:53:42.064Z] 2:53:42 PM [vite] (client) hmr update /src/index.css
