@@ -80,7 +80,7 @@ export async function markAllNotificationsRead(db: DbConn, userId: number) {
 export async function emitT0CompleteNotification(db: DbConn, projectId: number, roundName: string) {
   const owner = await resolveProjectOwner(db, projectId);
   if (!owner) return;
-  const title = "T0 检测完成";
+  const title = "AI 现状检测完成";
   const gapSuggestions = await resolveT0ContentGapSuggestions(db, projectId).catch(() => null);
   const gapHint =
     gapSuggestions && gapSuggestions.items.length > 0
@@ -99,7 +99,7 @@ export async function emitT0CompleteNotification(db: DbConn, projectId: number, 
 export async function emitT1RetestCompleteNotification(db: DbConn, projectId: number, roundName: string) {
   const owner = await resolveProjectOwner(db, projectId);
   if (!owner) return;
-  await createSystemNotification(db, { userId: owner.ownerUserId, projectId, type: "t1_retest_complete", title: "T1 复测完成", content: `${owner.enterpriseName} 的 ${roundName} 已完成，可在交付报告页查看 T0/T1 对比。` });
+  await createSystemNotification(db, { userId: owner.ownerUserId, projectId, type: "t1_retest_complete", title: "7天后复测完成", content: `${owner.enterpriseName} 的 ${roundName} 已完成，可在交付报告页查看优化前与发布后对比。` });
 }
 
 export async function emitPublishSuccessNotification(db: DbConn, projectId: number, articleTitle: string, platform?: string | null) {

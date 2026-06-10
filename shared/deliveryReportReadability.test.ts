@@ -77,9 +77,9 @@ describe("deliveryReportReadability", () => {
   });
 
   it("builds insufficient data banner with reasons", () => {
-    const banner = buildInsufficientDataReason(["尚未完成发布链接回填", "尚未完成 T1 复测"]);
+    const banner = buildInsufficientDataReason(["尚未完成发布链接回填", "尚未完成 7天后复测"]);
     expect(banner).toContain("尚未完成发布链接回填");
-    expect(banner).toContain("尚未完成 T1 复测");
+    expect(banner).toContain("尚未完成 7天后复测");
   });
 
   it("does not fabricate retest completion", () => {
@@ -109,7 +109,7 @@ describe("deliveryReportReadability", () => {
       pendingCount: 0,
       label: "数据完整度：已满足交付条件",
     });
-    expect(computeDeliveryDataCompleteness(["尚未完成 T1 复测", "尚未完成发布链接回填"])).toEqual({
+    expect(computeDeliveryDataCompleteness(["尚未完成 7天后复测", "尚未完成发布链接回填"])).toEqual({
       isComplete: false,
       pendingCount: 2,
       label: "数据完整度：待补齐 2 项关键数据",

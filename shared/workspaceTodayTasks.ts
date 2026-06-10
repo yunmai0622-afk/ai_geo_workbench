@@ -109,7 +109,7 @@ export function buildWorkspaceTodayTasks(input: BuildWorkspaceTodayTasksInput): 
       title: "回填公开链接",
       count: input.waitingPublicLinkCount,
       status: input.publishRecordCount > 0 ? "ready" : "todo",
-      reason: "发布任务已完成，但尚未回填公开链接，系统无法安排 T1/T2/T3 复测。",
+      reason: "发布任务已完成，但尚未回填公开链接，系统无法安排发布后复测。",
       actionLabel: "去回填链接",
       targetPath: `${buildProjectScopedPath("/content-publishing", projectId)}&filter=waiting_links`,
     });
@@ -125,7 +125,7 @@ export function buildWorkspaceTodayTasks(input: BuildWorkspaceTodayTasksInput): 
       title: "执行收录/AI复测",
       count: Math.max(retestDueCount, input.publishRecordWithPublicUrlCount),
       status: "ready",
-      reason: "已有公开链接的内容尚未完成 T1/T2/T3 复测，需进入收录监测执行。",
+      reason: "已有公开链接的内容尚未完成发布后复测，需进入收录监测执行。",
       actionLabel: "去收录复测",
       targetPath: buildProjectScopedPath("/inclusion-monitoring", projectId),
     });

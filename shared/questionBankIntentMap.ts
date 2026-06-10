@@ -268,8 +268,8 @@ export type TestRoundSummary = {
 };
 
 export function resolveTestRoundDisplayName(round: Pick<TestRoundSummary, "roundType" | "roundName">): string {
-  if (round.roundType === "T0_BASELINE") return "T0 基线检测";
-  if (round.roundType === "T1_RETEST") return "T1 复测";
+  if (round.roundType === "T0_BASELINE") return "AI 现状检测";
+  if (round.roundType === "T1_RETEST") return "7天后复测";
   if (round.roundType === "T2_RETEST" || round.roundType === "T3_RETEST") {
     return round.roundName.trim() || "复测题组";
   }
@@ -331,13 +331,13 @@ export function resolveQuestionBankAssistantNextAction(input: {
   if (input.enabledCount === 0) return "启用 5-10 个高价值问题";
   if (!input.hasCurrentRound) return "创建本轮实测题组";
   if (input.roundStatus === "running") return "查看 AI 实测进度";
-  if (!input.hasCompletedT0Baseline) return "完成 T0 基线检测";
+  if (!input.hasCompletedT0Baseline) return "完成 AI 现状检测";
   if (input.gapCount > 0) return "围绕缺口生成内容任务";
   return "查看实测结果并规划内容";
 }
 
 export const QUESTION_BANK_ASSISTANT_SUGGESTIONS = [
-  "优先选择 5-10 个高价值问题建立 T0 基线",
+  "优先选择 5-10 个高价值问题建立优化前基线",
   "覆盖品牌认知、场景痛点、方案寻找三类问题",
   "不要一次性启用所有低价值问题",
 ] as const;

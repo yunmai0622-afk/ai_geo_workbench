@@ -52,7 +52,7 @@ export function RetestComparisonPanel({ projectId, enabled }: RetestComparisonPa
       <P0Card testId="retest-comparison-empty" className="text-sm text-gray-600">
         <p className="font-medium text-gray-900">暂无 T0/T1 对比数据</p>
         <p className="mt-2 leading-relaxed text-gray-600">
-          需先完成 T0 基线检测与 T1 复测，系统将自动生成对比结果。
+          需先完成 AI 现状检测与 7天后复测，系统将自动生成对比结果。
         </p>
       </P0Card>
     );
@@ -72,7 +72,7 @@ export function RetestComparisonPanel({ projectId, enabled }: RetestComparisonPa
   return (
     <div className="space-y-8" data-testid="retest-comparison-panel">
       <header className="space-y-1">
-        <h2 className="text-lg font-semibold text-gray-900">T0 基线 vs T1 复测</h2>
+        <h2 className="text-lg font-semibold text-gray-900">优化前基线 vs 7天后复测</h2>
         <p className="text-sm text-gray-500">
           基线：{baseRound.roundName} · 复测：{compareRound.roundName}
         </p>

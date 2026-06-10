@@ -92,7 +92,10 @@ export function ProjectNextActionPanel({
               <p className="text-[12px] leading-relaxed text-gray-600">原因：{reason}</p>
             ) : null}
             <p className="text-[12px] text-gray-500">
-              完成后进入：<span className="font-medium text-blue-700">{nextStageName}</span>
+              完成后进入
+              <span className="font-medium text-blue-700">
+                {nextStageName === "待生产" ? "内容生产" : nextStageName}
+              </span>
             </p>
             <button
               type="button"

@@ -42,7 +42,7 @@ export const GEO_UNIFIED_MAIN_PIPELINE_STEPS: readonly UnifiedMainPipelineStep[]
   },
   {
     id: "ai_search_test_t0",
-    title: "AI搜索现状实测（T0基线）",
+    title: "AI 现状检测",
     shortLabel: "实测",
     customerDescription: "在豆包、Kimi、DeepSeek 等平台发起真实提问，查看品牌是否被提及与推荐。",
     emptyHint: "暂无实测结果，请先发起 AI 搜索实测。",
@@ -74,9 +74,9 @@ export const GEO_UNIFIED_MAIN_PIPELINE_STEPS: readonly UnifiedMainPipelineStep[]
   },
   {
     id: "inclusion_monitor_retest",
-    title: "收录与引用监测（T1/T2/T3复测）",
+    title: "收录与引用监测（发布后复测）",
     shortLabel: "监测",
-    customerDescription: "跟踪内容收录、AI 引用、品牌提及与推荐，并按 T1/T2/T3 节奏复测验证变化。",
+    customerDescription: "跟踪内容收录、AI 引用、品牌提及与推荐，并按发布后复测节奏验证变化。",
     emptyHint: "暂无监测结果，请先完成发布记录并发起复测。",
     path: "/inclusion-monitoring",
   },
@@ -237,7 +237,7 @@ export function resolveMainChainNextActionPaths(
   if (!progress.hasCompletedT1Retest) {
     return {
       ctaLabel: "执行T1复测",
-      reason: "已有发布记录，建议执行 T1 复测，对比发布前后品牌提及变化。",
+      reason: "已有发布记录，建议执行 7天后复测，对比发布前后品牌提及变化。",
       nextStageName: "T1复测",
       ctaPath: "/ai-diagnosis",
     };

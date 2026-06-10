@@ -27,7 +27,7 @@ describe("GEO-V1.1 DeliveryReport Productized Readability P0", () => {
   });
 
   it("shows T0-only trend insufficient message", () => {
-    expect(shared).toContain("当前仅有 T0 基线，尚不足以判断趋势变化");
+    expect(shared).toContain("当前仅有优化前基线，尚不足以判断趋势变化");
     expect(productBody).toContain("delivery-report-geo-attribution");
   });
 

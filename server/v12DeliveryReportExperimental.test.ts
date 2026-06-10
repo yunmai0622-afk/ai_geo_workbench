@@ -23,7 +23,7 @@ describe("GEO-V1.1 delivery report experimental upgrade", () => {
       "delivery-report-detection-scope",
       "本期检测范围",
       "delivery-report-t0-baseline",
-      "T0 基线结果摘要",
+      "优化前基线结果摘要",
       "delivery-report-t0t1-comparison",
       "RetestComparisonPanel",
       "发布内容清单",

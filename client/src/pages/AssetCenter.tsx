@@ -65,6 +65,12 @@ function parseOptionalInt(v: string): number | null {
   return Math.round(n);
 }
 
+function parseOptionalPositiveInt(v: string): number | null {
+  const n = parseOptionalInt(v);
+  if (n == null || n <= 0) return null;
+  return n;
+}
+
 const EMPTY_DRAFTS = {
   keyPointDraft: "",
   keywordDraft: "",
@@ -248,7 +254,7 @@ export default function AssetCenterPage() {
       targetRecommendationRate: parseOptionalInt(form.targetRecommendationRate),
       targetPlatforms: form.targetPlatforms,
       targetCompetitorsToBeat: form.targetCompetitorsToBeat,
-      monthlyContentCapacity: parseOptionalInt(form.monthlyContentCapacity),
+      monthlyContentCapacity: parseOptionalPositiveInt(form.monthlyContentCapacity),
       internalOwnerName: form.internalOwnerName,
       geoGoalNotes: form.geoGoalNotes,
     }),
@@ -304,7 +310,7 @@ export default function AssetCenterPage() {
         targetRecommendationRate: parseOptionalInt(form.targetRecommendationRate),
         targetPlatforms: form.targetPlatforms,
         targetCompetitorsToBeat: form.targetCompetitorsToBeat,
-        monthlyContentCapacity: parseOptionalInt(form.monthlyContentCapacity),
+        monthlyContentCapacity: parseOptionalPositiveInt(form.monthlyContentCapacity),
         internalOwnerName: form.internalOwnerName.trim(),
         geoGoalNotes: form.geoGoalNotes.trim(),
         questionGuide: form.questionGuide,
@@ -325,8 +331,19 @@ export default function AssetCenterPage() {
 
   async function saveDraft(step = currentStep) {
     setMessage(undefined);
+    if (!currentProjectId) {
+      toast.error("请先在客户管理台选择客户项目");
+      return;
+    }
+    const brand = form.brandName.trim() || form.enterpriseName.trim() || currentProject?.enterpriseName || "";
+    if (!brand) {
+      toast.error("请填写企业名称后再保存");
+      return;
+    }
     try {
-      await upsertProfile.mutateAsync(buildPayload(step));
+      const payload = buildPayload(step);
+      console.info("[enterprise-profile] saveDraft", { projectId: currentProjectId, wizardStep: step });
+      await upsertProfile.mutateAsync(payload);
       await refreshSummary();
       if (step === 8 && currentProjectId) {
         toast.success("建档完成！正在计算 AI 品牌成熟度...");
@@ -337,6 +354,11 @@ export default function AssetCenterPage() {
       void triggerMaturityCalculate({ silent: true });
       setMessage("草稿已保存。");
     } catch (e) {
+      console.error("[enterprise-profile] saveDraft failed", {
+        projectId: currentProjectId,
+        wizardStep: step,
+        error: e,
+      });
       toast.error(profileSaveFailureMessage(toUserFacingErrorFromUnknown(e, "保存失败")));
     }
   }

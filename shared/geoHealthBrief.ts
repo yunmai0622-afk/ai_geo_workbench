@@ -131,7 +131,7 @@ export function pickNextWeekHealthBriefPriority(input: GeoHealthBriefInput): str
   ).length;
 
   if (!input.hasCompletedT0) {
-    return "完成 T0 基线 AI 搜索实测，建立可对照的提及率基线";
+    return "完成优化前基线 AI 搜索实测，建立可对照的提及率基线";
   }
 
   const topGrowth = growthSuggestions[0];
@@ -156,7 +156,7 @@ export function pickNextWeekHealthBriefPriority(input: GeoHealthBriefInput): str
     return "补充行业推荐类内容，提升 AI 推荐倾向";
   }
 
-  return "持续更新高价值场景内容，并在 7-14 天后安排 T1 复测";
+  return "持续更新高价值场景内容，并在 7-14 天后安排 7天后复测";
 }
 
 function normalizeGrowthSuggestionToPriority(suggestion: GeoGrowthSuggestion): string {
@@ -168,7 +168,7 @@ function normalizeGrowthSuggestionToPriority(suggestion: GeoGrowthSuggestion): s
     case "expand_cross_platform":
       return "扩展到搜狐号/百家号等多平台，增加交叉信源";
     case "t1_retest":
-      return "执行 T1 复测，对照 T0 基线查看提及率变化";
+      return "执行 7天后复测，对照优化前基线查看提及率变化";
     case "pending_publish":
       return `优先${suggestion.message.replace(/^有/, "发布")}`;
     default:
@@ -196,7 +196,7 @@ export function buildGeoHealthBriefText(input: GeoHealthBriefInput): GeoHealthBr
   ];
 
   if (t0MentionRatePercent != null) {
-    lines.push(`AI 提及率：${t0MentionRatePercent}%（T0 基线实测）`);
+    lines.push(`AI 提及率：${t0MentionRatePercent}%（优化前基线实测）`);
   }
 
   lines.push("", `建议下周优先做：${nextWeekPriority}`);

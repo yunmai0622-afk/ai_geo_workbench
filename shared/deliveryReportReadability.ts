@@ -21,7 +21,7 @@ import {
 export const DELIVERY_REPORT_GROWTH_TITLE_SUFFIX = "GEO 增长交付报告";
 
 export const T0_ONLY_TREND_INSUFFICIENT_MESSAGE =
-  "当前仅有 T0 基线，尚不足以判断趋势变化。完成发布和 T1 复测后，将形成前后对比。";
+  "当前仅有优化前基线，尚不足以判断趋势变化。完成发布和 7天后复测后，将形成前后对比。";
 
 export const DELIVERY_INSUFFICIENT_DATA_PREFIX = "当前部分交付数据尚不完整：";
 
@@ -166,10 +166,10 @@ const STAGE_ROUND_TYPES: Record<RetestStageRow["stageKey"], string> = {
 };
 
 const STAGE_LABELS: Record<RetestStageRow["stageKey"], string> = {
-  T0: "T0 基线实测",
-  T1: "T1 复测（发布后约 7 天）",
-  T2: "T2 复测（发布后约 30 天）",
-  T3: "T3 复测（发布后约 90 天）",
+  T0: "优化前基线实测",
+  T1: "7天后复测（发布后约 7 天）",
+  T2: "14天后复测（发布后约 30 天）",
+  T3: "30天后复测（发布后约 90 天）",
 };
 
 function normalizeEnterpriseName(name: string): string {
@@ -256,9 +256,9 @@ function buildStageEvidenceSummary(
 
   if (stageKey === "T0") {
     if (!input.hasAiTestData) {
-      return "尚未建立 T0 基线，需先在 AI 诊断页完成首轮实测。";
+      return "尚未建立优化前基线，需先在 AI 诊断页完成首轮实测。";
     }
-    return `T0 基线提及率 ${formatPercentDisplay(input.mentionRate, true)}，推荐率 ${formatPercentDisplay(
+    return `优化前基线提及率 ${formatPercentDisplay(input.mentionRate, true)}，推荐率 ${formatPercentDisplay(
       input.recommendRate,
       true,
     )}。`;
@@ -268,11 +268,11 @@ function buildStageEvidenceSummary(
     if (input.publishWithLinkCount === 0) {
       return "已有发布登记但缺少可核验的公开链接，暂无法评估发布后变化。";
     }
-    return "发布后第 7 天左右的 T1 复测可对照 T0，验证提及、推荐与引用是否改善。";
+    return "发布后第 7 天左右的 7天后复测可对照优化前基线，验证提及、推荐与引用是否改善。";
   }
 
   if (!input.latestPublishAt) {
-    return "需先完成内容发布并登记，才能按 T2/T3 节奏安排后续复测。";
+    return "需先完成内容发布并登记，才能按发布后复测节奏安排后续复测。";
   }
 
   const milestone = RETEST_PLAN_MILESTONES.find(item => item.phase === stageKey);
@@ -290,17 +290,17 @@ function buildStageEmptyReason(
 
   if (stageKey === "T0") {
     if (input.hasAiTestData) return null;
-    return "原因：尚未完成 AI 搜索 T0 基线实测。下一步：前往 AI 诊断页发起首轮实测并保存结果。";
+    return "原因：尚未完成 AI 搜索优化前基线实测。下一步：前往 AI 诊断页发起首轮实测并保存结果。";
   }
 
   if (stageKey === "T1") {
     if (!hasCompletedT0Baseline(input.testRounds)) {
-      return "原因：尚未完成 T0 基线，无法安排 T1 复测。下一步：先完成 T0 实测并建立可对照基线。";
+      return "原因：尚未完成优化前基线，无法安排 7天后复测。下一步：先完成 AI 现状检测并建立可对照基线。";
     }
     if (input.publishWithLinkCount === 0) {
-      return "原因：尚未登记带公开链接的发布记录。下一步：完成发布后在发布页回填链接，再按计划在发布后第 7 天执行 T1 复测。";
+      return "原因：尚未登记带公开链接的发布记录。下一步：完成发布后在发布页回填链接，再按计划在发布后第 7 天执行 7天后复测。";
     }
-    return `原因：尚未完成 T1 复测。下一步：完成发布与链接回填后，建议在发布后约 ${T1_RETEST_PLAN_DAYS} 天执行 T1 复测，形成 T0→T1 前后对比。`;
+    return `原因：尚未完成 7天后复测。下一步：完成发布与链接回填后，建议在发布后约 ${T1_RETEST_PLAN_DAYS} 天执行 7天后复测，形成优化前→发布后前后对比。`;
   }
 
   if (!input.latestPublishAt) {
@@ -390,7 +390,7 @@ function mapGrowthSuggestionToPlanItem(
     brand_awareness_content: "提升品牌在典型问题下的提及与识别概率。",
     industry_recommend_content: "强化行业推荐类回答中的品牌露出。",
     expand_cross_platform: "增加可引用信源密度，改善 AI 交叉验证。",
-    t1_retest: "形成 T0→T1 可对照数据，验证发布是否带来可见度变化。",
+    t1_retest: "形成优化前→发布后可对照数据，验证发布是否带来可见度变化。",
     pending_publish: "让内容资产进入公开可引用状态，支撑后续复测。",
   };
 
@@ -412,7 +412,7 @@ function buildFallbackPlanItems(
   if (!input.hasAiTestData) {
     items.push({
       priority: 1,
-      action: "完成 AI 搜索 T0 基线实测",
+      action: "完成 AI 搜索优化前基线实测",
       question,
       platform: "豆包、Kimi、DeepSeek 等",
       expectedImpact: "建立可对照的提及率与推荐率基线。",
@@ -432,9 +432,9 @@ function buildFallbackPlanItems(
   if (input.hasAiTestData && !hasCompletedT1Retest(input.testRounds)) {
     items.push({
       priority: items.length + 1,
-      action: "按计划在发布后执行 T1 复测",
+      action: "按计划在发布后执行 7天后复测",
       question,
-      platform: "与 T0 一致的问题集与平台",
+      platform: "与优化前基线一致的问题集与平台",
       expectedImpact: "形成发布前后对比，判断优化是否生效。",
     });
   }
@@ -556,7 +556,7 @@ export function buildInternalChecklist(
       id: "t0",
       label: "T0 AI 诊断已完成",
       status: t0Done ? "已完成" : "待完成",
-      blockReason: t0Done ? null : "尚未完成 AI 搜索 T0 基线实测",
+      blockReason: t0Done ? null : "尚未完成 AI 搜索优化前基线实测",
       ctaPath: "/ai-diagnosis",
       ctaLabel: "去诊断",
     },
@@ -594,11 +594,11 @@ export function buildInternalChecklist(
     },
     {
       id: "retest-stages",
-      label: "T1/T2/T3 复测状态",
+      label: "发布后复测状态",
       status: retestStagesDone ? "已完成" : "待完成",
       blockReason: retestStagesDone
         ? null
-        : input.insufficientReasonParts.find(part => part.includes("T1")) ?? "尚未完成 T1 复测",
+        : input.insufficientReasonParts.find(part => part.includes("T1")) ?? "尚未完成 7天后复测",
       ctaPath: "/inclusion-monitoring",
       ctaLabel: "去复测",
     },

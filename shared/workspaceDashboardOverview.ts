@@ -45,7 +45,7 @@ export function workspaceAiMentionRateHint(metrics: WorkspaceSummaryMetrics): st
     return "已有内容诊断结论，提及率需完成 T0 真实平台实测后更新";
   }
   if (metrics.brandMentionRate != null && metrics.aiTestResultCount > 0 && !metrics.hasCompletedT0Baseline) {
-    return "当前为内容诊断口径，完成 T0 基线后将切换为真实平台实测";
+    return "当前为内容诊断口径，完成优化前基线后将切换为真实平台实测";
   }
   return undefined;
 }

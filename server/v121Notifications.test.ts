@@ -6,7 +6,7 @@ const root = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("GEO-V1.1-Notifications", () => {
   it("defines notification types including weekly growth report", () => {
-    expect(SYSTEM_NOTIFICATION_TYPE_LABELS.t0_complete).toBe("T0 检测完成");
+    expect(SYSTEM_NOTIFICATION_TYPE_LABELS.t0_complete).toBe("AI 现状检测完成");
     expect(SYSTEM_NOTIFICATION_TYPE_LABELS.weekly_growth_report).toBe("GEO 增长周报");
     expect(NOTIFICATION_POLL_INTERVAL_MS).toBe(30_000);
     expect(formatNotificationTime("2026-06-01T10:00:00.000Z")).toContain("2026");

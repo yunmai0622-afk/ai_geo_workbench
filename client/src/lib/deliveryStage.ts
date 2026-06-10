@@ -46,7 +46,7 @@ function buildProgressSteps(metrics: WorkspaceSummaryMetrics) {
     { key: "content", label: "GEO 内容任务", done: metrics.articleCount > 0 },
     { key: "publish", label: "平台适配发布", done: metrics.publishRecordCount > 0 || metrics.completedPublishTaskCount > 0 },
     { key: "links", label: "回填公开链接", done: metrics.monitoringRecordCount > 0 },
-    { key: "monitor", label: "T1/T2/T3 复测", done: hasMonitoring(metrics) },
+    { key: "monitor", label: "发布后复测", done: hasMonitoring(metrics) },
     { key: "score", label: "GEO 评分与归因", done: metrics.hasGeoScore || metrics.aiTestResultCount > 0 },
     { key: "report", label: "交付报告", done: metrics.reportCount > 0 },
   ];
@@ -85,7 +85,7 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
       blockingReasons: ["尚未产出 AI 诊断与评分。"],
       primaryAction: { label: "开始诊断", path: "/ai-diagnosis" },
       secondaryActions: [{ label: "查看建档资料", path: "/enterprise-profile" }],
-      todos: ["执行 T0 基线实测", "确认核心问题集"],
+      todos: ["执行 AI 现状检测", "确认核心问题集"],
       progressSteps,
       metrics,
     };
@@ -121,10 +121,10 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
       stage: "S5_WAITING_LINKS",
       stageLabel: "待回填链接",
       stageDescription: "已有发布记录，但尚未进入公开链接回填与监测流程。",
-      blockingReasons: ["缺少公开链接，无法安排 T1/T2/T3 复测。"],
+      blockingReasons: ["缺少公开链接，无法安排发布后复测。"],
       primaryAction: { label: "回填链接", path: "/content-publishing" },
       secondaryActions: [{ label: "查看发布队列", path: "/content-publishing" }],
-      todos: ["补充公开链接", "准备 T1/T2/T3 复测计划"],
+      todos: ["补充公开链接", "准备发布后复测计划"],
       progressSteps,
       metrics,
     };
@@ -136,7 +136,7 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
     return {
       stage: "S6_READY_FOR_MONITORING",
       stageLabel: "待复测",
-      stageDescription: "链接已具备，需完成 T1/T2/T3 与 AI 搜索复测。",
+      stageDescription: "链接已具备，需完成发布后复测与 AI 搜索复测。",
       blockingReasons: ["复测未完成。"],
       primaryAction: { label: "执行复测", path: "/inclusion-monitoring" },
       secondaryActions: [{ label: "查看发布记录", path: "/content-publishing" }],

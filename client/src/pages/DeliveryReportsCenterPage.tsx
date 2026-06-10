@@ -631,7 +631,7 @@ export function DeliveryReportsCenterPage() {
       lines.push(`已有 ${publishWithLinkCount} 条公开链接进入监测与复测链路`);
     }
     if (lines.length === 0 && hasAiTestData) {
-      lines.push("已形成 AI 实测基线，可对照后续 T1/T2/T3 复测变化");
+      lines.push("已形成 AI 实测基线，可对照后续发布后复测变化");
     }
     return lines;
   }, [mentionRateDelta, recommendRateDelta, geoScoreDelta, publishWithLinkCount, hasAiTestData]);
@@ -707,7 +707,7 @@ export function DeliveryReportsCenterPage() {
       parts.push("尚未完成发布链接回填");
     }
     if (!hasCompletedT1Retest((testRoundsQuery.data ?? []) as Parameters<typeof hasCompletedT1Retest>[0])) {
-      parts.push("尚未完成 T1 复测");
+      parts.push("尚未完成 7天后复测");
     }
     return parts;
   }, [publishRecords.length, publishWithLinkCount, testRoundsQuery.data]);
@@ -1015,11 +1015,11 @@ export function DeliveryReportsCenterPage() {
 
         <section className="space-y-4" data-testid="delivery-report-t0-baseline">
           <div className="space-y-1">
-            <h2 className={geoP0Surfaces.sectionTitle}>T0 基线结果摘要</h2>
-            <p className={geoP0Surfaces.muted}>T0 基线检测完成后的汇总，用于与 T1 复测对照。</p>
+            <h2 className={geoP0Surfaces.sectionTitle}>优化前基线结果摘要</h2>
+            <p className={geoP0Surfaces.muted}>AI 现状检测完成后的汇总，用于与 7天后复测对照。</p>
           </div>
           {!t0BaselineSummary.hasData ? (
-            <P0Card className="text-sm text-gray-500">暂无 T0 基线数据，请先完成 T0 基线检测。</P0Card>
+            <P0Card className="text-sm text-gray-500">暂无优化前基线数据，请先完成 AI 现状检测。</P0Card>
           ) : (
             <P0Card testId="delivery-report-t0-baseline-card">
               <p className="text-sm text-gray-600">

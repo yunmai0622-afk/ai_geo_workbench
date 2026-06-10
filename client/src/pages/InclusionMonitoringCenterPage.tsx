@@ -207,7 +207,7 @@ export function InclusionMonitoringCenterPage() {
       items.push(`有 ${untested} 篇已发布内容尚未执行复测`);
     }
     if (items.length === 0) {
-      items.push("完成 T1/T2/T3 复测后，系统将基于问题池与信源图谱生成下一轮优化建议");
+      items.push("完成发布后复测后，系统将基于问题池与信源图谱生成下一轮优化建议");
     }
     return items;
   }, [missingPublicLinkCount, records]);
@@ -234,7 +234,7 @@ export function InclusionMonitoringCenterPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-bold text-gray-900">收录复测中心</h1>
         <p className="text-sm text-gray-500">
-          查看已发布内容、管理 T1/T2/T3 复测，跟踪 AI 引用并输出下一轮优化建议。
+          查看已发布内容、管理发布后复测，跟踪 AI 引用并输出下一轮优化建议。
         </p>
       </header>
 

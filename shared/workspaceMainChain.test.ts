@@ -53,11 +53,11 @@ describe("workspaceMainChain", () => {
     expect(steps.every(step => step.done)).toBe(true);
     expect(steps.map(step => step.name)).toEqual([
       "企业资料建档",
-      "AI搜索现状实测（T0基线）",
+      "AI 现状检测",
       "品牌资产补全",
       "内容资产生成",
       "平台适配发布",
-      "收录与引用监测（T1/T2/T3复测）",
+      "收录与引用监测（发布后复测）",
       "GEO评分与竞品对比",
       "交付报告与下一轮优化",
     ]);
@@ -101,7 +101,7 @@ describe("workspaceMainChain", () => {
     expect(action?.ctaPath).toBe("/content-publishing");
   });
 
-  it("已发布无 T1 时建议执行 T1 复测", () => {
+  it("已发布无 T1 时建议执行 7天后复测", () => {
     const action = resolveMainChainNextActionPaths(
       {
         ...baseMetrics(),

@@ -115,7 +115,7 @@ export function buildCustomerDeliverySnapshot(
     insufficientReasonParts.push("尚未完成发布链接回填");
   }
   if (!hasCompletedT1Retest(testRounds) && hasAiTestData) {
-    insufficientReasonParts.push("尚未完成 T1 复测");
+    insufficientReasonParts.push("尚未完成 7天后复测");
   }
   if (!hasAiTestData) {
     insufficientReasonParts.push("尚未完成 AI 搜索实测");
@@ -150,7 +150,7 @@ export function buildCustomerDeliverySnapshot(
     laggingIndicatorLines.push("尚未完成 AI 实测，提及率与推荐率无法形成稳定结论");
   }
   if (laggingIndicatorLines.length === 0 && hasAiTestData) {
-    laggingIndicatorLines.push("建议持续扩大覆盖问题与发布平台，并安排 T1 复测形成前后对比");
+    laggingIndicatorLines.push("建议持续扩大覆盖问题与发布平台，并安排 7天后复测形成前后对比");
   }
 
   return buildDeliveryReportProductSnapshot({

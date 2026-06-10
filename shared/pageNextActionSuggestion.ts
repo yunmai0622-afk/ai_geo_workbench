@@ -42,7 +42,7 @@ export function resolvePageNextActionSuggestion(
         return {
           ctaLabel: "开始 AI 基线实测",
           reason: "尚未完成基线诊断，需先导入或运行客户问题实测，才能识别内容缺口。",
-          nextStageName: "待生产",
+          nextStageName: "内容生产",
           ctaPath: "/ai-diagnosis",
         };
       }
@@ -56,7 +56,7 @@ export function resolvePageNextActionSuggestion(
           reason: headline
             ? `${headline}（共 ${gapCount} 条缺口建议）${scoreText}`
             : `已识别 ${gapCount} 项内容缺口，建议优先生成竞品对比、能力说明或 FAQ 类资产。${scoreText}`,
-          nextStageName: "待生产",
+          nextStageName: "内容生产",
           ctaPath: "/weekly",
         };
       }
@@ -65,7 +65,7 @@ export function resolvePageNextActionSuggestion(
         reason: metrics.hasGeoScore
           ? `诊断与评分已完成。${scoreText}`.trim()
           : "诊断结果已生成，建议围绕高优先级问题产出可发布内容。",
-        nextStageName: "待生产",
+        nextStageName: "内容生产",
         ctaPath: metrics.articleCount > 0 ? "/weekly" : "/weekly",
       };
     }
@@ -126,7 +126,7 @@ export function resolvePageNextActionSuggestion(
         ctaLabel: metrics.retestPendingCount > 0 ? "处理待复测项" : "查看交付报告",
         reason:
           metrics.retestPendingCount > 0
-            ? `复测队列有 ${metrics.retestPendingCount} 条待处理，请按 T1/T2/T3 节奏完成复测。`
+            ? `复测队列有 ${metrics.retestPendingCount} 条待处理，请按发布后复测节奏完成复测。`
             : "收录与实测数据已积累，可整理客户交付报告。",
         nextStageName: metrics.reportCount > 0 ? "报告已生成" : "待出报告",
         ctaPath: metrics.reportCount > 0 ? "/delivery-reports" : "/inclusion-monitoring",

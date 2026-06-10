@@ -39,7 +39,7 @@ describe("geoHealthBrief", () => {
 
     expect(result.text).toContain("本周发布了 1 篇内容");
     expect(result.text).toContain("覆盖 1 个平台");
-    expect(result.text).toContain("AI 提及率：18%（T0 基线实测）");
+    expect(result.text).toContain("AI 提及率：18%（优化前基线实测）");
     expect(result.text).toContain("建议下周优先做：");
     expect(result.platformCount).toBe(1);
   });
@@ -70,6 +70,6 @@ describe("geoHealthBrief", () => {
         t0FinishedAt: null,
         t0MentionRate: null,
       }),
-    ).toContain("T0 基线");
+    ).toContain("优化前基线");
   });
 });

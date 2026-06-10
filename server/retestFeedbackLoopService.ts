@@ -58,7 +58,7 @@ export async function applyRetestFeedbackFromRound(
     throw new TRPCError({ code: "NOT_FOUND", message: "复测轮次不存在" });
   }
   if (!isCompareRetestRound(round.roundType)) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "仅 T1/T2/T3 复测轮次可触发反馈闭环" });
+    throw new TRPCError({ code: "BAD_REQUEST", message: "仅发布后复测轮次可触发反馈闭环" });
   }
 
   const runRows = await db

@@ -15,7 +15,7 @@ describe("V1.1 演示引导流程 /demo", () => {
     expect(html).toContain("演示模式");
     expect(html).toContain("海豚知道");
     expect(html).toContain("无需登录");
-    expect(html).toContain("T0 检测结果");
+    expect(html).toContain("AI 现状检测结果");
     expect(html).toContain("下一步");
     expect(html).toContain("上一步");
     expect(html).toContain(`第 1 / ${demoFlowStepTitles.length} 步`);

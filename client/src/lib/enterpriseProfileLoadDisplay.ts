@@ -32,6 +32,12 @@ export function shouldShowProfileNonCriticalSummaryHint(params: {
 
 export function profileSaveFailureMessage(raw?: string | null): string {
   const trimmed = (raw ?? "").trim();
+  if (trimmed.includes("enterpriseName") || trimmed.includes("Required")) {
+    return "请填写企业名称后再保存。";
+  }
+  if (trimmed.includes("monthlyContentCapacity") || trimmed.includes("Number must be greater than 0")) {
+    return "月内容产能须为正整数，留空表示暂不填写。";
+  }
   if (trimmed && trimmed !== GENERIC_LOAD_FAILED_MESSAGE) return trimmed;
   return "保存失败，请稍后重试。";
 }

@@ -84,7 +84,7 @@ export async function createT0RoundWithQuestions(
   if (!readiness.ready) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: `企业资料未满足 T0 基线检测要求，请先补全：${readiness.missingLabels.join("、")}`,
+      message: `企业资料未满足 AI 现状检测要求，请先补全：${readiness.missingLabels.join("、")}`,
     });
   }
 
@@ -102,7 +102,7 @@ export async function createT0RoundWithQuestions(
   if (runningRows[0]) {
     throw new TRPCError({
       code: "CONFLICT",
-      message: "当前项目已有进行中的 T0 基线检测，请等待完成后再创建",
+      message: "当前项目已有进行中的 AI 现状检测，请等待完成后再创建",
     });
   }
 
@@ -132,7 +132,7 @@ export async function createT0RoundWithQuestions(
 
   const roundId = randomUUID();
   const runsPerQuestion = input.runsPerQuestion ?? 3;
-  const roundName = input.roundName?.trim() || "T0 基线检测";
+  const roundName = input.roundName?.trim() || "AI 现状检测";
 
   await db.insert(testRounds).values({
     id: roundId,
@@ -313,7 +313,7 @@ async function prepareT0ExecutionStart(db: DbConn, roundId: string) {
     throw new TRPCError({ code: "NOT_FOUND", message: "检测轮次不存在" });
   }
   if (round.roundType !== "T0_BASELINE") {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "仅 T0 基线轮次可执行此操作" });
+    throw new TRPCError({ code: "BAD_REQUEST", message: "仅 AI 现状检测轮次可执行此操作" });
   }
 
   const boundRows = await db

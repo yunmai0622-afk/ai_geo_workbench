@@ -940,61 +940,76 @@ const geoAssetRouter = router({
       } as const;
   }),
   upsertProfile: protectedProcedure.input(enterpriseProfileInput).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    await requireProjectAccess(ctx, input.projectId);
-    const existing = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
-    const existingGeoGoalNotes = existing[0]?.geoGoalNotes ?? null;
-    const mergedGeoGoalNotes = buildGeoGoalNotesForUpsert(existingGeoGoalNotes, {
-      goalNotes: input.geoGoalNotes,
-      questionGuide: input.questionGuide,
-    });
-    const { questionGuide: _qg, ...profileInput } = input;
-    const raw = {
-      ...profileInput,
-      ...(mergedGeoGoalNotes !== undefined ? { geoGoalNotes: mergedGeoGoalNotes } : {}),
-    } as Record<string, unknown>;
-    const values = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) as typeof raw;
-    let profileId = existing[0]?.id ?? 0;
-    if (existing[0]) {
-      await db.update(enterpriseGeoProfiles).set(values).where(eq(enterpriseGeoProfiles.id, existing[0].id));
-    } else {
-      const inserted = await db.insert(enterpriseGeoProfiles).values(values as never).$returningId();
-      profileId = inserted[0]?.id ?? 0;
-    }
-    const finalizeInput = {
-      ...profileInput,
-      geoGoalNotes: mergedGeoGoalNotes ?? existingGeoGoalNotes,
-    };
-    const { completeness, anchorResult, questionSync } = await finalizeProfileUpsert(
-      db,
-      input.projectId,
-      finalizeInput,
-      existingGeoGoalNotes,
-    );
-    const completionScore = completeness.completionScore;
-    const productIntro = String(input.productDesc ?? input.productServiceIntro ?? input.oneLiner ?? input.productIntro ?? "").trim();
-    const targetCustomers = String(input.targetCustomer ?? input.targetCustomers ?? "").trim();
-    const coreSellingPoints = String(
-      input.coreSellingPoints?.trim() || input.keyPoints?.join("；") || input.oneLiner?.trim() || "",
-    ).trim();
-    await db
-      .update(projects)
-      .set({
+    try {
+      const db = await requireDb();
+      await requireProjectAccess(ctx, input.projectId);
+      const existing = await db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1);
+      const existingGeoGoalNotes = existing[0]?.geoGoalNotes ?? null;
+      const mergedGeoGoalNotes = buildGeoGoalNotesForUpsert(existingGeoGoalNotes, {
+        goalNotes: input.geoGoalNotes,
+        questionGuide: input.questionGuide,
+      });
+      const { questionGuide: _qg, ...profileInput } = input;
+      const raw = {
+        ...profileInput,
+        ...(mergedGeoGoalNotes !== undefined ? { geoGoalNotes: mergedGeoGoalNotes } : {}),
+      } as Record<string, unknown>;
+      const values = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) as typeof raw;
+      let profileId = existing[0]?.id ?? 0;
+      if (existing[0]) {
+        await db.update(enterpriseGeoProfiles).set(values).where(eq(enterpriseGeoProfiles.id, existing[0].id));
+      } else {
+        const inserted = await db.insert(enterpriseGeoProfiles).values(values as never).$returningId();
+        profileId = inserted[0]?.id ?? 0;
+      }
+      const finalizeInput = {
+        ...profileInput,
+        geoGoalNotes: mergedGeoGoalNotes ?? existingGeoGoalNotes,
+      };
+      const { completeness, anchorResult, questionSync } = await finalizeProfileUpsert(
+        db,
+        input.projectId,
+        finalizeInput,
+        existingGeoGoalNotes,
+      );
+      const completionScore = completeness.completionScore;
+      const productIntro = String(input.productDesc ?? input.productServiceIntro ?? input.oneLiner ?? input.productIntro ?? "").trim();
+      const targetCustomers = String(input.targetCustomer ?? input.targetCustomers ?? "").trim();
+      const coreSellingPoints = String(
+        input.coreSellingPoints?.trim() || input.keyPoints?.join("；") || input.oneLiner?.trim() || "",
+      ).trim();
+      await db
+        .update(projects)
+        .set({
+          enterpriseName: input.enterpriseName,
+          industry: input.industry?.trim() || input.industryTag?.trim() || undefined,
+          productIntro: productIntro || undefined,
+          targetCustomers: targetCustomers || undefined,
+          coreSellingPoints: coreSellingPoints || undefined,
+        })
+        .where(eq(projects.id, input.projectId));
+      return {
+        success: true,
+        id: profileId,
+        completionScore,
+        wizardCompleteness: completeness,
+        entityAnchorSync: anchorResult,
+        questionsAdded: questionSync.addedCount,
+      } as const;
+    } catch (err) {
+      console.error("[geo.assetLibrary.upsertProfile] failed", {
+        projectId: input.projectId,
+        wizardStep: input.wizardStep,
         enterpriseName: input.enterpriseName,
-        industry: input.industry?.trim() || input.industryTag?.trim() || undefined,
-        productIntro: productIntro || undefined,
-        targetCustomers: targetCustomers || undefined,
-        coreSellingPoints: coreSellingPoints || undefined,
-      })
-      .where(eq(projects.id, input.projectId));
-    return {
-      success: true,
-      id: profileId,
-      completionScore,
-      wizardCompleteness: completeness,
-      entityAnchorSync: anchorResult,
-      questionsAdded: questionSync.addedCount,
-    } as const;
+        err,
+      });
+      if (err instanceof TRPCError) throw err;
+      const message =
+        err instanceof Error && err.message.trim()
+          ? err.message
+          : "保存企业资料失败，请检查必填项后重试";
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+    }
   }),
   addTextSource: protectedProcedure.input(assetTextInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
@@ -2496,7 +2511,7 @@ const geoRouter = router({
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       const t0Metrics = await resolveLatestT0AiTestRunMetrics(db, input.projectId);
       if (analyses.length === 0 && !t0Metrics) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析或 T0 基线测试，再计算 GEO 评分" });
+        throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析或 AI 现状检测，再计算 GEO 评分" });
       }
       const score = calculateGeoScore(resolveEffectiveAnalysisResults(analyses), t0Metrics);
       await db.insert(geoScores).values({ projectId: input.projectId, ...score });
@@ -4338,7 +4353,7 @@ ${article.markdownContent}`,
       .input(
         z.object({
           projectId: z.number().int().positive(),
-          roundName: z.string().min(1).max(255).optional().default("T0 基线检测"),
+          roundName: z.string().min(1).max(255).optional().default("AI 现状检测"),
           platforms: z.array(z.string().min(1)).min(1),
           runsPerQuestion: z.number().int().min(1).optional().default(3),
           questionIds: z.array(z.number().int().positive()).optional(),

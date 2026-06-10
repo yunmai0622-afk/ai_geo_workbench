@@ -44,7 +44,7 @@ export const ONBOARDING_WIZARD_STEPS: OnboardingWizardStepMeta[] = [
       "系统会根据这些问题测试豆包、Kimi、DeepSeek 等 AI 平台是否认识你、是否推荐你，以及是否推荐了竞品。",
     whyImportant:
       "客户在购买前会向 AI 提问；你补充的问题越贴近真实场景，基线实测与后续内容任务越精准。",
-    systemUsage: "保存后将自动写入 AI 搜索问题池，并作为发布后 T1/T2/T3 复测基准。",
+    systemUsage: "保存后将自动写入 AI 搜索问题池，并作为发布后复测基准。",
   },
   {
     step: 5,
@@ -92,7 +92,7 @@ export const ONBOARDING_QUESTION_GUIDE_USAGE_ITEMS = [
   "执行多平台 AI 基线实测",
   "判断品牌提及率、推荐率和竞品出现率",
   "生成后续内容任务",
-  "作为发布后 T1/T2/T3 复测基准",
+  "作为发布后复测基准",
 ] as const;
 
 export type OnboardingQuestionGuideCategoryKey = keyof QuestionGuideExamples;

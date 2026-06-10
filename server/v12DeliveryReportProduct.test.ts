@@ -41,7 +41,7 @@ describe("Phase4 delivery report productization", () => {
     }
     expect(display).toContain("当前数据不足，完成发布后复测后将生成本轮 GEO 增长结论。");
     expect(productBody).toContain("待回填链接");
-    expect(shared).toContain("当前仅有 T0 基线，尚不足以判断趋势变化");
+    expect(shared).toContain("当前仅有优化前基线，尚不足以判断趋势变化");
   });
 
   it("does not fabricate or expose engineering fields", () => {

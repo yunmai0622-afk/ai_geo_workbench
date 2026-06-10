@@ -100,12 +100,15 @@ export function BrandSourceDrawer({ open, mode, saving, initial, onOpenChange, o
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent data-testid="brand-source-drawer">
-        <DrawerHeader>
+      <DrawerContent
+        className="flex max-h-[80vh] flex-col"
+        data-testid="brand-source-drawer"
+      >
+        <DrawerHeader className="shrink-0">
           <DrawerTitle>{mode === "create" ? "添加信源" : "编辑信源"}</DrawerTitle>
           <DrawerDescription>录入公开链接并手动标记六项指标，系统会据此评估 AI 识别稳定性。</DrawerDescription>
         </DrawerHeader>
-        <div className="space-y-4 px-4 pb-2">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-2">
           <div className="space-y-2">
             <Label htmlFor="brand-source-platform">信源类型</Label>
             <Select
@@ -201,7 +204,7 @@ export function BrandSourceDrawer({ open, mode, saving, initial, onOpenChange, o
             />
           </div>
         </div>
-        <DrawerFooter>
+        <DrawerFooter className="sticky bottom-0 shrink-0 border-t border-gray-100 bg-white">
           <Button
             type="button"
             className="bg-blue-600 text-white hover:bg-blue-700"

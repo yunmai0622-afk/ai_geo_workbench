@@ -119,7 +119,7 @@ export const PAGE_USAGE_HELP: Record<PageUsageHelpId, PageUsageHelpContent> = {
         heading: "人工发布",
         lines: [
           "系统生成适配该平台的标题、正文、封面等素材，你在平台后台手动发布。",
-          "发布完成后在本系统登记公开链接与发布时间，用于收录监测与 T1/T2/T3 复测计时。",
+          "发布完成后在本系统登记公开链接与发布时间，用于收录监测与发布后复测计时。",
           "知乎、小红书等以人工发布为主的平台通常走此路径。",
         ],
       },
@@ -155,7 +155,7 @@ export const PAGE_USAGE_HELP: Record<PageUsageHelpId, PageUsageHelpContent> = {
         heading: "建议动作",
         lines: [
           "先确认发布链接可公开访问，再执行 AI 实测。",
-          "收录正常但长期未提及时，回到内容生成补充缺口类型文章，并按计划做 T1 复测。",
+          "收录正常但长期未提及时，回到内容生成补充缺口类型文章，并按计划做 7天后复测。",
         ],
       },
     ],

@@ -110,7 +110,7 @@ export function buildT0BaselineSummary(
       `竞品出现（T0）：${summary.competitorCountT0} 次`,
     );
   } else {
-    summaryLines.push("T0 基线检测已完成，分项对比结果将在 T1 复测后生成。");
+    summaryLines.push("AI 现状检测已完成，分项对比结果将在 7天后复测后生成。");
   }
 
   return {

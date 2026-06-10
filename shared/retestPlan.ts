@@ -18,8 +18,8 @@ export const T1_RETEST_PLAN_DAYS = 7;
 export const T2_RETEST_PLAN_DAYS = 30;
 export const T3_RETEST_PLAN_DAYS = 90;
 
-export const T2_RETEST_DUE_MESSAGE = "距上次发布已超过30天，建议执行T2复测";
-export const T3_RETEST_DUE_MESSAGE = "距上次发布已超过90天，建议执行T3复测";
+export const T2_RETEST_DUE_MESSAGE = "距上次发布已超过30天，建议执行14天后复测";
+export const T3_RETEST_DUE_MESSAGE = "距上次发布已超过90天，建议执行30天后复测";
 export const RETEST_DUE_CTA_LABEL = "去执行复测";
 export const RETEST_DUE_CTA_PATH = T1_RETEST_AUTO_TRIGGER_CTA_PATH;
 
@@ -38,21 +38,21 @@ export const RETEST_PLAN_MILESTONES: readonly RetestPlanMilestone[] = [
     phase: "T1",
     roundType: "T1_RETEST",
     daysAfterPublish: T1_RETEST_PLAN_DAYS,
-    title: "T1 复测",
+    title: "7天后复测",
     scheduleHint: "发布后第 7 天",
   },
   {
     phase: "T2",
     roundType: "T2_RETEST",
     daysAfterPublish: T2_RETEST_PLAN_DAYS,
-    title: "T2 复测",
+    title: "14天后复测",
     scheduleHint: "发布后第 30 天",
   },
   {
     phase: "T3",
     roundType: "T3_RETEST",
     daysAfterPublish: T3_RETEST_PLAN_DAYS,
-    title: "T3 复测",
+    title: "30天后复测",
     scheduleHint: "发布后第 90 天",
   },
 ] as const;

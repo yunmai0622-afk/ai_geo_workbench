@@ -69,7 +69,7 @@ export function buildDeliveryReportMeta(params: {
   }
 
   const reportRound =
-    analysisCount > 0 ? `第 ${analysisCount} 轮诊断` : "首轮 GEO 增长交付（待完成 T0 基线）";
+    analysisCount > 0 ? `第 ${analysisCount} 轮诊断` : "首轮 GEO 增长交付（待完成优化前基线）";
 
   const hasEnoughForConclusion = hasAiTestData && (hasPublishWithLink || visibilityScore != null);
   let conclusionLine = DELIVERY_INSUFFICIENT_CONCLUSION;

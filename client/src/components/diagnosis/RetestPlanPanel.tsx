@@ -82,7 +82,7 @@ export function RetestPlanPanel({ plan, testId = "retest-plan-panel" }: Props) {
         </p>
       ) : !plan.publishAt ? (
         <p className="mt-4 text-sm text-gray-600" data-testid="retest-plan-awaiting-publish">
-          完成首次发布并回填公开链接后，系统将自动计算 T1/T2/T3 复测时间节点。
+          完成首次发布并回填公开链接后，系统将自动计算发布后复测时间节点。
         </p>
       ) : null}
     </section>

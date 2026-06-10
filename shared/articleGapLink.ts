@@ -71,7 +71,7 @@ export function computeQuestionMentionRateChange(input: {
 
   const hasData = baseRunCount > 0 && compareRunCount > 0;
 
-  let summaryLine = "尚未完成 T0 与 T1 对该问题的 AI 实测，暂无法对比提及率。";
+  let summaryLine = "尚未完成优化前基线与 7天后复测对该问题的 AI 实测，暂无法对比提及率。";
   if (hasData && baseMentionRate != null && compareMentionRate != null && mentionRateDelta != null) {
     const basePct = Math.round(baseMentionRate * 100);
     const comparePct = Math.round(compareMentionRate * 100);
@@ -84,7 +84,7 @@ export function computeQuestionMentionRateChange(input: {
       summaryLine = `该问题提及率：T0 ${basePct}% → T1 ${comparePct}%（→ 持平）`;
     }
   } else if (baseRunCount > 0 && compareRunCount === 0) {
-    summaryLine = "T0 已有该问题实测，待完成 T1 复测后可对比提及率。";
+    summaryLine = "优化前基线已有该问题实测，待完成 7天后复测后可对比提及率。";
   }
 
   return {

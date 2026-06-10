@@ -277,7 +277,7 @@ function ContentEvidenceSection({
 
 function RetestStagesSection({ snapshot }: { snapshot: DeliveryReportProductSnapshot }) {
   return (
-    <P0Section title="AI 复测与收录结果" description="按 T0 基线与 T1/T2/T3 复测节点展示品牌提及、推荐与引用证据。">
+    <P0Section title="AI 复测与收录结果" description="按优化前基线与发布后复测节点展示品牌提及、推荐与引用证据。">
       <div className="space-y-4" data-testid="delivery-report-retest-stages">
         {snapshot.retestStages.map(stage => (
           <P0Card key={stage.stageKey} className="space-y-3">

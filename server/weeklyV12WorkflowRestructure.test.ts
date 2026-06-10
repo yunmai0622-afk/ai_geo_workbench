@@ -73,7 +73,7 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
     expect(auxiliary).toContain("内容模板库");
     expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
     expect(auxiliary).toContain("收录复测中心");
-    expect(auxiliary).toContain("T1/T2/T3");
+    expect(auxiliary).toContain("发布后复测");
   });
 
   it("main work area appears before platform generation board", () => {
