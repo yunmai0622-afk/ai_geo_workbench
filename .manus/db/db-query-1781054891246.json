@@ -1,0 +1,25 @@
+{
+  "query": "SELECT id, enterpriseName, ownerUserId FROM projects WHERE id = 120001; SELECT id, enterpriseName, ownerUserId FROM projects WHERE id = 90001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, enterpriseName, ownerUserId FROM projects WHERE id = 120001; SELECT id, enterpriseName, ownerUserId FROM projects WHERE id = 90001;",
+  "rows": [
+    {
+      "id": "120001",
+      "enterpriseName": "海豚知道",
+      "ownerUserId": "1"
+    },
+    {
+      "id": "id",
+      "enterpriseName": "enterpriseName",
+      "ownerUserId": "ownerUserId"
+    },
+    {
+      "id": "90001",
+      "enterpriseName": "海豚知道",
+      "ownerUserId": "16740006"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tenterpriseName\townerUserId\n120001\t海豚知道\t1\nid\tenterpriseName\townerUserId\n90001\t海豚知道\t16740006\n",
+  "stderr": "",
+  "execution_time_ms": 2050
+}
