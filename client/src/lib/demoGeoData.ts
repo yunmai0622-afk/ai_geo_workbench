@@ -278,7 +278,7 @@ export const demoFlowStepTitles = [
 ] as const;
 
 /**
- * 海豚知道真实试跑 T0 基线（来源：V1.2 海豚知道硬验收与 AI 实测样本，脱敏展示）
+ * 海豚知道真实试跑 优化前基线（来源：V1.2 海豚知道硬验收与 AI 实测样本，脱敏展示）
  */
 export const demoT0Detection = {
   brandName: "海豚知道",

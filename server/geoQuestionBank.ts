@@ -24,7 +24,7 @@ export type GeneratedGeoQuestionBankRow = {
 };
 
 export const GEO_QUESTION_BANK_SYSTEM_PROMPT = `你是 GEO（AI 搜索可见性）诊断专家，负责生成「用户会直接问 AI 助手」的自然语言问题。
-这些问题将用于 T0 基线检测：向多个 AI 平台提问，观察 AI 是否提及、推荐目标品牌。
+这些问题将用于 AI 现状检测：向多个 AI 平台提问，观察 AI 是否提及、推荐目标品牌。
 
 总目标：生成 ${GEO_T0_QUESTIONS_TOTAL_TARGET} 条左右、真实可检索的中文问题，覆盖以下 5 类，每类至少 ${GEO_T0_QUESTIONS_PER_TYPE_MIN} 条。
 

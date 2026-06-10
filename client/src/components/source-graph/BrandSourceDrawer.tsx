@@ -108,7 +108,7 @@ export function BrandSourceDrawer({ open, mode, saving, initial, onOpenChange, o
           <DrawerTitle>{mode === "create" ? "添加信源" : "编辑信源"}</DrawerTitle>
           <DrawerDescription>录入公开链接并手动标记六项指标，系统会据此评估 AI 识别稳定性。</DrawerDescription>
         </DrawerHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-2">
+        <div className="min-h-0 max-h-[calc(80vh-11rem)] flex-1 space-y-4 overflow-y-auto px-4 pb-2">
           <div className="space-y-2">
             <Label htmlFor="brand-source-platform">信源类型</Label>
             <Select

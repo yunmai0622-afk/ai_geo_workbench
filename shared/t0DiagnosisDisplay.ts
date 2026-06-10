@@ -2,7 +2,7 @@ import { aggregateT0AiTestRunMetrics, type AiTestRunMetricRow } from "./t0AiTest
 
 export const T0_DEFAULT_PLATFORMS = ["doubao", "deepseek", "kimi"] as const;
 
-/** AI 实测诊断页可选引擎（T0 基线检测 / 平台多选） */
+/** AI 实测诊断页可选引擎（AI 现状检测 / 平台多选） */
 export const T0_AI_ENGINE_OPTIONS = [
   { id: "doubao", label: "豆包" },
   { id: "deepseek", label: "DeepSeek" },

@@ -40,7 +40,7 @@ export function resolvePageNextActionSuggestion(
     case "questions": {
       if (!metrics.hasCompletedT0Baseline && !metrics.hasAnalysis && !metrics.hasGeoScore) {
         return {
-          ctaLabel: "开始 AI 基线实测",
+          ctaLabel: "开始 AI 现状检测",
           reason: "尚未完成基线诊断，需先导入或运行客户问题实测，才能识别内容缺口。",
           nextStageName: "内容生产",
           ctaPath: "/ai-diagnosis",

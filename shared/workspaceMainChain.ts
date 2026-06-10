@@ -212,16 +212,16 @@ export function resolveMainChainNextActionPaths(
 
   if (!progress.hasCompletedT0Baseline) {
     return {
-      ctaLabel: "开始基线检测",
-      reason: "尚未完成 AI 基线检测，需要先建立品牌在 AI 搜索中的可见度基线。",
-      nextStageName: "AI基线检测",
+      ctaLabel: "开始 AI 现状检测",
+      reason: "尚未完成 AI 现状检测，需要先建立品牌在 AI 搜索中的可见度基线。",
+      nextStageName: "AI 现状检测",
       ctaPath: "/ai-diagnosis",
     };
   }
   if (progress.articleCount === 0) {
     return {
       ctaLabel: "生成内容",
-      reason: "基线检测已完成，建议围绕诊断结论生成内容资产。",
+      reason: "AI 现状检测已完成，建议围绕诊断结论生成内容资产。",
       nextStageName: "内容资产生成",
       ctaPath: "/weekly",
     };

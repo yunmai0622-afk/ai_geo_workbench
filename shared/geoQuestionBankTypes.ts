@@ -1,4 +1,4 @@
-/** T0 基线检测问题库五类（与 drizzle questionType 枚举一致） */
+/** AI 现状检测问题库五类（与 drizzle questionType 枚举一致） */
 export const GEO_T0_QUESTION_BANK_TYPES = [
   "品牌认知",
   "行业推荐",

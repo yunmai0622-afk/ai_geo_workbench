@@ -294,7 +294,7 @@ export default function OnboardingPage() {
           <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-lg" data-testid="onboarding-step-1">
             <div className="mb-6 space-y-1">
               <h1 className="text-xl font-semibold">填写企业资料</h1>
-              <p className="text-sm text-gray-500">这些信息将用于生成 AI 检索问题与基线检测</p>
+              <p className="text-sm text-gray-500">这些信息将用于生成 AI 检索问题与 AI 现状检测</p>
             </div>
             <form className="space-y-5" onSubmit={e => void handleStep1Submit(e)}>
               <div className="space-y-2">
@@ -432,7 +432,7 @@ export default function OnboardingPage() {
                   setLocation(activeProjectId ? buildProjectUrl("/ai-diagnosis", activeProjectId) : "/clients");
                 }}
               >
-                开始 AI 基线检测
+                开始 AI 现状检测
               </Button>
               <Button
                 type="button"

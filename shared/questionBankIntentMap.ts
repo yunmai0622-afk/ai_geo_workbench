@@ -138,7 +138,7 @@ export function resolveQuestionTestStatus(
 
 export function resolveQuestionTestStatusHint(status: QuestionTestStatus): string | null {
   if (status !== "未测") return null;
-  return "尚未实测。完成 AI 基线检测后，将展示该问题在豆包、Kimi、DeepSeek 等平台中的品牌提及和推荐情况。";
+  return "尚未实测。完成 AI 现状检测后，将展示该问题在豆包、Kimi、DeepSeek 等平台中的品牌提及和推荐情况。";
 }
 
 export function resolveQuestionContentStatus(

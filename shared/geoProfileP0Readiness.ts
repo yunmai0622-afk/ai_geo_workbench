@@ -114,7 +114,7 @@ export type T0ProfileReadiness = {
   missingLabels: string[];
 };
 
-/** T0 基线检测入口：比 P0 建档更严，竞品经 geoProfileQuestionMapping 统一读取 */
+/** AI 现状检测入口：比 P0 建档更严，竞品经 geoProfileQuestionMapping 统一读取 */
 export function evaluateProfileReadinessForT0(input: {
   profile: Record<string, unknown> | null | undefined;
   project?: {

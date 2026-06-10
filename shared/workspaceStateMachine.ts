@@ -119,7 +119,7 @@ export type WorkspaceSummaryMetrics = {
   hasCompletedT1Retest: boolean;
   /** 有 completed 发布且超过 7 天、且无 completed T1 复测 */
   showT1RetestAutoTriggerReminder: boolean;
-  /** T1/T2/T3 复测时间计划（基于最近完成发布） */
+  /** 发布后复测时间计划（基于最近完成发布） */
   retestPlan: RetestPlanView;
   /** 当前最早到期且未完成的复测提醒；无则 null */
   retestDueReminder: RetestDueReminder | null;

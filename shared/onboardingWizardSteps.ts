@@ -89,7 +89,7 @@ export const ONBOARDING_TARGET_PLATFORMS = ["豆包", "Kimi", "DeepSeek", "通�
 /** Step4：这些问题会用于 */
 export const ONBOARDING_QUESTION_GUIDE_USAGE_ITEMS = [
   "生成 AI 搜索问题池",
-  "执行多平台 AI 基线实测",
+  "执行多平台 AI 现状检测",
   "判断品牌提及率、推荐率和竞品出现率",
   "生成后续内容任务",
   "作为发布后复测基准",

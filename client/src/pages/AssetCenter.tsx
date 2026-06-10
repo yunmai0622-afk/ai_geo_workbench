@@ -30,13 +30,16 @@ import {
   ONBOARDING_WIZARD_PAGE_TITLE,
   ONBOARDING_WIZARD_STEPS,
 } from "@shared/onboardingWizardSteps";
-import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  buildWizardStep8GeoGoalSuggestions,
+  resolveWizardStep8HasAiTestData,
+} from "@shared/wizardStep8GeoGoalDisplay";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
   PROFILE_CORE_LOAD_FAILED_MESSAGE,
-  profileSaveFailureMessage,
+  formatWizardSaveDraftError,
   shouldShowProfileCoreLoadFailure,
 } from "@/lib/enterpriseProfileLoadDisplay";
 import type { CaseDraft } from "@/components/enterpriseProfile/types";
@@ -100,6 +103,7 @@ export default function AssetCenterPage() {
 
   const [message, setMessage] = useState<string>();
   const [currentStep, setCurrentStep] = useState(1);
+  const wizardStepHydratedForProjectRef = useRef<number | null>(null);
   const [form, setForm] = useState<WizardFormState>({
     brandName: "",
     enterpriseName: "",
@@ -139,6 +143,10 @@ export default function AssetCenterPage() {
     { enabled: Boolean(currentProjectId), retry: 1 },
   );
   const completenessReportQuery = trpc.geo.onboarding.getCompletenessReport.useQuery(projectInput, {
+    enabled: Boolean(currentProjectId),
+    retry: 1,
+  });
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(projectInput, {
     enabled: Boolean(currentProjectId),
     retry: 1,
   });
@@ -185,9 +193,6 @@ export default function AssetCenterPage() {
       geoGoalNotes: goalPayload.goalNotes ?? "",
     });
 
-    const wizardStep = typeof p.wizardStep === "number" ? p.wizardStep : 0;
-    if (wizardStep >= 1 && wizardStep <= 8) setCurrentStep(wizardStep);
-
     const cases = (summaryData.customerCases ?? []) as Array<Record<string, unknown>>;
     setCaseRows(
       cases.map(c => ({
@@ -203,9 +208,22 @@ export default function AssetCenterPage() {
   }, [summaryData, currentProject]);
 
   useEffect(() => {
+    wizardStepHydratedForProjectRef.current = null;
+    setCurrentStep(1);
+  }, [currentProjectId]);
+
+  useEffect(() => {
     if (!currentProjectId || !isFetched) return;
     hydrateFromProfile();
   }, [hydrateFromProfile, currentProjectId, isFetched]);
+
+  useEffect(() => {
+    if (!currentProjectId || !summaryData || wizardStepHydratedForProjectRef.current === currentProjectId) return;
+    const p = (summaryData.profile ?? {}) as Record<string, unknown>;
+    const wizardStep = typeof p.wizardStep === "number" ? p.wizardStep : 0;
+    if (wizardStep >= 1 && wizardStep <= 8) setCurrentStep(wizardStep);
+    wizardStepHydratedForProjectRef.current = currentProjectId;
+  }, [currentProjectId, summaryData]);
 
   const wizardCompleteness = summary?.wizardCompleteness;
   const completenessReport = completenessReportQuery.data;
@@ -230,6 +248,37 @@ export default function AssetCenterPage() {
   const brandSourceCount = summary?.counts?.brandSources ?? 0;
   const brandSourcePlatformCount = summary?.counts?.brandSourcePlatforms ?? 0;
   const questionCount = summary?.counts?.questions ?? 0;
+
+  const geoGoalSuggestions = useMemo(() => {
+    const ws = workspaceSummaryQuery.data;
+    const hasAiTestData = resolveWizardStep8HasAiTestData({
+      hasCompletedT0Baseline: ws?.hasCompletedT0Baseline,
+      aiTestResultCount: ws?.aiTestResultCount,
+      brandMentionRate: ws?.brandMentionRate ?? null,
+      recommendRate: ws?.recommendRate ?? null,
+    });
+    return buildWizardStep8GeoGoalSuggestions({
+      brandMentionRate: ws?.brandMentionRate ?? null,
+      recommendRate: ws?.recommendRate ?? null,
+      hasAiTestData,
+    });
+  }, [workspaceSummaryQuery.data]);
+
+  useEffect(() => {
+    const mentionTarget = geoGoalSuggestions.mention.suggestedTargetPercent;
+    const recommendTarget = geoGoalSuggestions.recommend.suggestedTargetPercent;
+    setForm(prev => {
+      const patch: Partial<WizardFormState> = {};
+      if (mentionTarget != null && prev.targetMentionRate !== String(mentionTarget)) {
+        patch.targetMentionRate = String(mentionTarget);
+      }
+      if (recommendTarget != null && prev.targetRecommendationRate !== String(recommendTarget)) {
+        patch.targetRecommendationRate = String(recommendTarget);
+      }
+      if (Object.keys(patch).length === 0) return prev;
+      return { ...prev, ...patch };
+    });
+  }, [geoGoalSuggestions]);
 
   const profileForCompletion = useMemo(
     () => ({
@@ -354,12 +403,17 @@ export default function AssetCenterPage() {
       void triggerMaturityCalculate({ silent: true });
       setMessage("草稿已保存。");
     } catch (e) {
+      const errObj = e as { message?: string; data?: { code?: string; zodError?: unknown } };
       console.error("[enterprise-profile] saveDraft failed", {
         projectId: currentProjectId,
         wizardStep: step,
+        enterpriseName: form.enterpriseName.trim() || form.brandName.trim(),
+        message: errObj?.message,
+        code: errObj?.data?.code,
+        zodError: errObj?.data?.zodError,
         error: e,
       });
-      toast.error(profileSaveFailureMessage(toUserFacingErrorFromUnknown(e, "保存失败")));
+      toast.error(formatWizardSaveDraftError(e));
     }
   }
 
@@ -431,7 +485,7 @@ export default function AssetCenterPage() {
             stepComplete={stepComplete}
             completionScore={completionScore}
             dimensionScores={dimensionScores}
-            onStepSelect={setCurrentStep}
+            onStepSelect={step => setCurrentStep(Math.min(8, Math.max(1, step)))}
           >
             <WizardStepHeader meta={stepMeta} />
             <div className="mt-6">
@@ -444,6 +498,7 @@ export default function AssetCenterPage() {
                 trustEvidenceCount={trustEvidenceCount}
                 brandSourceCount={brandSourceCount}
                 brandSourcePlatformCount={brandSourcePlatformCount}
+                geoGoalSuggestions={geoGoalSuggestions}
                 onFormChange={patch => setForm(prev => ({ ...prev, ...patch }))}
                 onDraftChange={patch => setDrafts(prev => ({ ...prev, ...patch }))}
                 onNavigate={path => setLocation(path)}

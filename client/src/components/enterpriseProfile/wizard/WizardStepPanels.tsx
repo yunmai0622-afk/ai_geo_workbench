@@ -5,6 +5,10 @@ import { buildProjectUrl } from "@/lib/activeProject";
 import { ENTERPRISE_INDUSTRY_OPTIONS } from "@shared/enterpriseProfileIndustry";
 import { ONBOARDING_TARGET_PLATFORMS } from "@shared/onboardingWizardSteps";
 import type { QuestionGuideExamples } from "@shared/onboardingWizardGeoGoalNotes";
+import type {
+  WizardStep8GeoGoalSuggestions,
+  WizardStep8RateSuggestion,
+} from "@shared/wizardStep8GeoGoalDisplay";
 import { TrustEvidenceManager } from "@/components/enterpriseProfile/TrustEvidenceManager";
 import { MultiValueInput } from "./MultiValueInput";
 import { WizardQuestionGuideStep } from "./WizardQuestionGuideStep";
@@ -61,6 +65,7 @@ type Props = {
   trustEvidenceCount: number;
   brandSourceCount: number;
   brandSourcePlatformCount: number;
+  geoGoalSuggestions?: WizardStep8GeoGoalSuggestions | null;
   onFormChange: (patch: Partial<WizardFormState>) => void;
   onDraftChange: (patch: Partial<Drafts>) => void;
   onNavigate: (path: string) => void;
@@ -75,6 +80,38 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
   );
 }
 
+function GeoGoalRateSuggestionCard({
+  rateLabel,
+  suggestion,
+  testId,
+}: {
+  rateLabel: string;
+  suggestion: WizardStep8RateSuggestion;
+  testId: string;
+}) {
+  return (
+    <div
+      className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+      data-testid={testId}
+    >
+      <p className="text-sm font-medium text-gray-800">目标{rateLabel}</p>
+      {suggestion.hasMeasuredData && suggestion.currentRatePercent != null ? (
+        <div className="mt-2 space-y-1 text-sm leading-relaxed text-gray-700">
+          <p>当前{rateLabel}：{suggestion.currentRatePercent}%（基于最近实测）</p>
+          <p>行业参考目标：{suggestion.industryReferenceLabel}</p>
+          {suggestion.suggestedTargetPercent != null ? (
+            <p className="font-medium text-blue-800">
+              建议本轮目标：提升至 {suggestion.suggestedTargetPercent}%
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm leading-relaxed text-gray-600">{suggestion.emptyHint}</p>
+      )}
+    </div>
+  );
+}
+
 export function WizardStepPanels({
   step,
   form,
@@ -84,10 +121,12 @@ export function WizardStepPanels({
   trustEvidenceCount,
   brandSourceCount,
   brandSourcePlatformCount,
+  geoGoalSuggestions,
   onFormChange,
   onDraftChange,
   onNavigate,
 }: Props) {
+  const activeStep = Number(step);
   const addToList = (key: keyof WizardFormState, draftKey: keyof Drafts, draft: string, max = 20) => {
     const t = draft.trim();
     const list = form[key] as string[];
@@ -101,7 +140,7 @@ export function WizardStepPanels({
     onFormChange({ [key]: list.filter(x => x !== value) } as Partial<WizardFormState>);
   };
 
-  if (step === 1) {
+  if (activeStep === 1) {
     return (
       <div className="space-y-4" data-testid="wizard-step-1">
         <label className="block space-y-1">
@@ -132,7 +171,7 @@ export function WizardStepPanels({
     );
   }
 
-  if (step === 2) {
+  if (activeStep === 2) {
     return (
       <div className="space-y-4" data-testid="wizard-step-2">
         <label className="block space-y-1">
@@ -185,7 +224,7 @@ export function WizardStepPanels({
     );
   }
 
-  if (step === 3) {
+  if (activeStep === 3) {
     return (
       <div className="space-y-4" data-testid="wizard-step-3">
         <label className="block space-y-1">
@@ -215,7 +254,7 @@ export function WizardStepPanels({
     );
   }
 
-  if (step === 4) {
+  if (activeStep === 4) {
     return (
       <WizardQuestionGuideStep
         form={form}
@@ -226,7 +265,7 @@ export function WizardStepPanels({
     );
   }
 
-  if (step === 5) {
+  if (activeStep === 5) {
     return (
       <div className="space-y-4" data-testid="wizard-step-5">
         <label className="block space-y-1">
@@ -248,7 +287,7 @@ export function WizardStepPanels({
     );
   }
 
-  if (step === 6) {
+  if (activeStep === 6) {
     return (
       <div className="space-y-4" data-testid="wizard-step-6">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -275,7 +314,7 @@ export function WizardStepPanels({
     );
   }
 
-  if (step === 7) {
+  if (activeStep === 7) {
     return (
       <div className="space-y-4" data-testid="wizard-step-7">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -303,32 +342,30 @@ export function WizardStepPanels({
     );
   }
 
+  const mentionSuggestion = geoGoalSuggestions?.mention;
+  const recommendSuggestion = geoGoalSuggestions?.recommend;
+
   return (
     <div className="space-y-4" data-testid="wizard-step-8">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block space-y-1">
-          <FieldLabel>目标提及率 %</FieldLabel>
-          <Input
-            className={inputClass}
-            type="number"
-            min={0}
-            max={100}
-            value={form.targetMentionRate}
-            onChange={e => onFormChange({ targetMentionRate: e.target.value })}
+        {mentionSuggestion ? (
+          <GeoGoalRateSuggestionCard
+            rateLabel="提及率"
+            suggestion={mentionSuggestion}
+            testId="wizard-step8-mention-suggestion"
           />
-        </label>
-        <label className="block space-y-1">
-          <FieldLabel>目标推荐率 %</FieldLabel>
-          <Input
-            className={inputClass}
-            type="number"
-            min={0}
-            max={100}
-            value={form.targetRecommendationRate}
-            onChange={e => onFormChange({ targetRecommendationRate: e.target.value })}
+        ) : null}
+        {recommendSuggestion ? (
+          <GeoGoalRateSuggestionCard
+            rateLabel="推荐率"
+            suggestion={recommendSuggestion}
+            testId="wizard-step8-recommend-suggestion"
           />
-        </label>
+        ) : null}
       </div>
+      <p className="text-xs text-gray-500">
+        目标由系统根据最近实测表现自动建议，无需手填不确定的百分比。
+      </p>
       <label className="block space-y-2">
         <FieldLabel>重点目标平台</FieldLabel>
         <div className="flex flex-wrap gap-2">

@@ -97,7 +97,7 @@ describe("delivery report visual hierarchy (C3-A / C3-B)", () => {
     expect(retestHero).toContain('data-testid="delivery-report-retest-hero"');
     expect(retestHero).toContain("发布前提及率");
     expect(retestHero).toContain("发布后提及率");
-    expect(retestHero).toContain("T0基线");
+    expect(retestHero).toContain("优化前基线");
     expect(retestHero).toContain("等待发布后7天执行T1复测");
     expect(readProjectFile("client/src/lib/deliveryReportLightDisplay.ts")).toContain("buildPublishRetestHeroContent");
   });

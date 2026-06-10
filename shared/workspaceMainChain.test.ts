@@ -77,9 +77,9 @@ describe("workspaceMainChain", () => {
     expect(steps[0]?.done).toBe(false);
   });
 
-  it("未完成 T0 时建议开始基线检测", () => {
+  it("未完成 T0 时建议开始 AI 现状检测", () => {
     const action = resolveMainChainNextActionPaths(baseMetrics(), []);
-    expect(action?.ctaLabel).toBe("开始基线检测");
+    expect(action?.ctaLabel).toBe("开始 AI 现状检测");
     expect(action?.ctaPath).toBe("/ai-diagnosis");
   });
 

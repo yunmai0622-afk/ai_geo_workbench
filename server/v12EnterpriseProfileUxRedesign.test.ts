@@ -51,6 +51,16 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
     expect(asset).not.toContain("保存企业基础信息");
   });
 
+  it("Step8 提及率/推荐率改为系统建议展示，不再手填", () => {
+    expect(panels).toContain("wizard-step8-mention-suggestion");
+    expect(panels).toContain("基于最近实测");
+    expect(panels).toContain("建议本轮目标：提升至");
+    expect(panels).not.toContain("目标提及率 %");
+    expect(panels).not.toContain("onFormChange({ targetMentionRate");
+    expect(asset).toContain("buildWizardStep8GeoGoalSuggestions");
+    expect(asset).toContain("geo.workspace.summary.useQuery");
+  });
+
   it("高级素材折叠与案例库弹窗编辑", () => {
     const advanced = readProjectFile("client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx");
     expect(asset).toContain("AdvancedMaterialsSection");

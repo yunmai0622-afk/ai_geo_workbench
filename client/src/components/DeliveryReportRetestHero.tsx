@@ -45,7 +45,7 @@ function WaitingT1Hero({ content }: { content: Extract<PublishRetestHeroContent,
     <div className="space-y-4 text-center">
       <p className="text-xs font-semibold uppercase tracking-widest text-sky-800/80">复测进度</p>
       <p className="text-3xl font-bold tabular-nums text-gray-900 sm:text-4xl md:text-5xl">
-        T0基线：{content.t0BaselinePct}%
+        优化前基线：{content.t0BaselinePct}%
       </p>
       <p className="text-lg font-semibold leading-relaxed text-sky-800 sm:text-xl md:text-2xl">
         等待发布后7天执行T1复测

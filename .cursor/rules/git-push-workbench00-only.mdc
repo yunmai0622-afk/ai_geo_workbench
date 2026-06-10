@@ -1,0 +1,27 @@
+---
+description: 代码只能推送到 ai_geo_workbench00，禁止推送到 ai_geo_workbench
+alwaysApply: true
+---
+
+# Git 推送目标（强制）
+
+所有代码变更必须推送到：
+
+`https://github.com/yunmai0622-afk/ai_geo_workbench00.git`
+
+## 每次推送前必做
+
+1. 执行 `git remote -v`
+2. 找到 URL 含 `ai_geo_workbench00` 的 remote 名称（当前通常为 `github`）
+3. 仅使用该 remote 推送，例如：`git push github main`
+
+## 禁止事项
+
+- **禁止** `git push origin`（若 origin 指向 `ai_geo_workbench` 不带 00）
+- **禁止**推送到 `https://github.com/yunmai0622-afk/ai_geo_workbench.git`
+- 用户要求 push 时，不得默认使用 `origin`，必须先 `git remote -v` 再选正确 remote
+
+## 当前仓库约定
+
+- 正确 remote：`github` → `ai_geo_workbench00`
+- 错误 remote：`origin` → `ai_geo_workbench`（仅作拉取/对照，不用于推送）

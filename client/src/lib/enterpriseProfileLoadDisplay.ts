@@ -1,4 +1,4 @@
-import { GENERIC_LOAD_FAILED_MESSAGE } from "@shared/userFacingErrors";
+import { GENERIC_LOAD_FAILED_MESSAGE, toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 
 export const PROFILE_CORE_LOAD_FAILED_MESSAGE =
   "企业资料暂时无法加载，请刷新页面或稍后重试。";
@@ -40,4 +40,24 @@ export function profileSaveFailureMessage(raw?: string | null): string {
   }
   if (trimmed && trimmed !== GENERIC_LOAD_FAILED_MESSAGE) return trimmed;
   return "保存失败，请稍后重试。";
+}
+
+function extractTrpcErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "message" in err) {
+    return String((err as { message: unknown }).message ?? "").trim();
+  }
+  return "";
+}
+
+/** 建档向导「保存草稿」失败时的客户化提示 */
+export function formatWizardSaveDraftError(err: unknown): string {
+  const raw = extractTrpcErrorMessage(err);
+  const mapped = profileSaveFailureMessage(raw);
+  if (mapped !== "保存失败，请稍后重试。") return mapped;
+
+  const friendly = toUserFacingErrorFromUnknown(err, "");
+  if (friendly && friendly !== "操作失败，请稍后重试。若问题持续，请联系服务人员。") {
+    return friendly.startsWith("保存失败") ? friendly : `保存失败：${friendly}`;
+  }
+  return profileSaveFailureMessage(friendly || raw);
 }
