@@ -4321,3 +4321,21 @@
 [2026-06-09T19:00:39.127Z] 3:00:39 PM [tsx] change in ./server/routers.ts Restarting...
 [2026-06-09T19:00:47.278Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-09T19:00:47.313Z] Server running on http://localhost:3000/
+[2026-06-10T01:22:22.905Z] 9:22:22 PM [vite] (client) hmr update /src/index.css
+[2026-06-10T01:22:22.907Z] 9:22:22 PM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/WizardStepPanels.tsx
+[2026-06-10T01:22:22.908Z] 9:22:22 PM [vite] (client) hmr update /src/index.css
+[2026-06-10T01:22:22.949Z] 9:22:22 PM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx, /src/components/enterpriseProfile/wizard/WizardStepPanels.tsx
+[2026-06-10T01:22:22.950Z] 9:22:22 PM [vite] (client) hmr update /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/help/PageUsageHelpButton.tsx
+[2026-06-10T01:22:23.049Z] 9:22:23 PM [tsx] change in ./shared/onboardingWizardSteps.ts Restarting...
+[2026-06-10T01:22:31.071Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-10T01:22:31.107Z] Server running on http://localhost:3000/
+[2026-06-10T01:22:40.206Z] Dev server process group stopped
+[2026-06-10T01:22:40.209Z] ELIFECYCLE  Command failed.
+[2026-06-10T01:22:40.284Z] Dev server exited with code -15
+[2026-06-10T01:22:43.240Z] Starting dev server with command: pnpm run dev
+[2026-06-10T01:22:44.126Z] 
+[2026-06-10T01:22:44.127Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-10T01:22:44.128Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-10T01:22:44.128Z] 
+[2026-06-10T01:22:52.452Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-10T01:22:52.487Z] Server running on http://localhost:3000/
