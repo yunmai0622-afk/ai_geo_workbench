@@ -4387,3 +4387,37 @@
 [2026-06-10T02:06:53.499Z] Server running on http://localhost:3000/
 [2026-06-10T02:06:54.506Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-10T02:08:02.227Z] 10:08:02 PM [vite] (client) hmr update /src/index.css
+[2026-06-10T02:17:35.000Z] 10:17:35 PM [vite] (client) hmr update /src/index.css
+[2026-06-10T02:17:35.002Z] 10:17:35 PM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportRetestHero.tsx
+[2026-06-10T02:17:35.002Z] 10:17:35 PM [vite] (client) hmr update /src/components/GeoIntroModal.tsx, /src/index.css
+[2026-06-10T02:17:35.007Z] 10:17:35 PM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/WizardStepPanels.tsx
+[2026-06-10T02:17:35.011Z] 10:17:35 PM [vite] (client) hmr update /src/index.css, /src/components/source-graph/BrandSourceDrawer.tsx
+[2026-06-10T02:17:35.011Z] 10:17:35 PM [vite] (client) hmr update /src/index.css, /src/pages/DemoGeoBrowse.tsx, /src/pages/DemoGeo.tsx
+[2026-06-10T02:17:35.012Z] 10:17:35 PM [vite] (client) hmr update /src/index.css, /src/pages/AssetCenter.tsx
+[2026-06-10T02:17:35.012Z] 10:17:35 PM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-06-10T02:17:35.015Z] 10:17:35 PM [vite] (client) hmr update /src/pages/OnboardingPage.tsx, /src/index.css
+[2026-06-10T02:17:35.020Z] 10:17:35 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx, /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx
+[2026-06-10T02:17:35.021Z] 10:17:35 PM [vite] (client) hmr update /src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx
+[2026-06-10T02:17:35.021Z] 10:17:35 PM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx
+[2026-06-10T02:17:35.022Z] 10:17:35 PM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx, /src/components/enterpriseProfile/wizard/WizardStepPanels.tsx, /src/components/enterpriseProfile/wizard/WizardQuestionGuideStep.tsx
+[2026-06-10T02:17:35.022Z] 10:17:35 PM [vite] (client) hmr update /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-10T02:17:35.023Z] 10:17:35 PM [vite] (client) hmr update /src/components/questions/QuestionBankAssistantPanel.tsx
+[2026-06-10T02:17:35.023Z] 10:17:35 PM [vite] (client) hmr update /src/pages/V12FlowPages.tsx
+[2026-06-10T02:17:35.024Z] 10:17:35 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/KnowledgePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/DeliveryReportCustomerLightView.tsx, /src/components/delivery/DeliveryReportCustomerProductSections.tsx, /src/components/delivery/DeliveryReportProductBody.tsx, /src/pages/DeliveryReportsCenterPage.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/help/PageUsageHelpButton.tsx, /src/components/delivery/GeoHealthBriefCard.tsx, /src/components/publishing/PlatformPublishSuccessRatePanel.tsx
+[2026-06-10T02:17:35.024Z] 10:17:35 PM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-10T02:17:35.133Z] 10:17:35 PM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-06-10T02:17:43.474Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-10T02:17:43.519Z] Server running on http://localhost:3000/
+[2026-06-10T02:17:44.086Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-10T02:18:03.568Z] Dev server process group stopped
+[2026-06-10T02:18:03.571Z] ELIFECYCLE  Command failed.
+[2026-06-10T02:18:03.637Z] Dev server exited with code -15
+[2026-06-10T02:18:06.604Z] Starting dev server with command: pnpm run dev
+[2026-06-10T02:18:07.498Z] 
+[2026-06-10T02:18:07.499Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-10T02:18:07.499Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-10T02:18:07.500Z] 
+[2026-06-10T02:18:15.707Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-10T02:18:15.744Z] Server running on http://localhost:3000/
+[2026-06-10T02:18:16.201Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-10T02:19:18.150Z] 10:19:18 PM [vite] (client) hmr update /src/index.css
