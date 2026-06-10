@@ -35,8 +35,8 @@ export function profileSaveFailureMessage(raw?: string | null): string {
   if (trimmed.includes("enterpriseName") || trimmed.includes("Required")) {
     return "请填写企业名称后再保存。";
   }
-  if (trimmed.includes("monthlyContentCapacity") || trimmed.includes("Number must be greater than 0")) {
-    return "月内容产能须为正整数，留空表示暂不填写。";
+  if (trimmed.includes("monthlyContentCapacity")) {
+    return "请选择每月可配合内容数，或稍后重试保存。";
   }
   if (trimmed && trimmed !== GENERIC_LOAD_FAILED_MESSAGE) return trimmed;
   return "保存失败，请稍后重试。";

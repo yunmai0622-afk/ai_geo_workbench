@@ -61,6 +61,24 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
     expect(asset).toContain("geo.workspace.summary.useQuery");
   });
 
+  it("Step8 剩余字段：平台/竞品/月内容/负责人/备注", () => {
+    expect(wizardSteps).toContain("文心一言");
+    expect(wizardSteps).not.toMatch(/"文心",/);
+    expect(panels).toContain("你最希望在哪些 AI 平台被推荐？");
+    expect(panels).toContain("选择本轮重点超越的竞品");
+    expect(panels).toContain("请先在 Step5 填写竞品信息");
+    expect(panels).toContain("wizard-step8-go-competitor-step");
+    expect(panels).toContain("WIZARD_STEP8_MONTHLY_CONTENT_OPTIONS");
+    expect(readProjectFile("shared/wizardStep8MonthlyContentCapacity.ts")).toContain("1-3篇（轻量配合）");
+    expect(panels).toContain("内部负责人（选填）");
+    expect(panels).toContain("其他补充说明（选填）");
+    expect(panels).not.toContain("希望超越的竞品");
+    expect(panels).not.toContain("每月可配合发布内容数");
+    expect(panels).not.toContain("90 天目标备注");
+    expect(asset).toContain("monthlyContentCapacityValueFromOptionId");
+    expect(asset).toContain("normalizeWizardTargetPlatforms");
+  });
+
   it("高级素材折叠与案例库弹窗编辑", () => {
     const advanced = readProjectFile("client/src/components/enterpriseProfile/AdvancedMaterialsSection.tsx");
     expect(asset).toContain("AdvancedMaterialsSection");

@@ -2,7 +2,7 @@
  * GEO-V2.0-P0-B：8 步建档向导完整度（8 维均等加权）
  */
 
-import { parseGeoGoalNotesPayload, type QuestionGuideExamples } from "./onboardingWizardGeoGoalNotes";
+import type { QuestionGuideExamples } from "./onboardingWizardGeoGoalNotes";
 
 export const ONBOARDING_WIZARD_TARGET_QUESTION_COUNT = 30;
 
@@ -116,15 +116,12 @@ export function evaluateSourceGraphScore(sourceCount: number, platformCount: num
 }
 
 export function evaluateGoalClarityScore(profile: ProfileLike): number {
-  const payload = parseGeoGoalNotesPayload(trim(profile?.geoGoalNotes) || null);
   return fillRate([
     typeof profile?.targetMentionRate === "number" && profile.targetMentionRate > 0,
     typeof profile?.targetRecommendationRate === "number" && profile.targetRecommendationRate > 0,
     stringArray(profile?.targetPlatforms).length > 0,
     stringArray(profile?.targetCompetitorsToBeat).length > 0,
-    typeof profile?.monthlyContentCapacity === "number" && profile.monthlyContentCapacity > 0,
-    Boolean(trim(profile?.internalOwnerName)),
-    Boolean(trim(payload.goalNotes)),
+    typeof profile?.monthlyContentCapacity === "number",
   ]);
 }
 

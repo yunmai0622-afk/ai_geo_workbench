@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { ENTERPRISE_INDUSTRY_OPTIONS } from "@shared/enterpriseProfileIndustry";
 import { ONBOARDING_TARGET_PLATFORMS } from "@shared/onboardingWizardSteps";
+import { WIZARD_STEP8_MONTHLY_CONTENT_OPTIONS } from "@shared/wizardStep8MonthlyContentCapacity";
 import type { QuestionGuideExamples } from "@shared/onboardingWizardGeoGoalNotes";
 import type {
   WizardStep8GeoGoalSuggestions,
@@ -69,6 +70,7 @@ type Props = {
   onFormChange: (patch: Partial<WizardFormState>) => void;
   onDraftChange: (patch: Partial<Drafts>) => void;
   onNavigate: (path: string) => void;
+  onGoToStep: (step: number) => void;
 };
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -125,6 +127,7 @@ export function WizardStepPanels({
   onFormChange,
   onDraftChange,
   onNavigate,
+  onGoToStep,
 }: Props) {
   const activeStep = Number(step);
   const addToList = (key: keyof WizardFormState, draftKey: keyof Drafts, draft: string, max = 20) => {
@@ -368,6 +371,7 @@ export function WizardStepPanels({
       </p>
       <label className="block space-y-2">
         <FieldLabel>重点目标平台</FieldLabel>
+        <p className="text-xs text-gray-500">你最希望在哪些 AI 平台被推荐？</p>
         <div className="flex flex-wrap gap-2">
           {ONBOARDING_TARGET_PLATFORMS.map(platform => {
             const selected = form.targetPlatforms.includes(platform);
@@ -389,33 +393,80 @@ export function WizardStepPanels({
           })}
         </div>
       </label>
+      <div className="block space-y-2" data-testid="wizard-step8-competitor-pick">
+        <FieldLabel>选择本轮重点超越的竞品</FieldLabel>
+        {form.competitors.length === 0 ? (
+          <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
+            <p className="text-sm text-amber-900">请先在 Step5 填写竞品信息</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              data-testid="wizard-step8-go-competitor-step"
+              onClick={() => onGoToStep(5)}
+            >
+              去填写竞品
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {form.competitors.map(competitor => {
+              const selected = form.targetCompetitorsToBeat.includes(competitor);
+              return (
+                <button
+                  key={competitor}
+                  type="button"
+                  data-testid={`wizard-step8-competitor-${competitor}`}
+                  className={`rounded-full border px-3 py-1 text-xs ${selected ? "border-blue-600 bg-blue-50 text-blue-800" : "border-gray-200 text-gray-600"}`}
+                  onClick={() => {
+                    const next = selected
+                      ? form.targetCompetitorsToBeat.filter(name => name !== competitor)
+                      : [...form.targetCompetitorsToBeat, competitor];
+                    onFormChange({ targetCompetitorsToBeat: next });
+                  }}
+                >
+                  {competitor}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <fieldset className="block space-y-2" data-testid="wizard-step8-monthly-content">
+        <FieldLabel>每月可配合内容数</FieldLabel>
+        <div className="space-y-2">
+          {WIZARD_STEP8_MONTHLY_CONTENT_OPTIONS.map(option => {
+            const selected = form.monthlyContentCapacity === option.id;
+            return (
+              <label
+                key={option.id}
+                className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm ${selected ? "border-blue-600 bg-blue-50 text-blue-900" : "border-gray-200 bg-white text-gray-700"}`}
+              >
+                <input
+                  type="radio"
+                  name="wizard-monthly-content-capacity"
+                  className="size-4 accent-blue-600"
+                  checked={selected}
+                  onChange={() => onFormChange({ monthlyContentCapacity: option.id })}
+                />
+                <span>{option.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
       <label className="block space-y-1">
-        <FieldLabel>希望超越的竞品</FieldLabel>
-        <MultiValueInput
-          values={form.targetCompetitorsToBeat}
-          draft={drafts.targetCompetitorDraft}
-          onDraftChange={v => onDraftChange({ targetCompetitorDraft: v })}
-          onAdd={() => addToList("targetCompetitorsToBeat", "targetCompetitorDraft", drafts.targetCompetitorDraft)}
-          onRemove={v => removeFromList("targetCompetitorsToBeat", v)}
-          testId="wizard-target-competitors"
-        />
-      </label>
-      <label className="block space-y-1">
-        <FieldLabel>每月可配合发布内容数</FieldLabel>
+        <FieldLabel>内部负责人（选填）</FieldLabel>
+        <p className="text-xs text-gray-500">如有内部对接人，填写后便于协作沟通（选填）</p>
         <Input
           className={inputClass}
-          type="number"
-          min={0}
-          value={form.monthlyContentCapacity}
-          onChange={e => onFormChange({ monthlyContentCapacity: e.target.value })}
+          value={form.internalOwnerName}
+          onChange={e => onFormChange({ internalOwnerName: e.target.value })}
         />
       </label>
       <label className="block space-y-1">
-        <FieldLabel>内部负责人</FieldLabel>
-        <Input className={inputClass} value={form.internalOwnerName} onChange={e => onFormChange({ internalOwnerName: e.target.value })} />
-      </label>
-      <label className="block space-y-1">
-        <FieldLabel>90 天目标备注</FieldLabel>
+        <FieldLabel>其他补充说明（选填）</FieldLabel>
         <Textarea value={form.geoGoalNotes} onChange={e => onFormChange({ geoGoalNotes: e.target.value })} rows={4} />
       </label>
     </div>

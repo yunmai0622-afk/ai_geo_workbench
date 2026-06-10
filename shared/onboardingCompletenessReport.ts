@@ -288,9 +288,9 @@ function evaluateGeoGoalDimension(profile: ProfileLike): CompletenessDimensionBa
     { label: "目标推荐率", filled: typeof profile?.targetRecommendationRate === "number" && profile.targetRecommendationRate > 0 },
     { label: "目标平台", filled: stringArray(profile?.targetPlatforms).length > 0 },
     { label: "待超越竞品", filled: stringArray(profile?.targetCompetitorsToBeat).length > 0 },
-    { label: "月内容产能", filled: typeof profile?.monthlyContentCapacity === "number" && profile.monthlyContentCapacity > 0 },
-    { label: "内部负责人", filled: Boolean(trim(profile?.internalOwnerName)) },
-    { label: "90 天目标说明", filled: Boolean(trim(payload.goalNotes)) },
+    { label: "月内容产能", filled: typeof profile?.monthlyContentCapacity === "number" },
+    { label: "内部负责人（选填）", filled: Boolean(trim(profile?.internalOwnerName)) },
+    { label: "其他补充说明（选填）", filled: Boolean(trim(payload.goalNotes)) },
   ]);
   const stepMeta = ONBOARDING_WIZARD_STEPS[7]!;
   return {

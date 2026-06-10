@@ -26,10 +26,15 @@ import {
   type OnboardingWizardCompleteness,
 } from "@shared/onboardingWizardCompleteness";
 import {
+  normalizeWizardTargetPlatforms,
   ONBOARDING_WIZARD_PAGE_SUBTITLE,
   ONBOARDING_WIZARD_PAGE_TITLE,
   ONBOARDING_WIZARD_STEPS,
 } from "@shared/onboardingWizardSteps";
+import {
+  monthlyContentCapacityValueFromOptionId,
+  resolveMonthlyContentCapacityOptionId,
+} from "@shared/wizardStep8MonthlyContentCapacity";
 import {
   buildWizardStep8GeoGoalSuggestions,
   resolveWizardStep8HasAiTestData,
@@ -66,12 +71,6 @@ function parseOptionalInt(v: string): number | null {
   const n = Number(v);
   if (!v.trim() || Number.isNaN(n)) return null;
   return Math.round(n);
-}
-
-function parseOptionalPositiveInt(v: string): number | null {
-  const n = parseOptionalInt(v);
-  if (n == null || n <= 0) return null;
-  return n;
 }
 
 const EMPTY_DRAFTS = {
@@ -186,9 +185,13 @@ export default function AssetCenterPage() {
       competitorDifference: textField(p.competitorDifference),
       targetMentionRate: typeof p.targetMentionRate === "number" ? String(p.targetMentionRate) : "",
       targetRecommendationRate: typeof p.targetRecommendationRate === "number" ? String(p.targetRecommendationRate) : "",
-      targetPlatforms: parseStringArray(p.targetPlatforms),
-      targetCompetitorsToBeat: parseStringArray(p.targetCompetitorsToBeat),
-      monthlyContentCapacity: typeof p.monthlyContentCapacity === "number" ? String(p.monthlyContentCapacity) : "",
+      targetPlatforms: normalizeWizardTargetPlatforms(parseStringArray(p.targetPlatforms)),
+      targetCompetitorsToBeat: parseStringArray(p.targetCompetitorsToBeat).filter(name =>
+        parseStringArray(p.competitors).includes(name),
+      ),
+      monthlyContentCapacity: resolveMonthlyContentCapacityOptionId(
+        typeof p.monthlyContentCapacity === "number" ? p.monthlyContentCapacity : null,
+      ),
       internalOwnerName: textField(p.internalOwnerName),
       geoGoalNotes: goalPayload.goalNotes ?? "",
     });
@@ -280,6 +283,14 @@ export default function AssetCenterPage() {
     });
   }, [geoGoalSuggestions]);
 
+  useEffect(() => {
+    setForm(prev => {
+      const pruned = prev.targetCompetitorsToBeat.filter(name => prev.competitors.includes(name));
+      if (pruned.length === prev.targetCompetitorsToBeat.length) return prev;
+      return { ...prev, targetCompetitorsToBeat: pruned };
+    });
+  }, [form.competitors]);
+
   const profileForCompletion = useMemo(
     () => ({
       brandName: form.brandName,
@@ -303,7 +314,7 @@ export default function AssetCenterPage() {
       targetRecommendationRate: parseOptionalInt(form.targetRecommendationRate),
       targetPlatforms: form.targetPlatforms,
       targetCompetitorsToBeat: form.targetCompetitorsToBeat,
-      monthlyContentCapacity: parseOptionalPositiveInt(form.monthlyContentCapacity),
+      monthlyContentCapacity: monthlyContentCapacityValueFromOptionId(form.monthlyContentCapacity),
       internalOwnerName: form.internalOwnerName,
       geoGoalNotes: form.geoGoalNotes,
     }),
@@ -359,7 +370,7 @@ export default function AssetCenterPage() {
         targetRecommendationRate: parseOptionalInt(form.targetRecommendationRate),
         targetPlatforms: form.targetPlatforms,
         targetCompetitorsToBeat: form.targetCompetitorsToBeat,
-        monthlyContentCapacity: parseOptionalPositiveInt(form.monthlyContentCapacity),
+        monthlyContentCapacity: monthlyContentCapacityValueFromOptionId(form.monthlyContentCapacity),
         internalOwnerName: form.internalOwnerName.trim(),
         geoGoalNotes: form.geoGoalNotes.trim(),
         questionGuide: form.questionGuide,
@@ -502,6 +513,7 @@ export default function AssetCenterPage() {
                 onFormChange={patch => setForm(prev => ({ ...prev, ...patch }))}
                 onDraftChange={patch => setDrafts(prev => ({ ...prev, ...patch }))}
                 onNavigate={path => setLocation(path)}
+                onGoToStep={step => setCurrentStep(Math.min(8, Math.max(1, step)))}
               />
             </div>
             <WizardStepFooter

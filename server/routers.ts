@@ -720,7 +720,7 @@ const enterpriseProfileInput = z.object({
   targetPlatforms: z.array(z.string()).optional(),
   targetQuestionCategories: z.array(z.string()).optional(),
   targetCompetitorsToBeat: z.array(z.string()).optional(),
-  monthlyContentCapacity: z.number().int().positive().nullable().optional(),
+  monthlyContentCapacity: z.number().int().min(0).max(100).nullable().optional(),
   internalOwnerName: optionalText,
   geoGoalNotes: optionalText,
   questionGuide: z

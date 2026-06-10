@@ -84,7 +84,21 @@ export const ONBOARDING_WIZARD_PAGE_TITLE = "GEO 品牌资产建档";
 export const ONBOARDING_WIZARD_PAGE_SUBTITLE =
   "帮助 AI 正确理解企业是谁、做什么、服务谁、凭什么值得推荐。";
 
-export const ONBOARDING_TARGET_PLATFORMS = ["豆包", "Kimi", "DeepSeek", "通义", "文心", "ChatGPT", "Perplexity"] as const;
+export const ONBOARDING_TARGET_PLATFORMS = [
+  "豆包",
+  "Kimi",
+  "DeepSeek",
+  "通义",
+  "文心一言",
+  "ChatGPT",
+  "Perplexity",
+] as const;
+
+/** 兼容历史建档数据中的「文心」写法 */
+export function normalizeWizardTargetPlatforms(platforms: string[]): string[] {
+  const normalized = platforms.map(platform => (platform === "文心" ? "文心一言" : platform));
+  return [...new Set(normalized)];
+}
 
 /** Step4：这些问题会用于 */
 export const ONBOARDING_QUESTION_GUIDE_USAGE_ITEMS = [
