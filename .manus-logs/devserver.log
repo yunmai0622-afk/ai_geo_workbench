@@ -4421,3 +4421,19 @@
 [2026-06-10T02:18:15.744Z] Server running on http://localhost:3000/
 [2026-06-10T02:18:16.201Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-10T02:19:18.150Z] 10:19:18 PM [vite] (client) hmr update /src/index.css
+[2026-06-11T04:50:10.960Z] 12:50:10 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/TrustEvidenceManager.tsx
+[2026-06-11T04:50:10.961Z] 12:50:10 AM [vite] (client) hmr update /src/pages/SourceGraphPage.tsx, /src/index.css
+[2026-06-11T04:50:10.972Z] 12:50:10 AM [vite] (client) page reload /home/ubuntu/ai_geo_workbench/shared/userFacingErrors.ts
+[2026-06-11T04:50:11.088Z] 12:50:11 AM [tsx] change in ./shared/userFacingErrors.ts Restarting...
+[2026-06-11T04:50:19.750Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-11T04:50:19.789Z] Server running on http://localhost:3000/
+[2026-06-11T04:50:44.694Z] Dev server process group stopped
+[2026-06-11T04:50:44.696Z] ELIFECYCLE  Command failed.
+[2026-06-11T04:50:44.764Z] Dev server exited with code -15
+[2026-06-11T04:50:47.727Z] Starting dev server with command: pnpm run dev
+[2026-06-11T04:50:48.533Z] 
+[2026-06-11T04:50:48.534Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-11T04:50:48.534Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-11T04:50:48.535Z] 
+[2026-06-11T04:50:56.731Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-11T04:50:56.773Z] Server running on http://localhost:3000/
