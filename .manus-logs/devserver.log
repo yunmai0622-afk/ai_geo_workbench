@@ -4454,3 +4454,41 @@
 [2026-06-11T06:09:47.532Z] Server running on http://localhost:3000/
 [2026-06-11T06:09:47.995Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-11T06:10:21.131Z] 2:10:21 AM [vite] (client) hmr update /src/index.css
+[2026-06-11T07:36:09.743Z] 3:36:09 AM [vite] (client) hmr update /src/index.css
+[2026-06-11T07:36:09.745Z] 3:36:09 AM [vite] (client) hmr update /src/index.css, /src/components/delivery/DeliveryReportProductBody.tsx
+[2026-06-11T07:36:09.746Z] 3:36:09 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx
+[2026-06-11T07:36:09.746Z] 3:36:09 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/WizardStepFooter.tsx
+[2026-06-11T07:36:09.747Z] 3:36:09 AM [vite] (client) hmr update /src/index.css, /src/components/maturity/MaturityAssistantPanel.tsx
+[2026-06-11T07:36:09.747Z] 3:36:09 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-11T07:36:09.748Z] 3:36:09 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectNextActionPanel.tsx
+[2026-06-11T07:36:09.749Z] 3:36:09 AM [vite] (client) hmr update /src/App.tsx, /src/components/LegacyAssetProgressRedirect.tsx, /src/components/UserFeedbackFab.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/pages/AssetCenter.tsx, /src/pages/SourceGraphPage.tsx, /src/pages/LegacyOnboardingPage.tsx, /src/components/DashboardLayout.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/DeliveryReportSharePage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/MaturityDetailPage.tsx, /src/pages/GeoPages.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/enterpriseProfile/TrustEvidenceManager.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/components/source-graph/SourceGraphAssistantPanel.tsx, /src/components/questions/QuestionBankAssistantPanel.tsx, /src/components/maturity/MaturityAssistantPanel.tsx, /src/components/inclusion-monitoring/InclusionMonitoringAssistantPanel.tsx, /src/pages/OnboardingPage.tsx, /src/components/enterpriseProfile/wizard/WizardStepPanels.tsx, /src/components/templates/TemplateFillPreviewDialog.tsx, /src/components/geo/T0ContentGapSuggestionsCard.tsx, /src/components/geo/GeoGrowthSuggestionsPanel.tsx, /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx, /src/components/project/ProjectSwitcher.tsx, /src/index.css
+[2026-06-11T07:36:09.751Z] 3:36:09 AM [vite] (client) hmr update /src/index.css, /src/components/delivery/DeliveryReportCustomerProductSections.tsx
+[2026-06-11T07:36:09.752Z] 3:36:09 AM [vite] (client) hmr update /src/index.css
+[2026-06-11T07:36:09.757Z] 3:36:09 AM [vite] (client) hmr update /src/index.css, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx
+[2026-06-11T07:36:09.758Z] 3:36:09 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/index.css
+[2026-06-11T07:36:09.759Z] 3:36:09 AM [vite] (client) hmr update /src/index.css
+[2026-06-11T07:36:09.759Z] 3:36:09 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-11T07:36:09.760Z] 3:36:09 AM [vite] (client) hmr update /src/pages/MaturityDetailPage.tsx, /src/index.css
+[2026-06-11T07:36:09.761Z] 3:36:09 AM [vite] (client) hmr update /src/index.css
+[2026-06-11T07:36:09.761Z] 3:36:09 AM [vite] (client) hmr update /src/index.css
+[2026-06-11T07:36:09.762Z] 3:36:09 AM [vite] (client) hmr update /src/components/DeliveryReportCustomerLightView.tsx, /src/components/delivery/DeliveryReportCustomerProductSections.tsx, /src/components/delivery/DeliveryReportProductBody.tsx
+[2026-06-11T07:36:09.762Z] 3:36:09 AM [vite] (client) hmr update /src/components/weekly/ContentProductionAssistantPanel.tsx
+[2026-06-11T07:36:09.762Z] 3:36:09 AM [vite] (client) hmr update /src/pages/MaturityDetailPage.tsx, /src/components/maturity/MaturityAssistantPanel.tsx
+[2026-06-11T07:36:09.763Z] 3:36:09 AM [vite] (client) hmr update /src/pages/AssetCenter.tsx, /src/components/enterpriseProfile/wizard/WizardStepPanels.tsx, /src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx, /src/components/enterpriseProfile/wizard/WizardQuestionGuideStep.tsx
+[2026-06-11T07:36:09.764Z] 3:36:09 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-11T07:36:09.974Z] 3:36:09 AM [tsx] unlink in ./shared/geoContentTaskSource.ts Restarting...
+[2026-06-11T07:36:18.217Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-11T07:36:18.250Z] Server running on http://localhost:3000/
+[2026-06-11T07:36:18.900Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-11T07:36:36.762Z] Dev server process group stopped
+[2026-06-11T07:36:36.764Z] ELIFECYCLE  Command failed.
+[2026-06-11T07:36:36.841Z] Dev server exited with code -15
+[2026-06-11T07:36:39.805Z] Starting dev server with command: pnpm run dev
+[2026-06-11T07:36:40.563Z] 
+[2026-06-11T07:36:40.563Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-11T07:36:40.564Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-11T07:36:40.564Z] 
+[2026-06-11T07:36:48.500Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-11T07:36:48.533Z] Server running on http://localhost:3000/
+[2026-06-11T07:36:49.387Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-11T07:37:47.992Z] 3:37:47 AM [vite] (client) hmr update /src/index.css
