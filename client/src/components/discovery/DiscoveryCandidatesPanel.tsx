@@ -9,7 +9,7 @@ import {
 } from "@shared/discoveryLogic";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { Check, ExternalLink, Sparkles, X } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type Props = {
@@ -52,8 +52,12 @@ export function DiscoveryCandidatesPanel({
 }: Props) {
   const utils = trpc.useUtils();
   const projectQueryInput = { projectId };
+  const providerQueryInput = { type: candidateType };
 
-  const providerQuery = trpc.geo.discovery.getProviderStatus.useQuery();
+  const providerQuery = trpc.geo.discovery.getProviderStatus.useQuery(providerQueryInput, {
+    staleTime: 0,
+    refetchOnMount: true,
+  });
   const listQuery = trpc.geo.discovery.listCandidates.useQuery(
     { projectId, type: candidateType, status: "pending" },
     { enabled: Boolean(projectId) },
@@ -67,13 +71,21 @@ export function DiscoveryCandidatesPanel({
   const acceptMutation = trpc.geo.discovery.acceptCandidate.useMutation();
   const ignoreMutation = trpc.geo.discovery.ignoreCandidate.useMutation();
 
+  const [discoverConfigured, setDiscoverConfigured] = useState<boolean | null>(null);
+
   const pendingCandidates = useMemo(() => {
     return (listQuery.data ?? []) as CandidateRow[];
   }, [listQuery.data]);
 
-  const configured = providerQuery.data?.configured ?? false;
+  const providerConfigured = providerQuery.data?.configured;
+  const configured =
+    discoverConfigured ?? (providerConfigured === undefined ? true : providerConfigured);
+  const showNotConfigured = configured === false;
   const notConfiguredMessage =
-    providerQuery.data?.message ?? "自动发现服务暂未配置，你可以先手动添加已知信源";
+    providerQuery.data?.message ??
+    (candidateType === "trust_evidence"
+      ? "自动发现服务暂未配置，你可以先手动添加信任证据"
+      : "自动发现服务暂未配置，你可以先手动添加已知信源");
 
   const invalidate = async () => {
     await utils.geo.discovery.listCandidates.invalidate({ projectId, type: candidateType });
@@ -84,9 +96,13 @@ export function DiscoveryCandidatesPanel({
       const result = await discoverMutation.mutateAsync(projectQueryInput);
       await invalidate();
       if (!result.configured) {
-        toast.message(notConfiguredMessage);
+        setDiscoverConfigured(false);
+        await utils.geo.discovery.getProviderStatus.invalidate(providerQueryInput);
+        toast.message(result.message ?? notConfiguredMessage);
         return;
       }
+      setDiscoverConfigured(true);
+      await utils.geo.discovery.getProviderStatus.invalidate(providerQueryInput);
       toast.success(result.message ?? "发现完成");
     } catch (error) {
       toast.error(toUserFacingErrorFromUnknown(error, "发现失败，请稍后重试"));
@@ -137,7 +153,7 @@ export function DiscoveryCandidatesPanel({
           <p className="mt-1 text-sm text-gray-600" data-testid={`${testIdPrefix}-discovery-description`}>
             {description}
           </p>
-          {!configured ? (
+          {showNotConfigured ? (
             <p className="mt-2 text-xs text-amber-700" data-testid={`${testIdPrefix}-discovery-not-configured`}>
               {notConfiguredMessage}
             </p>
@@ -147,7 +163,7 @@ export function DiscoveryCandidatesPanel({
           type="button"
           size="sm"
           className="bg-blue-600 text-white hover:bg-blue-700"
-          disabled={busy || !configured}
+          disabled={busy}
           onClick={() => void handleDiscover()}
           data-testid={`${testIdPrefix}-discovery-start`}
         >

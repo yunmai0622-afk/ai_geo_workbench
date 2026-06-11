@@ -1,3 +1,5 @@
+import { ENV } from "../_core/env";
+
 export const SEARCH_PROVIDER_NOT_CONFIGURED = "SEARCH_PROVIDER_NOT_CONFIGURED";
 
 export type WebSearchResult = {
@@ -21,7 +23,7 @@ const DEFAULT_MAX_RESULTS = 5;
 const REQUEST_TIMEOUT_MS = 30_000;
 
 function getTavilyApiKey(): string {
-  return (process.env.TAVILY_API_KEY ?? "").trim();
+  return ENV.tavilyApiKey;
 }
 
 export function isWebSearchConfigured(): boolean {

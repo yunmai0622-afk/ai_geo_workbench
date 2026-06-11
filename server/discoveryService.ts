@@ -31,8 +31,17 @@ import {
   type WebSearchResult,
 } from "./services/webSearchService";
 
-const DISCOVERY_NOT_CONFIGURED_MESSAGE =
-  "自动发现服务暂未配置，你可以先手动添加已知信源";
+const DISCOVERY_NOT_CONFIGURED_MESSAGES: Record<DiscoveryCandidateType, string> = {
+  source: "自动发现服务暂未配置，你可以先手动添加已知信源",
+  trust_evidence: "自动发现服务暂未配置，你可以先手动添加信任证据",
+};
+
+function resolveDiscoveryNotConfiguredMessage(candidateType?: DiscoveryCandidateType): string {
+  if (candidateType) {
+    return DISCOVERY_NOT_CONFIGURED_MESSAGES[candidateType];
+  }
+  return DISCOVERY_NOT_CONFIGURED_MESSAGES.source;
+}
 
 export type DiscoveryRunResult = {
   configured: boolean;
@@ -139,7 +148,7 @@ async function runDiscovery(
       configured: false,
       candidates: existing,
       newCount: 0,
-      message: DISCOVERY_NOT_CONFIGURED_MESSAGE,
+      message: resolveDiscoveryNotConfiguredMessage(candidateType),
     };
   }
 
@@ -159,7 +168,7 @@ async function runDiscovery(
           configured: false,
           candidates: existing,
           newCount: 0,
-          message: DISCOVERY_NOT_CONFIGURED_MESSAGE,
+          message: resolveDiscoveryNotConfiguredMessage(candidateType),
         };
       }
       throw error;
@@ -330,10 +339,11 @@ export async function ignoreDiscoveryCandidate(
     .where(and(eq(discoveryCandidates.id, candidateId), eq(discoveryCandidates.projectId, projectId)));
 }
 
-export function getDiscoveryProviderStatus() {
+export function getDiscoveryProviderStatus(candidateType?: DiscoveryCandidateType) {
+  const configured = isWebSearchConfigured();
   return {
-    configured: isWebSearchConfigured(),
-    code: isWebSearchConfigured() ? null : SEARCH_PROVIDER_NOT_CONFIGURED,
-    message: isWebSearchConfigured() ? null : DISCOVERY_NOT_CONFIGURED_MESSAGE,
+    configured,
+    code: configured ? null : SEARCH_PROVIDER_NOT_CONFIGURED,
+    message: configured ? null : resolveDiscoveryNotConfiguredMessage(candidateType),
   };
 }

@@ -14,6 +14,8 @@ export const ENV = {
   smtpUser: process.env.SMTP_USER ?? "",
   smtpPass: process.env.SMTP_PASS ?? "",
   smtpFrom: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "",
+  /** Tavily Web Search（信源 / 信任证据 AI 自动发现） */
+  tavilyApiKey: (process.env.TAVILY_API_KEY ?? "").trim(),
 };
 
 export function isSmtpConfigured(): boolean {

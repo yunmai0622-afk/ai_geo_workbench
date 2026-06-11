@@ -41,6 +41,8 @@ describe("GEO-V2.0-P0-I Auto Source Evidence Discovery", () => {
     expect(discoveryService).toContain("eq(discoveryCandidates.projectId, projectId)");
     expect(discoveryRouter).toContain("discoverSources");
     expect(discoveryRouter).toContain("discoverTrustEvidence");
+    expect(discoveryRouter).toContain("getProviderStatus");
+    expect(discoveryService).toContain('return runDiscovery(db, projectId, "trust_evidence", queries);');
     expect(discoveryRouter).toContain("listCandidates");
     expect(discoveryRouter).toContain("acceptCandidate");
     expect(discoveryRouter).toContain("ignoreCandidate");
@@ -67,6 +69,8 @@ describe("GEO-V2.0-P0-I Auto Source Evidence Discovery", () => {
     expect(trustManager).toContain("开始发现证据");
     expect(trustManager).toContain("手动添加证据");
     expect(panel).toContain("discovery-not-configured");
+    expect(panel).toContain("getProviderStatus.useQuery(providerQueryInput");
+    expect(panel).toContain("discoverTrustEvidence.useMutation()");
     expect(panel).toContain("discovery-accept-");
     expect(panel).toContain("discovery-ignore-");
   });

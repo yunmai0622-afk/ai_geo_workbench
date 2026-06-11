@@ -24,7 +24,17 @@ const candidateTypeSchema = z.enum(
 );
 
 export const discoveryRouter = router({
-  getProviderStatus: protectedProcedure.query(() => getDiscoveryProviderStatus()),
+  getProviderStatus: protectedProcedure
+    .input(
+      z
+        .object({
+          type: candidateTypeSchema.optional(),
+        })
+        .optional(),
+    )
+    .query(({ input }) =>
+      getDiscoveryProviderStatus(input?.type as "source" | "trust_evidence" | undefined),
+    ),
 
   discoverSources: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive() }))
