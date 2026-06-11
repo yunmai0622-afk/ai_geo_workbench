@@ -1,4 +1,4 @@
-CREATE TABLE `discovery_candidates` (
+CREATE TABLE IF NOT EXISTS `discovery_candidates` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`projectId` int NOT NULL,
 	`candidateType` enum('source','trust_evidence') NOT NULL,

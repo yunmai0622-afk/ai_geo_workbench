@@ -20,7 +20,7 @@ describe("GEO-V2.0-P0-I Auto Source Evidence Discovery", () => {
   it("schema and migration add discovery_candidates table", () => {
     expect(schema).toContain("discovery_candidates");
     expect(schema).toContain("discoveryCandidateTypeEnum");
-    expect(migration).toContain("CREATE TABLE `discovery_candidates`");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS `discovery_candidates`");
     expect(migration).toContain("enum('source','trust_evidence')");
     expect(migration).toContain("enum('pending','accepted','ignored')");
   });
