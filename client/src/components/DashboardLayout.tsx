@@ -76,15 +76,8 @@ type MenuItem = {
 
 const navGroups: { title: string; items: MenuItem[] }[] = [
   {
-    title: "项目",
+    title: "主流程",
     items: [
-      {
-        icon: Users2,
-        label: "企业项目",
-        desc: "管理企业 AI 搜索可见性项目",
-        path: "/clients",
-        aliases: ["/clients"],
-      },
       {
         icon: Sparkles,
         label: "项目工作台",
@@ -92,18 +85,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/workspace",
         aliases: ["/workspace", "/flow"],
       },
-      {
-        icon: Gauge,
-        label: "AI 品牌成熟度",
-        desc: "查看 6 维成熟度评分与优化建议",
-        path: "/maturity",
-        aliases: ["/maturity"],
-      },
-    ],
-  },
-  {
-    title: "GEO 执行",
-    items: [
       {
         icon: Building2,
         label: "品牌资产建档",
@@ -119,18 +100,11 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/ai-diagnosis", "/diagnosis", "/responses", "/analysis", "/scores"],
       },
       {
-        icon: Library,
-        label: "问题库",
-        desc: "查看、编辑与管理 AI 实测问题",
-        path: "/questions",
-        aliases: ["/questions"],
-      },
-      {
-        icon: Network,
-        label: "品牌信源图谱",
-        desc: "检查各平台信源与实体一致性",
-        path: "/brand-source-graph",
-        aliases: ["/brand-source-graph", "/source-graph"],
+        icon: Gauge,
+        label: "AI 品牌成熟度",
+        desc: "查看 6 维成熟度评分与优化建议",
+        path: "/maturity",
+        aliases: ["/maturity"],
       },
       {
         icon: FileText,
@@ -139,11 +113,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/weekly",
         aliases: ["/weekly", "/content-generation", "/articles"],
       },
-    ],
-  },
-  {
-    title: "发布与监测",
-    items: [
       {
         icon: Send,
         label: "平台适配发布",
@@ -158,17 +127,31 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/inclusion-monitoring",
         aliases: ["/inclusion-monitoring", "/monitoring"],
       },
-    ],
-  },
-  {
-    title: "交付",
-    items: [
       {
         icon: FileBarChart2,
         label: "交付报告",
         desc: "生成客户可读的增长交付报告",
         path: "/delivery-reports",
         aliases: ["/delivery-reports", "/reports"],
+      },
+    ],
+  },
+  {
+    title: "资产管理",
+    items: [
+      {
+        icon: Library,
+        label: "问题库",
+        desc: "查看、编辑与管理 AI 实测问题",
+        path: "/questions",
+        aliases: ["/questions"],
+      },
+      {
+        icon: Network,
+        label: "品牌信源图谱",
+        desc: "检查各平台信源与实体一致性",
+        path: "/brand-source-graph",
+        aliases: ["/brand-source-graph", "/source-graph"],
       },
     ],
   },
@@ -181,6 +164,13 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "查看系统使用说明与操作指引",
         path: "/knowledge",
         aliases: ["/knowledge"],
+      },
+      {
+        icon: Users2,
+        label: "企业项目",
+        desc: "管理企业 AI 搜索可见性项目",
+        path: "/clients",
+        aliases: ["/clients"],
       },
     ],
   },

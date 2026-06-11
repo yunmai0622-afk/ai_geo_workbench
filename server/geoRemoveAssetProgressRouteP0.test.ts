@@ -31,7 +31,8 @@ describe("GEO-V1.1-Remove-AssetProgress-Route-P0", () => {
     ]) {
       expect(layout).toContain(`label: "${allowed}"`);
     }
-    expect(layout).toContain('title: "项目"');
+    expect(layout).toContain('title: "主流程"');
+    expect(layout).toContain('title: "资产管理"');
     expect(layout).not.toContain('title: "增长总览"');
   });
 

@@ -91,4 +91,20 @@ describe("geoContentTaskSource", () => {
     const card = parseGeoOptimizationTaskCard(taskWithCard.executionSuggestion);
     expect(card?.articleTitle).toBe("知识付费直播转化工具");
   });
+
+  it("sanitizes source-graph engineering markers in customer-facing fields", () => {
+    const source = resolveGeoContentTaskSource({
+      tasks: [
+        {
+          ...taskWithCard,
+          generationReason: "补充官网案例 source-graph:30036",
+        },
+      ],
+      analyses: [],
+      questions: [],
+    });
+    expect(source?.geoGapSummary).not.toContain("source-graph:");
+    expect(source?.geoGapSummary).toContain("来自信源图谱建议");
+    expect(source?.sourceLabel).toBe("来自信源图谱建议");
+  });
 });

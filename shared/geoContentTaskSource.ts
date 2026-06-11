@@ -1,6 +1,10 @@
 import type { PublishPlatformId } from "./platformContentRules";
 import { PLATFORM_CONTENT_RULES } from "./platformContentRules";
 import type { WeeklyPlatformKey } from "./articlePublishPlatform";
+import {
+  resolveEngineeringSourceLabel,
+  sanitizeCustomerFacingEngineeringIds,
+} from "./customerFacingEngineeringIds";
 
 export const GEO_OPTIMIZATION_TASK_CARD_MARK = "__GEO_TASK_CARD__";
 
@@ -101,7 +105,7 @@ export function parseGeoOptimizationTaskCard(
 }
 
 function nonEmpty(value?: string | null): string | null {
-  const t = value?.trim();
+  const t = sanitizeCustomerFacingEngineeringIds(value);
   return t ? t : null;
 }
 
@@ -243,12 +247,14 @@ export function resolveGeoContentTaskSource(input: {
     nonEmpty(activeTask?.expectedImpact) ??
     (sceneLabel ? `围绕「${sceneLabel}」生成平台化内容资产。` : "根据 AI 诊断缺口生成平台化内容资产。");
 
+  const engineeringSourceLabel = resolveEngineeringSourceLabel(activeTask?.generationReason);
+
   return {
     contentTaskId: activeTask?.id ?? null,
     taskDisplayName: buildGeoContentTaskDisplayName(sceneLabel),
     taskGoal: buildGeoContentTaskGoal(linkedQuestion),
     linkedQuestion,
-    sourceLabel: GEO_CONTENT_TASK_DIAGNOSIS_SOURCE_LABEL,
+    sourceLabel: engineeringSourceLabel ?? GEO_CONTENT_TASK_DIAGNOSIS_SOURCE_LABEL,
     diagnosisFinding,
     contentGaps,
     recommendFill,

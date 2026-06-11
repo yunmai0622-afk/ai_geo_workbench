@@ -66,7 +66,8 @@ for (const forbidden of ['GEO 增长工作台', 'GEO增长工作台', 'AI 搜索
   assertNotContains('左侧导航', sources.layout, forbidden);
   assertNotContains('index.html', read('client/index.html'), forbidden);
 }
-assertContains('左侧导航', sources.layout, 'title: "项目"');
+assertContains('左侧导航', sources.layout, 'title: "主流程"');
+assertContains('左侧导航', sources.layout, 'title: "资产管理"');
 assertNotContains('左侧导航', sources.layout, 'title: "增长总览"');
 assertContains('旧资产进展路由', sources.app, 'LegacyAssetProgressRedirect');
 assertNotContains('旧资产进展路由', sources.app, 'ProgressPage');

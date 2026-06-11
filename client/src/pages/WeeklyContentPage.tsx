@@ -3127,10 +3127,7 @@ export default function WeeklyContentPage() {
           !entryLinkedQuestionText ? (
             <p className="mt-2 text-sm text-amber-800">{WEEKLY_CONTENT_MISSING_QUESTION_MESSAGE}</p>
           ) : entryLinkedQuestionText ? (
-            <p className="mt-2 text-sm text-gray-700">
-              关联问题：{entryLinkedQuestionText}
-              {entryContext.questionId != null ? `（#${entryContext.questionId}）` : ""}
-            </p>
+            <p className="mt-2 text-sm text-gray-700">关联问题：{entryLinkedQuestionText}</p>
           ) : null}
           {entryMotherArticle ? (
             <p className="mt-2 text-sm text-gray-700">
