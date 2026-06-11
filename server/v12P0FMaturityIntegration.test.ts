@@ -39,13 +39,18 @@ describe("GEO-V2.0-P0-F Maturity Integration", () => {
     expect(layout).toContain('path: "/maturity"');
   });
 
-  it("maturity detail page has four screens and dimension entry CTAs", () => {
+  it("maturity detail page has action-oriented overview and dimension entry CTAs", () => {
     const page = read("client/src/pages/MaturityDetailPage.tsx");
     expect(page).toContain("maturity-screen-overview");
     expect(page).toContain("maturity-screen-dimensions");
     expect(page).toContain("maturity-screen-trend");
     expect(page).toContain("maturity-screen-next-actions");
+    expect(page).toContain("maturity-top-weaknesses");
+    expect(page).toContain("maturity-weakest-cta");
+    expect(page).toContain("maturity-dimension-conclusion-${card.key}");
     expect(page).toContain("maturity-dimension-cta-${card.key}");
+    expect(page).toContain("maturity-trend-details");
+    expect(page).toContain("成熟度变化历史");
     expect(page).toContain("maturity-trend-empty");
     expect(page).toContain("geo.maturity.getHistory");
   });

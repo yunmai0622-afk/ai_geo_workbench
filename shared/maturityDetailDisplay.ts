@@ -17,6 +17,15 @@ export function resolveMaturityDimensionStatus(score: number): MaturityDimension
   return "未建立";
 }
 
+/** 客户可读的一句话结论（按分数区间，不改计算逻辑） */
+export function resolveMaturityDimensionConclusion(score: number): string {
+  if (score >= 81) return "优秀";
+  if (score >= 61) return "良好，可进一步强化";
+  if (score >= 41) return "基础具备，仍有较大提升空间";
+  if (score >= 21) return "明显不足，需优先补充";
+  return "暂无数据/严重不足";
+}
+
 export const MATURITY_DIMENSION_ENTRY: Record<
   GeoMaturityDimensionKey,
   { ctaLabel: string; path: string }
@@ -62,7 +71,18 @@ export type MaturityDimensionDetailCard = {
   score: number;
   maxScore: number;
   status: MaturityDimensionStatus;
+  conclusion: string;
   gaps: string[];
+  action: string;
+  ctaLabel: string;
+  path: string;
+};
+
+export type MaturityWeaknessHighlight = {
+  key: GeoMaturityDimensionKey;
+  label: string;
+  score: number;
+  conclusion: string;
   action: string;
   ctaLabel: string;
   path: string;
@@ -83,11 +103,32 @@ export function buildMaturityDimensionDetailCards(
       score,
       maxScore: 100,
       status: resolveMaturityDimensionStatus(score),
+      conclusion: resolveMaturityDimensionConclusion(score),
       gaps,
       action: DIMENSION_ACTION_HINTS[meta.key],
       ...MATURITY_DIMENSION_ENTRY[meta.key],
     };
   });
+}
+
+export function buildTopWeaknessHighlights(
+  report: GeoMaturityReport,
+  calculationDetail?: Record<string, unknown> | null,
+  limit = 3,
+): MaturityWeaknessHighlight[] {
+  const cards = buildMaturityDimensionDetailCards(report, calculationDetail);
+  return [...cards]
+    .sort((a, b) => a.score - b.score)
+    .slice(0, limit)
+    .map(card => ({
+      key: card.key,
+      label: card.label,
+      score: card.score,
+      conclusion: card.conclusion,
+      action: card.action,
+      ctaLabel: card.ctaLabel,
+      path: card.path,
+    }));
 }
 
 function resolveDimensionGaps(
@@ -167,6 +208,14 @@ export function resolveWeakestDimension(report: GeoMaturityReport | null | undef
   if (!report || report.dimensions.length === 0) return null;
   const sorted = [...report.dimensions].sort((a, b) => a.score - b.score);
   return sorted[0] ?? null;
+}
+
+export function resolveWeakestDimensionAction(
+  report: GeoMaturityReport | null | undefined,
+  calculationDetail?: Record<string, unknown> | null,
+): MaturityWeaknessHighlight | null {
+  if (!report) return null;
+  return buildTopWeaknessHighlights(report, calculationDetail, 1)[0] ?? null;
 }
 
 export function dimensionDetailStorageKey(key: GeoMaturityDimensionKey): string {

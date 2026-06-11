@@ -12,36 +12,24 @@ import { cn } from "@/lib/utils";
 import {
   buildMaturityDimensionDetailCards,
   buildMaturityNextActionItems,
+  buildTopWeaknessHighlights,
   resolveMaturityDimensionStatus,
+  resolveWeakestDimensionAction,
 } from "@shared/maturityDetailDisplay";
 import { GEO_MATURITY_DIMENSION_META } from "@shared/geoMaturityScoring";
 import {
   ArrowRight,
-  BadgeCheck,
-  Bot,
-  Globe,
-  MessageCircleQuestion,
+  ChevronDown,
   RefreshCw,
-  ShieldCheck,
-  Target,
   TrendingUp,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 
-const MATURITY_DIMENSION_ICONS: Record<string, typeof BadgeCheck> = {
-  brandIdentity: BadgeCheck,
-  categoryPositioning: Target,
-  questionCoverage: MessageCircleQuestion,
-  sourceGraph: Globe,
-  trustEvidence: ShieldCheck,
-  aiTestPerformance: Bot,
-};
-
 const ANCHOR_ITEMS = [
   { id: "maturity-overview", label: "总览" },
   { id: "maturity-dimensions", label: "6 维分析" },
-  { id: "maturity-trend", label: "变化趋势" },
+  { id: "maturity-trend", label: "变化历史" },
   { id: "maturity-next-actions", label: "优化建议" },
 ];
 
@@ -89,6 +77,14 @@ export default function MaturityDetailPage() {
     [report, calculationDetail],
   );
   const nextActions = useMemo(() => (report ? buildMaturityNextActionItems(report) : []), [report]);
+  const topWeaknesses = useMemo(
+    () => (report ? buildTopWeaknessHighlights(report, calculationDetail, 3) : []),
+    [report, calculationDetail],
+  );
+  const weakestAction = useMemo(
+    () => (report ? resolveWeakestDimensionAction(report, calculationDetail) : null),
+    [report, calculationDetail],
+  );
   const historyRows = historyQuery.data ?? [];
 
   const handleRecalculate = () => {
@@ -166,31 +162,41 @@ export default function MaturityDetailPage() {
                 </Button>
               </div>
 
-              {report ? (
-                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="maturity-overview-dimensions">
-                  {report.dimensions.map(dimension => {
-                    const Icon = MATURITY_DIMENSION_ICONS[dimension.key] ?? BadgeCheck;
-                    const status = resolveMaturityDimensionStatus(dimension.score);
-                    return (
-                      <div
-                        key={dimension.key}
-                        className="flex flex-col items-center rounded-xl border border-gray-100 bg-white p-3 text-center"
-                        data-testid={`maturity-overview-dimension-${dimension.key}`}
+              {report && topWeaknesses.length > 0 ? (
+                <div className="mt-6" data-testid="maturity-top-weaknesses">
+                  <h2 className="text-sm font-semibold text-gray-900">最影响推荐的 3 个短板</h2>
+                  <p className="mt-1 text-xs text-gray-500">按分数从低到高排序，优先补齐最弱项可更快提升 AI 推荐表现</p>
+                  <ul className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white">
+                    {topWeaknesses.map((item, index) => (
+                      <li
+                        key={item.key}
+                        className="flex flex-wrap items-start justify-between gap-3 px-4 py-3"
+                        data-testid={`maturity-top-weakness-${item.key}`}
                       >
-                        <Icon className="size-5 text-blue-500" aria-hidden />
-                        <p className="mt-2 text-[10px] font-medium text-gray-500">{dimension.label}</p>
-                        <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900">{dimension.score}</p>
-                        <span
-                          className={cn(
-                            "mt-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
-                            statusBadgeClass(status),
-                          )}
-                        >
-                          {status}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            <span className="mr-2 text-xs font-semibold text-amber-600">#{index + 1}</span>
+                            {item.label}
+                          </p>
+                          <p className="mt-0.5 text-xs text-gray-600">{item.conclusion}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-amber-800">
+                          {item.score} 分
                         </span>
-                      </div>
-                    );
-                  })}
+                      </li>
+                    ))}
+                  </ul>
+                  {weakestAction && selectedProjectId ? (
+                    <Button
+                      type="button"
+                      className={cn("mt-4 rounded-xl", geoP0Brand.primary)}
+                      data-testid="maturity-weakest-cta"
+                      onClick={() => setLocation(buildProjectUrl(weakestAction.path, selectedProjectId))}
+                    >
+                      去改善最弱短板：{weakestAction.label}
+                      <ArrowRight className="ml-2 size-4" />
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </P0Card>
@@ -225,6 +231,12 @@ export default function MaturityDetailPage() {
                         {card.status}
                       </span>
                     </div>
+                    <p
+                      className="mt-3 text-sm font-medium text-gray-800"
+                      data-testid={`maturity-dimension-conclusion-${card.key}`}
+                    >
+                      {card.conclusion}
+                    </p>
                     <div className="mt-4 space-y-2 text-sm">
                       <p className="font-medium text-gray-700">主要缺口</p>
                       <ul className="list-inside list-disc text-gray-600">
@@ -254,65 +266,72 @@ export default function MaturityDetailPage() {
             )}
           </section>
 
-          <section id="maturity-trend" className="scroll-mt-24 space-y-4" data-testid="maturity-screen-trend">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="size-5 text-blue-600" />
-              <h2 className="text-lg font-semibold text-gray-900">成熟度变化趋势</h2>
-            </div>
-            {historyRows.length <= 1 ? (
-              <div
-                className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 p-6 text-sm text-gray-600"
-                data-testid="maturity-trend-empty"
-              >
-                首次计算成熟度后，这里会显示变化趋势。
-                <br />
-                每次完成内容发布或 AI 复测后建议重新计算。
+          <section id="maturity-trend" className="scroll-mt-24" data-testid="maturity-screen-trend">
+            <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="maturity-trend-details">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+                <span className="inline-flex items-center gap-2">
+                  <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                  <TrendingUp className="size-4 text-blue-600" />
+                  成熟度变化历史
+                </span>
+              </summary>
+              <div className="border-t border-gray-100 px-5 pb-5 pt-4">
+                {historyRows.length <= 1 ? (
+                  <div
+                    className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 p-6 text-sm text-gray-600"
+                    data-testid="maturity-trend-empty"
+                  >
+                    首次计算成熟度后，这里会显示变化历史。
+                    <br />
+                    每次完成内容发布或 AI 复测后建议重新计算。
+                  </div>
+                ) : (
+                  <div className="space-y-4" data-testid="maturity-trend-timeline">
+                    {[...historyRows].reverse().map((row, index, arr) => {
+                      const prev = index > 0 ? arr[index - 1] : null;
+                      const delta = prev ? row.totalScore - prev.totalScore : null;
+                      return (
+                        <div
+                          key={row.id}
+                          className="relative rounded-xl border border-gray-200 bg-white p-4 pl-8 shadow-sm"
+                          data-testid={`maturity-trend-item-${row.id}`}
+                        >
+                          <span className="absolute left-3 top-5 h-2.5 w-2.5 rounded-full bg-blue-500" />
+                          <p className="text-xs text-gray-500">{formatDateTime(row.calculatedAt)}</p>
+                          <p className="mt-1 text-xl font-bold tabular-nums text-gray-900">
+                            总分 {row.totalScore}
+                            {delta != null ? (
+                              <span
+                                className={cn(
+                                  "ml-2 text-sm font-medium",
+                                  delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-600" : "text-gray-500",
+                                )}
+                              >
+                                {delta > 0 ? `+${delta}` : delta}
+                              </span>
+                            ) : null}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {GEO_MATURITY_DIMENSION_META.map(meta => {
+                              const field = meta.field;
+                              const score = (row[field] as number | null) ?? 0;
+                              return (
+                                <span
+                                  key={meta.key}
+                                  className="rounded-md border border-gray-100 bg-gray-50 px-2 py-1 text-xs text-gray-600"
+                                >
+                                  {meta.label} {score}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-4" data-testid="maturity-trend-timeline">
-                {[...historyRows].reverse().map((row, index, arr) => {
-                  const prev = index > 0 ? arr[index - 1] : null;
-                  const delta = prev ? row.totalScore - prev.totalScore : null;
-                  return (
-                    <div
-                      key={row.id}
-                      className="relative rounded-xl border border-gray-200 bg-white p-4 pl-8 shadow-sm"
-                      data-testid={`maturity-trend-item-${row.id}`}
-                    >
-                      <span className="absolute left-3 top-5 h-2.5 w-2.5 rounded-full bg-blue-500" />
-                      <p className="text-xs text-gray-500">{formatDateTime(row.calculatedAt)}</p>
-                      <p className="mt-1 text-xl font-bold tabular-nums text-gray-900">
-                        总分 {row.totalScore}
-                        {delta != null ? (
-                          <span
-                            className={cn(
-                              "ml-2 text-sm font-medium",
-                              delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-600" : "text-gray-500",
-                            )}
-                          >
-                            {delta > 0 ? `+${delta}` : delta}
-                          </span>
-                        ) : null}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {GEO_MATURITY_DIMENSION_META.map(meta => {
-                          const field = meta.field;
-                          const score = (row[field] as number | null) ?? 0;
-                          return (
-                            <span
-                              key={meta.key}
-                              className="rounded-md border border-gray-100 bg-gray-50 px-2 py-1 text-xs text-gray-600"
-                            >
-                              {meta.label} {score}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            </details>
           </section>
 
           <section id="maturity-next-actions" className="scroll-mt-24 space-y-4" data-testid="maturity-screen-next-actions">

@@ -1,40 +1,37 @@
 import { Button } from "@/components/ui/button";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
-import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import {
-  buildMaturityNextActionItems,
   resolveWeakestDimension,
+  resolveWeakestDimensionAction,
 } from "@shared/maturityDetailDisplay";
-import { RefreshCw } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
 
-type Props = {
-  onRecalculate?: () => void;
-  recalculating?: boolean;
-};
-
-export function MaturityAssistantPanel({ onRecalculate, recalculating }: Props) {
+export function MaturityAssistantPanel() {
   const { selectedProjectId, enabled } = useActiveProjectSelection();
   const [, setLocation] = useLocation();
-  const { triggerMaturityCalculate, isCalculating } = useMaturityAutoCalculate(selectedProjectId);
-  const calculating = recalculating ?? isCalculating;
 
   const reportQuery = trpc.geo.maturity.getMaturityReport.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const latestQuery = trpc.geo.maturity.getLatest.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
 
   const report = reportQuery.data;
+  const calculationDetail = (latestQuery.data?.calculationDetail as Record<string, unknown> | null) ?? null;
   const weakest = resolveWeakestDimension(report);
-  const nextAction = report ? buildMaturityNextActionItems(report)[0] : null;
+  const weakestAction = resolveWeakestDimensionAction(report, calculationDetail);
 
   return (
     <aside className="w-full space-y-4" data-testid="maturity-assistant-panel">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-bold text-gray-900">成熟度助手</h3>
+        <h3 className="text-sm font-bold text-gray-900">短板行动指引</h3>
         <dl className="mt-4 space-y-3 text-sm">
           <div>
             <dt className="text-gray-500">当前总分</dt>
@@ -49,39 +46,22 @@ export function MaturityAssistantPanel({ onRecalculate, recalculating }: Props) 
             </dd>
           </div>
           <div>
-            <dt className="text-gray-500">下一步建议</dt>
+            <dt className="text-gray-500">建议动作</dt>
             <dd className="mt-1 text-sm leading-relaxed text-gray-800" data-testid="maturity-sidebar-next-action">
-              {nextAction?.description ?? "完成建档后自动计算成熟度，获取优先优化建议。"}
+              {weakestAction?.action ?? "完成建档后自动计算成熟度，获取优先改善建议。"}
             </dd>
           </div>
         </dl>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-4 w-full"
-          disabled={!selectedProjectId || calculating}
-          data-testid="maturity-sidebar-recalculate"
-          onClick={() => {
-            if (onRecalculate) {
-              onRecalculate();
-              return;
-            }
-            void triggerMaturityCalculate({ silent: false });
-          }}
-        >
-          <RefreshCw className="mr-1.5 size-3.5" />
-          {calculating ? "计算中…" : "重新计算"}
-        </Button>
-        {nextAction && selectedProjectId ? (
+        {weakestAction && selectedProjectId ? (
           <Button
             type="button"
             size="sm"
-            className={`mt-2 w-full ${geoP0Brand.primary}`}
+            className={`mt-4 w-full ${geoP0Brand.primary}`}
             data-testid="maturity-sidebar-action-cta"
-            onClick={() => setLocation(buildProjectUrl(nextAction.path, selectedProjectId))}
+            onClick={() => setLocation(buildProjectUrl(weakestAction.path, selectedProjectId))}
           >
-            {nextAction.ctaLabel}
+            {weakestAction.ctaLabel}
+            <ArrowRight className="ml-1.5 size-3.5" />
           </Button>
         ) : null}
       </div>
