@@ -29,6 +29,8 @@ type Props = {
   loading?: boolean;
   localAgentConnectionStatus?: LocalAgentConnectionStatus;
   onCheckLocalAgentConnection?: () => void;
+  /** 工作台交付指挥中心：仅展示下一步、阻断原因与主按钮 */
+  variant?: "default" | "command-center";
 };
 
 /**
@@ -46,8 +48,10 @@ export function ProjectNextActionPanel({
   loading,
   localAgentConnectionStatus,
   onCheckLocalAgentConnection,
+  variant = "default",
 }: Props) {
   const [, setLocation] = useLocation();
+  const isCommandCenter = variant === "command-center";
 
   const STAGE_ORDER = ["待建档", "待诊断", "待生产", "待绑定发布", "待发布", "待监测", "优化中", "报告已生成"];
   const currentLabel = stage ? CUSTOMER_STAGE_LABELS[stage.id] : null;
@@ -87,16 +91,25 @@ export function ProjectNextActionPanel({
           <p className="text-sm text-gray-400">加载建议中…</p>
         ) : ctaLabel && projectId && ctaPath ? (
           <div className="space-y-3">
-            <p className="text-[13px] font-medium leading-relaxed text-gray-800">{ctaLabel}</p>
-            {reason ? (
-              <p className="text-[12px] leading-relaxed text-gray-600">原因：{reason}</p>
+            {!isCommandCenter ? (
+              <p className="text-[13px] font-medium leading-relaxed text-gray-800">{ctaLabel}</p>
             ) : null}
-            <p className="text-[12px] text-gray-500">
-              完成后进入
-              <span className="font-medium text-blue-700">
-                {nextStageName === "待生产" ? "内容生产" : nextStageName}
-              </span>
-            </p>
+            {reason ? (
+              <p
+                className="text-[12px] leading-relaxed text-gray-600"
+                data-testid={isCommandCenter ? "workspace-sidebar-blocker-reason" : undefined}
+              >
+                {isCommandCenter ? reason : `原因：${reason}`}
+              </p>
+            ) : null}
+            {!isCommandCenter ? (
+              <p className="text-[12px] text-gray-500">
+                完成后进入
+                <span className="font-medium text-blue-700">
+                  {nextStageName === "待生产" ? "内容生产" : nextStageName}
+                </span>
+              </p>
+            ) : null}
             <button
               type="button"
               className={cn(
@@ -113,7 +126,8 @@ export function ProjectNextActionPanel({
         ) : (
           <p className="text-sm text-gray-400">请选择企业项目后查看建议</p>
         )}
-        {localAgentConnectionStatus &&
+        {!isCommandCenter &&
+        localAgentConnectionStatus &&
         onCheckLocalAgentConnection &&
         (localAgentConnectionStatus === "UNKNOWN" ||
           localAgentConnectionStatus === "DISCONNECTED" ||
@@ -143,7 +157,7 @@ export function ProjectNextActionPanel({
         ) : null}
       </div>
 
-      {riskHints.length > 0 ? (
+      {!isCommandCenter && riskHints.length > 0 ? (
         <details
           open
           className="rounded-2xl border border-amber-200 bg-amber-50/60"
@@ -165,7 +179,7 @@ export function ProjectNextActionPanel({
         </details>
       ) : null}
 
-      {recentSummary ? (
+      {!isCommandCenter && recentSummary ? (
         <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3" data-testid="next-action-recent">
           <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">最近数据</h4>
           <p className="text-[11px] leading-relaxed text-gray-600">{recentSummary}</p>

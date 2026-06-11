@@ -1,3 +1,4 @@
+import { GeoGrowthSuggestionsPanel } from "@/components/geo/GeoGrowthSuggestionsPanel";
 import { GeoScoreTrendChart } from "@/components/geo/GeoScoreTrendChart";
 import { GeoScoreWeightExplanationHelp } from "@/components/geo/GeoScoreWeightExplanationHelp";
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
@@ -10,6 +11,7 @@ import { WorkspaceInclusionMonitoringSection } from "@/components/workspace/Work
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
+import { useGeoGrowthSuggestions } from "@/hooks/useGeoGrowthSuggestions";
 import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
@@ -21,7 +23,12 @@ import {
 } from "@/lib/projectWorkspaceDisplay";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { formatDeliveryStageCustomerLabel, resolveDeliveryStageView } from "@/lib/deliveryStage";
+import {
+  buildWorkspaceDeliveryConclusion,
+  formatDeliveryStageCustomerLabel,
+  resolveDeliveryPhaseCustomerView,
+  resolveDeliveryStageView,
+} from "@/lib/deliveryStage";
 import {
   resolveMainChainSteps,
   toMainChainProgressInput,
@@ -41,6 +48,7 @@ import {
   ArrowRight,
   BadgeCheck,
   Bot,
+  ChevronDown,
   Globe,
   MessageCircleQuestion,
   RefreshCw,
@@ -111,12 +119,24 @@ export default function EnterpriseWorkspacePage() {
 
   const metrics = summaryQuery.data;
   const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, metrics);
+  const growthSuggestions = useGeoGrowthSuggestions(selectedProjectId, Boolean(selectedProjectId));
   const stage = resolution?.currentStage;
   const stageLabel = stage ? CUSTOMER_STAGE_LABELS[stage.id] : null;
   const deliveryStage = useMemo(() => {
     if (!metrics) return null;
     return resolveDeliveryStageView({ ...metrics, localAgentOnline });
   }, [metrics, localAgentOnline]);
+  const deliveryPhase = useMemo(
+    () => (deliveryStage ? resolveDeliveryPhaseCustomerView(deliveryStage.stage) : null),
+    [deliveryStage],
+  );
+  const deliveryConclusion = useMemo(() => {
+    if (!deliveryStage) return null;
+    return buildWorkspaceDeliveryConclusion(deliveryStage, {
+      mainChainReason: homeDisplay.mainChainNextAction?.reason,
+      blockerReason: resolution?.blockerReasons[0],
+    });
+  }, [deliveryStage, homeDisplay.mainChainNextAction?.reason, resolution?.blockerReasons]);
 
   const mainChainSteps = useMemo((): MainChainStepView[] => {
     if (!metrics) return [];
@@ -147,11 +167,24 @@ export default function EnterpriseWorkspacePage() {
     (stage && selectedProjectId ? workspaceCtaUrl(selectedProjectId, stage) : null);
   const headerCtaLabel = homeDisplay.mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
   const todayTasks = metrics?.todayTasks ?? [];
+  const monthlyTasks = todayTasks.slice(0, 5);
   const brandMentionRateHint = metrics ? workspaceAiMentionRateHint(metrics) : undefined;
   const publishOverview = useMemo(
     () => (metrics ? formatWorkspacePublishCount(metrics) : null),
     [metrics],
   );
+  const maturityScoreDisplay =
+    maturityReportQuery.isLoading || calculateMaturityMutation.isPending
+      ? "计算中…"
+      : maturityReportQuery.data
+        ? `${maturityReportQuery.data.totalScore} 分`
+        : "--";
+  const publishedContentCount =
+    metrics && metrics.publishRecordCount + metrics.completedPublishTaskCount > 0
+      ? `${metrics.publishRecordCount + metrics.completedPublishTaskCount}`
+      : metrics && metrics.articleCount > 0
+        ? `${metrics.articleCount}`
+        : "--";
 
   if (!enabled && !projectsLoading) {
     return (
@@ -201,7 +234,115 @@ export default function EnterpriseWorkspacePage() {
       ) : stage && metrics && selectedProjectId ? (
         <>
           <section
-            className="geo-card border-2 border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-white p-5"
+            className="geo-card border-2 border-blue-200 bg-gradient-to-br from-blue-50/80 via-white to-white p-6"
+            data-testid="workspace-command-center"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-blue-600">交付指挥中心</p>
+                <h1 className={cn(geoTypography.pageTitle, "mt-1")} data-testid="workspace-enterprise-name">
+                  {selectedProject?.enterpriseName ?? "当前企业"}
+                </h1>
+              </div>
+              {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
+            </div>
+
+            {deliveryPhase ? (
+              <div className="mt-5" data-testid="workspace-delivery-phase">
+                <p className="text-xs font-medium text-gray-500">当前阶段</p>
+                <p className="mt-1 text-lg font-semibold text-gray-900" data-testid="workspace-current-stage-headline">
+                  {deliveryPhase.currentStageHeadline}
+                </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  {deliveryPhase.phaseTitle} · {deliveryPhase.phaseDescription}
+                </p>
+              </div>
+            ) : null}
+
+            {deliveryConclusion ? (
+              <p className="mt-4 text-sm leading-relaxed text-gray-700" data-testid="workspace-delivery-conclusion">
+                {deliveryConclusion}
+              </p>
+            ) : null}
+
+            {resolution.riskHints.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2" data-testid="workspace-risk-tags">
+                {resolution.riskHints.map(hint => (
+                  <span
+                    key={hint}
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-800"
+                  >
+                    <AlertTriangle className="size-3 shrink-0" aria-hidden />
+                    {hint}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            {headerCtaPath && headerCtaLabel ? (
+              <Button
+                type="button"
+                className={cn("mt-5 rounded-xl px-6", geoP0Brand.primary)}
+                data-testid="workspace-primary-cta"
+                onClick={() => setLocation(headerCtaPath)}
+              >
+                {headerCtaLabel}
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            ) : null}
+
+            <div className="mt-6" data-testid="workspace-priority-todos">
+              <h2 className="text-sm font-semibold text-gray-900">本月任务进度</h2>
+              {monthlyTasks.length === 0 ? (
+                <p className="mt-3 text-sm text-gray-500" data-testid="workspace-today-tasks-empty">
+                  暂无待处理任务
+                </p>
+              ) : (
+                <ul className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white">
+                  {monthlyTasks.map(task => (
+                    <MonthlyTaskRow
+                      key={task.key}
+                      task={task}
+                      onAction={() => setLocation(task.targetPath)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div
+              className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+              data-testid="workspace-core-metrics"
+            >
+              <CoreMetricTile label="AI 品牌成熟度" value={maturityScoreDisplay} testId="workspace-core-maturity" />
+              <CoreMetricTile
+                label="品牌提及率"
+                value={homeDisplay.brandMentionRateText}
+                testId="workspace-core-mention-rate"
+              />
+              <CoreMetricTile
+                label="已发布内容数"
+                value={publishedContentCount}
+                testId="workspace-core-published-count"
+              />
+              <CoreMetricTile
+                label="最近检测时间"
+                value={homeDisplay.lastAiTestLabel}
+                testId="workspace-core-last-test"
+              />
+            </div>
+          </section>
+
+          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                AI 品牌成熟度详情
+              </span>
+            </summary>
+            <div className="border-t border-gray-100 px-5 pb-5 pt-2">
+          <section
+            className="border-0 bg-transparent p-0 shadow-none"
             data-testid="workspace-maturity-hero"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -269,33 +410,24 @@ export default function EnterpriseWorkspacePage() {
               </div>
             ) : null}
           </section>
+            </div>
+          </details>
 
-          <section className="geo-card p-4" data-testid="workspace-priority-todos">
-            <h2 className="text-sm font-semibold text-gray-900">本周待办 / 今日动作</h2>
-            {todayTasks.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-500" data-testid="workspace-today-tasks-empty">
-                暂无待处理任务
-              </p>
-            ) : (
-              <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {todayTasks.map(task => (
-                  <TodayTaskCard
-                    key={task.key}
-                    task={task}
-                    onAction={() => setLocation(task.targetPath)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
+          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                数据总览与经营结果
+              </span>
+            </summary>
+            <div className="space-y-4 border-t border-gray-100 px-5 pb-5 pt-4">
           <WorkspaceDashboardOverviewCards
             metrics={metrics}
             latestGeoScore={latestTrendScore}
             previousGeoScore={previousTrendScore}
           />
 
-          <section className="geo-card p-5" data-testid="workspace-business-results">
+          <section className="rounded-xl border border-gray-100 bg-gray-50 p-5" data-testid="workspace-business-results">
             <h2 className="text-sm font-semibold text-gray-900">经营结果</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               <div data-testid="workspace-last-retest">
@@ -364,16 +496,34 @@ export default function EnterpriseWorkspacePage() {
               </Button>
             </div>
           </section>
+            </div>
+          </details>
 
-          <section className="geo-card p-5" data-testid="workspace-geo-score-trend">
+          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="workspace-geo-score-trend">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                GEO 分趋势
+              </span>
+            </summary>
+            <div className="border-t border-gray-100 px-5 pb-5 pt-2">
             <GeoScoreTrendChart
               points={scoreTrendPoints}
               loading={scoreTrendQuery.isLoading}
               variant="light"
               data-testid="workspace-geo-score-trend-chart"
             />
-          </section>
+            </div>
+          </details>
 
+          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                收录监测明细
+              </span>
+            </summary>
+            <div className="border-t border-gray-100 px-5 pb-5 pt-2">
           <WorkspaceInclusionMonitoringSection
             loading={homeDisplay.inclusionMonitoringLoading}
             platformRows={homeDisplay.inclusionPlatformRows}
@@ -386,6 +536,8 @@ export default function EnterpriseWorkspacePage() {
               setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
             }
           />
+            </div>
+          </details>
 
           {metrics.t0ContentGapSuggestions ? (
             <T0ContentGapSuggestionsCard
@@ -394,17 +546,32 @@ export default function EnterpriseWorkspacePage() {
             />
           ) : null}
 
-          {/* ═══ 8 步主链路进度 ═══ */}
-          <section className="geo-card p-5" data-testid="workspace-main-chain-progress">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[12px] font-medium text-gray-400">交付指挥中心</p>
-                <h1 className={cn(geoTypography.pageTitle, "mt-0.5")} data-testid="workspace-enterprise-name">
-                  {selectedProject?.enterpriseName ?? "当前企业"}
-                </h1>
-              </div>
-              {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
+          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                增长建议
+              </span>
+            </summary>
+            <div className="border-t border-gray-100 px-5 pb-5 pt-2">
+              <GeoGrowthSuggestionsPanel
+                projectId={selectedProjectId}
+                suggestions={growthSuggestions.suggestions}
+                loading={growthSuggestions.loading}
+                variant="card"
+              />
             </div>
+          </details>
+
+          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                交付进度明细
+              </span>
+            </summary>
+            <div className="border-t border-gray-100 px-5 pb-5 pt-4">
+          <section className="p-0 shadow-none" data-testid="workspace-main-chain-progress">
             {deliveryStage ? (
               <div
                 className="mb-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4"
@@ -466,9 +633,18 @@ export default function EnterpriseWorkspacePage() {
               ))}
             </div>
           </section>
+            </div>
+          </details>
 
-          {/* ═══ 数据摘要 + 快速操作 ═══ */}
-          <section className="geo-card p-6" data-testid="workspace-header-card">
+          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                更多指标明细
+              </span>
+            </summary>
+            <div className="border-t border-gray-100 px-5 pb-5 pt-4">
+          <section className="p-0 shadow-none" data-testid="workspace-header-card">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
               <MetricCell
                 label="GEO 分"
@@ -500,31 +676,9 @@ export default function EnterpriseWorkspacePage() {
                 hintLines={publishOverview?.hint ? [publishOverview.hint] : []}
               />
             </div>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
-              {resolution.riskHints.length > 0 ? (
-                <div className="flex items-center gap-2 text-[13px] text-amber-700">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>{resolution.riskHints[0]}</span>
-                </div>
-              ) : (
-                <span className="text-[13px] text-gray-400">
-                  {homeDisplay.mainChainNextAction?.reason ?? resolution.blockerReasons[0]}
-                </span>
-              )}
-              {headerCtaPath && headerCtaLabel ? (
-                <Button
-                  type="button"
-                  className={cn("rounded-xl px-5", geoP0Brand.primary)}
-                  data-testid="workspace-primary-cta"
-                  onClick={() => setLocation(headerCtaPath)}
-                >
-                  {headerCtaLabel}
-                  <ArrowRight className="ml-2 size-4" />
-                </Button>
-              ) : null}
-            </div>
           </section>
+            </div>
+          </details>
         </>
       ) : metrics === undefined && selectedProjectId ? (
         <P0Card testId="workspace-profile-zero" className="py-12 text-center">
@@ -545,70 +699,67 @@ export default function EnterpriseWorkspacePage() {
   );
 }
 
-function TodayTaskCard({
+function MonthlyTaskRow({
   task,
   onAction,
 }: {
   task: WorkspaceTodayTask;
   onAction: () => void;
 }) {
-  const palette = todayTaskPalette(task.status);
   return (
-    <div
-      className={cn("rounded-lg border p-3", palette.card)}
+    <li
+      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
       data-testid={`workspace-today-task-${task.key}`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-900">{task.title}</p>
-        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", palette.badge)}>
-          {todayTaskStatusLabel(task.status)}
-        </span>
+        <p className="mt-0.5 text-xs text-gray-500 line-clamp-1">{task.reason}</p>
       </div>
-      <p className="mt-1 text-xs text-gray-600">
-        {task.count > 0 ? `${task.count} 项 · ` : ""}
-        {task.reason}
-      </p>
+      <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium", monthlyTaskStatusBadge(task.status))}>
+        {monthlyTaskStatusLabel(task.status)}
+      </span>
       <Button
         type="button"
         size="sm"
-        className={cn("mt-2", palette.button)}
+        variant="outline"
+        className="shrink-0"
         disabled={task.status === "blocked"}
         data-testid={`workspace-today-task-action-${task.key}`}
         onClick={onAction}
       >
         {task.actionLabel}
       </Button>
-    </div>
+    </li>
   );
 }
 
-function todayTaskStatusLabel(status: WorkspaceTodayTaskStatus): string {
-  if (status === "blocked") return "待前置";
-  if (status === "todo") return "待处理";
-  if (status === "ready") return "可执行";
-  return "已完成";
+function monthlyTaskStatusLabel(status: WorkspaceTodayTaskStatus): string {
+  if (status === "done") return "已完成";
+  if (status === "ready") return "进行中";
+  return "待完成";
 }
 
-function todayTaskPalette(status: WorkspaceTodayTaskStatus) {
-  if (status === "blocked") {
-    return {
-      card: "border-gray-200 bg-gray-50",
-      badge: "bg-gray-100 text-gray-600",
-      button: "bg-gray-300 text-gray-500",
-    };
-  }
-  if (status === "todo") {
-    return {
-      card: "border-amber-200 bg-amber-50",
-      badge: "bg-amber-100 text-amber-800",
-      button: "bg-amber-600 text-white hover:bg-amber-700",
-    };
-  }
-  return {
-    card: "border-blue-200 bg-blue-50",
-    badge: "bg-blue-100 text-blue-800",
-    button: "bg-blue-600 text-white hover:bg-blue-700",
-  };
+function monthlyTaskStatusBadge(status: WorkspaceTodayTaskStatus): string {
+  if (status === "done") return "bg-emerald-100 text-emerald-800";
+  if (status === "ready") return "bg-blue-100 text-blue-800";
+  return "bg-amber-100 text-amber-800";
+}
+
+function CoreMetricTile({
+  label,
+  value,
+  testId,
+}: {
+  label: string;
+  value: string;
+  testId?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-3 text-center" data-testid={testId}>
+      <p className="text-[11px] font-medium text-gray-500">{label}</p>
+      <p className="mt-1 text-lg font-bold tabular-nums text-gray-900">{value}</p>
+    </div>
+  );
 }
 
 function MetricCell({

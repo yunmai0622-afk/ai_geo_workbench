@@ -45,6 +45,7 @@ export function EnterpriseProjectShell({ children }: Props) {
   const isQuestionsPage = pathname === "/questions";
   const isSourceGraphPage = pathname === "/brand-source-graph" || pathname === "/source-graph";
   const isMaturityPage = pathname === "/maturity";
+  const isWorkspacePage = pathname === "/workspace" || pathname === "/flow";
   const isMobile = useIsMobile();
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
@@ -195,10 +196,13 @@ export function EnterpriseProjectShell({ children }: Props) {
       loading={(summaryQuery.isLoading || homeDisplay.loading) && Boolean(selectedProjectId)}
       localAgentConnectionStatus={localAgentConnectionStatus}
       onCheckLocalAgentConnection={() => void checkConnection()}
+      variant={isWorkspacePage ? "command-center" : "default"}
     />
   );
 
-  const projectGrowthSidebarPanel = (
+  const projectGrowthSidebarPanel = isWorkspacePage ? (
+    nextActionPanel
+  ) : (
     <>
       {nextActionPanel}
       <GeoGrowthSuggestionsPanel

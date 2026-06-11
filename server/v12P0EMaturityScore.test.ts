@@ -51,17 +51,18 @@ describe("GEO-V2.0-P0-E Maturity Score", () => {
     expect(shared).toContain("buildMaturityReport");
   });
 
-  it("workspace first screen shows maturity hero above today tasks", () => {
+  it("workspace command center shows core maturity metric and detailed hero in fold", () => {
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     expect(workspace).toContain("geo.maturity.getMaturityReport");
+    expect(workspace).toContain("workspace-command-center");
+    expect(workspace).toContain("workspace-core-maturity");
     expect(workspace).toContain("workspace-maturity-hero");
     expect(workspace).toContain("AI 品牌成熟度");
     expect(workspace).toContain("workspace-maturity-dimension-");
-    const todayIdx = workspace.indexOf("workspace-priority-todos");
+    const commandIdx = workspace.indexOf("workspace-command-center");
     const maturityIdx = workspace.indexOf("workspace-maturity-hero");
-    expect(maturityIdx).toBeGreaterThan(-1);
-    expect(todayIdx).toBeGreaterThan(-1);
-    expect(maturityIdx).toBeLessThan(todayIdx);
+    expect(commandIdx).toBeGreaterThan(-1);
+    expect(maturityIdx).toBeGreaterThan(commandIdx);
   });
 
   it("ai diagnosis core summary shows maturity score alongside GEO score", () => {

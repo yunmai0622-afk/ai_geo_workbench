@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStageActionUrl,
+  buildWorkspaceDeliveryConclusion,
   formatDeliveryStageCustomerLabel,
   formatStageActionLabel,
+  resolveDeliveryPhaseCustomerView,
+  resolveDeliveryPhaseId,
   resolveStageActionPath,
 } from "./deliveryStage";
 
@@ -52,5 +55,29 @@ describe("buildStageActionUrl", () => {
       "/content-publishing?projectId=42&filter=waiting_links",
     );
     expect(buildStageActionUrl("S4_READY_FOR_PUBLISH", 7)).toBe("/content-publishing?projectId=7");
+  });
+});
+
+describe("delivery phase customer mapping", () => {
+  it("maps S1–S8 to six customer delivery phases", () => {
+    expect(resolveDeliveryPhaseId("S1_PROFILE_INCOMPLETE")).toBe("profile");
+    expect(resolveDeliveryPhaseId("S2_READY_FOR_DIAGNOSIS")).toBe("ai_detection");
+    expect(resolveDeliveryPhaseId("S3_READY_FOR_CONTENT")).toBe("content_optimization");
+    expect(resolveDeliveryPhaseId("S4_READY_FOR_PUBLISH")).toBe("publish_execution");
+    expect(resolveDeliveryPhaseId("S6_READY_FOR_MONITORING")).toBe("retest_validation");
+    expect(resolveDeliveryPhaseId("S7_READY_FOR_REPORT")).toBe("report_delivery");
+    const phase = resolveDeliveryPhaseCustomerView("S2_READY_FOR_DIAGNOSIS");
+    expect(phase.phaseTitle).toBe("AI检测期");
+    expect(phase.phaseDescription).toBe("检测AI目前是否推荐你");
+    expect(phase.currentStageHeadline).toBe("AI 现状检测");
+    expect(phase.currentStageHeadline).not.toContain("S2_");
+  });
+
+  it("builds workspace conclusion from main chain reason first", () => {
+    const line = buildWorkspaceDeliveryConclusion(
+      { stageDescription: "desc", blockingReasons: ["阻断"] },
+      { mainChainReason: "品牌资料已初步建立，但还缺少AI实测数据" },
+    );
+    expect(line).toBe("品牌资料已初步建立，但还缺少AI实测数据");
   });
 });

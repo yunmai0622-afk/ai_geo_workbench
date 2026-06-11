@@ -225,3 +225,107 @@ export function buildStageActionUrl(stage: DeliveryStageId, projectId: number): 
   }
   return `${base}?projectId=${projectId}`;
 }
+
+/** 客户可理解的 6 段交付阶段（由 S1–S8 映射，不暴露工程枚举） */
+export type DeliveryPhaseId =
+  | "profile"
+  | "ai_detection"
+  | "content_optimization"
+  | "publish_execution"
+  | "retest_validation"
+  | "report_delivery";
+
+export const DELIVERY_PHASE_CUSTOMER_COPY: Record<
+  DeliveryPhaseId,
+  { phaseTitle: string; phaseDescription: string }
+> = {
+  profile: {
+    phaseTitle: "品牌建档期",
+    phaseDescription: "完善品牌资料，让AI认识你",
+  },
+  ai_detection: {
+    phaseTitle: "AI检测期",
+    phaseDescription: "检测AI目前是否推荐你",
+  },
+  content_optimization: {
+    phaseTitle: "内容优化期",
+    phaseDescription: "补充内容和信源，提升AI推荐",
+  },
+  publish_execution: {
+    phaseTitle: "发布执行期",
+    phaseDescription: "发布内容到各平台",
+  },
+  retest_validation: {
+    phaseTitle: "复测验证期",
+    phaseDescription: "验证内容是否改善AI推荐",
+  },
+  report_delivery: {
+    phaseTitle: "报告交付期",
+    phaseDescription: "生成交付报告，展示优化效果",
+  },
+};
+
+const DELIVERY_STAGE_HEADLINE: Record<DeliveryStageId, string> = {
+  S1_PROFILE_INCOMPLETE: "完善品牌资料",
+  S2_READY_FOR_DIAGNOSIS: "AI 现状检测",
+  S3_READY_FOR_CONTENT: "补充内容资产",
+  S4_READY_FOR_PUBLISH: "发布内容到各平台",
+  S5_WAITING_LINKS: "回填发布链接",
+  S6_READY_FOR_MONITORING: "发布后复测验证",
+  S7_READY_FOR_REPORT: "生成交付报告",
+  S8_DELIVERED_OR_NEXT_ROUND: "下一轮持续优化",
+};
+
+export function resolveDeliveryPhaseId(stage: DeliveryStageId): DeliveryPhaseId {
+  switch (stage) {
+    case "S1_PROFILE_INCOMPLETE":
+      return "profile";
+    case "S2_READY_FOR_DIAGNOSIS":
+      return "ai_detection";
+    case "S3_READY_FOR_CONTENT":
+      return "content_optimization";
+    case "S4_READY_FOR_PUBLISH":
+    case "S5_WAITING_LINKS":
+      return "publish_execution";
+    case "S6_READY_FOR_MONITORING":
+      return "retest_validation";
+    case "S7_READY_FOR_REPORT":
+    case "S8_DELIVERED_OR_NEXT_ROUND":
+      return "report_delivery";
+    default:
+      return "profile";
+  }
+}
+
+export type DeliveryPhaseCustomerView = {
+  phaseId: DeliveryPhaseId;
+  phaseTitle: string;
+  phaseDescription: string;
+  currentStageHeadline: string;
+};
+
+export function resolveDeliveryPhaseCustomerView(stage: DeliveryStageId): DeliveryPhaseCustomerView {
+  const phaseId = resolveDeliveryPhaseId(stage);
+  const phase = DELIVERY_PHASE_CUSTOMER_COPY[phaseId];
+  return {
+    phaseId,
+    phaseTitle: phase.phaseTitle,
+    phaseDescription: phase.phaseDescription,
+    currentStageHeadline: DELIVERY_STAGE_HEADLINE[stage] ?? phase.phaseTitle,
+  };
+}
+
+/** 工作台第一屏「当前结论」一句话 */
+export function buildWorkspaceDeliveryConclusion(
+  stageView: Pick<DeliveryStageView, "stageDescription" | "blockingReasons">,
+  options?: { mainChainReason?: string | null; blockerReason?: string | null },
+): string {
+  const mainReason = options?.mainChainReason?.trim();
+  if (mainReason) return mainReason;
+  const blocker = options?.blockerReason?.trim();
+  if (blocker) return blocker;
+  if (stageView.blockingReasons.length > 0) {
+    return stageView.blockingReasons.join("；");
+  }
+  return stageView.stageDescription;
+}
