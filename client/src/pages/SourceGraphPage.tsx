@@ -1,4 +1,5 @@
 import { P0MetricTile, P0Section } from "@/components/geo/P0UiPrimitives";
+import { DiscoveryCandidatesPanel } from "@/components/discovery/DiscoveryCandidatesPanel";
 import {
   BrandSourceDrawer,
   defaultBrandSourceForm,
@@ -255,12 +256,13 @@ export default function SourceGraphPage() {
           <Button
             type="button"
             variant="outline"
+            size="sm"
             disabled={!selectedProjectId || mutating}
             onClick={openCreateDrawer}
             data-testid="source-graph-add-source"
           >
             <Plus className="mr-1.5 h-4 w-4" />
-            添加信源
+            手动添加信源
           </Button>
           <Button
             type="button"
@@ -309,7 +311,19 @@ export default function SourceGraphPage() {
           </P0Section>
 
           <P0Section title="信源列表" description="录入各平台公开信源并手动标记六项指标">
-            <div className="space-y-3" data-testid="source-graph-list">
+            {selectedProjectId ? (
+              <DiscoveryCandidatesPanel
+                projectId={selectedProjectId}
+                candidateType="source"
+                title="AI 自动发现信源"
+                description="根据品牌名和关键词检索公开网络，发现可能有助于 AI 识别你的官网、平台主页和媒体内容"
+                discoverButtonLabel="开始发现信源"
+                acceptButtonLabel="采纳为信源"
+                testIdPrefix="source-graph"
+                onAccepted={invalidateAll}
+              />
+            ) : null}
+            <div className="mt-4 space-y-3" data-testid="source-graph-list">
               {sortedRecords.length === 0 ? (
                 <div
                   className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"

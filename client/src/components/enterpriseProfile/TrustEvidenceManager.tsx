@@ -1,3 +1,4 @@
+import { DiscoveryCandidatesPanel } from "@/components/discovery/DiscoveryCandidatesPanel";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -199,11 +200,22 @@ export function TrustEvidenceManager({ projectId: projectIdProp, embedded = fals
             </p>
           ) : null}
         </div>
-        <Button type="button" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" onClick={openCreate}>
+        <Button type="button" size="sm" variant="outline" onClick={openCreate}>
           <Plus className="mr-1 size-3.5" />
-          添加证据
+          手动添加证据
         </Button>
       </div>
+
+      <DiscoveryCandidatesPanel
+        projectId={projectId}
+        candidateType="trust_evidence"
+        title="AI 自动发现信任证据"
+        description="尝试发现媒体报道、客户评价等公开证据，帮助 AI 判断为什么应该推荐你"
+        discoverButtonLabel="开始发现证据"
+        acceptButtonLabel="采纳为证据"
+        testIdPrefix="trust-evidence"
+        onAccepted={invalidate}
+      />
 
       {listQuery.isLoading ? (
         <div className="flex items-center gap-2 py-8 text-sm text-gray-500">

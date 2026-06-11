@@ -12,6 +12,9 @@ export const GENERIC_FORBIDDEN_MESSAGE = "当前账号暂无权限执行该操�
 export const GENERIC_UNAUTHORIZED_MESSAGE = "登录状态已失效，请重新登录后重试。";
 export const GENERIC_SERVER_ERROR_MESSAGE = "服务器开小差了，请稍后重试。";
 
+export const SEARCH_PROVIDER_NOT_CONFIGURED_MESSAGE =
+  "自动发现服务暂未配置，你可以先手动添加已知信源";
+
 const INTERNAL_MARKERS = [
   "failed query",
   "insert into",
@@ -64,6 +67,9 @@ export function toKnownUserFacingError(raw: string | undefined | null): string |
   if (message === NOT_ADMIN_ERR_MSG || /^FORBIDDEN$/i.test(message)) return GENERIC_FORBIDDEN_MESSAGE;
   if (/^INTERNAL_SERVER_ERROR$/i.test(message) || /^Internal Server Error$/i.test(message)) {
     return GENERIC_SERVER_ERROR_MESSAGE;
+  }
+  if (message === "SEARCH_PROVIDER_NOT_CONFIGURED") {
+    return SEARCH_PROVIDER_NOT_CONFIGURED_MESSAGE;
   }
   const lower = message.toLowerCase();
   if (NETWORK_MARKERS.some(marker => lower.includes(marker))) {

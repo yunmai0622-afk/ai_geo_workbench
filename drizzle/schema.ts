@@ -161,6 +161,9 @@ export const trustEvidenceVerificationStatusEnum = mysqlEnum("verificationStatus
   "verified",
   "rejected",
 ]);
+export const discoveryCandidateTypeEnum = mysqlEnum("candidateType", ["source", "trust_evidence"]);
+export const discoveryConfidenceEnum = mysqlEnum("confidence", ["high", "medium", "low"]);
+export const discoveryCandidateStatusEnum = mysqlEnum("status", ["pending", "accepted", "ignored"]);
 export const publishReviewModeEnum = mysqlEnum("reviewMode", ["全人工审核", "高分自动发布", "全自动发布"]);
 export const platformAuthorizationStatusEnum = mysqlEnum("authorizationStatus", ["未配置", "待人工授权", "已授权", "已失效", "无需授权"]);
 
@@ -1215,6 +1218,24 @@ export const sourceEnhancementSuggestions = mysqlTable("source_enhancement_sugge
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/** AI 自动发现候选：信源 / 信任证据（P0-I） */
+export const discoveryCandidates = mysqlTable("discovery_candidates", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  candidateType: discoveryCandidateTypeEnum.notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  url: varchar("url", { length: 2000 }).notNull(),
+  snippet: text("snippet"),
+  sourceDomain: varchar("sourceDomain", { length: 255 }),
+  suggestedRecordType: varchar("suggestedRecordType", { length: 64 }).notNull(),
+  confidence: discoveryConfidenceEnum.default("medium").notNull(),
+  detectedSignals: json("detectedSignals").$type<Record<string, boolean>>().notNull().default({}),
+  status: discoveryCandidateStatusEnum.default("pending").notNull(),
+  acceptedRecordId: int("acceptedRecordId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type BrandSourceRecord = typeof brandSourceRecords.$inferSelect;
 export type InsertBrandSourceRecord = typeof brandSourceRecords.$inferInsert;
 export type EntityAnchor = typeof entityAnchors.$inferSelect;
@@ -1223,3 +1244,5 @@ export type EntityConsistencyCheck = typeof entityConsistencyChecks.$inferSelect
 export type InsertEntityConsistencyCheck = typeof entityConsistencyChecks.$inferInsert;
 export type SourceEnhancementSuggestion = typeof sourceEnhancementSuggestions.$inferSelect;
 export type InsertSourceEnhancementSuggestion = typeof sourceEnhancementSuggestions.$inferInsert;
+export type DiscoveryCandidate = typeof discoveryCandidates.$inferSelect;
+export type InsertDiscoveryCandidate = typeof discoveryCandidates.$inferInsert;

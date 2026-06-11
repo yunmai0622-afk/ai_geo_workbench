@@ -449,6 +449,13 @@
       "when": 1778285197827,
       "tag": "0063_trust_evidence_items",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "5",
+      "when": 1778286197827,
+      "tag": "0066_discovery_candidates",
+      "breakpoints": true
     }
   ]
 }
