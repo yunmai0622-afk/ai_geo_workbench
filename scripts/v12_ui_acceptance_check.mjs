@@ -115,6 +115,9 @@ for (const item of [
   'OnboardingWizardShell',
   'wizard-step-nav',
   'wizard-save-draft',
+  'wizard-save-and-continue',
+  'wizard-complete-profile',
+  'wizard-save-hint',
   'AdvancedMaterialsSection',
   'enterprise-profile-page',
 ]) {

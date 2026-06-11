@@ -100,7 +100,7 @@ export default function AssetCenterPage() {
     [activeSelectionProject, projects, currentProjectId],
   );
 
-  const [message, setMessage] = useState<string>();
+  const [wizardCompleted, setWizardCompleted] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const wizardStepHydratedForProjectRef = useRef<number | null>(null);
   const [form, setForm] = useState<WizardFormState>({
@@ -213,6 +213,7 @@ export default function AssetCenterPage() {
   useEffect(() => {
     wizardStepHydratedForProjectRef.current = null;
     setCurrentStep(1);
+    setWizardCompleted(false);
   }, [currentProjectId]);
 
   useEffect(() => {
@@ -396,30 +397,22 @@ export default function AssetCenterPage() {
     ]);
   }
 
-  async function saveDraft(step = currentStep) {
-    setMessage(undefined);
+  async function persistWizardStep(step: number): Promise<boolean> {
     if (!currentProjectId) {
       toast.error("请先在客户管理台选择客户项目");
-      return;
+      return false;
     }
     const brand = form.brandName.trim() || form.enterpriseName.trim() || currentProject?.enterpriseName || "";
     if (!brand) {
       toast.error("请填写企业名称后再保存");
-      return;
+      return false;
     }
     try {
       const payload = buildPayload(step);
       console.info("[enterprise-profile] saveDraft", { projectId: currentProjectId, wizardStep: step });
       await upsertProfile.mutateAsync(payload);
       await refreshSummary();
-      if (step === 8 && currentProjectId) {
-        toast.success("建档完成！正在计算 AI 品牌成熟度...");
-        await triggerMaturityCalculate({ silent: true });
-        setLocation(buildProjectUrl("/maturity", currentProjectId));
-        return;
-      }
-      void triggerMaturityCalculate({ silent: true });
-      setMessage("草稿已保存。");
+      return true;
     } catch (e) {
       const errObj = e as { message?: string; data?: { code?: string; zodError?: unknown } };
       console.error("[enterprise-profile] saveDraft failed", {
@@ -432,7 +425,29 @@ export default function AssetCenterPage() {
         error: e,
       });
       toast.error(formatWizardSaveDraftError(e));
+      return false;
     }
+  }
+
+  async function handleSaveDraftOnly() {
+    const ok = await persistWizardStep(currentStep);
+    if (ok) toast.success("草稿已保存");
+  }
+
+  async function handleSaveAndContinue() {
+    const ok = await persistWizardStep(currentStep);
+    if (!ok) return;
+    void triggerMaturityCalculate({ silent: true });
+    toast.success("已保存，继续完善下一步");
+    setCurrentStep(step => Math.min(8, step + 1));
+  }
+
+  async function handleCompleteWizard() {
+    const ok = await persistWizardStep(8);
+    if (!ok) return;
+    toast.success("建档完成！");
+    void triggerMaturityCalculate({ silent: true });
+    setWizardCompleted(true);
   }
 
   const hasRenderableProfile = Boolean(
@@ -491,8 +506,33 @@ export default function AssetCenterPage() {
         </div>
       ) : null}
 
-      {message ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{message}</div>
+      {wizardCompleted && currentProjectId ? (
+        <div
+          className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-6"
+          data-testid="wizard-completion-panel"
+        >
+          <p className="text-sm leading-relaxed text-emerald-950">
+            建档完成！系统正在计算 AI 品牌成熟度，建议接下来进行 AI 现状检测，了解AI目前是否推荐你的品牌。
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button
+              type="button"
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              data-testid="wizard-completion-go-diagnosis"
+              onClick={() => setLocation(buildProjectUrl("/ai-diagnosis", currentProjectId))}
+            >
+              去做AI现状检测
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              data-testid="wizard-completion-go-maturity"
+              onClick={() => setLocation(buildProjectUrl("/maturity", currentProjectId))}
+            >
+              查看成熟度
+            </Button>
+          </div>
+        </div>
       ) : null}
 
       {currentProjectId && !coreProfileLoadFailed ? (
@@ -527,8 +567,10 @@ export default function AssetCenterPage() {
               currentStep={currentStep}
               saving={saving}
               onPrev={() => setCurrentStep(s => Math.max(1, s - 1))}
-              onNext={() => setCurrentStep(s => Math.min(8, s + 1))}
-              onSaveDraft={() => void saveDraft(currentStep)}
+              onSaveDraft={() => void handleSaveDraftOnly()}
+              onPrimaryAction={() =>
+                void (currentStep >= 8 ? handleCompleteWizard() : handleSaveAndContinue())
+              }
             />
           </OnboardingWizardShell>
 

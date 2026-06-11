@@ -65,7 +65,9 @@ describe("GEO-V2.0-P0-F Maturity Integration", () => {
   it("auto-triggers maturity calculate on wizard save, trust evidence, source graph, ai test", () => {
     const asset = read("client/src/pages/AssetCenter.tsx");
     expect(asset).toContain("useMaturityAutoCalculate");
-    expect(asset).toContain("建档完成！正在计算 AI 品牌成熟度");
+    expect(asset).toContain("triggerMaturityCalculate");
+    expect(asset).toContain("wizard-completion-panel");
+    expect(asset).toContain("去做AI现状检测");
     expect(asset).toContain('buildProjectUrl("/maturity"');
 
     const trust = read("client/src/components/enterpriseProfile/TrustEvidenceManager.tsx");

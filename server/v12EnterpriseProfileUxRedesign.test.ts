@@ -48,6 +48,9 @@ describe("Enterprise-Profile-UX-Redesign 静态验收", () => {
     expect(questionGuideStep).toContain("wizard-question-auto-generate");
     expect(panels).toContain("WizardQuestionGuideStep");
     expect(profileUi).toContain("wizard-save-draft");
+    expect(profileUi).toContain("wizard-save-and-continue");
+    expect(profileUi).toContain("保存并继续");
+    expect(profileUi).toContain("完成建档");
     expect(asset).not.toContain("保存企业基础信息");
   });
 

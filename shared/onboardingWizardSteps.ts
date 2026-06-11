@@ -84,6 +84,9 @@ export const ONBOARDING_WIZARD_PAGE_TITLE = "GEO 品牌资产建档";
 export const ONBOARDING_WIZARD_PAGE_SUBTITLE =
   "帮助 AI 正确理解企业是谁、做什么、服务谁、凭什么值得推荐。";
 
+export const ONBOARDING_WIZARD_SAVE_HINT =
+  "填写越完整，AI 对你的理解越准确，推荐率越高。可随时保存草稿，稍后继续。";
+
 export const ONBOARDING_TARGET_PLATFORMS = [
   "豆包",
   "Kimi",

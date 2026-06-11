@@ -99,6 +99,10 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       "wizard-step-nav",
       "AdvancedMaterialsSection",
       "wizard-save-draft",
+      "wizard-save-and-continue",
+      "wizard-complete-profile",
+      "wizard-save-hint",
+      "ONBOARDING_WIZARD_SAVE_HINT",
     ]) {
       expect(profileUi).toContain(text);
     }

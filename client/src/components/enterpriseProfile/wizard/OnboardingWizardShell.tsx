@@ -5,7 +5,7 @@ import {
 } from "@shared/onboardingCompletenessReport";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
-import { ONBOARDING_WIZARD_STEPS } from "@shared/onboardingWizardSteps";
+import { ONBOARDING_WIZARD_STEPS, ONBOARDING_WIZARD_SAVE_HINT } from "@shared/onboardingWizardSteps";
 
 export type WizardDimensionScore = {
   step: number;
@@ -54,6 +54,10 @@ export function OnboardingWizardShell({
             />
           </div>
         </div>
+
+        <p className="mt-3 text-sm leading-relaxed text-gray-600" data-testid="wizard-save-hint">
+          {ONBOARDING_WIZARD_SAVE_HINT}
+        </p>
 
         <div
           className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
