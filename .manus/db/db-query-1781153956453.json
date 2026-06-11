@@ -1,0 +1,25 @@
+{
+  "query": "SELECT id, openId, name FROM users LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, openId, name FROM users LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "idQPRgYSSV5HgoazuAaxBP",
+      "name": "文召 王"
+    },
+    {
+      "id": "2460011",
+      "openId": "NixwpMNYnEGGANBJ3V5t6e",
+      "name": "meci wang"
+    },
+    {
+      "id": "16740006",
+      "openId": "local-dev-user",
+      "name": "本地开发用户"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\n1\tidQPRgYSSV5HgoazuAaxBP\t文召 王\n2460011\tNixwpMNYnEGGANBJ3V5t6e\tmeci wang\n16740006\tlocal-dev-user\t本地开发用户\n",
+  "stderr": "",
+  "execution_time_ms": 1790
+}

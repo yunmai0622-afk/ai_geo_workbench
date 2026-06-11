@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS discovery_candidates (\n  id int AUTO_INCREMENT NOT NULL,\n  projectId int NOT NULL,\n  candidateType enum('source','trust_evidence') NOT NULL,\n  title varchar(500) NOT NULL,\n  url varchar(2000) NOT NULL,\n  snippet text,\n  sourceDomain varchar(255),\n  suggestedRecordType varchar(64) NOT NULL,\n  confidence enum('high','medium','low') NOT NULL DEFAULT 'medium',\n  detectedSignals json NOT NULL,\n  status enum('pending','accepted','ignored') NOT NULL DEFAULT 'pending',\n  acceptedRecordId int,\n  createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY(id)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute CREATE TABLE IF NOT EXISTS discovery_candidates (\n  id int AUTO_INCREMENT NOT NULL,\n  projectId int NOT NULL,\n  candidateType enum('source','trust_evidence') NOT NULL,\n  title varchar(500) NOT NULL,\n  url varchar(2000) NOT NULL,\n  snippet text,\n  sourceDomain varchar(255),\n  suggestedRecordType varchar(64) NOT NULL,\n  confidence enum('high','medium','low') NOT NULL DEFAULT 'medium',\n  detectedSignals json NOT NULL,\n  status enum('pending','accepted','ignored') NOT NULL DEFAULT 'pending',\n  acceptedRecordId int,\n  createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY(id)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1798
+}

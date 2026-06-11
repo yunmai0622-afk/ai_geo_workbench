@@ -4437,3 +4437,20 @@
 [2026-06-11T04:50:48.535Z] 
 [2026-06-11T04:50:56.731Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-11T04:50:56.773Z] Server running on http://localhost:3000/
+[2026-06-11T06:08:45.935Z] 2:08:45 AM [vite] (client) hmr update /src/index.css, /src/components/discovery/DiscoveryCandidatesPanel.tsx
+[2026-06-11T06:08:46.030Z] 2:08:46 AM [tsx] change in ./server/services/webSearchService.ts Restarting...
+[2026-06-11T06:08:54.015Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-11T06:08:54.052Z] Server running on http://localhost:3000/
+[2026-06-11T06:08:54.635Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-11T06:09:35.293Z] Dev server process group stopped
+[2026-06-11T06:09:35.296Z] ELIFECYCLE  Command failed.
+[2026-06-11T06:09:35.356Z] Dev server exited with code -15
+[2026-06-11T06:09:38.338Z] Starting dev server with command: pnpm run dev
+[2026-06-11T06:09:39.212Z] 
+[2026-06-11T06:09:39.213Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-11T06:09:39.214Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-11T06:09:39.214Z] 
+[2026-06-11T06:09:47.503Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-11T06:09:47.532Z] Server running on http://localhost:3000/
+[2026-06-11T06:09:47.995Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-11T06:10:21.131Z] 2:10:21 AM [vite] (client) hmr update /src/index.css

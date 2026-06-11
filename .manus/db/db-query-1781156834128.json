@@ -1,0 +1,145 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "ai_responses"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "ai_test_runs"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "analysis_results"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "audit_logs"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "brand_source_records"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "competitor_profiles"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "compliance_rules"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "content_plan_items"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "content_plans"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "content_style_profiles"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "content_templates"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "customer_cases"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "delivery_report_share_tokens"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "effective_actions"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "enterprise_geo_profiles"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "entity_anchors"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "entity_consistency_checks"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_article_quality_scores"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_article_topics"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_articles"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_asset_sources"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_inclusion_monitoring_records"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_maturity_scores"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_publish_records"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_review_queue"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_rewrite_pool"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_scores"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "geo_system_config"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "optimization_tasks"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "platform_authorization_configs"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "project_platform_accounts"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "projects"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "publish_strategies"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "publish_tasks"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "questions"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "reports"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "retest_comparisons"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "round_questions"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "source_enhancement_suggestions"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "system_notifications"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "test_rounds"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "trust_evidence_items"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "user_feedbacks"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe": "users"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe\n__drizzle_migrations\nai_responses\nai_test_runs\nanalysis_results\naudit_logs\nbrand_source_records\ncompetitor_profiles\ncompliance_rules\ncontent_plan_items\ncontent_plans\ncontent_style_profiles\ncontent_templates\ncustomer_cases\ndelivery_report_share_tokens\neffective_actions\nenterprise_geo_profiles\nentity_anchors\nentity_consistency_checks\ngeo_article_quality_scores\ngeo_article_topics\ngeo_articles\ngeo_asset_sources\ngeo_inclusion_monitoring_records\ngeo_maturity_scores\ngeo_publish_records\ngeo_review_queue\ngeo_rewrite_pool\ngeo_scores\ngeo_system_config\noptimization_tasks\nplatform_authorization_configs\nproject_platform_accounts\nprojects\npublish_strategies\npublish_tasks\nquestions\nreports\nretest_comparisons\nround_questions\nsource_enhancement_suggestions\nsystem_notifications\ntest_rounds\ntrust_evidence_items\nuser_feedbacks\nusers\n",
+  "stderr": "",
+  "execution_time_ms": 1797
+}

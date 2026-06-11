@@ -1,0 +1,14 @@
+{
+  "query": "CREATE TABLE `discovery_candidates` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`projectId` int NOT NULL,\n\t`candidateType` enum('source','trust_evidence') NOT NULL,\n\t`title` varchar(500) NOT NULL,\n\t`url` varchar(2000) NOT NULL,\n\t`snippet` text,\n\t`sourceDomain` varchar(255),\n\t`suggestedRecordType` varchar(64) NOT NULL,\n\t`confidence` enum('high','medium','low') NOT NULL DEFAULT 'medium',\n\t`detectedSignals` json NOT NULL DEFAULT ('{}'),\n\t`status` enum('pending','accepted','ignored') NOT NULL DEFAULT 'pending',\n\t`acceptedRecordId` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `discovery_candidates_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute CREATE TABLE `discovery_candidates` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`projectId` int NOT NULL,\n\t`candidateType` enum('source','trust_evidence') NOT NULL,\n\t`title` varchar(500) NOT NULL,\n\t`url` varchar(2000) NOT NULL,\n\t`snippet` text,\n\t`sourceDomain` varchar(255),\n\t`suggestedRecordType` varchar(64) NOT NULL,\n\t`confidence` enum('high','medium','low') NOT NULL DEFAULT 'medium',\n\t`detectedSignals` json NOT NULL DEFAULT ('{}'),\n\t`status` enum('pending','accepted','ignored') NOT NULL DEFAULT 'pending',\n\t`acceptedRecordId` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `discovery_candidates_id` PRIMARY KEY(`id`)\n);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 11 column 47 near \"'{}'),",
+    "\t`status` enum('pending','accepted','ignored') NOT NULL DEFAULT 'pending',",
+    "\t`acceptedRecordId` int,",
+    "\t`createdAt` timestamp NOT NULL DEFAULT (now()),",
+    "\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,",
+    "\tCONSTRAINT `discovery_candidates_id` PRIMARY KEY(`id`)",
+    ")\""
+  ]
+}
