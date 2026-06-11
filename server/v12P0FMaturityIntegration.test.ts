@@ -47,6 +47,7 @@ describe("GEO-V2.0-P0-F Maturity Integration", () => {
     expect(page).toContain("maturity-screen-next-actions");
     expect(page).toContain("maturity-top-weaknesses");
     expect(page).toContain("maturity-weakest-cta");
+    expect(page).toContain("resolveMaturityWeakestPrimaryCtaLabel");
     expect(page).toContain("maturity-dimension-conclusion-${card.key}");
     expect(page).toContain("maturity-dimension-cta-${card.key}");
     expect(page).toContain("maturity-trend-details");

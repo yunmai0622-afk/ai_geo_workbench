@@ -11,7 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
-import { buildProjectUrl } from "@/lib/activeProject";
+import { buildProjectUrl, getSearchFromLocation } from "@/lib/activeProject";
 import { trpc } from "@/lib/trpc";
 import {
   ENTERPRISE_INDUSTRY_OPTIONS,
@@ -87,7 +87,7 @@ const EMPTY_DRAFTS = {
 };
 
 export default function AssetCenterPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const {
     selectedProjectId: currentProjectId,
@@ -222,11 +222,18 @@ export default function AssetCenterPage() {
 
   useEffect(() => {
     if (!currentProjectId || !summaryData || wizardStepHydratedForProjectRef.current === currentProjectId) return;
-    const p = (summaryData.profile ?? {}) as Record<string, unknown>;
-    const wizardStep = typeof p.wizardStep === "number" ? p.wizardStep : 0;
-    if (wizardStep >= 1 && wizardStep <= 8) setCurrentStep(wizardStep);
+    const search = getSearchFromLocation(location);
+    const stepParam = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("step");
+    const urlStep = stepParam ? Number.parseInt(stepParam, 10) : Number.NaN;
+    if (Number.isFinite(urlStep) && urlStep >= 1 && urlStep <= 8) {
+      setCurrentStep(urlStep);
+    } else {
+      const p = (summaryData.profile ?? {}) as Record<string, unknown>;
+      const wizardStep = typeof p.wizardStep === "number" ? p.wizardStep : 0;
+      if (wizardStep >= 1 && wizardStep <= 8) setCurrentStep(wizardStep);
+    }
     wizardStepHydratedForProjectRef.current = currentProjectId;
-  }, [currentProjectId, summaryData]);
+  }, [currentProjectId, summaryData, location]);
 
   const wizardCompleteness = summary?.wizardCompleteness;
   const completenessReport = completenessReportQuery.data;

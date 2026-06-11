@@ -626,7 +626,7 @@ function buildOutcomeCards(input: BuildDeliveryReportProductSnapshotInput): Deli
         { label: "实测题量", value: formatCountDisplay(input.questionCount) },
         { label: "覆盖引擎", value: formatCountDisplay(input.engineCount) },
         { label: "最近实测", value: input.lastAiTestedAt ?? COUNT_MISSING_LABEL },
-        { label: "T0 完成时间", value: t0FinishedLabel },
+        { label: "优化前基线完成时间", value: t0FinishedLabel },
       ],
     },
     {

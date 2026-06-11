@@ -111,6 +111,10 @@ describe("GEO-V1.1-ActiveProjectIdFix activeProject", () => {
     expect(result.projectId).toBe(72);
   });
 
+  it("buildProjectUrl 保留路径上的额外查询参数", () => {
+    expect(buildProjectUrl("/enterprise-profile?step=6", 42)).toBe("/enterprise-profile?step=6&projectId=42");
+  });
+
   it("buildProjectUrl 与 isProjectIdAccessible 拒绝 30001", () => {
     expect(buildProjectUrl("/workspace", LEGACY_ORPHAN_PROJECT_ID)).toBe("/workspace");
     expect(isProjectIdAccessible(LEGACY_ORPHAN_PROJECT_ID, [{ id: LEGACY_ORPHAN_PROJECT_ID }])).toBe(

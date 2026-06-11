@@ -6,6 +6,7 @@ import {
   buildTopWeaknessHighlights,
   resolveMaturityDimensionConclusion,
   resolveMaturityDimensionStatus,
+  resolveMaturityWeakestPrimaryCtaLabel,
   resolveWeakestDimension,
   resolveWeakestDimensionAction,
 } from "./maturityDetailDisplay";
@@ -46,6 +47,7 @@ describe("maturityDetailDisplay", () => {
     expect(cards).toHaveLength(6);
     expect(cards.find(c => c.key === "questionCoverage")?.path).toBe("/questions");
     expect(cards.find(c => c.key === "trustEvidence")?.ctaLabel).toBe("去添加证据");
+    expect(cards.find(c => c.key === "trustEvidence")?.path).toBe("/enterprise-profile?step=6");
     expect(cards.find(c => c.key === "aiTestPerformance")?.conclusion).toBe("暂无数据/严重不足");
   });
 
@@ -61,6 +63,14 @@ describe("maturityDetailDisplay", () => {
     const action = resolveWeakestDimensionAction(report);
     expect(action?.key).toBe("aiTestPerformance");
     expect(action?.path).toBe("/ai-diagnosis");
+  });
+
+  it("resolves dynamic primary CTA labels for weakest dimensions", () => {
+    expect(resolveMaturityWeakestPrimaryCtaLabel("trustEvidence")).toBe("去添加信任证据");
+    expect(resolveMaturityWeakestPrimaryCtaLabel("aiTestPerformance")).toBe("去做AI现状检测");
+    expect(resolveMaturityWeakestPrimaryCtaLabel("sourceGraph")).toBe("去完善信源图谱");
+    expect(resolveMaturityWeakestPrimaryCtaLabel("questionCoverage")).toBe("去完善问题池");
+    expect(resolveMaturityWeakestPrimaryCtaLabel("brandIdentity")).toBe("去完善品牌资料");
   });
 
   it("builds three prioritized next actions from weakest dimensions", () => {

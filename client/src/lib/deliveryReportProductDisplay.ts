@@ -4,7 +4,29 @@ import { DELIVERY_REPORT_SCORE_MISSING_LABEL } from "@shared/deliveryReportScore
 export const DELIVERY_INSUFFICIENT_CONCLUSION =
   "当前数据不足，完成发布后复测后将生成本轮 GEO 增长结论。";
 
+export const DELIVERY_REPORT_PAGE_INTRO =
+  "本报告记录本轮GEO优化的执行动作、AI推荐变化和下月建议";
+
+export const DELIVERY_REPORT_EMPTY_MESSAGE =
+  "完成AI现状检测和内容发布后，系统将自动生成交付报告";
+
+export const DELIVERY_REPORT_EMPTY_CTA_LABEL = "去开始AI现状检测";
+
 export const DELIVERY_METRIC_EMPTY_HINT = "暂无数据，完成对应步骤后展示。";
+
+export function isDeliveryReportEmpty(input: {
+  hasAiTestData: boolean;
+  analysisCount: number;
+  publishRecordCount: number;
+  completedActionCount: number;
+}): boolean {
+  return (
+    !input.hasAiTestData &&
+    input.analysisCount === 0 &&
+    input.publishRecordCount === 0 &&
+    input.completedActionCount === 0
+  );
+}
 
 export type DeliveryCoreMetrics = {
   mentionRate: string;

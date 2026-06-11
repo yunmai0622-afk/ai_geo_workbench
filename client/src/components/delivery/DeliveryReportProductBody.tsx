@@ -5,6 +5,7 @@ import type {
   DeliveryReportProductSnapshot,
   DeliveryReportViewMode,
 } from "@shared/deliveryReportReadability";
+import { DELIVERY_REPORT_PAGE_INTRO } from "@/lib/deliveryReportProductDisplay";
 import { computeDeliveryDataCompleteness, T0_ONLY_TREND_INSUFFICIENT_MESSAGE } from "@shared/deliveryReportReadability";
 import { ArrowLeft, FileDown, Link2, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
@@ -363,6 +364,9 @@ export function DeliveryReportProductBody({
 }) {
   return (
     <div className="space-y-8">
+      <p className="text-sm leading-relaxed text-gray-600" data-testid="delivery-report-page-intro">
+        {DELIVERY_REPORT_PAGE_INTRO}
+      </p>
       <BossSummarySection snapshot={snapshot} />
       <OutcomeCardsSection snapshot={snapshot} />
       <GeoAttributionSection snapshot={snapshot} />

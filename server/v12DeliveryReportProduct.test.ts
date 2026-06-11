@@ -23,6 +23,12 @@ describe("Phase4 delivery report productization", () => {
   it("first screen is customer delivery report with boss summary", () => {
     for (const text of [
       "delivery-report-page",
+      "delivery-report-page-intro",
+      "delivery-report-empty-state",
+      "delivery-report-empty-cta",
+      "本报告记录本轮GEO优化的执行动作、AI推荐变化和下月建议",
+      "完成AI现状检测和内容发布后，系统将自动生成交付报告",
+      "去开始AI现状检测",
       "delivery-report-boss-summary",
       "delivery-report-sticky-toolbar",
       "delivery-report-outcome-cards",
@@ -48,6 +54,8 @@ describe("Phase4 delivery report productization", () => {
     expect(page).not.toContain("mock");
     expect(page).not.toContain("rawAnswer");
     expect(page).not.toContain("JSON.stringify");
+    expect(page).not.toContain("publish_tasks");
+    expect(page).toContain("sanitizeCustomerFacingEngineeringIds");
   });
 
   it("share and internal areas are folded", () => {

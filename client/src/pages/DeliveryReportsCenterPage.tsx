@@ -22,10 +22,15 @@ import {
   buildDeliveryCoreMetrics,
   buildDeliveryReportMeta,
   computeCitationRateFromItems,
+  DELIVERY_REPORT_EMPTY_CTA_LABEL,
+  DELIVERY_REPORT_EMPTY_MESSAGE,
+  DELIVERY_REPORT_PAGE_INTRO,
+  isDeliveryReportEmpty,
   metricHint,
   NO_PUBLIC_LINK_HINT,
   visibilityScoreDisplay,
 } from "@/lib/deliveryReportProductDisplay";
+import { sanitizeCustomerFacingEngineeringIds } from "@shared/customerFacingEngineeringIds";
 import {
   buildNextActionLines,
   mapPublishRecordsToItems,
@@ -301,13 +306,15 @@ export function DeliveryReportsCenterPage() {
   const publishWithLinkCount = publishedItems.filter(i => (i.url ?? "").trim().length > 0).length;
 
   const firstAnalysis = analyses[0];
-  const contentGapPrimary = String(firstAnalysis?.contentGap ?? firstAnalysis?.content_gap ?? "").trim();
-  const notRecommendedPrimary = String(
-    firstAnalysis?.notRecommendedReason ?? firstAnalysis?.not_recommended_reason ?? "",
-  ).trim();
+  const contentGapPrimary = sanitizeCustomerFacingEngineeringIds(
+    String(firstAnalysis?.contentGap ?? firstAnalysis?.content_gap ?? "").trim(),
+  );
+  const notRecommendedPrimary = sanitizeCustomerFacingEngineeringIds(
+    String(firstAnalysis?.notRecommendedReason ?? firstAnalysis?.not_recommended_reason ?? "").trim(),
+  );
   const maxProblemLine =
     [notRecommendedPrimary, contentGapPrimary].filter(Boolean)[0] ||
-    "暂无诊断结论，请先在内容诊断完成一轮诊断。";
+    "暂无诊断结论，请先在 AI 现状检测完成一轮诊断。";
 
   const profile = summaryQuery.data?.profile as Record<string, unknown> | undefined;
   const enterpriseName =
@@ -578,8 +585,12 @@ export function DeliveryReportsCenterPage() {
     const lines: string[] = [];
     if (publishWithLinkCount === 0) lines.push("公开链接回填不足，导致发布结果无法进入完整监测链路。");
     if (!hasAiTestData) lines.push("尚未完成 AI 实测，提及率与推荐率无法形成稳定结论。");
-    if (mentionRateDelta != null && mentionRateDelta < 0) lines.push("品牌提及率较 T0 下降，需优先补齐覆盖核心问题的内容。");
-    if (recommendRateDelta != null && recommendRateDelta < 0) lines.push("品牌推荐率较 T0 下降，需强化证据型内容与平台匹配。");
+    if (mentionRateDelta != null && mentionRateDelta < 0) {
+      lines.push("品牌提及率较优化前基线下降，需优先补齐覆盖核心问题的内容。");
+    }
+    if (recommendRateDelta != null && recommendRateDelta < 0) {
+      lines.push("品牌推荐率较优化前基线下降，需强化证据型内容与平台匹配。");
+    }
     if (lines.length === 0) lines.push("当前关键指标无明显拖后项，建议继续扩大覆盖问题与发布平台。");
     return lines;
   }, [publishWithLinkCount, hasAiTestData, mentionRateDelta, recommendRateDelta]);
@@ -607,7 +618,8 @@ export function DeliveryReportsCenterPage() {
     const lines: string[] = [];
     if (growthSuggestions.length > 0) {
       for (const suggestion of growthSuggestions.slice(0, 5)) {
-        lines.push(typeof suggestion.message === "string" ? suggestion.message : String(suggestion.message));
+        const raw = typeof suggestion.message === "string" ? suggestion.message : String(suggestion.message);
+        lines.push(sanitizeCustomerFacingEngineeringIds(raw));
       }
     }
     if (lines.length < 3) lines.push("下轮内容主题：围绕当前高意向问题补齐对比与证据型文章。");
@@ -619,10 +631,10 @@ export function DeliveryReportsCenterPage() {
   const positiveIndicatorLines = useMemo(() => {
     const lines: string[] = [];
     if (mentionRateDelta != null && mentionRateDelta > 0) {
-      lines.push(`品牌提及率较 T0 提升 ${Math.round(mentionRateDelta * 100)} 个百分点`);
+      lines.push(`品牌提及率较优化前基线提升 ${Math.round(mentionRateDelta * 100)} 个百分点`);
     }
     if (recommendRateDelta != null && recommendRateDelta > 0) {
-      lines.push(`品牌推荐率较 T0 提升 ${Math.round(recommendRateDelta * 100)} 个百分点`);
+      lines.push(`品牌推荐率较优化前基线提升 ${Math.round(recommendRateDelta * 100)} 个百分点`);
     }
     if (geoScoreDelta != null && geoScoreDelta > 0) {
       lines.push(`GEO 分较本轮起始提升 ${geoScoreDelta} 分`);
@@ -797,6 +809,17 @@ export function DeliveryReportsCenterPage() {
     [productSnapshot],
   );
 
+  const deliveryReportEmpty = useMemo(
+    () =>
+      isDeliveryReportEmpty({
+        hasAiTestData,
+        analysisCount: analyses.length,
+        publishRecordCount: publishRecords.length,
+        completedActionCount: completedItems.length,
+      }),
+    [hasAiTestData, analyses.length, publishRecords.length, completedItems.length],
+  );
+
   if (!enabled && !projectsLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center" data-testid="delivery-report-page">
@@ -969,14 +992,36 @@ export function DeliveryReportsCenterPage() {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div ref={reportRef} className="min-w-0 space-y-8 print:space-y-6" data-testid="delivery-report-hero">
           {!loading ? (
-            <DeliveryReportProductBody
-              snapshot={productSnapshot}
-              mode="internal"
-              onNavigate={path => setLocation(path)}
-              buildProjectPath={path =>
-                selectedProjectId ? buildProjectUrl(path, selectedProjectId) : path
-              }
-            />
+            deliveryReportEmpty ? (
+              <div
+                className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 p-8 text-center"
+                data-testid="delivery-report-empty-state"
+              >
+                <p className="text-sm leading-relaxed text-gray-600" data-testid="delivery-report-page-intro">
+                  {DELIVERY_REPORT_PAGE_INTRO}
+                </p>
+                <p className="mt-4 text-base font-medium text-gray-900">{DELIVERY_REPORT_EMPTY_MESSAGE}</p>
+                {selectedProjectId ? (
+                  <Button
+                    type="button"
+                    className={`mt-5 ${geoP0Brand.primary}`}
+                    data-testid="delivery-report-empty-cta"
+                    onClick={() => setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
+                  >
+                    {DELIVERY_REPORT_EMPTY_CTA_LABEL}
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <DeliveryReportProductBody
+                snapshot={productSnapshot}
+                mode="internal"
+                onNavigate={path => setLocation(path)}
+                buildProjectPath={path =>
+                  selectedProjectId ? buildProjectUrl(path, selectedProjectId) : path
+                }
+              />
+            )
           ) : null}
 
         <details className="rounded-xl border border-gray-200 bg-white shadow-sm print:hidden" data-testid="delivery-report-internal-diagnostics-fold">
@@ -1167,7 +1212,7 @@ export function DeliveryReportsCenterPage() {
 
         <P0Section
           title="发布统计"
-          description="基于发布任务（publish_tasks）汇总，反映自动/客户端发布尝试与成功情况。"
+          description="基于发布任务汇总，反映自动/客户端发布尝试与成功情况。"
         >
           <div className="space-y-4" data-testid="delivery-report-publish-stats">
             <div className="grid gap-3 sm:grid-cols-3">

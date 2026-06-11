@@ -34,7 +34,7 @@ export const MATURITY_DIMENSION_ENTRY: Record<
   categoryPositioning: { ctaLabel: "去完善建档", path: "/enterprise-profile" },
   questionCoverage: { ctaLabel: "去问题池", path: "/questions" },
   sourceGraph: { ctaLabel: "去信源图谱", path: "/brand-source-graph" },
-  trustEvidence: { ctaLabel: "去添加证据", path: "/enterprise-profile" },
+  trustEvidence: { ctaLabel: "去添加证据", path: "/enterprise-profile?step=6" },
   aiTestPerformance: { ctaLabel: "去发起实测", path: "/ai-diagnosis" },
 };
 
@@ -208,6 +208,25 @@ export function resolveWeakestDimension(report: GeoMaturityReport | null | undef
   if (!report || report.dimensions.length === 0) return null;
   const sorted = [...report.dimensions].sort((a, b) => a.score - b.score);
   return sorted[0] ?? null;
+}
+
+/** 成熟度页「改善最弱短板」主按钮文案（按维度动态生成） */
+export function resolveMaturityWeakestPrimaryCtaLabel(key: GeoMaturityDimensionKey): string {
+  switch (key) {
+    case "trustEvidence":
+      return "去添加信任证据";
+    case "aiTestPerformance":
+      return "去做AI现状检测";
+    case "sourceGraph":
+      return "去完善信源图谱";
+    case "questionCoverage":
+      return "去完善问题池";
+    case "brandIdentity":
+    case "categoryPositioning":
+      return "去完善品牌资料";
+    default:
+      return "去改善最弱短板";
+  }
 }
 
 export function resolveWeakestDimensionAction(

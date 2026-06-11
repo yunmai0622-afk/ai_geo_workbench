@@ -144,10 +144,13 @@ export function clearActiveProjectId(): void {
 }
 
 export function buildProjectUrl(path: string, projectId?: number | null): string {
-  const basePath = path.split("?")[0] || "/";
+  const queryIndex = path.indexOf("?");
+  const basePath = (queryIndex >= 0 ? path.slice(0, queryIndex) : path) || "/";
+  const params = new URLSearchParams(queryIndex >= 0 ? path.slice(queryIndex + 1) : "");
   const id = sanitizeActiveProjectId(projectId ?? null);
-  if (!id) return basePath;
-  return `${basePath}?projectId=${id}`;
+  if (id) params.set("projectId", String(id));
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
 }
 
 export function getPathnameFromLocation(location: string): string {

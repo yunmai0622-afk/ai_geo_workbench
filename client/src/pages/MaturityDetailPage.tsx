@@ -14,6 +14,7 @@ import {
   buildMaturityNextActionItems,
   buildTopWeaknessHighlights,
   resolveMaturityDimensionStatus,
+  resolveMaturityWeakestPrimaryCtaLabel,
   resolveWeakestDimensionAction,
 } from "@shared/maturityDetailDisplay";
 import { GEO_MATURITY_DIMENSION_META } from "@shared/geoMaturityScoring";
@@ -193,7 +194,7 @@ export default function MaturityDetailPage() {
                       data-testid="maturity-weakest-cta"
                       onClick={() => setLocation(buildProjectUrl(weakestAction.path, selectedProjectId))}
                     >
-                      去改善最弱短板：{weakestAction.label}
+                      {resolveMaturityWeakestPrimaryCtaLabel(weakestAction.key)}
                       <ArrowRight className="ml-2 size-4" />
                     </Button>
                   ) : null}
