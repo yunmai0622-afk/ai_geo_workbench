@@ -1611,10 +1611,16 @@ export default function WeeklyContentPage() {
     publishTasksQuery.data?.tasks,
   ]);
 
+  const detailSyncRef = useRef<string>("");
   useEffect(() => {
     if (!detailOpen || detailModel == null) return;
     const updated = contentCardModels.find(card => card.id === detailModel.id);
-    if (updated) setDetailModel(updated);
+    if (!updated) return;
+    const sig = `${updated.statusFilterKey}|${updated.queuedForPublish}|${updated.publishPreflightReady}|${updated.contentReviewStatus}|${updated.qualityView?.score}`;
+    if (sig !== detailSyncRef.current) {
+      detailSyncRef.current = sig;
+      setDetailModel(updated);
+    }
   }, [contentCardModels, detailOpen, detailModel?.id]);
 
   const displayContentCards = useMemo((): WeeklyArticleCardModel[] => {
