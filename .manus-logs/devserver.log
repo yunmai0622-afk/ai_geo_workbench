@@ -4492,3 +4492,6 @@
 [2026-06-11T07:36:48.533Z] Server running on http://localhost:3000/
 [2026-06-11T07:36:49.387Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-11T07:37:47.992Z] 3:37:47 AM [vite] (client) hmr update /src/index.css
+[2026-06-12T06:05:46.924Z] 2:05:46 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-06-12T06:05:54.973Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-12T06:05:55.007Z] Server running on http://localhost:3000/
