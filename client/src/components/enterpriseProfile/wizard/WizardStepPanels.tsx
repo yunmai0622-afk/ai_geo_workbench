@@ -305,6 +305,9 @@ export function WizardStepPanels({
             <p className="mt-1 text-2xl font-bold text-gray-900" data-testid="wizard-trust-evidence-count">{trustEvidenceCount}</p>
           </div>
         </div>
+        <p className="text-sm text-gray-500" data-testid="wizard-trust-case-relationship-note">
+          客户案例是信任证据的一种特殊类型，可在下方单独管理和确认。
+        </p>
         <p className="text-sm text-gray-600">信任证据越充分，AI 越有理由推荐你。</p>
         <Button
           type="button"

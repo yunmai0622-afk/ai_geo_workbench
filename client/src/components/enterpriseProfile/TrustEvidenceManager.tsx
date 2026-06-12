@@ -37,6 +37,39 @@ import { toast } from "sonner";
 const TRUST_EVIDENCE_EMPTY_MESSAGE =
   "还没有信任证据。添加媒体报道、客户评价、资质证书等，帮助 AI 判断为什么应该推荐你。";
 
+const SUMMARY_PREVIEW_LENGTH = 100;
+
+function TrustEvidenceItemSummary({ summary }: { summary: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const needsCollapse = summary.length > SUMMARY_PREVIEW_LENGTH;
+
+  if (!needsCollapse) {
+    return (
+      <p className="mt-1 text-sm text-gray-600" data-testid="trust-evidence-item-summary">
+        {summary}
+      </p>
+    );
+  }
+
+  const displayText = expanded ? summary : `${summary.slice(0, SUMMARY_PREVIEW_LENGTH)}...`;
+
+  return (
+    <div className="mt-1">
+      <p className="text-sm text-gray-600" data-testid="trust-evidence-item-summary">
+        {displayText}
+      </p>
+      <button
+        type="button"
+        className="mt-0.5 text-xs text-blue-600 hover:underline"
+        onClick={() => setExpanded(value => !value)}
+        data-testid="trust-evidence-summary-toggle"
+      >
+        {expanded ? "收起" : "展开"}
+      </button>
+    </div>
+  );
+}
+
 function typeIcon(type: string) {
   switch (type) {
     case "case":
@@ -266,7 +299,7 @@ export function TrustEvidenceManager({ projectId: projectIdProp, embedded = fals
                             {resolveTrustEvidenceTypeLabel(item.evidenceType)}
                           </span>
                         </div>
-                        {item.summary ? <p className="mt-1 text-sm text-gray-600">{item.summary}</p> : null}
+                        {item.summary ? <TrustEvidenceItemSummary summary={item.summary} /> : null}
                         {item.sourceUrl ? (
                           <a
                             href={item.sourceUrl}

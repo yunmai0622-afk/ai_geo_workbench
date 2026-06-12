@@ -36,7 +36,7 @@ describe("GEO-V2.0-P0-C-Trust-Evidence", () => {
     expect(routers).toContain("trustEvidence: trustEvidenceRouter");
   });
 
-  it("TrustEvidenceManager has grouped list, drawer and empty state", () => {
+  it("TrustEvidenceManager has grouped list, drawer, empty state and summary collapse", () => {
     expect(manager).toContain("trust-evidence-manager");
     expect(manager).toContain("trust-evidence-empty");
     expect(manager).toContain("trust-evidence-grouped-list");
@@ -45,6 +45,10 @@ describe("GEO-V2.0-P0-C-Trust-Evidence", () => {
     expect(manager).toContain("开始发现证据");
     expect(manager).toContain("手动添加证据");
     expect(manager).toContain("TrustEvidenceStep6Section");
+    expect(manager).toContain("SUMMARY_PREVIEW_LENGTH = 100");
+    expect(manager).toContain("trust-evidence-summary-toggle");
+    expect(manager).toContain("展开");
+    expect(manager).toContain("收起");
     expect(drawer).toContain("trust-evidence-drawer");
     expect(drawer).toContain("max-h-[80vh]");
     expect(drawer).toContain("overflow-y-auto");
@@ -54,11 +58,13 @@ describe("GEO-V2.0-P0-C-Trust-Evidence", () => {
     expect(shared).toContain("computeTrustEvidenceMaturityScore");
   });
 
-  it("embedded in wizard step 6 and advanced materials fold", () => {
+  it("embedded in wizard step 6 only (not duplicated in advanced materials)", () => {
     const panels = read("client/src/components/enterpriseProfile/wizard/WizardStepPanels.tsx");
     expect(panels).toContain("wizard-step-6");
     expect(panels).toContain("TrustEvidenceManager");
-    expect(advanced).toContain("TrustEvidenceManager");
-    expect(advanced).toContain("advanced-fold-trust-evidence");
+    expect(panels).toContain("wizard-trust-case-relationship-note");
+    expect(panels).toContain("客户案例是信任证据的一种特殊类型");
+    expect(advanced).not.toContain("TrustEvidenceManager");
+    expect(advanced).not.toContain("advanced-fold-trust-evidence");
   });
 });

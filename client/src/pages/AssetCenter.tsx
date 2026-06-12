@@ -149,6 +149,7 @@ export default function AssetCenterPage() {
   const upsertProfile = trpc.geo.assetLibrary.upsertProfile.useMutation();
   const createCustomerCase = trpc.geo.assetLibrary.createCustomerCase.useMutation();
   const updateCustomerCase = trpc.geo.assetLibrary.updateCustomerCase.useMutation();
+  const deleteCustomerCase = trpc.geo.assetLibrary.deleteCustomerCase.useMutation();
   const { triggerMaturityCalculate } = useMaturityAutoCalculate(currentProjectId);
 
   const projectInput = useMemo(() => ({ projectId: currentProjectId! }), [currentProjectId]);
@@ -486,6 +487,31 @@ export default function AssetCenterPage() {
     [buildCustomerCasePayload, createCustomerCase, currentProjectId, triggerMaturityCalculate, updateCustomerCase],
   );
 
+  const handleDeleteCase = useCallback(
+    async (idx: number) => {
+      if (!currentProjectId) {
+        toast.error("请先在客户管理台选择客户项目");
+        return;
+      }
+      const row = caseRows[idx];
+      if (!row) return;
+      if (!window.confirm("确定删除这条客户案例？")) return;
+      try {
+        if (row.id) {
+          await deleteCustomerCase.mutateAsync({ projectId: currentProjectId, id: row.id });
+        }
+        setCaseRows(prev => prev.filter((_, i) => i !== idx));
+        toast.success("客户案例已删除");
+        await refreshSummary();
+        void triggerMaturityCalculate({ silent: true });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "客户案例删除失败，请稍后重试");
+      }
+    },
+    [caseRows, currentProjectId, deleteCustomerCase, triggerMaturityCalculate],
+  );
+
+
   async function persistWizardStep(step: number): Promise<boolean> {
     if (!currentProjectId) {
       toast.error("请先在客户管理台选择客户项目");
@@ -575,7 +601,7 @@ export default function AssetCenterPage() {
   });
 
   const loading = projectsLoading || isLoading;
-  const saving = upsertProfile.isPending || createCustomerCase.isPending || updateCustomerCase.isPending;
+  const saving = upsertProfile.isPending || createCustomerCase.isPending || updateCustomerCase.isPending || deleteCustomerCase.isPending;
   const stepMeta = ONBOARDING_WIZARD_STEPS.find(s => s.step === currentStep) ?? ONBOARDING_WIZARD_STEPS[0];
 
   if (!currentProjectId && !projectsLoading) {
@@ -709,7 +735,7 @@ export default function AssetCenterPage() {
                 onCaseRowsChange={setCaseRows}
                 onSaveCase={handleSaveCase}
                 onSaveChoiceNone={async () => undefined}
-                onDeleteCase={() => undefined}
+                onDeleteCase={idx => void handleDeleteCase(idx)}
                 caseStatus="待完善"
                 trustStatus="待完善"
                 saving={saving}

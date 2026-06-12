@@ -1123,6 +1123,26 @@ const geoAssetRouter = router({
     }).where(eq(customerCases.id, id));
     return { success: true, id } as const;
   }),
+  deleteCustomerCase: protectedProcedure
+    .input(z.object({ projectId: z.number().int().positive(), id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      await requireProjectAccess(ctx, input.projectId);
+      const existing = await db
+        .select({ id: customerCases.id })
+        .from(customerCases)
+        .where(and(eq(customerCases.id, input.id), eq(customerCases.projectId, input.projectId)))
+        .limit(1);
+      if (!existing[0]) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "客户案例不存在或无权删除" });
+      }
+      await db
+        .update(trustEvidenceItems)
+        .set({ linkedCustomerCaseId: null })
+        .where(and(eq(trustEvidenceItems.projectId, input.projectId), eq(trustEvidenceItems.linkedCustomerCaseId, input.id)));
+      await db.delete(customerCases).where(and(eq(customerCases.id, input.id), eq(customerCases.projectId, input.projectId)));
+      return { success: true, id: input.id } as const;
+    }),
   createCompetitor: protectedProcedure.input(competitorInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     await requireProjectAccess(ctx, input.projectId);
