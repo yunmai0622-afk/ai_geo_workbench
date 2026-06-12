@@ -4495,3 +4495,15 @@
 [2026-06-12T06:05:46.924Z] 2:05:46 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
 [2026-06-12T06:05:54.973Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-12T06:05:55.007Z] Server running on http://localhost:3000/
+[2026-06-12T06:06:41.925Z] Dev server process group stopped
+[2026-06-12T06:06:41.928Z] ELIFECYCLE  Command failed.
+[2026-06-12T06:06:41.985Z] Dev server exited with code -15
+[2026-06-12T06:06:44.960Z] Starting dev server with command: pnpm run dev
+[2026-06-12T06:06:45.775Z] 
+[2026-06-12T06:06:45.776Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-12T06:06:45.776Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-12T06:06:45.776Z] 
+[2026-06-12T06:06:53.804Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-12T06:06:53.837Z] Server running on http://localhost:3000/
+[2026-06-12T06:07:42.059Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-12T06:07:42.092Z] Server running on http://localhost:3000/
