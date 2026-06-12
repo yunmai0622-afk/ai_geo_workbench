@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CustomerCaseLibrarySection } from "@/components/enterpriseProfile/CustomerCaseLibrarySection";
-import { TrustEvidenceManager } from "@/components/enterpriseProfile/TrustEvidenceManager";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { CaseDraft, FaqItem, SectionStatusTone } from "./types";
@@ -134,10 +133,6 @@ export function AdvancedMaterialsSection(props: Props) {
           展开高级素材（案例 {caseCount} · 品牌与背书 {trustCount} · FAQ {faqCount}）
         </summary>
         <div className="space-y-3 border-t border-gray-200 p-4">
-          <FoldGroup title="信任证据库" summary={`${trustCount} 类素材`} testId="advanced-fold-trust-evidence">
-            <TrustEvidenceManager embedded />
-          </FoldGroup>
-
           <FoldGroup title="案例详情" summary={`${caseCount} 条`} testId="advanced-fold-cases" id="customer-cases-detail">
             <CustomerCaseLibrarySection
               embedded
