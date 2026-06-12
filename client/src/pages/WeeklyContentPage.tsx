@@ -61,6 +61,7 @@ import {
   type WeeklyContentTaskProgress,
   type WeeklyContentTaskStatus,
 } from "@shared/weeklyContentTaskStatus";
+import { formatWeeklyArticleCustomerTitle } from "@shared/weeklyArticleCustomerTitle";
 import { CUSTOMER_STAGE_LABELS, deriveClientProjectCardDisplay } from "@/lib/projectWorkspaceDisplay";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
@@ -1350,6 +1351,23 @@ export default function WeeklyContentPage() {
         latestPublishTaskByArticle.set(articleId, task);
       }
     }
+    const resolveArticlePlatformKey = (article: ArticleRow) =>
+      getArticlePublishPlatform({
+        generationBasis: article.generationBasis ?? null,
+        targetPlatform: article.targetPlatform,
+        publishPlatform: article.publishPlatform,
+      }).weeklyPlatformKey;
+    const pickPreferredPlatformArticle = (
+      current: ArticleRow | undefined,
+      candidate: ArticleRow,
+    ): ArticleRow => {
+      if (!current) return candidate;
+      if (current.status === "已发布" && candidate.status !== "已发布") return candidate;
+      if (current.status !== "已发布" && candidate.status === "已发布") return current;
+      const currentTime = new Date(current.createdAt ?? 0).getTime();
+      const candidateTime = new Date(candidate.createdAt ?? 0).getTime();
+      return candidateTime >= currentTime ? candidate : current;
+    };
     return WEEKLY_PLATFORM_DEFS.map(def => {
       const counts: PlatformContentCounts = {
         pending: 0,
@@ -1362,23 +1380,11 @@ export default function WeeklyContentPage() {
       let queuedCount = 0;
       let lastGeneratedAt: Date | null = null;
       let lastPublishedAt: Date | null = null;
-      for (const topic of topics) {
-        const task = typeof topic.optimizationTaskId === "number" ? tasksById.get(topic.optimizationTaskId) : undefined;
-        const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
-        const article = articleByTopicId.get(topic.id);
-        const platformKey = article
-          ? getArticlePublishPlatform({
-              generationBasis: article.generationBasis ?? null,
-              targetPlatform: article.targetPlatform,
-              publishPlatform: article.publishPlatform,
-            }).weeklyPlatformKey
-          : normalizeWeeklyPlatformKey(card?.recommendedPlatform?.[0]);
-        if (platformKey !== def.key) continue;
-        if (!article) {
-          counts.pending += 1;
-          continue;
-        }
-        if (!platformArticle) platformArticle = article;
+      const countedArticleIds = new Set<number>();
+      const absorbPlatformArticle = (article: ArticleRow) => {
+        if (countedArticleIds.has(article.id)) return;
+        countedArticleIds.add(article.id);
+        platformArticle = pickPreferredPlatformArticle(platformArticle, article);
         const preflight = evaluateArticlePublishPreflight(article);
         const pass = preflight?.ready ?? false;
         if (article.status === "已发布") {
@@ -1408,6 +1414,24 @@ export default function WeeklyContentPage() {
         if (createdAt && (!lastGeneratedAt || createdAt.getTime() > lastGeneratedAt.getTime())) {
           lastGeneratedAt = createdAt;
         }
+      };
+      for (const topic of topics) {
+        const task = typeof topic.optimizationTaskId === "number" ? tasksById.get(topic.optimizationTaskId) : undefined;
+        const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
+        const article = articleByTopicId.get(topic.id);
+        const platformKey = article
+          ? resolveArticlePlatformKey(article)
+          : normalizeWeeklyPlatformKey(card?.recommendedPlatform?.[0]);
+        if (platformKey !== def.key) continue;
+        if (!article) {
+          counts.pending += 1;
+          continue;
+        }
+        absorbPlatformArticle(article);
+      }
+      for (const article of articles) {
+        if (resolveArticlePlatformKey(article) !== def.key) continue;
+        absorbPlatformArticle(article);
       }
       const generating = generatingPlatformKey === def.key;
       const published = platformArticle?.status === "已发布";
@@ -1473,6 +1497,7 @@ export default function WeeklyContentPage() {
     topics,
     topicsById,
     tasksById,
+    articles,
     articleByTopicId,
     geoContentTaskSource?.linkedQuestion,
     geoContentTaskSource?.sceneLabel,
@@ -1542,9 +1567,15 @@ export default function WeeklyContentPage() {
         const platformKey = platformResolved.recognized
           ? normalizeWeeklyPlatformKey(platformResolved.label)
           : normalizeWeeklyPlatformKey(a.targetPlatform);
+        const rawTitle = a.title ?? topic?.title ?? "未命名内容";
         return {
           id: a.id,
-          title: a.title ?? topic?.title ?? "未命名内容",
+          title: formatWeeklyArticleCustomerTitle({
+            title: rawTitle,
+            generationBasis: a.generationBasis ?? null,
+            targetPlatform: a.targetPlatform,
+            publishPlatform: a.publishPlatform,
+          }),
           targetPlatform: platformResolved.recognized ? platformResolved.label : a.targetPlatform,
           platformKey,
           contentTypeLabel: resolveContentTypeLabel(a),
