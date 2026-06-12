@@ -4507,3 +4507,23 @@
 [2026-06-12T06:06:53.837Z] Server running on http://localhost:3000/
 [2026-06-12T06:07:42.059Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-12T06:07:42.092Z] Server running on http://localhost:3000/
+[2026-06-12T06:48:24.129Z] 2:48:24 AM [vite] (client) hmr update /src/index.css
+[2026-06-12T06:48:24.513Z] 2:48:24 AM [vite] (client) hmr update /src/index.css, /src/pages/WeeklyContentPage.tsx
+[2026-06-12T06:49:32.335Z] Dev server process group stopped
+[2026-06-12T06:49:32.338Z] ELIFECYCLE  Command failed.
+[2026-06-12T06:49:32.405Z] Dev server exited with code -15
+[2026-06-12T06:49:35.367Z] Starting dev server with command: pnpm run dev
+[2026-06-12T06:49:36.110Z] 
+[2026-06-12T06:49:36.111Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-12T06:49:36.111Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-12T06:49:36.112Z] 
+[2026-06-12T06:49:43.923Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-12T06:49:43.959Z] Server running on http://localhost:3000/
+[2026-06-12T06:49:45.047Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-12T06:50:30.073Z] [geo.localAgent.platformAccounts.list] {"projectId":120001,"userId":16740006,"accountCount":3}
+[2026-06-12T06:50:30.074Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":120001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-09T19:11:30.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-12T06:50:34.111Z] [geo.localAgent.platformAccounts.list] {"projectId":120001,"userId":16740006,"accountCount":3}
+[2026-06-12T06:50:34.112Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":120001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-09T19:11:30.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-12T06:51:03.309Z] [geo.localAgent.platformAccounts.list] {"projectId":120001,"userId":16740006,"accountCount":3}
+[2026-06-12T06:51:03.310Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":120001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-09T19:11:30.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-12T06:52:54.276Z] 2:52:54 AM [vite] (client) hmr update /src/index.css
