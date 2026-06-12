@@ -18,12 +18,12 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
   const board = read("client/src/components/weekly/PlatformContentBoard.tsx");
 
   it("workbench title and four-section structure", () => {
-    expect(weekly).toContain("内容生产工作台");
+    expect(weekly).toContain("内容生产与发布准备");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
     expect(weekly).toContain("PlatformContentBoard");
     expect(weekly).toContain("WeeklyPublishableContentList");
     expect(weekly).toContain("WeeklyContentDetailSheet");
-    expect(taskCard).toContain("本轮任务总览");
+    expect(taskCard).toContain("当前内容任务");
     expect(board).toContain("平台发布计划");
   });
 

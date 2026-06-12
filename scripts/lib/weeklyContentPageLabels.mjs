@@ -1,8 +1,8 @@
 /** 平台化内容生产页（/weekly）当前产品文案，供验收脚本共用 */
 
 export const WEEKLY_CONTENT_PAGE_LABELS = [
-  "内容生产工作台",
-  "生成该平台内容",
+  "内容生产与发布准备",
+  "生成平台稿",
   "weekly-platform-content-page",
   "去 AI 实测诊断",
   "WeeklyPublishableContentList",

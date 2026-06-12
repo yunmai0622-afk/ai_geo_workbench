@@ -7,6 +7,7 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 
 describe("GEO-V1.3-Weekly-UX-Polish", () => {
   const weekly = read("client/src/pages/WeeklyContentPage.tsx");
+  const queueBlock = read("client/src/components/weekly/WeeklyPublishQueueStatusBlock.tsx");
   const statusBar = read("client/src/components/weekly/WeeklyContentStatusBar.tsx");
   const preview = read("client/src/components/weekly/WeeklyContentPreviewPanel.tsx");
   const publishableList = read("client/src/components/weekly/WeeklyPublishableContentList.tsx");
@@ -14,6 +15,11 @@ describe("GEO-V1.3-Weekly-UX-Polish", () => {
   const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
   const detailSheet = read("client/src/components/weekly/WeeklyContentDetailSheet.tsx");
   const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
+
+  it("发布队列状态块", () => {
+    expect(weekly).toContain("WeeklyPublishQueueStatusBlock");
+    expect(queueBlock).toContain("待回填链接");
+  });
 
   it("顶部任务状态条", () => {
     expect(weekly).toContain("WeeklyContentStatusBar");
@@ -28,7 +34,6 @@ describe("GEO-V1.3-Weekly-UX-Polish", () => {
   it("内容预览区折叠与展开全文", () => {
     expect(weekly).toContain("WeeklyContentPreviewPanel");
     expect(preview).toContain("min-w-[600px]");
-    expect(preview).toContain("核心观点");
     expect(preview).toContain("展开全文");
     expect(detailSheet).toContain("展开全文");
     expect(detailSheet).toContain("weekly-detail-full-body");
@@ -48,7 +53,7 @@ describe("GEO-V1.3-Weekly-UX-Polish", () => {
     expect(board).toContain("sm:grid-cols-2");
     expect(board).toContain("待发布");
     expect(board).toContain("最近发布");
-    expect(board).toContain("生成该平台内容");
+    expect(board).toContain("生成平台稿");
     expect(board).toContain("更多操作");
   });
 

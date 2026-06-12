@@ -1,3 +1,5 @@
+const PRIMARY_ACTION_LABEL = { generate_platform_draft: "生成平台稿", save_and_qc: "保存并质检", enqueue_publish: "加入发布队列" } as const;
+export type PlatformBoardPrimaryActionKind="generate_platform_draft"|"save_and_qc"|"enqueue_publish";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { PlatformContentGuidelineHelp } from "@/components/weekly/PlatformContentGuidelineHelp";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,10 @@ export type PlatformBoardRow = {
   status: WeeklyContentTaskStatus;
   hasContent: boolean;
   articleId?: number | null;
+  platformDraftStatusLabel: string;
+  qualityScoreLabel: string;
+  accountStatusLabel: string;
+  primaryActionKind: PlatformBoardPrimaryActionKind;
 };
 
 type Props = {
@@ -34,6 +40,8 @@ type Props = {
   boardBusy?: boolean;
   generatingPlatformKey?: WeeklyPlatformKey | null;
   onGenerate: (key: WeeklyPlatformDef["key"]) => void;
+  onSaveAndQc: (key: WeeklyPlatformDef["key"]) => void;
+  onEnqueue: (key: WeeklyPlatformDef["key"]) => void;
   onView: (key: WeeklyPlatformDef["key"]) => void;
 };
 
@@ -42,6 +50,8 @@ export function PlatformContentBoard({
   boardBusy = false,
   generatingPlatformKey = null,
   onGenerate,
+  onSaveAndQc,
+  onEnqueue,
   onView,
 }: Props) {
   return (
@@ -62,7 +72,7 @@ export function PlatformContentBoard({
             lastGeneratedAtLabel,
             lastPublishedAtLabel,
             status,
-            hasContent,
+            hasContent, platformDraftStatusLabel, qualityScoreLabel, accountStatusLabel, primaryActionKind,
           }) => {
             const pendingPublishCount = counts.ready;
             const statusLabel = weeklyContentTaskStatusLabel(status);
@@ -113,7 +123,7 @@ export function PlatformContentBoard({
                     data-testid={`weekly-generate-${def.key}`}
                     onClick={() => onGenerate(def.key)}
                   >
-                    {isGenerating ? "生成中…" : "生成该平台内容"}
+                    {isGenerating ? "生成中…" : "生成平台稿"}
                   </Button>
                   {hasContent ? (
                     <details className="text-sm">

@@ -13,15 +13,18 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   const publishableList = read("client/src/components/weekly/WeeklyPublishableContentList.tsx");
   const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
   const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
+  const queueBlock = read("client/src/components/weekly/WeeklyPublishQueueStatusBlock.tsx");
   const assistant = read("client/src/components/weekly/ContentProductionAssistantPanel.tsx");
   const shell = read("client/src/components/project/EnterpriseProjectShell.tsx");
   const statusLib = read("shared/weeklyContentTaskStatus.ts");
 
   it("首屏任务总控卡与平台看板", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("内容生产工作台");
+    expect(weekly).toContain("内容生产与发布准备");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
-    expect(taskCard).toContain("本轮任务总览");
+    expect(weekly).toContain("WeeklyPublishQueueStatusBlock");
+    expect(queueBlock).toContain("去发布中心");
+    expect(taskCard).toContain("当前内容任务");
     expect(weekly).toContain("PlatformContentBoard");
     expect(board).toContain("平台发布计划");
     expect(board).toContain("weekly-platform-status-");
@@ -46,9 +49,9 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
 
   it("平台卡片显示状态与操作", () => {
     expect(board).toContain("weeklyContentTaskStatusLabel");
-    expect(board).toContain("生成该平台内容");
+    expect(board).toContain("生成平台稿");
     expect(board).toContain("查看内容");
-    expect(board).not.toContain("加入发布队列");
+    expect(board).toContain("加入发布队列");
     expect(statusLib).toContain("UNGENERATED");
     expect(statusLib).toContain("PUBLISH_READY");
   });
@@ -58,7 +61,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
     expect(publishableList).toContain("人工审核");
     expect(publishableList).toContain("暂无待审核内容");
     expect(weekly).toContain("WeeklyPublishableContentList");
-    expect(assistant).toContain("内容生产助手");
+    expect(assistant).toContain("下一步");
     expect(shell).toContain("ContentProductionAssistantPanel");
     expect(shell).toContain("isWeeklyPage");
   });
@@ -77,7 +80,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   });
 
   it("副标题与业务文案", () => {
-    expect(weekly).toContain("查看本轮内容任务，生成平台内容，完成审核后加入发布队列");
+    expect(weekly).toContain("围绕 AI 推荐短板生成内容，审核后适配平台并加入发布队列");
     expect(auxiliary).not.toMatch(/Prompt 写入规则/);
   });
 });

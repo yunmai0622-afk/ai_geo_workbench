@@ -17,11 +17,11 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
   const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
 
   it("weekly page title and three-screen structure", () => {
-    expect(weekly).toContain("内容生产工作台");
+    expect(weekly).toContain("内容生产与发布准备");
     expect(weekly).toContain("WeeklyContentTaskControlCard");
     expect(weekly).toContain("WeeklyPublishableContentList");
     expect(weekly).toContain("PlatformContentBoard");
-    expect(taskCard).toContain("本轮任务总览");
+    expect(taskCard).toContain("当前内容任务");
     expect(publishableList).toContain("待处理内容");
     expect(board).toContain("平台发布计划");
   });
@@ -62,7 +62,7 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
     expect(assistant).toContain("待审核内容");
     expect(assistant).toContain("可入队内容");
     expect(assistant).toContain("缺封面内容");
-    expect(assistant).toContain("下一步动作");
+    expect(assistant).toContain("当前应该做什么");
     expect(assistant).not.toContain("风险提醒");
     expect(assistant).not.toContain("最近数据");
     expect(assistant).not.toContain("去发布队列");

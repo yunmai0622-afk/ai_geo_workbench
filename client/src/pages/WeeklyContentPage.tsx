@@ -19,7 +19,7 @@ import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { encodeStoredCoverBase64, type StoredCoverMime } from "@shared/articleCoverBase64";
 import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
 import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchGenerationPanel";
-import { PlatformContentBoard, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
+import { PlatformContentBoard, type PlatformBoardPrimaryActionKind, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
 import { WeeklyAuxiliarySections } from "@/components/weekly/WeeklyAuxiliarySections";
 import { WeeklyContentDetailSheet } from "@/components/weekly/WeeklyContentDetailSheet";
 import {
@@ -27,6 +27,7 @@ import {
   type WeeklyContentReviewDialogMode,
 } from "@/components/weekly/WeeklyContentReviewConfirmDialog";
 import { WeeklyContentTaskControlCard } from "@/components/weekly/WeeklyContentTaskControlCard";
+import { WeeklyPublishQueueStatusBlock, type WeeklyPublishQueueStats } from "@/components/weekly/WeeklyPublishQueueStatusBlock";
 import { WeeklyContentPreviewPanel } from "@/components/weekly/WeeklyContentPreviewPanel";
 import { WeeklyContentStatusBar } from "@/components/weekly/WeeklyContentStatusBar";
 import { WeeklyCollapsibleSection } from "@/components/weekly/WeeklyCollapsibleSection";
@@ -53,10 +54,10 @@ import {
   WEEKLY_CONTENT_MISSING_QUESTION_MESSAGE,
   type WeeklyContentEntryContext,
 } from "@shared/weeklyContentEntryContext";
-import { PLATFORM_PRODUCT_NAME, PLATFORM_PRODUCT_SUBTITLE } from "@/components/auth/authMarketing";
 import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
 import {
   buildWeeklyContentTaskNextStep,
+  weeklyContentTaskStatusLabel,
   resolveWeeklyPlatformContentStatus,
   type WeeklyContentTaskProgress,
   type WeeklyContentTaskStatus,
@@ -179,6 +180,13 @@ import {
 import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Search } from "lucide-react";
+
+function resolvePlatformBoardPrimaryActionKind(status: WeeklyContentTaskStatus, hasContent: boolean): PlatformBoardPrimaryActionKind {
+  if (!hasContent || status === "UNGENERATED" || status === "GENERATING") return "generate_platform_draft";
+  if (status === "PUBLISH_READY") return "enqueue_publish";
+  return "save_and_qc";
+}
+
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { TRPCClientError } from "@trpc/client";
@@ -1368,6 +1376,12 @@ export default function WeeklyContentPage() {
       const candidateTime = new Date(candidate.createdAt ?? 0).getTime();
       return candidateTime >= currentTime ? candidate : current;
     };
+    const platformWithReadyAccount = new Set<string>();
+    for (const group of platformAccountsQuery.data?.accounts ?? []) {
+      const ready = (group.accounts ?? []).some(a => a.isEnabled && a.sessionStatus === "active" && a.localProfileId && a.localAgentId);
+      if (ready) platformWithReadyAccount.add(group.platform);
+    }
+
     return WEEKLY_PLATFORM_DEFS.map(def => {
       const counts: PlatformContentCounts = {
         pending: 0,
@@ -1491,6 +1505,10 @@ export default function WeeklyContentPage() {
         status,
         hasContent: generatedCount > 0,
         articleId: platformArticle?.id ?? null,
+        platformDraftStatusLabel: weeklyContentTaskStatusLabel(status),
+        qualityScoreLabel: platformArticle ? (() => { const article = platformArticle!; const q = scoresByArticleId.get(article.id); const view = resolveQualityCardView(buildUnifiedQualityGateArticle(article, q ?? null)); return view ? `${view.score}分 · ${view.tier.label}` : "待质检"; })() : "暂无",
+        accountStatusLabel: def.publishPlatformId && platformWithReadyAccount.has(def.publishPlatformId) ? "账号可用" : "待绑定账号",
+        primaryActionKind: resolvePlatformBoardPrimaryActionKind(status, generatedCount > 0),
       };
     });
   }, [
@@ -1508,6 +1526,8 @@ export default function WeeklyContentPage() {
     publishBaseContext,
     generatingPlatformKey,
     publishTasksQuery.data?.tasks,
+    platformAccountsQuery.data,
+    scoresByArticleId,
   ]);
 
   const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
@@ -1746,6 +1766,11 @@ export default function WeeklyContentPage() {
     if (labels.size > 0) return Array.from(labels);
     return WEEKLY_PLATFORM_DEFS.slice(0, 4).map(d => d.label);
   }, [contentCardModels]);
+
+  const currentContentTaskStatusLabel = useMemo(() => statusBarNextStep, [statusBarNextStep]);
+  const taskSourceTypeLabel = useMemo(() => geoContentTaskSource?.sourceLabel?.trim() || "内容任务", [geoContentTaskSource?.sourceLabel]);
+  const publishQueueStats = useMemo((): WeeklyPublishQueueStats => ({ queued: queuedContentCount, pendingPublish: enqueueReadyCount + pendingReviewCount, published: contentCardModels.filter(c => c.statusFilterKey === "published").length, pendingLinkBackfill: (publishRecordsQuery.data ?? []).filter(r => String(r.publishStatus ?? "").includes("link_backfilled")).length }), [contentCardModels, publishRecordsQuery.data, queuedContentCount, enqueueReadyCount, pendingReviewCount]);
+  const fullBodyPreviewCards = useMemo(() => displayContentCards.filter(c => c.statusFilterKey !== "published").slice(0, 6), [displayContentCards]);
 
   const publishableRows = useMemo((): WeeklyPublishableRow[] => {
     return contentCardModels
@@ -3126,13 +3151,8 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">内容生产工作台</h1>
-          <p className="text-sm text-gray-500">
-            {PLATFORM_PRODUCT_NAME} · {PLATFORM_PRODUCT_SUBTITLE}
-          </p>
-          <p className="text-sm text-gray-500">
-            查看本轮内容任务，生成平台内容，完成审核后加入发布队列。
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">内容生产与发布准备</h1>
+          <p className="text-sm text-gray-500">围绕 AI 推荐短板生成内容，审核后适配平台并加入发布队列</p>
         </div>
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
@@ -3269,8 +3289,12 @@ export default function WeeklyContentPage() {
 
           {geoContentTaskSource ? (
             <WeeklyContentTaskControlCard
-              source={geoContentTaskSource}
-              progress={taskProgress}
+              contentTitle={geoContentTaskSource.taskDisplayName}
+              currentStatusLabel={currentContentTaskStatusLabel}
+              sourceTypeLabel={taskSourceTypeLabel}
+              linkedQuestion={geoContentTaskSource.linkedQuestion}
+              maturityGap={geoContentTaskSource.geoGapSummary}
+              targetImprovementMetric={geoContentTaskSource.recommendFill || geoContentTaskSource.taskGoal}
               recommendedPlatforms={recommendedPlatforms}
               taskOptions={contentTaskOptions}
               selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
@@ -3292,9 +3316,13 @@ export default function WeeklyContentPage() {
             />
           ) : null}
 
-          <WeeklyContentPreviewPanel cards={previewCards} onView={openContentDetail} />
+          <WeeklyContentPreviewPanel cards={previewCards} onView={openContentDetail} onEdit={(model: WeeklyArticleCardModel) => { const article = articlesById.get(model.id); if (article) openEditor(article); }} />
 
           {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
+
+          <PlatformContentBoard rows={platformBoardRows} boardBusy={batchBusy} generatingPlatformKey={generatingPlatformKey} onGenerate={key => void handlePlatformGenerate(key)} onSaveAndQc={handlePlatformEdit} onEnqueue={key => { const hit = findArticleByPlatform(key); if (hit) requestEnqueuePublish(hit); }} onView={handlePlatformView} />
+
+          <WeeklyPublishQueueStatusBlock stats={publishQueueStats} onGoPublishingCenter={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} />
 
           <WeeklyPublishableContentList
             rows={publishableRows}
@@ -3380,14 +3408,6 @@ export default function WeeklyContentPage() {
               regenerateDisabled={anyGenerating}
             />
           ) : null}
-
-          <PlatformContentBoard
-            rows={platformBoardRows}
-            boardBusy={batchBusy}
-            generatingPlatformKey={generatingPlatformKey}
-            onGenerate={key => void handlePlatformGenerate(key)}
-            onView={handlePlatformView}
-          />
 
           <WeeklyAuxiliarySections
             source={geoContentTaskSource}

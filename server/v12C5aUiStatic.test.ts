@@ -35,7 +35,7 @@ describe("C5-A global product UI overhaul", () => {
     expect(pages).toContain("AiPageShell");
     expect(pages).toContain("AI 搜索增长总览");
     expect(read("client/src/components/LegacyAssetProgressRedirect.tsx")).toContain('buildProjectUrl("/workspace"');
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("内容生产工作台");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("内容生产与发布准备");
   });
 
   it("report cover uses enhanced delivery styling", () => {
