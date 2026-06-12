@@ -22,7 +22,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
     expect(weekly).toContain("diagnosisFinding:");
     expect(weekly).toContain("geoGap:");
     expect(taskCard).toContain("成熟度短板");
-    expect(taskCard).toContain("下一步动作");
+    expect(taskCard).toContain("目标改善指标");
     expect(weekly).not.toMatch(/本轮内容目标/);
     expect(weekly).not.toMatch(/内容策略来源/);
   });
@@ -41,7 +41,7 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
       expect(defs).toContain(label);
     }
     expect(board).toContain("平台发布计划");
-    expect(board).toContain("生成该平台内容");
+    expect(board).toContain("生成平台稿");
     expect(board).toContain("generatingPlatformKey === def.key");
     expect(weekly).toContain("platform-content-progress");
     expect(weekly).toContain("PLATFORM_CONTENT_PROGRESS_HINT_90S");

@@ -33,7 +33,7 @@ describe("GEO-V1.3-Weekly-UX-Polish", () => {
 
   it("内容预览区折叠与展开全文", () => {
     expect(weekly).toContain("WeeklyContentPreviewPanel");
-    expect(preview).toContain("min-w-[600px]");
+    expect(preview).toContain("min-w-0");
     expect(preview).toContain("展开全文");
     expect(detailSheet).toContain("展开全文");
     expect(detailSheet).toContain("weekly-detail-full-body");
@@ -51,14 +51,16 @@ describe("GEO-V1.3-Weekly-UX-Polish", () => {
   it("平台发布计划两列卡片", () => {
     expect(board).toContain("平台发布计划");
     expect(board).toContain("sm:grid-cols-2");
-    expect(board).toContain("待发布");
-    expect(board).toContain("最近发布");
+    expect(board).toContain("平台稿状态");
+    expect(board).toContain("账号状态");
     expect(board).toContain("生成平台稿");
-    expect(board).toContain("更多操作");
+    expect(board).toContain("查看内容");
   });
 
   it("默认折叠模块", () => {
     expect(weekly).toContain("高级内容增强");
+    expect(weekly).toContain("weekly-aux-generation-log");
+    expect(weekly).toContain("weekly-aux-full-body");
     expect(auxiliary).toContain("历史内容记录");
     expect(auxiliary).toContain("AI 实测跟踪");
     expect(auxiliary).toContain("平台规则");

@@ -50,7 +50,7 @@ for (const item of [
   '品牌资产建档',
   'AI 实测诊断',
   '问题库',
-  '内容生产与发布准备',
+  '内容生产工作台',
   '平台适配发布',
   '收录监测',
   '交付报告',
@@ -161,6 +161,7 @@ for (const item of ['问题文本 questionText', 'AI 平台 aiPlatform', '原始
 for (const item of WEEKLY_CONTENT_PAGE_LABELS) {
   assertContains('内容资产生产页', sources.weekly, item);
 }
+assertContains('内容资产生产页', read('client/src/components/weekly/PlatformContentBoard.tsx'), '生成平台稿');
 for (const item of WEEKLY_CONTENT_PAGE_SOURCE_SEGMENT_MARKERS) {
   assertContains('内容资产生产页', sources.weekly, item);
 }

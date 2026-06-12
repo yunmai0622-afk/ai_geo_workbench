@@ -2,7 +2,6 @@
 
 export const WEEKLY_CONTENT_PAGE_LABELS = [
   "内容生产与发布准备",
-  "生成平台稿",
   "weekly-platform-content-page",
   "去 AI 实测诊断",
   "WeeklyPublishableContentList",

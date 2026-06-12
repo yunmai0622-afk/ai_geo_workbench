@@ -69,7 +69,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   it("空任务状态与交互保留", () => {
     expect(weekly).toContain("暂无内容任务");
     expect(weekly).toContain("weekly-select-content-gap");
-    expect(board).toContain("weekly-generate-");
+    expect(board).toContain("weekly-primary-");
     expect(weekly).toContain("requestEnqueuePublish");
     expect(taskCard).toContain("weekly-go-enqueue-content");
     expect(weekly).not.toContain("rawAnswer");

@@ -3380,33 +3380,81 @@ export default function WeeklyContentPage() {
             />
           </WeeklyCollapsibleSection>
 
-          {platformContentProgress.status !== "idle" && activePlatformProgressLabel ? (
-            <AiTaskProgressCard
-              testId="platform-content-progress"
-              title={`正在生成${activePlatformProgressLabel}内容`}
-              stepLabel={platformContentProgress.stepLabel}
-              stepDescription={platformContentProgress.stepDescription}
-              percent={platformContentProgress.percent}
-              elapsedSec={platformContentProgress.elapsedSec}
-              hint90s={PLATFORM_CONTENT_PROGRESS_HINT_90S}
-              status={
-                platformContentProgress.isFailed
-                  ? "failed"
-                  : platformContentProgress.isSuccess
-                    ? "success"
-                    : "running"
-              }
-              errorCategory={platformProgressErrorCategory}
-              errorMessage={
-                platformContentProgress.isFailed
-                  ? platformProgressFailureDisplay.message
-                  : platformProgressErrorMessage
-              }
-              onRegenerate={
-                canRegeneratePlatformContent ? () => handlePlatformRegenerate() : undefined
-              }
-              regenerateDisabled={anyGenerating}
-            />
+          <WeeklyCollapsibleSection testId="weekly-aux-generation-log" title="生成日志">
+            {platformContentProgress.status !== "idle" && activePlatformProgressLabel ? (
+              <AiTaskProgressCard
+                testId="platform-content-progress"
+                title={`正在生成${activePlatformProgressLabel}内容`}
+                stepLabel={platformContentProgress.stepLabel}
+                stepDescription={platformContentProgress.stepDescription}
+                percent={platformContentProgress.percent}
+                elapsedSec={platformContentProgress.elapsedSec}
+                hint90s={PLATFORM_CONTENT_PROGRESS_HINT_90S}
+                status={
+                  platformContentProgress.isFailed
+                    ? "failed"
+                    : platformContentProgress.isSuccess
+                      ? "success"
+                      : "running"
+                }
+                errorCategory={platformProgressErrorCategory}
+                errorMessage={
+                  platformContentProgress.isFailed
+                    ? platformProgressFailureDisplay.message
+                    : platformProgressErrorMessage
+                }
+                onRegenerate={
+                  canRegeneratePlatformContent ? () => handlePlatformRegenerate() : undefined
+                }
+                regenerateDisabled={anyGenerating}
+              />
+            ) : (
+              <p className="text-sm text-gray-600">暂无进行中的生成任务，开始生成后日志将在此展示。</p>
+            )}
+          </WeeklyCollapsibleSection>
+
+          {displayContentCards.filter(card => card.statusFilterKey !== "published").length > 0 ? (
+            <WeeklyCollapsibleSection testId="weekly-aux-full-body" title="完整正文">
+              <ul className="space-y-3">
+                {displayContentCards
+                  .filter(card => card.statusFilterKey !== "published")
+                  .slice(0, 12)
+                  .map(card => (
+                    <li
+                      key={card.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2"
+                      data-testid={`weekly-full-body-item-${card.id}`}
+                    >
+                      <span className="min-w-0 flex-1 text-sm font-medium text-gray-900">{card.title}</span>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className={geoP0Brand.primaryOutline}
+                          data-testid={`weekly-full-body-expand-${card.id}`}
+                          onClick={() => openContentDetail(card)}
+                        >
+                          展开全文
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className={geoP0Brand.primaryOutline}
+                          data-testid={`weekly-full-body-edit-${card.id}`}
+                          onClick={() => {
+                            const article = articlesById.get(card.id);
+                            if (article) openEditor(article);
+                          }}
+                        >
+                          编辑内容
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+              </ul>
+            </WeeklyCollapsibleSection>
           ) : null}
 
           <WeeklyAuxiliarySections

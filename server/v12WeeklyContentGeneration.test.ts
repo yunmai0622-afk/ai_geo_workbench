@@ -12,7 +12,7 @@ describe("weekly content page configurable generation (C4-A)", () => {
   it("still supports per-topic generation API", () => {
     expect(page).toContain("generateArticleMutation");
     expect(page).toMatch(/generationCount:\s*targetCount/);
-    expect(read("client/src/components/weekly/PlatformContentBoard.tsx")).toContain("weekly-generate-");
+    expect(read("client/src/components/weekly/PlatformContentBoard.tsx")).toContain("weekly-primary-");
   });
 
   it("router accepts generationCount with 1-50 bounds", () => {
