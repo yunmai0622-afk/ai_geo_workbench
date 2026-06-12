@@ -130,6 +130,8 @@ export type WorkspaceSummaryMetrics = {
   lastDiagnosisAt?: Date | string | null;
   /** 已生成但未进入发布队列/未登记发布的内容数 */
   pendingPublishContentCount?: number;
+  /** 待人工审核且质检通过的内容数 */
+  pendingReviewCount?: number;
   /** 工作台今日任务卡片 */
   todayTasks?: WorkspaceTodayTask[];
 };

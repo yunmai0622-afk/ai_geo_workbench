@@ -89,6 +89,7 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(read("server/workspaceSummary.ts")).toContain("completedPublishTaskCount");
     expect(read("server/workspaceSummary.ts")).toContain("retestComparisons");
     expect(read("server/workspaceSummary.ts")).toContain("reports");
+    expect(read("server/workspaceSummary.ts")).toContain("pendingReviewCount");
     expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toContain("geo.workspace.summary");
   });
 

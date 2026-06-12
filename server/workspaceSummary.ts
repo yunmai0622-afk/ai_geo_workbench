@@ -21,6 +21,7 @@ import {
 } from "@shared/brandMentionRateResolver";
 import { buildRetestPlan, resolveRetestDueReminder } from "@shared/retestPlan";
 import { shouldShowT1RetestAutoTriggerReminder } from "@shared/t1RetestAutoTrigger";
+import { isContentReviewPending } from "@shared/contentReviewStatus";
 import { hasCompletedT0Baseline, hasCompletedT1Retest } from "@shared/workspaceMainChain";
 import { isP0GeoProfileComplete } from "@shared/workspaceStateMachine";
 import {
@@ -75,7 +76,7 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
   ] = await Promise.all([
     db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, projectId)).limit(1),
     db.select().from(projectPlatformAccounts).where(eq(projectPlatformAccounts.projectId, projectId)),
-    db.select({ id: geoArticles.id }).from(geoArticles).where(eq(geoArticles.projectId, projectId)),
+    db.select({ id: geoArticles.id, status: geoArticles.status, contentReviewStatus: geoArticles.contentReviewStatus }).from(geoArticles).where(eq(geoArticles.projectId, projectId)),
     db
       .select({
         id: geoPublishRecords.id,
@@ -185,9 +186,11 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     }
   }
   let lowQualityArticleCount = 0;
+  let pendingReviewCount = 0;
   for (const article of articleRows) {
     const score = latestScoreByArticle.get(article.id);
     if (score != null && score < getGeoArticleMinPassScore()) lowQualityArticleCount += 1;
+    if (article.status !== "已发布" && score != null && score >= getGeoArticleMinPassScore() && isContentReviewPending(article.contentReviewStatus)) pendingReviewCount += 1;
   }
 
   const monitoringEvidence = monitoringRows.map(r => ({
@@ -280,6 +283,7 @@ export async function fetchWorkspaceSummaryMetrics(db: Db, projectId: number) {
     t0ContentGapSuggestions,
     lastDiagnosisAt,
     pendingPublishContentCount,
+    pendingReviewCount,
   } as const;
 
   const todayTasks: WorkspaceTodayTask[] = buildWorkspaceTodayTasks({

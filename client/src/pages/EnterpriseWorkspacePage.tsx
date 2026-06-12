@@ -41,6 +41,7 @@ import {
   formatWorkspacePublishCount,
   workspaceAiMentionRateHint,
 } from "@shared/workspaceDashboardOverview";
+import { resolveWorkspaceStagePrimaryAction } from "@shared/workspacePrimaryAction";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
 import type { WorkspaceTodayTask, WorkspaceTodayTaskStatus } from "@shared/workspaceTodayTasks";
 import {
@@ -130,13 +131,33 @@ export default function EnterpriseWorkspacePage() {
     () => (deliveryStage ? resolveDeliveryPhaseCustomerView(deliveryStage.stage) : null),
     [deliveryStage],
   );
+  const stagePrimaryAction = useMemo(() => {
+    if (!metrics) return null;
+    return resolveWorkspaceStagePrimaryAction({
+      hasCompletedT0Baseline: metrics.hasCompletedT0Baseline,
+      articleCount: metrics.articleCount,
+      pendingPublishContentCount: metrics.pendingPublishContentCount ?? 0,
+      publishRecordCount: metrics.publishRecordCount,
+      publishTaskCount: metrics.publishTaskCount,
+      lowQualityArticleCount: metrics.lowQualityArticleCount,
+      rewriteOpenCount: metrics.rewriteOpenCount,
+      maturityTotalScore: maturityReportQuery.data?.totalScore ?? null,
+      pendingReviewCount: metrics.pendingReviewCount,
+    });
+  }, [metrics, maturityReportQuery.data?.totalScore]);
   const deliveryConclusion = useMemo(() => {
+    if (stagePrimaryAction?.reason) return stagePrimaryAction.reason;
     if (!deliveryStage) return null;
     return buildWorkspaceDeliveryConclusion(deliveryStage, {
       mainChainReason: homeDisplay.mainChainNextAction?.reason,
       blockerReason: resolution?.blockerReasons[0],
     });
-  }, [deliveryStage, homeDisplay.mainChainNextAction?.reason, resolution?.blockerReasons]);
+  }, [
+    stagePrimaryAction?.reason,
+    deliveryStage,
+    homeDisplay.mainChainNextAction?.reason,
+    resolution?.blockerReasons,
+  ]);
 
   const mainChainSteps = useMemo((): MainChainStepView[] => {
     if (!metrics) return [];
@@ -163,9 +184,15 @@ export default function EnterpriseWorkspacePage() {
   const geoScoreAttributions = metrics ? buildGeoScoreAttributionLines(metrics) : [];
 
   const headerCtaPath =
+    (stagePrimaryAction && selectedProjectId
+      ? buildProjectUrl(stagePrimaryAction.ctaPath, selectedProjectId)
+      : null) ??
     homeDisplay.mainChainNextAction?.ctaPath ??
     (stage && selectedProjectId ? workspaceCtaUrl(selectedProjectId, stage) : null);
-  const headerCtaLabel = homeDisplay.mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
+  const headerCtaLabel =
+    stagePrimaryAction?.ctaLabel ??
+    homeDisplay.mainChainNextAction?.ctaLabel ??
+    stage?.ctaLabel;
   const todayTasks = metrics?.todayTasks ?? [];
   const monthlyTasks = todayTasks.slice(0, 5);
   const brandMentionRateHint = metrics ? workspaceAiMentionRateHint(metrics) : undefined;
@@ -247,14 +274,16 @@ export default function EnterpriseWorkspacePage() {
               {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
             </div>
 
-            {deliveryPhase ? (
+            {deliveryPhase || stagePrimaryAction ? (
               <div className="mt-5" data-testid="workspace-delivery-phase">
                 <p className="text-xs font-medium text-gray-500">当前阶段</p>
                 <p className="mt-1 text-lg font-semibold text-gray-900" data-testid="workspace-current-stage-headline">
-                  {deliveryPhase.currentStageHeadline}
+                  {stagePrimaryAction?.stageHeadline ?? deliveryPhase?.currentStageHeadline}
                 </p>
                 <p className="mt-1 text-sm text-gray-600">
-                  {deliveryPhase.phaseTitle} · {deliveryPhase.phaseDescription}
+                  {stagePrimaryAction
+                    ? `${stagePrimaryAction.phaseTitle} · ${stagePrimaryAction.phaseDescription}`
+                    : `${deliveryPhase?.phaseTitle} · ${deliveryPhase?.phaseDescription}`}
                 </p>
               </div>
             ) : null}
