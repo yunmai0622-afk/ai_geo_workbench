@@ -1063,14 +1063,49 @@ const geoAssetRouter = router({
     try {
       validateCustomerCaseInput(input);
     } catch (error) {
+      console.error("[geo.assetLibrary.createCustomerCase] validation failed", {
+        projectId: input.projectId,
+        caseType: input.caseType,
+        customerName: input.customerName,
+        error,
+      });
       throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "客户案例校验失败" });
     }
-    const inserted = await db.insert(customerCases).values({
-      ...input,
-      allowPublic: booleanToInt(input.allowPublic),
-      verificationStatus: input.caseType === "待补充案例线索" ? "信息不足" : input.verificationStatus,
-    }).$returningId();
-    return { success: true, id: inserted[0]?.id ?? 0 } as const;
+    try {
+      const inserted = await db.insert(customerCases).values({
+        ...input,
+        allowPublic: booleanToInt(input.allowPublic),
+        verificationStatus: input.caseType === "待补充案例线索" ? "信息不足" : input.verificationStatus,
+      }).$returningId();
+      const id = inserted[0]?.id ?? 0;
+      if (!id) {
+        console.error("[geo.assetLibrary.createCustomerCase] insert returned empty id", {
+          projectId: input.projectId,
+          caseType: input.caseType,
+          customerName: input.customerName,
+          inserted,
+        });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "客户案例保存失败：未获得有效记录 ID" });
+      }
+      console.info("[geo.assetLibrary.createCustomerCase] success", {
+        projectId: input.projectId,
+        caseId: id,
+        caseType: input.caseType,
+      });
+      return { success: true, id } as const;
+    } catch (err) {
+      console.error("[geo.assetLibrary.createCustomerCase] failed", {
+        projectId: input.projectId,
+        caseType: input.caseType,
+        customerName: input.customerName,
+        err,
+      });
+      if (err instanceof TRPCError) throw err;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: err instanceof Error && err.message.trim() ? err.message : "客户案例保存失败",
+      });
+    }
   }),
   updateCustomerCase: protectedProcedure.input(customerCaseInput.extend({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();

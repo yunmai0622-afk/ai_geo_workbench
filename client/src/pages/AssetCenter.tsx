@@ -147,6 +147,8 @@ export default function AssetCenterPage() {
   const customerCasesSectionRef = useRef<HTMLDetailsElement | null>(null);
 
   const upsertProfile = trpc.geo.assetLibrary.upsertProfile.useMutation();
+  const createCustomerCase = trpc.geo.assetLibrary.createCustomerCase.useMutation();
+  const updateCustomerCase = trpc.geo.assetLibrary.updateCustomerCase.useMutation();
   const { triggerMaturityCalculate } = useMaturityAutoCalculate(currentProjectId);
 
   const projectInput = useMemo(() => ({ projectId: currentProjectId! }), [currentProjectId]);
@@ -408,8 +410,81 @@ export default function AssetCenterPage() {
       utils.geo.assetLibrary.summary.invalidate({ projectId: currentProjectId }),
       utils.geo.workspace.summary.invalidate({ projectId: currentProjectId }),
       utils.geo.onboarding.getCompletenessReport.invalidate({ projectId: currentProjectId }),
+      utils.geo.trustEvidence.getTrustEvidenceSummary.invalidate({ projectId: currentProjectId }),
     ]);
   }
+
+  const buildCustomerCasePayload = useCallback(
+    (row: CaseDraft) => {
+      if (!currentProjectId) throw new Error("请先在客户管理台选择客户项目");
+      const customerName = row.customerBackground.trim().slice(0, 255) || "未命名客户";
+      return {
+        projectId: currentProjectId,
+        caseType: row.caseType,
+        customerName,
+        customerBackground: row.customerBackground.trim() || undefined,
+        originalProblem: row.originalProblem.trim() || undefined,
+        executionProcess: row.executionProcess.trim() || undefined,
+        resultData: row.resultData.trim() || undefined,
+        allowPublic: row.allowPublic,
+        sourceAssetIds: [] as number[],
+        verificationStatus: "待确认" as const,
+      };
+    },
+    [currentProjectId],
+  );
+
+  const handleSaveCase = useCallback(
+    async (row: CaseDraft, idx: number) => {
+      if (!currentProjectId) {
+        toast.error("请先在客户管理台选择客户项目");
+        return;
+      }
+      try {
+        const payload = buildCustomerCasePayload(row);
+        if (row.id) {
+          console.info("[enterprise-profile] updateCustomerCase", {
+            projectId: currentProjectId,
+            caseId: row.id,
+            caseType: row.caseType,
+          });
+          await updateCustomerCase.mutateAsync({ ...payload, id: row.id });
+          toast.success("客户案例已更新");
+        } else {
+          console.info("[enterprise-profile] createCustomerCase", {
+            projectId: currentProjectId,
+            caseType: row.caseType,
+            customerName: payload.customerName,
+          });
+          const result = await createCustomerCase.mutateAsync(payload);
+          if (!result.id) {
+            console.error("[enterprise-profile] createCustomerCase returned empty id", {
+              projectId: currentProjectId,
+              payload,
+              result,
+            });
+            throw new Error("案例保存失败：未获得有效记录 ID");
+          }
+          setCaseRows(prev => prev.map((item, i) => (i === idx ? { ...item, id: result.id } : item)));
+          toast.success("客户案例已保存");
+        }
+        await refreshSummary();
+        void triggerMaturityCalculate({ silent: true });
+      } catch (e) {
+        console.error("[enterprise-profile] saveCustomerCase failed", {
+          projectId: currentProjectId,
+          caseId: row.id,
+          caseType: row.caseType,
+          customerBackground: row.customerBackground.trim(),
+          message: e instanceof Error ? e.message : String(e),
+          error: e,
+        });
+        toast.error(e instanceof Error ? e.message : "客户案例保存失败，请稍后重试");
+        throw e;
+      }
+    },
+    [buildCustomerCasePayload, createCustomerCase, currentProjectId, triggerMaturityCalculate, updateCustomerCase],
+  );
 
   async function persistWizardStep(step: number): Promise<boolean> {
     if (!currentProjectId) {
@@ -467,9 +542,25 @@ export default function AssetCenterPage() {
   const handleManageCustomerCases = useCallback(() => {
     setCustomerCasesOpen(true);
     window.requestAnimationFrame(() => {
-      const section = customerCasesSectionRef.current;
-      if (!section) return;
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      const outerSection = customerCasesSectionRef.current;
+      if (outerSection) outerSection.open = true;
+
+      const advancedCollapsed = document.querySelector(
+        '[data-testid="advanced-materials-collapsed"]',
+      ) as HTMLDetailsElement | null;
+      if (advancedCollapsed) advancedCollapsed.open = true;
+
+      const casesFold = document.querySelector('[data-testid="advanced-fold-cases"]') as HTMLDetailsElement | null;
+      if (casesFold) casesFold.open = true;
+
+      const target =
+        document.getElementById("customer-cases-detail") ??
+        document.querySelector('[data-testid="advanced-fold-cases"]');
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      outerSection?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, []);
 
@@ -484,7 +575,7 @@ export default function AssetCenterPage() {
   });
 
   const loading = projectsLoading || isLoading;
-  const saving = upsertProfile.isPending;
+  const saving = upsertProfile.isPending || createCustomerCase.isPending || updateCustomerCase.isPending;
   const stepMeta = ONBOARDING_WIZARD_STEPS.find(s => s.step === currentStep) ?? ONBOARDING_WIZARD_STEPS[0];
 
   if (!currentProjectId && !projectsLoading) {
@@ -616,7 +707,7 @@ export default function AssetCenterPage() {
                 onCasesChoice={() => undefined}
                 caseRows={caseRows}
                 onCaseRowsChange={setCaseRows}
-                onSaveCase={async () => undefined}
+                onSaveCase={handleSaveCase}
                 onSaveChoiceNone={async () => undefined}
                 onDeleteCase={() => undefined}
                 caseStatus="待完善"

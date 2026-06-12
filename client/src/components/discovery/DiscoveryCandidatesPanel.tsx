@@ -34,10 +34,17 @@ type CandidateRow = {
   status: string;
 };
 
+type ResolvedStatus = "accepted" | "ignored";
+
 function confidenceBadgeClass(confidence: string): string {
   if (confidence === "high") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (confidence === "medium") return "border-amber-200 bg-amber-50 text-amber-700";
   return "border-gray-200 bg-gray-50 text-gray-600";
+}
+
+function resolvedBadgeClass(status: ResolvedStatus): string {
+  if (status === "accepted") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  return "border-gray-200 bg-gray-100 text-gray-600";
 }
 
 export function DiscoveryCandidatesPanel({
@@ -52,16 +59,16 @@ export function DiscoveryCandidatesPanel({
 }: Props) {
   const utils = trpc.useUtils();
   const projectQueryInput = { projectId };
+  const listQueryInput = { projectId, type: candidateType, status: "pending" as const };
   const providerQueryInput = { type: candidateType };
 
   const providerQuery = trpc.geo.discovery.getProviderStatus.useQuery(providerQueryInput, {
     staleTime: 0,
     refetchOnMount: true,
   });
-  const listQuery = trpc.geo.discovery.listCandidates.useQuery(
-    { projectId, type: candidateType, status: "pending" },
-    { enabled: Boolean(projectId) },
-  );
+  const listQuery = trpc.geo.discovery.listCandidates.useQuery(listQueryInput, {
+    enabled: Boolean(projectId),
+  });
 
   const discoverMutation =
     candidateType === "source"
@@ -72,10 +79,15 @@ export function DiscoveryCandidatesPanel({
   const ignoreMutation = trpc.geo.discovery.ignoreCandidate.useMutation();
 
   const [discoverConfigured, setDiscoverConfigured] = useState<boolean | null>(null);
+  const [resolvedStatuses, setResolvedStatuses] = useState<Record<number, ResolvedStatus>>({});
 
   const pendingCandidates = useMemo(() => {
     return (listQuery.data ?? []) as CandidateRow[];
   }, [listQuery.data]);
+
+  const pendingCount = useMemo(() => {
+    return pendingCandidates.filter(candidate => !resolvedStatuses[candidate.id]).length;
+  }, [pendingCandidates, resolvedStatuses]);
 
   const providerConfigured = providerQuery.data?.configured;
   const configured =
@@ -87,14 +99,20 @@ export function DiscoveryCandidatesPanel({
       ? "自动发现服务暂未配置，你可以先手动添加信任证据"
       : "自动发现服务暂未配置，你可以先手动添加已知信源");
 
-  const invalidate = async () => {
-    await utils.geo.discovery.listCandidates.invalidate({ projectId, type: candidateType });
+  const invalidatePendingList = async () => {
+    await utils.geo.discovery.listCandidates.invalidate(listQueryInput);
+    await listQuery.refetch();
+  };
+
+  const markResolved = (candidateId: number, status: ResolvedStatus) => {
+    setResolvedStatuses(prev => ({ ...prev, [candidateId]: status }));
   };
 
   const handleDiscover = async () => {
     try {
       const result = await discoverMutation.mutateAsync(projectQueryInput);
-      await invalidate();
+      setResolvedStatuses({});
+      await invalidatePendingList();
       if (!result.configured) {
         setDiscoverConfigured(false);
         await utils.geo.discovery.getProviderStatus.invalidate(providerQueryInput);
@@ -105,31 +123,72 @@ export function DiscoveryCandidatesPanel({
       await utils.geo.discovery.getProviderStatus.invalidate(providerQueryInput);
       toast.success(result.message ?? "发现完成");
     } catch (error) {
+      console.error("[discovery] discover failed", {
+        projectId,
+        candidateType,
+        error,
+      });
       toast.error(toUserFacingErrorFromUnknown(error, "发现失败，请稍后重试"));
     }
   };
 
   const handleAccept = async (candidateId: number) => {
+    markResolved(candidateId, "accepted");
     try {
       await acceptMutation.mutateAsync({
         projectId,
         candidateId,
         targetType: candidateType,
       });
-      await invalidate();
+      await invalidatePendingList();
+      setResolvedStatuses(prev => {
+        const next = { ...prev };
+        delete next[candidateId];
+        return next;
+      });
       await onAccepted?.();
       toast.success("已采纳到正式库");
     } catch (error) {
+      setResolvedStatuses(prev => {
+        const next = { ...prev };
+        delete next[candidateId];
+        return next;
+      });
+      await invalidatePendingList();
+      console.error("[discovery] accept failed", {
+        projectId,
+        candidateId,
+        candidateType,
+        error,
+      });
       toast.error(toUserFacingErrorFromUnknown(error, "采纳失败"));
     }
   };
 
   const handleIgnore = async (candidateId: number) => {
+    markResolved(candidateId, "ignored");
     try {
       await ignoreMutation.mutateAsync({ projectId, candidateId });
-      await invalidate();
+      await invalidatePendingList();
+      setResolvedStatuses(prev => {
+        const next = { ...prev };
+        delete next[candidateId];
+        return next;
+      });
       toast.success("已忽略该候选");
     } catch (error) {
+      setResolvedStatuses(prev => {
+        const next = { ...prev };
+        delete next[candidateId];
+        return next;
+      });
+      await invalidatePendingList();
+      console.error("[discovery] ignore failed", {
+        projectId,
+        candidateId,
+        candidateType,
+        error,
+      });
       toast.error(toUserFacingErrorFromUnknown(error, "操作失败"));
     }
   };
@@ -139,6 +198,7 @@ export function DiscoveryCandidatesPanel({
 
   return (
     <section
+      id={`${testIdPrefix}-discovery`}
       className="rounded-xl border border-blue-100 bg-blue-50/40 p-4"
       data-testid={`${testIdPrefix}-discovery-panel`}
     >
@@ -153,6 +213,11 @@ export function DiscoveryCandidatesPanel({
           <p className="mt-1 text-sm text-gray-600" data-testid={`${testIdPrefix}-discovery-description`}>
             {description}
           </p>
+          {pendingCount > 0 ? (
+            <p className="mt-2 text-xs text-gray-600" data-testid={`${testIdPrefix}-discovery-pending-count`}>
+              还有 {pendingCount} 条待处理候选
+            </p>
+          ) : null}
           {showNotConfigured ? (
             <p className="mt-2 text-xs text-amber-700" data-testid={`${testIdPrefix}-discovery-not-configured`}>
               {notConfiguredMessage}
@@ -180,6 +245,7 @@ export function DiscoveryCandidatesPanel({
       ) : pendingCandidates.length > 0 ? (
         <div className="mt-4 space-y-2" data-testid={`${testIdPrefix}-discovery-candidate-list`}>
           {pendingCandidates.map(candidate => {
+            const resolvedStatus = resolvedStatuses[candidate.id];
             const signals = formatDiscoverySignals((candidate.detectedSignals ?? {}) as DiscoveryDetectedSignals);
             return (
               <div
@@ -189,7 +255,17 @@ export function DiscoveryCandidatesPanel({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">{candidate.title}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-gray-900">{candidate.title}</p>
+                      {resolvedStatus ? (
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[11px] ${resolvedBadgeClass(resolvedStatus)}`}
+                          data-testid={`${testIdPrefix}-discovery-status-${candidate.id}`}
+                        >
+                          {resolvedStatus === "accepted" ? "已采纳" : "已忽略"}
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                       <span>{candidate.sourceDomain || "未知域名"}</span>
                       <span>·</span>
@@ -213,30 +289,32 @@ export function DiscoveryCandidatesPanel({
                       <ExternalLink className="size-3" />
                     </a>
                   </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => void handleAccept(candidate.id)}
-                      data-testid={`${testIdPrefix}-discovery-accept-${candidate.id}`}
-                    >
-                      <Check className="mr-1 size-3.5" />
-                      {acceptButtonLabel}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy}
-                      onClick={() => void handleIgnore(candidate.id)}
-                      data-testid={`${testIdPrefix}-discovery-ignore-${candidate.id}`}
-                    >
-                      <X className="mr-1 size-3.5" />
-                      忽略
-                    </Button>
-                  </div>
+                  {resolvedStatus ? null : (
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => void handleAccept(candidate.id)}
+                        data-testid={`${testIdPrefix}-discovery-accept-${candidate.id}`}
+                      >
+                        <Check className="mr-1 size-3.5" />
+                        {acceptButtonLabel}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => void handleIgnore(candidate.id)}
+                        data-testid={`${testIdPrefix}-discovery-ignore-${candidate.id}`}
+                      >
+                        <X className="mr-1 size-3.5" />
+                        忽略
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

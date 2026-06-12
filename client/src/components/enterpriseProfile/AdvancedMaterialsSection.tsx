@@ -52,15 +52,17 @@ function FoldGroup({
   title,
   summary,
   testId,
+  id,
   children,
 }: {
   title: string;
   summary: string;
   testId: string;
+  id?: string;
   children: ReactNode;
 }) {
   return (
-    <details className="rounded-lg border border-gray-200 bg-white text-sm" data-testid={testId}>
+    <details id={id} className="rounded-lg border border-gray-200 bg-white text-sm" data-testid={testId}>
       <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 font-medium text-gray-800 hover:text-gray-900 [&::-webkit-details-marker]:hidden">
         <ChevronDown className="size-4 text-gray-400 transition-transform [[open]>&]:rotate-180" />
         <span>{title}</span>
@@ -136,7 +138,7 @@ export function AdvancedMaterialsSection(props: Props) {
             <TrustEvidenceManager embedded />
           </FoldGroup>
 
-          <FoldGroup title="案例详情" summary={`${caseCount} 条`} testId="advanced-fold-cases">
+          <FoldGroup title="案例详情" summary={`${caseCount} 条`} testId="advanced-fold-cases" id="customer-cases-detail">
             <CustomerCaseLibrarySection
               embedded
               status={caseStatus}
