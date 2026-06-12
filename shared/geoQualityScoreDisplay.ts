@@ -1,5 +1,5 @@
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "./const";
-import { getContentQualityGateStatus, type ContentQualityGateArticle } from "./contentQualityGate";
+import { getContentQualityGateStatus, type ContentQualityGateArticle, coerceTrimmedOptionalString } from "./contentQualityGate";
 import type { GeoQualityRecommendation } from "./geoQualityReview";
 import {
   GEO_QUALITY_DIMENSION_META,
@@ -119,7 +119,7 @@ export function resolveEffectiveGeoQualityRecommendation(
   score?: number | null,
 ): GeoQualityRecommendation | null {
   const effectiveScore = score ?? resolveEffectiveGeoQualityScore(article, legacyRow);
-  const fromArticle = (article.geoQualityRecommendation ?? "").trim();
+  const fromArticle = coerceTrimmedOptionalString(article.geoQualityRecommendation);
   if (!isGeoQualityScoreStale(article) && fromArticle) {
     return fromArticle as GeoQualityRecommendation;
   }

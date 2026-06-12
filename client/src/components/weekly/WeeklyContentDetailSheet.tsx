@@ -1,4 +1,3 @@
-import { GeoArticleQualityScoreDetailPopover } from "@/components/GeoArticleQualityScoreDetailPopover";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -44,6 +43,12 @@ type Props = {
   onGoPublishingPage?: () => void;
 };
 
+function safeDisplayText(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
 function articleBodyPreview(article: Record<string, unknown>): string {
   const raw = article.markdownContent;
   if (typeof raw !== "string") return "";
@@ -75,6 +80,16 @@ export function WeeklyContentDetailSheet({
   const reviewMutation = trpc.geo.articles.contentQualityReview.useMutation();
 
   if (!model) return null;
+
+  const title = safeDisplayText(model.title, "未命名内容");
+  const targetPlatformLabel = safeDisplayText(model.targetPlatform).trim() || "待指定平台";
+  const strategySummary = safeDisplayText(model.strategySummary).trim();
+  const geoGap = safeDisplayText(model.geoGap).trim();
+  const publishBlockHint = safeDisplayText(model.publishBlockHint).trim();
+  const qualityScoreLabel =
+    model.qualityView?.score != null && Number.isFinite(model.qualityView.score)
+      ? String(model.qualityView.score)
+      : null;
 
   const body = articleBodyPreview(model.article);
   const summary = articleBodySummary(body);
@@ -125,10 +140,8 @@ export function WeeklyContentDetailSheet({
         data-testid="weekly-content-detail-sheet"
       >
         <SheetHeader>
-          <SheetTitle className="pr-8 text-left text-lg leading-snug">{model.title}</SheetTitle>
-          <SheetDescription className="text-left">
-            发布平台：{model.targetPlatform?.trim() || "待指定平台"}
-          </SheetDescription>
+          <SheetTitle className="pr-8 text-left text-lg leading-snug">{title}</SheetTitle>
+          <SheetDescription className="text-left">发布平台：{targetPlatformLabel}</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto py-4">
@@ -207,17 +220,17 @@ export function WeeklyContentDetailSheet({
             </details>
           ) : null}
 
-          {model.strategySummary ? (
+          {strategySummary ? (
             <div data-testid="weekly-detail-platform-adaptation">
               <p className="text-xs font-medium text-gray-500">平台适配说明</p>
-              <p className="mt-1 text-sm text-gray-700">{model.strategySummary}</p>
+              <p className="mt-1 text-sm text-gray-700">{strategySummary}</p>
             </div>
           ) : null}
 
-          {model.geoGap ? (
+          {geoGap ? (
             <div data-testid="weekly-detail-geo-gap">
               <p className="text-xs font-medium text-gray-500">GEO 质量自检</p>
-              <p className="mt-1 text-sm text-gray-700">{model.geoGap}</p>
+              <p className="mt-1 text-sm text-gray-700">{geoGap}</p>
             </div>
           ) : null}
 
@@ -226,15 +239,10 @@ export function WeeklyContentDetailSheet({
               <p className="text-xs font-medium text-gray-500">AI 质检结果</p>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="text-gray-800">{aiQcStatus}</span>
-                {model.qualityView ? (
-                  <GeoArticleQualityScoreDetailPopover
-                    qualityRow={model.qualityScoreRow}
-                    testId={`weekly-detail-quality-${model.id}`}
-                  >
-                    <span className="text-xs tabular-nums text-gray-600">
-                      分 {model.qualityView.score}
-                    </span>
-                  </GeoArticleQualityScoreDetailPopover>
+                {qualityScoreLabel ? (
+                  <span className="text-xs tabular-nums text-gray-600" data-testid={`weekly-detail-quality-${model.id}`}>
+                    分 {qualityScoreLabel}
+                  </span>
                 ) : null}
               </div>
               {!qualityGate.passed && qualityGate.message ? (
@@ -278,9 +286,9 @@ export function WeeklyContentDetailSheet({
             </div>
           </div>
 
-          {model.publishBlockHint ? (
+          {publishBlockHint ? (
             <p className="text-sm text-amber-800" data-testid="weekly-detail-publish-hint">
-              发布建议：{model.publishBlockHint}
+              发布建议：{publishBlockHint}
             </p>
           ) : model.publishPreflightReady ? (
             <p className="text-sm text-emerald-800" data-testid="weekly-detail-publish-hint">

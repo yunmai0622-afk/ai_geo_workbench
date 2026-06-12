@@ -17,7 +17,8 @@ function isH2Line(line: string): boolean {
  * 「便于引用的要点」保留第一组（正文内用户问答），去掉后续重复组（常为系统追加的品牌问答）。
  */
 export function stripInternalArticleMetadataFromMarkdown(content: string | null | undefined): string {
-  if (!content?.trim()) return content?.trim() ?? "";
+  if (typeof content !== "string") return "";
+  if (!content.trim()) return "";
 
   const lines = content.replace(/\r\n/g, "\n").split("\n");
   const kept: string[] = [];

@@ -43,4 +43,9 @@ describe("GEO-V1.3-WeeklyFix-P0", () => {
     expect(detailSheet).toContain("weekly-detail-ai-qc-hint");
     expect(weekly).toContain("onQualityReviewed");
   });
+
+  it("detail sheet renders quality score without nested popover", () => {
+    expect(detailSheet).toContain("weekly-detail-quality-");
+    expect(detailSheet).not.toContain("GeoArticleQualityScoreDetailPopover");
+  });
 });

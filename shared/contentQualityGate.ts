@@ -57,6 +57,23 @@ const MESSAGES = {
   unknown: "当前内容质检状态不明确，请刷新页面或重新质检。",
 } as const;
 
+export function coerceTrimmedOptionalString(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    const trimmed = String(value).trim();
+    return trimmed || null;
+  }
+  return null;
+}
+
+function coerceTrimmedString(value: unknown, fallback = ""): string {
+  return coerceTrimmedOptionalString(value) ?? fallback;
+}
+
 function hasStructuredGeoQualityPass(article: ContentQualityGateArticle): boolean {
   if (article.geoQualityScore == null || !article.geoQualityRecommendation) return false;
   const rec = article.geoQualityRecommendation as GeoQualityRecommendation;
@@ -76,7 +93,7 @@ function hasLifecycleQualityPass(article: ContentQualityGateArticle): boolean {
 }
 
 function hasLegacyQualityPass(article: ContentQualityGateArticle): boolean {
-  const legacy = (article.status ?? "").trim();
+  const legacy = coerceTrimmedString(article.status);
   return LEGACY_PASSED_STATUSES.has(legacy);
 }
 
@@ -89,17 +106,17 @@ function hasLifecycleQualityFail(article: ContentQualityGateArticle): boolean {
 }
 
 function hasLegacyQualityFail(article: ContentQualityGateArticle): boolean {
-  const legacy = (article.status ?? "").trim();
+  const legacy = coerceTrimmedString(article.status);
   return LEGACY_FAILED_STATUSES.has(legacy);
 }
 
 function hasUnifiedQualityPassSignals(article: ContentQualityGateArticle): boolean {
   if (article.qualityPasses === true) return true;
-  const qualityStatus = (article.qualityStatus ?? "").trim().toLowerCase();
+  const qualityStatus = coerceTrimmedString(article.qualityStatus).toLowerCase();
   if (qualityStatus === "passed" || qualityStatus === "pass") return true;
-  const latestStatus = (article.latestQualityResult?.status ?? "").trim().toLowerCase();
+  const latestStatus = coerceTrimmedString(article.latestQualityResult?.status).toLowerCase();
   if (latestStatus === "passed" || latestStatus === "pass") return true;
-  const lifecycle = (article.lifecycleStatus ?? "").trim().toLowerCase();
+  const lifecycle = coerceTrimmedString(article.lifecycleStatus).toLowerCase();
   if (LIFECYCLE_STATUS_STRING_PASSED.has(lifecycle)) return true;
   return false;
 }
@@ -113,14 +130,11 @@ export function getUnifiedQualityGateStatus(
 
 /** 统一 lifecycle / qualityStatus 字符串，供门禁判断 */
 export function normalizeGeoQualityFields(article: ContentQualityGateArticle): ContentQualityGateArticle {
-  const qualityStatus = (article.qualityStatus ?? "").trim();
-  const lifecycleStatus = (article.lifecycleStatus ?? "").trim();
-  const recommendation = (article.geoQualityRecommendation ?? "").trim();
   return {
     ...article,
-    qualityStatus: qualityStatus || null,
-    lifecycleStatus: lifecycleStatus || null,
-    geoQualityRecommendation: recommendation || null,
+    qualityStatus: coerceTrimmedOptionalString(article.qualityStatus),
+    lifecycleStatus: coerceTrimmedOptionalString(article.lifecycleStatus),
+    geoQualityRecommendation: coerceTrimmedOptionalString(article.geoQualityRecommendation),
   };
 }
 
