@@ -190,8 +190,10 @@ export function TrustEvidenceManager({ projectId: projectIdProp, embedded = fals
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-gray-900">信任证据库</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            管理媒体报道、客户评价、资质证书等通用信任证据，帮助 AI 判断凭什么推荐你。
+          <p className="mt-1 text-sm leading-relaxed text-gray-500">
+            管理媒体报道、客户评价、资质证书等信任证据。
+            点击「手动添加证据」录入已有证据，
+            或点击「开始发现证据」让 AI 自动搜索公开证据。
           </p>
           {summaryQuery.data ? (
             <p className="mt-2 text-xs text-gray-500" data-testid="trust-evidence-summary">

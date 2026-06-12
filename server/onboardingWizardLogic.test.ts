@@ -3,8 +3,37 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "..");
-import { evaluateOnboardingWizardCompleteness } from "@shared/onboardingWizardCompleteness";
+import { evaluateOnboardingWizardCompleteness, isWizardStepComplete } from "@shared/onboardingWizardCompleteness";
 import { mergeGeoGoalNotesPayload, parseGeoGoalNotesPayload } from "@shared/onboardingWizardGeoGoalNotes";
+
+describe("wizard step 2 completion", () => {
+  it("marks category positioning complete when core product, selling points and keywords are filled", () => {
+    const profile = {
+      productDesc: "知识付费 SaaS 课程交付系统",
+      keyPoints: ["AI 助教", "私域运营"],
+      keywords: ["知识付费", "课程交付"],
+    };
+    expect(isWizardStepComplete(2, profile, {})).toBe(true);
+  });
+
+  it("marks complete when selling points only exist in coreSellingPoints legacy field", () => {
+    const profile = {
+      productDesc: "知识付费 SaaS",
+      coreSellingPoints: "AI 助教；私域运营",
+      keywords: ["知识付费"],
+    };
+    expect(isWizardStepComplete(2, profile, {})).toBe(true);
+  });
+
+  it("stays incomplete when keywords are missing", () => {
+    const profile = {
+      productDesc: "知识付费 SaaS",
+      keyPoints: ["AI 助教"],
+      keywords: [],
+    };
+    expect(isWizardStepComplete(2, profile, {})).toBe(false);
+  });
+});
 
 describe("onboarding wizard completeness", () => {
   it("computes 8-dimension weighted completion score", () => {
@@ -62,6 +91,8 @@ describe("onboarding wizard static wiring", () => {
   it("AssetCenter uses 8-step wizard shell", () => {
     const page = readFileSync(resolve(root, "client/src/pages/AssetCenter.tsx"), "utf-8");
     expect(page).toContain("OnboardingWizardShell");
+    expect(page).toContain("handleManageCustomerCases");
+    expect(page).toContain("customerCasesSectionRef");
     expect(page).toContain("ONBOARDING_WIZARD_PAGE_TITLE");
     expect(readFileSync(resolve(root, "client/src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx"), "utf-8")).toContain(
       "wizard-step-nav",

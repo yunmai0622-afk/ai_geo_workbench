@@ -73,6 +73,17 @@ function parseOptionalInt(v: string): number | null {
   return Math.round(n);
 }
 
+function parseKeyPointsFromProfile(p: Record<string, unknown>): string[] {
+  const fromArray = parseStringArray(p.keyPoints);
+  if (fromArray.length > 0) return fromArray;
+  const coreSelling = textField(p.coreSellingPoints);
+  if (!coreSelling) return [];
+  return coreSelling
+    .split(/[；;、\n]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
 const EMPTY_DRAFTS = {
   keyPointDraft: "",
   keywordDraft: "",
@@ -132,6 +143,8 @@ export default function AssetCenterPage() {
   });
   const [drafts, setDrafts] = useState(EMPTY_DRAFTS);
   const [caseRows, setCaseRows] = useState<CaseDraft[]>([]);
+  const [customerCasesOpen, setCustomerCasesOpen] = useState(false);
+  const customerCasesSectionRef = useRef<HTMLDetailsElement | null>(null);
 
   const upsertProfile = trpc.geo.assetLibrary.upsertProfile.useMutation();
   const { triggerMaturityCalculate } = useMaturityAutoCalculate(currentProjectId);
@@ -174,7 +187,7 @@ export default function AssetCenterPage() {
       industrySelect: resolved.select,
       industryCustom: resolved.custom,
       productDesc: textField(p.productDesc) || textField(p.productServiceIntro) || textField(p.productIntro),
-      keyPoints: parseStringArray(p.keyPoints),
+      keyPoints: parseKeyPointsFromProfile(p),
       keywords: parseStringArray(p.keywords),
       targetCustomer: textField(p.targetCustomer) || textField(p.targetCustomers),
       customerPains: parseStringArray(p.customerPains),
@@ -311,6 +324,7 @@ export default function AssetCenterPage() {
       industry: industryTagValue,
       productDesc: form.productDesc,
       keyPoints: form.keyPoints,
+      coreSellingPoints: form.keyPoints.join("；"),
       keywords: form.keywords,
       targetCustomer: form.targetCustomer,
       customerPains: form.customerPains,
@@ -450,6 +464,15 @@ export default function AssetCenterPage() {
     setWizardCompleted(true);
   }
 
+  const handleManageCustomerCases = useCallback(() => {
+    setCustomerCasesOpen(true);
+    window.requestAnimationFrame(() => {
+      const section = customerCasesSectionRef.current;
+      if (!section) return;
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
   const hasRenderableProfile = Boolean(
     form.brandName.trim() || form.oneLiner.trim() || form.productDesc.trim() || completionScore > 0,
   );
@@ -560,6 +583,7 @@ export default function AssetCenterPage() {
                 onFormChange={patch => setForm(prev => ({ ...prev, ...patch }))}
                 onDraftChange={patch => setDrafts(prev => ({ ...prev, ...patch }))}
                 onNavigate={path => setLocation(path)}
+                onManageCustomerCases={handleManageCustomerCases}
                 onGoToStep={step => setCurrentStep(Math.min(8, Math.max(1, step)))}
               />
             </div>
@@ -574,7 +598,14 @@ export default function AssetCenterPage() {
             />
           </OnboardingWizardShell>
 
-          <details id="customer-cases" className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="profile-fold-advanced-materials">
+          <details
+            id="customer-cases"
+            ref={customerCasesSectionRef}
+            open={customerCasesOpen}
+            onToggle={e => setCustomerCasesOpen(e.currentTarget.open)}
+            className="rounded-xl border border-gray-200 bg-white shadow-sm"
+            data-testid="profile-fold-advanced-materials"
+          >
             <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">客户案例管理（高级）</summary>
             <div className="border-t border-gray-100 p-5">
               <AdvancedMaterialsSection

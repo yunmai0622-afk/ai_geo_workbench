@@ -70,6 +70,7 @@ type Props = {
   onFormChange: (patch: Partial<WizardFormState>) => void;
   onDraftChange: (patch: Partial<Drafts>) => void;
   onNavigate: (path: string) => void;
+  onManageCustomerCases: () => void;
   onGoToStep: (step: number) => void;
 };
 
@@ -127,6 +128,7 @@ export function WizardStepPanels({
   onFormChange,
   onDraftChange,
   onNavigate,
+  onManageCustomerCases,
   onGoToStep,
 }: Props) {
   const activeStep = Number(step);
@@ -308,7 +310,7 @@ export function WizardStepPanels({
           type="button"
           variant="outline"
           data-testid="wizard-manage-cases"
-          onClick={() => onNavigate(buildProjectUrl("/enterprise-profile", projectId) + "#customer-cases")}
+          onClick={onManageCustomerCases}
         >
           管理客户案例
         </Button>

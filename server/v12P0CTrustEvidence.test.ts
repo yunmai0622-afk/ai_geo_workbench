@@ -42,8 +42,12 @@ describe("GEO-V2.0-P0-C-Trust-Evidence", () => {
     expect(manager).toContain("trust-evidence-grouped-list");
     expect(manager).toContain("TrustEvidenceDrawer");
     expect(manager).toContain("还没有信任证据。添加媒体报道、客户评价、资质证书等");
+    expect(manager).toContain("开始发现证据");
+    expect(manager).toContain("手动添加证据");
     expect(manager).toContain("TrustEvidenceStep6Section");
     expect(drawer).toContain("trust-evidence-drawer");
+    expect(drawer).toContain("max-h-[80vh]");
+    expect(drawer).toContain("overflow-y-auto");
     expect(drawer).toContain("trust-evidence-form-type");
     expect(drawer).toContain("trust-evidence-form-title");
     expect(shared).toContain("TRUST_EVIDENCE_TYPE_GROUPS");

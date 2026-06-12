@@ -67,12 +67,15 @@ export function TrustEvidenceDrawer({ open, mode, saving, initial, onOpenChange,
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent data-testid="trust-evidence-drawer">
-        <DrawerHeader>
+      <DrawerContent
+        className="flex max-h-[80vh] flex-col"
+        data-testid="trust-evidence-drawer"
+      >
+        <DrawerHeader className="shrink-0">
           <DrawerTitle>{mode === "create" ? "添加信任证据" : "编辑信任证据"}</DrawerTitle>
           <DrawerDescription>录入媒体报道、客户评价、资质证书等，帮助 AI 判断为什么应该推荐你。</DrawerDescription>
         </DrawerHeader>
-        <div className="space-y-4 px-4 pb-2">
+        <div className="min-h-0 max-h-[calc(80vh-11rem)] flex-1 space-y-4 overflow-y-auto px-4 pb-2">
           <div className="space-y-2">
             <Label htmlFor="trust-evidence-type">证据类型</Label>
             <Select
@@ -167,7 +170,7 @@ export function TrustEvidenceDrawer({ open, mode, saving, initial, onOpenChange,
             </Select>
           </div>
         </div>
-        <DrawerFooter>
+        <DrawerFooter className="sticky bottom-0 shrink-0 border-t border-gray-100 bg-white">
           <Button
             type="button"
             data-testid="trust-evidence-form-submit"

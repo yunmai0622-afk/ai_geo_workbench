@@ -176,8 +176,16 @@ export function isWizardStepComplete(
   switch (step) {
     case 1:
       return evaluateBrandIdentityScore(profile) >= 67;
-    case 2:
-      return evaluateCategoryPositioningScore(profile) >= 75;
+    case 2: {
+      const keyPoints = stringArray(profile?.keyPoints);
+      const coreSelling = trim(profile?.coreSellingPoints);
+      const hasSellingPoints = keyPoints.length > 0 || Boolean(coreSelling);
+      return (
+        Boolean(resolveProductDesc(profile)) &&
+        hasSellingPoints &&
+        stringArray(profile?.keywords).length > 0
+      );
+    }
     case 3:
       return evaluateTargetCustomerScore(profile) >= 50;
     case 4:
