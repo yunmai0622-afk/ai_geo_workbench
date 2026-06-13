@@ -77,6 +77,7 @@ import { publishLinkAccessLabel } from "@shared/inclusionMonitoringDisplay";
 import {
   buildT0DiagnosisResultsDisplay,
   computeT0QuestionProgress,
+  resolveT0ActiveQuestionCount,
   formatT0Rate,
   T0_AI_ENGINE_OPTIONS,
   T0_DEFAULT_PLATFORMS,
@@ -1063,10 +1064,10 @@ export function AiDiagnosisFlowPage() {
       (displayT0Round.runsPerQuestion ?? 3) * (displayT0Round.platforms?.length ?? T0_DEFAULT_PLATFORMS.length);
     return computeT0QuestionProgress(
       t0Runs.map(run => ({ questionId: run.questionId })),
-      displayT0Round.questionsCount,
+      resolveT0ActiveQuestionCount(questions),
       expectedRunsPerQuestion,
     );
-  }, [displayT0Round, t0Runs]);
+  }, [displayT0Round, t0Runs, questions]);
   const pageError = customerErrorMessage(
     assetSummaryQuery.error?.message || questionsQuery.error?.message || analysisQuery.error?.message || scoreQuery.error?.message || tasksQuery.error?.message,
   );

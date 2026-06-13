@@ -2969,6 +2969,22 @@ const geoRouter = router({
           });
         }
         const generationCount = input.generationCount ?? 7;
+        const [articleSnapshots, questionSnapshots] = await Promise.all([
+          db
+            .select({
+              optimizationTaskId: geoArticles.optimizationTaskId,
+              generationBasis: geoArticles.generationBasis,
+            })
+            .from(geoArticles)
+            .where(eq(geoArticles.projectId, input.projectId)),
+          db
+            .select({
+              enabled: questions.enabled,
+              relatedContentTask: questions.relatedContentTask,
+            })
+            .from(questions)
+            .where(eq(questions.projectId, input.projectId)),
+        ]);
         const generated = generateGeoArticleTopics({
           project,
           targetCount: generationCount,
@@ -2982,6 +2998,10 @@ const geoRouter = router({
             expectedImpact: t.expectedImpact,
             status: t.status,
           })),
+          allocationContext: {
+            articles: articleSnapshots,
+            questions: questionSnapshots,
+          },
         });
         await db.delete(geoArticleTopics).where(eq(geoArticleTopics.projectId, input.projectId));
         await db.insert(geoArticleTopics).values(generated.map(topic => ({ ...topic, articleType: topic.articleType, status: topic.status })));

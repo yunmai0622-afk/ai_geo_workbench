@@ -1,3 +1,4 @@
+import { countEnabledQuestionsForT0 } from "./aiDiagnosisManualT0Gate";
 import { aggregateT0AiTestRunMetrics, type AiTestRunMetricRow } from "./t0AiTestRunMetrics";
 
 export const T0_DEFAULT_PLATFORMS = ["doubao", "deepseek", "kimi"] as const;
@@ -112,6 +113,13 @@ export type T0QuestionProgress = {
   currentQuestion: number;
   totalQuestions: number;
 };
+
+/** 诊断页与问题池统一口径：当前启用且纳入实测的问题数（不用轮次快照 questionsCount，避免禁用后数字不一致） */
+export function resolveT0ActiveQuestionCount(
+  questions: Array<{ enabled?: number | boolean | null }>,
+): number {
+  return countEnabledQuestionsForT0(questions);
+}
 
 function resolveQuestionTypeLabel(questionType: string): string {
   return QUESTION_TYPE_CUSTOMER_LABELS[questionType] ?? `${questionType}类问题`;

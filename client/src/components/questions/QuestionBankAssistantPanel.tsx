@@ -3,6 +3,7 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
+import { countEnabledQuestionsForT0 } from "@shared/aiDiagnosisManualT0Gate";
 import {
   buildQuestionBankAssistantBlockers,
   buildQuestionBankOverviewMetrics,
@@ -47,7 +48,7 @@ export function QuestionBankAssistantPanel() {
     const hasCompletedT0Baseline = Boolean(workspaceSummaryQuery.data?.hasCompletedT0Baseline);
     const overview = buildQuestionBankOverviewMetrics({
       questions,
-      currentRoundQuestionCount: currentRound?.questionsCount ?? questions.filter(q => Number(q.enabled) !== 0).length,
+      currentRoundQuestionCount: countEnabledQuestionsForT0(questions),
       contentTaskCount: tasksQuery.data?.length ?? 0,
       hasCompletedT0Baseline,
     });

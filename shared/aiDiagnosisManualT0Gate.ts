@@ -107,3 +107,7 @@ export function countEnabledQuestionsForT0(
 ): number {
   return questions.filter(q => Number(q.enabled) !== 0).length;
 }
+
+/** 未完成 AI 现状检测时的推荐性引导（非阻断） */
+export const AI_DIAGNOSIS_SOFT_RECOMMENDATION =
+  "建议先完成 AI 现状检测，这样后续生成的内容能更精准地针对 AI 推荐短板。你也可以先继续完善其他模块，AI 现状检测可以随时进行。";

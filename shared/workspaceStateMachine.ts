@@ -8,6 +8,7 @@ import { localAgentConnectionRiskHint, mapBooleanOnlineToConnectionStatus } from
 import type { LocalAgentConnectionStatus } from "./localAgentConnectionStatus";
 import { buildWorkspacePublishRiskHints } from "./publishReadiness";
 import { workspacePublishAccountRiskHint } from "./localAgentAccountBinding";
+import { buildQualityRewriteRiskHint } from "./workspaceRiskHints";
 
 export const WORKSPACE_STAGE_IDS = [
   "bind_publish_env",
@@ -78,9 +79,9 @@ export const WORKSPACE_STAGES: WorkspaceStageDefinition[] = [
   {
     id: "optimize",
     label: "待优化",
-    blockerHint: "重写池有待处理项，或 AI 实测/质量检查提示需优化。",
-    ctaLabel: "查看重写池",
-    ctaPath: "/content-publishing",
+    blockerHint: "有内容质检未通过，建议进入内容生产处理。",
+    ctaLabel: "去内容生产 · 需修改",
+    ctaPath: "/weekly",
   },
   {
     id: "delivery_report",
@@ -177,7 +178,7 @@ export function buildWorkspaceRiskHints(input: WorkspaceStageResolutionInput): s
     hints.push("本地发布客户端未连接，发布任务无法下发。");
   }
   if (input.expiredSessionAccountCount > 0) hints.push(`有 ${input.expiredSessionAccountCount} 个账号登录状态失效，请重新登录。`);
-  if (input.rewriteOpenCount > 0) hints.push(`重写池有 ${input.rewriteOpenCount} 条待处理内容。`);
+  if (input.rewriteOpenCount > 0) hints.push(buildQualityRewriteRiskHint(input.rewriteOpenCount));
   if (input.retestPendingCount > 0) hints.push(`复测队列有 ${input.retestPendingCount} 条待处理。`);
   if (input.brandMentionRate != null && input.aiTestResultCount > 0 && input.brandMentionRate < 0.2) {
     hints.push("AI 实测样本中品牌提及率偏低，建议进入优化与重写。");
@@ -234,7 +235,7 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
     (input.aiTestResultCount > 0 && input.brandMentionRate != null && input.brandMentionRate < 0.25)
   ) {
     currentStageId = "optimize";
-    if (input.rewriteOpenCount > 0) blockerReasons.push(`重写池有 ${input.rewriteOpenCount} 条待处理。`);
+    if (input.rewriteOpenCount > 0) blockerReasons.push(buildQualityRewriteRiskHint(input.rewriteOpenCount));
     if (input.lowQualityArticleCount > 0) {
       blockerReasons.push(`有 ${input.lowQualityArticleCount} 篇内容质量分低于 ${GEO_ARTICLE_MIN_PASS_SCORE}。`);
     }

@@ -1,3 +1,4 @@
+import { countEnabledQuestionsForT0 } from "./aiDiagnosisManualT0Gate";
 import type { QuestionBankRow } from "./questionBankIntentMap";
 
 /** AI 搜索问题池六类（P1-A）；DB 列 searchPoolType，与 legacy questionType 枚举并存 */
@@ -144,7 +145,7 @@ export function buildQuestionPoolGapOverview(input: {
   contentTaskCount: number;
   hasDiagnosisData: boolean;
 }): QuestionPoolGapOverview {
-  const enabledQuestions = input.questions.filter(q => Number(q.enabled) !== 0).length;
+  const enabledQuestions = countEnabledQuestionsForT0(input.questions);
   const uncoveredQuestions = input.hasDiagnosisData
     ? input.questions.filter(
         q =>

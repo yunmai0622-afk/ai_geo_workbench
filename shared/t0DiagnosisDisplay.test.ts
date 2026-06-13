@@ -3,6 +3,7 @@ import {
   buildT0DiagnosisResultsDisplay,
   computeT0QuestionProgress,
   formatT0Rate,
+  resolveT0ActiveQuestionCount,
 } from "./t0DiagnosisDisplay";
 
 describe("t0DiagnosisDisplay", () => {
@@ -19,6 +20,16 @@ describe("t0DiagnosisDisplay", () => {
       6,
     );
     expect(progress).toEqual({ currentQuestion: 2, totalQuestions: 5 });
+  });
+
+  it("uses enabled question count as canonical T0 total (not stale round questionsCount)", () => {
+    expect(
+      resolveT0ActiveQuestionCount([
+        { enabled: 1 },
+        { enabled: 1 },
+        { enabled: 0 },
+      ]),
+    ).toBe(2);
   });
 
   it("builds grouped diagnosis results without engineering fields", () => {

@@ -1,3 +1,4 @@
+import { getArticlePublishPlatform } from "@shared/articlePublishPlatform";
 import { invokeLLM } from "./_core/llm";
 import { GEO_ARTICLE_MIN_PASS_SCORE } from "@shared/const";
 import { getQualityMinPassScoreSync } from "./geoSystemConfigStore";
@@ -1060,11 +1061,107 @@ function buildTopicDraftFromTask(projectId: number, task: P11TaskLike, variantRo
 
 /**
  * 按目标篇数生成内容选题：优先每个优化任务 1 条；不足时按任务轮询生成延伸篇选题。
+ * 选题优先级：当前任务已覆盖 ≥4 平台且仍有未生成内容任务的启用问题时，优先其他任务；否则继续当前任务变体。
  */
+export type TopicAllocationArticleSnapshot = {
+  optimizationTaskId?: number | null;
+  generationBasis?: Record<string, unknown> | null;
+};
+
+export type TopicAllocationQuestionSnapshot = {
+  enabled?: number | boolean | null;
+  relatedContentTask?: boolean | null;
+};
+
+export type TopicAllocationContext = {
+  articles: TopicAllocationArticleSnapshot[];
+  questions: TopicAllocationQuestionSnapshot[];
+};
+
+export function countUncoveredEnabledQuestions(questions: TopicAllocationQuestionSnapshot[]): number {
+  return questions.filter(q => Number(q.enabled) !== 0 && !q.relatedContentTask).length;
+}
+
+export function countDistinctPlatformsForTask(
+  taskId: number,
+  articles: TopicAllocationArticleSnapshot[],
+): number {
+  const platforms = new Set<string>();
+  for (const article of articles) {
+    if (article.optimizationTaskId !== taskId) continue;
+    const resolved = getArticlePublishPlatform({ generationBasis: article.generationBasis ?? null });
+    if (resolved.recognized && resolved.slug !== "unknown") platforms.add(resolved.slug);
+  }
+  return platforms.size;
+}
+
+export function resolveFocusTaskId(
+  tasks: P11TaskLike[],
+  articles: TopicAllocationArticleSnapshot[],
+): number | null {
+  if (tasks.length === 0) return null;
+  const articleCounts = new Map<number, number>();
+  for (const task of tasks) articleCounts.set(task.id, 0);
+  for (const article of articles) {
+    const id = article.optimizationTaskId;
+    if (typeof id === "number" && articleCounts.has(id)) {
+      articleCounts.set(id, (articleCounts.get(id) ?? 0) + 1);
+    }
+  }
+  let focusId = tasks[0]!.id;
+  let maxCount = articleCounts.get(focusId) ?? 0;
+  for (const task of tasks) {
+    const count = articleCounts.get(task.id) ?? 0;
+    if (count > maxCount) {
+      maxCount = count;
+      focusId = task.id;
+    }
+  }
+  return focusId;
+}
+
+export function orderTasksForTopicGeneration(
+  tasks: P11TaskLike[],
+  allocation?: TopicAllocationContext,
+): P11TaskLike[] {
+  const uniqueTasks: P11TaskLike[] = [];
+  const seenIds = new Set<number>();
+  for (const task of tasks) {
+    if (seenIds.has(task.id)) continue;
+    seenIds.add(task.id);
+    uniqueTasks.push(task);
+  }
+  if (!allocation || uniqueTasks.length <= 1) return uniqueTasks;
+
+  const focusId = resolveFocusTaskId(uniqueTasks, allocation.articles);
+  if (focusId == null) return uniqueTasks;
+
+  const platformCount = countDistinctPlatformsForTask(focusId, allocation.articles);
+  const uncoveredCount = countUncoveredEnabledQuestions(allocation.questions);
+  if (platformCount >= 4 && uncoveredCount > 0) {
+    const others = uniqueTasks.filter(task => task.id !== focusId);
+    const focus = uniqueTasks.find(task => task.id === focusId);
+    return others.length > 0 ? [...others, ...(focus ? [focus] : [])] : uniqueTasks;
+  }
+  return uniqueTasks;
+}
+
+export function shouldSkipSaturatedTaskVariant(
+  taskId: number,
+  variantRound: number,
+  allocation?: TopicAllocationContext,
+): boolean {
+  if (!allocation || variantRound === 0) return false;
+  const uncoveredCount = countUncoveredEnabledQuestions(allocation.questions);
+  if (uncoveredCount === 0) return false;
+  return countDistinctPlatformsForTask(taskId, allocation.articles) >= 4;
+}
+
 export function generateGeoArticleTopics(input: {
   project: P11ProjectLike;
   tasks: P11TaskLike[];
   targetCount?: number;
+  allocationContext?: TopicAllocationContext;
 }): P11TopicDraft[] {
   if (input.tasks.length === 0) throw new Error("缺少优化任务，不能生成内容选题。");
   const uniqueTasks: P11TaskLike[] = [];
@@ -1080,12 +1177,15 @@ export function generateGeoArticleTopics(input: {
       ? Math.max(1, Math.min(50, input.targetCount))
       : uniqueTasks.length;
 
+  const orderedTasks = orderTasksForTopicGeneration(uniqueTasks, input.allocationContext);
+
   const result: P11TopicDraft[] = [];
   const usedTitles = new Set<string>();
   let round = 0;
-  while (result.length < target && uniqueTasks.length > 0 && round < 60) {
-    for (const task of uniqueTasks) {
+  while (result.length < target && orderedTasks.length > 0 && round < 60) {
+    for (const task of orderedTasks) {
       if (result.length >= target) break;
+      if (shouldSkipSaturatedTaskVariant(task.id, round, input.allocationContext)) continue;
       const draft = buildTopicDraftFromTask(input.project.id, task, round);
       const key = draft.title.trim().toLowerCase();
       if (!key || usedTitles.has(key)) continue;

@@ -1,3 +1,4 @@
+import { AI_DIAGNOSIS_SOFT_RECOMMENDATION } from "./aiDiagnosisManualT0Gate";
 import type { WorkspaceSummaryMetrics } from "./workspaceStateMachine";
 
 export type MainChainNextActionPaths = {
@@ -213,7 +214,7 @@ export function resolveMainChainNextActionPaths(
   if (!progress.hasCompletedT0Baseline) {
     return {
       ctaLabel: "开始 AI 现状检测",
-      reason: "尚未完成 AI 现状检测，需要先建立品牌在 AI 搜索中的可见度基线。",
+      reason: AI_DIAGNOSIS_SOFT_RECOMMENDATION,
       nextStageName: "AI 现状检测",
       ctaPath: "/ai-diagnosis",
     };

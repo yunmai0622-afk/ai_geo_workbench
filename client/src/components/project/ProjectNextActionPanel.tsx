@@ -7,6 +7,9 @@ import {
   type LocalAgentConnectionStatus,
 } from "@shared/localAgentConnectionStatus";
 import { workspaceCtaUrl, type WorkspaceStageDefinition } from "@shared/workspaceStateMachine";
+import { buildQualityRewriteRiskHint, WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY } from "@shared/workspaceRiskHints";
+import { appendWeeklyContentEntryParams } from "@shared/weeklyContentEntryContext";
+import { buildProjectUrl } from "@/lib/activeProject";
 import { AlertTriangle, ArrowRight, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -25,6 +28,7 @@ type Props = {
   pageNextActionPath?: string | null;
   blockerReason?: string | null;
   riskHints?: string[];
+  rewriteOpenCount?: number;
   recentItems?: RecentItem[];
   loading?: boolean;
   localAgentConnectionStatus?: LocalAgentConnectionStatus;
@@ -44,6 +48,7 @@ export function ProjectNextActionPanel({
   pageNextActionPath,
   blockerReason,
   riskHints = [],
+  rewriteOpenCount = 0,
   recentItems = [],
   loading,
   localAgentConnectionStatus,
@@ -74,6 +79,14 @@ export function ProjectNextActionPanel({
   const recentSummary = recentItems
     .map(item => (item.detail ? `${item.label} ${item.detail}` : item.label))
     .join(" · ");
+
+  const rewriteHint = rewriteOpenCount > 0 ? buildQualityRewriteRiskHint(rewriteOpenCount) : null;
+  const rewriteCtaPath =
+    projectId && rewriteOpenCount > 0
+      ? appendWeeklyContentEntryParams(buildProjectUrl("/weekly", projectId), {
+          pendingContentTab: WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY,
+        })
+      : null;
 
   return (
     <aside
@@ -172,7 +185,19 @@ export function ProjectNextActionPanel({
             {riskHints.map(hint => (
               <li key={hint} className="flex gap-2 text-[12px] leading-relaxed text-amber-900/90">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                <span>{hint}</span>
+                <span className="flex-1">{hint}</span>
+                {rewriteHint && hint === rewriteHint && rewriteCtaPath ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0 border-amber-300 text-[11px] text-amber-900"
+                    data-testid="rewrite-quality-cta"
+                    onClick={() => setLocation(rewriteCtaPath)}
+                  >
+                    去需修改
+                  </Button>
+                ) : null}
               </li>
             ))}
           </ul>

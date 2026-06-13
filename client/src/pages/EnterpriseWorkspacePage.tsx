@@ -29,6 +29,8 @@ import {
   resolveDeliveryPhaseCustomerView,
   resolveDeliveryStageView,
 } from "@/lib/deliveryStage";
+import { WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY } from "@shared/workspaceRiskHints";
+import { appendWeeklyContentEntryParams } from "@shared/weeklyContentEntryContext";
 import {
   resolveMainChainSteps,
   toMainChainProgressInput,
@@ -295,16 +297,36 @@ export default function EnterpriseWorkspacePage() {
             ) : null}
 
             {resolution.riskHints.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2" data-testid="workspace-risk-tags">
-                {resolution.riskHints.map(hint => (
-                  <span
-                    key={hint}
-                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-800"
+              <div className="mt-3 space-y-2" data-testid="workspace-risk-tags">
+                <div className="flex flex-wrap gap-2">
+                  {resolution.riskHints.map(hint => (
+                    <span
+                      key={hint}
+                      className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-800"
+                    >
+                      <AlertTriangle className="size-3 shrink-0" aria-hidden />
+                      {hint}
+                    </span>
+                  ))}
+                </div>
+                {(metrics?.rewriteOpenCount ?? 0) > 0 && selectedProjectId ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 border-amber-300 text-xs text-amber-900"
+                    data-testid="workspace-rewrite-quality-cta"
+                    onClick={() =>
+                      setLocation(
+                        appendWeeklyContentEntryParams(buildProjectUrl("/weekly", selectedProjectId), {
+                          pendingContentTab: WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY,
+                        }),
+                      )
+                    }
                   >
-                    <AlertTriangle className="size-3 shrink-0" aria-hidden />
-                    {hint}
-                  </span>
-                ))}
+                    去内容生产 · 需修改
+                  </Button>
+                ) : null}
               </div>
             ) : null}
 

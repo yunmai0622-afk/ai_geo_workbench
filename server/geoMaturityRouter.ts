@@ -99,6 +99,21 @@ async function fetchLatestMaturityRow(projectId: number) {
   return rows[0] ?? null;
 }
 
+function maturityScoresMatch(
+  latest: typeof geoMaturityScores.$inferSelect,
+  scores: ReturnType<typeof calculateGeoMaturityScores>,
+): boolean {
+  return (
+    latest.totalScore === scores.totalScore &&
+    (latest.brandIdentityScore ?? 0) === scores.brandIdentityScore &&
+    (latest.categoryPositioningScore ?? 0) === scores.categoryPositioningScore &&
+    (latest.questionCoverageScore ?? 0) === scores.questionCoverageScore &&
+    (latest.sourceGraphScore ?? 0) === scores.sourceGraphScore &&
+    (latest.trustEvidenceScore ?? 0) === scores.trustEvidenceScore &&
+    (latest.aiTestPerformanceScore ?? 0) === scores.aiTestPerformanceScore
+  );
+}
+
 export const geoMaturityRouter = router({
   calculateAndSave: protectedProcedure
     .input(z.object({ projectId: z.number().int().positive() }))
@@ -108,6 +123,15 @@ export const geoMaturityRouter = router({
       const context = await loadMaturityScoringContext(input.projectId);
       const scores = calculateGeoMaturityScores(context);
       const now = new Date();
+      const latestRow = await fetchLatestMaturityRow(input.projectId);
+
+      if (latestRow && maturityScoresMatch(latestRow, scores)) {
+        await db
+          .update(geoMaturityScores)
+          .set({ calculatedAt: now })
+          .where(eq(geoMaturityScores.id, latestRow.id));
+        return buildMaturityReport({ scores, calculatedAt: now });
+      }
 
       await db.insert(geoMaturityScores).values({
         projectId: input.projectId,

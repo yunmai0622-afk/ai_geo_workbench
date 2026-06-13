@@ -10,6 +10,7 @@ export type WeeklyContentEntryContext = {
   articleId?: number;
   platform?: string;
   autoGenerate?: boolean;
+  pendingContentTab?: string;
 };
 
 export const WEEKLY_CONTENT_ENTRY_PARAM_KEYS = [
@@ -22,6 +23,7 @@ export const WEEKLY_CONTENT_ENTRY_PARAM_KEYS = [
   "articleId",
   "platform",
   "autoGenerate",
+  "pendingContentTab",
 ] as const;
 
 const SOURCE_TYPE_LABELS: Record<string, string> = {
@@ -55,6 +57,7 @@ export function parseWeeklyContentEntryContext(search: string): WeeklyContentEnt
   const relatedGeoGap = params.get("relatedGeoGap")?.trim();
   const platform = params.get("platform")?.trim();
   const autoGenerate = params.get("autoGenerate") === "1" || params.get("autoGenerate") === "true";
+  const pendingContentTab = params.get("pendingContentTab")?.trim();
   return {
     questionId: parsePositiveInt(params.get("questionId")),
     taskId: parsePositiveInt(params.get("taskId")),
@@ -65,6 +68,7 @@ export function parseWeeklyContentEntryContext(search: string): WeeklyContentEnt
     articleId: parsePositiveInt(params.get("articleId")),
     platform: platform || undefined,
     autoGenerate: autoGenerate || undefined,
+    pendingContentTab: pendingContentTab || undefined,
   };
 }
 
@@ -83,6 +87,7 @@ export function appendWeeklyContentEntryParams(
   if (ctx.articleId != null) params.set("articleId", String(ctx.articleId));
   if (ctx.platform?.trim()) params.set("platform", ctx.platform.trim());
   if (ctx.autoGenerate) params.set("autoGenerate", "1");
+  if (ctx.pendingContentTab?.trim()) params.set("pendingContentTab", ctx.pendingContentTab.trim());
   const qs = params.toString();
   return qs ? `${path}?${qs}` : path;
 }

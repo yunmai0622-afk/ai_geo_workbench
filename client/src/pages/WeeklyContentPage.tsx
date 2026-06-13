@@ -35,6 +35,7 @@ import { WeeklyLocalAgentStatusBar } from "@/components/weekly/WeeklyLocalAgentS
 import {
   WeeklyPublishableContentList,
   type WeeklyPublishableRow,
+  type WeeklyPendingContentTab,
 } from "@/components/weekly/WeeklyPublishableContentList";
 import type { WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
 import { resolveGeoQualityOptimizationSuggestions } from "@shared/geoQualityAutoSuggest";
@@ -47,6 +48,7 @@ import {
   resolveQualityBlockingIssues,
   resolveQualityCardView,
 } from "@shared/geoQualityScoreDisplay";
+import { WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY } from "@shared/workspaceRiskHints";
 import {
   parseWeeklyContentEntryContext,
   resolveWeeklyContentSourceTypeLabel,
@@ -685,6 +687,7 @@ export default function WeeklyContentPage() {
     failCount: number;
   } | null>(null);
   const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
+  const [pendingContentInitialTab, setPendingContentInitialTab] = useState<WeeklyPendingContentTab>("pending_review");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const t0GapDeepLinkHandledRef = useRef(false);
   const [filterStatus, setFilterStatus] = useState<ContentCardStatusFilter>("all");
@@ -716,11 +719,15 @@ export default function WeeklyContentPage() {
     if (entryContext.articleId != null) {
       setGeneratedSectionOpen(true);
     }
+    if (entryContext.pendingContentTab === WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY) {
+      setPendingContentInitialTab("needs_modify");
+    }
   }, [
     entryContext.taskId,
     entryContext.questionText,
     entryContext.platform,
     entryContext.articleId,
+    entryContext.pendingContentTab,
   ]);
 
   useEffect(() => {
@@ -3327,6 +3334,7 @@ export default function WeeklyContentPage() {
           <WeeklyPublishableContentList
             rows={publishableRows}
             disabled={anyGenerating || batchEnqueueBusy}
+            initialTab={pendingContentInitialTab}
             onView={openContentDetail}
             onReviewConfirm={model => {
               const article = articlesById.get(model.id);

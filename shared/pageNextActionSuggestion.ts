@@ -1,3 +1,4 @@
+import { AI_DIAGNOSIS_SOFT_RECOMMENDATION } from "./aiDiagnosisManualT0Gate";
 import { resolvePageShellRoute } from "./globalNavVisibility";
 import type { WorkspaceSummaryMetrics } from "./workspaceStateMachine";
 import { WORKSPACE_STAGES } from "./workspaceStateMachine";
@@ -41,7 +42,7 @@ export function resolvePageNextActionSuggestion(
       if (!metrics.hasCompletedT0Baseline && !metrics.hasAnalysis && !metrics.hasGeoScore) {
         return {
           ctaLabel: "开始 AI 现状检测",
-          reason: "尚未完成基线诊断，需先导入或运行客户问题实测，才能识别内容缺口。",
+          reason: AI_DIAGNOSIS_SOFT_RECOMMENDATION,
           nextStageName: "内容生产",
           ctaPath: "/ai-diagnosis",
         };

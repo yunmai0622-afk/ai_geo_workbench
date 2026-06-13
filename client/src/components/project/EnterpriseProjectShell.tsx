@@ -192,6 +192,7 @@ export function EnterpriseProjectShell({ children }: Props) {
       pageNextActionPath={pageNextActionPath}
       blockerReason={resolution?.blockerReasons[0] ?? null}
       riskHints={resolution?.riskHints ?? []}
+      rewriteOpenCount={summaryQuery.data?.rewriteOpenCount ?? 0}
       recentItems={recentItems}
       loading={(summaryQuery.isLoading || homeDisplay.loading) && Boolean(selectedProjectId)}
       localAgentConnectionStatus={localAgentConnectionStatus}

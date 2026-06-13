@@ -23,7 +23,8 @@ describe("GEO-V2.0-P0-F Maturity Integration", () => {
     expect(router).toContain("getHistory:");
     expect(router).toContain("db.insert(geoMaturityScores)");
     expect(router).toContain("orderBy(desc(geoMaturityScores.calculatedAt))");
-    expect(router).not.toContain(".update(geoMaturityScores)");
+    expect(router).toContain("maturityScoresMatch");
+    expect(router).toContain(".update(geoMaturityScores)");
   });
 
   it("registers /maturity route and sidebar nav below workspace", () => {

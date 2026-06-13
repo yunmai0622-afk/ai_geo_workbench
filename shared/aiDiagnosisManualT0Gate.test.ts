@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AI_DIAGNOSIS_RETEST_STAGE_COPY,
+  AI_DIAGNOSIS_SOFT_RECOMMENDATION,
   buildAiDiagnosisRerunConfirmCopy,
   buildT0StartConfirmCopy,
   countEnabledQuestionsForT0,
@@ -51,5 +52,10 @@ describe("aiDiagnosisManualT0Gate", () => {
 
   it("counts enabled questions for T0 scope", () => {
     expect(countEnabledQuestionsForT0([{ enabled: 1 }, { enabled: 0 }, { enabled: 1 }])).toBe(2);
+  });
+
+  it("exposes soft recommendation copy for incomplete AI diagnosis", () => {
+    expect(AI_DIAGNOSIS_SOFT_RECOMMENDATION).toContain("建议先完成 AI 现状检测");
+    expect(AI_DIAGNOSIS_SOFT_RECOMMENDATION).toContain("可以随时进行");
   });
 });

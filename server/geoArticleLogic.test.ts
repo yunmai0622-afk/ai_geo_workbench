@@ -7,6 +7,8 @@ import {
   extractLeadingAtxH1TitleFromMarkdown,
   generateGeoArticleDraft,
   generateGeoArticleTopics,
+  orderTasksForTopicGeneration,
+  shouldSkipSaturatedTaskVariant,
   evaluateAssetLibraryPrePublishCheck,
   GEO_ARTICLE_MIN_PASS_SCORE,
   buildFactTraceability,
@@ -320,6 +322,96 @@ describe("P1.1 GEO article generation", () => {
     expect(topics[0].optimizationTaskId).toBe(41);
     expect(topics[1].optimizationTaskId).toBe(42);
     expect(topics[1].title).toContain("高优先级");
+  });
+
+  it("prioritizes uncovered question tasks when focus task already covers 4+ platforms", () => {
+    const saturatedTask: P11TaskLike = {
+      ...tasks[0],
+      id: 10,
+      taskName: "已饱和任务",
+      executionSuggestion: geoTaskCardExecution("饱和任务文章", "场景指南"),
+    };
+    const freshTask: P11TaskLike = {
+      ...tasks[0],
+      id: 11,
+      taskName: "未覆盖问题任务",
+      executionSuggestion: geoTaskCardExecution("新问题文章", "场景指南"),
+    };
+    const articles = (["zhihu", "xiaohongshu", "sohu", "toutiao"] as const).map(platform => ({
+      optimizationTaskId: 10,
+      generationBasis: { platformContentStrategy: { targetPublishPlatform: platform } },
+    }));
+    const topics = generateGeoArticleTopics({
+      project,
+      tasks: [saturatedTask, freshTask],
+      targetCount: 2,
+      allocationContext: {
+        articles,
+        questions: [
+          { enabled: 1, relatedContentTask: true },
+          { enabled: 1, relatedContentTask: false },
+        ],
+      },
+    });
+    expect(topics[0]?.optimizationTaskId).toBe(11);
+  });
+
+  it("continues current task when platform coverage is below 4", () => {
+    const focusTask: P11TaskLike = {
+      ...tasks[0],
+      id: 10,
+      taskName: "继续当前任务",
+      executionSuggestion: geoTaskCardExecution("当前任务文章", "场景指南"),
+    };
+    const otherTask: P11TaskLike = {
+      ...tasks[0],
+      id: 11,
+      taskName: "其他任务",
+      executionSuggestion: geoTaskCardExecution("其他任务文章", "场景指南"),
+    };
+    const articles = [
+      {
+        optimizationTaskId: 10,
+        generationBasis: { platformContentStrategy: { targetPublishPlatform: "zhihu" } },
+      },
+      {
+        optimizationTaskId: 10,
+        generationBasis: { platformContentStrategy: { targetPublishPlatform: "xiaohongshu" } },
+      },
+    ];
+    const ordered = orderTasksForTopicGeneration([focusTask, otherTask], {
+      articles,
+      questions: [{ enabled: 1, relatedContentTask: false }],
+    });
+    expect(ordered[0]?.id).toBe(10);
+    expect(shouldSkipSaturatedTaskVariant(10, 1, { articles, questions: [{ enabled: 1, relatedContentTask: false }] })).toBe(
+      false,
+    );
+  });
+
+  it("continues extra variants when all enabled questions already have content tasks", () => {
+    const focusTask: P11TaskLike = {
+      ...tasks[0],
+      id: 10,
+      taskName: "全覆盖任务",
+      executionSuggestion: geoTaskCardExecution("全覆盖任务文章", "场景指南"),
+    };
+    const articles = (["zhihu", "xiaohongshu", "sohu", "toutiao"] as const).map(platform => ({
+      optimizationTaskId: 10,
+      generationBasis: { platformContentStrategy: { targetPublishPlatform: platform } },
+    }));
+    const topics = generateGeoArticleTopics({
+      project,
+      tasks: [focusTask],
+      targetCount: 3,
+      allocationContext: {
+        articles,
+        questions: [{ enabled: 1, relatedContentTask: true }],
+      },
+    });
+    expect(topics).toHaveLength(3);
+    expect(topics.every(topic => topic.optimizationTaskId === 10)).toBe(true);
+    expect(topics.some(topic => topic.title.includes("延伸篇"))).toBe(true);
   });
 });
 
