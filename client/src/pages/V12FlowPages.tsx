@@ -81,6 +81,7 @@ import {
   formatT0Rate,
   T0_AI_ENGINE_OPTIONS,
   T0_DEFAULT_PLATFORMS,
+  T0_DETECTION_LONG_RUNNING_HINT,
   type T0AiEngineId,
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
@@ -1671,6 +1672,9 @@ export function AiDiagnosisFlowPage() {
           ) : (
             <p className="mt-1">正在准备检测任务，请稍候…</p>
           )}
+          <p className="mt-2 text-xs text-indigo-800/80" data-testid="ai-diagnosis-t0-long-running-hint">
+            {T0_DETECTION_LONG_RUNNING_HINT}
+          </p>
           <Button
             type="button"
             variant="outline"
@@ -2203,6 +2207,7 @@ export function AiDiagnosisFlowPage() {
                 data-testid="ai-diagnosis-t0-progress-detail"
               >
                 正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
+                <p className="mt-1 text-xs text-indigo-800/80">{T0_DETECTION_LONG_RUNNING_HINT}</p>
               </div>
             ) : null}
             <Button

@@ -1,10 +1,14 @@
+import { buildProjectUrl } from "@/lib/activeProject";
 import { cn } from "@/lib/utils";
 import {
+  formatProfileCompletenessDimensionLabel,
+  PROFILE_COMPLETENESS_VS_MATURITY_HINT,
   resolveCompletenessDimensionStatusIcon,
   resolveCompletenessDimensionStatusLabel,
 } from "@shared/onboardingCompletenessReport";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "wouter";
 import { ONBOARDING_WIZARD_STEPS, ONBOARDING_WIZARD_SAVE_HINT } from "@shared/onboardingWizardSteps";
 
 export type WizardDimensionScore = {
@@ -18,6 +22,7 @@ type Props = {
   stepComplete: Record<number, boolean>;
   completionScore: number;
   dimensionScores?: WizardDimensionScore[];
+  projectId?: number | null;
   children: ReactNode;
   onStepSelect: (step: number) => void;
 };
@@ -27,6 +32,7 @@ export function OnboardingWizardShell({
   stepComplete,
   completionScore,
   dimensionScores,
+  projectId,
   children,
   onStepSelect,
 }: Props) {
@@ -55,8 +61,22 @@ export function OnboardingWizardShell({
           </div>
         </div>
 
+        {projectId ? (
+          <p className="mt-2 text-xs" data-testid="wizard-maturity-link">
+            <Link
+              href={buildProjectUrl("/maturity", projectId)}
+              className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              查看 AI 品牌成熟度评分 →
+            </Link>
+          </p>
+        ) : null}
+
         <p className="mt-3 text-sm leading-relaxed text-gray-600" data-testid="wizard-save-hint">
           {ONBOARDING_WIZARD_SAVE_HINT}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-gray-500" data-testid="wizard-completeness-vs-maturity-hint">
+          {PROFILE_COMPLETENESS_VS_MATURITY_HINT}
         </p>
 
         <div
@@ -78,7 +98,9 @@ export function OnboardingWizardShell({
                   {statusIcon}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-gray-800">{dim.title}</span>
+                  <span className="block font-medium text-gray-800">
+                    {formatProfileCompletenessDimensionLabel(dim.title)}
+                  </span>
                   <span className="text-[11px] text-gray-500">
                     {dim.score} 分 · {statusLabel}
                   </span>

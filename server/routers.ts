@@ -163,7 +163,7 @@ import { storagePut } from "./storage";
 import { buildInitialInclusionMonitoringRecord } from "./geoMonitoring";
 import { ensureInclusionMonitoringRecordForPublishRecord } from "./publishRecordMonitoring";
 import { probePublishLinkAccessibility } from "./publishLinkAccessibility";
-import { createT0RoundWithQuestions, startT0Execution } from "./geoT0Executor";
+import { createT0RoundWithQuestions, ensureT0ExecutionContinues, startT0Execution } from "./geoT0Executor";
 import { getQuestionPoolTestSummary, startQuestionPoolTest } from "./questionPoolTestExecutor";
 import { buildRoundComparison } from "@shared/testRoundComparison";
 import {
@@ -4422,6 +4422,10 @@ ${article.markdownContent}`,
         const sanitized = sanitizeTestRoundRow(round);
         if (!sanitized) {
           throw new TRPCError({ code: "NOT_FOUND", message: "检测轮次数据无效" });
+        }
+        if (sanitized.status === "running" && sanitized.roundType === "T0_BASELINE") {
+          const db = await requireDb();
+          ensureT0ExecutionContinues(db, input.id);
         }
         return sanitized;
       }),

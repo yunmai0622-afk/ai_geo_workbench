@@ -683,6 +683,7 @@ export default function AssetCenterPage() {
             stepComplete={stepComplete}
             completionScore={completionScore}
             dimensionScores={dimensionScores}
+            projectId={currentProjectId}
             onStepSelect={step => setCurrentStep(Math.min(8, Math.max(1, step)))}
           >
             <WizardStepHeader meta={stepMeta} />

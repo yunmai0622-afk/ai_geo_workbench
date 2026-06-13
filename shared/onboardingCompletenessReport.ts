@@ -19,6 +19,24 @@ import {
 import { parseGeoGoalNotesPayload, type QuestionGuideExamples } from "./onboardingWizardGeoGoalNotes";
 import { ONBOARDING_WIZARD_STEPS } from "./onboardingWizardSteps";
 
+/** 建档向导 checklist 维度标签前缀，与 AI 品牌成熟度 6 维评分区分 */
+export const PROFILE_COMPLETENESS_DIMENSION_LABEL_PREFIX = "资料-";
+
+export function formatProfileCompletenessDimensionLabel(title: string): string {
+  const trimmed = title.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.startsWith(PROFILE_COMPLETENESS_DIMENSION_LABEL_PREFIX)) return trimmed;
+  return `${PROFILE_COMPLETENESS_DIMENSION_LABEL_PREFIX}${trimmed}`;
+}
+
+/** 建档完整度 checklist 旁说明：与成熟度评分是不同维度 */
+export const PROFILE_COMPLETENESS_VS_MATURITY_HINT =
+  "这里衡量的是资料填写情况，AI 是否真正理解和推荐你，见「AI 品牌成熟度」";
+
+/** 成熟度总览说明：与建档资料完整度区分 */
+export const MATURITY_VS_PROFILE_COMPLETENESS_HINT =
+  "此评分基于 AI 实际表现和公开数据质量，与建档资料填写完整度是两个不同维度";
+
 export type CompletenessDimensionStatus = "complete" | "partial" | "empty";
 
 export type CompletenessDimensionBase = {

@@ -26,6 +26,95 @@ import { syncCompetitorAiMentionCounts } from "./competitorAnalysis";
 import { emitT0CompleteNotification } from "./systemNotifications";
 import { applyT0QuestionGapTagsForRound } from "./t0QuestionGapTags";
 
+const activeT0Executions = new Set<string>();
+
+function buildT0RunTaskKey(questionId: number, platform: string, runIndex: number): string {
+  return `${questionId}:${platform}:${runIndex}`;
+}
+
+async function loadCompletedT0TaskKeys(db: DbConn, roundId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({
+      questionId: aiTestRuns.questionId,
+      platform: aiTestRuns.platform,
+      runIndex: aiTestRuns.runIndex,
+    })
+    .from(aiTestRuns)
+    .where(eq(aiTestRuns.roundId, roundId));
+  return new Set(rows.map(row => buildT0RunTaskKey(row.questionId, row.platform, row.runIndex)));
+}
+
+async function finalizeT0RoundIfComplete(
+  db: DbConn,
+  round: TestRound,
+  roundId: string,
+  state: Pick<StartT0ExecutionSuccess, "completedRuns" | "failedRuns" | "failures">,
+  existingCompletedCount: number,
+): Promise<StartT0ExecutionSuccess | null> {
+  const boundRows = await db
+    .select({ questionId: roundQuestions.questionId })
+    .from(roundQuestions)
+    .where(eq(roundQuestions.roundId, roundId));
+  const boundQuestionIds = boundRows.map(row => row.questionId);
+  const platforms = round.platforms ?? [];
+  const runsPerQuestion = round.runsPerQuestion ?? 3;
+  const expectedTotal = boundQuestionIds.length * runsPerQuestion * platforms.length;
+  const totalCompleted = existingCompletedCount + state.completedRuns;
+  if (expectedTotal <= 0 || totalCompleted < expectedTotal) {
+    return null;
+  }
+
+  const finishedAt = new Date();
+  const finalStatus = totalCompleted > 0 ? "completed" : "failed";
+  await db
+    .update(testRounds)
+    .set({ status: finalStatus, finishedAt })
+    .where(eq(testRounds.id, roundId));
+
+  if (finalStatus === "completed") {
+    try {
+      await syncCompetitorAiMentionCounts(db, round.projectId);
+    } catch (err) {
+      console.warn("[t0-execution] competitor mention sync failed", roundId, err);
+    }
+    try {
+      await applyT0QuestionGapTagsForRound(db, round.projectId, roundId);
+    } catch (err) {
+      console.warn("[t0-execution] question gap tag apply failed", roundId, err);
+    }
+    void emitT0CompleteNotification(db, round.projectId, round.roundName).catch(err =>
+      console.warn("[notifications] T0 failed", roundId, err),
+    );
+  }
+
+  return {
+    roundId,
+    completedRuns: totalCompleted,
+    failedRuns: state.failedRuns,
+    failures: state.failures,
+  };
+}
+
+/** 若轮次处于 running 且后台 worker 未在执行，则恢复/继续 T0 检测（幂等，可安全在轮询时调用） */
+export function ensureT0ExecutionContinues(db: DbConn, roundId: string): void {
+  if (activeT0Executions.has(roundId)) return;
+
+  void (async () => {
+    const roundRows = await db.select().from(testRounds).where(eq(testRounds.id, roundId)).limit(1);
+    const round = roundRows[0];
+    if (!round || round.roundType !== "T0_BASELINE" || round.status !== "running") return;
+
+    activeT0Executions.add(roundId);
+    try {
+      await runT0ExecutionBackground(db, roundId);
+    } catch (err) {
+      console.error("[t0-execution] background failed", roundId, err);
+    } finally {
+      activeT0Executions.delete(roundId);
+    }
+  })();
+}
+
 export type T0RunTask = {
   questionId: number;
   platform: string;
@@ -337,12 +426,24 @@ export async function runT0ExecutionBackground(
   const platforms = round.platforms ?? [];
   const runsPerQuestion = round.runsPerQuestion ?? 3;
   const state = { completedRuns: 0, failedRuns: 0, failures: [] as StartT0ExecutionSuccess["failures"] };
+  const completedTaskKeys = await loadCompletedT0TaskKeys(db, roundId);
+  const existingCompletedCount = completedTaskKeys.size;
+
+  const earlyFinish = await finalizeT0RoundIfComplete(db, round, roundId, state, existingCompletedCount);
+  if (earlyFinish) {
+    return earlyFinish;
+  }
 
   try {
     for (const questionId of boundQuestionIds) {
       for (let runIndex = 1; runIndex <= runsPerQuestion; runIndex += 1) {
+        const pendingPlatforms = platforms.filter(
+          platform => !completedTaskKeys.has(buildT0RunTaskKey(questionId, platform, runIndex)),
+        );
+        if (pendingPlatforms.length === 0) continue;
+
         const platformResults = await Promise.allSettled(
-          platforms.map(platform =>
+          pendingPlatforms.map(platform =>
             executeT0RunWithTimeout(db, {
               projectId: round.projectId,
               roundId,
@@ -353,8 +454,8 @@ export async function runT0ExecutionBackground(
           ),
         );
 
-        for (let i = 0; i < platforms.length; i += 1) {
-          const platform = platforms[i]!;
+        for (let i = 0; i < pendingPlatforms.length; i += 1) {
+          const platform = pendingPlatforms[i]!;
           const task: T0RunTask = { questionId, platform, runIndex };
           const settled = platformResults[i]!;
           if (settled.status === "rejected") {
@@ -363,14 +464,28 @@ export async function runT0ExecutionBackground(
             recordT0RunOutcome({ ok: false, error: message }, task, state);
           } else {
             recordT0RunOutcome(settled.value, task, state);
+            if (settled.value.ok) {
+              completedTaskKeys.add(buildT0RunTaskKey(questionId, platform, runIndex));
+            }
           }
         }
       }
     }
 
+    const finished = await finalizeT0RoundIfComplete(
+      db,
+      round,
+      roundId,
+      state,
+      existingCompletedCount,
+    );
+    if (finished) {
+      return finished;
+    }
+
     const finishedAt = new Date();
-    const finalStatus =
-      state.failedRuns > 0 && state.completedRuns === 0 ? "failed" : "completed";
+    const totalCompleted = existingCompletedCount + state.completedRuns;
+    const finalStatus = state.failedRuns > 0 && totalCompleted === 0 ? "failed" : "completed";
     await db
       .update(testRounds)
       .set({ status: finalStatus, finishedAt })
@@ -387,12 +502,14 @@ export async function runT0ExecutionBackground(
       } catch (err) {
         console.warn("[t0-execution] question gap tag apply failed", roundId, err);
       }
-      void emitT0CompleteNotification(db, round.projectId, round.roundName).catch(err => console.warn("[notifications] T0 failed", roundId, err));
+      void emitT0CompleteNotification(db, round.projectId, round.roundName).catch(err =>
+        console.warn("[notifications] T0 failed", roundId, err),
+      );
     }
 
     return {
       roundId,
-      completedRuns: state.completedRuns,
+      completedRuns: totalCompleted,
       failedRuns: state.failedRuns,
       failures: state.failures,
     };
@@ -419,12 +536,18 @@ export async function startT0Execution(db: DbConn, roundId: string): Promise<Sta
       ? Number((lockResult as { affectedRows: number }).affectedRows)
       : 0;
   if (affectedRows === 0) {
+    const roundRows = await db
+      .select({ status: testRounds.status })
+      .from(testRounds)
+      .where(eq(testRounds.id, roundId))
+      .limit(1);
+    if (roundRows[0]?.status === "running") {
+      ensureT0ExecutionContinues(db, roundId);
+      return { roundId, status: "running" };
+    }
     return { error: "ROUND_ALREADY_STARTED" };
   }
 
-  void runT0ExecutionBackground(db, roundId).catch(err => {
-    console.error("[t0-execution] background failed", roundId, err);
-  });
-
+  ensureT0ExecutionContinues(db, roundId);
   return { roundId, status: "running" };
 }

@@ -18,6 +18,7 @@ import {
   resolveWeakestDimensionAction,
 } from "@shared/maturityDetailDisplay";
 import { GEO_MATURITY_DIMENSION_META } from "@shared/geoMaturityScoring";
+import { MATURITY_VS_PROFILE_COMPLETENESS_HINT } from "@shared/onboardingCompletenessReport";
 import {
   ArrowRight,
   ChevronDown,
@@ -133,7 +134,13 @@ export default function MaturityDetailPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium text-blue-600">成熟度总分</p>
+                  <p
+                    className="text-xs leading-relaxed text-gray-500"
+                    data-testid="maturity-vs-profile-completeness-hint"
+                  >
+                    {MATURITY_VS_PROFILE_COMPLETENESS_HINT}
+                  </p>
+                  <p className="mt-3 text-sm font-medium text-blue-600">成熟度总分</p>
                   <p className="mt-1 text-5xl font-bold tabular-nums text-blue-700" data-testid="maturity-total-score">
                     {isCalculating ? "计算中…" : report ? report.totalScore : "—"}
                   </p>

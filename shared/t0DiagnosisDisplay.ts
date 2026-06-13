@@ -3,6 +3,10 @@ import { aggregateT0AiTestRunMetrics, type AiTestRunMetricRow } from "./t0AiTest
 
 export const T0_DEFAULT_PLATFORMS = ["doubao", "deepseek", "kimi"] as const;
 
+/** AI 现状检测进行中提示：大量平台调用可能耗时较长 */
+export const T0_DETECTION_LONG_RUNNING_HINT =
+  "检测涉及大量 AI 平台调用，完整检测可能需要数小时，请耐心等待或稍后刷新查看进度。";
+
 /** AI 实测诊断页可选引擎（AI 现状检测 / 平台多选） */
 export const T0_AI_ENGINE_OPTIONS = [
   { id: "doubao", label: "豆包" },
