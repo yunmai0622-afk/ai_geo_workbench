@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { geoArticles } from "../drizzle/schema";
+import { syncMonthlyPlanOnArticlePublished } from "./monthlyPlanSync";
 import type { requireDbConn } from "./projectPlatformAccounts";
 
 type DbConn = Awaited<ReturnType<typeof requireDbConn>>;
@@ -20,4 +21,16 @@ export async function markGeoArticlePublishedAt(
       ...(publicPath ? { publicPath } : {}),
     })
     .where(eq(geoArticles.id, articleId));
+
+  const articleRows = await db
+    .select({ projectId: geoArticles.projectId })
+    .from(geoArticles)
+    .where(eq(geoArticles.id, articleId))
+    .limit(1);
+  const projectId = articleRows[0]?.projectId;
+  if (projectId) {
+    await syncMonthlyPlanOnArticlePublished(projectId, articleId).catch(err => {
+      console.error("[monthlyPlan] sync on publish failed", { projectId, articleId, err });
+    });
+  }
 }

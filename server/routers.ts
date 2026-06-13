@@ -51,6 +51,7 @@ import { brandSourceGraphRouter } from "./brandSourceGraphRouter";
 import { discoveryRouter } from "./discoveryRouter";
 import { trustEvidenceRouter } from "./trustEvidenceRouter";
 import { geoMaturityRouter } from "./geoMaturityRouter";
+import { geoMonthlyPlanRouter } from "./geoMonthlyPlanRouter";
 import { feedbackLoopRouter } from "./feedbackLoopRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
@@ -137,6 +138,7 @@ import { generateT0QuestionBank } from "./geoQuestionBank";
 import { runGeoArticleQualityCheckFlow } from "./geoArticleQualityCheckFlow";
 import { appendArticleLifecycleEvent, getArticleLifecycleTimeline } from "./articleLifecycleService";
 import { markGeoArticlePublishedAt } from "./geoArticlePublishState";
+import { syncMonthlyPlanOnProfileSaved } from "./monthlyPlanSync";
 import {
   enrichArticlesWithGapLink,
   loadLinkedQuestionTextForArticle,
@@ -989,6 +991,9 @@ const geoAssetRouter = router({
           coreSellingPoints: coreSellingPoints || undefined,
         })
         .where(eq(projects.id, input.projectId));
+      await syncMonthlyPlanOnProfileSaved(input.projectId).catch(err => {
+        console.error("[monthlyPlan] sync on profile save failed", { projectId: input.projectId, err });
+      });
       return {
         success: true,
         id: profileId,
@@ -4843,6 +4848,8 @@ ${article.markdownContent}`,
   trustEvidence: trustEvidenceRouter,
 
   maturity: geoMaturityRouter,
+
+  monthlyPlan: geoMonthlyPlanRouter,
 
   feedbackLoop: feedbackLoopRouter,
 

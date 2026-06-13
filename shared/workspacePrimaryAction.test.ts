@@ -56,6 +56,29 @@ describe("resolveWorkspaceStagePrimaryAction", () => {
     expect(action?.ctaPath).toBe("/content-publishing");
   });
 
+  it("规则3b：有 active 月度计划时优先指向本月优化计划", () => {
+    const action = resolveWorkspaceStagePrimaryAction({
+      ...base,
+      articleCount: 0,
+      pendingPublishContentCount: 0,
+      monthlyPlanStage: "executing",
+    });
+    expect(action?.stageHeadline).toBe("执行本月优化计划");
+    expect(action?.ctaPath).toBe("/monthly-plan");
+  });
+
+  it("规则3c：成熟度已计算但无 active plan 时引导制定本月计划", () => {
+    const action = resolveWorkspaceStagePrimaryAction({
+      ...base,
+      articleCount: 0,
+      pendingPublishContentCount: 0,
+      publishRecordCount: 1,
+      monthlyPlanStage: "none",
+    });
+    expect(action?.ctaLabel).toBe("生成本月优化计划");
+    expect(action?.ctaPath).toBe("/monthly-plan");
+  });
+
   it("T0 未完成时不应因已有文章误显示发布阶段", () => {
     const action = resolveWorkspaceStagePrimaryAction({
       ...base,

@@ -39,6 +39,7 @@ import {
   Library,
   LineChart,
   Gauge,
+  ListChecks,
   Network,
   ShieldCheck,
   LogOut,
@@ -106,6 +107,13 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "查看 6 维成熟度评分与优化建议",
         path: "/maturity",
         aliases: ["/maturity"],
+      },
+      {
+        icon: ListChecks,
+        label: "本月优化计划",
+        desc: "把成熟度短板转化为本月可执行任务",
+        path: "/monthly-plan",
+        aliases: ["/monthly-plan"],
       },
       {
         icon: FileText,

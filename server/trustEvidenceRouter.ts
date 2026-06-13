@@ -9,6 +9,7 @@ import {
   type TrustEvidenceType,
 } from "@shared/trustEvidence";
 import { getDb } from "./db";
+import { syncMonthlyPlanOnTrustOrSourceChanged } from "./monthlyPlanSync";
 import { requireProjectAccess } from "./projectAccess";
 import { protectedProcedure, router } from "./_core/trpc";
 
@@ -126,6 +127,9 @@ export const trustEvidenceRouter = router({
         .$returningId();
       const id = inserted[0]?.id;
       if (!id) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "创建信任证据失败" });
+      await syncMonthlyPlanOnTrustOrSourceChanged(input.projectId).catch(err => {
+        console.error("[monthlyPlan] sync on trust evidence create failed", { projectId: input.projectId, err });
+      });
       return { success: true as const, id };
     }),
 
@@ -141,6 +145,9 @@ export const trustEvidenceRouter = router({
         .update(trustEvidenceItems)
         .set(input.data)
         .where(and(eq(trustEvidenceItems.id, input.id), eq(trustEvidenceItems.projectId, projectId)));
+      await syncMonthlyPlanOnTrustOrSourceChanged(projectId).catch(err => {
+        console.error("[monthlyPlan] sync on trust evidence update failed", { projectId, err });
+      });
       return { success: true as const, id: input.id };
     }),
 

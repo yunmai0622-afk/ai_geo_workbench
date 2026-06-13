@@ -305,6 +305,77 @@ export const geoMaturityScores = mysqlTable(
   }),
 );
 
+export const monthlyOptimizationPlanStatusEnum = mysqlEnum("monthlyOptimizationPlanStatus", [
+  "active",
+  "completed",
+]);
+
+export const monthlyOptimizationTaskTypeEnum = mysqlEnum("monthlyOptimizationTaskType", [
+  "content_generation",
+  "source_discovery",
+  "evidence_addition",
+  "profile_completion",
+]);
+
+export const monthlyOptimizationTaskStatusEnum = mysqlEnum("monthlyOptimizationTaskStatus", [
+  "pending",
+  "in_progress",
+  "completed",
+]);
+
+export const monthlyOptimizationPlans = mysqlTable(
+  "monthly_optimization_plans",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    roundNumber: int("roundNumber").default(1).notNull(),
+    status: monthlyOptimizationPlanStatusEnum.default("active").notNull(),
+    baselineMaturityScore: int("baselineMaturityScore").notNull(),
+    baselineDimensionScores: json("baselineDimensionScores")
+      .$type<Record<string, number>>()
+      .notNull(),
+    generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+    retestScheduledAt: timestamp("retestScheduledAt"),
+    retestCompletedAt: timestamp("retestCompletedAt"),
+    resultMaturityScore: int("resultMaturityScore"),
+    resultDimensionScores: json("resultDimensionScores").$type<Record<string, number>>(),
+    completedAt: timestamp("completedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    projectStatusIdx: index("monthly_optimization_plans_project_status_idx").on(
+      table.projectId,
+      table.status,
+    ),
+  }),
+);
+
+export const monthlyOptimizationTasks = mysqlTable(
+  "monthly_optimization_tasks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    planId: int("planId").notNull(),
+    projectId: int("projectId").notNull(),
+    taskType: monthlyOptimizationTaskTypeEnum.notNull(),
+    targetDimension: varchar("targetDimension", { length: 64 }).notNull(),
+    relatedQuestionId: int("relatedQuestionId"),
+    title: varchar("title", { length: 255 }).notNull(),
+    reason: text("reason").notNull(),
+    status: monthlyOptimizationTaskStatusEnum.default("pending").notNull(),
+    linkedEntityId: int("linkedEntityId"),
+    actionUrl: varchar("actionUrl", { length: 500 }).notNull(),
+    metadata: json("metadata").$type<Record<string, unknown>>(),
+    completedAt: timestamp("completedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    planIdx: index("monthly_optimization_tasks_plan_idx").on(table.planId),
+    projectIdx: index("monthly_optimization_tasks_project_idx").on(table.projectId),
+  }),
+);
+
 export const optimizationTasks = mysqlTable("optimization_tasks", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
@@ -1043,6 +1114,10 @@ export type GeoScore = typeof geoScores.$inferSelect;
 export type InsertGeoScore = typeof geoScores.$inferInsert;
 export type GeoMaturityScore = typeof geoMaturityScores.$inferSelect;
 export type InsertGeoMaturityScore = typeof geoMaturityScores.$inferInsert;
+export type MonthlyOptimizationPlan = typeof monthlyOptimizationPlans.$inferSelect;
+export type InsertMonthlyOptimizationPlan = typeof monthlyOptimizationPlans.$inferInsert;
+export type MonthlyOptimizationTask = typeof monthlyOptimizationTasks.$inferSelect;
+export type InsertMonthlyOptimizationTask = typeof monthlyOptimizationTasks.$inferInsert;
 export type OptimizationTask = typeof optimizationTasks.$inferSelect;
 export type InsertOptimizationTask = typeof optimizationTasks.$inferInsert;
 export type QuestionTemplate = typeof questionTemplates.$inferSelect;

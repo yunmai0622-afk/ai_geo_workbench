@@ -730,6 +730,15 @@ export default function WeeklyContentPage() {
     entryContext.pendingContentTab,
   ]);
 
+  const monthlyPlanTaskQuery = trpc.geo.monthlyPlan.findTaskForArticle.useQuery(
+    {
+      projectId: selectedProjectId!,
+      questionId: entryContext.questionId ?? undefined,
+      articleId: entryContext.articleId ?? undefined,
+    },
+    { enabled: Boolean(selectedProjectId) && Boolean(entryContext.questionId || entryContext.articleId) },
+  );
+
   useEffect(() => {
     if (t0GapDeepLinkHandledRef.current) return;
     const params = new URLSearchParams(getSearchFromLocation(location));
@@ -3302,6 +3311,7 @@ export default function WeeklyContentPage() {
               linkedQuestion={geoContentTaskSource.linkedQuestion}
               maturityGap={geoContentTaskSource.geoGapSummary}
               targetImprovementMetric={geoContentTaskSource.recommendFill || geoContentTaskSource.taskGoal}
+              monthlyPlanLabel={monthlyPlanTaskQuery.data?.label ?? null}
               recommendedPlatforms={recommendedPlatforms}
               taskOptions={contentTaskOptions}
               selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}

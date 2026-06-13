@@ -45,6 +45,7 @@ import LegacyAssetProgressRedirect from "./components/LegacyAssetProgressRedirec
 import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
 import MaturityDetailPage from "./pages/MaturityDetailPage";
+import MonthlyPlanPage from "./pages/MonthlyPlanPage";
 import EffectiveActionsPage from "./pages/EffectiveActionsPage";
 import QuestionsLibraryPage from "./pages/QuestionsLibraryPage";
 import SourceGraphPage from "./pages/SourceGraphPage";
@@ -90,6 +91,7 @@ function PrivateRoutes() {
         <Route path="/knowledge" component={KnowledgePage} />
         <Route path="/workspace" component={EnterpriseWorkspacePage} />
         <Route path="/maturity" component={MaturityDetailPage} />
+        <Route path="/monthly-plan" component={MonthlyPlanPage} />
         <Route path="/">
           <Redirect to="/clients" />
         </Route>

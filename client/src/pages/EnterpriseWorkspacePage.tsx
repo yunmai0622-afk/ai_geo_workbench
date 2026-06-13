@@ -93,6 +93,10 @@ export default function EnterpriseWorkspacePage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
+  const monthlyPlanQuery = trpc.geo.monthlyPlan.getCurrent.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const calculateMaturityMutation = trpc.geo.maturity.calculateAndSave.useMutation({
     onSuccess: () => {
       void maturityReportQuery.refetch();
@@ -135,6 +139,12 @@ export default function EnterpriseWorkspacePage() {
   );
   const stagePrimaryAction = useMemo(() => {
     if (!metrics) return null;
+    const maturityScore = maturityReportQuery.data?.totalScore ?? null;
+    const monthlyPlanStage =
+      maturityScore != null && maturityScore > 0
+        ? (monthlyPlanQuery.data?.planPhase ??
+          (monthlyPlanQuery.data === null ? "none" : null))
+        : null;
     return resolveWorkspaceStagePrimaryAction({
       hasCompletedT0Baseline: metrics.hasCompletedT0Baseline,
       articleCount: metrics.articleCount,
@@ -143,10 +153,11 @@ export default function EnterpriseWorkspacePage() {
       publishTaskCount: metrics.publishTaskCount,
       lowQualityArticleCount: metrics.lowQualityArticleCount,
       rewriteOpenCount: metrics.rewriteOpenCount,
-      maturityTotalScore: maturityReportQuery.data?.totalScore ?? null,
+      maturityTotalScore: maturityScore,
       pendingReviewCount: metrics.pendingReviewCount,
+      monthlyPlanStage,
     });
-  }, [metrics, maturityReportQuery.data?.totalScore]);
+  }, [metrics, maturityReportQuery.data?.totalScore, monthlyPlanQuery.data]);
   const deliveryConclusion = useMemo(() => {
     if (stagePrimaryAction?.reason) return stagePrimaryAction.reason;
     if (!deliveryStage) return null;

@@ -16,6 +16,7 @@ import {
   type BrandSourceRecordRow,
 } from "@shared/brandSourceGraph";
 import { getDb } from "./db";
+import { syncMonthlyPlanOnTrustOrSourceChanged } from "./monthlyPlanSync";
 import { requireProjectAccess } from "./projectAccess";
 import { protectedProcedure, router } from "./_core/trpc";
 import {
@@ -139,6 +140,9 @@ export const brandSourceGraphRouter = router({
       const id = inserted[0]?.id;
       if (!id) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "创建信源失败" });
       await syncSourceGraphDerivedData(db, input.projectId);
+      await syncMonthlyPlanOnTrustOrSourceChanged(input.projectId).catch(err => {
+        console.error("[monthlyPlan] sync on brand source create failed", { projectId: input.projectId, err });
+      });
       return { success: true as const, id };
     }),
 
