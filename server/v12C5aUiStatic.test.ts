@@ -22,7 +22,7 @@ describe("C5-A global product UI overhaul", () => {
     expect(layout).toContain("内容生产工作台");
     expect(layout).toContain("平台适配发布");
     expect(layout).toContain("收录监测");
-    expect(layout).toContain("交付报告");
+    expect(layout).toContain("AI 品牌成熟度月报");
     expect(layout).toContain("使用指南");
   });
 
@@ -35,7 +35,7 @@ describe("C5-A global product UI overhaul", () => {
     expect(pages).toContain("AiPageShell");
     expect(pages).toContain("AI 搜索增长总览");
     expect(read("client/src/components/LegacyAssetProgressRedirect.tsx")).toContain('buildProjectUrl("/workspace"');
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("内容生产与发布准备");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("内容任务推进");
   });
 
   it("report cover uses enhanced delivery styling", () => {

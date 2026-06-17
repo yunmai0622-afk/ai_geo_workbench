@@ -26,7 +26,7 @@ describe("GEO-V1.1-Remove-AssetProgress-Route-P0", () => {
       "内容生产工作台",
       "平台适配发布",
       "收录监测",
-      "交付报告",
+      "AI 品牌成熟度月报",
       "使用指南",
     ]) {
       expect(layout).toContain(`label: "${allowed}"`);

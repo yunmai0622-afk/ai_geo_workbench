@@ -10,11 +10,10 @@ function read(rel: string) {
 }
 
 describe("GEO-V1.1-Data-Export static", () => {
-  it("delivery report page exposes CSV export control", () => {
-    const page = read("client/src/pages/DeliveryReportsCenterPage.tsx");
-    expect(page).toContain('data-testid="delivery-report-export-csv"');
-    expect(page).toContain("导出 CSV");
-    expect(page).toContain("downloadDeliveryReportCsv");
+  it("legacy delivery report stack still exposes CSV export helpers", () => {
+    const legacy = read("client/src/lib/geoDataExportDownload.ts") + read("shared/geoDataExport.ts");
+    expect(legacy).toContain("downloadDeliveryReportCsv");
+    expect(legacy).toContain("buildGeoReportCsvFilename");
   });
 
   it("publish center exposes publish records CSV export", () => {
@@ -41,11 +40,10 @@ describe("GEO-V1.1-Data-Export static", () => {
     expect(shared).toContain("buildT0ResultsCsvContent");
   });
 
-  it("delivery report and settings expose backup export hints", () => {
+  it("monthly report page and settings expose data guidance", () => {
     const delivery = read("client/src/pages/DeliveryReportsCenterPage.tsx");
-    expect(delivery).toContain('data-testid="delivery-report-export-backup-hint"');
-    expect(delivery).toContain("建议定期导出报告数据备份");
-    expect(delivery).toContain("导出CSV");
+    expect(delivery).toContain("monthly-report-history");
+    expect(delivery).toContain("geo.monthlyPlan.getReport");
 
     const settings = read("client/src/pages/SettingsPage.tsx");
     expect(settings).toContain('data-testid="settings-data-export-section"');

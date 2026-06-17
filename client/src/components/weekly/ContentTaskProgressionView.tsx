@@ -288,6 +288,7 @@ export function MotherArticleSummaryCard({
    ───────────────────────────────────────────────────────────────────────────── */
 
 import type { PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
+import type { WeeklyPlatformKey } from "@shared/articlePublishPlatform";
 import {
   WEEKLY_CONTENT_TASK_STATUS_BADGE_CLASS,
   weeklyContentTaskStatusLabel,
@@ -297,11 +298,11 @@ type PlatformPlanProps = {
   rows: PlatformBoardRow[];
   recommendedPlatforms: RecommendedPlatformView[];
   boardBusy?: boolean;
-  generatingPlatformKey?: string | null;
-  onGenerate: (key: string) => void;
-  onSaveAndQc: (key: string) => void;
-  onEnqueue: (key: string) => void;
-  onView: (key: string) => void;
+  generatingPlatformKey?: WeeklyPlatformKey | null;
+  onGenerate: (key: WeeklyPlatformKey) => void;
+  onSaveAndQc: (key: WeeklyPlatformKey) => void;
+  onEnqueue: (key: WeeklyPlatformKey) => void;
+  onView: (key: WeeklyPlatformKey) => void;
 };
 
 export function PlatformPublishPlan({

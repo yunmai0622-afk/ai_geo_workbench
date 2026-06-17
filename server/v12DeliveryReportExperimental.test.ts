@@ -9,7 +9,7 @@ describe("GEO-V1.1 delivery report experimental upgrade", () => {
   const page = read("client/src/pages/DeliveryReportsCenterPage.tsx");
   const productBody = read("client/src/components/delivery/DeliveryReportProductBody.tsx");
   const shared = read("shared/deliveryReportExperimentalDisplay.ts");
-  const reportUi = page + productBody;
+  const legacyReportUi = productBody;
 
   it("defines experimental report modules in shared display", () => {
     expect(shared).toContain("DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER");
@@ -18,26 +18,21 @@ describe("GEO-V1.1 delivery report experimental upgrade", () => {
     expect(shared).toContain("不承诺单次优化必然带来推荐率提升");
   });
 
-  it("embeds RetestComparisonPanel and experimental sections in report tab", () => {
+  it("keeps experimental sections in legacy delivery product body", () => {
     for (const text of [
-      "delivery-report-detection-scope",
-      "本期检测范围",
-      "delivery-report-t0-baseline",
-      "优化前基线结果摘要",
-      "delivery-report-t0t1-comparison",
-      "RetestComparisonPanel",
-      "发布内容清单",
-      "delivery-report-uncertainty",
+      "delivery-report-geo-attribution",
+      "delivery-report-retest-stages",
+      "delivery-report-content-evidence",
       "DELIVERY_REPORT_UNCERTAINTY_DISCLAIMER",
     ]) {
-      expect(reportUi).toContain(text);
+      expect(legacyReportUi + shared).toContain(text);
     }
   });
 
-  it("keeps real PDF export for delivery report", () => {
-    expect(page).toContain("downloadDeliveryReportPdf");
-    expect(reportUi).toContain("delivery-report-export-pdf");
-    expect(reportUi).toContain("导出 PDF");
+  it("monthly report page focuses on plan-based sections", () => {
+    expect(page).toContain("monthly-report-summary");
+    expect(page).toContain("monthly-report-retest");
     expect(page).not.toContain("window.print()");
+    expect(read("client/src/lib/deliveryReportPdfExport.ts")).toContain("downloadDeliveryReportPdf");
   });
 });

@@ -53,7 +53,7 @@ for (const item of [
   '内容生产工作台',
   '平台适配发布',
   '收录监测',
-  '交付报告',
+  'AI 品牌成熟度月报',
   '使用指南',
 ]) {
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
@@ -195,39 +195,33 @@ for (const item of ['收录复测中心', '已发布内容监测表', 'T1状态'
 }
 const deliveryReportPage =
   read('client/src/pages/DeliveryReportsCenterPage.tsx') +
+  read('shared/monthlyReportView.ts') +
   read('client/src/lib/deliveryReportProductDisplay.ts') +
   read('client/src/components/delivery/DeliveryReportProductBody.tsx');
+const deliveryReportShareAdmin =
+  read('client/src/components/delivery/DeliveryReportShareRenewalReminderCard.tsx') +
+  read('shared/deliveryReportPublicShare.ts') +
+  read('server/routers.ts');
 const deliveryReportPages = deliveryReportPage + sources.customerView;
 for (const item of [
-  'GEO 增长交付报告',
+  'AI 品牌成熟度月报',
   'delivery-report-page',
-  '当前核心结论',
-  '本轮完成事项',
-  '发布内容清单',
-  '下一轮优化计划',
+  'monthly-report-summary',
+  'monthly-report-actions',
+  'monthly-report-next-month',
+  'monthly-report-history',
 ]) {
   assertContains('交付报告页', deliveryReportPage, item);
 }
-for (const item of ['不承诺保证收录、排名或 AI 推荐', '当前数据不足，完成发布后复测后将生成本轮 GEO 增长结论。']) {
+for (const item of ['不承诺保证收录、排名或 AI 推荐', '复测完成后自动生成']) {
   assertContains('交付报告页', deliveryReportPages, item);
 }
 assertContains('App 路由', sources.app, 'path="/delivery-reports/share/:projectId"');
 assertContains('App 路由', sources.app, 'path="/delivery-reports/public/:token"');
 assertContains('App 路由', sources.app, 'path="/delivery-reports/public/:token/evidence/:monitoringId/:resultIndex"');
-for (const item of ['复制客户报告链接', 'createShareLink', 'disableShareLink', 'regenerateShareLink', 'sharePath', 'delivery-report-share-fold']) {
-  assertContains('交付报告页', deliveryReportPage, item);
+for (const item of ['renewShareLink', 'shareExpiresAt', 'delivery-report-share-renewal-reminder']) {
+  assertContains('交付报告分享', deliveryReportShareAdmin, item);
 }
-assertContains('交付报告页', deliveryReportPage, '确定要禁用当前客户报告链接吗？');
-assertContains('交付报告页', deliveryReportPage, '确定要重新生成客户报告链接吗？');
-assertContains('交付报告页', deliveryReportPage, 'window.confirm');
-const copyToastLine =
-  deliveryReportPage.match(/toast\.success\([^)]*客户报告链接已复制[^)]*\)/)?.[0] ?? '';
-if (!copyToastLine) failures.push('交付报告页 缺少：复制链接成功 toast');
-for (const forbidden of ['shareToken', 'migration', 'rawAnswer']) {
-  assertNotContains('复制链接成功提示', copyToastLine, forbidden);
-}
-assertContains('交付报告页', deliveryReportPage, '生成分享链接');
-assertContains('交付报告页', deliveryReportPage, 'delivery-report-share-primary');
 assertContains('部署说明', read('HARNESS.md'), '0019_delivery_report_share_tokens');
 assertContains('部署说明', read('HARNESS.md'), 'pnpm db:push');
 assertContains('匿名分享文案', read('shared/deliveryReportPublicShare.ts'), '报告链接无效或已失效，请联系服务人员重新获取');

@@ -44,6 +44,7 @@ describe("GEO-V2.0-P1-A Monthly Optimization Plan", () => {
     expect(router).toContain("completeTask:");
     expect(router).toContain("triggerRetest:");
     expect(router).toContain("getComparison:");
+    expect(router).toContain("getReport:");
   });
 
   it("syncs monthly plan progress on publish and asset changes", () => {

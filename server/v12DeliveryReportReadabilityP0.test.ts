@@ -14,15 +14,13 @@ describe("GEO-V1.1 DeliveryReport Productized Readability P0", () => {
   const sharePage = read("client/src/pages/DeliveryReportSharePage.tsx");
   const shared = read("shared/deliveryReportReadability.ts");
 
-  it("internal page has boss summary on first screen", () => {
-    expect(page + productBody).toContain("delivery-report-boss-summary");
-    expect(page + productBody + shared).toContain("GEO 增长交付报告");
+  it("legacy product body has boss summary on first screen", () => {
+    expect(productBody).toContain("delivery-report-boss-summary");
+    expect(productBody + shared).toContain("GEO 增长交付报告");
   });
 
-  it("wires data completeness label in toolbar and checklist", () => {
+  it("wires data completeness label in legacy toolbar and checklist", () => {
     expect(shared).toContain("computeDeliveryDataCompleteness");
-    expect(page).toContain("computeDeliveryDataCompleteness");
-    expect(page).toContain("dataCompletenessLabel");
     expect(productBody).toContain("delivery-report-data-completeness");
   });
 
@@ -55,19 +53,18 @@ describe("GEO-V1.1 DeliveryReport Productized Readability P0", () => {
     expect(shared).not.toContain("mock");
   });
 
-  it("has geo attribution and next round plan modules", () => {
+  it("has geo attribution and next round plan modules in legacy body", () => {
     expect(productBody).toContain("delivery-report-geo-attribution");
     expect(productBody).toContain("delivery-report-next-round-plan");
   });
 
-  it("keeps PDF export and share link buttons", () => {
-    expect(page + productBody).toContain("delivery-report-export-pdf");
-    expect(page + productBody).toContain("复制客户分享链接");
-    expect(page).toContain("downloadDeliveryReportPdf");
+  it("monthly report page replaces center export with plan report query", () => {
+    expect(page).toContain("geo.monthlyPlan.getReport");
+    expect(page).toContain("monthly-report-title");
+    expect(productBody).toContain("delivery-report-export-pdf");
   });
 
-  it("internal checklist only on internal page", () => {
-    expect(page).toContain("DeliveryReportInternalChecklist");
+  it("internal checklist remains in legacy product body only", () => {
     expect(productBody).toContain("delivery-report-internal-checklist");
     expect(publicPage).not.toContain("DeliveryReportInternalChecklist");
   });

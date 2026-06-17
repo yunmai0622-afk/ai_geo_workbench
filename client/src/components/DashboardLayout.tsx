@@ -138,8 +138,8 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
       },
       {
         icon: FileBarChart2,
-        label: "交付报告",
-        desc: "生成客户可读的增长交付报告",
+        label: "AI 品牌成熟度月报",
+        desc: "记录本月优化执行动作与成效，续费评估依据",
         path: "/delivery-reports",
         aliases: ["/delivery-reports", "/reports"],
       },

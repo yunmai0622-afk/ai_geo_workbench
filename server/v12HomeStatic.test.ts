@@ -22,7 +22,7 @@ describe("V1.0 客户主路径静态回归", () => {
       "内容生产工作台",
       "平台适配发布",
       "收录监测",
-      "交付报告",
+      "AI 品牌成熟度月报",
     ]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }

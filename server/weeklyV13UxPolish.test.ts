@@ -22,19 +22,15 @@ describe("GEO-V1.3-Weekly-UX-Polish", () => {
   });
 
   it("顶部任务状态条", () => {
-    expect(weekly).toContain("WeeklyContentStatusBar");
-    expect(statusBar).toContain("weekly-content-status-bar");
-    expect(statusBar).toContain("当前阶段");
-    expect(statusBar).toContain("审核并生成平台内容");
-    expect(weekly).toContain("workspaceSummaryQuery");
-    expect(weekly).toContain("deriveClientProjectCardDisplay");
-    expect(weekly).toContain("CUSTOMER_STAGE_LABELS");
+    expect(weekly).toContain("TaskContextHero");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("task-progression-hero");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前优化问题");
+    expect(weekly).toContain("contentTaskViewQuery");
   });
 
   it("内容预览区折叠与展开全文", () => {
-    expect(weekly).toContain("WeeklyContentPreviewPanel");
-    expect(preview).toContain("min-w-0");
-    expect(preview).toContain("展开全文");
+    expect(weekly).toContain("MotherArticleSummaryCard");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("查看全文");
     expect(detailSheet).toContain("展开全文");
     expect(detailSheet).toContain("weekly-detail-full-body");
     expect(detailSheet).toContain("<details");

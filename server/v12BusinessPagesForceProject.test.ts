@@ -33,9 +33,9 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(weekly).not.toContain("projects[0]");
     expect(weekly).not.toContain("BusinessPageProjectHeader");
     expect(read("client/src/components/DashboardLayout.tsx")).toContain("EnterpriseProjectShell");
-    expect(weekly).toContain("内容生产与发布准备");
-    expect(weekly).toContain("生成该平台内容");
-    expect(weekly).not.toContain("生成内容资产");
+    expect(weekly).toContain("内容任务推进");
+    expect(weekly).toContain("TaskContextHero");
+    expect(weekly).toContain("PlatformPublishPlan");
     expect(weekly).not.toMatch(/批量生成/);
     expect(weekly).toContain("不支持一稿多发");
     expect(weekly).toMatch(/if \(!enabled && !projectsLoading\)/);
@@ -68,11 +68,12 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain("收录复测中心");
     const report =
       read("client/src/pages/DeliveryReportsCenterPage.tsx") +
-      read("client/src/lib/deliveryReportProductDisplay.ts");
-    expect(report).toContain("GEO 增长交付报告");
+      read("shared/monthlyReportView.ts");
+    expect(report).toContain("AI 品牌成熟度月报");
+    expect(report).toContain("geo.monthlyPlan.getReport");
     expect(v12 + report).toContain('buildProjectUrl("/content-publishing"');
     expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain('buildProjectUrl("/delivery-reports"');
-    expect(report).toContain('buildProjectUrl("/inclusion-monitoring"');
+    expect(report).not.toContain('buildProjectUrl("/inclusion-monitoring"');
   });
 
   it("进展看板只使用 activeProjectId", () => {

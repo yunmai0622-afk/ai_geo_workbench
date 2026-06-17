@@ -30,7 +30,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       "内容生产工作台",
       "平台适配发布",
       "收录监测",
-      "交付报告",
+      "AI 品牌成熟度月报",
       "使用指南",
     ]) {
       expect(layoutSource).toContain(`label: "${label}"`);
@@ -212,19 +212,21 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     }
   });
 
-  it("交付报告页为面向客户的分区结构并保留合规小字", () => {
+  it("交付报告页升级为 AI 品牌成熟度月报五屏结构", () => {
     const reportSource = readProjectFile("client/src/pages/DeliveryReportsCenterPage.tsx");
+    const monthlyShared = readProjectFile("shared/monthlyReportView.ts");
     const customerView = readProjectFile("client/src/components/DeliveryReportCustomerView.tsx");
     for (const text of [
-      "本轮完成事项",
-      "AI 平台表现",
-      "发布内容清单",
-      "收录与复测结果",
-      "当前问题",
-      "下一轮优化建议",
+      "monthly-report-summary",
+      "monthly-report-weaknesses",
+      "monthly-report-actions",
+      "monthly-report-next-month",
+      "monthly-report-history",
+      "生成下月优化计划",
     ]) {
       expect(reportSource).toContain(text);
     }
+    expect(monthlyShared).toContain("续费评估和下月计划的依据");
     expect(customerView).toContain("不承诺保证收录、排名或 AI 推荐");
     for (const text of ["AI 搜索可见度评分", "经营结论", "本轮新增 AI 搜索资产", "下一轮优化动作", "查看文章"]) {
       expect(customerView).toContain(text);

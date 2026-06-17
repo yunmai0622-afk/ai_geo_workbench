@@ -20,12 +20,12 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
 
   it("首屏任务总控卡与平台看板", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("内容生产与发布准备");
-    expect(weekly).toContain("WeeklyContentTaskControlCard");
+    expect(weekly).toContain("内容任务推进");
+    expect(weekly).toContain("TaskContextHero");
     expect(weekly).toContain("WeeklyPublishQueueStatusBlock");
     expect(queueBlock).toContain("去发布中心");
-    expect(taskCard).toContain("当前内容任务");
-    expect(weekly).toContain("PlatformContentBoard");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前优化问题");
+    expect(weekly).toContain("PlatformPublishPlan");
     expect(board).toContain("平台发布计划");
     expect(board).toContain("weekly-platform-status-");
   });
@@ -80,7 +80,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   });
 
   it("副标题与业务文案", () => {
-    expect(weekly).toContain("围绕 AI 推荐短板生成内容，审核后适配平台并加入发布队列");
+    expect(weekly).toContain("围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布");
     expect(auxiliary).not.toMatch(/Prompt 写入规则/);
   });
 });

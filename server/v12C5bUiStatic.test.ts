@@ -9,9 +9,10 @@ describe("C5-B content production page product UI", () => {
   const page = read("client/src/pages/WeeklyContentPage.tsx");
 
   it("uses platform production first screen", () => {
-    expect(page).toContain("内容生产与发布准备");
-    expect(page).toContain("PlatformContentBoard");
-    expect(read("client/src/components/weekly/PlatformContentBoard.tsx")).toContain("生成平台稿");
+    expect(page).toContain("内容任务推进");
+    expect(page).toContain("TaskContextHero");
+    expect(page).toContain("PlatformPublishPlan");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("生成平台稿");
     expect(page).not.toMatch(/AI 内容资产生产控制台|生成内容资产|ai-segmented/);
   });
 

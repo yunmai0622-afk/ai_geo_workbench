@@ -1,13 +1,15 @@
 /** 平台化内容生产页（/weekly）当前产品文案，供验收脚本共用 */
 
 export const WEEKLY_CONTENT_PAGE_LABELS = [
-  "内容生产与发布准备",
+  "内容任务推进",
   "weekly-platform-content-page",
   "去 AI 实测诊断",
-  "WeeklyPublishableContentList",
+  "TaskContextHero",
+  "PlatformPublishPlan",
 ];
 
 export const WEEKLY_CONTENT_PAGE_SOURCE_SEGMENT_MARKERS = [
+  "PlatformPublishPlan",
   "PlatformContentBoard",
   "WeeklyPublishableContentList",
 ];

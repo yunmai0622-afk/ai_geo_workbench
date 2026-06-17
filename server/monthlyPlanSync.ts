@@ -7,6 +7,8 @@ import {
   monthlyOptimizationTasks,
   trustEvidenceItems,
 } from "../drizzle/schema";
+import { isMonthlyPlanRetestReady } from "@shared/monthlyPlanGeneration";
+import { completeMonthlyPlanRetest } from "./monthlyPlanRetestCompletion";
 import { getDb } from "./db";
 
 const RETEST_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -57,6 +59,7 @@ export async function syncMonthlyPlanProgressForProject(projectId: number): Prom
   const pendingTasks = tasks.filter(t => t.status !== "completed");
   if (pendingTasks.length === 0) {
     await maybeScheduleRetest(db, plan.id, tasks);
+    await maybeAutoCompleteRetest(plan.id, tasks, true);
     return;
   }
 
@@ -117,6 +120,34 @@ export async function syncMonthlyPlanProgressForProject(projectId: number): Prom
     .from(monthlyOptimizationTasks)
     .where(eq(monthlyOptimizationTasks.planId, plan.id));
   await maybeScheduleRetest(db, plan.id, refreshedTasks, publishRows.length > 0);
+  await maybeAutoCompleteRetest(plan.id, refreshedTasks, publishRows.length > 0);
+}
+
+async function maybeAutoCompleteRetest(
+  planId: number,
+  tasks: Array<typeof monthlyOptimizationTasks.$inferSelect>,
+  hasPublishedContent: boolean,
+) {
+  const db = await getDb();
+  if (!db) return;
+
+  const planRows = await db
+    .select()
+    .from(monthlyOptimizationPlans)
+    .where(eq(monthlyOptimizationPlans.id, planId))
+    .limit(1);
+  const plan = planRows[0];
+  if (!plan || plan.status !== "active" || plan.retestCompletedAt) return;
+
+  const allCompleted = tasks.length > 0 && tasks.every(t => t.status === "completed");
+  if (!allCompleted || !hasPublishedContent || !plan.retestScheduledAt) return;
+  if (!isMonthlyPlanRetestReady({ retestScheduledAt: plan.retestScheduledAt })) return;
+
+  try {
+    await completeMonthlyPlanRetest(planId);
+  } catch {
+    // 复测自动完成失败时不阻断同步流程
+  }
 }
 
 async function maybeScheduleRetest(

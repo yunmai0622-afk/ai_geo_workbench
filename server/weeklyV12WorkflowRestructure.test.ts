@@ -17,11 +17,11 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
   const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
 
   it("weekly page title and three-screen structure", () => {
-    expect(weekly).toContain("内容生产与发布准备");
-    expect(weekly).toContain("WeeklyContentTaskControlCard");
+    expect(weekly).toContain("内容任务推进");
+    expect(weekly).toContain("TaskContextHero");
     expect(weekly).toContain("WeeklyPublishableContentList");
-    expect(weekly).toContain("PlatformContentBoard");
-    expect(taskCard).toContain("当前内容任务");
+    expect(weekly).toContain("PlatformPublishPlan");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前优化问题");
     expect(publishableList).toContain("待处理内容");
     expect(board).toContain("平台发布计划");
   });
@@ -77,9 +77,9 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
   });
 
   it("main work area appears before platform generation board", () => {
-    const publishableIdx = weekly.indexOf("WeeklyPublishableContentList");
-    const boardIdx = weekly.indexOf("<PlatformContentBoard");
-    expect(publishableIdx).toBeGreaterThan(-1);
-    expect(boardIdx).toBeGreaterThan(publishableIdx);
+    const heroIdx = weekly.indexOf("<TaskContextHero");
+    const boardIdx = weekly.indexOf("<PlatformPublishPlan");
+    expect(heroIdx).toBeGreaterThan(-1);
+    expect(boardIdx).toBeGreaterThan(heroIdx);
   });
 });

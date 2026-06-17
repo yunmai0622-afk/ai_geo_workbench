@@ -11,16 +11,10 @@ import {
   resolveTopWeakDimensions,
 } from "@shared/monthlyPlanGeneration";
 import {
-  buildMaturityReport,
-  calculateGeoMaturityScores,
   type GeoMaturityScores,
 } from "@shared/geoMaturityScoring";
 import {
-  aiTestRuns,
   brandSourceRecords,
-  customerCases,
-  enterpriseGeoProfiles,
-  entityConsistencyChecks,
   geoMaturityScores,
   monthlyOptimizationPlans,
   monthlyOptimizationTasks,
@@ -30,6 +24,8 @@ import {
 import { getDb } from "./db";
 import { requireProjectAccess } from "./projectAccess";
 import { protectedProcedure, router } from "./_core/trpc";
+import { loadMonthlyReportData } from "./monthlyReportData";
+import { completeMonthlyPlanRetest } from "./monthlyPlanRetestCompletion";
 import { syncMonthlyPlanProgressForProject } from "./monthlyPlanSync";
 
 async function requireDb() {
@@ -295,76 +291,30 @@ export const geoMonthlyPlanRouter = router({
       const plan = planRows[0];
       if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "月度计划不存在" });
       await requireProjectAccess(ctx, plan.projectId);
+      return completeMonthlyPlanRetest(plan.id);
+    }),
 
-      const [
-        profileRows,
-        entityCheckRows,
-        brandSourceRows,
-        questionRows,
-        trustEvidenceRows,
-        customerCaseRows,
-        aiTestRunRows,
-      ] = await Promise.all([
-        db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, plan.projectId)).limit(1),
-        db.select().from(entityConsistencyChecks).where(eq(entityConsistencyChecks.projectId, plan.projectId)),
-        db.select().from(brandSourceRecords).where(eq(brandSourceRecords.projectId, plan.projectId)),
-        db.select().from(questions).where(eq(questions.projectId, plan.projectId)),
-        db.select().from(trustEvidenceItems).where(eq(trustEvidenceItems.projectId, plan.projectId)),
-        db.select().from(customerCases).where(eq(customerCases.projectId, plan.projectId)),
-        db.select().from(aiTestRuns).where(eq(aiTestRuns.projectId, plan.projectId)),
-      ]);
-
-      const trustItems = trustEvidenceRows;
-      const scores = calculateGeoMaturityScores({
-        profile: profileRows[0] ?? null,
-        entityChecks: entityCheckRows,
-        brandSources: brandSourceRows,
-        questions: questionRows,
-        trustEvidence: {
-          verifiedCount: trustItems.filter(item => item.verificationStatus === "verified").length,
-          draftCount: trustItems.filter(item => item.verificationStatus === "draft").length,
-          rejectedCount: trustItems.filter(item => item.verificationStatus === "rejected").length,
-          totalTrustEvidenceCount: trustItems.length,
-          customerCaseCount: customerCaseRows.length,
-        },
-        aiTestRuns: aiTestRunRows,
-      });
-
-      const now = new Date();
-      await db.insert(geoMaturityScores).values({
-        projectId: plan.projectId,
-        totalScore: scores.totalScore,
-        brandIdentityScore: scores.brandIdentityScore,
-        categoryPositioningScore: scores.categoryPositioningScore,
-        questionCoverageScore: scores.questionCoverageScore,
-        sourceGraphScore: scores.sourceGraphScore,
-        trustEvidenceScore: scores.trustEvidenceScore,
-        aiTestPerformanceScore: scores.aiTestPerformanceScore,
-        calculationDetail: scores.calculationDetail,
-        calculatedAt: now,
-      });
-
-      const resultDimensionScores = buildBaselineDimensionScores(scores);
-      await db
-        .update(monthlyOptimizationPlans)
-        .set({
-          status: "completed",
-          retestCompletedAt: now,
-          completedAt: now,
-          resultMaturityScore: scores.totalScore,
-          resultDimensionScores,
-        })
-        .where(eq(monthlyOptimizationPlans.id, plan.id));
-
-      return {
-        report: buildMaturityReport({ scores, calculatedAt: now }),
-        comparison: buildMonthlyPlanComparison({
-          baselineMaturityScore: plan.baselineMaturityScore,
-          baselineDimensionScores: plan.baselineDimensionScores,
-          resultMaturityScore: scores.totalScore,
-          resultDimensionScores,
-        }),
-      };
+  getReport: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        planId: z.number().int().positive().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await requireProjectAccess(ctx, input.projectId);
+      await syncMonthlyPlanProgressForProject(input.projectId);
+      const latestMaturity = await loadLatestMaturityRow(input.projectId);
+      const dimensionScores = latestMaturity
+        ? buildBaselineDimensionScores(rowToMaturityScores(latestMaturity))
+        : null;
+      return loadMonthlyReportData(
+        input.projectId,
+        input.planId,
+        latestMaturity
+          ? { totalScore: latestMaturity.totalScore, dimensionScores: dimensionScores ?? {} }
+          : null,
+      );
     }),
 
   getComparison: protectedProcedure

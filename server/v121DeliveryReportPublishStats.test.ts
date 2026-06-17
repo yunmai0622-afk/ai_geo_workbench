@@ -16,16 +16,14 @@ describe("GEO-V1.1-Publish-Stats", () => {
     expect(router).toContain("publishTasks");
   });
 
-  it("delivery report page shows publish stats module", () => {
+  it("monthly report page shows plan execution actions instead of legacy publish stats", () => {
     const page = read("client/src/pages/DeliveryReportsCenterPage.tsx");
     for (const text of [
-      "delivery-report-publish-stats",
-      "发布统计",
-      "总发布次数",
-      "发布成功率",
-      "本周发布数量",
-      "delivery-report-publish-stats-platforms",
-      "publishTasks.projectStats",
+      "monthly-report-actions",
+      "内容发布",
+      "信源补充",
+      "证据补充",
+      "geo.monthlyPlan.getReport",
     ]) {
       expect(page).toContain(text);
     }

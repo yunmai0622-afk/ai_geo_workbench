@@ -32,13 +32,15 @@ describe("C3-D global AI product UI", () => {
       read("client/src/pages/V12FlowPages.tsx"),
       read("client/src/pages/WeeklyContentPage.tsx"),
       read("client/src/pages/EnterpriseWorkspacePage.tsx"),
+      read("client/src/pages/DeliveryReportsCenterPage.tsx"),
+      read("shared/monthlyReportView.ts"),
     ].join("\n");
     for (const text of [
       "AI 搜索增长总览",
       "内容诊断",
-      "内容生产与发布准备",
+      "内容任务推进",
       "项目工作台",
-      "客户交付报告",
+      "AI 品牌成熟度月报",
     ]) {
       expect(pages).toContain(text);
     }
@@ -52,9 +54,9 @@ describe("C3-D global AI product UI", () => {
     }
   });
 
-  it("C3-D-Fix weakens internal delivery zone on report page", () => {
+  it("C3-D-Fix monthly report page uses customer-facing light layout", () => {
     const report = read("client/src/pages/DeliveryReportsCenterPage.tsx");
-    expect(report).toContain("内部交付工作区");
+    expect(report).toContain("monthly-report-title");
     expect(report).not.toContain("bg-slate-900");
     expect(report).not.toContain("bg-cyan-400 text-slate-950");
   });

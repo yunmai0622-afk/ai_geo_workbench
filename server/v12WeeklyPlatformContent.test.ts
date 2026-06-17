@@ -13,16 +13,16 @@ describe("GEO-V1-UI-P1-B Weekly-Platform-Content", () => {
 
   it("首屏平台化内容生产结构", () => {
     expect(weekly).toContain("weekly-platform-content-page");
-    expect(weekly).toContain("内容生产与发布准备");
+    expect(weekly).toContain("内容任务推进");
     expect(weekly).not.toContain("当前企业：");
-    expect(weekly).toContain("WeeklyContentTaskControlCard");
-    expect(taskCard).toContain("当前内容任务");
+    expect(weekly).toContain("TaskContextHero");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前优化问题");
     expect(weekly).toContain("resolveGeoContentTaskSource");
     expect(weekly).toContain("contentTaskId:");
     expect(weekly).toContain("diagnosisFinding:");
     expect(weekly).toContain("geoGap:");
     expect(taskCard).toContain("成熟度短板");
-    expect(taskCard).toContain("目标改善指标");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("对应成熟度短板");
     expect(weekly).not.toMatch(/本轮内容目标/);
     expect(weekly).not.toMatch(/内容策略来源/);
   });

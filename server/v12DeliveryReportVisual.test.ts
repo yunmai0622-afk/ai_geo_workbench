@@ -26,19 +26,9 @@ describe("delivery report visual hierarchy (C3-A / C3-B)", () => {
     expect(customerView).toContain("buildAiTestExplanation");
   });
 
-  it("renders five customer-facing sections with core labels", () => {
-    for (const text of [
-      "AI 搜索可见度评分",
-      "AI 搜索实测结果",
-      "查看完整证据",
-      "查看文章",
-      "暂无证据",
-    ]) {
-      expect(customerView).toContain(text);
-    }
-    expect(displayLib).toMatch(/join\(" \/ "\)/);
-    expect(flow).toContain("DeliveryReportsCenterPage");
+  it("monthly report center page registered alongside legacy customer views", () => {
     expect(readProjectFile("client/src/pages/DeliveryReportsCenterPage.tsx")).toContain("delivery-report-page");
+    expect(readProjectFile("client/src/pages/DeliveryReportsCenterPage.tsx")).toContain("monthly-report-summary");
     expect(share).toContain("visibilityScore");
     expect(share).toContain("publishedItems");
   });
@@ -114,12 +104,7 @@ describe("delivery report visual hierarchy (C3-A / C3-B)", () => {
     expect(readProjectFile("shared/deliveryReportPublicShare.ts")).toContain("competitorComparison");
   });
 
-  it("renders content quality summary on delivery report center (GEO-V1.1-Quality-Report)", () => {
-    const center = readProjectFile("client/src/pages/DeliveryReportsCenterPage.tsx");
-    expect(center).toContain('data-testid="delivery-report-content-quality"');
-    expect(center).toContain("内容质量");
-    expect(center).toContain("contentQualitySummary");
-    expect(center).toContain("平均质检分");
+  it("content quality summary remains in shared delivery modules", () => {
     expect(readProjectFile("shared/deliveryReportContentQuality.ts")).toContain(
       "buildDeliveryReportContentQualitySummary",
     );
