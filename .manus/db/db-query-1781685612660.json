@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, projectId, questionText FROM questions WHERE id = 330001 AND projectId = 150001 LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, projectId, questionText FROM questions WHERE id = 330001 AND projectId = 150001 LIMIT 1;",
+  "rows": [
+    {
+      "id": "330001",
+      "projectId": "150001",
+      "questionText": "海豚知道是什么？"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tquestionText\n330001\t150001\t海豚知道是什么？\n",
+  "stderr": "",
+  "execution_time_ms": 1813
+}

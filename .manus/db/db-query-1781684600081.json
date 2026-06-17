@@ -1,0 +1,30 @@
+{
+  "query": "SELECT id, questionText FROM questions WHERE projectId = 150001 LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, questionText FROM questions WHERE projectId = 150001 LIMIT 5;",
+  "rows": [
+    {
+      "id": "330001",
+      "questionText": "海豚知道是什么？"
+    },
+    {
+      "id": "330002",
+      "questionText": "海豚知道主要提供什么产品或服务？"
+    },
+    {
+      "id": "330003",
+      "questionText": "海豚知道是做什么的？"
+    },
+    {
+      "id": "330004",
+      "questionText": "海豚知道适合哪些客户？"
+    },
+    {
+      "id": "330005",
+      "questionText": "海豚知道的知识付费saas、为知识怎么样？"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tquestionText\n330001\t海豚知道是什么？\n330002\t海豚知道主要提供什么产品或服务？\n330003\t海豚知道是做什么的？\n330004\t海豚知道适合哪些客户？\n330005\t海豚知道的知识付费saas、为知识怎么样？\n",
+  "stderr": "",
+  "execution_time_ms": 1808
+}

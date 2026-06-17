@@ -1,0 +1,25 @@
+{
+  "query": "SELECT id, openId, name FROM users WHERE openId = 'local-dev-user'; SELECT id, ownerUserId, enterpriseName FROM projects WHERE id = 150001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, openId, name FROM users WHERE openId = 'local-dev-user'; SELECT id, ownerUserId, enterpriseName FROM projects WHERE id = 150001;",
+  "rows": [
+    {
+      "id": "16740006",
+      "openId": "local-dev-user",
+      "name": "本地开发用户"
+    },
+    {
+      "id": "id",
+      "openId": "ownerUserId",
+      "name": "enterpriseName"
+    },
+    {
+      "id": "150001",
+      "openId": "16740006",
+      "name": "海豚知道"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\n16740006\tlocal-dev-user\t本地开发用户\nid\townerUserId\tenterpriseName\n150001\t16740006\t海豚知道\n",
+  "stderr": "",
+  "execution_time_ms": 2026
+}

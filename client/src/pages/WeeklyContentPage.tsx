@@ -1,4 +1,10 @@
 import { PublishPrePublishChecklist } from "@/components/publishing/PublishPrePublishChecklist";
+import {
+  TaskContextHero,
+  TaskProgressionFallback,
+  MotherArticleSummaryCard,
+  PlatformPublishPlan,
+} from "@/components/weekly/ContentTaskProgressionView";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
@@ -26,10 +32,7 @@ import {
   WeeklyContentReviewConfirmDialog,
   type WeeklyContentReviewDialogMode,
 } from "@/components/weekly/WeeklyContentReviewConfirmDialog";
-import { WeeklyContentTaskControlCard } from "@/components/weekly/WeeklyContentTaskControlCard";
 import { WeeklyPublishQueueStatusBlock, type WeeklyPublishQueueStats } from "@/components/weekly/WeeklyPublishQueueStatusBlock";
-import { WeeklyContentPreviewPanel } from "@/components/weekly/WeeklyContentPreviewPanel";
-import { WeeklyContentStatusBar } from "@/components/weekly/WeeklyContentStatusBar";
 import { WeeklyCollapsibleSection } from "@/components/weekly/WeeklyCollapsibleSection";
 import { WeeklyLocalAgentStatusBar } from "@/components/weekly/WeeklyLocalAgentStatusBar";
 import {
@@ -3145,26 +3148,9 @@ export default function WeeklyContentPage() {
           testId="weekly-content-article-limit"
         />
       ) : null}
-      <header className="space-y-4">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">内容生产与发布准备</h1>
-          <p className="text-sm text-gray-500">围绕 AI 推荐短板生成内容，审核后适配平台并加入发布队列</p>
-        </div>
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
-          <label className="sr-only" htmlFor="weekly-content-title-search">
-            按标题搜索内容
-          </label>
-          <Input
-            id="weekly-content-title-search"
-            type="search"
-            placeholder="按标题搜索内容…"
-            value={titleSearch}
-            onChange={e => setTitleSearch(e.target.value)}
-            className="rounded-xl border-gray-200 bg-white pl-10 shadow-sm"
-            data-testid="weekly-content-title-search"
-          />
-        </div>
+      <header className="space-y-2">
+        <h1 className="text-2xl font-bold text-gray-900">内容任务推进</h1>
+        <p className="text-sm text-gray-500">围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布</p>
       </header>
 
       {showEntryContextBanner ? (
@@ -3268,73 +3254,97 @@ export default function WeeklyContentPage() {
         </P0Card>
       ) : (
         <>
-          <WeeklyContentStatusBar
-            stageLabel={customerStageLabel}
-            nextStep={statusBarNextStep}
-            primaryDisabled={batchBusy}
-            onPrimaryAction={() => {
-              if (pendingReviewCount > 0 || enqueueReadyCount > 0) {
-                document
-                  .getElementById("weekly-section-publishable-content")
-                  ?.scrollIntoView({ behavior: "smooth" });
-                return;
-              }
-              void handleBatchGenerateAllPlatforms();
-            }}
-          />
-
+          {/* ─── First Screen: Task Context Hero ─── */}
           {contentTaskViewQuery.isLoading && entryContext.questionId != null ? (
             <P0Card testId="weekly-content-task-control-loading">
               <p className="text-sm text-gray-600">正在加载当前内容任务…</p>
             </P0Card>
           ) : entryContext.questionId != null && contentTaskViewQuery.data ? (
-            <WeeklyContentTaskControlCard
-              mode="task"
-              contentTitle={contentTaskViewQuery.data.taskTitle}
-              currentStatusLabel={currentContentTaskStatusLabel}
-              sourceTypeLabel={taskSourceTypeLabel}
-              aiSearchQuestion={contentTaskViewQuery.data.questionText}
-              targetDimension={contentTaskViewQuery.data.targetImprovement}
-              maturityGap={contentTaskViewQuery.data.relatedGap ?? contentTaskViewQuery.data.targetImprovement}
-              targetImprovementMetric={contentTaskViewQuery.data.taskReason}
-              monthlyPlanActionLabel={contentTaskViewQuery.data.monthlyPlanActionLabel}
-              monthlyPlanHint={
-                contentTaskViewQuery.data.monthlyPlanActionLabel
-                  ? null
-                  : contentTaskViewQuery.data.monthlyPlanHint
+            <TaskContextHero
+              view={contentTaskViewQuery.data}
+              onNextStep={() => {
+                document
+                  .getElementById("weekly-section-mother-article")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+              onGoMonthlyPlan={() =>
+                selectedProjectId
+                  ? setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
+                  : setLocation("/monthly-plan")
               }
-              retestPlanSummary={contentTaskViewQuery.data.retestPlan.summary}
-              recommendedPlatformItems={contentTaskViewQuery.data.recommendedPlatforms}
-              pendingReviewCount={pendingReviewCount}
-              enqueueReadyCount={enqueueReadyCount}
-              batchBusy={batchBusy}
-              onGenerateNext={() => void handleBatchGenerateAllPlatforms()}
-              onGoReview={() => {
-                document
-                  .getElementById("weekly-section-publishable-content")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
-              onGoEnqueue={() => {
-                document
-                  .getElementById("weekly-section-publishable-content")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
             />
           ) : (
-            <WeeklyContentTaskControlCard
-              mode="fallback"
-              onGoMonthlyPlan={() => setLocation("/monthly-plan")}
+            <TaskProgressionFallback
+              onGoMonthlyPlan={() =>
+                selectedProjectId
+                  ? setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
+                  : setLocation("/monthly-plan")
+              }
             />
           )}
 
-          <WeeklyContentPreviewPanel cards={previewCards} onView={openContentDetail} onEdit={(model: WeeklyArticleCardModel) => { const article = articlesById.get(model.id); if (article) openEditor(article); }} />
+          {/* ─── Mother Article Summary ─── */}
+          <div id="weekly-section-mother-article" className="scroll-mt-24">
+            {contentTaskViewQuery.data ? (
+              <MotherArticleSummaryCard
+                title={contentTaskViewQuery.data.motherArticleTitle}
+                summary={contentTaskViewQuery.data.motherArticleSummary}
+                corePoints={null}
+                status={contentTaskViewQuery.data.motherArticleStatus}
+                onViewFull={() => {
+                  if (previewCards[0]) openContentDetail(previewCards[0]);
+                }}
+                onEdit={() => {
+                  if (previewCards[0]) {
+                    const article = articlesById.get(previewCards[0].id);
+                    if (article) openEditor(article);
+                  }
+                }}
+                onApprove={() => {
+                  if (previewCards[0]) {
+                    const article = articlesById.get(previewCards[0].id);
+                    if (article) openReviewConfirmDialog(article, "review_only");
+                  }
+                }}
+                approveDisabled={batchBusy}
+              />
+            ) : null}
+          </div>
 
-          {platformStrategyError ? <p className="text-sm text-amber-800">{platformStrategyError}</p> : null}
+          {/* ─── Platform Publish Plan ─── */}
+          {contentTaskViewQuery.data ? (
+            <PlatformPublishPlan
+              rows={platformBoardRows}
+              recommendedPlatforms={contentTaskViewQuery.data.recommendedPlatforms}
+              boardBusy={batchBusy}
+              generatingPlatformKey={generatingPlatformKey}
+              onGenerate={key => void handlePlatformGenerate(key)}
+              onSaveAndQc={handlePlatformEdit}
+              onEnqueue={key => {
+                const hit = findArticleByPlatform(key);
+                if (hit) requestEnqueuePublish(hit);
+              }}
+              onView={handlePlatformView}
+            />
+          ) : (
+            <PlatformContentBoard
+              rows={platformBoardRows}
+              boardBusy={batchBusy}
+              generatingPlatformKey={generatingPlatformKey}
+              onGenerate={key => void handlePlatformGenerate(key)}
+              onSaveAndQc={handlePlatformEdit}
+              onEnqueue={key => {
+                const hit = findArticleByPlatform(key);
+                if (hit) requestEnqueuePublish(hit);
+              }}
+              onView={handlePlatformView}
+            />
+          )}
 
-          <PlatformContentBoard rows={platformBoardRows} boardBusy={batchBusy} generatingPlatformKey={generatingPlatformKey} onGenerate={key => void handlePlatformGenerate(key)} onSaveAndQc={handlePlatformEdit} onEnqueue={key => { const hit = findArticleByPlatform(key); if (hit) requestEnqueuePublish(hit); }} onView={handlePlatformView} />
-
+          {/* ─── Publish Queue Status ─── */}
           <WeeklyPublishQueueStatusBlock stats={publishQueueStats} onGoPublishingCenter={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} />
 
+          {/* ─── Publishable Content List ─── */}
           <WeeklyPublishableContentList
             rows={publishableRows}
             disabled={anyGenerating || batchEnqueueBusy}
@@ -3357,76 +3367,9 @@ export default function WeeklyContentPage() {
             }}
           />
 
-          {showDirectionEmpty ? (
-            <P0Card>
-              <p className="text-sm text-gray-700">正在根据 AI 诊断准备内容方向，请稍候…</p>
-            </P0Card>
-          ) : null}
-
-          {contentCardModels.length === 0 ? (
-            <P0Card className="border-dashed border-gray-300 bg-white" testId="weekly-content-empty">
-              <div className="flex flex-col items-center text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                  <FileText className="h-5 w-5 text-gray-500" />
-                </div>
-                <p className="mt-3 text-sm font-medium text-gray-800">本周还没有生成内容</p>
-                <p className="mt-1 text-xs text-gray-500">先按平台生成首批内容，再进入质检与审核流程。</p>
-                <Button
-                  type="button"
-                  className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
-                  disabled={batchBusy}
-                  onClick={() => void handleBatchGenerateAllPlatforms()}
-                >
-                  生成平台内容
-                </Button>
-              </div>
-            </P0Card>
-          ) : null}
-
-          <WeeklyCollapsibleSection testId="weekly-aux-advanced-enhancement" title="高级内容增强">
-            <PlatformBatchGenerationPanel
-              queue={platformBatchQueue}
-              running={platformBatchRunning}
-              onStartBatch={() => void handleBatchGenerateAllPlatforms()}
-              onRetry={handleRetryPlatformBatchItem}
-            />
-          </WeeklyCollapsibleSection>
-
-          <WeeklyCollapsibleSection testId="weekly-aux-generation-log" title="生成日志">
-            {platformContentProgress.status !== "idle" && activePlatformProgressLabel ? (
-              <AiTaskProgressCard
-                testId="platform-content-progress"
-                title={`正在生成${activePlatformProgressLabel}内容`}
-                stepLabel={platformContentProgress.stepLabel}
-                stepDescription={platformContentProgress.stepDescription}
-                percent={platformContentProgress.percent}
-                elapsedSec={platformContentProgress.elapsedSec}
-                hint90s={PLATFORM_CONTENT_PROGRESS_HINT_90S}
-                status={
-                  platformContentProgress.isFailed
-                    ? "failed"
-                    : platformContentProgress.isSuccess
-                      ? "success"
-                      : "running"
-                }
-                errorCategory={platformProgressErrorCategory}
-                errorMessage={
-                  platformContentProgress.isFailed
-                    ? platformProgressFailureDisplay.message
-                    : platformProgressErrorMessage
-                }
-                onRegenerate={
-                  canRegeneratePlatformContent ? () => handlePlatformRegenerate() : undefined
-                }
-                regenerateDisabled={anyGenerating}
-              />
-            ) : (
-              <p className="text-sm text-gray-600">暂无进行中的生成任务，开始生成后日志将在此展示。</p>
-            )}
-          </WeeklyCollapsibleSection>
-
-          {displayContentCards.filter(card => card.statusFilterKey !== "published").length > 0 ? (
-            <WeeklyCollapsibleSection testId="weekly-aux-full-body" title="完整正文">
+          {/* ─── Advanced Info (collapsed by default) ─── */}
+          <WeeklyCollapsibleSection testId="weekly-aux-full-body" title="完整正文">
+            {displayContentCards.filter(card => card.statusFilterKey !== "published").length > 0 ? (
               <ul className="space-y-3">
                 {displayContentCards
                   .filter(card => card.statusFilterKey !== "published")
@@ -3466,42 +3409,88 @@ export default function WeeklyContentPage() {
                     </li>
                   ))}
               </ul>
-            </WeeklyCollapsibleSection>
-          ) : null}
+            ) : (
+              <p className="text-sm text-gray-600">暂无内容。</p>
+            )}
+          </WeeklyCollapsibleSection>
 
-          <WeeklyAuxiliarySections
-            source={geoContentTaskSource}
-            platformStrategy={platformStrategy}
-            onPlatformStrategyChange={setPlatformStrategy}
-            targetQuestionOptions={targetQuestionOptions}
-            selectedQuestionTemplateId={selectedQuestionTemplateId}
-            onQuestionTemplateChange={setSelectedQuestionTemplateId}
-            strategyDisabled={anyGenerating}
-            historyCards={displayContentCards}
-            historyDisabled={anyGenerating || batchEnqueueBusy}
-            onHistoryView={openContentDetail}
-            onHistoryRegenerate={model => {
-              const article = articlesById.get(model.id);
-              if (article && typeof article.topicId === "number") void generateOne(article.topicId);
-            }}
-            onHistoryEnqueue={model => {
-              const article = articlesById.get(model.id);
-              if (article) requestEnqueuePublish(article);
-            }}
-            onHistoryGoPublishing={() =>
-              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-            }
-            onHistoryReviewChange={(articleId, status) => {
-              if (!selectedProjectId) return;
-              setContentReviewStatus.mutate(
-                { projectId: selectedProjectId, articleId, status },
-                { onSuccess: () => toast.success("审核状态已更新") },
-              );
-            }}
-            onGoInclusionMonitoring={() =>
-              selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
-            }
-          />
+          <WeeklyCollapsibleSection testId="weekly-aux-generation-log" title="生成日志">
+            {platformContentProgress.status !== "idle" && activePlatformProgressLabel ? (
+              <AiTaskProgressCard
+                testId="platform-content-progress"
+                title={`正在生成${activePlatformProgressLabel}内容`}
+                stepLabel={platformContentProgress.stepLabel}
+                stepDescription={platformContentProgress.stepDescription}
+                percent={platformContentProgress.percent}
+                elapsedSec={platformContentProgress.elapsedSec}
+                hint90s={PLATFORM_CONTENT_PROGRESS_HINT_90S}
+                status={
+                  platformContentProgress.isFailed
+                    ? "failed"
+                    : platformContentProgress.isSuccess
+                      ? "success"
+                      : "running"
+                }
+                errorCategory={platformProgressErrorCategory}
+                errorMessage={
+                  platformContentProgress.isFailed
+                    ? platformProgressFailureDisplay.message
+                    : platformProgressErrorMessage
+                }
+                onRegenerate={
+                  canRegeneratePlatformContent ? () => handlePlatformRegenerate() : undefined
+                }
+                regenerateDisabled={anyGenerating}
+              />
+            ) : (
+              <p className="text-sm text-gray-600">暂无进行中的生成任务，开始生成后日志将在此展示。</p>
+            )}
+          </WeeklyCollapsibleSection>
+
+          <WeeklyCollapsibleSection testId="weekly-aux-advanced-enhancement" title="高级内容增强">
+            <PlatformBatchGenerationPanel
+              queue={platformBatchQueue}
+              running={platformBatchRunning}
+              onStartBatch={() => void handleBatchGenerateAllPlatforms()}
+              onRetry={handleRetryPlatformBatchItem}
+            />
+          </WeeklyCollapsibleSection>
+
+          <WeeklyCollapsibleSection testId="weekly-aux-history" title="历史内容">
+            <WeeklyAuxiliarySections
+              source={geoContentTaskSource}
+              platformStrategy={platformStrategy}
+              onPlatformStrategyChange={setPlatformStrategy}
+              targetQuestionOptions={targetQuestionOptions}
+              selectedQuestionTemplateId={selectedQuestionTemplateId}
+              onQuestionTemplateChange={setSelectedQuestionTemplateId}
+              strategyDisabled={anyGenerating}
+              historyCards={displayContentCards}
+              historyDisabled={anyGenerating || batchEnqueueBusy}
+              onHistoryView={openContentDetail}
+              onHistoryRegenerate={model => {
+                const article = articlesById.get(model.id);
+                if (article && typeof article.topicId === "number") void generateOne(article.topicId);
+              }}
+              onHistoryEnqueue={model => {
+                const article = articlesById.get(model.id);
+                if (article) requestEnqueuePublish(article);
+              }}
+              onHistoryGoPublishing={() =>
+                selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+              }
+              onHistoryReviewChange={(articleId, status) => {
+                if (!selectedProjectId) return;
+                setContentReviewStatus.mutate(
+                  { projectId: selectedProjectId, articleId, status },
+                  { onSuccess: () => toast.success("审核状态已更新") },
+                );
+              }}
+              onGoInclusionMonitoring={() =>
+                selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
+              }
+            />
+          </WeeklyCollapsibleSection>
         </>
       )}
 

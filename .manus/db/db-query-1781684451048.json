@@ -1,0 +1,27 @@
+{
+  "query": "SELECT * FROM projects WHERE id = 150001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT * FROM projects WHERE id = 150001;",
+  "rows": [
+    {
+      "id": "150001",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 / 教育培训",
+      "website": "https://",
+      "region": "中国",
+      "productIntro": "知识付费saas、为知识主播提供AI驱动的经营系统",
+      "targetCustomers": "知识付费老师、个人IP、内容创业者、教育培训机构以及有增长需求的中小企业老板。",
+      "coreSellingPoints": "支持抖音、视频号、小红书等多平台",
+      "competitorNames": "[]",
+      "coreKeywords": "[]",
+      "createdAt": "2026-06-10 01:35:07",
+      "updatedAt": "2026-06-17 07:12:22",
+      "status": "questions_ready",
+      "ownerUserId": "16740006",
+      "archivedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tenterpriseName\tindustry\twebsite\tregion\tproductIntro\ttargetCustomers\tcoreSellingPoints\tcompetitorNames\tcoreKeywords\tcreatedAt\tupdatedAt\tstatus\townerUserId\tarchivedAt\n150001\t海豚知道\t知识付费 / 教育培训\thttps://\t中国\t知识付费saas、为知识主播提供AI驱动的经营系统\t知识付费老师、个人IP、内容创业者、教育培训机构以及有增长需求的中小企业老板。\t支持抖音、视频号、小红书等多平台\t[]\t[]\t2026-06-10 01:35:07\t2026-06-17 07:12:22\tquestions_ready\t16740006\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1709
+}

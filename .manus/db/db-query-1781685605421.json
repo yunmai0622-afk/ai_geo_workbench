@@ -1,0 +1,186 @@
+{
+  "query": "DESCRIBE questions;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute DESCRIBE questions;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "projectId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "questionText",
+      "Type": "text",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "questionType",
+      "Type": "enum('品牌认知','行业推荐','竞品对比','痛点解决','价格选型','高意向成交','指定问题','scenario_need','long_tail_conversion')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "enabled",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "targetKeyword",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "intentLevel",
+      "Type": "varchar(64)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "中",
+      "Extra": ""
+    },
+    {
+      "Field": "businessValue",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "3",
+      "Extra": ""
+    },
+    {
+      "Field": "source",
+      "Type": "enum('ai_generated','manual','csv','onboarding_wizard')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "ai_generated",
+      "Extra": ""
+    },
+    {
+      "Field": "contentGapTags",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "searchPoolType",
+      "Type": "varchar(64)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "targetKeywords",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "targetCustomerScene",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "relatedGeoGap",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "relatedContentTask",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "requiredSourceTypes",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "requiredEntityAnchors",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "priorityLevel",
+      "Type": "varchar(16)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "lastTestResult",
+      "Type": "varchar(32)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "lastTestedAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\nprojectId\tint\tNO\t\tNULL\t\nquestionText\ttext\tNO\t\tNULL\t\nquestionType\tenum('品牌认知','行业推荐','竞品对比','痛点解决','价格选型','高意向成交','指定问题','scenario_need','long_tail_conversion')\tNO\t\tNULL\t\nenabled\tint\tNO\t\t1\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\ntargetKeyword\tvarchar(255)\tYES\t\tNULL\t\nintentLevel\tvarchar(64)\tNO\t\t中\t\nbusinessValue\tint\tNO\t\t3\t\nsource\tenum('ai_generated','manual','csv','onboarding_wizard')\tNO\t\tai_generated\t\ncontentGapTags\tjson\tYES\t\tNULL\t\nsearchPoolType\tvarchar(64)\tYES\t\tNULL\t\ntargetKeywords\tjson\tYES\t\tNULL\t\ntargetCustomerScene\ttext\tYES\t\tNULL\t\nrelatedGeoGap\ttext\tYES\t\tNULL\t\nrelatedContentTask\ttinyint(1)\tNO\t\t0\t\nrequiredSourceTypes\tjson\tYES\t\tNULL\t\nrequiredEntityAnchors\tjson\tYES\t\tNULL\t\npriorityLevel\tvarchar(16)\tYES\t\tNULL\t\nlastTestResult\tvarchar(32)\tYES\t\tNULL\t\nlastTestedAt\ttimestamp\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 1810
+}
