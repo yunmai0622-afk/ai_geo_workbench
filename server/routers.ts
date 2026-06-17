@@ -52,6 +52,7 @@ import { discoveryRouter } from "./discoveryRouter";
 import { trustEvidenceRouter } from "./trustEvidenceRouter";
 import { geoMaturityRouter } from "./geoMaturityRouter";
 import { geoMonthlyPlanRouter } from "./geoMonthlyPlanRouter";
+import { geoContentTasksRouter } from "./geoContentTasksRouter";
 import { feedbackLoopRouter } from "./feedbackLoopRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
@@ -4850,6 +4851,8 @@ ${article.markdownContent}`,
   maturity: geoMaturityRouter,
 
   monthlyPlan: geoMonthlyPlanRouter,
+
+  contentTasks: geoContentTasksRouter,
 
   feedbackLoop: feedbackLoopRouter,
 
