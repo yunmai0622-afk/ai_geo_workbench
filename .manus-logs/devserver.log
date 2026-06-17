@@ -4754,3 +4754,23 @@
 [2026-06-17T08:50:03.263Z] [geo.localAgent.platformAccounts.list] {"projectId":150001,"userId":16740006,"accountCount":3}
 [2026-06-17T08:50:03.264Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":150001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-12T05:31:56.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
 [2026-06-17T08:52:16.846Z] 4:52:16 AM [vite] (client) hmr update /src/index.css
+[2026-06-17T10:31:52.499Z] 6:31:52 AM [vite] (client) hmr update /src/index.css
+[2026-06-17T10:31:52.500Z] 6:31:52 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-17T10:31:52.503Z] 6:31:52 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/ContentTaskProgressionView.tsx
+[2026-06-17T10:31:52.504Z] 6:31:52 AM [vite] (client) hmr update /src/index.css, /src/pages/DeliveryReportsCenterPage.tsx
+[2026-06-17T10:31:52.638Z] 6:31:52 AM [tsx] change in ./server/monthlyPlanSync.ts Restarting...
+[2026-06-17T10:32:01.117Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-17T10:32:01.154Z] Server running on http://localhost:3000/
+[2026-06-17T10:32:02.519Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-17T10:32:50.461Z] Dev server process group stopped
+[2026-06-17T10:32:50.464Z] ELIFECYCLE  Command failed.
+[2026-06-17T10:32:50.523Z] Dev server exited with code -15
+[2026-06-17T10:32:53.497Z] Starting dev server with command: pnpm run dev
+[2026-06-17T10:32:54.270Z] 
+[2026-06-17T10:32:54.270Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-17T10:32:54.271Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-17T10:32:54.271Z] 
+[2026-06-17T10:33:02.260Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-17T10:33:02.292Z] Server running on http://localhost:3000/
+[2026-06-17T10:33:03.013Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-17T10:33:55.707Z] 6:33:55 AM [vite] (client) hmr update /src/index.css
