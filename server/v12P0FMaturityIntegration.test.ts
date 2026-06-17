@@ -48,7 +48,10 @@ describe("GEO-V2.0-P0-F Maturity Integration", () => {
     expect(page).toContain("maturity-screen-next-actions");
     expect(page).toContain("maturity-top-weaknesses");
     expect(page).toContain("maturity-weakest-cta");
-    expect(page).toContain("resolveMaturityWeakestPrimaryCtaLabel");
+    expect(page).toContain("生成本月优化计划");
+    expect(page).toContain("查看本月优化计划");
+    expect(page).toContain("geo.monthlyPlan.getCurrent");
+    expect(page).toContain("geo.monthlyPlan.generate");
     expect(page).toContain("maturity-dimension-conclusion-${card.key}");
     expect(page).toContain("maturity-dimension-cta-${card.key}");
     expect(page).toContain("maturity-trend-details");

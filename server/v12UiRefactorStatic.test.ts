@@ -118,16 +118,21 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("AI 诊断页客户化展示目标问题、诊断结果、评分、任务和下一步建议", () => {
     const flowSource = readProjectFile("client/src/pages/V12FlowPages.tsx");
-    const titleIdx = flowSource.indexOf("<h1 className=\"text-2xl font-bold text-gray-900\">AI 实测诊断</h1>");
+    const titleIdx = flowSource.indexOf("<h1 className=\"text-2xl font-bold text-gray-900\">AI 现状检测</h1>");
+    const reportTitleIdx = flowSource.indexOf("AI 当前怎么看你");
     const coreIdx = flowSource.indexOf("data-testid=\"ai-diagnosis-core-summary\"");
-    const nextIdx = flowSource.indexOf("data-testid=\"ai-diagnosis-next-content-actions\"");
+    const detailFoldIdx = flowSource.indexOf("data-testid=\"ai-diagnosis-detail-fold\"");
     const t0Idx = flowSource.lastIndexOf("data-testid=\"ai-diagnosis-t0-baseline\"");
     expect(titleIdx).toBeGreaterThan(-1);
+    expect(reportTitleIdx).toBeGreaterThan(-1);
     expect(coreIdx).toBeGreaterThan(titleIdx);
-    expect(nextIdx).toBeGreaterThan(coreIdx);
-    expect(t0Idx).toBeGreaterThan(nextIdx);
+    expect(detailFoldIdx).toBeGreaterThan(coreIdx);
+    expect(t0Idx).toBeGreaterThan(detailFoldIdx);
     expect(flowSource).toContain("data-testid=\"ai-diagnosis-t0-baseline\"");
     expect(flowSource).toContain("data-testid=\"ai-diagnosis-load-hint\"");
+    expect(flowSource).toContain("data-testid=\"ai-diagnosis-report-conclusion\"");
+    expect(flowSource).toContain("创建 AI 现状检测任务");
+    expect(flowSource).toContain("查看本月优化计划");
     for (const text of [
       "内容诊断",
       "目标客户问题",

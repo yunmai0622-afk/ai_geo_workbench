@@ -46,8 +46,9 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
   it("AI 诊断页只使用 activeProjectId", () => {
     const v12 = read("client/src/pages/V12FlowPages.tsx");
     expect(v12).toContain("AiDiagnosisFlowPage");
-    expect(v12).toContain("检测主流 AI 平台当前是否推荐你的品牌");
-    expect(v12).toContain('buildProjectUrl("/weekly"');
+    expect(v12).toContain("了解 AI 目前是否认识、提到并推荐你的品牌");
+    expect(v12).toContain("AI 当前怎么看你");
+    expect(v12).toContain('buildProjectUrl("/monthly-plan"');
     expect(v12).not.toContain("diagnosis-project-header");
     assertNoProjectDropdown(v12, "v12");
   });

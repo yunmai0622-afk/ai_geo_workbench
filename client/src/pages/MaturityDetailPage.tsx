@@ -14,8 +14,6 @@ import {
   buildMaturityNextActionItems,
   buildTopWeaknessHighlights,
   resolveMaturityDimensionStatus,
-  resolveMaturityWeakestPrimaryCtaLabel,
-  resolveWeakestDimensionAction,
 } from "@shared/maturityDetailDisplay";
 import { GEO_MATURITY_DIMENSION_META } from "@shared/geoMaturityScoring";
 import { MATURITY_VS_PROFILE_COMPLETENESS_HINT } from "@shared/onboardingCompletenessReport";
@@ -66,6 +64,15 @@ export default function MaturityDetailPage() {
     { projectId: selectedProjectId!, limit: 10 },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const monthlyPlanQuery = trpc.geo.monthlyPlan.getCurrent.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const generateMonthlyPlanMutation = trpc.geo.monthlyPlan.generate.useMutation({
+    onSuccess: () => {
+      void monthlyPlanQuery.refetch();
+    },
+  });
 
   useEffect(() => {
     const name = selectedProject?.enterpriseName?.trim() || "企业";
@@ -83,15 +90,28 @@ export default function MaturityDetailPage() {
     () => (report ? buildTopWeaknessHighlights(report, calculationDetail, 3) : []),
     [report, calculationDetail],
   );
-  const weakestAction = useMemo(
-    () => (report ? resolveWeakestDimensionAction(report, calculationDetail) : null),
-    [report, calculationDetail],
-  );
   const historyRows = historyQuery.data ?? [];
+  const activeMonthlyPlan = monthlyPlanQuery.data?.plan?.status === "active" ? monthlyPlanQuery.data.plan : null;
 
   const handleRecalculate = () => {
     if (!selectedProjectId) return;
     void triggerMaturityCalculate({ silent: false });
+  };
+
+  const handleTopWeaknessPrimaryAction = () => {
+    if (!selectedProjectId) return;
+    if (activeMonthlyPlan) {
+      setLocation(buildProjectUrl("/monthly-plan", selectedProjectId));
+      return;
+    }
+    void generateMonthlyPlanMutation
+      .mutateAsync({ projectId: selectedProjectId })
+      .then(() => {
+        setLocation(buildProjectUrl("/monthly-plan", selectedProjectId));
+      })
+      .catch(() => {
+        setLocation(buildProjectUrl("/monthly-plan", selectedProjectId));
+      });
   };
 
   if (!selectedProjectId && !projectsLoading) {
@@ -194,14 +214,19 @@ export default function MaturityDetailPage() {
                       </li>
                     ))}
                   </ul>
-                  {weakestAction && selectedProjectId ? (
+                  {selectedProjectId ? (
                     <Button
                       type="button"
                       className={cn("mt-4 rounded-xl", geoP0Brand.primary)}
                       data-testid="maturity-weakest-cta"
-                      onClick={() => setLocation(buildProjectUrl(weakestAction.path, selectedProjectId))}
+                      disabled={generateMonthlyPlanMutation.isPending}
+                      onClick={handleTopWeaknessPrimaryAction}
                     >
-                      {resolveMaturityWeakestPrimaryCtaLabel(weakestAction.key)}
+                      {generateMonthlyPlanMutation.isPending
+                        ? "正在生成…"
+                        : activeMonthlyPlan
+                          ? "查看本月优化计划"
+                          : "生成本月优化计划"}
                       <ArrowRight className="ml-2 size-4" />
                     </Button>
                   ) : null}
