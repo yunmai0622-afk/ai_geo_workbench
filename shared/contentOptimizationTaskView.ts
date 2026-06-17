@@ -18,6 +18,9 @@ import type { TestRoundRow } from "./workspaceMainChain";
 export const MONTHLY_PLAN_UNBOUND_HINT = "暂未绑定本月计划";
 export const MONTHLY_PLAN_SUGGEST_JOIN_HINT = "建议加入本月优化计划";
 
+export const WEEKLY_CONTENT_TASK_VIEW_FALLBACK_MESSAGE =
+  "暂未绑定明确问题，建议从本月优化计划中选择任务开始内容生产";
+
 export const UNPUBLISHED_RETEST_PLAN_SUMMARY = "发布后 7 天进行第一次复测";
 
 export type RecommendedPlatformView = {
@@ -59,6 +62,7 @@ export type ContentOptimizationTaskView = {
   relatedGap: string | null;
   monthlyPlanId: number | null;
   monthlyPlanTitle: string | null;
+  monthlyPlanActionLabel: string | null;
   monthlyPlanHint: string;
   taskTitle: string;
   taskReason: string;
@@ -110,6 +114,7 @@ export type ContentOptimizationTaskBuildInput = {
   monthlyPlan?: {
     planId: number;
     planTitle: string;
+    actionLabel?: string | null;
     taskTitle?: string | null;
     taskReason?: string | null;
     targetDimension?: string | null;
@@ -374,17 +379,22 @@ function buildTaskCopy(input: ContentOptimizationTaskBuildInput): {
 
 function buildMonthlyPlanFields(
   monthlyPlan: ContentOptimizationTaskBuildInput["monthlyPlan"],
-): Pick<ContentOptimizationTaskView, "monthlyPlanId" | "monthlyPlanTitle" | "monthlyPlanHint"> {
+): Pick<
+  ContentOptimizationTaskView,
+  "monthlyPlanId" | "monthlyPlanTitle" | "monthlyPlanActionLabel" | "monthlyPlanHint"
+> {
   if (!monthlyPlan) {
     return {
       monthlyPlanId: null,
       monthlyPlanTitle: null,
+      monthlyPlanActionLabel: null,
       monthlyPlanHint: `${MONTHLY_PLAN_UNBOUND_HINT}，${MONTHLY_PLAN_SUGGEST_JOIN_HINT}`,
     };
   }
   return {
     monthlyPlanId: monthlyPlan.planId,
     monthlyPlanTitle: monthlyPlan.planTitle,
+    monthlyPlanActionLabel: monthlyPlan.actionLabel?.trim() || null,
     monthlyPlanHint: monthlyPlan.planTitle,
   };
 }

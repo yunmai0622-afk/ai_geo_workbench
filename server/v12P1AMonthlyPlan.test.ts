@@ -75,6 +75,6 @@ describe("GEO-V2.0-P1-A Monthly Optimization Plan", () => {
     expect(read("client/src/components/weekly/WeeklyContentTaskControlCard.tsx")).toContain(
       "weekly-monthly-plan-task-label",
     );
-    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("geo.monthlyPlan.findTaskForArticle");
+    expect(read("client/src/pages/WeeklyContentPage.tsx")).toContain("geo.contentTasks.getCurrentTaskView");
   });
 });

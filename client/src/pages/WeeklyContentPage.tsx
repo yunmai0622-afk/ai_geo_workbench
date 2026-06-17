@@ -730,13 +730,12 @@ export default function WeeklyContentPage() {
     entryContext.pendingContentTab,
   ]);
 
-  const monthlyPlanTaskQuery = trpc.geo.monthlyPlan.findTaskForArticle.useQuery(
+  const contentTaskViewQuery = trpc.geo.contentTasks.getCurrentTaskView.useQuery(
     {
       projectId: selectedProjectId!,
-      questionId: entryContext.questionId ?? undefined,
-      articleId: entryContext.articleId ?? undefined,
+      questionId: entryContext.questionId!,
     },
-    { enabled: Boolean(selectedProjectId) && Boolean(entryContext.questionId || entryContext.articleId) },
+    { enabled: Boolean(selectedProjectId) && entryContext.questionId != null },
   );
 
   useEffect(() => {
@@ -941,16 +940,6 @@ export default function WeeklyContentPage() {
         preferredTargetQuestion: platformStrategy.targetQuestion,
       }),
     [tasks, analyses, questionsQuery.data, selectedContentTaskId, platformStrategy.targetQuestion],
-  );
-
-  const contentTaskOptions = useMemo(
-    () =>
-      tasks.map(t => {
-        const card = parseGeoOptimizationTaskCard(t.executionSuggestion);
-        const scene = card?.articleTitle?.trim() || t.taskName?.trim() || `任务 ${t.id}`;
-        return { id: t.id, label: buildGeoContentTaskDisplayName(scene) };
-      }),
-    [tasks],
   );
 
   const targetQuestionOptions = useMemo(() => {
@@ -1773,15 +1762,6 @@ export default function WeeklyContentPage() {
     () => displayContentCards.filter(card => card.statusFilterKey !== "published").slice(0, 6),
     [displayContentCards],
   );
-
-  const recommendedPlatforms = useMemo(() => {
-    const labels = new Set<string>();
-    for (const card of contentCardModels) {
-      if (card.targetPlatform?.trim()) labels.add(card.targetPlatform.trim());
-    }
-    if (labels.size > 0) return Array.from(labels);
-    return WEEKLY_PLATFORM_DEFS.slice(0, 4).map(d => d.label);
-  }, [contentCardModels]);
 
   const currentContentTaskStatusLabel = useMemo(() => statusBarNextStep, [statusBarNextStep]);
   const taskSourceTypeLabel = useMemo(() => geoContentTaskSource?.sourceLabel?.trim() || "内容任务", [geoContentTaskSource?.sourceLabel]);
@@ -3303,19 +3283,28 @@ export default function WeeklyContentPage() {
             }}
           />
 
-          {geoContentTaskSource ? (
+          {contentTaskViewQuery.isLoading && entryContext.questionId != null ? (
+            <P0Card testId="weekly-content-task-control-loading">
+              <p className="text-sm text-gray-600">正在加载当前内容任务…</p>
+            </P0Card>
+          ) : entryContext.questionId != null && contentTaskViewQuery.data ? (
             <WeeklyContentTaskControlCard
-              contentTitle={geoContentTaskSource.taskDisplayName}
+              mode="task"
+              contentTitle={contentTaskViewQuery.data.taskTitle}
               currentStatusLabel={currentContentTaskStatusLabel}
               sourceTypeLabel={taskSourceTypeLabel}
-              linkedQuestion={geoContentTaskSource.linkedQuestion}
-              maturityGap={geoContentTaskSource.geoGapSummary}
-              targetImprovementMetric={geoContentTaskSource.recommendFill || geoContentTaskSource.taskGoal}
-              monthlyPlanLabel={monthlyPlanTaskQuery.data?.label ?? null}
-              recommendedPlatforms={recommendedPlatforms}
-              taskOptions={contentTaskOptions}
-              selectedTaskId={selectedContentTaskId ?? geoContentTaskSource.contentTaskId}
-              onSelectTaskId={id => setSelectedContentTaskId(id)}
+              aiSearchQuestion={contentTaskViewQuery.data.questionText}
+              targetDimension={contentTaskViewQuery.data.targetImprovement}
+              maturityGap={contentTaskViewQuery.data.relatedGap ?? contentTaskViewQuery.data.targetImprovement}
+              targetImprovementMetric={contentTaskViewQuery.data.taskReason}
+              monthlyPlanActionLabel={contentTaskViewQuery.data.monthlyPlanActionLabel}
+              monthlyPlanHint={
+                contentTaskViewQuery.data.monthlyPlanActionLabel
+                  ? null
+                  : contentTaskViewQuery.data.monthlyPlanHint
+              }
+              retestPlanSummary={contentTaskViewQuery.data.retestPlan.summary}
+              recommendedPlatformItems={contentTaskViewQuery.data.recommendedPlatforms}
               pendingReviewCount={pendingReviewCount}
               enqueueReadyCount={enqueueReadyCount}
               batchBusy={batchBusy}
@@ -3331,7 +3320,12 @@ export default function WeeklyContentPage() {
                   ?.scrollIntoView({ behavior: "smooth" });
               }}
             />
-          ) : null}
+          ) : (
+            <WeeklyContentTaskControlCard
+              mode="fallback"
+              onGoMonthlyPlan={() => setLocation("/monthly-plan")}
+            />
+          )}
 
           <WeeklyContentPreviewPanel cards={previewCards} onView={openContentDetail} onEdit={(model: WeeklyArticleCardModel) => { const article = articlesById.get(model.id); if (article) openEditor(article); }} />
 

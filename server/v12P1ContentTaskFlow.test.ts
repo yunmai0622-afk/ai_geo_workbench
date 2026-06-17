@@ -48,4 +48,16 @@ describe("GEO-V2.0-P1-ContentTask-Flow-Foundation", () => {
     expect(tests).toContain("platformDrafts when platform articles exist");
     expect(tests).toContain("retest plan for unpublished and published content");
   });
+
+  it("integrates getCurrentTaskView into WeeklyContentPage first screen", () => {
+    const weekly = read("client/src/pages/WeeklyContentPage.tsx");
+    const taskCard = read("client/src/components/weekly/WeeklyContentTaskControlCard.tsx");
+    expect(weekly).toContain("geo.contentTasks.getCurrentTaskView");
+    expect(weekly).toContain("contentTaskViewQuery");
+    expect(taskCard).toContain("对应 AI 搜索问题");
+    expect(taskCard).toContain("目标短板");
+    expect(taskCard).toContain("发布后复测计划");
+    expect(taskCard).toContain("weekly-task-view-fallback-message");
+    expect(taskCard).toContain("weekly-go-monthly-plan");
+  });
 });
