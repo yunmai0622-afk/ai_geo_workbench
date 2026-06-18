@@ -4774,3 +4774,15 @@
 [2026-06-17T10:33:02.292Z] Server running on http://localhost:3000/
 [2026-06-17T10:33:03.013Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-17T10:33:55.707Z] 6:33:55 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T06:18:31.701Z] Dev server process group stopped
+[2026-06-18T06:18:31.704Z] ELIFECYCLE  Command failed.
+[2026-06-18T06:18:31.760Z] Dev server exited with code -15
+[2026-06-18T06:18:34.735Z] Starting dev server with command: pnpm run dev
+[2026-06-18T06:18:35.596Z] 
+[2026-06-18T06:18:35.597Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-18T06:18:35.597Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-18T06:18:35.598Z] 
+[2026-06-18T06:18:45.749Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-18T06:18:45.784Z] Server running on http://localhost:3000/
+[2026-06-18T06:18:47.371Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-18T06:19:04.675Z] 2:19:04 AM [vite] (client) hmr update /src/index.css
