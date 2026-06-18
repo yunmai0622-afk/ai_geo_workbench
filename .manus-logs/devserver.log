@@ -4786,3 +4786,33 @@
 [2026-06-18T06:18:45.784Z] Server running on http://localhost:3000/
 [2026-06-18T06:18:47.371Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-18T06:19:04.675Z] 2:19:04 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T08:40:27.968Z] 4:40:27 AM [vite] (client) hmr update /src/index.css, /src/components/diagnosis/T0DiagnosisVisualizationPanel.tsx
+[2026-06-18T08:40:27.970Z] 4:40:27 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T08:40:27.972Z] 4:40:27 AM [vite] (client) hmr update /src/index.css, /src/components/geo/T0ContentGapSuggestionsCard.tsx
+[2026-06-18T08:40:27.979Z] 4:40:27 AM [vite] (client) hmr update /src/index.css, /src/components/DeliveryReportRetestHero.tsx
+[2026-06-18T08:40:27.981Z] 4:40:27 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-18T08:40:27.982Z] 4:40:27 AM [vite] (client) hmr update /src/index.css, /src/components/project/ProjectNextActionPanel.tsx
+[2026-06-18T08:40:27.983Z] 4:40:27 AM [vite] (client) hmr update /src/index.css, /src/components/publishing/PlatformPublishSuccessRatePanel.tsx
+[2026-06-18T08:40:27.988Z] 4:40:27 AM [vite] (client) hmr update /src/index.css, /src/pages/ClientDashboardPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx
+[2026-06-18T08:40:28.002Z] 4:40:28 AM [vite] (client) hmr update /src/index.css, /src/components/GeoIntroModal.tsx, /src/components/DashboardLayout.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/ClientDashboardPage.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/SourceGraphPage.tsx, /src/pages/MaturityDetailPage.tsx, /src/pages/MonthlyPlanPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/publishing/PublishRecordsListPanel.tsx, /src/components/enterpriseProfile/wizard/WizardStepFooter.tsx, /src/components/clients/ClientsHubTopBar.tsx, /src/components/geo/P0UiPrimitives.tsx, /src/components/weekly/XiaohongshuMaterialCard.tsx, /src/components/geo/GeoGrowthSuggestionsPanel.tsx, /src/components/geo/T0ContentGapSuggestionsCard.tsx, /src/components/diagnosis/RetestDueReminderCard.tsx, /src/components/workspace/WorkspaceInclusionMonitoringSection.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/components/questions/QuestionBankAssistantPanel.tsx, /src/components/maturity/MaturityAssistantPanel.tsx, /src/components/publishing/PublishAccountBindDialog.tsx, /src/components/publishing/PublishStatusBar.tsx, /src/components/delivery/DeliveryReportProductBody.tsx, /src/pages/DeliveryReportsCenterPage.tsx, /src/pages/InclusionMonitoringCenterPage.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/components/geo/AiTaskProgressCard.tsx, /src/components/publishing/LocalAccountBindingGuideCard.tsx, /src/components/publishing/LocalAgentPublishStepsPanel.tsx, /src/components/publishing/PublishTaskQueueTable.tsx, /src/components/publishing/PublishPlatformCardGrid.tsx, /src/components/publishing/PublishSuccessNotificationCard.tsx, /src/components/publishing/LocalAgentStatusCard.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/weekly/WechatMaterialCard.tsx, /src/pages/WeeklyContentPage.tsx, /src/components/weekly/ContentTaskProgressionView.tsx, /src/components/weekly/PlatformBatchGenerationPanel.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/WeeklyContentDetailSheet.tsx, /src/components/weekly/WeeklyContentReviewConfirmDialog.tsx, /src/components/weekly/WeeklyPublishQueueStatusBlock.tsx, /src/components/weekly/WeeklyLocalAgentStatusBar.tsx, /src/components/weekly/WeeklyPublishableContentList.tsx, /src/components/weekly/WeeklyPlatformArticleCard.tsx
+[2026-06-18T08:40:28.003Z] 4:40:28 AM [vite] (client) hmr update /src/index.css, /src/components/inclusion-monitoring/InclusionMonitoringAssistantPanel.tsx, /src/pages/InclusionMonitoringCenterPage.tsx
+[2026-06-18T08:40:28.004Z] 4:40:28 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-18T08:40:28.012Z] 4:40:28 AM [vite] (client) hmr update /src/index.css, /src/pages/InclusionMonitoringCenterPage.tsx
+[2026-06-18T08:40:28.013Z] 4:40:28 AM [vite] (client) hmr update /src/pages/SourceGraphPage.tsx, /src/index.css
+[2026-06-18T08:40:28.013Z] 4:40:28 AM [vite] (client) hmr update /src/index.css, /src/pages/V12FlowPages.tsx
+[2026-06-18T08:40:28.014Z] 4:40:28 AM [vite] (client) hmr update /src/pages/DeliveryReportsCenterPage.tsx
+[2026-06-18T08:40:28.014Z] 4:40:28 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx
+[2026-06-18T08:40:28.015Z] 4:40:28 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx
+[2026-06-18T08:40:28.094Z] 4:40:28 AM [tsx] change in ./shared/workspaceStateMachine.ts Restarting...
+[2026-06-18T08:40:37.080Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-18T08:40:37.122Z] Server running on http://localhost:3000/
+[2026-06-18T08:40:45.865Z] Dev server process group stopped
+[2026-06-18T08:40:45.868Z] ELIFECYCLE  Command failed.
+[2026-06-18T08:40:45.937Z] Dev server exited with code -15
+[2026-06-18T08:40:48.906Z] Starting dev server with command: pnpm run dev
+[2026-06-18T08:40:49.853Z] 
+[2026-06-18T08:40:49.854Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-18T08:40:49.855Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-18T08:40:49.856Z] 
+[2026-06-18T08:40:58.515Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-18T08:40:58.550Z] Server running on http://localhost:3000/
