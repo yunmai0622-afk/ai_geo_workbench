@@ -4866,3 +4866,30 @@
 [2026-06-18T09:19:32.446Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-18T09:19:32.526Z] Server running on http://localhost:3000/
 [2026-06-18T09:19:37.725Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-18T10:13:17.890Z] 6:13:17 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T10:13:17.894Z] 6:13:17 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T10:13:17.899Z] 6:13:17 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T10:13:17.900Z] 6:13:17 AM [vite] (client) hmr update /src/pages/SettingsPage.tsx, /src/index.css
+[2026-06-18T10:13:17.902Z] 6:13:17 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T10:13:17.902Z] 6:13:17 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T10:13:17.903Z] 6:13:17 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/components/questions/QuestionSearchPoolDrawer.tsx, /src/pages/MaturityDetailPage.tsx, /src/pages/MonthlyPlanPage.tsx, /src/components/maturity/MaturityAssistantPanel.tsx, /src/components/enterpriseProfile/wizard/WizardQuestionGuideStep.tsx, /src/pages/KnowledgePage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/DeliveryReportCustomerLightView.tsx, /src/components/delivery/DeliveryReportCustomerProductSections.tsx, /src/components/delivery/DeliveryReportProductBody.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/help/PageUsageHelpButton.tsx, /src/components/questions/QuestionBankAssistantPanel.tsx
+[2026-06-18T10:13:17.904Z] 6:13:17 AM [vite] (client) hmr update /src/pages/SourceGraphPage.tsx, /src/components/source-graph/BrandSourceDrawer.tsx, /src/components/source-graph/SourceGraphAssistantPanel.tsx
+[2026-06-18T10:13:17.904Z] 6:13:17 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/components/DangerousActionConfirmDialog.tsx
+[2026-06-18T10:13:17.904Z] 6:13:17 AM [vite] (client) hmr update /src/components/DeliveryReportCustomerLightView.tsx, /src/components/delivery/DeliveryReportCustomerProductSections.tsx, /src/components/delivery/DeliveryReportProductBody.tsx
+[2026-06-18T10:13:17.905Z] 6:13:17 AM [vite] (client) hmr update /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/help/PageUsageHelpButton.tsx
+[2026-06-18T10:13:17.905Z] 6:13:17 AM [vite] (client) hmr update /src/pages/TemplatesPage.tsx, /src/components/templates/TemplateFillPreviewDialog.tsx, /src/components/DeliveryReportCustomerLightView.tsx, /src/components/delivery/DeliveryReportCustomerProductSections.tsx, /src/components/delivery/DeliveryReportProductBody.tsx, /src/components/questions/QuestionBankAssistantPanel.tsx
+[2026-06-18T10:13:17.906Z] 6:13:17 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/WorkspaceDashboardOverviewCards.tsx
+[2026-06-18T10:13:18.086Z] 6:13:17 AM [tsx] change in ./shared/retestComparisonDisplay.ts Restarting...
+[2026-06-18T10:13:28.720Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-18T10:13:28.766Z] Server running on http://localhost:3000/
+[2026-06-18T10:13:41.630Z] Dev server process group stopped
+[2026-06-18T10:13:41.634Z] ELIFECYCLE  Command failed.
+[2026-06-18T10:13:41.705Z] Dev server exited with code -15
+[2026-06-18T10:13:44.660Z] Starting dev server with command: pnpm run dev
+[2026-06-18T10:13:45.628Z] 
+[2026-06-18T10:13:45.629Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-18T10:13:45.630Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-18T10:13:45.630Z] 
+[2026-06-18T10:13:53.936Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-18T10:13:53.974Z] Server running on http://localhost:3000/
+[2026-06-18T10:14:08.504Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
