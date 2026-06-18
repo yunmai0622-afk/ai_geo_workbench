@@ -758,7 +758,7 @@ export default function WeeklyContentPage() {
       });
     }
     if (questionType) {
-      toast.message("T0 检测内容缺口建议", {
+      toast.message("AI 现状检测内容缺口建议", {
         description: `建议优先生成${resolveQuestionTypeDisplayLabel(questionType)}相关内容`,
       });
     }

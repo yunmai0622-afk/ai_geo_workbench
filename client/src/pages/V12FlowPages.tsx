@@ -1536,7 +1536,7 @@ export function AiDiagnosisFlowPage() {
       });
       const roundId = createResult.round?.id;
       if (!roundId) {
-        setT0Error("T0 轮次创建失败，请刷新后重试。");
+        setT0Error("AI 现状检测任务创建失败，请刷新后重试。");
         return;
       }
       t0CompletionHandledRef.current = null;
@@ -1903,9 +1903,9 @@ export function AiDiagnosisFlowPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {AI_DIAGNOSIS_RETEST_STAGE_COPY.map(stage => (
               <div
-                key={stage.tag}
+                key={stage.id}
                 className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
-                data-testid={`ai-diagnosis-retest-stage-${stage.tag.toLowerCase()}`}
+                data-testid={`ai-diagnosis-retest-stage-${stage.id}`}
               >
                 <span className="inline-flex rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
                   {stage.tag}
@@ -2266,7 +2266,7 @@ export function AiDiagnosisFlowPage() {
                   )
                 }
               >
-                {resetT0Baseline.isPending ? "正在重置…" : "重置T0检测"}
+                {resetT0Baseline.isPending ? "正在重置…" : "重置优化前检测"}
               </Button>
             ) : null}
             <Button

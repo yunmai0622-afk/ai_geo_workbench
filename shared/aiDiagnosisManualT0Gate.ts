@@ -18,10 +18,10 @@ export const T0_COMPLETION_OUTCOMES = [
 ] as const;
 
 export const AI_DIAGNOSIS_RETEST_STAGE_COPY = [
-  { tag: "T0", title: "优化前检测", description: "开始服务前，了解 AI 当前是否推荐你" },
-  { tag: "T1", title: "7天后复测", description: "发布内容后观察是否被 AI 识别" },
-  { tag: "T2", title: "14天后复测", description: "观察提及率和推荐率变化" },
-  { tag: "T3", title: "30天后复测", description: "形成月度趋势和交付报告" },
+  { id: "t0", tag: "优化前检测", title: "优化前检测", description: "开始服务前，了解 AI 当前是否推荐你" },
+  { id: "t1", tag: "T1", title: "7天后复测", description: "发布内容后观察是否被 AI 识别" },
+  { id: "t2", tag: "T2", title: "14天后复测", description: "观察提及率和推荐率变化" },
+  { id: "t3", tag: "T3", title: "30天后复测", description: "形成月度趋势和交付报告" },
 ] as const;
 
 export type T0StartConfirmCopy = {

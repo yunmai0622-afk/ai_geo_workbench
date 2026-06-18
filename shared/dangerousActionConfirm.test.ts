@@ -13,7 +13,7 @@ describe("dangerousActionConfirm", () => {
       "确认要归档项目吗？此操作无法撤销。",
     );
     expect(buildDangerousActionConfirmMessage(DANGEROUS_ACTION_LABELS.resetT0Detection)).toBe(
-      "确认要重置T0检测吗？此操作无法撤销。",
+      "确认要重置优化前检测吗？此操作无法撤销。",
     );
   });
 });

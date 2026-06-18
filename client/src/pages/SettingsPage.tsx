@@ -123,7 +123,7 @@ export default function SettingsPage() {
           <ul className="list-disc space-y-3 pl-5 text-sm text-gray-700">
             <li>
               <span className="font-medium text-gray-900">交付报告</span>
-              （交付报告页 → 导出 CSV）：检测问题列表、各平台 AI 提及与推荐情况、T0/T1 对比数据
+              （交付报告页 → 导出 CSV）：检测问题列表、各平台 AI 提及与推荐情况、优化前基线与复测对比数据
             </li>
             <li>
               <span className="font-medium text-gray-900">发布记录</span>

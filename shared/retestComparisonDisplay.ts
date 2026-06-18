@@ -182,9 +182,9 @@ export function formatOverallSummaryLines(summary: OverallChangeSummary): {
   competitorLine: string;
 } {
   return {
-    mentionLine: `品牌提及率：T0 ${formatRate(summary.mentionRateT0)} → T1 ${formatRate(summary.mentionRateT1)}（${formatRateDelta(summary.mentionRateDelta)}）`,
-    recommendLine: `推荐率：T0 ${formatRate(summary.recommendRateT0)} → T1 ${formatRate(summary.recommendRateT1)}（${formatRateDelta(summary.recommendRateDelta)}）`,
-    competitorLine: `竞品出现：T0 ${summary.competitorCountT0} 次 → T1 ${summary.competitorCountT1} 次${
+    mentionLine: `品牌提及率：优化前基线 ${formatRate(summary.mentionRateT0)} → 7天后复测 ${formatRate(summary.mentionRateT1)}（${formatRateDelta(summary.mentionRateDelta)}）`,
+    recommendLine: `推荐率：优化前基线 ${formatRate(summary.recommendRateT0)} → 7天后复测 ${formatRate(summary.recommendRateT1)}（${formatRateDelta(summary.recommendRateDelta)}）`,
+    competitorLine: `竞品出现：优化前基线 ${summary.competitorCountT0} 次 → 7天后复测 ${summary.competitorCountT1} 次${
       summary.competitorDelta > 0
         ? `（↑ ${summary.competitorDelta} 次）`
         : summary.competitorDelta < 0

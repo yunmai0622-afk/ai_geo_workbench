@@ -163,7 +163,7 @@ export function buildT0T1ComparisonCsvSection(input: T0T1ExportInput): CsvSectio
   const headerNote =
     input.baseRound && input.compareRound
       ? `基线：${input.baseRound.roundName} · 复测：${input.compareRound.roundName}`
-      : "暂无 T0/T1 轮次";
+      : "暂无优化前基线与复测轮次";
 
   const detailRows = input.rows.map(row => [
     resolveQuestionTypeDisplayLabel(row.questionType),
@@ -175,12 +175,12 @@ export function buildT0T1ComparisonCsvSection(input: T0T1ExportInput): CsvSectio
   ]);
 
   return {
-    title: `T0/T1 对比数据（${headerNote}）`,
+    title: `优化前基线与复测对比数据（${headerNote}）`,
     headers: [
       "问题类型",
       "平台",
-      "T0 提及次数",
-      "T1 提及次数",
+      "优化前提及次数",
+      "7天后复测提及次数",
       "变化方向",
       "系统判断",
     ],

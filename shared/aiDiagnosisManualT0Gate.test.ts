@@ -43,7 +43,7 @@ describe("aiDiagnosisManualT0Gate", () => {
       "14天后复测",
       "30天后复测",
     ]);
-    expect(AI_DIAGNOSIS_RETEST_STAGE_COPY[0]?.tag).toBe("T0");
+    expect(AI_DIAGNOSIS_RETEST_STAGE_COPY[0]?.tag).toBe("优化前检测");
   });
 
   it("builds rerun confirm copy", () => {

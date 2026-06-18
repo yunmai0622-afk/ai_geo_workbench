@@ -77,11 +77,11 @@ export function computeQuestionMentionRateChange(input: {
     const comparePct = Math.round(compareMentionRate * 100);
     const deltaPct = Math.round(mentionRateDelta * 100);
     if (deltaPct > 0) {
-      summaryLine = `该问题提及率：T0 ${basePct}% → T1 ${comparePct}%（↑ ${deltaPct} 个百分点）`;
+      summaryLine = `该问题提及率：优化前基线 ${basePct}% → 7天后复测 ${comparePct}%（↑ ${deltaPct} 个百分点）`;
     } else if (deltaPct < 0) {
-      summaryLine = `该问题提及率：T0 ${basePct}% → T1 ${comparePct}%（↓ ${Math.abs(deltaPct)} 个百分点）`;
+      summaryLine = `该问题提及率：优化前基线 ${basePct}% → 7天后复测 ${comparePct}%（↓ ${Math.abs(deltaPct)} 个百分点）`;
     } else {
-      summaryLine = `该问题提及率：T0 ${basePct}% → T1 ${comparePct}%（→ 持平）`;
+      summaryLine = `该问题提及率：优化前基线 ${basePct}% → 7天后复测 ${comparePct}%（→ 持平）`;
     }
   } else if (baseRunCount > 0 && compareRunCount === 0) {
     summaryLine = "优化前基线已有该问题实测，待完成 7天后复测后可对比提及率。";

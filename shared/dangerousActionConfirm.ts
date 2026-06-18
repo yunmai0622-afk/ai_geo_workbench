@@ -2,7 +2,7 @@
 export const DANGEROUS_ACTION_LABELS = {
   deleteContent: "删除内容",
   archiveProject: "归档项目",
-  resetT0Detection: "重置T0检测",
+  resetT0Detection: "重置优化前检测",
 } as const;
 
 export type DangerousActionLabelKey = keyof typeof DANGEROUS_ACTION_LABELS;

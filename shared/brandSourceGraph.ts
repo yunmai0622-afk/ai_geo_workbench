@@ -35,7 +35,7 @@ export const BRAND_SOURCE_INDICATORS = [
   { key: "isPubliclyAccessible", label: "可访问" },
   { key: "containsBrandName", label: "有品牌名" },
   { key: "containsBusinessDescription", label: "有业务描述" },
-  { key: "containsOfficialSite", label: "有官网链接/公司信息" },
+  { key: "containsOfficialSite", label: "有官网/公司链接" },
   { key: "containsCoreKeywords", label: "有目标关键词" },
   { key: "aiCitationConfirmed", label: "被 AI 引用" },
 ] as const;

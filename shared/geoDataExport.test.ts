@@ -86,7 +86,7 @@ describe("geoDataExport", () => {
     expect(csv.startsWith(GEO_CSV_UTF8_BOM)).toBe(true);
     expect(csv).toContain("检测问题列表");
     expect(csv).toContain("各平台提及情况");
-    expect(csv).toContain("T0/T1 对比数据");
+    expect(csv).toContain("优化前基线与复测对比数据");
     expect(csv).toContain("Q1");
     expect(csv).toContain("豆包");
   });

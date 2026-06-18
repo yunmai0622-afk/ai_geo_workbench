@@ -26,7 +26,7 @@ describe("articleGapLink", () => {
     expect(result.baseMentionRate).toBeCloseTo(1 / 3);
     expect(result.compareMentionRate).toBe(1);
     expect(result.mentionRateDelta).toBeCloseTo(2 / 3);
-    expect(result.summaryLine).toContain("T0");
-    expect(result.summaryLine).toContain("T1");
+    expect(result.summaryLine).toContain("优化前基线");
+    expect(result.summaryLine).toContain("7天后复测");
   });
 });

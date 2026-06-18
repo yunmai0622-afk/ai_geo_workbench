@@ -50,7 +50,7 @@ export function RetestComparisonPanel({ projectId, enabled }: RetestComparisonPa
   if (!baseRound || !compareRound) {
     return (
       <P0Card testId="retest-comparison-empty" className="text-sm text-gray-600">
-        <p className="font-medium text-gray-900">暂无 T0/T1 对比数据</p>
+        <p className="font-medium text-gray-900">暂无优化前基线与复测对比数据</p>
         <p className="mt-2 leading-relaxed text-gray-600">
           需先完成 AI 现状检测与 7天后复测，系统将自动生成对比结果。
         </p>
@@ -61,7 +61,7 @@ export function RetestComparisonPanel({ projectId, enabled }: RetestComparisonPa
   if (rows.length === 0) {
     return (
       <P0Card testId="retest-comparison-no-rows" className="text-sm text-gray-600">
-        <p className="font-medium text-gray-900">T0 与 T1 轮次已就绪，对比结果尚未生成</p>
+        <p className="font-medium text-gray-900">优化前检测与 7天后复测轮次已就绪，对比结果尚未生成</p>
         <p className="mt-2 leading-relaxed text-gray-600">
           基线：{baseRound.roundName} · 复测：{compareRound.roundName}。请等待系统完成对比计算。
         </p>
@@ -78,7 +78,7 @@ export function RetestComparisonPanel({ projectId, enabled }: RetestComparisonPa
         </p>
       </header>
 
-      <P0Section title="整体变化摘要" description="基于本轮 T0/T1 对比样本汇总，供趋势参考。">
+      <P0Section title="整体变化摘要" description="基于本轮优化前基线与复测对比样本汇总，供趋势参考。">
         <P0Card testId="retest-comparison-summary">
           <ul className="space-y-2 text-sm text-gray-800">
             <li>{summaryLines.mentionLine}</li>
@@ -95,7 +95,7 @@ export function RetestComparisonPanel({ projectId, enabled }: RetestComparisonPa
               <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium text-gray-500">
                 <th className="px-4 py-3">问题类型</th>
                 <th className="px-4 py-3">平台</th>
-                <th className="px-4 py-3">T0 提及次数</th>
+                <th className="px-4 py-3">优化前提及次数</th>
                 <th className="px-4 py-3">T1 提及次数</th>
                 <th className="px-4 py-3">变化方向</th>
                 <th className="px-4 py-3">系统判断</th>

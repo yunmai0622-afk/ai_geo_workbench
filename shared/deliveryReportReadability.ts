@@ -554,7 +554,7 @@ export function buildInternalChecklist(
     },
     {
       id: "t0",
-      label: "T0 AI 诊断已完成",
+      label: "AI 现状检测已完成",
       status: t0Done ? "已完成" : "待完成",
       blockReason: t0Done ? null : "尚未完成 AI 搜索优化前基线实测",
       ctaPath: "/ai-diagnosis",

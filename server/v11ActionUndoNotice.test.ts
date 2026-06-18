@@ -10,7 +10,7 @@ describe("GEO-V1.1-Action-Undo-Notice", () => {
     const shared = read("shared/dangerousActionConfirm.ts");
     expect(shared).toContain("删除内容");
     expect(shared).toContain("归档项目");
-    expect(shared).toContain("重置T0检测");
+    expect(shared).toContain("重置优化前检测");
     expect(shared).toContain("此操作无法撤销");
   });
 
