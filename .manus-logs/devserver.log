@@ -4831,3 +4831,38 @@
 [2026-06-18T08:47:29.460Z] [geo.localAgent.platformAccounts.list] {"projectId":150001,"userId":16740006,"accountCount":3}
 [2026-06-18T08:47:29.461Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":150001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-12T05:31:56.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
 [2026-06-18T08:51:35.470Z] 4:51:35 AM [vite] (client) hmr update /src/index.css
+[2026-06-18T09:06:43.844Z] 5:06:43 AM [vite] (client) hmr update /src/index.css, /src/components/source-graph/SourceGraphAssistantPanel.tsx
+[2026-06-18T09:06:43.846Z] 5:06:43 AM [vite] (client) hmr update /src/pages/SourceGraphPage.tsx, /src/index.css
+[2026-06-18T09:06:48.115Z] 5:06:48 AM [vite] (client) hmr update /src/pages/SourceGraphPage.tsx, /src/components/source-graph/BrandSourceDrawer.tsx, /src/components/source-graph/SourceGraphAssistantPanel.tsx
+[2026-06-18T09:06:48.238Z] 5:06:48 AM [tsx] change in ./shared/brandSourceGraph.ts Restarting...
+[2026-06-18T09:06:48.838Z] c
+[2026-06-18T09:06:48.839Z] node:internal/modules/run_main:122
+[2026-06-18T09:06:48.840Z] triggerUncaughtException(
+[2026-06-18T09:06:48.840Z] ^
+[2026-06-18T09:06:48.840Z] Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/ubuntu/ai_geo_workbench/node_modules/@trpc/server/dist/index.mjs' imported from /home/ubuntu/ai_geo_workbench/server/emailAuth.ts
+[2026-06-18T09:06:48.841Z] at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+[2026-06-18T09:06:48.841Z] at moduleResolve (node:internal/modules/esm/resolve:932:10)
+[2026-06-18T09:06:48.841Z] at defaultResolve (node:internal/modules/esm/resolve:1056:11)
+[2026-06-18T09:06:48.842Z] at nextResolve (node:internal/modules/esm/hooks:748:28)
+[2026-06-18T09:06:48.842Z] at resolveBase (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1781773608403:2:3744)
+[2026-06-18T09:06:48.842Z] at resolveDirectory (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1781773608403:2:4243)
+[2026-06-18T09:06:48.843Z] at resolveTsPaths (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1781773608403:2:4984)
+[2026-06-18T09:06:48.843Z] at async resolve (file:///home/ubuntu/ai_geo_workbench/node_modules/.pnpm/tsx@4.20.6/node_modules/tsx/dist/esm/index.mjs?1781773608403:2:5355)
+[2026-06-18T09:06:48.843Z] at async nextResolve (node:internal/modules/esm/hooks:748:22)
+[2026-06-18T09:06:48.844Z] at async Hooks.resolve (node:internal/modules/esm/hooks:240:24) {
+[2026-06-18T09:06:48.844Z] code: 'ERR_MODULE_NOT_FOUND',
+[2026-06-18T09:06:48.844Z] url: 'file:///home/ubuntu/ai_geo_workbench/node_modules/@trpc/server/dist/index.mjs'
+[2026-06-18T09:06:48.845Z] }
+[2026-06-18T09:06:48.845Z] 
+[2026-06-18T09:06:48.845Z] Node.js v22.13.0
+[2026-06-18T09:19:17.611Z] Dev server process group stopped
+[2026-06-18T09:19:17.751Z] ELIFECYCLE  Command failed.
+[2026-06-18T09:19:17.809Z] Dev server exited with code -15
+[2026-06-18T09:19:20.867Z] Starting dev server with command: pnpm run dev
+[2026-06-18T09:19:22.126Z] 
+[2026-06-18T09:19:22.171Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-18T09:19:22.265Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-18T09:19:22.289Z] 
+[2026-06-18T09:19:32.446Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-18T09:19:32.526Z] Server running on http://localhost:3000/
+[2026-06-18T09:19:37.725Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
