@@ -4816,3 +4816,18 @@
 [2026-06-18T08:40:49.856Z] 
 [2026-06-18T08:40:58.515Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-18T08:40:58.550Z] Server running on http://localhost:3000/
+[2026-06-18T08:42:42.567Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-18T08:45:29.127Z] [geo.localAgent.platformAccounts.list] {"projectId":150001,"userId":16740006,"accountCount":3}
+[2026-06-18T08:45:29.128Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":150001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-12T05:31:56.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-18T08:45:34.602Z] [geo.localAgent.platformAccounts.list] {"projectId":150001,"userId":16740006,"accountCount":3}
+[2026-06-18T08:45:34.603Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":150001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-12T05:31:56.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-18T08:45:53.404Z] [geo.localAgent.platformAccounts.list] {"projectId":150001,"userId":16740006,"accountCount":3}
+[2026-06-18T08:45:53.405Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":150001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-12T05:31:56.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-18T08:45:57.316Z] [geo.localAgent.platformAccounts.list] {"projectId":150001,"userId":16740006,"accountCount":3}
+[2026-06-18T08:45:57.317Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":150001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-12T05:31:56.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-18T08:47:03.383Z] [geo.scores.latest] { requestedProjectId: 150001, returned: null, sameProjectTop3: [] }
+[2026-06-18T08:47:28.124Z] [geo.localAgent.platformAccounts.list] {"projectId":150001,"userId":16740006,"accountCount":3}
+[2026-06-18T08:47:28.125Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":150001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-12T05:31:56.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-18T08:47:29.460Z] [geo.localAgent.platformAccounts.list] {"projectId":150001,"userId":16740006,"accountCount":3}
+[2026-06-18T08:47:29.461Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":150001,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":"2026-06-12T05:31:56.000Z","resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":3}
+[2026-06-18T08:51:35.470Z] 4:51:35 AM [vite] (client) hmr update /src/index.css
