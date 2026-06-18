@@ -35,7 +35,7 @@ export const BRAND_SOURCE_INDICATORS = [
   { key: "isPubliclyAccessible", label: "可访问" },
   { key: "containsBrandName", label: "有品牌名" },
   { key: "containsBusinessDescription", label: "有业务描述" },
-  { key: "containsOfficialSite", label: "有官网/公司锚点" },
+  { key: "containsOfficialSite", label: "有官网链接/公司信息" },
   { key: "containsCoreKeywords", label: "有目标关键词" },
   { key: "aiCitationConfirmed", label: "被 AI 引用" },
 ] as const;
@@ -195,7 +195,7 @@ const GAP_SUGGESTION_COPY: Record<
   },
   official_url: {
     title: "补充带官网和公司信息的第三方内容",
-    direction: "在第三方内容中附上官网链接与公司名称锚点。",
+    direction: "在第三方内容中附上官网链接与公司名称。",
     taskType: "官网首页",
   },
   target_keywords: {
@@ -453,7 +453,7 @@ function evaluateAnchorStatus(
   if (!standardValue.trim()) {
     return {
       status: "missing",
-      issueSummary: `企业档案尚未填写${anchorMeta?.label ?? "该锚点"}`,
+      issueSummary: `企业档案尚未填写${anchorMeta?.label ?? "品牌关键信息"}`,
       suggestion: `请先在品牌资产建档中补充${anchorMeta?.label ?? "对应信息"}。`,
     };
   }
@@ -468,7 +468,7 @@ function evaluateAnchorStatus(
   if (passRate === 100) {
     return {
       status: "consistent",
-      issueSummary: "各信源均已覆盖该锚点",
+      issueSummary: "各信源均已覆盖该品牌关键信息",
       suggestion: "保持现有表达，并在新内容中延续同一口径。",
     };
   }
@@ -482,7 +482,7 @@ function evaluateAnchorStatus(
     }
     return {
       status: "missing",
-      issueSummary: `${anchorMeta?.label ?? "锚点"}在各信源中均未体现`,
+      issueSummary: `${anchorMeta?.label ?? "品牌关键信息"}在各信源中均未体现`,
       suggestion: GAP_SUGGESTION_COPY[type]?.direction ?? "请在主要信源中补充对应信息。",
     };
   }
@@ -491,14 +491,14 @@ function evaluateAnchorStatus(
   if (conflictTypes.includes(type) && passRate > 0 && passRate < 100) {
     return {
       status: "conflict",
-      issueSummary: `${anchorMeta?.label ?? "锚点"}在不同信源中表达不一致`,
+      issueSummary: `${anchorMeta?.label ?? "品牌关键信息"}在不同信源中表达不一致`,
       suggestion: "统一各平台的品牌/公司/官网表述，避免 AI 识别混乱。",
     };
   }
 
   return {
     status: "partial",
-    issueSummary: `${anchorMeta?.label ?? "锚点"}仅在部分信源中体现（${passRate}%）`,
+    issueSummary: `${anchorMeta?.label ?? "品牌关键信息"}仅在部分信源中体现（${passRate}%）`,
     suggestion: GAP_SUGGESTION_COPY[type]?.direction ?? "请在更多信源中补充一致信息。",
   };
 }

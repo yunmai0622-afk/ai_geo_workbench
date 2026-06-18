@@ -89,6 +89,6 @@ describe("brandSourceGraph scoring", () => {
       { projectId: 1, coreKeywords: ["知识付费"], brandName: "海豚知道" },
     );
     expect(suggestions.length).toBeGreaterThan(0);
-    expect(suggestions.some(item => item.description.includes("品牌") || item.description.includes("锚点"))).toBe(true);
+    expect(suggestions.some(item => item.description.includes("品牌") || item.description.includes("关键信息"))).toBe(true);
   });
 });

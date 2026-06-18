@@ -283,7 +283,7 @@ export default function SourceGraphPage() {
         </div>
       ) : (
         <>
-          <P0Section title="信源总览" description="基于当前项目信源与实体一致性自动计算">
+          <P0Section title="信源总览" description="基于当前项目信源与关键信息一致性自动计算">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="source-graph-overview">
               <P0MetricTile
                 label="信源完整度"
@@ -291,11 +291,11 @@ export default function SourceGraphPage() {
                 hint="信源数量 + 六项指标完成度"
               />
               <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-                <p className="text-xs font-medium text-gray-500">实体一致性</p>
+                <p className="text-xs font-medium text-gray-500">核心信息项</p>
                 <p className="mt-2 text-4xl font-bold text-blue-600" data-testid="source-graph-consistency-score">
                   {metrics?.entityConsistency ?? 0}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">8 个核心信息项平均分</p>
+                <p className="mt-1 text-xs text-gray-500">8项品牌关键信息平均分</p>
               </div>
               <P0MetricTile
                 label="AI 可识别度"
@@ -422,14 +422,14 @@ export default function SourceGraphPage() {
             </div>
           </P0Section>
 
-          <P0Section title="实体一致性评分" description="基于企业档案标准值与各信源观察值对比">
+          <P0Section title="品牌关键信息一致性" description="基于企业档案标准值与各信源观察值对比">
             <div className="space-y-3" data-testid="entity-consistency-section">
               {consistencyChecks.length === 0 ? (
                 <div
                   className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
                   data-testid="entity-consistency-empty"
                 >
-                  暂无实体一致性检查结果。添加信源后，系统会基于企业档案检查品牌名称、主营业务、官网链接、核心关键词等品牌关键信息是否一致。
+                  暂无关键信息一致性检查结果。添加信源后，系统会基于企业档案检查品牌名称、主营业务、官网链接、核心关键词等品牌关键信息是否一致。
                 </div>
               ) : (
                 consistencyChecks.map(check => (

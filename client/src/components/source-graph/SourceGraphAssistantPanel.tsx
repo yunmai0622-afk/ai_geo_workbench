@@ -43,7 +43,7 @@ export function SourceGraphAssistantPanel() {
         <h3 className="text-sm font-bold text-gray-900">信源图谱助手</h3>
         <dl className="mt-4 space-y-3 text-sm">
           <div>
-            <dt className="text-gray-500">实体一致性</dt>
+            <dt className="text-gray-500">关键信息一致性</dt>
             <dd className="mt-1 text-2xl font-bold text-blue-600" data-testid="sidebar-consistency-score">
               {view.consistencyScore}
             </dd>
