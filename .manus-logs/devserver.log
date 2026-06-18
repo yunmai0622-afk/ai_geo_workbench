@@ -4893,3 +4893,15 @@
 [2026-06-18T10:13:53.936Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-18T10:13:53.974Z] Server running on http://localhost:3000/
 [2026-06-18T10:14:08.504Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-18T10:32:22.913Z] 6:32:22 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-18T10:32:36.638Z] Dev server process group stopped
+[2026-06-18T10:32:36.643Z] ELIFECYCLE  Command failed.
+[2026-06-18T10:32:36.717Z] Dev server exited with code -15
+[2026-06-18T10:32:39.656Z] Starting dev server with command: pnpm run dev
+[2026-06-18T10:32:40.685Z] 
+[2026-06-18T10:32:40.686Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-18T10:32:40.687Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-18T10:32:40.688Z] 
+[2026-06-18T10:32:53.267Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-18T10:32:53.309Z] Server running on http://localhost:3000/
+[2026-06-18T10:33:07.276Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
