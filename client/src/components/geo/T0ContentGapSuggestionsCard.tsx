@@ -26,7 +26,7 @@ export function T0ContentGapSuggestionsCard({ projectId, suggestions, className 
         </div>
         <div>
           <h2 className="text-sm font-bold text-amber-950">AI 现状检测内容缺口建议</h2>
-          <p className="text-xs text-amber-800/80">数据来源：ai_test_runs</p>
+          <p className="text-xs text-amber-800/80">数据来源：AI 实测结果</p>
         </div>
       </div>
 

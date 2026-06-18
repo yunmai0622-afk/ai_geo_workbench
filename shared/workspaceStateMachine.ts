@@ -201,7 +201,13 @@ export function resolveWorkspaceStage(input: WorkspaceStageResolutionInput): Wor
   if (!input.p0ProfileComplete) {
     currentStageId = "complete_geo_profile";
     blockerReasons.push("企业 P0 建档必填信息不完整。");
-  } else if (!input.hasAnalysis && !input.hasGeoScore) {
+  } else if (
+    !input.hasAnalysis &&
+    !input.hasGeoScore &&
+    !input.hasCompletedT0Baseline &&
+    input.aiTestResultCount === 0 &&
+    input.brandMentionRate == null
+  ) {
     currentStageId = "ai_diagnosis";
     blockerReasons.push("尚未生成 AI 诊断结果或 GEO 评分。");
   } else if (input.articleCount === 0) {

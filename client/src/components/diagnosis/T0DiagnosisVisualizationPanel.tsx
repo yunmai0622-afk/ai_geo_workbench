@@ -78,7 +78,7 @@ export function T0DiagnosisVisualizationPanel({ visualization }: { visualization
           </p>
         </div>
         <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-medium text-indigo-700">
-          数据来源：ai_test_runs
+          数据来源：AI 实测结果
         </span>
       </div>
 

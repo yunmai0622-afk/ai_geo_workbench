@@ -21,7 +21,7 @@ describe("GEO-V1.1-T0-To-Content-Bridge", () => {
     expect(workspace).toContain("T0ContentGapSuggestionsCard");
     expect(workspace).toContain("t0ContentGapSuggestions");
     expect(card).toContain("立即生成");
-    expect(card).toContain("ai_test_runs");
+    expect(card).toContain("AI 实测结果");
   });
 
   it("links weekly content page from gap suggestion action path", () => {

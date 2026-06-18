@@ -17,6 +17,8 @@ export const MONTHLY_REPORT_PAGE_TITLE = "AI 品牌成熟度月报";
 export const MONTHLY_REPORT_PAGE_INTRO =
   "记录本月AI品牌优化的执行动作、AI推荐变化和成效，是续费评估和下月计划的依据。";
 export const MONTHLY_REPORT_PENDING_SUMMARY = "复测完成后自动生成";
+export const MONTHLY_REPORT_NO_BASELINE_LABEL = "尚未建立基线";
+export const MONTHLY_REPORT_BASELINE_PENDING_COMPARE = "复测完成后生成对比";
 export const MONTHLY_REPORT_EXECUTING_MESSAGE =
   "本月优化计划执行中（{completed}/{total}项已完成）完成全部任务并复测后，将自动生成本月成效报告。";
 
@@ -224,6 +226,16 @@ export function splitAiTestRunsByPlanPeriod(
   return { baselineRuns, periodRuns };
 }
 
+/** 月报基线：优先取计划生成前的实测快照；无快照时回退到全量最新 AI 实测结果 */
+export function resolveMonthlyReportBaselineRuns(
+  runs: AiTestRunRateInput[],
+  planGeneratedAt: Date | string,
+): AiTestRunRateInput[] {
+  const { baselineRuns } = splitAiTestRunsByPlanPeriod(runs, planGeneratedAt);
+  if (baselineRuns.length > 0) return baselineRuns;
+  return runs;
+}
+
 export function buildMonthlyReportPlatformChanges(
   baselineRates: ReturnType<typeof computeAiTestRatesFromRuns>,
   resultRates: ReturnType<typeof computeAiTestRatesFromRuns>,
@@ -421,9 +433,14 @@ export function buildMonthlyReportView(input: {
     input.aiTestRuns,
     input.plan.generatedAt,
   );
-  const baselineRates = computeAiTestRatesFromRuns(baselineRuns);
+  const baselinePool = hasRetestData
+    ? baselineRuns.length > 0
+      ? baselineRuns
+      : input.aiTestRuns
+    : input.aiTestRuns;
+  const baselineRates = computeAiTestRatesFromRuns(baselinePool);
   const resultRates = computeAiTestRatesFromRuns(
-    hasRetestData ? [...baselineRuns, ...periodRuns] : periodRuns.length > 0 ? periodRuns : baselineRuns,
+    hasRetestData ? [...baselineRuns, ...periodRuns] : periodRuns.length > 0 ? periodRuns : baselinePool,
   );
   const mentionBaseline = baselineRates.mentionRate;
   const mentionResult = hasRetestData ? resultRates.mentionRate : null;
@@ -529,8 +546,11 @@ export function formatMonthlyReportRateChange(
   before: number | null,
   after: number | null,
 ): string {
-  if (before == null && after == null) return MONTHLY_REPORT_PENDING_SUMMARY;
-  if (after == null) return `${formatPercent(before)} → ${MONTHLY_REPORT_PENDING_SUMMARY}`;
+  if (before == null && after == null) return MONTHLY_REPORT_NO_BASELINE_LABEL;
+  if (after == null) {
+    if (before == null) return MONTHLY_REPORT_NO_BASELINE_LABEL;
+    return `当前基线：${formatPercent(before)} · ${MONTHLY_REPORT_BASELINE_PENDING_COMPARE}`;
+  }
   const delta = before != null ? after - before : null;
   const deltaText =
     delta != null ? `（${delta >= 0 ? "+" : ""}${Math.round(delta * 100)}%）` : "";

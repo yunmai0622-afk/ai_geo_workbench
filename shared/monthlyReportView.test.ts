@@ -31,7 +31,9 @@ describe("monthlyReportView", () => {
 
   it("formats period label and rate change placeholders", () => {
     expect(formatMonthlyReportPeriodLabel("2026-06-01T08:00:00.000Z", 2)).toContain("2026");
-    expect(formatMonthlyReportRateChange(0.2, null)).toContain("复测完成后自动生成");
+    expect(formatMonthlyReportRateChange(0.2, null)).toContain("当前基线：20%");
+    expect(formatMonthlyReportRateChange(0.2, null)).toContain("复测完成后生成对比");
+    expect(formatMonthlyReportRateChange(null, null)).toBe("尚未建立基线");
     expect(formatMonthlyReportMaturityChange(52, null)).toContain("52分");
   });
 
@@ -66,7 +68,11 @@ describe("monthlyReportView", () => {
         { id: 2, taskType: "evidence_addition", title: "t2", status: "pending", relatedQuestionId: null, linkedEntityId: null, metadata: null, completedAt: null },
       ],
       planPhase: "executing",
-      aiTestRuns: [{ testedAt: "2026-05-30T00:00:00.000Z", mentionedCompany: true, recommendedCompany: false, platform: "豆包" }],
+      aiTestRuns: [
+        { testedAt: "2026-05-30T00:00:00.000Z", mentionedCompany: true, recommendedCompany: false, platform: "豆包" },
+        { testedAt: "2026-05-30T01:00:00.000Z", mentionedCompany: false, recommendedCompany: false, platform: "豆包" },
+        { testedAt: "2026-05-30T02:00:00.000Z", mentionedCompany: false, recommendedCompany: true, platform: "Kimi" },
+      ],
       contentItems: [],
       sourceItems: [],
       evidenceItems: [],
@@ -77,6 +83,7 @@ describe("monthlyReportView", () => {
     expect(view.showExecutingEmpty).toBe(true);
     expect(view.executingMessage).toContain("1/2");
     expect(view.summary.pendingLabel).toBe("复测完成后自动生成");
+    expect(view.summary.mentionRateBaseline).toBeCloseTo(1 / 3);
     expect(view.weakDimensionChanges.length).toBeGreaterThan(0);
   });
 

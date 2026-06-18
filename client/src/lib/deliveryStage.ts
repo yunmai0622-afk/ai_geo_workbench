@@ -77,7 +77,13 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
       metrics,
     };
   }
-  if (!input.hasAnalysis && !input.hasGeoScore) {
+  if (
+    !input.hasAnalysis &&
+    !input.hasGeoScore &&
+    !input.hasCompletedT0Baseline &&
+    input.aiTestResultCount === 0 &&
+    input.brandMentionRate == null
+  ) {
     return {
       stage: "S2_READY_FOR_DIAGNOSIS",
       stageLabel: "待诊断",

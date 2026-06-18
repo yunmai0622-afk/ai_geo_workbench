@@ -11,6 +11,7 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import {
   daysSincePublish,
   formatMentionDelta,
+  retestPhaseCustomerLabel,
   retestPhaseStatusLabel,
 } from "@/lib/inclusionMonitoringDisplay";
 import { trpc } from "@/lib/trpc";
@@ -265,9 +266,9 @@ export function InclusionMonitoringCenterPage() {
           {[
             { label: "已发布内容数", value: publishRecordCount, testId: "overview-published-count" },
             { label: "已回填公开链接数", value: publishRecordsWithLink.length, testId: "overview-linked-count" },
-            { label: "待 T1", value: pendingT1, testId: "overview-pending-t1" },
-            { label: "待 T2", value: pendingT2, testId: "overview-pending-t2" },
-            { label: "待 T3", value: pendingT3, testId: "overview-pending-t3" },
+            { label: "待 7 天后复测", value: pendingT1, testId: "overview-pending-t1" },
+            { label: "待 14 天后复测", value: pendingT2, testId: "overview-pending-t2" },
+            { label: "待 30 天后复测", value: pendingT3, testId: "overview-pending-t3" },
             { label: "已完成复测数", value: completedRetestCount, testId: "overview-completed-retest" },
             {
               label: "AI提及变化",
@@ -338,9 +339,9 @@ export function InclusionMonitoringCenterPage() {
                     <th className="py-2 pr-4 font-medium">标题</th>
                     <th className="py-2 pr-4 font-medium">公开链接</th>
                     <th className="py-2 pr-4 font-medium">发布时间</th>
-                    <th className="py-2 pr-4 font-medium">T1状态</th>
-                    <th className="py-2 pr-4 font-medium">T2状态</th>
-                    <th className="py-2 pr-4 font-medium">T3状态</th>
+                    <th className="py-2 pr-4 font-medium">{retestPhaseCustomerLabel("T1")}状态</th>
+                    <th className="py-2 pr-4 font-medium">{retestPhaseCustomerLabel("T2")}状态</th>
+                    <th className="py-2 pr-4 font-medium">{retestPhaseCustomerLabel("T3")}状态</th>
                     <th className="py-2 pr-4 font-medium">AI引用</th>
                     <th className="py-2 font-medium">操作</th>
                   </tr>

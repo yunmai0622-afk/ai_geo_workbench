@@ -27,7 +27,7 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(page).toContain("workspace-header-card");
     expect(page).toContain("workspace-enterprise-name");
     expect(page).toContain("selectedProject?.enterpriseName");
-    expect(page).toContain("CUSTOMER_STAGE_LABELS");
+    expect(page).toContain("resolveWorkspaceCustomerStatusLabel");
   });
 
   it("状态机阶段文案齐全", () => {
@@ -135,7 +135,7 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(resolveWorkspaceStage({ ...base, p0ProfileComplete: false }).currentStageId).toBe("complete_geo_profile");
     expect(
       resolveWorkspaceStage({ ...base, hasAnalysis: false, hasGeoScore: false }).currentStageId,
-    ).toBe("ai_diagnosis");
+    ).toBe("delivery_report");
     expect(resolveWorkspaceStage({ ...base, articleCount: 0 }).currentStageId).toBe("generate_content");
     expect(
       resolveWorkspaceStage({ ...base, publishRecordCount: 0, publishTaskCount: 0 }).currentStageId,

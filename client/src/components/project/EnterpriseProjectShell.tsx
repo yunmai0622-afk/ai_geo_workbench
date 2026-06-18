@@ -5,7 +5,11 @@ import { usePublishAccountBindCta } from "@/hooks/usePublishAccountBindCta";
 import { usePublishAccountHealthCheck } from "@/hooks/usePublishAccountHealthCheck";
 import { useWorkspaceHomeDisplay } from "@/hooks/useWorkspaceHomeDisplay";
 import { buildProjectUrl } from "@/lib/activeProject";
-import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
+import { resolveWorkspaceStagePrimaryAction } from "@shared/workspacePrimaryAction";
+import {
+  resolveWorkspaceCustomerStatusLabel,
+  workspaceHasAiTestData,
+} from "@shared/workspaceCustomerDisplay";
 import { trpc } from "@/lib/trpc";
 import { shouldShowPublishBindNav } from "@shared/globalNavVisibility";
 import { resolvePageNextActionSuggestion } from "@shared/pageNextActionSuggestion";
@@ -49,6 +53,14 @@ export function EnterpriseProjectShell({ children }: Props) {
   const isMobile = useIsMobile();
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const maturityReportQuery = trpc.geo.maturity.getMaturityReport.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const monthlyPlanQuery = trpc.geo.monthlyPlan.getCurrent.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
@@ -130,7 +142,49 @@ export function EnterpriseProjectShell({ children }: Props) {
     return items.slice(0, 4);
   }, [summaryQuery.data]);
 
-  const stageLabel = resolution ? CUSTOMER_STAGE_LABELS[resolution.currentStageId] : null;
+  const stageLabel = useMemo(() => {
+    if (!resolution || !summaryQuery.data) return null;
+    const maturityScore = maturityReportQuery.data?.totalScore ?? null;
+    const monthlyPlanStage =
+      maturityScore != null && maturityScore > 0
+        ? (monthlyPlanQuery.data?.planPhase ??
+          (monthlyPlanQuery.data === null ? "none" : null))
+        : null;
+    return resolveWorkspaceCustomerStatusLabel({
+      stageId: resolution.currentStageId,
+      monthlyPlanStage,
+      hasAiTestData: workspaceHasAiTestData(summaryQuery.data),
+      hasCompletedT0Baseline: summaryQuery.data.hasCompletedT0Baseline,
+    });
+  }, [
+    resolution,
+    summaryQuery.data,
+    maturityReportQuery.data?.totalScore,
+    monthlyPlanQuery.data,
+  ]);
+
+  const stagePrimaryAction = useMemo(() => {
+    const m = summaryQuery.data;
+    if (!m) return null;
+    const maturityScore = maturityReportQuery.data?.totalScore ?? null;
+    const monthlyPlanStage =
+      maturityScore != null && maturityScore > 0
+        ? (monthlyPlanQuery.data?.planPhase ??
+          (monthlyPlanQuery.data === null ? "none" : null))
+        : null;
+    return resolveWorkspaceStagePrimaryAction({
+      hasCompletedT0Baseline: m.hasCompletedT0Baseline,
+      articleCount: m.articleCount,
+      pendingPublishContentCount: m.pendingPublishContentCount ?? 0,
+      publishRecordCount: m.publishRecordCount,
+      publishTaskCount: m.publishTaskCount,
+      lowQualityArticleCount: m.lowQualityArticleCount,
+      rewriteOpenCount: m.rewriteOpenCount,
+      maturityTotalScore: maturityScore,
+      pendingReviewCount: m.pendingReviewCount,
+      monthlyPlanStage,
+    });
+  }, [summaryQuery.data, maturityReportQuery.data?.totalScore, monthlyPlanQuery.data]);
 
   const ctaStageForTopBar = useMemo(() => {
     const stage = resolution?.currentStage ?? null;
@@ -160,10 +214,14 @@ export function EnterpriseProjectShell({ children }: Props) {
       : homeDisplay.mainChainNextAction;
 
   const ctaLabel =
+    stagePrimaryAction?.ctaLabel ??
     pageNextAction?.ctaLabel ??
     homeDisplay.mainChainNextAction?.ctaLabel ??
     ctaStageForTopBar?.ctaLabel;
   const ctaPath =
+    (stagePrimaryAction && selectedProjectId
+      ? buildProjectUrl(stagePrimaryAction.ctaPath, selectedProjectId)
+      : null) ??
     pageNextActionPath ??
     homeDisplay.mainChainNextAction?.ctaPath ??
     (ctaStageForTopBar && selectedProjectId ? workspaceCtaUrl(selectedProjectId, ctaStageForTopBar) : null);
@@ -187,6 +245,7 @@ export function EnterpriseProjectShell({ children }: Props) {
     <ProjectNextActionPanel
       projectId={selectedProjectId}
       stage={resolution?.currentStage ?? null}
+      stagePrimaryAction={stagePrimaryAction}
       mainChainNextAction={panelMainChain}
       pageNextAction={pageNextAction}
       pageNextActionPath={pageNextActionPath}

@@ -60,9 +60,9 @@ describe("GEO-V1.2 publishing monitoring workflow restructure P0", () => {
   it("/inclusion-monitoring 已发布内容表按内容组织", () => {
     expect(inclusionPage).toContain('data-testid="inclusion-monitoring-content-table"');
     expect(inclusionPage).toContain("已发布内容监测表");
-    expect(inclusionPage).toContain("T1状态");
-    expect(inclusionPage).toContain("T2状态");
-    expect(inclusionPage).toContain("T3状态");
+    expect(inclusionPage).toContain("7 天后复测");
+    expect(inclusionPage).toContain("14 天后复测");
+    expect(inclusionPage).toContain("30 天后复测");
     expect(inclusionPage).not.toContain("已创建的监测卡片");
     expect(inclusionPage).not.toContain("grid gap-4 lg:grid-cols-2");
   });

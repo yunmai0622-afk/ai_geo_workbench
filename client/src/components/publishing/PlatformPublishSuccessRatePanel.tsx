@@ -16,7 +16,7 @@ export function PlatformPublishSuccessRatePanel({ projectId, className }: Props)
       <div>
         <h2 className="text-base font-semibold text-gray-900">各平台发布成功率</h2>
         <p className="mt-1 text-sm text-gray-600">
-          基于本项目的发布任务（publish_tasks）统计成功与失败次数；仅计入已完成或已失败的任务。
+          基于本项目的发布任务数据统计各平台成功与失败次数；仅计入已完成或已失败的任务。
         </p>
       </div>
 

@@ -295,17 +295,17 @@ export default function SourceGraphPage() {
                 <p className="mt-2 text-4xl font-bold text-blue-600" data-testid="source-graph-consistency-score">
                   {metrics?.entityConsistency ?? 0}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">8 个锚点平均分</p>
+                <p className="mt-1 text-xs text-gray-500">8 个核心信息项平均分</p>
               </div>
               <P0MetricTile
                 label="AI 可识别度"
                 value={`${metrics?.aiIdentifiability ?? 0}`}
-                hint="品牌、业务、锚点、关键词与 AI 引用"
+                hint="品牌、业务、核心信息项、关键词与 AI 引用"
               />
               <P0MetricTile
                 label="优先修复项"
                 value={String(metrics?.priorityFixCount ?? 0)}
-                hint="高风险信源 + 缺失/冲突锚点"
+                hint="高风险信源 + 缺失/冲突核心信息项"
               />
             </div>
           </P0Section>
@@ -429,7 +429,7 @@ export default function SourceGraphPage() {
                   className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
                   data-testid="entity-consistency-empty"
                 >
-                  暂无实体一致性检查结果。添加信源后，系统会基于企业档案检查品牌名称、主营业务、官网链接、核心关键词等锚点是否一致。
+                  暂无实体一致性检查结果。添加信源后，系统会基于企业档案检查品牌名称、主营业务、官网链接、核心关键词等品牌关键信息是否一致。
                 </div>
               ) : (
                 consistencyChecks.map(check => (

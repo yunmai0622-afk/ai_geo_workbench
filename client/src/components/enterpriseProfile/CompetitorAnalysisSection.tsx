@@ -241,7 +241,7 @@ export function CompetitorAnalysisSection({ projectId, brandName }: Props) {
             <p className="mt-1 text-xs text-gray-500">
               按 AI 实测中竞品被提及的问题类型，对照本品牌覆盖情况，给出可执行的内容补充方向。
             </p>
-            <p className="mt-2 text-xs text-amber-800/80">数据来源：ai_test_runs</p>
+            <p className="mt-2 text-xs text-amber-800/80">数据来源：AI 实测结果</p>
             {(summaryQuery.data?.gapSuggestions?.items.length ?? 0) > 0 ? (
               <ul className="mt-4 space-y-3 text-sm text-gray-700">
                 {summaryQuery.data?.gapSuggestions?.items.map(item => (

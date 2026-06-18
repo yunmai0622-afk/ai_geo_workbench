@@ -18,9 +18,12 @@ import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { geoP0Brand, geoTypography, stageBadgeClass } from "@/lib/geoP0Visual";
 import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import {
-  CUSTOMER_STAGE_LABELS,
   formatGeoScore,
 } from "@/lib/projectWorkspaceDisplay";
+import {
+  resolveWorkspaceCustomerStatusLabel,
+  workspaceHasAiTestData,
+} from "@shared/workspaceCustomerDisplay";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
@@ -128,7 +131,21 @@ export default function EnterpriseWorkspacePage() {
   const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, metrics);
   const growthSuggestions = useGeoGrowthSuggestions(selectedProjectId, Boolean(selectedProjectId));
   const stage = resolution?.currentStage;
-  const stageLabel = stage ? CUSTOMER_STAGE_LABELS[stage.id] : null;
+  const stageLabel = useMemo(() => {
+    if (!stage || !metrics) return null;
+    const maturityScore = maturityReportQuery.data?.totalScore ?? null;
+    const monthlyPlanStage =
+      maturityScore != null && maturityScore > 0
+        ? (monthlyPlanQuery.data?.planPhase ??
+          (monthlyPlanQuery.data === null ? "none" : null))
+        : null;
+    return resolveWorkspaceCustomerStatusLabel({
+      stageId: stage.id,
+      monthlyPlanStage,
+      hasAiTestData: workspaceHasAiTestData(metrics),
+      hasCompletedT0Baseline: metrics.hasCompletedT0Baseline,
+    });
+  }, [stage, metrics, maturityReportQuery.data?.totalScore, monthlyPlanQuery.data]);
   const deliveryStage = useMemo(() => {
     if (!metrics) return null;
     return resolveDeliveryStageView({ ...metrics, localAgentOnline });
@@ -197,11 +214,10 @@ export default function EnterpriseWorkspacePage() {
   const geoScoreAttributions = metrics ? buildGeoScoreAttributionLines(metrics) : [];
 
   const headerCtaPath =
-    (stagePrimaryAction && selectedProjectId
+    stagePrimaryAction && selectedProjectId
       ? buildProjectUrl(stagePrimaryAction.ctaPath, selectedProjectId)
-      : null) ??
-    homeDisplay.mainChainNextAction?.ctaPath ??
-    (stage && selectedProjectId ? workspaceCtaUrl(selectedProjectId, stage) : null);
+      : homeDisplay.mainChainNextAction?.ctaPath ??
+        (stage && selectedProjectId ? workspaceCtaUrl(selectedProjectId, stage) : null);
   const headerCtaLabel =
     stagePrimaryAction?.ctaLabel ??
     homeDisplay.mainChainNextAction?.ctaLabel ??

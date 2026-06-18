@@ -64,6 +64,7 @@ describe("resolveWorkspaceStagePrimaryAction", () => {
       monthlyPlanStage: "executing",
     });
     expect(action?.stageHeadline).toBe("执行本月优化计划");
+    expect(action?.ctaLabel).toBe("继续执行本月计划");
     expect(action?.ctaPath).toBe("/monthly-plan");
   });
 

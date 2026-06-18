@@ -2,6 +2,16 @@ import type { RetestPhase } from "@shared/retestPlan";
 
 const MS_PER_DAY = 86_400_000;
 
+export const RETEST_PHASE_CUSTOMER_LABELS: Record<RetestPhase, string> = {
+  T1: "7 天后复测",
+  T2: "14 天后复测",
+  T3: "30 天后复测",
+};
+
+export function retestPhaseCustomerLabel(phase: RetestPhase): string {
+  return RETEST_PHASE_CUSTOMER_LABELS[phase] ?? phase;
+}
+
 export function daysSincePublish(publishedAt?: Date | string | number | null): number | null {
   if (!publishedAt) return null;
   const t = new Date(publishedAt).getTime();

@@ -1009,6 +1009,15 @@ export function AiDiagnosisFlowPage() {
     }
     return map;
   }, [t0RoundQuestionsQuery.data]);
+  const t0QuestionTextById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const link of t0RoundQuestionsQuery.data ?? []) {
+      if (!link || typeof link.questionId !== "number") continue;
+      const text = link.question?.questionText?.trim();
+      if (text) map.set(link.questionId, text);
+    }
+    return map;
+  }, [t0RoundQuestionsQuery.data]);
   const visualizationRoundId = latestCompletedT0Round?.id ?? null;
   const canReuseVisualizationRuns =
     visualizationRoundId != null && displayT0Round?.id === visualizationRoundId;
@@ -2179,7 +2188,7 @@ export function AiDiagnosisFlowPage() {
               return (
                 <div key={run.id} className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
                   <p className="text-xs text-gray-500">
-                    问题 #{run.questionId} · {run.platform}
+                    {t0QuestionTextById.get(run.questionId) ?? "AI搜索问题"} · {run.platform}
                     {run.testedAt ? ` · ${formatAiDiagnosisDateTime(run.testedAt)}` : ""}
                   </p>
                   <p className="mt-2 leading-relaxed text-gray-700">{preview || "暂无回答内容"}</p>

@@ -59,7 +59,7 @@ const MONTHLY_PLAN_STAGE_ACTIONS: Record<
     stageHeadline: "执行本月优化计划",
     phaseTitle: "月度优化期",
     phaseDescription: "按本月任务清单逐项补齐短板",
-    ctaLabel: "查看本月任务",
+    ctaLabel: "继续执行本月计划",
     ctaPath: "/monthly-plan",
     reason: "本月优化计划进行中，请优先完成计划内的关键动作。",
   },

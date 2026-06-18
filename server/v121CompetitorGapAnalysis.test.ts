@@ -22,6 +22,6 @@ describe("GEO-V1.1-Competitor-Gap-Analysis", () => {
     expect(section).toContain("缺口建议");
     expect(section).toContain("competitor-gap-suggestions");
     expect(section).toContain("gapSuggestions");
-    expect(section).toContain("ai_test_runs");
+    expect(section).toContain("AI 实测结果");
   });
 });

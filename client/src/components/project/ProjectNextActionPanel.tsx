@@ -2,6 +2,7 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { CUSTOMER_STAGE_LABELS } from "@/lib/projectWorkspaceDisplay";
 import type { MainChainNextAction } from "@/lib/workspaceHomeDisplay";
 import type { PageNextActionSuggestion } from "@shared/pageNextActionSuggestion";
+import type { WorkspaceStagePrimaryAction } from "@shared/workspacePrimaryAction";
 import {
   localAgentConnectionCopy,
   type LocalAgentConnectionStatus,
@@ -23,6 +24,7 @@ type RecentItem = {
 type Props = {
   projectId?: number;
   stage?: WorkspaceStageDefinition | null;
+  stagePrimaryAction?: WorkspaceStagePrimaryAction | null;
   mainChainNextAction?: MainChainNextAction | null;
   pageNextAction?: PageNextActionSuggestion | null;
   pageNextActionPath?: string | null;
@@ -43,6 +45,7 @@ type Props = {
 export function ProjectNextActionPanel({
   projectId,
   stage,
+  stagePrimaryAction,
   mainChainNextAction,
   pageNextAction,
   pageNextActionPath,
@@ -66,12 +69,26 @@ export function ProjectNextActionPanel({
       ? STAGE_ORDER[currentIdx + 1]
       : "持续优化";
 
-  const ctaLabel = pageNextAction?.ctaLabel ?? mainChainNextAction?.ctaLabel ?? stage?.ctaLabel;
+  const ctaLabel =
+    stagePrimaryAction?.ctaLabel ??
+    pageNextAction?.ctaLabel ??
+    mainChainNextAction?.ctaLabel ??
+    stage?.ctaLabel;
   const reason =
-    pageNextAction?.reason ?? mainChainNextAction?.reason ?? blockerReason ?? stage?.blockerHint;
+    stagePrimaryAction?.reason ??
+    pageNextAction?.reason ??
+    mainChainNextAction?.reason ??
+    blockerReason ??
+    stage?.blockerHint;
   const nextStageName =
-    pageNextAction?.nextStageName ?? mainChainNextAction?.nextStageName ?? fallbackNextStageName;
+    stagePrimaryAction?.stageHeadline ??
+    pageNextAction?.nextStageName ??
+    mainChainNextAction?.nextStageName ??
+    fallbackNextStageName;
   const ctaPath =
+    (stagePrimaryAction && projectId
+      ? buildProjectUrl(stagePrimaryAction.ctaPath, projectId)
+      : null) ??
     pageNextActionPath ??
     mainChainNextAction?.ctaPath ??
     (stage && projectId ? workspaceCtaUrl(projectId, stage) : null);

@@ -48,7 +48,7 @@ function WaitingT1Hero({ content }: { content: Extract<PublishRetestHeroContent,
         优化前基线：{content.t0BaselinePct}%
       </p>
       <p className="text-lg font-semibold leading-relaxed text-sky-800 sm:text-xl md:text-2xl">
-        等待发布后7天执行T1复测
+        等待发布后 7 天执行复测
       </p>
     </div>
   );
