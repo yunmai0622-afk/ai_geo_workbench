@@ -46,9 +46,9 @@ describe("P1-A client dashboard", () => {
     expect(page).toContain("client-dashboard-search");
   });
 
-  it("Sidebar contains 企业项目", () => {
+  it("Sidebar does not duplicate 企业项目 entry", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain('label: "企业项目"');
+    expect(layout).not.toContain('label: "企业项目"');
     expect(layout).toContain("/clients");
     expect(layout).toContain("项目");
   });

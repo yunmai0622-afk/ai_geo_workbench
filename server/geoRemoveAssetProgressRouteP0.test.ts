@@ -18,7 +18,6 @@ describe("GEO-V1.1-Remove-AssetProgress-Route-P0", () => {
       expect(layout).not.toContain(`label: "${forbidden}"`);
     }
     for (const allowed of [
-      "企业项目",
       "项目工作台",
       "品牌资产建档",
       "AI 实测诊断",

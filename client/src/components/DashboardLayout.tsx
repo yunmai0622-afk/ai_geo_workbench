@@ -41,13 +41,11 @@ import {
   Gauge,
   ListChecks,
   Network,
-  ShieldCheck,
   LogOut,
   PanelLeft,
   Send,
   Settings,
   Sparkles,
-  Users2,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -162,13 +160,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         path: "/brand-source-graph",
         aliases: ["/brand-source-graph", "/source-graph"],
       },
-      {
-        icon: ShieldCheck,
-        label: "信任证据库",
-        desc: "管理媒体报道、客户评价、资质证书等信任证据",
-        path: "/enterprise-profile?step=6",
-        aliases: ["/enterprise-profile"],
-      },
     ],
   },
   {
@@ -180,13 +171,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "查看系统使用说明与操作指引",
         path: "/knowledge",
         aliases: ["/knowledge"],
-      },
-      {
-        icon: Users2,
-        label: "企业项目",
-        desc: "管理企业 AI 搜索可见性项目",
-        path: "/clients",
-        aliases: ["/clients"],
       },
     ],
   },

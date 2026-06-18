@@ -16,7 +16,6 @@ describe("V1.0 客户主路径静态回归", () => {
   it("侧边栏展示客户主入口（含内容进展占位），并把旧路径作为兼容别名", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
     for (const label of [
-      "企业项目",
       "品牌资产建档",
       "AI 实测诊断",
       "内容生产工作台",

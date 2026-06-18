@@ -45,7 +45,6 @@ assertContains('首页', sources.home, '品牌提及率');
 assertContains('首页', sources.home, 'AiPageShell');
 
 for (const item of [
-  '企业项目',
   '项目工作台',
   '品牌资产建档',
   'AI 实测诊断',
@@ -99,6 +98,8 @@ for (const item of [
   '资产发布记录',
   '客户交付报告',
   '企业档案',
+  '信任证据库',
+  '企业项目',
 ]) {
   assertNotContains('左侧一级菜单', sources.layout, `label: "${item}"`);
 }
