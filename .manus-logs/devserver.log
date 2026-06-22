@@ -4905,3 +4905,20 @@
 [2026-06-18T10:32:53.267Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-18T10:32:53.309Z] Server running on http://localhost:3000/
 [2026-06-18T10:33:07.276Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-22T09:42:05.341Z] 5:42:05 AM [vite] (client) hmr update /src/index.css, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-22T09:42:05.341Z] 5:42:05 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-06-22T09:42:05.345Z] 5:42:05 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/index.css
+[2026-06-22T09:42:05.345Z] 5:42:05 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx
+[2026-06-22T09:42:05.462Z] 5:42:05 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-06-22T09:42:14.103Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-22T09:42:14.140Z] Server running on http://localhost:3000/
+[2026-06-22T09:42:17.942Z] Dev server process group stopped
+[2026-06-22T09:42:17.945Z] ELIFECYCLE  Command failed.
+[2026-06-22T09:42:18.010Z] Dev server exited with code -15
+[2026-06-22T09:42:20.956Z] Starting dev server with command: pnpm run dev
+[2026-06-22T09:42:21.766Z] 
+[2026-06-22T09:42:21.767Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-22T09:42:21.767Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-22T09:42:21.768Z] 
+[2026-06-22T09:42:30.189Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-22T09:42:30.223Z] Server running on http://localhost:3000/
