@@ -5161,3 +5161,184 @@
 [2026-06-22T12:59:53.724Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-22T13:00:31.997Z] 9:00:31 AM [vite] (client) hmr update /src/index.css
 [2026-06-22T13:02:15.983Z] 9:02:15 AM [vite] (client) hmr update /src/index.css
+[2026-06-22T13:04:52.474Z] [增长周报] 项目 72 生成失败: DrizzleQueryError: Failed query: select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?
+[2026-06-22T13:04:52.475Z] params: 16740006,72,weekly_growth_report,GEO 增长周报（2026/6/15 – 2026/6/21）,1
+[2026-06-22T13:04:52.475Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T13:04:52.476Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T13:04:52.476Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T13:04:52.476Z] at async hasWeeklyGrowthReportForWeek (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:34:16)
+[2026-06-22T13:04:52.477Z] at async emitWeeklyGrowthReportForProject (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:57:23)
+[2026-06-22T13:04:52.477Z] at async runWeeklyGrowthReport (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:158:22)
+[2026-06-22T13:04:52.477Z] at async tryRunWeeklyGrowthReportOnMonday (/home/ubuntu/ai_geo_workbench/server/scheduledWeeklyGrowthReport.ts:9:3) {
+[2026-06-22T13:04:52.478Z] query: 'select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?',
+[2026-06-22T13:04:52.478Z] params: [
+[2026-06-22T13:04:52.478Z] 16740006,
+[2026-06-22T13:04:52.479Z] 72,
+[2026-06-22T13:04:52.479Z] 'weekly_growth_report',
+[2026-06-22T13:04:52.479Z] 'GEO 增长周报（2026/6/15 – 2026/6/21）',
+[2026-06-22T13:04:52.480Z] 1
+[2026-06-22T13:04:52.480Z] ],
+[2026-06-22T13:04:52.481Z] cause: Error: Unknown column 'system_notifications.notificationtype' in 'where clause'
+[2026-06-22T13:04:52.481Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T13:04:52.481Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T13:04:52.482Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T13:04:52.482Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T13:04:52.482Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T13:04:52.483Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T13:04:52.483Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T13:04:52.483Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T13:04:52.484Z] errno: 1054,
+[2026-06-22T13:04:52.484Z] sql: "select `id` from `system_notifications` where (`system_notifications`.`userId` = 16740006 and `system_notifications`.`projectId` = 72 and `system_notifications`.`notificationType` = 'weekly_growth_report' and `system_notifications`.`title` = 'GEO 增长周报（2026/6/15 – 2026/6/21）') limit 1",
+[2026-06-22T13:04:52.484Z] sqlState: '42S22',
+[2026-06-22T13:04:52.485Z] sqlMessage: "Unknown column 'system_notifications.notificationtype' in 'where clause'"
+[2026-06-22T13:04:52.485Z] }
+[2026-06-22T13:04:52.485Z] }
+[2026-06-22T13:04:52.703Z] [增长周报] 项目 90001 生成失败: DrizzleQueryError: Failed query: select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?
+[2026-06-22T13:04:52.704Z] params: 16740006,90001,weekly_growth_report,GEO 增长周报（2026/6/15 – 2026/6/21）,1
+[2026-06-22T13:04:52.705Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T13:04:52.705Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T13:04:52.705Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T13:04:52.706Z] at async hasWeeklyGrowthReportForWeek (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:34:16)
+[2026-06-22T13:04:52.706Z] at async emitWeeklyGrowthReportForProject (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:57:23)
+[2026-06-22T13:04:52.706Z] at async runWeeklyGrowthReport (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:158:22)
+[2026-06-22T13:04:52.707Z] at async tryRunWeeklyGrowthReportOnMonday (/home/ubuntu/ai_geo_workbench/server/scheduledWeeklyGrowthReport.ts:9:3) {
+[2026-06-22T13:04:52.707Z] query: 'select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?',
+[2026-06-22T13:04:52.707Z] params: [
+[2026-06-22T13:04:52.708Z] 16740006,
+[2026-06-22T13:04:52.708Z] 90001,
+[2026-06-22T13:04:52.708Z] 'weekly_growth_report',
+[2026-06-22T13:04:52.709Z] 'GEO 增长周报（2026/6/15 – 2026/6/21）',
+[2026-06-22T13:04:52.709Z] 1
+[2026-06-22T13:04:52.709Z] ],
+[2026-06-22T13:04:52.709Z] cause: Error: Unknown column 'system_notifications.notificationtype' in 'where clause'
+[2026-06-22T13:04:52.710Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T13:04:52.710Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T13:04:52.710Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T13:04:52.711Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T13:04:52.711Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T13:04:52.712Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T13:04:52.712Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T13:04:52.712Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T13:04:52.712Z] errno: 1054,
+[2026-06-22T13:04:52.713Z] sql: "select `id` from `system_notifications` where (`system_notifications`.`userId` = 16740006 and `system_notifications`.`projectId` = 90001 and `system_notifications`.`notificationType` = 'weekly_growth_report' and `system_notifications`.`title` = 'GEO 增长周报（2026/6/15 – 2026/6/21）') limit 1",
+[2026-06-22T13:04:52.713Z] sqlState: '42S22',
+[2026-06-22T13:04:52.714Z] sqlMessage: "Unknown column 'system_notifications.notificationtype' in 'where clause'"
+[2026-06-22T13:04:52.714Z] }
+[2026-06-22T13:04:52.714Z] }
+[2026-06-22T13:04:52.933Z] [增长周报] 项目 120001 生成失败: DrizzleQueryError: Failed query: select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?
+[2026-06-22T13:04:52.934Z] params: 16740006,120001,weekly_growth_report,GEO 增长周报（2026/6/15 – 2026/6/21）,1
+[2026-06-22T13:04:52.934Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T13:04:52.935Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T13:04:52.935Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T13:04:52.936Z] at async hasWeeklyGrowthReportForWeek (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:34:16)
+[2026-06-22T13:04:52.936Z] at async emitWeeklyGrowthReportForProject (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:57:23)
+[2026-06-22T13:04:52.936Z] at async runWeeklyGrowthReport (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:158:22)
+[2026-06-22T13:04:52.937Z] at async tryRunWeeklyGrowthReportOnMonday (/home/ubuntu/ai_geo_workbench/server/scheduledWeeklyGrowthReport.ts:9:3) {
+[2026-06-22T13:04:52.937Z] query: 'select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?',
+[2026-06-22T13:04:52.937Z] params: [
+[2026-06-22T13:04:52.938Z] 16740006,
+[2026-06-22T13:04:52.938Z] 120001,
+[2026-06-22T13:04:52.938Z] 'weekly_growth_report',
+[2026-06-22T13:04:52.939Z] 'GEO 增长周报（2026/6/15 – 2026/6/21）',
+[2026-06-22T13:04:52.939Z] 1
+[2026-06-22T13:04:52.939Z] ],
+[2026-06-22T13:04:52.939Z] cause: Error: Unknown column 'system_notifications.notificationtype' in 'where clause'
+[2026-06-22T13:04:52.940Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T13:04:52.940Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T13:04:52.940Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T13:04:52.941Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T13:04:52.941Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T13:04:52.941Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T13:04:52.942Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T13:04:52.942Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T13:04:52.942Z] errno: 1054,
+[2026-06-22T13:04:52.943Z] sql: "select `id` from `system_notifications` where (`system_notifications`.`userId` = 16740006 and `system_notifications`.`projectId` = 120001 and `system_notifications`.`notificationType` = 'weekly_growth_report' and `system_notifications`.`title` = 'GEO 增长周报（2026/6/15 – 2026/6/21）') limit 1",
+[2026-06-22T13:04:52.943Z] sqlState: '42S22',
+[2026-06-22T13:04:52.943Z] sqlMessage: "Unknown column 'system_notifications.notificationtype' in 'where clause'"
+[2026-06-22T13:04:52.944Z] }
+[2026-06-22T13:04:52.944Z] }
+[2026-06-22T13:04:53.162Z] [增长周报] 项目 150001 生成失败: DrizzleQueryError: Failed query: select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?
+[2026-06-22T13:04:53.163Z] params: 16740006,150001,weekly_growth_report,GEO 增长周报（2026/6/15 – 2026/6/21）,1
+[2026-06-22T13:04:53.163Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T13:04:53.164Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T13:04:53.164Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T13:04:53.164Z] at async hasWeeklyGrowthReportForWeek (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:34:16)
+[2026-06-22T13:04:53.165Z] at async emitWeeklyGrowthReportForProject (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:57:23)
+[2026-06-22T13:04:53.165Z] at async runWeeklyGrowthReport (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:158:22)
+[2026-06-22T13:04:53.165Z] at async tryRunWeeklyGrowthReportOnMonday (/home/ubuntu/ai_geo_workbench/server/scheduledWeeklyGrowthReport.ts:9:3) {
+[2026-06-22T13:04:53.166Z] query: 'select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?',
+[2026-06-22T13:04:53.166Z] params: [
+[2026-06-22T13:04:53.166Z] 16740006,
+[2026-06-22T13:04:53.167Z] 150001,
+[2026-06-22T13:04:53.167Z] 'weekly_growth_report',
+[2026-06-22T13:04:53.167Z] 'GEO 增长周报（2026/6/15 – 2026/6/21）',
+[2026-06-22T13:04:53.168Z] 1
+[2026-06-22T13:04:53.168Z] ],
+[2026-06-22T13:04:53.168Z] cause: Error: Unknown column 'system_notifications.notificationtype' in 'where clause'
+[2026-06-22T13:04:53.169Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T13:04:53.169Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T13:04:53.169Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T13:04:53.170Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T13:04:53.170Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T13:04:53.170Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T13:04:53.171Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T13:04:53.171Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T13:04:53.171Z] errno: 1054,
+[2026-06-22T13:04:53.172Z] sql: "select `id` from `system_notifications` where (`system_notifications`.`userId` = 16740006 and `system_notifications`.`projectId` = 150001 and `system_notifications`.`notificationType` = 'weekly_growth_report' and `system_notifications`.`title` = 'GEO 增长周报（2026/6/15 – 2026/6/21）') limit 1",
+[2026-06-22T13:04:53.172Z] sqlState: '42S22',
+[2026-06-22T13:04:53.172Z] sqlMessage: "Unknown column 'system_notifications.notificationtype' in 'where clause'"
+[2026-06-22T13:04:53.173Z] }
+[2026-06-22T13:04:53.173Z] }
+[2026-06-22T13:04:53.391Z] [增长周报] 项目 180001 生成失败: DrizzleQueryError: Failed query: select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?
+[2026-06-22T13:04:53.392Z] params: 1,180001,weekly_growth_report,GEO 增长周报（2026/6/15 – 2026/6/21）,1
+[2026-06-22T13:04:53.393Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T13:04:53.393Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T13:04:53.393Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T13:04:53.394Z] at async hasWeeklyGrowthReportForWeek (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:34:16)
+[2026-06-22T13:04:53.394Z] at async emitWeeklyGrowthReportForProject (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:57:23)
+[2026-06-22T13:04:53.394Z] at async runWeeklyGrowthReport (/home/ubuntu/ai_geo_workbench/server/weeklyGrowthReport.ts:158:22)
+[2026-06-22T13:04:53.395Z] at async tryRunWeeklyGrowthReportOnMonday (/home/ubuntu/ai_geo_workbench/server/scheduledWeeklyGrowthReport.ts:9:3) {
+[2026-06-22T13:04:53.395Z] query: 'select `id` from `system_notifications` where (`system_notifications`.`userId` = ? and `system_notifications`.`projectId` = ? and `system_notifications`.`notificationType` = ? and `system_notifications`.`title` = ?) limit ?',
+[2026-06-22T13:04:53.396Z] params: [
+[2026-06-22T13:04:53.396Z] 1,
+[2026-06-22T13:04:53.396Z] 180001,
+[2026-06-22T13:04:53.396Z] 'weekly_growth_report',
+[2026-06-22T13:04:53.397Z] 'GEO 增长周报（2026/6/15 – 2026/6/21）',
+[2026-06-22T13:04:53.397Z] 1
+[2026-06-22T13:04:53.397Z] ],
+[2026-06-22T13:04:53.398Z] cause: Error: Unknown column 'system_notifications.notificationtype' in 'where clause'
+[2026-06-22T13:04:53.398Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T13:04:53.398Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T13:04:53.399Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T13:04:53.399Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T13:04:53.399Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T13:04:53.400Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T13:04:53.400Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T13:04:53.400Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T13:04:53.401Z] errno: 1054,
+[2026-06-22T13:04:53.401Z] sql: "select `id` from `system_notifications` where (`system_notifications`.`userId` = 1 and `system_notifications`.`projectId` = 180001 and `system_notifications`.`notificationType` = 'weekly_growth_report' and `system_notifications`.`title` = 'GEO 增长周报（2026/6/15 – 2026/6/21）') limit 1",
+[2026-06-22T13:04:53.401Z] sqlState: '42S22',
+[2026-06-22T13:04:53.402Z] sqlMessage: "Unknown column 'system_notifications.notificationtype' in 'where clause'"
+[2026-06-22T13:04:53.402Z] }
+[2026-06-22T13:04:53.402Z] }
+[2026-06-22T13:14:23.711Z] [Auth] Missing session cookie
+[2026-06-22T13:14:48.771Z] [Auth] Missing session cookie
+[2026-06-22T13:15:15.073Z] [Auth] Missing session cookie
+[2026-06-22T13:15:40.406Z] [Auth] Missing session cookie
+[2026-06-22T13:20:21.514Z] 9:20:21 AM [tsx] change in ./drizzle/schema.ts Restarting...
+[2026-06-22T13:20:31.958Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-22T13:20:31.993Z] Server running on http://localhost:3000/
+[2026-06-22T13:20:33.590Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-22T13:21:21.565Z] Dev server process group stopped
+[2026-06-22T13:21:21.570Z] ELIFECYCLE  Command failed.
+[2026-06-22T13:21:21.644Z] Dev server exited with code -15
+[2026-06-22T13:21:24.615Z] Starting dev server with command: pnpm run dev
+[2026-06-22T13:21:25.461Z] 
+[2026-06-22T13:21:25.462Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-22T13:21:25.462Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-22T13:21:25.463Z] 
+[2026-06-22T13:21:34.037Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-22T13:21:34.081Z] Server running on http://localhost:3000/
+[2026-06-22T13:21:36.266Z] [Auth] Missing session cookie
+[2026-06-22T13:27:38.180Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-22T13:28:14.552Z] 9:28:14 AM [vite] (client) hmr update /src/index.css

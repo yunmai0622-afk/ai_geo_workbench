@@ -670,3 +670,4 @@
 - [x] 右侧下一步卡片（当前做什么/为什么做/做完去哪）
 - [x] 不改 API、不改数据库、不改生成逻辑、不改发布逻辑
 - [x] 不默认铺开长文、不暴露工程字段
+- [x] Fix /admin/customers 500 error: correct Drizzle schema enum column names to match actual DB columns (customerCompanyStatus->status, companyPlanType->planType, companySubscriptionStatus->status, companyProjectStatus->status, notificationType->type)

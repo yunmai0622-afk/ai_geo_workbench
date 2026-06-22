@@ -1,0 +1,67 @@
+{
+  "query": "SHOW TABLES LIKE 'customer_companies'; SHOW TABLES LIKE 'company_subscriptions'; SHOW TABLES LIKE 'company_projects'; DESCRIBE customer_companies;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SHOW TABLES LIKE 'customer_companies'; SHOW TABLES LIKE 'company_subscriptions'; SHOW TABLES LIKE 'company_projects'; DESCRIBE customer_companies;",
+  "rows": [
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "customer_companies"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (company_subscriptions)"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "company_subscriptions"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (company_projects)"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "company_projects"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "Field\tType\tNull\tKey\tDefault\tExtra"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "id\tint\tNO\tPRI\tNULL\tauto_increment"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "companyName\tvarchar(255)\tNO\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "contactName\tvarchar(120)\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "contactPhone\tvarchar(64)\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "contactEmail\tvarchar(320)\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "industry\tvarchar(255)\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "sourceChannel\tvarchar(120)\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "status\tenum('pending','active','rejected','disabled')\tNO\t\tpending\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "notes\ttext\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "approvedAt\ttimestamp\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "approvedBy\tint\tYES\t\tNULL\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "createdAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t"
+    },
+    {
+      "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)": "updatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_KZXhJ9uy5XJyGmmCZJYPBe (customer_companies)\ncustomer_companies\nTables_in_KZXhJ9uy5XJyGmmCZJYPBe (company_subscriptions)\ncompany_subscriptions\nTables_in_KZXhJ9uy5XJyGmmCZJYPBe (company_projects)\ncompany_projects\nField\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\ncompanyName\tvarchar(255)\tNO\t\tNULL\t\ncontactName\tvarchar(120)\tYES\t\tNULL\t\ncontactPhone\tvarchar(64)\tYES\t\tNULL\t\ncontactEmail\tvarchar(320)\tYES\t\tNULL\t\nindustry\tvarchar(255)\tYES\t\tNULL\t\nsourceChannel\tvarchar(120)\tYES\t\tNULL\t\nstatus\tenum('pending','active','rejected','disabled')\tNO\t\tpending\t\nnotes\ttext\tYES\t\tNULL\t\napprovedAt\ttimestamp\tYES\t\tNULL\t\napprovedBy\tint\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 2487
+}

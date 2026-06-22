@@ -1,0 +1,28 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME IN ('companyId', 'company_id', 'userStatus', 'user_status', 'customerRole', 'customer_role', 'reviewedAt', 'reviewedBy', 'applicationNote');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME IN ('companyId', 'company_id', 'userStatus', 'user_status', 'customerRole', 'customer_role', 'reviewedAt', 'reviewedBy', 'applicationNote');",
+  "rows": [
+    {
+      "COLUMN_NAME": "companyId"
+    },
+    {
+      "COLUMN_NAME": "userStatus"
+    },
+    {
+      "COLUMN_NAME": "customerRole"
+    },
+    {
+      "COLUMN_NAME": "applicationNote"
+    },
+    {
+      "COLUMN_NAME": "reviewedAt"
+    },
+    {
+      "COLUMN_NAME": "reviewedBy"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\ncompanyId\nuserStatus\ncustomerRole\napplicationNote\nreviewedAt\nreviewedBy\n",
+  "stderr": "",
+  "execution_time_ms": 1817
+}
