@@ -14,7 +14,10 @@ import {
 } from "@/lib/activeProject";
 import { nukeStaleProjectContextCache } from "@/lib/projectContextCache";
 import { filterNavigableProjects } from "@shared/projectNavigation";
-import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
+import {
+  isProjectsListNavigationPending,
+  useInvalidProjectRedirect,
+} from "@/hooks/useInvalidProjectRedirect";
 import {
   AiDiagnosisFlowPage,
   ContentPublishingFlowPage,
@@ -154,9 +157,18 @@ function AuthenticatedAppShell() {
   const [location, setLocation] = useLocation();
   const search = getSearchFromLocation(location);
   const { loading: authLoading, user } = useAuth();
-  const { data: projectsRaw = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery(undefined, {
+  const projectsQuery = trpc.geo.projects.list.useQuery(undefined, {
     enabled: Boolean(user),
   });
+  const projectsRaw = projectsQuery.data ?? [];
+  const projectsListPending = isProjectsListNavigationPending(
+    {
+      isLoading: projectsQuery.isLoading,
+      isError: projectsQuery.isError,
+      isFetched: projectsQuery.isFetched,
+    },
+    { authLoading, userKnown: Boolean(user) },
+  );
   const projects = useMemo(() => filterNavigableProjects(projectsRaw), [projectsRaw]);
   const contextProjectId = typeof window !== "undefined" ? getActiveProjectId({ search }) : null;
   const healedLegacyCacheRef = useRef(false);
@@ -166,7 +178,7 @@ function AuthenticatedAppShell() {
   }, []);
 
   useEffect(() => {
-    if (!user || projectsLoading || projects.length === 0 || healedLegacyCacheRef.current) return;
+    if (!user || projectsListPending || projects.length === 0 || healedLegacyCacheRef.current) return;
     const resolved = resolveActiveProjectId(projects, { search });
     if (!resolved.staleContext || resolved.projectId == null) return;
     healedLegacyCacheRef.current = true;
@@ -175,17 +187,17 @@ function AuthenticatedAppShell() {
     if (pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname)) {
       setLocation(buildProjectUrl(pathname, resolved.projectId));
     }
-  }, [user, projectsLoading, projects, search, location, setLocation]);
+  }, [user, projectsListPending, projects, search, location, setLocation]);
 
   useInvalidProjectRedirect({
-    projectsLoading,
+    projectsLoading: projectsListPending,
     projects,
     contextProjectId,
   });
   const activeProjectId = useMemo(() => {
-    if (!contextProjectId || projectsLoading) return null;
+    if (!contextProjectId || projectsListPending) return null;
     return isProjectIdAccessible(contextProjectId, projects) ? contextProjectId : null;
-  }, [contextProjectId, projects, projectsLoading]);
+  }, [contextProjectId, projects, projectsListPending]);
   const summaryQuery = trpc.geo.assetLibrary.summary.useQuery(
     { projectId: activeProjectId ?? 0 },
     { enabled: Boolean(user) && Boolean(activeProjectId) },
@@ -198,9 +210,9 @@ function AuthenticatedAppShell() {
   const pathname = location.split("?")[0] || location;
   const profileLoading =
     Boolean(user) &&
-    (projectsLoading || (Boolean(activeProjectId) && summaryQuery.isLoading));
+    (projectsListPending || (Boolean(activeProjectId) && summaryQuery.isLoading));
 
-  if (user && !projectsLoading && (pathname === "/" || pathname === "/home")) {
+  if (user && !projectsListPending && (pathname === "/" || pathname === "/home")) {
     return <Redirect to={projects.length === 0 ? "/onboarding" : "/clients"} />;
   }
 
@@ -213,11 +225,11 @@ function AuthenticatedAppShell() {
   }
 
   // 首次登录无项目时强制进入 onboarding，避免进入无上下文页面
-  if (user && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
+  if (user && !projectsListPending && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/onboarding" />;
   }
 
-  if (user && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
+  if (user && !projectsListPending && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 

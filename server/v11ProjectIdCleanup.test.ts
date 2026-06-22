@@ -22,6 +22,7 @@ describe("GEO-V1.1-ProjectIdCleanup", () => {
     expect(read("client/src/lib/activeProject.ts")).toContain("inspectActiveProjectContext");
     expect(read("client/src/hooks/useActiveProjectSelection.ts")).toContain("useInvalidProjectRedirect");
     expect(read("client/src/App.tsx")).toContain("useInvalidProjectRedirect");
+    expect(read("client/src/App.tsx")).toContain("isProjectsListNavigationPending");
     expect(read("client/src/App.tsx")).toContain("isProjectIdAccessible");
   });
 

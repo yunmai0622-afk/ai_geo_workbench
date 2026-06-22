@@ -12,6 +12,7 @@ import {
   resolveActiveProjectId,
   setActiveProjectId,
 } from "../client/src/lib/activeProject";
+import { isProjectsListNavigationPending } from "../client/src/hooks/useInvalidProjectRedirect";
 import {
   nukeStaleProjectContextCache,
   PROJECT_CONTEXT_CACHE_VERSION,
@@ -127,6 +128,47 @@ describe("GEO-V1.1-ActiveProjectIdFix activeProject", () => {
     setActiveProjectId(LEGACY_ORPHAN_PROJECT_ID);
     expect(getActiveProjectId()).toBeNull();
     expect(getProjectIdFromSearch("?projectId=30001")).toBeNull();
+  });
+});
+
+describe("GEO-V2.0-NavigationRefresh isProjectsListNavigationPending", () => {
+  it("auth 未完成或列表未 isFetched 时保持 pending", () => {
+    expect(
+      isProjectsListNavigationPending(
+        { isLoading: false, isError: false, isFetched: false },
+        { authLoading: false, userKnown: true },
+      ),
+    ).toBe(true);
+    expect(
+      isProjectsListNavigationPending(
+        { isLoading: false, isError: false, isFetched: false },
+        { authLoading: true, userKnown: true },
+      ),
+    ).toBe(true);
+    expect(
+      isProjectsListNavigationPending(
+        { isLoading: false, isError: false, isFetched: false },
+        { authLoading: false, userKnown: false },
+      ),
+    ).toBe(true);
+  });
+
+  it("列表已成功返回后不再 pending", () => {
+    expect(
+      isProjectsListNavigationPending(
+        { isLoading: false, isError: false, isFetched: true },
+        { authLoading: false, userKnown: true },
+      ),
+    ).toBe(false);
+  });
+
+  it("列表请求错误时保持 pending，避免误重定向", () => {
+    expect(
+      isProjectsListNavigationPending(
+        { isLoading: false, isError: true, isFetched: true },
+        { authLoading: false, userKnown: true },
+      ),
+    ).toBe(true);
   });
 });
 

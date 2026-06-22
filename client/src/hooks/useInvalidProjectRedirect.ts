@@ -38,6 +38,28 @@ const SKIP_INVALID_PROJECT_REDIRECT = new Set([
   "/status",
 ]);
 
+export type ProjectsListQuerySnapshot = {
+  isLoading: boolean;
+  isError: boolean;
+  isFetched: boolean;
+};
+
+/**
+ * 在 auth / geo.projects.list 首屏未成功返回前，禁止判定「无效 project」并重定向。
+ * 避免 enabled:false 或 isLoading 短暂为 false 时，空列表误触发跳转。
+ */
+export function isProjectsListNavigationPending(
+  snapshot: ProjectsListQuerySnapshot,
+  options?: { authLoading?: boolean; userKnown?: boolean },
+): boolean {
+  if (options?.authLoading) return true;
+  if (options?.userKnown === false) return true;
+  if (snapshot.isError) return true;
+  if (!snapshot.isFetched) return true;
+  if (snapshot.isLoading) return true;
+  return false;
+}
+
 type Options = {
   projectsLoading: boolean;
   projects: readonly { id: number }[];

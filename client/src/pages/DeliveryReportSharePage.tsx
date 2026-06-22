@@ -13,7 +13,10 @@ import { aggregateAiTestEvidence, type AiTestEvidenceAggregate } from "@shared/a
 import { mapCompetitorAnalysisForDeliveryReport } from "@shared/deliveryReportCompetitor";
 import type { TestRoundSummary } from "@shared/retestComparisonDisplay";
 import { BarChart3 } from "lucide-react";
-import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
+import {
+  isProjectsListNavigationPending,
+  useInvalidProjectRedirect,
+} from "@/hooks/useInvalidProjectRedirect";
 import { useMemo, type ReactNode } from "react";
 import { useLocation, useRoute } from "wouter";
 
@@ -127,7 +130,11 @@ function DeliveryReportShareContent() {
 
   const project = (projectsQuery.data ?? []).find(p => p.id === projectId);
   useInvalidProjectRedirect({
-    projectsLoading: projectsQuery.isLoading,
+    projectsLoading: isProjectsListNavigationPending({
+      isLoading: projectsQuery.isLoading,
+      isError: projectsQuery.isError,
+      isFetched: projectsQuery.isFetched,
+    }),
     projects: projectsQuery.data ?? [],
     contextProjectId: projectId,
   });

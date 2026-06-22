@@ -10,7 +10,10 @@ import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { useInvalidProjectRedirect } from "@/hooks/useInvalidProjectRedirect";
+import {
+  isProjectsListNavigationPending,
+  useInvalidProjectRedirect,
+} from "@/hooks/useInvalidProjectRedirect";
 
 export type ProjectOption = { id: number; enterpriseName: string };
 
@@ -20,11 +23,13 @@ export function useActiveProjectSelection() {
   const [location, setLocation] = useLocation();
   const search = getSearchFromLocation(location);
   const pathname = getPathnameFromLocation(location);
-  const {
-    data: projectsRaw = [],
-    isLoading: projectsLoading,
-    isError: projectsError,
-  } = trpc.geo.projects.list.useQuery();
+  const projectsQuery = trpc.geo.projects.list.useQuery();
+  const projectsRaw = projectsQuery.data ?? [];
+  const projectsListPending = isProjectsListNavigationPending({
+    isLoading: projectsQuery.isLoading,
+    isError: projectsQuery.isError,
+    isFetched: projectsQuery.isFetched,
+  });
   const projects = useMemo(
     () =>
       filterNavigableProjects(projectsRaw).map(p => ({
@@ -35,22 +40,22 @@ export function useActiveProjectSelection() {
   );
 
   const inspection = useMemo(() => {
-    if (projectsLoading || projectsError) {
+    if (projectsListPending) {
       return { projectId: null as number | null, contextId: null as number | null, staleContext: false };
     }
     return inspectActiveProjectContext(projects, { search });
-  }, [projectsLoading, projectsError, projects, search]);
+  }, [projectsListPending, projects, search]);
 
   useInvalidProjectRedirect({
-    projectsLoading: projectsLoading || projectsError,
+    projectsLoading: projectsListPending,
     projects,
     contextProjectId: inspection.contextId,
   });
 
   const resolvedProjectId = useMemo(() => {
-    if (projectsLoading || projectsError || inspection.staleContext) return undefined;
+    if (projectsListPending || inspection.staleContext) return undefined;
     return inspection.projectId ?? undefined;
-  }, [projectsLoading, projectsError, inspection]);
+  }, [projectsListPending, inspection]);
 
   const [selectedProjectId, setSelectedProjectIdState] = useState<number | undefined>(resolvedProjectId);
 
@@ -60,12 +65,12 @@ export function useActiveProjectSelection() {
   }, [resolvedProjectId]);
 
   useEffect(() => {
-    if (projectsLoading || PATHS_SKIP_URL_SYNC.has(pathname)) return;
+    if (projectsListPending || PATHS_SKIP_URL_SYNC.has(pathname)) return;
     const fromUrl = getProjectIdFromUrl(search);
     if (!resolvedProjectId) return;
     if (fromUrl === resolvedProjectId) return;
     setLocation(buildProjectUrl(pathname, resolvedProjectId));
-  }, [projectsLoading, pathname, search, resolvedProjectId, setLocation]);
+  }, [projectsListPending, pathname, search, resolvedProjectId, setLocation]);
 
   const setSelectedProjectId = (id?: number) => {
     if (!id) {
@@ -89,8 +94,8 @@ export function useActiveProjectSelection() {
     setSelectedProjectId,
     projectInput,
     enabled: Boolean(resolvedProjectId),
-    needsProjectSelection: !projectsLoading && !projectsError && !resolvedProjectId,
-    isLoading: projectsLoading || projectsError,
-    projectsLoading: projectsLoading || projectsError,
+    needsProjectSelection: !projectsListPending && !resolvedProjectId,
+    isLoading: projectsListPending,
+    projectsLoading: projectsListPending,
   };
 }
