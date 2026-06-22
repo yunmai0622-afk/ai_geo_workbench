@@ -54,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { EnterpriseProjectShell } from "./project/EnterpriseProjectShell";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { SystemAnnouncementBanner } from "./SystemAnnouncementBanner";
+import { CompanyServiceBanner } from "./CompanyServiceBanner";
 import { Button } from "./ui/button";
 
 const PATHS_WITHOUT_PROJECT_SHELL = new Set([
@@ -64,6 +65,11 @@ const PATHS_WITHOUT_PROJECT_SHELL = new Set([
   "/admin/publish-tasks",
   "/admin/subscription",
   "/admin/stats",
+  "/admin/customers",
+  "/admin/users",
+  "/admin/subscriptions",
+  "/admin/projects",
+  "/admin/delivery",
 ]);
 
 type MenuItem = {
@@ -372,6 +378,14 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem asChild className="cursor-pointer"><Link href="/settings" className="flex w-full items-center"><Settings className="mr-2 h-4 w-4" /><span>设置</span></Link></DropdownMenuItem>
+                    {user?.role === "admin" ? (
+                      <DropdownMenuItem asChild className="cursor-pointer">
+                        <Link href="/admin/customers" className="flex w-full items-center">
+                          <Building2 className="mr-2 h-4 w-4" />
+                          <span>平台运营后台</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    ) : null}
                     <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>退出登录</span>
@@ -393,6 +407,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
 
       <SidebarInset className={isClientsHub ? "w-full max-w-none" : undefined}>
         <SystemAnnouncementBanner />
+        <CompanyServiceBanner />
         {isMobile && !isClientsHub ? (
           <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-2">
             <div className="flex items-center gap-2">

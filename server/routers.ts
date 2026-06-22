@@ -39,6 +39,8 @@ import { adminConfigRouter } from "./adminConfigRouter";
 import { adminPublishTasksRouter } from "./adminPublishTasksRouter";
 import { adminStatsRouter } from "./adminStatsRouter";
 import { adminSubscriptionRouter } from "./adminSubscriptionRouter";
+import { adminPlatformRouter } from "./adminPlatformRouter";
+import { resolveCompanyServiceStatus } from "./platformAdminService";
 import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
 import { getDefaultPublishPlatformsSync } from "./geoSystemConfigStore";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -4925,13 +4927,16 @@ ${article.markdownContent}`,
   subscription: router({
     usage: protectedProcedure.query(async ({ ctx }) => {
       const db = await requireDb();
-      return getSubscriptionUsageSnapshot(db, getCurrentUserId(ctx), ctx.user!.role);
+      const snapshot = await getSubscriptionUsageSnapshot(db, getCurrentUserId(ctx), ctx.user!.role);
+      const companyService = await resolveCompanyServiceStatus(db, ctx.user!.companyId ?? null);
+      return { ...snapshot, companyService };
     }),
   }),
 });
 
 export const appRouter = router({
   agent: agentRouter,
+  admin: adminPlatformRouter,
   adminConfig: adminConfigRouter,
   adminPublishTasks: adminPublishTasksRouter,
   adminStats: adminStatsRouter,

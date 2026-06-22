@@ -64,6 +64,12 @@ import AdminConfigPage from "./pages/AdminConfigPage";
 import AdminPublishTasksPage from "./pages/AdminPublishTasksPage";
 import AdminStatsPage from "./pages/AdminStatsPage";
 import AdminSubscriptionPage from "./pages/AdminSubscriptionPage";
+import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminSubscriptionsPage from "./pages/admin/AdminSubscriptionsPage";
+import AdminProjectsPage from "./pages/admin/AdminProjectsPage";
+import AdminDeliveryPage from "./pages/admin/AdminDeliveryPage";
+import AccountReviewGate from "./components/AccountReviewGate";
 
 function profileHasBrand(profile: unknown): boolean {
   if (!profile || typeof profile !== "object") return false;
@@ -76,15 +82,22 @@ function isAdminShellPath(pathname: string): boolean {
     pathname === "/admin/config" ||
     pathname === "/admin/publish-tasks" ||
     pathname === "/admin/stats" ||
-    pathname === "/admin/subscription"
+    pathname === "/admin/subscription" ||
+    pathname === "/admin/customers" ||
+    pathname === "/admin/users" ||
+    pathname === "/admin/subscriptions" ||
+    pathname === "/admin/projects" ||
+    pathname === "/admin/delivery" ||
+    pathname.startsWith("/admin/")
   );
 }
 
 function PrivateRoutes() {
   return (
-    <DashboardLayout>
-      <Suspense fallback={<RoutePageLoading />}>
-      <Switch>
+    <AccountReviewGate>
+      <DashboardLayout>
+        <Suspense fallback={<RoutePageLoading />}>
+        <Switch>
         <Route path="/clients" component={ClientDashboardPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/admin/config" component={AdminConfigPage} />
@@ -149,6 +162,7 @@ function PrivateRoutes() {
       </Switch>
       </Suspense>
     </DashboardLayout>
+    </AccountReviewGate>
   );
 }
 
@@ -272,6 +286,14 @@ function Router() {
       <Route path="/status" component={SystemStatusPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/legacy/onboarding" component={LegacyOnboardingPage} />
+      <Route path="/admin/customers" component={AdminCustomersPage} />
+      <Route path="/admin/users" component={AdminUsersPage} />
+      <Route path="/admin/subscriptions" component={AdminSubscriptionsPage} />
+      <Route path="/admin/projects" component={AdminProjectsPage} />
+      <Route path="/admin/delivery" component={AdminDeliveryPage} />
+      <Route path="/admin">
+        <Redirect to="/admin/customers" />
+      </Route>
       <Route component={AuthenticatedAppShell} />
     </Switch>
   );

@@ -61,6 +61,7 @@ export async function registerEmailUser(input: {
     passwordHash,
     loginMethod: "email",
     role: "user",
+    userStatus: "pending_review",
     lastSignedIn: new Date(),
   });
 

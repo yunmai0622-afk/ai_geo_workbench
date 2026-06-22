@@ -19,6 +19,14 @@ export const users = mysqlTable("users", {
   passwordHash: varchar("passwordHash", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  companyId: int("companyId"),
+  userStatus: mysqlEnum("userStatus", ["pending_review", "active", "rejected", "disabled"])
+    .default("active")
+    .notNull(),
+  customerRole: mysqlEnum("customerRole", ["customer_admin", "customer_member"]),
+  applicationNote: text("applicationNote"),
+  reviewedAt: timestamp("reviewedAt"),
+  reviewedBy: int("reviewedBy"),
   /** 订阅套餐档位（管理员可调整；未接入支付前默认基础版） */
   subscriptionPlanId: mysqlEnum("subscriptionPlanId", ["basic", "professional", "enterprise"])
     .default("basic")
@@ -1321,3 +1329,86 @@ export type SourceEnhancementSuggestion = typeof sourceEnhancementSuggestions.$i
 export type InsertSourceEnhancementSuggestion = typeof sourceEnhancementSuggestions.$inferInsert;
 export type DiscoveryCandidate = typeof discoveryCandidates.$inferSelect;
 export type InsertDiscoveryCandidate = typeof discoveryCandidates.$inferInsert;
+
+export const customerCompanyStatusEnum = mysqlEnum("customerCompanyStatus", [
+  "pending",
+  "active",
+  "rejected",
+  "disabled",
+]);
+
+export const customerCompanies = mysqlTable("customer_companies", {
+  id: int("id").autoincrement().primaryKey(),
+  companyName: varchar("companyName", { length: 255 }).notNull(),
+  contactName: varchar("contactName", { length: 120 }),
+  contactPhone: varchar("contactPhone", { length: 64 }),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  industry: varchar("industry", { length: 255 }),
+  sourceChannel: varchar("sourceChannel", { length: 120 }),
+  status: customerCompanyStatusEnum.default("pending").notNull(),
+  notes: text("notes"),
+  approvedAt: timestamp("approvedAt"),
+  approvedBy: int("approvedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const companyPlanTypeEnum = mysqlEnum("companyPlanType", ["trial", "basic", "pro", "agency", "custom"]);
+export const companySubscriptionStatusEnum = mysqlEnum("companySubscriptionStatus", [
+  "trial",
+  "active",
+  "expired",
+  "paused",
+  "cancelled",
+]);
+
+export const companySubscriptions = mysqlTable(
+  "company_subscriptions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    planType: companyPlanTypeEnum.notNull(),
+    planName: varchar("planName", { length: 120 }).notNull(),
+    status: companySubscriptionStatusEnum.default("trial").notNull(),
+    startedAt: timestamp("startedAt").defaultNow().notNull(),
+    expiresAt: timestamp("expiresAt"),
+    maxProjects: int("maxProjects").default(1).notNull(),
+    monthlyAiTests: int("monthlyAiTests").default(10).notNull(),
+    monthlyContentTasks: int("monthlyContentTasks").default(20).notNull(),
+    monthlyReports: int("monthlyReports").default(1).notNull(),
+    maxTeamMembers: int("maxTeamMembers").default(5).notNull(),
+    enabledFeatures: json("enabledFeatures").$type<Record<string, boolean>>().notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    companyUnique: uniqueIndex("company_subscriptions_company_unique").on(table.companyId),
+  }),
+);
+
+export const companyProjectStatusEnum = mysqlEnum("companyProjectStatus", ["active", "inactive"]);
+
+export const companyProjects = mysqlTable(
+  "company_projects",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    companyId: int("companyId").notNull(),
+    projectId: int("projectId").notNull(),
+    projectName: varchar("projectName", { length: 255 }).notNull(),
+    status: companyProjectStatusEnum.default("active").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    projectUnique: uniqueIndex("company_projects_project_unique").on(table.projectId),
+    companyIdx: index("company_projects_company_idx").on(table.companyId),
+  }),
+);
+
+export type CustomerCompany = typeof customerCompanies.$inferSelect;
+export type InsertCustomerCompany = typeof customerCompanies.$inferInsert;
+export type CompanySubscription = typeof companySubscriptions.$inferSelect;
+export type InsertCompanySubscription = typeof companySubscriptions.$inferInsert;
+export type CompanyProject = typeof companyProjects.$inferSelect;
+export type InsertCompanyProject = typeof companyProjects.$inferInsert;

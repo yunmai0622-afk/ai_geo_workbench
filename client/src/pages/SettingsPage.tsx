@@ -79,6 +79,17 @@ export default function SettingsPage() {
       </CardContent></Card>
       {user?.role === "admin" ? (
         <>
+          <Card data-testid="settings-admin-platform-link">
+            <CardHeader>
+              <CardTitle>平台运营后台</CardTitle>
+              <CardDescription>管理客户公司、注册审核、套餐权限、项目绑定与交付进度</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button type="button" variant="outline" asChild>
+                <a href="/admin/customers">进入平台运营后台</a>
+              </Button>
+            </CardContent>
+          </Card>
           <Card data-testid="settings-admin-stats-link">
             <CardHeader>
               <CardTitle>系统使用统计</CardTitle>

@@ -456,6 +456,13 @@
       "when": 1778286197827,
       "tag": "0066_discovery_candidates",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "5",
+      "when": 1778287197827,
+      "tag": "0068_platform_admin",
+      "breakpoints": true
     }
   ]
 }
