@@ -23,17 +23,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { activateProject, buildProjectUrl } from "@/lib/activeProject";
 import {
-  deriveClientProjectCardDisplay,
-  deriveClientProjectPipelineBadgeLabel,
   formatClientProjectMentionRate,
   formatGeoScore,
   formatMeasuredAt,
 } from "@/lib/projectWorkspaceDisplay";
-import {
-  buildStageActionUrl,
-  formatStageActionLabel,
-  resolveDeliveryStageView,
-} from "@/lib/deliveryStage";
+import { resolveClientProjectCardPrimaryAction } from "@shared/clientProjectCardPrimaryAction";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { trpc } from "@/lib/trpc";
@@ -61,6 +55,11 @@ type ProjectSummary = {
   latestGeoScore: number | null;
   t0BrandMentionRate: number | null;
   archivedAt: Date | null;
+  completionScore: number;
+  hasCompletedT0Baseline: boolean;
+  hasActiveMonthlyPlan: boolean;
+  monthlyPlanCompletedCount: number;
+  monthlyPlanTotalCount: number;
 };
 
 const ARCHIVE_VIEW_FILTERS = [
@@ -83,18 +82,24 @@ type FilterKey = (typeof STATUS_FILTERS)[number]["key"];
 
 function matchFilter(project: ProjectSummary, filter: FilterKey): boolean {
   if (filter === "all") return true;
-  const { stageLabel } = deriveClientProjectCardDisplay(project);
+  const { stageLabel } = resolveClientProjectCardPrimaryAction({
+    completionScore: project.completionScore,
+    hasCompletedT0Baseline: project.hasCompletedT0Baseline,
+    hasActiveMonthlyPlan: project.hasActiveMonthlyPlan,
+    monthlyPlanCompletedCount: project.monthlyPlanCompletedCount,
+    monthlyPlanTotalCount: project.monthlyPlanTotalCount,
+  });
   switch (filter) {
     case "profiling":
       return stageLabel === "待建档";
     case "diagnosing":
       return stageLabel === "待诊断";
     case "optimizing":
-      return stageLabel === "待生产" || stageLabel === "待发布" || stageLabel === "优化中";
+      return stageLabel === "待计划" || stageLabel === "优化中";
     case "retesting":
-      return stageLabel === "待复测";
+      return false;
     case "reported":
-      return stageLabel === "报告已生成";
+      return false;
     default:
       return true;
   }
@@ -118,49 +123,17 @@ function ProjectCard({
   archivePending: boolean;
 }) {
   const [, setLocation] = useLocation();
-  const { nextStep } = deriveClientProjectCardDisplay(project);
-  const pipelineBadgeLabel = deriveClientProjectPipelineBadgeLabel(project);
-  const deliveryStage = resolveDeliveryStageView({
-    profileCompletionPercent: project.status === "created" ? 0 : 100,
-    boundPublishAccountCount: 0,
-    expiredSessionAccountCount: 0,
-    articleCount: project.articleCount,
-    publishRecordCount: project.publishCount,
-    publishRecordWithPublicUrlCount: project.publishCount,
-    waitingPublicLinkCount: 0,
-    publishTaskCount: 0,
-    completedPublishTaskCount: 0,
-    retestPendingCount: project.publishCount > 0 && project.aiTestCount === 0 ? 1 : 0,
-    rewriteOpenCount: 0,
-    aiTestResultCount: project.aiTestCount,
-    monitoringRecordCount: project.aiTestCount > 0 ? 1 : 0,
-    retestComparisonCount: 0,
-    reportCount: project.publishCount > 0 && project.aiTestCount > 0 ? 1 : 0,
-    geoScore: project.latestGeoScore,
-    brandMentionRate: project.t0BrandMentionRate,
-    recommendRate: null,
-    lowQualityArticleCount: 0,
-    hasAnalysis: project.lastDiagnosisAt != null,
-    hasGeoScore: project.latestGeoScore != null,
-    hasCompletedT0Baseline: project.aiTestCount > 0,
-    hasCompletedT1Retest: project.aiTestCount > 0,
-    showT1RetestAutoTriggerReminder: false,
-    retestPlan: {
-      publishAt: null,
-      publishAtLabel: null,
-      milestones: [],
-      nextSuggestion: null,
-    },
-    retestDueReminder: null,
-    p0ProfileComplete: project.status !== "created",
-    t0ContentGapSuggestions: null,
-    localAgentOnline: null,
+  const primaryAction = resolveClientProjectCardPrimaryAction({
+    completionScore: project.completionScore,
+    hasCompletedT0Baseline: project.hasCompletedT0Baseline,
+    hasActiveMonthlyPlan: project.hasActiveMonthlyPlan,
+    monthlyPlanCompletedCount: project.monthlyPlanCompletedCount,
+    monthlyPlanTotalCount: project.monthlyPlanTotalCount,
   });
-  // 未知阶段主按钮回退文案：进入工作台
-  const actionLabel = formatStageActionLabel(deliveryStage.stage);
-  const stageActionUrl = buildStageActionUrl(deliveryStage.stage, project.id);
-  const todoCount = deliveryStage.todos.length;
-  const riskCount = deliveryStage.blockingReasons.length;
+  const pipelineBadgeLabel = primaryAction.stageLabel;
+  const actionLabel = primaryAction.ctaLabel;
+  const stageActionUrl = buildProjectUrl(primaryAction.ctaPath, project.id);
+  const nextStep = primaryAction.nextStepHint;
   const geoScore = formatGeoScore(project.latestGeoScore);
   const hasAiTestData = project.aiTestCount > 0 || project.lastDiagnosisAt != null;
   const mentionRateText = formatClientProjectMentionRate({
@@ -260,14 +233,6 @@ function ProjectCard({
         <span className="font-medium text-gray-400">下一步：</span>
         {nextStep}
       </p>
-      <div className="mb-4 flex items-center gap-2 text-xs">
-        <span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700" data-testid="client-project-todo-count">
-          待办 {todoCount}
-        </span>
-        <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700" data-testid="client-project-risk-count">
-          风险 {riskCount}
-        </span>
-      </div>
 
       <div className="mt-auto flex sm:justify-end">
         <button

@@ -173,6 +173,7 @@ export function EnterpriseProjectShell({ children }: Props) {
           (monthlyPlanQuery.data === null ? "none" : null))
         : null;
     return resolveWorkspaceStagePrimaryAction({
+      profileCompletionPercent: m.profileCompletionPercent,
       hasCompletedT0Baseline: m.hasCompletedT0Baseline,
       articleCount: m.articleCount,
       pendingPublishContentCount: m.pendingPublishContentCount ?? 0,

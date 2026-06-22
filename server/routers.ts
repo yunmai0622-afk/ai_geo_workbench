@@ -27,6 +27,8 @@ import { aggregateT0AiTestRunMetrics } from "@shared/t0AiTestRunMetrics";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
 import { geoScorePercentToRate, resolveBrandMentionRate } from "@shared/brandMentionRateResolver";
 import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
+import { computeMonthlyPlanProgress } from "@shared/monthlyPlanGeneration";
+import { hasCompletedT0Baseline } from "@shared/workspaceMainChain";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, not, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -86,6 +88,8 @@ import {
   geoInclusionMonitoringRecords,
   geoAssetSources,
   geoScores,
+  monthlyOptimizationPlans,
+  monthlyOptimizationTasks,
   optimizationTasks,
   platformAuthorizationConfigs,
   publishStrategies,
@@ -1391,7 +1395,7 @@ const geoRouter = router({
         .orderBy(desc(projects.createdAt));
 
       const projectIds = accessibleIds;
-      const [articleRows, publishRows, completedPublishTaskRows, monitoringRows, analysisRows, scoreRows, t0RoundRows] =
+      const [articleRows, publishRows, completedPublishTaskRows, monitoringRows, analysisRows, scoreRows, t0RoundRows, profileRows, activeMonthlyPlanRows] =
         await Promise.all([
         db
           .select({ projectId: geoArticles.projectId })
@@ -1450,7 +1454,33 @@ const geoRouter = router({
           })
           .from(testRounds)
           .where(and(inArray(testRounds.projectId, projectIds), eq(testRounds.roundType, "T0_BASELINE"))),
+        db
+          .select()
+          .from(enterpriseGeoProfiles)
+          .where(inArray(enterpriseGeoProfiles.projectId, projectIds))
+          .orderBy(desc(enterpriseGeoProfiles.updatedAt)),
+        db
+          .select()
+          .from(monthlyOptimizationPlans)
+          .where(
+            and(
+              inArray(monthlyOptimizationPlans.projectId, projectIds),
+              eq(monthlyOptimizationPlans.status, "active"),
+            ),
+          ),
       ]);
+
+      const activePlanIds = activeMonthlyPlanRows.map(row => row.id);
+      const monthlyPlanTaskRows =
+        activePlanIds.length > 0
+          ? await db
+              .select({
+                planId: monthlyOptimizationTasks.planId,
+                status: monthlyOptimizationTasks.status,
+              })
+              .from(monthlyOptimizationTasks)
+              .where(inArray(monthlyOptimizationTasks.planId, activePlanIds))
+          : [];
 
       const articleCountMap = new Map<number, number>();
       for (const r of articleRows) {
@@ -1506,6 +1536,26 @@ const geoRouter = router({
         const list = t0RoundsByProject.get(row.projectId) ?? [];
         list.push(row as TestRoundSummary);
         t0RoundsByProject.set(row.projectId, list);
+      }
+      const completionScoreByProject = new Map<number, number>();
+      for (const row of profileRows) {
+        if (completionScoreByProject.has(row.projectId)) continue;
+        completionScoreByProject.set(
+          row.projectId,
+          row.completionScore ?? calculateProfileCompletionScore(row),
+        );
+      }
+      const activeMonthlyPlanByProject = new Map<number, (typeof activeMonthlyPlanRows)[number]>();
+      for (const row of activeMonthlyPlanRows) {
+        if (!activeMonthlyPlanByProject.has(row.projectId)) {
+          activeMonthlyPlanByProject.set(row.projectId, row);
+        }
+      }
+      const monthlyPlanTasksByPlanId = new Map<number, Array<{ status: string }>>();
+      for (const row of monthlyPlanTaskRows) {
+        const list = monthlyPlanTasksByPlanId.get(row.planId) ?? [];
+        list.push({ status: row.status });
+        monthlyPlanTasksByPlanId.set(row.planId, list);
       }
       const latestT0RoundByProject = new Map<
         number,
@@ -1577,6 +1627,11 @@ const geoRouter = router({
         });
         const manualPublishCount = publishRecordCountMap.get(p.id) ?? 0;
         const agentPublishCount = completedPublishTaskCountMap.get(p.id) ?? 0;
+        const t0Rounds = t0RoundsByProject.get(p.id) ?? [];
+        const activePlan = activeMonthlyPlanByProject.get(p.id) ?? null;
+        const monthlyPlanProgress = activePlan
+          ? computeMonthlyPlanProgress(monthlyPlanTasksByPlanId.get(activePlan.id) ?? [])
+          : { completedCount: 0, totalCount: 0 };
 
         return {
           id: p.id,
@@ -1595,6 +1650,11 @@ const geoRouter = router({
           lastMeasuredAt,
           latestGeoScore: latestScoreMap.get(p.id) ?? null,
           t0BrandMentionRate: brandMentionRate,
+          completionScore: completionScoreByProject.get(p.id) ?? 0,
+          hasCompletedT0Baseline: hasCompletedT0Baseline(t0Rounds),
+          hasActiveMonthlyPlan: activePlan != null,
+          monthlyPlanCompletedCount: monthlyPlanProgress.completedCount,
+          monthlyPlanTotalCount: monthlyPlanProgress.totalCount,
         };
       });
     }),

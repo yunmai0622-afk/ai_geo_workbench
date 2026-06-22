@@ -163,6 +163,7 @@ export default function EnterpriseWorkspacePage() {
           (monthlyPlanQuery.data === null ? "none" : null))
         : null;
     return resolveWorkspaceStagePrimaryAction({
+      profileCompletionPercent: metrics.profileCompletionPercent,
       hasCompletedT0Baseline: metrics.hasCompletedT0Baseline,
       articleCount: metrics.articleCount,
       pendingPublishContentCount: metrics.pendingPublishContentCount ?? 0,

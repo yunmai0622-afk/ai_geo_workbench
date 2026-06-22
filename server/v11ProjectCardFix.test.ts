@@ -13,7 +13,7 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("GEO-V1.1 ProjectCardFix", () => {
   it("ClientDashboardPage 展示完整阶段标签，不再包「第 X 步」", () => {
     const page = read("client/src/pages/ClientDashboardPage.tsx");
-    expect(page).toContain("deriveClientProjectPipelineBadgeLabel");
+    expect(page).toContain("resolveClientProjectCardPrimaryAction");
     expect(page).toContain("{pipelineBadgeLabel}");
     expect(page).not.toMatch(/第\s*\{pipelineStep\}\s*步/);
   });

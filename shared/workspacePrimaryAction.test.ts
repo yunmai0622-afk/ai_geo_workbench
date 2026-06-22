@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveWorkspaceStagePrimaryAction } from "./workspacePrimaryAction";
 
 const base = {
+  profileCompletionPercent: 85,
   hasCompletedT0Baseline: true,
   articleCount: 2,
   pendingPublishContentCount: 1,
@@ -14,9 +15,21 @@ const base = {
 };
 
 describe("resolveWorkspaceStagePrimaryAction", () => {
+  it("规则0：建档未完成时阶段与按钮一致指向品牌建档", () => {
+    const action = resolveWorkspaceStagePrimaryAction({
+      ...base,
+      profileCompletionPercent: 65,
+      hasCompletedT0Baseline: false,
+    });
+    expect(action?.stageHeadline).toBe("品牌建档期");
+    expect(action?.ctaLabel).toBe("完成品牌建档");
+    expect(action?.ctaPath).toBe("/enterprise-profile");
+  });
+
   it("规则1：未完成 T0 时阶段与按钮一致指向 AI 现状检测", () => {
     const action = resolveWorkspaceStagePrimaryAction({
       ...base,
+      profileCompletionPercent: 85,
       hasCompletedT0Baseline: false,
       articleCount: 5,
       pendingPublishContentCount: 3,
@@ -83,6 +96,7 @@ describe("resolveWorkspaceStagePrimaryAction", () => {
   it("T0 未完成时不应因已有文章误显示发布阶段", () => {
     const action = resolveWorkspaceStagePrimaryAction({
       ...base,
+      profileCompletionPercent: 85,
       hasCompletedT0Baseline: false,
       articleCount: 3,
       publishRecordCount: 0,

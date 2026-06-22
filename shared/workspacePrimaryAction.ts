@@ -1,8 +1,10 @@
 import { AI_DIAGNOSIS_SOFT_RECOMMENDATION } from "./aiDiagnosisManualT0Gate";
+import { CLIENT_PROFILE_COMPLETE_THRESHOLD } from "./clientProjectCardPrimaryAction";
 import type { MonthlyPlanWorkspaceStage } from "./monthlyPlanGeneration";
 import type { WorkspaceSummaryMetrics } from "./workspaceStateMachine";
 
 export type WorkspaceStagePrimaryActionId =
+  | "profile_completion"
   | "ai_diagnosis"
   | "maturity_assessment"
   | "monthly_plan"
@@ -33,6 +35,8 @@ export type WorkspaceStagePrimaryActionInput = Pick<
   | "lowQualityArticleCount"
   | "rewriteOpenCount"
 > & {
+  /** 建档完整度（与客户卡片共用 80% 阈值） */
+  profileCompletionPercent?: number;
   /** 最新 AI 品牌成熟度总分；未计算或为 0 时进入成熟度阶段 */
   maturityTotalScore?: number | null;
   /** 待人工审核内容数（可选，服务端未聚合时用 0） */
@@ -94,6 +98,7 @@ const MONTHLY_PLAN_STAGE_ACTIONS: Record<
 
 /**
  * 工作台阶段与主按钮统一规则（命中即停止）：
+ * 0. 建档未完成（completionScore < 80）
  * 1. 未完成 AI 现状检测
  * 2. 已完成检测但成熟度未计算/为 0
  * 3. 成熟度已计算，月度优化计划相关阶段
@@ -103,6 +108,19 @@ const MONTHLY_PLAN_STAGE_ACTIONS: Record<
 export function resolveWorkspaceStagePrimaryAction(
   input: WorkspaceStagePrimaryActionInput,
 ): WorkspaceStagePrimaryAction | null {
+  const profilePct = input.profileCompletionPercent ?? 0;
+  if (profilePct < CLIENT_PROFILE_COMPLETE_THRESHOLD) {
+    return {
+      id: "profile_completion",
+      stageHeadline: "品牌建档期",
+      phaseTitle: "品牌建档期",
+      phaseDescription: "完善品牌资料，让AI认识你",
+      ctaLabel: "完成品牌建档",
+      ctaPath: "/enterprise-profile",
+      reason: "补齐品牌信息，让AI正确认识你",
+    };
+  }
+
   if (!input.hasCompletedT0Baseline) {
     return {
       id: "ai_diagnosis",
