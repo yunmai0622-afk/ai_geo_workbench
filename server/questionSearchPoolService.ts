@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and, isNull } from "drizzle-orm";
 import {
   type QuestionArticleLink,
 } from "@shared/questionBankIntentMap";
@@ -6,6 +6,7 @@ import { GEO_OPTIMIZATION_TASK_CARD_MARK } from "@shared/geoContentTaskSource";
 import {
   buildQuestionPoolGapOverview,
   buildSearchPoolGroupStats,
+  mapLegacyTypeToSearchPoolType,
   type QuestionPoolGapOverview,
   type SearchPoolGroupStats,
   type SearchPoolQuestionRow,
@@ -79,7 +80,24 @@ export type SearchPoolEnrichedPayload = {
   groupStats: Record<SearchPoolQuestionType, SearchPoolGroupStats>;
 };
 
+export async function backfillNullSearchPoolTypes(db: DbConn, projectId: number): Promise<number> {
+  const nullRows = await db
+    .select({ id: questions.id, questionType: questions.questionType })
+    .from(questions)
+    .where(and(eq(questions.projectId, projectId), isNull(questions.searchPoolType)));
+
+  let updated = 0;
+  for (const row of nullRows) {
+    const poolType = mapLegacyTypeToSearchPoolType(row.questionType);
+    if (!poolType) continue;
+    await db.update(questions).set({ searchPoolType: poolType }).where(eq(questions.id, row.id));
+    updated += 1;
+  }
+  return updated;
+}
+
 export async function loadSearchPoolEnriched(db: DbConn, projectId: number): Promise<SearchPoolEnrichedPayload> {
+  await backfillNullSearchPoolTypes(db, projectId);
   const [
     questionRows,
     taskRows,

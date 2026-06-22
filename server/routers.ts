@@ -29,7 +29,7 @@ import { geoScorePercentToRate, resolveBrandMentionRate } from "@shared/brandMen
 import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
 import { computeMonthlyPlanProgress } from "@shared/monthlyPlanGeneration";
 import { hasCompletedT0Baseline } from "@shared/workspaceMainChain";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, like, ne, not, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, inArray, isNotNull, isNull, like, ne, not, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
@@ -62,6 +62,7 @@ import { deleteGeoArticleCascade } from "./geoArticleDelete";
 import { resetProjectT0Baseline } from "./resetT0Baseline";
 import {
   buildQuestionContentTaskExecutionSuggestion,
+  backfillNullSearchPoolTypes,
   loadSearchPoolEnriched,
   questionHasContentTask,
   questionTaskMarker,
@@ -2027,6 +2028,7 @@ const geoRouter = router({
       .mutation(async ({ ctx, input }) => {
         const db = await requireDb();
         const project = await requireProjectAccess(ctx, input.projectId);
+        await backfillNullSearchPoolTypes(db, input.projectId);
         const profileRows = await db
           .select()
           .from(enterpriseGeoProfiles)
@@ -3443,8 +3445,12 @@ const geoRouter = router({
       if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
       const rows = await db
-        .select()
+        .select(getTableColumns(geoInclusionMonitoringRecords))
         .from(geoInclusionMonitoringRecords)
+        .innerJoin(
+          geoPublishRecords,
+          eq(geoInclusionMonitoringRecords.publishRecordId, geoPublishRecords.id),
+        )
         .where(eq(geoInclusionMonitoringRecords.projectId, input.projectId))
         .orderBy(desc(geoInclusionMonitoringRecords.createdAt));
       const articleIds = Array.from(new Set(rows.map(row => row.articleId)));

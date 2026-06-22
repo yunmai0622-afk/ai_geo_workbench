@@ -20,7 +20,11 @@ export function useActiveProjectSelection() {
   const [location, setLocation] = useLocation();
   const search = getSearchFromLocation(location);
   const pathname = getPathnameFromLocation(location);
-  const { data: projectsRaw = [], isLoading: projectsLoading } = trpc.geo.projects.list.useQuery();
+  const {
+    data: projectsRaw = [],
+    isLoading: projectsLoading,
+    isError: projectsError,
+  } = trpc.geo.projects.list.useQuery();
   const projects = useMemo(
     () =>
       filterNavigableProjects(projectsRaw).map(p => ({
@@ -31,22 +35,22 @@ export function useActiveProjectSelection() {
   );
 
   const inspection = useMemo(() => {
-    if (projectsLoading) {
+    if (projectsLoading || projectsError) {
       return { projectId: null as number | null, contextId: null as number | null, staleContext: false };
     }
     return inspectActiveProjectContext(projects, { search });
-  }, [projectsLoading, projects, search]);
+  }, [projectsLoading, projectsError, projects, search]);
 
   useInvalidProjectRedirect({
-    projectsLoading,
+    projectsLoading: projectsLoading || projectsError,
     projects,
     contextProjectId: inspection.contextId,
   });
 
   const resolvedProjectId = useMemo(() => {
-    if (projectsLoading || inspection.staleContext) return undefined;
+    if (projectsLoading || projectsError || inspection.staleContext) return undefined;
     return inspection.projectId ?? undefined;
-  }, [projectsLoading, inspection]);
+  }, [projectsLoading, projectsError, inspection]);
 
   const [selectedProjectId, setSelectedProjectIdState] = useState<number | undefined>(resolvedProjectId);
 
@@ -85,8 +89,8 @@ export function useActiveProjectSelection() {
     setSelectedProjectId,
     projectInput,
     enabled: Boolean(resolvedProjectId),
-    needsProjectSelection: !projectsLoading && !resolvedProjectId,
-    isLoading: projectsLoading,
-    projectsLoading,
+    needsProjectSelection: !projectsLoading && !projectsError && !resolvedProjectId,
+    isLoading: projectsLoading || projectsError,
+    projectsLoading: projectsLoading || projectsError,
   };
 }

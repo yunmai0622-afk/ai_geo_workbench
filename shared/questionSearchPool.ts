@@ -89,6 +89,26 @@ export function mapSearchPoolTypeToLegacyQuestionType(poolType: SearchPoolQuesti
   return LEGACY_TYPE_BY_POOL[poolType] ?? "指定问题";
 }
 
+const LEGACY_QUESTION_TYPE_TO_POOL: Record<string, SearchPoolQuestionType> = {
+  品牌认知: "brand_search",
+  行业推荐: "category_recommend",
+  竞品对比: "comparison",
+  scenario_need: "scene_need",
+  long_tail_conversion: "long_tail",
+  痛点解决: "scene_need",
+  价格选型: "category_recommend",
+  高意向成交: "long_tail",
+  指定问题: "brand_search",
+};
+
+export function mapLegacyTypeToSearchPoolType(questionType: string): SearchPoolQuestionType | null {
+  const trimmed = questionType.trim();
+  if (!trimmed) return null;
+  const mapped = LEGACY_QUESTION_TYPE_TO_POOL[trimmed];
+  if (mapped) return mapped;
+  return normalizeSearchPoolType(trimmed);
+}
+
 export function resolveSearchPoolTypeLabel(poolType?: string | null): string {
   if (!poolType) return "未分类";
   return POOL_TYPE_LABEL[poolType] ?? poolType;

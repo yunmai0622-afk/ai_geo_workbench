@@ -6,6 +6,7 @@ import {
   filterQuestionsRequiringSourceType,
   formatQuestionPoolGapMetricValue,
   groupQuestionsBySearchPoolType,
+  mapLegacyTypeToSearchPoolType,
   mapSearchPoolTypeToLegacyQuestionType,
   parseTargetKeywordsInput,
   type SearchPoolQuestionRow,
@@ -50,6 +51,12 @@ describe("questionSearchPool", () => {
   it("maps search pool type to legacy question type", () => {
     expect(mapSearchPoolTypeToLegacyQuestionType("brand_search")).toBe("品牌认知");
     expect(mapSearchPoolTypeToLegacyQuestionType("scene_need")).toBe("scenario_need");
+  });
+
+  it("maps legacy question type to search pool type", () => {
+    expect(mapLegacyTypeToSearchPoolType("品牌认知")).toBe("brand_search");
+    expect(mapLegacyTypeToSearchPoolType("scenario_need")).toBe("scene_need");
+    expect(mapLegacyTypeToSearchPoolType("痛点解决")).toBe("scene_need");
   });
 
   it("builds overview metrics", () => {

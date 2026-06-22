@@ -44,11 +44,19 @@ export function getProjectIdFromUrl(searchOverride?: string): number | null {
 
 export function getActiveProjectIdFromStorage(): number | null {
   if (typeof window === "undefined") return null;
-  const raw = sessionStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-  const id = Number.parseInt(raw, 10);
-  const parsed = Number.isFinite(id) && id > 0 ? id : null;
-  return sanitizeActiveProjectId(parsed);
+  const fromSession = sessionStorage.getItem(STORAGE_KEY);
+  if (fromSession) {
+    const id = Number.parseInt(fromSession, 10);
+    const parsed = Number.isFinite(id) && id > 0 ? id : null;
+    return sanitizeActiveProjectId(parsed);
+  }
+  const fromLocal = localStorage.getItem(STORAGE_KEY);
+  if (fromLocal) {
+    const id = Number.parseInt(fromLocal, 10);
+    const parsed = Number.isFinite(id) && id > 0 ? id : null;
+    return sanitizeActiveProjectId(parsed);
+  }
+  return null;
 }
 
 /** URL projectId 优先，其次 sessionStorage；禁止 fallback 到 projects[0]（存在性校验见 resolveActiveProjectId） */
@@ -124,6 +132,7 @@ export function setActiveProjectId(projectId: number | string): void {
   if (!id) return;
   if (typeof window !== "undefined") {
     sessionStorage.setItem(STORAGE_KEY, String(id));
+    localStorage.setItem(STORAGE_KEY, String(id));
   }
 }
 
@@ -140,6 +149,7 @@ export function syncActiveProjectIdFromUrl(search?: string): number | null {
 export function clearActiveProjectId(): void {
   if (typeof window !== "undefined") {
     sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
   }
 }
 
