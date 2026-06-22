@@ -1062,7 +1062,7 @@ export const effectiveActions = mysqlTable("effective_actions", {
 });
 
 /** GEO V1.1：用户系统通知 */
-export const systemNotificationTypeEnum = mysqlEnum("notificationType", ["t0_complete","publish_success","publish_failed","t1_retest_complete","weekly_growth_report"]);
+export const systemNotificationTypeEnum = mysqlEnum("type", ["t0_complete","publish_success","publish_failed","t1_retest_complete","weekly_growth_report"]);
 export const systemNotifications = mysqlTable("system_notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -1330,7 +1330,7 @@ export type InsertSourceEnhancementSuggestion = typeof sourceEnhancementSuggesti
 export type DiscoveryCandidate = typeof discoveryCandidates.$inferSelect;
 export type InsertDiscoveryCandidate = typeof discoveryCandidates.$inferInsert;
 
-export const customerCompanyStatusEnum = mysqlEnum("customerCompanyStatus", [
+export const customerCompanyStatusEnum = mysqlEnum("status", [
   "pending",
   "active",
   "rejected",
@@ -1353,8 +1353,8 @@ export const customerCompanies = mysqlTable("customer_companies", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export const companyPlanTypeEnum = mysqlEnum("companyPlanType", ["trial", "basic", "pro", "agency", "custom"]);
-export const companySubscriptionStatusEnum = mysqlEnum("companySubscriptionStatus", [
+export const companyPlanTypeEnum = mysqlEnum("planType", ["trial", "basic", "pro", "agency", "custom"]);
+export const companySubscriptionStatusEnum = mysqlEnum("status", [
   "trial",
   "active",
   "expired",
@@ -1387,7 +1387,7 @@ export const companySubscriptions = mysqlTable(
   }),
 );
 
-export const companyProjectStatusEnum = mysqlEnum("companyProjectStatus", ["active", "inactive"]);
+export const companyProjectStatusEnum = mysqlEnum("status", ["active", "inactive"]);
 
 export const companyProjects = mysqlTable(
   "company_projects",
