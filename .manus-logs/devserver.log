@@ -4940,3 +4940,224 @@
 [2026-06-22T11:44:15.674Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-22T11:44:15.714Z] Server running on http://localhost:3000/
 [2026-06-22T11:44:16.545Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-22T12:58:29.920Z] 8:58:29 AM [vite] (client) hmr update /src/App.tsx, /src/index.css
+[2026-06-22T12:58:29.923Z] 8:58:29 AM [vite] (client) hmr update /src/index.css
+[2026-06-22T12:58:29.926Z] 8:58:29 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-22T12:58:29.926Z] 8:58:29 AM [vite] (client) hmr update /src/index.css, /src/components/clients/ClientsHubTopBar.tsx
+[2026-06-22T12:58:29.928Z] 8:58:29 AM [vite] (client) hmr update /src/index.css, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/pages/MonthlyPlanPage.tsx, /src/pages/AssetCenter.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/MaturityDetailPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/SourceGraphPage.tsx, /src/pages/GeoPages.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/components/source-graph/SourceGraphAssistantPanel.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/components/questions/QuestionBankAssistantPanel.tsx, /src/components/enterpriseProfile/TrustEvidenceManager.tsx, /src/components/maturity/MaturityAssistantPanel.tsx, /src/components/inclusion-monitoring/InclusionMonitoringAssistantPanel.tsx
+[2026-06-22T12:58:29.929Z] 8:58:29 AM [vite] (client) hmr update /src/App.tsx, /src/pages/DeliveryReportSharePage.tsx, /src/pages/PublishRecordsHistoryPage.tsx, /src/pages/QuestionsLibraryPage.tsx, /src/pages/MonthlyPlanPage.tsx, /src/pages/AssetCenter.tsx, /src/pages/EffectiveActionsPage.tsx, /src/pages/MaturityDetailPage.tsx, /src/pages/TemplatesPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/pages/SourceGraphPage.tsx, /src/pages/GeoPages.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/components/source-graph/SourceGraphAssistantPanel.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/components/questions/QuestionBankAssistantPanel.tsx, /src/components/enterpriseProfile/TrustEvidenceManager.tsx, /src/components/maturity/MaturityAssistantPanel.tsx, /src/components/inclusion-monitoring/InclusionMonitoringAssistantPanel.tsx, /src/index.css
+[2026-06-22T12:58:29.930Z] 8:58:29 AM [vite] (client) hmr update /src/pages/DeliveryReportSharePage.tsx, /src/index.css
+[2026-06-22T12:58:29.931Z] 8:58:29 AM [vite] (client) hmr update /src/pages/SettingsPage.tsx, /src/index.css
+[2026-06-22T12:58:30.047Z] 8:58:30 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-06-22T12:58:38.188Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-22T12:58:38.220Z] Server running on http://localhost:3000/
+[2026-06-22T12:58:39.238Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-22T12:58:46.022Z] [Database] Failed to query user with drizzle schema, try legacy SQL fallback: DrizzleQueryError: Failed query: select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = ? limit ?
+[2026-06-22T12:58:46.035Z] params: idQPRgYSSV5HgoazuAaxBP,1
+[2026-06-22T12:58:46.036Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T12:58:46.036Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T12:58:46.036Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T12:58:46.037Z] at async Module.getUserByOpenId (/home/ubuntu/ai_geo_workbench/server/db.ts:110:20)
+[2026-06-22T12:58:46.037Z] at async SDKServer.authenticateRequest (/home/ubuntu/ai_geo_workbench/server/_core/sdk.ts:270:16)
+[2026-06-22T12:58:46.037Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/server/_core/context.ts:17:12)
+[2026-06-22T12:58:46.038Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:94:18)
+[2026-06-22T12:58:46.038Z] at async Object.create (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:272:23)
+[2026-06-22T12:58:46.038Z] at async resolveResponse (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:311:5)
+[2026-06-22T12:58:46.039Z] at async <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:100:26) {
+[2026-06-22T12:58:46.039Z] query: 'select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = ? limit ?',
+[2026-06-22T12:58:46.039Z] params: [ 'idQPRgYSSV5HgoazuAaxBP', 1 ],
+[2026-06-22T12:58:46.040Z] cause: Error: Unknown column 'companyid' in 'field list'
+[2026-06-22T12:58:46.040Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T12:58:46.040Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T12:58:46.041Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T12:58:46.041Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T12:58:46.041Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T12:58:46.041Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15) {
+[2026-06-22T12:58:46.042Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T12:58:46.042Z] errno: 1054,
+[2026-06-22T12:58:46.042Z] sql: "select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = 'idQPRgYSSV5HgoazuAaxBP' limit 1",
+[2026-06-22T12:58:46.043Z] sqlState: '42S22',
+[2026-06-22T12:58:46.043Z] sqlMessage: "Unknown column 'companyid' in 'field list'"
+[2026-06-22T12:58:46.043Z] }
+[2026-06-22T12:58:46.044Z] }
+[2026-06-22T12:58:47.155Z] [Database] Failed to upsert user with drizzle schema, try legacy SQL fallback: DrizzleQueryError: Failed query: insert into `users` (`id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn`) values (default, ?, ?, ?, default, ?, ?, default, default, default, default, default, default, default, default, default, default, ?) on duplicate key update `name` = ?, `email` = ?, `loginMethod` = ?, `role` = ?, `lastSignedIn` = ?
+[2026-06-22T12:58:47.156Z] params: idQPRgYSSV5HgoazuAaxBP,文召 王,419052760@qq.com,apple,admin,2026-06-22 12:58:45.793,文召 王,419052760@qq.com,apple,admin,2026-06-22 12:58:45.793
+[2026-06-22T12:58:47.156Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T12:58:47.157Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T12:58:47.157Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16)
+[2026-06-22T12:58:47.157Z] at async Module.upsertUser (/home/ubuntu/ai_geo_workbench/server/db.ts:71:5)
+[2026-06-22T12:58:47.158Z] at async SDKServer.authenticateRequest (/home/ubuntu/ai_geo_workbench/server/_core/sdk.ts:276:9)
+[2026-06-22T12:58:47.158Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/server/_core/context.ts:17:12)
+[2026-06-22T12:58:47.158Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:94:18)
+[2026-06-22T12:58:47.158Z] at async Object.create (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:272:23)
+[2026-06-22T12:58:47.159Z] at async resolveResponse (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:311:5)
+[2026-06-22T12:58:47.159Z] at async <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:100:26) {
+[2026-06-22T12:58:47.160Z] query: 'insert into `users` (`id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn`) values (default, ?, ?, ?, default, ?, ?, default, default, default, default, default, default, default, default, default, default, ?) on duplicate key update `name` = ?, `email` = ?, `loginMethod` = ?, `role` = ?, `lastSignedIn` = ?',
+[2026-06-22T12:58:47.160Z] params: [
+[2026-06-22T12:58:47.160Z] 'idQPRgYSSV5HgoazuAaxBP',
+[2026-06-22T12:58:47.161Z] '文召 王',
+[2026-06-22T12:58:47.161Z] '419052760@qq.com',
+[2026-06-22T12:58:47.161Z] 'apple',
+[2026-06-22T12:58:47.162Z] 'admin',
+[2026-06-22T12:58:47.162Z] '2026-06-22 12:58:45.793',
+[2026-06-22T12:58:47.162Z] '文召 王',
+[2026-06-22T12:58:47.162Z] '419052760@qq.com',
+[2026-06-22T12:58:47.163Z] 'apple',
+[2026-06-22T12:58:47.163Z] 'admin',
+[2026-06-22T12:58:47.163Z] '2026-06-22 12:58:45.793'
+[2026-06-22T12:58:47.164Z] ],
+[2026-06-22T12:58:47.164Z] cause: Error: Unknown column 'companyId' in 'field list'
+[2026-06-22T12:58:47.164Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T12:58:47.165Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25)
+[2026-06-22T12:58:47.165Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T12:58:47.165Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27)
+[2026-06-22T12:58:47.166Z] at QueryPromise.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/insert.ts:323:25)
+[2026-06-22T12:58:47.166Z] at QueryPromise.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T12:58:47.166Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T12:58:47.166Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T12:58:47.167Z] errno: 1054,
+[2026-06-22T12:58:47.167Z] sql: "insert into `users` (`id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn`) values (default, 'idQPRgYSSV5HgoazuAaxBP', '文召 王', '419052760@qq.com', default, 'apple', 'admin', default, default, default, default, default, default, default, default, default, default, '2026-06-22 12:58:45.793') on duplicate key update `name` = '文召 王', `email` = '419052760@qq.com', `loginMethod` = 'apple', `role` = 'admin', `lastSignedIn` = '2026-06-22 12:58:45.793'",
+[2026-06-22T12:58:47.167Z] sqlState: '42S22',
+[2026-06-22T12:58:47.168Z] sqlMessage: "Unknown column 'companyId' in 'field list'"
+[2026-06-22T12:58:47.168Z] }
+[2026-06-22T12:58:47.168Z] }
+[2026-06-22T12:58:47.592Z] [Database] Failed to query user with drizzle schema, try legacy SQL fallback: DrizzleQueryError: Failed query: select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = ? limit ?
+[2026-06-22T12:58:47.593Z] params: idQPRgYSSV5HgoazuAaxBP,1
+[2026-06-22T12:58:47.593Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T12:58:47.594Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T12:58:47.594Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T12:58:47.594Z] at async Module.getUserByOpenId (/home/ubuntu/ai_geo_workbench/server/db.ts:110:20)
+[2026-06-22T12:58:47.595Z] at async SDKServer.authenticateRequest (/home/ubuntu/ai_geo_workbench/server/_core/sdk.ts:283:16)
+[2026-06-22T12:58:47.595Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/server/_core/context.ts:17:12)
+[2026-06-22T12:58:47.595Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:94:18)
+[2026-06-22T12:58:47.596Z] at async Object.create (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:272:23)
+[2026-06-22T12:58:47.596Z] at async resolveResponse (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:311:5)
+[2026-06-22T12:58:47.596Z] at async <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:100:26) {
+[2026-06-22T12:58:47.597Z] query: 'select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = ? limit ?',
+[2026-06-22T12:58:47.597Z] params: [ 'idQPRgYSSV5HgoazuAaxBP', 1 ],
+[2026-06-22T12:58:47.597Z] cause: Error: Unknown column 'companyid' in 'field list'
+[2026-06-22T12:58:47.598Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T12:58:47.598Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T12:58:47.598Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T12:58:47.599Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T12:58:47.599Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T12:58:47.599Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T12:58:47.599Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T12:58:47.600Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T12:58:47.600Z] errno: 1054,
+[2026-06-22T12:58:47.600Z] sql: "select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = 'idQPRgYSSV5HgoazuAaxBP' limit 1",
+[2026-06-22T12:58:47.601Z] sqlState: '42S22',
+[2026-06-22T12:58:47.601Z] sqlMessage: "Unknown column 'companyid' in 'field list'"
+[2026-06-22T12:58:47.601Z] }
+[2026-06-22T12:58:47.602Z] }
+[2026-06-22T12:58:48.317Z] [Database] Failed to query user with drizzle schema, try legacy SQL fallback: DrizzleQueryError: Failed query: select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = ? limit ?
+[2026-06-22T12:58:48.318Z] params: idQPRgYSSV5HgoazuAaxBP,1
+[2026-06-22T12:58:48.318Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T12:58:48.319Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T12:58:48.319Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T12:58:48.320Z] at async Module.getUserByOpenId (/home/ubuntu/ai_geo_workbench/server/db.ts:110:20)
+[2026-06-22T12:58:48.320Z] at async SDKServer.authenticateRequest (/home/ubuntu/ai_geo_workbench/server/_core/sdk.ts:270:16)
+[2026-06-22T12:58:48.320Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/server/_core/context.ts:17:12)
+[2026-06-22T12:58:48.321Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:94:18)
+[2026-06-22T12:58:48.321Z] at async Object.create (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:272:23)
+[2026-06-22T12:58:48.322Z] at async resolveResponse (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:311:5)
+[2026-06-22T12:58:48.322Z] at async <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:100:26) {
+[2026-06-22T12:58:48.323Z] query: 'select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = ? limit ?',
+[2026-06-22T12:58:48.323Z] params: [ 'idQPRgYSSV5HgoazuAaxBP', 1 ],
+[2026-06-22T12:58:48.324Z] cause: Error: Unknown column 'companyid' in 'field list'
+[2026-06-22T12:58:48.324Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T12:58:48.325Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T12:58:48.325Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T12:58:48.326Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T12:58:48.326Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T12:58:48.327Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15) {
+[2026-06-22T12:58:48.327Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T12:58:48.328Z] errno: 1054,
+[2026-06-22T12:58:48.328Z] sql: "select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = 'idQPRgYSSV5HgoazuAaxBP' limit 1",
+[2026-06-22T12:58:48.329Z] sqlState: '42S22',
+[2026-06-22T12:58:48.329Z] sqlMessage: "Unknown column 'companyid' in 'field list'"
+[2026-06-22T12:58:48.330Z] }
+[2026-06-22T12:58:48.330Z] }
+[2026-06-22T12:58:48.986Z] [Database] Failed to upsert user with drizzle schema, try legacy SQL fallback: DrizzleQueryError: Failed query: insert into `users` (`id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn`) values (default, ?, ?, ?, default, ?, ?, default, default, default, default, default, default, default, default, default, default, ?) on duplicate key update `name` = ?, `email` = ?, `loginMethod` = ?, `role` = ?, `lastSignedIn` = ?
+[2026-06-22T12:58:48.986Z] params: idQPRgYSSV5HgoazuAaxBP,文召 王,419052760@qq.com,apple,admin,2026-06-22 12:58:48.102,文召 王,419052760@qq.com,apple,admin,2026-06-22 12:58:48.102
+[2026-06-22T12:58:48.987Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T12:58:48.987Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T12:58:48.988Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:16)
+[2026-06-22T12:58:48.988Z] at async Module.upsertUser (/home/ubuntu/ai_geo_workbench/server/db.ts:71:5)
+[2026-06-22T12:58:48.988Z] at async SDKServer.authenticateRequest (/home/ubuntu/ai_geo_workbench/server/_core/sdk.ts:276:9)
+[2026-06-22T12:58:48.989Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/server/_core/context.ts:17:12)
+[2026-06-22T12:58:48.989Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:94:18)
+[2026-06-22T12:58:48.989Z] at async Object.create (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:272:23)
+[2026-06-22T12:58:48.990Z] at async resolveResponse (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:311:5)
+[2026-06-22T12:58:48.990Z] at async <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:100:26) {
+[2026-06-22T12:58:48.991Z] query: 'insert into `users` (`id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn`) values (default, ?, ?, ?, default, ?, ?, default, default, default, default, default, default, default, default, default, default, ?) on duplicate key update `name` = ?, `email` = ?, `loginMethod` = ?, `role` = ?, `lastSignedIn` = ?',
+[2026-06-22T12:58:48.991Z] params: [
+[2026-06-22T12:58:48.991Z] 'idQPRgYSSV5HgoazuAaxBP',
+[2026-06-22T12:58:48.992Z] '文召 王',
+[2026-06-22T12:58:48.992Z] '419052760@qq.com',
+[2026-06-22T12:58:48.992Z] 'apple',
+[2026-06-22T12:58:48.993Z] 'admin',
+[2026-06-22T12:58:48.993Z] '2026-06-22 12:58:48.102',
+[2026-06-22T12:58:48.993Z] '文召 王',
+[2026-06-22T12:58:48.994Z] '419052760@qq.com',
+[2026-06-22T12:58:48.994Z] 'apple',
+[2026-06-22T12:58:48.994Z] 'admin',
+[2026-06-22T12:58:48.994Z] '2026-06-22 12:58:48.102'
+[2026-06-22T12:58:48.995Z] ],
+[2026-06-22T12:58:48.995Z] cause: Error: Unknown column 'companyId' in 'field list'
+[2026-06-22T12:58:48.995Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T12:58:48.996Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:101:25)
+[2026-06-22T12:58:48.996Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T12:58:48.996Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:100:27)
+[2026-06-22T12:58:48.997Z] at QueryPromise.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/insert.ts:323:25)
+[2026-06-22T12:58:48.997Z] at QueryPromise.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T12:58:48.998Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T12:58:48.998Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T12:58:48.998Z] errno: 1054,
+[2026-06-22T12:58:48.998Z] sql: "insert into `users` (`id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn`) values (default, 'idQPRgYSSV5HgoazuAaxBP', '文召 王', '419052760@qq.com', default, 'apple', 'admin', default, default, default, default, default, default, default, default, default, default, '2026-06-22 12:58:48.102') on duplicate key update `name` = '文召 王', `email` = '419052760@qq.com', `loginMethod` = 'apple', `role` = 'admin', `lastSignedIn` = '2026-06-22 12:58:48.102'",
+[2026-06-22T12:58:48.999Z] sqlState: '42S22',
+[2026-06-22T12:58:48.999Z] sqlMessage: "Unknown column 'companyId' in 'field list'"
+[2026-06-22T12:58:49.000Z] }
+[2026-06-22T12:58:49.000Z] }
+[2026-06-22T12:58:49.418Z] [Database] Failed to query user with drizzle schema, try legacy SQL fallback: DrizzleQueryError: Failed query: select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = ? limit ?
+[2026-06-22T12:58:49.419Z] params: idQPRgYSSV5HgoazuAaxBP,1
+[2026-06-22T12:58:49.420Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:79:11)
+[2026-06-22T12:58:49.420Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-06-22T12:58:49.420Z] at async MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:18)
+[2026-06-22T12:58:49.421Z] at async Module.getUserByOpenId (/home/ubuntu/ai_geo_workbench/server/db.ts:110:20)
+[2026-06-22T12:58:49.421Z] at async SDKServer.authenticateRequest (/home/ubuntu/ai_geo_workbench/server/_core/sdk.ts:283:16)
+[2026-06-22T12:58:49.421Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/server/_core/context.ts:17:12)
+[2026-06-22T12:58:49.422Z] at async Object.createContext (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:94:18)
+[2026-06-22T12:58:49.422Z] at async Object.create (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:272:23)
+[2026-06-22T12:58:49.422Z] at async resolveResponse (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/unstable-core-do-not-import/http/resolveResponse.ts:311:5)
+[2026-06-22T12:58:49.423Z] at async <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/@trpc+server@11.6.0_typescript@5.9.3/node_modules/@trpc/server/src/adapters/node-http/nodeHTTPRequestHandler.ts:100:26) {
+[2026-06-22T12:58:49.423Z] query: 'select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = ? limit ?',
+[2026-06-22T12:58:49.423Z] params: [ 'idQPRgYSSV5HgoazuAaxBP', 1 ],
+[2026-06-22T12:58:49.424Z] cause: Error: Unknown column 'companyid' in 'field list'
+[2026-06-22T12:58:49.424Z] at PromisePool.query (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/mysql2@3.15.1/node_modules/mysql2/lib/promise/pool.js:36:22)
+[2026-06-22T12:58:49.424Z] at <anonymous> (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:133:24)
+[2026-06-22T12:58:49.425Z] at MySql2PreparedQuery.queryWithCache (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/session.ts:77:18)
+[2026-06-22T12:58:49.425Z] at MySql2PreparedQuery.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql2/session.ts:132:29)
+[2026-06-22T12:58:49.425Z] at MySqlSelectBase.execute (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/mysql-core/query-builders/select.ts:1145:25)
+[2026-06-22T12:58:49.426Z] at MySqlSelectBase.then (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/drizzle-orm@0.44.6_mysql2@3.15.1/node_modules/src/query-promise.ts:31:15)
+[2026-06-22T12:58:49.426Z] at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+[2026-06-22T12:58:49.426Z] code: 'ER_BAD_FIELD_ERROR',
+[2026-06-22T12:58:49.427Z] errno: 1054,
+[2026-06-22T12:58:49.427Z] sql: "select `id`, `openId`, `name`, `email`, `passwordHash`, `loginMethod`, `role`, `companyId`, `userStatus`, `customerRole`, `applicationNote`, `reviewedAt`, `reviewedBy`, `subscriptionPlanId`, `extensionApiKey`, `createdAt`, `updatedAt`, `lastSignedIn` from `users` where `users`.`openId` = 'idQPRgYSSV5HgoazuAaxBP' limit 1",
+[2026-06-22T12:58:49.427Z] sqlState: '42S22',
+[2026-06-22T12:58:49.428Z] sqlMessage: "Unknown column 'companyid' in 'field list'"
+[2026-06-22T12:58:49.428Z] }
+[2026-06-22T12:58:49.428Z] }
+[2026-06-22T12:59:39.931Z] Dev server process group stopped
+[2026-06-22T12:59:39.934Z] ELIFECYCLE  Command failed.
+[2026-06-22T12:59:40.004Z] Dev server exited with code -15
+[2026-06-22T12:59:42.966Z] Starting dev server with command: pnpm run dev
+[2026-06-22T12:59:43.721Z] 
+[2026-06-22T12:59:43.722Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-22T12:59:43.722Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-22T12:59:43.723Z] 
+[2026-06-22T12:59:51.960Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-22T12:59:52.001Z] Server running on http://localhost:3000/
+[2026-06-22T12:59:53.724Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-22T13:00:31.997Z] 9:00:31 AM [vite] (client) hmr update /src/index.css
+[2026-06-22T13:02:15.983Z] 9:02:15 AM [vite] (client) hmr update /src/index.css

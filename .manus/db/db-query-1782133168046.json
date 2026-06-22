@@ -1,0 +1,40 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('customer_companies', 'company_subscriptions', 'company_projects');\nSELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME IN ('companyId', 'userStatus', 'customerRole', 'applicationNote', 'reviewedAt', 'reviewedBy');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('customer_companies', 'company_subscriptions', 'company_projects');\nSELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME IN ('companyId', 'userStatus', 'customerRole', 'applicationNote', 'reviewedAt', 'reviewedBy');",
+  "rows": [
+    {
+      "TABLE_NAME": "customer_companies"
+    },
+    {
+      "TABLE_NAME": "company_subscriptions"
+    },
+    {
+      "TABLE_NAME": "company_projects"
+    },
+    {
+      "TABLE_NAME": "COLUMN_NAME"
+    },
+    {
+      "TABLE_NAME": "companyId"
+    },
+    {
+      "TABLE_NAME": "userStatus"
+    },
+    {
+      "TABLE_NAME": "customerRole"
+    },
+    {
+      "TABLE_NAME": "applicationNote"
+    },
+    {
+      "TABLE_NAME": "reviewedAt"
+    },
+    {
+      "TABLE_NAME": "reviewedBy"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\ncustomer_companies\ncompany_subscriptions\ncompany_projects\nCOLUMN_NAME\ncompanyId\nuserStatus\ncustomerRole\napplicationNote\nreviewedAt\nreviewedBy\n",
+  "stderr": "",
+  "execution_time_ms": 1942
+}
