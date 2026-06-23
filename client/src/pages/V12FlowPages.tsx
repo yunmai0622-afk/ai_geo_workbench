@@ -25,6 +25,7 @@ import {
 import { BusinessPageProjectHeader } from "@/components/BusinessPageProjectHeader";
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { RetestPlanPanel } from "@/components/diagnosis/RetestPlanPanel";
+import { AiDiagnosisCustomerReport } from "@/components/diagnosis/AiDiagnosisCustomerReport";
 import { AiDiagnosisRerunConfirmDialog } from "@/components/diagnosis/AiDiagnosisRerunConfirmDialog";
 import { AiDiagnosisT0ConfirmDialog } from "@/components/diagnosis/AiDiagnosisT0ConfirmDialog";
 import { QuestionPoolTestPanel } from "@/components/diagnosis/QuestionPoolTestPanel";
@@ -81,7 +82,6 @@ import {
   formatT0Rate,
   T0_AI_ENGINE_OPTIONS,
   T0_DEFAULT_PLATFORMS,
-  T0_DETECTION_LONG_RUNNING_HINT,
   type T0AiEngineId,
 } from "@shared/t0DiagnosisDisplay";
 import { buildT0DiagnosisVisualization } from "@shared/t0DiagnosisVisualization";
@@ -93,12 +93,17 @@ import {
   resolveAiDiagnosisLastTestLabel,
 } from "@shared/aiDiagnosisResultDisplay";
 import {
-  buildAiDiagnosisReportActionSuggestions,
   buildAiDiagnosisReportConclusion,
+  computeAiDiagnosisRunningProgress,
+  mapPlatformPerformanceToCustomerStatus,
   resolveAiDiagnosisFirstScreenState,
   resolveAiRecognitionStatus,
   resolveAiRecommendStatus,
+  resolvePlatformRunningStatuses,
+  resolveTestRoundPhaseLabel,
+  AI_DIAGNOSIS_RUNNING_PATIENCE_HINT,
 } from "@shared/aiDiagnosisReportDisplay";
+import { buildTopWeaknessHighlights } from "@shared/maturityDetailDisplay";
 import {
   buildAiDiagnosisRerunConfirmCopy,
   buildT0StartConfirmCopy,
@@ -927,6 +932,10 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const maturityLatestQuery = trpc.geo.maturity.getLatest.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const { triggerMaturityCalculate } = useMaturityAutoCalculate(selectedProjectId);
   const tasksQuery = trpc.geo.tasks.list.useQuery(
     { projectId: selectedProjectId! },
@@ -1213,10 +1222,50 @@ export function AiDiagnosisFlowPage() {
     () => buildAiDiagnosisReportConclusion(mentionPctDisplay, recommendPctDisplay),
     [mentionPctDisplay, recommendPctDisplay],
   );
-  const reportActionSuggestions = useMemo(
-    () => buildAiDiagnosisReportActionSuggestions(mentionPctDisplay, recommendPctDisplay),
-    [mentionPctDisplay, recommendPctDisplay],
+  const runningProgress = useMemo(() => {
+    const activePlatformIds =
+      displayT0Round?.platforms?.length ? displayT0Round.platforms : [...selectedT0Platforms];
+    return computeAiDiagnosisRunningProgress({
+      runs: t0Runs.map(run => ({ questionId: run.questionId, platform: run.platform })),
+      totalQuestions: coveredQuestionsTotal,
+      runsPerQuestion: displayT0Round?.runsPerQuestion ?? 3,
+      activePlatformIds,
+    });
+  }, [displayT0Round, t0Runs, coveredQuestionsTotal, selectedT0Platforms]);
+  const platformRunningRows = useMemo(
+    () =>
+      resolvePlatformRunningStatuses({
+        runs: t0Runs.map(run => ({ platform: run.platform, questionId: run.questionId })),
+        totalQuestions: coveredQuestionsTotal,
+        runsPerQuestion: displayT0Round?.runsPerQuestion ?? 3,
+        activePlatformIds:
+          displayT0Round?.platforms?.length ? displayT0Round.platforms : [...selectedT0Platforms],
+        roundFailed: displayT0Round?.status === "failed",
+      }),
+    [displayT0Round, t0Runs, coveredQuestionsTotal, selectedT0Platforms],
   );
+  const topWeaknesses = useMemo(
+    () =>
+      maturityReportQuery.data
+        ? buildTopWeaknessHighlights(
+            maturityReportQuery.data,
+            (maturityLatestQuery.data?.calculationDetail as Record<string, unknown> | null) ?? null,
+            3,
+          )
+        : [],
+    [maturityReportQuery.data, maturityLatestQuery.data?.calculationDetail],
+  );
+  const detectionPhaseLabel = useMemo(
+    () => resolveTestRoundPhaseLabel(displayT0Round?.roundType ?? latestCompletedT0Round?.roundType),
+    [displayT0Round?.roundType, latestCompletedT0Round?.roundType],
+  );
+  const coveredPlatformCount = useMemo(() => {
+    const ids =
+      displayT0Round?.platforms ??
+      latestCompletedT0Round?.platforms ??
+      (selectedT0Platforms.length > 0 ? selectedT0Platforms : T0_DEFAULT_PLATFORMS);
+    return ids.length;
+  }, [displayT0Round?.platforms, latestCompletedT0Round?.platforms, selectedT0Platforms]);
   const mentionRateHint = useMemo(
     () => diagnosisMentionRateHint(mentionPctDisplay, hasAiTestMetrics),
     [mentionPctDisplay, hasAiTestMetrics],
@@ -1253,6 +1302,7 @@ export function AiDiagnosisFlowPage() {
       icon: iconByPlatform[row.platformId] ?? "🤖",
       tested: row.testedCount > 0,
       status: row.status,
+      customerStatus: mapPlatformPerformanceToCustomerStatus(row.status),
       summary: row.summary,
       testedCount: row.testedCount,
       mentionCount: row.mentionCount,
@@ -1568,7 +1618,7 @@ export function AiDiagnosisFlowPage() {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center max-w-md shadow-sm">
           <Brain className="mx-auto h-10 w-10 text-blue-600" />
-          <h2 className="mt-4 text-lg font-semibold text-gray-900">AI 实测诊断</h2>
+          <h2 className="mt-4 text-lg font-semibold text-gray-900">AI 现状诊断</h2>
           <p className="mt-2 text-sm text-gray-500">请先选择一个企业项目，再进行 AI 搜索可见性诊断。</p>
           <Button className="mt-5 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setLocation("/clients")}>前往企业项目</Button>
         </div>
@@ -1612,160 +1662,47 @@ export function AiDiagnosisFlowPage() {
           void handleRunDiagnosis();
         }}
       />
-      {/* 第一屏：检测前 / 检测中 / 检测后业务报告 */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" data-testid="ai-diagnosis-first-screen">
-        {firstScreenState === "before" ? (
-          <>
-            <h1 className="text-2xl font-bold text-gray-900">AI 现状检测</h1>
-            <p className="mt-1 text-sm text-gray-500">了解 AI 目前是否认识、提到并推荐你的品牌</p>
-            <div
-              className="mt-4 inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600"
-              data-testid="ai-diagnosis-baseline-status"
-            >
-              尚未建立优化前基线
-            </div>
-            <p className="mt-4 text-sm leading-relaxed text-gray-600" data-testid="ai-diagnosis-before-suggestion">
-              建议先检测 AI 当前对你品牌的认知。
-              <br />
-              你也可以先继续完善建档、信源和证据，AI 现状检测可以随时进行。
-            </p>
-            <div className="mt-5">
-              <Button
-                type="button"
-                className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
-                data-testid="ai-diagnosis-start-t0-gate"
-                disabled={
-                  !canOperate ||
-                  t0StartingMutation ||
-                  running ||
-                  generatingQuestions ||
-                  enabledQuestionCount === 0 ||
-                  selectedT0Platforms.length === 0
-                }
-                onClick={requestStartT0Baseline}
-              >
-                创建 AI 现状检测任务
-              </Button>
-            </div>
-          </>
-        ) : null}
-
-        {firstScreenState === "running" ? (
-          <>
-            <h1 className="text-2xl font-bold text-gray-900">AI 现状检测</h1>
-            <p className="mt-4 text-sm leading-relaxed text-gray-700" data-testid="ai-diagnosis-running-hint">
-              AI 现状检测正在后台执行，你无需等待，可以继续执行本月优化任务。
-            </p>
-            {t0Progress ? (
-              <p className="mt-3 text-sm font-medium text-indigo-900" data-testid="ai-diagnosis-t0-progress">
-                进度：正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
-              </p>
-            ) : (
-              <p className="mt-3 text-sm text-indigo-900">进度：正在准备检测任务，请稍候…</p>
-            )}
-            <p className="mt-2 text-xs text-indigo-800/80" data-testid="ai-diagnosis-t0-long-running-hint">
-              {T0_DETECTION_LONG_RUNNING_HINT}
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 border-indigo-300 bg-white text-indigo-900 hover:bg-indigo-50"
-                data-testid="ai-diagnosis-refresh-t0-status"
-                disabled={testRoundsQuery.isFetching || activeT0RoundQuery.isFetching}
-                onClick={() => void refreshT0Status()}
-              >
-                {testRoundsQuery.isFetching || activeT0RoundQuery.isFetching ? "正在刷新…" : "刷新进度"}
-              </Button>
-              <Button
-                type="button"
-                className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
-                data-testid="ai-diagnosis-go-monthly-plan"
-                onClick={handleGoMonthlyPlan}
-              >
-                去执行本月任务
-              </Button>
-            </div>
-          </>
-        ) : null}
-
-        {firstScreenState === "completed" ? (
-          <>
-            <h1 className="text-2xl font-bold text-gray-900">AI 当前怎么看你</h1>
-            <p className="mt-1 text-sm text-gray-500">基于真实 AI 平台实测的业务结论</p>
-            {lastDiagnosisLabel !== "暂无" ? (
-              <p className="mt-2 text-xs text-gray-500">最近实测：{lastDiagnosisLabel}</p>
-            ) : null}
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="ai-diagnosis-core-summary">
-              <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 shadow-sm" data-testid="ai-diagnosis-recognition-status">
-                <p className="text-xs font-medium text-gray-500">AI 是否认识你</p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">{aiRecognitionStatus}</p>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" data-testid="ai-diagnosis-mention-rate">
-                <p className="text-xs font-medium text-gray-500">品牌提及率</p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {mentionPctDisplay != null ? `${mentionPctDisplay}%` : "--"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 shadow-sm" data-testid="ai-diagnosis-recommend-status">
-                <p className="text-xs font-medium text-gray-500">AI 是否推荐你</p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">{aiRecommendStatus}</p>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" data-testid="ai-diagnosis-recommend-rate">
-                <p className="text-xs font-medium text-gray-500">AI 推荐率</p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {recommendPctDisplay != null ? `${recommendPctDisplay}%` : "--"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" data-testid="ai-diagnosis-competitor-rate">
-                <p className="text-xs font-medium text-gray-500">竞品出现率</p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">
-                  {competitorPctDisplay != null ? `${competitorPctDisplay}%` : "--"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" data-testid="ai-diagnosis-covered-questions">
-                <p className="text-xs font-medium text-gray-500">已覆盖问题数</p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">{coveredQuestionDisplay}</p>
-              </div>
-            </div>
-
-            <p className="mt-5 text-sm font-medium leading-relaxed text-gray-800" data-testid="ai-diagnosis-report-conclusion">
-              {reportConclusion}
-            </p>
-
-            {reportActionSuggestions.length > 0 ? (
-              <ul className="mt-3 space-y-2" data-testid="ai-diagnosis-report-actions">
-                {reportActionSuggestions.map(suggestion => (
-                  <li key={suggestion} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                    {suggestion}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Button
-                type="button"
-                className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
-                data-testid="ai-diagnosis-go-monthly-plan"
-                onClick={handleGoMonthlyPlan}
-              >
-                查看本月优化计划
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 border-gray-300 text-gray-700 hover:bg-gray-50"
-                data-testid="ai-diagnosis-view-results"
-                onClick={handleViewDetectionResults}
-              >
-                查看检测详情
-              </Button>
-            </div>
-          </>
-        ) : null}
-      </div>
+      {/* 客户诊断报告主视图：检测前 / 检测中 / 检测完成 */}
+      <AiDiagnosisCustomerReport
+        firstScreenState={firstScreenState}
+        selectedProjectId={selectedProjectId ?? null}
+        canOperate={canOperate}
+        enabledQuestionCount={enabledQuestionCount}
+        platformCount={selectedT0Platforms.length > 0 ? selectedT0Platforms.length : T0_DEFAULT_PLATFORMS.length}
+        startDisabled={
+          !canOperate ||
+          t0StartingMutation ||
+          running ||
+          generatingQuestions ||
+          enabledQuestionCount === 0 ||
+          selectedT0Platforms.length === 0
+        }
+        onStartDiagnosis={requestStartT0Baseline}
+        onViewQuestionPool={() => {
+          if (selectedProjectId) setLocation(buildProjectUrl("/questions", selectedProjectId));
+        }}
+        runningProgress={runningProgress}
+        platformRunningRows={platformRunningRows}
+        roundFailed={displayT0Round?.status === "failed"}
+        refreshing={testRoundsQuery.isFetching || activeT0RoundQuery.isFetching}
+        onRefresh={() => void refreshT0Status()}
+        onGoMonthlyPlan={handleGoMonthlyPlan}
+        reportConclusion={reportConclusion}
+        mentionPctDisplay={mentionPctDisplay}
+        recommendPctDisplay={recommendPctDisplay}
+        competitorPctDisplay={competitorPctDisplay}
+        coveredQuestionDisplay={coveredQuestionDisplay}
+        coveredPlatformCount={coveredPlatformCount}
+        aiRecognitionStatus={aiRecognitionStatus}
+        aiRecommendStatus={aiRecommendStatus}
+        lastDiagnosisLabel={lastDiagnosisLabel}
+        platformCards={platformCards}
+        topWeaknesses={topWeaknesses}
+        detectionPhaseLabel={detectionPhaseLabel}
+        detectionTimeLabel={t0CompletedAtLabel}
+        onViewFullData={handleViewDetectionResults}
+        onNavigate={path => setLocation(path)}
+      />
 
       {showDiagnosisLoadHint ? (
         <div
@@ -1811,6 +1748,7 @@ export function AiDiagnosisFlowPage() {
         </div>
       )}
 
+      {firstScreenState !== "running" ? (
       <details
         ref={diagnosisDetailFoldRef}
         className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
@@ -1819,9 +1757,9 @@ export function AiDiagnosisFlowPage() {
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
             <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
-            查看检测详情
+            查看完整检测数据
           </span>
-          <span className="text-xs font-normal text-gray-400">原始回答、平台明细、诊断控制台</span>
+          <span className="text-xs font-normal text-gray-400">原始回答、检测记录、诊断控制台</span>
         </summary>
         <div className="space-y-6 border-t border-gray-100 px-5 pb-5 pt-4">
       {diagnosisProgress.status !== "idle" ? (
@@ -1890,6 +1828,18 @@ export function AiDiagnosisFlowPage() {
           <QuestionPoolTestPanel projectId={selectedProjectId ?? null} enabled={enabled} canOperate={canOperate} />
         </div>
       </details>
+
+      {diagnosisVisualization ? (
+        <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+            <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+            平台对比数据
+          </summary>
+          <div className="border-t border-gray-100 px-5 pb-5 pt-4">
+            <T0DiagnosisVisualizationPanel visualization={diagnosisVisualization} />
+          </div>
+        </details>
+      ) : null}
 
       <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="ai-diagnosis-retest-stages">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
@@ -2019,67 +1969,6 @@ export function AiDiagnosisFlowPage() {
         </details>
       ) : null}
 
-      <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="ai-diagnosis-platform-cards">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
-          <span className="inline-flex items-center gap-2">
-            <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
-            五大 AI 平台实测概览
-          </span>
-        </summary>
-        <div className="space-y-4 border-t border-gray-100 px-5 pb-5 pt-4">
-          <p className="text-xs text-gray-500">基于 AI 现状检测真实调用；未纳入本轮的平台显示为未实测。</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {platformCards.map(p => (
-              <div
-                key={p.id}
-                className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
-                data-testid={`ai-diagnosis-platform-${p.id}`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{p.icon}</span>
-                  <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                </div>
-                <p className="text-xs font-medium text-gray-700" data-testid={`ai-diagnosis-platform-status-${p.id}`}>
-                  {p.status}
-                </p>
-                <p className="text-xs leading-relaxed text-gray-500">{p.summary}</p>
-                {p.tested ? (
-                  <p className="text-[11px] text-gray-400">
-                    实测 {p.testedCount} 次 · 提及 {p.mentionCount} · 推荐 {p.recommendCount}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-          {diagnosisVisualization ? <T0DiagnosisVisualizationPanel visualization={diagnosisVisualization} /> : null}
-        </div>
-      </details>
-
-      <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="ai-diagnosis-question-stats-fold">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
-          <span className="inline-flex items-center gap-2">
-            <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
-            问题数量统计
-          </span>
-        </summary>
-        <div className="border-t border-gray-100 px-5 pb-5 pt-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs text-gray-500">启用问题</p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">{enabledQuestionCount > 0 ? enabledQuestionCount : "--"}</p>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs text-gray-500">指定问题</p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">{targetQuestions.length > 0 ? targetQuestions.length : "--"}</p>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs text-gray-500">内容覆盖评分</p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">{scoreDisplay}</p>
-            </div>
-          </div>
-        </div>
-      </details>
-
       <details className="group rounded-2xl border border-blue-100 bg-blue-50/30 shadow-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
@@ -2206,7 +2095,7 @@ export function AiDiagnosisFlowPage() {
         <details className="group rounded-xl border border-gray-100 bg-gray-50 shadow-sm" data-testid="ai-diagnosis-round-history-fold">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
             <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
-            检测轮次历史
+            查看历史检测记录
           </summary>
           <div className="space-y-2 border-t border-gray-100 px-4 pb-4 pt-3">
             {testRounds.map(round => (
@@ -2215,9 +2104,17 @@ export function AiDiagnosisFlowPage() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm"
                 data-testid={`ai-diagnosis-round-history-${round.id}`}
               >
-                <span className="font-medium text-gray-900">{round.roundType === "T0_BASELINE" ? "AI 现状检测" : round.roundType}</span>
+                <span className="font-medium text-gray-900">
+                  {resolveTestRoundPhaseLabel(round.roundType)}
+                </span>
                 <span className="text-xs text-gray-500">
-                  {round.status === "completed" ? "已完成" : round.status === "running" ? "进行中" : round.status}
+                  {round.status === "completed"
+                    ? "已完成"
+                    : round.status === "running" || round.status === "pending"
+                      ? "检测中"
+                      : round.status === "failed"
+                        ? "检测失败"
+                        : "等待处理"}
                   {round.finishedAt ? ` · ${formatAiDiagnosisDateTime(round.finishedAt)}` : ""}
                 </span>
               </div>
@@ -2342,15 +2239,14 @@ export function AiDiagnosisFlowPage() {
 
         {isT0Running ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            {t0Progress ? (
-              <div
-                className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800"
-                data-testid="ai-diagnosis-t0-progress-detail"
-              >
-                正在检测第{t0Progress.currentQuestion}题，共{t0Progress.totalQuestions}题
-                <p className="mt-1 text-xs text-indigo-800/80">{T0_DETECTION_LONG_RUNNING_HINT}</p>
-              </div>
-            ) : null}
+            <div
+              className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900"
+              data-testid="ai-diagnosis-t0-progress-detail"
+            >
+              已完成平台 {runningProgress.completedPlatforms} / {runningProgress.totalPlatforms} · 已检测问题{" "}
+              {runningProgress.completedQuestions} / {runningProgress.totalQuestions}
+              <p className="mt-1 text-xs text-blue-800/80">{AI_DIAGNOSIS_RUNNING_PATIENCE_HINT}</p>
+            </div>
             <Button
               type="button"
               variant="outline"
@@ -2629,6 +2525,7 @@ export function AiDiagnosisFlowPage() {
       )}
         </div>
       </details>
+      ) : null}
     </div>
   );
 }

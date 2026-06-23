@@ -13,7 +13,9 @@ function extractAiDiagnosisFlowPage(source: string): string {
 }
 
 describe("GEO-V1.1-AIDiagnosis-Manual-T0-Gate-P0", () => {
-  const flow = extractAiDiagnosisFlowPage(read("client/src/pages/V12FlowPages.tsx"));
+  const flow =
+    extractAiDiagnosisFlowPage(read("client/src/pages/V12FlowPages.tsx")) +
+    read("client/src/components/diagnosis/AiDiagnosisCustomerReport.tsx");
 
   it("does not auto-run T0 or diagnosis from useEffect", () => {
     const effectBlocks = flow.match(/useEffect\([\s\S]*?\n  \},/g) ?? [];

@@ -45,9 +45,9 @@ describe("aiDiagnosisReportDisplay", () => {
   });
 
   it("builds conclusion copy from mention and recommend rates", () => {
-    expect(buildAiDiagnosisReportConclusion(60, 30)).toContain("稳定识别并推荐");
-    expect(buildAiDiagnosisReportConclusion(60, 10)).toContain("推荐理由不足");
-    expect(buildAiDiagnosisReportConclusion(40, 30)).toContain("认知不稳定");
+    expect(buildAiDiagnosisReportConclusion(60, 30)).toContain("识别");
+    expect(buildAiDiagnosisReportConclusion(60, 10)).toContain("推荐意愿偏弱");
+    expect(buildAiDiagnosisReportConclusion(40, 30)).toContain("有一定认知");
   });
 
   it("builds 1-2 action suggestions", () => {

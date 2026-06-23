@@ -41,9 +41,11 @@ describe("GEO-V2.0-Fix-Naming-Scan-AITest", () => {
     expect(routers).toContain("ensureT0ExecutionContinues(db, input.id)");
   });
 
-  it("AI diagnosis running banner shows long-running hint", () => {
+  it("AI diagnosis running banner shows customer-friendly background hint", () => {
     const flow = read("client/src/pages/V12FlowPages.tsx");
-    expect(flow).toContain("T0_DETECTION_LONG_RUNNING_HINT");
-    expect(flow).toContain("ai-diagnosis-t0-long-running-hint");
+    const report = read("client/src/components/diagnosis/AiDiagnosisCustomerReport.tsx");
+    expect(flow).toContain("AI_DIAGNOSIS_RUNNING_PATIENCE_HINT");
+    expect(report).toContain("AI 正在后台检测中");
+    expect(report).toContain("data-testid=\"ai-diagnosis-t0-progress\"");
   });
 });

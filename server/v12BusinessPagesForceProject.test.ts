@@ -45,9 +45,10 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
 
   it("AI 诊断页只使用 activeProjectId", () => {
     const v12 = read("client/src/pages/V12FlowPages.tsx");
+    const report = read("client/src/components/diagnosis/AiDiagnosisCustomerReport.tsx");
     expect(v12).toContain("AiDiagnosisFlowPage");
-    expect(v12).toContain("了解 AI 目前是否认识、提到并推荐你的品牌");
-    expect(v12).toContain("AI 当前怎么看你");
+    expect(report).toContain("AI_DIAGNOSIS_PAGE_SUBTITLE");
+    expect(report).toContain("AI 当前怎么看你");
     expect(v12).toContain('buildProjectUrl("/monthly-plan"');
     expect(v12).not.toContain("diagnosis-project-header");
     assertNoProjectDropdown(v12, "v12");
