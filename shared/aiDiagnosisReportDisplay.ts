@@ -178,13 +178,25 @@ export function resolvePlatformRunningStatuses(input: {
 export type AiRecognitionStatus = "是" | "否" | "部分认识";
 export type AiRecommendStatus = "是" | "否" | "偶尔";
 
+export function isActiveT0TestRoundStatus(status: string | null | undefined): boolean {
+  return status === "running" || status === "pending";
+}
+
 export function resolveAiDiagnosisFirstScreenState(input: {
   isT0Running: boolean;
   t0Starting: boolean;
   hasT0BaselineResult: boolean;
   hasAiTestMetrics: boolean;
+  /** 当前展示轮次的 test_rounds.status；pending 与 running 同等视为检测中 */
+  t0RoundStatus?: string | null;
 }): AiDiagnosisFirstScreenState {
-  if (input.isT0Running || input.t0Starting) return "running";
+  if (
+    input.isT0Running ||
+    input.t0Starting ||
+    isActiveT0TestRoundStatus(input.t0RoundStatus)
+  ) {
+    return "running";
+  }
   if (input.hasT0BaselineResult && input.hasAiTestMetrics) return "completed";
   return "before";
 }

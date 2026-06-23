@@ -33,6 +33,24 @@ describe("aiDiagnosisReportDisplay", () => {
         hasAiTestMetrics: false,
       }),
     ).toBe("before");
+    expect(
+      resolveAiDiagnosisFirstScreenState({
+        isT0Running: false,
+        t0Starting: false,
+        hasT0BaselineResult: false,
+        hasAiTestMetrics: false,
+        t0RoundStatus: "pending",
+      }),
+    ).toBe("running");
+    expect(
+      resolveAiDiagnosisFirstScreenState({
+        isT0Running: false,
+        t0Starting: false,
+        hasT0BaselineResult: true,
+        hasAiTestMetrics: true,
+        t0RoundStatus: "running",
+      }),
+    ).toBe("running");
   });
 
   it("resolves recognition and recommend status labels", () => {

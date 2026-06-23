@@ -457,51 +457,72 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
         </div>
       </section>
 
-      {topWeaknesses.length > 0 ? (
-        <section
-          className="rounded-2xl border border-amber-100 bg-white p-6 shadow-sm"
-          data-testid="ai-diagnosis-top-improvements"
-        >
-          <h2 className="text-lg font-semibold text-gray-900">最需要改善的 3 件事</h2>
-          <p className="mt-1 text-xs text-gray-500">基于 AI 品牌成熟度短板分析，优先补齐最弱项。</p>
-          <ol className="mt-4 space-y-4">
-            {topWeaknesses.map((item, index) => (
-              <li
-                key={item.key}
-                className="rounded-xl border border-gray-100 bg-gray-50 p-4"
-                data-testid={`ai-diagnosis-improvement-${item.key}`}
+      <section
+        className="rounded-2xl border border-amber-100 bg-white p-6 shadow-sm"
+        data-testid="ai-diagnosis-top-improvements"
+      >
+        <h2 className="text-lg font-semibold text-gray-900">最需要改善的 3 件事</h2>
+        {topWeaknesses.length > 0 ? (
+          <>
+            <p className="mt-1 text-xs text-gray-500">基于 AI 品牌成熟度短板分析，优先补齐最弱项。</p>
+            <ol className="mt-4 space-y-4">
+              {topWeaknesses.map((item, index) => (
+                <li
+                  key={item.key}
+                  className="rounded-xl border border-gray-100 bg-gray-50 p-4"
+                  data-testid={`ai-diagnosis-improvement-${item.key}`}
+                >
+                  <p className="text-sm font-semibold text-gray-900">
+                    {index + 1}. {item.label}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    <span className="font-medium text-gray-600">原因：</span>
+                    {item.conclusion}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    <span className="font-medium text-gray-600">对应成熟度短板：</span>
+                    {item.label}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-600">
+                    <span className="font-medium text-gray-700">建议：</span>
+                    {item.action}
+                  </p>
+                  {selectedProjectId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 border-gray-300"
+                      onClick={() => onNavigate(buildProjectUrl(item.path, selectedProjectId))}
+                    >
+                      {weaknessActionLabel(item.path, item.ctaLabel)}
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : (
+          <div
+            className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4"
+            data-testid="ai-diagnosis-top-improvements-empty"
+          >
+            <p className="text-sm text-gray-600">AI品牌成熟度评分尚未完成，暂无改善建议</p>
+            {selectedProjectId ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 border-gray-300"
+                data-testid="ai-diagnosis-go-maturity-score"
+                onClick={() => onNavigate(buildProjectUrl("/maturity", selectedProjectId))}
               >
-                <p className="text-sm font-semibold text-gray-900">
-                  {index + 1}. {item.label}
-                </p>
-                <p className="mt-2 text-xs text-gray-500">
-                  <span className="font-medium text-gray-600">原因：</span>
-                  {item.conclusion}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  <span className="font-medium text-gray-600">对应成熟度短板：</span>
-                  {item.label}
-                </p>
-                <p className="mt-1 text-xs text-gray-600">
-                  <span className="font-medium text-gray-700">建议：</span>
-                  {item.action}
-                </p>
-                {selectedProjectId ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 border-gray-300"
-                    onClick={() => onNavigate(buildProjectUrl(item.path, selectedProjectId))}
-                  >
-                    {weaknessActionLabel(item.path, item.ctaLabel)}
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
+                去完成品牌成熟度评分 →
+              </Button>
+            ) : null}
+          </div>
+        )}
+      </section>
 
       <section
         className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"

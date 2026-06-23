@@ -96,6 +96,7 @@ import {
   buildAiDiagnosisReportConclusion,
   computeAiDiagnosisRunningProgress,
   mapPlatformPerformanceToCustomerStatus,
+  isActiveT0TestRoundStatus,
   resolveAiDiagnosisFirstScreenState,
   resolveAiRecognitionStatus,
   resolveAiRecommendStatus,
@@ -955,7 +956,7 @@ export function AiDiagnosisFlowPage() {
   );
   const testRounds = testRoundsQuery.data ?? [];
   const runningT0Round = testRounds.find(
-    round => round.roundType === "T0_BASELINE" && round.status === "running",
+    round => round.roundType === "T0_BASELINE" && isActiveT0TestRoundStatus(round.status),
   );
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
@@ -981,7 +982,8 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId!, id: t0PollRoundId! },
     {
       enabled: enabled && Boolean(selectedProjectId && t0PollRoundId),
-      refetchInterval: query => (query.state.data?.status === "running" ? 5000 : false),
+      refetchInterval: query =>
+        isActiveT0TestRoundStatus(query.state.data?.status) ? 5000 : false,
     },
   );
   const t0StartingMutation = createT0WithQuestions.isPending || startT0Execution.isPending;
@@ -994,7 +996,8 @@ export function AiDiagnosisFlowPage() {
     runningT0Round ??
     latestCompletedT0Round ??
     null;
-  const isT0Running = t0StartingMutation || displayT0Round?.status === "running";
+  const isT0Running =
+    t0StartingMutation || isActiveT0TestRoundStatus(displayT0Round?.status);
   const displayT0RoundId = displayT0Round?.id;
   const t0RunsQuery = trpc.geo.aiTestRuns.listByRound.useQuery(
     { projectId: selectedProjectId!, roundId: displayT0RoundId ?? "" },
@@ -1213,8 +1216,15 @@ export function AiDiagnosisFlowPage() {
         t0Starting: t0StartingMutation,
         hasT0BaselineResult,
         hasAiTestMetrics,
+        t0RoundStatus: displayT0Round?.status,
       }),
-    [isT0Running, t0StartingMutation, hasT0BaselineResult, hasAiTestMetrics],
+    [
+      isT0Running,
+      t0StartingMutation,
+      hasT0BaselineResult,
+      hasAiTestMetrics,
+      displayT0Round?.status,
+    ],
   );
   const aiRecognitionStatus = useMemo(() => resolveAiRecognitionStatus(mentionPctDisplay), [mentionPctDisplay]);
   const aiRecommendStatus = useMemo(() => resolveAiRecommendStatus(recommendPctDisplay), [recommendPctDisplay]);

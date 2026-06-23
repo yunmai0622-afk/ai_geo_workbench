@@ -31,6 +31,9 @@ describe("GEO-V2.0-P1-Phase4-AITest-Report", () => {
     expect(report).toContain('testId="ai-diagnosis-recommend-status"');
     expect(report).toContain("data-testid=\"ai-diagnosis-report-conclusion\"");
     expect(report).toContain("data-testid=\"ai-diagnosis-top-improvements\"");
+    expect(report).toContain("ai-diagnosis-top-improvements-empty");
+    expect(report).toContain("ai-diagnosis-go-maturity-score");
+    expect(report).toContain("AI品牌成熟度评分尚未完成，暂无改善建议");
   });
 
   it("technical sections are folded under detail fold", () => {
