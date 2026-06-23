@@ -6,9 +6,17 @@ import {
   WizardStepPanels,
   type WizardFormState,
 } from "@/components/enterpriseProfile/wizard/WizardStepPanels";
+import type { CaseDraft, FaqItem } from "@/components/enterpriseProfile/types";
+import {
+  parseAdvancedTrustNotes,
+  parseFaqText,
+  serializeAdvancedTrustNotes,
+  serializeFaqItems,
+} from "@/components/enterpriseProfile/types";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useMaturityAutoCalculate } from "@/hooks/useMaturityAutoCalculate";
 import { buildProjectUrl, getSearchFromLocation } from "@/lib/activeProject";
@@ -47,7 +55,6 @@ import {
   formatWizardSaveDraftError,
   shouldShowProfileCoreLoadFailure,
 } from "@/lib/enterpriseProfileLoadDisplay";
-import type { CaseDraft } from "@/components/enterpriseProfile/types";
 
 type SummaryLike = {
   profile?: Record<string, unknown> | null;
@@ -99,6 +106,8 @@ const EMPTY_DRAFTS = {
 
 export default function AssetCenterPage() {
   const [location, setLocation] = useLocation();
+  const { user } = useAuth();
+  const isPlatformAdmin = user?.role === "admin";
   const utils = trpc.useUtils();
   const {
     selectedProjectId: currentProjectId,
@@ -143,6 +152,13 @@ export default function AssetCenterPage() {
   });
   const [drafts, setDrafts] = useState(EMPTY_DRAFTS);
   const [caseRows, setCaseRows] = useState<CaseDraft[]>([]);
+  const [casesChoice, setCasesChoice] = useState<"unset" | "has" | "none">("unset");
+  const [authorityText, setAuthorityText] = useState("");
+  const [partnersText, setPartnersText] = useState("");
+  const [credentialsText, setCredentialsText] = useState("");
+  const [mediaText, setMediaText] = useState("");
+  const [reviewsText, setReviewsText] = useState("");
+  const [faqItems, setFaqItems] = useState<FaqItem[]>([]);
   const [customerCasesOpen, setCustomerCasesOpen] = useState(false);
   const customerCasesSectionRef = useRef<HTMLDetailsElement | null>(null);
 
@@ -224,6 +240,15 @@ export default function AssetCenterPage() {
         allowPublic: Boolean(c.allowPublic),
       })),
     );
+    setCasesChoice(cases.length > 0 ? "has" : typeof p.hasCases === "boolean" && !p.hasCases ? "none" : "unset");
+
+    const trustNotes = parseAdvancedTrustNotes(textField(p.featureNotes));
+    setAuthorityText(trustNotes.authorityText);
+    setPartnersText(trustNotes.partnersText);
+    setCredentialsText(trustNotes.credentialsText);
+    setMediaText(trustNotes.mediaText);
+    setReviewsText(trustNotes.reviewsText);
+    setFaqItems(parseFaqText(textField(p.commonObjections)));
   }, [summaryData, currentProject]);
 
   useEffect(() => {
@@ -275,6 +300,25 @@ export default function AssetCenterPage() {
   const brandSourceCount = summary?.counts?.brandSources ?? 0;
   const brandSourcePlatformCount = summary?.counts?.brandSourcePlatforms ?? 0;
   const questionCount = summary?.counts?.questions ?? 0;
+
+  const trustMaterialCount = useMemo(() => {
+    return [authorityText, partnersText, credentialsText, mediaText, reviewsText].filter(text => text.trim()).length;
+  }, [authorityText, partnersText, credentialsText, mediaText, reviewsText]);
+
+  const faqFilledCount = useMemo(
+    () => faqItems.filter(item => item.question.trim() && item.answer.trim()).length,
+    [faqItems],
+  );
+
+  const trustStatus = useMemo<"未填写" | "待完善" | "已完成">(() => {
+    if (faqItems.some(item => item.question.trim() && item.answer.trim()) || authorityText.trim()) {
+      return "已完成";
+    }
+    if (partnersText.trim() || credentialsText.trim() || mediaText.trim() || reviewsText.trim()) {
+      return "待完善";
+    }
+    return "待完善";
+  }, [authorityText, partnersText, credentialsText, mediaText, reviewsText, faqItems]);
 
   const geoGoalSuggestions = useMemo(() => {
     const ws = workspaceSummaryQuery.data;
@@ -414,6 +458,44 @@ export default function AssetCenterPage() {
       utils.geo.trustEvidence.getTrustEvidenceSummary.invalidate({ projectId: currentProjectId }),
     ]);
   }
+
+  const buildAdvancedMaterialsPayload = useCallback(() => {
+    return {
+      ...buildPayload(currentStep),
+      featureNotes: serializeAdvancedTrustNotes({
+        authorityText,
+        partnersText,
+        credentialsText,
+        mediaText,
+        reviewsText,
+      }),
+      commonObjections: serializeFaqItems(faqItems),
+    };
+  }, [
+    authorityText,
+    partnersText,
+    credentialsText,
+    mediaText,
+    reviewsText,
+    faqItems,
+    buildPayload,
+    currentStep,
+  ]);
+
+  const handleSaveTrustMaterials = useCallback(async () => {
+    if (!currentProjectId) {
+      toast.error("请先在客户管理台选择客户项目");
+      return;
+    }
+    try {
+      await upsertProfile.mutateAsync(buildAdvancedMaterialsPayload());
+      await refreshSummary();
+      toast.success("运营素材已保存");
+      void triggerMaturityCalculate({ silent: true });
+    } catch (e) {
+      toast.error(formatWizardSaveDraftError(e));
+    }
+  }, [buildAdvancedMaterialsPayload, currentProjectId, refreshSummary, triggerMaturityCalculate, upsertProfile]);
 
   const buildCustomerCasePayload = useCallback(
     (row: CaseDraft) => {
@@ -716,57 +798,81 @@ export default function AssetCenterPage() {
             />
           </OnboardingWizardShell>
 
-          <details
-            id="customer-cases"
-            ref={customerCasesSectionRef}
-            open={customerCasesOpen}
-            onToggle={e => setCustomerCasesOpen(e.currentTarget.open)}
-            className="rounded-xl border border-gray-200 bg-white shadow-sm"
-            data-testid="profile-fold-advanced-materials"
-          >
-            <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">客户案例管理（高级）</summary>
-            <div className="border-t border-gray-100 p-5">
-              <AdvancedMaterialsSection
-                caseCount={caseRows.length}
-                trustCount={0}
-                faqCount={0}
-                casesChoice={caseRows.length > 0 ? "has" : "unset"}
-                onCasesChoice={() => undefined}
-                caseRows={caseRows}
-                onCaseRowsChange={setCaseRows}
-                onSaveCase={handleSaveCase}
-                onSaveChoiceNone={async () => undefined}
-                onDeleteCase={idx => void handleDeleteCase(idx)}
-                caseStatus="待完善"
-                trustStatus="待完善"
-                saving={saving}
-                competitors={form.competitors}
-                competitorDraft=""
-                onCompetitorDraftChange={() => undefined}
-                onAddCompetitor={() => undefined}
-                onRemoveCompetitor={() => undefined}
-                competitorDifferenceText={form.competitorDifference}
-                onCompetitorDifferenceChange={() => undefined}
-                unfitCustomers={form.unfitCustomers}
-                onUnfitCustomersChange={() => undefined}
-                authorityText=""
-                onAuthorityTextChange={() => undefined}
-                partnersText=""
-                onPartnersTextChange={() => undefined}
-                credentialsText=""
-                onCredentialsTextChange={() => undefined}
-                mediaText=""
-                onMediaTextChange={() => undefined}
-                reviewsText=""
-                onReviewsTextChange={() => undefined}
-                faqItems={[]}
-                onFaqItemsChange={() => undefined}
-                onSaveTrust={() => undefined}
-                onSaveCompetitor={() => undefined}
-                showCompetitorSection={false}
-              />
-            </div>
-          </details>
+          {isPlatformAdmin ? (
+            <details
+              id="customer-cases"
+              ref={customerCasesSectionRef}
+              open={customerCasesOpen}
+              onToggle={e => setCustomerCasesOpen(e.currentTarget.open)}
+              className="rounded-xl border border-gray-200 bg-white shadow-sm"
+              data-testid="profile-fold-advanced-materials"
+            >
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-800">
+                高级运营素材（仅内部）
+              </summary>
+              <div className="border-t border-gray-100 p-5">
+                <AdvancedMaterialsSection
+                  caseCount={caseRows.length}
+                  trustCount={trustMaterialCount}
+                  faqCount={faqFilledCount}
+                  casesChoice={casesChoice}
+                  onCasesChoice={setCasesChoice}
+                  caseRows={caseRows}
+                  onCaseRowsChange={setCaseRows}
+                  onSaveCase={handleSaveCase}
+                  onSaveChoiceNone={async () => {
+                    if (!currentProjectId) {
+                      toast.error("请先在客户管理台选择客户项目");
+                      return;
+                    }
+                    try {
+                      await upsertProfile.mutateAsync({ ...buildPayload(currentStep), hasCases: false });
+                      setCasesChoice("none");
+                      await refreshSummary();
+                      toast.success("已标记暂不填写案例");
+                    } catch (e) {
+                      toast.error(formatWizardSaveDraftError(e));
+                    }
+                  }}
+                  onDeleteCase={idx => void handleDeleteCase(idx)}
+                  caseStatus="待完善"
+                  trustStatus={trustStatus}
+                  saving={saving}
+                  competitors={form.competitors}
+                  competitorDraft={drafts.competitorDraft}
+                  onCompetitorDraftChange={value => setDrafts(prev => ({ ...prev, competitorDraft: value }))}
+                  onAddCompetitor={() => {
+                    const name = drafts.competitorDraft.trim();
+                    if (!name || form.competitors.includes(name)) return;
+                    setForm(prev => ({ ...prev, competitors: [...prev.competitors, name] }));
+                    setDrafts(prev => ({ ...prev, competitorDraft: "" }));
+                  }}
+                  onRemoveCompetitor={name =>
+                    setForm(prev => ({ ...prev, competitors: prev.competitors.filter(item => item !== name) }))
+                  }
+                  competitorDifferenceText={form.competitorDifference}
+                  onCompetitorDifferenceChange={value => setForm(prev => ({ ...prev, competitorDifference: value }))}
+                  unfitCustomers={form.unfitCustomers}
+                  onUnfitCustomersChange={value => setForm(prev => ({ ...prev, unfitCustomers: value }))}
+                  authorityText={authorityText}
+                  onAuthorityTextChange={setAuthorityText}
+                  partnersText={partnersText}
+                  onPartnersTextChange={setPartnersText}
+                  credentialsText={credentialsText}
+                  onCredentialsTextChange={setCredentialsText}
+                  mediaText={mediaText}
+                  onMediaTextChange={setMediaText}
+                  reviewsText={reviewsText}
+                  onReviewsTextChange={setReviewsText}
+                  faqItems={faqItems}
+                  onFaqItemsChange={setFaqItems}
+                  onSaveTrust={() => void handleSaveTrustMaterials()}
+                  onSaveCompetitor={() => void handleSaveTrustMaterials()}
+                  showCompetitorSection={false}
+                />
+              </div>
+            </details>
+          ) : null}
         </>
       ) : null}
     </div>

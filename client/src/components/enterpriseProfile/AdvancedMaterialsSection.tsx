@@ -122,15 +122,13 @@ export function AdvancedMaterialsSection(props: Props) {
       className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
       data-testid="advanced-materials-section"
     >
-      <h3 className="text-base font-semibold text-gray-900">高级素材补充</h3>
-      <p className="mt-1 text-sm text-gray-500">
-        这些信息不是必填，但会提升内容可信度和 AI 引用概率。
-      </p>
+      <h3 className="text-base font-semibold text-gray-900">高级运营素材（选填）</h3>
+      <p className="mt-1 text-sm text-gray-500">仅内部运营使用，不在客户建档主流程中展示。</p>
 
       <details className="mt-4 rounded-lg border border-gray-200 bg-gray-50 text-sm" data-testid="advanced-materials-collapsed">
         <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-gray-700 hover:text-gray-900 [&::-webkit-details-marker]:hidden">
           <ChevronDown className="size-4 text-gray-400 transition-transform [[open]>&]:rotate-180" />
-          展开高级素材（案例 {caseCount} · 品牌与背书 {trustCount} · FAQ {faqCount}）
+          展开运营素材（案例 {caseCount} · 品牌与背书 {trustCount} · FAQ {faqCount}）
         </summary>
         <div className="space-y-3 border-t border-gray-200 p-4">
           <FoldGroup title="案例详情" summary={`${caseCount} 条`} testId="advanced-fold-cases" id="customer-cases-detail">

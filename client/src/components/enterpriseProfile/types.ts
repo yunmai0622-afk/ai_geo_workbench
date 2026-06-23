@@ -66,3 +66,81 @@ export function serializeFaqItems(items: FaqItem[]): string {
     .map(i => `客户疑虑：${i.question.trim()}\n回答：${i.answer.trim()}`)
     .join("\n\n");
 }
+
+export type AdvancedTrustNotes = {
+  authorityText: string;
+  partnersText: string;
+  credentialsText: string;
+  mediaText: string;
+  reviewsText: string;
+};
+
+const ADVANCED_TRUST_NOTE_SECTIONS: Array<{ key: keyof AdvancedTrustNotes; label: string }> = [
+  { key: "authorityText", label: "品牌故事与定位说明" },
+  { key: "partnersText", label: "团队/合作客户" },
+  { key: "credentialsText", label: "资质证书" },
+  { key: "mediaText", label: "媒体报道" },
+  { key: "reviewsText", label: "客户评价" },
+];
+
+export function serializeAdvancedTrustNotes(notes: AdvancedTrustNotes): string {
+  return ADVANCED_TRUST_NOTE_SECTIONS.map(({ key, label }) => {
+    const value = notes[key].trim();
+    if (!value) return "";
+    return `${label}：\n${value}`;
+  })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function parseAdvancedTrustNotes(raw: string): AdvancedTrustNotes {
+  const empty: AdvancedTrustNotes = {
+    authorityText: "",
+    partnersText: "",
+    credentialsText: "",
+    mediaText: "",
+    reviewsText: "",
+  };
+  const text = raw.trim();
+  if (!text) return empty;
+
+  const hasLabels = ADVANCED_TRUST_NOTE_SECTIONS.some(
+    ({ label }) => text.includes(`${label}：`) || text.includes(`${label}:`),
+  );
+  if (!hasLabels) {
+    const lines = text
+      .split("\n")
+      .map(line => line.trim())
+      .filter(Boolean);
+    if (lines.length <= 1) {
+      return { ...empty, authorityText: text };
+    }
+    return {
+      ...empty,
+      partnersText: lines[0] ?? "",
+      credentialsText: lines[1] ?? "",
+      mediaText: lines[2] ?? "",
+      reviewsText: lines.slice(3).join("\n"),
+    };
+  }
+
+  const result = { ...empty };
+  for (let i = 0; i < ADVANCED_TRUST_NOTE_SECTIONS.length; i += 1) {
+    const { key, label } = ADVANCED_TRUST_NOTE_SECTIONS[i]!;
+    const labelMatch = text.match(new RegExp(`${label}[：:]\\s*`));
+    if (!labelMatch || labelMatch.index === undefined) continue;
+    const start = labelMatch.index + labelMatch[0].length;
+    let end = text.length;
+    for (let j = i + 1; j < ADVANCED_TRUST_NOTE_SECTIONS.length; j += 1) {
+      const nextLabel = ADVANCED_TRUST_NOTE_SECTIONS[j]!.label;
+      const nextColon = text.indexOf(`${nextLabel}：`, start);
+      const nextAsciiColon = text.indexOf(`${nextLabel}:`, start);
+      const candidates = [nextColon, nextAsciiColon].filter(index => index >= 0);
+      if (candidates.length > 0) {
+        end = Math.min(end, Math.min(...candidates));
+      }
+    }
+    result[key] = text.slice(start, end).trim();
+  }
+  return result;
+}
