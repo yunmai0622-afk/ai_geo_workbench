@@ -11,7 +11,7 @@ describe("GEO-V1.1-Batch-Content-Generation", () => {
   const shared = read("shared/platformBatchGeneration.ts");
 
   it("exposes one-click all-platform generation on weekly page", () => {
-    expect(weekly).toContain("PlatformBatchGenerationPanel");
+    expect(weekly).toContain("WeeklyAdvancedInfoSections");
     expect(weekly).toContain("handleBatchGenerateAllPlatforms");
     expect(weekly).toContain("runPlatformBatchItem");
     expect(weekly).toContain("platformBatchRunning");

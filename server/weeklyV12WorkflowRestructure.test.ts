@@ -11,19 +11,17 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
   const reviewDialog = read("client/src/components/weekly/WeeklyContentReviewConfirmDialog.tsx");
   const localAgentBar = read("client/src/components/weekly/WeeklyLocalAgentStatusBar.tsx");
   const assistant = read("client/src/components/weekly/ContentProductionAssistantPanel.tsx");
-  const taskCard = read("client/src/components/weekly/WeeklyContentTaskControlCard.tsx");
   const board = read("client/src/components/weekly/PlatformContentBoard.tsx");
-  const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
+  const advanced = read("client/src/components/weekly/WeeklyAdvancedInfoSections.tsx");
   const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
 
   it("weekly page title and three-screen structure", () => {
     expect(weekly).toContain("内容任务推进");
-    expect(weekly).toContain("TaskContextHero");
-    expect(weekly).toContain("WeeklyPublishableContentList");
-    expect(weekly).toContain("PlatformPublishPlan");
-    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前优化问题");
+    expect(weekly).toContain("CurrentContentTaskCard");
+    expect(weekly).toContain("PlatformTaskBoard");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("关联问题");
     expect(publishableList).toContain("待处理内容");
-    expect(board).toContain("平台发布计划");
+    expect(board).toContain("平台内容任务");
   });
 
   it("pending content list has four tabs", () => {
@@ -69,16 +67,14 @@ describe("GEO-V1.2-Weekly-Workflow-Restructure-P0", () => {
   });
 
   it("auxiliary sections collapsed and inclusion hint", () => {
-    expect(auxiliary).toContain("平台规则");
-    expect(auxiliary).toContain("内容模板库");
+    expect(advanced).toContain("查看平台策略");
     expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
-    expect(auxiliary).toContain("收录复测中心");
-    expect(auxiliary).toContain("发布后复测");
+    expect(advanced).toContain("历史内容记录");
   });
 
   it("main work area appears before platform generation board", () => {
-    const heroIdx = weekly.indexOf("<TaskContextHero");
-    const boardIdx = weekly.indexOf("<PlatformPublishPlan");
+    const heroIdx = weekly.indexOf("<CurrentContentTaskCard");
+    const boardIdx = weekly.indexOf("<PlatformTaskBoard");
     expect(heroIdx).toBeGreaterThan(-1);
     expect(boardIdx).toBeGreaterThan(heroIdx);
   });

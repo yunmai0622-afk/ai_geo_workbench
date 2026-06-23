@@ -19,12 +19,12 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
 
   it("workbench title and four-section structure", () => {
     expect(weekly).toContain("内容任务推进");
-    expect(weekly).toContain("TaskContextHero");
-    expect(weekly).toContain("PlatformPublishPlan");
-    expect(weekly).toContain("WeeklyPublishableContentList");
+    expect(weekly).toContain("CurrentContentTaskCard");
+    expect(weekly).toContain("PlatformTaskBoard");
+    expect(weekly).toContain("WeeklyAdvancedInfoSections");
     expect(weekly).toContain("WeeklyContentDetailSheet");
-    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前优化问题");
-    expect(board).toContain("平台发布计划");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前内容任务");
+    expect(board).toContain("平台内容任务");
   });
 
   it("does not show long body by default on main page", () => {

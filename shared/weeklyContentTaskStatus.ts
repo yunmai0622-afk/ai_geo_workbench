@@ -15,15 +15,15 @@ export const WEEKLY_CONTENT_TASK_STATUSES = [
 export type WeeklyContentTaskStatus = (typeof WEEKLY_CONTENT_TASK_STATUSES)[number];
 
 export const WEEKLY_CONTENT_TASK_STATUS_LABELS: Record<WeeklyContentTaskStatus, string> = {
-  UNGENERATED: "未生成",
+  UNGENERATED: "待生成",
   GENERATING: "生成中",
-  DRAFT: "待确认",
+  DRAFT: "已生成",
   QUALITY_PENDING: "待质检",
   QUALITY_PASSED: "质检通过",
-  PUBLISH_READY: "可发布",
-  QUEUED: "已加入发布队列",
+  PUBLISH_READY: "可入队",
+  QUEUED: "已入队",
   PUBLISHED: "已发布",
-  NEEDS_REWRITE: "需重写",
+  NEEDS_REWRITE: "生成失败",
 };
 
 export const WEEKLY_CONTENT_TASK_STATUS_BADGE_CLASS: Record<WeeklyContentTaskStatus, string> = {
@@ -76,7 +76,7 @@ export type WeeklyContentTaskProgress = {
 };
 
 export function formatWeeklyContentTaskProgress(progress: WeeklyContentTaskProgress): string {
-  return `已生成 ${progress.generatedCount} 篇 / 可发布 ${progress.publishReadyCount} 篇 / 待人工审核 ${progress.pendingReviewCount} 篇 / 已入队 ${progress.queuedCount} 篇 / 已发布 ${progress.publishedCount} 篇`;
+  return `已生成 ${progress.generatedCount} 篇 / 可入队 ${progress.publishReadyCount} 篇 / 待质检 ${progress.pendingReviewCount} 篇 / 已入队 ${progress.queuedCount} 篇 / 已发布 ${progress.publishedCount} 篇`;
 }
 
 export function buildWeeklyContentTaskNextStep(input: {
@@ -85,15 +85,15 @@ export function buildWeeklyContentTaskNextStep(input: {
   generatedCount: number;
 }): string {
   if (input.pendingReviewCount > 0) {
-    return `有 ${input.pendingReviewCount} 篇内容待人工审核，建议先完成审核再加入发布队列。`;
+    return `有 ${input.pendingReviewCount} 篇内容待质检，建议先完成质检再加入发布队列。`;
   }
   if (input.publishReadyCount > 0) {
-    return `有 ${input.publishReadyCount} 篇内容可发布，可加入发布队列。`;
+    return `有 ${input.publishReadyCount} 篇内容可入队，可加入发布队列。`;
   }
   if (input.generatedCount === 0) {
-    return "按推荐平台生成首批内容，再进入质检与审核流程。";
+    return "先选择推荐平台生成第一批平台稿。";
   }
-  return "继续生成平台内容，或等待 AI 质检完成。";
+  return "优先完成已生成内容的质检，再继续生成其他平台。";
 }
 
 export type WeeklyContentAssistantStats = {

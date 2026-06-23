@@ -25,8 +25,8 @@ describe("GEO-V1.1-MobileFix", () => {
     expect(board).toContain("weekly-platform-matrix-grid");
     expect(board).toContain("grid-cols-1");
     expect(board).toContain("lg:grid-cols-2");
-    expect(weekly).toContain("TaskContextHero");
-    expect(weekly).toContain("PlatformPublishPlan");
+    expect(weekly).toContain("CurrentContentTaskCard");
+    expect(weekly).toContain("PlatformTaskBoard");
     expect(auxiliary).toContain("历史内容记录");
     expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
     expect(weekly).toContain("WeeklyContentDetailSheet");

@@ -14,9 +14,8 @@ describe("GEO-V1.1 Content Assets Polish", () => {
     expect(weekly).toContain("weeklyContentAssetsDisplay");
     expect(weekly).toContain("publishRecordsQuery");
     expect(weekly).toContain("displayContentCards");
-    expect(weekly).toContain("WeeklyPublishableContentList");
+    expect(weekly).toContain("WeeklyAdvancedInfoSections");
     expect(publishable).toContain("weekly-publishable-enqueue-");
-    expect(weekly).toContain("PlatformBatchGenerationPanel");
     expect(weekly).toContain("platformBatchRunning");
     expect(auxiliary).toContain("历史内容记录");
   });

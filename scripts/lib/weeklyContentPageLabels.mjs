@@ -4,14 +4,14 @@ export const WEEKLY_CONTENT_PAGE_LABELS = [
   "内容任务推进",
   "weekly-platform-content-page",
   "去 AI 实测诊断",
-  "TaskContextHero",
-  "PlatformPublishPlan",
+  "CurrentContentTaskCard",
+  "PlatformTaskBoard",
 ];
 
 export const WEEKLY_CONTENT_PAGE_SOURCE_SEGMENT_MARKERS = [
-  "PlatformPublishPlan",
+  "PlatformTaskBoard",
   "PlatformContentBoard",
-  "WeeklyPublishableContentList",
+  "WeeklyAdvancedInfoSections",
 ];
 
 /** 浏览器渲染后的 segmented 文案（Playwright 全链路验收） */

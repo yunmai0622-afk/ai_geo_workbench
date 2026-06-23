@@ -213,9 +213,9 @@ export default function PlatformContentStrategyPanel({
         </fieldset>
       </div>
 
-      <details className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600" open>
+      <details className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
         <summary className="cursor-pointer font-medium text-gray-800" data-testid="platform-rules-summary">
-          {rule.label} 内容规则（生成时将写入 Prompt）
+          {rule.label} 内容规则（高级写作参考）
         </summary>
         <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-gray-500">
           {formatPlatformRulesForPrompt(value.targetPublishPlatform)}

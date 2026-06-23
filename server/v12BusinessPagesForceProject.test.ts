@@ -34,8 +34,8 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(weekly).not.toContain("BusinessPageProjectHeader");
     expect(read("client/src/components/DashboardLayout.tsx")).toContain("EnterpriseProjectShell");
     expect(weekly).toContain("内容任务推进");
-    expect(weekly).toContain("TaskContextHero");
-    expect(weekly).toContain("PlatformPublishPlan");
+    expect(weekly).toContain("CurrentContentTaskCard");
+    expect(weekly).toContain("PlatformTaskBoard");
     expect(weekly).not.toMatch(/批量生成/);
     expect(weekly).toContain("不支持一稿多发");
     expect(weekly).toMatch(/if \(!enabled && !projectsLoading\)/);

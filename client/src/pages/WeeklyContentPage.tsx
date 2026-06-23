@@ -1,10 +1,18 @@
 import { PublishPrePublishChecklist } from "@/components/publishing/PublishPrePublishChecklist";
 import {
-  TaskContextHero,
+  CurrentContentTaskCard,
   TaskProgressionFallback,
-  MotherArticleSummaryCard,
-  PlatformPublishPlan,
+  PlatformTaskBoard,
+  TaskProgressOverview,
+  NextStepSuggestion,
+  MonthlyContentTaskList,
+  computeTaskBoardProgress,
+  type MonthlyContentTaskItem,
 } from "@/components/weekly/ContentTaskProgressionView";
+import {
+  WeeklyAdvancedInfoSections,
+  buildProfilePreviewFromRecord,
+} from "@/components/weekly/WeeklyAdvancedInfoSections";
 import { ArticleAssetEditorSheet } from "@/components/ArticleAssetEditorSheet";
 import { PublishSuccessNotificationCard } from "@/components/publishing/PublishSuccessNotificationCard";
 import { ArticleLifecyclePanel } from "@/components/ArticleLifecyclePanel";
@@ -24,22 +32,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
 import { encodeStoredCoverBase64, type StoredCoverMime } from "@shared/articleCoverBase64";
 import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
-import { PlatformBatchGenerationPanel } from "@/components/weekly/PlatformBatchGenerationPanel";
 import { PlatformContentBoard, type PlatformBoardPrimaryActionKind, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
-import { WeeklyAuxiliarySections } from "@/components/weekly/WeeklyAuxiliarySections";
+import { buildTaskBoardNextStepSuggestion } from "@shared/weeklyContentTaskBoard";
 import { WeeklyContentDetailSheet } from "@/components/weekly/WeeklyContentDetailSheet";
 import {
   WeeklyContentReviewConfirmDialog,
   type WeeklyContentReviewDialogMode,
 } from "@/components/weekly/WeeklyContentReviewConfirmDialog";
-import { WeeklyPublishQueueStatusBlock, type WeeklyPublishQueueStats } from "@/components/weekly/WeeklyPublishQueueStatusBlock";
-import { WeeklyCollapsibleSection } from "@/components/weekly/WeeklyCollapsibleSection";
 import { WeeklyLocalAgentStatusBar } from "@/components/weekly/WeeklyLocalAgentStatusBar";
-import {
-  WeeklyPublishableContentList,
-  type WeeklyPublishableRow,
-  type WeeklyPendingContentTab,
-} from "@/components/weekly/WeeklyPublishableContentList";
 import type { WeeklyArticleCardModel } from "@/components/weekly/WeeklyPlatformArticleCard";
 import { resolveGeoQualityOptimizationSuggestions } from "@shared/geoQualityAutoSuggest";
 import {
@@ -51,15 +51,11 @@ import {
   resolveQualityBlockingIssues,
   resolveQualityCardView,
 } from "@shared/geoQualityScoreDisplay";
-import { WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY } from "@shared/workspaceRiskHints";
 import {
   parseWeeklyContentEntryContext,
   resolveWeeklyContentSourceTypeLabel,
-  WEEKLY_CONTENT_ENTRY_TASK_LABEL,
-  WEEKLY_CONTENT_MISSING_QUESTION_MESSAGE,
   type WeeklyContentEntryContext,
 } from "@shared/weeklyContentEntryContext";
-import { AiTaskProgressCard } from "@/components/geo/AiTaskProgressCard";
 import {
   buildWeeklyContentTaskNextStep,
   weeklyContentTaskStatusLabel,
@@ -160,13 +156,6 @@ import {
   mapReviewEnqueueCustomerMessage,
   REVIEW_ENQUEUE_SUCCESS_MESSAGE,
 } from "@shared/reviewEnqueueErrors";
-import {
-  resolveWeeklyAccountDisplayStatus,
-  resolveWeeklyAiQcDisplayStatus,
-  resolveWeeklyCoverDisplayStatus,
-  resolveWeeklyManualReviewDisplayStatus,
-  resolveWeeklyPublishDisplayStatus,
-} from "@shared/weeklyPublishableDisplay";
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
 import { resolveArticleLifecycleView } from "@shared/articleLifecycle";
@@ -227,7 +216,6 @@ import {
   PROJECT_SCOPED_CONTENT_TASK_STALE_CLIENT_MESSAGE,
 } from "@shared/geoProjectScopedContentTask";
 import {
-  PLATFORM_CONTENT_PROGRESS_HINT_90S,
   PLATFORM_CONTENT_PROGRESS_STAGES,
   type AiTaskProgressErrorCategory,
 } from "@shared/aiTaskProgress";
@@ -690,7 +678,6 @@ export default function WeeklyContentPage() {
     failCount: number;
   } | null>(null);
   const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
-  const [pendingContentInitialTab, setPendingContentInitialTab] = useState<WeeklyPendingContentTab>("pending_review");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const t0GapDeepLinkHandledRef = useRef(false);
   const [filterStatus, setFilterStatus] = useState<ContentCardStatusFilter>("all");
@@ -722,15 +709,11 @@ export default function WeeklyContentPage() {
     if (entryContext.articleId != null) {
       setGeneratedSectionOpen(true);
     }
-    if (entryContext.pendingContentTab === WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY) {
-      setPendingContentInitialTab("needs_modify");
-    }
   }, [
     entryContext.taskId,
     entryContext.questionText,
     entryContext.platform,
     entryContext.articleId,
-    entryContext.pendingContentTab,
   ]);
 
   const contentTaskViewQuery = trpc.geo.contentTasks.getCurrentTaskView.useQuery(
@@ -739,6 +722,11 @@ export default function WeeklyContentPage() {
       questionId: entryContext.questionId!,
     },
     { enabled: Boolean(selectedProjectId) && entryContext.questionId != null },
+  );
+
+  const monthlyPlanQuery = trpc.geo.monthlyPlan.getCurrent.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) && entryContext.questionId == null },
   );
 
   useEffect(() => {
@@ -1768,45 +1756,34 @@ export default function WeeklyContentPage() {
 
   const currentContentTaskStatusLabel = useMemo(() => statusBarNextStep, [statusBarNextStep]);
   const taskSourceTypeLabel = useMemo(() => geoContentTaskSource?.sourceLabel?.trim() || "内容任务", [geoContentTaskSource?.sourceLabel]);
-  const publishQueueStats = useMemo((): WeeklyPublishQueueStats => ({ queued: queuedContentCount, pendingPublish: enqueueReadyCount + pendingReviewCount, published: contentCardModels.filter(c => c.statusFilterKey === "published").length, pendingLinkBackfill: (publishRecordsQuery.data ?? []).filter(r => String(r.publishStatus ?? "").includes("link_backfilled")).length }), [contentCardModels, publishRecordsQuery.data, queuedContentCount, enqueueReadyCount, pendingReviewCount]);
-  const fullBodyPreviewCards = useMemo(() => displayContentCards.filter(c => c.statusFilterKey !== "published").slice(0, 6), [displayContentCards]);
 
-  const publishableRows = useMemo((): WeeklyPublishableRow[] => {
-    return contentCardModels
-      .filter(card => card.statusFilterKey !== "published")
-      .map(card => {
-        const platformResolved = getArticlePublishPlatform({
-          generationBasis:
-            (card.article.generationBasis as Record<string, unknown> | null | undefined) ?? null,
-          targetPlatform: card.targetPlatform,
-          publishPlatform: (card.article.publishPlatform as string | null | undefined) ?? null,
-        });
-        const queueFailed = card.queuedStatusLabel?.includes("失败") ?? false;
-        return {
-          ...card,
-          aiQcStatus: resolveWeeklyAiQcDisplayStatus(
-            card.article as Parameters<typeof resolveWeeklyAiQcDisplayStatus>[0],
-          ),
-          manualReviewStatus: resolveWeeklyManualReviewDisplayStatus(card.contentReviewStatus),
-          coverStatus: resolveWeeklyCoverDisplayStatus(
-            card.article as Parameters<typeof resolveWeeklyCoverDisplayStatus>[0],
-            platformResolved.publishQueueSlug,
-          ),
-          accountStatus: resolveWeeklyAccountDisplayStatus({
-            publishPreflightReady: card.publishPreflightReady,
-            publishBlockHint: card.publishBlockHint,
-          }),
-          publishStatus: resolveWeeklyPublishDisplayStatus({
-            published: card.statusFilterKey === "published",
-            queued: card.queuedForPublish,
-            queueFailed,
-            manualReviewPending: isContentReviewPending(card.contentReviewStatus),
-            publishPreflightReady: card.publishPreflightReady,
-          }),
-          queueFailed,
-        };
-      });
-  }, [contentCardModels]);
+  const taskBoardProgress = useMemo(
+    () => computeTaskBoardProgress(platformBoardRows),
+    [platformBoardRows],
+  );
+
+  const taskBoardNextStep = useMemo(
+    () => buildTaskBoardNextStepSuggestion(taskBoardProgress),
+    [taskBoardProgress],
+  );
+
+  const profilePreview = useMemo(
+    () => buildProfilePreviewFromRecord(enterpriseProfileRecord, brandName),
+    [enterpriseProfileRecord, brandName],
+  );
+
+  const monthlyContentTasks = useMemo((): MonthlyContentTaskItem[] => {
+    return (monthlyPlanQuery.data?.tasks ?? [])
+      .filter(t => t.taskType === "content_generation")
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        reason: t.reason,
+        status: t.status,
+        questionId: t.relatedQuestionId,
+        actionUrl: t.actionUrl,
+      }));
+  }, [monthlyPlanQuery.data?.tasks]);
 
   const platformProgressText = useMemo(() => {
     const pending = platformBoardRows.reduce((sum, row) => sum + row.counts.pending, 0);
@@ -1816,7 +1793,7 @@ export default function WeeklyContentPage() {
     );
     const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
     const published = platformBoardRows.reduce((sum, row) => sum + row.counts.published, 0);
-    return `待生成 ${pending} / 已生成 ${generated} / 可发布 ${publishable} / 已加入发布队列 ${queuedContentCount} / 已发布 ${published}`;
+    return `待生成 ${pending} / 已生成 ${generated} / 可入队 ${publishable} / 已入队 ${queuedContentCount} / 已发布 ${published}`;
   }, [platformBoardRows, queuedContentCount]);
   const contentNextAction = useMemo(() => {
     const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
@@ -1855,14 +1832,6 @@ export default function WeeklyContentPage() {
     entryMotherArticle,
     questionsQuery.data,
   ]);
-
-  const showEntryContextBanner = Boolean(
-    entryContext.questionId ||
-      entryContext.questionText ||
-      entryContext.taskId ||
-      entryContext.articleId ||
-      entryContext.sourceType,
-  );
 
   const toggleCardSelection = useCallback((articleId: number, checked: boolean) => {
     setSelectedCardIds(prev => {
@@ -3153,37 +3122,6 @@ export default function WeeklyContentPage() {
         <p className="text-sm text-gray-500">围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布</p>
       </header>
 
-      {showEntryContextBanner ? (
-        <P0Card
-          className="border-blue-100 bg-blue-50/60"
-          testId="weekly-content-entry-context"
-        >
-          <p className="text-sm font-medium text-gray-900">
-            当前内容来源：{resolveWeeklyContentSourceTypeLabel(entryContext.sourceType)}
-          </p>
-          {entryContext.questionId == null &&
-          entryContext.sourceType &&
-          !entryLinkedQuestionText ? (
-            <p className="mt-2 text-sm text-amber-800">{WEEKLY_CONTENT_MISSING_QUESTION_MESSAGE}</p>
-          ) : entryLinkedQuestionText ? (
-            <p className="mt-2 text-sm text-gray-700">关联问题：{entryLinkedQuestionText}</p>
-          ) : null}
-          {entryMotherArticle ? (
-            <p className="mt-2 text-sm text-gray-700">
-              母稿标题：{entryMotherArticle.title ?? "未命名内容"}
-              {entryContext.platform
-                ? ` · 当前平台：${
-                    WEEKLY_PLATFORM_DEFS.find(
-                      d => d.key === normalizeWeeklyPlatformKey(entryContext.platform!),
-                    )?.label ?? entryContext.platform
-                  }`
-                : ""}
-            </p>
-          ) : null}
-          <p className="mt-2 text-sm text-gray-600">当前任务：{WEEKLY_CONTENT_ENTRY_TASK_LABEL}</p>
-        </P0Card>
-      ) : null}
-
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}
         platformLabel={publishSuccessNotice?.platformLabel ?? ""}
@@ -3254,24 +3192,40 @@ export default function WeeklyContentPage() {
         </P0Card>
       ) : (
         <>
-          {/* ─── First Screen: Task Context Hero ─── */}
-          {contentTaskViewQuery.isLoading && entryContext.questionId != null ? (
+          {entryContext.questionId == null ? (
+            monthlyPlanQuery.isLoading ? (
+              <P0Card testId="weekly-monthly-task-list-loading">
+                <p className="text-sm text-gray-600">正在加载本月内容任务…</p>
+              </P0Card>
+            ) : (
+              <MonthlyContentTaskList
+                tasks={monthlyContentTasks}
+                onSelectTask={task => {
+                  if (!selectedProjectId) return;
+                  const qid = task.questionId;
+                  if (qid) {
+                    setLocation(
+                      buildProjectUrl(`/weekly?questionId=${qid}`, selectedProjectId),
+                    );
+                  } else if (task.actionUrl) {
+                    setLocation(buildProjectUrl(task.actionUrl, selectedProjectId));
+                  }
+                }}
+                onGoMonthlyPlan={() =>
+                  selectedProjectId
+                    ? setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
+                    : setLocation("/monthly-plan")
+                }
+              />
+            )
+          ) : contentTaskViewQuery.isLoading ? (
             <P0Card testId="weekly-content-task-control-loading">
               <p className="text-sm text-gray-600">正在加载当前内容任务…</p>
             </P0Card>
-          ) : entryContext.questionId != null && contentTaskViewQuery.data ? (
-            <TaskContextHero
+          ) : contentTaskViewQuery.data ? (
+            <CurrentContentTaskCard
               view={contentTaskViewQuery.data}
-              onNextStep={() => {
-                document
-                  .getElementById("weekly-section-mother-article")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
-              onGoMonthlyPlan={() =>
-                selectedProjectId
-                  ? setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
-                  : setLocation("/monthly-plan")
-              }
+              sourceTypeLabel={resolveWeeklyContentSourceTypeLabel(entryContext.sourceType)}
             />
           ) : (
             <TaskProgressionFallback
@@ -3283,214 +3237,162 @@ export default function WeeklyContentPage() {
             />
           )}
 
-          {/* ─── Mother Article Summary ─── */}
-          <div id="weekly-section-mother-article" className="scroll-mt-24">
-            {contentTaskViewQuery.data ? (
-              <MotherArticleSummaryCard
-                title={contentTaskViewQuery.data.motherArticleTitle}
-                summary={contentTaskViewQuery.data.motherArticleSummary}
-                corePoints={null}
-                status={contentTaskViewQuery.data.motherArticleStatus}
-                onViewFull={() => {
-                  if (previewCards[0]) openContentDetail(previewCards[0]);
-                }}
-                onEdit={() => {
-                  if (previewCards[0]) {
-                    const article = articlesById.get(previewCards[0].id);
-                    if (article) openEditor(article);
+          {entryContext.questionId != null ? (
+            <>
+              <TaskProgressOverview metrics={taskBoardProgress} />
+
+              <NextStepSuggestion
+                suggestion={taskBoardNextStep}
+                actionLabel={
+                  taskBoardProgress.enqueueReady > 0
+                    ? "加入发布队列"
+                    : taskBoardProgress.qualityPending > 0
+                      ? "查看并质检"
+                      : taskBoardProgress.published > 0
+                        ? "去收录监测"
+                        : "生成平台稿"
+                }
+                onAction={() => {
+                  if (taskBoardProgress.enqueueReady > 0) {
+                    const readyRow = platformBoardRows.find(r => r.status === "PUBLISH_READY");
+                    if (readyRow) {
+                      const hit = findArticleByPlatform(readyRow.def.key);
+                      if (hit) requestEnqueuePublish(hit);
+                    }
+                  } else if (taskBoardProgress.qualityPending > 0) {
+                    const qcRow = platformBoardRows.find(
+                      r => r.status === "QUALITY_PENDING" || r.status === "DRAFT",
+                    );
+                    if (qcRow) handlePlatformEdit(qcRow.def.key);
+                  } else if (taskBoardProgress.published > 0 && selectedProjectId) {
+                    setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId));
+                  } else {
+                    const ungen = platformBoardRows.find(r => r.status === "UNGENERATED");
+                    if (ungen) void handlePlatformGenerate(ungen.def.key);
                   }
                 }}
-                onApprove={() => {
-                  if (previewCards[0]) {
-                    const article = articlesById.get(previewCards[0].id);
-                    if (article) openReviewConfirmDialog(article, "review_only");
-                  }
-                }}
-                approveDisabled={batchBusy}
               />
-            ) : null}
-          </div>
 
-          {/* ─── Platform Publish Plan ─── */}
-          {contentTaskViewQuery.data ? (
-            <PlatformPublishPlan
-              rows={platformBoardRows}
-              recommendedPlatforms={contentTaskViewQuery.data.recommendedPlatforms}
-              boardBusy={batchBusy}
-              generatingPlatformKey={generatingPlatformKey}
-              onGenerate={key => void handlePlatformGenerate(key)}
-              onSaveAndQc={handlePlatformEdit}
-              onEnqueue={key => {
-                const hit = findArticleByPlatform(key);
-                if (hit) requestEnqueuePublish(hit);
-              }}
-              onView={handlePlatformView}
-            />
-          ) : (
-            <PlatformContentBoard
-              rows={platformBoardRows}
-              boardBusy={batchBusy}
-              generatingPlatformKey={generatingPlatformKey}
-              onGenerate={key => void handlePlatformGenerate(key)}
-              onSaveAndQc={handlePlatformEdit}
-              onEnqueue={key => {
-                const hit = findArticleByPlatform(key);
-                if (hit) requestEnqueuePublish(hit);
-              }}
-              onView={handlePlatformView}
-            />
-          )}
+              {contentTaskViewQuery.data ? (
+                <PlatformTaskBoard
+                  rows={platformBoardRows}
+                  recommendedPlatforms={contentTaskViewQuery.data.recommendedPlatforms}
+                  boardBusy={batchBusy}
+                  generatingPlatformKey={generatingPlatformKey}
+                  anyGenerating={anyGenerating}
+                  onGenerate={key => void handlePlatformGenerate(key)}
+                  onSaveAndQc={handlePlatformEdit}
+                  onEnqueue={key => {
+                    const hit = findArticleByPlatform(key);
+                    if (hit) requestEnqueuePublish(hit);
+                  }}
+                  onView={handlePlatformView}
+                  onViewPublish={() =>
+                    selectedProjectId &&
+                    setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                  }
+                  onGoMonitoring={() =>
+                    selectedProjectId &&
+                    setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
+                  }
+                />
+              ) : (
+                <PlatformContentBoard
+                  rows={platformBoardRows}
+                  boardBusy={batchBusy}
+                  generatingPlatformKey={generatingPlatformKey}
+                  anyGenerating={anyGenerating}
+                  onGenerate={key => void handlePlatformGenerate(key)}
+                  onSaveAndQc={handlePlatformEdit}
+                  onEnqueue={key => {
+                    const hit = findArticleByPlatform(key);
+                    if (hit) requestEnqueuePublish(hit);
+                  }}
+                  onView={handlePlatformView}
+                />
+              )}
 
-          {/* ─── Publish Queue Status ─── */}
-          <WeeklyPublishQueueStatusBlock stats={publishQueueStats} onGoPublishingCenter={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))} />
-
-          {/* ─── Publishable Content List ─── */}
-          <WeeklyPublishableContentList
-            rows={publishableRows}
-            disabled={anyGenerating || batchEnqueueBusy}
-            initialTab={pendingContentInitialTab}
-            onView={openContentDetail}
-            onReviewConfirm={model => {
-              const article = articlesById.get(model.id);
-              if (article) openReviewConfirmDialog(article, "review_only");
-            }}
-            onEnqueuePublish={model => {
-              const article = articlesById.get(model.id);
-              if (article) requestEnqueuePublish(article);
-            }}
-            onGoPublishingPage={() =>
-              selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-            }
-            onEdit={model => {
-              const article = articlesById.get(model.id);
-              if (article) openEditor(article);
-            }}
-          />
-
-          {/* ─── Advanced Info (collapsed by default) ─── */}
-          <WeeklyCollapsibleSection testId="weekly-aux-full-body" title="完整正文">
-            {displayContentCards.filter(card => card.statusFilterKey !== "published").length > 0 ? (
-              <ul className="space-y-3">
-                {displayContentCards
-                  .filter(card => card.statusFilterKey !== "published")
-                  .slice(0, 12)
-                  .map(card => (
-                    <li
-                      key={card.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2"
-                      data-testid={`weekly-full-body-item-${card.id}`}
-                    >
-                      <span className="min-w-0 flex-1 text-sm font-medium text-gray-900">{card.title}</span>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className={geoP0Brand.primaryOutline}
-                          data-testid={`weekly-full-body-expand-${card.id}`}
-                          onClick={() => openContentDetail(card)}
-                        >
-                          展开全文
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className={geoP0Brand.primaryOutline}
-                          data-testid={`weekly-full-body-edit-${card.id}`}
-                          onClick={() => {
-                            const article = articlesById.get(card.id);
+              <WeeklyAdvancedInfoSections
+                profilePreview={profilePreview}
+                source={geoContentTaskSource}
+                platformStrategy={platformStrategy}
+                onPlatformStrategyChange={setPlatformStrategy}
+                targetQuestionOptions={targetQuestionOptions}
+                strategyDisabled={anyGenerating}
+                platformBatchQueue={platformBatchQueue}
+                platformBatchRunning={platformBatchRunning}
+                onStartBatch={() => void handleBatchGenerateAllPlatforms()}
+                onRetryBatchItem={handleRetryPlatformBatchItem}
+                historyCards={displayContentCards}
+                historyDisabled={anyGenerating || batchEnqueueBusy}
+                onHistoryView={openContentDetail}
+                onHistoryRegenerate={model => {
+                  const article = articlesById.get(model.id);
+                  if (article && typeof article.topicId === "number") void generateOne(article.topicId);
+                }}
+                onHistoryEnqueue={model => {
+                  const article = articlesById.get(model.id);
+                  if (article) requestEnqueuePublish(article);
+                }}
+                onHistoryGoPublishing={() =>
+                  selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                }
+                onHistoryReviewChange={(articleId, status) => {
+                  if (!selectedProjectId) return;
+                  setContentReviewStatus.mutate(
+                    { projectId: selectedProjectId, articleId, status },
+                    { onSuccess: () => toast.success("审核状态已更新") },
+                  );
+                }}
+                motherArticle={
+                  contentTaskViewQuery.data
+                    ? {
+                        title: contentTaskViewQuery.data.motherArticleTitle,
+                        summary: contentTaskViewQuery.data.motherArticleSummary,
+                        status: contentTaskViewQuery.data.motherArticleStatus,
+                        onViewFull: () => {
+                          if (previewCards[0]) openContentDetail(previewCards[0]);
+                        },
+                        onEdit: () => {
+                          if (previewCards[0]) {
+                            const article = articlesById.get(previewCards[0].id);
                             if (article) openEditor(article);
-                          }}
-                        >
-                          编辑内容
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-gray-600">暂无内容。</p>
-            )}
-          </WeeklyCollapsibleSection>
-
-          <WeeklyCollapsibleSection testId="weekly-aux-generation-log" title="生成日志">
-            {platformContentProgress.status !== "idle" && activePlatformProgressLabel ? (
-              <AiTaskProgressCard
-                testId="platform-content-progress"
-                title={`正在生成${activePlatformProgressLabel}内容`}
-                stepLabel={platformContentProgress.stepLabel}
-                stepDescription={platformContentProgress.stepDescription}
-                percent={platformContentProgress.percent}
-                elapsedSec={platformContentProgress.elapsedSec}
-                hint90s={PLATFORM_CONTENT_PROGRESS_HINT_90S}
-                status={
-                  platformContentProgress.isFailed
+                          }
+                        },
+                        onApprove: () => {
+                          if (previewCards[0]) {
+                            const article = articlesById.get(previewCards[0].id);
+                            if (article) openReviewConfirmDialog(article, "review_only");
+                          }
+                        },
+                        approveDisabled: batchBusy,
+                      }
+                    : null
+                }
+                generationLog={{
+                  visible: platformContentProgress.status !== "idle" && Boolean(activePlatformProgressLabel),
+                  platformLabel: activePlatformProgressLabel,
+                  stepLabel: platformContentProgress.stepLabel,
+                  stepDescription: platformContentProgress.stepDescription,
+                  percent: platformContentProgress.percent,
+                  elapsedSec: platformContentProgress.elapsedSec,
+                  status: platformContentProgress.isFailed
                     ? "failed"
                     : platformContentProgress.isSuccess
                       ? "success"
-                      : "running"
-                }
-                errorCategory={platformProgressErrorCategory}
-                errorMessage={
-                  platformContentProgress.isFailed
+                      : "running",
+                  errorCategory: platformProgressErrorCategory,
+                  errorMessage: platformContentProgress.isFailed
                     ? platformProgressFailureDisplay.message
-                    : platformProgressErrorMessage
-                }
-                onRegenerate={
-                  canRegeneratePlatformContent ? () => handlePlatformRegenerate() : undefined
-                }
-                regenerateDisabled={anyGenerating}
+                    : platformProgressErrorMessage,
+                  onRegenerate: canRegeneratePlatformContent
+                    ? () => handlePlatformRegenerate()
+                    : undefined,
+                  regenerateDisabled: anyGenerating,
+                }}
               />
-            ) : (
-              <p className="text-sm text-gray-600">暂无进行中的生成任务，开始生成后日志将在此展示。</p>
-            )}
-          </WeeklyCollapsibleSection>
-
-          <WeeklyCollapsibleSection testId="weekly-aux-advanced-enhancement" title="高级内容增强">
-            <PlatformBatchGenerationPanel
-              queue={platformBatchQueue}
-              running={platformBatchRunning}
-              onStartBatch={() => void handleBatchGenerateAllPlatforms()}
-              onRetry={handleRetryPlatformBatchItem}
-            />
-          </WeeklyCollapsibleSection>
-
-          <WeeklyCollapsibleSection testId="weekly-aux-history" title="历史内容">
-            <WeeklyAuxiliarySections
-              source={geoContentTaskSource}
-              platformStrategy={platformStrategy}
-              onPlatformStrategyChange={setPlatformStrategy}
-              targetQuestionOptions={targetQuestionOptions}
-              selectedQuestionTemplateId={selectedQuestionTemplateId}
-              onQuestionTemplateChange={setSelectedQuestionTemplateId}
-              strategyDisabled={anyGenerating}
-              historyCards={displayContentCards}
-              historyDisabled={anyGenerating || batchEnqueueBusy}
-              onHistoryView={openContentDetail}
-              onHistoryRegenerate={model => {
-                const article = articlesById.get(model.id);
-                if (article && typeof article.topicId === "number") void generateOne(article.topicId);
-              }}
-              onHistoryEnqueue={model => {
-                const article = articlesById.get(model.id);
-                if (article) requestEnqueuePublish(article);
-              }}
-              onHistoryGoPublishing={() =>
-                selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-              }
-              onHistoryReviewChange={(articleId, status) => {
-                if (!selectedProjectId) return;
-                setContentReviewStatus.mutate(
-                  { projectId: selectedProjectId, articleId, status },
-                  { onSuccess: () => toast.success("审核状态已更新") },
-                );
-              }}
-              onGoInclusionMonitoring={() =>
-                selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
-              }
-            />
-          </WeeklyCollapsibleSection>
+            </>
+          ) : null}
         </>
       )}
 

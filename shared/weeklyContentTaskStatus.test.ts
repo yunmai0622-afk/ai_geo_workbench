@@ -9,8 +9,8 @@ import {
 
 describe("weeklyContentTaskStatus", () => {
   it("maps platform content states to unified labels", () => {
-    expect(weeklyContentTaskStatusLabel("UNGENERATED")).toBe("未生成");
-    expect(weeklyContentTaskStatusLabel("PUBLISH_READY")).toBe("可发布");
+    expect(weeklyContentTaskStatusLabel("UNGENERATED")).toBe("待生成");
+    expect(weeklyContentTaskStatusLabel("PUBLISH_READY")).toBe("可入队");
     expect(
       resolveWeeklyPlatformContentStatus({ hasArticle: false, generating: false }),
     ).toBe("UNGENERATED");
@@ -42,7 +42,7 @@ describe("weeklyContentTaskStatus", () => {
         publishedCount: 0,
       }),
     ).toBe(
-      "已生成 3 篇 / 可发布 2 篇 / 待人工审核 1 篇 / 已入队 1 篇 / 已发布 0 篇",
+      "已生成 3 篇 / 可入队 2 篇 / 待质检 1 篇 / 已入队 1 篇 / 已发布 0 篇",
     );
   });
 

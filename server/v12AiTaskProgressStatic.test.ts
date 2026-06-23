@@ -21,8 +21,10 @@ describe("GEO AI task progress P0 static", () => {
 
   it("weekly platform board only disables active platform generate button", () => {
     expect(board).toContain("generatingPlatformKey");
-    expect(board).toContain("generatingPlatformKey === def.key");
-    expect(weekly).toContain("platform-content-progress");
+    expect(read("shared/weeklyContentTaskBoard.ts")).toContain("shouldDisablePlatformGenerateButton");
+    expect(read("client/src/components/weekly/WeeklyAdvancedInfoSections.tsx")).toContain(
+      "platform-content-progress",
+    );
     expect(weekly).toContain("generatingPlatformKey={generatingPlatformKey}");
     expect(weekly).toContain("boardBusy={batchBusy}");
   });

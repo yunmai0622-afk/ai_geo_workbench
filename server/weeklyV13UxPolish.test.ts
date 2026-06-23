@@ -8,28 +8,26 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("GEO-V1.3-Weekly-UX-Polish", () => {
   const weekly = read("client/src/pages/WeeklyContentPage.tsx");
   const queueBlock = read("client/src/components/weekly/WeeklyPublishQueueStatusBlock.tsx");
-  const statusBar = read("client/src/components/weekly/WeeklyContentStatusBar.tsx");
-  const preview = read("client/src/components/weekly/WeeklyContentPreviewPanel.tsx");
   const publishableList = read("client/src/components/weekly/WeeklyPublishableContentList.tsx");
   const board = read("client/src/components/weekly/PlatformContentBoard.tsx");
-  const auxiliary = read("client/src/components/weekly/WeeklyAuxiliarySections.tsx");
+  const advanced = read("client/src/components/weekly/WeeklyAdvancedInfoSections.tsx");
   const detailSheet = read("client/src/components/weekly/WeeklyContentDetailSheet.tsx");
   const collapsible = read("client/src/components/weekly/WeeklyCollapsibleSection.tsx");
 
   it("发布队列状态块", () => {
-    expect(weekly).toContain("WeeklyPublishQueueStatusBlock");
     expect(queueBlock).toContain("待回填链接");
+    expect(weekly).toContain("TaskProgressOverview");
   });
 
   it("顶部任务状态条", () => {
-    expect(weekly).toContain("TaskContextHero");
-    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("task-progression-hero");
-    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前优化问题");
+    expect(weekly).toContain("CurrentContentTaskCard");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("task-current-content-card");
+    expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("当前内容任务");
     expect(weekly).toContain("contentTaskViewQuery");
   });
 
   it("内容预览区折叠与展开全文", () => {
-    expect(weekly).toContain("MotherArticleSummaryCard");
+    expect(advanced).toContain("查看参考内容");
     expect(read("client/src/components/weekly/ContentTaskProgressionView.tsx")).toContain("查看全文");
     expect(detailSheet).toContain("展开全文");
     expect(detailSheet).toContain("weekly-detail-full-body");
@@ -44,23 +42,19 @@ describe("GEO-V1.3-Weekly-UX-Polish", () => {
     expect(publishableList).not.toContain("<table");
   });
 
-  it("平台发布计划两列卡片", () => {
-    expect(board).toContain("平台发布计划");
+  it("平台任务板两列卡片", () => {
+    expect(board).toContain("平台内容任务");
     expect(board).toContain("sm:grid-cols-2");
-    expect(board).toContain("平台稿状态");
-    expect(board).toContain("账号状态");
     expect(board).toContain("生成平台稿");
-    expect(board).toContain("查看内容");
+    expect(board).not.toContain("平台稿状态");
+    expect(board).not.toContain("账号状态");
   });
 
   it("默认折叠模块", () => {
-    expect(weekly).toContain("高级内容增强");
-    expect(weekly).toContain("weekly-aux-generation-log");
-    expect(weekly).toContain("weekly-aux-full-body");
-    expect(auxiliary).toContain("历史内容记录");
-    expect(auxiliary).toContain("AI 实测跟踪");
-    expect(auxiliary).toContain("平台规则");
-    expect(auxiliary).toContain("内容模板库");
+    expect(advanced).toContain("查看高级写作设置");
+    expect(advanced).toContain("查看生成日志与诊断");
+    expect(advanced).toContain("查看品牌与关键词依据");
+    expect(advanced).toContain("历史内容记录");
     expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
   });
 });
