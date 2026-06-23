@@ -189,6 +189,13 @@ import {
   PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE,
   PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE,
 } from "@shared/platformContentGenerationErrors";
+import {
+  isPlatformDraftInFlight,
+  PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
+  PLATFORM_DRAFT_GENERATION_TIMEOUT_CUSTOMER_MESSAGE,
+  PLATFORM_DRAFT_START_MESSAGE,
+  readPlatformDraftGeneration,
+} from "@shared/platformDraftGeneration";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { isSubscriptionLimitMessage, SUBSCRIPTION_LIMIT_CONTENT_MESSAGE } from "@shared/subscriptionLimits";
@@ -611,6 +618,7 @@ export default function WeeklyContentPage() {
   const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
   const generateTasksMutation = trpc.geo.tasks.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
+  const startPlatformDraftMutation = trpc.geo.articles.startPlatformDraftGeneration.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
   const reviewAndEnqueueArticle = trpc.publishTasks.reviewAndEnqueueArticle.useMutation();
   const syncLocalAgentSnapshot = trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
@@ -663,6 +671,8 @@ export default function WeeklyContentPage() {
   const [entryContext, setEntryContext] = useState<WeeklyContentEntryContext>({});
   const entryContextRef = useRef<WeeklyContentEntryContext>({});
   const entryAutoGenerateHandledRef = useRef(false);
+  const activeDraftPollsRef = useRef(new Set<number>());
+  const recoveryPollsStartedRef = useRef(new Set<number>());
   const [generatingPlatformKey, setGeneratingPlatformKey] = useState<WeeklyPlatformKey | null>(null);
   const [platformBatchQueue, setPlatformBatchQueue] = useState<PlatformBatchQueueItem[] | null>(null);
   const [platformBatchRunning, setPlatformBatchRunning] = useState(false);
@@ -1077,6 +1087,36 @@ export default function WeeklyContentPage() {
     return map;
   }, [articles]);
 
+  const inFlightDraftByPlatform = useMemo(() => {
+    const map = new Map<WeeklyPlatformKey, { articleId: number; topicId: number }>();
+    for (const article of articles) {
+      const record = readPlatformDraftGeneration(article.generationBasis ?? null);
+      if (!isPlatformDraftInFlight(record?.status)) continue;
+      const resolved = getArticlePublishPlatform({
+        generationBasis: article.generationBasis ?? null,
+        targetPlatform: article.targetPlatform,
+        publishPlatform: article.publishPlatform,
+      });
+      const platformKey =
+        resolved.weeklyPlatformKey ??
+        (record?.platform ? normalizeWeeklyPlatformKey(record.platform) : null);
+      if (!platformKey || map.has(platformKey)) continue;
+      map.set(platformKey, {
+        articleId: article.id,
+        topicId: typeof article.topicId === "number" ? article.topicId : 0,
+      });
+    }
+    return map;
+  }, [articles]);
+
+  const platformAnyGenerating = useMemo(
+    () =>
+      platformBatchRunning ||
+      generatingPlatformKey != null ||
+      inFlightDraftByPlatform.size > 0,
+    [platformBatchRunning, generatingPlatformKey, inFlightDraftByPlatform],
+  );
+
   const weeklyArticles = useMemo(() => articles.filter(a => isInThisWeek(a.createdAt)), [articles]);
   const publishedCount = useMemo(() => articles.filter(a => a.status === "已发布").length, [articles]);
   const sceneCount = topics.length > 0 ? topics.length : tasks.length;
@@ -1170,6 +1210,58 @@ export default function WeeklyContentPage() {
     await articlesQuery.refetch();
     await scoresQuery.refetch();
   }, [selectedProjectId, utils, articlesQuery, scoresQuery]);
+
+  const pollPlatformDraftUntilDone = useCallback(
+    async (
+      projectId: number,
+      articleId: number,
+      options?: { onProgress?: (stage: number) => void },
+    ): Promise<{
+      ok: boolean;
+      errorMessage?: string;
+      userNotice?: string | null;
+      canRetry?: boolean;
+    }> => {
+      if (activeDraftPollsRef.current.has(articleId)) {
+        return { ok: false, errorMessage: PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE };
+      }
+      activeDraftPollsRef.current.add(articleId);
+      try {
+        const pollIntervalMs = 4000;
+        const maxAttempts = 50;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          if (attempt > 0) {
+            await new Promise(resolve => window.setTimeout(resolve, pollIntervalMs));
+          }
+          const status = await utils.geo.articles.getPlatformDraftGenerationStatus.fetch({
+            projectId,
+            articleId,
+          });
+          options?.onProgress?.(Math.min(92, 35 + attempt * 3));
+          if (status.status === "generated") {
+            await invalidateArticles();
+            return { ok: true, userNotice: status.qualityNotice ?? null };
+          }
+          if (status.status === "failed") {
+            await invalidateArticles();
+            return {
+              ok: false,
+              errorMessage: status.errorMessage ?? PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
+              canRetry: status.canRetry,
+            };
+          }
+        }
+        return {
+          ok: false,
+          errorMessage: PLATFORM_DRAFT_GENERATION_TIMEOUT_CUSTOMER_MESSAGE,
+          canRetry: true,
+        };
+      } finally {
+        activeDraftPollsRef.current.delete(articleId);
+      }
+    },
+    [utils, invalidateArticles],
+  );
 
   const generateOne = useCallback(
     async (
@@ -1444,6 +1536,12 @@ export default function WeeklyContentPage() {
         absorbPlatformArticle(article);
       }
       const generating = generatingPlatformKey === def.key;
+      const draftRecord = platformArticle
+        ? readPlatformDraftGeneration(platformArticle.generationBasis ?? null)
+        : null;
+      const draftInFlight = isPlatformDraftInFlight(draftRecord?.status);
+      const draftFailed = draftRecord?.status === "failed";
+      const platformGenerating = generating || draftInFlight;
       const published = platformArticle?.status === "已发布";
       const latestTask = platformArticle ? latestPublishTaskByArticle.get(platformArticle.id) : undefined;
       const queued = Boolean(
@@ -1455,13 +1553,13 @@ export default function WeeklyContentPage() {
           : false;
       const lifecycleView = platformArticle ? resolveArticleLifecycleView(platformArticle) : null;
       const status = resolveWeeklyPlatformContentStatus({
-        hasArticle: Boolean(platformArticle),
-        generating,
+        hasArticle: Boolean(platformArticle) && !draftInFlight,
+        generating: platformGenerating,
         published,
         queued,
         publishReady,
         article: platformArticle ?? null,
-        needsRewrite: lifecycleView?.status === "needs_revision",
+        needsRewrite: draftFailed || lifecycleView?.status === "needs_revision",
       });
       const generatedCount = counts.pendingConfirm + counts.ready + counts.published;
       const topicForArticle =
@@ -2035,6 +2133,31 @@ export default function WeeklyContentPage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    for (const [platformKey, { articleId, topicId }] of inFlightDraftByPlatform.entries()) {
+      if (recoveryPollsStartedRef.current.has(articleId) || activeDraftPollsRef.current.has(articleId)) {
+        continue;
+      }
+      recoveryPollsStartedRef.current.add(articleId);
+      setGeneratingPlatformKey(prev => prev ?? platformKey);
+      void pollPlatformDraftUntilDone(selectedProjectId, articleId).then(result => {
+        if (!result.ok && result.errorMessage && topicId > 0) {
+          recordPlatformGenerationFailure(platformKey, topicId, {}, result.errorMessage);
+        } else if (result.ok) {
+          clearPlatformGenerationRetry(platformKey);
+        }
+        setGeneratingPlatformKey(prev => (prev === platformKey ? null : prev));
+      });
+    }
+  }, [
+    selectedProjectId,
+    inFlightDraftByPlatform,
+    pollPlatformDraftUntilDone,
+    recordPlatformGenerationFailure,
+    clearPlatformGenerationRetry,
+  ]);
+
   const resolvePlatformGenerationParams = useCallback(
     async (
       platformKey: WeeklyPlatformKey,
@@ -2182,36 +2305,95 @@ export default function WeeklyContentPage() {
       }
 
       const { topicId, strategyOverride } = resolved;
-      const result = await generateOne(topicId, strategyOverride, { silentToast: true });
-      if (!result.ok) {
-        const failure = recordPlatformGenerationFailure(
-          platformKey,
+      let projectId: number;
+      try {
+        projectId = assertMutationProjectId(selectedProjectId, location, accessibleProjectIds);
+      } catch {
+        const message = PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE;
+        if (!options?.silentToast) toast.error(message);
+        return { ok: false, errorMessage: message };
+      }
+
+      const effectiveStrategy = { ...platformStrategy, ...strategyOverride };
+      const strategyErr = validatePlatformContentStrategy(effectiveStrategy);
+      if (strategyErr) {
+        if (!options?.silentToast) toast.error(strategyErr);
+        return { ok: false, errorMessage: strategyErr, topicId, strategyOverride };
+      }
+
+      const ctx = entryContextRef.current;
+      try {
+        const startResult = await startPlatformDraftMutation.mutateAsync({
           topicId,
-          strategyOverride,
-          result.errorDetail ?? "内容生成失败，请稍后重试",
-        );
+          targetPublishPlatform: effectiveStrategy.targetPublishPlatform,
+          contentStrategyType: effectiveStrategy.contentStrategyType,
+          publishIdentity: effectiveStrategy.publishIdentity,
+          recommendedAccountGroup: effectiveStrategy.recommendedAccountGroup,
+          targetQuestion: effectiveStrategy.targetQuestion.trim(),
+          geoEnhancementGoal: effectiveStrategy.geoEnhancementGoal,
+          targetAiPlatforms: [...effectiveStrategy.targetAiPlatforms],
+          contentTaskId: resolvedContentTaskIdForGenerate ?? ctx.taskId ?? undefined,
+          diagnosisFinding: geoContentTaskSource?.diagnosisFinding ?? ctx.relatedGeoGap,
+          geoGap: geoContentTaskSource?.geoGapSummary ?? ctx.relatedGeoGap,
+          platformRule: formatPlatformRuleSummaryForGeneration(effectiveStrategy.targetPublishPlatform),
+          questionTemplateId: selectedQuestionTemplateId ?? undefined,
+          questionId: ctx.questionId ?? undefined,
+          sourceType: ctx.sourceType ?? undefined,
+        });
+        await invalidateArticles();
+        if (!options?.silentToast) {
+          toast.message(startResult.message || PLATFORM_DRAFT_START_MESSAGE);
+        }
+
+        const pollResult = await pollPlatformDraftUntilDone(projectId, startResult.articleId, {
+          onProgress: stage => platformContentProgress.setStage(stage),
+        });
+        if (!pollResult.ok) {
+          const failure = recordPlatformGenerationFailure(
+            platformKey,
+            topicId,
+            strategyOverride,
+            pollResult.errorMessage ?? PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
+          );
+          if (!options?.silentToast) {
+            toast.error(failure.message);
+          }
+          return {
+            ok: false,
+            errorMessage: failure.message,
+            topicId,
+            strategyOverride,
+          };
+        }
+        clearPlatformGenerationRetry(platformKey);
+        return { ok: true, userNotice: pollResult.userNotice, topicId, strategyOverride };
+      } catch (err) {
+        if (!options?.silentToast && handleSubscriptionLimitMutationError(err)) {
+          return { ok: false, errorMessage: SUBSCRIPTION_LIMIT_CONTENT_MESSAGE, topicId, strategyOverride };
+        }
+        const msg = readGenerateArticleError(err);
+        const failure = recordPlatformGenerationFailure(platformKey, topicId, strategyOverride, msg);
         if (!options?.silentToast) {
           toast.error(failure.message);
         }
-        return {
-          ok: false,
-          errorMessage: failure.message,
-          topicId,
-          strategyOverride,
-        };
+        return { ok: false, errorMessage: failure.message, topicId, strategyOverride };
       }
-      clearPlatformGenerationRetry(platformKey);
-      return { ok: true, userNotice: result.userNotice, topicId, strategyOverride };
     },
     [
       resolvePlatformGenerationParams,
-      generateOne,
-      recordPlatformGenerationFailure,
-      clearPlatformGenerationRetry,
       selectedProjectId,
       location,
       accessibleProjectIds,
-      utils,
+      platformStrategy,
+      geoContentTaskSource,
+      resolvedContentTaskIdForGenerate,
+      selectedQuestionTemplateId,
+      startPlatformDraftMutation,
+      invalidateArticles,
+      pollPlatformDraftUntilDone,
+      platformContentProgress,
+      recordPlatformGenerationFailure,
+      clearPlatformGenerationRetry,
     ],
   );
 
@@ -2439,12 +2621,7 @@ export default function WeeklyContentPage() {
   };
 
   const handlePlatformRegenerateFromBoard = (platformKey: WeeklyPlatformKey) => {
-    const hit = findArticleByPlatform(platformKey);
-    if (!hit || typeof hit.topicId !== "number") {
-      toast.message("该平台暂无已生成内容");
-      return;
-    }
-    void generateOne(hit.topicId);
+    void runPlatformContentGenerationUi(platformKey);
   };
 
   const handlePlatformEnqueue = (platformKey: WeeklyPlatformKey) => {
@@ -3279,7 +3456,7 @@ export default function WeeklyContentPage() {
                   recommendedPlatforms={contentTaskViewQuery.data.recommendedPlatforms}
                   boardBusy={batchBusy}
                   generatingPlatformKey={generatingPlatformKey}
-                  anyGenerating={anyGenerating}
+                  anyGenerating={platformAnyGenerating}
                   onGenerate={key => void handlePlatformGenerate(key)}
                   onSaveAndQc={handlePlatformEdit}
                   onEnqueue={key => {
@@ -3301,7 +3478,7 @@ export default function WeeklyContentPage() {
                   rows={platformBoardRows}
                   boardBusy={batchBusy}
                   generatingPlatformKey={generatingPlatformKey}
-                  anyGenerating={anyGenerating}
+                  anyGenerating={platformAnyGenerating}
                   onGenerate={key => void handlePlatformGenerate(key)}
                   onSaveAndQc={handlePlatformEdit}
                   onEnqueue={key => {

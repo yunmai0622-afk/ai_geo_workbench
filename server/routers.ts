@@ -219,6 +219,10 @@ import {
   assertEnterpriseProfileForPlatformGeneration,
   assertPlatformContentStrategyParams,
 } from "./platformContentGenerationPreconditions";
+import {
+  getPlatformDraftGenerationStatus,
+  startPlatformDraftGeneration,
+} from "./platformDraftGenerationService";
 import { mergeAiTestResultsByStage, normalizeAiTestResult } from "@shared/aiTestEvidence";
 import { buildAiMentionSuggestion, runAiMentionCheck } from "./geoAiMentionCheck";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
@@ -3751,6 +3755,68 @@ const geoRouter = router({
         userNotice: qualityCheckPassed ? null : PLATFORM_CONTENT_QC_MANUAL_REVIEW_MESSAGE,
       } as const;
     }),
+    startPlatformDraftGeneration: protectedProcedure
+      .input(
+        z
+          .object({
+            topicId: z.number().int().positive(),
+            targetPublishPlatform: z.enum(PUBLISH_PLATFORM_IDS),
+            contentStrategyType: z.enum(CONTENT_ASSET_TYPES),
+            publishIdentity: z.enum(PUBLISH_IDENTITIES),
+            recommendedAccountGroup: z.enum(ACCOUNT_GROUP_TYPES).optional(),
+            targetQuestion: z.string().trim().min(1),
+            geoEnhancementGoal: z.enum(GEO_ENHANCEMENT_GOAL_OPTIONS),
+            targetAiPlatforms: z.array(z.string().min(1)).min(1),
+            contentTaskId: z.number().int().positive().optional(),
+            diagnosisFinding: z.string().trim().max(4000).optional(),
+            geoGap: z.string().trim().max(4000).optional(),
+            platformRule: z.string().trim().max(4000).optional(),
+            questionTemplateId: z.number().int().positive().optional(),
+            questionId: z.number().int().positive().optional(),
+            sourceType: z.string().trim().max(64).optional(),
+          }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const userId = getCurrentUserId(ctx);
+        const dbForLimit = await requireDb();
+        await assertCanGenerateContent(dbForLimit, userId, ctx.user!.role);
+        await assertContentGenerationRateLimit(userId, ctx.user!.role);
+        const db = await requireDb();
+        const topicRows = await db
+          .select({ projectId: geoArticleTopics.projectId })
+          .from(geoArticleTopics)
+          .where(eq(geoArticleTopics.id, input.topicId))
+          .limit(1);
+        const topic = topicRows[0];
+        if (!topic) throw new TRPCError({ code: "NOT_FOUND", message: "文章选题不存在" });
+        await requireProjectAccess(ctx, topic.projectId);
+        if (input.contentTaskId != null) {
+          await assertProjectScopedContentTask(db, ctx, {
+            projectId: topic.projectId,
+            contentTaskId: input.contentTaskId,
+          });
+        }
+        try {
+          return await startPlatformDraftGeneration(db, input);
+        } catch (error) {
+          if (error instanceof TRPCError) throw error;
+          const raw = error instanceof Error ? error.message : "内容生成启动失败";
+          const message = toPlatformContentGenerationError(raw);
+          throw new TRPCError({ code: "BAD_REQUEST", message });
+        }
+      }),
+    getPlatformDraftGenerationStatus: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          articleId: z.number().int().positive(),
+        }),
+      )
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        return getPlatformDraftGenerationStatus(db, input);
+      }),
     updateGeneratedArticle: protectedProcedure
       .input(
         z.object({
