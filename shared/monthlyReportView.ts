@@ -25,6 +25,7 @@ export const MONTHLY_REPORT_EXECUTING_MESSAGE =
 export type AiTestRunRateInput = {
   mentionedCompany?: boolean | null;
   recommendedCompany?: boolean | null;
+  competitorMentioned?: boolean | null;
   platform?: string | null;
   testedAt?: Date | string | null;
 };
@@ -102,6 +103,9 @@ export type MonthlyReportView = {
     recommendRateBaseline: number | null;
     recommendRateResult: number | null;
     recommendRateDelta: number | null;
+    competitorRateBaseline: number | null;
+    competitorRateResult: number | null;
+    competitorRateDelta: number | null;
     pendingLabel: string | null;
   };
   weakDimensionChanges: Array<{
@@ -171,6 +175,7 @@ export function formatMonthlyReportPeriodLabel(
 export function computeAiTestRatesFromRuns(runs: AiTestRunRateInput[]): {
   mentionRate: number | null;
   recommendRate: number | null;
+  competitorRate: number | null;
   questionCount: number;
   byPlatform: Array<{
     platform: string;
@@ -180,10 +185,11 @@ export function computeAiTestRatesFromRuns(runs: AiTestRunRateInput[]): {
   }>;
 } {
   if (runs.length === 0) {
-    return { mentionRate: null, recommendRate: null, questionCount: 0, byPlatform: [] };
+    return { mentionRate: null, recommendRate: null, competitorRate: null, questionCount: 0, byPlatform: [] };
   }
   const mentionCount = runs.filter(r => r.mentionedCompany).length;
   const recommendCount = runs.filter(r => r.recommendedCompany).length;
+  const competitorCount = runs.filter(r => r.competitorMentioned).length;
   const byPlatformMap = new Map<string, AiTestRunRateInput[]>();
   for (const run of runs) {
     const platform = (run.platform ?? "未知平台").trim() || "未知平台";
@@ -200,6 +206,7 @@ export function computeAiTestRatesFromRuns(runs: AiTestRunRateInput[]): {
   return {
     mentionRate: mentionCount / runs.length,
     recommendRate: recommendCount / runs.length,
+    competitorRate: competitorCount / runs.length,
     questionCount: runs.length,
     byPlatform,
   };
@@ -390,6 +397,9 @@ export function buildMonthlyReportView(input: {
         recommendRateBaseline: null,
         recommendRateResult: null,
         recommendRateDelta: null,
+        competitorRateBaseline: null,
+        competitorRateResult: null,
+        competitorRateDelta: null,
         pendingLabel: MONTHLY_REPORT_PENDING_SUMMARY,
       },
       weakDimensionChanges: [],
@@ -446,6 +456,8 @@ export function buildMonthlyReportView(input: {
   const mentionResult = hasRetestData ? resultRates.mentionRate : null;
   const recommendBaseline = baselineRates.recommendRate;
   const recommendResult = hasRetestData ? resultRates.recommendRate : null;
+  const competitorBaseline = baselineRates.competitorRate;
+  const competitorResult = hasRetestData ? resultRates.competitorRate : null;
 
   const maturityDelta =
     hasRetestData && input.plan.resultMaturityScore != null
@@ -506,6 +518,12 @@ export function buildMonthlyReportView(input: {
       recommendRateDelta:
         recommendBaseline != null && recommendResult != null
           ? recommendResult - recommendBaseline
+          : null,
+      competitorRateBaseline: competitorBaseline,
+      competitorRateResult: competitorResult,
+      competitorRateDelta:
+        competitorBaseline != null && competitorResult != null
+          ? competitorResult - competitorBaseline
           : null,
       pendingLabel: hasRetestData ? null : MONTHLY_REPORT_PENDING_SUMMARY,
     },

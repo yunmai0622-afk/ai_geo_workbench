@@ -13,6 +13,7 @@ import {
   MONTHLY_REPORT_PAGE_TITLE,
   type MonthlyReportView,
 } from "@shared/monthlyReportView";
+import { DELIVERY_REPORT_COMPETITOR_RATE_EXPLANATION } from "@shared/workspaceBrandValueOverview";
 import { ArrowRight, ChevronDown, FileBarChart2, Sparkles, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -26,15 +27,18 @@ function ReportMetric({
   label,
   value,
   testId,
+  hint,
 }: {
   label: string;
   value: string;
   testId?: string;
+  hint?: string;
 }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" data-testid={testId}>
       <p className="text-xs font-medium text-gray-500">{label}</p>
       <p className="mt-2 text-lg font-semibold text-gray-900">{value}</p>
+      {hint ? <p className="mt-2 text-[11px] leading-4 text-gray-500">{hint}</p> : null}
     </div>
   );
 }
@@ -63,7 +67,7 @@ function MonthlyMaturityReportSections({
           <h2 className="text-lg font-semibold text-gray-900">第一屏 · 本月成效摘要</h2>
           <p className="text-sm text-gray-500">基于月度计划基线与复测结果的成熟度与 AI 表现变化</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ReportMetric
             label="成熟度变化"
             value={formatMonthlyReportMaturityChange(
@@ -88,6 +92,17 @@ function MonthlyMaturityReportSections({
             )}
             testId="monthly-report-recommend-change"
           />
+          {report.summary.competitorRateBaseline != null ? (
+            <ReportMetric
+              label="竞品出现率"
+              value={formatMonthlyReportRateChange(
+                report.summary.competitorRateBaseline,
+                report.summary.competitorRateResult,
+              )}
+              testId="monthly-report-competitor-rate"
+              hint={DELIVERY_REPORT_COMPETITOR_RATE_EXPLANATION}
+            />
+          ) : null}
         </div>
       </section>
 

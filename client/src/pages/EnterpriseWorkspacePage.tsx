@@ -7,6 +7,7 @@ import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { WorkspaceDashboardOverviewCards } from "@/components/project/WorkspaceDashboardOverviewCards";
+import { AiBrandValueOverviewSection } from "@/components/workspace/AiBrandValueOverviewSection";
 import { WorkspaceInclusionMonitoringSection } from "@/components/workspace/WorkspaceInclusionMonitoringSection";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ import {
 } from "@/lib/deliveryStage";
 import { WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY } from "@shared/workspaceRiskHints";
 import { appendWeeklyContentEntryParams } from "@shared/weeklyContentEntryContext";
+import { buildTopWeaknessHighlights } from "@shared/maturityDetailDisplay";
+import { buildT0DiagnosisResultsDisplay } from "@shared/t0DiagnosisDisplay";
 import {
   resolveMainChainSteps,
   toMainChainProgressInput,
@@ -96,6 +99,14 @@ export default function EnterpriseWorkspacePage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
+  const maturityLatestQuery = trpc.geo.maturity.getLatest.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const testRoundsQuery = trpc.geo.testRounds.list.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
   const monthlyPlanQuery = trpc.geo.monthlyPlan.getCurrent.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
@@ -128,6 +139,71 @@ export default function EnterpriseWorkspacePage() {
   }, [summaryQuery.data, selectedProjectId, localAgentOnline, localAgentConnectionStatus, accountSnapshot]);
 
   const metrics = summaryQuery.data;
+  const latestCompletedT0Round = useMemo(
+    () =>
+      (testRoundsQuery.data ?? []).find(
+        round => round.roundType === "T0_BASELINE" && round.status === "completed",
+      ) ?? null,
+    [testRoundsQuery.data],
+  );
+  const t0RunsQuery = trpc.geo.aiTestRuns.listByRound.useQuery(
+    { projectId: selectedProjectId!, roundId: latestCompletedT0Round?.id ?? "" },
+    { enabled: Boolean(selectedProjectId && latestCompletedT0Round?.id) },
+  );
+  const t0RoundQuestionsQuery = trpc.geo.roundQuestions.listByRound.useQuery(
+    { projectId: selectedProjectId!, roundId: latestCompletedT0Round?.id ?? "" },
+    { enabled: Boolean(selectedProjectId && latestCompletedT0Round?.id) },
+  );
+  const t0QuestionTypeById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const link of t0RoundQuestionsQuery.data ?? []) {
+      if (!link || typeof link.questionId !== "number") continue;
+      const questionType = link.question?.questionType;
+      if (typeof questionType === "string" && questionType.trim()) {
+        map.set(link.questionId, questionType);
+      }
+    }
+    return map;
+  }, [t0RoundQuestionsQuery.data]);
+  const t0ResultsDisplay = useMemo(() => {
+    if (!latestCompletedT0Round) return null;
+    const runs = t0RunsQuery.data ?? [];
+    if (runs.length === 0) return null;
+    return buildT0DiagnosisResultsDisplay(
+      runs.map(run => ({
+        questionId: run.questionId,
+        platform: run.platform,
+        mentionedCompany: run.mentionedCompany,
+        recommendedCompany: run.recommendedCompany,
+        competitorMentioned: run.competitorMentioned,
+        competitorNames: run.competitorNames ?? [],
+      })),
+      t0QuestionTypeById,
+    );
+  }, [latestCompletedT0Round, t0RunsQuery.data, t0QuestionTypeById]);
+  const aiBrandOverviewLoading =
+    summaryQuery.isLoading ||
+    testRoundsQuery.isLoading ||
+    (Boolean(latestCompletedT0Round?.id) &&
+      (t0RunsQuery.isLoading || t0RoundQuestionsQuery.isLoading));
+  const hasAiBrandDiagnosisData = metrics ? workspaceHasAiTestData(metrics) : false;
+  const aiBrandMentionRate = metrics?.brandMentionRate ?? t0ResultsDisplay?.mentionRate ?? null;
+  const aiBrandRecommendRate = metrics?.recommendRate ?? t0ResultsDisplay?.recommendRate ?? null;
+  const aiBrandCompetitorRate =
+    t0ResultsDisplay && t0ResultsDisplay.totalRuns > 0
+      ? t0ResultsDisplay.competitorAppearances / t0ResultsDisplay.totalRuns
+      : null;
+  const aiBrandTopWeaknesses = useMemo(
+    () =>
+      maturityReportQuery.data
+        ? buildTopWeaknessHighlights(
+            maturityReportQuery.data,
+            (maturityLatestQuery.data?.calculationDetail as Record<string, unknown> | null) ?? null,
+            3,
+          )
+        : [],
+    [maturityReportQuery.data, maturityLatestQuery.data?.calculationDetail],
+  );
   const homeDisplay = useWorkspaceHomeDisplay(selectedProjectId, metrics);
   const growthSuggestions = useGeoGrowthSuggestions(selectedProjectId, Boolean(selectedProjectId));
   const stage = resolution?.currentStage;
@@ -258,6 +334,19 @@ export default function EnterpriseWorkspacePage() {
         message={`欢迎使用${PLATFORM_PRODUCT_NAME}，从左侧菜单开始你的第一步`}
         data-testid="first-use-hint-workspace"
       />
+      {selectedProjectId ? (
+        <AiBrandValueOverviewSection
+          projectId={selectedProjectId}
+          hasDiagnosisData={hasAiBrandDiagnosisData}
+          loading={aiBrandOverviewLoading}
+          maturityScore={maturityReportQuery.data?.totalScore ?? null}
+          mentionRate={aiBrandMentionRate}
+          recommendRate={aiBrandRecommendRate}
+          competitorRate={aiBrandCompetitorRate}
+          topWeaknesses={aiBrandTopWeaknesses}
+          onNavigate={setLocation}
+        />
+      ) : null}
       {metrics?.retestDueReminder && selectedProjectId ? (
         <RetestDueReminderCard
           reminder={metrics.retestDueReminder}

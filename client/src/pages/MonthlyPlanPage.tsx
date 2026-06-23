@@ -1,4 +1,5 @@
 import { P0Card } from "@/components/geo/P0UiPrimitives";
+import { MonthlyPlanCompletionBenefitsSection } from "@/components/monthlyPlan/MonthlyPlanCompletionBenefitsSection";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -55,6 +56,10 @@ export default function MonthlyPlanPage() {
     { enabled: enabled && Boolean(selectedProjectId) },
   );
   const maturityQuery = trpc.geo.maturity.getMaturityReport.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
@@ -166,6 +171,14 @@ export default function MonthlyPlanPage() {
           ) : null}
         </div>
       </header>
+
+      {(showActivePlan || showCompletedPlan) && plan ? (
+        <MonthlyPlanCompletionBenefitsSection
+          progress={progress}
+          tasks={tasks}
+          boundPublishAccountCount={workspaceSummaryQuery.data?.boundPublishAccountCount ?? null}
+        />
+      ) : null}
 
       {currentQuery.isLoading || maturityQuery.isLoading ? (
         <div className="flex items-center gap-2 text-sm text-gray-500">

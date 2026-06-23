@@ -182,6 +182,7 @@ export async function loadMonthlyReportData(
     .select({
       mentionedCompany: aiTestRuns.mentionedCompany,
       recommendedCompany: aiTestRuns.recommendedCompany,
+      competitorMentioned: aiTestRuns.competitorMentioned,
       platform: aiTestRuns.platform,
       testedAt: aiTestRuns.testedAt,
     })
