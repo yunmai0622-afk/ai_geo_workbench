@@ -5342,3 +5342,33 @@
 [2026-06-22T13:21:36.266Z] [Auth] Missing session cookie
 [2026-06-22T13:27:38.180Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
 [2026-06-22T13:28:14.552Z] 9:28:14 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T08:57:58.335Z] 4:57:58 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T08:57:58.338Z] 4:57:58 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T08:57:58.341Z] 4:57:58 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T08:57:58.344Z] 4:57:58 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T08:57:58.346Z] 4:57:58 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T08:57:58.347Z] 4:57:58 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T08:57:58.350Z] 4:57:58 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T08:57:58.352Z] 4:57:58 AM [vite] (client) hmr update /src/index.css, /src/pages/V12FlowPages.tsx
+[2026-06-23T08:57:58.357Z] 4:57:58 AM [vite] (client) hmr update /src/pages/V12FlowPages.tsx
+[2026-06-23T08:57:58.360Z] 4:57:58 AM [vite] (client) hmr update /src/components/weekly/ContentProductionAssistantPanel.tsx
+[2026-06-23T08:57:58.490Z] 4:57:58 AM [tsx] change in ./shared/weeklyContentTaskStatus.ts Restarting...
+[2026-06-23T08:58:08.275Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-23T08:58:08.312Z] Server running on http://localhost:3000/
+[2026-06-23T08:58:09.363Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-23T08:58:17.669Z] Dev server process group stopped
+[2026-06-23T08:58:17.673Z] ELIFECYCLE  Command failed.
+[2026-06-23T08:58:17.782Z] Dev server exited with code -15
+[2026-06-23T08:58:21.431Z] Starting dev server with command: pnpm run dev
+[2026-06-23T08:58:22.468Z] 
+[2026-06-23T08:58:22.473Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-23T08:58:22.473Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-23T08:58:22.474Z] 
+[2026-06-23T08:58:30.927Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-23T08:58:30.980Z] Server running on http://localhost:3000/
+[2026-06-23T08:58:32.286Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-23T08:59:06.995Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-23T08:59:06.996Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-23T08:59:10.715Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-23T08:59:10.716Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-23T08:59:15.572Z] [geo.scores.latest] { requestedProjectId: 180001, returned: null, sameProjectTop3: [] }

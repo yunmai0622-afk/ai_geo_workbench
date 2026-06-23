@@ -1,0 +1,34 @@
+{
+  "query": "SELECT tr.projectId, tr.id, tr.roundType, tr.status, tr.finishedAt, tr.createdAt\nFROM test_rounds tr\nWHERE tr.projectId IN (180001, 150001, 120001)\nORDER BY tr.projectId DESC, tr.createdAt DESC\nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT tr.projectId, tr.id, tr.roundType, tr.status, tr.finishedAt, tr.createdAt\nFROM test_rounds tr\nWHERE tr.projectId IN (180001, 150001, 120001)\nORDER BY tr.projectId DESC, tr.createdAt DESC\nLIMIT 10;",
+  "rows": [
+    {
+      "projectId": "180001",
+      "id": "17466eac-f406-4dc1-8642-8cb9e55e6366",
+      "roundType": "T0_BASELINE",
+      "status": "running",
+      "finishedAt": "NULL",
+      "createdAt": "2026-06-23 07:31:47"
+    },
+    {
+      "projectId": "150001",
+      "id": "335146cd-a0e5-4c44-866a-83d08e48967d",
+      "roundType": "T0_BASELINE",
+      "status": "completed",
+      "finishedAt": "2026-06-17 06:20:28",
+      "createdAt": "2026-06-17 05:31:10"
+    },
+    {
+      "projectId": "150001",
+      "id": "0b2a6c4c-0f07-4a4d-876d-c097a518f209",
+      "roundType": "T0_BASELINE",
+      "status": "failed",
+      "finishedAt": "2026-06-17 05:28:29",
+      "createdAt": "2026-06-10 01:46:11"
+    }
+  ],
+  "messages": [],
+  "stdout": "projectId\tid\troundType\tstatus\tfinishedAt\tcreatedAt\n180001\t17466eac-f406-4dc1-8642-8cb9e55e6366\tT0_BASELINE\trunning\tNULL\t2026-06-23 07:31:47\n150001\t335146cd-a0e5-4c44-866a-83d08e48967d\tT0_BASELINE\tcompleted\t2026-06-17 06:20:28\t2026-06-17 05:31:10\n150001\t0b2a6c4c-0f07-4a4d-876d-c097a518f209\tT0_BASELINE\tfailed\t2026-06-17 05:28:29\t2026-06-10 01:46:11\n",
+  "stderr": "",
+  "execution_time_ms": 1822
+}

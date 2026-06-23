@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, ownerUserId, enterpriseName FROM geo_projects WHERE id = 180001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, ownerUserId, enterpriseName FROM geo_projects WHERE id = 180001;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'kzxhj9uy5xjygmmczjypbe.geo_projects' doesn't exist"
+  ]
+}

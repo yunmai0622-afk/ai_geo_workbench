@@ -1,0 +1,8 @@
+{
+  "query": "SELECT p.id, p.enterpriseName, p.status, \n  (SELECT COUNT(*) FROM ai_diagnosis_tasks t WHERE t.projectId = p.id) as taskCount,\n  (SELECT status FROM ai_diagnosis_tasks t WHERE t.projectId = p.id ORDER BY t.createdAt DESC LIMIT 1) as latestTaskStatus\nFROM geo_projects p \nWHERE p.ownerUserId = 16740006\nORDER BY p.id DESC\nLIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT p.id, p.enterpriseName, p.status, \n  (SELECT COUNT(*) FROM ai_diagnosis_tasks t WHERE t.projectId = p.id) as taskCount,\n  (SELECT status FROM ai_diagnosis_tasks t WHERE t.projectId = p.id ORDER BY t.createdAt DESC LIMIT 1) as latestTaskStatus\nFROM geo_projects p \nWHERE p.ownerUserId = 16740006\nORDER BY p.id DESC\nLIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'kzxhj9uy5xjygmmczjypbe.ai_diagnosis_tasks' doesn't exist"
+  ]
+}
