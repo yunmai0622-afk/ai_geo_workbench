@@ -5403,3 +5403,32 @@
 [2026-06-23T09:39:44.650Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
 [2026-06-23T09:39:44.651Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
 [2026-06-23T09:39:49.283Z] [geo.scores.latest] { requestedProjectId: 180001, returned: null, sameProjectTop3: [] }
+[2026-06-23T11:10:58.023Z] 7:10:58 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/ProfileAiUnderstandingPreview.tsx
+[2026-06-23T11:10:58.024Z] 7:10:58 AM [vite] (client) hmr update /src/index.css, /src/components/enterpriseProfile/wizard/WizardStepPanels.tsx
+[2026-06-23T11:10:58.032Z] 7:10:58 AM [vite] (client) hmr update /src/index.css
+[2026-06-23T11:10:58.034Z] 7:10:58 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/PlatformContentBoard.tsx
+[2026-06-23T11:10:58.038Z] 7:10:58 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/WeeklyAdvancedInfoSections.tsx
+[2026-06-23T11:10:58.040Z] 7:10:58 AM [vite] (client) hmr update /src/index.css, /src/pages/WeeklyContentPage.tsx
+[2026-06-23T11:10:58.041Z] 7:10:58 AM [vite] (client) hmr update /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx
+[2026-06-23T11:10:58.042Z] 7:10:58 AM [vite] (client) hmr update /src/pages/EnterpriseWorkspacePage.tsx, /src/components/project/EnterpriseProjectShell.tsx, /src/components/project/ProjectNextActionPanel.tsx, /src/components/project/ProjectWorkspaceTopBar.tsx, /src/components/publishing/PublishAssistantPanel.tsx, /src/pages/ContentPublishingCenterPage.tsx, /src/components/weekly/ContentProductionAssistantPanel.tsx, /src/pages/WeeklyContentPage.tsx, /src/components/weekly/WeeklyContentDetailSheet.tsx, /src/components/platformAccounts/PublishPlatformAccountsOverview.tsx, /src/components/LocalAgentDownloadCard.tsx, /src/components/enterpriseProfile/ProfileCompletenessLowHint.tsx
+[2026-06-23T11:10:58.043Z] 7:10:58 AM [vite] (client) hmr update /src/pages/WeeklyContentPage.tsx, /src/components/weekly/PlatformContentBoard.tsx, /src/components/weekly/ContentTaskProgressionView.tsx
+[2026-06-23T11:10:58.048Z] 7:10:58 AM [vite] (client) hmr update /src/index.css, /src/components/weekly/ContentTaskProgressionView.tsx
+[2026-06-23T11:10:58.155Z] 7:10:58 AM [tsx] change in ./shared/platformContentProfileReadiness.ts Restarting...
+[2026-06-23T11:11:06.671Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-23T11:11:06.722Z] Server running on http://localhost:3000/
+[2026-06-23T11:11:07.514Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-23T11:11:13.999Z] Dev server process group stopped
+[2026-06-23T11:11:14.003Z] ELIFECYCLE  Command failed.
+[2026-06-23T11:11:14.093Z] Dev server exited with code -15
+[2026-06-23T11:11:17.065Z] Starting dev server with command: pnpm run dev
+[2026-06-23T11:11:18.003Z] 
+[2026-06-23T11:11:18.004Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-23T11:11:18.005Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-23T11:11:18.005Z] 
+[2026-06-23T11:11:26.715Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-23T11:11:26.780Z] Server running on http://localhost:3000/
+[2026-06-23T11:11:27.714Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-23T11:12:04.246Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-23T11:12:04.247Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-23T11:12:07.432Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-23T11:12:07.433Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
