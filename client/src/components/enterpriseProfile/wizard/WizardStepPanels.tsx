@@ -202,7 +202,8 @@ export function WizardStepPanels({
           <Textarea value={form.productDesc} onChange={e => onFormChange({ productDesc: e.target.value })} rows={3} />
         </label>
         <label className="block space-y-1">
-          <FieldLabel>主要卖点（最多 5 条）</FieldLabel>
+          <FieldLabel>你的核心优势是什么？</FieldLabel>
+          <p className="text-xs text-gray-500">选填。填写后 AI 更容易在对比场景中推荐你。</p>
           <MultiValueInput
             values={form.keyPoints}
             draft={drafts.keyPointDraft}
@@ -237,7 +238,8 @@ export function WizardStepPanels({
           <Textarea value={form.targetCustomer} onChange={e => onFormChange({ targetCustomer: e.target.value })} rows={3} />
         </label>
         <label className="block space-y-1">
-          <FieldLabel>客户主要痛点</FieldLabel>
+          <FieldLabel>你的产品主要解决什么问题？</FieldLabel>
+          <p className="text-xs text-gray-500">选填。填写后内容生成与 AI 检测会更贴近客户真实提问。</p>
           <MultiValueInput
             values={form.customerPains}
             draft={drafts.painDraft}

@@ -13,6 +13,10 @@ import type { ContentReviewStatus } from "@shared/contentReviewStatus";
 import type { PlatformBatchQueueItem } from "@shared/platformBatchGeneration";
 import type { AiTaskProgressErrorCategory } from "@shared/aiTaskProgress";
 import { PLATFORM_CONTENT_PROGRESS_HINT_90S } from "@shared/aiTaskProgress";
+import {
+  resolveProfileCoreAdvantage,
+  resolveProfilePrimaryPain,
+} from "@shared/geoProfileP0Readiness";
 
 type Props = {
   profilePreview: ProfileAiPreviewModel | null;
@@ -221,12 +225,12 @@ export function buildProfilePreviewFromRecord(
       : [];
   return {
     brandName: String(profile.brandName ?? profile.enterpriseName ?? brandName ?? ""),
-    industry: String(profile.industry ?? ""),
+    industry: String(profile.industry ?? profile.industryTag ?? ""),
     oneLiner: String(profile.oneLiner ?? profile.brandIntro ?? ""),
-    productDesc: String(profile.productDesc ?? profile.coreProducts ?? ""),
-    targetCustomer: String(profile.targetCustomer ?? ""),
-    primaryPain: String(profile.primaryPain ?? ""),
-    coreAdvantage: String(profile.coreAdvantage ?? ""),
+    productDesc: String(profile.productDesc ?? profile.coreProducts ?? profile.productServiceIntro ?? ""),
+    targetCustomer: String(profile.targetCustomer ?? profile.targetCustomers ?? ""),
+    primaryPain: resolveProfilePrimaryPain(profile),
+    coreAdvantage: resolveProfileCoreAdvantage(profile),
     keywords,
   };
 }

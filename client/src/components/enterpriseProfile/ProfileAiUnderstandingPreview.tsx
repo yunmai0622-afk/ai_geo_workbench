@@ -26,8 +26,8 @@ export function ProfileAiUnderstandingPreview({ model }: Props) {
     { label: "一句话介绍", value: model.oneLiner },
     { label: "核心产品/服务", value: model.productDesc },
     { label: "目标客户", value: model.targetCustomer },
-    { label: "解决的问题", value: model.primaryPain },
-    { label: "核心优势", value: model.coreAdvantage },
+    { label: "你的产品主要解决什么问题？", value: model.primaryPain },
+    { label: "你的核心优势是什么？", value: model.coreAdvantage },
     { label: "推荐关键词", value: model.keywords.filter(Boolean).join("、") },
   ];
 

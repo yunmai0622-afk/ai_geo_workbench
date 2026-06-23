@@ -51,6 +51,7 @@ type Props = {
   rows: PlatformBoardRow[];
   boardBusy?: boolean;
   generatingPlatformKey?: WeeklyPlatformKey | null;
+  activeInFlightPlatformKey?: WeeklyPlatformKey | null;
   anyGenerating?: boolean;
   onGenerate: (key: WeeklyPlatformDef["key"]) => void;
   onSaveAndQc: (key: WeeklyPlatformDef["key"]) => void;
@@ -64,6 +65,7 @@ export function PlatformContentBoard({
   rows,
   boardBusy = false,
   generatingPlatformKey = null,
+  activeInFlightPlatformKey = null,
   anyGenerating = false,
   onGenerate,
   onSaveAndQc,
@@ -117,12 +119,14 @@ export function PlatformContentBoard({
             status,
             boardBusy,
             generatingPlatformKey,
+            activeInFlightPlatformKey,
             platformKey: def.key,
             anyGenerating,
           });
           const serialHint = showSerialGenerationHint({
             anyGenerating,
             generatingPlatformKey,
+            activeInFlightPlatformKey,
             platformKey: def.key,
             actionKind: action.kind,
           });

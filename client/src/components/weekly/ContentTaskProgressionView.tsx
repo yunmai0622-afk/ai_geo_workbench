@@ -155,6 +155,7 @@ type PlatformTaskBoardProps = {
   recommendedPlatforms: RecommendedPlatformView[];
   boardBusy?: boolean;
   generatingPlatformKey?: WeeklyPlatformKey | null;
+  activeInFlightPlatformKey?: WeeklyPlatformKey | null;
   anyGenerating?: boolean;
   onGenerate: (key: WeeklyPlatformKey) => void;
   onSaveAndQc: (key: WeeklyPlatformKey) => void;
@@ -169,6 +170,7 @@ export function PlatformTaskBoard({
   recommendedPlatforms,
   boardBusy = false,
   generatingPlatformKey = null,
+  activeInFlightPlatformKey = null,
   anyGenerating = false,
   onGenerate,
   onSaveAndQc,
@@ -228,12 +230,14 @@ export function PlatformTaskBoard({
             status,
             boardBusy,
             generatingPlatformKey,
+            activeInFlightPlatformKey,
             platformKey: def.key,
             anyGenerating,
           });
           const serialHint = showSerialGenerationHint({
             anyGenerating,
             generatingPlatformKey,
+            activeInFlightPlatformKey,
             platformKey: def.key,
             actionKind: action.kind,
           });

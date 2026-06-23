@@ -3,7 +3,11 @@
  * 与 evaluateGeoProfileP0Readiness / AssetCenter 建档页口径一致。
  */
 
-import { evaluateGeoProfileP0Readiness } from "./geoProfileP0Readiness";
+import {
+  evaluateGeoProfileP0Readiness,
+  isProfileCoreAdvantageFilled,
+  isProfilePrimaryPainFilled,
+} from "./geoProfileP0Readiness";
 
 export const PROFILE_COMPLETENESS_LOW_THRESHOLD = 60;
 
@@ -24,25 +28,14 @@ export type ProfileCompletenessFieldKey =
 
 export const PROFILE_COMPLETENESS_FIELD_COUNT = 8;
 
-const LABEL_TO_KEY: Record<string, ProfileCompletenessFieldKey> = {
-  企业名称: "brandName",
-  所属行业: "industry",
-  一句话介绍: "oneLiner",
-  "核心产品/服务": "productDesc",
-  目标客户: "targetCustomer",
-  主要解决的问题: "primaryPain",
-  核心优势: "coreAdvantage",
-  关键词: "keywords",
-};
-
 export const PROFILE_COMPLETENESS_FIELD_LABELS: Record<ProfileCompletenessFieldKey, string> = {
   brandName: "企业名称",
   industry: "所属行业",
   oneLiner: "一句话介绍",
   productDesc: "核心产品/服务",
   targetCustomer: "目标客户",
-  primaryPain: "主要解决的问题",
-  coreAdvantage: "核心优势",
+  primaryPain: "你的产品主要解决什么问题？",
+  coreAdvantage: "你的核心优势是什么？",
   keywords: "关键词",
 };
 
@@ -56,17 +49,63 @@ export type EnterpriseProfileCompleteness = {
   showLowCompletenessHint: boolean;
 };
 
-function labelsToMissingKeys(labels: string[]): ProfileCompletenessFieldKey[] {
-  return labels
-    .map(label => LABEL_TO_KEY[label])
-    .filter((k): k is ProfileCompletenessFieldKey => Boolean(k));
+
+export function evaluateProfileFieldFilled(
+  key: ProfileCompletenessFieldKey,
+  profile: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!profile) return false;
+  switch (key) {
+    case "brandName":
+      return Boolean(
+        (typeof profile.brandName === "string" && profile.brandName.trim()) ||
+          (typeof profile.enterpriseName === "string" && profile.enterpriseName.trim()),
+      );
+    case "industry":
+      return Boolean(
+        (typeof profile.industryTag === "string" && profile.industryTag.trim()) ||
+          (typeof profile.industry === "string" && profile.industry.trim()),
+      );
+    case "oneLiner":
+      return Boolean(
+        (typeof profile.oneLiner === "string" && profile.oneLiner.trim()) ||
+          (typeof profile.companyIntro === "string" && profile.companyIntro.trim()),
+      );
+    case "productDesc":
+      return Boolean(
+        (typeof profile.productDesc === "string" && profile.productDesc.trim()) ||
+          (typeof profile.productServiceIntro === "string" && profile.productServiceIntro.trim()) ||
+          (typeof profile.productIntro === "string" && profile.productIntro.trim()) ||
+          (typeof profile.coreSellingPoints === "string" && profile.coreSellingPoints.trim()),
+      );
+    case "targetCustomer":
+      return Boolean(
+        (typeof profile.targetCustomer === "string" && profile.targetCustomer.trim()) ||
+          (typeof profile.targetCustomers === "string" && profile.targetCustomers.trim()),
+      );
+    case "primaryPain":
+      return isProfilePrimaryPainFilled(profile);
+    case "coreAdvantage":
+      return isProfileCoreAdvantageFilled(profile);
+    case "keywords": {
+      const keywords = [
+        ...(Array.isArray(profile.keywords) ? profile.keywords : []),
+        ...(Array.isArray(profile.coreKeywords) ? profile.coreKeywords : []),
+      ].filter(v => typeof v === "string" && v.trim());
+      return keywords.length > 0;
+    }
+    default:
+      return false;
+  }
 }
 
 export function evaluateEnterpriseProfileCompletenessFromProfile(
   profile: Record<string, unknown> | null | undefined,
 ): EnterpriseProfileCompleteness {
-  const { complete, missingLabels } = evaluateGeoProfileP0Readiness(profile);
-  const missingKeys = labelsToMissingKeys(missingLabels);
+  const { complete } = evaluateGeoProfileP0Readiness(profile);
+  const allKeys = Object.keys(PROFILE_COMPLETENESS_FIELD_LABELS) as ProfileCompletenessFieldKey[];
+  const missingKeys = allKeys.filter(key => !evaluateProfileFieldFilled(key, profile));
+  const missingLabels = missingKeys.map(key => PROFILE_COMPLETENESS_FIELD_LABELS[key]);
   const filledCount = PROFILE_COMPLETENESS_FIELD_COUNT - missingKeys.length;
   const percent = Math.round((filledCount / PROFILE_COMPLETENESS_FIELD_COUNT) * 100);
   return {

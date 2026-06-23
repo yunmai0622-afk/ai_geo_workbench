@@ -183,6 +183,7 @@ function resolvePlatformBoardPrimaryActionKind(status: WeeklyContentTaskStatus, 
 
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { toastErrorDeduped } from "@/lib/dedupedToast";
 import { TRPCClientError } from "@trpc/client";
 import {
   toPlatformContentGenerationError,
@@ -1108,6 +1109,16 @@ export default function WeeklyContentPage() {
     }
     return map;
   }, [articles]);
+
+  const activeInFlightPlatformKey = useMemo((): WeeklyPlatformKey | null => {
+    const first = inFlightDraftByPlatform.keys().next().value;
+    return first ?? null;
+  }, [inFlightDraftByPlatform]);
+
+  useEffect(() => {
+    if (!activeInFlightPlatformKey) return;
+    setGeneratingPlatformKey(prev => prev ?? activeInFlightPlatformKey);
+  }, [activeInFlightPlatformKey]);
 
   const platformAnyGenerating = useMemo(
     () =>
@@ -2355,9 +2366,6 @@ export default function WeeklyContentPage() {
             strategyOverride,
             pollResult.errorMessage ?? PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
           );
-          if (!options?.silentToast) {
-            toast.error(failure.message);
-          }
           return {
             ok: false,
             errorMessage: failure.message,
@@ -2373,9 +2381,6 @@ export default function WeeklyContentPage() {
         }
         const msg = readGenerateArticleError(err);
         const failure = recordPlatformGenerationFailure(platformKey, topicId, strategyOverride, msg);
-        if (!options?.silentToast) {
-          toast.error(failure.message);
-        }
         return { ok: false, errorMessage: failure.message, topicId, strategyOverride };
       }
     },
@@ -2423,7 +2428,7 @@ export default function WeeklyContentPage() {
         setPlatformProgressErrorMessage(msg);
         platformContentProgress.fail();
         if (!options?.retryParams) {
-          toast.error(msg);
+          toastErrorDeduped(msg);
         }
         return;
       }
@@ -2453,7 +2458,7 @@ export default function WeeklyContentPage() {
         exhausted ? undefined : mapPlatformContentErrorCategory(raw || msg),
       );
       platformContentProgress.fail();
-      toast.error(msg);
+      toastErrorDeduped(displayMessage);
     } finally {
       setGeneratingPlatformKey(null);
     }
@@ -3456,6 +3461,7 @@ export default function WeeklyContentPage() {
                   recommendedPlatforms={contentTaskViewQuery.data.recommendedPlatforms}
                   boardBusy={batchBusy}
                   generatingPlatformKey={generatingPlatformKey}
+                  activeInFlightPlatformKey={activeInFlightPlatformKey}
                   anyGenerating={platformAnyGenerating}
                   onGenerate={key => void handlePlatformGenerate(key)}
                   onSaveAndQc={handlePlatformEdit}
@@ -3478,6 +3484,7 @@ export default function WeeklyContentPage() {
                   rows={platformBoardRows}
                   boardBusy={batchBusy}
                   generatingPlatformKey={generatingPlatformKey}
+                  activeInFlightPlatformKey={activeInFlightPlatformKey}
                   anyGenerating={platformAnyGenerating}
                   onGenerate={key => void handlePlatformGenerate(key)}
                   onSaveAndQc={handlePlatformEdit}

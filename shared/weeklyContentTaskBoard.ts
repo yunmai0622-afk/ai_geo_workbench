@@ -1,7 +1,7 @@
 import type { WeeklyContentTaskStatus } from "./weeklyContentTaskStatus";
 
 export const WEEKLY_SERIAL_GENERATION_HINT =
-  "当前已有平台稿正在生成，完成后可继续生成其他平台。";
+  "当前已有平台稿正在生成，稍后可继续";
 
 export type TaskBoardProgressMetrics = {
   needGenerate: number;
@@ -129,17 +129,26 @@ export function resolvePlatformTaskAction(
   return { kind: "generate", label: "生成平台稿" };
 }
 
+export function resolveActivePlatformGenerationKey(input: {
+  generatingPlatformKey: string | null;
+  activeInFlightPlatformKey?: string | null;
+}): string | null {
+  return input.generatingPlatformKey ?? input.activeInFlightPlatformKey ?? null;
+}
+
 export function shouldDisablePlatformGenerateButton(input: {
   status: WeeklyContentTaskStatus;
   boardBusy: boolean;
   generatingPlatformKey: string | null;
+  activeInFlightPlatformKey?: string | null;
   platformKey: string;
   anyGenerating: boolean;
 }): boolean {
+  const activeKey = resolveActivePlatformGenerationKey(input);
   if (input.status === "GENERATING") return true;
-  if (input.generatingPlatformKey === input.platformKey) return true;
-  if (input.boardBusy && input.generatingPlatformKey === input.platformKey) return true;
-  if (input.anyGenerating && input.generatingPlatformKey && input.generatingPlatformKey !== input.platformKey) {
+  if (activeKey === input.platformKey) return true;
+  if (input.boardBusy && activeKey === input.platformKey) return true;
+  if (input.anyGenerating && activeKey && activeKey !== input.platformKey) {
     return true;
   }
   return false;
@@ -148,13 +157,15 @@ export function shouldDisablePlatformGenerateButton(input: {
 export function showSerialGenerationHint(input: {
   anyGenerating: boolean;
   generatingPlatformKey: string | null;
+  activeInFlightPlatformKey?: string | null;
   platformKey: string;
   actionKind: PlatformTaskActionKind;
 }): boolean {
+  const activeKey = resolveActivePlatformGenerationKey(input);
   return (
     input.actionKind === "generate" &&
     input.anyGenerating &&
-    Boolean(input.generatingPlatformKey) &&
-    input.generatingPlatformKey !== input.platformKey
+    Boolean(activeKey) &&
+    activeKey !== input.platformKey
   );
 }

@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { extractProfileForQuestionGeneration } from "@shared/geoProfileQuestionMapping";
-import { evaluateProfileReadinessForT0 } from "@shared/geoProfileP0Readiness";
+import {
+  evaluateProfileReadinessForT0,
+  formatT0ProfileBlockingMessage,
+} from "@shared/geoProfileP0Readiness";
 import { isSyntheticGeoRawAnswer } from "@shared/geoSyntheticResponse";
 import {
   aiTestRuns,
@@ -173,7 +176,7 @@ export async function createT0RoundWithQuestions(
   if (!readiness.ready) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: `企业资料未满足 AI 现状检测要求，请先补全：${readiness.missingLabels.join("、")}`,
+      message: formatT0ProfileBlockingMessage(readiness.missingLabels),
     });
   }
 

@@ -107,6 +107,7 @@ export function evaluateEnterpriseProfileReadiness(input: EnterpriseProfileReadi
   const targetQuestion = firstMeaningful(
     input.platformStrategy?.targetQuestion,
     pains[0],
+    oneLinerText,
     resolvedProfile.keywords[0],
     Array.isArray(input.profile?.commonQuestions)
       ? (input.profile!.commonQuestions as unknown[]).find((x): x is string => typeof x === "string" && isMeaningfulProfileText(x))

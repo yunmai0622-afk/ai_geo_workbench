@@ -137,7 +137,7 @@ export function FiveMinuteBasicOnboardingSection({
 
         {/* Row 4 */}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="主要解决的问题" hint="客户最常遇到的痛点" required testId="p0-field-primary-pain" highlightMissing={isMissing("primaryPain")}>
+          <Field label="你的产品主要解决什么问题？" hint="选填。填写后内容生成与 AI 检测会更贴近客户真实提问" testId="p0-field-primary-pain" highlightMissing={isMissing("primaryPain")}>
             <Input
               className={inputClass}
               value={values.primaryPain}
@@ -145,7 +145,7 @@ export function FiveMinuteBasicOnboardingSection({
               placeholder="如：品牌在 AI 搜索中不可见"
             />
           </Field>
-          <Field label="核心优势" hint="相比同行，客户为什么选你" required testId="p0-field-core-advantage" highlightMissing={isMissing("coreAdvantage")}>
+          <Field label="你的核心优势是什么？" hint="选填。填写后 AI 更容易在对比场景中推荐你" testId="p0-field-core-advantage" highlightMissing={isMissing("coreAdvantage")}>
             <Input
               className={inputClass}
               value={values.coreAdvantage}

@@ -1,5 +1,6 @@
 /**
- * 品牌资产建档 P0 必填口径 — 与 AssetCenter「5 分钟建档」保存校验对齐
+ * 品牌资产建档 P0 必填口径 — 与 AssetCenter 建档页对齐
+ * customerPains / keyPoints 为增强项：空值不阻断 P0/T0/发布，但填写可提升完整度。
  */
 
 import { extractProfileForQuestionGeneration } from "./geoProfileQuestionMapping";
@@ -23,23 +24,59 @@ export type GeoProfileP0Readiness = {
   missingLabels: string[];
 };
 
-/** 与 client/src/pages/AssetCenter.tsx saveFiveMinuteAndStartDiagnosis 必填项一致 */
+export const T0_PROFILE_ENHANCEMENT_SUGGESTION =
+  "建议补充品牌核心信息，有助于提升 AI 识别准确率";
+
+/** 从档案读取「主要解决的问题」；生成/展示兜底可用一句话介绍 */
+export function resolveProfilePrimaryPain(profile: Record<string, unknown> | null | undefined): string {
+  const pains = parseLines(profile?.customerPains);
+  if (pains[0]) return pains[0];
+  return firstLine(
+    typeof profile?.oneLiner === "string" ? profile.oneLiner : "",
+    typeof profile?.companyIntro === "string" ? profile.companyIntro : "",
+  );
+}
+
+/** 是否已填写「解决的问题」（仅计用户显式填写的 customerPains） */
+export function isProfilePrimaryPainFilled(profile: Record<string, unknown> | null | undefined): boolean {
+  return parseLines(profile?.customerPains).length > 0;
+}
+
+/** 从档案读取「核心优势」；生成/展示兜底可用 keyPoints 或一句话介绍 */
+export function resolveProfileCoreAdvantage(profile: Record<string, unknown> | null | undefined): string {
+  const keyPoints = [
+    ...parseLines(profile?.keyPoints),
+    ...parseLines(profile?.coreSellingPoints),
+  ];
+  if (keyPoints[0]) return keyPoints[0];
+  return firstLine(
+    typeof profile?.oneLiner === "string" ? profile.oneLiner : "",
+    typeof profile?.coreSellingPoints === "string" ? profile.coreSellingPoints : "",
+  );
+}
+
+/** 是否已填写「核心优势」（keyPoints 或 coreSellingPoints 有内容） */
+export function isProfileCoreAdvantageFilled(profile: Record<string, unknown> | null | undefined): boolean {
+  const keyPoints = [
+    ...parseLines(profile?.keyPoints),
+    ...parseLines(profile?.coreSellingPoints),
+  ];
+  return keyPoints.length > 0;
+}
+
+export function formatT0ProfileBlockingMessage(missingLabels: string[]): string {
+  if (missingLabels.length === 0) return T0_PROFILE_ENHANCEMENT_SUGGESTION;
+  return "请先完善品牌资产建档中的基础信息，再启动 AI 现状检测";
+}
+
+/** P0 必填 6 项；customerPains / keyPoints 不纳入阻断 missingLabels */
 export function evaluateGeoProfileP0Readiness(
   profile: Record<string, unknown> | null | undefined,
 ): GeoProfileP0Readiness {
   if (!profile) {
     return {
       complete: false,
-      missingLabels: [
-        "企业名称",
-        "所属行业",
-        "一句话介绍",
-        "核心产品/服务",
-        "目标客户",
-        "主要解决的问题",
-        "核心优势",
-        "关键词",
-      ],
+      missingLabels: ["企业名称", "所属行业", "一句话介绍", "核心产品/服务", "目标客户", "关键词"],
     };
   }
 
@@ -77,16 +114,6 @@ export function evaluateGeoProfileP0Readiness(
   );
   if (!targetCustomer) missingLabels.push("目标客户");
 
-  const pains = parseLines(profile.customerPains);
-  const primaryPain = pains[0] ?? "";
-  if (!primaryPain) missingLabels.push("主要解决的问题");
-
-  const keyPoints = [
-    ...parseLines(profile.keyPoints),
-    ...parseLines(profile.coreSellingPoints),
-  ];
-  if (!keyPoints[0]) missingLabels.push("核心优势");
-
   const keywords = [
     ...parseLines(profile.keywords),
     ...parseLines(profile.coreKeywords),
@@ -114,7 +141,7 @@ export type T0ProfileReadiness = {
   missingLabels: string[];
 };
 
-/** AI 现状检测入口：比 P0 建档更严，竞品经 geoProfileQuestionMapping 统一读取 */
+/** AI 现状检测入口：基础字段 + 竞品；customerPains 空值不阻断 */
 export function evaluateProfileReadinessForT0(input: {
   profile: Record<string, unknown> | null | undefined;
   project?: {
@@ -132,7 +159,6 @@ export function evaluateProfileReadinessForT0(input: {
   if (!mapped.industryTag.trim()) missingLabels.push("所属行业");
   if (!mapped.productDesc.trim()) missingLabels.push("核心产品/服务");
   if (!mapped.targetCustomer.trim()) missingLabels.push("目标客户");
-  if (mapped.customerPains.length === 0) missingLabels.push("主要解决的问题");
   if (mapped.competitors.length === 0) missingLabels.push("竞品");
 
   return { ready: missingLabels.length === 0, missingLabels };
