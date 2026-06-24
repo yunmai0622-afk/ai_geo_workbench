@@ -66,6 +66,7 @@ import { feedbackLoopRouter } from "./feedbackLoopRouter";
 import { systemNotificationsRouter } from "./systemNotificationsRouter";
 import { userFeedbackRouter } from "./userFeedbackRouter";
 import { deleteGeoArticleCascade } from "./geoArticleDelete";
+import { buildRetestAttributionForInclusionRecords } from "./contentRetestAttributionService";
 import { resetProjectT0Baseline } from "./resetT0Baseline";
 import {
   buildQuestionContentTaskExecutionSuggestion,
@@ -3486,11 +3487,30 @@ const geoRouter = router({
       const enrichedArticles = await enrichArticlesWithGapLink(db, input.projectId, articleRows);
       const gapByArticleId = new Map(enrichedArticles.map(row => [row.id, row] as const));
 
+      const linkedQuestionByArticleId = new Map<number, string | null>();
+      for (const row of rows) {
+        const article = articleById.get(row.articleId);
+        const linkedQuestionText = article ? await loadLinkedQuestionTextForArticle(db, article) : null;
+        linkedQuestionByArticleId.set(row.articleId, linkedQuestionText);
+      }
+
+      const retestAttributionByArticleId = await buildRetestAttributionForInclusionRecords(
+        db,
+        input.projectId,
+        rows.map(row => ({
+          articleId: row.articleId,
+          aiTestResults: row.aiTestResults,
+          aiMentionMonitorStatus: row.aiMentionMonitorStatus,
+          effectInclusionStatus: row.effectInclusionStatus,
+          linkedDetectionQuestion: linkedQuestionByArticleId.get(row.articleId) ?? null,
+        })),
+      );
+
       return Promise.all(
         rows.map(async row => {
           const article = articleById.get(row.articleId);
           const gap = gapByArticleId.get(row.articleId);
-          const linkedQuestionText = article ? await loadLinkedQuestionTextForArticle(db, article) : null;
+          const linkedQuestionText = linkedQuestionByArticleId.get(row.articleId) ?? null;
           const gapContext = buildArticleGapLinkContext({
             targetQuestionId: article?.targetQuestionId,
             targetGapType: article?.targetGapType,
@@ -3502,6 +3522,7 @@ const geoRouter = router({
             linkedDetectionQuestion: gapContext.questionText,
             gapLinkDisplay: gap?.gapLinkDisplay ?? gapContext.displayLine,
             questionMentionRateChange: gap?.questionMentionRateChange ?? null,
+            retestAttribution: retestAttributionByArticleId.get(row.articleId) ?? null,
           });
         }),
       );

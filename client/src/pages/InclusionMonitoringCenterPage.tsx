@@ -1,6 +1,7 @@
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
 import { ContentAssetEffectFillPanel } from "@/components/inclusion-monitoring/ContentAssetEffectFillPanel";
+import { ContentRetestAttributionPanel } from "@/components/inclusion-monitoring/ContentRetestAttributionPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -431,6 +432,14 @@ export function InclusionMonitoringCenterPage() {
                         </Button>
                       ) : null}
                     </div>
+
+                    {record.retestAttribution ? (
+                      <ContentRetestAttributionPanel
+                        recordId={record.id}
+                        attribution={record.retestAttribution}
+                        included={record.effectStatusLabel === "已收录"}
+                      />
+                    ) : null}
 
                     {selectedProjectId ? (
                       <ContentAssetEffectFillPanel

@@ -1,4 +1,5 @@
 import type { ContentAssetNextAction } from "@shared/contentAssetEffectTracking";
+import type { ContentRetestAttributionView } from "@shared/contentRetestAttribution";
 import { resolveContentAssetLifecycleStage } from "@shared/contentAssetLifecycle";
 
 export type ContentAssetEffectViewRecord = {
@@ -25,6 +26,7 @@ export type ContentAssetEffectViewRecord = {
   eligibleForAiRetest?: boolean;
   lastAiTestedAt?: Date | string | null;
   aiTestResults?: unknown[] | null;
+  retestAttribution?: ContentRetestAttributionView | null;
   nextAction?: ContentAssetNextAction;
 };
 

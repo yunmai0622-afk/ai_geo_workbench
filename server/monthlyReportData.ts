@@ -22,6 +22,7 @@ import {
   resolveMonthlyPlanWorkspaceStage,
 } from "@shared/monthlyPlanGeneration";
 import { getDb } from "./db";
+import { buildRetestAttributionForArticles } from "./contentRetestAttributionService";
 
 function toIso(value: Date | string | null | undefined): string | null {
   if (!value) return null;
@@ -294,6 +295,41 @@ export async function loadMonthlyReportData(
     plan.generatedAt instanceof Date ? plan.generatedAt : new Date(plan.generatedAt);
   const actionItems = await loadPlanActionItems(projectId, generatedAt);
 
+  const attributionByArticleId = await buildRetestAttributionForArticles(
+    db,
+    projectId,
+    actionItems.contentItems.map(item => item.articleId),
+  );
+  const contentImpactProofInputs = actionItems.contentItems.map(item => ({
+    articleId: item.articleId,
+    title: item.title,
+    platform: item.platform,
+    questionText: item.questionText,
+    attribution: attributionByArticleId.get(item.articleId) ?? {
+      status: "pending_retest" as const,
+      statusMessage: "完成内容发布并触发AI复测后，系统将自动生成影响证明。",
+      questionText: item.questionText,
+      before: {
+        label: "优化前基线",
+        hasData: false,
+        mentionsBrand: null,
+        brandMentionRate: null,
+        brandRecommendRate: null,
+        answerSummary: null,
+      },
+      after: {
+        label: "发布后复测",
+        hasData: false,
+        mentionsBrand: null,
+        brandMentionRate: null,
+        brandRecommendRate: null,
+        answerSummary: null,
+      },
+      changeConclusion: null,
+      showExpand: false,
+    },
+  }));
+
   return buildMonthlyReportView({
     plan,
     tasks,
@@ -301,6 +337,7 @@ export async function loadMonthlyReportData(
     aiTestRuns: aiTestRunRows,
     contentItems: actionItems.contentItems,
     contentAssetEffectRows: actionItems.contentAssetEffectRows,
+    contentImpactProofInputs,
     sourceItems: actionItems.sourceItems,
     evidenceItems: actionItems.evidenceItems,
     latestTotalScore: latestMaturity?.totalScore ?? plan.resultMaturityScore,

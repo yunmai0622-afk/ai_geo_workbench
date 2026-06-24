@@ -16,6 +16,7 @@ import {
   MONTHLY_REPORT_PAGE_TITLE,
   type MonthlyReportView,
 } from "@shared/monthlyReportView";
+import { formatMonthlyReportImpactProofLine } from "@shared/contentRetestAttribution";
 import { ArrowRight, ChevronDown, FileBarChart2, Sparkles, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -379,6 +380,32 @@ function MonthlyMaturityReportSections({
           ) : null}
         </section>
       ) : null}
+
+      <section className="space-y-4" data-testid="monthly-report-content-impact-proof">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">内容影响证明</h2>
+          <p className="text-sm text-gray-500">展示本月已发布且已完成 AI 复测的内容，对品牌回答的实际影响</p>
+        </div>
+        {!report.contentImpactProof.hasData ? (
+          <P0Card className="text-sm text-gray-600" testId="monthly-report-content-impact-empty">
+            {report.contentImpactProof.emptyMessage}
+          </P0Card>
+        ) : (
+          <ul className="space-y-3">
+            {report.contentImpactProof.items.map(item => (
+              <li
+                key={item.articleId}
+                className="rounded-xl border border-gray-200 bg-white p-4 text-sm shadow-sm"
+                data-testid={`monthly-report-impact-proof-${item.articleId}`}
+              >
+                <p className="whitespace-pre-line leading-relaxed text-gray-800">
+                  {formatMonthlyReportImpactProofLine(item)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="space-y-4" data-testid="monthly-report-next-month">
         <div>

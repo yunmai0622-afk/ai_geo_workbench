@@ -3,6 +3,11 @@
  */
 
 import {
+  buildMonthlyReportContentImpactProof,
+  type ContentRetestAttributionView,
+  type MonthlyReportContentImpactProofItem,
+} from "./contentRetestAttribution";
+import {
   aggregateContentAssetEffectOverview,
   computeCanEnterAiRetest,
   effectDataSourceLabelCn,
@@ -214,6 +219,11 @@ export type MonthlyReportView = {
     recommendRateBaseline: number | null;
     recommendRateResult: number | null;
   } | null;
+  contentImpactProof: {
+    hasData: boolean;
+    emptyMessage: string;
+    items: MonthlyReportContentImpactProofItem[];
+  };
   nextMonth: {
     weakDimensions: string[];
     suggestions: string[];
@@ -669,6 +679,13 @@ export function buildMonthlyReportView(input: {
   aiTestRuns: AiTestRunRateInput[];
   contentItems: MonthlyReportContentItem[];
   contentAssetEffectRows?: MonthlyReportContentAssetEffectInput[];
+  contentImpactProofInputs?: Array<{
+    articleId: number;
+    title: string;
+    platform: string;
+    questionText: string | null;
+    attribution: ContentRetestAttributionView;
+  }>;
   sourceItems: MonthlyReportSourceItem[];
   evidenceItems: MonthlyReportEvidenceItem[];
   latestTotalScore: number | null;
@@ -736,6 +753,7 @@ export function buildMonthlyReportView(input: {
         evidenceItems: [],
       },
       retest: null,
+      contentImpactProof: buildMonthlyReportContentImpactProof([]),
       nextMonth: buildMonthlyReportNextMonthSuggestions({
         latestTotalScore: input.latestTotalScore,
         latestDimensionScores: input.latestDimensionScores,
@@ -909,6 +927,7 @@ export function buildMonthlyReportView(input: {
       evidenceItems: input.evidenceItems,
     },
     retest,
+    contentImpactProof: buildMonthlyReportContentImpactProof(input.contentImpactProofInputs ?? []),
     nextMonth: buildMonthlyReportNextMonthSuggestions({
       latestTotalScore: input.latestTotalScore ?? input.plan.resultMaturityScore,
       latestDimensionScores:
