@@ -6206,3 +6206,24 @@
 [2026-06-24T07:31:04.594Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-24T07:31:04.632Z] Server running on http://localhost:3000/
 [2026-06-24T07:31:05.246Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-24T10:31:15.029Z] 6:31:15 AM [vite] (client) hmr update /src/index.css
+[2026-06-24T10:31:15.030Z] 6:31:15 AM [vite] (client) hmr update /src/index.css
+[2026-06-24T10:31:15.031Z] 6:31:15 AM [vite] (client) hmr update /src/index.css
+[2026-06-24T10:31:15.032Z] 6:31:15 AM [vite] (client) hmr update /src/index.css
+[2026-06-24T10:31:15.038Z] 6:31:15 AM [vite] (client) hmr update /src/index.css
+[2026-06-24T10:31:15.040Z] 6:31:15 AM [vite] (client) hmr update /src/index.css
+[2026-06-24T10:31:32.911Z] Dev server process group stopped
+[2026-06-24T10:31:32.914Z] ELIFECYCLE  Command failed.
+[2026-06-24T10:31:32.952Z] Dev server exited with code -15
+[2026-06-24T10:31:35.953Z] Starting dev server with command: pnpm run dev
+[2026-06-24T10:31:36.758Z] 
+[2026-06-24T10:31:36.758Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-24T10:31:36.759Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-24T10:31:36.759Z] 
+[2026-06-24T10:31:44.627Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-24T10:31:44.662Z] Server running on http://localhost:3000/
+[2026-06-24T10:31:45.504Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-24T10:31:57.350Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-24T10:31:57.351Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-24T10:32:01.204Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-24T10:32:01.205Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
