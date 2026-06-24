@@ -35,6 +35,10 @@ describe("GEO-V2.0-P1-Phase5 Monthly Maturity Report", () => {
     expect(page).toContain("monthly-report-actions");
     expect(page).toContain("monthly-report-retest");
     expect(page).toContain("monthly-report-next-month");
+    expect(page).toContain("monthly-report-content-asset");
+    expect(page).toContain("monthly-report-renewal-justification");
+    expect(page).toContain("本月内容资产成果");
+    expect(page).toContain("为什么下月还值得继续做");
     expect(page).toContain("monthly-report-history");
     expect(page).toContain("monthly-report-executing-empty");
     expect(page + read("shared/monthlyReportView.ts")).toContain("续费评估和下月计划的依据");

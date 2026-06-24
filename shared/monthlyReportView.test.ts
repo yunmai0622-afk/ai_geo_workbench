@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildMonthlyReportCompetitorRateExplanation,
+  buildMonthlyReportContentAssetProof,
+  buildMonthlyReportRenewalJustification,
   buildMonthlyReportView,
   computeAiTestRatesFromRuns,
+  formatMonthlyReportMetricCount,
+  formatMonthlyReportMetricPercent,
   formatMonthlyReportMaturityChange,
   formatMonthlyReportPeriodLabel,
   formatMonthlyReportRateChange,
@@ -122,5 +127,155 @@ describe("monthlyReportView", () => {
     expect(view.actions.contentCount).toBe(1);
     expect(view.retest?.platformChanges.length).toBeGreaterThan(0);
     expect(view.nextMonth.canGenerateNextPlan).toBe(true);
+  });
+
+  it("builds content asset renewal proof from effect rows", () => {
+    const proof = buildMonthlyReportContentAssetProof({
+      publishedCount: 3,
+      rows: [
+        {
+          id: 1,
+          articleId: 1,
+          title: "内容资产A",
+          platform: "知乎",
+          questionText: "怎么选择方案",
+          publishedAt: "2026-06-01T00:00:00.000Z",
+          publicUrl: "https://example.com/a",
+          effectInclusionStatus: "included",
+          inclusionVerifiedAt: "2026-06-04T00:00:00.000Z",
+          readCount: 120,
+          impressionCount: 900,
+          interactionCount: 8,
+          searchTriggerKeywords: ["品牌方案", "AI 推荐"],
+          effectDataSource: "manual",
+          evidenceScreenshotUrl: "https://example.com/s.png",
+        },
+        {
+          id: 2,
+          articleId: 2,
+          title: "内容资产B",
+          platform: "小红书",
+          questionText: "行业服务哪家好",
+          publishedAt: "2026-06-02T00:00:00.000Z",
+          publicUrl: "https://example.com/b",
+          effectInclusionStatus: "pending",
+          readCount: 30,
+          impressionCount: 200,
+          interactionCount: 2,
+        },
+      ],
+    });
+
+    expect(proof.includedCount).toBe(1);
+    expect(proof.inclusionRate).toBe(33);
+    expect(proof.averageInclusionDays).toBe(3);
+    expect(proof.totalReadCount).toBe(150);
+    expect(proof.totalImpressionCount).toBe(1100);
+    expect(proof.totalInteractionCount).toBe(10);
+    expect(proof.triggeredKeywordCount).toBe(2);
+    expect(proof.keywordTriggeredContentCount).toBe(1);
+    expect(proof.screenshotEvidenceCount).toBe(1);
+    expect(proof.retestReadyCount).toBeGreaterThanOrEqual(1);
+    expect(proof.hasInclusionData).toBe(true);
+  });
+
+  it("formats missing metrics as --", () => {
+    expect(formatMonthlyReportMetricCount(null)).toBe("--");
+    expect(formatMonthlyReportMetricPercent(null)).toBe("--");
+  });
+
+  it("builds competitor rate explanation with month-over-month delta", () => {
+    const higher = buildMonthlyReportCompetitorRateExplanation({
+      currentRate: 0.5,
+      previousMonthRate: 0.3,
+    });
+    expect(higher).toContain("本月竞品出现率50%");
+    expect(higher).toContain("上升了20个百分点");
+
+    const lower = buildMonthlyReportCompetitorRateExplanation({
+      currentRate: 0.2,
+      previousMonthRate: 0.35,
+    });
+    expect(lower).toContain("下降了15个百分点");
+
+    const noCompare = buildMonthlyReportCompetitorRateExplanation({
+      currentRate: 0.4,
+      previousMonthRate: null,
+    });
+    expect(noCompare).toContain("暂无上月对比数据");
+  });
+
+  it("builds renewal justification from real metrics", () => {
+    const renewal = buildMonthlyReportRenewalJustification({
+      publishCount: 3,
+      questionCoverageCount: 2,
+      includedCount: 1,
+      totalReadCount: 100,
+      totalImpressionCount: 500,
+      competitorRate: 0.45,
+      competitorSceneType: "品类推荐",
+      uncoveredQuestionCount: 8,
+      recommendRate: 0.2,
+    });
+    expect(renewal.hasData).toBe(true);
+    expect(renewal.completedLines.join("\n")).toContain("发布 3 篇内容");
+    expect(renewal.opportunityLines.join("\n")).toContain("品类推荐");
+    expect(renewal.nextMonthLines).toHaveLength(3);
+
+    const empty = buildMonthlyReportRenewalJustification({
+      publishCount: null,
+      questionCoverageCount: null,
+      includedCount: null,
+      totalReadCount: null,
+      totalImpressionCount: null,
+      competitorRate: null,
+      competitorSceneType: null,
+      uncoveredQuestionCount: null,
+      recommendRate: null,
+    });
+    expect(empty.hasData).toBe(false);
+    expect(empty.emptyMessage).toContain("完成本月AI复测后");
+  });
+
+  it("includes renewal justification in monthly report view", () => {
+    const view = buildMonthlyReportView({
+      plan: basePlan,
+      tasks: [],
+      planPhase: "executing",
+      aiTestRuns: [
+        {
+          questionId: 1,
+          testedAt: "2026-06-05T00:00:00.000Z",
+          mentionedCompany: true,
+          recommendedCompany: false,
+          competitorMentioned: true,
+          platform: "豆包",
+        },
+      ],
+      contentItems: [{ articleId: 1, title: "文章", platform: "知乎", publishedAt: "2026-06-03", questionText: "Q1" }],
+      contentAssetEffectRows: [
+        {
+          id: 1,
+          articleId: 1,
+          title: "文章",
+          platform: "知乎",
+          questionText: "Q1",
+          publishedAt: "2026-06-03T00:00:00.000Z",
+          publicUrl: "https://example.com/a",
+          effectInclusionStatus: "included",
+          inclusionVerifiedAt: "2026-06-06T00:00:00.000Z",
+        },
+      ],
+      sourceItems: [],
+      evidenceItems: [],
+      latestTotalScore: 52,
+      latestDimensionScores: basePlan.baselineDimensionScores,
+      uncoveredQuestionCount: 5,
+      questionTypeByQuestionId: new Map([[1, "行业推荐"]]),
+      historyPlans: [{ plan: basePlan, progress: { completedCount: 1, totalCount: 2 } }],
+    });
+    expect(view.summary.competitorRateExplanation).toContain("本月竞品出现率");
+    expect(view.renewalJustification.hasData).toBe(true);
+    expect(view.actions.contentAssetProof.hasInclusionData).toBe(true);
   });
 });

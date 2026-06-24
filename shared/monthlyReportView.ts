@@ -3,6 +3,16 @@
  */
 
 import {
+  aggregateContentAssetEffectOverview,
+  computeCanEnterAiRetest,
+  effectDataSourceLabelCn,
+  effectInclusionStatusLabelCn,
+  normalizeEffectInclusionStatus,
+  type ContentAssetEffectOverview,
+  type EffectInclusionStatus,
+} from "./contentAssetEffectTracking";
+import { resolveQuestionTypeDisplayLabel } from "./retestComparisonDisplay";
+import {
   GEO_MATURITY_DIMENSION_META,
   type GeoMaturityDimensionKey,
 } from "./geoMaturityScoring";
@@ -22,7 +32,14 @@ export const MONTHLY_REPORT_BASELINE_PENDING_COMPARE = "复测完成后生成对
 export const MONTHLY_REPORT_EXECUTING_MESSAGE =
   "本月优化计划执行中（{completed}/{total}项已完成）完成全部任务并复测后，将自动生成本月成效报告。";
 
+export const MONTHLY_REPORT_CONTENT_ASSET_EMPTY_MESSAGE =
+  "本月暂无内容收录数据，完成内容发布并回填收录结果后显示。";
+
+export const MONTHLY_REPORT_RENEWAL_EMPTY_MESSAGE =
+  "完成本月AI复测后，系统将自动生成续费价值说明。";
+
 export type AiTestRunRateInput = {
+  questionId?: number | null;
   mentionedCompany?: boolean | null;
   recommendedCompany?: boolean | null;
   competitorMentioned?: boolean | null;
@@ -76,6 +93,66 @@ export type MonthlyReportEvidenceItem = {
   addedAt: string | null;
 };
 
+export type MonthlyReportContentAssetEffectInput = {
+  id: number;
+  articleId: number;
+  title: string;
+  platform: string | null;
+  questionText: string | null;
+  publishedAt: Date | string | null;
+  publicUrl: string | null;
+  effectInclusionStatus?: string | null;
+  inclusionVerifiedAt?: Date | string | null;
+  inclusionKeywords?: string[] | null;
+  readCount?: number | null;
+  impressionCount?: number | null;
+  interactionCount?: number | null;
+  searchTriggerKeywords?: string[] | null;
+  effectDataSource?: string | null;
+  evidenceScreenshotUrl?: string | null;
+};
+
+export type MonthlyReportContentAssetEffectItem = {
+  id: number;
+  articleId: number;
+  title: string;
+  platform: string;
+  questionText: string | null;
+  publishedAt: string | null;
+  publicUrl: string | null;
+  inclusionStatus: EffectInclusionStatus;
+  inclusionStatusLabel: string;
+  inclusionVerifiedAt: string | null;
+  inclusionKeywords: string[];
+  readCount: number | null;
+  impressionCount: number | null;
+  interactionCount: number | null;
+  searchTriggerKeywords: string[];
+  dataSourceLabel: string | null;
+  evidenceScreenshotUrl: string | null;
+  canEnterAiRetest: boolean;
+};
+
+export type MonthlyReportContentAssetProof = ContentAssetEffectOverview & {
+  averageInclusionDays: number | null;
+  totalInteractionCount: number | null;
+  triggeredKeywordCount: number;
+  keywordTriggeredContentCount: number;
+  screenshotEvidenceCount: number;
+  hasInclusionData: boolean;
+  items: MonthlyReportContentAssetEffectItem[];
+  retestReadyItems: MonthlyReportContentAssetEffectItem[];
+};
+
+export type MonthlyReportRenewalJustification = {
+  hasData: boolean;
+  emptyMessage: string;
+  introLine: string;
+  completedLines: string[];
+  opportunityLines: string[];
+  nextMonthLines: string[];
+};
+
 export type MonthlyReportPlatformChange = {
   platform: string;
   baselineMentionRate: number | null;
@@ -106,8 +183,10 @@ export type MonthlyReportView = {
     competitorRateBaseline: number | null;
     competitorRateResult: number | null;
     competitorRateDelta: number | null;
+    competitorRateExplanation: string;
     pendingLabel: string | null;
   };
+  renewalJustification: MonthlyReportRenewalJustification;
   weakDimensionChanges: Array<{
     key: string;
     label: string;
@@ -120,6 +199,7 @@ export type MonthlyReportView = {
     contentCount: number;
     questionCoverageCount: number;
     contentItems: MonthlyReportContentItem[];
+    contentAssetProof: MonthlyReportContentAssetProof;
     sourceCount: number;
     sourceItems: MonthlyReportSourceItem[];
     evidenceCount: number;
@@ -157,9 +237,153 @@ function toTimestamp(value: Date | string | null | undefined): number | null {
   return Number.isNaN(ts) ? null : ts;
 }
 
+function formatDateTime(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString("zh-CN", { hour12: false });
+}
+
 function formatPercent(rate: number | null): string {
   if (rate == null) return "—";
   return `${Math.round(rate * 100)}%`;
+}
+
+export function formatMonthlyReportMetricCount(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "--";
+  return value.toLocaleString("zh-CN");
+}
+
+export function formatMonthlyReportMetricPercent(rate: number | null | undefined): string {
+  if (rate == null || Number.isNaN(rate)) return "--";
+  return `${Math.round(rate * 100)}%`;
+}
+
+export function computePlanPeriodCompetitorRate(
+  runs: AiTestRunRateInput[],
+  planGeneratedAt: Date | string,
+  nextPlanGeneratedAt?: Date | string | null,
+): number | null {
+  const startTs = toTimestamp(planGeneratedAt);
+  if (startTs == null) return null;
+  const endTs = nextPlanGeneratedAt ? toTimestamp(nextPlanGeneratedAt) : null;
+  const periodRuns = runs.filter(run => {
+    const runTs = toTimestamp(run.testedAt);
+    if (runTs == null || runTs < startTs) return false;
+    if (endTs != null && runTs >= endTs) return false;
+    return true;
+  });
+  if (periodRuns.length === 0) return null;
+  return computeAiTestRatesFromRuns(periodRuns).competitorRate;
+}
+
+export function resolveCompetitorDominantSceneType(
+  runs: AiTestRunRateInput[],
+  questionTypeByQuestionId: Map<number, string>,
+): string | null {
+  const counts = new Map<string, number>();
+  for (const run of runs) {
+    if (!run.competitorMentioned || run.questionId == null) continue;
+    const questionType = questionTypeByQuestionId.get(run.questionId);
+    if (!questionType) continue;
+    counts.set(questionType, (counts.get(questionType) ?? 0) + 1);
+  }
+  let topType: string | null = null;
+  let topCount = 0;
+  for (const [type, count] of counts.entries()) {
+    if (count > topCount) {
+      topType = type;
+      topCount = count;
+    }
+  }
+  if (!topType) return null;
+  return resolveQuestionTypeDisplayLabel(topType).replace(/类问题$/, "");
+}
+
+export function buildMonthlyReportCompetitorRateExplanation(input: {
+  currentRate: number | null;
+  previousMonthRate: number | null;
+}): string {
+  const rateLabel = formatMonthlyReportMetricPercent(input.currentRate);
+  const prefix = `AI在回答行业推荐问题时，提到竞品的比例。本月竞品出现率${rateLabel}，`;
+  if (input.currentRate == null || input.previousMonthRate == null) {
+    return `${prefix}暂无上月对比数据。`;
+  }
+  const deltaPp = Math.round((input.currentRate - input.previousMonthRate) * 100);
+  if (deltaPp > 0) {
+    return `${prefix}比上月上升了${deltaPp}个百分点，说明竞品AI占位在加强，需要持续补充推荐理由。`;
+  }
+  if (deltaPp < 0) {
+    return `${prefix}比上月下降了${Math.abs(deltaPp)}个百分点，说明优化动作初步产生效果。`;
+  }
+  return `${prefix}与上月持平。`;
+}
+
+export function buildMonthlyReportRenewalJustification(input: {
+  publishCount: number | null;
+  questionCoverageCount: number | null;
+  includedCount: number | null;
+  totalReadCount: number | null;
+  totalImpressionCount: number | null;
+  competitorRate: number | null;
+  competitorSceneType: string | null;
+  uncoveredQuestionCount: number | null;
+  recommendRate: number | null;
+}): MonthlyReportRenewalJustification {
+  const hasExposure =
+    (input.totalReadCount != null && input.totalReadCount > 0) ||
+    (input.totalImpressionCount != null && input.totalImpressionCount > 0);
+  const exposureTotal = hasExposure
+    ? (input.totalReadCount ?? 0) + (input.totalImpressionCount ?? 0)
+    : null;
+
+  const hasData =
+    (input.publishCount != null && input.publishCount > 0) ||
+    (input.includedCount != null && input.includedCount > 0) ||
+    input.competitorRate != null ||
+    input.uncoveredQuestionCount != null ||
+    input.recommendRate != null;
+
+  if (!hasData) {
+    return {
+      hasData: false,
+      emptyMessage: MONTHLY_REPORT_RENEWAL_EMPTY_MESSAGE,
+      introLine: "",
+      completedLines: [],
+      opportunityLines: [],
+      nextMonthLines: [],
+    };
+  }
+
+  const completedLines = [
+    `· 发布 ${formatMonthlyReportMetricCount(input.publishCount)} 篇内容，覆盖 ${formatMonthlyReportMetricCount(input.questionCoverageCount)} 个AI搜索问题`,
+    `· 其中 ${formatMonthlyReportMetricCount(input.includedCount)} 篇已被平台收录，成为AI可读取的公开资产`,
+  ];
+  if (hasExposure) {
+    completedLines.push(`· 累计获得 ${formatMonthlyReportMetricCount(exposureTotal)} 次阅读/曝光`);
+  }
+
+  const sceneLabel = input.competitorSceneType?.trim() || "--";
+  const opportunityLines = [
+    `· 竞品出现率仍为 ${formatMonthlyReportMetricPercent(input.competitorRate)}，在 ${sceneLabel} 类问题中占位更强`,
+    `· 还有 ${formatMonthlyReportMetricCount(input.uncoveredQuestionCount)} 个高价值AI搜索问题未覆盖内容`,
+    `· AI对你品牌的推荐率为 ${formatMonthlyReportMetricPercent(input.recommendRate)}，提升空间仍然存在`,
+  ];
+
+  const nextMonthLines = [
+    "· 覆盖更多高价值AI问题",
+    "· 进一步补充推荐理由和可信信源",
+    "· 通过AI复测验证内容是否开始影响推荐结果",
+  ];
+
+  return {
+    hasData: true,
+    emptyMessage: MONTHLY_REPORT_RENEWAL_EMPTY_MESSAGE,
+    introLine: "本月我们已经帮你完成：",
+    completedLines,
+    opportunityLines,
+    nextMonthLines,
+  };
 }
 
 export function formatMonthlyReportPeriodLabel(
@@ -363,21 +587,112 @@ export function buildMonthlyReportNextMonthSuggestions(input: {
   };
 }
 
+export function buildMonthlyReportContentAssetProof(input: {
+  publishedCount: number;
+  rows: MonthlyReportContentAssetEffectInput[];
+}): MonthlyReportContentAssetProof {
+  const overview = aggregateContentAssetEffectOverview(input.publishedCount, input.rows);
+  let inclusionDaysTotal = 0;
+  let inclusionDaysCount = 0;
+  let totalInteractionCount = 0;
+  let hasInteraction = false;
+  const triggerKeywords = new Set<string>();
+  let screenshotEvidenceCount = 0;
+  let keywordTriggeredContentCount = 0;
+
+  const items = input.rows.map(row => {
+    const inclusionStatus = normalizeEffectInclusionStatus(row.effectInclusionStatus);
+    const publishedTs = toTimestamp(row.publishedAt);
+    const includedTs = toTimestamp(row.inclusionVerifiedAt);
+    if (publishedTs != null && includedTs != null && includedTs >= publishedTs) {
+      inclusionDaysTotal += Math.max(0, Math.round((includedTs - publishedTs) / 86_400_000));
+      inclusionDaysCount += 1;
+    }
+    if (typeof row.interactionCount === "number" && row.interactionCount >= 0) {
+      hasInteraction = true;
+      totalInteractionCount += row.interactionCount;
+    }
+    for (const keyword of row.searchTriggerKeywords ?? []) {
+      const trimmed = keyword.trim();
+      if (trimmed) triggerKeywords.add(trimmed);
+    }
+    if ((row.searchTriggerKeywords ?? []).some(keyword => keyword.trim())) {
+      keywordTriggeredContentCount += 1;
+    }
+    if (row.evidenceScreenshotUrl?.trim()) screenshotEvidenceCount += 1;
+
+    return {
+      id: row.id,
+      articleId: row.articleId,
+      title: row.title,
+      platform: row.platform?.trim() || "未标注平台",
+      questionText: row.questionText,
+      publishedAt: formatDateTime(row.publishedAt),
+      publicUrl: row.publicUrl,
+      inclusionStatus,
+      inclusionStatusLabel: effectInclusionStatusLabelCn(inclusionStatus),
+      inclusionVerifiedAt: formatDateTime(row.inclusionVerifiedAt),
+      inclusionKeywords: row.inclusionKeywords ?? [],
+      readCount: row.readCount ?? null,
+      impressionCount: row.impressionCount ?? null,
+      interactionCount: row.interactionCount ?? null,
+      searchTriggerKeywords: row.searchTriggerKeywords ?? [],
+      dataSourceLabel: effectDataSourceLabelCn(row.effectDataSource),
+      evidenceScreenshotUrl: row.evidenceScreenshotUrl ?? null,
+      canEnterAiRetest: computeCanEnterAiRetest(row),
+    };
+  });
+
+  const retestReadyItems = items.filter(item => item.canEnterAiRetest);
+  const hasInclusionData = items.length > 0;
+
+  return {
+    ...overview,
+    averageInclusionDays:
+      inclusionDaysCount > 0 ? Math.round((inclusionDaysTotal / inclusionDaysCount) * 10) / 10 : null,
+    totalInteractionCount: hasInteraction ? totalInteractionCount : null,
+    triggeredKeywordCount: triggerKeywords.size,
+    keywordTriggeredContentCount,
+    screenshotEvidenceCount,
+    hasInclusionData,
+    items,
+    retestReadyItems,
+  };
+}
+
 export function buildMonthlyReportView(input: {
   plan: MonthlyReportPlanInput | null;
   tasks: MonthlyReportTaskInput[];
   planPhase: MonthlyPlanWorkspaceStage | "no_plan";
   aiTestRuns: AiTestRunRateInput[];
   contentItems: MonthlyReportContentItem[];
+  contentAssetEffectRows?: MonthlyReportContentAssetEffectInput[];
   sourceItems: MonthlyReportSourceItem[];
   evidenceItems: MonthlyReportEvidenceItem[];
   latestTotalScore: number | null;
   latestDimensionScores: Record<string, number> | null;
+  uncoveredQuestionCount?: number | null;
+  questionTypeByQuestionId?: Map<number, string>;
+  previousPlanGeneratedAt?: Date | string | null;
+  nextPlanGeneratedAt?: Date | string | null;
   historyPlans: Array<{
     plan: MonthlyReportPlanInput;
     progress: { completedCount: number; totalCount: number };
   }>;
 }): MonthlyReportView {
+  const questionTypeByQuestionId = input.questionTypeByQuestionId ?? new Map<number, string>();
+  const emptyRenewal = buildMonthlyReportRenewalJustification({
+    publishCount: null,
+    questionCoverageCount: null,
+    includedCount: null,
+    totalReadCount: null,
+    totalImpressionCount: null,
+    competitorRate: null,
+    competitorSceneType: null,
+    uncoveredQuestionCount: null,
+    recommendRate: null,
+  });
+
   if (!input.plan) {
     return {
       planId: null,
@@ -400,13 +715,19 @@ export function buildMonthlyReportView(input: {
         competitorRateBaseline: null,
         competitorRateResult: null,
         competitorRateDelta: null,
+        competitorRateExplanation: buildMonthlyReportCompetitorRateExplanation({
+          currentRate: null,
+          previousMonthRate: null,
+        }),
         pendingLabel: MONTHLY_REPORT_PENDING_SUMMARY,
       },
+      renewalJustification: emptyRenewal,
       weakDimensionChanges: [],
       actions: {
         contentCount: 0,
         questionCoverageCount: 0,
         contentItems: [],
+        contentAssetProof: buildMonthlyReportContentAssetProof({ publishedCount: 0, rows: [] }),
         sourceCount: 0,
         sourceItems: [],
         evidenceCount: 0,
@@ -467,6 +788,51 @@ export function buildMonthlyReportView(input: {
   const questionCoverageCount = new Set(
     input.contentItems.map(item => item.questionText).filter(Boolean),
   ).size;
+  const contentAssetProof = buildMonthlyReportContentAssetProof({
+    publishedCount: input.contentItems.length,
+    rows: input.contentAssetEffectRows ?? [],
+  });
+
+  const currentMonthCompetitorRate =
+    computePlanPeriodCompetitorRate(
+      input.aiTestRuns,
+      input.plan.generatedAt,
+      input.nextPlanGeneratedAt,
+    ) ?? (hasRetestData ? competitorResult : competitorBaseline);
+  const previousMonthCompetitorRate = input.previousPlanGeneratedAt
+    ? computePlanPeriodCompetitorRate(
+        input.aiTestRuns,
+        input.previousPlanGeneratedAt,
+        input.plan.generatedAt,
+      )
+    : null;
+  const competitorRateExplanation = buildMonthlyReportCompetitorRateExplanation({
+    currentRate: currentMonthCompetitorRate,
+    previousMonthRate: previousMonthCompetitorRate,
+  });
+  const periodRunsForScene = input.aiTestRuns.filter(run => {
+    const runTs = toTimestamp(run.testedAt);
+    const startTs = toTimestamp(input.plan!.generatedAt);
+    const endTs = input.nextPlanGeneratedAt ? toTimestamp(input.nextPlanGeneratedAt) : null;
+    if (runTs == null || startTs == null || runTs < startTs) return false;
+    if (endTs != null && runTs >= endTs) return false;
+    return true;
+  });
+  const competitorSceneType = resolveCompetitorDominantSceneType(
+    periodRunsForScene.length > 0 ? periodRunsForScene : input.aiTestRuns,
+    questionTypeByQuestionId,
+  );
+  const renewalJustification = buildMonthlyReportRenewalJustification({
+    publishCount: input.contentItems.length,
+    questionCoverageCount,
+    includedCount: contentAssetProof.includedCount,
+    totalReadCount: contentAssetProof.totalReadCount,
+    totalImpressionCount: contentAssetProof.totalImpressionCount,
+    competitorRate: currentMonthCompetitorRate,
+    competitorSceneType,
+    uncoveredQuestionCount: input.uncoveredQuestionCount ?? null,
+    recommendRate: hasRetestData ? recommendResult : recommendBaseline,
+  });
 
   const weakDimensionChanges = buildMonthlyReportWeakDimensionChanges({
     plan: input.plan,
@@ -525,13 +891,16 @@ export function buildMonthlyReportView(input: {
         competitorBaseline != null && competitorResult != null
           ? competitorResult - competitorBaseline
           : null,
+      competitorRateExplanation,
       pendingLabel: hasRetestData ? null : MONTHLY_REPORT_PENDING_SUMMARY,
     },
+    renewalJustification,
     weakDimensionChanges,
     actions: {
       contentCount: input.contentItems.length,
       questionCoverageCount,
       contentItems: input.contentItems,
+      contentAssetProof,
       sourceCount: input.sourceItems.length,
       sourceItems: input.sourceItems,
       evidenceCount: input.evidenceItems.length,

@@ -8,12 +8,14 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import {
   formatMonthlyReportMaturityChange,
+  formatMonthlyReportMetricCount,
+  formatMonthlyReportMetricPercent,
   formatMonthlyReportRateChange,
+  MONTHLY_REPORT_CONTENT_ASSET_EMPTY_MESSAGE,
   MONTHLY_REPORT_PAGE_INTRO,
   MONTHLY_REPORT_PAGE_TITLE,
   type MonthlyReportView,
 } from "@shared/monthlyReportView";
-import { DELIVERY_REPORT_COMPETITOR_RATE_EXPLANATION } from "@shared/workspaceBrandValueOverview";
 import { ArrowRight, ChevronDown, FileBarChart2, Sparkles, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -40,6 +42,124 @@ function ReportMetric({
       <p className="mt-2 text-lg font-semibold text-gray-900">{value}</p>
       {hint ? <p className="mt-2 text-[11px] leading-4 text-gray-500">{hint}</p> : null}
     </div>
+  );
+}
+
+function MonthlyContentAssetSection({ report }: { report: MonthlyReportView }) {
+  const proof = report.actions.contentAssetProof;
+
+  if (!proof.hasInclusionData) {
+    return (
+      <section className="space-y-4" data-testid="monthly-report-content-asset">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">本月内容资产成果</h2>
+          <p className="text-sm text-gray-500">基于已发布内容的收录、触达与 AI 复测准备情况</p>
+        </div>
+        <P0Card className="text-sm text-gray-600" testId="monthly-report-content-asset-empty">
+          {MONTHLY_REPORT_CONTENT_ASSET_EMPTY_MESSAGE}
+        </P0Card>
+      </section>
+    );
+  }
+
+  const exposureParts: string[] = [];
+  if (proof.totalReadCount != null) {
+    exposureParts.push(`阅读 ${formatMonthlyReportMetricCount(proof.totalReadCount)}`);
+  }
+  if (proof.totalImpressionCount != null) {
+    exposureParts.push(`曝光 ${formatMonthlyReportMetricCount(proof.totalImpressionCount)}`);
+  }
+  const exposureValue =
+    exposureParts.length > 0 ? exposureParts.join(" / ") : formatMonthlyReportMetricCount(null);
+
+  return (
+    <section className="space-y-4" data-testid="monthly-report-content-asset">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">本月内容资产成果</h2>
+        <p className="text-sm text-gray-500">基于已发布内容的收录、触达与 AI 复测准备情况</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ReportMetric
+          label="本月新增发布内容数"
+          value={formatMonthlyReportMetricCount(proof.publishedCount)}
+          testId="monthly-report-asset-published-count"
+        />
+        <ReportMetric
+          label="已收录内容数"
+          value={formatMonthlyReportMetricCount(proof.includedCount)}
+          testId="monthly-report-asset-included-count"
+        />
+        <ReportMetric
+          label="收录率"
+          value={
+            proof.inclusionRate == null
+              ? "--"
+              : formatMonthlyReportMetricPercent(proof.inclusionRate / 100)
+          }
+          testId="monthly-report-asset-inclusion-rate"
+          hint={
+            proof.averageInclusionDays != null
+              ? `平均收录时间 ${proof.averageInclusionDays} 天`
+              : undefined
+          }
+        />
+        <ReportMetric
+          label="可进入 AI 复测内容数"
+          value={formatMonthlyReportMetricCount(proof.retestReadyCount)}
+          testId="monthly-report-asset-retest-ready"
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ReportMetric
+          label="累计阅读/曝光量"
+          value={exposureValue}
+          testId="monthly-report-asset-traffic"
+        />
+        <ReportMetric
+          label="有搜索关键词触发的内容数"
+          value={formatMonthlyReportMetricCount(proof.keywordTriggeredContentCount)}
+          testId="monthly-report-asset-keyword-triggered"
+        />
+      </div>
+    </section>
+  );
+}
+
+function MonthlyRenewalJustificationSection({ report }: { report: MonthlyReportView }) {
+  const renewal = report.renewalJustification;
+
+  return (
+    <section className="space-y-4" data-testid="monthly-report-renewal-justification">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">为什么下月还值得继续做</h2>
+      </div>
+      {!renewal.hasData ? (
+        <P0Card className="text-sm text-gray-600" testId="monthly-report-renewal-empty">
+          {renewal.emptyMessage}
+        </P0Card>
+      ) : (
+        <P0Card testId="monthly-report-renewal-body" className="space-y-4 border-emerald-100 bg-emerald-50/40">
+          <p className="text-sm font-medium text-gray-900">{renewal.introLine}</p>
+          <ul className="space-y-1 text-sm text-gray-800">
+            {renewal.completedLines.map(line => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-medium text-gray-900">但AI推荐场景仍有这些机会未占住：</p>
+          <ul className="space-y-1 text-sm text-gray-800">
+            {renewal.opportunityLines.map(line => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-medium text-gray-900">下月继续做，可以：</p>
+          <ul className="space-y-1 text-sm text-gray-800">
+            {renewal.nextMonthLines.map(line => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </P0Card>
+      )}
+    </section>
   );
 }
 
@@ -92,19 +212,19 @@ function MonthlyMaturityReportSections({
             )}
             testId="monthly-report-recommend-change"
           />
-          {report.summary.competitorRateBaseline != null ? (
-            <ReportMetric
-              label="竞品出现率"
-              value={formatMonthlyReportRateChange(
-                report.summary.competitorRateBaseline,
-                report.summary.competitorRateResult,
-              )}
-              testId="monthly-report-competitor-rate"
-              hint={DELIVERY_REPORT_COMPETITOR_RATE_EXPLANATION}
-            />
-          ) : null}
+          <ReportMetric
+            label="竞品出现率"
+            value={formatMonthlyReportRateChange(
+              report.summary.competitorRateBaseline,
+              report.summary.competitorRateResult,
+            )}
+            testId="monthly-report-competitor-rate"
+            hint={report.summary.competitorRateExplanation}
+          />
         </div>
       </section>
+
+      <MonthlyContentAssetSection report={report} />
 
       <section className="space-y-4" data-testid="monthly-report-weaknesses">
         <div>
@@ -300,6 +420,8 @@ function MonthlyMaturityReportSections({
           </Button>
         </P0Card>
       </section>
+
+      <MonthlyRenewalJustificationSection report={report} />
 
       {report.history.length > 0 ? (
         <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-report-history">

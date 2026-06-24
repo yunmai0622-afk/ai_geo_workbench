@@ -3,6 +3,7 @@ import {
   aiTestRuns,
   brandSourceRecords,
   geoArticles,
+  geoInclusionMonitoringRecords,
   geoPublishRecords,
   monthlyOptimizationPlans,
   monthlyOptimizationTasks,
@@ -11,6 +12,7 @@ import {
 } from "../drizzle/schema";
 import {
   buildMonthlyReportView,
+  type MonthlyReportContentAssetEffectInput,
   type MonthlyReportContentItem,
   type MonthlyReportEvidenceItem,
   type MonthlyReportSourceItem,
@@ -43,17 +45,22 @@ async function loadPlanActionItems(
   planGeneratedAt: Date,
 ): Promise<{
   contentItems: MonthlyReportContentItem[];
+  contentAssetEffectRows: MonthlyReportContentAssetEffectInput[];
   sourceItems: MonthlyReportSourceItem[];
   evidenceItems: MonthlyReportEvidenceItem[];
 }> {
   const db = await getDb();
   if (!db) {
-    return { contentItems: [], sourceItems: [], evidenceItems: [] };
+    return { contentItems: [], contentAssetEffectRows: [], sourceItems: [], evidenceItems: [] };
   }
 
-  const [articles, publishRecords, questionRows, sourceRows, evidenceRows] = await Promise.all([
+  const [articles, publishRecords, monitoringRecords, questionRows, sourceRows, evidenceRows] = await Promise.all([
     db.select().from(geoArticles).where(eq(geoArticles.projectId, projectId)),
     db.select().from(geoPublishRecords).where(eq(geoPublishRecords.projectId, projectId)),
+    db
+      .select()
+      .from(geoInclusionMonitoringRecords)
+      .where(eq(geoInclusionMonitoringRecords.projectId, projectId)),
     db.select().from(questions).where(eq(questions.projectId, projectId)),
     db
       .select()
@@ -81,10 +88,17 @@ async function loadPlanActionItems(
   }
 
   const publishByArticleId = new Map<number, (typeof publishRecords)[number]>();
+  const publishById = new Map<number, (typeof publishRecords)[number]>();
   for (const record of publishRecords) {
+    publishById.set(record.id, record);
     if (record.publishedAt && record.publishedAt >= planGeneratedAt) {
       publishByArticleId.set(record.articleId, record);
     }
+  }
+
+  const articleById = new Map<number, (typeof articles)[number]>();
+  for (const article of articles) {
+    articleById.set(article.id, article);
   }
 
   const contentItems: MonthlyReportContentItem[] = [];
@@ -106,6 +120,36 @@ async function loadPlanActionItems(
     });
   }
 
+  const contentAssetEffectRows: MonthlyReportContentAssetEffectInput[] = [];
+  for (const record of monitoringRecords) {
+    const article = articleById.get(record.articleId);
+    const publish = publishById.get(record.publishRecordId) ?? publishByArticleId.get(record.articleId);
+    const publishedAt = publish?.publishedAt ?? article?.updatedAt ?? article?.createdAt ?? null;
+    if (!publishedAt || publishedAt < planGeneratedAt) continue;
+    const questionId = article?.targetQuestionId ? Number(article.targetQuestionId) : null;
+    contentAssetEffectRows.push({
+      id: record.id,
+      articleId: record.articleId,
+      title: article?.title?.trim() || publish?.publishTitle?.trim() || "未命名内容资产",
+      platform: String(publish?.publishChannel ?? "未标注平台"),
+      questionText:
+        questionId != null && !Number.isNaN(questionId)
+          ? questionTextById.get(questionId) ?? null
+          : null,
+      publishedAt,
+      publicUrl: record.publicUrl || publish?.publishUrl || null,
+      effectInclusionStatus: record.effectInclusionStatus,
+      inclusionVerifiedAt: record.inclusionVerifiedAt,
+      inclusionKeywords: record.inclusionKeywords ?? [],
+      readCount: record.readCount,
+      impressionCount: record.impressionCount,
+      interactionCount: record.interactionCount,
+      searchTriggerKeywords: record.searchTriggerKeywords ?? [],
+      effectDataSource: record.effectDataSource,
+      evidenceScreenshotUrl: record.evidenceScreenshotUrl,
+    });
+  }
+
   const sourceItems: MonthlyReportSourceItem[] = sourceRows.map(row => ({
     id: row.id,
     name: row.sourceName?.trim() || row.platformName?.trim() || row.platform,
@@ -120,7 +164,7 @@ async function loadPlanActionItems(
     addedAt: toIso(row.createdAt),
   }));
 
-  return { contentItems, sourceItems, evidenceItems };
+  return { contentItems, contentAssetEffectRows, sourceItems, evidenceItems };
 }
 
 export async function loadMonthlyReportData(
@@ -180,6 +224,7 @@ export async function loadMonthlyReportData(
 
   const aiTestRunRows = await db
     .select({
+      questionId: aiTestRuns.questionId,
       mentionedCompany: aiTestRuns.mentionedCompany,
       recommendedCompany: aiTestRuns.recommendedCompany,
       competitorMentioned: aiTestRuns.competitorMentioned,
@@ -189,6 +234,35 @@ export async function loadMonthlyReportData(
     .from(aiTestRuns)
     .where(eq(aiTestRuns.projectId, projectId));
 
+  const questionRows = await db
+    .select({
+      id: questions.id,
+      enabled: questions.enabled,
+      relatedContentTask: questions.relatedContentTask,
+      questionType: questions.questionType,
+      searchPoolType: questions.searchPoolType,
+    })
+    .from(questions)
+    .where(eq(questions.projectId, projectId));
+
+  const questionTypeByQuestionId = new Map<number, string>();
+  let uncoveredQuestionCount = 0;
+  for (const question of questionRows) {
+    const type = question.searchPoolType?.trim() || question.questionType?.trim() || "指定问题";
+    questionTypeByQuestionId.set(question.id, type);
+    if (Number(question.enabled) !== 0 && !question.relatedContentTask) {
+      uncoveredQuestionCount += 1;
+    }
+  }
+
+  const sortedPlans = [...historyPlans].sort((a, b) => a.roundNumber - b.roundNumber);
+  const currentPlanIndex = plan ? sortedPlans.findIndex(entry => entry.id === plan.id) : -1;
+  const previousPlan = currentPlanIndex > 0 ? sortedPlans[currentPlanIndex - 1] : null;
+  const nextPlan =
+    currentPlanIndex >= 0 && currentPlanIndex < sortedPlans.length - 1
+      ? sortedPlans[currentPlanIndex + 1]
+      : null;
+
   if (!plan) {
     return buildMonthlyReportView({
       plan: null,
@@ -196,6 +270,7 @@ export async function loadMonthlyReportData(
       planPhase: "no_plan",
       aiTestRuns: aiTestRunRows,
       contentItems: [],
+      contentAssetEffectRows: [],
       sourceItems: [],
       evidenceItems: [],
       latestTotalScore: latestMaturity?.totalScore ?? null,
@@ -225,11 +300,16 @@ export async function loadMonthlyReportData(
     planPhase,
     aiTestRuns: aiTestRunRows,
     contentItems: actionItems.contentItems,
+    contentAssetEffectRows: actionItems.contentAssetEffectRows,
     sourceItems: actionItems.sourceItems,
     evidenceItems: actionItems.evidenceItems,
     latestTotalScore: latestMaturity?.totalScore ?? plan.resultMaturityScore,
     latestDimensionScores:
       latestMaturity?.dimensionScores ?? plan.resultDimensionScores ?? plan.baselineDimensionScores,
+    uncoveredQuestionCount,
+    questionTypeByQuestionId,
+    previousPlanGeneratedAt: previousPlan?.generatedAt ?? null,
+    nextPlanGeneratedAt: nextPlan?.generatedAt ?? null,
     historyPlans: historyWithProgress,
   });
 }
