@@ -1,0 +1,9 @@
+{
+  "query": "SELECT p.id, p.enterpriseName FROM projects p WHERE p.id NOT IN (SELECT DISTINCT projectId FROM ai_test_runs) AND p.id NOT IN (SELECT DISTINCT projectId FROM geo_scores);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT p.id, p.enterpriseName FROM projects p WHERE p.id NOT IN (SELECT DISTINCT projectId FROM ai_test_runs) AND p.id NOT IN (SELECT DISTINCT projectId FROM geo_scores);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1748
+}

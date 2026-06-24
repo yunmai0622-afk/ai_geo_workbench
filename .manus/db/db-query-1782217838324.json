@@ -1,0 +1,16 @@
+{
+  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE '%ai_test%' OR table_name LIKE '%response%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE '%ai_test%' OR table_name LIKE '%response%' LIMIT 10;",
+  "rows": [
+    {
+      "table_name": "ai_test_runs"
+    },
+    {
+      "table_name": "ai_responses"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\nai_test_runs\nai_responses\n",
+  "stderr": "",
+  "execution_time_ms": 1820
+}

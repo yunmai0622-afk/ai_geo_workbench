@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, enterpriseName, status FROM projects ORDER BY id LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, enterpriseName, status FROM projects ORDER BY id LIMIT 10;",
+  "rows": [
+    {
+      "id": "72",
+      "enterpriseName": "海豚知道",
+      "status": "tasks_ready"
+    },
+    {
+      "id": "90001",
+      "enterpriseName": "海豚知道",
+      "status": "tasks_ready"
+    },
+    {
+      "id": "120001",
+      "enterpriseName": "海豚知道",
+      "status": "tasks_ready"
+    },
+    {
+      "id": "150001",
+      "enterpriseName": "海豚知道",
+      "status": "questions_ready"
+    },
+    {
+      "id": "180001",
+      "enterpriseName": "海豚知道",
+      "status": "questions_ready"
+    },
+    {
+      "id": "210001",
+      "enterpriseName": "海豚知道",
+      "status": "questions_ready"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tenterpriseName\tstatus\n72\t海豚知道\ttasks_ready\n90001\t海豚知道\ttasks_ready\n120001\t海豚知道\ttasks_ready\n150001\t海豚知道\tquestions_ready\n180001\t海豚知道\tquestions_ready\n210001\t海豚知道\tquestions_ready\n",
+  "stderr": "",
+  "execution_time_ms": 1749
+}

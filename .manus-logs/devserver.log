@@ -5457,3 +5457,118 @@
 [2026-06-23T12:24:33.407Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
 [2026-06-23T12:24:33.408Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
 [2026-06-23T12:24:35.370Z] [geo.scores.latest] { requestedProjectId: 180001, returned: null, sameProjectTop3: [] }
+[2026-06-24T01:49:11.879Z] 9:49:11 PM [vite] (client) hmr update /src/index.css
+[2026-06-24T01:49:11.880Z] 9:49:11 PM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-24T01:49:11.885Z] 9:49:11 PM [vite] (client) hmr update /src/index.css
+[2026-06-24T01:49:11.888Z] 9:49:11 PM [vite] (client) hmr update /src/index.css, /src/pages/InclusionMonitoringCenterPage.tsx
+[2026-06-24T01:49:11.893Z] 9:49:11 PM [vite] (client) hmr update /src/index.css, /src/components/inclusion-monitoring/InclusionMonitoringAssistantPanel.tsx
+[2026-06-24T01:49:12.006Z] 9:49:11 PM [tsx] change in ./shared/inclusionMonitoring.ts Restarting...
+[2026-06-24T01:49:20.256Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-24T01:49:20.300Z] Server running on http://localhost:3000/
+[2026-06-24T01:49:20.693Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-24T01:49:31.348Z] [geo.localAgent.platformAccounts.list] {"projectId":72,"userId":16740006,"accountCount":1}
+[2026-06-24T01:49:31.350Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":72,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":null,"resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":1}
+[2026-06-24T01:49:34.100Z] [geo.localAgent.platformAccounts.list] {"projectId":72,"userId":16740006,"accountCount":1}
+[2026-06-24T01:49:34.101Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":72,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":null,"resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":1}
+[2026-06-24T01:49:35.838Z] [geo.scores.latest] {
+[2026-06-24T01:49:35.838Z] requestedProjectId: 72,
+[2026-06-24T01:49:35.839Z] returned: {
+[2026-06-24T01:49:35.839Z] id: 870001,
+[2026-06-24T01:49:35.840Z] projectId: 72,
+[2026-06-24T01:49:35.840Z] createdAt: 2026-06-02T11:34:16.000Z,
+[2026-06-24T01:49:35.840Z] totalScore: 21
+[2026-06-24T01:49:35.841Z] },
+[2026-06-24T01:49:35.841Z] sameProjectTop3: [
+[2026-06-24T01:49:35.841Z] {
+[2026-06-24T01:49:35.842Z] id: 870001,
+[2026-06-24T01:49:35.842Z] projectId: 72,
+[2026-06-24T01:49:35.842Z] createdAt: 2026-06-02T11:34:16.000Z,
+[2026-06-24T01:49:35.843Z] totalScore: 21
+[2026-06-24T01:49:35.843Z] },
+[2026-06-24T01:49:35.843Z] {
+[2026-06-24T01:49:35.843Z] id: 840002,
+[2026-06-24T01:49:35.844Z] projectId: 72,
+[2026-06-24T01:49:35.844Z] createdAt: 2026-06-02T07:10:02.000Z,
+[2026-06-24T01:49:35.844Z] totalScore: 25
+[2026-06-24T01:49:35.845Z] },
+[2026-06-24T01:49:35.845Z] {
+[2026-06-24T01:49:35.845Z] id: 840001,
+[2026-06-24T01:49:35.846Z] projectId: 72,
+[2026-06-24T01:49:35.846Z] createdAt: 2026-05-30T09:28:00.000Z,
+[2026-06-24T01:49:35.846Z] totalScore: 23
+[2026-06-24T01:49:35.846Z] }
+[2026-06-24T01:49:35.847Z] ]
+[2026-06-24T01:49:35.847Z] }
+[2026-06-24T01:49:36.044Z] Dev server process group stopped
+[2026-06-24T01:49:36.047Z] ELIFECYCLE  Command failed.
+[2026-06-24T01:49:36.173Z] Dev server exited with code -15
+[2026-06-24T01:49:39.097Z] Starting dev server with command: pnpm run dev
+[2026-06-24T01:49:40.061Z] 
+[2026-06-24T01:49:40.062Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-24T01:49:40.063Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-24T01:49:40.063Z] 
+[2026-06-24T01:49:48.787Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-24T01:49:48.827Z] Server running on http://localhost:3000/
+[2026-06-24T01:49:49.890Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-24T01:50:00.093Z] [geo.localAgent.platformAccounts.list] {"projectId":72,"userId":16740006,"accountCount":1}
+[2026-06-24T01:50:00.094Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":72,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":null,"resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":1}
+[2026-06-24T01:50:03.198Z] [geo.localAgent.platformAccounts.list] {"projectId":72,"userId":16740006,"accountCount":1}
+[2026-06-24T01:50:03.199Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":72,"userId":16740006,"platform":"multi","hasLocalAgentId":true,"hasLocalProfileId":true,"sessionStatus":"active","lastCheckedAt":null,"resolvedState":"CONNECTED_BY_SERVER_HEARTBEAT","accountCount":1}
+[2026-06-24T01:50:04.591Z] [geo.scores.latest] {
+[2026-06-24T01:50:04.592Z] requestedProjectId: 72,
+[2026-06-24T01:50:04.592Z] returned: {
+[2026-06-24T01:50:04.593Z] id: 870001,
+[2026-06-24T01:50:04.593Z] projectId: 72,
+[2026-06-24T01:50:04.593Z] createdAt: 2026-06-02T11:34:16.000Z,
+[2026-06-24T01:50:04.594Z] totalScore: 21
+[2026-06-24T01:50:04.594Z] },
+[2026-06-24T01:50:04.595Z] sameProjectTop3: [
+[2026-06-24T01:50:04.595Z] {
+[2026-06-24T01:50:04.595Z] id: 870001,
+[2026-06-24T01:50:04.596Z] projectId: 72,
+[2026-06-24T01:50:04.596Z] createdAt: 2026-06-02T11:34:16.000Z,
+[2026-06-24T01:50:04.596Z] totalScore: 21
+[2026-06-24T01:50:04.597Z] },
+[2026-06-24T01:50:04.597Z] {
+[2026-06-24T01:50:04.597Z] id: 840002,
+[2026-06-24T01:50:04.598Z] projectId: 72,
+[2026-06-24T01:50:04.598Z] createdAt: 2026-06-02T07:10:02.000Z,
+[2026-06-24T01:50:04.598Z] totalScore: 25
+[2026-06-24T01:50:04.598Z] },
+[2026-06-24T01:50:04.599Z] {
+[2026-06-24T01:50:04.599Z] id: 840001,
+[2026-06-24T01:50:04.599Z] projectId: 72,
+[2026-06-24T01:50:04.600Z] createdAt: 2026-05-30T09:28:00.000Z,
+[2026-06-24T01:50:04.600Z] totalScore: 23
+[2026-06-24T01:50:04.600Z] }
+[2026-06-24T01:50:04.601Z] ]
+[2026-06-24T01:50:04.601Z] }
+[2026-06-24T01:50:06.299Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:06.764Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:07.223Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:07.682Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:08.141Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:08.600Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:09.059Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:09.517Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:09.974Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:10.439Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:10.897Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:11.355Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:11.813Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:12.272Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:12.731Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:13.189Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:13.648Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:14.106Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:14.569Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:15.028Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:15.484Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:15.944Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:16.401Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:16.859Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:17.325Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:17.783Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:18.241Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:18.698Z] [实测] Kimi API Key 未配置，跳过
+[2026-06-24T01:50:19.137Z] [实测] Kimi API Key 未配置，跳过

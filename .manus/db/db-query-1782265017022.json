@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, projectId, roundType, status, finishedAt FROM test_rounds WHERE projectId = 72 ORDER BY createdAt DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, projectId, roundType, status, finishedAt FROM test_rounds WHERE projectId = 72 ORDER BY createdAt DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "dc247ac7-4aa4-4e76-bf4f-c038441f8a56",
+      "projectId": "72",
+      "roundType": "T0_BASELINE",
+      "status": "running",
+      "finishedAt": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\troundType\tstatus\tfinishedAt\ndc247ac7-4aa4-4e76-bf4f-c038441f8a56\t72\tT0_BASELINE\trunning\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 1729
+}

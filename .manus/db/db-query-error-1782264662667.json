@@ -1,0 +1,8 @@
+{
+  "query": "SELECT p.id, p.name, tr.id as test_round_id, tr.status as round_status, tr.maturity_score FROM projects p LEFT JOIN test_rounds tr ON tr.project_id = p.id ORDER BY p.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT p.id, p.name, tr.id as test_round_id, tr.status as round_status, tr.maturity_score FROM projects p LEFT JOIN test_rounds tr ON tr.project_id = p.id ORDER BY p.id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'tr.project_id' in 'on clause'"
+  ]
+}

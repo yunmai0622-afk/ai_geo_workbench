@@ -1,0 +1,8 @@
+{
+  "query": "SELECT p.id, p.name, (SELECT COUNT(*) FROM geo_maturity_scores gms WHERE gms.projectId = p.id) as score_count FROM projects p ORDER BY p.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT p.id, p.name, (SELECT COUNT(*) FROM geo_maturity_scores gms WHERE gms.projectId = p.id) as score_count FROM projects p ORDER BY p.id;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'p.name' in 'field list'"
+  ]
+}

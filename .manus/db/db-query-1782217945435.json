@@ -1,0 +1,40 @@
+{
+  "query": "SELECT projectId, roundType, status FROM test_rounds ORDER BY projectId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT projectId, roundType, status FROM test_rounds ORDER BY projectId;",
+  "rows": [
+    {
+      "projectId": "72",
+      "roundType": "T0_BASELINE",
+      "status": "running"
+    },
+    {
+      "projectId": "90001",
+      "roundType": "T0_BASELINE",
+      "status": "running"
+    },
+    {
+      "projectId": "150001",
+      "roundType": "T0_BASELINE",
+      "status": "failed"
+    },
+    {
+      "projectId": "150001",
+      "roundType": "T0_BASELINE",
+      "status": "completed"
+    },
+    {
+      "projectId": "180001",
+      "roundType": "T0_BASELINE",
+      "status": "completed"
+    },
+    {
+      "projectId": "210001",
+      "roundType": "T0_BASELINE",
+      "status": "completed"
+    }
+  ],
+  "messages": [],
+  "stdout": "projectId\troundType\tstatus\n72\tT0_BASELINE\trunning\n90001\tT0_BASELINE\trunning\n150001\tT0_BASELINE\tfailed\n150001\tT0_BASELINE\tcompleted\n180001\tT0_BASELINE\tcompleted\n210001\tT0_BASELINE\tcompleted\n",
+  "stderr": "",
+  "execution_time_ms": 1776
+}

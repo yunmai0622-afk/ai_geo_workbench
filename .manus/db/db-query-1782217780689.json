@@ -1,0 +1,19 @@
+{
+  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE '%score%' OR table_name LIKE '%diagnos%' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name LIKE '%score%' OR table_name LIKE '%diagnos%' LIMIT 10;",
+  "rows": [
+    {
+      "table_name": "geo_scores"
+    },
+    {
+      "table_name": "geo_maturity_scores"
+    },
+    {
+      "table_name": "geo_article_quality_scores"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\ngeo_scores\ngeo_maturity_scores\ngeo_article_quality_scores\n",
+  "stderr": "",
+  "execution_time_ms": 1776
+}

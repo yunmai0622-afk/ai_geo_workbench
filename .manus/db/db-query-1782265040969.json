@@ -1,0 +1,19 @@
+{
+  "query": "SELECT DISTINCT projectId FROM test_rounds WHERE status = 'completed';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT DISTINCT projectId FROM test_rounds WHERE status = 'completed';",
+  "rows": [
+    {
+      "projectId": "150001"
+    },
+    {
+      "projectId": "210001"
+    },
+    {
+      "projectId": "180001"
+    }
+  ],
+  "messages": [],
+  "stdout": "projectId\n150001\n210001\n180001\n",
+  "stderr": "",
+  "execution_time_ms": 1790
+}

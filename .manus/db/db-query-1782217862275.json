@@ -1,0 +1,22 @@
+{
+  "query": "SELECT projectId, COUNT(*) as cnt FROM ai_responses GROUP BY projectId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT projectId, COUNT(*) as cnt FROM ai_responses GROUP BY projectId;",
+  "rows": [
+    {
+      "projectId": "120001",
+      "cnt": "9"
+    },
+    {
+      "projectId": "90001",
+      "cnt": "9"
+    },
+    {
+      "projectId": "72",
+      "cnt": "8"
+    }
+  ],
+  "messages": [],
+  "stdout": "projectId\tcnt\n120001\t9\n90001\t9\n72\t8\n",
+  "stderr": "",
+  "execution_time_ms": 1785
+}
