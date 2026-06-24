@@ -1,0 +1,138 @@
+{
+  "query": "DESCRIBE geo_inclusion_monitoring_records;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute DESCRIBE geo_inclusion_monitoring_records;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "projectId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "articleId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "publishRecordId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "publicUrl",
+      "Type": "varchar(1000)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "inclusionMonitorStatus",
+      "Type": "enum('未检测','检测中','已收录','未收录','检测失败')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "未检测",
+      "Extra": ""
+    },
+    {
+      "Field": "aiMentionMonitorStatus",
+      "Type": "enum('未检测','检测中','已提及','未提及','检测失败')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "未检测",
+      "Extra": ""
+    },
+    {
+      "Field": "aiRecommendMonitorStatus",
+      "Type": "enum('未检测','检测中','已推荐','未推荐','检测失败')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "未检测",
+      "Extra": ""
+    },
+    {
+      "Field": "lastCheckedAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "currentSuggestion",
+      "Type": "text",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "optimizationSuggestions",
+      "Type": "json",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "rawJson",
+      "Type": "json",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "aiTestResults",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "lastAiTestedAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\nprojectId\tint\tNO\t\tNULL\t\narticleId\tint\tNO\t\tNULL\t\npublishRecordId\tint\tNO\t\tNULL\t\npublicUrl\tvarchar(1000)\tNO\t\tNULL\t\ninclusionMonitorStatus\tenum('未检测','检测中','已收录','未收录','检测失败')\tNO\t\t未检测\t\naiMentionMonitorStatus\tenum('未检测','检测中','已提及','未提及','检测失败')\tNO\t\t未检测\t\naiRecommendMonitorStatus\tenum('未检测','检测中','已推荐','未推荐','检测失败')\tNO\t\t未检测\t\nlastCheckedAt\ttimestamp\tYES\t\tNULL\t\ncurrentSuggestion\ttext\tNO\t\tNULL\t\noptimizationSuggestions\tjson\tNO\t\tNULL\t\nrawJson\tjson\tNO\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\naiTestResults\tjson\tYES\t\tNULL\t\nlastAiTestedAt\ttimestamp\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 1827
+}

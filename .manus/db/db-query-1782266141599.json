@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, projectId, publishRecordId, inclusionMonitorStatus FROM geo_inclusion_monitoring_records WHERE projectId = 90001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, projectId, publishRecordId, inclusionMonitorStatus FROM geo_inclusion_monitoring_records WHERE projectId = 90001;",
+  "rows": [
+    {
+      "id": "390001",
+      "projectId": "90001",
+      "publishRecordId": "780001",
+      "inclusionMonitorStatus": "未检测"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tpublishRecordId\tinclusionMonitorStatus\n390001\t90001\t780001\t未检测\n",
+  "stderr": "",
+  "execution_time_ms": 1808
+}

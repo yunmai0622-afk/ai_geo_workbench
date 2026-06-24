@@ -1,0 +1,15 @@
+{
+  "query": "SELECT pr.id, pr.projectId, pr.publishChannel FROM geo_publish_records pr WHERE pr.projectId = 90001 LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT pr.id, pr.projectId, pr.publishChannel FROM geo_publish_records pr WHERE pr.projectId = 90001 LIMIT 5;",
+  "rows": [
+    {
+      "id": "780001",
+      "projectId": "90001",
+      "publishChannel": "知乎"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tprojectId\tpublishChannel\n780001\t90001\t知乎\n",
+  "stderr": "",
+  "execution_time_ms": 1720
+}
