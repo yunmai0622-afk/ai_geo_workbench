@@ -16,6 +16,12 @@ import {
   type UserReviewStatus,
 } from "@shared/platformAdmin";
 import { computeMonthlyPlanProgress } from "@shared/monthlyPlanGeneration";
+import {
+  buildDeliveryCommandCenterView,
+  countProfileCompletedSteps,
+  type DeliveryCommandProjectInput,
+} from "@shared/deliveryCommandCenter";
+import { normalizeEffectInclusionStatus } from "@shared/contentAssetEffectTracking";
 import { hasCompletedT0Baseline } from "@shared/workspaceMainChain";
 import { calculateProfileCompletionScore } from "./assetLibrary";
 import {
@@ -24,9 +30,13 @@ import {
   customerCompanies,
   enterpriseGeoProfiles,
   geoMaturityScores,
+  geoArticles,
+  geoInclusionMonitoringRecords,
+  geoPublishRecords,
   monthlyOptimizationPlans,
   monthlyOptimizationTasks,
   projects,
+  questions,
   reports,
   testRounds,
   users,
@@ -1040,6 +1050,225 @@ export async function getDeliverySummary(db: Db) {
     highRisk,
     totalBindings: rows.length,
   };
+}
+
+function isSameCalendarMonth(value: Date | string | null | undefined, now: Date): boolean {
+  if (!value) return false;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
+function hoursSince(value: Date | string | null | undefined, now: Date): number | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return (now.getTime() - date.getTime()) / 3_600_000;
+}
+
+export async function getDeliveryCommandCenter(db: Db) {
+  const now = new Date();
+  const bindings = await listProjectBindings(db);
+  const companyIds = [...new Set(bindings.map(b => b.companyId))];
+  const projectIds = bindings.map(b => b.projectId);
+  const subs = await subscriptionByCompanyId(db, companyIds);
+
+  if (projectIds.length === 0) {
+    return buildDeliveryCommandCenterView([]);
+  }
+
+  const [articleRows, publishRows, inclusionRows, questionRows, allPlanRows] = await Promise.all([
+    db.select().from(geoArticles).where(inArray(geoArticles.projectId, projectIds)),
+    db.select().from(geoPublishRecords).where(inArray(geoPublishRecords.projectId, projectIds)),
+    db
+      .select()
+      .from(geoInclusionMonitoringRecords)
+      .where(inArray(geoInclusionMonitoringRecords.projectId, projectIds)),
+    db.select({ projectId: questions.projectId, id: questions.id }).from(questions).where(inArray(questions.projectId, projectIds)),
+    db
+      .select()
+      .from(monthlyOptimizationPlans)
+      .where(inArray(monthlyOptimizationPlans.projectId, projectIds))
+      .orderBy(desc(monthlyOptimizationPlans.roundNumber)),
+  ]);
+
+  const planIds = allPlanRows.map(plan => plan.id);
+  const allTaskRows =
+    planIds.length > 0
+      ? await db
+          .select()
+          .from(monthlyOptimizationTasks)
+          .where(inArray(monthlyOptimizationTasks.planId, planIds))
+      : [];
+
+  const profileRows = await db
+    .select()
+    .from(enterpriseGeoProfiles)
+    .where(inArray(enterpriseGeoProfiles.projectId, projectIds));
+
+  const questionCountByProject = new Map<number, number>();
+  for (const row of questionRows) {
+    questionCountByProject.set(row.projectId, (questionCountByProject.get(row.projectId) ?? 0) + 1);
+  }
+
+  const articlesByProject = new Map<number, typeof articleRows>();
+  for (const row of articleRows) {
+    const list = articlesByProject.get(row.projectId) ?? [];
+    list.push(row);
+    articlesByProject.set(row.projectId, list);
+  }
+
+  const publishByProject = new Map<number, typeof publishRows>();
+  for (const row of publishRows) {
+    const list = publishByProject.get(row.projectId) ?? [];
+    list.push(row);
+    publishByProject.set(row.projectId, list);
+  }
+
+  const inclusionByProject = new Map<number, typeof inclusionRows>();
+  for (const row of inclusionRows) {
+    const list = inclusionByProject.get(row.projectId) ?? [];
+    list.push(row);
+    inclusionByProject.set(row.projectId, list);
+  }
+
+  const profileByProject = new Map(profileRows.map(row => [row.projectId, row]));
+
+  const plansByProject = new Map<number, typeof allPlanRows>();
+  for (const plan of allPlanRows) {
+    const list = plansByProject.get(plan.projectId) ?? [];
+    list.push(plan);
+    plansByProject.set(plan.projectId, list);
+  }
+
+  const tasksByPlanId = new Map<number, typeof allTaskRows>();
+  for (const task of allTaskRows) {
+    const list = tasksByPlanId.get(task.planId) ?? [];
+    list.push(task);
+    tasksByPlanId.set(task.planId, list);
+  }
+
+  const projectsInput: DeliveryCommandProjectInput[] = bindings.map(binding => {
+    const delivery = binding.delivery;
+    const sub = subs.get(binding.companyId);
+    const articles = articlesByProject.get(binding.projectId) ?? [];
+    const publishes = publishByProject.get(binding.projectId) ?? [];
+    const inclusions = inclusionByProject.get(binding.projectId) ?? [];
+    const profile = profileByProject.get(binding.projectId) ?? null;
+    const plans = plansByProject.get(binding.projectId) ?? [];
+    const activePlan = plans.find(plan => plan.status === "active") ?? null;
+    const activeTasks = activePlan ? (tasksByPlanId.get(activePlan.id) ?? []) : [];
+    const activeProgressRaw = computeMonthlyPlanProgress(activeTasks);
+    const activeProgress = {
+      ...activeProgressRaw,
+      rate: monthlyPlanRate(activeProgressRaw.completedCount, activeProgressRaw.totalCount),
+    };
+    const deliveryProgress = delivery?.monthlyPlanProgress ?? activeProgress;
+
+    const recentPlanRates = plans.slice(0, 2).map(plan => {
+      const tasks = tasksByPlanId.get(plan.id) ?? [];
+      const progress = computeMonthlyPlanProgress(tasks);
+      return monthlyPlanRate(progress.completedCount, progress.totalCount);
+    });
+
+    const contentGeneratedCount = articles.length;
+    const contentPublishedCount = articles.filter(
+      article => article.status === "已发布" || article.publishedAt != null,
+    ).length;
+    const contentGeneratedThisMonthCount = articles.filter(article =>
+      isSameCalendarMonth(article.createdAt, now),
+    ).length;
+    const contentPublishedThisMonthCount = publishes.filter(record =>
+      isSameCalendarMonth(record.publishedAt ?? record.createdAt, now),
+    ).length;
+
+    const inclusionIncludedCount = inclusions.filter(
+      row => normalizeEffectInclusionStatus(row.effectInclusionStatus) === "included",
+    ).length;
+    const inclusionPendingCount = inclusions.filter(
+      row =>
+        normalizeEffectInclusionStatus(row.effectInclusionStatus) === "pending" ||
+        row.inclusionMonitorStatus === "未检测",
+    ).length;
+
+    const contentGeneratingCount = articles.filter(article => article.status === "待生成").length;
+    const contentStuckGeneratingCount = articles.filter(article => {
+      if (article.status !== "待生成") return false;
+      const hours = hoursSince(article.updatedAt ?? article.createdAt, now);
+      return hours != null && hours >= 24;
+    }).length;
+    const contentPendingReviewCount = articles.filter(
+      article => article.status === "待质检" || article.contentReviewStatus === "待审核",
+    ).length;
+    const contentPendingReviewStaleCount = articles.filter(article => {
+      const pending =
+        article.status === "待质检" || article.contentReviewStatus === "待审核";
+      if (!pending) return false;
+      const hours = hoursSince(article.updatedAt ?? article.createdAt, now);
+      return hours != null && hours >= 72;
+    }).length;
+
+    const profileCompletedSteps = countProfileCompletedSteps({
+      profile: profile as Record<string, unknown> | null,
+      questionCount: questionCountByProject.get(binding.projectId) ?? 0,
+    });
+
+    const monthlyPlanStatus: DeliveryCommandProjectInput["monthlyPlanStatus"] = activePlan
+      ? "active"
+      : plans.some(plan => plan.status === "completed")
+        ? "completed"
+        : "none";
+
+    const lastActivityCandidates = [
+      delivery?.lastAiTestAt,
+      delivery?.lastReportAt,
+      articles[0]?.updatedAt,
+      publishes[0]?.publishedAt,
+      activePlan?.updatedAt,
+    ].filter(Boolean) as Array<Date | string>;
+
+    const lastActivityAt =
+      lastActivityCandidates.length > 0
+        ? lastActivityCandidates.reduce((latest, value) => {
+            const ts = new Date(value).getTime();
+            const latestTs = new Date(latest).getTime();
+            return ts > latestTs ? value : latest;
+          })
+        : null;
+
+    return {
+      companyId: binding.companyId,
+      companyName: binding.companyName,
+      projectId: binding.projectId,
+      projectName: binding.projectName ?? delivery?.projectName ?? `项目 #${binding.projectId}`,
+      subscriptionExpiresAt: sub?.expiresAt ?? null,
+      profileCompletionScore: delivery?.profileCompletionScore ?? 0,
+      profileCompletedSteps,
+      hasAiTest: delivery?.aiDiagnosisStatus === "已完成",
+      lastAiTestAt: delivery?.lastAiTestAt ?? null,
+      monthlyPlanProgress: deliveryProgress,
+      monthlyPlanStatus,
+      monthlyReportStatus: delivery?.monthlyReportStatus ?? "未生成",
+      retestScheduledAt: activePlan?.retestScheduledAt ?? null,
+      retestCompletedAt: activePlan?.retestCompletedAt ?? null,
+      contentGeneratedCount,
+      contentPublishedCount,
+      inclusionIncludedCount,
+      inclusionPendingCount,
+      contentGeneratingCount,
+      contentStuckGeneratingCount,
+      contentPendingReviewCount,
+      contentPendingReviewStaleCount,
+      contentGeneratedThisMonthCount,
+      contentPublishedThisMonthCount,
+      currentMonthPlanRate: deliveryProgress.rate,
+      recentTwoMonthPlanRates: recentPlanRates,
+      lastActivityAt,
+      lastReportAt: delivery?.lastReportAt ?? null,
+    };
+  });
+
+  return buildDeliveryCommandCenterView(projectsInput, now);
 }
 
 export { DEFAULT_ENABLED_FEATURES, parseEnabledFeatures };

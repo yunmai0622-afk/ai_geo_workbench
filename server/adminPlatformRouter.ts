@@ -17,6 +17,7 @@ import {
   extendCompanySubscription,
   getCustomerCompany,
   getCustomerCompanyMetrics,
+  getDeliveryCommandCenter,
   getDeliverySummary,
   listCustomerCompanies,
   listDeliveryBoard,
@@ -366,6 +367,11 @@ const deliveryRouter = router({
   getSummary: adminProcedure.query(async () => {
     const db = await requirePlatformDb();
     return getDeliverySummary(db);
+  }),
+
+  getCommandCenter: adminProcedure.query(async () => {
+    const db = await requirePlatformDb();
+    return getDeliveryCommandCenter(db);
   }),
 });
 

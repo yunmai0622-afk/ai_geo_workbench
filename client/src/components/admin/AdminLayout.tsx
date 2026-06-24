@@ -21,7 +21,7 @@ const ADMIN_NAV = [
   { path: "/admin/users", label: "注册用户审核", icon: Users },
   { path: "/admin/subscriptions", label: "套餐与有效期", icon: CreditCard },
   { path: "/admin/projects", label: "客户项目绑定", icon: Link2 },
-  { path: "/admin/delivery", label: "交付状态看板", icon: LayoutDashboard },
+  { path: "/admin/delivery", label: "交付驾驶舱", icon: LayoutDashboard },
 ] as const;
 
 export function AdminAccessGuard({ children }: { children: ReactNode }) {
@@ -41,7 +41,7 @@ export function AdminAccessGuard({ children }: { children: ReactNode }) {
   }
 
   if (user.role !== "admin") {
-    return <Redirect to="/clients" />;
+    return <Redirect to="/workspace" />;
   }
 
   return <>{children}</>;
