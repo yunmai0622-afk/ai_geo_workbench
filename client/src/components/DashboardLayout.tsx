@@ -28,6 +28,7 @@ import {
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
+import { filterNavGroupsForRole, resolveNavOperatorMode } from "@shared/roleBasedNavigation";
 import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
 import {
@@ -253,7 +254,11 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = location.split("?")[0] || location;
-  const visibleNavGroups = navGroups;
+  const isOperatorNav = resolveNavOperatorMode(user?.role);
+  const visibleNavGroups = useMemo(
+    () => filterNavGroupsForRole(navGroups, isOperatorNav),
+    [isOperatorNav],
+  );
   const allMenuItems = useMemo(() => visibleNavGroups.flatMap(g => g.items), [visibleNavGroups]);
   const activeMenuItem = allMenuItems.find(item => item.aliases.includes(pathname));
   const isMobile = useIsMobile();
@@ -304,6 +309,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
             collapsible="icon"
             className={cn("border-r", geoP0Surfaces.sidebar)}
             disableTransition={isResizing}
+            data-testid={isOperatorNav ? "sidebar-nav-operator" : "sidebar-nav-client"}
           >
             <SidebarHeader className="h-16 justify-center border-b border-gray-200 bg-white">
               <div className="flex w-full items-center gap-3 px-2 transition-all">
