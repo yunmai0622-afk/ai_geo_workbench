@@ -52,7 +52,7 @@ export function WeeklyAuxiliarySections({
       data-testid="weekly-auxiliary-sections"
     >
       <p className="text-xs text-gray-500" data-testid="weekly-inclusion-retest-hint">
-        发布完成后，可在「收录复测中心」查看发布后复测结果。
+        发布完成后，可在「内容资产效果」查看收录与阅读数据。
         {onGoInclusionMonitoring ? (
           <Button
             type="button"
@@ -61,7 +61,7 @@ export function WeeklyAuxiliarySections({
             data-testid="weekly-go-inclusion-monitoring"
             onClick={onGoInclusionMonitoring}
           >
-            去收录复测中心
+            去内容资产效果
           </Button>
         ) : null}
       </p>

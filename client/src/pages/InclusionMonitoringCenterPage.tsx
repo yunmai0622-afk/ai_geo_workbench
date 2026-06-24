@@ -1,85 +1,33 @@
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
+import { ContentAssetEffectFillPanel } from "@/components/inclusion-monitoring/ContentAssetEffectFillPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
-import { recordPublicLink } from "@/lib/assetProgressDisplay";
 import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import {
-  daysSincePublish,
-  formatMentionDelta,
-  retestPhaseCustomerLabel,
-  retestPhaseStatusLabel,
-} from "@/lib/inclusionMonitoringDisplay";
+  mapContentAssetEffectRecordForView,
+  type ContentAssetEffectViewRecord,
+} from "@/lib/contentAssetEffectView";
 import { trpc } from "@/lib/trpc";
 import {
-  aggregateAiTestEvidence,
-  buildEvidenceDetailPath,
-  isAiTestMissReason,
-  missReasonLabelCn,
-  sentimentLabelCn,
-  type AiTestStage,
-} from "@shared/aiTestEvidence";
-import { publishLinkAccessLabel } from "@shared/inclusionMonitoringDisplay";
-import { formatSuggestionPriorityLabel } from "@shared/retestFeedbackLoop";
+  aggregateContentAssetEffectOverview,
+  aggregatePlatformEffectSummary,
+} from "@shared/contentAssetEffectTracking";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { RadioTower } from "lucide-react";
+import { BarChart3, RadioTower } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
-type AiTestResultLike = {
-  engine?: string;
-  engineName?: string;
-  question?: string;
-  mentionsBrand?: boolean;
-  recommendsBrand?: boolean;
-  mentionedBrand?: boolean;
-  recommendedBrand?: boolean;
-  citedUrls?: string[];
-  sentiment?: "positive" | "neutral" | "negative";
-  missReason?: string;
-  testStage?: string;
-};
+type MonitoringRecordRow = ContentAssetEffectViewRecord;
 
-type MonitoringRecordRow = {
-  id: number;
-  articleId: number;
-  publishRecordId: number;
-  publicUrl: string;
-  inclusionStatus: string;
-  aiMentionStatus: string;
-  aiRecommendStatus: string;
-  lastCheckedAt?: Date | string | null;
-  lastAiTestedAt?: Date | string | null;
-  currentSuggestion?: string | null;
-  aiTestResults?: AiTestResultLike[] | null;
-  articleTitle?: string | null;
-  linkAccess?: {
-    accessible: boolean;
-    checkedAt: string;
-    statusCode?: number | null;
-    errorMessage?: string | null;
-  } | null;
-  nextAction?: string | null;
-};
-
-type PublishRecordRow = {
-  id: number;
-  publishChannel?: string | null;
-  publishedAt?: Date | string | number | null;
-  publishUrl?: string | null;
-  publicUrl?: string | null;
-};
-
-const MONITORING_TEST_STAGE_OPTIONS: { value: AiTestStage; label: string }[] = [
-  { value: "manual_check", label: "人工复测" },
-  { value: "before_publish", label: "发布前测试" },
-  { value: "after_publish", label: "发布后复测" },
-];
+function mapRecordForView(record: ContentAssetEffectViewRecord & { canEnterAiRetest?: boolean }) {
+  return mapContentAssetEffectRecordForView(record);
+}
 
 function toAbsoluteUrl(path?: string | null) {
   if (!path) return "";
@@ -88,18 +36,27 @@ function toAbsoluteUrl(path?: string | null) {
 }
 
 function formatTime(value?: Date | string | number | null) {
-  if (!value) return "未记录";
+  if (!value) return "—";
   return new Date(value).toLocaleString("zh-CN", { hour12: false });
 }
 
-function hasPhaseTest(record: MonitoringRecordRow, phase: "T1" | "T2" | "T3"): boolean {
-  const results = record.aiTestResults ?? [];
-  const marker = phase === "T1" ? "T1" : phase === "T2" ? "T2" : "T3";
-  return results.some(r => (r.testStage ?? "").includes(marker) || record.lastAiTestedAt != null);
+function formatCount(value?: number | null) {
+  if (value == null) return "—";
+  return String(value);
+}
+
+function formatKeywords(keywords?: string[] | null) {
+  if (!keywords?.length) return "—";
+  return keywords.join("、");
+}
+
+function formatRate(rate: number | null) {
+  if (rate == null) return "—";
+  return `${rate}%`;
 }
 
 export function InclusionMonitoringCenterPage() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { selectedProjectId, projectInput, enabled, projectsLoading } = useActiveProjectSelection();
 
@@ -107,37 +64,33 @@ export function InclusionMonitoringCenterPage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
-  const feedbackSummaryQuery = trpc.geo.feedbackLoop.getRetestFeedbackSummary.useQuery(
-    { projectId: selectedProjectId! },
-    { enabled },
-  );
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
 
   const records = useMemo(
     () =>
-      (monitoringQuery.data ?? []).filter(
-        record => record != null && typeof record?.id === "number",
-      ) as MonitoringRecordRow[],
+      (monitoringQuery.data ?? [])
+        .filter(record => record != null && typeof record?.id === "number")
+        .map(record => mapRecordForView(record as MonitoringRecordRow & { canEnterAiRetest?: boolean })),
     [monitoringQuery.data],
   );
-  const publishRecords = useMemo(
-    () => (publishRecordsQuery.data ?? []) as PublishRecordRow[],
-    [publishRecordsQuery.data],
-  );
-  const publishRecordById = useMemo(
-    () => new Map(publishRecords.map(record => [record.id, record])),
-    [publishRecords],
-  );
 
-  const publishRecordCount = publishRecords.length;
-  const publishRecordsWithLink = publishRecords.filter(record => Boolean(recordPublicLink(record)));
-  const missingPublicLinkCount = Math.max(0, publishRecordCount - publishRecordsWithLink.length);
+  const publishRecordCount = publishRecordsQuery.data?.length ?? 0;
   const loading = monitoringQuery.isLoading || publishRecordsQuery.isLoading;
 
+  const overview = useMemo(
+    () => aggregateContentAssetEffectOverview(publishRecordCount, records),
+    [publishRecordCount, records],
+  );
+
+  const platformSummary = useMemo(() => aggregatePlatformEffectSummary(records), [records]);
+
+  const retestReadyRecords = useMemo(
+    () => records.filter(record => record.eligibleForAiRetest),
+    [records],
+  );
+
   const [runningRecordId, setRunningRecordId] = useState<number | null>(null);
-  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
-  const [selectedTestStage, setSelectedTestStage] = useState<AiTestStage>("manual_check");
   const [linkCheckTriggered, setLinkCheckTriggered] = useState(false);
 
   const checkPublishLinks = trpc.geo.inclusionMonitoring.checkPublishLinks.useMutation({
@@ -151,7 +104,6 @@ export function InclusionMonitoringCenterPage() {
 
   useEffect(() => {
     setLinkCheckTriggered(false);
-    setSelectedRecordId(null);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -160,58 +112,65 @@ export function InclusionMonitoringCenterPage() {
     checkPublishLinks.mutate({ projectId: selectedProjectId });
   }, [selectedProjectId, records.length, linkCheckTriggered, checkPublishLinks.isPending]);
 
+  const invalidateRecords = async () => {
+    if (selectedProjectId) {
+      await utils.geo.articles.inclusionMonitoringRecords.invalidate({ projectId: selectedProjectId });
+    }
+    await monitoringQuery.refetch();
+  };
+
+  const markIncluded = trpc.geo.inclusionMonitoring.markEffectIncluded.useMutation({
+    onSuccess: async () => {
+      toast.success("已标记为已收录");
+      await invalidateRecords();
+    },
+    onError: e => toast.error(toUserFacingErrorFromUnknown(e, "操作失败")),
+  });
+
+  const markIgnored = trpc.geo.inclusionMonitoring.markEffectIgnored.useMutation({
+    onSuccess: async () => {
+      toast.success("已标记忽略");
+      await invalidateRecords();
+    },
+    onError: e => toast.error(toUserFacingErrorFromUnknown(e, "操作失败")),
+  });
+
   const runCheck = trpc.geo.aiMentionCheck.run.useMutation({
     onSuccess: async () => {
-      toast.success("复测结果已更新");
-      if (selectedProjectId) {
-        await utils.geo.articles.inclusionMonitoringRecords.invalidate({ projectId: selectedProjectId });
-      }
-      await monitoringQuery.refetch();
+      toast.success("已加入 AI 复测队列");
+      await invalidateRecords();
     },
     onError: e => toast.error(toUserFacingErrorFromUnknown(e, "复测失败")),
     onSettled: () => setRunningRecordId(null),
   });
 
-  const aiAggregate = useMemo(
-    () =>
-      aggregateAiTestEvidence(
-        records.map(record => ({
-          monitoringRecordId: record.id,
-          results: Array.isArray(record.aiTestResults) ? record.aiTestResults : [],
-        })),
-      ),
-    [records],
-  );
+  const handleNextAction = (record: MonitoringRecordRow) => {
+    if (!selectedProjectId) return;
+    const action = record.nextAction;
+    if (!action) return;
 
-  const baselineMentionRate = workspaceSummaryQuery.data?.brandMentionRate ?? null;
-  const mentionDelta =
-    baselineMentionRate != null && aiAggregate.questionCount > 0
-      ? aiAggregate.mentionRate - baselineMentionRate
-      : null;
-
-  const retestPlan = workspaceSummaryQuery.data?.retestPlan;
-  const pendingT1 = retestPlan?.milestones.find(m => m.phase === "T1" && m.status !== "completed") ? 1 : 0;
-  const pendingT2 = retestPlan?.milestones.find(m => m.phase === "T2" && m.status !== "completed") ? 1 : 0;
-  const pendingT3 = retestPlan?.milestones.find(m => m.phase === "T3" && m.status !== "completed") ? 1 : 0;
-  const completedRetestCount = records.filter(r => r.lastAiTestedAt).length;
-
-  const selectedRecord = records.find(r => r.id === selectedRecordId) ?? null;
-
-  const nextRoundSuggestions = feedbackSummaryQuery.data?.nextRoundSuggestions ?? [];
-  const fallbackOptimizationItems = useMemo(() => {
-    const items: string[] = [];
-    if (missingPublicLinkCount > 0) {
-      items.push(`需要补 ${missingPublicLinkCount} 条公开链接后再安排复测`);
+    if (action.kind === "mark_included") {
+      markIncluded.mutate({ projectId: selectedProjectId, recordId: record.id });
+      return;
     }
-    const untested = records.filter(r => !r.lastAiTestedAt).length;
-    if (untested > 0) {
-      items.push(`有 ${untested} 篇已发布内容尚未执行复测`);
+    if (action.kind === "join_retest") {
+      setRunningRecordId(record.id);
+      runCheck.mutate({
+        projectId: selectedProjectId,
+        recordId: record.id,
+        engines: ["doubao", "deepseek", "kimi"],
+        testStage: "after_publish",
+      });
+      return;
     }
-    if (items.length === 0) {
-      items.push("完成发布后复测后，系统将基于问题池与信源图谱生成下一轮优化建议");
+    if (action.kind === "republish") {
+      setLocation(buildProjectUrl("/content-publishing", selectedProjectId));
+      return;
     }
-    return items;
-  }, [missingPublicLinkCount, records]);
+    if (action.kind === "ignore") {
+      markIgnored.mutate({ projectId: selectedProjectId, recordId: record.id });
+    }
+  };
 
   if (!enabled && !projectsLoading) {
     return (
@@ -225,7 +184,7 @@ export function InclusionMonitoringCenterPage() {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-gray-500" data-testid="inclusion-monitoring-page">
         <Spinner className="size-6 text-blue-600" />
-        <p className="text-sm">正在加载收录复测数据…</p>
+        <p className="text-sm">正在加载内容资产效果数据…</p>
       </div>
     );
   }
@@ -233,15 +192,13 @@ export function InclusionMonitoringCenterPage() {
   return (
     <div className="space-y-6 pb-12" data-testid="inclusion-monitoring-page">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">收录复测中心</h1>
-        <p className="text-sm text-gray-500">
-          查看已发布内容、管理发布后复测，跟踪 AI 引用并输出下一轮优化建议。
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900">内容资产效果</h1>
+        <p className="text-sm text-gray-500">追踪已发布内容的收录、曝光与 AI 复测价值。</p>
       </header>
 
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.inclusionMonitoring}
-        message="发布内容后在这里追踪 AI 是否收录并引用你的内容"
+        message="发布内容后在这里回填收录与阅读数据，7-10 天内看到第一批可验证成果"
         data-testid="first-use-hint-inclusion-monitoring"
       />
 
@@ -261,27 +218,38 @@ export function InclusionMonitoringCenterPage() {
         className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
         data-testid="inclusion-monitoring-overview"
       >
-        <h2 className="text-base font-semibold text-gray-900">监测总览</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+        <h2 className="text-base font-semibold text-gray-900">总览指标</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {[
-            { label: "已发布内容数", value: publishRecordCount, testId: "overview-published-count" },
-            { label: "已回填公开链接数", value: publishRecordsWithLink.length, testId: "overview-linked-count" },
-            { label: "待 7 天后复测", value: pendingT1, testId: "overview-pending-t1" },
-            { label: "待 14 天后复测", value: pendingT2, testId: "overview-pending-t2" },
-            { label: "待 30 天后复测", value: pendingT3, testId: "overview-pending-t3" },
-            { label: "已完成复测数", value: completedRetestCount, testId: "overview-completed-retest" },
+            { label: "已发布内容数", value: overview.publishedCount, testId: "overview-published-count" },
+            { label: "已收录内容数", value: overview.includedCount, testId: "overview-included-count" },
+            { label: "收录率", value: formatRate(overview.inclusionRate), testId: "overview-inclusion-rate" },
+            { label: "待收录内容数", value: overview.pendingCount, testId: "overview-pending-count" },
             {
-              label: "AI提及变化",
-              value: formatMentionDelta(mentionDelta),
-              testId: "overview-mention-delta",
+              label: "可进入AI复测数",
+              value: overview.retestReadyCount,
+              testId: "overview-retest-ready-count",
             },
-            {
-              label: "下一次复测时间",
-              value: retestPlan?.nextSuggestion?.suggestedAtLabel ?? "暂无",
-              testId: "overview-next-retest",
-            },
+            ...(overview.totalReadCount != null || overview.totalImpressionCount != null
+              ? [
+                  {
+                    label: "累计阅读/曝光",
+                    value: [
+                      overview.totalReadCount != null ? `阅读 ${overview.totalReadCount}` : null,
+                      overview.totalImpressionCount != null ? `曝光 ${overview.totalImpressionCount}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" / "),
+                    testId: "overview-read-impression",
+                  },
+                ]
+              : []),
           ].map(item => (
-            <div key={item.testId} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2" data-testid={item.testId}>
+            <div
+              key={item.testId}
+              className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+              data-testid={item.testId}
+            >
               <p className="text-xs text-gray-500">{item.label}</p>
               <p className="mt-0.5 text-sm font-semibold text-gray-900">{item.value}</p>
             </div>
@@ -292,7 +260,7 @@ export function InclusionMonitoringCenterPage() {
       {publishRecordCount === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
           <RadioTower className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-4 text-sm font-medium text-gray-700">暂无可监测内容</p>
+          <p className="mt-4 text-sm font-medium text-gray-700">暂无已发布内容</p>
           <p className="mt-1 text-xs text-gray-500">请先完成发布并回填公开链接。</p>
           <Button
             type="button"
@@ -309,324 +277,251 @@ export function InclusionMonitoringCenterPage() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">已发布内容监测表</h2>
-              <p className="mt-1 text-xs text-gray-500">按内容查看复测进度与 AI 引用状态。</p>
+              <h2 className="text-base font-semibold text-gray-900">内容资产列表</h2>
+              <p className="mt-1 text-xs text-gray-500">查看每条已发布内容的收录状态与效果数据，支持手动回填。</p>
             </div>
-            {missingPublicLinkCount > 0 ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className={geoP0Brand.primaryOutline}
-                onClick={() =>
-                  selectedProjectId &&
-                  setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-                }
-              >
-                回填链接（{missingPublicLinkCount}）
-              </Button>
-            ) : null}
           </div>
 
           {records.length === 0 ? (
-            <p className="mt-4 text-sm text-gray-500">已有发布记录，点击「补录监测记录」后可在此管理复测。</p>
+            <p className="mt-4 text-sm text-gray-500">已有发布记录，系统正在同步监测数据…</p>
           ) : (
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
-                    <th className="py-2 pr-4 font-medium">平台</th>
-                    <th className="py-2 pr-4 font-medium">标题</th>
-                    <th className="py-2 pr-4 font-medium">公开链接</th>
-                    <th className="py-2 pr-4 font-medium">发布时间</th>
-                    <th className="py-2 pr-4 font-medium">{retestPhaseCustomerLabel("T1")}状态</th>
-                    <th className="py-2 pr-4 font-medium">{retestPhaseCustomerLabel("T2")}状态</th>
-                    <th className="py-2 pr-4 font-medium">{retestPhaseCustomerLabel("T3")}状态</th>
-                    <th className="py-2 pr-4 font-medium">AI引用</th>
-                    <th className="py-2 font-medium">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map(record => {
-                    const publishRecord = publishRecordById.get(record.publishRecordId);
-                    const platform = (publishRecord?.publishChannel ?? "").trim() || "未标注";
-                    const days = daysSincePublish(publishRecord?.publishedAt);
-                    return (
-                      <tr
-                        key={record.id}
-                        id={`monitoring-record-${record.id}`}
-                        className="border-b border-gray-50 text-gray-800"
-                        data-testid={`inclusion-content-row-${record.id}`}
+            <div className="mt-4 space-y-4">
+              {records.map(record => {
+                const platform = (record.publishChannel ?? "").trim() || "未标注";
+                const nextAction = record.nextAction;
+                const isRunning = runCheck.isPending && runningRecordId === record.id;
+                return (
+                  <article
+                    key={record.id}
+                    id={`monitoring-record-${record.id}`}
+                    className="rounded-lg border border-gray-100 bg-gray-50/50 p-4"
+                    data-testid={`inclusion-content-row-${record.id}`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">
+                          {record.articleTitle?.trim() || `内容 #${record.articleId}`}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          平台：{platform}
+                          {record.linkedDetectionQuestion ? ` · 关联问题：${record.linkedDetectionQuestion}` : ""}
+                        </p>
+                      </div>
+                      <span
+                        className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200"
+                        data-testid={`inclusion-status-badge-${record.id}`}
                       >
-                        <td className="py-3 pr-4 whitespace-nowrap">{platform}</td>
-                        <td className="py-3 pr-4 max-w-[12rem]">
-                          <span className="line-clamp-2 font-medium text-gray-900">
-                            {record.articleTitle?.trim() || `文章 #${record.articleId}`}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-4 max-w-[10rem]">
+                        {record.effectStatusLabel ?? "待收录"}
+                      </span>
+                    </div>
+
+                    <dl className="mt-3 grid gap-2 text-xs text-gray-600 sm:grid-cols-2 lg:grid-cols-4">
+                      <div>
+                        <dt className="text-gray-400">发布时间</dt>
+                        <dd className="mt-0.5">{formatTime(record.publishedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">公开链接</dt>
+                        <dd className="mt-0.5">
                           {toAbsoluteUrl(record.publicUrl) ? (
                             <a
                               href={toAbsoluteUrl(record.publicUrl)}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-blue-600 hover:underline line-clamp-1"
+                              className="text-blue-600 hover:underline"
                             >
                               查看链接
                             </a>
                           ) : (
-                            <span className="text-gray-400">未回填</span>
+                            "—"
                           )}
-                        </td>
-                        <td className="py-3 pr-4 whitespace-nowrap text-gray-500">
-                          {formatTime(publishRecord?.publishedAt)}
-                        </td>
-                        <td className="py-3 pr-4 whitespace-nowrap">
-                          {retestPhaseStatusLabel("T1", days, hasPhaseTest(record, "T1"))}
-                        </td>
-                        <td className="py-3 pr-4 whitespace-nowrap">
-                          {retestPhaseStatusLabel("T2", days, hasPhaseTest(record, "T2"))}
-                        </td>
-                        <td className="py-3 pr-4 whitespace-nowrap">
-                          {retestPhaseStatusLabel("T3", days, hasPhaseTest(record, "T3"))}
-                        </td>
-                        <td className="py-3 pr-4 whitespace-nowrap">{record.aiMentionStatus || "未检测"}</td>
-                        <td className="py-3">
-                          <div className="flex flex-wrap gap-1.5">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className={`h-7 px-2 text-xs ${geoP0Brand.primaryOutline}`}
-                              onClick={() =>
-                                selectedProjectId &&
-                                setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-                              }
-                            >
-                              回填链接
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              className={`h-7 px-2 text-xs ${geoP0Brand.primary}`}
-                              disabled={!selectedProjectId || runCheck.isPending}
-                              onClick={() => {
-                                if (!selectedProjectId) return;
-                                setRunningRecordId(record.id);
-                                runCheck.mutate({
-                                  projectId: selectedProjectId,
-                                  recordId: record.id,
-                                  engines: ["doubao", "deepseek", "kimi"],
-                                  testStage: selectedTestStage,
-                                });
-                              }}
-                            >
-                              {runCheck.isPending && runningRecordId === record.id ? "复测中…" : "执行复测"}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className={`h-7 px-2 text-xs ${geoP0Brand.primaryOutline}`}
-                              onClick={() => setSelectedRecordId(record.id)}
-                            >
-                              查看证据
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className={`h-7 px-2 text-xs ${geoP0Brand.primaryOutline}`}
-                              onClick={() =>
-                                selectedProjectId &&
-                                setLocation(buildProjectUrl("/delivery-reports", selectedProjectId))
-                              }
-                            >
-                              进入交付报告
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <label className="flex flex-col gap-1 text-xs text-gray-600">
-              复测阶段
-              <select
-                value={selectedTestStage}
-                onChange={e => setSelectedTestStage(e.target.value as AiTestStage)}
-                className="h-8 rounded-md border border-gray-200 bg-white px-2 text-sm"
-              >
-                {MONITORING_TEST_STAGE_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </section>
-      )}
-
-      <details
-        className="rounded-xl border border-gray-200 bg-white shadow-sm"
-        open={selectedRecordId != null}
-        data-testid="inclusion-monitoring-ai-evidence-fold"
-      >
-        <summary className="cursor-pointer px-5 py-4 text-sm font-medium text-gray-800">
-          AI 实测证据{selectedRecord ? `：${selectedRecord.articleTitle?.trim() || `文章 #${selectedRecord.articleId}`}` : ""}
-        </summary>
-        <div className="border-t border-gray-100 p-5">
-          {!selectedRecord ? (
-            <p className="text-sm text-gray-500">在上方内容表中点击「查看证据」展开本条实测明细。</p>
-          ) : (
-            <div className="space-y-3">
-              {(selectedRecord.aiTestResults ?? []).length === 0 ? (
-                <p className="text-sm text-gray-500">暂无实测证据，请先执行复测。</p>
-              ) : (
-                (selectedRecord.aiTestResults ?? []).map((result, index) => (
-                  <div
-                    key={`${result.engine}-${index}`}
-                    className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm"
-                    data-testid={`inclusion-ai-evidence-row-${selectedRecord.id}-${index}`}
-                  >
-                    <dl className="grid gap-2 sm:grid-cols-2">
-                      <div>
-                        <dt className="text-xs text-gray-500">测试问题</dt>
-                        <dd className="mt-0.5 text-gray-800">{result.question ?? "—"}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-gray-500">AI平台</dt>
-                        <dd className="mt-0.5 text-gray-800">{result.engineName ?? result.engine ?? "—"}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-gray-500">是否提及</dt>
-                        <dd className="mt-0.5 text-gray-800">
-                          {(result.mentionedBrand ?? result.mentionsBrand) ? "是" : "否"}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-xs text-gray-500">是否推荐</dt>
-                        <dd className="mt-0.5 text-gray-800">
-                          {(result.recommendedBrand ?? result.recommendsBrand) ? "是" : "否"}
+                        <dt className="text-gray-400">收录时间</dt>
+                        <dd className="mt-0.5">{formatTime(record.inclusionVerifiedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">可进入AI复测</dt>
+                        <dd className="mt-0.5">{record.eligibleForAiRetest ? "是" : "否"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">收录验证关键词</dt>
+                        <dd className="mt-0.5">{formatKeywords(record.inclusionKeywords)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">阅读量</dt>
+                        <dd className="mt-0.5">{formatCount(record.readCount)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">曝光量</dt>
+                        <dd className="mt-0.5">{formatCount(record.impressionCount)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">互动量</dt>
+                        <dd className="mt-0.5">{formatCount(record.interactionCount)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">搜索触发关键词</dt>
+                        <dd className="mt-0.5">{formatKeywords(record.searchTriggerKeywords)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">数据来源</dt>
+                        <dd className="mt-0.5">{record.dataSourceLabel ?? "—"}</dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="text-gray-400">截图凭证</dt>
+                        <dd className="mt-0.5">
+                          {record.evidenceScreenshotUrl ? (
+                            <a
+                              href={toAbsoluteUrl(record.evidenceScreenshotUrl)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-600 hover:underline break-all"
+                            >
+                              查看凭证
+                            </a>
+                          ) : (
+                            "—"
+                          )}
                         </dd>
                       </div>
                     </dl>
-                    <p className="mt-2 text-xs text-gray-500">
-                      引用证据：
-                      {Array.isArray(result.citedUrls) && result.citedUrls.length > 0
-                        ? result.citedUrls.join("；")
-                        : "暂无引用链接"}
-                    </p>
-                    <p className="mt-2 text-xs text-gray-600">
-                      结论：
-                      {(result.mentionedBrand ?? result.mentionsBrand)
-                        ? "AI 已提及品牌"
-                        : isAiTestMissReason(result.missReason)
-                          ? missReasonLabelCn(result.missReason)
-                          : "尚未提及，建议补充内容"}
-                      {result.sentiment ? `（${sentimentLabelCn(result.sentiment)}）` : ""}
-                    </p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="mt-2 h-7 px-2 text-blue-600"
-                      onClick={() => setLocation(buildEvidenceDetailPath(selectedRecord.id, index))}
-                    >
-                      打开完整证据页
-                    </Button>
-                  </div>
-                ))
-              )}
-              <p className="text-xs text-gray-500">
-                链接可访问性：{publishLinkAccessLabel(selectedRecord.linkAccess)}
-                {selectedRecord.linkAccess?.checkedAt
-                  ? `（检测于 ${formatTime(selectedRecord.linkAccess.checkedAt)}）`
-                  : ""}
-              </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {nextAction?.kind === "wait_retest" ? (
+                        <Button type="button" size="sm" variant="outline" disabled className="h-7 px-2 text-xs">
+                          {nextAction.label}
+                        </Button>
+                      ) : nextAction ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className={`h-7 px-2 text-xs ${geoP0Brand.primary}`}
+                          disabled={
+                            isRunning ||
+                            markIncluded.isPending ||
+                            markIgnored.isPending ||
+                            (nextAction.kind === "join_retest" && runCheck.isPending)
+                          }
+                          onClick={() => handleNextAction(record)}
+                          data-testid={`content-asset-next-action-${record.id}`}
+                        >
+                          {isRunning ? "复测中…" : nextAction.label}
+                        </Button>
+                      ) : null}
+                      {nextAction?.kind === "republish" ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className={`h-7 px-2 text-xs ${geoP0Brand.primaryOutline}`}
+                          onClick={() => selectedProjectId && markIgnored.mutate({ projectId: selectedProjectId, recordId: record.id })}
+                        >
+                          标记忽略
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    {selectedProjectId ? (
+                      <ContentAssetEffectFillPanel
+                        projectId={selectedProjectId}
+                        record={record}
+                        onSaved={invalidateRecords}
+                      />
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
           )}
-        </div>
-      </details>
+        </section>
+      )}
 
       <section
         className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-        data-testid="inclusion-monitoring-optimization-section"
+        data-testid="content-asset-platform-summary"
       >
-        <h2 className="text-base font-semibold text-gray-900">下一轮优化建议</h2>
-        <p className="mt-1 text-xs text-gray-500">
-          综合信源图谱增强建议、问题池未覆盖题与最近复测下降项，生成可执行的内容任务。
-        </p>
-        {feedbackSummaryQuery.isLoading ? (
-          <div className="mt-4 flex items-center gap-2 text-sm text-gray-500">
-            <Spinner className="size-4 text-blue-600" />
-            正在加载优化建议…
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-gray-500" />
+          <h2 className="text-base font-semibold text-gray-900">平台效果汇总</h2>
+        </div>
+        {platformSummary.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-500">暂无平台效果数据</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+                  <th className="py-2 pr-4 font-medium">平台名称</th>
+                  <th className="py-2 pr-4 font-medium">发布数量</th>
+                  <th className="py-2 pr-4 font-medium">已收录数量</th>
+                  <th className="py-2 pr-4 font-medium">收录率</th>
+                  <th className="py-2 font-medium">累计阅读量</th>
+                </tr>
+              </thead>
+              <tbody>
+                {platformSummary.map(row => (
+                  <tr key={row.platform} className="border-b border-gray-50 text-gray-800">
+                    <td className="py-3 pr-4 whitespace-nowrap">{row.platform}</td>
+                    <td className="py-3 pr-4">{row.publishedCount}</td>
+                    <td className="py-3 pr-4">{row.includedCount}</td>
+                    <td className="py-3 pr-4">{formatRate(row.inclusionRate)}</td>
+                    <td className="py-3">{formatCount(row.totalReadCount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ) : nextRoundSuggestions.length > 0 ? (
-          <ul className="mt-4 space-y-4">
-            {nextRoundSuggestions.map((item, index) => (
+        )}
+      </section>
+
+      <section
+        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+        data-testid="content-asset-retest-ready"
+      >
+        <h2 className="text-base font-semibold text-gray-900">以下内容已收录，可加入AI复测</h2>
+        {retestReadyRecords.length === 0 ? (
+          <p className="mt-3 text-sm text-gray-500">收录验证后3天可进入AI复测</p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {retestReadyRecords.map(record => (
               <li
-                key={`${item.description}-${index}`}
-                className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-800"
-                data-testid={`inclusion-optimization-suggestion-${index}`}
+                key={record.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
+                data-testid={`retest-ready-row-${record.id}`}
               >
-                <p className="font-medium text-gray-900">
-                  [优先级 {formatSuggestionPriorityLabel(item.priority)}] {item.description}
-                </p>
-                {item.relatedQuestions.length > 0 ? (
-                  <p className="mt-2 text-xs text-gray-600">
-                    → 对应未覆盖问题：{item.relatedQuestions.join("、")}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                    {record.articleTitle?.trim() || `内容 #${record.articleId}`}
                   </p>
-                ) : null}
-                {item.relatedSources.length > 0 ? (
-                  <p className="mt-1 text-xs text-gray-600">
-                    → 对应薄弱信源：{item.relatedSources.join("、")}
+                  <p className="text-xs text-gray-500">
+                    {(record.publishChannel ?? "").trim() || "未标注"} · 收录于 {formatTime(record.inclusionVerifiedAt)}
                   </p>
-                ) : null}
+                </div>
                 <Button
                   type="button"
                   size="sm"
-                  className={`mt-3 h-8 ${geoP0Brand.primary}`}
-                  data-testid={`inclusion-optimization-action-${index}`}
+                  className={geoP0Brand.primary}
+                  disabled={runCheck.isPending && runningRecordId === record.id}
                   onClick={() => {
                     if (!selectedProjectId) return;
-                    const gapMatch = /[?&]gapType=([^&]+)/.exec(item.actionUrl);
-                    const gapType = gapMatch?.[1];
-                    const base = buildProjectUrl("/weekly", selectedProjectId);
-                    setLocation(gapType ? `${base}&gapType=${encodeURIComponent(gapType)}` : base);
+                    setRunningRecordId(record.id);
+                    runCheck.mutate({
+                      projectId: selectedProjectId,
+                      recordId: record.id,
+                      engines: ["doubao", "deepseek", "kimi"],
+                      testStage: "after_publish",
+                    });
                   }}
+                  data-testid={`retest-ready-action-${record.id}`}
                 >
-                  生成内容任务
+                  {runCheck.isPending && runningRecordId === record.id ? "复测中…" : "加入AI复测"}
                 </Button>
               </li>
             ))}
           </ul>
-        ) : (
-          <ul className="mt-3 space-y-2 text-sm text-gray-700">
-            {fallbackOptimizationItems.map(item => (
-              <li key={item} className="flex gap-2">
-                <span className="text-gray-400">-</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
         )}
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className={geoP0Brand.primaryOutline}
-            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/delivery-reports", selectedProjectId))}
-          >
-            进入交付报告
-          </Button>
-        </div>
       </section>
     </div>
   );

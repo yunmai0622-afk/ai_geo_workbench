@@ -79,7 +79,7 @@ describe("GEO-V1.1-Weekly-Content-Review-Workbench-Refactor-P0", () => {
   it("auxiliary sections downgraded", () => {
     expect(auxiliary).toContain("平台规则");
     expect(auxiliary).toContain("内容模板库");
-    expect(auxiliary).toContain("收录复测中心");
+    expect(auxiliary).toContain("内容资产效果");
     expect(collapsible).toMatch(/open=\{defaultOpen \? undefined : false\}/);
   });
 

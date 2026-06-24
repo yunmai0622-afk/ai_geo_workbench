@@ -66,14 +66,14 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(publish).toContain("发布执行中心");
     expect(publish).toContain("local-agent-status-card");
     expect(publish).toContain("publish-account-client-fold");
-    expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain("收录复测中心");
+    expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain("内容资产效果");
     const report =
       read("client/src/pages/DeliveryReportsCenterPage.tsx") +
       read("shared/monthlyReportView.ts");
     expect(report).toContain("AI 品牌成熟度月报");
     expect(report).toContain("geo.monthlyPlan.getReport");
     expect(v12 + report).toContain('buildProjectUrl("/content-publishing"');
-    expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain('buildProjectUrl("/delivery-reports"');
+    expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain('buildProjectUrl("/content-publishing"');
     expect(report).not.toContain('buildProjectUrl("/inclusion-monitoring"');
   });
 

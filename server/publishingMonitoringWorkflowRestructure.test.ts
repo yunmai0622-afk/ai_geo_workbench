@@ -48,37 +48,35 @@ describe("GEO-V1.2 publishing monitoring workflow restructure P0", () => {
     expect(publishAssistant).not.toContain("当前阻断");
   });
 
-  it("/inclusion-monitoring 第一屏展示监测总览", () => {
-    expect(inclusionPage).toContain("收录复测中心");
+  it("/inclusion-monitoring 第一屏展示内容资产效果总览", () => {
+    expect(inclusionPage).toContain("内容资产效果");
     expect(inclusionPage).toContain('data-testid="inclusion-monitoring-overview"');
     expect(inclusionPage).toContain("已发布内容数");
-    expect(inclusionPage).toContain("已回填公开链接数");
-    expect(inclusionPage).toContain("AI提及变化");
-    expect(inclusionPage).toContain("下一次复测时间");
+    expect(inclusionPage).toContain("已收录内容数");
+    expect(inclusionPage).toContain("收录率");
+    expect(inclusionPage).toContain("可进入AI复测数");
   });
 
-  it("/inclusion-monitoring 已发布内容表按内容组织", () => {
+  it("/inclusion-monitoring 内容资产列表按内容组织", () => {
     expect(inclusionPage).toContain('data-testid="inclusion-monitoring-content-table"');
-    expect(inclusionPage).toContain("已发布内容监测表");
-    expect(inclusionPage).toContain("7 天后复测");
-    expect(inclusionPage).toContain("14 天后复测");
-    expect(inclusionPage).toContain("30 天后复测");
+    expect(inclusionPage).toContain("内容资产列表");
+    expect(read("client/src/components/inclusion-monitoring/ContentAssetEffectFillPanel.tsx")).toContain("填写效果数据");
+    expect(inclusionPage).toContain("平台效果汇总");
     expect(inclusionPage).not.toContain("已创建的监测卡片");
     expect(inclusionPage).not.toContain("grid gap-4 lg:grid-cols-2");
   });
 
-  it("/inclusion-monitoring AI证据默认折叠", () => {
-    expect(inclusionPage).toContain('data-testid="inclusion-monitoring-ai-evidence-fold"');
-    expect(inclusionPage).toContain("<details");
-    expect(inclusionPage).toContain("AI 实测证据");
-    expect(inclusionPage).toContain("查看证据");
+  it("/inclusion-monitoring 可复测内容提示模块", () => {
+    expect(inclusionPage).toContain('data-testid="content-asset-retest-ready"');
+    expect(inclusionPage).toContain("加入AI复测");
+    expect(inclusionPage).toContain("收录验证后3天可进入AI复测");
   });
 
   it("/inclusion-monitoring 右侧栏组件只展示本页相关字段", () => {
-    expect(inclusionAssistant).toContain("待复测内容数");
-    expect(inclusionAssistant).toContain("未回填链接数");
-    expect(inclusionAssistant).toContain("AI提及变化");
-    expect(inclusionAssistant).toContain("下一次复测时间");
+    expect(inclusionAssistant).toContain("内容资产效果摘要");
+    expect(inclusionAssistant).toContain("已收录内容数");
+    expect(inclusionAssistant).toContain("收录率");
+    expect(inclusionAssistant).toContain("可进入AI复测数");
     expect(inclusionAssistant).not.toContain("增长建议");
   });
 

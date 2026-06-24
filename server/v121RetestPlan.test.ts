@@ -21,6 +21,6 @@ describe("GEO-V1.1-T2-T3-Retest-Plan", () => {
     expect(summary).toContain("retestPlan");
     expect(summary).toContain("retestDueReminder");
     expect(monitoring).toContain("inclusion-monitoring-retest-due-reminder");
-    expect(monitoring).toContain("下一次复测时间");
+    expect(monitoring).toContain("可进入AI复测数");
   });
 });

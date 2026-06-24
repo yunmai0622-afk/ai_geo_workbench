@@ -51,7 +51,7 @@ for (const item of [
   '问题库',
   '内容生产工作台',
   '平台适配发布',
-  '收录监测',
+  '内容资产效果',
   'AI 品牌成熟度月报',
   '使用指南',
 ]) {
@@ -191,9 +191,11 @@ for (const item of [
 for (const item of ['连接发布平台', '可由交付人员配置', '风险边界', '支持方式', 'browser-extension.zip', '下载 Chrome 插件']) {
   assertNotContains('发布中心页', publishPage, item);
 }
-for (const item of ['收录复测中心', '已发布内容监测表', '7 天后复测', '14 天后复测', '30 天后复测', 'AI引用', '执行复测', '查看证据', '下一轮优化建议']) {
+const inclusionFillPanel = read('client/src/components/inclusion-monitoring/ContentAssetEffectFillPanel.tsx');
+for (const item of ['内容资产效果', '内容资产列表', '平台效果汇总', '加入AI复测', '收录验证后3天可进入AI复测']) {
   assertContains('收录监测页', inclusionPage, item);
 }
+assertContains('收录监测页', inclusionFillPanel, '填写效果数据');
 const deliveryReportPage =
   read('client/src/pages/DeliveryReportsCenterPage.tsx') +
   read('shared/monthlyReportView.ts') +

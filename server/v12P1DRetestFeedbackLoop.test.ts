@@ -25,12 +25,11 @@ describe("GEO-V1.2-P1-D-Retest-Feedback-Loop", () => {
     expect(read("server/routers.ts")).toContain("feedbackLoop: feedbackLoopRouter");
   });
 
-  it("inclusion monitoring fourth screen uses dynamic feedback summary", () => {
+  it("inclusion monitoring surfaces retest-ready content module", () => {
     const page = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
-    expect(page).toContain("feedbackLoop.getRetestFeedbackSummary");
-    expect(page).toContain("inclusion-optimization-suggestion-");
-    expect(page).toContain("生成内容任务");
-    expect(page).toContain("gapType");
+    expect(page).toContain("content-asset-retest-ready");
+    expect(page).toContain("加入AI复测");
+    expect(page).toContain("aiMentionCheck.run");
   });
 
   it("workspace business results show retest coverage and consistency", () => {

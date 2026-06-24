@@ -23,6 +23,11 @@ import {
 import { ensureProjectsOwnerUserIdColumnOnce } from "./ensureProjectsOwnerUserId";
 import { mapInclusionMonitoringRecordForApi } from "@shared/inclusionMonitoring";
 import { mergeLinkAccessIntoRawJson } from "@shared/inclusionMonitoringDisplay";
+import {
+  EFFECT_DATA_SOURCES,
+  EFFECT_INCLUSION_STATUSES,
+  parseKeywordList,
+} from "@shared/contentAssetEffectTracking";
 import { aggregateT0AiTestRunMetrics } from "@shared/t0AiTestRunMetrics";
 import { aggregateAiTestEvidence } from "@shared/aiTestEvidence";
 import { geoScorePercentToRate, resolveBrandMentionRate } from "@shared/brandMentionRateResolver";
@@ -3451,7 +3456,11 @@ const geoRouter = router({
       if (!input.projectId) return [];
       await requireProjectAccess(ctx, input.projectId);
       const rows = await db
-        .select(getTableColumns(geoInclusionMonitoringRecords))
+        .select({
+          ...getTableColumns(geoInclusionMonitoringRecords),
+          publishChannel: geoPublishRecords.publishChannel,
+          publishedAt: geoPublishRecords.publishedAt,
+        })
         .from(geoInclusionMonitoringRecords)
         .innerJoin(
           geoPublishRecords,
@@ -4264,6 +4273,141 @@ ${article.markdownContent}`,
         }
 
         return { checked: checked.length, results: checked } as const;
+      }),
+    updateEffectData: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          recordId: z.number().int().positive(),
+          effectInclusionStatus: z.enum(EFFECT_INCLUSION_STATUSES).optional(),
+          inclusionVerifiedAt: z.string().trim().optional().nullable(),
+          inclusionKeywords: z.union([z.string(), z.array(z.string())]).optional(),
+          readCount: z.number().int().min(0).optional().nullable(),
+          impressionCount: z.number().int().min(0).optional().nullable(),
+          interactionCount: z.number().int().min(0).optional().nullable(),
+          searchTriggerKeywords: z.union([z.string(), z.array(z.string())]).optional(),
+          effectDataSource: z.enum(EFFECT_DATA_SOURCES).optional().nullable(),
+          evidenceScreenshotUrl: z.string().trim().max(2000).optional().nullable(),
+          evidenceNotes: z.string().trim().max(4000).optional().nullable(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+
+        const recordRows = await db
+          .select()
+          .from(geoInclusionMonitoringRecords)
+          .where(
+            and(
+              eq(geoInclusionMonitoringRecords.id, input.recordId),
+              eq(geoInclusionMonitoringRecords.projectId, input.projectId),
+            ),
+          )
+          .limit(1);
+        const record = recordRows[0];
+        if (!record) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "未找到该内容资产记录" });
+        }
+
+        const patch: Record<string, unknown> = {};
+        if (input.effectInclusionStatus !== undefined) {
+          patch.effectInclusionStatus = input.effectInclusionStatus;
+        }
+        if (input.inclusionVerifiedAt !== undefined) {
+          if (input.inclusionVerifiedAt === null || input.inclusionVerifiedAt === "") {
+            patch.inclusionVerifiedAt = null;
+          } else {
+            const verifiedAt = new Date(input.inclusionVerifiedAt);
+            if (Number.isNaN(verifiedAt.getTime())) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: "收录时间格式不正确" });
+            }
+            patch.inclusionVerifiedAt = verifiedAt;
+          }
+        }
+        if (input.inclusionKeywords !== undefined) {
+          patch.inclusionKeywords = parseKeywordList(input.inclusionKeywords);
+        }
+        if (input.readCount !== undefined) patch.readCount = input.readCount;
+        if (input.impressionCount !== undefined) patch.impressionCount = input.impressionCount;
+        if (input.interactionCount !== undefined) patch.interactionCount = input.interactionCount;
+        if (input.searchTriggerKeywords !== undefined) {
+          patch.searchTriggerKeywords = parseKeywordList(input.searchTriggerKeywords);
+        }
+        if (input.effectDataSource !== undefined) patch.effectDataSource = input.effectDataSource;
+        if (input.evidenceScreenshotUrl !== undefined) {
+          patch.evidenceScreenshotUrl = input.evidenceScreenshotUrl;
+        }
+        if (input.evidenceNotes !== undefined) patch.evidenceNotes = input.evidenceNotes;
+
+        if (Object.keys(patch).length === 0) {
+          return { success: true, id: input.recordId } as const;
+        }
+
+        await db
+          .update(geoInclusionMonitoringRecords)
+          .set(patch)
+          .where(eq(geoInclusionMonitoringRecords.id, input.recordId));
+
+        return { success: true, id: input.recordId } as const;
+      }),
+    markEffectIncluded: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          recordId: z.number().int().positive(),
+          inclusionVerifiedAt: z.string().trim().optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+
+        const verifiedAt = input.inclusionVerifiedAt
+          ? new Date(input.inclusionVerifiedAt)
+          : new Date();
+        if (Number.isNaN(verifiedAt.getTime())) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "收录时间格式不正确" });
+        }
+
+        await db
+          .update(geoInclusionMonitoringRecords)
+          .set({
+            effectInclusionStatus: "included",
+            inclusionVerifiedAt: verifiedAt,
+            effectDataSource: "manual",
+          })
+          .where(
+            and(
+              eq(geoInclusionMonitoringRecords.id, input.recordId),
+              eq(geoInclusionMonitoringRecords.projectId, input.projectId),
+            ),
+          );
+
+        return { success: true, id: input.recordId } as const;
+      }),
+    markEffectIgnored: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          recordId: z.number().int().positive(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+
+        await db
+          .update(geoInclusionMonitoringRecords)
+          .set({ effectInclusionStatus: "unverified" })
+          .where(
+            and(
+              eq(geoInclusionMonitoringRecords.id, input.recordId),
+              eq(geoInclusionMonitoringRecords.projectId, input.projectId),
+            ),
+          );
+
+        return { success: true, id: input.recordId } as const;
       }),
   }),
   aiMentionCheck: router({

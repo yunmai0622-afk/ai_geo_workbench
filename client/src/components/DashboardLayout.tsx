@@ -135,8 +135,8 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
       },
       {
         icon: LineChart,
-        label: "收录监测",
-        desc: "检查内容是否被 AI 平台收录和引用",
+        label: "内容资产效果",
+        desc: "追踪已发布内容的收录、曝光与 AI 复测价值",
         path: "/inclusion-monitoring",
         aliases: ["/inclusion-monitoring", "/monitoring"],
       },

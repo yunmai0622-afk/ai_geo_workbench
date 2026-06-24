@@ -626,8 +626,18 @@ export const geoInclusionMonitoringRecords = mysqlTable("geo_inclusion_monitorin
     }>
   >(),
   lastAiTestedAt: timestamp("lastAiTestedAt"),
+  effectInclusionStatus: varchar("effectInclusionStatus", { length: 32 }),
+  inclusionVerifiedAt: timestamp("inclusionVerifiedAt"),
+  inclusionKeywords: json("inclusionKeywords").$type<string[]>(),
+  readCount: int("readCount"),
+  impressionCount: int("impressionCount"),
+  interactionCount: int("interactionCount"),
+  searchTriggerKeywords: json("searchTriggerKeywords").$type<string[]>(),
+  effectDataSource: varchar("effectDataSource", { length: 32 }),
+  evidenceScreenshotUrl: varchar("evidenceScreenshotUrl", { length: 2000 }),
+  evidenceNotes: text("evidenceNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export const enterpriseGeoProfiles = mysqlTable("enterprise_geo_profiles", {

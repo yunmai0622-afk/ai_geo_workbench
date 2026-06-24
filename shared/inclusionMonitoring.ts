@@ -4,6 +4,7 @@ import {
   parsePublishLinkAccess,
   type PublishLinkAccessSnapshot,
 } from "./inclusionMonitoringDisplay";
+import { mapEffectFieldsForApi } from "./contentAssetEffectTracking";
 
 /**
  * 将 DB 行映射为前端/API 使用的监测字段（兼容 inclusionStatus 等别名，空值不抛错）。
@@ -33,7 +34,7 @@ export function mapInclusionMonitoringRecordForApi<T extends InclusionMonitoring
     aiTestResults,
   });
 
-  return {
+  return mapEffectFieldsForApi({
     ...row,
     inclusionStatus,
     aiMentionStatus,
@@ -44,7 +45,7 @@ export function mapInclusionMonitoringRecordForApi<T extends InclusionMonitoring
     aiTestResults,
     linkAccess,
     nextAction,
-  };
+  });
 }
 
 export type { PublishLinkAccessSnapshot };

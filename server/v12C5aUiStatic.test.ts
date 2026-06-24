@@ -21,7 +21,7 @@ describe("C5-A global product UI overhaul", () => {
     expect(layout).toContain('label: "项目工作台"');
     expect(layout).toContain("内容生产工作台");
     expect(layout).toContain("平台适配发布");
-    expect(layout).toContain("收录监测");
+    expect(layout).toContain("内容资产效果");
     expect(layout).toContain("AI 品牌成熟度月报");
     expect(layout).toContain("使用指南");
   });

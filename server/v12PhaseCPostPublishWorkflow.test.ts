@@ -25,10 +25,10 @@ describe("Phase C — 发布后复测队列与重写池", () => {
     expect(read("server/rewritePoolService.ts")).toContain("geoRewritePool");
   });
 
-  it("inclusion monitoring page focuses on published content retest", () => {
+  it("inclusion monitoring page focuses on content asset effect tracking", () => {
     const ui = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
-    expect(ui).toContain("已发布内容监测表");
-    expect(ui).toContain("执行复测");
-    expect(ui).toContain("下一轮优化建议");
+    expect(ui).toContain("内容资产列表");
+    expect(ui).toContain("加入AI复测");
+    expect(ui).toContain("content-asset-retest-ready");
   });
 });

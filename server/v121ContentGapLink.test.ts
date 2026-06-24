@@ -36,7 +36,8 @@ describe("GEO-V1.1-Content-Gap-Link", () => {
   it("inclusion monitoring shows linked question and T1 mention rate", () => {
     const page = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
     expect(page).toContain("inclusion-monitoring-content-table");
-    expect(page).toContain("AI引用");
+    expect(page).toContain("linkedDetectionQuestion");
+    expect(page).toContain("关联问题");
     expect(read("server/routers.ts")).toContain("linkedDetectionQuestion");
   });
 

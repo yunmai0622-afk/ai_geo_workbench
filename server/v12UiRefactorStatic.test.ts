@@ -28,7 +28,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
       "问题库",
       "内容生产工作台",
       "平台适配发布",
-      "收录监测",
+      "内容资产效果",
       "AI 品牌成熟度月报",
       "使用指南",
     ]) {
@@ -195,21 +195,19 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     ).toContain("一键发布所有平台");
   });
 
-  it("收录监测页展示已发布内容监测表", () => {
+  it("内容资产效果页展示内容资产列表", () => {
     const inclusionSource = readProjectFile("client/src/pages/InclusionMonitoringCenterPage.tsx");
+    const fillPanel = readProjectFile("client/src/components/inclusion-monitoring/ContentAssetEffectFillPanel.tsx");
     for (const text of [
-      "收录复测中心",
-      "已发布内容监测表",
-      "7 天后复测",
-      "14 天后复测",
-      "30 天后复测",
-      "AI引用",
-      "执行复测",
-      "查看证据",
-      "下一轮优化建议",
+      "内容资产效果",
+      "内容资产列表",
+      "平台效果汇总",
+      "加入AI复测",
+      "收录验证后3天可进入AI复测",
     ]) {
       expect(inclusionSource).toContain(text);
     }
+    expect(fillPanel).toContain("填写效果数据");
   });
 
   it("交付报告页升级为 AI 品牌成熟度月报五屏结构", () => {
