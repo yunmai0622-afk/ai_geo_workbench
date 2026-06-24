@@ -5595,3 +5595,596 @@
 [2026-06-24T06:37:57.566Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
 [2026-06-24T06:37:57.567Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
 [2026-06-24T06:37:59.794Z] [geo.scores.latest] { requestedProjectId: 180001, returned: null, sameProjectTop3: [] }
+[2026-06-24T06:59:46.744Z] 2:59:46 AM [vite] (client) hmr update /src/index.css
+[2026-06-24T06:59:46.746Z] 2:59:46 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-24T06:59:46.747Z] 2:59:46 AM [vite] (client) hmr update /src/pages/DeliveryReportsCenterPage.tsx
+[2026-06-24T06:59:46.753Z] 2:59:46 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/components/questions/QuestionSearchPoolDrawer.tsx, /src/pages/MaturityDetailPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/maturity/MaturityAssistantPanel.tsx, /src/pages/V12FlowPages.tsx, /src/pages/MonthlyPlanPage.tsx, /src/pages/DeliveryReportsCenterPage.tsx, /src/components/enterpriseProfile/wizard/WizardQuestionGuideStep.tsx
+[2026-06-24T06:59:46.866Z] 2:59:46 AM [tsx] change in ./shared/questionSearchPool.ts Restarting...
+[2026-06-24T06:59:55.652Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-24T06:59:55.713Z] Server running on http://localhost:3000/
+[2026-06-24T06:59:56.549Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-24T06:59:59.148Z] Dev server process group stopped
+[2026-06-24T06:59:59.151Z] ELIFECYCLE  Command failed.
+[2026-06-24T06:59:59.386Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.387Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.387Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.388Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.388Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.388Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.389Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.389Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.389Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.390Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.390Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.390Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.391Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.391Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.391Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.392Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.392Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.392Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.393Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.393Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.394Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.394Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.394Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.395Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.395Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.395Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.396Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.396Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.396Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.397Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.397Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.397Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.397Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.398Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.398Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.398Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.399Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.399Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.400Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.400Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.400Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.401Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.401Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.401Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.401Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.402Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.402Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.402Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.403Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.403Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.403Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.404Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.404Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.404Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.405Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.407Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.407Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.408Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.408Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.409Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.409Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.409Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.410Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.410Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.410Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.411Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.411Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.411Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.412Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.412Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.413Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.413Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.414Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.414Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.415Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.415Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.416Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.416Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.416Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.417Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.417Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.418Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.418Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.418Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.419Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.419Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.419Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.420Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.420Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.420Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.421Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.421Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.422Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.422Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.423Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.424Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.424Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.425Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.425Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.425Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.426Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.426Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.426Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.427Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.427Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.427Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.428Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.428Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.428Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.429Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.429Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.429Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.430Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.430Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.430Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.431Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.431Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.431Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.432Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.432Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.432Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.433Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.433Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.433Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.434Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.434Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.434Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.434Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.435Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.435Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.435Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.436Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/dialog.tsx
+[2026-06-24T06:59:59.436Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.436Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.437Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/dialog.tsx
+[2026-06-24T06:59:59.437Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.437Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.438Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/geoP0Visual.ts
+[2026-06-24T06:59:59.438Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.438Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.439Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/geoP0Visual.ts
+[2026-06-24T06:59:59.439Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.439Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.440Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/geoP0Visual.ts
+[2026-06-24T06:59:59.440Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.440Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.440Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/geoP0Visual.ts
+[2026-06-24T06:59:59.441Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.441Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.441Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/geoP0Visual.ts
+[2026-06-24T06:59:59.442Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.442Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.442Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.443Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.443Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.443Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.444Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.444Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.444Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.444Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.445Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.445Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.445Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.446Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.446Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.446Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.447Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.447Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.447Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.448Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.448Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.448Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.449Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.449Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.449Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.450Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.450Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.450Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.451Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.451Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.451Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.452Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.452Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.452Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.453Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.453Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.453Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.454Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.454Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.454Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.455Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.455Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.455Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.456Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.456Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.457Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.457Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.458Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.458Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.458Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.459Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.459Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.459Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.460Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.460Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.460Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.461Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.461Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.461Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.462Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.462Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.462Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.463Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.463Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.463Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.463Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.464Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.464Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.464Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/select.tsx
+[2026-06-24T06:59:59.465Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.465Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.465Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/select.tsx
+[2026-06-24T06:59:59.466Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.466Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.466Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/select.tsx
+[2026-06-24T06:59:59.467Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.467Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.467Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/select.tsx
+[2026-06-24T06:59:59.467Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.468Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.468Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/select.tsx
+[2026-06-24T06:59:59.468Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.469Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.469Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/select.tsx
+[2026-06-24T06:59:59.469Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.470Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.470Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/textarea.tsx
+[2026-06-24T06:59:59.470Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.471Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.471Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.471Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.472Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.472Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.472Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.472Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.473Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.473Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.473Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.474Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.474Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.474Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.475Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.475Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.475Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.476Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.476Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.476Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.476Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.477Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.477Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.477Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.478Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.478Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.478Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.479Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.479Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.479Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.480Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.480Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.480Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.480Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.481Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.481Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.481Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.482Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.482Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.482Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.483Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.483Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.483Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.484Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.484Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/badge.tsx
+[2026-06-24T06:59:59.484Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.484Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.485Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/badge.tsx
+[2026-06-24T06:59:59.485Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.485Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.486Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/badge.tsx
+[2026-06-24T06:59:59.486Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.487Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.487Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/badge.tsx
+[2026-06-24T06:59:59.488Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.488Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.489Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/badge.tsx
+[2026-06-24T06:59:59.489Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.490Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.490Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useActiveProjectSelection.ts
+[2026-06-24T06:59:59.491Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.492Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.493Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useActiveProjectSelection.ts
+[2026-06-24T06:59:59.493Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.493Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.494Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useActiveProjectSelection.ts
+[2026-06-24T06:59:59.494Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.494Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.495Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useActiveProjectSelection.ts
+[2026-06-24T06:59:59.495Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.495Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.496Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useActiveProjectSelection.ts
+[2026-06-24T06:59:59.496Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.497Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.497Z] File: /home/ubuntu/ai_geo_workbench/shared/userFacingMutationErrors.ts
+[2026-06-24T06:59:59.497Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.498Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.498Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.498Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.499Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.499Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.499Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.500Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.500Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.500Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.501Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.501Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.502Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.502Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.502Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.503Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.503Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.504Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.504Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.504Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.505Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.506Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.506Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.507Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.507Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.508Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.508Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.509Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.510Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.510Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.511Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.511Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.512Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/dropdown-menu.tsx
+[2026-06-24T06:59:59.513Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.513Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.514Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ProjectContextEmptyState.tsx
+[2026-06-24T06:59:59.514Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.515Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.515Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ProjectContextEmptyState.tsx
+[2026-06-24T06:59:59.516Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.516Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.517Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ProjectContextEmptyState.tsx
+[2026-06-24T06:59:59.517Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.518Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.519Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ProjectContextEmptyState.tsx
+[2026-06-24T06:59:59.519Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.520Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.520Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useMaturityAutoCalculate.ts
+[2026-06-24T06:59:59.521Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.521Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.522Z] File: /home/ubuntu/ai_geo_workbench/shared/subscriptionPlans.ts
+[2026-06-24T06:59:59.522Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.523Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.524Z] File: /home/ubuntu/ai_geo_workbench/shared/subscriptionPlans.ts
+[2026-06-24T06:59:59.524Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.525Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.525Z] File: /home/ubuntu/ai_geo_workbench/shared/subscriptionPlans.ts
+[2026-06-24T06:59:59.526Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.527Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.527Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/table.tsx
+[2026-06-24T06:59:59.528Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.528Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.529Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/table.tsx
+[2026-06-24T06:59:59.529Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.530Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.530Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/table.tsx
+[2026-06-24T06:59:59.531Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.532Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.532Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/table.tsx
+[2026-06-24T06:59:59.533Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.533Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.534Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/table.tsx
+[2026-06-24T06:59:59.534Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.535Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.535Z] File: /home/ubuntu/ai_geo_workbench/shared/deliveryReportPublicShare.ts
+[2026-06-24T06:59:59.536Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.536Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.537Z] File: /home/ubuntu/ai_geo_workbench/shared/deliveryReportPublicShare.ts
+[2026-06-24T06:59:59.537Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.538Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.538Z] File: /home/ubuntu/ai_geo_workbench/shared/platformAdmin.ts
+[2026-06-24T06:59:59.539Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.539Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.540Z] File: /home/ubuntu/ai_geo_workbench/shared/platformAdmin.ts
+[2026-06-24T06:59:59.540Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.541Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.541Z] File: /home/ubuntu/ai_geo_workbench/shared/platformAdmin.ts
+[2026-06-24T06:59:59.542Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.543Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.543Z] File: /home/ubuntu/ai_geo_workbench/client/src/pages/DemoGeo.tsx
+[2026-06-24T06:59:59.544Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.544Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.545Z] File: /home/ubuntu/ai_geo_workbench/client/src/pages/OnboardingPage.tsx
+[2026-06-24T06:59:59.545Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.546Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.546Z] File: /home/ubuntu/ai_geo_workbench/client/src/pages/DeliveryReportSharePage.tsx
+[2026-06-24T06:59:59.547Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.547Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.548Z] File: /home/ubuntu/ai_geo_workbench/client/src/pages/EnterpriseWorkspacePage.tsx
+[2026-06-24T06:59:59.549Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.549Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.550Z] File: /home/ubuntu/ai_geo_workbench/client/src/pages/EffectiveActionsPage.tsx
+[2026-06-24T06:59:59.550Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.551Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.551Z] File: /home/ubuntu/ai_geo_workbench/client/src/pages/QuestionsLibraryPage.tsx
+[2026-06-24T06:59:59.552Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.552Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.553Z] File: /home/ubuntu/ai_geo_workbench/client/src/pages/SourceGraphPage.tsx
+[2026-06-24T06:59:59.554Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.554Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.555Z] File: /home/ubuntu/ai_geo_workbench/client/src/_core/hooks/useAuth.ts
+[2026-06-24T06:59:59.555Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.556Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.556Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/utils.ts
+[2026-06-24T06:59:59.557Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.557Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.558Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/button.tsx
+[2026-06-24T06:59:59.558Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.559Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.560Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/dialog.tsx
+[2026-06-24T06:59:59.560Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.561Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.561Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/geoIntroModal.ts
+[2026-06-24T06:59:59.562Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.562Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.563Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/geoP0Visual.ts
+[2026-06-24T06:59:59.563Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.564Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.564Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/skeleton.tsx
+[2026-06-24T06:59:59.565Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.565Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.566Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/card.tsx
+[2026-06-24T06:59:59.567Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.567Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.568Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/label.tsx
+[2026-06-24T06:59:59.568Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.569Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.569Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/select.tsx
+[2026-06-24T06:59:59.577Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.578Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.578Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/textarea.tsx
+[2026-06-24T06:59:59.579Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.579Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.580Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/spinner.tsx
+[2026-06-24T06:59:59.580Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.581Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.581Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/badge.tsx
+[2026-06-24T06:59:59.582Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.583Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.583Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useActiveProjectSelection.ts
+[2026-06-24T06:59:59.583Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.584Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.585Z] File: /home/ubuntu/ai_geo_workbench/shared/questionContentTemplates.ts
+[2026-06-24T06:59:59.585Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.586Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.586Z] File: /home/ubuntu/ai_geo_workbench/shared/userFacingMutationErrors.ts
+[2026-06-24T06:59:59.587Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.587Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.588Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/input.tsx
+[2026-06-24T06:59:59.588Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.589Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.589Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/SystemAnnouncementBanner.tsx
+[2026-06-24T06:59:59.590Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.590Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.591Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/CompanyServiceBanner.tsx
+[2026-06-24T06:59:59.592Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.592Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.593Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/avatar.tsx
+[2026-06-24T06:59:59.593Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.594Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.594Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/sidebar.tsx
+[2026-06-24T06:59:59.595Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.595Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.596Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/dropdown-menu.tsx
+[2026-06-24T06:59:59.596Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.597Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.597Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useActiveProject.ts
+[2026-06-24T06:59:59.598Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.599Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.599Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useMobile.tsx
+[2026-06-24T06:59:59.600Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.600Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.601Z] File: /home/ubuntu/ai_geo_workbench/shared/roleBasedNavigation.ts
+[2026-06-24T06:59:59.601Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.602Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.602Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/demoGeoData.ts
+[2026-06-24T06:59:59.602Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.637Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.638Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/GeoStatusGuide.tsx
+[2026-06-24T06:59:59.639Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.639Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.640Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ProjectContextEmptyState.tsx
+[2026-06-24T06:59:59.641Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.641Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.642Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/BusinessPageProjectHeader.tsx
+[2026-06-24T06:59:59.642Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.643Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.643Z] File: /home/ubuntu/ai_geo_workbench/shared/xiaohongshuMaterial.ts
+[2026-06-24T06:59:59.644Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.644Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.645Z] File: /home/ubuntu/ai_geo_workbench/shared/maturityDetailDisplay.ts
+[2026-06-24T06:59:59.645Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.646Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.646Z] File: /home/ubuntu/ai_geo_workbench/client/src/hooks/useMaturityAutoCalculate.ts
+[2026-06-24T06:59:59.647Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.647Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.648Z] File: /home/ubuntu/ai_geo_workbench/shared/geoMaturityScoring.ts
+[2026-06-24T06:59:59.648Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.649Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.649Z] File: /home/ubuntu/ai_geo_workbench/shared/onboardingCompletenessReport.ts
+[2026-06-24T06:59:59.650Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.650Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.651Z] File: /home/ubuntu/ai_geo_workbench/shared/subscriptionPlans.ts
+[2026-06-24T06:59:59.651Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.652Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.652Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/ui/table.tsx
+[2026-06-24T06:59:59.653Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.653Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.654Z] File: /home/ubuntu/ai_geo_workbench/client/src/components/DeliveryReportCustomerView.tsx
+[2026-06-24T06:59:59.654Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.655Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.656Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/deliveryReportDisplay.ts
+[2026-06-24T06:59:59.656Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.657Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.657Z] File: /home/ubuntu/ai_geo_workbench/shared/deliveryReportPublicShare.ts
+[2026-06-24T06:59:59.658Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.658Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.659Z] File: /home/ubuntu/ai_geo_workbench/shared/platformAdmin.ts
+[2026-06-24T06:59:59.659Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.660Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.660Z] File: /home/ubuntu/ai_geo_workbench/shared/enterpriseProfileIndustry.ts
+[2026-06-24T06:59:59.661Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.661Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.662Z] File: /home/ubuntu/ai_geo_workbench/shared/onboardingWizardGeoGoalNotes.ts
+[2026-06-24T06:59:59.662Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.663Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.663Z] File: /home/ubuntu/ai_geo_workbench/shared/onboardingWizardCompleteness.ts
+[2026-06-24T06:59:59.664Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.664Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.665Z] File: /home/ubuntu/ai_geo_workbench/shared/onboardingWizardSteps.ts
+[2026-06-24T06:59:59.666Z] 2:59:59 AM [vite] (client) Pre-transform error: The service was stopped: write EPIPE
+[2026-06-24T06:59:59.666Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.667Z] File: /home/ubuntu/ai_geo_workbench/shared/wizardStep8MonthlyContentCapacity.ts
+[2026-06-24T06:59:59.667Z] 2:59:59 AM [vite] (client) Pre-transform error: The service is no longer running: write EPIPE
+[2026-06-24T06:59:59.668Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.668Z] File: /home/ubuntu/ai_geo_workbench/shared/wizardStep8GeoGoalDisplay.ts
+[2026-06-24T06:59:59.669Z] 2:59:59 AM [vite] (client) Pre-transform error: The service is no longer running: write EPIPE
+[2026-06-24T06:59:59.669Z] Plugin: vite:esbuild
+[2026-06-24T06:59:59.670Z] File: /home/ubuntu/ai_geo_workbench/client/src/lib/enterpriseProfileLoadDisplay.ts
+[2026-06-24T06:59:59.670Z] /home/ubuntu/ai_geo_workbench/node_modules/.pnpm/esbuild@0.25.10/node_modules/esbuild/lib/main.js:658
+[2026-06-24T06:59:59.671Z] else callback(null, packet.value);
+[2026-06-24T06:59:59.671Z] ^
+[2026-06-24T06:59:59.672Z] 
+[2026-06-24T06:59:59.672Z] TypeError: callback is not a function
+[2026-06-24T06:59:59.673Z] at handleIncomingPacket (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/esbuild@0.25.10/node_modules/esbuild/lib/main.js:658:12)
+[2026-06-24T06:59:59.673Z] at Socket.readFromStdout (/home/ubuntu/ai_geo_workbench/node_modules/.pnpm/esbuild@0.25.10/node_modules/esbuild/lib/main.js:581:7)
+[2026-06-24T06:59:59.674Z] at Socket.emit (node:events:524:28)
+[2026-06-24T06:59:59.674Z] at addChunk (node:internal/streams/readable:561:12)
+[2026-06-24T06:59:59.675Z] at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+[2026-06-24T06:59:59.675Z] at Readable.push (node:internal/streams/readable:392:5)
+[2026-06-24T06:59:59.676Z] at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
+[2026-06-24T06:59:59.676Z] 
+[2026-06-24T06:59:59.677Z] Node.js v22.13.0
+[2026-06-24T06:59:59.677Z] Dev server exited with code -15
+[2026-06-24T07:00:02.188Z] Starting dev server with command: pnpm run dev
+[2026-06-24T07:00:03.015Z] 
+[2026-06-24T07:00:03.016Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-24T07:00:03.017Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-24T07:00:03.017Z] 
+[2026-06-24T07:00:11.249Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-24T07:00:11.284Z] Server running on http://localhost:3000/
