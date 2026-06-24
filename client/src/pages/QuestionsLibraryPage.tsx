@@ -28,6 +28,7 @@ import {
 } from "@shared/weeklyContentEntryContext";
 import { trpc } from "@/lib/trpc";
 import type { EnrichedSearchPoolQuestion } from "@shared/questionSearchPoolEnrichment";
+import type { QuestionOpportunityLabel } from "@shared/questionOpportunityMap";
 import {
   formatQuestionPoolGapMetricValue,
   groupQuestionsBySearchPoolType,
@@ -42,6 +43,21 @@ import { Library, Plus, Sparkles, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+
+function opportunityBadgeClass(label: QuestionOpportunityLabel): string {
+  switch (label) {
+    case "高价值":
+      return "border-blue-200 bg-blue-50 text-blue-800";
+    case "竞品占位":
+      return "border-red-200 bg-red-50 text-red-800";
+    case "已覆盖":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "待优化":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    default:
+      return "border-gray-200 bg-gray-50 text-gray-700";
+  }
+}
 
 function buildGenerateMessage(result: {
   count: number;
@@ -274,11 +290,11 @@ export default function QuestionsLibraryPage() {
           <div className="flex items-center gap-2">
             <Library className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900" data-testid="questions-page-title">
-              AI 搜索问题池
+              AI 搜索机会地图
             </h1>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-gray-500" data-testid="questions-page-subtitle">
-            结构化管理 AI 搜索问题，绑定诊断缺口、内容任务与信源类型，支撑后续信源图谱与多平台实测。
+            了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">
@@ -325,45 +341,35 @@ export default function QuestionsLibraryPage() {
         </div>
       ) : (
         <>
-          <P0Section title="问题池概览" description="核心问题覆盖与本轮重点">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" data-testid="question-pool-overview">
+          <P0Section title="机会总览" description="核心问题覆盖、竞品占位与本月重点">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="question-pool-overview">
               <P0MetricTile
                 label="核心问题总数"
                 value={String(gapOverview?.totalQuestions ?? 0)}
                 hint="当前项目问题池总量"
               />
               <P0MetricTile
-                label="已启用问题"
-                value={String(gapOverview?.enabledQuestions ?? 0)}
-                hint="已纳入实测/内容流程的问题"
+                label="已覆盖内容问题数"
+                value={String(gapOverview?.coveredContentQuestions ?? 0)}
+                hint="已发布关联内容的问题"
               />
               <P0MetricTile
-                label="已发现缺口"
-                value={formatQuestionPoolGapMetricValue(gapOverview?.uncoveredQuestions ?? 0, hasDiagnosisData)}
-                hint="未提及或竞品占优的问题"
-              />
-              <P0MetricTile
-                label="竞品占优"
+                label="竞品占位问题数"
                 value={formatQuestionPoolGapMetricValue(
-                  gapOverview?.competitorDominatedQuestions ?? 0,
+                  gapOverview?.competitorOccupiedQuestions ?? 0,
                   hasDiagnosisData,
                 )}
-                hint="最近实测竞品表现更强"
+                hint="AI 诊断中竞品出现率超过 50% 的问题"
               />
               <P0MetricTile
-                label="已生成内容任务"
-                value={String(gapOverview?.generatedContentTasks ?? 0)}
-                hint="来自诊断的优化任务数量"
-              />
-              <P0MetricTile
-                label="本轮重点问题"
-                value={String(gapOverview?.priorityQuestions ?? 0)}
-                hint="优先级为高的问题数量"
+                label="本月重点问题数"
+                value={String(gapOverview?.monthlyFocusQuestions ?? 0)}
+                hint="本月优化计划中标记的问题"
               />
             </div>
           </P0Section>
 
-          <P0Section title="问题分组" description="按 AI 搜索问题类型浏览">
+          <P0Section title="问题分组" description="按 AI 搜索问题类型浏览机会分布">
             <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="question-pool-tabs">
               <TabsList className="flex w-full flex-wrap gap-1">
                 {SEARCH_POOL_QUESTION_TYPES.map(type => {
@@ -373,8 +379,20 @@ export default function QuestionsLibraryPage() {
                       key={type.value}
                       value={type.value}
                       data-testid={`question-pool-tab-${type.value}`}
+                      className="gap-1.5"
                     >
-                      {type.label} ({stats?.total ?? grouped[type.value].length})
+                      <span>{type.label}</span>
+                      <span className="text-xs text-gray-500">({stats?.total ?? grouped[type.value].length})</span>
+                      {hasDiagnosisData && (stats?.competitorOccupiedCount ?? 0) > 0 ? (
+                        <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
+                          竞品 {stats?.competitorOccupiedCount}
+                        </span>
+                      ) : null}
+                      {(stats?.coveredCount ?? 0) > 0 ? (
+                        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                          已覆盖 {stats?.coveredCount}
+                        </span>
+                      ) : null}
                     </TabsTrigger>
                   );
                 })}
@@ -463,6 +481,7 @@ function QuestionPoolTable({
         <TableHeader>
           <TableRow>
             <TableHead>问题内容</TableHead>
+            <TableHead>机会标签</TableHead>
             <TableHead>类型</TableHead>
             <TableHead>诊断缺口</TableHead>
             <TableHead>AI 表现</TableHead>
@@ -477,6 +496,15 @@ function QuestionPoolTable({
           {questions.map(question => (
             <TableRow key={question.id} data-testid={`question-pool-row-${question.id}`}>
               <TableCell className="max-w-xs whitespace-normal">{question.questionText}</TableCell>
+              <TableCell data-testid={`question-opportunity-label-${question.id}`}>
+                {question.opportunityLabel ? (
+                  <Badge variant="outline" className={opportunityBadgeClass(question.opportunityLabel)}>
+                    {question.opportunityLabel}
+                  </Badge>
+                ) : (
+                  "—"
+                )}
+              </TableCell>
               <TableCell>{resolveSearchPoolTypeLabel(question.searchPoolType)}</TableCell>
               <TableCell className="max-w-[10rem] whitespace-normal text-sm text-gray-700">
                 {question.diagnosisGap}

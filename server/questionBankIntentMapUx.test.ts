@@ -11,23 +11,22 @@ describe("GEO-V1.2-P1-A-QuestionBank-UX", () => {
   const assistant = read("client/src/components/questions/QuestionBankAssistantPanel.tsx");
   const shell = read("client/src/components/project/EnterpriseProjectShell.tsx");
 
-  it("页面标题为 AI 搜索问题池", () => {
-    expect(page).toContain("AI 搜索问题池");
+  it("页面标题为 AI 搜索机会地图", () => {
+    expect(page).toContain("AI 搜索机会地图");
     expect(page).toContain("questions-page-title");
     expect(page).toContain("questions-page-subtitle");
   });
 
-  it("问题池概览与六类 Tab", () => {
+  it("机会总览与六类 Tab", () => {
     expect(page).toContain("question-pool-overview");
     expect(page).toContain("核心问题总数");
-    expect(page).toContain("已发现缺口");
-    expect(page).toContain("已启用问题");
-    expect(page).toContain("竞品占优");
-    expect(page).toContain("已生成内容任务");
-    expect(page).toContain("本轮重点问题");
-    expect(page).toContain("暂无诊断数据");
+    expect(page).toContain("已覆盖内容问题数");
+    expect(page).toContain("竞品占位问题数");
+    expect(page).toContain("本月重点问题数");
+    expect(page).toContain("机会总览");
     expect(page).toContain("question-pool-tabs");
     expect(page).toContain("SEARCH_POOL_QUESTION_TYPES");
+    expect(page).toContain("question-opportunity-label-");
     expect(read("shared/questionSearchPool.ts")).toContain("品牌认知");
     expect(read("shared/questionSearchPool.ts")).toContain("品类推荐");
     expect(read("shared/questionSearchPool.ts")).toContain("场景需求");

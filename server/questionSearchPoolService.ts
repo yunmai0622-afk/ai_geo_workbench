@@ -13,6 +13,10 @@ import {
   type SearchPoolQuestionType,
 } from "@shared/questionSearchPool";
 import {
+  buildQuestionOpportunityOverview,
+  computeQuestionCompetitorRates,
+} from "@shared/questionOpportunityMap";
+import {
   enrichSearchPoolQuestion,
   type AiTestRunSnapshot,
   type EnrichedSearchPoolQuestion,
@@ -22,6 +26,8 @@ import {
   geoArticles,
   geoInclusionMonitoringRecords,
   geoPublishRecords,
+  monthlyOptimizationPlans,
+  monthlyOptimizationTasks,
   optimizationTasks,
   publishTasks,
   questions,
@@ -107,6 +113,8 @@ export async function loadSearchPoolEnriched(db: DbConn, projectId: number): Pro
     inclusionRows,
     aiRunRows,
     roundRows,
+    monthlyPlanRows,
+    monthlyPlanTaskRows,
   ] = await Promise.all([
     db
       .select()
@@ -150,10 +158,37 @@ export async function loadSearchPoolEnriched(db: DbConn, projectId: number): Pro
       .select({ id: testRounds.id, status: testRounds.status, roundType: testRounds.roundType })
       .from(testRounds)
       .where(eq(testRounds.projectId, projectId)),
+    db
+      .select({ id: monthlyOptimizationPlans.id })
+      .from(monthlyOptimizationPlans)
+      .where(and(eq(monthlyOptimizationPlans.projectId, projectId), eq(monthlyOptimizationPlans.status, "active")))
+      .orderBy(desc(monthlyOptimizationPlans.roundNumber))
+      .limit(1),
+    db
+      .select({ relatedQuestionId: monthlyOptimizationTasks.relatedQuestionId })
+      .from(monthlyOptimizationTasks)
+      .innerJoin(
+        monthlyOptimizationPlans,
+        eq(monthlyOptimizationTasks.planId, monthlyOptimizationPlans.id),
+      )
+      .where(
+        and(
+          eq(monthlyOptimizationPlans.projectId, projectId),
+          eq(monthlyOptimizationPlans.status, "active"),
+        ),
+      ),
   ]);
 
   void inclusionRows;
   void publishTaskRows;
+  void monthlyPlanRows;
+
+  const monthlyFocusQuestionIds = new Set<number>();
+  for (const row of monthlyPlanTaskRows) {
+    if (row.relatedQuestionId != null) monthlyFocusQuestionIds.add(row.relatedQuestionId);
+  }
+
+  const competitorRatesByQuestionId = computeQuestionCompetitorRates(aiRunRows);
 
   const publishedArticleIds = new Set<number>();
   for (const row of publishRecordRows) {
@@ -198,18 +233,28 @@ export async function loadSearchPoolEnriched(db: DbConn, projectId: number): Pro
       articles: articleLinks,
       hasContentTask,
       hasDiagnosisData,
+      competitorRate: competitorRatesByQuestionId.get(question.id),
+      monthlyFocusQuestionIds,
     });
+  });
+
+  const opportunityOverview = buildQuestionOpportunityOverview({ questions: enrichedQuestions });
+  const baseOverview = buildQuestionPoolGapOverview({
+    questions: enrichedQuestions,
+    contentTaskCount: taskRows.length,
+    hasDiagnosisData,
   });
 
   return {
     questions: enrichedQuestions,
     hasDiagnosisData,
     contentTaskCount: taskRows.length,
-    overview: buildQuestionPoolGapOverview({
-      questions: enrichedQuestions,
-      contentTaskCount: taskRows.length,
-      hasDiagnosisData,
-    }),
+    overview: {
+      ...baseOverview,
+      coveredContentQuestions: opportunityOverview.coveredContentQuestions,
+      competitorOccupiedQuestions: opportunityOverview.competitorOccupiedQuestions,
+      monthlyFocusQuestions: opportunityOverview.monthlyFocusQuestions,
+    },
     groupStats: buildSearchPoolGroupStats(enrichedQuestions, hasDiagnosisData),
   };
 }

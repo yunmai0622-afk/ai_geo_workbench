@@ -178,6 +178,9 @@ export type QuestionPoolGapOverview = {
   generatedContentTasks: number;
   priorityQuestions: number;
   hasDiagnosisData: boolean;
+  coveredContentQuestions: number;
+  competitorOccupiedQuestions: number;
+  monthlyFocusQuestions: number;
 };
 
 export type QuestionPoolAiPerformanceLabel =
@@ -228,6 +231,9 @@ export function buildQuestionPoolGapOverview(input: {
     generatedContentTasks: input.contentTaskCount,
     priorityQuestions: input.questions.filter(q => q.priorityLevel === "high").length,
     hasDiagnosisData: input.hasDiagnosisData,
+    coveredContentQuestions: 0,
+    competitorOccupiedQuestions: 0,
+    monthlyFocusQuestions: 0,
   };
 }
 
@@ -339,13 +345,24 @@ export type SearchPoolGroupStats = {
   tested: number;
   gapCount: number;
   contentReadyCount: number;
+  competitorOccupiedCount: number;
+  coveredCount: number;
 };
 
 export function buildSearchPoolGroupStats(
-  questions: SearchPoolQuestionRow[],
+  questions: Array<
+    SearchPoolQuestionRow & {
+      competitorOccupied?: boolean;
+      contentStatus?: string;
+    }
+  >,
   hasDiagnosisData: boolean,
 ): Record<SearchPoolQuestionType, SearchPoolGroupStats> {
-  const grouped = groupQuestionsBySearchPoolType(questions);
+  type GroupQuestion = SearchPoolQuestionRow & {
+    competitorOccupied?: boolean;
+    contentStatus?: string;
+  };
+  const grouped = groupQuestionsBySearchPoolType(questions) as Record<SearchPoolQuestionType, GroupQuestion[]>;
   return Object.fromEntries(
     SEARCH_POOL_QUESTION_TYPES.map(type => {
       const bucket = grouped[type.value];
@@ -364,6 +381,8 @@ export function buildSearchPoolGroupStats(
               ).length
             : 0,
           contentReadyCount: bucket.filter(q => Boolean(q.relatedContentTask)).length,
+          competitorOccupiedCount: bucket.filter(q => Boolean(q.competitorOccupied)).length,
+          coveredCount: bucket.filter(q => q.contentStatus === "已发布").length,
         },
       ];
     }),

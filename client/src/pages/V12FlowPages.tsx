@@ -102,6 +102,7 @@ import {
   resolveAiRecommendStatus,
   resolvePlatformRunningStatuses,
   resolveTestRoundPhaseLabel,
+  formatAiDiagnosisRunningProgressLabel,
   AI_DIAGNOSIS_RUNNING_PATIENCE_HINT,
 } from "@shared/aiDiagnosisReportDisplay";
 import { buildTopWeaknessHighlights } from "@shared/maturityDetailDisplay";
@@ -1692,6 +1693,7 @@ export function AiDiagnosisFlowPage() {
           if (selectedProjectId) setLocation(buildProjectUrl("/questions", selectedProjectId));
         }}
         runningProgress={runningProgress}
+        diagnosisHasRuns={t0Runs.length > 0}
         platformRunningRows={platformRunningRows}
         roundFailed={displayT0Round?.status === "failed"}
         refreshing={testRoundsQuery.isFetching || activeT0RoundQuery.isFetching}
@@ -2153,108 +2155,16 @@ export function AiDiagnosisFlowPage() {
           </span>
         </summary>
         <div className="space-y-4 border-t border-indigo-50 px-4 pb-4 pt-2">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs text-gray-500">
-              调用真实 AI 平台实测并沉淀原始数据，与上方内容诊断流程并行保留。
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {hasT0BaselineToReset ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0 border-red-200 text-red-700 hover:bg-red-50"
-                disabled={!canOperate || isT0Running || resetT0Baseline.isPending}
-                data-testid="ai-diagnosis-reset-t0"
-                onClick={() =>
-                  dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.resetT0Detection, () =>
-                    handleResetT0Baseline(),
-                  )
-                }
-              >
-                {resetT0Baseline.isPending ? "正在重置…" : "重置优化前检测"}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
-              disabled={
-                !canOperate ||
-                isT0Running ||
-                running ||
-                generatingQuestions ||
-                selectedT0Platforms.length === 0 ||
-                enabledQuestionCount === 0
-              }
-              onClick={requestStartT0Baseline}
-              data-testid="ai-diagnosis-start-t0"
-            >
-              {t0StartingMutation
-                ? "正在启动 AI 现状检测…"
-                : isT0Running
-                  ? "AI 现状检测进行中…"
-                  : hasT0BaselineResult
-                    ? "重新诊断"
-                    : "开始 AI 现状检测"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-4" data-testid="ai-diagnosis-t0-platform-select">
-          <p className="text-xs font-medium text-gray-500">实测平台（多选）</p>
-          <div className="mt-2 flex flex-wrap gap-3">
-            {T0_AI_ENGINE_OPTIONS.map(option => {
-              const checked = selectedT0Platforms.includes(option?.id);
-              return (
-                <label
-                  key={option?.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800"
-                >
-                  <input
-                    type="checkbox"
-                    className="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={checked}
-                    disabled={isT0Running || t0StartingMutation}
-                    onChange={() => {
-                      setSelectedT0Platforms(prev => {
-                        if (checked) {
-                          const next = prev.filter(id => id !== option?.id);
-                          return next.length > 0 ? next : prev;
-                        }
-                        return [...prev, option?.id];
-                      });
-                    }}
-                  />
-                  {option.label}
-                </label>
-              );
-            })}
-          </div>
-          <p className="mt-2 text-xs text-gray-400">通义千问需 QWEN_API_KEY，文心一言需 WENXIN_API_KEY。</p>
-        </div>
-
-        {(t0Message || t0Error) &&
-          (t0Error && isSubscriptionLimitMessage(t0Error) ? (
-            <SubscriptionUpgradePrompt className="mt-4" message={t0Error} testId="ai-diagnosis-t0-limit-error" />
-          ) : (
-            <div
-              className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
-                t0Error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-              }`}
-            >
-              {t0Error || t0Message}
-            </div>
-          ))}
-
         {isT0Running ? (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div
               className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900"
               data-testid="ai-diagnosis-t0-progress-detail"
             >
-              已完成平台 {runningProgress.completedPlatforms} / {runningProgress.totalPlatforms} · 已检测问题{" "}
-              {runningProgress.completedQuestions} / {runningProgress.totalQuestions}
+              {formatAiDiagnosisRunningProgressLabel({
+                progress: runningProgress,
+                hasRuns: t0Runs.length > 0,
+              })}
               <p className="mt-1 text-xs text-blue-800/80">{AI_DIAGNOSIS_RUNNING_PATIENCE_HINT}</p>
             </div>
             <Button
@@ -2272,7 +2182,7 @@ export function AiDiagnosisFlowPage() {
         ) : null}
 
         {displayT0Round?.status === "completed" && t0ResultsDisplay ? (
-          <div className="mt-5 space-y-4" data-testid="ai-diagnosis-t0-results">
+          <div className="space-y-4" data-testid="ai-diagnosis-t0-results">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-900">检测结果汇总</p>
@@ -2378,8 +2288,115 @@ export function AiDiagnosisFlowPage() {
             ) : null}
           </div>
         ) : displayT0Round?.status === "completed" && !t0ResultsDisplay ? (
-          <p className="mt-4 text-sm text-gray-500">AI 现状检测已完成，但暂无可展示的实测记录。</p>
+          <p className="text-sm text-gray-500">AI 现状检测已完成，但暂无可展示的实测记录。</p>
         ) : null}
+
+        <div className="border-t border-gray-200 pt-4">
+          <details
+            className="group rounded-xl border border-gray-200 bg-gray-50 shadow-sm"
+            data-testid="ai-diagnosis-retest-console"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-500 transition-transform group-open:rotate-180" />
+                重新发起检测
+              </span>
+              <span className="text-xs font-normal text-gray-500">选择平台并发起新一轮实测</span>
+            </summary>
+            <div className="space-y-4 border-t border-gray-200 bg-white px-4 pb-4 pt-3">
+              <p className="text-xs text-gray-500">
+                调用真实 AI 平台实测并沉淀原始数据，与上方内容诊断流程并行保留。
+              </p>
+
+              <div data-testid="ai-diagnosis-t0-platform-select">
+                <p className="text-xs font-medium text-gray-500">实测平台（多选）</p>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {T0_AI_ENGINE_OPTIONS.map(option => {
+                    const checked = selectedT0Platforms.includes(option?.id);
+                    return (
+                      <label
+                        key={option?.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800"
+                      >
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          checked={checked}
+                          disabled={isT0Running || t0StartingMutation}
+                          onChange={() => {
+                            setSelectedT0Platforms(prev => {
+                              if (checked) {
+                                const next = prev.filter(id => id !== option?.id);
+                                return next.length > 0 ? next : prev;
+                              }
+                              return [...prev, option?.id];
+                            });
+                          }}
+                        />
+                        {option.label}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-gray-400">通义千问需 QWEN_API_KEY，文心一言需 WENXIN_API_KEY。</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {hasT0BaselineToReset ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0 border-red-200 text-red-700 hover:bg-red-50"
+                    disabled={!canOperate || isT0Running || resetT0Baseline.isPending}
+                    data-testid="ai-diagnosis-reset-t0"
+                    onClick={() =>
+                      dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.resetT0Detection, () =>
+                        handleResetT0Baseline(),
+                      )
+                    }
+                  >
+                    {resetT0Baseline.isPending ? "正在重置…" : "重置优化前检测"}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  disabled={
+                    !canOperate ||
+                    isT0Running ||
+                    running ||
+                    generatingQuestions ||
+                    selectedT0Platforms.length === 0 ||
+                    enabledQuestionCount === 0
+                  }
+                  onClick={requestStartT0Baseline}
+                  data-testid="ai-diagnosis-start-t0"
+                >
+                  {t0StartingMutation
+                    ? "正在启动 AI 现状检测…"
+                    : isT0Running
+                      ? "AI 现状检测进行中…"
+                      : hasT0BaselineResult
+                        ? "重新诊断"
+                        : "开始 AI 现状检测"}
+                </Button>
+              </div>
+
+              {(t0Message || t0Error) &&
+                (t0Error && isSubscriptionLimitMessage(t0Error) ? (
+                  <SubscriptionUpgradePrompt className="mt-2" message={t0Error} testId="ai-diagnosis-t0-limit-error" />
+                ) : (
+                  <div
+                    className={`rounded-xl border px-4 py-3 text-sm ${
+                      t0Error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {t0Error || t0Message}
+                  </div>
+                ))}
+            </div>
+          </details>
+        </div>
         </div>
       </details>
 

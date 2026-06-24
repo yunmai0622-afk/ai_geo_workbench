@@ -132,6 +132,26 @@ export function computeAiDiagnosisRunningProgress(input: {
   };
 }
 
+/** 检测中客户可见进度文案：优先平台维度，其次题目完成百分比，否则通用提示 */
+export function formatAiDiagnosisRunningProgressLabel(input: {
+  progress: AiDiagnosisRunningProgress;
+  hasRuns: boolean;
+}): string {
+  const { progress, hasRuns } = input;
+  const hasPlatformDimension = hasRuns && progress.totalPlatforms > 0;
+  const hasQuestionDimension =
+    hasRuns && progress.totalQuestions > 0 && progress.completedQuestions > 0;
+
+  if (hasPlatformDimension) {
+    return `已完成 ${progress.completedPlatforms} / ${progress.totalPlatforms} 个平台检测`;
+  }
+  if (hasQuestionDimension) {
+    const pct = Math.round((progress.completedQuestions / progress.totalQuestions) * 100);
+    return `已完成 ${pct}%`;
+  }
+  return "检测进行中，请稍候";
+}
+
 export function resolvePlatformRunningStatuses(input: {
   runs: Array<{ platform: string; questionId: number }>;
   totalQuestions: number;

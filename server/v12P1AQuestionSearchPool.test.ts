@@ -32,8 +32,8 @@ describe("GEO-V1.2-P1-A-Question-Search-Pool", () => {
     expect(routers).toContain("normalizeQuestionPoolDbFields");
   });
 
-  it("/questions page is AI search question pool with overview, tabs and actions", () => {
-    expect(page).toContain("AI 搜索问题池");
+  it("/questions page is AI search opportunity map with overview, tabs and actions", () => {
+    expect(page).toContain("AI 搜索机会地图");
     expect(page).toContain("question-pool-overview");
     expect(page).toContain("question-pool-tabs");
     expect(page).toContain("question-pool-tab-");

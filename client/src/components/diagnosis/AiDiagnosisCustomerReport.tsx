@@ -5,6 +5,7 @@ import {
   AI_DIAGNOSIS_PAGE_SUBTITLE,
   AI_DIAGNOSIS_RUNNING_BACKGROUND_HINT,
   AI_DIAGNOSIS_RUNNING_PATIENCE_HINT,
+  formatAiDiagnosisRunningProgressLabel,
   type AiDiagnosisFirstScreenState,
   type AiDiagnosisPlatformCustomerStatus,
   type AiDiagnosisRunningProgress,
@@ -43,6 +44,7 @@ export type AiDiagnosisCustomerReportProps = {
   onStartDiagnosis: () => void;
   onViewQuestionPool: () => void;
   runningProgress: AiDiagnosisRunningProgress;
+  diagnosisHasRuns: boolean;
   platformRunningRows: PlatformRunningRow[];
   roundFailed: boolean;
   refreshing: boolean;
@@ -116,6 +118,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
     onStartDiagnosis,
     onViewQuestionPool,
     runningProgress,
+    diagnosisHasRuns,
     platformRunningRows,
     roundFailed,
     refreshing,
@@ -231,7 +234,15 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
   }
 
   if (firstScreenState === "running") {
-    const progressPercent = runningProgress.percent;
+    const progressLabel = formatAiDiagnosisRunningProgressLabel({
+      progress: runningProgress,
+      hasRuns: diagnosisHasRuns,
+    });
+    const progressPercent =
+      runningProgress.percent ??
+      (runningProgress.totalQuestions > 0 && runningProgress.completedQuestions > 0
+        ? Math.round((runningProgress.completedQuestions / runningProgress.totalQuestions) * 100)
+        : null);
     return (
       <div className="space-y-6">
         <div
@@ -258,11 +269,11 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
           ) : null}
 
           <div className="mt-5 space-y-3" data-testid="ai-diagnosis-t0-progress">
+            <p className="text-sm font-medium text-gray-800" data-testid="ai-diagnosis-running-progress-label">
+              {progressLabel}
+            </p>
             {progressPercent != null ? (
               <>
-                <div className="flex items-center justify-between text-sm text-gray-700">
-                  <span>已完成 {progressPercent}%</span>
-                </div>
                 <div className="h-2 overflow-hidden rounded-full bg-gray-100">
                   <div
                     className="h-full rounded-full bg-blue-500 transition-all"
@@ -270,20 +281,8 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
                   />
                 </div>
               </>
-            ) : (
-              <p className="text-sm text-gray-700">
-                AI 正在后台检测中，完成后会自动生成诊断报告。
-              </p>
-            )}
-            <div className="grid gap-2 sm:grid-cols-3 text-sm text-gray-700">
-              <p>
-                已完成平台：{runningProgress.completedPlatforms} / {runningProgress.totalPlatforms}
-              </p>
-              <p>
-                已检测问题：{runningProgress.completedQuestions} / {runningProgress.totalQuestions}
-              </p>
-              <p>当前状态：后台运行中</p>
-            </div>
+            ) : null}
+            <p className="text-sm text-gray-600">当前状态：后台运行中</p>
           </div>
 
           <p className="mt-4 text-sm leading-relaxed text-gray-600">{AI_DIAGNOSIS_RUNNING_BACKGROUND_HINT}</p>

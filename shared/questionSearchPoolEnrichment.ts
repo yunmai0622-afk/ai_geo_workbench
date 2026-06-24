@@ -5,6 +5,10 @@ import {
   type QuestionContentStatus,
 } from "./questionBankIntentMap";
 import {
+  enrichQuestionOpportunityFields,
+  type QuestionOpportunityLabel,
+} from "./questionOpportunityMap";
+import {
   resolveLastTestResultLabel,
   resolveQuestionPoolAiPerformanceLabel,
   type QuestionPoolAiPerformanceLabel,
@@ -34,6 +38,11 @@ export type EnrichedSearchPoolQuestion = SearchPoolQuestionRow & {
   aiPerformanceLabel: QuestionPoolAiPerformanceLabel;
   lastTestDisplay: LastAiTestDisplay;
   hasContentTask: boolean;
+  competitorOccupied: boolean;
+  contentPublished: boolean;
+  hasContentPending: boolean;
+  monthlyFocus: boolean;
+  opportunityLabel: QuestionOpportunityLabel | null;
 };
 
 export function pickLatestAiTestRun(runs: AiTestRunSnapshot[]): AiTestRunSnapshot | null {
@@ -102,6 +111,8 @@ export function enrichSearchPoolQuestion(input: {
   articles: QuestionArticleLink[];
   hasContentTask: boolean;
   hasDiagnosisData: boolean;
+  competitorRate?: number;
+  monthlyFocusQuestionIds?: ReadonlySet<number>;
 }): EnrichedSearchPoolQuestion {
   const lastTestDisplay = toLastAiTestDisplay({
     runs: input.runs,
@@ -115,6 +126,13 @@ export function enrichSearchPoolQuestion(input: {
     input.articles,
     input.hasContentTask,
   );
+  const opportunityFields = enrichQuestionOpportunityFields({
+    question: input.question,
+    contentStatus,
+    hasContentTask: input.hasContentTask,
+    competitorRate: input.competitorRate,
+    monthlyFocusQuestionIds: input.monthlyFocusQuestionIds ?? new Set<number>(),
+  });
   return {
     ...input.question,
     lastTestResult,
@@ -129,5 +147,6 @@ export function enrichSearchPoolQuestion(input: {
     }),
     lastTestDisplay,
     hasContentTask: input.hasContentTask,
+    ...opportunityFields,
   };
 }

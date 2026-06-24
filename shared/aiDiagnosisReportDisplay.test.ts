@@ -1,77 +1,57 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildAiDiagnosisReportActionSuggestions,
-  buildAiDiagnosisReportConclusion,
-  resolveAiDiagnosisFirstScreenState,
-  resolveAiRecognitionStatus,
-  resolveAiRecommendStatus,
+  computeAiDiagnosisRunningProgress,
+  formatAiDiagnosisRunningProgressLabel,
 } from "./aiDiagnosisReportDisplay";
 
-describe("aiDiagnosisReportDisplay", () => {
-  it("resolves first screen state", () => {
-    expect(
-      resolveAiDiagnosisFirstScreenState({
-        isT0Running: true,
-        t0Starting: false,
-        hasT0BaselineResult: false,
-        hasAiTestMetrics: false,
-      }),
-    ).toBe("running");
-    expect(
-      resolveAiDiagnosisFirstScreenState({
-        isT0Running: false,
-        t0Starting: false,
-        hasT0BaselineResult: true,
-        hasAiTestMetrics: true,
-      }),
-    ).toBe("completed");
-    expect(
-      resolveAiDiagnosisFirstScreenState({
-        isT0Running: false,
-        t0Starting: false,
-        hasT0BaselineResult: false,
-        hasAiTestMetrics: false,
-      }),
-    ).toBe("before");
-    expect(
-      resolveAiDiagnosisFirstScreenState({
-        isT0Running: false,
-        t0Starting: false,
-        hasT0BaselineResult: false,
-        hasAiTestMetrics: false,
-        t0RoundStatus: "pending",
-      }),
-    ).toBe("running");
-    expect(
-      resolveAiDiagnosisFirstScreenState({
-        isT0Running: false,
-        t0Starting: false,
-        hasT0BaselineResult: true,
-        hasAiTestMetrics: true,
-        t0RoundStatus: "running",
-      }),
-    ).toBe("running");
+describe("formatAiDiagnosisRunningProgressLabel", () => {
+  it("shows generic hint when no run data", () => {
+    const progress = computeAiDiagnosisRunningProgress({
+      runs: [],
+      totalQuestions: 10,
+      runsPerQuestion: 3,
+      activePlatformIds: ["doubao", "deepseek", "kimi"],
+    });
+    expect(formatAiDiagnosisRunningProgressLabel({ progress, hasRuns: false })).toBe("检测进行中，请稍候");
   });
 
-  it("resolves recognition and recommend status labels", () => {
-    expect(resolveAiRecognitionStatus(60)).toBe("是");
-    expect(resolveAiRecognitionStatus(30)).toBe("部分认识");
-    expect(resolveAiRecognitionStatus(0)).toBe("否");
-    expect(resolveAiRecommendStatus(25)).toBe("是");
-    expect(resolveAiRecommendStatus(10)).toBe("偶尔");
-    expect(resolveAiRecommendStatus(0)).toBe("否");
+  it("prefers platform dimension when runs exist", () => {
+    const runs = [{ questionId: 1, platform: "doubao" }];
+    const progress = computeAiDiagnosisRunningProgress({
+      runs,
+      totalQuestions: 10,
+      runsPerQuestion: 3,
+      activePlatformIds: ["doubao", "deepseek", "kimi"],
+    });
+    expect(formatAiDiagnosisRunningProgressLabel({ progress, hasRuns: true })).toBe(
+      "已完成 0 / 5 个平台检测",
+    );
   });
 
-  it("builds conclusion copy from mention and recommend rates", () => {
-    expect(buildAiDiagnosisReportConclusion(60, 30)).toContain("识别");
-    expect(buildAiDiagnosisReportConclusion(60, 10)).toContain("推荐意愿偏弱");
-    expect(buildAiDiagnosisReportConclusion(40, 30)).toContain("有一定认知");
+  it("shows question percent when only question dimension is available", () => {
+    const progress = {
+      percent: 40,
+      completedPlatforms: 0,
+      totalPlatforms: 0,
+      completedQuestions: 2,
+      totalQuestions: 5,
+    };
+    expect(formatAiDiagnosisRunningProgressLabel({ progress, hasRuns: true })).toBe("已完成 40%");
   });
 
-  it("builds 1-2 action suggestions", () => {
-    const low = buildAiDiagnosisReportActionSuggestions(30, 5);
-    expect(low.length).toBeGreaterThanOrEqual(1);
-    expect(low.length).toBeLessThanOrEqual(2);
-    expect(low[0]).toContain("品牌基础");
+  it("does not expose question index wording", () => {
+    const label = formatAiDiagnosisRunningProgressLabel({
+      progress: {
+        percent: 20,
+        completedPlatforms: 1,
+        totalPlatforms: 5,
+        completedQuestions: 3,
+        totalQuestions: 55,
+      },
+      hasRuns: true,
+    });
+    expect(label).not.toMatch(/第/);
+    expect(label).not.toMatch(/共.*题/);
+    expect(label).toContain("1 / 5 个平台检测");
   });
 });
