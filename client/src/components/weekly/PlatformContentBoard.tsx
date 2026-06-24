@@ -13,11 +13,9 @@ import {
   WEEKLY_SERIAL_GENERATION_HINT,
   type PlatformTaskActionKind,
 } from "@shared/weeklyContentTaskBoard";
-import {
-  WEEKLY_CONTENT_TASK_STATUS_BADGE_CLASS,
-  weeklyContentTaskStatusLabel,
-  type WeeklyContentTaskStatus,
-} from "@shared/weeklyContentTaskStatus";
+import { contentAssetLifecycleBadgeClass } from "@/components/content/ContentAssetLifecycleDisplay";
+import type { ContentAssetLifecycleView } from "@shared/contentAssetLifecycle";
+import type { WeeklyContentTaskStatus } from "@shared/weeklyContentTaskStatus";
 import { cn } from "@/lib/utils";
 
 export const PRIMARY_ACTION_LABEL = {
@@ -39,6 +37,7 @@ export type PlatformBoardRow = {
   platformGenerationGoal: string;
   publishHint: string;
   status: WeeklyContentTaskStatus;
+  lifecycle: ContentAssetLifecycleView;
   hasContent: boolean;
   articleId?: number | null;
   platformDraftStatusLabel: string;
@@ -112,8 +111,8 @@ export function PlatformContentBoard({
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2" data-testid="weekly-platform-matrix-grid">
         {rows.map(row => {
-          const { def, status, hasContent } = row;
-          const statusLabel = weeklyContentTaskStatusLabel(status);
+          const { def, status, hasContent, lifecycle } = row;
+          const statusLabel = lifecycle.label;
           const action = resolvePlatformTaskAction(status, hasContent);
           const disabled = shouldDisablePlatformGenerateButton({
             status,
@@ -138,7 +137,7 @@ export function PlatformContentBoard({
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                    WEEKLY_CONTENT_TASK_STATUS_BADGE_CLASS[status],
+                    contentAssetLifecycleBadgeClass(lifecycle.stage),
                   )}
                   data-testid={`weekly-platform-status-${def.key}`}
                 >

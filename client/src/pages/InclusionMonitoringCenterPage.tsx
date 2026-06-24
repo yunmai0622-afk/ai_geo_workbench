@@ -10,9 +10,11 @@ import { FIRST_USE_HINT_KEYS } from "@/lib/firstUseHints";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import {
   mapContentAssetEffectRecordForView,
+  resolveMonitoringRecordLifecycle,
   type ContentAssetEffectViewRecord,
 } from "@/lib/contentAssetEffectView";
 import { trpc } from "@/lib/trpc";
+import { ContentAssetLifecycleProgress } from "@/components/content/ContentAssetLifecycleDisplay";
 import {
   aggregateContentAssetEffectOverview,
   aggregatePlatformEffectSummary,
@@ -290,6 +292,7 @@ export function InclusionMonitoringCenterPage() {
                 const platform = (record.publishChannel ?? "").trim() || "未标注";
                 const nextAction = record.nextAction;
                 const isRunning = runCheck.isPending && runningRecordId === record.id;
+                const lifecycle = resolveMonitoringRecordLifecycle(record);
                 return (
                   <article
                     key={record.id}
@@ -314,6 +317,12 @@ export function InclusionMonitoringCenterPage() {
                         {record.effectStatusLabel ?? "待收录"}
                       </span>
                     </div>
+
+                    <ContentAssetLifecycleProgress
+                      stage={lifecycle.stage}
+                      compact
+                      testId={`inclusion-lifecycle-${record.id}`}
+                    />
 
                     <dl className="mt-3 grid gap-2 text-xs text-gray-600 sm:grid-cols-2 lg:grid-cols-4">
                       <div>

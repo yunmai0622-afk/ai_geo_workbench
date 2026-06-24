@@ -1,4 +1,5 @@
 import type { ContentAssetNextAction } from "@shared/contentAssetEffectTracking";
+import { resolveContentAssetLifecycleStage } from "@shared/contentAssetLifecycle";
 
 export type ContentAssetEffectViewRecord = {
   id: number;
@@ -22,6 +23,8 @@ export type ContentAssetEffectViewRecord = {
   evidenceScreenshotUrl?: string | null;
   evidenceNotes?: string | null;
   eligibleForAiRetest?: boolean;
+  lastAiTestedAt?: Date | string | null;
+  aiTestResults?: unknown[] | null;
   nextAction?: ContentAssetNextAction;
 };
 
@@ -31,4 +34,22 @@ export function mapContentAssetEffectRecordForView(
   const eligibleForAiRetest = record.canEnterAiRetest;
   const { canEnterAiRetest: _omit, ...rest } = record;
   return { ...rest, eligibleForAiRetest };
+}
+
+export function resolveMonitoringRecordLifecycle(record: ContentAssetEffectViewRecord) {
+  return resolveContentAssetLifecycleStage({
+    article: { status: "已发布" },
+    publishRecord: {
+      publishUrl: record.publicUrl,
+      publishedAt: record.publishedAt,
+    },
+    inclusionRecord: {
+      effectInclusionStatus: record.effectInclusionStatus,
+      inclusionVerifiedAt: record.inclusionVerifiedAt,
+      readCount: record.readCount,
+      impressionCount: record.impressionCount,
+      lastAiTestedAt: record.lastAiTestedAt,
+      aiTestResults: record.aiTestResults,
+    },
+  });
 }

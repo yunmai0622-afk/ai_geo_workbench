@@ -19,11 +19,8 @@ import {
   type PlatformTaskActionKind,
   type TaskBoardProgressMetrics,
 } from "@shared/weeklyContentTaskBoard";
-import {
-  WEEKLY_CONTENT_TASK_STATUS_BADGE_CLASS,
-  weeklyContentTaskStatusLabel,
-  type WeeklyContentTaskStatus,
-} from "@shared/weeklyContentTaskStatus";
+import { contentAssetLifecycleBadgeClass } from "@/components/content/ContentAssetLifecycleDisplay";
+import type { ContentAssetLifecycleView } from "@shared/contentAssetLifecycle";
 import { cn } from "@/lib/utils";
 import { ArrowRight, Target } from "lucide-react";
 import type { PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
@@ -222,9 +219,9 @@ export function PlatformTaskBoard({
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="task-platform-plan-grid">
         {sortedRows.map(row => {
-          const { def, status, hasContent } = row;
+          const { def, status, hasContent, lifecycle } = row;
           const reason = reasonMap.get(def.key);
-          const statusLabel = weeklyContentTaskStatusLabel(status);
+          const statusLabel = lifecycle.label;
           const action = resolvePlatformTaskAction(status, hasContent);
           const disabled = shouldDisablePlatformGenerateButton({
             status,
@@ -249,7 +246,7 @@ export function PlatformTaskBoard({
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                    WEEKLY_CONTENT_TASK_STATUS_BADGE_CLASS[status],
+                    contentAssetLifecycleBadgeClass(lifecycle.stage),
                   )}
                   data-testid={`weekly-platform-status-${def.key}`}
                 >
@@ -343,6 +340,7 @@ export type MonthlyContentTaskItem = {
   status: string;
   questionId?: number | null;
   actionUrl: string;
+  laggingLifecycleLabel?: string | null;
 };
 
 type MonthlyContentTaskListProps = {
@@ -401,9 +399,19 @@ export function MonthlyContentTaskList({
             <P0Card testId={`weekly-content-task-item-${task.id}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600">
-                    {monthlyTaskStatusLabel(task.status)}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600">
+                      {monthlyTaskStatusLabel(task.status)}
+                    </span>
+                    {task.laggingLifecycleLabel ? (
+                      <span
+                        className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800"
+                        data-testid={`weekly-task-lifecycle-${task.id}`}
+                      >
+                        最落后平台：{task.laggingLifecycleLabel}
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="mt-2 font-medium text-gray-900">{task.title}</p>
                   <p className="mt-1 text-sm text-gray-600">{task.reason}</p>
                 </div>

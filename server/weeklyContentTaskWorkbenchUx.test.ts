@@ -181,7 +181,8 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   });
 
   it("平台卡片显示状态与操作", () => {
-    expect(board).toContain("weeklyContentTaskStatusLabel");
+    expect(board).toContain("lifecycle.label");
+    expect(board).toContain("contentAssetLifecycleBadgeClass");
     expect(board).toContain("生成平台稿");
     expect(board).toContain("加入发布队列");
     expect(statusLib).toContain("UNGENERATED");

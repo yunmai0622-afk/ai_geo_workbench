@@ -159,6 +159,10 @@ import {
 import { publishTaskStatusCustomerLabel } from "@shared/publishTaskErrors";
 import { stripInternalArticleMetadataFromMarkdown } from "@shared/stripInternalArticleMetadata";
 import { resolveArticleLifecycleView } from "@shared/articleLifecycle";
+import {
+  pickLaggingContentAssetLifecycleStage,
+  resolveContentAssetLifecycleStage,
+} from "@shared/contentAssetLifecycle";
 import { normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import {
   buildDefaultPlatformStrategy,
@@ -366,6 +370,41 @@ function formatGeoQualitySummary(article: ArticleRow): string | null {
   const label = getGeoQualityLabel(article.geoQualityRecommendation as GeoQualityRecommendation);
   const stale = isGeoQualityScoreStale(article) ? " · 待重新质检" : "";
   return `GEO 质量：${article.geoQualityScore} 分 · ${label}${stale}`;
+}
+
+function articleMatchesQuestionId(article: ArticleRow, questionId: number): boolean {
+  const basis = article.generationBasis ?? {};
+  const sourceQuestionId = basis.sourceQuestionId;
+  if (typeof sourceQuestionId === "number" && sourceQuestionId === questionId) return true;
+  if (typeof sourceQuestionId === "string" && sourceQuestionId === String(questionId)) return true;
+  return false;
+}
+
+function resolveArticleLifecycleForBoard(input: {
+  article?: ArticleRow | null;
+  publishRecord?: {
+    publishUrl?: string | null;
+    publishStatus?: string | null;
+    publishedAt?: Date | string | null;
+  } | null;
+  inclusionRecord?: {
+    effectInclusionStatus?: string | null;
+    inclusionVerifiedAt?: Date | string | null;
+    readCount?: number | null;
+    impressionCount?: number | null;
+    lastAiTestedAt?: Date | string | null;
+    aiTestResults?: unknown[] | null;
+  } | null;
+  publishTask?: { status?: string | null } | null;
+  generating?: boolean;
+}) {
+  return resolveContentAssetLifecycleStage({
+    article: input.article ?? undefined,
+    publishRecord: input.publishRecord ?? undefined,
+    inclusionRecord: input.inclusionRecord ?? undefined,
+    publishTask: input.publishTask ?? undefined,
+    generating: input.generating,
+  });
 }
 
 type QualityScoreRow = {
@@ -611,6 +650,9 @@ export default function WeeklyContentPage() {
   const enterpriseProfileRecord = assetSummaryQuery.data?.profile as Record<string, unknown> | undefined;
   const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
+  const inclusionMonitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, {
+    enabled,
+  });
   const publishTasksQuery = trpc.publishTasks.listRecentByProject.useQuery(
     { projectId: selectedProjectId!, limit: 50 },
     { enabled: Boolean(selectedProjectId) },
@@ -1447,7 +1489,11 @@ export default function WeeklyContentPage() {
     const sceneLabel = geoContentTaskSource?.sceneLabel ?? "";
     const geoGapDefault = geoContentTaskSource?.geoGapSummary ?? latestDiagnosisGap ?? null;
     const publishTasks = publishTasksQuery.data?.tasks ?? [];
+    const publishRecords = publishRecordsQuery.data ?? [];
+    const inclusionRecords = inclusionMonitoringQuery.data ?? [];
     const latestPublishTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
+    const latestPublishRecordByArticle = new Map<number, (typeof publishRecords)[number]>();
+    const latestInclusionRecordByArticle = new Map<number, (typeof inclusionRecords)[number]>();
     for (const task of publishTasks) {
       const articleId = typeof task.articleId === "number" ? task.articleId : null;
       if (!articleId) continue;
@@ -1456,6 +1502,26 @@ export default function WeeklyContentPage() {
       const prevTime = prev ? new Date(prev.createdAt ?? 0).getTime() : -1;
       if (!prev || taskTime >= prevTime) {
         latestPublishTaskByArticle.set(articleId, task);
+      }
+    }
+    for (const record of publishRecords) {
+      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      if (!articleId) continue;
+      const prev = latestPublishRecordByArticle.get(articleId);
+      const recordTime = new Date(record.publishedAt ?? record.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.publishedAt ?? prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || recordTime >= prevTime) {
+        latestPublishRecordByArticle.set(articleId, record);
+      }
+    }
+    for (const record of inclusionRecords) {
+      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      if (!articleId) continue;
+      const prev = latestInclusionRecordByArticle.get(articleId);
+      const recordTime = new Date(record.updatedAt ?? record.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.updatedAt ?? prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || recordTime >= prevTime) {
+        latestInclusionRecordByArticle.set(articleId, record);
       }
     }
     const resolveArticlePlatformKey = (article: ArticleRow) =>
@@ -1572,6 +1638,13 @@ export default function WeeklyContentPage() {
         article: platformArticle ?? null,
         needsRewrite: draftFailed || lifecycleView?.status === "needs_revision",
       });
+      const lifecycle = resolveArticleLifecycleForBoard({
+        article: platformArticle ?? null,
+        publishRecord: platformArticle ? latestPublishRecordByArticle.get(platformArticle.id) ?? null : null,
+        inclusionRecord: platformArticle ? latestInclusionRecordByArticle.get(platformArticle.id) ?? null : null,
+        publishTask: latestTask ?? null,
+        generating: platformGenerating && !platformArticle,
+      });
       const generatedCount = counts.pendingConfirm + counts.ready + counts.published;
       const topicForArticle =
         platformArticle && typeof platformArticle.topicId === "number"
@@ -1608,9 +1681,10 @@ export default function WeeklyContentPage() {
                   ? "本平台已有发布内容，建议回填公开链接并进入复测。"
                   : "先生成本平台内容，再推进发布与复测。",
         status,
+        lifecycle,
         hasContent: generatedCount > 0,
         articleId: platformArticle?.id ?? null,
-        platformDraftStatusLabel: weeklyContentTaskStatusLabel(status),
+        platformDraftStatusLabel: lifecycle.label,
         qualityScoreLabel: platformArticle ? (() => { const article = platformArticle!; const q = scoresByArticleId.get(article.id); const view = resolveQualityCardView(buildUnifiedQualityGateArticle(article, q ?? null)); return view ? `${view.score}分 · ${view.tier.label}` : "待质检"; })() : "暂无",
         accountStatusLabel: def.publishPlatformId && platformWithReadyAccount.has(def.publishPlatformId) ? "账号可用" : "待绑定账号",
         primaryActionKind: resolvePlatformBoardPrimaryActionKind(status, generatedCount > 0),
@@ -1631,6 +1705,8 @@ export default function WeeklyContentPage() {
     publishBaseContext,
     generatingPlatformKey,
     publishTasksQuery.data?.tasks,
+    publishRecordsQuery.data,
+    inclusionMonitoringQuery.data,
     platformAccountsQuery.data,
     scoresByArticleId,
   ]);
@@ -1882,17 +1958,69 @@ export default function WeeklyContentPage() {
   );
 
   const monthlyContentTasks = useMemo((): MonthlyContentTaskItem[] => {
+    const publishTasks = publishTasksQuery.data?.tasks ?? [];
+    const publishRecords = publishRecordsQuery.data ?? [];
+    const inclusionRecords = inclusionMonitoringQuery.data ?? [];
+    const latestPublishTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
+    const latestPublishRecordByArticle = new Map<number, (typeof publishRecords)[number]>();
+    const latestInclusionRecordByArticle = new Map<number, (typeof inclusionRecords)[number]>();
+    for (const task of publishTasks) {
+      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      if (!articleId) continue;
+      const prev = latestPublishTaskByArticle.get(articleId);
+      const taskTime = new Date(task.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || taskTime >= prevTime) latestPublishTaskByArticle.set(articleId, task);
+    }
+    for (const record of publishRecords) {
+      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      if (!articleId) continue;
+      const prev = latestPublishRecordByArticle.get(articleId);
+      const recordTime = new Date(record.publishedAt ?? record.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.publishedAt ?? prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || recordTime >= prevTime) latestPublishRecordByArticle.set(articleId, record);
+    }
+    for (const record of inclusionRecords) {
+      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      if (!articleId) continue;
+      const prev = latestInclusionRecordByArticle.get(articleId);
+      const recordTime = new Date(record.updatedAt ?? record.createdAt ?? 0).getTime();
+      const prevTime = prev ? new Date(prev.updatedAt ?? prev.createdAt ?? 0).getTime() : -1;
+      if (!prev || recordTime >= prevTime) latestInclusionRecordByArticle.set(articleId, record);
+    }
+
     return (monthlyPlanQuery.data?.tasks ?? [])
       .filter(t => t.taskType === "content_generation")
-      .map(t => ({
-        id: t.id,
-        title: t.title,
-        reason: t.reason,
-        status: t.status,
-        questionId: t.relatedQuestionId,
-        actionUrl: t.actionUrl,
-      }));
-  }, [monthlyPlanQuery.data?.tasks]);
+      .map(t => {
+        const questionId = t.relatedQuestionId;
+        const taskArticles =
+          questionId != null ? articles.filter(article => articleMatchesQuestionId(article, questionId)) : [];
+        const lifecycleViews = taskArticles.map(article =>
+          resolveArticleLifecycleForBoard({
+            article,
+            publishRecord: latestPublishRecordByArticle.get(article.id) ?? null,
+            inclusionRecord: latestInclusionRecordByArticle.get(article.id) ?? null,
+            publishTask: latestPublishTaskByArticle.get(article.id) ?? null,
+          }),
+        );
+        const lagging = pickLaggingContentAssetLifecycleStage(lifecycleViews);
+        return {
+          id: t.id,
+          title: t.title,
+          reason: t.reason,
+          status: t.status,
+          questionId: t.relatedQuestionId,
+          actionUrl: t.actionUrl,
+          laggingLifecycleLabel: lagging?.label ?? (questionId != null ? "待生成" : null),
+        };
+      });
+  }, [
+    monthlyPlanQuery.data?.tasks,
+    articles,
+    publishTasksQuery.data?.tasks,
+    publishRecordsQuery.data,
+    inclusionMonitoringQuery.data,
+  ]);
 
   const platformProgressText = useMemo(() => {
     const pending = platformBoardRows.reduce((sum, row) => sum + row.counts.pending, 0);
