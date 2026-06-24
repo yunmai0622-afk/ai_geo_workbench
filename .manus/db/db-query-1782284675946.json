@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, name, email, role FROM users WHERE role != 'admin' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT id, name, email, role FROM users WHERE role != 'admin' LIMIT 5;",
+  "rows": [
+    {
+      "id": "2460011",
+      "name": "meci wang",
+      "email": "yunmai0622@gmail.com",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\n2460011\tmeci wang\tyunmai0622@gmail.com\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 1791
+}

@@ -6188,3 +6188,21 @@
 [2026-06-24T07:00:03.017Z] 
 [2026-06-24T07:00:11.249Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-24T07:00:11.284Z] Server running on http://localhost:3000/
+[2026-06-24T07:30:31.674Z] 3:30:31 AM [vite] (client) hmr update /src/index.css
+[2026-06-24T07:30:31.675Z] 3:30:31 AM [vite] (client) hmr update /src/index.css, /src/components/admin/AdminLayout.tsx
+[2026-06-24T07:30:31.676Z] 3:30:31 AM [vite] (client) hmr update /src/pages/admin/AdminDeliveryPage.tsx, /src/index.css
+[2026-06-24T07:30:31.790Z] 3:30:31 AM [tsx] change in ./server/platformAdminService.ts Restarting...
+[2026-06-24T07:30:40.489Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-24T07:30:40.526Z] Server running on http://localhost:3000/
+[2026-06-24T07:30:41.616Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-24T07:30:46.744Z] Dev server process group stopped
+[2026-06-24T07:30:46.747Z] ELIFECYCLE  Command failed.
+[2026-06-24T07:30:46.853Z] Dev server exited with code -15
+[2026-06-24T07:30:49.784Z] Starting dev server with command: pnpm run dev
+[2026-06-24T07:30:50.660Z] 
+[2026-06-24T07:30:50.661Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-24T07:30:50.662Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-24T07:30:50.662Z] 
+[2026-06-24T07:31:04.594Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-24T07:31:04.632Z] Server running on http://localhost:3000/
+[2026-06-24T07:31:05.246Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
