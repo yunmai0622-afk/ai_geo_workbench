@@ -11,7 +11,7 @@ import {
   type ContentAssetEffectOverview,
   type EffectInclusionStatus,
 } from "./contentAssetEffectTracking";
-import { resolveQuestionTypeDisplayLabel } from "./retestComparisonDisplay";
+import { resolveSearchPoolTypeRenewalSceneLabel } from "./questionSearchPool";
 import {
   GEO_MATURITY_DIMENSION_META,
   type GeoMaturityDimensionKey,
@@ -297,7 +297,7 @@ export function resolveCompetitorDominantSceneType(
     }
   }
   if (!topType) return null;
-  return resolveQuestionTypeDisplayLabel(topType).replace(/类问题$/, "");
+  return resolveSearchPoolTypeRenewalSceneLabel(topType);
 }
 
 export function buildMonthlyReportCompetitorRateExplanation(input: {
@@ -363,7 +363,9 @@ export function buildMonthlyReportRenewalJustification(input: {
     completedLines.push(`· 累计获得 ${formatMonthlyReportMetricCount(exposureTotal)} 次阅读/曝光`);
   }
 
-  const sceneLabel = input.competitorSceneType?.trim() || "--";
+  const sceneLabel = input.competitorSceneType?.trim()
+    ? resolveSearchPoolTypeRenewalSceneLabel(input.competitorSceneType)
+    : "--";
   const opportunityLines = [
     `· 竞品出现率仍为 ${formatMonthlyReportMetricPercent(input.competitorRate)}，在 ${sceneLabel} 类问题中占位更强`,
     `· 还有 ${formatMonthlyReportMetricCount(input.uncoveredQuestionCount)} 个高价值AI搜索问题未覆盖内容`,

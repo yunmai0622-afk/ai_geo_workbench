@@ -9,6 +9,7 @@ import {
   mapLegacyTypeToSearchPoolType,
   mapSearchPoolTypeToLegacyQuestionType,
   parseTargetKeywordsInput,
+  resolveSearchPoolTypeRenewalSceneLabel,
   type SearchPoolQuestionRow,
 } from "./questionSearchPool";
 
@@ -51,6 +52,22 @@ describe("questionSearchPool", () => {
   it("maps search pool type to legacy question type", () => {
     expect(mapSearchPoolTypeToLegacyQuestionType("brand_search")).toBe("品牌认知");
     expect(mapSearchPoolTypeToLegacyQuestionType("scene_need")).toBe("scenario_need");
+  });
+
+  it("maps searchPoolType to customer-facing renewal scene labels", () => {
+    expect(resolveSearchPoolTypeRenewalSceneLabel("scene_need")).toBe("场景需求");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("brand_recognition")).toBe("品牌认知");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("brand_search")).toBe("品牌认知");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("industry_recommendation")).toBe("行业推荐");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("category_recommend")).toBe("行业推荐");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("long_tail_conversion")).toBe("长尾转化");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("long_tail")).toBe("长尾转化");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("competitor_comparison")).toBe("竞品对比");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("comparison")).toBe("竞品对比");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("local_industry")).toBe("地域/行业");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("geo_region")).toBe("地域/行业");
+    expect(resolveSearchPoolTypeRenewalSceneLabel("unknown_type")).toBe("相关");
+    expect(resolveSearchPoolTypeRenewalSceneLabel(null)).toBe("相关");
   });
 
   it("maps legacy question type to search pool type", () => {

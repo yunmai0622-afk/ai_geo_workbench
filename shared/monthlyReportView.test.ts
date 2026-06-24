@@ -4,6 +4,7 @@ import {
   buildMonthlyReportContentAssetProof,
   buildMonthlyReportRenewalJustification,
   buildMonthlyReportView,
+  resolveCompetitorDominantSceneType,
   computeAiTestRatesFromRuns,
   formatMonthlyReportMetricCount,
   formatMonthlyReportMetricPercent,
@@ -205,6 +206,27 @@ describe("monthlyReportView", () => {
     expect(noCompare).toContain("暂无上月对比数据");
   });
 
+  it("maps competitor dominant scene type away from engineering keys", () => {
+    const scene = resolveCompetitorDominantSceneType(
+      [{ questionId: 1, competitorMentioned: true }],
+      new Map([[1, "scene_need"]]),
+    );
+    expect(scene).toBe("场景需求");
+    const renewal = buildMonthlyReportRenewalJustification({
+      publishCount: 1,
+      questionCoverageCount: 1,
+      includedCount: 1,
+      totalReadCount: null,
+      totalImpressionCount: null,
+      competitorRate: 0.4,
+      competitorSceneType: scene,
+      uncoveredQuestionCount: 2,
+      recommendRate: 0.1,
+    });
+    expect(renewal.opportunityLines[0]).toContain("在 场景需求 类问题中占位更强");
+    expect(renewal.opportunityLines[0]).not.toContain("scene_need");
+  });
+
   it("builds renewal justification from real metrics", () => {
     const renewal = buildMonthlyReportRenewalJustification({
       publishCount: 3,
@@ -213,13 +235,13 @@ describe("monthlyReportView", () => {
       totalReadCount: 100,
       totalImpressionCount: 500,
       competitorRate: 0.45,
-      competitorSceneType: "品类推荐",
+      competitorSceneType: "行业推荐",
       uncoveredQuestionCount: 8,
       recommendRate: 0.2,
     });
     expect(renewal.hasData).toBe(true);
     expect(renewal.completedLines.join("\n")).toContain("发布 3 篇内容");
-    expect(renewal.opportunityLines.join("\n")).toContain("品类推荐");
+    expect(renewal.opportunityLines.join("\n")).toContain("行业推荐");
     expect(renewal.nextMonthLines).toHaveLength(3);
 
     const empty = buildMonthlyReportRenewalJustification({

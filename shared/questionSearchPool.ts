@@ -114,6 +114,48 @@ export function resolveSearchPoolTypeLabel(poolType?: string | null): string {
   return POOL_TYPE_LABEL[poolType] ?? poolType;
 }
 
+/** 月报续费证明：searchPoolType / questionType → 客户可读场景名（不含「类问题」后缀） */
+const SEARCH_POOL_RENEWAL_SCENE_SHORT_LABELS: Record<string, string> = {
+  scene_need: "场景需求",
+  brand_search: "品牌认知",
+  brand_recognition: "品牌认知",
+  category_recommend: "行业推荐",
+  industry_recommendation: "行业推荐",
+  comparison: "竞品对比",
+  competitor_comparison: "竞品对比",
+  long_tail: "长尾转化",
+  long_tail_conversion: "长尾转化",
+  geo_region: "地域/行业",
+  local_industry: "地域/行业",
+  scenario_need: "场景需求",
+  品牌认知: "品牌认知",
+  行业推荐: "行业推荐",
+  品类推荐: "行业推荐",
+  竞品对比: "竞品对比",
+  痛点解决: "场景需求",
+  价格选型: "行业推荐",
+  高意向成交: "长尾转化",
+  指定问题: "相关",
+};
+
+const SEARCH_POOL_RENEWAL_SCENE_SHORT_LABEL_VALUES = new Set(
+  Object.values(SEARCH_POOL_RENEWAL_SCENE_SHORT_LABELS),
+);
+
+export function resolveSearchPoolTypeRenewalSceneLabel(
+  poolTypeOrQuestionType: string | null | undefined,
+): string {
+  const raw = (poolTypeOrQuestionType ?? "").trim();
+  if (!raw) return "相关";
+  if (SEARCH_POOL_RENEWAL_SCENE_SHORT_LABELS[raw]) {
+    return SEARCH_POOL_RENEWAL_SCENE_SHORT_LABELS[raw];
+  }
+  if (SEARCH_POOL_RENEWAL_SCENE_SHORT_LABEL_VALUES.has(raw)) {
+    return raw;
+  }
+  return "相关";
+}
+
 export function resolveSearchPoolPriorityLabel(level?: string | null): string {
   if (!level) return "—";
   return PRIORITY_LABEL[level] ?? level;
