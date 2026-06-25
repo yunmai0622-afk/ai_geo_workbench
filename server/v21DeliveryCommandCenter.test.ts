@@ -19,6 +19,10 @@ describe("GEO-V2.1-P3 Delivery Command Center", () => {
     expect(page).toContain("delivery-command-overview");
     expect(page).toContain("delivery-command-monthly-stats");
     expect(page).toContain("admin.delivery.getCommandCenter");
+    expect(page).toContain("delivery-subscription-warning");
+    expect(page).toContain("delivery-quick-menu-");
+    expect(page).toContain("当前阶段");
+    expect(page).toContain("内容资产");
   });
 
   it("redirects non-admin users to workspace", () => {

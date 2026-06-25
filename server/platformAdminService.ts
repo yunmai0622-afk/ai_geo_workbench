@@ -1236,11 +1236,19 @@ export async function getDeliveryCommandCenter(db: Db) {
           })
         : null;
 
+    const profileEnterpriseName = profile?.enterpriseName?.trim();
+    const resolvedProjectName =
+      profileEnterpriseName ||
+      binding.projectName ||
+      delivery?.projectName ||
+      `项目 #${binding.projectId}`;
+
     return {
       companyId: binding.companyId,
       companyName: binding.companyName,
       projectId: binding.projectId,
-      projectName: binding.projectName ?? delivery?.projectName ?? `项目 #${binding.projectId}`,
+      projectName: resolvedProjectName,
+      hasSubscription: sub != null,
       subscriptionExpiresAt: sub?.expiresAt ?? null,
       profileCompletionScore: delivery?.profileCompletionScore ?? 0,
       profileCompletedSteps,

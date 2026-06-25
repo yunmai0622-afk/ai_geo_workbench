@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Table,
   TableBody,
   TableCell,
@@ -16,14 +22,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import {
   COMMAND_CENTER_RENEWAL_RISK_LABELS,
   DELIVERY_COMMAND_CENTER_SUBTITLE,
   DELIVERY_COMMAND_CENTER_TITLE,
+  DELIVERY_QUICK_ACTION_LABELS,
   type CommandCenterRenewalRisk,
+  type DeliveryQuickAction,
   type DeliveryTodoItem,
 } from "@shared/deliveryCommandCenter";
-import { ArrowRight } from "lucide-react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "wouter";
 
@@ -31,6 +40,57 @@ function riskBadgeVariant(risk: CommandCenterRenewalRisk): "default" | "secondar
   if (risk === "high") return "destructive";
   if (risk === "attention") return "secondary";
   return "default";
+}
+
+const QUICK_ACTION_ORDER: DeliveryQuickAction[] = [
+  "workspace",
+  "profile",
+  "aiDiagnosis",
+  "monthlyPlan",
+  "content",
+];
+
+function QuickActionMenu({
+  projectId,
+  highlightedAction,
+  quickActionPaths,
+}: {
+  projectId: number;
+  highlightedAction: DeliveryQuickAction;
+  quickActionPaths: Record<DeliveryQuickAction, string>;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1"
+          data-testid={`delivery-quick-menu-${projectId}`}
+        >
+          进入
+          <ChevronDown className="size-4 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        {QUICK_ACTION_ORDER.map(action => (
+          <DropdownMenuItem key={action} asChild>
+            <Link
+              href={quickActionPaths[action]}
+              className={cn(
+                "cursor-pointer",
+                highlightedAction === action && "bg-blue-50 font-medium text-blue-700",
+              )}
+              data-testid={`delivery-quick-action-${projectId}-${action}`}
+            >
+              {DELIVERY_QUICK_ACTION_LABELS[action]}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function TodoGroup({
@@ -70,17 +130,16 @@ function TodoGroup({
               data-testid={`delivery-todo-${item.id}`}
             >
               <div className="min-w-0 space-y-1">
-                <p className="font-medium text-gray-900">{item.companyName}</p>
+                <p className="font-medium text-gray-900" data-testid={`delivery-todo-label-${item.id}`}>
+                  {item.clientLabel}
+                </p>
                 <p className="text-sm text-gray-700">{item.description}</p>
                 <p className="text-xs text-gray-500">
                   {item.lastActionAt ? `上次操作：${item.lastActionAt}` : "暂无最近操作记录"}
                 </p>
               </div>
               <Button type="button" variant="outline" size="sm" className="shrink-0" asChild>
-                <Link href={item.actionPath}>
-                  {item.actionLabel}
-                  <ArrowRight className="ml-1.5 size-4" />
-                </Link>
+                <Link href={item.actionPath}>{item.actionLabel}</Link>
               </Button>
             </div>
           ))
@@ -122,6 +181,22 @@ export default function AdminDeliveryPage() {
 
       {data ? (
         <div className="space-y-8">
+          {data.unconfiguredSubscriptionCount > 0 ? (
+            <div
+              className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+              data-testid="delivery-subscription-warning"
+            >
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+              <p>
+                有 {data.unconfiguredSubscriptionCount} 个项目未配置套餐，无法计算到期时间。
+                <Link href="/admin/subscriptions" className="ml-1 font-medium text-amber-800 underline">
+                  前往套餐管理配置
+                </Link>
+                。
+              </p>
+            </div>
+          ) : null}
+
           <section className="space-y-4" data-testid="delivery-command-todos">
             <h2 className="text-lg font-semibold text-gray-900">今日待办</h2>
             <div className="grid gap-4 xl:grid-cols-3">
@@ -149,14 +224,13 @@ export default function AdminDeliveryPage() {
                         <TableRow>
                           <TableHead>客户名称</TableHead>
                           <TableHead>套餐到期</TableHead>
-                          <TableHead>建档完成度</TableHead>
-                          <TableHead>AI 诊断状态</TableHead>
-                          <TableHead>本月计划</TableHead>
-                          <TableHead>内容进度</TableHead>
-                          <TableHead>收录状态</TableHead>
+                          <TableHead>当前阶段</TableHead>
+                          <TableHead>内容资产</TableHead>
                           <TableHead>月报状态</TableHead>
                           <TableHead>续费风险</TableHead>
-                          <TableHead>操作</TableHead>
+                          <TableHead className="sticky right-0 z-10 bg-white shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
+                            操作
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -168,30 +242,25 @@ export default function AdminDeliveryPage() {
                                 <p className="text-xs text-gray-500">{row.projectName}</p>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              {row.subscriptionExpiresAt
-                                ? new Date(row.subscriptionExpiresAt).toLocaleDateString("zh-CN")
-                                : "—"}
+                            <TableCell data-testid={`delivery-subscription-${row.projectId}`}>
+                              {row.subscriptionLabel}
                             </TableCell>
-                            <TableCell>
-                              {row.profileCompletedSteps}/{row.profileTotalSteps} 步
+                            <TableCell data-testid={`delivery-stage-${row.projectId}`}>
+                              {row.currentStageLabel}
                             </TableCell>
-                            <TableCell>{row.aiDiagnosisLabel}</TableCell>
-                            <TableCell>{row.monthlyPlanLabel}</TableCell>
-                            <TableCell>
-                              已生成 {row.contentGeneratedCount} 篇 / 已发布 {row.contentPublishedCount} 篇
-                            </TableCell>
-                            <TableCell>已收录 {row.inclusionIncludedCount} 篇</TableCell>
+                            <TableCell>{row.contentAssetsLabel}</TableCell>
                             <TableCell>{row.monthlyReportStatus}</TableCell>
                             <TableCell>
                               <Badge variant={riskBadgeVariant(row.renewalRisk)}>
                                 {COMMAND_CENTER_RENEWAL_RISK_LABELS[row.renewalRisk]}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              <Button type="button" variant="outline" size="sm" asChild>
-                                <Link href={row.workspacePath}>进入项目</Link>
-                              </Button>
+                            <TableCell className="sticky right-0 z-10 bg-white shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
+                              <QuickActionMenu
+                                projectId={row.projectId}
+                                highlightedAction={row.highlightedQuickAction}
+                                quickActionPaths={row.quickActionPaths}
+                              />
                             </TableCell>
                           </TableRow>
                         ))}

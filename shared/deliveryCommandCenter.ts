@@ -21,11 +21,22 @@ export const COMMAND_CENTER_RENEWAL_RISK_LABELS: Record<CommandCenterRenewalRisk
   high: "高风险",
 };
 
+export type DeliveryQuickAction = "workspace" | "profile" | "aiDiagnosis" | "monthlyPlan" | "content";
+
+export const DELIVERY_QUICK_ACTION_LABELS: Record<DeliveryQuickAction, string> = {
+  workspace: "进入工作台",
+  profile: "去完成建档",
+  aiDiagnosis: "去 AI 诊断",
+  monthlyPlan: "去执行本月计划",
+  content: "去内容生产",
+};
+
 export type DeliveryCommandProjectInput = {
   companyId: number;
   companyName: string;
   projectId: number;
   projectName: string;
+  hasSubscription: boolean;
   subscriptionExpiresAt: Date | string | null;
   profileCompletionScore: number;
   profileCompletedSteps: number;
@@ -56,6 +67,7 @@ export type DeliveryTodoItem = {
   id: string;
   urgency: DeliveryTodoUrgency;
   companyName: string;
+  clientLabel: string;
   projectId: number;
   projectName: string;
   description: string;
@@ -70,16 +82,16 @@ export type DeliveryCommandOverviewRow = {
   projectId: number;
   projectName: string;
   subscriptionExpiresAt: string | null;
+  subscriptionLabel: string;
   profileCompletedSteps: number;
   profileTotalSteps: number;
-  aiDiagnosisLabel: string;
-  monthlyPlanLabel: string;
-  contentGeneratedCount: number;
-  contentPublishedCount: number;
-  inclusionIncludedCount: number;
+  currentStageLabel: string;
+  contentAssetsLabel: string;
   monthlyReportStatus: string;
   renewalRisk: CommandCenterRenewalRisk;
   renewalRiskLabel: string;
+  highlightedQuickAction: DeliveryQuickAction;
+  quickActionPaths: Record<DeliveryQuickAction, string>;
   workspacePath: string;
 };
 
@@ -100,6 +112,7 @@ export type DeliveryCommandCenterView = {
   };
   overview: DeliveryCommandOverviewRow[];
   monthlyStats: DeliveryCommandMonthlyStats;
+  unconfiguredSubscriptionCount: number;
 };
 
 const MS_PER_HOUR = 3_600_000;
@@ -157,11 +170,132 @@ export function countProfileCompletedSteps(input: {
   return completed;
 }
 
+export function countProjectsByCompany(
+  projects: Pick<DeliveryCommandProjectInput, "companyId">[],
+): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const project of projects) {
+    counts.set(project.companyId, (counts.get(project.companyId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function formatDeliveryClientLabel(input: {
+  companyName: string;
+  projectName: string;
+  projectId: number;
+  companyProjectCount: number;
+}): string {
+  if (input.companyProjectCount <= 1) return input.companyName;
+  const companyName = input.companyName.trim();
+  const projectName = input.projectName.trim();
+  if (!projectName || projectName === companyName) {
+    return `${companyName} · 项目#${input.projectId}`;
+  }
+  return `${companyName} · ${projectName}`;
+}
+
+export function formatCommandCenterSubscriptionLabel(input: {
+  hasSubscription: boolean;
+  subscriptionExpiresAt: Date | string | null;
+  now?: Date;
+}): string {
+  if (!input.hasSubscription || !input.subscriptionExpiresAt) return "未配置";
+  return new Date(input.subscriptionExpiresAt).toLocaleDateString("zh-CN");
+}
+
+export function formatCommandCenterCurrentStageLabel(input: {
+  profileCompletionScore: number;
+  profileCompletedSteps: number;
+  profileTotalSteps: number;
+  hasAiTest: boolean;
+  monthlyPlanStatus: "none" | "active" | "completed";
+  completedCount: number;
+  totalCount: number;
+}): string {
+  if (input.profileCompletionScore < 80) {
+    return `建档中 ${input.profileCompletedSteps}/${input.profileTotalSteps}步`;
+  }
+  if (!input.hasAiTest) return "待诊断";
+  if (input.monthlyPlanStatus === "none" || input.totalCount === 0) return "待制定计划";
+  if (
+    input.monthlyPlanStatus === "active" &&
+    input.totalCount > 0 &&
+    input.completedCount < input.totalCount
+  ) {
+    return `执行中 ${input.completedCount}/${input.totalCount}`;
+  }
+  return "本月完成";
+}
+
+export function formatCommandCenterContentAssetsLabel(input: {
+  contentGeneratedCount: number;
+  inclusionIncludedCount: number;
+}): string {
+  return `已生成${input.contentGeneratedCount}篇 · 已收录${input.inclusionIncludedCount}篇`;
+}
+
+export function resolveDeliveryQuickActionHighlight(
+  project: Pick<
+    DeliveryCommandProjectInput,
+    | "profileCompletionScore"
+    | "hasAiTest"
+    | "monthlyPlanStatus"
+    | "monthlyPlanProgress"
+    | "contentGeneratingCount"
+    | "contentPendingReviewCount"
+  >,
+): DeliveryQuickAction {
+  if (project.profileCompletionScore < 80) return "profile";
+  if (!project.hasAiTest) return "aiDiagnosis";
+  if (project.monthlyPlanStatus === "none" || project.monthlyPlanProgress.totalCount === 0) {
+    return "monthlyPlan";
+  }
+  if (
+    project.monthlyPlanStatus === "active" &&
+    project.monthlyPlanProgress.completedCount < project.monthlyPlanProgress.totalCount
+  ) {
+    return "monthlyPlan";
+  }
+  if (project.contentGeneratingCount > 0 || project.contentPendingReviewCount > 0) {
+    return "content";
+  }
+  return "workspace";
+}
+
+export function buildDeliveryQuickActionPaths(projectId: number): Record<DeliveryQuickAction, string> {
+  return {
+    workspace: workspacePath(projectId, "/workspace"),
+    profile: workspacePath(projectId, "/enterprise-profile"),
+    aiDiagnosis: workspacePath(projectId, "/ai-diagnosis"),
+    monthlyPlan: workspacePath(projectId, "/monthly-plan"),
+    content: workspacePath(projectId, "/weekly"),
+  };
+}
+
+function hasUnfinishedDeliveryContent(project: DeliveryCommandProjectInput): boolean {
+  const { monthlyPlanProgress, contentGeneratingCount, contentPendingReviewCount } = project;
+  return (
+    (monthlyPlanProgress.totalCount > 0 &&
+      monthlyPlanProgress.completedCount < monthlyPlanProgress.totalCount) ||
+    contentGeneratingCount > 0 ||
+    contentPendingReviewCount > 0
+  );
+}
+
 export function computeCommandCenterRenewalRisk(input: {
+  hasSubscription: boolean;
   daysUntilExpiry: number | null;
   currentMonthPlanRate: number | null;
   recentTwoMonthPlanRates: number[];
+  hasUnfinishedContent?: boolean;
 }): CommandCenterRenewalRisk {
+  if (!input.hasSubscription) {
+    const rate = input.currentMonthPlanRate ?? 0;
+    if (rate === 0 && input.hasUnfinishedContent) return "attention";
+    return "normal";
+  }
+
   const rate = input.currentMonthPlanRate ?? 1;
   const days = input.daysUntilExpiry;
 
@@ -211,10 +345,18 @@ export function buildDeliveryCommandTodos(
   const urgent: DeliveryTodoItem[] = [];
   const pending: DeliveryTodoItem[] = [];
   const inProgress: DeliveryTodoItem[] = [];
+  const projectsByCompany = countProjectsByCompany(projects);
 
   for (const project of projects) {
+    const clientLabel = formatDeliveryClientLabel({
+      companyName: project.companyName,
+      projectName: project.projectName,
+      projectId: project.projectId,
+      companyProjectCount: projectsByCompany.get(project.companyId) ?? 1,
+    });
     const base = {
       companyName: project.companyName,
+      clientLabel,
       projectId: project.projectId,
       projectName: project.projectName,
       lastActionAt: formatDateTime(project.lastActivityAt),
@@ -356,10 +498,13 @@ export function buildDeliveryCommandOverviewRow(
   now: Date = new Date(),
 ): DeliveryCommandOverviewRow {
   const renewalRisk = computeCommandCenterRenewalRisk({
+    hasSubscription: project.hasSubscription,
     daysUntilExpiry: daysUntil(project.subscriptionExpiresAt, now),
     currentMonthPlanRate: project.currentMonthPlanRate,
     recentTwoMonthPlanRates: project.recentTwoMonthPlanRates,
+    hasUnfinishedContent: hasUnfinishedDeliveryContent(project),
   });
+  const highlightedQuickAction = resolveDeliveryQuickActionHighlight(project);
 
   return {
     companyId: project.companyId,
@@ -369,24 +514,31 @@ export function buildDeliveryCommandOverviewRow(
     subscriptionExpiresAt: project.subscriptionExpiresAt
       ? new Date(project.subscriptionExpiresAt).toISOString()
       : null,
-    profileCompletedSteps: project.profileCompletedSteps,
-    profileTotalSteps: PROFILE_COMPLETENESS_STEP_TOTAL,
-    aiDiagnosisLabel: formatCommandCenterAiDiagnosisLabel({
-      hasAiTest: project.hasAiTest,
-      lastAiTestAt: project.lastAiTestAt,
+    subscriptionLabel: formatCommandCenterSubscriptionLabel({
+      hasSubscription: project.hasSubscription,
+      subscriptionExpiresAt: project.subscriptionExpiresAt,
       now,
     }),
-    monthlyPlanLabel: formatCommandCenterMonthlyPlanLabel({
+    profileCompletedSteps: project.profileCompletedSteps,
+    profileTotalSteps: PROFILE_COMPLETENESS_STEP_TOTAL,
+    currentStageLabel: formatCommandCenterCurrentStageLabel({
+      profileCompletionScore: project.profileCompletionScore,
+      profileCompletedSteps: project.profileCompletedSteps,
+      profileTotalSteps: PROFILE_COMPLETENESS_STEP_TOTAL,
+      hasAiTest: project.hasAiTest,
       monthlyPlanStatus: project.monthlyPlanStatus,
       completedCount: project.monthlyPlanProgress.completedCount,
       totalCount: project.monthlyPlanProgress.totalCount,
     }),
-    contentGeneratedCount: project.contentGeneratedCount,
-    contentPublishedCount: project.contentPublishedCount,
-    inclusionIncludedCount: project.inclusionIncludedCount,
+    contentAssetsLabel: formatCommandCenterContentAssetsLabel({
+      contentGeneratedCount: project.contentGeneratedCount,
+      inclusionIncludedCount: project.inclusionIncludedCount,
+    }),
     monthlyReportStatus: project.monthlyReportStatus,
     renewalRisk,
     renewalRiskLabel: COMMAND_CENTER_RENEWAL_RISK_LABELS[renewalRisk],
+    highlightedQuickAction,
+    quickActionPaths: buildDeliveryQuickActionPaths(project.projectId),
     workspacePath: workspacePath(project.projectId, "/workspace"),
   };
 }
@@ -431,5 +583,6 @@ export function buildDeliveryCommandCenterView(
     todos: buildDeliveryCommandTodos(projects, now),
     overview,
     monthlyStats: buildDeliveryCommandMonthlyStats(projects, overview, now),
+    unconfiguredSubscriptionCount: projects.filter(project => !project.hasSubscription).length,
   };
 }
