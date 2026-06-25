@@ -1,0 +1,13 @@
+{
+  "query": "SELECT column_type FROM information_schema.columns WHERE table_name = 'customer_companies' AND column_name = 'status';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT column_type FROM information_schema.columns WHERE table_name = 'customer_companies' AND column_name = 'status';",
+  "rows": [
+    {
+      "column_type": "enum('pending','active','rejected','disabled')"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_type\nenum('pending','active','rejected','disabled')\n",
+  "stderr": "",
+  "execution_time_ms": 2333
+}

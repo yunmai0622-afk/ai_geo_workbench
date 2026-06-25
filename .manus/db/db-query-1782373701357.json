@@ -1,0 +1,19 @@
+{
+  "query": "SELECT COUNT(*) as profile_count FROM enterprise_geo_profiles; SELECT COUNT(*) as project_count FROM projects;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT COUNT(*) as profile_count FROM enterprise_geo_profiles; SELECT COUNT(*) as project_count FROM projects;",
+  "rows": [
+    {
+      "profile_count": "6"
+    },
+    {
+      "profile_count": "project_count"
+    },
+    {
+      "profile_count": "6"
+    }
+  ],
+  "messages": [],
+  "stdout": "profile_count\n6\nproject_count\n6\n",
+  "stderr": "",
+  "execution_time_ms": 1966
+}

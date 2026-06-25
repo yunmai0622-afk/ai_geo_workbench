@@ -1,0 +1,55 @@
+{
+  "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'projects' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT column_name FROM information_schema.columns WHERE table_name = 'projects' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "enterpriseName"
+    },
+    {
+      "column_name": "industry"
+    },
+    {
+      "column_name": "website"
+    },
+    {
+      "column_name": "region"
+    },
+    {
+      "column_name": "productIntro"
+    },
+    {
+      "column_name": "targetCustomers"
+    },
+    {
+      "column_name": "coreSellingPoints"
+    },
+    {
+      "column_name": "competitorNames"
+    },
+    {
+      "column_name": "coreKeywords"
+    },
+    {
+      "column_name": "createdAt"
+    },
+    {
+      "column_name": "updatedAt"
+    },
+    {
+      "column_name": "status"
+    },
+    {
+      "column_name": "ownerUserId"
+    },
+    {
+      "column_name": "archivedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\nid\nenterpriseName\nindustry\nwebsite\nregion\nproductIntro\ntargetCustomers\ncoreSellingPoints\ncompetitorNames\ncoreKeywords\ncreatedAt\nupdatedAt\nstatus\nownerUserId\narchivedAt\n",
+  "stderr": "",
+  "execution_time_ms": 1750
+}

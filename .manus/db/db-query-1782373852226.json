@@ -1,0 +1,160 @@
+{
+  "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'enterprise_geo_profiles' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT column_name FROM information_schema.columns WHERE table_name = 'enterprise_geo_profiles' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "projectId"
+    },
+    {
+      "column_name": "enterpriseName"
+    },
+    {
+      "column_name": "shortName"
+    },
+    {
+      "column_name": "officialWebsite"
+    },
+    {
+      "column_name": "industry"
+    },
+    {
+      "column_name": "region"
+    },
+    {
+      "column_name": "productServiceIntro"
+    },
+    {
+      "column_name": "targetCustomers"
+    },
+    {
+      "column_name": "coreSellingPoints"
+    },
+    {
+      "column_name": "servicePriceRange"
+    },
+    {
+      "column_name": "serviceModel"
+    },
+    {
+      "column_name": "fitCustomers"
+    },
+    {
+      "column_name": "unfitCustomers"
+    },
+    {
+      "column_name": "salesChannels"
+    },
+    {
+      "column_name": "commonQuestions"
+    },
+    {
+      "column_name": "purchaseDecisionFactors"
+    },
+    {
+      "column_name": "productIntro"
+    },
+    {
+      "column_name": "featureNotes"
+    },
+    {
+      "column_name": "serviceProcess"
+    },
+    {
+      "column_name": "deliveryPlan"
+    },
+    {
+      "column_name": "afterSalesService"
+    },
+    {
+      "column_name": "competitorDifference"
+    },
+    {
+      "column_name": "priceExplanation"
+    },
+    {
+      "column_name": "salesTalkTracks"
+    },
+    {
+      "column_name": "commonObjections"
+    },
+    {
+      "column_name": "completionScore"
+    },
+    {
+      "column_name": "createdAt"
+    },
+    {
+      "column_name": "updatedAt"
+    },
+    {
+      "column_name": "brandName"
+    },
+    {
+      "column_name": "industryTag"
+    },
+    {
+      "column_name": "productDesc"
+    },
+    {
+      "column_name": "mainChannel"
+    },
+    {
+      "column_name": "targetCustomer"
+    },
+    {
+      "column_name": "customerPains"
+    },
+    {
+      "column_name": "competitors"
+    },
+    {
+      "column_name": "hasCases"
+    },
+    {
+      "column_name": "oneLiner"
+    },
+    {
+      "column_name": "keyPoints"
+    },
+    {
+      "column_name": "keywords"
+    },
+    {
+      "column_name": "wizardStep"
+    },
+    {
+      "column_name": "wizardCompletedAt"
+    },
+    {
+      "column_name": "targetMentionRate"
+    },
+    {
+      "column_name": "targetRecommendationRate"
+    },
+    {
+      "column_name": "targetPlatforms"
+    },
+    {
+      "column_name": "targetQuestionCategories"
+    },
+    {
+      "column_name": "targetCompetitorsToBeat"
+    },
+    {
+      "column_name": "monthlyContentCapacity"
+    },
+    {
+      "column_name": "internalOwnerName"
+    },
+    {
+      "column_name": "geoGoalNotes"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\nid\nprojectId\nenterpriseName\nshortName\nofficialWebsite\nindustry\nregion\nproductServiceIntro\ntargetCustomers\ncoreSellingPoints\nservicePriceRange\nserviceModel\nfitCustomers\nunfitCustomers\nsalesChannels\ncommonQuestions\npurchaseDecisionFactors\nproductIntro\nfeatureNotes\nserviceProcess\ndeliveryPlan\nafterSalesService\ncompetitorDifference\npriceExplanation\nsalesTalkTracks\ncommonObjections\ncompletionScore\ncreatedAt\nupdatedAt\nbrandName\nindustryTag\nproductDesc\nmainChannel\ntargetCustomer\ncustomerPains\ncompetitors\nhasCases\noneLiner\nkeyPoints\nkeywords\nwizardStep\nwizardCompletedAt\ntargetMentionRate\ntargetRecommendationRate\ntargetPlatforms\ntargetQuestionCategories\ntargetCompetitorsToBeat\nmonthlyContentCapacity\ninternalOwnerName\ngeoGoalNotes\n",
+  "stderr": "",
+  "execution_time_ms": 1741
+}

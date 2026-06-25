@@ -6252,3 +6252,21 @@
 [2026-06-25T06:13:47.603Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
 [2026-06-25T06:13:47.638Z] Server running on http://localhost:3000/
 [2026-06-25T06:13:48.504Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-25T08:26:14.148Z] 4:26:14 AM [vite] (client) hmr update /src/index.css
+[2026-06-25T08:26:14.149Z] 4:26:14 AM [vite] (client) hmr update /src/pages/admin/AdminDeliveryPage.tsx, /src/index.css
+[2026-06-25T08:26:14.150Z] 4:26:14 AM [vite] (client) hmr update /src/pages/admin/AdminDeliveryPage.tsx
+[2026-06-25T08:26:14.269Z] 4:26:14 AM [tsx] change in ./shared/deliveryCommandCenter.ts Restarting...
+[2026-06-25T08:26:23.168Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-25T08:26:23.202Z] Server running on http://localhost:3000/
+[2026-06-25T08:26:24.115Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-25T08:26:28.013Z] Dev server process group stopped
+[2026-06-25T08:26:28.016Z] ELIFECYCLE  Command failed.
+[2026-06-25T08:26:28.095Z] Dev server exited with code -15
+[2026-06-25T08:26:31.055Z] Starting dev server with command: pnpm run dev
+[2026-06-25T08:26:31.858Z] 
+[2026-06-25T08:26:31.859Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-25T08:26:31.860Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-25T08:26:31.860Z] 
+[2026-06-25T08:26:39.974Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-25T08:26:40.008Z] Server running on http://localhost:3000/
+[2026-06-25T08:26:41.175Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`

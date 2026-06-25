@@ -1,0 +1,52 @@
+{
+  "query": "SELECT p.id, p.enterpriseName, p.industry, p.status, p.ownerUserId FROM projects p;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT p.id, p.enterpriseName, p.industry, p.status, p.ownerUserId FROM projects p;",
+  "rows": [
+    {
+      "id": "72",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 / 教育培训",
+      "status": "tasks_ready",
+      "ownerUserId": "16740006"
+    },
+    {
+      "id": "90001",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 / 教育培训",
+      "status": "tasks_ready",
+      "ownerUserId": "16740006"
+    },
+    {
+      "id": "120001",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 / 教育培训",
+      "status": "tasks_ready",
+      "ownerUserId": "16740006"
+    },
+    {
+      "id": "150001",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 / 教育培训",
+      "status": "questions_ready",
+      "ownerUserId": "16740006"
+    },
+    {
+      "id": "180001",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 / 教育培训",
+      "status": "questions_ready",
+      "ownerUserId": "16740006"
+    },
+    {
+      "id": "210001",
+      "enterpriseName": "海豚知道",
+      "industry": "知识付费 / 教育培训",
+      "status": "questions_ready",
+      "ownerUserId": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tenterpriseName\tindustry\tstatus\townerUserId\n72\t海豚知道\t知识付费 / 教育培训\ttasks_ready\t16740006\n90001\t海豚知道\t知识付费 / 教育培训\ttasks_ready\t16740006\n120001\t海豚知道\t知识付费 / 教育培训\ttasks_ready\t16740006\n150001\t海豚知道\t知识付费 / 教育培训\tquestions_ready\t16740006\n180001\t海豚知道\t知识付费 / 教育培训\tquestions_ready\t16740006\n210001\t海豚知道\t知识付费 / 教育培训\tquestions_ready\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1777
+}

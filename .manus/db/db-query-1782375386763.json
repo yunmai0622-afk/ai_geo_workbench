@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO company_projects (companyId, projectId, projectName, status, createdAt, updatedAt) VALUES (1, 72, '海豚知道-项目72', 'active', NOW(), NOW()), (1, 90001, '海豚知道-项目90001', 'active', NOW(), NOW()), (1, 120001, '海豚知道-项目120001', 'active', NOW(), NOW()), (1, 150001, '海豚知道-项目150001', 'active', NOW(), NOW()), (1, 180001, '海豚知道-项目180001', 'active', NOW(), NOW()), (1, 210001, '海豚知道-项目210001', 'active', NOW(), NOW());",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute INSERT INTO company_projects (companyId, projectId, projectName, status, createdAt, updatedAt) VALUES (1, 72, '海豚知道-项目72', 'active', NOW(), NOW()), (1, 90001, '海豚知道-项目90001', 'active', NOW(), NOW()), (1, 120001, '海豚知道-项目120001', 'active', NOW(), NOW()), (1, 150001, '海豚知道-项目150001', 'active', NOW(), NOW()), (1, 180001, '海豚知道-项目180001', 'active', NOW(), NOW()), (1, 210001, '海豚知道-项目210001', 'active', NOW(), NOW());",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1738
+}

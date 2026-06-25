@@ -1,0 +1,15 @@
+{
+  "query": "SELECT cc.companyName, cc.status, COUNT(cp.id) as projectCount FROM customer_companies cc LEFT JOIN company_projects cp ON cp.companyId = cc.id GROUP BY cc.id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT cc.companyName, cc.status, COUNT(cp.id) as projectCount FROM customer_companies cc LEFT JOIN company_projects cp ON cp.companyId = cc.id GROUP BY cc.id;",
+  "rows": [
+    {
+      "companyName": "海豚知道",
+      "status": "active",
+      "projectCount": "6"
+    }
+  ],
+  "messages": [],
+  "stdout": "companyName\tstatus\tprojectCount\n海豚知道\tactive\t6\n",
+  "stderr": "",
+  "execution_time_ms": 1858
+}

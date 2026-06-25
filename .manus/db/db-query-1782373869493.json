@@ -1,0 +1,88 @@
+{
+  "query": "SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = 'customer_companies' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = 'customer_companies' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id",
+      "data_type": "int",
+      "is_nullable": "NO",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "companyName",
+      "data_type": "varchar",
+      "is_nullable": "NO",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "contactName",
+      "data_type": "varchar",
+      "is_nullable": "YES",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "contactPhone",
+      "data_type": "varchar",
+      "is_nullable": "YES",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "contactEmail",
+      "data_type": "varchar",
+      "is_nullable": "YES",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "industry",
+      "data_type": "varchar",
+      "is_nullable": "YES",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "sourceChannel",
+      "data_type": "varchar",
+      "is_nullable": "YES",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "status",
+      "data_type": "enum",
+      "is_nullable": "NO",
+      "column_default": "pending"
+    },
+    {
+      "column_name": "notes",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "approvedAt",
+      "data_type": "timestamp",
+      "is_nullable": "YES",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "approvedBy",
+      "data_type": "int",
+      "is_nullable": "YES",
+      "column_default": "NULL"
+    },
+    {
+      "column_name": "createdAt",
+      "data_type": "timestamp",
+      "is_nullable": "NO",
+      "column_default": "CURRENT_TIMESTAMP"
+    },
+    {
+      "column_name": "updatedAt",
+      "data_type": "timestamp",
+      "is_nullable": "NO",
+      "column_default": "CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\tdata_type\tis_nullable\tcolumn_default\nid\tint\tNO\tNULL\ncompanyName\tvarchar\tNO\tNULL\ncontactName\tvarchar\tYES\tNULL\ncontactPhone\tvarchar\tYES\tNULL\ncontactEmail\tvarchar\tYES\tNULL\nindustry\tvarchar\tYES\tNULL\nsourceChannel\tvarchar\tYES\tNULL\nstatus\tenum\tNO\tpending\nnotes\ttext\tYES\tNULL\napprovedAt\ttimestamp\tYES\tNULL\napprovedBy\tint\tYES\tNULL\ncreatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\nupdatedAt\ttimestamp\tNO\tCURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 1891
+}

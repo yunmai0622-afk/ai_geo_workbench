@@ -1,0 +1,45 @@
+{
+  "query": "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'company_projects' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway06.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2A5AdnnqShQxaZs.8709aea307e4 --database KZXhJ9uy5XJyGmmCZJYPBe --execute SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'company_projects' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id",
+      "data_type": "int",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "companyId",
+      "data_type": "int",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "projectId",
+      "data_type": "int",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "projectName",
+      "data_type": "varchar",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "status",
+      "data_type": "enum",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "createdAt",
+      "data_type": "timestamp",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "updatedAt",
+      "data_type": "timestamp",
+      "is_nullable": "NO"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\tdata_type\tis_nullable\nid\tint\tNO\ncompanyId\tint\tNO\nprojectId\tint\tNO\nprojectName\tvarchar\tNO\nstatus\tenum\tNO\ncreatedAt\ttimestamp\tNO\nupdatedAt\ttimestamp\tNO\n",
+  "stderr": "",
+  "execution_time_ms": 1928
+}
