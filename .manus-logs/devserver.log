@@ -6227,3 +6227,28 @@
 [2026-06-24T10:31:57.351Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
 [2026-06-24T10:32:01.204Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
 [2026-06-24T10:32:01.205Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-25T06:13:19.569Z] 2:13:19 AM [vite] (client) hmr update /src/index.css
+[2026-06-25T06:13:19.571Z] 2:13:19 AM [vite] (client) hmr update /src/index.css, /src/components/diagnosis/AiDiagnosisCustomerReport.tsx
+[2026-06-25T06:13:19.572Z] 2:13:19 AM [vite] (client) hmr update /src/index.css, /src/pages/InclusionMonitoringCenterPage.tsx
+[2026-06-25T06:13:19.573Z] 2:13:19 AM [vite] (client) hmr update /src/index.css, /src/pages/DeliveryReportsCenterPage.tsx
+[2026-06-25T06:13:19.577Z] 2:13:19 AM [vite] (client) hmr update /src/index.css, /src/pages/InclusionMonitoringCenterPage.tsx
+[2026-06-25T06:13:19.578Z] 2:13:19 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/index.css
+[2026-06-25T06:13:19.578Z] 2:13:19 AM [vite] (client) hmr update /src/index.css, /src/pages/V12FlowPages.tsx
+[2026-06-25T06:13:19.585Z] 2:13:19 AM [vite] (client) hmr update /src/components/monthlyPlan/MonthlyPlanCompletionBenefitsSection.tsx, /src/components/workspace/AiBrandValueOverviewSection.tsx, /src/pages/V12FlowPages.tsx, /src/components/diagnosis/AiDiagnosisCustomerReport.tsx
+[2026-06-25T06:13:19.585Z] 2:13:19 AM [vite] (client) hmr update /src/pages/DeliveryReportsCenterPage.tsx
+[2026-06-25T06:13:19.586Z] 2:13:19 AM [vite] (client) hmr update /src/pages/QuestionsLibraryPage.tsx, /src/pages/MaturityDetailPage.tsx, /src/pages/EnterpriseWorkspacePage.tsx, /src/components/maturity/MaturityAssistantPanel.tsx, /src/pages/V12FlowPages.tsx, /src/pages/MonthlyPlanPage.tsx, /src/pages/DeliveryReportsCenterPage.tsx, /src/components/questions/QuestionSearchPoolDrawer.tsx, /src/components/enterpriseProfile/wizard/WizardQuestionGuideStep.tsx, /src/components/weekly/ContentTaskProgressionView.tsx
+[2026-06-25T06:13:19.693Z] 2:13:19 AM [tsx] change in ./shared/questionSearchPoolEnrichment.ts Restarting...
+[2026-06-25T06:13:28.044Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-25T06:13:28.081Z] Server running on http://localhost:3000/
+[2026-06-25T06:13:29.421Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-25T06:13:35.261Z] Dev server process group stopped
+[2026-06-25T06:13:35.264Z] ELIFECYCLE  Command failed.
+[2026-06-25T06:13:35.365Z] Dev server exited with code -15
+[2026-06-25T06:13:38.298Z] Starting dev server with command: pnpm run dev
+[2026-06-25T06:13:39.187Z] 
+[2026-06-25T06:13:39.187Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-25T06:13:39.188Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-25T06:13:39.188Z] 
+[2026-06-25T06:13:47.603Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-25T06:13:47.638Z] Server running on http://localhost:3000/
+[2026-06-25T06:13:48.504Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
