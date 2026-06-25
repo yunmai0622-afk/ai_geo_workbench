@@ -140,6 +140,7 @@ function PrivateRoutes() {
         <Route path="/assets" component={AssetCenterPage} />
         <Route path="/diagnosis" component={AiDiagnosisFlowPage} />
         <Route path="/questions" component={QuestionsLibraryPage} />
+        <Route path="/question-bank" component={QuestionsLibraryPage} />
         <Route path="/brand-source-graph" component={SourceGraphPage} />
         <Route path="/source-graph">
           <Redirect to="/brand-source-graph" />

@@ -46,7 +46,7 @@ export function EnterpriseProjectShell({ children }: Props) {
   const isPublishPage = pathname === "/content-publishing" || pathname === "/publish";
   const isInclusionMonitoringPage =
     pathname === "/inclusion-monitoring" || pathname === "/monitoring";
-  const isQuestionsPage = pathname === "/questions";
+  const isQuestionsPage = pathname === "/questions" || pathname === "/question-bank";
   const isSourceGraphPage = pathname === "/brand-source-graph" || pathname === "/source-graph";
   const isMaturityPage = pathname === "/maturity";
   const isWorkspacePage = pathname === "/workspace" || pathname === "/flow";

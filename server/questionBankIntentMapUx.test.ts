@@ -41,6 +41,8 @@ describe("GEO-V1.2-P1-A-QuestionBank-UX", () => {
     expect(page).toContain("标记重点");
     expect(page).toContain("question-toggle-priority-");
     expect(page).toContain("question-edit-");
+    expect(page).toContain("question-pool-sort-mode");
+    expect(page).toContain("按价值排序");
   });
 
   it("新增/编辑 drawer 字段完整", () => {

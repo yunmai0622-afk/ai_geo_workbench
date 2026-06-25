@@ -268,15 +268,23 @@ export function isQuestionPoolPriority(question: SearchPoolQuestionRow): boolean
   return question.priorityLevel === "high";
 }
 
-export function groupQuestionsBySearchPoolType(questions: SearchPoolQuestionRow[]) {
+export function groupQuestionsBySearchPoolType(
+  questions: SearchPoolQuestionRow[],
+  context?: Omit<InferSearchPoolTypeInput, "questionText" | "questionType">,
+) {
   const grouped = Object.fromEntries(
     SEARCH_POOL_QUESTION_TYPES.map(type => [type.value, [] as SearchPoolQuestionRow[]]),
   ) as Record<SearchPoolQuestionType, SearchPoolQuestionRow[]>;
   for (const question of questions) {
-    const key = question.searchPoolType;
-    if (key && key in grouped) {
-      grouped[key as SearchPoolQuestionType].push(question);
-    }
+    const key = resolveQuestionSearchPoolType({
+      questionText: question.questionText,
+      questionType: question.questionType,
+      searchPoolType: question.searchPoolType,
+      targetKeywords: question.targetKeywords,
+      brandName: context?.brandName,
+      competitorNames: context?.competitorNames,
+    });
+    grouped[key].push(question);
   }
   return grouped;
 }
@@ -323,12 +331,136 @@ export const SEARCH_POOL_TOTAL_DEFAULT = Object.values(SEARCH_POOL_DEFAULT_COUNT
 
 const LEGACY_POOL_TYPE_ALIASES: Record<string, SearchPoolQuestionType> = {
   brand_direct: "brand_search",
+  brand_recognition: "brand_search",
   category_recommendation: "category_recommend",
+  industry_recommendation: "category_recommend",
   scenario_need: "scene_need",
   competitor_compare: "comparison",
+  competitor_comparison: "comparison",
   industry_location: "geo_region",
+  local_industry: "geo_region",
   long_tail_pain: "long_tail",
+  long_tail_conversion: "long_tail",
 };
+
+export type InferSearchPoolTypeInput = {
+  questionText: string;
+  questionType?: string | null;
+  searchPoolType?: string | null;
+  targetKeywords?: string[] | null;
+  brandName?: string | null;
+  competitorNames?: string[] | null;
+};
+
+const COMPARISON_KEYWORDS = ["对比", "比较", " vs ", "vs.", "相较", "相比", "区别", "哪个更好", "哪个好", "怎么选"];
+const CATEGORY_KEYWORDS = ["推荐", "哪家好", "有哪些", "排行榜", "主流", "选型", "靠谱的服务商", "有哪些选择", "值得关注的品牌"];
+const SCENE_KEYWORDS = ["场景", "怎么用", "如何使用", "适合", "如何提升", "如何解决", "需要什么方案", "会遇到哪些", "常见方案"];
+const LONG_TAIL_KEYWORDS = ["常见坑", "值得投入", "靠谱吗", "需要确认", "使用前", "小众", "长尾", "投入吗"];
+const GEO_REGION_KEYWORDS = ["地域", "行业", "市场主流", "领域有哪些", "头部方案", "区域"];
+const BRAND_KEYWORDS = ["是什么", "做什么", "口碑", "怎么样", "主要提供", "适合哪些客户", "是做什么的"];
+
+function includesAny(text: string, keywords: string[]): boolean {
+  const lower = text.toLowerCase();
+  return keywords.some(keyword => lower.includes(keyword.toLowerCase()));
+}
+
+function includesBrandOrCompetitor(text: string, names: string[]): boolean {
+  const normalized = text.trim();
+  if (!normalized) return false;
+  return names.some(name => {
+    const trimmed = name.trim();
+    return trimmed.length > 0 && normalized.includes(trimmed);
+  });
+}
+
+export function inferSearchPoolType(input: InferSearchPoolTypeInput): SearchPoolQuestionType {
+  const questionText = input.questionText.trim();
+  if (!questionText) return "brand_search";
+
+  const brandName = input.brandName?.trim() ?? "";
+  const competitors = (input.competitorNames ?? []).map(name => name.trim()).filter(Boolean);
+  const keywordBlob = [questionText, ...(input.targetKeywords ?? [])].join(" ");
+
+  if (includesBrandOrCompetitor(keywordBlob, competitors)) return "comparison";
+  if (includesAny(keywordBlob, COMPARISON_KEYWORDS)) return "comparison";
+  if (includesAny(keywordBlob, CATEGORY_KEYWORDS)) return "category_recommend";
+  if (includesAny(keywordBlob, SCENE_KEYWORDS)) return "scene_need";
+  if (includesAny(keywordBlob, LONG_TAIL_KEYWORDS)) return "long_tail";
+  if (includesAny(keywordBlob, GEO_REGION_KEYWORDS)) return "geo_region";
+  if (brandName && includesBrandOrCompetitor(keywordBlob, [brandName])) return "brand_search";
+  if (includesAny(keywordBlob, BRAND_KEYWORDS)) return "brand_search";
+
+  return "brand_search";
+}
+
+export function resolveQuestionSearchPoolType(input: InferSearchPoolTypeInput): SearchPoolQuestionType {
+  const fromStored = normalizeSearchPoolType(input.searchPoolType);
+  if (fromStored) return fromStored;
+
+  const legacyType = (input.questionType ?? "").trim();
+  const fromLegacy = legacyType ? mapLegacyTypeToSearchPoolType(legacyType) : null;
+  const inferred = input.questionText.trim() ? inferSearchPoolType(input) : null;
+
+  if (legacyType === "指定问题" || !fromLegacy) {
+    return inferred ?? fromLegacy ?? "brand_search";
+  }
+  return fromLegacy;
+}
+
+export const SEARCH_POOL_SORT_MODES = ["value", "createdAt", "alphabetical"] as const;
+export type SearchPoolSortMode = (typeof SEARCH_POOL_SORT_MODES)[number];
+
+export const SEARCH_POOL_SORT_MODE_LABELS: Record<SearchPoolSortMode, string> = {
+  value: "按价值排序",
+  createdAt: "按创建时间",
+  alphabetical: "按字母顺序",
+};
+
+export type QuestionValueSortInput = {
+  monthlyFocus: boolean;
+  competitorOccupied: boolean;
+  enabled: number | boolean | null;
+  hasContentTask: boolean;
+  contentPublished: boolean;
+  hasContentPending: boolean;
+  createdAt?: Date | string | null;
+  questionText: string;
+};
+
+export function resolveQuestionValueSortTier(input: QuestionValueSortInput): number {
+  const enabled = Number(input.enabled) !== 0;
+  if (input.monthlyFocus) return 1;
+  if (input.competitorOccupied) return 2;
+  if (enabled && !input.hasContentTask && !input.contentPublished) return 3;
+  if (input.hasContentPending) return 4;
+  if (input.contentPublished) return 5;
+  return 6;
+}
+
+export function compareSearchPoolQuestions(
+  a: QuestionValueSortInput,
+  b: QuestionValueSortInput,
+  mode: SearchPoolSortMode = "value",
+): number {
+  if (mode === "createdAt") {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bTime - aTime;
+  }
+  if (mode === "alphabetical") {
+    return a.questionText.localeCompare(b.questionText, "zh-CN");
+  }
+  const tierDiff = resolveQuestionValueSortTier(a) - resolveQuestionValueSortTier(b);
+  if (tierDiff !== 0) return tierDiff;
+  return a.questionText.localeCompare(b.questionText, "zh-CN");
+}
+
+export function sortSearchPoolQuestions<T extends QuestionValueSortInput>(
+  questions: readonly T[],
+  mode: SearchPoolSortMode = "value",
+): T[] {
+  return [...questions].sort((a, b) => compareSearchPoolQuestions(a, b, mode));
+}
 
 export function normalizeSearchPoolType(raw?: string | null): SearchPoolQuestionType | null {
   if (!raw) return null;
@@ -357,12 +489,16 @@ export function buildSearchPoolGroupStats(
     }
   >,
   hasDiagnosisData: boolean,
+  context?: Omit<InferSearchPoolTypeInput, "questionText" | "questionType" | "searchPoolType">,
 ): Record<SearchPoolQuestionType, SearchPoolGroupStats> {
   type GroupQuestion = SearchPoolQuestionRow & {
     competitorOccupied?: boolean;
     contentStatus?: string;
   };
-  const grouped = groupQuestionsBySearchPoolType(questions) as Record<SearchPoolQuestionType, GroupQuestion[]>;
+  const grouped = groupQuestionsBySearchPoolType(questions, context) as Record<
+    SearchPoolQuestionType,
+    GroupQuestion[]
+  >;
   return Object.fromEntries(
     SEARCH_POOL_QUESTION_TYPES.map(type => {
       const bucket = grouped[type.value];

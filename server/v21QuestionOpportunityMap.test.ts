@@ -42,6 +42,8 @@ describe("GEO-V2.1-P3 Question Opportunity Map", () => {
     expect(shared).toContain("COMPETITOR_OCCUPANCY_THRESHOLD");
     expect(shared).toContain("computeQuestionCompetitorRates");
     expect(read("server/questionSearchPoolService.ts")).toContain("computeQuestionCompetitorRates");
-    expect(read("server/questionSearchPoolService.ts")).toContain("monthlyOptimizationTasks");
+    expect(read("server/questionSearchPoolService.ts")).toContain("eq(aiTestRuns.projectId, projectId)");
+    expect(read("server/questionSearchPoolService.ts")).toContain("inferSearchPoolType");
+    expect(read("shared/questionSearchPool.ts")).toContain("sortSearchPoolQuestions");
   });
 });

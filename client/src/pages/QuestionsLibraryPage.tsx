@@ -10,6 +10,13 @@ import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -36,7 +43,11 @@ import {
   resolveSearchPoolTypeLabel,
   resolveSourceTypeLabel,
   SEARCH_POOL_QUESTION_TYPES,
+  SEARCH_POOL_SORT_MODE_LABELS,
+  SEARCH_POOL_SORT_MODES,
+  sortSearchPoolQuestions,
   type SearchPoolQuestionType,
+  type SearchPoolSortMode,
 } from "@shared/questionSearchPool";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { Library, Plus, Sparkles, Star } from "lucide-react";
@@ -90,6 +101,7 @@ export default function QuestionsLibraryPage() {
   const [editQuestion, setEditQuestion] = useState<EnrichedSearchPoolQuestion | null>(null);
   const [formInitial, setFormInitial] = useState<QuestionPoolFormState>(() => defaultQuestionPoolForm());
   const [activeTab, setActiveTab] = useState<string>(SEARCH_POOL_QUESTION_TYPES[0].value);
+  const [sortMode, setSortMode] = useState<SearchPoolSortMode>("value");
   const [pendingContentQuestion, setPendingContentQuestion] = useState<EnrichedSearchPoolQuestion | null>(null);
 
   const searchPoolQuery = trpc.geo.questions.listSearchPool.useQuery(
@@ -187,11 +199,20 @@ export default function QuestionsLibraryPage() {
     createContentTaskMutation.isPending;
 
   const grouped = useMemo(() => {
-    return groupQuestionsBySearchPoolType(questions) as Record<
+    const poolContext = {
+      brandName: selectedProject?.enterpriseName ?? null,
+    };
+    const base = groupQuestionsBySearchPoolType(questions, poolContext) as Record<
       SearchPoolQuestionType,
       EnrichedSearchPoolQuestion[]
     >;
-  }, [questions]);
+    return Object.fromEntries(
+      SEARCH_POOL_QUESTION_TYPES.map(type => [
+        type.value,
+        sortSearchPoolQuestions(base[type.value], sortMode),
+      ]),
+    ) as Record<SearchPoolQuestionType, EnrichedSearchPoolQuestion[]>;
+  }, [questions, selectedProject?.enterpriseName, sortMode]);
 
   function openCreateDrawer() {
     setDrawerMode("create");
@@ -370,6 +391,24 @@ export default function QuestionsLibraryPage() {
           </P0Section>
 
           <P0Section title="问题分组" description="按 AI 搜索问题类型浏览机会分布">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-gray-500">各分组内默认按价值排序，可切换排序方式</p>
+              <Select
+                value={sortMode}
+                onValueChange={value => setSortMode(value as SearchPoolSortMode)}
+              >
+                <SelectTrigger className="w-[180px]" data-testid="question-pool-sort-mode">
+                  <SelectValue placeholder="排序方式" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEARCH_POOL_SORT_MODES.map(mode => (
+                    <SelectItem key={mode} value={mode} data-testid={`question-pool-sort-${mode}`}>
+                      {SEARCH_POOL_SORT_MODE_LABELS[mode]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="question-pool-tabs">
               <TabsList className="flex w-full flex-wrap gap-1">
                 {SEARCH_POOL_QUESTION_TYPES.map(type => {

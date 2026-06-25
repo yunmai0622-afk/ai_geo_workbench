@@ -6,7 +6,10 @@ import { GEO_OPTIMIZATION_TASK_CARD_MARK } from "@shared/geoContentTaskSource";
 import {
   buildQuestionPoolGapOverview,
   buildSearchPoolGroupStats,
+  inferSearchPoolType,
   mapLegacyTypeToSearchPoolType,
+  resolveQuestionSearchPoolType,
+  sortSearchPoolQuestions,
   type QuestionPoolGapOverview,
   type SearchPoolGroupStats,
   type SearchPoolQuestionRow,
@@ -23,12 +26,14 @@ import {
 } from "@shared/questionSearchPoolEnrichment";
 import {
   aiTestRuns,
+  enterpriseGeoProfiles,
   geoArticles,
   geoInclusionMonitoringRecords,
   geoPublishRecords,
   monthlyOptimizationPlans,
   monthlyOptimizationTasks,
   optimizationTasks,
+  projects,
   publishTasks,
   questions,
   testRounds,
@@ -86,24 +91,105 @@ export type SearchPoolEnrichedPayload = {
   groupStats: Record<SearchPoolQuestionType, SearchPoolGroupStats>;
 };
 
-export async function backfillNullSearchPoolTypes(db: DbConn, projectId: number): Promise<number> {
+export type SearchPoolInferContext = {
+  brandName?: string | null;
+  competitorNames?: string[];
+};
+
+export async function loadSearchPoolInferContext(
+  db: DbConn,
+  projectId: number,
+): Promise<SearchPoolInferContext> {
+  const [projectRows, profileRows] = await Promise.all([
+    db.select({ enterpriseName: projects.enterpriseName }).from(projects).where(eq(projects.id, projectId)).limit(1),
+    db
+      .select({ enterpriseName: enterpriseGeoProfiles.enterpriseName, competitorDifference: enterpriseGeoProfiles.competitorDifference })
+      .from(enterpriseGeoProfiles)
+      .where(eq(enterpriseGeoProfiles.projectId, projectId))
+      .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+      .limit(1),
+  ]);
+  const profile = profileRows[0] ?? null;
+  const brandName = profile?.enterpriseName?.trim() || projectRows[0]?.enterpriseName?.trim() || null;
+  const competitorNames =
+    profile?.competitorDifference
+      ?.split(/[,，、/|；;\n]/)
+      .map(part => part.trim())
+      .filter(Boolean) ?? [];
+  return { brandName, competitorNames };
+}
+
+export async function backfillNullSearchPoolTypes(
+  db: DbConn,
+  projectId: number,
+  context?: SearchPoolInferContext,
+): Promise<number> {
+  const inferContext = context ?? (await loadSearchPoolInferContext(db, projectId));
   const nullRows = await db
-    .select({ id: questions.id, questionType: questions.questionType })
+    .select({
+      id: questions.id,
+      questionText: questions.questionText,
+      questionType: questions.questionType,
+      targetKeywords: questions.targetKeywords,
+    })
     .from(questions)
     .where(and(eq(questions.projectId, projectId), isNull(questions.searchPoolType)));
 
   let updated = 0;
   for (const row of nullRows) {
-    const poolType = mapLegacyTypeToSearchPoolType(row.questionType);
-    if (!poolType) continue;
+    const poolType = resolveQuestionSearchPoolType({
+      questionText: row.questionText,
+      questionType: row.questionType,
+      searchPoolType: null,
+      targetKeywords: row.targetKeywords,
+      brandName: inferContext.brandName,
+      competitorNames: inferContext.competitorNames,
+    });
     await db.update(questions).set({ searchPoolType: poolType }).where(eq(questions.id, row.id));
     updated += 1;
   }
   return updated;
 }
 
+export async function backfillAllNullSearchPoolTypes(db: DbConn): Promise<number> {
+  const nullRows = await db
+    .select({
+      id: questions.id,
+      projectId: questions.projectId,
+      questionText: questions.questionText,
+      questionType: questions.questionType,
+      targetKeywords: questions.targetKeywords,
+    })
+    .from(questions)
+    .where(isNull(questions.searchPoolType));
+
+  const contextByProject = new Map<number, SearchPoolInferContext>();
+  let updated = 0;
+  for (const row of nullRows) {
+    let context = contextByProject.get(row.projectId);
+    if (!context) {
+      context = await loadSearchPoolInferContext(db, row.projectId);
+      contextByProject.set(row.projectId, context);
+    }
+    const poolType = resolveQuestionSearchPoolType({
+      questionText: row.questionText,
+      questionType: row.questionType,
+      searchPoolType: null,
+      targetKeywords: row.targetKeywords,
+      brandName: context.brandName,
+      competitorNames: context.competitorNames,
+    });
+    await db.update(questions).set({ searchPoolType: poolType }).where(eq(questions.id, row.id));
+    updated += 1;
+  }
+  return updated;
+}
+
+export { inferSearchPoolType, resolveQuestionSearchPoolType };
+
 export async function loadSearchPoolEnriched(db: DbConn, projectId: number): Promise<SearchPoolEnrichedPayload> {
-  await backfillNullSearchPoolTypes(db, projectId);
+  const inferContext = await loadSearchPoolInferContext(db, projectId);
+  await backfillNullSearchPoolTypes(db, projectId, inferContext);
   const [
     questionRows,
     taskRows,
@@ -225,18 +311,20 @@ export async function loadSearchPoolEnriched(db: DbConn, projectId: number): Pro
     inclusionRows.length > 0;
 
   const baseQuestions = filterRowsWithNumericId(questionRows) as SearchPoolQuestionRow[];
-  const enrichedQuestions = baseQuestions.map(question => {
-    const hasContentTask = questionHasContentTask(question, taskRows, articleLinks);
-    return enrichSearchPoolQuestion({
-      question,
-      runs: runsByQuestionId.get(question.id) ?? [],
-      articles: articleLinks,
-      hasContentTask,
-      hasDiagnosisData,
-      competitorRate: competitorRatesByQuestionId.get(question.id),
-      monthlyFocusQuestionIds,
-    });
-  });
+  const enrichedQuestions = sortSearchPoolQuestions(
+    baseQuestions.map(question => {
+      const hasContentTask = questionHasContentTask(question, taskRows, articleLinks);
+      return enrichSearchPoolQuestion({
+        question,
+        runs: runsByQuestionId.get(question.id) ?? [],
+        articles: articleLinks,
+        hasContentTask,
+        hasDiagnosisData,
+        competitorRate: competitorRatesByQuestionId.get(question.id),
+        monthlyFocusQuestionIds,
+      });
+    }),
+  );
 
   const opportunityOverview = buildQuestionOpportunityOverview({ questions: enrichedQuestions });
   const baseOverview = buildQuestionPoolGapOverview({
@@ -255,7 +343,7 @@ export async function loadSearchPoolEnriched(db: DbConn, projectId: number): Pro
       competitorOccupiedQuestions: opportunityOverview.competitorOccupiedQuestions,
       monthlyFocusQuestions: opportunityOverview.monthlyFocusQuestions,
     },
-    groupStats: buildSearchPoolGroupStats(enrichedQuestions, hasDiagnosisData),
+    groupStats: buildSearchPoolGroupStats(enrichedQuestions, hasDiagnosisData, inferContext),
   };
 }
 

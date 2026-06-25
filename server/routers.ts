@@ -72,8 +72,10 @@ import {
   buildQuestionContentTaskExecutionSuggestion,
   backfillNullSearchPoolTypes,
   loadSearchPoolEnriched,
+  loadSearchPoolInferContext,
   questionHasContentTask,
   questionTaskMarker,
+  resolveQuestionSearchPoolType,
 } from "./questionSearchPoolService";
 
 import {
@@ -364,9 +366,23 @@ const questionInput = z.object({
   enabled: z.boolean().default(true),
 }).merge(questionPoolFields);
 
-function normalizeQuestionPoolDbFields(input: z.infer<typeof questionPoolFields>) {
+function normalizeQuestionPoolDbFields(
+  input: z.infer<typeof questionPoolFields> & {
+    questionText?: string;
+    questionType?: (typeof questionTypes)[number];
+  },
+  inferContext?: { brandName?: string | null; competitorNames?: string[] },
+) {
+  const searchPoolType = resolveQuestionSearchPoolType({
+    questionText: input.questionText ?? "",
+    questionType: input.questionType,
+    searchPoolType: input.searchPoolType,
+    targetKeywords: input.targetKeywords,
+    brandName: inferContext?.brandName,
+    competitorNames: inferContext?.competitorNames,
+  });
   return {
-    searchPoolType: normalizeSearchPoolType(input.searchPoolType) ?? null,
+    searchPoolType,
     targetKeywords: input.targetKeywords ?? [],
     targetCustomerScene: input.targetCustomerScene?.trim() || null,
     relatedGeoGap: input.relatedGeoGap?.trim() || null,
@@ -543,6 +559,7 @@ async function syncManualQuestionsFromAiResponseImport(
       projectId: number;
       questionText: string;
       questionType: "指定问题";
+      searchPoolType: SearchPoolQuestionType;
       targetKeyword: null;
       intentLevel: string;
       businessValue: number;
@@ -554,10 +571,12 @@ async function syncManualQuestionsFromAiResponseImport(
       if (existingSet.has(text) || batchSeen.has(text)) continue;
       batchSeen.add(text);
       existingSet.add(text);
+      const searchPoolType = resolveQuestionSearchPoolType({ questionText: text });
       toInsert.push({
         projectId,
         questionText: text,
         questionType: "指定问题",
+        searchPoolType,
         targetKeyword: null,
         intentLevel: "高",
         businessValue: 5,
@@ -574,6 +593,7 @@ async function syncManualQuestionsFromAiResponseImport(
 
 async function insertSpecifiedQuestions(projectId: number, rows: ManualQuestionImportRow[], source: "manual" | "csv") {
   const db = await requireDb();
+  const inferContext = await loadSearchPoolInferContext(db, projectId);
   const existing = await db.select().from(questions).where(eq(questions.projectId, projectId));
   const known = new Map(existing.map(item => [item.questionText, item]));
   const toInsert = [];
@@ -617,6 +637,12 @@ async function insertSpecifiedQuestions(projectId: number, rows: ManualQuestionI
       projectId,
       questionText,
       questionType: row.questionType ?? "指定问题" as const,
+      searchPoolType: resolveQuestionSearchPoolType({
+        questionText,
+        questionType: row.questionType ?? "指定问题",
+        brandName: inferContext.brandName,
+        competitorNames: inferContext.competitorNames,
+      }),
       targetKeyword: row.targetKeyword?.trim() || null,
       intentLevel: row.intentLevel?.trim() || "高",
       businessValue: row.businessValue ?? 5,
@@ -1759,8 +1785,12 @@ const geoRouter = router({
     create: protectedProcedure.input(questionInput).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await requireProjectAccess(ctx, input.projectId);
-      const poolFields = normalizeQuestionPoolDbFields(input);
-      const questionType = resolveLegacyQuestionTypeForPoolInput(input);
+      const inferContext = await loadSearchPoolInferContext(db, input.projectId);
+      const poolFields = normalizeQuestionPoolDbFields(input, inferContext);
+      const questionType = resolveLegacyQuestionTypeForPoolInput({
+        ...input,
+        searchPoolType: poolFields.searchPoolType,
+      });
       await db.insert(questions).values({
         projectId: input.projectId,
         questionText: input.questionText,
@@ -1782,8 +1812,12 @@ const geoRouter = router({
       if (values.projectId !== ownedProjectId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "无权将问题迁移到其它客户项目" });
       }
-      const poolFields = normalizeQuestionPoolDbFields(values);
-      const questionType = resolveLegacyQuestionTypeForPoolInput(values);
+      const inferContext = await loadSearchPoolInferContext(db, ownedProjectId);
+      const poolFields = normalizeQuestionPoolDbFields(values, inferContext);
+      const questionType = resolveLegacyQuestionTypeForPoolInput({
+        ...values,
+        searchPoolType: poolFields.searchPoolType,
+      });
       await db.update(questions).set({
         projectId: values.projectId,
         questionText: values.questionText,
@@ -1884,6 +1918,12 @@ const geoRouter = router({
           projectId: input.projectId,
           questionText: item.questionText,
           questionType: item.questionType,
+          searchPoolType: resolveQuestionSearchPoolType({
+            questionText: item.questionText,
+            questionType: item.questionType,
+            brandName: promptPack.brandName,
+            competitorNames: mapped.competitors,
+          }),
           targetKeyword: null,
           intentLevel: "高" as const,
           businessValue: 5,
@@ -1894,6 +1934,12 @@ const geoRouter = router({
           projectId: input.projectId,
           questionText: item.questionText,
           questionType: "指定问题" as const,
+          searchPoolType: resolveQuestionSearchPoolType({
+            questionText: item.questionText,
+            questionType: "指定问题",
+            brandName: promptPack.brandName,
+            competitorNames: mapped.competitors,
+          }),
           targetKeyword: JSON.stringify({ intent: item.intent, disadvantaged: item.disadvantaged }),
           intentLevel: "高" as const,
           businessValue: item.disadvantaged ? 9 : 7,
@@ -1948,6 +1994,12 @@ const geoRouter = router({
         rows.map(item => ({
           ...item,
           projectId: input.projectId,
+          searchPoolType: resolveQuestionSearchPoolType({
+            questionText: item.questionText,
+            questionType: item.questionType,
+            brandName: (mapped.brandName || project.enterpriseName).trim(),
+            competitorNames: mapped.competitors,
+          }),
           targetKeyword: null,
           intentLevel: "高" as const,
           businessValue: 5,

@@ -6,10 +6,13 @@ import {
   filterQuestionsRequiringSourceType,
   formatQuestionPoolGapMetricValue,
   groupQuestionsBySearchPoolType,
+  inferSearchPoolType,
   mapLegacyTypeToSearchPoolType,
   mapSearchPoolTypeToLegacyQuestionType,
   parseTargetKeywordsInput,
+  resolveQuestionSearchPoolType,
   resolveSearchPoolTypeRenewalSceneLabel,
+  sortSearchPoolQuestions,
   type SearchPoolQuestionRow,
 } from "./questionSearchPool";
 
@@ -107,6 +110,74 @@ describe("questionSearchPool", () => {
 
   it("parses target keywords input", () => {
     expect(parseTargetKeywordsInput("GEO, 品牌,认知")).toEqual(["GEO", "品牌", "认知"]);
+  });
+
+  it("groups unresolved search pool types via inference", () => {
+    const unresolved: SearchPoolQuestionRow[] = [
+      {
+        id: 10,
+        questionText: "知识付费平台哪家好？",
+        questionType: "指定问题",
+        enabled: 1,
+        searchPoolType: null,
+      },
+    ];
+    const grouped = groupQuestionsBySearchPoolType(unresolved);
+    expect(grouped.category_recommend).toHaveLength(1);
+  });
+
+  it("infers search pool type from question content", () => {
+    expect(
+      inferSearchPoolType({
+        questionText: "海豚知道和小鹅通哪个更好？",
+        competitorNames: ["小鹅通"],
+      }),
+    ).toBe("comparison");
+    expect(
+      inferSearchPoolType({
+        questionText: "知识付费行业有哪些推荐方案？",
+      }),
+    ).toBe("category_recommend");
+    expect(
+      inferSearchPoolType({
+        questionText: "企业培训场景怎么用知识付费工具？",
+      }),
+    ).toBe("scene_need");
+    expect(
+      resolveQuestionSearchPoolType({
+        questionText: "海豚知道是什么？",
+        questionType: "指定问题",
+        searchPoolType: null,
+        brandName: "海豚知道",
+      }),
+    ).toBe("brand_search");
+  });
+
+  it("sorts questions by value tier", () => {
+    const sorted = sortSearchPoolQuestions(
+      [
+        {
+          monthlyFocus: false,
+          competitorOccupied: false,
+          enabled: true,
+          hasContentTask: false,
+          contentPublished: false,
+          hasContentPending: false,
+          questionText: "普通问题",
+        },
+        {
+          monthlyFocus: true,
+          competitorOccupied: false,
+          enabled: true,
+          hasContentTask: false,
+          contentPublished: false,
+          hasContentPending: false,
+          questionText: "重点问题",
+        },
+      ],
+      "value",
+    );
+    expect(sorted[0]?.questionText).toBe("重点问题");
   });
 
   it("builds gap overview with diagnosis guard", () => {
