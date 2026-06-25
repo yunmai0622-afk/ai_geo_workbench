@@ -14,6 +14,7 @@ import {
   type DiscoveryCandidateType,
   type DiscoveryDetectedSignals,
 } from "@shared/discoveryLogic";
+import { buildBrandSourceTrustSummary, type BrandSourceRecordRow } from "@shared/brandSourceGraph";
 import {
   brandSourceRecords,
   discoveryCandidates,
@@ -242,6 +243,7 @@ export async function acceptDiscoveryCandidate(
   projectId: number,
   candidateId: number,
   targetType: "source" | "trust_evidence",
+  options?: { markValid?: boolean },
 ): Promise<{ acceptedRecordId: number }> {
   const rows = await db
     .select()
@@ -271,7 +273,7 @@ export async function acceptDiscoveryCandidate(
         sourceName: candidate.title,
         platformName: candidate.suggestedRecordType === "媒体平台" ? candidate.sourceDomain : null,
         url: candidate.url,
-        isPubliclyAccessible: true,
+        isPubliclyAccessible: options?.markValid ? true : Boolean(signals.hasBrandName || signals.likelyOfficial),
         containsBrandName: Boolean(signals.hasBrandName),
         containsBusinessDescription: false,
         containsOfficialSite: Boolean(signals.likelyOfficial),
@@ -279,6 +281,7 @@ export async function acceptDiscoveryCandidate(
         aiCitationConfirmed: false,
         isCrossSourceConsistent: false,
         notes: candidate.snippet,
+        lastVerifiedAt: options?.markValid ? new Date() : null,
       })
       .$returningId();
     const acceptedRecordId = inserted[0]?.id;
@@ -345,5 +348,27 @@ export function getDiscoveryProviderStatus(candidateType?: DiscoveryCandidateTyp
     configured,
     code: configured ? null : SEARCH_PROVIDER_NOT_CONFIGURED,
     message: configured ? null : resolveDiscoveryNotConfiguredMessage(candidateType),
+  };
+}
+
+export async function getSourceDiscoverySummary(db: DbConn, projectId: number) {
+  const [pendingCandidates, latestCandidateRows, sourceRows] = await Promise.all([
+    listDiscoveryCandidates(db, projectId, "source", "pending"),
+    db
+      .select({ createdAt: discoveryCandidates.createdAt })
+      .from(discoveryCandidates)
+      .where(and(eq(discoveryCandidates.projectId, projectId), eq(discoveryCandidates.candidateType, "source")))
+      .orderBy(desc(discoveryCandidates.createdAt))
+      .limit(1),
+    db.select().from(brandSourceRecords).where(eq(brandSourceRecords.projectId, projectId)),
+  ]);
+
+  const trustSummary = buildBrandSourceTrustSummary(sourceRows as BrandSourceRecordRow[]);
+
+  return {
+    lastDiscoveryAt: latestCandidateRows[0]?.createdAt ?? null,
+    newDiscoveryCount: pendingCandidates.length,
+    verifiedSourceCount: trustSummary.verifiedCount,
+    pendingVerificationCount: trustSummary.pendingVerificationCount,
   };
 }

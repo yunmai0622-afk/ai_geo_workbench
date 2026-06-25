@@ -40,6 +40,10 @@ describe("GEO-V1.2-P1-B-Source-Graph-MVP", () => {
     expect(router).toContain("getPageMetrics");
     expect(router).toContain("getEnhancementSuggestions");
     expect(router).toContain("createContentTaskFromSuggestion");
+    expect(router).toContain("markBrandSourceVerified");
+    expect(read("shared/brandSourceGraph.ts")).toContain("resolveSourceTrustLevel");
+    expect(read("server/discoveryService.ts")).toContain("getSourceDiscoverySummary");
+    expect(read("client/src/components/discovery/DiscoveryCandidatesPanel.tsx")).toContain("discovery-mark-valid-");
     expect(service).toContain("syncSourceGraphDerivedData");
     expect(routers).toContain("brandSourceGraph: brandSourceGraphRouter");
   });
@@ -56,12 +60,18 @@ describe("GEO-V1.2-P1-B-Source-Graph-MVP", () => {
     expect(page).toContain("source-graph-empty-sources");
     expect(page).toContain("entity-consistency-empty");
     expect(page).toContain("source-graph-suggestions-empty");
+    expect(page).toContain("source-graph-trust-filter");
+    expect(page).toContain("source-graph-completeness-hint");
+    expect(page).toContain("source-graph-discovery-summary");
+    expect(page).toContain("brand-source-trust-");
+    expect(page).toContain("brand-source-recommendation-");
   });
 
   it("sidebar nav, route alias and assistant panel are wired", () => {
     expect(nav).toContain("品牌信源图谱");
     expect(nav).toContain('path: "/brand-source-graph"');
     expect(app).toContain('path="/brand-source-graph"');
+    expect(app).toContain('path="/brand-sources"');
     expect(app).toContain('Redirect to="/brand-source-graph"');
     expect(shell).toContain("SourceGraphAssistantPanel");
     expect(assistant).toContain("sidebar-consistency-score");

@@ -8,7 +8,7 @@ import {
   type DiscoveryDetectedSignals,
 } from "@shared/discoveryLogic";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { Check, ExternalLink, Sparkles, X } from "lucide-react";
+import { Check, ExternalLink, Sparkles, ShieldCheck, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -32,9 +32,23 @@ type CandidateRow = {
   confidence: string;
   detectedSignals: Record<string, boolean> | null;
   status: string;
+  createdAt: Date | string;
 };
 
 type ResolvedStatus = "accepted" | "ignored";
+
+function formatDiscoveryTime(value: Date | string | null | undefined): string {
+  if (!value) return "—";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function confidenceBadgeClass(confidence: string): string {
   if (confidence === "high") return "border-emerald-200 bg-emerald-50 text-emerald-700";
@@ -132,13 +146,14 @@ export function DiscoveryCandidatesPanel({
     }
   };
 
-  const handleAccept = async (candidateId: number) => {
+  const handleAccept = async (candidateId: number, markValid = false) => {
     markResolved(candidateId, "accepted");
     try {
       await acceptMutation.mutateAsync({
         projectId,
         candidateId,
         targetType: candidateType,
+        markValid,
       });
       await invalidatePendingList();
       setResolvedStatuses(prev => {
@@ -147,7 +162,7 @@ export function DiscoveryCandidatesPanel({
         return next;
       });
       await onAccepted?.();
-      toast.success("已采纳到正式库");
+      toast.success(markValid ? "已标记为有效并加入信源库" : "已采纳到正式库（待验证）");
     } catch (error) {
       setResolvedStatuses(prev => {
         const next = { ...prev };
@@ -257,6 +272,14 @@ export function DiscoveryCandidatesPanel({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-gray-900">{candidate.title}</p>
+                      {!resolvedStatus ? (
+                        <span
+                          className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
+                          data-testid={`${testIdPrefix}-discovery-new-${candidate.id}`}
+                        >
+                          新发现
+                        </span>
+                      ) : null}
                       {resolvedStatus ? (
                         <span
                           className={`rounded-full border px-2 py-0.5 text-[11px] ${resolvedBadgeClass(resolvedStatus)}`}
@@ -270,10 +293,15 @@ export function DiscoveryCandidatesPanel({
                       <span>{candidate.sourceDomain || "未知域名"}</span>
                       <span>·</span>
                       <span>建议类型：{candidate.suggestedRecordType}</span>
+                      <span>·</span>
+                      <span data-testid={`${testIdPrefix}-discovery-time-${candidate.id}`}>
+                        发现时间：{formatDiscoveryTime(candidate.createdAt)}
+                      </span>
                       <span
                         className={`rounded-full border px-2 py-0.5 ${confidenceBadgeClass(candidate.confidence)}`}
+                        data-testid={`${testIdPrefix}-discovery-confidence-${candidate.id}`}
                       >
-                        置信度 {resolveDiscoveryConfidenceLabel(candidate.confidence)}
+                        Tavily 置信度 {resolveDiscoveryConfidenceLabel(candidate.confidence)}
                       </span>
                     </div>
                     {signals.length > 0 ? (
@@ -290,13 +318,24 @@ export function DiscoveryCandidatesPanel({
                     </a>
                   </div>
                   {resolvedStatus ? null : (
-                    <div className="flex shrink-0 gap-1">
+                    <div className="flex shrink-0 flex-wrap gap-1">
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
                         disabled={busy}
-                        onClick={() => void handleAccept(candidate.id)}
+                        onClick={() => void handleAccept(candidate.id, true)}
+                        data-testid={`${testIdPrefix}-discovery-mark-valid-${candidate.id}`}
+                      >
+                        <ShieldCheck className="mr-1 size-3.5" />
+                        标记为有效
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => void handleAccept(candidate.id, false)}
                         data-testid={`${testIdPrefix}-discovery-accept-${candidate.id}`}
                       >
                         <Check className="mr-1 size-3.5" />

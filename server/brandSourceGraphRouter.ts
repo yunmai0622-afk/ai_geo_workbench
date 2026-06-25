@@ -12,7 +12,9 @@ import {
   computePageTopMetrics,
   computeConsistencyScore,
   deriveBrandSourceRisk,
+  enrichBrandSourceTrust,
   normalizeBrandSourceRecord,
+  sortBrandSourcesByPriority,
   type BrandSourceRecordRow,
 } from "@shared/brandSourceGraph";
 import { getDb } from "./db";
@@ -25,6 +27,7 @@ import {
   mapConsistencyChecksFromDb,
   syncSourceGraphDerivedData,
 } from "./brandSourceGraphService";
+import { enterpriseGeoProfiles } from "../drizzle/schema";
 
 async function requireDb() {
   const db = await getDb();
@@ -116,12 +119,24 @@ export const brandSourceGraphRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await requireDb();
       await requireProjectAccess(ctx, input.projectId);
-      const rows = await db
-        .select()
-        .from(brandSourceRecords)
-        .where(eq(brandSourceRecords.projectId, input.projectId))
-        .orderBy(desc(brandSourceRecords.updatedAt));
-      return rows.map(row => normalizeBrandSourceRecord(row as BrandSourceRecordRow));
+      const [rows, profileRows] = await Promise.all([
+        db
+          .select()
+          .from(brandSourceRecords)
+          .where(eq(brandSourceRecords.projectId, input.projectId))
+          .orderBy(desc(brandSourceRecords.updatedAt)),
+        db
+          .select({ enterpriseName: enterpriseGeoProfiles.enterpriseName })
+          .from(enterpriseGeoProfiles)
+          .where(eq(enterpriseGeoProfiles.projectId, input.projectId))
+          .orderBy(desc(enterpriseGeoProfiles.updatedAt))
+          .limit(1),
+      ]);
+      const brandName = profileRows[0]?.enterpriseName ?? null;
+      const normalized = rows.map(row => normalizeBrandSourceRecord(row as BrandSourceRecordRow));
+      return sortBrandSourcesByPriority(normalized).map(record =>
+        enrichBrandSourceTrust(record, brandName),
+      );
     }),
 
   createBrandSource: protectedProcedure
@@ -177,7 +192,7 @@ export const brandSourceGraphRouter = router({
       await requireBrandSourceAccess(ctx, input.id);
       await db
         .update(brandSourceRecords)
-        .set({ lastVerifiedAt: new Date() })
+        .set({ lastVerifiedAt: new Date(), isPubliclyAccessible: true })
         .where(eq(brandSourceRecords.id, input.id));
       return { success: true as const };
     }),

@@ -7,6 +7,7 @@ import {
   discoverSources,
   discoverTrustEvidence,
   getDiscoveryProviderStatus,
+  getSourceDiscoverySummary,
   ignoreDiscoveryCandidate,
   listDiscoveryCandidates,
 } from "./discoveryService";
@@ -72,12 +73,27 @@ export const discoveryRouter = router({
         projectId: z.number().int().positive(),
         candidateId: z.number().int().positive(),
         targetType: z.enum(["source", "trust_evidence"]),
+        markValid: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await requireProjectAccess(ctx, input.projectId);
-      return acceptDiscoveryCandidate(db, input.projectId, input.candidateId, input.targetType);
+      return acceptDiscoveryCandidate(
+        db,
+        input.projectId,
+        input.candidateId,
+        input.targetType,
+        { markValid: input.markValid },
+      );
+    }),
+
+  getSourceDiscoverySummary: protectedProcedure
+    .input(z.object({ projectId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const db = await requireDb();
+      await requireProjectAccess(ctx, input.projectId);
+      return getSourceDiscoverySummary(db, input.projectId);
     }),
 
   ignoreCandidate: protectedProcedure

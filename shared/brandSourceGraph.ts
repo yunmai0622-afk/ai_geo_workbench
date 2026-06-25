@@ -741,3 +741,234 @@ export function resolveEntityConsistencyStatusLabel(status: EntityConsistencySta
   };
   return labels[status];
 }
+
+export const SOURCE_TRUST_LEVELS = ["high", "medium", "low", "pending"] as const;
+export type SourceTrustLevel = (typeof SOURCE_TRUST_LEVELS)[number];
+
+export const SOURCE_TRUST_LEVEL_LABELS: Record<SourceTrustLevel, string> = {
+  high: "高",
+  medium: "中",
+  low: "低",
+  pending: "待评估",
+};
+
+export const SOURCE_VERIFICATION_STATUSES = ["valid", "invalid", "pending"] as const;
+export type SourceVerificationStatus = (typeof SOURCE_VERIFICATION_STATUSES)[number];
+
+export const SOURCE_VERIFICATION_STATUS_LABELS: Record<SourceVerificationStatus, string> = {
+  valid: "有效",
+  invalid: "失效",
+  pending: "待验证",
+};
+
+export const SOURCE_RECOMMENDATION_SUPPORTS = [
+  "brand_cognition",
+  "product_capability",
+  "customer_case",
+  "industry_authority",
+  "general",
+] as const;
+export type SourceRecommendationSupport = (typeof SOURCE_RECOMMENDATION_SUPPORTS)[number];
+
+export const SOURCE_RECOMMENDATION_SUPPORT_LABELS: Record<SourceRecommendationSupport, string> = {
+  brand_cognition: "品牌基础认知",
+  product_capability: "产品能力证明",
+  customer_case: "客户案例",
+  industry_authority: "行业权威",
+  general: "通用信源",
+};
+
+export const BRAND_SOURCE_TRUST_FILTERS = ["all", "high_trust", "pending_verification", "invalid"] as const;
+export type BrandSourceTrustFilter = (typeof BRAND_SOURCE_TRUST_FILTERS)[number];
+
+export const BRAND_SOURCE_TRUST_FILTER_LABELS: Record<BrandSourceTrustFilter, string> = {
+  all: "全部",
+  high_trust: "高可信度",
+  pending_verification: "待验证",
+  invalid: "失效",
+};
+
+const HIGH_TRUST_PLATFORMS = new Set<string>(["official_site", "media"]);
+const MEDIUM_TRUST_PLATFORMS = new Set<string>([
+  "zhihu",
+  "baijiahao",
+  "sohu",
+  "netease",
+  "toutiao",
+  "xiaohongshu",
+  "wechat",
+  "case_page",
+]);
+const LOW_TRUST_PLATFORMS = new Set<string>(["third_party", "other"]);
+
+export function resolveSourceTrustLevel(
+  record: Pick<BrandSourceRecordRow, "platform" | "platformName">,
+): SourceTrustLevel {
+  if (HIGH_TRUST_PLATFORMS.has(record.platform)) return "high";
+  if (MEDIUM_TRUST_PLATFORMS.has(record.platform)) return "medium";
+  if (LOW_TRUST_PLATFORMS.has(record.platform)) return "low";
+  return "pending";
+}
+
+export function resolveSourceVerificationStatus(
+  record: Pick<BrandSourceRecordRow, "isPubliclyAccessible" | "lastVerifiedAt">,
+): SourceVerificationStatus {
+  if (!record.lastVerifiedAt) return "pending";
+  return record.isPubliclyAccessible ? "valid" : "invalid";
+}
+
+function includesAnyKeyword(text: string, keywords: string[]): boolean {
+  const lower = text.toLowerCase();
+  return keywords.some(keyword => lower.includes(keyword.toLowerCase()));
+}
+
+export function resolveSourceRecommendationSupport(input: {
+  sourceName?: string | null;
+  notes?: string | null;
+  url?: string | null;
+  platform?: string;
+  brandName?: string | null;
+}): SourceRecommendationSupport {
+  const text = [input.sourceName, input.notes, input.url].filter(Boolean).join(" ");
+  const brandName = input.brandName?.trim() ?? "";
+  if (
+    brandName &&
+    includesAnyKeyword(text, [brandName]) &&
+    includesAnyKeyword(text, ["介绍", "关于", "是什么", "做什么"])
+  ) {
+    return "brand_cognition";
+  }
+  if (includesAnyKeyword(text, ["产品", "功能", "能力", "方案", "服务"])) return "product_capability";
+  if (includesAnyKeyword(text, ["案例", "客户", "成功", "见证"])) return "customer_case";
+  if (includesAnyKeyword(text, ["行业", "报告", "权威", "白皮书", "研究"])) return "industry_authority";
+  if (input.platform === "case_page") return "customer_case";
+  if (input.platform === "official_site") return "brand_cognition";
+  if (input.platform === "media") return "industry_authority";
+  return "general";
+}
+
+export type EnrichedBrandSourceTrust = BrandSourceRecordRow & {
+  trustLevel: SourceTrustLevel;
+  trustLevelLabel: string;
+  verificationStatus: SourceVerificationStatus;
+  verificationStatusLabel: string;
+  recommendationSupport: SourceRecommendationSupport;
+  recommendationSupportLabel: string;
+  sortTier: number;
+};
+
+export function enrichBrandSourceTrust(
+  record: BrandSourceRecordRow,
+  brandName?: string | null,
+): EnrichedBrandSourceTrust {
+  const trustLevel = resolveSourceTrustLevel(record);
+  const verificationStatus = resolveSourceVerificationStatus(record);
+  const recommendationSupport = resolveSourceRecommendationSupport({
+    sourceName: record.sourceName,
+    notes: record.notes,
+    url: record.url,
+    platform: record.platform,
+    brandName,
+  });
+  return {
+    ...record,
+    trustLevel,
+    trustLevelLabel: SOURCE_TRUST_LEVEL_LABELS[trustLevel],
+    verificationStatus,
+    verificationStatusLabel: SOURCE_VERIFICATION_STATUS_LABELS[verificationStatus],
+    recommendationSupport,
+    recommendationSupportLabel: SOURCE_RECOMMENDATION_SUPPORT_LABELS[recommendationSupport],
+    sortTier: resolveBrandSourceSortTier(record),
+  };
+}
+
+export function resolveBrandSourceSortTier(record: BrandSourceRecordRow): number {
+  const verificationStatus = resolveSourceVerificationStatus(record);
+  if (verificationStatus === "invalid") return 5;
+  if (record.platform === "official_site") return 1;
+  const trustLevel = resolveSourceTrustLevel(record);
+  if (trustLevel === "high" && verificationStatus === "valid") return 2;
+  if (trustLevel === "medium") return 3;
+  return 4;
+}
+
+export function compareBrandSourcesByPriority(a: BrandSourceRecordRow, b: BrandSourceRecordRow): number {
+  const tierDiff = resolveBrandSourceSortTier(a) - resolveBrandSourceSortTier(b);
+  if (tierDiff !== 0) return tierDiff;
+  const nameA = (a.sourceName ?? a.platformName ?? a.platform).toString();
+  const nameB = (b.sourceName ?? b.platformName ?? b.platform).toString();
+  return nameA.localeCompare(nameB, "zh-CN");
+}
+
+export function sortBrandSourcesByPriority<T extends BrandSourceRecordRow>(records: readonly T[]): T[] {
+  return [...records].sort(compareBrandSourcesByPriority);
+}
+
+export function filterBrandSourcesByTrust<T extends BrandSourceRecordRow>(
+  records: readonly T[],
+  filter: BrandSourceTrustFilter,
+): T[] {
+  if (filter === "all") return [...records];
+  return records.filter(record => {
+    const trustLevel = resolveSourceTrustLevel(record);
+    const verificationStatus = resolveSourceVerificationStatus(record);
+    if (filter === "high_trust") return trustLevel === "high";
+    if (filter === "pending_verification") return verificationStatus === "pending";
+    if (filter === "invalid") return verificationStatus === "invalid";
+    return true;
+  });
+}
+
+export type BrandSourceTrustSummary = {
+  totalCount: number;
+  highTrustCount: number;
+  verifiedCount: number;
+  pendingVerificationCount: number;
+  invalidCount: number;
+};
+
+export function buildBrandSourceTrustSummary(records: BrandSourceRecordRow[]): BrandSourceTrustSummary {
+  let highTrustCount = 0;
+  let verifiedCount = 0;
+  let pendingVerificationCount = 0;
+  let invalidCount = 0;
+  for (const record of records) {
+    if (resolveSourceTrustLevel(record) === "high") highTrustCount += 1;
+    const status = resolveSourceVerificationStatus(record);
+    if (status === "valid") verifiedCount += 1;
+    if (status === "pending") pendingVerificationCount += 1;
+    if (status === "invalid") invalidCount += 1;
+  }
+  return {
+    totalCount: records.length,
+    highTrustCount,
+    verifiedCount,
+    pendingVerificationCount,
+    invalidCount,
+  };
+}
+
+export type BrandSourceCompletenessHint =
+  | { kind: "low_count"; count: number; message: string }
+  | { kind: "invalid_sources"; count: number; message: string }
+  | null;
+
+export function resolveBrandSourceCompletenessHint(
+  summary: BrandSourceTrustSummary,
+): BrandSourceCompletenessHint {
+  if (summary.totalCount < 5) {
+    return {
+      kind: "low_count",
+      count: summary.totalCount,
+      message: `当前可信信源较少（${summary.totalCount}条），建议补充至少5条高可信度信源，有助于提升AI推荐你的概率。`,
+    };
+  }
+  if (summary.invalidCount > 0) {
+    return {
+      kind: "invalid_sources",
+      count: summary.invalidCount,
+      message: `有${summary.invalidCount}条信源已失效，建议更新或替换，失效信源可能影响AI对你品牌的信任度。`,
+    };
+  }
+  return null;
+}

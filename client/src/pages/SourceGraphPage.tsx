@@ -20,12 +20,26 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import {
   BRAND_SOURCE_INDICATORS,
+  BRAND_SOURCE_TRUST_FILTER_LABELS,
+  BRAND_SOURCE_TRUST_FILTERS,
+  buildBrandSourceTrustSummary,
+  filterBrandSourcesByTrust,
+  resolveBrandSourceCompletenessHint,
   resolveBrandSourceDisplayName,
   resolveBrandSourcePlatformLabel,
   resolveEntityConsistencyStatusLabel,
   resolveGapTypeLabel,
   type BrandSourceRecordRow,
+  type BrandSourceTrustFilter,
+  type EnrichedBrandSourceTrust,
 } from "@shared/brandSourceGraph";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import {
   AlertTriangle,
@@ -72,10 +86,21 @@ function buildSourcePayload(form: BrandSourceFormState) {
   };
 }
 
-function riskBadgeClass(level?: string | null): string {
-  if (level === "high") return "border-red-200 bg-red-50 text-red-700";
-  if (level === "medium") return "border-amber-200 bg-amber-50 text-amber-700";
+function trustLevelBadgeClass(level: string): string {
+  if (level === "high") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (level === "medium") return "border-blue-200 bg-blue-50 text-blue-800";
+  if (level === "low") return "border-amber-200 bg-amber-50 text-amber-800";
   return "border-gray-200 bg-gray-50 text-gray-600";
+}
+
+function verificationBadgeClass(status: string): string {
+  if (status === "valid") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "invalid") return "border-red-200 bg-red-50 text-red-800";
+  return "border-amber-200 bg-amber-50 text-amber-800";
+}
+
+function recommendationBadgeClass(): string {
+  return "border-violet-200 bg-violet-50 text-violet-800";
 }
 
 export default function SourceGraphPage() {
@@ -89,6 +114,7 @@ export default function SourceGraphPage() {
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [editRecord, setEditRecord] = useState<BrandSourceRecordRow | null>(null);
   const [sourceFormInitial, setSourceFormInitial] = useState<BrandSourceFormState>(() => defaultBrandSourceForm());
+  const [trustFilter, setTrustFilter] = useState<BrandSourceTrustFilter>("all");
 
   const sourcesQuery = trpc.geo.brandSourceGraph.getBrandSources.useQuery(projectQueryInput, {
     enabled: enabled && Boolean(selectedProjectId),
@@ -102,6 +128,9 @@ export default function SourceGraphPage() {
   const suggestionsQuery = trpc.geo.brandSourceGraph.getEnhancementSuggestions.useQuery(projectQueryInput, {
     enabled: enabled && Boolean(selectedProjectId),
   });
+  const discoverySummaryQuery = trpc.geo.discovery.getSourceDiscoverySummary.useQuery(projectQueryInput, {
+    enabled: enabled && Boolean(selectedProjectId),
+  });
 
   const invalidateAll = async () => {
     await Promise.all([
@@ -109,6 +138,7 @@ export default function SourceGraphPage() {
       utils.geo.brandSourceGraph.getPageMetrics.invalidate(projectQueryInput),
       utils.geo.brandSourceGraph.getEntityConsistencyChecks.invalidate(projectQueryInput),
       utils.geo.brandSourceGraph.getEnhancementSuggestions.invalidate(projectQueryInput),
+      utils.geo.discovery.getSourceDiscoverySummary.invalidate(projectQueryInput),
     ]);
   };
 
@@ -165,10 +195,17 @@ export default function SourceGraphPage() {
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成内容任务失败")),
   });
 
-  const records = (sourcesQuery.data ?? []) as BrandSourceRecordRow[];
+  const records = (sourcesQuery.data ?? []) as EnrichedBrandSourceTrust[];
   const consistencyChecks = consistencyQuery.data ?? [];
   const suggestions = suggestionsQuery.data ?? [];
   const metrics = metricsQuery.data;
+  const trustSummary = useMemo(() => buildBrandSourceTrustSummary(records), [records]);
+  const completenessHint = useMemo(() => resolveBrandSourceCompletenessHint(trustSummary), [trustSummary]);
+  const filteredRecords = useMemo(
+    () => filterBrandSourcesByTrust(records, trustFilter),
+    [records, trustFilter],
+  );
+  const discoverySummary = discoverySummaryQuery.data;
 
   const loading =
     enabled &&
@@ -184,10 +221,9 @@ export default function SourceGraphPage() {
     verifySourceMutation.isPending ||
     createTaskMutation.isPending;
 
-  const sortedRecords = useMemo(
-    () => [...records].sort((a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime()),
-    [records],
-  );
+  function scrollToDiscovery() {
+    document.getElementById("source-graph-discovery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   function openCreateDrawer() {
     setDrawerMode("create");
@@ -243,8 +279,8 @@ export default function SourceGraphPage() {
             </h1>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-gray-500">
-            检查企业在官网、内容平台、媒体稿、客户案例等公开信源中的品牌信息是否一致，帮助 AI
-            更稳定地识别、引用和推荐企业。
+            检查企业在官网、内容平台、媒体稿、客户案例等公开信源中的品牌信息是否一致。AI
+            不推荐你，不只是内容少，也可能是可信信源不足。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">
@@ -283,6 +319,57 @@ export default function SourceGraphPage() {
         </div>
       ) : (
         <>
+          {completenessHint ? (
+            <div
+              className={`rounded-lg border px-4 py-3 text-sm ${
+                completenessHint.kind === "low_count"
+                  ? "border-amber-200 bg-amber-50 text-amber-900"
+                  : "border-red-200 bg-red-50 text-red-900"
+              }`}
+              data-testid="source-graph-completeness-hint"
+            >
+              <p>{completenessHint.message}</p>
+              {completenessHint.kind === "low_count" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={scrollToDiscovery}
+                  data-testid="source-graph-discover-more"
+                >
+                  自动发现更多信源
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {discoverySummary ? (
+            <div
+              className="grid gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4 sm:grid-cols-2 xl:grid-cols-4"
+              data-testid="source-graph-discovery-summary"
+            >
+              <div>
+                <p className="text-xs text-gray-500">上次自动发现</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">
+                  {formatDateTime(discoverySummary.lastDiscoveryAt)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">待处理新发现</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.newDiscoveryCount} 条</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">已验证信源</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.verifiedSourceCount} 条</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">待验证信源</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.pendingVerificationCount} 条</p>
+              </div>
+            </div>
+          ) : null}
+
           <P0Section title="信源总览" description="基于当前项目信源与关键信息一致性自动计算">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="source-graph-overview">
               <P0MetricTile
@@ -310,7 +397,22 @@ export default function SourceGraphPage() {
             </div>
           </P0Section>
 
-          <P0Section title="信源列表" description="录入各平台公开信源并手动标记六项指标">
+          <P0Section title="信源列表" description="录入各平台公开信源，查看可信度与 AI 推荐理由支撑">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-gray-500">默认按官网优先、高可信度已验证信源优先排序</p>
+              <Select value={trustFilter} onValueChange={value => setTrustFilter(value as BrandSourceTrustFilter)}>
+                <SelectTrigger className="w-[160px]" data-testid="source-graph-trust-filter">
+                  <SelectValue placeholder="筛选信源" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRAND_SOURCE_TRUST_FILTERS.map(filter => (
+                    <SelectItem key={filter} value={filter} data-testid={`source-graph-trust-filter-${filter}`}>
+                      {BRAND_SOURCE_TRUST_FILTER_LABELS[filter]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {selectedProjectId ? (
               <DiscoveryCandidatesPanel
                 projectId={selectedProjectId}
@@ -324,7 +426,7 @@ export default function SourceGraphPage() {
               />
             ) : null}
             <div className="mt-4 space-y-3" data-testid="source-graph-list">
-              {sortedRecords.length === 0 ? (
+              {filteredRecords.length === 0 ? (
                 <div
                   className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500"
                   data-testid="source-graph-empty-sources"
@@ -333,7 +435,7 @@ export default function SourceGraphPage() {
                   AI 识别企业。
                 </div>
               ) : (
-                sortedRecords.map(record => (
+                filteredRecords.map(record => (
                   <div
                     key={record.id}
                     className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -380,13 +482,24 @@ export default function SourceGraphPage() {
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs">
                           <span
-                            className={`rounded-full border px-2 py-0.5 ${riskBadgeClass(record.riskLevel)}`}
-                            data-testid={`brand-source-risk-${record.id}`}
+                            className={`rounded-full border px-2 py-0.5 ${trustLevelBadgeClass(record.trustLevel)}`}
+                            data-testid={`brand-source-trust-${record.id}`}
                           >
-                            风险：{record.riskLevel === "high" ? "高" : record.riskLevel === "medium" ? "中" : "低"}
+                            可信度：{record.trustLevelLabel}
                           </span>
-                          {record.riskNotes ? <span className="text-gray-500">{record.riskNotes}</span> : null}
-                          <span className="text-gray-500">最近验证：{formatDateTime(record.lastVerifiedAt)}</span>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 ${verificationBadgeClass(record.verificationStatus)}`}
+                            data-testid={`brand-source-verification-${record.id}`}
+                          >
+                            状态：{record.verificationStatusLabel}
+                          </span>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 ${recommendationBadgeClass()}`}
+                            data-testid={`brand-source-recommendation-${record.id}`}
+                          >
+                            支撑推荐理由：{record.recommendationSupportLabel}
+                          </span>
+                          <span className="text-gray-500">最后验证：{formatDateTime(record.lastVerifiedAt)}</span>
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
@@ -400,8 +513,9 @@ export default function SourceGraphPage() {
                           variant="outline"
                           disabled={mutating}
                           onClick={() => verifySourceMutation.mutate({ id: record.id })}
+                          data-testid={`brand-source-mark-valid-${record.id}`}
                         >
-                          标记已验证
+                          标记为有效
                         </Button>
                         <Button
                           type="button"

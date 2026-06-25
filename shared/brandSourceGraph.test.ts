@@ -6,6 +6,10 @@ import {
   computePageTopMetrics,
   extractEnterpriseProfileStandard,
   groupBrandSourcesByPlatformType,
+  resolveSourceRecommendationSupport,
+  resolveSourceTrustLevel,
+  resolveSourceVerificationStatus,
+  sortBrandSourcesByPriority,
   type BrandSourceRecordRow,
 } from "./brandSourceGraph";
 
@@ -90,5 +94,32 @@ describe("brandSourceGraph scoring", () => {
     );
     expect(suggestions.length).toBeGreaterThan(0);
     expect(suggestions.some(item => item.description.includes("品牌") || item.description.includes("关键信息"))).toBe(true);
+  });
+
+  it("resolves trust level, verification status and recommendation support", () => {
+    const official = makeRecord({
+      id: 1,
+      platform: "official_site",
+      sourceName: "海豚知道官网介绍",
+      lastVerifiedAt: "2026-06-01T00:00:00.000Z",
+    });
+    expect(resolveSourceTrustLevel(official)).toBe("high");
+    expect(resolveSourceVerificationStatus(official)).toBe("valid");
+    expect(
+      resolveSourceRecommendationSupport({
+        sourceName: "客户成功案例：培训机构",
+        platform: "case_page",
+      }),
+    ).toBe("customer_case");
+  });
+
+  it("sorts sources by priority with invalid at bottom", () => {
+    const sorted = sortBrandSourcesByPriority([
+      makeRecord({ id: 1, platform: "other", isPubliclyAccessible: false, lastVerifiedAt: "2026-06-01T00:00:00.000Z" }),
+      makeRecord({ id: 2, platform: "official_site" }),
+      makeRecord({ id: 3, platform: "zhihu", lastVerifiedAt: "2026-06-01T00:00:00.000Z" }),
+    ]);
+    expect(sorted[0]?.platform).toBe("official_site");
+    expect(sorted[sorted.length - 1]?.platform).toBe("other");
   });
 });
