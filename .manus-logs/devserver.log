@@ -6349,3 +6349,29 @@
 [2026-06-25T12:24:11.400Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
 [2026-06-25T12:24:14.814Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
 [2026-06-25T12:24:14.815Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-25T12:36:39.422Z] 8:36:39 AM [vite] (client) hmr update /src/index.css
+[2026-06-25T12:36:39.423Z] 8:36:39 AM [vite] (client) hmr update /src/index.css, /src/components/admin/AdminLayout.tsx
+[2026-06-25T12:36:39.424Z] 8:36:39 AM [vite] (client) hmr update /src/pages/ClientDashboardPage.tsx, /src/index.css
+[2026-06-25T12:36:39.425Z] 8:36:39 AM [vite] (client) hmr update /src/pages/admin/AdminCustomersPage.tsx, /src/index.css
+[2026-06-25T12:36:39.426Z] 8:36:39 AM [vite] (client) hmr update /src/pages/admin/AdminSubscriptionsPage.tsx, /src/index.css
+[2026-06-25T12:36:39.429Z] 8:36:39 AM [vite] (client) hmr update /src/pages/admin/AdminDeliveryPage.tsx
+[2026-06-25T12:36:39.430Z] 8:36:39 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/pages/admin/AdminCustomersPage.tsx, /src/pages/admin/AdminUsersPage.tsx, /src/pages/admin/AdminSubscriptionsPage.tsx, /src/components/clients/ClientsHubTopBar.tsx, /src/pages/admin/AdminDeliveryPage.tsx, /src/components/admin/AdminLayout.tsx
+[2026-06-25T12:36:39.547Z] 8:36:39 AM [tsx] change in ./shared/platformAdmin.ts Restarting...
+[2026-06-25T12:36:48.545Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-25T12:36:48.580Z] Server running on http://localhost:3000/
+[2026-06-25T12:36:49.699Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-25T12:36:55.499Z] Dev server process group stopped
+[2026-06-25T12:36:55.502Z] ELIFECYCLE  Command failed.
+[2026-06-25T12:36:55.610Z] Dev server exited with code -15
+[2026-06-25T12:36:58.533Z] Starting dev server with command: pnpm run dev
+[2026-06-25T12:36:59.293Z] 
+[2026-06-25T12:36:59.294Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-25T12:36:59.295Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-25T12:36:59.295Z] 
+[2026-06-25T12:37:07.380Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-25T12:37:07.413Z] Server running on http://localhost:3000/
+[2026-06-25T12:37:08.175Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-25T12:37:21.070Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-25T12:37:21.071Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-25T12:37:25.415Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-25T12:37:25.416Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
