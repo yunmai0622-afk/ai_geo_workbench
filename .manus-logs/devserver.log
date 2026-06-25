@@ -6319,3 +6319,33 @@
 [2026-06-25T10:10:37.109Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
 [2026-06-25T10:10:41.156Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
 [2026-06-25T10:10:41.157Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-25T12:23:16.511Z] 8:23:16 AM [vite] (client) hmr update /src/index.css
+[2026-06-25T12:23:16.513Z] 8:23:16 AM [vite] (client) hmr update /src/components/AccountReviewGate.tsx, /src/index.css
+[2026-06-25T12:23:16.513Z] 8:23:16 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx, /src/index.css
+[2026-06-25T12:23:16.518Z] 8:23:16 AM [vite] (client) hmr update /src/index.css, /src/components/admin/AdminLayout.tsx
+[2026-06-25T12:23:16.519Z] 8:23:16 AM [vite] (client) hmr update /src/index.css, /src/components/auth/LoginGatePanel.tsx
+[2026-06-25T12:23:16.519Z] 8:23:16 AM [vite] (client) hmr update /src/index.css, /src/components/clients/ClientsHubTopBar.tsx
+[2026-06-25T12:23:16.520Z] 8:23:16 AM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+[2026-06-25T12:23:16.523Z] 8:23:16 AM [vite] (client) hmr update /src/pages/admin/AdminCustomersPage.tsx, /src/index.css
+[2026-06-25T12:23:16.523Z] 8:23:16 AM [vite] (client) hmr update /src/pages/admin/AdminProjectsPage.tsx, /src/index.css
+[2026-06-25T12:23:16.524Z] 8:23:16 AM [vite] (client) hmr update /src/pages/admin/AdminSubscriptionsPage.tsx, /src/pages/admin/AdminCustomersPage.tsx, /src/pages/admin/AdminUsersPage.tsx, /src/pages/admin/AdminDeliveryPage.tsx
+[2026-06-25T12:23:16.524Z] 8:23:16 AM [vite] (client) hmr update /src/components/DashboardLayout.tsx
+[2026-06-25T12:23:16.637Z] 8:23:16 AM [tsx] change in ./shared/platformAdmin.ts Restarting...
+[2026-06-25T12:23:25.020Z] c[downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-25T12:23:25.054Z] Server running on http://localhost:3000/
+[2026-06-25T12:23:25.602Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-25T12:23:40.115Z] Dev server process group stopped
+[2026-06-25T12:23:40.118Z] ELIFECYCLE  Command failed.
+[2026-06-25T12:23:40.222Z] Dev server exited with code -15
+[2026-06-25T12:23:43.502Z] Starting dev server with command: pnpm run dev
+[2026-06-25T12:23:45.102Z] 
+[2026-06-25T12:23:45.103Z] > ai_geo_workbench@1.0.0 dev /home/ubuntu/ai_geo_workbench
+[2026-06-25T12:23:45.104Z] > NODE_ENV=development tsx watch server/_core/index.ts
+[2026-06-25T12:23:45.104Z] 
+[2026-06-25T12:23:54.931Z] [downloads] /downloads/geo-local-agent-mac.zip -> https://github.com/yunmai0622-afk/geo-local-agent-releases/releases/download/geo-local-agent-v1.0.20/geo-local-agent-mac.zip
+[2026-06-25T12:23:54.966Z] Server running on http://localhost:3000/
+[2026-06-25T12:23:56.269Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-06-25T12:24:11.398Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-25T12:24:11.400Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
+[2026-06-25T12:24:14.814Z] [geo.localAgent.platformAccounts.list] {"projectId":180001,"userId":16740006,"accountCount":0}
+[2026-06-25T12:24:14.815Z] [geo.localAgent.resolveState] {"source":"platformAccounts.list","projectId":180001,"userId":16740006,"platform":null,"hasLocalAgentId":false,"hasLocalProfileId":false,"sessionStatus":null,"lastCheckedAt":null,"resolvedState":"UNKNOWN_NEEDS_CHECK","accountCount":0}
