@@ -21,7 +21,7 @@ const ADMIN_NAV_ALL = [
   { path: "/admin/customers", label: "客户公司管理", icon: Building2, operatorVisible: true },
   { path: "/admin/projects", label: "客户项目绑定", icon: Link2, operatorVisible: true },
   { path: "/admin/users", label: "注册用户审核", icon: Users, operatorVisible: false },
-  { path: "/admin/subscriptions", label: "套餐与有效期", icon: CreditCard, operatorVisible: false },
+  { path: "/admin/subscriptions", label: "套餐与有效期", icon: CreditCard, operatorVisible: true },
   { path: "/admin/delivery", label: "交付驾驶舱", icon: LayoutDashboard, operatorVisible: false },
 ] as const;
 

@@ -28,6 +28,11 @@ import {
   formatMeasuredAt,
 } from "@/lib/projectWorkspaceDisplay";
 import { resolveClientProjectCardPrimaryAction } from "@shared/clientProjectCardPrimaryAction";
+import {
+  formatSubscriptionExpiryLabel,
+  subscriptionServiceStatusBadgeClass,
+  type SubscriptionServiceStatus,
+} from "@shared/companySubscriptionServiceStatus";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
 import { trpc } from "@/lib/trpc";
@@ -60,6 +65,10 @@ type ProjectSummary = {
   hasActiveMonthlyPlan: boolean;
   monthlyPlanCompletedCount: number;
   monthlyPlanTotalCount: number;
+  subscriptionPlanName: string | null;
+  subscriptionExpiresAt: Date | null;
+  subscriptionServiceStatus: string;
+  subscriptionServiceStatusLabel: string;
 };
 
 const ARCHIVE_VIEW_FILTERS = [
@@ -145,6 +154,11 @@ function ProjectCard({
   const industryLabel =
     project.industry?.trim() && project.industry !== "待补充" ? project.industry.trim() : "未填写行业";
   const lastMeasuredLabel = formatMeasuredAt(project.lastMeasuredAt ?? project.lastDiagnosisAt) ?? "暂无";
+  const subscriptionStatus = (project.subscriptionServiceStatus ?? "not_configured") as SubscriptionServiceStatus;
+  const subscriptionExpiryLabel = formatSubscriptionExpiryLabel(
+    project.subscriptionExpiresAt,
+    subscriptionStatus,
+  );
 
   return (
     <article
@@ -203,6 +217,25 @@ function ProjectCard({
       <p className="mb-3 text-[13px] text-gray-500" data-testid="client-project-industry">
         {industryLabel}
       </p>
+
+      <div
+        className="mb-3 flex flex-wrap items-center gap-2 text-[12px]"
+        data-testid="client-project-subscription"
+      >
+        <span className="text-gray-500">套餐：</span>
+        <span className="font-medium text-gray-800">
+          {project.subscriptionPlanName ?? "未开通"}
+        </span>
+        <span
+          className={cn(
+            "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+            subscriptionServiceStatusBadgeClass(subscriptionStatus),
+          )}
+        >
+          {project.subscriptionServiceStatusLabel}
+        </span>
+        <span className="text-gray-400">到期 {subscriptionExpiryLabel}</span>
+      </div>
 
       <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 px-3 py-2.5">
         <div>

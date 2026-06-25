@@ -126,7 +126,7 @@ export const COMPANY_PLAN_TYPE_LABELS: Record<CompanyPlanType, string> = {
   trial: "试用版",
   basic: "基础版",
   pro: "专业版",
-  agency: "代运营版",
+  agency: "旗舰版",
   custom: "定制版",
 };
 

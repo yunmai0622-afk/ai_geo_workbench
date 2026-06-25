@@ -224,6 +224,19 @@ describe("deliveryCommandCenter", () => {
     expect(todos.urgent.some(item => item.description.includes("天内到期"))).toBe(true);
   });
 
+  it("creates pending todo when subscription expires within 30 days", () => {
+    const todos = buildDeliveryCommandTodos(
+      [
+        {
+          ...baseProject(),
+          subscriptionExpiresAt: "2026-07-10T00:00:00.000Z",
+        },
+      ],
+      new Date("2026-06-15T00:00:00.000Z"),
+    );
+    expect(todos.pending.some(item => item.id.includes("expiring-month"))).toBe(true);
+  });
+
   it("adds client labels to todos for multi-project companies", () => {
     const incomplete = {
       ...baseProject(),

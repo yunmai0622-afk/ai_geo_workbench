@@ -20,6 +20,12 @@ import {
 } from "@shared/platformAdmin";
 import { computeMonthlyPlanProgress } from "@shared/monthlyPlanGeneration";
 import {
+  computeSubscriptionServiceStatus,
+  isSubscriptionHighRenewalRisk,
+  SUBSCRIPTION_SERVICE_STATUS_LABELS,
+  type SubscriptionServiceStatus,
+} from "@shared/companySubscriptionServiceStatus";
+import {
   buildDeliveryCommandCenterView,
   countProfileCompletedSteps,
   type DeliveryCommandProjectInput,
@@ -47,6 +53,28 @@ import {
 import { getDb } from "./db";
 
 export type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+function enrichSubscriptionView<T extends {
+  status: CompanySubscriptionStatus;
+  startedAt: Date;
+  expiresAt: Date | null;
+}>(
+  sub: T | null | undefined,
+  now: Date = new Date(),
+): (T & {
+  serviceStatus: SubscriptionServiceStatus;
+  serviceStatusLabel: string;
+  daysRemaining: number | null;
+}) | null {
+  if (!sub) return null;
+  const serviceStatus = computeSubscriptionServiceStatus(sub, now);
+  return {
+    ...sub,
+    serviceStatus,
+    serviceStatusLabel: SUBSCRIPTION_SERVICE_STATUS_LABELS[serviceStatus],
+    daysRemaining: daysUntil(sub.expiresAt, now),
+  };
+}
 
 export async function requirePlatformDb(): Promise<Db> {
   const db = await getDb();
@@ -387,6 +415,7 @@ async function lastLoginByCompanyId(db: Db, companyIds: number[]) {
 }
 
 export async function getCustomerCompanyMetrics(db: Db, actor?: PlatformActor) {
+  const now = new Date();
   const ownerFilter = ownerUserIdFilter(actor);
   const companyQuery =
     ownerFilter === undefined
@@ -410,17 +439,15 @@ export async function getCustomerCompanyMetrics(db: Db, actor?: PlatformActor) {
     if (company.status === "pending") pendingReview += 1;
     if (company.status === "active") activeService += 1;
     const sub = subs.get(company.id);
-    if (!sub) continue;
-    const days = daysUntil(sub.expiresAt);
-    if (days != null && days >= 0 && days <= 7) expiringSoon += 1;
-    const risk = computeRenewalRisk({
-      subscriptionStatus: sub.status,
-      expiresAt: sub.expiresAt,
-      monthlyPlanCompletedRate: null,
-      hasAiTestData: true,
-      hasMonthlyReport: true,
-    });
-    if (risk === "high") highRisk += 1;
+    const enriched = enrichSubscriptionView(sub ?? null, now);
+    if (enriched?.serviceStatus === "expiring_soon") expiringSoon += 1;
+    if (
+      enriched &&
+      (enriched.serviceStatus === "expired" ||
+        isSubscriptionHighRenewalRisk(enriched.serviceStatus, enriched.expiresAt, now))
+    ) {
+      highRisk += 1;
+    }
   }
 
   return {
@@ -486,9 +513,14 @@ export async function listCustomerCompanies(
         })
       : ("low" as RenewalRiskLevel);
 
+    const enrichedSub = enrichSubscriptionView(sub ?? null);
+
     return {
       ...row,
-      subscription: sub ?? null,
+      subscription: enrichedSub,
+      serviceStatus: enrichedSub?.serviceStatus ?? "not_configured",
+      serviceStatusLabel:
+        enrichedSub?.serviceStatusLabel ?? SUBSCRIPTION_SERVICE_STATUS_LABELS.not_configured,
       projectCount: projectCounts.get(row.id) ?? 0,
       lastLoginAt: lastLogins.get(row.id) ?? null,
       deliveryStage: primaryDelivery?.currentStage ?? "未绑定项目",
@@ -721,21 +753,41 @@ export async function updateUserRole(db: Db, input: { userId: number; customerRo
   return updated[0];
 }
 
-export async function listSubscriptions(db: Db, input?: { companyId?: number; search?: string }) {
+export async function listSubscriptions(
+  db: Db,
+  input?: { companyId?: number; search?: string },
+  actor?: PlatformActor,
+) {
   let companyIds: number[] | undefined;
+  const ownerFilter = ownerUserIdFilter(actor);
+  if (ownerFilter === -1) return [];
+
   if (input?.search?.trim()) {
     const q = `%${input.search.trim()}%`;
+    const conditions = [like(customerCompanies.companyName, q)];
+    if (ownerFilter != null) conditions.push(eq(customerCompanies.ownerUserId, ownerFilter));
     const matched = await db
       .select({ id: customerCompanies.id })
       .from(customerCompanies)
-      .where(like(customerCompanies.companyName, q));
+      .where(and(...conditions));
     companyIds = matched.map(r => r.id);
+    if (companyIds.length === 0) return [];
+  } else if (ownerFilter != null) {
+    const owned = await db
+      .select({ id: customerCompanies.id })
+      .from(customerCompanies)
+      .where(eq(customerCompanies.ownerUserId, ownerFilter));
+    companyIds = owned.map(r => r.id);
     if (companyIds.length === 0) return [];
   }
 
   const subConditions = [];
-  if (input?.companyId) subConditions.push(eq(companySubscriptions.companyId, input.companyId));
-  if (companyIds) subConditions.push(inArray(companySubscriptions.companyId, companyIds));
+  if (input?.companyId) {
+    if (actor) await assertCustomerCompanyAccess(db, actor, input.companyId);
+    subConditions.push(eq(companySubscriptions.companyId, input.companyId));
+  } else if (companyIds) {
+    subConditions.push(inArray(companySubscriptions.companyId, companyIds));
+  }
 
   const subs = await db
     .select()
@@ -753,12 +805,14 @@ export async function listSubscriptions(db: Db, input?: { companyId?: number; se
       : [];
   const companyNameById = new Map(companies.map(c => [c.id, c.companyName]));
 
-  return subs.map(sub => ({
-    ...sub,
-    enabledFeatures: parseEnabledFeatures(sub.enabledFeatures),
-    companyName: companyNameById.get(sub.companyId) ?? `公司 #${sub.companyId}`,
-    daysRemaining: daysUntil(sub.expiresAt),
-  }));
+  return subs.map(sub => {
+    const enriched = enrichSubscriptionView(sub)!;
+    return {
+      ...enriched,
+      enabledFeatures: parseEnabledFeatures(sub.enabledFeatures),
+      companyName: companyNameById.get(sub.companyId) ?? `公司 #${sub.companyId}`,
+    };
+  });
 }
 
 export async function upsertCompanySubscription(
@@ -768,6 +822,7 @@ export async function upsertCompanySubscription(
     planType: CompanyPlanType;
     planName?: string;
     status?: CompanySubscriptionStatus;
+    startedAt?: Date;
     expiresAt?: Date | null;
     maxProjects?: number;
     monthlyAiTests?: number;
@@ -777,7 +832,9 @@ export async function upsertCompanySubscription(
     enabledFeatures?: Partial<Record<PlatformFeatureKey, boolean>>;
     notes?: string;
   },
+  actor?: PlatformActor,
 ) {
+  if (actor) await assertCustomerCompanyAccess(db, actor, input.companyId);
   const company = await db
     .select({ id: customerCompanies.id })
     .from(customerCompanies)
@@ -797,7 +854,8 @@ export async function upsertCompanySubscription(
     companyId: input.companyId,
     planType: input.planType,
     planName: input.planName?.trim() || defaults.planName,
-    status: input.status ?? ("trial" as CompanySubscriptionStatus),
+    status: input.status ?? ("active" as CompanySubscriptionStatus),
+    startedAt: input.startedAt ?? new Date(),
     expiresAt: input.expiresAt ?? null,
     maxProjects: input.maxProjects ?? defaults.maxProjects,
     monthlyAiTests: input.monthlyAiTests ?? defaults.monthlyAiTests,
@@ -1376,6 +1434,46 @@ export async function getDeliveryCommandCenter(db: Db) {
   });
 
   return buildDeliveryCommandCenterView(projectsInput, now);
+}
+
+export type ProjectSubscriptionSummary = {
+  planName: string | null;
+  planType: CompanyPlanType | null;
+  expiresAt: Date | null;
+  serviceStatus: SubscriptionServiceStatus;
+  serviceStatusLabel: string;
+};
+
+function enrichSubscriptionSummary(
+  sub: (typeof companySubscriptions.$inferSelect) | undefined,
+): ProjectSubscriptionSummary {
+  const enriched = enrichSubscriptionView(sub ?? null);
+  return {
+    planName: sub?.planName ?? null,
+    planType: sub?.planType ?? null,
+    expiresAt: sub?.expiresAt ?? null,
+    serviceStatus: enriched?.serviceStatus ?? "not_configured",
+    serviceStatusLabel:
+      enriched?.serviceStatusLabel ?? SUBSCRIPTION_SERVICE_STATUS_LABELS.not_configured,
+  };
+}
+
+export async function getProjectSubscriptionSummaryByProjectIds(
+  db: Db,
+  projectIds: number[],
+): Promise<Map<number, ProjectSubscriptionSummary>> {
+  if (projectIds.length === 0) return new Map();
+  const bindings = await db
+    .select()
+    .from(companyProjects)
+    .where(inArray(companyProjects.projectId, projectIds));
+  const companyIds = [...new Set(bindings.map(b => b.companyId))];
+  const subs = await subscriptionByCompanyId(db, companyIds);
+  const result = new Map<number, ProjectSubscriptionSummary>();
+  for (const binding of bindings) {
+    result.set(binding.projectId, enrichSubscriptionSummary(subs.get(binding.companyId)));
+  }
+  return result;
 }
 
 export { DEFAULT_ENABLED_FEATURES, parseEnabledFeatures };

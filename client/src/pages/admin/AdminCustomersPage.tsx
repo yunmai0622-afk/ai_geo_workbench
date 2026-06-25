@@ -30,8 +30,15 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
   CUSTOMER_COMPANY_STATUS_LABELS,
+  COMPANY_PLAN_TYPE_LABELS,
   RENEWAL_RISK_LABELS,
 } from "@shared/platformAdmin";
+import {
+  formatSubscriptionExpiryLabel,
+  subscriptionServiceStatusBadgeClass,
+  type SubscriptionServiceStatus,
+} from "@shared/companySubscriptionServiceStatus";
+import { cn } from "@/lib/utils";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
@@ -172,7 +179,7 @@ export default function AdminCustomersPage() {
                     <TableHead>公司名称</TableHead>
                     <TableHead>联系人</TableHead>
                     <TableHead>手机/邮箱</TableHead>
-                    <TableHead>状态</TableHead>
+                    <TableHead>套餐状态</TableHead>
                     <TableHead>当前套餐</TableHead>
                     <TableHead>到期时间</TableHead>
                     <TableHead>项目数</TableHead>
@@ -182,7 +189,13 @@ export default function AdminCustomersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map(row => (
+                  {rows.map(row => {
+                    const serviceStatus = (row.serviceStatus ?? "not_configured") as SubscriptionServiceStatus;
+                    const expiryLabel = formatSubscriptionExpiryLabel(
+                      row.subscription?.expiresAt ?? null,
+                      serviceStatus,
+                    );
+                    return (
                     <TableRow key={row.id} data-testid={`admin-customer-${row.id}`}>
                       <TableCell className="font-medium">{row.companyName}</TableCell>
                       <TableCell>{row.contactName ?? "—"}</TableCell>
@@ -191,16 +204,19 @@ export default function AdminCustomersPage() {
                         <div className="text-xs text-gray-500">{row.contactEmail ?? "—"}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {CUSTOMER_COMPANY_STATUS_LABELS[row.status]}
+                        <Badge
+                          variant="outline"
+                          className={cn(subscriptionServiceStatusBadgeClass(serviceStatus))}
+                        >
+                          {row.serviceStatusLabel ?? "未开通"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{row.subscription?.planName ?? "未开通"}</TableCell>
                       <TableCell>
-                        {row.subscription?.expiresAt
-                          ? new Date(row.subscription.expiresAt).toLocaleDateString()
-                          : "—"}
+                        {row.subscription?.planType
+                          ? COMPANY_PLAN_TYPE_LABELS[row.subscription.planType]
+                          : "未开通"}
                       </TableCell>
+                      <TableCell>{expiryLabel}</TableCell>
                       <TableCell>{row.projectCount}</TableCell>
                       {isPlatformAdmin ? <TableCell>{row.deliveryStage}</TableCell> : null}
                       {isPlatformAdmin ? (
@@ -242,14 +258,19 @@ export default function AdminCustomersPage() {
                             <Button size="sm" variant="ghost" asChild>
                               <Link href={`/admin/subscriptions?companyId=${row.id}`}>套餐</Link>
                             </Button>
-                          ) : null}
+                          ) : (
+                            <Button size="sm" variant="ghost" asChild>
+                              <Link href={`/admin/subscriptions?companyId=${row.id}`}>配置套餐</Link>
+                            </Button>
+                          )}
                           <Button size="sm" variant="ghost" asChild>
                             <Link href={`/admin/projects?companyId=${row.id}`}>项目</Link>
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

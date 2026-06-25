@@ -12,6 +12,7 @@ import {
 import { adminProcedure, operatorAdminProcedure, router } from "./_core/trpc";
 import {
   assignUserCompany,
+  assertCustomerCompanyAccess,
   bindProjectToCompany,
   createCustomerCompany,
   createProjectForCompany,
@@ -242,7 +243,7 @@ const featureSchema = z.object(
 );
 
 const subscriptionsRouter = router({
-  list: adminProcedure
+  list: operatorAdminProcedure
     .input(
       z
         .object({
@@ -251,18 +252,19 @@ const subscriptionsRouter = router({
         })
         .optional(),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return listSubscriptions(db, input);
+      return listSubscriptions(db, input, platformActorFromCtx(ctx));
     }),
 
-  upsert: adminProcedure
+  upsert: operatorAdminProcedure
     .input(
       z.object({
         companyId: z.number().int().positive(),
         planType: z.enum(COMPANY_PLAN_TYPES),
         planName: z.string().trim().max(120).optional(),
         status: z.enum(COMPANY_SUBSCRIPTION_STATUSES).optional(),
+        startedAt: z.date().optional(),
         expiresAt: z.date().nullable().optional(),
         maxProjects: z.number().int().min(1).max(100).optional(),
         monthlyAiTests: z.number().int().min(0).max(10000).optional(),
@@ -273,19 +275,20 @@ const subscriptionsRouter = router({
         notes: z.string().trim().max(5000).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return upsertCompanySubscription(db, input);
+      return upsertCompanySubscription(db, input, platformActorFromCtx(ctx));
     }),
 
-  pause: adminProcedure
+  pause: operatorAdminProcedure
     .input(z.object({ companyId: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
+      await assertCustomerCompanyAccess(db, platformActorFromCtx(ctx), input.companyId);
       return pauseCompanySubscription(db, input.companyId);
     }),
 
-  extend: adminProcedure
+  extend: operatorAdminProcedure
     .input(
       z.object({
         companyId: z.number().int().positive(),
@@ -293,8 +296,9 @@ const subscriptionsRouter = router({
         status: z.enum(COMPANY_SUBSCRIPTION_STATUSES).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
+      await assertCustomerCompanyAccess(db, platformActorFromCtx(ctx), input.companyId);
       return extendCompanySubscription(db, input);
     }),
 

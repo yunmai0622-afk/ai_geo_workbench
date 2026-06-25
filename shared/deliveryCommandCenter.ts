@@ -391,12 +391,30 @@ export function buildDeliveryCommandTodos(
       });
     }
 
-    if (expiryDays != null && expiryDays >= 0 && expiryDays <= 7) {
+    if (expiryDays != null && expiryDays < 0) {
+      urgent.push({
+        ...base,
+        id: `${project.projectId}-expired`,
+        urgency: "urgent",
+        description: "客户套餐已到期",
+        actionPath: workspacePath(project.projectId, "/workspace"),
+        actionLabel: "进入项目",
+      });
+    } else if (expiryDays != null && expiryDays >= 0 && expiryDays <= 7) {
       urgent.push({
         ...base,
         id: `${project.projectId}-expiring-soon`,
         urgency: "urgent",
         description: `客户套餐 ${expiryDays} 天内到期`,
+        actionPath: workspacePath(project.projectId, "/workspace"),
+        actionLabel: "进入项目",
+      });
+    } else if (expiryDays != null && expiryDays > 7 && expiryDays <= 30) {
+      pending.push({
+        ...base,
+        id: `${project.projectId}-expiring-month`,
+        urgency: "pending",
+        description: `客户套餐 ${expiryDays} 天内到期，建议提前续费`,
         actionPath: workspacePath(project.projectId, "/workspace"),
         actionLabel: "进入项目",
       });

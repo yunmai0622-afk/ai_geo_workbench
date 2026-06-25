@@ -45,7 +45,7 @@ import { adminPublishTasksRouter } from "./adminPublishTasksRouter";
 import { adminStatsRouter } from "./adminStatsRouter";
 import { adminSubscriptionRouter } from "./adminSubscriptionRouter";
 import { adminPlatformRouter } from "./adminPlatformRouter";
-import { resolveCompanyServiceStatus } from "./platformAdminService";
+import { getProjectSubscriptionSummaryByProjectIds, resolveCompanyServiceStatus } from "./platformAdminService";
 import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
 import { getDefaultPublishPlatformsSync } from "./geoSystemConfigStore";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -1638,6 +1638,8 @@ const geoRouter = router({
         }
       }
 
+      const subscriptionByProject = await getProjectSubscriptionSummaryByProjectIds(db, projectIds);
+
       return allProjects.map(p => {
         const t0 = latestT0RoundByProject.get(p.id);
         const lastDiagnosisAt = lastDiagnosisMap.get(p.id) ?? null;
@@ -1694,6 +1696,11 @@ const geoRouter = router({
           hasActiveMonthlyPlan: activePlan != null,
           monthlyPlanCompletedCount: monthlyPlanProgress.completedCount,
           monthlyPlanTotalCount: monthlyPlanProgress.totalCount,
+          subscriptionPlanName: subscriptionByProject.get(p.id)?.planName ?? null,
+          subscriptionExpiresAt: subscriptionByProject.get(p.id)?.expiresAt ?? null,
+          subscriptionServiceStatus: subscriptionByProject.get(p.id)?.serviceStatus ?? "not_configured",
+          subscriptionServiceStatusLabel:
+            subscriptionByProject.get(p.id)?.serviceStatusLabel ?? "未开通",
         };
       });
     }),
