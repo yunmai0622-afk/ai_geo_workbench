@@ -38,6 +38,7 @@ const sampleGroups = [
 describe("roleBasedNavigation", () => {
   it("treats admin role as operator navigation", () => {
     expect(resolveNavOperatorMode("admin")).toBe(true);
+    expect(resolveNavOperatorMode("operator")).toBe(true);
     expect(resolveNavOperatorMode("user")).toBe(false);
     expect(resolveNavOperatorMode(undefined)).toBe(false);
   });

@@ -50,7 +50,7 @@ import { GEO_SYSTEM_CONFIG_DEFAULTS } from "@shared/geoSystemConfig";
 import { getDefaultPublishPlatformsSync } from "./geoSystemConfigStore";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, getUserByOpenId, upsertUser } from "./db";
-import { changeUserPassword, loginEmailUser, registerEmailUser, updateUserProfile } from "./emailAuth";
+import { changeUserPassword, loginEmailUser, registerEmailUser, registerOperatorUser, updateUserProfile } from "./emailAuth";
 import { setUserSessionCookie } from "./authSession";
 import { agentRouter } from "./agentRouter";
 import { publishTasksRouter } from "./publishTasksRouter";
@@ -5234,19 +5234,32 @@ export const appRouter = router({
           password: z.string().min(8, "密码至少需要 8 位"),
           confirmPassword: z.string().min(8, "请确认密码"),
           name: z.string().trim().min(1, "请填写姓名").max(120),
+          operatorCompanyName: z.string().trim().max(255).optional(),
+          accountType: z.enum(["operator", "customer"]).default("operator"),
         }),
       )
       .mutation(async ({ ctx, input }) => {
         if (input.password !== input.confirmPassword) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "两次输入的密码不一致" });
         }
-        const user = await registerEmailUser({
-          email: input.email,
-          password: input.password,
-          name: input.name,
-        });
+        if (input.accountType === "operator" && !input.operatorCompanyName?.trim()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "请填写代运营公司名称" });
+        }
+        const user =
+          input.accountType === "operator"
+            ? await registerOperatorUser({
+                email: input.email,
+                password: input.password,
+                name: input.name,
+                operatorCompanyName: input.operatorCompanyName!.trim(),
+              })
+            : await registerEmailUser({
+                email: input.email,
+                password: input.password,
+                name: input.name,
+              });
         await setUserSessionCookie(ctx, user);
-        return { success: true as const };
+        return { success: true as const, role: user.role };
       }),
     loginWithEmail: publicProcedure
       .input(

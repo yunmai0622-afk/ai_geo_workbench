@@ -11,6 +11,9 @@ import {
   type CompanySubscriptionStatus,
   type CustomerCompanyStatus,
   type CustomerRole,
+  isOperatorRole,
+  isPlatformAdminRole,
+  type PlatformActor,
   type PlatformFeatureKey,
   type RenewalRiskLevel,
   type UserReviewStatus,
@@ -51,6 +54,31 @@ export async function requirePlatformDb(): Promise<Db> {
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接不可用" });
   }
   return db;
+}
+
+export async function assertCustomerCompanyAccess(
+  db: Db,
+  actor: PlatformActor,
+  companyId: number,
+): Promise<void> {
+  if (isPlatformAdminRole(actor.role)) return;
+  if (!isOperatorRole(actor.role)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "无权访问该客户公司" });
+  }
+  const rows = await db
+    .select({ id: customerCompanies.id })
+    .from(customerCompanies)
+    .where(and(eq(customerCompanies.id, companyId), eq(customerCompanies.ownerUserId, actor.userId)))
+    .limit(1);
+  if (!rows[0]) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "无权访问该客户公司" });
+  }
+}
+
+function ownerUserIdFilter(actor?: PlatformActor) {
+  if (!actor || isPlatformAdminRole(actor.role)) return undefined;
+  if (isOperatorRole(actor.role)) return actor.userId;
+  return -1;
 }
 
 export type ProjectDeliverySnapshot = {
@@ -358,8 +386,18 @@ async function lastLoginByCompanyId(db: Db, companyIds: number[]) {
   );
 }
 
-export async function getCustomerCompanyMetrics(db: Db) {
-  const companies = await db.select({ id: customerCompanies.id, status: customerCompanies.status }).from(customerCompanies);
+export async function getCustomerCompanyMetrics(db: Db, actor?: PlatformActor) {
+  const ownerFilter = ownerUserIdFilter(actor);
+  const companyQuery =
+    ownerFilter === undefined
+      ? db.select({ id: customerCompanies.id, status: customerCompanies.status }).from(customerCompanies)
+      : ownerFilter === -1
+        ? Promise.resolve([] as Array<{ id: number; status: CustomerCompanyStatus }>)
+        : db
+            .select({ id: customerCompanies.id, status: customerCompanies.status })
+            .from(customerCompanies)
+            .where(eq(customerCompanies.ownerUserId, ownerFilter));
+  const companies = await companyQuery;
   const companyIds = companies.map(c => c.id);
   const subs = await subscriptionByCompanyId(db, companyIds);
 
@@ -397,8 +435,12 @@ export async function getCustomerCompanyMetrics(db: Db) {
 export async function listCustomerCompanies(
   db: Db,
   input?: { status?: CustomerCompanyStatus; search?: string },
+  actor?: PlatformActor,
 ) {
   const conditions = [];
+  const ownerFilter = ownerUserIdFilter(actor);
+  if (ownerFilter === -1) return [];
+  if (ownerFilter != null) conditions.push(eq(customerCompanies.ownerUserId, ownerFilter));
   if (input?.status) conditions.push(eq(customerCompanies.status, input.status));
   if (input?.search?.trim()) {
     const q = `%${input.search.trim()}%`;
@@ -455,7 +497,8 @@ export async function listCustomerCompanies(
   });
 }
 
-export async function getCustomerCompany(db: Db, companyId: number) {
+export async function getCustomerCompany(db: Db, companyId: number, actor?: PlatformActor) {
+  if (actor) await assertCustomerCompanyAccess(db, actor, companyId);
   const rows = await db.select().from(customerCompanies).where(eq(customerCompanies.id, companyId)).limit(1);
   const company = rows[0];
   if (!company) {
@@ -492,8 +535,21 @@ export async function createCustomerCompany(
     industry?: string;
     sourceChannel?: string;
     notes?: string;
+    ownerUserId?: number | null;
+    initialStatus?: CustomerCompanyStatus;
   },
+  actor?: PlatformActor,
 ) {
+  const ownerUserId =
+    input.ownerUserId !== undefined
+      ? input.ownerUserId
+      : actor && isOperatorRole(actor.role)
+        ? actor.userId
+        : null;
+  const status =
+    input.initialStatus ??
+    (ownerUserId != null && actor && isOperatorRole(actor.role) ? "active" : "pending");
+
   const inserted = await db.insert(customerCompanies).values({
     companyName: input.companyName.trim(),
     contactName: input.contactName?.trim() || null,
@@ -502,14 +558,15 @@ export async function createCustomerCompany(
     industry: input.industry?.trim() || null,
     sourceChannel: input.sourceChannel?.trim() || null,
     notes: input.notes?.trim() || null,
-    status: "pending",
+    ownerUserId,
+    status,
   }).$returningId();
 
   const id = Number(inserted[0]?.id ?? 0);
   if (!id) {
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "创建客户公司失败" });
   }
-  return getCustomerCompany(db, id);
+  return getCustomerCompany(db, id, actor);
 }
 
 export async function updateCustomerCompanyStatus(
@@ -537,7 +594,9 @@ export async function updateCustomerCompany(
     sourceChannel?: string;
     notes?: string;
   },
+  actor?: PlatformActor,
 ) {
+  if (actor) await assertCustomerCompanyAccess(db, actor, input.companyId);
   const patch: Partial<typeof customerCompanies.$inferInsert> = {};
   if (input.companyName != null) patch.companyName = input.companyName.trim();
   if (input.contactName != null) patch.contactName = input.contactName.trim() || null;
@@ -548,7 +607,7 @@ export async function updateCustomerCompany(
   if (input.notes != null) patch.notes = input.notes.trim() || null;
 
   await db.update(customerCompanies).set(patch).where(eq(customerCompanies.id, input.companyId));
-  return getCustomerCompany(db, input.companyId);
+  return getCustomerCompany(db, input.companyId, actor);
 }
 
 export async function listUsersForReview(
@@ -839,9 +898,31 @@ export async function updateSubscriptionFeatures(
   return rows[0]!;
 }
 
-export async function listProjectBindings(db: Db, input?: { companyId?: number }) {
+export async function listProjectBindings(
+  db: Db,
+  input?: { companyId?: number },
+  actor?: PlatformActor,
+) {
   const conditions = [];
-  if (input?.companyId) conditions.push(eq(companyProjects.companyId, input.companyId));
+  const ownerFilter = ownerUserIdFilter(actor);
+  if (ownerFilter === -1) return [];
+
+  if (ownerFilter != null) {
+    const owned = await db
+      .select({ id: customerCompanies.id })
+      .from(customerCompanies)
+      .where(eq(customerCompanies.ownerUserId, ownerFilter));
+    const ownedIds = owned.map(c => c.id);
+    if (ownedIds.length === 0) return [];
+    if (input?.companyId) {
+      if (!ownedIds.includes(input.companyId)) return [];
+      conditions.push(eq(companyProjects.companyId, input.companyId));
+    } else {
+      conditions.push(inArray(companyProjects.companyId, ownedIds));
+    }
+  } else if (input?.companyId) {
+    conditions.push(eq(companyProjects.companyId, input.companyId));
+  }
 
   const bindings = await db
     .select()
@@ -874,15 +955,21 @@ export async function listProjectBindings(db: Db, input?: { companyId?: number }
 export async function bindProjectToCompany(
   db: Db,
   input: { companyId: number; projectId: number; projectName?: string },
+  actor?: PlatformActor,
 ) {
+  if (actor) await assertCustomerCompanyAccess(db, actor, input.companyId);
+
   const [company, project, existingBinding] = await Promise.all([
     db.select({ id: customerCompanies.id }).from(customerCompanies).where(eq(customerCompanies.id, input.companyId)).limit(1),
-    db.select({ id: projects.id, enterpriseName: projects.enterpriseName }).from(projects).where(eq(projects.id, input.projectId)).limit(1),
+    db.select({ id: projects.id, enterpriseName: projects.enterpriseName, ownerUserId: projects.ownerUserId }).from(projects).where(eq(projects.id, input.projectId)).limit(1),
     db.select().from(companyProjects).where(eq(companyProjects.projectId, input.projectId)).limit(1),
   ]);
 
   if (!company[0]) throw new TRPCError({ code: "NOT_FOUND", message: "未找到该客户公司" });
   if (!project[0]) throw new TRPCError({ code: "NOT_FOUND", message: "未找到该项目" });
+  if (actor && isOperatorRole(actor.role) && project[0].ownerUserId !== actor.userId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "只能绑定您自己创建的项目" });
+  }
   if (existingBinding[0] && existingBinding[0].companyId !== input.companyId) {
     throw new TRPCError({ code: "CONFLICT", message: "该项目已绑定到其他客户公司" });
   }
@@ -906,7 +993,12 @@ export async function bindProjectToCompany(
   return rows.find(r => r.projectId === input.projectId)!;
 }
 
-export async function unbindProject(db: Db, input: { companyId: number; projectId: number }) {
+export async function unbindProject(
+  db: Db,
+  input: { companyId: number; projectId: number },
+  actor?: PlatformActor,
+) {
+  if (actor) await assertCustomerCompanyAccess(db, actor, input.companyId);
   await db
     .delete(companyProjects)
     .where(and(eq(companyProjects.companyId, input.companyId), eq(companyProjects.projectId, input.projectId)));
@@ -926,7 +1018,14 @@ export async function createProjectForCompany(
     targetCustomers?: string;
     coreSellingPoints?: string;
   },
+  actor?: PlatformActor,
 ) {
+  if (actor) {
+    await assertCustomerCompanyAccess(db, actor, input.companyId);
+    if (isOperatorRole(actor.role)) {
+      input = { ...input, ownerUserId: actor.userId };
+    }
+  }
   const company = await db
     .select({ id: customerCompanies.id, companyName: customerCompanies.companyName })
     .from(customerCompanies)
@@ -961,7 +1060,7 @@ export async function createProjectForCompany(
     companyId: input.companyId,
     projectId,
     projectName: input.enterpriseName.trim(),
-  });
+  }, actor);
 }
 
 export async function listDeliveryBoard(db: Db, input?: { renewalRisk?: RenewalRiskLevel }) {

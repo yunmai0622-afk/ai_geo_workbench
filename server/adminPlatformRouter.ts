@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   COMPANY_PLAN_TYPES,
   COMPANY_SUBSCRIPTION_STATUSES,
@@ -8,7 +9,7 @@ import {
   RENEWAL_RISK_LEVELS,
   USER_REVIEW_STATUSES,
 } from "@shared/platformAdmin";
-import { adminProcedure, router } from "./_core/trpc";
+import { adminProcedure, operatorAdminProcedure, router } from "./_core/trpc";
 import {
   assignUserCompany,
   bindProjectToCompany,
@@ -34,9 +35,14 @@ import {
   updateUserRole,
   upsertCompanySubscription,
 } from "./platformAdminService";
+import type { PlatformActor } from "@shared/platformAdmin";
+
+function platformActorFromCtx(ctx: { user: { id: number; role: string } }): PlatformActor {
+  return { userId: ctx.user.id, role: ctx.user.role };
+}
 
 const customersRouter = router({
-  list: adminProcedure
+  list: operatorAdminProcedure
     .input(
       z
         .object({
@@ -45,24 +51,24 @@ const customersRouter = router({
         })
         .optional(),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return listCustomerCompanies(db, input);
+      return listCustomerCompanies(db, input, platformActorFromCtx(ctx));
     }),
 
-  get: adminProcedure
+  get: operatorAdminProcedure
     .input(z.object({ companyId: z.number().int().positive() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return getCustomerCompany(db, input.companyId);
+      return getCustomerCompany(db, input.companyId, platformActorFromCtx(ctx));
     }),
 
-  metrics: adminProcedure.query(async () => {
+  metrics: operatorAdminProcedure.query(async ({ ctx }) => {
     const db = await requirePlatformDb();
-    return getCustomerCompanyMetrics(db);
+    return getCustomerCompanyMetrics(db, platformActorFromCtx(ctx));
   }),
 
-  create: adminProcedure
+  create: operatorAdminProcedure
     .input(
       z.object({
         companyName: z.string().trim().min(1).max(255),
@@ -74,12 +80,16 @@ const customersRouter = router({
         notes: z.string().trim().max(5000).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return createCustomerCompany(db, {
-        ...input,
-        contactEmail: input.contactEmail || undefined,
-      });
+      return createCustomerCompany(
+        db,
+        {
+          ...input,
+          contactEmail: input.contactEmail || undefined,
+        },
+        platformActorFromCtx(ctx),
+      );
     }),
 
   approve: adminProcedure
@@ -115,7 +125,7 @@ const customersRouter = router({
       });
     }),
 
-  update: adminProcedure
+  update: operatorAdminProcedure
     .input(
       z.object({
         companyId: z.number().int().positive(),
@@ -128,14 +138,18 @@ const customersRouter = router({
         notes: z.string().trim().max(5000).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
       const { companyId, contactEmail, ...rest } = input;
-      return updateCustomerCompany(db, {
-        companyId,
-        ...rest,
-        contactEmail: contactEmail === "" ? "" : contactEmail,
-      });
+      return updateCustomerCompany(
+        db,
+        {
+          companyId,
+          ...rest,
+          contactEmail: contactEmail === "" ? "" : contactEmail,
+        },
+        platformActorFromCtx(ctx),
+      );
     }),
 });
 
@@ -304,14 +318,14 @@ const subscriptionsRouter = router({
 });
 
 const projectsRouter = router({
-  listBindings: adminProcedure
+  listBindings: operatorAdminProcedure
     .input(z.object({ companyId: z.number().int().positive().optional() }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return listProjectBindings(db, input);
+      return listProjectBindings(db, input, platformActorFromCtx(ctx));
     }),
 
-  bind: adminProcedure
+  bind: operatorAdminProcedure
     .input(
       z.object({
         companyId: z.number().int().positive(),
@@ -319,28 +333,28 @@ const projectsRouter = router({
         projectName: z.string().trim().max(255).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return bindProjectToCompany(db, input);
+      return bindProjectToCompany(db, input, platformActorFromCtx(ctx));
     }),
 
-  unbind: adminProcedure
+  unbind: operatorAdminProcedure
     .input(
       z.object({
         companyId: z.number().int().positive(),
         projectId: z.number().int().positive(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return unbindProject(db, input);
+      return unbindProject(db, input, platformActorFromCtx(ctx));
     }),
 
-  createForCompany: adminProcedure
+  createForCompany: operatorAdminProcedure
     .input(
       z.object({
         companyId: z.number().int().positive(),
-        ownerUserId: z.number().int().positive(),
+        ownerUserId: z.number().int().positive().optional(),
         enterpriseName: z.string().trim().min(1).max(255),
         industry: z.string().trim().max(255).optional(),
         website: z.string().trim().max(500).optional(),
@@ -350,9 +364,14 @@ const projectsRouter = router({
         coreSellingPoints: z.string().trim().max(5000).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await requirePlatformDb();
-      return createProjectForCompany(db, input);
+      const actor = platformActorFromCtx(ctx);
+      const ownerUserId = actor.role === "operator" ? actor.userId : input.ownerUserId;
+      if (!ownerUserId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "请指定项目归属用户" });
+      }
+      return createProjectForCompany(db, { ...input, ownerUserId }, actor);
     }),
 });
 

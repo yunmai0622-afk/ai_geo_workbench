@@ -18,7 +18,9 @@ export const users = mysqlTable("users", {
   /** scrypt 哈希，仅邮箱注册用户使用 */
   passwordHash: varchar("passwordHash", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "operator"]).default("user").notNull(),
+  /** 代运营公司注册时填写的机构名称（仅 role=operator） */
+  operatorCompanyName: varchar("operatorCompanyName", { length: 255 }),
   companyId: int("companyId"),
   userStatus: mysqlEnum("userStatus", ["pending_review", "active", "rejected", "disabled"])
     .default("active")
@@ -1347,8 +1349,12 @@ export const customerCompanyStatusEnum = mysqlEnum("status", [
   "disabled",
 ]);
 
-export const customerCompanies = mysqlTable("customer_companies", {
+export const customerCompanies = mysqlTable(
+  "customer_companies",
+  {
   id: int("id").autoincrement().primaryKey(),
+  /** 创建该客户公司的代运营用户 id；NULL 表示平台级客户（历史数据） */
+  ownerUserId: int("ownerUserId"),
   companyName: varchar("companyName", { length: 255 }).notNull(),
   contactName: varchar("contactName", { length: 120 }),
   contactPhone: varchar("contactPhone", { length: 64 }),
@@ -1361,7 +1367,11 @@ export const customerCompanies = mysqlTable("customer_companies", {
   approvedBy: int("approvedBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+  },
+  table => ({
+    ownerUserIdx: index("customer_companies_owner_user_idx").on(table.ownerUserId),
+  }),
+);
 
 export const companyPlanTypeEnum = mysqlEnum("planType", ["trial", "basic", "pro", "agency", "custom"]);
 export const companySubscriptionStatusEnum = mysqlEnum("status", [

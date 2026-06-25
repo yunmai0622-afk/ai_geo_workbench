@@ -22,9 +22,9 @@ export type NavGroupLike<TItem extends { path: string }> = {
   items: TItem[];
 };
 
-/** 代运营/管理员：users.role === "admin" */
+/** 代运营/管理员：users.role === "admin" | "operator" */
 export function resolveNavOperatorMode(userRole: string | null | undefined): boolean {
-  return userRole === "admin";
+  return userRole === "admin" || userRole === "operator";
 }
 
 export function filterNavGroupsForRole<TItem extends { path: string }>(

@@ -178,6 +178,26 @@ export function isPlatformAdminRole(role: string | null | undefined): boolean {
   return role === "admin";
 }
 
+export function isOperatorRole(role: string | null | undefined): boolean {
+  return role === "operator";
+}
+
+/** 可进入运营后台（客户/项目）：平台管理员或代运营 */
+export function canAccessOperatorAdminConsole(role: string | null | undefined): boolean {
+  return isPlatformAdminRole(role) || isOperatorRole(role);
+}
+
+export type PlatformActor = {
+  userId: number;
+  role: string;
+};
+
+export function resolveCustomerCompanyOwnerUserId(actor: PlatformActor): number | undefined {
+  if (isPlatformAdminRole(actor.role)) return undefined;
+  if (isOperatorRole(actor.role)) return actor.userId;
+  return undefined;
+}
+
 export type RenewalRiskInput = {
   subscriptionStatus: CompanySubscriptionStatus | null;
   expiresAt: Date | string | null | undefined;

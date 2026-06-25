@@ -6,6 +6,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
+import { canAccessOperatorAdminConsole } from "@shared/platformAdmin";
 import { ChevronDown, Building2, LogOut, Settings } from "lucide-react";
 import { Link } from "wouter";
 
@@ -29,11 +30,11 @@ export function ClientsHubTopBar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 rounded-xl border-gray-200 shadow-lg">
             <DropdownMenuItem asChild className="cursor-pointer rounded-lg"><Link href="/settings" className="flex w-full items-center"><Settings className="mr-2 h-4 w-4" />设置</Link></DropdownMenuItem>
-            {user?.role === "admin" ? (
+            {canAccessOperatorAdminConsole(user?.role) ? (
               <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
                 <Link href="/admin/customers" className="flex w-full items-center">
                   <Building2 className="mr-2 h-4 w-4" />
-                  平台运营后台
+                  {user?.role === "admin" ? "平台运营后台" : "代运营管理台"}
                 </Link>
               </DropdownMenuItem>
             ) : null}

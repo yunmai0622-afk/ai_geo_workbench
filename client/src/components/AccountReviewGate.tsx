@@ -9,7 +9,7 @@ export default function AccountReviewGate({ children }: { children: ReactNode })
     return <>{children}</>;
   }
 
-  if (user.role === "admin") {
+  if (user.role === "admin" || user.role === "operator") {
     return <>{children}</>;
   }
 

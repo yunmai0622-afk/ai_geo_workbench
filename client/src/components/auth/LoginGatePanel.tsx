@@ -25,6 +25,11 @@ export default function LoginGatePanel() {
   const loginWithEmail = trpc.auth.loginWithEmail.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
+      const me = await utils.auth.me.fetch();
+      if (me?.role === "operator") {
+        window.location.href = "/admin/customers";
+        return;
+      }
       window.location.href = "/";
     },
     onError: err => {

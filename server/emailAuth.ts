@@ -19,6 +19,65 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
   return rows[0];
 }
 
+export async function registerOperatorUser(input: {
+  email: string;
+  password: string;
+  name: string;
+  operatorCompanyName: string;
+}): Promise<User> {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库不可用" });
+  }
+
+  const email = normalizeEmail(input.email);
+  const name = input.name.trim();
+  const operatorCompanyName = input.operatorCompanyName.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "请输入有效的邮箱地址" });
+  }
+  if (!name) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "请填写联系人姓名" });
+  }
+  if (!operatorCompanyName) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "请填写代运营公司名称" });
+  }
+  try {
+    assertPasswordStrength(input.password);
+  } catch (e) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: e instanceof Error ? e.message : "密码不符合要求",
+    });
+  }
+
+  const existing = await getUserByEmail(email);
+  if (existing) {
+    throw new TRPCError({ code: "CONFLICT", message: "该邮箱已被注册，请直接登录" });
+  }
+
+  const passwordHash = await hashPassword(input.password);
+  const openId = emailOpenId(email);
+
+  await db.insert(users).values({
+    openId,
+    email,
+    name,
+    passwordHash,
+    loginMethod: "email",
+    role: "operator",
+    operatorCompanyName,
+    userStatus: "active",
+    lastSignedIn: new Date(),
+  });
+
+  const created = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  if (!created[0]) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "注册失败，请稍后重试" });
+  }
+  return created[0];
+}
+
 export async function registerEmailUser(input: {
   email: string;
   password: string;

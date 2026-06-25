@@ -12,6 +12,8 @@ function registerErrorMessage(err: unknown): string {
   return toUserFacingErrorFromUnknown(err, "注册失败，请稍后重试");
 }
 
+type AccountType = "operator" | "customer";
+
 export default function RegisterPage() {
   useEffect(() => {
     document.title = `注册账号 - ${PLATFORM_PRODUCT_NAME}`;
@@ -19,17 +21,23 @@ export default function RegisterPage() {
 
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const [accountType, setAccountType] = useState<AccountType>("operator");
   const [form, setForm] = useState({
     email: "",
     password: "",
     confirmPassword: "",
     name: "",
+    operatorCompanyName: "",
   });
   const [error, setError] = useState<string | null>(null);
 
   const register = trpc.auth.register.useMutation({
-    onSuccess: async () => {
+    onSuccess: async data => {
       await utils.auth.me.invalidate();
+      if (data.role === "operator") {
+        setLocation("/admin/customers");
+        return;
+      }
       setLocation("/onboarding");
     },
     onError: err => setError(registerErrorMessage(err)),
@@ -46,7 +54,16 @@ export default function RegisterPage() {
       setError("密码至少需要 8 位");
       return;
     }
-    register.mutate(form);
+    if (accountType === "operator" && !form.operatorCompanyName.trim()) {
+      setError("请填写代运营公司名称");
+      return;
+    }
+    register.mutate({
+      ...form,
+      accountType,
+      operatorCompanyName:
+        accountType === "operator" ? form.operatorCompanyName.trim() : undefined,
+    });
   };
 
   return (
@@ -71,11 +88,50 @@ export default function RegisterPage() {
       <div className="mb-6 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">创建账号</h1>
         <p className="mt-2 text-sm leading-6 text-gray-500">
-          使用邮箱注册，即可开始管理企业 GEO 项目
+          代运营公司注册后可自助创建客户公司与项目
         </p>
       </div>
 
+      <div className="mb-4 flex rounded-lg border border-gray-200 p-1">
+        <button
+          type="button"
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            accountType === "operator"
+              ? "bg-blue-600 text-white"
+              : "text-gray-600 hover:bg-gray-50"
+          }`}
+          onClick={() => setAccountType("operator")}
+          data-testid="register-type-operator"
+        >
+          代运营公司
+        </button>
+        <button
+          type="button"
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            accountType === "customer"
+              ? "bg-blue-600 text-white"
+              : "text-gray-600 hover:bg-gray-50"
+          }`}
+          onClick={() => setAccountType("customer")}
+          data-testid="register-type-customer"
+        >
+          企业客户
+        </button>
+      </div>
+
       <form className="space-y-4" onSubmit={handleSubmit} data-testid="register-form">
+        {accountType === "operator" ? (
+          <div className="space-y-2">
+            <Label htmlFor="register-company">代运营公司名称</Label>
+            <Input
+              id="register-company"
+              required
+              value={form.operatorCompanyName}
+              onChange={e => setForm(f => ({ ...f, operatorCompanyName: e.target.value }))}
+              data-testid="register-company"
+            />
+          </div>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="register-email">邮箱</Label>
           <Input
@@ -89,7 +145,9 @@ export default function RegisterPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="register-name">姓名</Label>
+          <Label htmlFor="register-name">
+            {accountType === "operator" ? "联系人姓名" : "姓名"}
+          </Label>
           <Input
             id="register-name"
             autoComplete="name"
@@ -139,7 +197,7 @@ export default function RegisterPage() {
           disabled={register.isPending}
           data-testid="register-submit"
         >
-          {register.isPending ? "注册中…" : "注册并进入系统"}
+          {register.isPending ? "注册中…" : accountType === "operator" ? "注册并进入管理台" : "注册并进入系统"}
         </Button>
       </form>
     </AuthPageLayout>

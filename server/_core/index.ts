@@ -16,6 +16,7 @@ import { startDailyAiCheckScheduler } from "../scheduledAiCheck";
 import { startWeeklyGrowthReportScheduler } from "../scheduledWeeklyGrowthReport";
 import { ensureGeoQualityColumns } from "../ensureGeoQualityColumns";
 import { ensureProjectsOwnerUserIdColumn } from "../ensureProjectsOwnerUserId";
+import { ensureSaasOperatorSchema } from "../ensureSaasOperatorSchema";
 import { diagnoseLlmProviderEnv, formatMissingLlmEnvServerLog } from "../../shared/llmEnvDiagnostics";
 import { loadGeoSystemConfig } from "../geoSystemConfigStore";
 import { readMacZipRedirectUrl } from "../localAgentMacZipRedirect";
@@ -40,7 +41,12 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  await Promise.all([ensureGeoQualityColumns(), ensureProjectsOwnerUserIdColumn(), loadGeoSystemConfig()]);
+  await Promise.all([
+    ensureGeoQualityColumns(),
+    ensureProjectsOwnerUserIdColumn(),
+    ensureSaasOperatorSchema(),
+    loadGeoSystemConfig(),
+  ]);
   const llmEnv = diagnoseLlmProviderEnv();
   if (!llmEnv.configured) {
     console.warn(

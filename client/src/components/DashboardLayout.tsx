@@ -29,6 +29,7 @@ import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
 import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
 import { filterNavGroupsForRole, resolveNavOperatorMode } from "@shared/roleBasedNavigation";
+import { canAccessOperatorAdminConsole } from "@shared/platformAdmin";
 import { filterNavigableProjects } from "@shared/projectNavigation";
 import { trpc } from "@/lib/trpc";
 import {
@@ -384,11 +385,11 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem asChild className="cursor-pointer"><Link href="/settings" className="flex w-full items-center"><Settings className="mr-2 h-4 w-4" /><span>设置</span></Link></DropdownMenuItem>
-                    {user?.role === "admin" ? (
+                    {canAccessOperatorAdminConsole(user?.role) ? (
                       <DropdownMenuItem asChild className="cursor-pointer">
                         <Link href="/admin/customers" className="flex w-full items-center">
                           <Building2 className="mr-2 h-4 w-4" />
-                          <span>平台运营后台</span>
+                          <span>{user?.role === "admin" ? "平台运营后台" : "代运营管理台"}</span>
                         </Link>
                       </DropdownMenuItem>
                     ) : null}

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { canAccessOperatorAdminConsole } from "@shared/platformAdmin";
 import {
   Building2,
   ClipboardList,
@@ -16,12 +17,12 @@ import {
 import type { ReactNode } from "react";
 import { Link, Redirect, useLocation } from "wouter";
 
-const ADMIN_NAV = [
-  { path: "/admin/customers", label: "客户公司管理", icon: Building2 },
-  { path: "/admin/users", label: "注册用户审核", icon: Users },
-  { path: "/admin/subscriptions", label: "套餐与有效期", icon: CreditCard },
-  { path: "/admin/projects", label: "客户项目绑定", icon: Link2 },
-  { path: "/admin/delivery", label: "交付驾驶舱", icon: LayoutDashboard },
+const ADMIN_NAV_ALL = [
+  { path: "/admin/customers", label: "客户公司管理", icon: Building2, operatorVisible: true },
+  { path: "/admin/projects", label: "客户项目绑定", icon: Link2, operatorVisible: true },
+  { path: "/admin/users", label: "注册用户审核", icon: Users, operatorVisible: false },
+  { path: "/admin/subscriptions", label: "套餐与有效期", icon: CreditCard, operatorVisible: false },
+  { path: "/admin/delivery", label: "交付驾驶舱", icon: LayoutDashboard, operatorVisible: false },
 ] as const;
 
 export function AdminAccessGuard({ children }: { children: ReactNode }) {
@@ -40,7 +41,7 @@ export function AdminAccessGuard({ children }: { children: ReactNode }) {
     return <Redirect to="/landing" />;
   }
 
-  if (user.role !== "admin") {
+  if (!canAccessOperatorAdminConsole(user.role)) {
     return <Redirect to="/workspace" />;
   }
 
@@ -91,7 +92,9 @@ export function AdminMetricCards({
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const isPlatformAdmin = user?.role === "admin";
+  const navItems = ADMIN_NAV_ALL.filter(item => isPlatformAdmin || item.operatorVisible);
 
   return (
     <AdminAccessGuard>
@@ -99,8 +102,16 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <div className="border-b border-gray-200 bg-white">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
             <div>
-              <p className="text-base font-semibold text-gray-900">平台运营后台</p>
-              <p className="text-xs text-gray-500">管理客户公司、注册账号、套餐权限、项目绑定与交付进度</p>
+              <p className="text-base font-semibold text-gray-900">
+                {isPlatformAdmin ? "平台运营后台" : "代运营管理台"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {isPlatformAdmin
+                  ? "管理客户公司、注册账号、套餐权限、项目绑定与交付进度"
+                  : user?.operatorCompanyName
+                    ? `${user.operatorCompanyName} · 管理您的客户公司与项目`
+                    : "管理您的客户公司与项目"}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" size="sm" asChild>
@@ -123,7 +134,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl gap-6 px-4 py-6 md:px-6">
           <aside className="hidden w-56 shrink-0 md:block">
             <nav className="space-y-1 rounded-xl border border-gray-200 bg-white p-2">
-              {ADMIN_NAV.map(item => {
+              {navItems.map(item => {
                 const active = location === item.path;
                 return (
                   <Link
@@ -142,14 +153,18 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                   </Link>
                 );
               })}
-              <div className="my-2 border-t border-gray-100" />
-              <Link
-                href="/admin/stats"
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                <ClipboardList className="h-4 w-4 text-gray-400" />
-                系统使用统计
-              </Link>
+              {isPlatformAdmin ? (
+                <>
+                  <div className="my-2 border-t border-gray-100" />
+                  <Link
+                    href="/admin/stats"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    <ClipboardList className="h-4 w-4 text-gray-400" />
+                    系统使用统计
+                  </Link>
+                </>
+              ) : null}
             </nav>
           </aside>
 
