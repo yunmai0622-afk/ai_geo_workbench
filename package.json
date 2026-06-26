@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "prebuild": "node scripts/copy_local_agent_download.mjs",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build && node scripts/write-version-json.mjs && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "postbuild": "node scripts/agent_mac_manifest_build_output_acceptance.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "deploy": "pnpm deploy:manus",
@@ -30,6 +30,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:patch-geo-quality": "node scripts/apply_geo_quality_columns.mjs",
     "db:patch-p1": "node scripts/apply_content_strategy_columns.mjs"
+  },
+  "engines": {
+    "node": ">=20.20 <25"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

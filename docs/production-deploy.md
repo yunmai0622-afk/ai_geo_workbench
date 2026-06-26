@@ -1,6 +1,14 @@
 # Production Deploy Pipeline
 
-This project currently deploys to Manus production. The production URL is:
+This project used to deploy to Manus production. Manus is now a rollback backup because `website.publish` republishes the latest Manus checkpoint but does not upload the GitHub Actions build artifact.
+
+The active Railway migration runbook is:
+
+```text
+docs/railway-production-deploy.md
+```
+
+Legacy Manus URL:
 
 ```text
 https://aigeoworkb-kzxhj9uy.manus.space
@@ -15,7 +23,7 @@ https://aigeoworkb-kzxhj9uy.manus.space
 - Default port: `PORT` or `3000`.
 - Database: MySQL through `DATABASE_URL` and Drizzle.
 - Migration command: `pnpm db:migrate`.
-- Static version endpoint: `dist/public/__manus__/version.json` after build.
+- Dynamic version endpoints: `/version.json`, `/manus/version.json`, and `/__manus__/version.json`.
 
 ## Manus Deployment
 
@@ -44,7 +52,7 @@ MANUS_POLL_TIMEOUT_MS=600000
 MANUS_POLL_INTERVAL_MS=15000
 ```
 
-The script calls `website.publish`, polls `website.status`, and fails if the deployment does not become ready before the timeout.
+The script calls `website.publish`, polls `website.status`, and fails if the deployment does not become ready before the timeout. This confirms Manus publish state only; it does not prove that the GitHub Actions build artifact reached production.
 
 ## Manus Target Discovery
 

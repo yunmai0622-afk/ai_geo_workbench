@@ -6,6 +6,7 @@ import {
   checkOperationsHealth,
   getAppVersion,
 } from "./healthChecks";
+import { buildRuntimeVersionInfo } from "./versionInfo";
 
 export async function buildHealthResponse(): Promise<HealthResponse> {
   const [database, llm, operations] = await Promise.all([
@@ -25,6 +26,25 @@ export async function buildHealthResponse(): Promise<HealthResponse> {
 }
 
 export function registerHealthRoute(app: Express) {
+  app.get("/health", (_req: Request, res: Response) => {
+    const versionInfo = buildRuntimeVersionInfo();
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({
+      ok: true,
+      version: versionInfo.version,
+      commit: versionInfo.commit,
+      buildTime: versionInfo.buildTime,
+      environment: versionInfo.environment,
+    });
+  });
+
+  for (const path of ["/version.json", "/manus/version.json", "/__manus__/version.json"]) {
+    app.get(path, (_req: Request, res: Response) => {
+      res.set("Cache-Control", "no-store");
+      res.status(200).json(buildRuntimeVersionInfo());
+    });
+  }
+
   app.get("/api/health", async (_req: Request, res: Response) => {
     try {
       const payload = await buildHealthResponse();

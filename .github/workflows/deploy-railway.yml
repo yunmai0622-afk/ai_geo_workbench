@@ -1,0 +1,200 @@
+name: Deploy Railway Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: "Skip pnpm check/build/test before deploy"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+concurrency:
+  group: railway-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, Test, Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'openai' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3' }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'ep-20251210143333-s6bb7' }}
+      OPENAI_TIMEOUT_MS: ${{ vars.OPENAI_TIMEOUT_MS || '60000' }}
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID || vars.RAILWAY_PROJECT_ID }}
+      RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID || vars.RAILWAY_SERVICE_ID }}
+      RAILWAY_ENVIRONMENT: ${{ vars.RAILWAY_ENVIRONMENT || 'production' }}
+      RAILWAY_PRODUCTION_URL: ${{ secrets.RAILWAY_PRODUCTION_URL || vars.RAILWAY_PRODUCTION_URL }}
+      RAILWAY_DEPLOY_HOOK_URL: ${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}
+      GIT_COMMIT: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate application configuration
+        run: |
+          set -euo pipefail
+          missing=0
+          require() {
+            local name="$1"
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Missing required configuration::$name is required"
+              missing=1
+            fi
+          }
+
+          require DATABASE_URL
+          require JWT_SECRET
+          require OPENAI_API_KEY
+          require TAVILY_API_KEY
+          require OPENAI_BASE_URL
+          require OPENAI_MODEL
+          require OPENAI_TIMEOUT_MS
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Type check
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
+        run: corepack pnpm check
+
+      - name: Build
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
+        run: |
+          set -euo pipefail
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" corepack pnpm build
+
+      - name: Prepare ignored CI test artifacts
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts client/public/downloads
+          : > artifacts/AGENT_SERIES_DELIVERY.md
+          : > artifacts/AGENT_SERIES_SCREENSHOTS.md
+          if [ ! -e client/public/downloads/geo-local-agent-mac.dmg ] && [ ! -e client/public/downloads/geo-local-agent-mac.zip ]; then
+            printf 'ci placeholder for ignored Local Agent binary; production uses manifest macZipUrl\n' > client/public/downloads/geo-local-agent-mac.zip
+          fi
+
+      - name: Test
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
+        run: corepack pnpm test
+
+      - name: Validate Railway deployment target
+        run: |
+          set -euo pipefail
+          missing=0
+          require() {
+            local name="$1"
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Missing Railway configuration::$name is required"
+              missing=1
+            fi
+          }
+
+          require RAILWAY_PRODUCTION_URL
+
+          if [ -z "${RAILWAY_DEPLOY_HOOK_URL:-}" ]; then
+            require RAILWAY_TOKEN
+            require RAILWAY_PROJECT_ID
+            require RAILWAY_SERVICE_ID
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Deploy to Railway
+        run: |
+          set -euo pipefail
+          if [ -n "${RAILWAY_DEPLOY_HOOK_URL:-}" ]; then
+            curl --fail --show-error --silent --max-time 30 -X POST "$RAILWAY_DEPLOY_HOOK_URL" > /tmp/railway-deploy-response.txt
+            echo "[railway] deploy hook accepted"
+            exit 0
+          fi
+
+          npm install -g @railway/cli
+          railway link \
+            --project "$RAILWAY_PROJECT_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --service "$RAILWAY_SERVICE_ID" \
+            --json > /tmp/railway-link.json
+          railway variable set \
+            "GIT_COMMIT=${GITHUB_SHA}" \
+            "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --service "$RAILWAY_SERVICE_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --skip-deploys
+          railway up --ci \
+            --service "$RAILWAY_SERVICE_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --message "GitHub Actions ${GITHUB_SHA}"
+
+      - name: Verify production version endpoint
+        run: |
+          set -euo pipefail
+          base="${RAILWAY_PRODUCTION_URL%/}"
+          expected="${GITHUB_SHA}"
+          for attempt in $(seq 1 60); do
+            body="$(curl --fail --show-error --silent --max-time 20 "$base/version.json" || true)"
+            if BODY="$body" EXPECTED="$expected" node -e 'const payload = JSON.parse(process.env.BODY || "{}"); const commit = String(payload.commit || payload.version?.commit || ""); const expected = String(process.env.EXPECTED || ""); if (!commit || !expected) process.exit(1); if (commit === expected || commit.startsWith(expected.slice(0, 12))) { console.log(`[verify] production commit=${commit}`); process.exit(0); } process.exit(1);'
+            then
+              exit 0
+            fi
+            echo "[verify] waiting for production version endpoint attempt=$attempt"
+            sleep 10
+          done
+          echo "::error title=Production version mismatch::version endpoint did not report ${GITHUB_SHA}"
+          exit 1
+
+      - name: Smoke production pages
+        run: |
+          set -euo pipefail
+          base="${RAILWAY_PRODUCTION_URL%/}"
+          html="$(curl --fail --show-error --silent --max-time 30 "$base/?cb=${GITHUB_SHA}")"
+          if printf '%s' "$html" | grep -F "/assets/index-Cwp_1Y0L.js" >/dev/null; then
+            echo "::error title=Old Manus bundle detected::Production HTML still references /assets/index-Cwp_1Y0L.js"
+            exit 1
+          fi
+          printf '%s' "$html" | grep -E '/assets/index-[^"]+\.js' >/dev/null
+
+          for path in \
+            "/weekly?projectId=210001" \
+            "/weekly?projectId=180001" \
+            "/workspace?projectId=180001" \
+            "/monthly-plan?projectId=180001" \
+            "/questions?projectId=180001" \
+            "/inclusion-monitoring?projectId=180001" \
+            "/delivery-reports?projectId=180001"; do
+            curl --fail --show-error --silent --max-time 30 -o /dev/null "$base$path"
+          done
