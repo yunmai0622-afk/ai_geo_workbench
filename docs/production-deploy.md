@@ -46,6 +46,22 @@ MANUS_POLL_INTERVAL_MS=15000
 
 The script calls `website.publish`, polls `website.status`, and fails if the deployment does not become ready before the timeout.
 
+## Manus Target Discovery
+
+If `website.publish` fails with `404 web project not found`, run the read-only discovery workflow before changing deployment IDs:
+
+```bash
+gh workflow run discover-manus-target.yml --repo yunmai0622-afk/ai_geo_workbench00 --ref main
+```
+
+The workflow runs `pnpm manus:discover-target` with `MANUS_API_KEY`, calls read-only Manus endpoints (`task.list`, `project.list`, `website.status`, and `website.listCheckpoints`), and matches `site_urls` against:
+
+```text
+aigeoworkb-kzxhj9uy.manus.space
+```
+
+It never calls `website.publish` and does not print API keys or application secrets. If a matching website is found, prefer configuring `MANUS_WEBSITE_ID` and remove `MANUS_TASK_ID`; the deploy script requires exactly one of them.
+
 ## GitHub Actions
 
 `.github/workflows/deploy-manus.yml` runs on pushes to `main` and can also be triggered manually.

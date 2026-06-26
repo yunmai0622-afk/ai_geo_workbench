@@ -1,0 +1,50 @@
+name: Discover Manus Target
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_host:
+        description: "Production host to match in Manus site_urls"
+        required: false
+        default: "aigeoworkb-kzxhj9uy.manus.space"
+      max_tasks:
+        description: "Maximum Manus tasks to inspect with read-only website.status"
+        required: false
+        default: "160"
+
+concurrency:
+  group: manus-target-discovery
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Read-only target discovery
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      MANUS_API_KEY: ${{ secrets.MANUS_API_KEY }}
+      MANUS_WEBSITE_ID: ${{ secrets.MANUS_WEBSITE_ID }}
+      MANUS_TASK_ID: ${{ secrets.MANUS_TASK_ID }}
+      MANUS_TARGET_HOST: ${{ inputs.target_host }}
+      MANUS_DISCOVER_MAX_TASKS: ${{ inputs.max_tasks }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate discovery configuration
+        run: |
+          set -euo pipefail
+          if [ -z "${MANUS_API_KEY:-}" ]; then
+            echo "::error title=Missing required configuration::MANUS_API_KEY is required"
+            exit 1
+          fi
+
+      - name: Discover Manus website target
+        run: node scripts/discover-manus-target.mjs

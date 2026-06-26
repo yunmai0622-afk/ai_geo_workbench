@@ -12,6 +12,7 @@
     "deploy": "pnpm deploy:manus",
     "deploy:manus": "node scripts/deploy-manus.mjs",
     "deploy:manus:status": "node scripts/deploy-manus.mjs --status-only",
+    "manus:discover-target": "node scripts/discover-manus-target.mjs",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
