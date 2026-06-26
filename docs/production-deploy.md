@@ -72,7 +72,7 @@ It never calls `website.publish` and does not print API keys or application secr
 
 ## GitHub Actions
 
-`.github/workflows/deploy-manus.yml` runs on pushes to `main` and can also be triggered manually.
+`.github/workflows/deploy-manus.yml` is manual-only. Use it only for rollback or explicit Manus diagnostics; Railway is the active production deployment path.
 
 Configure these GitHub repository secrets:
 
