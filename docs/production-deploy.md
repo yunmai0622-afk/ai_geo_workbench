@@ -55,6 +55,10 @@ Configure these GitHub repository secrets:
 ```text
 MANUS_API_KEY
 MANUS_WEBSITE_ID
+DATABASE_URL
+JWT_SECRET
+OPENAI_API_KEY
+TAVILY_API_KEY
 ```
 
 or, if the Manus project is only addressable by task:
@@ -62,13 +66,25 @@ or, if the Manus project is only addressable by task:
 ```text
 MANUS_API_KEY
 MANUS_TASK_ID
+DATABASE_URL
+JWT_SECRET
+OPENAI_API_KEY
+TAVILY_API_KEY
 ```
 
-Configure this GitHub repository variable:
+Configure these GitHub repository variables:
 
 ```text
 MANUS_EXPECTED_URL=https://aigeoworkb-kzxhj9uy.manus.space
+MANUS_PUBLISH_VISIBILITY=public
+LLM_PROVIDER=openai
+OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+OPENAI_MODEL=ep-20251210143333-s6bb7
+OPENAI_TIMEOUT_MS=60000
+RUN_MIGRATIONS=false
 ```
+
+Set `RUN_MIGRATIONS=true` only for commits that require `pnpm db:migrate` during deployment.
 
 ## Production Verification
 

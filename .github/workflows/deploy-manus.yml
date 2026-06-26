@@ -32,10 +32,52 @@ jobs:
       MANUS_TASK_ID: ${{ secrets.MANUS_TASK_ID }}
       MANUS_EXPECTED_URL: ${{ vars.MANUS_EXPECTED_URL }}
       MANUS_PUBLISH_VISIBILITY: ${{ vars.MANUS_PUBLISH_VISIBILITY || 'public' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'openai' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3' }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'ep-20251210143333-s6bb7' }}
+      OPENAI_TIMEOUT_MS: ${{ vars.OPENAI_TIMEOUT_MS || '60000' }}
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate deployment configuration
+        run: |
+          set -euo pipefail
+          missing=0
+          require() {
+            local name="$1"
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Missing required configuration::$name is required"
+              missing=1
+            fi
+          }
+
+          require MANUS_API_KEY
+          require DATABASE_URL
+          require JWT_SECRET
+          require OPENAI_API_KEY
+          require TAVILY_API_KEY
+          require OPENAI_BASE_URL
+          require OPENAI_MODEL
+          require OPENAI_TIMEOUT_MS
+
+          if [ -z "${MANUS_WEBSITE_ID:-}" ] && [ -z "${MANUS_TASK_ID:-}" ]; then
+            echo "::error title=Missing required configuration::Set exactly one of MANUS_WEBSITE_ID or MANUS_TASK_ID"
+            missing=1
+          fi
+          if [ -n "${MANUS_WEBSITE_ID:-}" ] && [ -n "${MANUS_TASK_ID:-}" ]; then
+            echo "::error title=Invalid deployment configuration::Set MANUS_WEBSITE_ID or MANUS_TASK_ID, not both"
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -57,9 +99,24 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
         run: pnpm build
 
+      - name: Prepare ignored CI test artifacts
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts client/public/downloads
+          : > artifacts/AGENT_SERIES_DELIVERY.md
+          : > artifacts/AGENT_SERIES_SCREENSHOTS.md
+          if [ ! -e client/public/downloads/geo-local-agent-mac.dmg ] && [ ! -e client/public/downloads/geo-local-agent-mac.zip ]; then
+            printf 'ci placeholder for ignored Local Agent binary; production uses manifest macZipUrl\n' > client/public/downloads/geo-local-agent-mac.zip
+          fi
+
       - name: Test
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
         run: pnpm test
+
+      - name: Run database migrations
+        if: ${{ vars.RUN_MIGRATIONS == 'true' }}
+        run: pnpm db:migrate
 
       - name: Deploy to Manus
         run: pnpm deploy:manus
