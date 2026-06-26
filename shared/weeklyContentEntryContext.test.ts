@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   appendWeeklyContentEntryParams,
   buildWeeklyContentEntryUrl,
+  parseQuestionIdFromActionUrl,
   parseWeeklyContentEntryContext,
+  resolveMonthlyContentTaskQuestionId,
   resolveWeeklyContentSourceTypeLabel,
 } from "./weeklyContentEntryContext";
 
@@ -34,5 +36,40 @@ describe("weeklyContentEntryContext", () => {
   it("maps source type labels for customers", () => {
     expect(resolveWeeklyContentSourceTypeLabel("search_pool")).toBe("AI搜索问题");
     expect(resolveWeeklyContentSourceTypeLabel()).toBe("AI搜索问题");
+  });
+
+  it("resolves monthly content task questionId from relatedQuestionId, metadata, actionUrl", () => {
+    expect(
+      resolveMonthlyContentTaskQuestionId({
+        relatedQuestionId: 42,
+        metadata: { questionId: 99 },
+        actionUrl: "/weekly?questionId=7",
+      }),
+    ).toBe(42);
+
+    expect(
+      resolveMonthlyContentTaskQuestionId({
+        relatedQuestionId: null,
+        metadata: { questionId: 99 },
+        actionUrl: "/weekly?questionId=7",
+      }),
+    ).toBe(99);
+
+    expect(
+      resolveMonthlyContentTaskQuestionId({
+        relatedQuestionId: null,
+        metadata: null,
+        actionUrl: "/weekly?questionId=7",
+      }),
+    ).toBe(7);
+
+    expect(parseQuestionIdFromActionUrl("/weekly")).toBeUndefined();
+    expect(
+      resolveMonthlyContentTaskQuestionId({
+        relatedQuestionId: null,
+        metadata: null,
+        actionUrl: "/weekly",
+      }),
+    ).toBeUndefined();
   });
 });

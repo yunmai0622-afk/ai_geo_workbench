@@ -360,9 +360,7 @@ export function MonthlyContentTaskList({
   onSelectTask,
   onGoMonthlyPlan,
 }: MonthlyContentTaskListProps) {
-  const contentTasks = tasks.filter(t => t.questionId != null);
-
-  if (contentTasks.length === 0) {
+  if (tasks.length === 0) {
     return (
       <P0Card testId="task-progression-fallback">
         <p className={geoP0Surfaces.sectionTitle}>本月内容任务</p>
@@ -394,7 +392,7 @@ export function MonthlyContentTaskList({
         <p className={geoP0Surfaces.muted}>选择一个任务进入内容推进，围绕 AI 搜索问题生成与发布内容。</p>
       </div>
       <ul className="space-y-3">
-        {contentTasks.map(task => (
+        {tasks.map(task => (
           <li key={task.id}>
             <P0Card testId={`weekly-content-task-item-${task.id}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">

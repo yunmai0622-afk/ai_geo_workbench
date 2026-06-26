@@ -52,8 +52,12 @@ import {
   resolveQualityCardView,
 } from "@shared/geoQualityScoreDisplay";
 import {
+  buildWeeklyContentEntryUrl,
   parseWeeklyContentEntryContext,
+  parseQuestionIdFromActionUrl,
+  resolveMonthlyContentTaskQuestionId,
   resolveWeeklyContentSourceTypeLabel,
+  WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE,
   type WeeklyContentEntryContext,
 } from "@shared/weeklyContentEntryContext";
 import {
@@ -185,7 +189,7 @@ function resolvePlatformBoardPrimaryActionKind(status: WeeklyContentTaskStatus, 
   return "save_and_qc";
 }
 
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { toastErrorDeduped } from "@/lib/dedupedToast";
 import { TRPCClientError } from "@trpc/client";
@@ -609,6 +613,7 @@ function showPublishSuccessNotification(
 
 export default function WeeklyContentPage() {
   const [location, setLocation] = useLocation();
+  const searchString = useSearch();
   const isMobile = useIsMobile();
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailModel, setDetailModel] = useState<WeeklyArticleCardModel | null>(null);
@@ -741,11 +746,11 @@ export default function WeeklyContentPage() {
   const [batchEnqueueBusy, setBatchEnqueueBusy] = useState(false);
 
   useEffect(() => {
-    const parsed = parseWeeklyContentEntryContext(getSearchFromLocation(location));
+    const parsed = parseWeeklyContentEntryContext(searchString);
     setEntryContext(parsed);
     entryContextRef.current = parsed;
     entryAutoGenerateHandledRef.current = false;
-  }, [location]);
+  }, [searchString]);
 
   useEffect(() => {
     if (entryContext.taskId != null) {
@@ -1992,7 +1997,11 @@ export default function WeeklyContentPage() {
     return (monthlyPlanQuery.data?.tasks ?? [])
       .filter(t => t.taskType === "content_generation")
       .map(t => {
-        const questionId = t.relatedQuestionId;
+        const questionId = resolveMonthlyContentTaskQuestionId({
+          relatedQuestionId: t.relatedQuestionId,
+          metadata: t.metadata,
+          actionUrl: t.actionUrl,
+        });
         const taskArticles =
           questionId != null ? articles.filter(article => articleMatchesQuestionId(article, questionId)) : [];
         const lifecycleViews = taskArticles.map(article =>
@@ -2009,7 +2018,7 @@ export default function WeeklyContentPage() {
           title: t.title,
           reason: t.reason,
           status: t.status,
-          questionId: t.relatedQuestionId,
+          questionId,
           actionUrl: t.actionUrl,
           laggingLifecycleLabel: lagging?.label ?? (questionId != null ? "待生成" : null),
         };
@@ -3512,14 +3521,16 @@ export default function WeeklyContentPage() {
                 tasks={monthlyContentTasks}
                 onSelectTask={task => {
                   if (!selectedProjectId) return;
-                  const qid = task.questionId;
+                  const qid = task.questionId ?? parseQuestionIdFromActionUrl(task.actionUrl);
                   if (qid) {
                     setLocation(
-                      buildProjectUrl(`/weekly?questionId=${qid}`, selectedProjectId),
+                      buildWeeklyContentEntryUrl(selectedProjectId, {
+                        questionId: qid,
+                      }),
                     );
-                  } else if (task.actionUrl) {
-                    setLocation(buildProjectUrl(task.actionUrl, selectedProjectId));
+                    return;
                   }
+                  toast.message(WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE);
                 }}
                 onGoMonthlyPlan={() =>
                   selectedProjectId

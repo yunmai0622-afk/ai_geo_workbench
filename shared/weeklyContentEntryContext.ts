@@ -102,4 +102,40 @@ export function buildWeeklyContentEntryUrl(
 export const WEEKLY_CONTENT_MISSING_QUESTION_MESSAGE =
   "当前内容缺少关联问题，请返回问题池重新选择。";
 
+export const WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE =
+  "该任务暂未绑定 AI 搜索问题，请先返回本月优化计划重新生成内容任务。";
+
 export const WEEKLY_CONTENT_ENTRY_TASK_LABEL = "生成该问题对应的平台化内容";
+
+export type MonthlyContentTaskQuestionSource = {
+  relatedQuestionId?: number | null;
+  metadata?: unknown;
+  actionUrl?: string | null;
+};
+
+export function parseQuestionIdFromActionUrl(actionUrl?: string | null): number | undefined {
+  if (!actionUrl?.trim()) return undefined;
+  const queryIndex = actionUrl.indexOf("?");
+  if (queryIndex < 0) return undefined;
+  return parsePositiveInt(new URLSearchParams(actionUrl.slice(queryIndex + 1)).get("questionId"));
+}
+
+/** 从月度计划任务解析可推进的 questionId（relatedQuestionId / metadata / actionUrl） */
+export function resolveMonthlyContentTaskQuestionId(
+  task: MonthlyContentTaskQuestionSource,
+): number | undefined {
+  const fromRelated = task.relatedQuestionId;
+  if (typeof fromRelated === "number" && Number.isFinite(fromRelated) && fromRelated > 0) {
+    return fromRelated;
+  }
+  const meta = task.metadata;
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    const q = (meta as Record<string, unknown>).questionId;
+    if (typeof q === "number" && Number.isFinite(q) && q > 0) return q;
+    if (typeof q === "string") {
+      const parsed = parsePositiveInt(q.trim());
+      if (parsed) return parsed;
+    }
+  }
+  return parseQuestionIdFromActionUrl(task.actionUrl);
+}

@@ -69,7 +69,10 @@ export function useActiveProjectSelection() {
     const fromUrl = getProjectIdFromUrl(search);
     if (!resolvedProjectId) return;
     if (fromUrl === resolvedProjectId) return;
-    setLocation(buildProjectUrl(pathname, resolvedProjectId));
+    const pathWithSearch = search
+      ? `${pathname}${search.startsWith("?") ? search : `?${search}`}`
+      : pathname;
+    setLocation(buildProjectUrl(pathWithSearch, resolvedProjectId));
   }, [projectsListPending, pathname, search, resolvedProjectId, setLocation]);
 
   const setSelectedProjectId = (id?: number) => {
