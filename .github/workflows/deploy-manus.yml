@@ -1,0 +1,73 @@
+name: Deploy Manus Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: "Skip pnpm check/build/test before deploy"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+concurrency:
+  group: manus-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, Test, Deploy
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      MANUS_API_KEY: ${{ secrets.MANUS_API_KEY }}
+      MANUS_WEBSITE_ID: ${{ secrets.MANUS_WEBSITE_ID }}
+      MANUS_TASK_ID: ${{ secrets.MANUS_TASK_ID }}
+      MANUS_EXPECTED_URL: ${{ vars.MANUS_EXPECTED_URL }}
+      MANUS_PUBLISH_VISIBILITY: ${{ vars.MANUS_PUBLISH_VISIBILITY || 'public' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
+        run: pnpm check
+
+      - name: Build
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
+        run: pnpm build
+
+      - name: Test
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_tests != 'true' }}
+        run: pnpm test
+
+      - name: Deploy to Manus
+        run: pnpm deploy:manus
+
+      - name: Verify production version endpoint
+        if: ${{ vars.MANUS_EXPECTED_URL != '' }}
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --max-time 30 "${MANUS_EXPECTED_URL%/}/__manus__/version.json"
