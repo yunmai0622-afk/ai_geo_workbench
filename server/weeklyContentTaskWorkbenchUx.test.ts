@@ -119,7 +119,7 @@ describe("GEO-V2.1-P1-Content-Workbench-Task-Board-UX", () => {
   it("无 questionId 时展示本月任务列表", () => {
     expect(weekly).toContain("MonthlyContentTaskList");
     expect(weekly).toContain("useSearch");
-    expect(weekly).toContain("buildWeeklyContentEntryUrl");
+    expect(weekly).toContain("buildMonthlyContentTaskEntryUrl");
     expect(weekly).toContain("WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE");
     expect(progression).toContain("weekly-monthly-content-task-list");
     expect(progression).toContain("进入推进");

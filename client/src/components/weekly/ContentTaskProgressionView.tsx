@@ -335,6 +335,7 @@ export const NextStepSideCard = NextStepSuggestion;
 
 export type MonthlyContentTaskItem = {
   id: number;
+  projectId?: number | null;
   title: string;
   reason: string;
   status: string;

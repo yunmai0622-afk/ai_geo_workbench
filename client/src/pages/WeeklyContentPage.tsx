@@ -52,9 +52,8 @@ import {
   resolveQualityCardView,
 } from "@shared/geoQualityScoreDisplay";
 import {
-  buildWeeklyContentEntryUrl,
+  buildMonthlyContentTaskEntryUrl,
   parseWeeklyContentEntryContext,
-  parseQuestionIdFromActionUrl,
   resolveMonthlyContentTaskQuestionId,
   resolveWeeklyContentSourceTypeLabel,
   WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE,
@@ -2015,6 +2014,7 @@ export default function WeeklyContentPage() {
         const lagging = pickLaggingContentAssetLifecycleStage(lifecycleViews);
         return {
           id: t.id,
+          projectId: t.projectId,
           title: t.title,
           reason: t.reason,
           status: t.status,
@@ -3520,17 +3520,20 @@ export default function WeeklyContentPage() {
               <MonthlyContentTaskList
                 tasks={monthlyContentTasks}
                 onSelectTask={task => {
-                  if (!selectedProjectId) return;
-                  const qid = task.questionId ?? parseQuestionIdFromActionUrl(task.actionUrl);
-                  if (qid) {
-                    setLocation(
-                      buildWeeklyContentEntryUrl(selectedProjectId, {
-                        questionId: qid,
-                      }),
-                    );
+                  const entryUrl = buildMonthlyContentTaskEntryUrl({
+                    task,
+                    selectedProjectId,
+                    currentSearch: searchString || getSearchFromLocation(location),
+                  });
+                  if (entryUrl) {
+                    setLocation(entryUrl);
                     return;
                   }
-                  toast.message(WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE);
+                  toast.message(
+                    task.questionId
+                      ? "请先选择客户项目，再进入内容任务推进。"
+                      : WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE,
+                  );
                 }}
                 onGoMonthlyPlan={() =>
                   selectedProjectId

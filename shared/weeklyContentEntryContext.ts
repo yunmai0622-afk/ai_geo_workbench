@@ -41,10 +41,14 @@ export function resolveWeeklyContentSourceTypeLabel(sourceType?: string | null):
   return SOURCE_TYPE_LABELS[key] ?? "AI搜索问题";
 }
 
-function parsePositiveInt(raw: string | null): number | undefined {
-  if (!raw) return undefined;
-  const n = Number.parseInt(raw, 10);
+function parsePositiveIntValue(raw: unknown): number | undefined {
+  if (raw == null || raw === "") return undefined;
+  const n = typeof raw === "number" ? raw : Number.parseInt(String(raw), 10);
   return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function parsePositiveInt(raw: string | null): number | undefined {
+  return parsePositiveIntValue(raw);
 }
 
 export function parseWeeklyContentEntryContext(search: string): WeeklyContentEntryContext {
@@ -109,33 +113,82 @@ export const WEEKLY_CONTENT_ENTRY_TASK_LABEL = "生成该问题对应的平台�
 
 export type MonthlyContentTaskQuestionSource = {
   relatedQuestionId?: number | null;
+  questionId?: number | null;
   metadata?: unknown;
   actionUrl?: string | null;
 };
 
-export function parseQuestionIdFromActionUrl(actionUrl?: string | null): number | undefined {
+function parsePositiveIntFromActionUrl(actionUrl: string | null | undefined, key: string): number | undefined {
   if (!actionUrl?.trim()) return undefined;
   const queryIndex = actionUrl.indexOf("?");
   if (queryIndex < 0) return undefined;
-  return parsePositiveInt(new URLSearchParams(actionUrl.slice(queryIndex + 1)).get("questionId"));
+  return parsePositiveInt(new URLSearchParams(actionUrl.slice(queryIndex + 1)).get(key));
+}
+
+export function parseQuestionIdFromActionUrl(actionUrl?: string | null): number | undefined {
+  return parsePositiveIntFromActionUrl(actionUrl, "questionId");
+}
+
+export function parseProjectIdFromActionUrl(actionUrl?: string | null): number | undefined {
+  return parsePositiveIntFromActionUrl(actionUrl, "projectId");
+}
+
+export function parseProjectIdFromSearch(search?: string | null): number | undefined {
+  if (!search?.trim()) return undefined;
+  const normalized = search.startsWith("?") ? search : `?${search}`;
+  return parsePositiveInt(new URLSearchParams(normalized).get("projectId"));
 }
 
 /** 从月度计划任务解析可推进的 questionId（relatedQuestionId / metadata / actionUrl） */
 export function resolveMonthlyContentTaskQuestionId(
   task: MonthlyContentTaskQuestionSource,
 ): number | undefined {
-  const fromRelated = task.relatedQuestionId;
-  if (typeof fromRelated === "number" && Number.isFinite(fromRelated) && fromRelated > 0) {
+  const fromRelated = parsePositiveIntValue(task.relatedQuestionId);
+  if (fromRelated) {
     return fromRelated;
+  }
+  const fromQuestionId = parsePositiveIntValue(task.questionId);
+  if (fromQuestionId) {
+    return fromQuestionId;
   }
   const meta = task.metadata;
   if (meta && typeof meta === "object" && !Array.isArray(meta)) {
-    const q = (meta as Record<string, unknown>).questionId;
-    if (typeof q === "number" && Number.isFinite(q) && q > 0) return q;
-    if (typeof q === "string") {
-      const parsed = parsePositiveInt(q.trim());
+    const record = meta as Record<string, unknown>;
+    for (const key of ["questionId", "relatedQuestionId", "sourceQuestionId", "targetQuestionId", "question_id"]) {
+      const parsed = parsePositiveIntValue(record[key]);
       if (parsed) return parsed;
     }
   }
   return parseQuestionIdFromActionUrl(task.actionUrl);
+}
+
+export type MonthlyContentTaskEntrySource = MonthlyContentTaskQuestionSource & {
+  projectId?: number | null;
+};
+
+export function resolveMonthlyContentTaskProjectId(input: {
+  task: MonthlyContentTaskEntrySource;
+  selectedProjectId?: number | null;
+  currentSearch?: string | null;
+}): number | undefined {
+  return (
+    parseProjectIdFromSearch(input.currentSearch) ??
+    parsePositiveIntValue(input.selectedProjectId) ??
+    parsePositiveIntValue(input.task.projectId) ??
+    parseProjectIdFromActionUrl(input.task.actionUrl)
+  );
+}
+
+export function buildMonthlyContentTaskEntryUrl(input: {
+  task: MonthlyContentTaskEntrySource;
+  selectedProjectId?: number | null;
+  currentSearch?: string | null;
+}): string | null {
+  const projectId = resolveMonthlyContentTaskProjectId(input);
+  const questionId = resolveMonthlyContentTaskQuestionId(input.task);
+  if (!projectId || !questionId) return null;
+  return buildWeeklyContentEntryUrl(projectId, {
+    questionId,
+    sourceType: "optimization_task",
+  });
 }

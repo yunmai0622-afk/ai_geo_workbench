@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   appendWeeklyContentEntryParams,
+  buildMonthlyContentTaskEntryUrl,
   buildWeeklyContentEntryUrl,
   parseQuestionIdFromActionUrl,
+  parseProjectIdFromActionUrl,
+  parseProjectIdFromSearch,
   parseWeeklyContentEntryContext,
   resolveMonthlyContentTaskQuestionId,
+  resolveMonthlyContentTaskProjectId,
   resolveWeeklyContentSourceTypeLabel,
 } from "./weeklyContentEntryContext";
 
@@ -67,9 +71,55 @@ describe("weeklyContentEntryContext", () => {
     expect(
       resolveMonthlyContentTaskQuestionId({
         relatedQuestionId: null,
+        metadata: { sourceQuestionId: "88" },
+        actionUrl: "/weekly?questionId=7",
+      }),
+    ).toBe(88);
+
+    expect(
+      resolveMonthlyContentTaskQuestionId({
+        relatedQuestionId: null,
+        questionId: 55,
         metadata: null,
         actionUrl: "/weekly",
       }),
-    ).toBeUndefined();
+    ).toBe(55);
+  });
+
+  it("builds monthly content task entry url with project fallback", () => {
+    const fromCurrentSearch = buildMonthlyContentTaskEntryUrl({
+      selectedProjectId: null,
+      currentSearch: "?projectId=210001",
+      task: {
+        relatedQuestionId: null,
+        metadata: null,
+        actionUrl: "/weekly?questionId=330001",
+      },
+    });
+    expect(fromCurrentSearch).toBe("/weekly?projectId=210001&questionId=330001&sourceType=optimization_task");
+
+    const fromTask = buildMonthlyContentTaskEntryUrl({
+      task: {
+        projectId: 210002,
+        relatedQuestionId: null,
+        metadata: { questionId: "330002" },
+        actionUrl: "/weekly",
+      },
+    });
+    expect(fromTask).toBe("/weekly?projectId=210002&questionId=330002&sourceType=optimization_task");
+  });
+
+  it("parses projectId from search and actionUrl", () => {
+    expect(parseProjectIdFromSearch("?projectId=210001")).toBe(210001);
+    expect(parseProjectIdFromActionUrl("/weekly?projectId=210001&questionId=330001")).toBe(210001);
+    expect(resolveMonthlyContentTaskProjectId({
+      currentSearch: "",
+      selectedProjectId: null,
+      task: { projectId: null, actionUrl: "/weekly?projectId=210003&questionId=330001" },
+    })).toBe(210003);
+    expect(buildMonthlyContentTaskEntryUrl({
+      selectedProjectId: 210001,
+      task: { actionUrl: "/weekly" },
+    })).toBeNull();
   });
 });
