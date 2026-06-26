@@ -125,6 +125,14 @@ describe("GEO-V2.1-P1-Content-Workbench-Task-Board-UX", () => {
     expect(progression).toContain("进入推进");
   });
 
+  it("进入推进后同步 query 上下文，避免 search-only URL 变化不触发重渲染", () => {
+    expect(weekly).toContain("const nextEntryContext = parseWeeklyContentEntryContext(getSearchFromLocation(entryUrl));");
+    expect(weekly).toContain("setEntryContext(nextEntryContext);");
+    expect(weekly).toContain("entryContextRef.current = nextEntryContext;");
+    expect(weekly).toContain("entryAutoGenerateHandledRef.current = false;");
+    expect(weekly).toContain("setLocation(entryUrl);");
+  });
+
   it("生成中串行提示", () => {
     expect(taskBoardLib).toContain(WEEKLY_SERIAL_GENERATION_HINT);
     expect(progression).toContain("task-platform-serial-hint");

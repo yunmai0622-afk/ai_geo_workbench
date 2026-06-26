@@ -3526,6 +3526,10 @@ export default function WeeklyContentPage() {
                     currentSearch: searchString || getSearchFromLocation(location),
                   });
                   if (entryUrl) {
+                    const nextEntryContext = parseWeeklyContentEntryContext(getSearchFromLocation(entryUrl));
+                    setEntryContext(nextEntryContext);
+                    entryContextRef.current = nextEntryContext;
+                    entryAutoGenerateHandledRef.current = false;
                     setLocation(entryUrl);
                     return;
                   }
