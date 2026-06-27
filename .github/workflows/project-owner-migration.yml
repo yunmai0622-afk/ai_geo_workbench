@@ -1,0 +1,78 @@
+name: Project Owner Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run checks preconditions; apply migrates; rollback restores owner"
+        required: true
+        default: "dry-run"
+        type: choice
+        options:
+          - dry-run
+          - apply
+          - rollback
+      project_id:
+        description: "Guarded project id"
+        required: true
+        default: "180001"
+      from_owner_user_id:
+        description: "Expected current owner user id"
+        required: true
+        default: "16740006"
+      to_owner_user_id:
+        description: "Target owner user id"
+        required: true
+        default: "1"
+      to_owner_email:
+        description: "Target owner email"
+        required: true
+        default: "419052760@qq.com"
+
+concurrency:
+  group: project-owner-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Project Owner Migration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OWNER_MIGRATION_MODE: ${{ inputs.mode }}
+      OWNER_MIGRATION_PROJECT_ID: ${{ inputs.project_id }}
+      OWNER_MIGRATION_FROM_OWNER_USER_ID: ${{ inputs.from_owner_user_id }}
+      OWNER_MIGRATION_TO_OWNER_USER_ID: ${{ inputs.to_owner_user_id }}
+      OWNER_MIGRATION_TO_OWNER_EMAIL: ${{ inputs.to_owner_email }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error title=Missing DATABASE_URL::DATABASE_URL repository secret is required"
+            exit 1
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Run guarded owner migration
+        run: node scripts/project-owner-migration.mjs
