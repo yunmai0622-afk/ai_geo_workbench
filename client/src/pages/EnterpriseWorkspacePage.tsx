@@ -9,6 +9,7 @@ import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { WorkspaceDashboardOverviewCards } from "@/components/project/WorkspaceDashboardOverviewCards";
 import { AiBrandValueOverviewSection } from "@/components/workspace/AiBrandValueOverviewSection";
+import { WorkspaceSellableDeliveryLoopCard } from "@/components/workspace/WorkspaceSellableDeliveryLoopCard";
 import { WorkspaceInclusionMonitoringSection } from "@/components/workspace/WorkspaceInclusionMonitoringSection";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import {
   toMainChainProgressInput,
   type MainChainStepView,
 } from "@shared/workspaceMainChain";
+import { buildSellableDeliveryLoopView } from "@shared/sellableDeliveryLoop";
 import {
   buildGeoScoreAttributionLines,
   buildGeoScoreChangeReason,
@@ -113,6 +115,10 @@ export default function EnterpriseWorkspacePage() {
     { enabled: Boolean(selectedProjectId) },
   );
   const businessMaturityQuery = trpc.geo.maturity.getBusinessReport.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const optimizationBriefQuery = trpc.geo.monthlyPlan.getOptimizationBrief.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
@@ -323,6 +329,47 @@ export default function EnterpriseWorkspacePage() {
       : metrics && metrics.articleCount > 0
         ? `${metrics.articleCount}`
         : "--";
+  const sellableDeliveryLoopView = useMemo(() => {
+    if (!metrics) return null;
+    const monthlyProgress = monthlyPlanQuery.data?.progress ?? { completedCount: 0, totalCount: 0 };
+    return buildSellableDeliveryLoopView({
+      maturityScore: businessMaturityQuery.data?.totalScore ?? maturityReportQuery.data?.totalScore ?? null,
+      maturityLevel: businessMaturityQuery.data?.level ?? maturityReportQuery.data?.stage ?? null,
+      hasDiagnosis: metrics.hasCompletedT0Baseline || metrics.aiTestResultCount > 0 || metrics.hasAnalysis,
+      monthlyPlanTotalCount: monthlyProgress.totalCount,
+      monthlyPlanCompletedCount: monthlyProgress.completedCount,
+      articleCount: metrics.articleCount,
+      publishCount: metrics.publishRecordCount + metrics.completedPublishTaskCount,
+      monitoringRecordCount: metrics.monitoringRecordCount,
+      retestComparisonCount: metrics.retestComparisonCount,
+      reportCount: metrics.reportCount,
+      brandMentionRate: aiBrandMentionRate,
+      recommendRate: aiBrandRecommendRate,
+      priorities:
+        optimizationBriefQuery.data?.priorities.map(priority => ({
+          title: priority.title,
+          dimensionName: priority.relatedDimensionName,
+          source: priority.source,
+        })) ?? [],
+      nextActionLabel: stagePrimaryAction?.ctaLabel ?? homeDisplay.mainChainNextAction?.ctaLabel ?? stage?.ctaLabel,
+      nextActionReason: stagePrimaryAction?.reason ?? homeDisplay.mainChainNextAction?.reason ?? null,
+    });
+  }, [
+    aiBrandMentionRate,
+    aiBrandRecommendRate,
+    businessMaturityQuery.data?.level,
+    businessMaturityQuery.data?.totalScore,
+    homeDisplay.mainChainNextAction?.ctaLabel,
+    homeDisplay.mainChainNextAction?.reason,
+    maturityReportQuery.data?.stage,
+    maturityReportQuery.data?.totalScore,
+    metrics,
+    monthlyPlanQuery.data?.progress,
+    optimizationBriefQuery.data?.priorities,
+    stage?.ctaLabel,
+    stagePrimaryAction?.ctaLabel,
+    stagePrimaryAction?.reason,
+  ]);
 
   if (!enabled && !projectsLoading) {
     return (
@@ -350,6 +397,12 @@ export default function EnterpriseWorkspacePage() {
           competitorRate={aiBrandCompetitorRate}
           topWeaknesses={aiBrandTopWeaknesses}
           onNavigate={setLocation}
+        />
+      ) : null}
+      {sellableDeliveryLoopView ? (
+        <WorkspaceSellableDeliveryLoopCard
+          view={sellableDeliveryLoopView}
+          onNextAction={headerCtaPath ? () => setLocation(headerCtaPath) : undefined}
         />
       ) : null}
       {selectedProjectId ? (
