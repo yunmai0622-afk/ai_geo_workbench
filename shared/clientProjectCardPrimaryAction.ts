@@ -8,7 +8,11 @@ export type ClientProjectCardPrimaryActionId =
   | "profile_incomplete"
   | "ai_diagnosis_pending"
   | "monthly_plan_generate"
-  | "monthly_plan_active";
+  | "monthly_plan_active"
+  | "publish_pending"
+  | "verification_pending"
+  | "report_ready"
+  | "renewal_follow_up";
 
 export type ClientProjectCardPrimaryActionInput = {
   completionScore: number;
@@ -16,6 +20,11 @@ export type ClientProjectCardPrimaryActionInput = {
   hasActiveMonthlyPlan: boolean;
   monthlyPlanCompletedCount?: number;
   monthlyPlanTotalCount?: number;
+  articleCount?: number;
+  publishCount?: number;
+  aiTestCount?: number;
+  latestGeoScore?: number | null;
+  subscriptionServiceStatus?: string | null;
 };
 
 export type ClientProjectCardPrimaryAction = {
@@ -25,7 +34,55 @@ export type ClientProjectCardPrimaryAction = {
   /** 不含 projectId，由前端 buildProjectUrl 拼接 */
   ctaPath: string;
   nextStepHint: string;
+  majorProblem: string;
+  monthlyProgressLabel: string;
+  riskLabels: string[];
+  needsAttention: boolean;
+  serviceActive: boolean;
+  reportReady: boolean;
+  renewalRisk: boolean;
 };
+
+function buildAction(input: {
+  id: ClientProjectCardPrimaryActionId;
+  stageLabel: string;
+  ctaLabel: string;
+  ctaPath: string;
+  nextStepHint: string;
+  majorProblem: string;
+  monthlyProgressLabel: string;
+  riskLabels?: string[];
+  needsAttention?: boolean;
+  serviceActive?: boolean;
+  reportReady?: boolean;
+  renewalRisk?: boolean;
+}): ClientProjectCardPrimaryAction {
+  return {
+    id: input.id,
+    stageLabel: input.stageLabel,
+    ctaLabel: input.ctaLabel,
+    ctaPath: input.ctaPath,
+    nextStepHint: input.nextStepHint,
+    majorProblem: input.majorProblem,
+    monthlyProgressLabel: input.monthlyProgressLabel,
+    riskLabels: input.riskLabels ?? [],
+    needsAttention: input.needsAttention ?? false,
+    serviceActive: input.serviceActive ?? false,
+    reportReady: input.reportReady ?? false,
+    renewalRisk: input.renewalRisk ?? false,
+  };
+}
+
+function monthlyProgressLabel(input: ClientProjectCardPrimaryActionInput): string {
+  const completed = input.monthlyPlanCompletedCount ?? 0;
+  const total = input.monthlyPlanTotalCount ?? 0;
+  if (total > 0) return `${completed}/${total} 项完成`;
+  return input.hasActiveMonthlyPlan ? "服务执行中" : "待制定";
+}
+
+function renewalRiskFromStatus(status: string | null | undefined): boolean {
+  return status === "expired" || status === "expiring_soon" || status === "paused";
+}
 
 /**
  * 客户卡片主按钮与下一步文案（命中即停止）：
@@ -37,45 +94,140 @@ export type ClientProjectCardPrimaryAction = {
 export function resolveClientProjectCardPrimaryAction(
   input: ClientProjectCardPrimaryActionInput,
 ): ClientProjectCardPrimaryAction {
+  const renewalRisk = renewalRiskFromStatus(input.subscriptionServiceStatus);
+  const baseRiskLabels = renewalRisk ? ["续费风险"] : [];
+
+  if (
+    renewalRisk &&
+    input.hasCompletedT0Baseline &&
+    ((input.monthlyPlanCompletedCount ?? 0) > 0 || (input.articleCount ?? 0) > 0 || (input.publishCount ?? 0) > 0)
+  ) {
+    return buildAction({
+      id: "renewal_follow_up",
+      stageLabel: "续费跟进",
+      ctaLabel: "查看效果报告",
+      ctaPath: "/delivery-reports",
+      nextStepHint: "先用本月执行和效果证据解释续费价值",
+      majorProblem: "服务即将到期，需要准备续费证明",
+      monthlyProgressLabel: monthlyProgressLabel(input),
+      riskLabels: baseRiskLabels,
+      needsAttention: true,
+      serviceActive: true,
+      reportReady: true,
+      renewalRisk: true,
+    });
+  }
+
   if (input.completionScore < CLIENT_PROFILE_COMPLETE_THRESHOLD) {
-    return {
+    return buildAction({
       id: "profile_incomplete",
       stageLabel: "待建档",
-      ctaLabel: "完成品牌建档",
+      ctaLabel: "去完善资料",
       ctaPath: "/enterprise-profile",
-      nextStepHint: "补齐品牌信息，让AI正确认识你",
-    };
+      nextStepHint: "补齐品牌、客户和案例资料，后续诊断才有依据",
+      majorProblem: "资料不完整，AI 还难以准确理解品牌",
+      monthlyProgressLabel: "待完善资料",
+      riskLabels: ["资料不完整", ...baseRiskLabels],
+      needsAttention: true,
+      renewalRisk,
+    });
   }
 
   if (!input.hasCompletedT0Baseline) {
-    return {
+    return buildAction({
       id: "ai_diagnosis_pending",
       stageLabel: "待诊断",
-      ctaLabel: "开始AI现状检测",
+      ctaLabel: "去看诊断",
       ctaPath: "/ai-diagnosis",
-      nextStepHint: "检测AI当前是否认识并推荐你的品牌",
-    };
+      nextStepHint: "先确认 AI 是否知道、提到并推荐这个客户",
+      majorProblem: "缺少 AI 现状基线，暂时无法证明问题",
+      monthlyProgressLabel: "待诊断",
+      riskLabels: ["未完成诊断", ...baseRiskLabels],
+      needsAttention: true,
+      renewalRisk,
+    });
   }
 
   if (input.hasActiveMonthlyPlan) {
     const completed = input.monthlyPlanCompletedCount ?? 0;
     const total = input.monthlyPlanTotalCount ?? 0;
-    const progressHint =
-      total > 0 ? `当前进度${completed}/${total}项已完成` : "当前进度进行中";
-    return {
+    const progressLabel = monthlyProgressLabel(input);
+    const allPlanTasksDone = total > 0 && completed >= total;
+    if (allPlanTasksDone || ((input.publishCount ?? 0) > 0 && (input.aiTestCount ?? 0) > 0)) {
+      return buildAction({
+        id: "report_ready",
+        stageLabel: "可出报告",
+        ctaLabel: "去效果报告",
+        ctaPath: "/delivery-reports",
+        nextStepHint: "整理本月执行、效果变化和下月建议，用于客户复盘",
+        majorProblem: "需要把服务动作转成客户能看懂的价值证明",
+        monthlyProgressLabel: progressLabel,
+        riskLabels: baseRiskLabels,
+        serviceActive: true,
+        reportReady: true,
+        renewalRisk,
+      });
+    }
+    if ((input.articleCount ?? 0) > (input.publishCount ?? 0)) {
+      return buildAction({
+        id: "publish_pending",
+        stageLabel: "待发布",
+        ctaLabel: "去执行进度",
+        ctaPath: "/weekly",
+        nextStepHint: "已有内容资产，优先推进发布和公开信源沉淀",
+        majorProblem: "内容已生成但还没有形成公开证据",
+        monthlyProgressLabel: progressLabel,
+        riskLabels: ["待发布", ...baseRiskLabels],
+        needsAttention: true,
+        serviceActive: true,
+        renewalRisk,
+      });
+    }
+    if ((input.publishCount ?? 0) > 0 && (input.aiTestCount ?? 0) === 0) {
+      return buildAction({
+        id: "verification_pending",
+        stageLabel: "待验证",
+        ctaLabel: "去效果验证",
+        ctaPath: "/inclusion-monitoring",
+        nextStepHint: "发布后需要验证内容是否被搜索和 AI 看见",
+        majorProblem: "已有发布动作，但缺少效果验证",
+        monthlyProgressLabel: progressLabel,
+        riskLabels: ["待验证", ...baseRiskLabels],
+        needsAttention: true,
+        serviceActive: true,
+        renewalRisk,
+      });
+    }
+    return buildAction({
       id: "monthly_plan_active",
-      stageLabel: "优化中",
-      ctaLabel: "继续执行本月计划",
-      ctaPath: "/monthly-plan",
-      nextStepHint: progressHint,
-    };
+      stageLabel: "本月服务中",
+      ctaLabel: "去执行进度",
+      ctaPath: "/weekly",
+      nextStepHint: total > 0 ? `按本月方案继续推进，当前 ${completed}/${total} 项完成` : "按本月方案继续推进交付",
+      majorProblem:
+        input.latestGeoScore != null && input.latestGeoScore < 60
+          ? "AI 成熟度偏低，需要继续补内容和信源"
+          : "本月服务正在执行，需要持续推进",
+      monthlyProgressLabel: progressLabel,
+      riskLabels: baseRiskLabels,
+      serviceActive: true,
+      renewalRisk,
+    });
   }
 
-  return {
+  return buildAction({
     id: "monthly_plan_generate",
-    stageLabel: "待计划",
-    ctaLabel: "生成本月优化计划",
+    stageLabel: "待制定方案",
+    ctaLabel: "去本月方案",
     ctaPath: "/monthly-plan",
-    nextStepHint: "根据AI短板制定本月优化任务",
-  };
+    nextStepHint: "根据 AI 短板制定本月 3 件服务事项",
+    majorProblem:
+      input.latestGeoScore != null && input.latestGeoScore < 60
+        ? "AI 成熟度偏低，需要明确本月优先级"
+        : "已有诊断结果，但还没有转成服务方案",
+    monthlyProgressLabel: "待制定",
+    riskLabels: ["待制定方案", ...baseRiskLabels],
+    needsAttention: true,
+    renewalRisk,
+  });
 }

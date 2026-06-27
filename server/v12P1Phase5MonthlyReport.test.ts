@@ -46,7 +46,7 @@ describe("GEO-V2.0-P1-Phase5 Monthly Maturity Report", () => {
 
   it("updates navigation label for delivery reports entry", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain('label: "AI 品牌成熟度月报"');
+    expect(layout).toContain('label: "效果报告"');
     expect(layout).toContain('path: "/delivery-reports"');
   });
 });

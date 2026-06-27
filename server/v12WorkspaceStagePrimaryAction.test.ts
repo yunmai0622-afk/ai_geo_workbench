@@ -65,12 +65,12 @@ describe("GEO-V2.0-UX-Followup-Stage-CTA-Nav", () => {
     expect(action?.ctaPath).toBe("/ai-diagnosis");
   });
 
-  it("资产管理分组仅保留问题库与品牌信源图谱，信任证据由建档第 6 步管理", () => {
+  it("运营工具分组保留 AI 问题池与信源证据库，信任证据由建档第 6 步管理", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     expect(layout).not.toContain('label: "信任证据库"');
-    expect(layout).toContain('title: "资产管理"');
-    expect(layout).toContain('label: "问题库"');
-    expect(layout).toContain('label: "品牌信源图谱"');
+    expect(layout).toContain('title: "运营工具"');
+    expect(layout).toContain('label: "AI 问题池"');
+    expect(layout).toContain('label: "信源与证据库"');
     expect(read("client/src/components/enterpriseProfile/TrustEvidenceManager.tsx")).toContain("信任证据库");
   });
 

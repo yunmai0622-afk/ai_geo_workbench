@@ -58,7 +58,7 @@ describe("GEO-V2.0-P1-A Monthly Optimization Plan", () => {
     expect(read("client/src/App.tsx")).toContain('path="/monthly-plan"');
     expect(read("client/src/pages/MonthlyPlanPage.tsx")).toContain("monthly-plan-page");
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain('label: "本月优化计划"');
+    expect(layout).toContain('label: "本月方案"');
     expect(layout).toContain('path: "/monthly-plan"');
   });
 

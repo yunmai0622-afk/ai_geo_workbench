@@ -18,23 +18,26 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
 
   it("侧边栏按客户主路径展示入口，并隐藏旧入口", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
-    expect(layoutSource).toContain('title: "主流程"');
-    expect(layoutSource).toContain('title: "资产管理"');
+    expect(layoutSource).toContain('title: "客户主流程"');
+    expect(layoutSource).toContain('title: "运营工具"');
     expect(layoutSource).not.toContain('title: "增长总览"');
     for (const label of [
-      "项目工作台",
-      "品牌资产建档",
-      "AI 实测诊断",
-      "问题库",
+      "总览",
+      "诊断",
+      "本月方案",
+      "执行进度",
+      "效果验证",
+      "效果报告",
+      "品牌资料",
       "内容生产工作台",
-      "平台适配发布",
-      "内容资产效果",
-      "AI 品牌成熟度月报",
+      "发布执行中心",
+      "AI 问题池",
+      "信源与证据库",
       "使用指南",
     ]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
-    for (const forbidden of ["总览", "内容生成", "内容发布", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心", "资产进展看板", "AI 内容诊断", "内容资产生产", "资产发布记录", "客户交付报告", "资产进展", "有效动作", "信任证据库", "企业项目"]) {
+    for (const forbidden of ["内容生成", "内容发布", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心", "资产进展看板", "AI 内容诊断", "内容资产生产", "资产发布记录", "客户交付报告", "资产进展", "有效动作", "信任证据库", "企业项目"]) {
       expect(layoutSource).not.toContain(`label: "${forbidden}"`);
     }
   });

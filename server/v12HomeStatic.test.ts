@@ -16,18 +16,23 @@ describe("V1.0 客户主路径静态回归", () => {
   it("侧边栏展示客户主入口（含内容进展占位），并把旧路径作为兼容别名", () => {
     const layoutSource = readProjectFile("client/src/components/DashboardLayout.tsx");
     for (const label of [
-      "品牌资产建档",
-      "AI 实测诊断",
+      "总览",
+      "诊断",
+      "本月方案",
+      "执行进度",
+      "效果验证",
+      "效果报告",
+      "品牌资料",
       "内容生产工作台",
-      "平台适配发布",
-      "内容资产效果",
-      "AI 品牌成熟度月报",
+      "发布执行中心",
+      "AI 问题池",
+      "信源与证据库",
     ]) {
       expect(layoutSource).toContain(`label: "${label}"`);
     }
     expect(layoutSource).toContain('path: "/inclusion-monitoring"');
     expect(layoutSource).not.toContain("即将上线");
-    for (const forbidden of ["总览", "内容生成", "内容发布", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心", "资产进展看板"]) {
+    for (const forbidden of ["内容生成", "内容发布", "内容策略", "平台优先级", "事实溯源", "一致性检查", "发布前检查", "第三方素材", "AI 可引用片段", "内容增长流水线", "报告中心", "资产进展看板"]) {
       expect(layoutSource).not.toContain(`label: "${forbidden}"`);
     }
     for (const alias of ["/projects", "/assets", "/diagnosis", "/questions", "/responses", "/analysis", "/scores", "/weekly", "/content-generation", "/articles", "/publish", "/monitoring", "/inclusion-monitoring", "/reports"]) {

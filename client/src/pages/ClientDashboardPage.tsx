@@ -38,7 +38,7 @@ import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade"
 import { trpc } from "@/lib/trpc";
 import { SUBSCRIPTION_LIMIT_PROJECT_MESSAGE } from "@shared/subscriptionLimits";
 import { toUserFacingCreateProjectError } from "@shared/userFacingMutationErrors";
-import { Archive, ArchiveRestore, ArrowRight, Building2, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
+import { AlertTriangle, Archive, ArchiveRestore, ArrowRight, BarChart3, Building2, ClipboardCheck, Loader2, MoreHorizontal, Plus, Search, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -80,38 +80,91 @@ type ArchiveViewKey = (typeof ARCHIVE_VIEW_FILTERS)[number]["key"];
 
 const STATUS_FILTERS = [
   { key: "all", label: "全部" },
-  { key: "profiling", label: "建档中" },
-  { key: "diagnosing", label: "诊断中" },
-  { key: "optimizing", label: "优化中" },
-  { key: "retesting", label: "待复测" },
-  { key: "reported", label: "已出报告" },
+  { key: "needs_attention", label: "待处理" },
+  { key: "in_service", label: "服务中" },
+  { key: "report_ready", label: "可出报告" },
+  { key: "renewal_risk", label: "有风险" },
 ] as const;
 
 type FilterKey = (typeof STATUS_FILTERS)[number]["key"];
 
 function matchFilter(project: ProjectSummary, filter: FilterKey): boolean {
   if (filter === "all") return true;
-  const { stageLabel } = resolveClientProjectCardPrimaryAction({
+  const view = resolveClientProjectCardPrimaryAction({
     completionScore: project.completionScore,
     hasCompletedT0Baseline: project.hasCompletedT0Baseline,
     hasActiveMonthlyPlan: project.hasActiveMonthlyPlan,
     monthlyPlanCompletedCount: project.monthlyPlanCompletedCount,
     monthlyPlanTotalCount: project.monthlyPlanTotalCount,
+    articleCount: project.articleCount,
+    publishCount: project.publishCount,
+    aiTestCount: project.aiTestCount,
+    latestGeoScore: project.latestGeoScore,
+    subscriptionServiceStatus: project.subscriptionServiceStatus,
   });
   switch (filter) {
-    case "profiling":
-      return stageLabel === "待建档";
-    case "diagnosing":
-      return stageLabel === "待诊断";
-    case "optimizing":
-      return stageLabel === "待计划" || stageLabel === "优化中";
-    case "retesting":
-      return false;
-    case "reported":
-      return false;
+    case "needs_attention":
+      return view.needsAttention;
+    case "in_service":
+      return view.serviceActive;
+    case "report_ready":
+      return view.reportReady;
+    case "renewal_risk":
+      return view.renewalRisk;
     default:
       return true;
   }
+}
+
+function businessStats(projects: ProjectSummary[]) {
+  const views = projects.map(project =>
+    resolveClientProjectCardPrimaryAction({
+      completionScore: project.completionScore,
+      hasCompletedT0Baseline: project.hasCompletedT0Baseline,
+      hasActiveMonthlyPlan: project.hasActiveMonthlyPlan,
+      monthlyPlanCompletedCount: project.monthlyPlanCompletedCount,
+      monthlyPlanTotalCount: project.monthlyPlanTotalCount,
+      articleCount: project.articleCount,
+      publishCount: project.publishCount,
+      aiTestCount: project.aiTestCount,
+      latestGeoScore: project.latestGeoScore,
+      subscriptionServiceStatus: project.subscriptionServiceStatus,
+    }),
+  );
+  return {
+    total: projects.length,
+    inService: views.filter(view => view.serviceActive).length,
+    needsAttention: views.filter(view => view.needsAttention).length,
+    reportReady: views.filter(view => view.reportReady).length,
+    renewalRisk: views.filter(view => view.renewalRisk).length,
+  };
+}
+
+function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+}: {
+  label: string;
+  value: string | number;
+  hint: string;
+  icon: typeof UsersRound;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" data-testid="client-business-metric">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold text-gray-500">{label}</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-gray-950">{value}</p>
+        </div>
+        <span className="rounded-lg bg-blue-50 p-2 text-blue-700">
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-gray-500">{hint}</p>
+    </div>
+  );
 }
 
 function ProjectCard({
@@ -138,6 +191,11 @@ function ProjectCard({
     hasActiveMonthlyPlan: project.hasActiveMonthlyPlan,
     monthlyPlanCompletedCount: project.monthlyPlanCompletedCount,
     monthlyPlanTotalCount: project.monthlyPlanTotalCount,
+    articleCount: project.articleCount,
+    publishCount: project.publishCount,
+    aiTestCount: project.aiTestCount,
+    latestGeoScore: project.latestGeoScore,
+    subscriptionServiceStatus: project.subscriptionServiceStatus,
   });
   const pipelineBadgeLabel = primaryAction.stageLabel;
   const actionLabel = primaryAction.ctaLabel;
@@ -258,16 +316,50 @@ function ProjectCard({
         </div>
       </div>
 
-      <p className="mb-4 text-[12px] text-gray-400" data-testid="client-project-last-measured">
-        最近实测：{lastMeasuredLabel}
-      </p>
+      <div className="mb-4 space-y-2 rounded-lg border border-gray-100 bg-white px-3 py-3">
+        <p className="text-[12px] leading-5 text-gray-600" data-testid="client-project-main-problem">
+          <span className="font-medium text-gray-500">最大问题：</span>
+          {primaryAction.majorProblem}
+        </p>
+        <p className="text-[12px] leading-5 text-gray-600" data-testid="client-project-monthly-progress">
+          <span className="font-medium text-gray-500">本月进度：</span>
+          {primaryAction.monthlyProgressLabel}
+        </p>
+        <p className="text-[12px] leading-5 text-gray-600" data-testid="client-project-next-step">
+          <span className="font-medium text-gray-500">下一步：</span>
+          {nextStep}
+        </p>
+      </div>
 
-      <p className="mb-4 line-clamp-2 text-[13px] leading-relaxed text-gray-600">
-        <span className="font-medium text-gray-400">下一步：</span>
-        {nextStep}
-      </p>
+      <div className="mb-4 flex flex-wrap gap-1.5" data-testid="client-project-risk-tags">
+        {primaryAction.riskLabels.length > 0 ? (
+          primaryAction.riskLabels.map(label => (
+            <span key={label} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+              {label}
+            </span>
+          ))
+        ) : (
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+            暂无明显风险
+          </span>
+        )}
+        <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+          最近实测：{lastMeasuredLabel}
+        </span>
+      </div>
 
-      <div className="mt-auto flex sm:justify-end">
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          className="text-xs font-medium text-gray-500 hover:text-blue-700"
+          data-testid="client-project-overview-link"
+          onClick={e => {
+            e.stopPropagation();
+            setLocation(buildProjectUrl("/workspace", project.id));
+          }}
+        >
+          进入总览
+        </button>
         <button
           type="button"
           className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition-all hover:bg-blue-100 sm:w-auto sm:justify-start"
@@ -328,6 +420,8 @@ export default function ClientDashboardPage() {
       return matchesSearch && matchesStatus;
     });
   }, [projects, search, statusFilter]);
+
+  const stats = useMemo(() => businessStats(projects), [projects]);
 
   const handleEnter = (projectId: number) => {
     activateProject(projectId);
@@ -407,9 +501,9 @@ export default function ClientDashboardPage() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <h1 className={geoTypography.pageTitle}>企业项目</h1>
+          <h1 className={geoTypography.pageTitle}>客户经营看板</h1>
           <p className="max-w-2xl text-sm leading-relaxed text-gray-500">
-            管理每个企业的 AI 搜索可见性、内容资产、监测进展与交付报告
+            管理客户的 GEO 诊断、月度服务、执行进度、效果报告和续费风险。
           </p>
         </div>
         <Button
@@ -429,6 +523,14 @@ export default function ClientDashboardPage() {
           testId="client-dashboard-project-limit"
         />
       ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-testid="client-business-metrics">
+        <StatCard label="客户总数" value={stats.total} hint="当前列表中的客户项目" icon={UsersRound} />
+        <StatCard label="服务中客户" value={stats.inService} hint="已有本月方案或正在交付" icon={BarChart3} />
+        <StatCard label="待处理客户" value={stats.needsAttention} hint="需要建档、诊断、发布或制定方案" icon={AlertTriangle} />
+        <StatCard label="可出报告客户" value={stats.reportReady} hint="已有服务动作，可进入效果报告" icon={ClipboardCheck} />
+        <StatCard label="有续费风险客户" value={stats.renewalRisk} hint="即将到期、已到期或服务暂停" icon={AlertTriangle} />
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-[380px]">

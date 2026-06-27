@@ -50,9 +50,9 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(app).toContain('path="/onboarding" component={OnboardingPage}');
   });
 
-  it("DashboardLayout 侧栏为 GEO 建档", () => {
+  it("DashboardLayout 运营工具保留品牌资料入口", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain('label: "品牌资产建档"');
+    expect(layout).toContain('label: "品牌资料"');
     expect(layout).toContain("补齐企业被 AI 理解的基础信息");
     expect(layout).not.toContain('label: "企业档案"');
   });

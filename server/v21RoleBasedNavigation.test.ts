@@ -22,17 +22,17 @@ describe("GEO-V2.1-P2 Role-Based Navigation", () => {
   it("keeps full nav item definitions for operator mode", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     for (const label of [
-      "项目工作台",
-      "品牌资产建档",
-      "AI 实测诊断",
-      "AI 品牌成熟度",
-      "本月优化计划",
+      "总览",
+      "诊断",
+      "本月方案",
+      "执行进度",
+      "效果验证",
+      "效果报告",
+      "品牌资料",
       "内容生产工作台",
-      "平台适配发布",
-      "内容资产效果",
-      "AI 品牌成熟度月报",
-      "问题库",
-      "品牌信源图谱",
+      "发布执行中心",
+      "AI 问题池",
+      "信源与证据库",
       "使用指南",
     ]) {
       expect(layout).toContain(`label: "${label}"`);

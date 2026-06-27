@@ -18,20 +18,23 @@ describe("GEO-V1.1-Remove-AssetProgress-Route-P0", () => {
       expect(layout).not.toContain(`label: "${forbidden}"`);
     }
     for (const allowed of [
-      "项目工作台",
-      "品牌资产建档",
-      "AI 实测诊断",
-      "问题库",
+      "总览",
+      "诊断",
+      "本月方案",
+      "执行进度",
+      "效果验证",
+      "效果报告",
+      "品牌资料",
       "内容生产工作台",
-      "平台适配发布",
-      "内容资产效果",
-      "AI 品牌成熟度月报",
+      "发布执行中心",
+      "AI 问题池",
+      "信源与证据库",
       "使用指南",
     ]) {
       expect(layout).toContain(`label: "${allowed}"`);
     }
-    expect(layout).toContain('title: "主流程"');
-    expect(layout).toContain('title: "资产管理"');
+    expect(layout).toContain('title: "客户主流程"');
+    expect(layout).toContain('title: "运营工具"');
     expect(layout).not.toContain('title: "增长总览"');
   });
 

@@ -27,17 +27,14 @@ describe("GEO-V2.0-P0-F Maturity Integration", () => {
     expect(router).toContain(".update(geoMaturityScores)");
   });
 
-  it("registers /maturity route and sidebar nav below workspace", () => {
+  it("registers /maturity route and keeps maturity page reachable", () => {
     const app = read("client/src/App.tsx");
     expect(app).toContain('path="/maturity"');
     expect(app).toContain("MaturityDetailPage");
 
     const layout = read("client/src/components/DashboardLayout.tsx");
-    const workspaceIdx = layout.indexOf('label: "项目工作台"');
-    const maturityIdx = layout.indexOf('label: "AI 品牌成熟度"');
-    expect(workspaceIdx).toBeGreaterThan(-1);
-    expect(maturityIdx).toBeGreaterThan(workspaceIdx);
-    expect(layout).toContain('path: "/maturity"');
+    expect(layout).toContain('label: "总览"');
+    expect(layout).toContain('"/maturity"');
   });
 
   it("maturity detail page has action-oriented overview and dimension entry CTAs", () => {

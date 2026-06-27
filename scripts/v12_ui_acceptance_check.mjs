@@ -45,14 +45,17 @@ assertContains('首页', sources.home, '品牌提及率');
 assertContains('首页', sources.home, 'AiPageShell');
 
 for (const item of [
-  '项目工作台',
-  '品牌资产建档',
-  'AI 实测诊断',
-  '问题库',
+  '总览',
+  '诊断',
+  '本月方案',
+  '执行进度',
+  '效果验证',
+  '效果报告',
+  '品牌资料',
   '内容生产工作台',
-  '平台适配发布',
-  '内容资产效果',
-  'AI 品牌成熟度月报',
+  '发布执行中心',
+  'AI 问题池',
+  '信源与证据库',
   '使用指南',
 ]) {
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
@@ -65,13 +68,12 @@ for (const forbidden of ['GEO 增长工作台', 'GEO增长工作台', 'AI 搜索
   assertNotContains('左侧导航', sources.layout, forbidden);
   assertNotContains('index.html', read('client/index.html'), forbidden);
 }
-assertContains('左侧导航', sources.layout, 'title: "主流程"');
-assertContains('左侧导航', sources.layout, 'title: "资产管理"');
+assertContains('左侧导航', sources.layout, 'title: "客户主流程"');
+assertContains('左侧导航', sources.layout, 'title: "运营工具"');
 assertNotContains('左侧导航', sources.layout, 'title: "增长总览"');
 assertContains('旧资产进展路由', sources.app, 'LegacyAssetProgressRedirect');
 assertNotContains('旧资产进展路由', sources.app, 'ProgressPage');
 for (const item of [
-  '总览',
   '内容生成',
   '内容发布',
   '内容策略',
@@ -128,8 +130,9 @@ assertNotContains('企业档案页', sources.assets, 'Section 1 · 基本身份'
 for (const item of ['先新建第一个企业项目', '新增企业项目', 'geo.projects.create', 'handleCreateProject']) {
   assertNotContains('企业档案页', sources.assets, item);
 }
-assertContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), '企业项目');
-assertContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), '新建企业项目');
+assertContains('客户经营看板', read('client/src/pages/ClientDashboardPage.tsx'), '客户经营看板');
+assertContains('客户经营看板', read('client/src/pages/ClientDashboardPage.tsx'), 'client-business-metrics');
+assertContains('客户经营看板', read('client/src/pages/ClientDashboardPage.tsx'), '下一步');
 for (const forbidden of ['ownerUserId', 'taskId', 'projectId=', 'data-testid="project-id"']) {
   assertNotContains('客户管理台', read('client/src/pages/ClientDashboardPage.tsx'), forbidden);
 }
