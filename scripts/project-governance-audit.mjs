@@ -1,5 +1,7 @@
 import mysql from "mysql2/promise";
 
+const warnings = [];
+
 function env(name) {
   const value = process.env[name];
   return typeof value === "string" && value.trim() ? value.trim() : "";
@@ -48,6 +50,15 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
+function warning(table, operation, error) {
+  const message = error instanceof Error ? error.message : String(error);
+  warnings.push({
+    table,
+    operation,
+    message: message.replace(/https?:\/\/\S+/g, "[url]").slice(0, 240),
+  });
+}
+
 async function tableExists(conn, table) {
   const [rows] = await conn.execute(
     `SELECT COUNT(*) AS count
@@ -69,41 +80,61 @@ async function columnExists(conn, table, column) {
 }
 
 async function scalarCount(conn, table, whereSql = "", params = []) {
-  if (!(await tableExists(conn, table))) return null;
-  const sql = `SELECT COUNT(*) AS count FROM ${quoteIdent(table)}${whereSql ? ` WHERE ${whereSql}` : ""}`;
-  const [rows] = await conn.execute(sql, params);
-  return Number(rows[0]?.count ?? 0);
+  try {
+    if (!(await tableExists(conn, table))) return null;
+    const sql = `SELECT COUNT(*) AS count FROM ${quoteIdent(table)}${whereSql ? ` WHERE ${whereSql}` : ""}`;
+    const [rows] = await conn.execute(sql, params);
+    return Number(rows[0]?.count ?? 0);
+  } catch (error) {
+    warning(table, "count", error);
+    return null;
+  }
 }
 
 async function maxColumn(conn, table, column, whereSql, params) {
-  if (!(await tableExists(conn, table))) return null;
-  if (!(await columnExists(conn, table, column))) return null;
-  const [rows] = await conn.execute(
-    `SELECT MAX(${quoteIdent(column)}) AS value FROM ${quoteIdent(table)} WHERE ${whereSql}`,
-    params,
-  );
-  return rows[0]?.value ? new Date(rows[0].value).toISOString() : null;
+  try {
+    if (!(await tableExists(conn, table))) return null;
+    if (!(await columnExists(conn, table, column))) return null;
+    const [rows] = await conn.execute(
+      `SELECT MAX(${quoteIdent(column)}) AS value FROM ${quoteIdent(table)} WHERE ${whereSql}`,
+      params,
+    );
+    return rows[0]?.value ? new Date(rows[0].value).toISOString() : null;
+  } catch (error) {
+    warning(table, `max:${column}`, error);
+    return null;
+  }
 }
 
 async function groupCounts(conn, table, column, whereSql, params) {
-  if (!(await tableExists(conn, table))) return [];
-  if (!(await columnExists(conn, table, column))) return [];
-  const [rows] = await conn.execute(
-    `SELECT ${quoteIdent(column)} AS value, COUNT(*) AS count
-     FROM ${quoteIdent(table)}
-     WHERE ${whereSql}
-     GROUP BY ${quoteIdent(column)}
-     ORDER BY count DESC, value ASC
-     LIMIT 20`,
-    params,
-  );
-  return rows.map(row => ({ value: row.value, count: Number(row.count ?? 0) }));
+  try {
+    if (!(await tableExists(conn, table))) return [];
+    if (!(await columnExists(conn, table, column))) return [];
+    const [rows] = await conn.execute(
+      `SELECT ${quoteIdent(column)} AS value, COUNT(*) AS count
+       FROM ${quoteIdent(table)}
+       WHERE ${whereSql}
+       GROUP BY ${quoteIdent(column)}
+       ORDER BY count DESC, value ASC
+       LIMIT 20`,
+      params,
+    );
+    return rows.map(row => ({ value: row.value, count: Number(row.count ?? 0) }));
+  } catch (error) {
+    warning(table, `group:${column}`, error);
+    return [];
+  }
 }
 
 async function safeQuery(conn, table, sql, params = []) {
-  if (!(await tableExists(conn, table))) return [];
-  const [rows] = await conn.execute(sql, params);
-  return rows;
+  try {
+    if (!(await tableExists(conn, table))) return [];
+    const [rows] = await conn.execute(sql, params);
+    return rows;
+  } catch (error) {
+    warning(table, "query", error);
+    return [];
+  }
 }
 
 const projectScopedTables = [
@@ -445,6 +476,7 @@ async function main() {
             fieldMatches,
             ...comparison,
           },
+          warnings,
           safety: {
             printedSecrets: false,
             printedPasswordHash: false,
