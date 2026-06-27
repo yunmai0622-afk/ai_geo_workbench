@@ -143,26 +143,211 @@ jobs:
             exit 0
           fi
 
-          railway_auth_token="$RAILWAY_TOKEN"
-          unset RAILWAY_TOKEN
-          export RAILWAY_API_TOKEN="$railway_auth_token"
+          node <<'NODE'
+          const endpoint = "https://backboard.railway.com/graphql/v2";
+          const token = process.env.RAILWAY_TOKEN;
+          const projectId = process.env.RAILWAY_PROJECT_ID;
+          const serviceId = process.env.RAILWAY_SERVICE_ID;
+          const environmentName = process.env.RAILWAY_ENVIRONMENT || "production";
+          const commitSha = process.env.GITHUB_SHA;
+          const buildTime = new Date().toISOString();
 
-          npm install -g @railway/cli
-          railway link \
-            --project "$RAILWAY_PROJECT_ID" \
-            --environment "$RAILWAY_ENVIRONMENT" \
-            --service "$RAILWAY_SERVICE_ID" \
-            --json > /tmp/railway-link.json
-          railway variable set \
-            "GIT_COMMIT=${GITHUB_SHA}" \
-            "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --service "$RAILWAY_SERVICE_ID" \
-            --environment "$RAILWAY_ENVIRONMENT" \
-            --skip-deploys
-          railway up --ci \
-            --service "$RAILWAY_SERVICE_ID" \
-            --environment "$RAILWAY_ENVIRONMENT" \
-            --message "GitHub Actions ${GITHUB_SHA}"
+          function required(name) {
+            const value = process.env[name];
+            if (typeof value !== "string" || !value.trim()) {
+              throw new Error(`${name} is required`);
+            }
+            return value;
+          }
+
+          async function railway(query, variables, tokenMode = "bearer") {
+            const headers = { "Content-Type": "application/json" };
+            if (tokenMode === "project") {
+              headers["Project-Access-Token"] = token;
+            } else {
+              headers.Authorization = `Bearer ${token}`;
+            }
+
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ query, variables }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.errors?.length) {
+              const message =
+                payload.errors?.map(error => error.message).join("; ") ||
+                `HTTP ${response.status}`;
+              throw new Error(message);
+            }
+            return payload.data;
+          }
+
+          async function resolveTarget(tokenMode) {
+            const data = await railway(
+              `query project($id: String!) {
+                project(id: $id) {
+                  id
+                  name
+                  services {
+                    edges {
+                      node {
+                        id
+                        name
+                      }
+                    }
+                  }
+                  environments {
+                    edges {
+                      node {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }`,
+              { id: projectId },
+              tokenMode,
+            );
+
+            const services = data.project?.services?.edges?.map(edge => edge.node) ?? [];
+            const environments =
+              data.project?.environments?.edges?.map(edge => edge.node) ?? [];
+            const service = services.find(candidate => candidate.id === serviceId);
+            const environment =
+              environments.find(candidate => candidate.name === environmentName) ??
+              environments[0];
+
+            if (!service) {
+              throw new Error(`service ${serviceId} was not found in Railway project ${projectId}`);
+            }
+            if (!environment?.id) {
+              throw new Error(`environment ${environmentName} was not found in Railway project ${projectId}`);
+            }
+
+            return { project: data.project, service, environment };
+          }
+
+          async function main() {
+            required("RAILWAY_TOKEN");
+            required("RAILWAY_PROJECT_ID");
+            required("RAILWAY_SERVICE_ID");
+            required("DATABASE_URL");
+            required("JWT_SECRET");
+            required("OPENAI_API_KEY");
+            required("TAVILY_API_KEY");
+
+            const tokenModes = ["bearer", "project"];
+            let tokenMode = null;
+            let target = null;
+            const errors = [];
+
+            for (const candidate of tokenModes) {
+              try {
+                target = await resolveTarget(candidate);
+                tokenMode = candidate;
+                break;
+              } catch (error) {
+                errors.push(`${candidate}: ${error instanceof Error ? error.message : String(error)}`);
+              }
+            }
+
+            if (!target || !tokenMode) {
+              throw new Error(`Railway target lookup failed. ${errors.join(" | ")}`);
+            }
+
+            console.log(`[railway] token_mode=${tokenMode}`);
+            console.log(`[railway] project=${target.project.name} service=${target.service.name} environment=${target.environment.name}`);
+
+            const variables = {
+              NODE_ENV: "production",
+              DATABASE_URL: process.env.DATABASE_URL,
+              JWT_SECRET: process.env.JWT_SECRET,
+              LLM_PROVIDER: process.env.LLM_PROVIDER || "openai",
+              OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+              OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3",
+              OPENAI_MODEL: process.env.OPENAI_MODEL || "ep-20251210143333-s6bb7",
+              OPENAI_TIMEOUT_MS: process.env.OPENAI_TIMEOUT_MS || "60000",
+              TAVILY_API_KEY: process.env.TAVILY_API_KEY,
+              GIT_COMMIT: commitSha,
+              BUILD_TIME: buildTime,
+            };
+
+            await railway(
+              `mutation variableCollectionUpsert($input: VariableCollectionUpsertInput!) {
+                variableCollectionUpsert(input: $input)
+              }`,
+              {
+                input: {
+                  projectId,
+                  environmentId: target.environment.id,
+                  serviceId,
+                  variables,
+                  replace: false,
+                  skipDeploys: true,
+                },
+              },
+              tokenMode,
+            );
+            console.log(`[railway] variables upserted: ${Object.keys(variables).join(", ")}`);
+
+            const deployData = await railway(
+              `mutation serviceInstanceDeployV2($serviceId: String!, $environmentId: String!, $commitSha: String!) {
+                serviceInstanceDeployV2(serviceId: $serviceId, environmentId: $environmentId, commitSha: $commitSha)
+              }`,
+              {
+                serviceId,
+                environmentId: target.environment.id,
+                commitSha,
+              },
+              tokenMode,
+            );
+
+            const deploymentId = deployData.serviceInstanceDeployV2;
+            if (!deploymentId) {
+              throw new Error("Railway did not return a deployment id");
+            }
+            console.log(`[railway] deployment_id=${deploymentId}`);
+
+            const terminalStatuses = new Set(["SUCCESS", "FAILED", "CRASHED", "REMOVED", "SKIPPED"]);
+            let lastStatus = "";
+            for (let attempt = 1; attempt <= 120; attempt += 1) {
+              const deploymentData = await railway(
+                `query deployment($id: String!) {
+                  deployment(id: $id) {
+                    id
+                    status
+                    createdAt
+                    url
+                    staticUrl
+                  }
+                }`,
+                { id: deploymentId },
+                tokenMode,
+              );
+              const deployment = deploymentData.deployment;
+              const status = deployment?.status || "UNKNOWN";
+              if (status !== lastStatus) {
+                console.log(`[railway] deployment_status=${status}`);
+                lastStatus = status;
+              }
+              if (status === "SUCCESS") {
+                process.exit(0);
+              }
+              if (terminalStatuses.has(status)) {
+                throw new Error(`Railway deployment ended with status ${status}`);
+              }
+              await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+            throw new Error("Railway deployment did not finish within 20 minutes");
+          }
+
+          main().catch(error => {
+            console.error(`[railway] ${error instanceof Error ? error.message : String(error)}`);
+            process.exit(1);
+          });
+          NODE
 
       - name: Verify production version endpoint
         run: |
