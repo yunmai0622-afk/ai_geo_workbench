@@ -1,5 +1,6 @@
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { MonthlyPlanCompletionBenefitsSection } from "@/components/monthlyPlan/MonthlyPlanCompletionBenefitsSection";
+import { MonthlyOptimizationPrioritiesPanel } from "@/components/monthlyPlan/MonthlyOptimizationPrioritiesPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -60,6 +61,10 @@ export default function MonthlyPlanPage() {
     { enabled: enabled && Boolean(selectedProjectId) },
   );
   const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
+  const optimizationBriefQuery = trpc.geo.monthlyPlan.getOptimizationBrief.useQuery(
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
@@ -186,6 +191,12 @@ export default function MonthlyPlanPage() {
           加载本月计划…
         </div>
       ) : null}
+
+      <MonthlyOptimizationPrioritiesPanel
+        brief={optimizationBriefQuery.data}
+        loading={optimizationBriefQuery.isLoading}
+        onGoTask={handleGoTask}
+      />
 
       {!maturityQuery.data && !maturityQuery.isLoading ? (
         <P0Card testId="monthly-plan-no-maturity">

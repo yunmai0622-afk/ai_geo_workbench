@@ -28,6 +28,7 @@ import { RetestPlanPanel } from "@/components/diagnosis/RetestPlanPanel";
 import { AiDiagnosisCustomerReport } from "@/components/diagnosis/AiDiagnosisCustomerReport";
 import { AiDiagnosisRerunConfirmDialog } from "@/components/diagnosis/AiDiagnosisRerunConfirmDialog";
 import { AiDiagnosisT0ConfirmDialog } from "@/components/diagnosis/AiDiagnosisT0ConfirmDialog";
+import { GeoBusinessMaturityCard } from "@/components/maturity/GeoBusinessMaturityCard";
 import { QuestionPoolTestPanel } from "@/components/diagnosis/QuestionPoolTestPanel";
 import { TestComparisonPanel } from "@/components/diagnosis/TestComparisonPanel";
 import { DangerousActionConfirmDialog } from "@/components/DangerousActionConfirmDialog";
@@ -938,6 +939,10 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const businessMaturityQuery = trpc.geo.maturity.getBusinessReport.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const { triggerMaturityCalculate } = useMaturityAutoCalculate(selectedProjectId);
   const tasksQuery = trpc.geo.tasks.list.useQuery(
     { projectId: selectedProjectId! },
@@ -1715,6 +1720,16 @@ export function AiDiagnosisFlowPage() {
         onViewFullData={handleViewDetectionResults}
         onNavigate={path => setLocation(path)}
       />
+
+      {selectedProjectId ? (
+        <GeoBusinessMaturityCard
+          report={businessMaturityQuery.data}
+          loading={businessMaturityQuery.isLoading}
+          compact
+          onGoMonthlyPlan={handleGoMonthlyPlan}
+          onGoMaturityDetail={() => setLocation(buildProjectUrl("/maturity", selectedProjectId))}
+        />
+      ) : null}
 
       {showDiagnosisLoadHint ? (
         <div

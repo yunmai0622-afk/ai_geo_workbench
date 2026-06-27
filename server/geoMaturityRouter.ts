@@ -17,6 +17,7 @@ import {
   trustEvidenceItems,
 } from "../drizzle/schema";
 import { getDb } from "./db";
+import { getGeoBusinessMaturityReport } from "./geoBusinessMaturityService";
 import { requireProjectAccess } from "./projectAccess";
 import { protectedProcedure, router } from "./_core/trpc";
 
@@ -183,5 +184,12 @@ export const geoMaturityRouter = router({
       const row = await fetchLatestMaturityRow(input.projectId);
       if (!row) return null;
       return rowToReport(row);
+    }),
+
+  getBusinessReport: protectedProcedure
+    .input(z.object({ projectId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      await requireProjectAccess(ctx, input.projectId);
+      return getGeoBusinessMaturityReport(input.projectId);
     }),
 });

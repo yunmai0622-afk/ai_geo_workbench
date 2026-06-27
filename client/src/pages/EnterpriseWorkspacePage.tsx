@@ -4,6 +4,7 @@ import { GeoScoreWeightExplanationHelp } from "@/components/geo/GeoScoreWeightEx
 import { RetestDueReminderCard } from "@/components/diagnosis/RetestDueReminderCard";
 import { T0ContentGapSuggestionsCard } from "@/components/geo/T0ContentGapSuggestionsCard";
 import { FirstUseHintBanner } from "@/components/FirstUseHintBanner";
+import { GeoBusinessMaturityCard } from "@/components/maturity/GeoBusinessMaturityCard";
 import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { WorkspaceDashboardOverviewCards } from "@/components/project/WorkspaceDashboardOverviewCards";
@@ -108,6 +109,10 @@ export default function EnterpriseWorkspacePage() {
     { enabled: Boolean(selectedProjectId) },
   );
   const monthlyPlanQuery = trpc.geo.monthlyPlan.getCurrent.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId) },
+  );
+  const businessMaturityQuery = trpc.geo.maturity.getBusinessReport.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
@@ -345,6 +350,14 @@ export default function EnterpriseWorkspacePage() {
           competitorRate={aiBrandCompetitorRate}
           topWeaknesses={aiBrandTopWeaknesses}
           onNavigate={setLocation}
+        />
+      ) : null}
+      {selectedProjectId ? (
+        <GeoBusinessMaturityCard
+          report={businessMaturityQuery.data}
+          loading={businessMaturityQuery.isLoading}
+          onGoMonthlyPlan={() => setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))}
+          onGoMaturityDetail={() => setLocation(buildProjectUrl("/maturity", selectedProjectId))}
         />
       ) : null}
       {metrics?.retestDueReminder && selectedProjectId ? (

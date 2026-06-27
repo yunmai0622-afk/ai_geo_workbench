@@ -10,6 +10,7 @@ import {
   resolveMonthlyPlanWorkspaceStage,
   resolveTopWeakDimensions,
 } from "@shared/monthlyPlanGeneration";
+import { buildMonthlyOptimizationBrief } from "@shared/monthlyOptimizationBrief";
 import {
   type GeoMaturityScores,
 } from "@shared/geoMaturityScoring";
@@ -22,6 +23,7 @@ import {
   trustEvidenceItems,
 } from "../drizzle/schema";
 import { getDb } from "./db";
+import { getGeoBusinessMaturityReport } from "./geoBusinessMaturityService";
 import { requireProjectAccess } from "./projectAccess";
 import { protectedProcedure, router } from "./_core/trpc";
 import { loadMonthlyReportData } from "./monthlyReportData";
@@ -223,6 +225,32 @@ export const geoMonthlyPlanRouter = router({
       }
       const tasks = await loadPlanTasks(plan.id);
       return enrichPlanView(plan, tasks);
+    }),
+
+  getOptimizationBrief: protectedProcedure
+    .input(z.object({ projectId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      await requireProjectAccess(ctx, input.projectId);
+      await syncMonthlyPlanProgressForProject(input.projectId);
+      const [maturityReport, activePlan] = await Promise.all([
+        getGeoBusinessMaturityReport(input.projectId),
+        loadActivePlan(input.projectId),
+      ]);
+      const plan = activePlan ?? (await loadLatestPlan(input.projectId));
+      const tasks = plan ? await loadPlanTasks(plan.id) : [];
+      return buildMonthlyOptimizationBrief({
+        projectId: input.projectId,
+        maturityReport,
+        plan: plan ? { status: plan.status, roundNumber: plan.roundNumber } : null,
+        tasks: tasks.map(task => ({
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          actionUrl: task.actionUrl,
+          reason: task.reason,
+          targetDimension: task.targetDimension,
+        })),
+      });
     }),
 
   getHistory: protectedProcedure

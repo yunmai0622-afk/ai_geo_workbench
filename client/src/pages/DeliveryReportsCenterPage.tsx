@@ -1,4 +1,5 @@
 import { P0Card, P0Section } from "@/components/geo/P0UiPrimitives";
+import { MonthlyOptimizationPrioritiesPanel } from "@/components/monthlyPlan/MonthlyOptimizationPrioritiesPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -518,6 +519,10 @@ export function DeliveryReportsCenterPage() {
     { projectId: selectedProjectId!, planId: selectedPlanId ?? undefined },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const optimizationBriefQuery = trpc.geo.monthlyPlan.getOptimizationBrief.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
 
   const generateMutation = trpc.geo.monthlyPlan.generate.useMutation({
     onSuccess: () => {
@@ -562,6 +567,16 @@ export function DeliveryReportsCenterPage() {
           </div>
         </div>
       </header>
+
+      <MonthlyOptimizationPrioritiesPanel
+        brief={optimizationBriefQuery.data}
+        loading={optimizationBriefQuery.isLoading}
+        compact
+        onGoTask={actionUrl => {
+          if (!selectedProjectId) return;
+          setLocation(buildProjectUrl(actionUrl, selectedProjectId));
+        }}
+      />
 
       {reportQuery.isLoading ? (
         <div className="flex items-center gap-2 py-8 text-gray-500">
