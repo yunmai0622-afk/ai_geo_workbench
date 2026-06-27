@@ -1,0 +1,58 @@
+name: Project Governance Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: "Project ID to audit"
+        required: true
+        default: "180001"
+      compare_project_id:
+        description: "Project ID to compare against"
+        required: true
+        default: "210001"
+
+concurrency:
+  group: project-governance-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Project Governance Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AUDIT_PROJECT_ID: ${{ inputs.project_id }}
+      AUDIT_COMPARE_PROJECT_ID: ${{ inputs.compare_project_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error title=Missing DATABASE_URL::DATABASE_URL repository secret is required"
+            exit 1
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Run read-only project governance audit
+        run: node scripts/project-governance-audit.mjs
