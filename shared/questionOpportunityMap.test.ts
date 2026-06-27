@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildQuestionOpportunityMapView,
   buildQuestionOpportunityOverview,
   computeQuestionCompetitorRates,
   enrichQuestionOpportunityFields,
@@ -91,5 +92,84 @@ describe("questionOpportunityMap", () => {
     expect(fields.competitorOccupied).toBe(true);
     expect(fields.opportunityLabel).toBe("竞品占位");
     expect(fields.monthlyFocus).toBe(true);
+  });
+
+  it("builds a customer-facing opportunity map with next actions", () => {
+    const view = buildQuestionOpportunityMapView({
+      hasDiagnosisData: true,
+      questions: [
+        {
+          id: 1,
+          questionText: "海豚知道和竞品相比哪个好？",
+          enabled: 1,
+          searchPoolType: "comparison",
+          diagnosisGap: "竞品占位",
+          contentStatus: "未生成",
+          aiPerformanceLabel: "竞品占优",
+          hasContentTask: false,
+          competitorOccupied: true,
+          contentPublished: false,
+          hasContentPending: false,
+          monthlyFocus: true,
+          opportunityLabel: "竞品占位",
+          priorityLevel: "high",
+          requiredSourceTypes: ["zhihu", "media"],
+          lastTestResult: "competitor_won",
+        },
+        {
+          id: 2,
+          questionText: "海豚知道是什么？",
+          enabled: 1,
+          searchPoolType: "brand_search",
+          diagnosisGap: "已提及品牌",
+          contentStatus: "已发布",
+          aiPerformanceLabel: "已提及",
+          hasContentTask: true,
+          competitorOccupied: false,
+          contentPublished: true,
+          hasContentPending: false,
+          monthlyFocus: false,
+          opportunityLabel: "已覆盖",
+          requiredSourceTypes: [],
+          lastTestResult: "mentioned",
+        },
+      ],
+    });
+
+    expect(view.headline).toContain("竞品占位");
+    expect(view.proofLine).toContain("核心问题 2 个");
+    expect(view.primaryActionLabel).toBe("优先处理竞品占位");
+    expect(view.lanes.find(lane => lane.id === "compete")?.count).toBe(1);
+    expect(view.topItems[0]?.questionText).toContain("竞品相比");
+    expect(view.topItems[0]?.reason).toContain("竞品占位");
+    expect(view.topItems[0]?.sourceLine).toContain("知乎");
+    expect(view.topItems[0]?.nextActionLabel).toBe("生成内容任务");
+  });
+
+  it("guides diagnosis first when there is no ai evidence", () => {
+    const view = buildQuestionOpportunityMapView({
+      hasDiagnosisData: false,
+      questions: [
+        {
+          id: 3,
+          questionText: "知识付费工具怎么选？",
+          enabled: 1,
+          searchPoolType: "category_recommend",
+          contentStatus: "未生成",
+          hasContentTask: false,
+          competitorOccupied: false,
+          contentPublished: false,
+          hasContentPending: false,
+          monthlyFocus: false,
+          opportunityLabel: "高价值",
+          requiredSourceTypes: null,
+          lastTestResult: null,
+        },
+      ],
+    });
+
+    expect(view.summary).toContain("完成 AI 实测");
+    expect(view.primaryActionLabel).toBe("先跑 AI 实测诊断");
+    expect(view.topItems[0]?.nextActionLabel).toBe("加入本轮诊断");
   });
 });

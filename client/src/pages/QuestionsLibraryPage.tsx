@@ -6,6 +6,7 @@ import {
   questionToPoolForm,
   type QuestionPoolFormState,
 } from "@/components/questions/QuestionSearchPoolDrawer";
+import { QuestionOpportunityMapPanel } from "@/components/questions/QuestionOpportunityMapPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,11 @@ import {
 } from "@shared/weeklyContentEntryContext";
 import { trpc } from "@/lib/trpc";
 import type { EnrichedSearchPoolQuestion } from "@shared/questionSearchPoolEnrichment";
-import type { QuestionOpportunityLabel } from "@shared/questionOpportunityMap";
+import {
+  buildQuestionOpportunityMapView,
+  type QuestionOpportunityLabel,
+  type QuestionOpportunityMapItem,
+} from "@shared/questionOpportunityMap";
 import {
   formatQuestionPoolGapMetricValue,
   groupQuestionsBySearchPoolType,
@@ -213,6 +218,10 @@ export default function QuestionsLibraryPage() {
       ]),
     ) as Record<SearchPoolQuestionType, EnrichedSearchPoolQuestion[]>;
   }, [questions, selectedProject?.enterpriseName, sortMode]);
+  const opportunityMapView = useMemo(
+    () => buildQuestionOpportunityMapView({ questions, hasDiagnosisData }),
+    [questions, hasDiagnosisData],
+  );
 
   function openCreateDrawer() {
     setDrawerMode("create");
@@ -281,6 +290,55 @@ export default function QuestionsLibraryPage() {
     }
     setPendingContentQuestion(question);
     createContentTaskMutation.mutate({ projectId: selectedProjectId, questionId: question.id });
+  }
+
+  function handleOpportunityItemAction(item: QuestionOpportunityMapItem) {
+    if (!selectedProjectId) {
+      toast.error("请先选择企业项目");
+      return;
+    }
+    const question = questions.find(q => q.id === item.questionId);
+    if (!question) {
+      toast.error("未找到对应问题，请刷新后重试");
+      return;
+    }
+    if (item.nextActionKind === "add_to_diagnosis") {
+      handleAddToRound(question);
+      return;
+    }
+    if (item.nextActionKind === "monitor_retest") {
+      setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId));
+      return;
+    }
+    if (item.nextActionKind === "open_weekly_task") {
+      setLocation(
+        buildWeeklyContentEntryUrl(selectedProjectId, {
+          questionId: question.id,
+          questionText: question.questionText,
+          sourceType: "search_pool",
+          relatedGeoGap: question.diagnosisGap,
+        }),
+      );
+      return;
+    }
+    handleCreateContentTask(question);
+  }
+
+  function handleOpportunityPrimaryAction() {
+    if (!selectedProjectId) {
+      toast.error("请先选择企业项目");
+      return;
+    }
+    if (!hasDiagnosisData) {
+      setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
+      return;
+    }
+    const topItem = opportunityMapView.topItems[0];
+    if (topItem) {
+      handleOpportunityItemAction(topItem);
+      return;
+    }
+    setLocation(buildProjectUrl("/monthly-plan", selectedProjectId));
   }
 
   function handleViewQuestionEvidence(question: EnrichedSearchPoolQuestion) {
@@ -362,6 +420,13 @@ export default function QuestionsLibraryPage() {
         </div>
       ) : (
         <>
+          <QuestionOpportunityMapPanel
+            view={opportunityMapView}
+            mutating={mutating}
+            onPrimaryAction={selectedProjectId ? handleOpportunityPrimaryAction : undefined}
+            onItemAction={handleOpportunityItemAction}
+          />
+
           <P0Section title="机会总览" description="核心问题覆盖、竞品占位与本月重点">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="question-pool-overview">
               <P0MetricTile
