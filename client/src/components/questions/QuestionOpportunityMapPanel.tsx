@@ -57,6 +57,9 @@ export function QuestionOpportunityMapPanel({
       <p className="text-sm leading-6 text-gray-700" data-testid="question-opportunity-map-proof">
         {view.proofLine}
       </p>
+      <p className="text-sm leading-6 text-blue-800" data-testid="question-opportunity-map-top3-line">
+        {view.top3Line}
+      </p>
 
       <div className="grid gap-4 md:grid-cols-4" data-testid="question-opportunity-map-lanes">
         {view.lanes.map(lane => (
@@ -95,7 +98,8 @@ export function QuestionOpportunityMapPanel({
                       {item.opportunityLabel}
                     </Badge>
                   </div>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-gray-950">{item.questionText}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-gray-950">{item.questionText}</p>
+                  <p className="mt-1 text-xs leading-5 text-blue-700">{item.clusterLine}</p>
                   <p className="mt-1 text-sm leading-6 text-gray-600">{item.reason}</p>
                   <p className="mt-2 text-xs leading-5 text-gray-500">{item.evidenceLine}</p>
                   <p className="text-xs leading-5 text-gray-500">{item.sourceLine}</p>

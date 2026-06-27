@@ -113,6 +113,10 @@ export default function QuestionsLibraryPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const optimizationBriefQuery = trpc.geo.monthlyPlan.getOptimizationBrief.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId) },
+  );
   const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(projectInput, { enabled });
 
   const createMutation = trpc.geo.questions.create.useMutation({
@@ -219,8 +223,13 @@ export default function QuestionsLibraryPage() {
     ) as Record<SearchPoolQuestionType, EnrichedSearchPoolQuestion[]>;
   }, [questions, selectedProject?.enterpriseName, sortMode]);
   const opportunityMapView = useMemo(
-    () => buildQuestionOpportunityMapView({ questions, hasDiagnosisData }),
-    [questions, hasDiagnosisData],
+    () =>
+      buildQuestionOpportunityMapView({
+        questions,
+        hasDiagnosisData,
+        monthlyPriorityNames: optimizationBriefQuery.data?.priorities.map(priority => priority.relatedDimensionName),
+      }),
+    [questions, hasDiagnosisData, optimizationBriefQuery.data?.priorities],
   );
 
   function openCreateDrawer() {

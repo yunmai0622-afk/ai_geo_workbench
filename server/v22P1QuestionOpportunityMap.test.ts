@@ -13,11 +13,15 @@ describe("GEO V2.2 P1 AI search opportunity map", () => {
 
     expect(shared).toContain("buildQuestionOpportunityMapView");
     expect(shared).toContain("本月优先抢回");
+    expect(shared).toContain("monthlyPriorityNames");
     expect(shared).toContain("生成内容任务");
     expect(page).toContain("QuestionOpportunityMapPanel");
+    expect(page).toContain("geo.monthlyPlan.getOptimizationBrief");
     expect(page).toContain("handleOpportunityItemAction");
     expect(panel).toContain("question-opportunity-map-panel");
+    expect(panel).toContain("question-opportunity-map-top3-line");
     expect(panel).toContain("优先抢占清单");
+    expect(panel).toContain("clusterLine");
     expect(page).toContain("QuestionPoolTable");
     expect(page).toContain("question-pool-overview");
   });

@@ -97,6 +97,7 @@ describe("questionOpportunityMap", () => {
   it("builds a customer-facing opportunity map with next actions", () => {
     const view = buildQuestionOpportunityMapView({
       hasDiagnosisData: true,
+      monthlyPriorityNames: ["AI 可见与推荐表现", "内容资产执行", "复测与交付证明"],
       questions: [
         {
           id: 1,
@@ -133,14 +134,37 @@ describe("questionOpportunityMap", () => {
           requiredSourceTypes: [],
           lastTestResult: "mentioned",
         },
+        {
+          id: 3,
+          questionText: "海豚知道和竞品相比哪个好？",
+          enabled: 1,
+          searchPoolType: "comparison",
+          diagnosisGap: "竞品占位",
+          contentStatus: "未生成",
+          aiPerformanceLabel: "竞品占优",
+          hasContentTask: false,
+          competitorOccupied: true,
+          contentPublished: false,
+          hasContentPending: false,
+          monthlyFocus: false,
+          opportunityLabel: "竞品占位",
+          priorityLevel: "high",
+          requiredSourceTypes: ["zhihu"],
+          lastTestResult: "competitor_won",
+        },
       ],
     });
 
     expect(view.headline).toContain("竞品占位");
-    expect(view.proofLine).toContain("核心问题 2 个");
+    expect(view.proofLine).toContain("核心问题 3 个");
+    expect(view.top3Line).toContain("AI 可见与推荐表现");
+    expect(view.top3Line).toContain("已直接关联 1 个机会问题");
     expect(view.primaryActionLabel).toBe("优先处理竞品占位");
-    expect(view.lanes.find(lane => lane.id === "compete")?.count).toBe(1);
+    expect(view.lanes.find(lane => lane.id === "compete")?.count).toBe(2);
+    expect(view.topItems).toHaveLength(2);
     expect(view.topItems[0]?.questionText).toContain("竞品相比");
+    expect(view.topItems[0]?.similarQuestionCount).toBe(2);
+    expect(view.topItems[0]?.clusterLine).toContain("相似问法");
     expect(view.topItems[0]?.reason).toContain("竞品占位");
     expect(view.topItems[0]?.sourceLine).toContain("知乎");
     expect(view.topItems[0]?.nextActionLabel).toBe("生成内容任务");

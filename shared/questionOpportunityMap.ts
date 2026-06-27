@@ -60,6 +60,8 @@ export type QuestionOpportunityMapItem = {
   questionText: string;
   typeLabel: string;
   opportunityLabel: QuestionOpportunityLabel | "待实测";
+  similarQuestionCount: number;
+  clusterLine: string;
   reason: string;
   evidenceLine: string;
   sourceLine: string;
@@ -79,6 +81,7 @@ export type QuestionOpportunityMapView = {
   headline: string;
   summary: string;
   proofLine: string;
+  top3Line: string;
   primaryActionLabel: string;
   primaryActionReason: string;
   topItems: QuestionOpportunityMapItem[];
@@ -210,6 +213,14 @@ function countEnabled(questions: QuestionOpportunityMapQuestionInput[]): number 
   return questions.filter(question => Number(question.enabled) !== 0).length;
 }
 
+function normalizeQuestionForCluster(questionText: string): string {
+  return questionText
+    .toLowerCase()
+    .replace(/[？?。！!，,、/\\|；;：“”"'\s（）()【】\[\]·-]/g, "")
+    .replace(/saas/g, "SaaS")
+    .trim();
+}
+
 function resolveQuestionOpportunityScore(question: QuestionOpportunityMapQuestionInput): number {
   let score = 0;
   if (question.monthlyFocus) score += 120;
@@ -264,6 +275,7 @@ function resolveQuestionOpportunitySourceLine(question: QuestionOpportunityMapQu
 function toQuestionOpportunityMapItem(
   question: QuestionOpportunityMapQuestionInput,
   hasDiagnosisData: boolean,
+  similarQuestionCount = 1,
 ): QuestionOpportunityMapItem {
   const action = resolveQuestionOpportunityAction(question, hasDiagnosisData);
   const score = resolveQuestionOpportunityScore(question);
@@ -274,6 +286,11 @@ function toQuestionOpportunityMapItem(
     questionText: question.questionText,
     typeLabel: resolveSearchPoolTypeLabel(question.searchPoolType),
     opportunityLabel: question.opportunityLabel ?? "待实测",
+    similarQuestionCount,
+    clusterLine:
+      similarQuestionCount > 1
+        ? `已合并 ${similarQuestionCount} 个相似问法，建议按同一内容资产统一承接。`
+        : "暂无重复问法，可作为独立机会推进。",
     reason: resolveQuestionOpportunityReason(question, hasDiagnosisData),
     evidenceLine: `AI 表现：${aiLabel} · 内容：${question.contentStatus}${focusSuffix}`,
     sourceLine: resolveQuestionOpportunitySourceLine(question),
@@ -281,6 +298,29 @@ function toQuestionOpportunityMapItem(
     nextActionKind: action.kind,
     score,
   };
+}
+
+function dedupeOpportunityItemsByQuestionCluster(
+  questions: QuestionOpportunityMapQuestionInput[],
+  hasDiagnosisData: boolean,
+): QuestionOpportunityMapItem[] {
+  const sortedQuestions = [...questions].sort((a, b) => {
+    const scoreDiff = resolveQuestionOpportunityScore(b) - resolveQuestionOpportunityScore(a);
+    if (scoreDiff !== 0) return scoreDiff;
+    return a.questionText.localeCompare(b.questionText, "zh-CN");
+  });
+  const clusters = new Map<string, QuestionOpportunityMapQuestionInput[]>();
+  for (const question of sortedQuestions) {
+    const key = `${question.searchPoolType ?? "unknown"}:${normalizeQuestionForCluster(question.questionText)}`;
+    const bucket = clusters.get(key) ?? [];
+    bucket.push(question);
+    clusters.set(key, bucket);
+  }
+  const items = Array.from(clusters.values()).map(cluster => {
+    const representative = cluster[0]!;
+    return toQuestionOpportunityMapItem(representative, hasDiagnosisData, cluster.length);
+  });
+  return items.sort((a, b) => b.score - a.score || a.questionText.localeCompare(b.questionText, "zh-CN"));
 }
 
 function resolveMapHeadline(input: {
@@ -338,6 +378,7 @@ function resolvePrimaryAction(input: {
 export function buildQuestionOpportunityMapView(input: {
   questions: QuestionOpportunityMapQuestionInput[];
   hasDiagnosisData: boolean;
+  monthlyPriorityNames?: string[];
 }): QuestionOpportunityMapView {
   const enabledQuestions = input.questions.filter(question => Number(question.enabled) !== 0);
   const competitorCount = enabledQuestions.filter(question => question.competitorOccupied).length;
@@ -355,9 +396,9 @@ export function buildQuestionOpportunityMapView(input: {
     pendingCount,
     publishedCount,
   });
-  const items = enabledQuestions
-    .map(question => toQuestionOpportunityMapItem(question, input.hasDiagnosisData))
-    .sort((a, b) => b.score - a.score || a.questionText.localeCompare(b.questionText, "zh-CN"));
+  const items = dedupeOpportunityItemsByQuestionCluster(enabledQuestions, input.hasDiagnosisData);
+  const monthlyPriorityNames = (input.monthlyPriorityNames ?? []).map(name => name.trim()).filter(Boolean);
+  const monthlyFocusCount = enabledQuestions.filter(question => question.monthlyFocus).length;
 
   return {
     headline: resolveMapHeadline({
@@ -371,6 +412,10 @@ export function buildQuestionOpportunityMapView(input: {
       ? "已结合 AI 实测、竞品占位、内容覆盖和本月计划排序。"
       : "当前先按问题池与内容覆盖排序；完成 AI 实测后会补齐竞品占位判断。",
     proofLine: `核心问题 ${input.questions.length} 个 · 启用 ${countEnabled(input.questions)} 个 · 竞品占位 ${competitorCount} 个 · 未覆盖 ${uncoveredCount} 个 · 内容已覆盖 ${publishedCount} 个`,
+    top3Line:
+      monthlyPriorityNames.length > 0
+        ? `本月 Top3 聚焦：${monthlyPriorityNames.slice(0, 3).join("、")}；已直接关联 ${monthlyFocusCount} 个机会问题。`
+        : `本月 Top3 尚未形成明确优先级；已直接关联 ${monthlyFocusCount} 个机会问题。`,
     primaryActionLabel: primaryAction.label,
     primaryActionReason: primaryAction.reason,
     topItems: items.slice(0, 5),
