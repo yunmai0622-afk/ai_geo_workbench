@@ -1,0 +1,218 @@
+name: Discover Railway Target
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: "Railway project name to match"
+        required: false
+        default: "brilliant-adaptation"
+      service_name:
+        description: "Railway service name to match"
+        required: false
+        default: "ai_geo_workbench00"
+      production_url:
+        description: "Expected Railway production URL"
+        required: false
+        default: "https://aigeoworkbench00-production.up.railway.app"
+
+concurrency:
+  group: railway-target-discovery
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Read-only target discovery
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_NAME: ${{ inputs.project_name }}
+      RAILWAY_SERVICE_NAME: ${{ inputs.service_name }}
+      RAILWAY_PRODUCTION_URL_INPUT: ${{ inputs.production_url }}
+
+    steps:
+      - name: Validate discovery configuration
+        run: |
+          set -euo pipefail
+          if [ -z "${RAILWAY_TOKEN:-}" ]; then
+            echo "::error title=Missing Railway token::RAILWAY_TOKEN is required"
+            exit 1
+          fi
+
+      - name: Discover Railway IDs
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const endpoint = "https://backboard.railway.com/graphql/v2";
+          const token = process.env.RAILWAY_TOKEN;
+          const expectedProjectName = process.env.RAILWAY_PROJECT_NAME;
+          const expectedServiceName = process.env.RAILWAY_SERVICE_NAME;
+          const productionUrl = process.env.RAILWAY_PRODUCTION_URL_INPUT;
+
+          async function queryRailway(query, variables, tokenMode) {
+            const headers = { "Content-Type": "application/json" };
+            if (tokenMode === "project") {
+              headers["Project-Access-Token"] = token;
+            } else {
+              headers.Authorization = `Bearer ${token}`;
+            }
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ query, variables }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.errors?.length) {
+              const message =
+                payload.errors?.map(error => error.message).join("; ") ||
+                `HTTP ${response.status}`;
+              throw new Error(message);
+            }
+            return payload.data;
+          }
+
+          const projectDetailsQuery = `
+            query project($id: String!) {
+              project(id: $id) {
+                id
+                name
+                services {
+                  edges {
+                    node {
+                      id
+                      name
+                    }
+                  }
+                }
+                environments {
+                  edges {
+                    node {
+                      id
+                      name
+                    }
+                  }
+                }
+              }
+            }
+          `;
+
+          async function tryProjectToken() {
+            const tokenData = await queryRailway(
+              `query { projectToken { projectId environmentId } }`,
+              {},
+              "project",
+            );
+            const projectId = tokenData?.projectToken?.projectId;
+            const environmentId = tokenData?.projectToken?.environmentId;
+            if (!projectId) throw new Error("project token did not return projectId");
+            const projectData = await queryRailway(
+              projectDetailsQuery,
+              { id: projectId },
+              "project",
+            );
+            return {
+              mode: "project-token",
+              project: projectData.project,
+              environmentId,
+            };
+          }
+
+          async function tryBearerToken() {
+            const projectsData = await queryRailway(
+              `query {
+                projects {
+                  edges {
+                    node {
+                      id
+                      name
+                    }
+                  }
+                }
+              }`,
+              {},
+              "bearer",
+            );
+            const projects = projectsData?.projects?.edges?.map(edge => edge.node) ?? [];
+            const matchedProject =
+              projects.find(project => project.name === expectedProjectName) ?? projects[0];
+            if (!matchedProject?.id) throw new Error("no accessible Railway projects found");
+            const projectData = await queryRailway(
+              projectDetailsQuery,
+              { id: matchedProject.id },
+              "bearer",
+            );
+            return {
+              mode: "bearer-token",
+              project: projectData.project,
+              environmentId: null,
+            };
+          }
+
+          const attempts = [];
+          for (const discover of [tryProjectToken, tryBearerToken]) {
+            try {
+              const result = await discover();
+              attempts.push({ ok: true, result });
+              break;
+            } catch (error) {
+              attempts.push({
+                ok: false,
+                message: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+
+          const success = attempts.find(attempt => attempt.ok)?.result;
+          if (!success?.project) {
+            console.log("[railway:discover] project token lookup failed:", attempts[0]?.message);
+            console.log("[railway:discover] bearer token lookup failed:", attempts[1]?.message);
+            console.log(
+              "::error title=Railway discovery failed::RAILWAY_TOKEN could not list the requested project/service",
+            );
+            process.exit(1);
+          }
+
+          const project = success.project;
+          const services = project.services?.edges?.map(edge => edge.node) ?? [];
+          const environments = project.environments?.edges?.map(edge => edge.node) ?? [];
+          const service =
+            services.find(candidate => candidate.name === expectedServiceName) ?? services[0];
+          const productionEnvironment =
+            environments.find(candidate => candidate.name === "production") ?? environments[0];
+
+          if (project.name !== expectedProjectName) {
+            console.log(
+              `::warning title=Project name mismatch::expected=${expectedProjectName} actual=${project.name}`,
+            );
+          }
+          if (!service) {
+            console.log(
+              `::error title=Railway service missing::No services found in project ${project.name}`,
+            );
+            process.exit(1);
+          }
+          if (service.name !== expectedServiceName) {
+            console.log(
+              `::warning title=Service name mismatch::expected=${expectedServiceName} actual=${service.name}`,
+            );
+          }
+
+          console.log("[railway:discover] token_mode=" + success.mode);
+          console.log("[railway:discover] project_name=" + project.name);
+          console.log("[railway:discover] project_id=" + project.id);
+          console.log("[railway:discover] service_name=" + service.name);
+          console.log("[railway:discover] service_id=" + service.id);
+          console.log(
+            "[railway:discover] environment_name=" + (productionEnvironment?.name ?? ""),
+          );
+          console.log(
+            "[railway:discover] environment_id=" +
+              (success.environmentId ?? productionEnvironment?.id ?? ""),
+          );
+          console.log("[railway:discover] production_url=" + productionUrl);
+          console.log(
+            `::notice title=Railway IDs::RAILWAY_PROJECT_ID=${project.id} RAILWAY_SERVICE_ID=${service.id}`,
+          );
+          NODE
