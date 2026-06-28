@@ -1,6 +1,5 @@
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { MonthlyPlanCompletionBenefitsSection } from "@/components/monthlyPlan/MonthlyPlanCompletionBenefitsSection";
-import { MonthlyOptimizationPrioritiesPanel } from "@/components/monthlyPlan/MonthlyOptimizationPrioritiesPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -10,19 +9,30 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { isMonthlyPlanRetestReady } from "@shared/monthlyPlanGeneration";
+import type { MonthlyOptimizationBrief, MonthlyOptimizationPriority } from "@shared/monthlyOptimizationBrief";
 import {
   ArrowRight,
+  AlertTriangle,
   CalendarClock,
   CheckCircle2,
   ChevronDown,
   Circle,
+  ClipboardList,
+  Eye,
   ListChecks,
-  RefreshCw,
+  ShieldCheck,
   Sparkles,
-  TrendingUp,
+  Target,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
+
+type MonthlyPlanPrimaryCta = {
+  label: string;
+  hint: string;
+  path?: string;
+  action?: "generate";
+};
 
 function formatDateTime(value: Date | string | null | undefined): string {
   if (!value) return "—";
@@ -41,6 +51,214 @@ function taskStatusClass(status: string): string {
   if (status === "completed") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (status === "in_progress") return "border-blue-200 bg-blue-50 text-blue-700";
   return "border-amber-200 bg-amber-50 text-amber-700";
+}
+
+function priorityStatusLabel(
+  priority: MonthlyOptimizationPriority,
+  planPhase: string | null | undefined,
+): string {
+  if (priority.source === "suggestion") return "待纳入方案";
+  if (priority.tasks.length === 0) return "待确认";
+  const allCompleted = priority.tasks.every(task => task.status === "completed");
+  if (allCompleted && planPhase === "completed") return "已验证";
+  if (allCompleted) return "待验证";
+  if (priority.tasks.some(task => task.status === "in_progress" || task.status === "completed")) return "执行中";
+  return "计划中";
+}
+
+function priorityStatusClass(label: string): string {
+  if (label === "已验证" || label === "已完成") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (label === "执行中") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (label === "待验证") return "border-indigo-200 bg-indigo-50 text-indigo-700";
+  if (label === "待纳入方案") return "border-gray-200 bg-gray-50 text-gray-600";
+  return "border-amber-200 bg-amber-50 text-amber-700";
+}
+
+function customerGoalForDimension(key: MonthlyOptimizationPriority["relatedDimensionKey"]): string {
+  const goalByDimension: Record<MonthlyOptimizationPriority["relatedDimensionKey"], string> = {
+    profile: "统一品牌资料与服务口径",
+    questionCoverage: "覆盖用户常问的高价值问题",
+    aiVisibility: "提升 AI 是否知道你、是否愿意推荐你",
+    sourceConsistency: "补齐 AI 推荐所需信任证据",
+    contentExecution: "完成本月核心内容与发布动作",
+    retestDelivery: "完成发布后效果验证和月报证明",
+  };
+  return goalByDimension[key];
+}
+
+function customerValueForDimension(key: MonthlyOptimizationPriority["relatedDimensionKey"]): string {
+  const valueByDimension: Record<MonthlyOptimizationPriority["relatedDimensionKey"], string> = {
+    profile: "让 AI 和客户看到一致、清楚的品牌介绍，减少理解偏差。",
+    questionCoverage: "让用户常问的问题都有内容承接，提高被 AI 发现的机会。",
+    aiVisibility: "提高品牌在 AI 回答中被准确识别和主动推荐的概率。",
+    sourceConsistency: "让 AI 有更多公开证据判断品牌可信，推荐理由更充分。",
+    contentExecution: "把方案变成可被搜索和 AI 读取的公开内容资产。",
+    retestDelivery: "用复测和报告证明本月服务是否带来可解释变化。",
+  };
+  return valueByDimension[key];
+}
+
+function buildServiceConclusion(input: {
+  brief?: MonthlyOptimizationBrief | null;
+  hasMaturity: boolean;
+  hasPlan: boolean;
+  planPhase?: string | null;
+  completedCount: number;
+  totalCount: number;
+}): string {
+  if (!input.hasMaturity) {
+    return "当前还缺少 AI 品牌成熟度诊断，建议先完成诊断，建立本月服务方案的判断基线。";
+  }
+  const priorities = input.brief?.priorities ?? [];
+  if (priorities.length === 0) {
+    return "当前缺少可用的本月服务事项，建议先补齐资料或重新生成本月方案。";
+  }
+  const focus = priorities.slice(0, 3).map(priority => priority.title).join("、");
+  if (!input.hasPlan) {
+    return `本月建议优先围绕 ${focus} 制定服务方案，把诊断短板转成可执行动作。`;
+  }
+  if (input.planPhase === "completed") {
+    return `本月服务已进入报告阶段，重点回看 ${focus} 的执行证据和复测变化，为下月续费与优化提供依据。`;
+  }
+  if (input.totalCount > 0 && input.completedCount >= input.totalCount) {
+    return `本月 ${focus} 的主要执行动作已完成，下一步重点是做效果验证，确认 AI 是否更稳定地识别和推荐品牌。`;
+  }
+  return `本月重点是 ${focus}，目标是补齐 AI 推荐所需的内容、信源和复测证据，提升品牌被识别和推荐的稳定性。`;
+}
+
+function buildCustomerGoals(input: {
+  brief?: MonthlyOptimizationBrief | null;
+  hasMaturity: boolean;
+  hasPlan: boolean;
+  completedCount: number;
+  totalCount: number;
+}): string[] {
+  if (!input.hasMaturity) {
+    return ["完成 AI 品牌成熟度诊断", "建立本月服务基线", "明确最需要改善的问题"];
+  }
+  const goals: string[] = [];
+  for (const priority of input.brief?.priorities ?? []) {
+    const goal = customerGoalForDimension(priority.relatedDimensionKey);
+    if (!goals.includes(goal)) goals.push(goal);
+    if (goals.length >= 3) break;
+  }
+  if (input.hasPlan && input.totalCount > 0) {
+    goals.push(`完成本月 Top 服务事项（${input.completedCount}/${input.totalCount}）`);
+  } else {
+    goals.push("完成本月 Top3 服务事项确认");
+  }
+  goals.push("完成发布后效果验证");
+  return [...new Set(goals)].slice(0, 4);
+}
+
+function buildVerificationCopy(input: {
+  brief?: MonthlyOptimizationBrief | null;
+  planPhase?: string | null;
+  retestScheduledAt?: Date | string | null;
+}): { headline: string; description: string; schedule: Array<{ label: string; timing: string; purpose: string }> } {
+  const schedule = input.brief?.reviewCalendar ?? [
+    { label: "T1", timing: "发布后 7 天", purpose: "确认内容是否被搜索和 AI 初步感知" },
+    { label: "T2", timing: "发布后 14 天", purpose: "观察提及、推荐和引用变化" },
+    { label: "T3", timing: "发布后 30 天", purpose: "沉淀月报证明与下月优先级" },
+  ];
+  if (input.planPhase === "completed") {
+    return {
+      headline: "本月已完成验证，可进入效果报告。",
+      description: "复测结果会沉淀到效果报告中，用于说明本月服务动作带来的变化。",
+      schedule,
+    };
+  }
+  if (input.planPhase === "retest_ready") {
+    return {
+      headline: "当前已到验证窗口，建议立即查看效果验证。",
+      description: "重点检查内容是否被收录，以及 AI 回答中是否开始更稳定地识别品牌。",
+      schedule,
+    };
+  }
+  if (input.retestScheduledAt) {
+    return {
+      headline: `预计验证时间：${formatDateTime(input.retestScheduledAt)}`,
+      description: "内容发布后按计划进入复测，验证结果会在效果验证页和效果报告中查看。",
+      schedule,
+    };
+  }
+  return {
+    headline: "内容发布后 7 天开始第一次效果验证。",
+    description: "检查是否被搜索引擎收录，以及 AI 回答中是否开始更稳定地识别品牌。",
+    schedule,
+  };
+}
+
+function buildCustomerRisks(input: {
+  hasMaturity: boolean;
+  hasPlan: boolean;
+  priorities: MonthlyOptimizationPriority[];
+  completedCount: number;
+  totalCount: number;
+  planPhase?: string | null;
+}): Array<{ title: string; suggestion: string }> {
+  const risks: Array<{ title: string; suggestion: string }> = [];
+  if (!input.hasMaturity) {
+    risks.push({ title: "未完成诊断", suggestion: "先完成 AI 品牌成熟度诊断，建立服务方案基线。" });
+  }
+  if (!input.hasPlan) {
+    risks.push({ title: "本月方案未生成", suggestion: "把诊断短板转成本月 Top3 服务事项。" });
+  }
+  if (input.hasPlan && input.totalCount > 0 && input.completedCount === 0) {
+    risks.push({ title: "服务事项未开始", suggestion: "优先进入执行进度，推进第一批内容或信源任务。" });
+  }
+  if (input.hasPlan && input.totalCount > 0 && input.completedCount < input.totalCount) {
+    risks.push({ title: "本月任务未执行完", suggestion: "继续完成本月 Top 服务事项，避免月底无法形成报告证据。" });
+  }
+  if (input.totalCount > 0 && input.completedCount >= input.totalCount && input.planPhase !== "completed") {
+    risks.push({ title: "发布后未验证", suggestion: "进入效果验证，确认内容是否被搜索和 AI 看见。" });
+  }
+  if (input.hasPlan && input.planPhase !== "completed") {
+    risks.push({ title: "报告未生成", suggestion: "完成执行和复测后，生成客户可读的效果报告。" });
+  }
+  if (input.priorities.some(priority => priority.relatedDimensionKey === "sourceConsistency")) {
+    risks.push({ title: "信源证据不足", suggestion: "补齐公开信源和信任证据，让 AI 推荐理由更充分。" });
+  }
+  return risks.slice(0, 4);
+}
+
+function serviceProgressSteps(input: {
+  hasPlan: boolean;
+  allTasksCompleted: boolean;
+  planPhase?: string | null;
+}): Array<{ label: string; status: "已完成" | "进行中" | "待开始"; description: string }> {
+  return [
+    {
+      label: "计划中",
+      status: input.hasPlan ? "已完成" : "进行中",
+      description: input.hasPlan ? "本月服务事项已确认。" : "先把诊断短板转成服务事项。",
+    },
+    {
+      label: "执行中",
+      status: input.planPhase === "executing" ? "进行中" : input.allTasksCompleted || input.planPhase === "completed" ? "已完成" : "待开始",
+      description: "推进内容、信源、资料和发布相关动作。",
+    },
+    {
+      label: "已完成",
+      status: input.allTasksCompleted || input.planPhase === "completed" ? "已完成" : "待开始",
+      description: "本月服务事项完成后进入验证窗口。",
+    },
+    {
+      label: "待验证",
+      status:
+        input.planPhase === "waiting_retest" || input.planPhase === "retest_ready"
+          ? "进行中"
+          : input.planPhase === "completed"
+            ? "已完成"
+            : "待开始",
+      description: "检查发布内容是否被搜索和 AI 看见。",
+    },
+    {
+      label: "已验证",
+      status: input.planPhase === "completed" ? "已完成" : "待开始",
+      description: "复测结果进入效果报告，支持续费沟通。",
+    },
+  ];
 }
 
 export default function MonthlyPlanPage() {
@@ -86,14 +304,13 @@ export default function MonthlyPlanPage() {
 
   useEffect(() => {
     const name = selectedProject?.enterpriseName?.trim() || "企业";
-    document.title = `${name} - 本月优化计划`;
+    document.title = `${name} - 本月服务方案`;
   }, [selectedProject?.enterpriseName]);
 
   const current = currentQuery.data;
   const plan = current?.plan ?? null;
   const tasks = current?.tasks ?? [];
   const progress = current?.progress ?? { completedCount: 0, totalCount: 0 };
-  const focusSummary = current?.focusSummary ?? "";
   const planPhase = current?.planPhase ?? null;
 
   const comparisonQuery = trpc.geo.monthlyPlan.getComparison.useQuery(
@@ -113,6 +330,102 @@ export default function MonthlyPlanPage() {
   const showGenerateEmpty = !currentQuery.isLoading && !plan && maturityQuery.data;
   const showActivePlan = plan?.status === "active";
   const showCompletedPlan = plan?.status === "completed";
+  const optimizationBrief = optimizationBriefQuery.data ?? null;
+  const topPriorities = optimizationBrief?.priorities.slice(0, 3) ?? [];
+  const hasMaturityReport = Boolean(maturityQuery.data);
+  const hasPlan = Boolean(plan);
+  const hasServiceItems = topPriorities.length > 0 || tasks.length > 0;
+  const allTasksCompleted = progress.totalCount > 0 && progress.completedCount >= progress.totalCount;
+  const serviceConclusion = useMemo(
+    () =>
+      buildServiceConclusion({
+        brief: optimizationBrief,
+        hasMaturity: hasMaturityReport,
+        hasPlan,
+        planPhase,
+        completedCount: progress.completedCount,
+        totalCount: progress.totalCount,
+      }),
+    [hasMaturityReport, hasPlan, optimizationBrief, planPhase, progress.completedCount, progress.totalCount],
+  );
+  const customerGoals = useMemo(
+    () =>
+      buildCustomerGoals({
+        brief: optimizationBrief,
+        hasMaturity: hasMaturityReport,
+        hasPlan,
+        completedCount: progress.completedCount,
+        totalCount: progress.totalCount,
+      }),
+    [hasMaturityReport, hasPlan, optimizationBrief, progress.completedCount, progress.totalCount],
+  );
+  const verificationCopy = useMemo(
+    () =>
+      buildVerificationCopy({
+        brief: optimizationBrief,
+        planPhase,
+        retestScheduledAt: plan?.retestScheduledAt,
+      }),
+    [optimizationBrief, plan?.retestScheduledAt, planPhase],
+  );
+  const visibleRisks = useMemo(
+    () =>
+      buildCustomerRisks({
+        hasMaturity: hasMaturityReport,
+        hasPlan,
+        priorities: topPriorities,
+        completedCount: progress.completedCount,
+        totalCount: progress.totalCount,
+        planPhase,
+      }),
+    [hasMaturityReport, hasPlan, planPhase, progress.completedCount, progress.totalCount, topPriorities],
+  );
+  const progressSteps = useMemo(
+    () => serviceProgressSteps({ hasPlan, allTasksCompleted, planPhase }),
+    [allTasksCompleted, hasPlan, planPhase],
+  );
+  const monthlyPrimaryCta = useMemo<MonthlyPlanPrimaryCta>(() => {
+    if (!hasMaturityReport) {
+      return {
+        label: "完善诊断",
+        hint: "先完成 AI 品牌成熟度诊断，才能制定客户可读的本月服务方案。",
+        path: "/maturity",
+      };
+    }
+    if (!hasServiceItems && !canGeneratePlan) {
+      return {
+        label: "回到总览",
+        hint: "当前缺少可执行服务事项，建议回到总览检查资料和诊断状态。",
+        path: "/workspace",
+      };
+    }
+    if (!plan && canGeneratePlan) {
+      return {
+        label: "生成本月服务方案",
+        hint: "把成熟度短板转成 Top 服务事项。",
+        action: "generate" as const,
+      };
+    }
+    if (planPhase === "completed" || showCompletedPlan) {
+      return {
+        label: "查看效果报告",
+        hint: "查看本月执行、变化和下月建议。",
+        path: "/delivery-reports",
+      };
+    }
+    if (allTasksCompleted) {
+      return {
+        label: "查看效果验证",
+        hint: "验证内容是否被搜索和 AI 看见。",
+        path: "/inclusion-monitoring",
+      };
+    }
+    return {
+      label: "查看执行进度",
+      hint: "进入执行进度，推进本月服务事项。",
+      path: "/weekly",
+    };
+  }, [allTasksCompleted, canGeneratePlan, hasMaturityReport, hasServiceItems, plan, planPhase, showCompletedPlan]);
 
   const handleGeneratePlan = () => {
     if (!selectedProjectId) return;
@@ -134,73 +447,181 @@ export default function MonthlyPlanPage() {
     setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
   };
 
+  const handlePrimaryCta = () => {
+    if (monthlyPrimaryCta.action === "generate") {
+      handleGeneratePlan();
+      return;
+    }
+    if (!selectedProjectId || !monthlyPrimaryCta.path) return;
+    setLocation(buildProjectUrl(monthlyPrimaryCta.path, selectedProjectId));
+  };
+
   if (!selectedProjectId && !projectsLoading) {
     return (
       <div className="space-y-6" data-testid="monthly-plan-page">
-        <ProjectContextEmptyState title="本月优化计划" description="请先选择或创建项目后再制定本月优化计划。" />
+        <ProjectContextEmptyState title="本月服务方案" description="请先选择或创建项目后再制定本月服务方案。" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 pb-10" data-testid="monthly-plan-page">
-      <header className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
+      <header className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-blue-600">月度优化计划</p>
-            <h1 className="mt-1 text-2xl font-bold text-gray-900">本月优化计划</h1>
+            <p className="text-sm font-medium text-blue-600">客户主流程 · 本月方案</p>
+            <h1 className="mt-1 text-2xl font-bold text-gray-900">本月服务方案</h1>
             <p className="mt-2 max-w-2xl text-sm text-gray-600">
-              把 AI 品牌成熟度短板转化为本月可执行任务，完成后复测并对比成效。
+              把诊断短板翻译成本月 GEO 代运营服务事项，让客户看懂为什么做、做到哪、完成后怎么看效果。
             </p>
           </div>
-          {canGeneratePlan ? (
-            <Button
-              type="button"
-              className={cn("rounded-lg", geoP0Brand.primary)}
-              data-testid="monthly-plan-generate-btn"
-              disabled={generateMutation.isPending}
-              onClick={handleGeneratePlan}
-            >
-              {generateMutation.isPending ? (
-                <>
-                  <Spinner className="mr-2 size-4" />
-                  生成中…
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 size-4" />
-                  {plan?.status === "completed" ? "生成下月计划" : "生成本月优化计划"}
-                </>
-              )}
-            </Button>
-          ) : null}
+          <Button
+            type="button"
+            className={cn("rounded-lg", geoP0Brand.primary)}
+            data-testid="monthly-plan-primary-cta"
+            disabled={monthlyPrimaryCta.action === "generate" && generateMutation.isPending}
+            onClick={handlePrimaryCta}
+          >
+            {monthlyPrimaryCta.action === "generate" && generateMutation.isPending ? (
+              <>
+                <Spinner className="mr-2 size-4" />
+                生成中…
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 size-4" />
+                {monthlyPrimaryCta.label}
+              </>
+            )}
+          </Button>
         </div>
       </header>
-
-      {(showActivePlan || showCompletedPlan) && plan ? (
-        <MonthlyPlanCompletionBenefitsSection
-          progress={progress}
-          tasks={tasks}
-          boundPublishAccountCount={workspaceSummaryQuery.data?.boundPublishAccountCount ?? null}
-        />
-      ) : null}
 
       {currentQuery.isLoading || maturityQuery.isLoading ? (
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Spinner className="size-4" />
-          加载本月计划…
+          加载本月服务方案…
         </div>
       ) : null}
 
-      <MonthlyOptimizationPrioritiesPanel
-        brief={optimizationBriefQuery.data}
-        loading={optimizationBriefQuery.isLoading}
-        onGoTask={handleGoTask}
-      />
+      <P0Card testId="monthly-plan-service-proposal" className="space-y-6">
+        <div className="grid gap-5 lg:grid-cols-[1.4fr_0.8fr]">
+          <div>
+            <div className="flex items-center gap-2">
+              <Target className="size-4 text-blue-600" />
+              <p className="text-sm font-semibold text-gray-900">本月服务结论</p>
+            </div>
+            <p className="mt-3 text-lg font-semibold leading-8 text-gray-900" data-testid="monthly-plan-service-conclusion">
+              {serviceConclusion}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-gray-600">{monthlyPrimaryCta.hint}</p>
+          </div>
+          <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
+            <p className="text-xs font-medium text-blue-700">当前成熟度</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-blue-900">
+              {optimizationBrief?.maturityScore ?? maturityQuery.data?.totalScore ?? "—"} 分
+            </p>
+            <p className="mt-1 text-sm text-blue-800">
+              {optimizationBrief?.maturityLevel ?? "建议先完成诊断后生成方案"}
+            </p>
+            {plan ? (
+              <p className="mt-3 text-xs text-blue-700">
+                第 {plan.roundNumber} 轮 · 生成于 {formatDateTime(plan.generatedAt)}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div data-testid="monthly-plan-customer-goals">
+          <div className="mb-3 flex items-center gap-2">
+            <ShieldCheck className="size-4 text-emerald-600" />
+            <p className="text-sm font-semibold text-gray-900">本月目标</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {customerGoals.map((goal, index) => (
+              <div key={goal} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs font-medium text-gray-500">目标 {index + 1}</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-gray-900">{goal}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div data-testid="monthly-plan-top3-service-items">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ListChecks className="size-4 text-blue-600" />
+              <p className="text-sm font-semibold text-gray-900">本月 Top 3 服务事项</p>
+            </div>
+            {optimizationBriefQuery.isLoading ? (
+              <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-500">
+                <Spinner className="size-3" />
+                生成中
+              </span>
+            ) : null}
+          </div>
+          {topPriorities.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+              暂无本月 Top 3 服务事项。建议先完成诊断或生成本月服务方案，不会把建议项伪装成已完成结果。
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-3">
+              {topPriorities.map(priority => {
+                const status = priorityStatusLabel(priority, planPhase);
+                return (
+                  <article
+                    key={priority.rank}
+                    className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                    data-testid={`monthly-plan-service-item-${priority.rank}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-medium text-blue-600">
+                          服务事项 {priority.rank} · {priority.relatedDimensionName}
+                        </p>
+                        <h2 className="mt-1 text-base font-semibold leading-6 text-gray-900">{priority.title}</h2>
+                      </div>
+                      <span className={cn("shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium", priorityStatusClass(status))}>
+                        {status}
+                      </span>
+                    </div>
+                    <dl className="mt-4 space-y-3 text-sm leading-6">
+                      <div>
+                        <dt className="font-medium text-gray-900">解决的问题</dt>
+                        <dd className="mt-1 text-gray-600">{priority.shortcoming || priority.reason}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-gray-900">为什么做</dt>
+                        <dd className="mt-1 text-gray-600">{priority.reason}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-gray-900">完成标准</dt>
+                        <dd className="mt-1 text-gray-600">{priority.successCriteria}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-gray-900">做完怎么验证</dt>
+                        <dd className="mt-1 text-gray-600">{priority.retestMethod}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-gray-900">客户能看到什么价值</dt>
+                        <dd className="mt-1 text-gray-600">{customerValueForDimension(priority.relatedDimensionKey)}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-gray-900">关联任务数量</dt>
+                        <dd className="mt-1 text-gray-600">{priority.source === "existing_task" ? `${priority.tasks.length} 项` : "待生成执行任务"}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </P0Card>
 
       {!maturityQuery.data && !maturityQuery.isLoading ? (
         <P0Card testId="monthly-plan-no-maturity">
-          <p className="text-sm text-gray-700">请先完成 AI 品牌成熟度评估，再生成本月优化计划。</p>
+          <p className="text-sm text-gray-700">请先完成 AI 品牌成熟度评估，再生成本月服务方案。</p>
           <Button
             type="button"
             size="sm"
@@ -216,62 +637,151 @@ export default function MonthlyPlanPage() {
       {showGenerateEmpty ? (
         <P0Card testId="monthly-plan-empty">
           <p className="text-sm text-gray-700">
-            成熟度评估已完成（{maturityQuery.data?.totalScore ?? "—"} 分），点击上方按钮生成本月优化计划。
+            成熟度评估已完成（{maturityQuery.data?.totalScore ?? "—"} 分），点击上方主按钮生成本月服务方案。
           </p>
         </P0Card>
       ) : null}
 
-      {(showActivePlan || showCompletedPlan) && plan ? (
-        <>
-          <P0Card testId="monthly-plan-overview">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-500">第 {plan.roundNumber} 轮 · 本月目标</p>
-                <p className="mt-1 text-lg font-semibold text-gray-900" data-testid="monthly-plan-focus-summary">
-                  本月重点：提升 {focusSummary || "关键成熟度维度"}
-                </p>
-                <p className="mt-2 text-sm text-gray-600">
-                  基线成熟度 {plan.baselineMaturityScore} 分 · 生成于 {formatDateTime(plan.generatedAt)}
-                </p>
-              </div>
-              <div
-                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-center"
-                data-testid="monthly-plan-progress"
-              >
-                <p className="text-xs text-gray-500">整体进度</p>
-                <p className="text-2xl font-bold tabular-nums text-blue-700">
-                  {progress.completedCount}/{progress.totalCount}
-                </p>
-                <p className="text-xs text-gray-500">项已完成</p>
-              </div>
-            </div>
-          </P0Card>
-
-          <P0Card testId="monthly-plan-task-list">
+      <P0Card testId="monthly-plan-service-progress" className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
             <div className="flex items-center gap-2">
-              <ListChecks className="size-4 text-blue-600" />
-              <p className="text-sm font-semibold text-gray-900">任务清单</p>
+              <ClipboardList className="size-4 text-blue-600" />
+              <p className="text-sm font-semibold text-gray-900">服务进度</p>
             </div>
-            <ul className="mt-4 space-y-3">
-              {tasks.map(task => {
-                const meta = (task.metadata as Record<string, unknown> | null) ?? {};
-                const actionIndex = meta.actionIndex ?? "—";
-                return (
-                  <li
-                    key={task.id}
-                    className="rounded-xl border border-gray-200 bg-white p-4"
-                    data-testid={`monthly-plan-task-${task.id}`}
-                  >
+            <p className="mt-2 text-sm text-gray-600">计划中 → 执行中 → 已完成 → 待验证 → 已验证</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-center" data-testid="monthly-plan-progress">
+            <p className="text-xs text-gray-500">本月进度</p>
+            <p className="text-2xl font-bold tabular-nums text-blue-700">
+              {progress.completedCount}/{progress.totalCount}
+            </p>
+            <p className="text-xs text-gray-500">项完成</p>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-5">
+          {progressSteps.map(step => (
+            <div key={step.label} className="rounded-xl border border-gray-200 bg-white p-3">
+              <span
+                className={cn(
+                  "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                  step.status === "已完成"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : step.status === "进行中"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-gray-100 text-gray-500",
+                )}
+              >
+                {step.status}
+              </span>
+              <p className="mt-2 text-sm font-semibold text-gray-900">{step.label}</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{step.description}</p>
+            </div>
+          ))}
+        </div>
+      </P0Card>
+
+      <P0Card testId="monthly-plan-next-verification" className="space-y-4">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="size-4 text-blue-600" />
+          <p className="text-sm font-semibold text-gray-900">下一次验证安排</p>
+        </div>
+        <div>
+          <p className="text-base font-semibold text-gray-900">{verificationCopy.headline}</p>
+          <p className="mt-2 text-sm leading-6 text-gray-600">{verificationCopy.description}</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {verificationCopy.schedule.map(item => (
+            <div key={item.label} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <p className="text-sm font-semibold text-gray-900">
+                {item.label} · {item.timing}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{item.purpose}</p>
+            </div>
+          ))}
+        </div>
+        {showCompletedPlan && plan?.resultMaturityScore != null ? (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+            <p className="text-sm text-emerald-800">
+              复测已完成 · 成熟度 {plan.baselineMaturityScore} → {plan.resultMaturityScore} 分
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="monthly-plan-comparison">
+              {(comparisonQuery.data?.dimensions ?? []).map(dim => (
+                <div key={dim.key} className="rounded-lg bg-white/80 p-3">
+                  <p className="text-xs text-gray-500">{dim.label}</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                    {dim.baseline} → {dim.result ?? "—"}
+                    {dim.delta != null ? (
+                      <span className={cn("ml-2 text-xs", dim.delta >= 0 ? "text-emerald-600" : "text-red-600")}>
+                        {dim.delta >= 0 ? "+" : ""}
+                        {dim.delta}
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {showActivePlan && retestReady ? (
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" data-testid="monthly-plan-retest-btn" disabled={retestMutation.isPending} onClick={handleRetest}>
+              {retestMutation.isPending ? "复测中…" : "立即复测"}
+            </Button>
+            <Button type="button" variant="outline" onClick={handleGoAiDiagnosis}>
+              前往 AI 实测诊断
+            </Button>
+          </div>
+        ) : null}
+      </P0Card>
+
+      {(showActivePlan || showCompletedPlan) && plan ? (
+        <MonthlyPlanCompletionBenefitsSection
+          progress={progress}
+          tasks={tasks}
+          boundPublishAccountCount={workspaceSummaryQuery.data?.boundPublishAccountCount ?? null}
+        />
+      ) : null}
+
+      <P0Card testId="monthly-plan-customer-risks" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="size-4 text-amber-600" />
+          <p className="text-sm font-semibold text-gray-900">风险与缺口</p>
+        </div>
+        {visibleRisks.length === 0 ? (
+          <p className="text-sm text-gray-600">暂无明显阻断，建议继续按本月服务方案推进并复测效果。</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {visibleRisks.map(risk => (
+              <div key={risk.title} className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                <p className="text-sm font-semibold text-amber-900">{risk.title}</p>
+                <p className="mt-1 text-sm leading-6 text-amber-800">{risk.suggestion}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </P0Card>
+
+      {(showActivePlan || showCompletedPlan) && plan ? (
+        <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-execution-details">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex items-center gap-2">
+              <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
+              运营执行明细
+            </span>
+            <span className="text-xs font-normal text-gray-500">详细任务清单已降级展示</span>
+          </summary>
+          <div className="border-t border-gray-100 px-5 pb-5 pt-4">
+            {tasks.length === 0 ? (
+              <p className="text-sm text-gray-500">暂无执行任务。</p>
+            ) : (
+              <ul className="space-y-3">
+                {tasks.map(task => (
+                  <li key={task.id} className="rounded-xl border border-gray-200 bg-white p-4" data-testid={`monthly-plan-task-${task.id}`}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-medium text-gray-500">动作 {String(actionIndex)}</span>
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full border px-2 py-0.5 text-xs font-medium",
-                              taskStatusClass(task.status),
-                            )}
-                          >
+                          <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-xs font-medium", taskStatusClass(task.status))}>
                             {taskStatusLabel(task.status)}
                           </span>
                         </div>
@@ -279,13 +789,7 @@ export default function MonthlyPlanPage() {
                         <p className="mt-1 text-sm text-gray-600">{task.reason}</p>
                       </div>
                       {task.status !== "completed" ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          data-testid={`monthly-plan-task-go-${task.id}`}
-                          onClick={() => handleGoTask(task.actionUrl)}
-                        >
+                        <Button type="button" size="sm" variant="outline" data-testid={`monthly-plan-task-go-${task.id}`} onClick={() => handleGoTask(task.actionUrl)}>
                           去完成
                           <ArrowRight className="ml-1.5 size-3.5" />
                         </Button>
@@ -294,83 +798,42 @@ export default function MonthlyPlanPage() {
                       )}
                     </div>
                   </li>
-                );
-              })}
-            </ul>
-          </P0Card>
-
-          <P0Card testId="monthly-plan-retest-section">
-            <div className="flex items-center gap-2">
-              <CalendarClock className="size-4 text-blue-600" />
-              <p className="text-sm font-semibold text-gray-900">复测区</p>
-            </div>
-            {showCompletedPlan && plan.resultMaturityScore != null ? (
-              <div className="mt-4 space-y-4">
-                <p className="text-sm text-gray-700">
-                  复测已完成 · 成熟度 {plan.baselineMaturityScore} → {plan.resultMaturityScore} 分
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="monthly-plan-comparison">
-                  {(comparisonQuery.data?.dimensions ?? []).map(dim => (
-                    <div key={dim.key} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                      <p className="text-xs text-gray-500">{dim.label}</p>
-                      <p className="mt-1 text-sm font-semibold text-gray-900">
-                        {dim.baseline} → {dim.result ?? "—"}
-                        {dim.delta != null ? (
-                          <span className={cn("ml-2 text-xs", dim.delta >= 0 ? "text-emerald-600" : "text-red-600")}>
-                            {dim.delta >= 0 ? "+" : ""}
-                            {dim.delta}
-                          </span>
-                        ) : null}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  className={geoP0Brand.primary}
-                  data-testid="monthly-plan-next-round-btn"
-                  disabled={generateMutation.isPending}
-                  onClick={handleGeneratePlan}
-                >
-                  <TrendingUp className="mr-2 size-4" />
-                  生成下月计划
-                </Button>
-              </div>
-            ) : showActivePlan && retestReady ? (
-              <div className="mt-4 space-y-3">
-                <p className="text-sm text-gray-700">可以进行 7 天后复测了，建议立即复测查看本月优化成效。</p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    className={geoP0Brand.primary}
-                    data-testid="monthly-plan-retest-btn"
-                    disabled={retestMutation.isPending}
-                    onClick={handleRetest}
-                  >
-                    {retestMutation.isPending ? "复测中…" : "立即复测"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleGoAiDiagnosis}>
-                    前往 AI 实测诊断
-                  </Button>
-                </div>
-              </div>
-            ) : showActivePlan && plan.retestScheduledAt ? (
-              <div className="mt-4 space-y-2">
-                <p className="text-sm text-gray-700">
-                  完成全部内容任务并发布后，系统将在 7 天后自动复测。
-                </p>
-                <p className="text-sm text-gray-500">
-                  预计复测时间：{formatDateTime(plan.retestScheduledAt)}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-4 text-sm text-gray-700">
-                完成全部内容任务并发布后，系统将在 7 天后自动复测。
-              </p>
+                ))}
+              </ul>
             )}
-          </P0Card>
-        </>
+          </div>
+        </details>
       ) : null}
+
+      <P0Card testId="monthly-plan-flow-links" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Eye className="size-4 text-blue-600" />
+          <p className="text-sm font-semibold text-gray-900">服务流程衔接</p>
+        </div>
+        <div className="grid gap-2 text-sm sm:grid-cols-5">
+          {[
+            { label: "总览", path: "/workspace" },
+            { label: "本月方案", path: "/monthly-plan" },
+            { label: "执行进度", path: "/weekly" },
+            { label: "效果验证", path: "/inclusion-monitoring" },
+            { label: "效果报告", path: "/delivery-reports" },
+          ].map(item => (
+            <button
+              key={item.path}
+              type="button"
+              className={cn(
+                "rounded-xl border px-3 py-2 text-left font-medium",
+                item.path === "/monthly-plan"
+                  ? "border-blue-200 bg-blue-50 text-blue-800"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
+              )}
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl(item.path, selectedProjectId))}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </P0Card>
 
       <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-history">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
