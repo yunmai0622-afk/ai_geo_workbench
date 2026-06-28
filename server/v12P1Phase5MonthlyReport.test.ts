@@ -24,11 +24,14 @@ describe("GEO-V2.0-P1-Phase5 Monthly Maturity Report", () => {
     expect(sync).toContain("completeMonthlyPlanRetest");
   });
 
-  it("upgrades delivery-reports page to AI brand maturity monthly report", () => {
+  it("keeps complete monthly report evidence inside the renewal delivery report", () => {
     const page = read("client/src/pages/DeliveryReportsCenterPage.tsx");
     expect(page).toContain("delivery-report-page");
     expect(page).toContain("monthly-report-title");
-    expect(page).toContain("AI 品牌成熟度月报");
+    expect(page).toContain("效果报告 / 续费型交付报告");
+    expect(page).toContain("delivery-report-renewal-overview");
+    expect(page).toContain("delivery-report-evidence-details");
+    expect(page).toContain("证据详情与完整月报");
     expect(page).toContain("geo.monthlyPlan.getReport");
     expect(page).toContain("monthly-report-summary");
     expect(page).toContain("monthly-report-weaknesses");

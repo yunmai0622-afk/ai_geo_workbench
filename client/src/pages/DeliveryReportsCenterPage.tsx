@@ -1,5 +1,4 @@
 import { P0Card, P0Section } from "@/components/geo/P0UiPrimitives";
-import { MonthlyOptimizationPrioritiesPanel } from "@/components/monthlyPlan/MonthlyOptimizationPrioritiesPanel";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -13,18 +12,307 @@ import {
   formatMonthlyReportMetricPercent,
   formatMonthlyReportRateChange,
   MONTHLY_REPORT_CONTENT_ASSET_EMPTY_MESSAGE,
-  MONTHLY_REPORT_PAGE_INTRO,
-  MONTHLY_REPORT_PAGE_TITLE,
   type MonthlyReportView,
 } from "@shared/monthlyReportView";
 import { formatMonthlyReportImpactProofLine } from "@shared/contentRetestAttribution";
-import { ArrowRight, ChevronDown, FileBarChart2, Sparkles, TrendingUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import type { MonthlyOptimizationBrief, MonthlyOptimizationPriority } from "@shared/monthlyOptimizationBrief";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardList,
+  Eye,
+  FileBarChart2,
+  FileText,
+  RefreshCw,
+  Share2,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+
+type RenewalPrimaryCta = {
+  label: string;
+  hint: string;
+  path?: string;
+  action?: "generateNextPlan";
+};
+
+type RenewalCompletionItem = {
+  title: string;
+  status: string;
+  description: string;
+  value: string;
+};
+
+type RenewalIssue = {
+  title: string;
+  impact: string;
+  nextStep: string;
+};
+
+type RenewalNextSuggestion = {
+  title: string;
+  reason: string;
+  shortcoming: string;
+  verify: string;
+  value: string;
+};
 
 function formatPercent(rate: number | null): string {
   if (rate == null) return "—";
   return `${Math.round(rate * 100)}%`;
+}
+
+function reportCount(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "暂无";
+  return value.toLocaleString("zh-CN");
+}
+
+function currentRateLabel(value: number | null): string {
+  if (value == null) return "暂无基线";
+  return `当前 ${formatPercent(value)}`;
+}
+
+function customerValueForReportDimension(key: MonthlyOptimizationPriority["relatedDimensionKey"]): string {
+  const valueByDimension: Record<MonthlyOptimizationPriority["relatedDimensionKey"], string> = {
+    profile: "让 AI 和客户看到一致、清楚的品牌介绍，减少理解偏差。",
+    questionCoverage: "让用户常问的问题都有内容承接，提高被 AI 发现的机会。",
+    aiVisibility: "提高品牌在 AI 回答中被准确识别和主动推荐的概率。",
+    sourceConsistency: "让 AI 有更多公开证据判断品牌可信，推荐理由更充分。",
+    contentExecution: "把方案变成可被搜索和 AI 读取的公开内容资产。",
+    retestDelivery: "用复测和报告证明本月服务是否带来可解释变化。",
+  };
+  return valueByDimension[key];
+}
+
+function buildRenewalReportConclusion(report: MonthlyReportView): string {
+  if (report.planPhase === "no_plan") {
+    return "当前尚未生成本月服务方案，报告仍处于待建立阶段；建议先完成本月方案与执行动作，再形成续费证明。";
+  }
+  if (report.hasRetestData) {
+    const maturityChange = formatMonthlyReportMaturityChange(
+      report.summary.maturityBaseline,
+      report.summary.maturityResult,
+    );
+    const recommendChange = formatMonthlyReportRateChange(
+      report.summary.recommendRateBaseline,
+      report.summary.recommendRateResult,
+    );
+    return `本月已完成阶段复测，AI 品牌成熟度变化为 ${maturityChange}，AI 推荐表现为 ${recommendChange}；下月应继续扩大内容覆盖和可信证据。`;
+  }
+  if (report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount) {
+    return `当前仍处于基础建设阶段，本月服务事项完成 ${report.progress.completedCount}/${report.progress.totalCount} 项；暂无可确认增长，建议先补齐执行和发布后验证。`;
+  }
+  if (report.actions.contentCount > 0 || report.actions.contentAssetProof.hasInclusionData) {
+    return "本月已形成部分内容和公开资产，但尚未完成完整复测；建议继续观察收录与 AI 回答变化，再判断增长效果。";
+  }
+  return "当前暂无可确认增长，报告仍需等待内容发布、收录监测和 AI 复测形成证据。";
+}
+
+function buildRenewalCompletionItems(report: MonthlyReportView): RenewalCompletionItem[] {
+  const progressDone =
+    report.progress.totalCount > 0 && report.progress.completedCount >= report.progress.totalCount;
+  return [
+    {
+      title: "诊断与方案",
+      status:
+        report.planPhase === "no_plan"
+          ? "待完成"
+          : progressDone
+            ? "已完成"
+            : report.progress.totalCount > 0
+              ? "执行中"
+              : "待完善",
+      value:
+        report.progress.totalCount > 0
+          ? `${report.progress.completedCount}/${report.progress.totalCount} 项`
+          : "暂无服务事项",
+      description:
+        report.planPhase === "no_plan"
+          ? "尚未形成本月服务方案。"
+          : "已把诊断短板转成本月服务事项，并用于后续执行与验证。",
+    },
+    {
+      title: "内容与发布",
+      status: report.actions.contentCount > 0 ? "已推进" : "待完成",
+      value: `${reportCount(report.actions.contentCount)} 篇内容`,
+      description:
+        report.actions.contentCount > 0
+          ? `覆盖 ${reportCount(report.actions.questionCoverageCount)} 个 AI 搜索问题。`
+          : "本月暂无已发布内容记录。",
+    },
+    {
+      title: "品牌资料与信源",
+      status: report.actions.sourceCount + report.actions.evidenceCount > 0 ? "已补充" : "待补充",
+      value: `${reportCount(report.actions.sourceCount + report.actions.evidenceCount)} 条证据`,
+      description:
+        report.actions.sourceCount + report.actions.evidenceCount > 0
+          ? "已补充公开信源或信任证据，帮助 AI 判断品牌可信度。"
+          : "信源和信任证据还需要继续补齐。",
+    },
+    {
+      title: "收录与复测",
+      status: report.hasRetestData
+        ? "已验证"
+        : report.actions.contentAssetProof.retestReadyCount > 0
+          ? "可复测"
+          : "待验证",
+      value: report.hasRetestData
+        ? "已完成复测"
+        : `${reportCount(report.actions.contentAssetProof.includedCount)} 篇已收录`,
+      description: report.hasRetestData
+        ? "已经形成阶段复测结果，可用于说明效果变化。"
+        : "需要继续观察内容是否被搜索和 AI 看见。",
+    },
+  ];
+}
+
+function buildRenewalIssues(report: MonthlyReportView): RenewalIssue[] {
+  const issues: RenewalIssue[] = [];
+  const recommendRate = report.summary.recommendRateResult ?? report.summary.recommendRateBaseline;
+  if (recommendRate == null || recommendRate < 0.5) {
+    issues.push({
+      title: "AI 推荐意愿仍不稳定",
+      impact: "用户询问相关问题时，AI 可能知道品牌，但还不愿意主动推荐。",
+      nextStep: "下月继续补推荐理由、案例证据和高价值问题内容。",
+    });
+  }
+  if (report.actions.sourceCount + report.actions.evidenceCount === 0 || report.weakDimensionChanges.some(item => /信源|证据/.test(item.label))) {
+    issues.push({
+      title: "公开信任证据仍不足",
+      impact: "AI 推荐品牌时需要公开资料、第三方信源和一致表达作为判断依据。",
+      nextStep: "继续补齐官网、媒体、案例、口碑和可验证信源。",
+    });
+  }
+  if (!report.actions.contentAssetProof.hasInclusionData || report.actions.contentAssetProof.includedCount < report.actions.contentCount) {
+    issues.push({
+      title: "收录数据仍待观察",
+      impact: "内容没有被搜索引擎和 AI 读取前，很难证明它影响了 AI 回答。",
+      nextStep: "继续回填公开链接，跟踪收录、阅读和关键词触发。",
+    });
+  }
+  if (!report.hasRetestData) {
+    issues.push({
+      title: "发布后尚未完成复测",
+      impact: "没有复测前，只能说明动作已执行，还不能确认 AI 是否发生变化。",
+      nextStep: "内容发布后按 7/14/30 天节奏完成效果验证。",
+    });
+  }
+  if (report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount) {
+    issues.push({
+      title: "本月服务事项未全部完成",
+      impact: "执行未闭环时，报告证据会偏弱，续费沟通也缺少完整链路。",
+      nextStep: "优先完成剩余服务事项，再进入复测与报告沉淀。",
+    });
+  }
+  if (report.weakDimensionChanges.some(item => /问题|覆盖/.test(item.label))) {
+    issues.push({
+      title: "部分问题场景缺少内容覆盖",
+      impact: "用户常问的问题没有内容承接时，AI 更容易引用竞品或泛泛回答。",
+      nextStep: "继续围绕高价值 AI 搜索问题生成内容资产。",
+    });
+  }
+  return issues.slice(0, 3);
+}
+
+function fallbackRenewalSuggestions(report: MonthlyReportView): RenewalNextSuggestion[] {
+  const suggestions = report.nextMonth.suggestions.length > 0
+    ? report.nextMonth.suggestions.slice(0, 3)
+    : ["继续覆盖更多高价值 AI 问题", "补充推荐理由和可信信源", "完成发布后 AI 复测"];
+  return suggestions.map((line, index) => ({
+    title: line.replace(/^·\s*/, ""),
+    reason: "这是基于当前报告数据的下月建议，不代表已经排期完成。",
+    shortcoming: report.nextMonth.weakDimensions[index] ?? "当前仍需扩大 AI 可见度与推荐理由。",
+    verify: "通过收录监测、AI 复测和下月效果报告判断是否产生变化。",
+    value: "让客户看到持续服务不是重复发内容，而是在持续补齐 AI 推荐所需证据。",
+  }));
+}
+
+function buildRenewalSuggestions(
+  report: MonthlyReportView,
+  brief?: MonthlyOptimizationBrief | null,
+): RenewalNextSuggestion[] {
+  if (brief?.priorities?.length) {
+    return brief.priorities.slice(0, 3).map(priority => ({
+      title: priority.title,
+      reason: priority.reason,
+      shortcoming: priority.shortcoming || priority.relatedDimensionName,
+      verify: priority.retestMethod,
+      value: customerValueForReportDimension(priority.relatedDimensionKey),
+    }));
+  }
+  return fallbackRenewalSuggestions(report);
+}
+
+function buildEffectChanges(report: MonthlyReportView): Array<{ label: string; value: string; hint: string }> {
+  return [
+    {
+      label: "AI 是否更知道你",
+      value: report.hasRetestData
+        ? formatMonthlyReportRateChange(report.summary.mentionRateBaseline, report.summary.mentionRateResult)
+        : currentRateLabel(report.summary.mentionRateBaseline),
+      hint: report.hasRetestData ? "基于本月复测对比。" : "暂无复测对比，建议完成下一次复测后判断。",
+    },
+    {
+      label: "AI 是否更愿意推荐你",
+      value: report.hasRetestData
+        ? formatMonthlyReportRateChange(report.summary.recommendRateBaseline, report.summary.recommendRateResult)
+        : currentRateLabel(report.summary.recommendRateBaseline),
+      hint: report.hasRetestData ? "推荐率越稳定，越容易形成可解释价值。" : "当前仅展示基线，不伪造增长。",
+    },
+    {
+      label: "AI 成熟度是否变化",
+      value: formatMonthlyReportMaturityChange(report.summary.maturityBaseline, report.summary.maturityResult),
+      hint: report.summary.maturityResult == null ? "复测完成后生成对比。" : "成熟度变化来自本月复测。",
+    },
+    {
+      label: "内容是否被看见",
+      value: `${reportCount(report.actions.contentAssetProof.includedCount)} 篇已收录`,
+      hint:
+        report.actions.contentAssetProof.hasInclusionData
+          ? `本月发布 ${reportCount(report.actions.contentCount)} 篇，${reportCount(report.actions.contentAssetProof.retestReadyCount)} 篇可进入 AI 复测。`
+          : "暂无可确认收录数据。",
+    },
+  ];
+}
+
+function buildReportPrimaryCta(report: MonthlyReportView): RenewalPrimaryCta {
+  if (report.planPhase === "no_plan") {
+    return {
+      label: "生成本月方案",
+      hint: "先制定服务方案，才能形成客户可读的月度报告。",
+      path: "/monthly-plan",
+    };
+  }
+  if (report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount) {
+    return {
+      label: "补齐执行/验证",
+      hint: "本月报告还不完整，先补齐执行事项和验证证据。",
+      path: "/monthly-plan",
+    };
+  }
+  if (!report.hasRetestData) {
+    return {
+      label: "去效果验证",
+      hint: "执行完成后需要复测，才能证明 AI 回答是否发生变化。",
+      path: "/inclusion-monitoring",
+    };
+  }
+  if (report.nextMonth.canGenerateNextPlan) {
+    return {
+      label: "生成下月方案",
+      hint: "基于本月效果报告，继续生成下一轮优化计划。",
+      action: "generateNextPlan",
+    };
+  }
+  return {
+    label: "返回客户总览",
+    hint: "回到客户总览查看整体服务状态。",
+    path: "/workspace",
+  };
 }
 
 function ReportMetric({
@@ -162,6 +450,243 @@ function MonthlyRenewalJustificationSection({ report }: { report: MonthlyReportV
         </P0Card>
       )}
     </section>
+  );
+}
+
+function RenewalDeliveryReportHero({
+  report,
+  brief,
+  selectedProjectId,
+  generating,
+  onGenerateNextPlan,
+}: {
+  report: MonthlyReportView;
+  brief?: MonthlyOptimizationBrief | null;
+  selectedProjectId: number;
+  generating: boolean;
+  onGenerateNextPlan: () => void;
+}) {
+  const [, setLocation] = useLocation();
+  const conclusion = buildRenewalReportConclusion(report);
+  const completedItems = buildRenewalCompletionItems(report);
+  const effectChanges = buildEffectChanges(report);
+  const issues = buildRenewalIssues(report);
+  const suggestions = buildRenewalSuggestions(report, brief);
+  const primaryCta = buildReportPrimaryCta(report);
+
+  const handlePrimaryCta = () => {
+    if (primaryCta.action === "generateNextPlan") {
+      onGenerateNextPlan();
+      return;
+    }
+    if (!primaryCta.path) return;
+    setLocation(buildProjectUrl(primaryCta.path, selectedProjectId));
+  };
+
+  return (
+    <div className="space-y-6" data-testid="delivery-report-renewal-overview">
+      <P0Card testId="delivery-report-renewal-hero" className="space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-2">
+              <FileText className="size-4 text-blue-600" />
+              <p className="text-sm font-semibold text-gray-900">本月报告结论</p>
+            </div>
+            <p className="mt-3 text-lg font-semibold leading-8 text-gray-900" data-testid="delivery-report-renewal-conclusion">
+              {conclusion}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-gray-600">{primaryCta.hint}</p>
+          </div>
+          <Button
+            type="button"
+            className={geoP0Brand.primary}
+            data-testid="delivery-report-primary-cta"
+            disabled={primaryCta.action === "generateNextPlan" && generating}
+            onClick={handlePrimaryCta}
+          >
+            {primaryCta.action === "generateNextPlan" && generating ? (
+              <>
+                <Spinner className="mr-2 size-4" />
+                生成中…
+              </>
+            ) : (
+              <>
+                <ArrowRight className="mr-2 size-4" />
+                {primaryCta.label}
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div data-testid="delivery-report-completed-items">
+          <div className="mb-3 flex items-center gap-2">
+            <CheckCircle2 className="size-4 text-emerald-600" />
+            <p className="text-sm font-semibold text-gray-900">本月完成事项</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {completedItems.map(item => (
+              <div key={item.title} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                  <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
+                    {item.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-lg font-bold tabular-nums text-blue-700">{item.value}</p>
+                <p className="mt-2 text-xs leading-5 text-gray-500">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div data-testid="delivery-report-effect-changes">
+          <div className="mb-3 flex items-center gap-2">
+            <TrendingUp className="size-4 text-blue-600" />
+            <p className="text-sm font-semibold text-gray-900">效果变化</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {effectChanges.map(item => (
+              <ReportMetric key={item.label} label={item.label} value={item.value} hint={item.hint} />
+            ))}
+          </div>
+        </div>
+      </P0Card>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]" data-testid="delivery-report-renewal-reasons">
+        <P0Card testId="delivery-report-open-issues" className="space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 text-amber-600" />
+            <p className="text-sm font-semibold text-gray-900">仍需优化的问题</p>
+          </div>
+          {issues.length === 0 ? (
+            <p className="text-sm leading-6 text-gray-600">暂无明显阻断，建议继续按下月建议扩大问题覆盖和验证频次。</p>
+          ) : (
+            <ul className="space-y-3">
+              {issues.map(issue => (
+                <li key={issue.title} className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                  <p className="text-sm font-semibold text-amber-900">{issue.title}</p>
+                  <p className="mt-1 text-sm leading-6 text-amber-800">
+                    <span className="font-medium">为什么影响推荐：</span>
+                    {issue.impact}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-amber-800">
+                    <span className="font-medium">下月怎么做：</span>
+                    {issue.nextStep}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </P0Card>
+
+        <P0Card testId="delivery-report-next-month-renewal" className="space-y-4">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="size-4 text-blue-600" />
+            <p className="text-sm font-semibold text-gray-900">下月建议 / 续费理由</p>
+          </div>
+          <div className="space-y-3">
+            {suggestions.map((item, index) => (
+              <article key={`${item.title}-${index}`} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs font-medium text-blue-600">建议 {index + 1}</p>
+                <h3 className="mt-1 text-sm font-semibold text-gray-900">{item.title}</h3>
+                <p className="mt-2 text-xs leading-5 text-gray-600">
+                  <span className="font-medium text-gray-800">为什么继续做：</span>
+                  {item.reason}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-gray-600">
+                  <span className="font-medium text-gray-800">关联短板：</span>
+                  {item.shortcoming}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-gray-600">
+                  <span className="font-medium text-gray-800">做完怎么看效果：</span>
+                  {item.verify}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-gray-600">
+                  <span className="font-medium text-gray-800">客户价值：</span>
+                  {item.value}
+                </p>
+              </article>
+            ))}
+          </div>
+        </P0Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]" data-testid="delivery-report-service-and-evidence-summary">
+        <P0Card className="space-y-4">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="size-4 text-blue-600" />
+            <p className="text-sm font-semibold text-gray-900">本月服务明细</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { title: "诊断与方案", desc: report.planPhase === "no_plan" ? "待生成服务方案。" : `本月围绕 ${report.focusSummary || "关键短板"} 推进。`, path: "/monthly-plan" },
+              { title: "内容与发布", desc: `发布 ${reportCount(report.actions.contentCount)} 篇内容，覆盖 ${reportCount(report.actions.questionCoverageCount)} 个问题。`, path: "/weekly" },
+              { title: "收录与复测", desc: report.hasRetestData ? "已完成 AI 复测并形成对比。" : "等待收录数据和下一次复测。", path: "/inclusion-monitoring" },
+              { title: "报告与下月建议", desc: "沉淀本月服务价值和下月续费理由。", path: "/delivery-reports" },
+            ].map(item => (
+              <button
+                key={item.title}
+                type="button"
+                className="rounded-xl border border-gray-200 bg-white p-3 text-left hover:bg-gray-50"
+                onClick={() => setLocation(buildProjectUrl(item.path, selectedProjectId))}
+              >
+                <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">{item.desc}</p>
+              </button>
+            ))}
+          </div>
+        </P0Card>
+
+        <P0Card className="space-y-4" testId="delivery-report-evidence-summary">
+          <div className="flex items-center gap-2">
+            <Eye className="size-4 text-blue-600" />
+            <p className="text-sm font-semibold text-gray-900">效果证据摘要</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ReportMetric
+              label="成熟度变化"
+              value={formatMonthlyReportMaturityChange(report.summary.maturityBaseline, report.summary.maturityResult)}
+              hint="复测完成后用于证明整体变化。"
+            />
+            <ReportMetric
+              label="发布/收录证据"
+              value={`${reportCount(report.actions.contentCount)} / ${reportCount(report.actions.contentAssetProof.includedCount)}`}
+              hint="发布内容数 / 已收录内容数。"
+            />
+            <ReportMetric
+              label="AI 复测"
+              value={report.hasRetestData ? "已完成" : "待完成"}
+              hint={report.hasRetestData ? "可查看复测变化摘要。" : "完成验证后再判断趋势。"}
+            />
+            <ReportMetric
+              label="续费证明"
+              value={report.renewalJustification.hasData ? "已有依据" : "待完善"}
+              hint="基于执行、收录、竞品和推荐率综合判断。"
+            />
+          </div>
+        </P0Card>
+      </div>
+
+      <P0Card testId="delivery-report-share-entry" className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Share2 className="size-4 text-blue-600" />
+            <p className="text-sm font-semibold text-gray-900">客户分享 / 导出入口</p>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-gray-600">
+            如需给客户查看，可使用客户报告预览或已有分享链接入口；本轮不新增导出系统。
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setLocation(`/delivery-reports/share/${selectedProjectId}`)}
+        >
+          查看客户报告预览
+          <ArrowRight className="ml-1.5 size-4" />
+        </Button>
+      </P0Card>
+    </div>
   );
 }
 
@@ -533,15 +1058,15 @@ export function DeliveryReportsCenterPage() {
 
   useEffect(() => {
     const name = selectedProject?.enterpriseName?.trim() || "企业";
-    document.title = `${name} - ${MONTHLY_REPORT_PAGE_TITLE}`;
+    document.title = `${name} - 效果报告`;
   }, [selectedProject?.enterpriseName]);
 
   if (!selectedProjectId && !projectsLoading) {
     return (
       <div data-testid="delivery-report-page">
         <ProjectContextEmptyState
-          title={MONTHLY_REPORT_PAGE_TITLE}
-          description="请先选择或创建项目后再查看 AI 品牌成熟度月报。"
+          title="效果报告 / 续费型交付报告"
+          description="请先选择或创建项目后再查看本月效果报告。"
         />
       </div>
     );
@@ -556,27 +1081,17 @@ export function DeliveryReportsCenterPage() {
           <FileBarChart2 className="mt-1 size-6 text-blue-600" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900" data-testid="monthly-report-title">
-              {MONTHLY_REPORT_PAGE_TITLE}
+              效果报告 / 续费型交付报告
             </h1>
             <p className="mt-1 text-sm font-medium text-blue-700" data-testid="monthly-report-subtitle">
               {report?.periodLabel ? `${report.periodLabel} 优化成效报告` : "优化成效报告"}
             </p>
             <p className="mt-3 max-w-3xl text-sm text-gray-600" data-testid="delivery-report-page-intro">
-              {MONTHLY_REPORT_PAGE_INTRO}
+              本页用于向客户说明本月做了什么、产生了什么变化、哪些问题仍需继续，以及下月为什么值得续费。
             </p>
           </div>
         </div>
       </header>
-
-      <MonthlyOptimizationPrioritiesPanel
-        brief={optimizationBriefQuery.data}
-        loading={optimizationBriefQuery.isLoading}
-        compact
-        onGoTask={actionUrl => {
-          if (!selectedProjectId) return;
-          setLocation(buildProjectUrl(actionUrl, selectedProjectId));
-        }}
-      />
 
       {reportQuery.isLoading ? (
         <div className="flex items-center gap-2 py-8 text-gray-500">
@@ -589,6 +1104,19 @@ export function DeliveryReportsCenterPage() {
         <P0Card className="border-red-200 bg-red-50 text-sm text-red-700">
           月报数据加载失败，请稍后重试。
         </P0Card>
+      ) : null}
+
+      {report && !reportQuery.isLoading ? (
+        <RenewalDeliveryReportHero
+          report={report}
+          brief={optimizationBriefQuery.data}
+          selectedProjectId={selectedProjectId!}
+          generating={generateMutation.isPending}
+          onGenerateNextPlan={() => {
+            if (!selectedProjectId) return;
+            void generateMutation.mutateAsync({ projectId: selectedProjectId });
+          }}
+        />
       ) : null}
 
       {report && report.planPhase === "no_plan" && !reportQuery.isLoading ? (
@@ -616,17 +1144,30 @@ export function DeliveryReportsCenterPage() {
       ) : null}
 
       {report && report.planPhase !== "no_plan" ? (
-        <MonthlyMaturityReportSections
-          report={report}
-          selectedProjectId={selectedProjectId!}
-          selectedPlanId={selectedPlanId ?? report.planId}
-          generating={generateMutation.isPending}
-          onGenerateNextPlan={() => {
-            if (!selectedProjectId) return;
-            void generateMutation.mutateAsync({ projectId: selectedProjectId });
-          }}
-          onSelectHistoryPlan={planId => setSelectedPlanId(planId)}
-        />
+        <>
+          <details className="rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="delivery-report-evidence-details">
+            <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="size-4" />
+                证据详情与完整月报
+              </span>
+              <span className="text-xs font-normal text-gray-500">原始数据、历史记录和详细证明已降级展示</span>
+            </summary>
+            <div className="border-t border-gray-100 p-5">
+              <MonthlyMaturityReportSections
+                report={report}
+                selectedProjectId={selectedProjectId!}
+                selectedPlanId={selectedPlanId ?? report.planId}
+                generating={generateMutation.isPending}
+                onGenerateNextPlan={() => {
+                  if (!selectedProjectId) return;
+                  void generateMutation.mutateAsync({ projectId: selectedProjectId });
+                }}
+                onSelectHistoryPlan={planId => setSelectedPlanId(planId)}
+              />
+            </div>
+          </details>
+        </>
       ) : null}
     </div>
   );
