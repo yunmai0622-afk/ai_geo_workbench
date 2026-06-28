@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 
+const liveTavilyTestsEnabled = process.env.RUN_LIVE_TAVILY_TESTS === "true";
+
 describe("TAVILY_API_KEY validation", () => {
   it("should have TAVILY_API_KEY set in environment", () => {
     const key = process.env.TAVILY_API_KEY;
@@ -7,7 +9,9 @@ describe("TAVILY_API_KEY validation", () => {
     expect(key!.length).toBeGreaterThan(5);
   });
 
-  it("should successfully call Tavily search API", async () => {
+  const liveIt = liveTavilyTestsEnabled ? it : it.skip;
+
+  liveIt("should successfully call Tavily search API", async () => {
     const key = process.env.TAVILY_API_KEY;
     if (!key) {
       throw new Error("TAVILY_API_KEY is not set");
