@@ -39,7 +39,7 @@ describe("C3-D global AI product UI", () => {
       "AI 搜索增长总览",
       "内容诊断",
       "内容任务推进",
-      "项目工作台",
+      "GEO 服务首页",
       "AI 品牌成熟度月报",
     ]) {
       expect(pages).toContain(text);

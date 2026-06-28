@@ -10,8 +10,8 @@ describe("GEO-V2.0-UX-Followup-Stage-CTA-Nav", () => {
   it("工作台阶段与主按钮共用 resolveWorkspaceStagePrimaryAction", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     expect(page).toContain("resolveWorkspaceStagePrimaryAction");
-    expect(page).toContain("stagePrimaryAction?.stageHeadline");
-    expect(page).toContain("stagePrimaryAction?.ctaLabel");
+    expect(page).toContain("customerConclusion");
+    expect(page).toContain("customerMainCta.label");
     expect(page).toContain("workspace-current-stage-headline");
     expect(page).toContain("workspace-primary-cta");
   });

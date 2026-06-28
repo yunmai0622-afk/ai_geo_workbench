@@ -11,7 +11,7 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     const app = read("client/src/App.tsx");
     expect(app).toContain('path="/workspace"');
     expect(app).toContain("EnterpriseWorkspacePage");
-    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toContain("项目工作台");
+    expect(read("client/src/pages/EnterpriseWorkspacePage.tsx")).toContain("GEO 服务首页");
   });
 
   it("无 activeProjectId 显示 ProjectContextEmptyState", () => {
@@ -24,7 +24,8 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("有 projectId 显示当前客户项目与阶段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("workspace-header-card");
+    expect(page).toContain("workspace-command-center");
+    expect(page).toContain("workspace-customer-conclusion");
     expect(page).toContain("workspace-enterprise-name");
     expect(page).toContain("selectedProject?.enterpriseName");
     expect(page).toContain("resolveWorkspaceCustomerStatusLabel");
@@ -66,6 +67,10 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("展示进度指标且不暴露工程字段", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
+    expect(page).toContain("workspace-customer-core-metric");
+    expect(page).toContain("workspace-top-issues");
+    expect(page).toContain("workspace-monthly-top3");
+    expect(page).toContain("workspace-service-flow");
     expect(page).toContain("workspace-dashboard-overview");
     expect(page).toContain("WorkspaceDashboardOverviewCards");
     expect(page).toContain("workspace-header-card");

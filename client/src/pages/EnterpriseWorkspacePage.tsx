@@ -30,13 +30,9 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
-  buildWorkspaceDeliveryConclusion,
   formatDeliveryStageCustomerLabel,
-  resolveDeliveryPhaseCustomerView,
   resolveDeliveryStageView,
 } from "@/lib/deliveryStage";
-import { WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY } from "@shared/workspaceRiskHints";
-import { appendWeeklyContentEntryParams } from "@shared/weeklyContentEntryContext";
 import { buildTopWeaknessHighlights } from "@shared/maturityDetailDisplay";
 import { buildT0DiagnosisResultsDisplay } from "@shared/t0DiagnosisDisplay";
 import {
@@ -54,7 +50,6 @@ import {
 } from "@shared/workspaceDashboardOverview";
 import { resolveWorkspaceStagePrimaryAction } from "@shared/workspacePrimaryAction";
 import { resolveWorkspaceStage, workspaceCtaUrl } from "@shared/workspaceStateMachine";
-import type { WorkspaceTodayTask, WorkspaceTodayTaskStatus } from "@shared/workspaceTodayTasks";
 import {
   AlertTriangle,
   ArrowRight,
@@ -130,7 +125,7 @@ export default function EnterpriseWorkspacePage() {
 
   useEffect(() => {
     const enterpriseName = selectedProject?.enterpriseName?.trim() || "企业";
-    document.title = `${enterpriseName} - 项目工作台`;
+    document.title = `${enterpriseName} - GEO 服务首页`;
   }, [selectedProject?.enterpriseName]);
 
   const { localAgentOnline, status: localAgentConnectionStatus, accountSnapshot } =
@@ -237,10 +232,6 @@ export default function EnterpriseWorkspacePage() {
     if (!metrics) return null;
     return resolveDeliveryStageView({ ...metrics, localAgentOnline });
   }, [metrics, localAgentOnline]);
-  const deliveryPhase = useMemo(
-    () => (deliveryStage ? resolveDeliveryPhaseCustomerView(deliveryStage.stage) : null),
-    [deliveryStage],
-  );
   const stagePrimaryAction = useMemo(() => {
     if (!metrics) return null;
     const maturityScore = maturityReportQuery.data?.totalScore ?? null;
@@ -263,20 +254,6 @@ export default function EnterpriseWorkspacePage() {
       monthlyPlanStage,
     });
   }, [metrics, maturityReportQuery.data?.totalScore, monthlyPlanQuery.data]);
-  const deliveryConclusion = useMemo(() => {
-    if (stagePrimaryAction?.reason) return stagePrimaryAction.reason;
-    if (!deliveryStage) return null;
-    return buildWorkspaceDeliveryConclusion(deliveryStage, {
-      mainChainReason: homeDisplay.mainChainNextAction?.reason,
-      blockerReason: resolution?.blockerReasons[0],
-    });
-  }, [
-    stagePrimaryAction?.reason,
-    deliveryStage,
-    homeDisplay.mainChainNextAction?.reason,
-    resolution?.blockerReasons,
-  ]);
-
   const mainChainSteps = useMemo((): MainChainStepView[] => {
     if (!metrics) return [];
     return resolveMainChainSteps(toMainChainProgressInput(metrics));
@@ -306,12 +283,6 @@ export default function EnterpriseWorkspacePage() {
       ? buildProjectUrl(stagePrimaryAction.ctaPath, selectedProjectId)
       : homeDisplay.mainChainNextAction?.ctaPath ??
         (stage && selectedProjectId ? workspaceCtaUrl(selectedProjectId, stage) : null);
-  const headerCtaLabel =
-    stagePrimaryAction?.ctaLabel ??
-    homeDisplay.mainChainNextAction?.ctaLabel ??
-    stage?.ctaLabel;
-  const todayTasks = metrics?.todayTasks ?? [];
-  const monthlyTasks = todayTasks.slice(0, 5);
   const brandMentionRateHint = metrics ? workspaceAiMentionRateHint(metrics) : undefined;
   const publishOverview = useMemo(
     () => (metrics ? formatWorkspacePublishCount(metrics) : null),
@@ -322,12 +293,6 @@ export default function EnterpriseWorkspacePage() {
       ? "计算中…"
       : maturityReportQuery.data
         ? `${maturityReportQuery.data.totalScore} 分`
-        : "--";
-  const publishedContentCount =
-    metrics && metrics.publishRecordCount + metrics.completedPublishTaskCount > 0
-      ? `${metrics.publishRecordCount + metrics.completedPublishTaskCount}`
-      : metrics && metrics.articleCount > 0
-        ? `${metrics.articleCount}`
         : "--";
   const sellableDeliveryLoopView = useMemo(() => {
     if (!metrics) return null;
@@ -370,6 +335,318 @@ export default function EnterpriseWorkspacePage() {
     stagePrimaryAction?.ctaLabel,
     stagePrimaryAction?.reason,
   ]);
+  const customerMonthlyProgress = monthlyPlanQuery.data?.progress ?? { completedCount: 0, totalCount: 0 };
+  const customerMaturityScore =
+    businessMaturityQuery.data?.totalScore ?? maturityReportQuery.data?.totalScore ?? null;
+  const customerMaturityLevel =
+    businessMaturityQuery.data?.level ?? maturityReportQuery.data?.stage ?? null;
+  const customerHasMonthlyPlan =
+    customerMonthlyProgress.totalCount > 0 ||
+    Boolean(optimizationBriefQuery.data?.hasActivePlan) ||
+    Boolean(optimizationBriefQuery.data?.priorities.length);
+  const customerPublishCount =
+    (metrics?.publishRecordCount ?? 0) + (metrics?.completedPublishTaskCount ?? 0);
+  const customerMainCta = useMemo(() => {
+    if (!selectedProjectId) return null;
+    if (!customerHasMonthlyPlan) {
+      return {
+        label: "查看/制定本月方案",
+        path: buildProjectUrl("/monthly-plan", selectedProjectId),
+        reason: "先把当前短板转成本月服务方案。",
+      };
+    }
+    if (
+      customerMonthlyProgress.totalCount > 0 &&
+      customerMonthlyProgress.completedCount < customerMonthlyProgress.totalCount
+    ) {
+      return {
+        label: "查看执行进度",
+        path: buildProjectUrl("/weekly", selectedProjectId),
+        reason: "本月服务事项还在推进中。",
+      };
+    }
+    if ((metrics?.monitoringRecordCount ?? 0) === 0 && (metrics?.retestComparisonCount ?? 0) === 0) {
+      return {
+        label: "查看效果验证",
+        path: buildProjectUrl("/inclusion-monitoring", selectedProjectId),
+        reason: "执行完成后，需要验证内容是否被搜索和 AI 看见。",
+      };
+    }
+    return {
+      label: (metrics?.reportCount ?? 0) > 0 ? "查看效果报告" : "生成/查看效果报告",
+      path: buildProjectUrl("/delivery-reports", selectedProjectId),
+      reason: "把本月做了什么、产生了什么变化沉淀成客户报告。",
+    };
+  }, [
+    customerHasMonthlyPlan,
+    customerMonthlyProgress.completedCount,
+    customerMonthlyProgress.totalCount,
+    metrics?.monitoringRecordCount,
+    metrics?.reportCount,
+    metrics?.retestComparisonCount,
+    selectedProjectId,
+  ]);
+  const customerConclusion = useMemo(() => {
+    if (!metrics) return "正在加载客户 GEO 服务状态。";
+    if (!metrics.p0ProfileComplete) {
+      return "当前品牌资料仍待完善。建议先补齐基础信息，让 AI 能正确理解品牌是谁、服务什么客户。";
+    }
+    if (!workspaceHasAiTestData(metrics)) {
+      return "当前还没有完成 AI 现状诊断。建议先建立基线，确认 AI 是否知道你、是否愿意推荐你。";
+    }
+    const maturityText =
+      customerMaturityScore == null
+        ? "AI 品牌成熟度待评分"
+        : `当前 AI 品牌成熟度 ${customerMaturityScore} 分${customerMaturityLevel ? `，处于${customerMaturityLevel}` : ""}`;
+    const mentionText =
+      aiBrandMentionRate == null
+        ? "AI 对品牌识别情况待复测"
+        : aiBrandMentionRate >= 0.5
+          ? "AI 已能识别品牌"
+          : "AI 对品牌的识别仍不稳定";
+    const recommendText =
+      aiBrandRecommendRate == null
+        ? "推荐意愿待复测"
+        : aiBrandRecommendRate >= 0.35
+          ? "推荐意愿已有基础"
+          : "推荐意愿仍偏弱";
+    const priorityNames = optimizationBriefQuery.data?.priorities
+      .slice(0, 3)
+      .map(priority => priority.relatedDimensionName)
+      .filter(Boolean)
+      .join("、");
+    const monthlyText =
+      customerHasMonthlyPlan
+        ? `本月重点是${priorityNames || "推进内容、发布和复测闭环"}。`
+        : "本月还需要先制定服务方案。";
+    return `${maturityText}。${mentionText}，但${recommendText}，${monthlyText}`;
+  }, [
+    aiBrandMentionRate,
+    aiBrandRecommendRate,
+    customerHasMonthlyPlan,
+    customerMaturityLevel,
+    customerMaturityScore,
+    metrics,
+    optimizationBriefQuery.data?.priorities,
+  ]);
+  const customerCoreMetrics = useMemo(() => {
+    const mention = customerRateDisplay(aiBrandMentionRate, "mention");
+    const recommend = customerRateDisplay(aiBrandRecommendRate, "recommend");
+    return [
+      {
+        label: "AI 成熟度",
+        value: customerMaturityScore == null ? "待评分" : `${customerMaturityScore} 分`,
+        description: customerMaturityLevel ?? "完成诊断后生成评分",
+      },
+      {
+        label: "AI 是否知道你",
+        value: mention.value,
+        description: mention.description,
+      },
+      {
+        label: "AI 是否愿意推荐你",
+        value: recommend.value,
+        description: recommend.description,
+      },
+      {
+        label: "本月服务进度",
+        value:
+          customerMonthlyProgress.totalCount > 0
+            ? `${customerMonthlyProgress.completedCount}/${customerMonthlyProgress.totalCount} 项`
+            : "待制定",
+        description:
+          customerMonthlyProgress.totalCount > 0
+            ? "本月 Top 服务事项完成情况"
+            : "先生成本月服务方案",
+      },
+    ];
+  }, [
+    aiBrandMentionRate,
+    aiBrandRecommendRate,
+    customerMaturityLevel,
+    customerMaturityScore,
+    customerMonthlyProgress.completedCount,
+    customerMonthlyProgress.totalCount,
+  ]);
+  const customerIssues = useMemo(() => {
+    if (!metrics) return [];
+    const issues: Array<{ title: string; impact: string }> = [];
+    if (!metrics.p0ProfileComplete) {
+      issues.push({
+        title: "资料不完整",
+        impact: "AI 缺少稳定事实来源，容易说不清品牌是谁、适合谁。",
+      });
+    }
+    if (!workspaceHasAiTestData(metrics)) {
+      issues.push({
+        title: "未完成 AI 现状诊断",
+        impact: "还不知道 AI 当前是否提及和推荐品牌，无法证明优化前后的变化。",
+      });
+    }
+    if (aiBrandRecommendRate != null && aiBrandRecommendRate < 0.35) {
+      issues.push({
+        title: "AI 推荐率偏低",
+        impact: "用户询问相关问题时，AI 可能知道品牌，但还不愿意主动推荐。",
+      });
+    }
+    if (aiBrandMentionRate != null && aiBrandMentionRate < 0.35) {
+      issues.push({
+        title: "AI 对品牌识别不足",
+        impact: "AI 回答行业问题时不稳定提到品牌，说明公开内容和信源还不够。",
+      });
+    }
+    if (metrics.articleCount === 0) {
+      issues.push({
+        title: "内容覆盖不足",
+        impact: "用户常问的问题缺少可被 AI 引用的公开答案。",
+      });
+    } else if (customerPublishCount === 0) {
+      issues.push({
+        title: "内容尚未发布",
+        impact: "内容还没有进入公开平台，AI 暂时难以读取和引用。",
+      });
+    }
+    if (customerPublishCount > 0 && metrics.monitoringRecordCount === 0 && metrics.retestComparisonCount === 0) {
+      issues.push({
+        title: "发布后未复测",
+        impact: "还不能证明内容发布后 AI 回答是否发生变化。",
+      });
+    }
+    if (customerMonthlyProgress.totalCount > 0 && customerMonthlyProgress.completedCount < customerMonthlyProgress.totalCount) {
+      issues.push({
+        title: "本月任务未完成",
+        impact: "本月服务还在执行中，效果证明需要等关键动作完成后再看。",
+      });
+    }
+    return issues.slice(0, 3);
+  }, [
+    aiBrandMentionRate,
+    aiBrandRecommendRate,
+    customerMonthlyProgress.completedCount,
+    customerMonthlyProgress.totalCount,
+    customerPublishCount,
+    metrics,
+  ]);
+  const customerServicePriorities = useMemo(
+    () =>
+      (optimizationBriefQuery.data?.priorities ?? []).slice(0, 3).map(priority => ({
+        rank: priority.rank,
+        title: priority.title,
+        why: priority.reason,
+        status: customerPriorityStatus(priority.source, priority.tasks.map(task => task.status)),
+        proof: priority.retestMethod,
+      })),
+    [optimizationBriefQuery.data?.priorities],
+  );
+  const customerFlowSteps = useMemo(() => {
+    const done = {
+      diagnosis: Boolean(metrics && workspaceHasAiTestData(metrics)),
+      plan: customerHasMonthlyPlan,
+      execution:
+        customerMonthlyProgress.totalCount > 0
+          ? customerMonthlyProgress.completedCount >= customerMonthlyProgress.totalCount
+          : (metrics?.articleCount ?? 0) > 0,
+      verify: (metrics?.monitoringRecordCount ?? 0) > 0 || (metrics?.retestComparisonCount ?? 0) > 0,
+      report: (metrics?.reportCount ?? 0) > 0,
+    };
+    const steps = [
+      { key: "diagnosis", label: "诊断", path: "/ai-diagnosis", done: done.diagnosis, next: "完成 AI 现状诊断，建立优化前基线。" },
+      { key: "plan", label: "本月方案", path: "/monthly-plan", done: done.plan, next: "把短板转成本月 Top 3 服务事项。" },
+      { key: "execution", label: "执行", path: "/weekly", done: done.execution, next: "生成、质检并推进内容资产。" },
+      { key: "verify", label: "效果验证", path: "/inclusion-monitoring", done: done.verify, next: "检查内容是否被搜索和 AI 看见。" },
+      { key: "report", label: "效果报告", path: "/delivery-reports", done: done.report, next: "汇总本月执行、变化和下月建议。" },
+    ];
+    const currentIndex = steps.findIndex(step => !step.done);
+    return steps.map((step, index) => ({
+      ...step,
+      status: step.done ? "已完成" : index === currentIndex ? "进行中" : "待开始",
+      active: index === currentIndex,
+    }));
+  }, [
+    customerHasMonthlyPlan,
+    customerMonthlyProgress.completedCount,
+    customerMonthlyProgress.totalCount,
+    metrics,
+  ]);
+  const customerRecentProgress = useMemo(() => {
+    if (!metrics) return [];
+    const items: Array<{ title: string; description: string }> = [];
+    if (metrics.lastDiagnosisAt) {
+      items.push({
+        title: "最近诊断",
+        description: `已在 ${formatCustomerDate(metrics.lastDiagnosisAt)} 完成 AI 现状检测。`,
+      });
+    }
+    if (customerHasMonthlyPlan) {
+      items.push({
+        title: "最近计划",
+        description:
+          customerMonthlyProgress.totalCount > 0
+            ? `本月方案包含 ${customerMonthlyProgress.totalCount} 项服务事项，已完成 ${customerMonthlyProgress.completedCount} 项。`
+            : "本月 Top 3 优先级已明确，待生成具体执行任务。",
+      });
+    }
+    if (metrics.articleCount > 0) {
+      items.push({
+        title: "最近内容",
+        description: `已形成 ${metrics.articleCount} 篇内容资产，用于覆盖 AI 搜索问题。`,
+      });
+    }
+    if (customerPublishCount > 0) {
+      items.push({
+        title: "最近发布",
+        description: `已有 ${customerPublishCount} 条发布或发布完成记录。`,
+      });
+    }
+    if (metrics.retestComparisonCount > 0) {
+      items.push({
+        title: "最近复测",
+        description: `已形成 ${metrics.retestComparisonCount} 次 AI 复测对比。`,
+      });
+    }
+    if (metrics.reportCount > 0) {
+      items.push({
+        title: "最近报告",
+        description: `已生成 ${metrics.reportCount} 份效果报告。`,
+      });
+    }
+    return items.slice(0, 3);
+  }, [
+    customerHasMonthlyPlan,
+    customerMonthlyProgress.completedCount,
+    customerMonthlyProgress.totalCount,
+    customerPublishCount,
+    metrics,
+  ]);
+  const customerRisks = useMemo(() => {
+    if (!metrics) return [];
+    const risks: Array<{ title: string; description: string; path: string }> = [];
+    if (!metrics.p0ProfileComplete) {
+      risks.push({ title: "资料不完整", description: "先补齐品牌、客户和案例信息。", path: "/enterprise-profile" });
+    }
+    if (!workspaceHasAiTestData(metrics)) {
+      risks.push({ title: "未完成诊断", description: "先确认 AI 当前是否知道并推荐品牌。", path: "/ai-diagnosis" });
+    }
+    if (customerHasMonthlyPlan && customerMonthlyProgress.completedCount < customerMonthlyProgress.totalCount) {
+      risks.push({ title: "本月任务未执行完", description: "继续推进本月 Top 服务事项。", path: "/weekly" });
+    }
+    if (metrics.articleCount > customerPublishCount) {
+      risks.push({ title: "内容未发布", description: "已生成内容还需要进入公开平台。", path: "/weekly" });
+    }
+    if (customerPublishCount > 0 && metrics.monitoringRecordCount === 0 && metrics.retestComparisonCount === 0) {
+      risks.push({ title: "发布后未复测", description: "需要验证内容是否被搜索和 AI 看见。", path: "/inclusion-monitoring" });
+    }
+    if (metrics.reportCount === 0 && (customerHasMonthlyPlan || metrics.articleCount > 0 || customerPublishCount > 0)) {
+      risks.push({ title: "报告未生成", description: "本月证据还没有沉淀成客户可读报告。", path: "/delivery-reports" });
+    }
+    return risks;
+  }, [
+    customerHasMonthlyPlan,
+    customerMonthlyProgress.completedCount,
+    customerMonthlyProgress.totalCount,
+    customerPublishCount,
+    metrics,
+  ]);
 
   if (!enabled && !projectsLoading) {
     return (
@@ -383,45 +660,9 @@ export default function EnterpriseWorkspacePage() {
     <div className="space-y-7" data-testid="workspace-page">
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.workspace}
-        message={`欢迎使用${PLATFORM_PRODUCT_NAME}，从左侧菜单开始你的第一步`}
+        message={`欢迎使用${PLATFORM_PRODUCT_NAME}，这里汇总当前问题、本月服务进度和下一步动作。`}
         data-testid="first-use-hint-workspace"
       />
-      {selectedProjectId ? (
-        <AiBrandValueOverviewSection
-          projectId={selectedProjectId}
-          hasDiagnosisData={hasAiBrandDiagnosisData}
-          loading={aiBrandOverviewLoading}
-          maturityScore={maturityReportQuery.data?.totalScore ?? null}
-          mentionRate={aiBrandMentionRate}
-          recommendRate={aiBrandRecommendRate}
-          competitorRate={aiBrandCompetitorRate}
-          topWeaknesses={aiBrandTopWeaknesses}
-          onNavigate={setLocation}
-        />
-      ) : null}
-      {sellableDeliveryLoopView ? (
-        <WorkspaceSellableDeliveryLoopCard
-          view={sellableDeliveryLoopView}
-          onNextAction={headerCtaPath ? () => setLocation(headerCtaPath) : undefined}
-        />
-      ) : null}
-      {selectedProjectId ? (
-        <GeoBusinessMaturityCard
-          report={businessMaturityQuery.data}
-          loading={businessMaturityQuery.isLoading}
-          onGoMonthlyPlan={() => setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))}
-          onGoMaturityDetail={() => setLocation(buildProjectUrl("/maturity", selectedProjectId))}
-        />
-      ) : null}
-      {metrics?.retestDueReminder && selectedProjectId ? (
-        <RetestDueReminderCard
-          reminder={metrics.retestDueReminder}
-          testId="workspace-retest-due-reminder"
-          onGoRetest={() =>
-            setLocation(buildProjectUrl(metrics.retestDueReminder!.ctaPath, selectedProjectId))
-          }
-        />
-      ) : null}
       {summaryQuery.isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4" data-testid="workspace-dashboard-overview-loading">
           {[1, 2, 3, 4].map(i => (
@@ -451,7 +692,7 @@ export default function EnterpriseWorkspacePage() {
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-medium text-blue-600">交付指挥中心</p>
+                <p className="text-xs font-medium text-blue-600">客户总览 / GEO 服务首页</p>
                 <h1 className={cn(geoTypography.pageTitle, "mt-1")} data-testid="workspace-enterprise-name">
                   {selectedProject?.enterpriseName ?? "当前企业"}
                 </h1>
@@ -459,113 +700,243 @@ export default function EnterpriseWorkspacePage() {
               {stageLabel ? <span className={stageBadgeClass(stageLabel)}>{stageLabel}</span> : null}
             </div>
 
-            {deliveryPhase || stagePrimaryAction ? (
-              <div className="mt-5" data-testid="workspace-delivery-phase">
-                <p className="text-xs font-medium text-gray-500">当前阶段</p>
-                <p className="mt-1 text-lg font-semibold text-gray-900" data-testid="workspace-current-stage-headline">
-                  {stagePrimaryAction?.stageHeadline ?? deliveryPhase?.currentStageHeadline}
-                </p>
-                <p className="mt-1 text-sm text-gray-600">
-                  {stagePrimaryAction
-                    ? `${stagePrimaryAction.phaseTitle} · ${stagePrimaryAction.phaseDescription}`
-                    : `${deliveryPhase?.phaseTitle} · ${deliveryPhase?.phaseDescription}`}
-                </p>
-              </div>
-            ) : null}
-
-            {deliveryConclusion ? (
-              <p className="mt-4 text-sm leading-relaxed text-gray-700" data-testid="workspace-delivery-conclusion">
-                {deliveryConclusion}
+            <div className="mt-5 rounded-2xl border border-blue-100 bg-white/80 p-5" data-testid="workspace-customer-conclusion">
+              <p className="text-xs font-medium text-gray-500">一句话结论</p>
+              <p className="mt-2 text-base font-semibold leading-7 text-gray-900" data-testid="workspace-current-stage-headline">
+                {customerConclusion}
               </p>
-            ) : null}
-
-            {resolution.riskHints.length > 0 ? (
-              <div className="mt-3 space-y-2" data-testid="workspace-risk-tags">
-                <div className="flex flex-wrap gap-2">
-                  {resolution.riskHints.map(hint => (
-                    <span
-                      key={hint}
-                      className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-medium text-amber-800"
-                    >
-                      <AlertTriangle className="size-3 shrink-0" aria-hidden />
-                      {hint}
-                    </span>
-                  ))}
-                </div>
-                {(metrics?.rewriteOpenCount ?? 0) > 0 && selectedProjectId ? (
+              {customerMainCta ? (
+                <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Button
                     type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 border-amber-300 text-xs text-amber-900"
-                    data-testid="workspace-rewrite-quality-cta"
-                    onClick={() =>
-                      setLocation(
-                        appendWeeklyContentEntryParams(buildProjectUrl("/weekly", selectedProjectId), {
-                          pendingContentTab: WEEKLY_PENDING_CONTENT_TAB_NEEDS_MODIFY,
-                        }),
-                      )
-                    }
+                    className={cn("rounded-xl px-6", geoP0Brand.primary)}
+                    data-testid="workspace-primary-cta"
+                    onClick={() => setLocation(customerMainCta.path)}
                   >
-                    去内容生产 · 需修改
+                    {customerMainCta.label}
+                    <ArrowRight className="ml-2 size-4" />
                   </Button>
-                ) : null}
-              </div>
-            ) : null}
-
-            {headerCtaPath && headerCtaLabel ? (
-              <Button
-                type="button"
-                className={cn("mt-5 rounded-xl px-6", geoP0Brand.primary)}
-                data-testid="workspace-primary-cta"
-                onClick={() => setLocation(headerCtaPath)}
-              >
-                {headerCtaLabel}
-                <ArrowRight className="ml-2 size-4" />
-              </Button>
-            ) : null}
-
-            <div className="mt-6" data-testid="workspace-priority-todos">
-              <h2 className="text-sm font-semibold text-gray-900">本月任务进度</h2>
-              {monthlyTasks.length === 0 ? (
-                <p className="mt-3 text-sm text-gray-500" data-testid="workspace-today-tasks-empty">
-                  暂无待处理任务
-                </p>
-              ) : (
-                <ul className="mt-3 divide-y divide-gray-100 rounded-xl border border-gray-100 bg-white">
-                  {monthlyTasks.map(task => (
-                    <MonthlyTaskRow
-                      key={task.key}
-                      task={task}
-                      onAction={() => setLocation(task.targetPath)}
-                    />
-                  ))}
-                </ul>
-              )}
+                  <p className="text-sm text-gray-600">{customerMainCta.reason}</p>
+                </div>
+              ) : null}
             </div>
 
             <div
-              className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+              className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
               data-testid="workspace-core-metrics"
             >
-              <CoreMetricTile label="AI 品牌成熟度" value={maturityScoreDisplay} testId="workspace-core-maturity" />
-              <CoreMetricTile
-                label="品牌提及率"
-                value={homeDisplay.brandMentionRateText}
-                testId="workspace-core-mention-rate"
-              />
-              <CoreMetricTile
-                label="已发布内容数"
-                value={publishedContentCount}
-                testId="workspace-core-published-count"
-              />
-              <CoreMetricTile
-                label="最近检测时间"
-                value={homeDisplay.lastAiTestLabel}
-                testId="workspace-core-last-test"
-              />
+              {customerCoreMetrics.map(metric => (
+                <CustomerMetricCard
+                  key={metric.label}
+                  label={metric.label}
+                  value={metric.value}
+                  description={metric.description}
+                />
+              ))}
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[0.95fr_1.15fr]" data-testid="workspace-customer-first-screen">
+              <section className="rounded-2xl border border-gray-100 bg-white p-5" data-testid="workspace-top-issues">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-gray-900">当前最大 3 个问题</h2>
+                  <span className="text-xs text-gray-400">客户影响</span>
+                </div>
+                {customerIssues.length > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    {customerIssues.map(issue => (
+                      <div key={issue.title} className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                        <p className="text-sm font-semibold text-amber-950">{issue.title}</p>
+                        <p className="mt-1 text-sm leading-6 text-amber-900">{issue.impact}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
+                    暂无明显阻断，建议继续按本月方案推进并复测效果。
+                  </p>
+                )}
+              </section>
+
+              <section className="rounded-2xl border border-gray-100 bg-white p-5" data-testid="workspace-monthly-top3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-gray-900">本月 Top 3 服务事项</h2>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-blue-700"
+                    onClick={() => setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))}
+                  >
+                    查看本月方案
+                  </Button>
+                </div>
+                {customerServicePriorities.length > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    {customerServicePriorities.map(priority => (
+                      <div key={`${priority.rank}-${priority.title}`} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {priority.rank}. {priority.title}
+                          </p>
+                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700">
+                            {priority.status}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-gray-600">为什么做：{priority.why}</p>
+                        <p className="mt-1 text-sm leading-6 text-gray-600">怎么看效果：{priority.proof}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
+                    暂无本月 Top 3 服务事项。建议先进入本月方案，把诊断短板转成可执行计划。
+                  </p>
+                )}
+              </section>
             </div>
           </section>
+
+          <section className="geo-card p-5" data-testid="workspace-service-flow">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-blue-600">服务流程进度</p>
+                <h2 className="mt-1 text-lg font-semibold text-gray-900">从诊断到报告的交付路径</h2>
+              </div>
+              <p className="text-sm text-gray-500">客户能看懂当前卡在哪一步、下一步去哪。</p>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-5">
+              {customerFlowSteps.map(step => (
+                <button
+                  key={step.key}
+                  type="button"
+                  className={cn(
+                    "min-h-[132px] rounded-2xl border p-4 text-left transition-colors",
+                    step.done
+                      ? "border-emerald-200 bg-emerald-50"
+                      : step.active
+                        ? "border-blue-200 bg-blue-50"
+                        : "border-gray-200 bg-white hover:border-blue-100",
+                  )}
+                  data-testid={`workspace-service-flow-${step.key}`}
+                  onClick={() => setLocation(buildProjectUrl(step.path, selectedProjectId))}
+                >
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                      step.done
+                        ? "bg-emerald-100 text-emerald-800"
+                        : step.active
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-600",
+                    )}
+                  >
+                    {step.status}
+                  </span>
+                  <p className="mt-3 text-sm font-semibold text-gray-900">{step.label}</p>
+                  <p className="mt-2 text-xs leading-5 text-gray-600">{step.next}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-[1fr_1fr]" data-testid="workspace-customer-lower-sections">
+            <section className="geo-card p-5" data-testid="workspace-recent-progress">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold text-gray-900">最近进展</h2>
+                <span className="text-xs text-gray-400">最多 3 条</span>
+              </div>
+              {customerRecentProgress.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {customerRecentProgress.map(item => (
+                    <div key={item.title} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-gray-600">{item.description}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
+                  暂无可展示进展。建议先完成诊断和本月方案。
+                </p>
+              )}
+            </section>
+
+            <section className="geo-card p-5" data-testid="workspace-customer-risks">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold text-gray-900">客户可见风险</h2>
+                <span className="text-xs text-gray-400">只展示客户能理解的问题</span>
+              </div>
+              {customerRisks.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {customerRisks.map(risk => (
+                    <button
+                      key={risk.title}
+                      type="button"
+                      className="w-full rounded-xl border border-amber-100 bg-amber-50 p-3 text-left transition-colors hover:bg-amber-100"
+                      onClick={() => setLocation(buildProjectUrl(risk.path, selectedProjectId))}
+                    >
+                      <p className="inline-flex items-center gap-2 text-sm font-semibold text-amber-950">
+                        <AlertTriangle className="size-4" aria-hidden />
+                        {risk.title}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-amber-900">{risk.description}</p>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
+                  暂无客户可见风险，建议继续执行并定期复测。
+                </p>
+              )}
+            </section>
+          </div>
+
+          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="workspace-customer-detail-entry">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                查看诊断、成熟度与运营详情
+              </span>
+            </summary>
+            <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
+              {selectedProjectId ? (
+                <AiBrandValueOverviewSection
+                  projectId={selectedProjectId}
+                  hasDiagnosisData={hasAiBrandDiagnosisData}
+                  loading={aiBrandOverviewLoading}
+                  maturityScore={maturityReportQuery.data?.totalScore ?? null}
+                  mentionRate={aiBrandMentionRate}
+                  recommendRate={aiBrandRecommendRate}
+                  competitorRate={aiBrandCompetitorRate}
+                  topWeaknesses={aiBrandTopWeaknesses}
+                  onNavigate={setLocation}
+                />
+              ) : null}
+              {sellableDeliveryLoopView ? (
+                <WorkspaceSellableDeliveryLoopCard
+                  view={sellableDeliveryLoopView}
+                  onNextAction={headerCtaPath ? () => setLocation(headerCtaPath) : undefined}
+                />
+              ) : null}
+              {selectedProjectId ? (
+                <GeoBusinessMaturityCard
+                  report={businessMaturityQuery.data}
+                  loading={businessMaturityQuery.isLoading}
+                  onGoMonthlyPlan={() => setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))}
+                  onGoMaturityDetail={() => setLocation(buildProjectUrl("/maturity", selectedProjectId))}
+                />
+              ) : null}
+              {metrics?.retestDueReminder && selectedProjectId ? (
+                <RetestDueReminderCard
+                  reminder={metrics.retestDueReminder}
+                  testId="workspace-retest-due-reminder"
+                  onGoRetest={() =>
+                    setLocation(buildProjectUrl(metrics.retestDueReminder!.ctaPath, selectedProjectId))
+                  }
+                />
+              ) : null}
+            </div>
+          </details>
 
           <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
@@ -933,65 +1304,60 @@ export default function EnterpriseWorkspacePage() {
   );
 }
 
-function MonthlyTaskRow({
-  task,
-  onAction,
-}: {
-  task: WorkspaceTodayTask;
-  onAction: () => void;
-}) {
-  return (
-    <li
-      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-      data-testid={`workspace-today-task-${task.key}`}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900">{task.title}</p>
-        <p className="mt-0.5 text-xs text-gray-500 line-clamp-1">{task.reason}</p>
-      </div>
-      <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium", monthlyTaskStatusBadge(task.status))}>
-        {monthlyTaskStatusLabel(task.status)}
-      </span>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="shrink-0"
-        disabled={task.status === "blocked"}
-        data-testid={`workspace-today-task-action-${task.key}`}
-        onClick={onAction}
-      >
-        {task.actionLabel}
-      </Button>
-    </li>
-  );
+function customerRateDisplay(
+  value: number | null | undefined,
+  kind: "mention" | "recommend",
+): { value: string; description: string } {
+  if (value == null) {
+    return {
+      value: "待诊断",
+      description: kind === "mention" ? "先检测 AI 是否知道你" : "先检测 AI 是否愿意推荐你",
+    };
+  }
+  const percent = `${Math.round(value * 100)}%`;
+  if (kind === "mention") {
+    if (value >= 0.5) return { value: `已知道 · ${percent}`, description: "AI 回答中较稳定出现品牌" };
+    if (value >= 0.25) return { value: `不稳定 · ${percent}`, description: "AI 有时知道你，但还不稳定" };
+    return { value: `偏弱 · ${percent}`, description: "AI 还不够认识品牌" };
+  }
+  if (value >= 0.35) return { value: `有基础 · ${percent}`, description: "AI 已开始在部分问题中推荐" };
+  if (value >= 0.15) return { value: `不稳定 · ${percent}`, description: "AI 推荐意愿还需要加强" };
+  return { value: `偏弱 · ${percent}`, description: "AI 暂时不太愿意主动推荐" };
 }
 
-function monthlyTaskStatusLabel(status: WorkspaceTodayTaskStatus): string {
-  if (status === "done") return "已完成";
-  if (status === "ready") return "进行中";
-  return "待完成";
+function customerPriorityStatus(source: "existing_task" | "suggestion", taskStatuses: string[]): string {
+  if (source === "suggestion" || taskStatuses.length === 0) return "待纳入方案";
+  const doneValues = new Set(["done", "completed", "finished", "success"]);
+  const doneCount = taskStatuses.filter(status => doneValues.has(status)).length;
+  if (doneCount === taskStatuses.length) return "已完成";
+  if (doneCount > 0) return "进行中";
+  return "待处理";
 }
 
-function monthlyTaskStatusBadge(status: WorkspaceTodayTaskStatus): string {
-  if (status === "done") return "bg-emerald-100 text-emerald-800";
-  if (status === "ready") return "bg-blue-100 text-blue-800";
-  return "bg-amber-100 text-amber-800";
+function formatCustomerDate(value: Date | string): string {
+  return new Date(value).toLocaleString("zh-CN", {
+    hour12: false,
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-function CoreMetricTile({
+function CustomerMetricCard({
   label,
   value,
-  testId,
+  description,
 }: {
   label: string;
   value: string;
-  testId?: string;
+  description: string;
 }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-3 text-center" data-testid={testId}>
+    <div className="rounded-2xl border border-gray-100 bg-white p-4" data-testid="workspace-customer-core-metric">
       <p className="text-[11px] font-medium text-gray-500">{label}</p>
-      <p className="mt-1 text-lg font-bold tabular-nums text-gray-900">{value}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums text-gray-900">{value}</p>
+      <p className="mt-2 text-xs leading-5 text-gray-500">{description}</p>
     </div>
   );
 }
