@@ -15,8 +15,8 @@ describe("GEO-V2.0-P1-Phase4-AITest-Report", () => {
     expect(report).toContain("AI 正在后台检测中");
     expect(report).toContain("刷新进度");
     expect(report).toContain("去执行本月任务");
-    expect(report).toContain("AI 当前怎么看你");
-    expect(report).toContain("查看本月优化计划");
+    expect(report).toContain("诊断问题页");
+    expect(report).toContain("制定本月服务方案");
   });
 
   it("core conclusion card and report copy helpers exist", () => {
@@ -30,16 +30,17 @@ describe("GEO-V2.0-P1-Phase4-AITest-Report", () => {
     expect(report).toContain('testId="ai-diagnosis-recognition-status"');
     expect(report).toContain('testId="ai-diagnosis-recommend-status"');
     expect(report).toContain("data-testid=\"ai-diagnosis-report-conclusion\"");
-    expect(report).toContain("data-testid=\"ai-diagnosis-top-improvements\"");
-    expect(report).toContain("ai-diagnosis-top-improvements-empty");
-    expect(report).toContain("ai-diagnosis-go-maturity-score");
-    expect(report).toContain("AI品牌成熟度评分尚未完成，暂无改善建议");
+    expect(report).toContain("data-testid=\"ai-diagnosis-top-problems\"");
+    expect(report).toContain("data-testid=\"ai-diagnosis-scenario-breakdown\"");
+    expect(report).toContain("data-testid=\"ai-diagnosis-not-recommended-reasons\"");
+    expect(report).toContain("data-testid=\"ai-diagnosis-repair-path\"");
+    expect(report).toContain("暂无问题场景实测数据，建议先完成 AI 实测诊断。");
   });
 
   it("technical sections are folded under detail fold", () => {
     const flow = read("client/src/pages/V12FlowPages.tsx");
     expect(flow).toContain("data-testid=\"ai-diagnosis-detail-fold\"");
-    expect(flow).toContain("查看完整检测数据");
+    expect(flow).toContain("运营诊断明细 / 证据详情");
     expect(flow).toContain("原始 AI 回答详情");
     expect(flow).toContain("查看历史检测记录");
     expect(flow).toContain("实测对比面板");

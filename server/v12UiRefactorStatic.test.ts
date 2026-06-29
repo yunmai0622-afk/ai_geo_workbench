@@ -125,17 +125,17 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     const detailFoldIdx = flowSource.indexOf("data-testid=\"ai-diagnosis-detail-fold\"");
     const t0Idx = flowSource.lastIndexOf("data-testid=\"ai-diagnosis-t0-baseline\"");
     expect(coreIdx).toBeGreaterThan(-1);
-    expect(reportSource).toContain("AI 当前怎么看你");
+    expect(reportSource).toContain("诊断问题页");
     expect(reportSource).toContain("开始 AI 现状诊断");
-    expect(reportSource).toContain("最需要改善的 3 件事");
-    expect(reportSource).toContain("五大 AI 平台表现");
+    expect(reportSource).toContain("当前最大 3 个诊断问题");
+    expect(reportSource).toContain("AI 平台证据摘要");
     expect(detailFoldIdx).toBeGreaterThan(coreIdx);
     expect(t0Idx).toBeGreaterThan(detailFoldIdx);
     expect(flowSource).toContain("data-testid=\"ai-diagnosis-t0-baseline\"");
     expect(flowSource).toContain("data-testid=\"ai-diagnosis-load-hint\"");
     expect(reportSource).toContain("data-testid=\"ai-diagnosis-report-conclusion\"");
     expect(reportSource).toContain("开始 AI 现状诊断");
-    expect(reportSource).toContain("查看本月优化计划");
+    expect(reportSource).toContain("制定本月服务方案");
     for (const text of [
       "内容诊断",
       "目标客户问题",

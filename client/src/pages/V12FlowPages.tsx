@@ -1715,6 +1715,12 @@ export function AiDiagnosisFlowPage() {
         lastDiagnosisLabel={lastDiagnosisLabel}
         platformCards={platformCards}
         topWeaknesses={topWeaknesses}
+        scenarioGroups={t0ResultsDisplay?.byQuestionType ?? []}
+        totalRunCount={t0ResultsDisplay?.totalRuns ?? t0Runs.length}
+        mentionedRunCount={t0ResultsDisplay?.mentionedCount ?? 0}
+        recommendedRunCount={t0ResultsDisplay?.recommendedCount ?? 0}
+        competitorNames={t0ResultsDisplay?.competitorNames ?? []}
+        hasExecutionTasks={tasks.length > 0}
         detectionPhaseLabel={detectionPhaseLabel}
         detectionTimeLabel={t0CompletedAtLabel}
         onViewFullData={handleViewDetectionResults}
@@ -1784,9 +1790,9 @@ export function AiDiagnosisFlowPage() {
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
             <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
-            查看完整检测数据
+            运营诊断明细 / 证据详情
           </span>
-          <span className="text-xs font-normal text-gray-400">原始回答、检测记录、诊断控制台</span>
+          <span className="text-xs font-normal text-gray-400">原始回答、检测记录、问题明细、诊断控制台</span>
         </summary>
         <div className="space-y-6 border-t border-gray-100 px-5 pb-5 pt-4">
       {diagnosisProgress.status !== "idle" ? (

@@ -13,8 +13,8 @@ import {
   resolveTestRoundPhaseLabel,
 } from "@shared/aiDiagnosisReportDisplay";
 import type { MaturityWeaknessHighlight } from "@shared/maturityDetailDisplay";
-import { T0_AI_ENGINE_OPTIONS } from "@shared/t0DiagnosisDisplay";
-import { ChevronDown } from "lucide-react";
+import { formatT0Rate, T0_AI_ENGINE_OPTIONS, type T0QuestionTypeGroup } from "@shared/t0DiagnosisDisplay";
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, FileSearch, Lightbulb, Route } from "lucide-react";
 
 type PlatformCard = {
   id: string;
@@ -32,6 +32,27 @@ type PlatformRunningRow = {
   platformId: string;
   platformName: string;
   status: string;
+};
+
+type DiagnosisProblemItem = {
+  title: string;
+  impact: string;
+  fix: string;
+  ctaLabel: string;
+  path: string;
+};
+
+type DiagnosisMissReason = {
+  title: string;
+  why: string;
+  fix: string;
+  active: boolean;
+};
+
+type DiagnosisRepairStep = {
+  title: string;
+  status: "current" | "next" | "pending";
+  description: string;
 };
 
 export type AiDiagnosisCustomerReportProps = {
@@ -61,6 +82,12 @@ export type AiDiagnosisCustomerReportProps = {
   lastDiagnosisLabel: string;
   platformCards: PlatformCard[];
   topWeaknesses: MaturityWeaknessHighlight[];
+  scenarioGroups: T0QuestionTypeGroup[];
+  totalRunCount: number;
+  mentionedRunCount: number;
+  recommendedRunCount: number;
+  competitorNames: string[];
+  hasExecutionTasks: boolean;
   detectionPhaseLabel: string;
   detectionTimeLabel: string | null;
   onViewFullData: () => void;
@@ -107,6 +134,196 @@ function weaknessActionLabel(path: string, defaultLabel: string): string {
   return defaultLabel;
 }
 
+function formatCustomerPercent(value: number | null): string {
+  return value == null ? "待诊断" : `${value}%`;
+}
+
+function parseCoveredQuestionCounts(display: string): { covered: number | null; total: number | null; missing: number | null } {
+  const match = display.match(/^(\d+)\/(\d+)$/);
+  if (!match) return { covered: null, total: null, missing: null };
+  const covered = Number(match[1]);
+  const total = Number(match[2]);
+  return { covered, total, missing: Math.max(0, total - covered) };
+}
+
+function resolveAccuracyStatus(competitorPct: number | null): string {
+  if (competitorPct == null) return "待确认";
+  if (competitorPct >= 50) return "容易跑偏";
+  if (competitorPct >= 25) return "需要校准";
+  return "基本稳定";
+}
+
+function resolvePrimaryDiagnosisCta(hasExecutionTasks: boolean): { label: string; path: string; hint: string } {
+  if (hasExecutionTasks) {
+    return {
+      label: "查看执行进度",
+      path: "/weekly",
+      hint: "诊断已转成内容任务，下一步看本月执行推进到哪一步。",
+    };
+  }
+  return {
+    label: "制定本月服务方案",
+    path: "/monthly-plan",
+    hint: "先把诊断问题转成客户看得懂、交付能执行的本月服务方案。",
+  };
+}
+
+function buildCustomerDiagnosisProblems(input: {
+  mentionPct: number | null;
+  recommendPct: number | null;
+  competitorPct: number | null;
+  coveredQuestionDisplay: string;
+  topWeaknesses: MaturityWeaknessHighlight[];
+}): DiagnosisProblemItem[] {
+  const mention = input.mentionPct ?? 0;
+  const recommend = input.recommendPct ?? 0;
+  const competitor = input.competitorPct ?? 0;
+  const coverage = parseCoveredQuestionCounts(input.coveredQuestionDisplay);
+  const problems: DiagnosisProblemItem[] = [];
+
+  if (mention <= 20) {
+    problems.push({
+      title: "AI 对品牌识别不稳定",
+      impact: "客户问到相关品类时，AI 可能不知道你是谁，品牌很难进入备选名单。",
+      fix: "先补齐品牌资料、服务对象、案例证明和公开信源，让 AI 能稳定理解品牌。",
+      ctaLabel: "完善品牌资料",
+      path: "/enterprise-profile",
+    });
+  }
+  if (mention > 20 && recommend <= 20) {
+    problems.push({
+      title: "AI 知道品牌，但推荐意愿不足",
+      impact: "AI 可能会提到你，但在推荐场景里仍更倾向竞品或泛化答案。",
+      fix: "补充客户案例、对比理由、服务成果和可信证据，形成推荐理由。",
+      ctaLabel: "查看本月方案",
+      path: "/monthly-plan",
+    });
+  }
+  if (competitor >= 35) {
+    problems.push({
+      title: "竞品在 AI 认知中占位更强",
+      impact: "当用户问“推荐谁、怎么选”时，AI 更容易引用竞品信息。",
+      fix: "围绕竞品比较、差异化优势和客户成功案例补充公开内容。",
+      ctaLabel: "补强信源证据",
+      path: "/brand-source-graph",
+    });
+  }
+  if ((coverage.missing ?? 0) > 0) {
+    problems.push({
+      title: "用户常问问题还没有完全覆盖",
+      impact: "没有被内容覆盖的问题，AI 很难找到足够材料回答并推荐品牌。",
+      fix: "把未覆盖问题转成内容任务，优先生产能被搜索和 AI 引用的回答。",
+      ctaLabel: "查看执行进度",
+      path: "/weekly",
+    });
+  }
+
+  for (const weakness of input.topWeaknesses) {
+    if (problems.length >= 3) break;
+    problems.push({
+      title: weakness.label,
+      impact: weakness.conclusion,
+      fix: weakness.action,
+      ctaLabel: weaknessActionLabel(weakness.path, weakness.ctaLabel),
+      path: weakness.path,
+    });
+  }
+
+  if (problems.length === 0) {
+    problems.push({
+      title: "诊断未发现明显单点阻断",
+      impact: "当前样本表现相对稳定，但仍需要扩大问题覆盖，避免只在少数问题里表现好。",
+      fix: "继续按本月方案执行内容补齐，并在发布后安排效果验证。",
+      ctaLabel: "查看本月方案",
+      path: "/monthly-plan",
+    });
+  }
+
+  return problems.slice(0, 3);
+}
+
+function buildAiNotRecommendReasons(input: {
+  mentionPct: number | null;
+  recommendPct: number | null;
+  competitorPct: number | null;
+  coveredQuestionDisplay: string;
+}): DiagnosisMissReason[] {
+  const mention = input.mentionPct ?? 0;
+  const recommend = input.recommendPct ?? 0;
+  const competitor = input.competitorPct ?? 0;
+  const coverage = parseCoveredQuestionCounts(input.coveredQuestionDisplay);
+  return [
+    {
+      title: "公开证据还不够让 AI 相信你",
+      why: "AI 更愿意推荐有清晰案例、第三方信息和公开内容支撑的品牌。",
+      fix: "补齐案例证明、服务成果、媒体/平台内容和可引用信源。",
+      active: mention <= 50 || recommend <= 20,
+    },
+    {
+      title: "AI 不清楚你的核心优势",
+      why: "如果品牌定位、服务对象和差异化表达不稳定，AI 会给出泛化答案。",
+      fix: "统一品牌资料、客户画像、核心卖点和竞品对比表达。",
+      active: mention <= 50,
+    },
+    {
+      title: "用户问题缺少内容承接",
+      why: "AI 回答依赖公开语料；常见问题没有内容覆盖时，很难被引用。",
+      fix: "把未覆盖问题转成知乎、搜狐号、公众号等平台内容任务。",
+      active: (coverage.missing ?? 0) > 0,
+    },
+    {
+      title: "品牌信息在不同信源中不够一致",
+      why: "名称、服务范围、优势和案例口径不一致，会降低 AI 判断稳定性。",
+      fix: "梳理品牌资料和信源证据，保持公开信息一致。",
+      active: competitor >= 25 || mention <= 50,
+    },
+    {
+      title: "竞品公开内容更容易被引用",
+      why: "竞品如果有更多问答、案例和对比内容，AI 会更容易把它们放进推荐答案。",
+      fix: "补充竞品比较、选型指南和场景解决方案，建立自己的引用入口。",
+      active: competitor >= 35,
+    },
+  ];
+}
+
+function buildDiagnosisRepairSteps(hasExecutionTasks: boolean): DiagnosisRepairStep[] {
+  return [
+    {
+      title: "诊断问题",
+      status: "current",
+      description: "先确认 AI 是否知道你、是否愿意推荐你，以及卡在哪些问题场景。",
+    },
+    {
+      title: "本月方案",
+      status: "next",
+      description: "把诊断问题翻译成本月要做的 3 件服务事项。",
+    },
+    {
+      title: "内容执行",
+      status: hasExecutionTasks ? "next" : "pending",
+      description: "围绕未覆盖问题生成并发布可被 AI 引用的内容。",
+    },
+    {
+      title: "效果验证",
+      status: "pending",
+      description: "发布后确认是否被搜索看见，并安排 AI 复测。",
+    },
+    {
+      title: "效果报告",
+      status: "pending",
+      description: "把诊断、执行和变化整理成客户续费能看懂的证据。",
+    },
+  ];
+}
+
+function scenarioIssueLabel(group: T0QuestionTypeGroup): string {
+  if (group.totalRuns === 0) return "暂无实测证据";
+  if (group.mentionRate === 0) return "AI 尚未明显识别品牌";
+  if (group.recommendRate === 0) return "提到品牌但没有形成推荐";
+  if (group.competitorAppearances > group.recommendedCount) return "竞品更容易被引用";
+  return "表现可继续扩大覆盖";
+}
+
 export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps) {
   const {
     firstScreenState,
@@ -135,6 +352,12 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
     lastDiagnosisLabel,
     platformCards,
     topWeaknesses,
+    scenarioGroups,
+    totalRunCount,
+    mentionedRunCount,
+    recommendedRunCount,
+    competitorNames,
+    hasExecutionTasks,
     detectionPhaseLabel,
     detectionTimeLabel,
     onViewFullData,
@@ -142,6 +365,22 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
   } = props;
 
   const platformLabels = T0_AI_ENGINE_OPTIONS.map(option => option.label).join("、");
+  const primaryCta = selectedProjectId ? resolvePrimaryDiagnosisCta(hasExecutionTasks) : null;
+  const diagnosisProblems = buildCustomerDiagnosisProblems({
+    mentionPct: mentionPctDisplay,
+    recommendPct: recommendPctDisplay,
+    competitorPct: competitorPctDisplay,
+    coveredQuestionDisplay,
+    topWeaknesses,
+  });
+  const aiMissReasons = buildAiNotRecommendReasons({
+    mentionPct: mentionPctDisplay,
+    recommendPct: recommendPctDisplay,
+    competitorPct: competitorPctDisplay,
+    coveredQuestionDisplay,
+  });
+  const repairSteps = buildDiagnosisRepairSteps(hasExecutionTasks);
+  const coverageCounts = parseCoveredQuestionCounts(coveredQuestionDisplay);
 
   if (firstScreenState === "before") {
     return (
@@ -150,11 +389,10 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
           className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
           data-testid="ai-diagnosis-first-screen"
         >
-          <h1 className="text-2xl font-bold text-gray-900">开始 AI 现状诊断</h1>
-          <p className="mt-1 text-sm text-gray-500">{AI_DIAGNOSIS_PAGE_SUBTITLE}</p>
+          <h1 className="text-2xl font-bold text-gray-900">诊断问题页</h1>
+          <p className="mt-1 text-sm text-gray-500">回答“为什么现在 AI 还没有稳定推荐我？”</p>
           <p className="mt-4 text-sm leading-relaxed text-gray-600" data-testid="ai-diagnosis-before-suggestion">
-            系统将基于客户真实会问的问题，在豆包、DeepSeek、Kimi、通义千问、文心一言等平台中检测 AI
-            是否认识、提到并推荐你的品牌。
+            当前诊断数据不足，建议先完成 AI 实测。系统将基于客户真实会问的问题，在豆包、DeepSeek、Kimi、通义千问、文心一言等平台中检测 AI 是否知道你、是否愿意推荐你。
           </p>
           <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
             <p className="text-xs font-medium text-gray-700">检测完成后可获得：</p>
@@ -351,82 +589,268 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
   return (
     <div className="space-y-6">
       <div
-        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+        className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white p-6 shadow-sm"
         data-testid="ai-diagnosis-first-screen"
       >
-        <h1 className="text-2xl font-bold text-gray-900">AI 当前怎么看你</h1>
-        <p className="mt-1 text-sm text-gray-500">{AI_DIAGNOSIS_PAGE_SUBTITLE}</p>
-        {lastDiagnosisLabel !== "暂无" ? (
-          <p className="mt-2 text-xs text-gray-500">最近检测：{lastDiagnosisLabel}</p>
-        ) : null}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-2">
+              <FileSearch className="size-5 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">诊断问题页</h1>
+            </div>
+            <p className="mt-1 text-sm text-gray-500">回答“为什么现在 AI 还没有稳定推荐我？”</p>
+            {lastDiagnosisLabel !== "暂无" ? (
+              <p className="mt-2 text-xs text-gray-500">最近检测：{lastDiagnosisLabel}</p>
+            ) : null}
+            <p
+              className="mt-5 text-lg font-semibold leading-8 text-gray-900"
+              data-testid="ai-diagnosis-report-conclusion"
+            >
+              {reportConclusion}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              这页只展示客户决策需要的信息：AI 是否知道你、是否愿意推荐你、问题卡在哪里，以及下一步怎么改。
+            </p>
+          </div>
+          {primaryCta ? (
+            <Button
+              type="button"
+              className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
+              data-testid="ai-diagnosis-primary-cta"
+              onClick={() => onNavigate(buildProjectUrl(primaryCta.path, selectedProjectId!))}
+            >
+              <ArrowRight className="mr-2 size-4" />
+              {primaryCta.label}
+            </Button>
+          ) : null}
+        </div>
 
-        <p className="mt-5 text-base font-medium leading-relaxed text-gray-900" data-testid="ai-diagnosis-report-conclusion">
-          {reportConclusion}
-        </p>
-
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="ai-diagnosis-core-summary">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="ai-diagnosis-customer-metrics">
           <MetricBlock
             testId="ai-diagnosis-recognition-status"
-            label="AI 是否认识你"
+            label="AI 是否知道你"
             value={aiRecognitionStatus}
-            hint="AI 回答中是否能识别你的品牌。"
-          />
-          <MetricBlock
-            testId="ai-diagnosis-mention-rate"
-            label="品牌提及率"
-            value={mentionPctDisplay != null ? `${mentionPctDisplay}%` : "--"}
-            hint={AI_DIAGNOSIS_METRIC_EXPLANATIONS.mentionRate}
+            hint={`品牌提及表现：${formatCustomerPercent(mentionPctDisplay)}。`}
           />
           <MetricBlock
             testId="ai-diagnosis-recommend-status"
-            label="AI 是否推荐你"
+            label="AI 是否愿意推荐你"
             value={aiRecommendStatus}
-            hint="AI 是否把你作为推荐选项。"
+            hint={`推荐表现：${formatCustomerPercent(recommendPctDisplay)}。`}
           />
           <MetricBlock
-            testId="ai-diagnosis-recommend-rate"
-            label="品牌推荐率"
-            value={recommendPctDisplay != null ? `${recommendPctDisplay}%` : "--"}
-            hint={AI_DIAGNOSIS_METRIC_EXPLANATIONS.recommendRate}
+            testId="ai-diagnosis-accuracy-status"
+            label="AI 是否说得准"
+            value={resolveAccuracyStatus(competitorPctDisplay)}
+            hint={competitorPctDisplay == null ? "待完成实测。" : `竞品出现占比 ${competitorPctDisplay}%。`}
           />
           <MetricBlock
-            testId="ai-diagnosis-competitor-rate"
-            label="竞品出现率"
-            value={competitorPctDisplay != null ? `${competitorPctDisplay}%` : "--"}
-            hint={AI_DIAGNOSIS_METRIC_EXPLANATIONS.competitorRate}
-          />
-          <MetricBlock
-            testId="ai-diagnosis-covered-questions"
-            label="覆盖问题数"
-            value={coveredQuestionDisplay}
-            hint={AI_DIAGNOSIS_METRIC_EXPLANATIONS.coveredQuestions}
+            testId="ai-diagnosis-uncovered-questions"
+            label="哪些问题还没覆盖"
+            value={
+              coverageCounts.missing == null
+                ? coveredQuestionDisplay
+                : coverageCounts.missing === 0
+                  ? "已覆盖"
+                  : `${coverageCounts.missing} 个待补`
+            }
+            hint={`已实测问题：${coveredQuestionDisplay}。`}
           />
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Button
-            type="button"
-            className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
-            data-testid="ai-diagnosis-go-monthly-plan"
-            onClick={onGoMonthlyPlan}
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <section
+            className="rounded-xl border border-amber-100 bg-amber-50/70 p-4"
+            data-testid="ai-diagnosis-top-problems"
           >
-            查看本月优化计划
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 border-gray-300 text-gray-700 hover:bg-gray-50"
-            data-testid="ai-diagnosis-view-results"
-            onClick={onViewFullData}
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-amber-700" />
+              <h2 className="text-sm font-semibold text-amber-950">当前最大 3 个诊断问题</h2>
+            </div>
+            <ol className="mt-3 space-y-3">
+              {diagnosisProblems.map((problem, index) => (
+                <li key={`${problem.title}-${index}`} className="rounded-lg bg-white/80 p-3">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {index + 1}. {problem.title}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-600">
+                    <span className="font-medium text-gray-700">业务影响：</span>
+                    {problem.impact}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-600">
+                    <span className="font-medium text-gray-700">怎么修：</span>
+                    {problem.fix}
+                  </p>
+                  {selectedProjectId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 border-amber-200 bg-white text-amber-900 hover:bg-amber-50"
+                      onClick={() => onNavigate(buildProjectUrl(problem.path, selectedProjectId))}
+                    >
+                      {problem.ctaLabel}
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section
+            className="rounded-xl border border-blue-100 bg-white p-4"
+            data-testid="ai-diagnosis-evidence-summary"
           >
-            查看完整检测数据
-          </Button>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-blue-600" />
+              <h2 className="text-sm font-semibold text-gray-900">诊断证据摘要</h2>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <EvidenceItem label="实测回答" value={totalRunCount > 0 ? `${totalRunCount} 条` : "暂无"} />
+              <EvidenceItem label="覆盖平台" value={coveredPlatformCount > 0 ? `${coveredPlatformCount} 个` : "待诊断"} />
+              <EvidenceItem label="提到品牌" value={mentionedRunCount > 0 ? `${mentionedRunCount} 条` : "暂无"} />
+              <EvidenceItem label="推荐品牌" value={recommendedRunCount > 0 ? `${recommendedRunCount} 条` : "暂无"} />
+            </div>
+            <p className="mt-3 text-xs leading-5 text-gray-500">
+              典型摘要：{platformCards.find(card => card.tested)?.summary ?? "当前诊断数据不足，建议先完成 AI 实测。"}
+            </p>
+            {competitorNames.length > 0 ? (
+              <p className="mt-2 text-xs leading-5 text-gray-500">
+                常见竞品占位：{competitorNames.slice(0, 4).join("、")}
+              </p>
+            ) : null}
+            {primaryCta ? <p className="mt-3 text-xs leading-5 text-blue-700">{primaryCta.hint}</p> : null}
+          </section>
         </div>
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" data-testid="ai-diagnosis-platform-cards">
-        <h2 className="text-lg font-semibold text-gray-900">五大 AI 平台表现</h2>
-        <p className="mt-1 text-xs text-gray-500">基于真实 AI 平台实测结果，不含原始回答内容。</p>
+      <section
+        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+        data-testid="ai-diagnosis-scenario-breakdown"
+      >
+        <h2 className="text-lg font-semibold text-gray-900">问题场景拆解</h2>
+        <p className="mt-1 text-sm text-gray-500">把问题池和 AI 实测结果翻译成客户能理解的场景表现。</p>
+        {scenarioGroups.length > 0 ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {scenarioGroups.slice(0, 6).map(group => (
+              <article key={group.questionType} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <p className="text-sm font-semibold text-gray-900">{group.label}</p>
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-600">
+                  <div>
+                    <dt className="text-gray-400">是否提及</dt>
+                    <dd className="mt-0.5 font-medium text-gray-800">{formatT0Rate(group.mentionRate)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-400">是否推荐</dt>
+                    <dd className="mt-0.5 font-medium text-gray-800">{formatT0Rate(group.recommendRate)}</dd>
+                  </div>
+                </dl>
+                <p className="mt-3 text-xs leading-5 text-gray-600">
+                  <span className="font-medium text-gray-700">主要问题：</span>
+                  {scenarioIssueLabel(group)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-gray-600">
+                  <span className="font-medium text-gray-700">建议动作：</span>
+                  {group.recommendRate === 0
+                    ? "围绕该场景补充可引用内容和推荐理由。"
+                    : "继续扩大相似问题覆盖，并在发布后复测。"}
+                </p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4"
+            data-testid="ai-diagnosis-scenario-breakdown-empty"
+          >
+            <p className="text-sm text-gray-600">暂无问题场景实测数据，建议先完成 AI 实测诊断。</p>
+            {selectedProjectId ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 border-gray-300"
+                data-testid="ai-diagnosis-view-question-pool-empty"
+                onClick={() => onNavigate(buildProjectUrl("/questions", selectedProjectId))}
+              >
+                查看 AI 问题池
+              </Button>
+            ) : null}
+          </div>
+        )}
+      </section>
+
+      <section
+        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+        data-testid="ai-diagnosis-not-recommended-reasons"
+      >
+        <div className="flex items-center gap-2">
+          <Lightbulb className="size-5 text-amber-600" />
+          <h2 className="text-lg font-semibold text-gray-900">AI 为什么不稳定推荐</h2>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {aiMissReasons.map(reason => (
+            <div
+              key={reason.title}
+              className={`rounded-xl border p-4 ${reason.active ? "border-amber-200 bg-amber-50/70" : "border-gray-100 bg-gray-50"}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-gray-900">{reason.title}</p>
+                {reason.active ? (
+                  <span className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-xs text-amber-800">
+                    当前重点
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-2 text-xs leading-5 text-gray-600">
+                <span className="font-medium text-gray-700">原因：</span>
+                {reason.why}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-600">
+                <span className="font-medium text-gray-700">怎么改：</span>
+                {reason.fix}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+        data-testid="ai-diagnosis-repair-path"
+      >
+        <div className="flex items-center gap-2">
+          <Route className="size-5 text-blue-600" />
+          <h2 className="text-lg font-semibold text-gray-900">从诊断到修复路径</h2>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-5">
+          {repairSteps.map(step => (
+            <div
+              key={step.title}
+              className={`rounded-xl border p-3 ${
+                step.status === "current"
+                  ? "border-blue-200 bg-blue-50 text-blue-900"
+                  : step.status === "next"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                    : "border-gray-200 bg-gray-50 text-gray-600"
+              }`}
+            >
+              <p className="text-xs font-medium">
+                {step.status === "current" ? "当前页" : step.status === "next" ? "下一步" : "待开始"}
+              </p>
+              <p className="mt-1 text-sm font-semibold">{step.title}</p>
+              <p className="mt-2 text-xs leading-5">{step.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+        data-testid="ai-diagnosis-platform-evidence-summary"
+      >
+        <h2 className="text-lg font-semibold text-gray-900">AI 平台证据摘要</h2>
+        <p className="mt-1 text-xs text-gray-500">只展示摘要，不铺满原始回答；完整证据在下方“运营诊断明细 / 证据详情”。</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {platformCards.map(p => (
             <div
@@ -454,81 +878,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
             </div>
           ))}
         </div>
-      </section>
-
-      <section
-        className="rounded-2xl border border-amber-100 bg-white p-6 shadow-sm"
-        data-testid="ai-diagnosis-top-improvements"
-      >
-        <h2 className="text-lg font-semibold text-gray-900">最需要改善的 3 件事</h2>
-        {topWeaknesses.length > 0 ? (
-          <>
-            <p className="mt-1 text-xs text-gray-500">基于 AI 品牌成熟度短板分析，优先补齐最弱项。</p>
-            <ol className="mt-4 space-y-4">
-              {topWeaknesses.map((item, index) => (
-                <li
-                  key={item.key}
-                  className="rounded-xl border border-gray-100 bg-gray-50 p-4"
-                  data-testid={`ai-diagnosis-improvement-${item.key}`}
-                >
-                  <p className="text-sm font-semibold text-gray-900">
-                    {index + 1}. {item.label}
-                  </p>
-                  <p className="mt-2 text-xs text-gray-500">
-                    <span className="font-medium text-gray-600">原因：</span>
-                    {item.conclusion}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    <span className="font-medium text-gray-600">对应成熟度短板：</span>
-                    {item.label}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-600">
-                    <span className="font-medium text-gray-700">建议：</span>
-                    {item.action}
-                  </p>
-                  {selectedProjectId ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-3 border-gray-300"
-                      onClick={() => onNavigate(buildProjectUrl(item.path, selectedProjectId))}
-                    >
-                      {weaknessActionLabel(item.path, item.ctaLabel)}
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          </>
-        ) : (
-          <div
-            className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4"
-            data-testid="ai-diagnosis-top-improvements-empty"
-          >
-            <p className="text-sm text-gray-600">AI品牌成熟度评分尚未完成，暂无改善建议</p>
-            {selectedProjectId ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 border-gray-300"
-                data-testid="ai-diagnosis-go-maturity-score"
-                onClick={() => onNavigate(buildProjectUrl("/maturity", selectedProjectId))}
-              >
-                去完成品牌成熟度评分 →
-              </Button>
-            ) : null}
-          </div>
-        )}
-      </section>
-
-      <section
-        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-        data-testid="ai-diagnosis-coverage-scope"
-      >
-        <h2 className="text-sm font-semibold text-gray-900">本次检测覆盖范围</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="ai-diagnosis-coverage-scope">
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
             <p className="text-xs text-gray-500">检测问题数量</p>
             <p className="mt-1 text-lg font-bold text-gray-900">{coveredQuestionDisplay}</p>
@@ -549,6 +899,15 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function EvidenceItem(props: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+      <p className="text-xs text-gray-500">{props.label}</p>
+      <p className="mt-1 text-sm font-semibold text-gray-900">{props.value}</p>
     </div>
   );
 }
