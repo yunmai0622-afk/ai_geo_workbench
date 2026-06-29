@@ -21,12 +21,40 @@ import {
   aggregatePlatformEffectSummary,
 } from "@shared/contentAssetEffectTracking";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { BarChart3, RadioTower } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  Eye,
+  FileSearch,
+  RadioTower,
+  RefreshCw,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 type MonitoringRecordRow = ContentAssetEffectViewRecord;
+
+type EffectVerificationPrimaryCta = {
+  label: string;
+  hint: string;
+  path?: string;
+  anchorId?: string;
+};
+
+type EffectVerificationIssue = {
+  title: string;
+  impact: string;
+  nextStep: string;
+};
+
+type EffectVerificationStep = {
+  title: string;
+  status: "done" | "current" | "pending";
+  description: string;
+};
 
 function mapRecordForView(record: ContentAssetEffectViewRecord & { canEnterAiRetest?: boolean }) {
   return mapContentAssetEffectRecordForView(record);
@@ -56,6 +84,407 @@ function formatKeywords(keywords?: string[] | null) {
 function formatRate(rate: number | null) {
   if (rate == null) return "—";
   return `${rate}%`;
+}
+
+function formatCustomerCount(value: number | null | undefined, unit = "") {
+  if (value == null || Number.isNaN(value)) return "暂无";
+  return `${value.toLocaleString("zh-CN")}${unit}`;
+}
+
+function hasAiRetest(record: ContentAssetEffectViewRecord) {
+  return Array.isArray(record.aiTestResults) && record.aiTestResults.length > 0;
+}
+
+function hasTrafficEvidence(overview: ReturnType<typeof aggregateContentAssetEffectOverview>) {
+  return overview.totalReadCount != null || overview.totalImpressionCount != null;
+}
+
+function buildEffectVerificationConclusion(
+  overview: ReturnType<typeof aggregateContentAssetEffectOverview>,
+  records: ContentAssetEffectViewRecord[],
+) {
+  const testedCount = records.filter(hasAiRetest).length;
+  if (overview.publishedCount === 0) {
+    return "当前还没有已发布内容，暂时无法验证内容有没有被搜索和 AI 看见；建议先完成发布并回填公开链接。";
+  }
+  if (testedCount > 0) {
+    return `本月已有 ${formatCustomerCount(testedCount, " 条")}内容完成 AI 复测，可开始判断内容是否影响品牌提及和推荐。`;
+  }
+  if (overview.retestReadyCount > 0) {
+    return `已有 ${formatCustomerCount(overview.includedCount, " 条")}内容被搜索看见，其中 ${formatCustomerCount(overview.retestReadyCount, " 条")}可进入 AI 复测；下一步要验证 AI 是否识别并引用品牌。`;
+  }
+  if (overview.includedCount > 0) {
+    return `已有 ${formatCustomerCount(overview.includedCount, " 条")}内容被搜索看见，正在等待复测窗口或补充效果数据；当前不伪造 AI 推荐变化。`;
+  }
+  return `已发布 ${formatCustomerCount(overview.publishedCount, " 条")}内容，但暂无确认收录证据；当前重点是确认内容是否能被搜索和 AI 读取。`;
+}
+
+function buildEffectVerificationIssues(
+  overview: ReturnType<typeof aggregateContentAssetEffectOverview>,
+  records: ContentAssetEffectViewRecord[],
+): EffectVerificationIssue[] {
+  const issues: EffectVerificationIssue[] = [];
+  const testedCount = records.filter(hasAiRetest).length;
+
+  if (overview.publishedCount === 0) {
+    issues.push({
+      title: "还没有可验证的公开内容",
+      impact: "内容没有发布到公开平台前，AI 很难读取到新的品牌证据。",
+      nextStep: "先进入发布执行中心，完成内容发布并回填公开链接。",
+    });
+  }
+  if (overview.publishedCount > 0 && overview.includedCount === 0) {
+    issues.push({
+      title: "暂无确认收录证据",
+      impact: "内容没有被搜索看见前，不能证明它会影响 AI 回答。",
+      nextStep: "继续检查公开链接、收录状态和关键词触发情况。",
+    });
+  }
+  if (overview.pendingCount > 0) {
+    issues.push({
+      title: "仍有内容待确认收录",
+      impact: "待确认内容越多，报告里能证明的公开资产越少。",
+      nextStep: "优先核实待收录内容，并补充截图或后台数据。",
+    });
+  }
+  if (overview.includedCount > 0 && overview.retestReadyCount === 0 && testedCount === 0) {
+    issues.push({
+      title: "收录后还没进入 AI 复测",
+      impact: "收录只能证明内容能被搜索看到，复测才能证明 AI 是否开始识别品牌。",
+      nextStep: "等待复测窗口或补充满足复测条件的内容。",
+    });
+  }
+  if (!hasTrafficEvidence(overview)) {
+    issues.push({
+      title: "阅读 / 曝光证据不足",
+      impact: "客户需要看到内容是否被真实触达，只有发布记录还不够。",
+      nextStep: "回填平台后台阅读、曝光或互动数据。",
+    });
+  }
+  if (testedCount === 0 && overview.retestReadyCount > 0) {
+    issues.push({
+      title: "可复测内容还未验证 AI 变化",
+      impact: "没有 AI 复测前，不能说明推荐率或提及率已经改善。",
+      nextStep: "选择可复测内容加入 AI 复测，形成下次报告证据。",
+    });
+  }
+
+  return issues.slice(0, 3);
+}
+
+function buildEffectVerificationPrimaryCta(
+  overview: ReturnType<typeof aggregateContentAssetEffectOverview>,
+): EffectVerificationPrimaryCta {
+  if (overview.publishedCount === 0) {
+    return {
+      label: "去发布内容",
+      hint: "先完成内容发布，才有后续收录和 AI 复测证据。",
+      path: "/content-publishing",
+    };
+  }
+  if (overview.retestReadyCount > 0) {
+    return {
+      label: "查看可复测内容",
+      hint: "已有内容满足复测条件，可进入运营明细发起 AI 复测。",
+      anchorId: "content-asset-retest-ready",
+    };
+  }
+  if (overview.includedCount > 0) {
+    return {
+      label: "查看效果证据",
+      hint: "已有收录证据，继续补充阅读、曝光和复测数据。",
+      anchorId: "effect-verification-evidence-summary",
+    };
+  }
+  return {
+    label: "查看待确认内容",
+    hint: "已发布内容需要继续确认是否被搜索看见。",
+    anchorId: "monitoring-operation-details",
+  };
+}
+
+function buildEffectVerificationSteps(
+  overview: ReturnType<typeof aggregateContentAssetEffectOverview>,
+  records: ContentAssetEffectViewRecord[],
+): EffectVerificationStep[] {
+  const testedCount = records.filter(hasAiRetest).length;
+  const trafficReady = hasTrafficEvidence(overview);
+  return [
+    {
+      title: "内容发布",
+      status: overview.publishedCount > 0 ? "done" : "current",
+      description: overview.publishedCount > 0 ? `已发布 ${formatCustomerCount(overview.publishedCount, " 条")}内容。` : "先把内容发布到公开平台。",
+    },
+    {
+      title: "搜索收录",
+      status: overview.includedCount > 0 ? "done" : overview.publishedCount > 0 ? "current" : "pending",
+      description: overview.includedCount > 0 ? `${formatCustomerCount(overview.includedCount, " 条")}内容已被搜索看见。` : "确认内容是否被搜索引擎收录。",
+    },
+    {
+      title: "数据回填",
+      status: trafficReady ? "done" : overview.includedCount > 0 ? "current" : "pending",
+      description: trafficReady ? "已有阅读或曝光证据。" : "补充阅读、曝光、互动或截图凭证。",
+    },
+    {
+      title: "AI 复测",
+      status: testedCount > 0 ? "done" : overview.retestReadyCount > 0 ? "current" : "pending",
+      description: testedCount > 0 ? `${formatCustomerCount(testedCount, " 条")}内容已完成复测。` : overview.retestReadyCount > 0 ? `${formatCustomerCount(overview.retestReadyCount, " 条")}内容可进入复测。` : "收录后等待复测窗口。",
+    },
+    {
+      title: "效果报告",
+      status: testedCount > 0 ? "current" : "pending",
+      description: testedCount > 0 ? "把复测变化沉淀到效果报告。" : "复测后形成客户可读证明。",
+    },
+  ];
+}
+
+function EffectVerificationMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <p className="mt-2 text-xl font-bold tabular-nums text-gray-900">{value}</p>
+      <p className="mt-2 text-xs leading-5 text-gray-500">{hint}</p>
+    </div>
+  );
+}
+
+function EffectVerificationCustomerOverview({
+  overview,
+  records,
+  selectedProjectId,
+  onGoPath,
+}: {
+  overview: ReturnType<typeof aggregateContentAssetEffectOverview>;
+  records: ContentAssetEffectViewRecord[];
+  selectedProjectId: number;
+  onGoPath: (path: string) => void;
+}) {
+  const conclusion = buildEffectVerificationConclusion(overview, records);
+  const issues = buildEffectVerificationIssues(overview, records);
+  const primaryCta = buildEffectVerificationPrimaryCta(overview);
+  const testedCount = records.filter(hasAiRetest).length;
+
+  const handlePrimaryCta = () => {
+    if (primaryCta.path) {
+      onGoPath(buildProjectUrl(primaryCta.path, selectedProjectId));
+      return;
+    }
+    if (primaryCta.anchorId) {
+      document.getElementById(primaryCta.anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  return (
+    <section
+      className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm"
+      data-testid="effect-verification-customer-overview"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-2">
+            <FileSearch className="size-5 text-blue-600" />
+            <p className="text-sm font-semibold text-blue-700">客户可读结论</p>
+          </div>
+          <p className="mt-3 text-lg font-semibold leading-8 text-gray-900" data-testid="effect-verification-conclusion">
+            {conclusion}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-gray-600">{primaryCta.hint}</p>
+        </div>
+        <Button
+          type="button"
+          className={geoP0Brand.primary}
+          onClick={handlePrimaryCta}
+          data-testid="effect-verification-primary-cta"
+        >
+          <ArrowRight className="mr-2 size-4" />
+          {primaryCta.label}
+        </Button>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="effect-verification-core-metrics">
+        <EffectVerificationMetric
+          label="已发布内容"
+          value={formatCustomerCount(overview.publishedCount, " 条")}
+          hint="进入公开平台后，才有机会被搜索和 AI 读取。"
+        />
+        <EffectVerificationMetric
+          label="搜索是否看见"
+          value={`${formatCustomerCount(overview.includedCount, " 条")}已收录`}
+          hint={overview.inclusionRate == null ? "暂无收录率。" : `当前收录率 ${formatRate(overview.inclusionRate)}。`}
+        />
+        <EffectVerificationMetric
+          label="AI 是否可复测"
+          value={formatCustomerCount(overview.retestReadyCount, " 条")}
+          hint={testedCount > 0 ? `${formatCustomerCount(testedCount, " 条")}已完成复测。` : "复测用于判断 AI 是否识别和引用品牌。"}
+        />
+        <EffectVerificationMetric
+          label="阅读 / 曝光证据"
+          value={
+            hasTrafficEvidence(overview)
+              ? [
+                  overview.totalReadCount != null ? `阅读 ${formatCustomerCount(overview.totalReadCount)}` : null,
+                  overview.totalImpressionCount != null ? `曝光 ${formatCustomerCount(overview.totalImpressionCount)}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" / ")
+              : "暂无"
+          }
+          hint="用于说明内容是否真实触达用户。"
+        />
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-4" data-testid="effect-verification-blockers">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 text-amber-700" />
+            <p className="text-sm font-semibold text-amber-950">当前还卡在哪里</p>
+          </div>
+          {issues.length === 0 ? (
+            <p className="mt-3 text-sm leading-6 text-amber-900">暂无明显阻断，可继续扩大问题覆盖并保持复测节奏。</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {issues.map(issue => (
+                <li key={issue.title} className="rounded-lg bg-white/70 p-3">
+                  <p className="text-sm font-semibold text-amber-950">{issue.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-amber-900">
+                    <span className="font-medium">客户影响：</span>
+                    {issue.impact}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-amber-900">
+                    <span className="font-medium">下一步：</span>
+                    {issue.nextStep}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-blue-100 bg-white p-4" data-testid="effect-verification-next-proof">
+          <div className="flex items-center gap-2">
+            <Eye className="size-4 text-blue-600" />
+            <p className="text-sm font-semibold text-gray-900">下一份报告能证明什么</p>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
+            <li>内容是否被搜索引擎看见，而不是只停留在“已发布”。</li>
+            <li>AI 回答是否开始提到品牌、引用内容或给出推荐理由。</li>
+            <li>哪些平台和问题值得继续投入，哪些内容需要补强。</li>
+          </ul>
+          <p className="mt-3 text-xs leading-5 text-gray-500">
+            说明：本页只展示当前可验证证据，不承诺保证收录、排名或 AI 推荐。
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EffectVerificationProcess({
+  overview,
+  records,
+}: {
+  overview: ReturnType<typeof aggregateContentAssetEffectOverview>;
+  records: ContentAssetEffectViewRecord[];
+}) {
+  const steps = buildEffectVerificationSteps(overview, records);
+  const statusLabel: Record<EffectVerificationStep["status"], string> = {
+    done: "已完成",
+    current: "进行中",
+    pending: "待开始",
+  };
+  const statusClass: Record<EffectVerificationStep["status"], string> = {
+    done: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    current: "border-blue-200 bg-blue-50 text-blue-800",
+    pending: "border-gray-200 bg-gray-50 text-gray-500",
+  };
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="effect-verification-process">
+      <div className="flex items-center gap-2">
+        <RefreshCw className="size-4 text-blue-600" />
+        <h2 className="text-base font-semibold text-gray-900">效果验证流程</h2>
+      </div>
+      <p className="mt-1 text-sm text-gray-500">发布 → 收录 → 数据回填 → AI 复测 → 效果报告。</p>
+      <div className="mt-4 grid gap-3 md:grid-cols-5">
+        {steps.map(step => (
+          <div key={step.title} className={`rounded-xl border p-3 ${statusClass[step.status]}`}>
+            <p className="text-xs font-medium">{statusLabel[step.status]}</p>
+            <p className="mt-1 text-sm font-semibold">{step.title}</p>
+            <p className="mt-2 text-xs leading-5">{step.description}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EffectVerificationEvidenceSummary({
+  overview,
+  platformSummary,
+  records,
+}: {
+  overview: ReturnType<typeof aggregateContentAssetEffectOverview>;
+  platformSummary: ReturnType<typeof aggregatePlatformEffectSummary>;
+  records: ContentAssetEffectViewRecord[];
+}) {
+  const testedCount = records.filter(hasAiRetest).length;
+  return (
+    <section
+      id="effect-verification-evidence-summary"
+      className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+      data-testid="effect-verification-evidence-summary"
+    >
+      <div className="flex items-center gap-2">
+        <CheckCircle2 className="size-4 text-emerald-600" />
+        <h2 className="text-base font-semibold text-gray-900">客户可见证据摘要</h2>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <EffectVerificationMetric
+          label="发布证据"
+          value={formatCustomerCount(overview.publishedCount, " 条")}
+          hint="来自已登记公开链接的发布记录。"
+        />
+        <EffectVerificationMetric
+          label="收录证据"
+          value={formatCustomerCount(overview.includedCount, " 条")}
+          hint="证明内容已被搜索看见。"
+        />
+        <EffectVerificationMetric
+          label="复测证据"
+          value={formatCustomerCount(testedCount, " 条")}
+          hint="证明 AI 回答是否发生变化。"
+        />
+        <EffectVerificationMetric
+          label="平台覆盖"
+          value={formatCustomerCount(platformSummary.length, " 个")}
+          hint="用于判断哪些平台更值得继续投入。"
+        />
+      </div>
+      {platformSummary.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-500">暂无平台效果数据。完成发布和收录确认后，这里会形成证据摘要。</p>
+      ) : (
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {platformSummary.slice(0, 4).map(row => (
+            <div key={row.platform} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+              <p className="text-sm font-semibold text-gray-900">{row.platform}</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">
+                已发布 {row.publishedCount} 条，已收录 {row.includedCount} 条，收录率 {formatRate(row.inclusionRate)}
+                {row.totalReadCount != null ? `，累计阅读 ${row.totalReadCount}` : ""}。
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 export function InclusionMonitoringCenterPage() {
@@ -195,13 +624,24 @@ export function InclusionMonitoringCenterPage() {
   return (
     <div className="space-y-6 pb-12" data-testid="inclusion-monitoring-page">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">内容资产效果</h1>
-        <p className="text-sm text-gray-500">追踪已发布内容的收录、曝光与 AI 复测价值。</p>
+        <h1 className="text-2xl font-bold text-gray-900">效果验证</h1>
+        <p className="text-sm text-gray-500">
+          用客户能理解的方式确认内容有没有被搜索看见、AI 有没有识别，以及下一步如何形成效果报告。
+        </p>
       </header>
+
+      {selectedProjectId ? (
+        <EffectVerificationCustomerOverview
+          overview={overview}
+          records={records}
+          selectedProjectId={selectedProjectId}
+          onGoPath={setLocation}
+        />
+      ) : null}
 
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.inclusionMonitoring}
-        message="发布内容后在这里回填收录与阅读数据，7-10 天内看到第一批可验证成果"
+        message="发布内容后先确认是否被搜索看见，再按复测节奏验证 AI 是否开始识别和引用品牌。"
         data-testid="first-use-hint-inclusion-monitoring"
       />
 
@@ -217,11 +657,20 @@ export function InclusionMonitoringCenterPage() {
         />
       ) : null}
 
+      <EffectVerificationProcess overview={overview} records={records} />
+
+      <EffectVerificationEvidenceSummary
+        overview={overview}
+        platformSummary={platformSummary}
+        records={records}
+      />
+
       <section
         className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
         data-testid="inclusion-monitoring-overview"
       >
-        <h2 className="text-base font-semibold text-gray-900">总览指标</h2>
+        <h2 className="text-base font-semibold text-gray-900">运营指标</h2>
+        <p className="mt-1 text-xs text-gray-500">以下指标用于交付人员核对发布、收录和复测队列。</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {[
             { label: "已发布内容数", value: overview.publishedCount, testId: "overview-published-count" },
@@ -274,10 +723,20 @@ export function InclusionMonitoringCenterPage() {
           </Button>
         </div>
       ) : (
-        <section
-          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-          data-testid="inclusion-monitoring-content-table"
+        <details
+          id="monitoring-operation-details"
+          className="rounded-xl border border-gray-200 bg-white shadow-sm"
+          data-testid="effect-verification-advanced-details"
         >
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">
+            <span>运营明细与数据回填</span>
+            <span className="text-xs font-normal text-gray-500">内容资产列表、平台汇总和 AI 复测操作已降级到运营区</span>
+          </summary>
+          <div className="space-y-6 border-t border-gray-100 p-5">
+            <section
+              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+              data-testid="inclusion-monitoring-content-table"
+            >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-gray-900">内容资产列表</h2>
@@ -453,94 +912,96 @@ export function InclusionMonitoringCenterPage() {
               })}
             </div>
           )}
-        </section>
-      )}
+            </section>
 
-      <section
-        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-        data-testid="content-asset-platform-summary"
-      >
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-gray-500" />
-          <h2 className="text-base font-semibold text-gray-900">平台效果汇总</h2>
-        </div>
-        {platformSummary.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-500">暂无平台效果数据</p>
-        ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
-                  <th className="py-2 pr-4 font-medium">平台名称</th>
-                  <th className="py-2 pr-4 font-medium">发布数量</th>
-                  <th className="py-2 pr-4 font-medium">已收录数量</th>
-                  <th className="py-2 pr-4 font-medium">收录率</th>
-                  <th className="py-2 font-medium">累计阅读量</th>
-                </tr>
-              </thead>
-              <tbody>
-                {platformSummary.map(row => (
-                  <tr key={row.platform} className="border-b border-gray-50 text-gray-800">
-                    <td className="py-3 pr-4 whitespace-nowrap">{row.platform}</td>
-                    <td className="py-3 pr-4">{row.publishedCount}</td>
-                    <td className="py-3 pr-4">{row.includedCount}</td>
-                    <td className="py-3 pr-4">{formatRate(row.inclusionRate)}</td>
-                    <td className="py-3">{formatCount(row.totalReadCount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section
-        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-        data-testid="content-asset-retest-ready"
-      >
-        <h2 className="text-base font-semibold text-gray-900">以下内容已收录，可加入AI复测</h2>
-        {retestReadyRecords.length === 0 ? (
-          <p className="mt-3 text-sm text-gray-500">收录验证后3天可进入AI复测</p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {retestReadyRecords.map(record => (
-              <li
-                key={record.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
-                data-testid={`retest-ready-row-${record.id}`}
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 line-clamp-1">
-                    {record.articleTitle?.trim() || `内容 #${record.articleId}`}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {(record.publishChannel ?? "").trim() || "未标注"} · 收录于 {formatTime(record.inclusionVerifiedAt)}
-                  </p>
+            <section
+              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+              data-testid="content-asset-platform-summary"
+            >
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-gray-500" />
+                <h2 className="text-base font-semibold text-gray-900">平台效果汇总</h2>
+              </div>
+              {platformSummary.length === 0 ? (
+                <p className="mt-4 text-sm text-gray-500">暂无平台效果数据</p>
+              ) : (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+                        <th className="py-2 pr-4 font-medium">平台名称</th>
+                        <th className="py-2 pr-4 font-medium">发布数量</th>
+                        <th className="py-2 pr-4 font-medium">已收录数量</th>
+                        <th className="py-2 pr-4 font-medium">收录率</th>
+                        <th className="py-2 font-medium">累计阅读量</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {platformSummary.map(row => (
+                        <tr key={row.platform} className="border-b border-gray-50 text-gray-800">
+                          <td className="py-3 pr-4 whitespace-nowrap">{row.platform}</td>
+                          <td className="py-3 pr-4">{row.publishedCount}</td>
+                          <td className="py-3 pr-4">{row.includedCount}</td>
+                          <td className="py-3 pr-4">{formatRate(row.inclusionRate)}</td>
+                          <td className="py-3">{formatCount(row.totalReadCount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  className={geoP0Brand.primary}
-                  disabled={runCheck.isPending && runningRecordId === record.id}
-                  onClick={() => {
-                    if (!selectedProjectId) return;
-                    setRunningRecordId(record.id);
-                    runCheck.mutate({
-                      projectId: selectedProjectId,
-                      recordId: record.id,
-                      engines: ["doubao", "deepseek", "kimi"],
-                      testStage: "after_publish",
-                    });
-                  }}
-                  data-testid={`retest-ready-action-${record.id}`}
-                >
-                  {runCheck.isPending && runningRecordId === record.id ? "复测中…" : "加入AI复测"}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              )}
+            </section>
+
+            <section
+              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+              data-testid="content-asset-retest-ready"
+            >
+              <h2 className="text-base font-semibold text-gray-900">以下内容已收录，可加入AI复测</h2>
+              {retestReadyRecords.length === 0 ? (
+                <p className="mt-3 text-sm text-gray-500">收录验证后3天可进入AI复测</p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {retestReadyRecords.map(record => (
+                    <li
+                      key={record.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3"
+                      data-testid={`retest-ready-row-${record.id}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                          {record.articleTitle?.trim() || `内容 #${record.articleId}`}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {(record.publishChannel ?? "").trim() || "未标注"} · 收录于 {formatTime(record.inclusionVerifiedAt)}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className={geoP0Brand.primary}
+                        disabled={runCheck.isPending && runningRecordId === record.id}
+                        onClick={() => {
+                          if (!selectedProjectId) return;
+                          setRunningRecordId(record.id);
+                          runCheck.mutate({
+                            projectId: selectedProjectId,
+                            recordId: record.id,
+                            engines: ["doubao", "deepseek", "kimi"],
+                            testStage: "after_publish",
+                          });
+                        }}
+                        data-testid={`retest-ready-action-${record.id}`}
+                      >
+                        {runCheck.isPending && runningRecordId === record.id ? "复测中…" : "加入AI复测"}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        </details>
+      )}
     </div>
   );
 }

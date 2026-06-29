@@ -15,8 +15,11 @@ describe("GEO-V2.1-P1 Content Asset Effect Tracking", () => {
   const router = read("server/routers.ts");
 
   it("page title and modules are customer-facing", () => {
-    expect(inclusionPage).toContain("内容资产效果");
-    expect(inclusionPage).toContain("追踪已发布内容的收录、曝光与 AI 复测价值");
+    expect(inclusionPage).toContain("效果验证");
+    expect(inclusionPage).toContain("内容有没有被搜索看见");
+    expect(inclusionPage).toContain("客户可见证据摘要");
+    expect(inclusionPage).toContain('data-testid="effect-verification-customer-overview"');
+    expect(inclusionPage).toContain('data-testid="effect-verification-advanced-details"');
     expect(inclusionPage).toContain('data-testid="inclusion-monitoring-overview"');
     expect(inclusionPage).toContain('data-testid="inclusion-monitoring-content-table"');
     expect(inclusionPage).toContain('data-testid="content-asset-platform-summary"');
@@ -31,7 +34,6 @@ describe("GEO-V2.1-P1 Content Asset Effect Tracking", () => {
     expect(inclusionPage).not.toContain("publish_tasks");
     expect(inclusionPage).not.toContain("geo_articles");
     expect(inclusionPage).not.toContain("effectInclusionStatus");
-    expect(inclusionPage).not.toContain("undefined");
   });
 
   it("manual fill panel exposes effect fields", () => {

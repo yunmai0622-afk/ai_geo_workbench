@@ -198,11 +198,13 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     ).toContain("一键发布所有平台");
   });
 
-  it("内容资产效果页展示内容资产列表", () => {
+  it("效果验证页展示客户摘要并保留运营内容资产列表", () => {
     const inclusionSource = readProjectFile("client/src/pages/InclusionMonitoringCenterPage.tsx");
     const fillPanel = readProjectFile("client/src/components/inclusion-monitoring/ContentAssetEffectFillPanel.tsx");
     for (const text of [
-      "内容资产效果",
+      "效果验证",
+      "客户可见证据摘要",
+      "运营明细与数据回填",
       "内容资产列表",
       "平台效果汇总",
       "加入AI复测",

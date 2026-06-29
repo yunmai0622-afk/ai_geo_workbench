@@ -48,8 +48,11 @@ describe("GEO-V1.2 publishing monitoring workflow restructure P0", () => {
     expect(publishAssistant).not.toContain("当前阻断");
   });
 
-  it("/inclusion-monitoring 第一屏展示内容资产效果总览", () => {
-    expect(inclusionPage).toContain("内容资产效果");
+  it("/inclusion-monitoring 第一屏展示客户可读效果验证与运营指标", () => {
+    expect(inclusionPage).toContain("效果验证");
+    expect(inclusionPage).toContain("客户可读结论");
+    expect(inclusionPage).toContain("客户可见证据摘要");
+    expect(inclusionPage).toContain('data-testid="effect-verification-customer-overview"');
     expect(inclusionPage).toContain('data-testid="inclusion-monitoring-overview"');
     expect(inclusionPage).toContain("已发布内容数");
     expect(inclusionPage).toContain("已收录内容数");
@@ -58,6 +61,8 @@ describe("GEO-V1.2 publishing monitoring workflow restructure P0", () => {
   });
 
   it("/inclusion-monitoring 内容资产列表按内容组织", () => {
+    expect(inclusionPage).toContain('data-testid="effect-verification-advanced-details"');
+    expect(inclusionPage).toContain("运营明细与数据回填");
     expect(inclusionPage).toContain('data-testid="inclusion-monitoring-content-table"');
     expect(inclusionPage).toContain("内容资产列表");
     expect(read("client/src/components/inclusion-monitoring/ContentAssetEffectFillPanel.tsx")).toContain("填写效果数据");
