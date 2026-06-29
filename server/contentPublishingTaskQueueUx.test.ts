@@ -9,6 +9,7 @@ describe("GEO-V1.2 content publishing task queue UX P0", () => {
   const page = read("client/src/pages/ContentPublishingCenterPage.tsx");
   const statusBar = read("client/src/components/publishing/PublishStatusBar.tsx");
   const queueTable = read("client/src/components/publishing/PublishTaskQueueTable.tsx");
+  const operatorOverview = read("client/src/components/publishing/PublishOperatorOverview.tsx");
   const executionTabs = read("client/src/lib/publishExecutionTabs.ts");
   const assistant = read("client/src/components/publishing/PublishAssistantPanel.tsx");
   const publishUi = page + statusBar + queueTable + executionTabs + assistant;
@@ -26,6 +27,26 @@ describe("GEO-V1.2 content publishing task queue UX P0", () => {
     expect(statusBar).toContain("可发布账号数");
     expect(statusBar).toContain("待发布任务数");
     expect(statusBar).toContain("发布失败数量");
+  });
+
+  it("V2.3-P0-H 第一屏升级为代理运营发布总览", () => {
+    const operatorIdx = page.indexOf("<PublishOperatorOverview");
+    const statusIdx = page.indexOf("<PublishStatusBar");
+    const queueIdx = page.indexOf('data-testid="publish-task-queue-module"');
+    expect(operatorIdx).toBeGreaterThan(-1);
+    expect(statusIdx).toBeGreaterThan(operatorIdx);
+    expect(queueIdx).toBeGreaterThan(statusIdx);
+    expect(operatorOverview).toContain("今天最该处理的发布工作");
+    expect(page).toContain("待发布内容");
+    expect(page).toContain("已发布待验证");
+    expect(page).toContain("账号可用平台");
+    expect(page).toContain("异常/待处理平台");
+    expect(operatorOverview).toContain('data-testid="publish-pending-task-operator-list"');
+    expect(operatorOverview).toContain('data-testid="publish-account-operator-status"');
+    expect(operatorOverview).toContain('data-testid="publish-published-verification"');
+    for (const internalToken of ["questionId", "sourceType", "projectId", "workflow", "bundle", "commit"]) {
+      expect(operatorOverview).not.toContain(internalToken);
+    }
   });
 
   it("默认 Tab 按发布成功 / 待回填 / 待发布优先级切换", () => {

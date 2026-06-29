@@ -5,6 +5,15 @@ import { PlatformStatusOverview } from "@/components/platformAccounts/PlatformSt
 import { PublishPlatformAccountsOverview } from "@/components/platformAccounts/PublishPlatformAccountsOverview";
 import { LocalAccountBindingGuideCard } from "@/components/publishing/LocalAccountBindingGuideCard";
 import { LocalAgentPublishStepsPanel } from "@/components/publishing/LocalAgentPublishStepsPanel";
+import {
+  PublishOperatorOverview,
+  type PublishOperatorAccountRow,
+  type PublishOperatorBlocker,
+  type PublishOperatorFlowStep,
+  type PublishOperatorMetric,
+  type PublishOperatorPublishedRow,
+  type PublishOperatorTaskRow,
+} from "@/components/publishing/PublishOperatorOverview";
 import { PublishTaskQueueTable, type PublishExecutionTabKey } from "@/components/publishing/PublishTaskQueueTable";
 import {
   cardsForExecutionTab,
@@ -254,6 +263,167 @@ function rewriteSourceLabel(source?: string | null): string {
     default:
       return source?.trim() || "未标注来源";
   }
+}
+
+function formatOperatorCount(value: number, empty = "暂无"): string {
+  return value > 0 ? `${value} 项` : empty;
+}
+
+function publishTaskOperatorTab(card: PublishTaskCardModel): PublishExecutionTabKey {
+  if (card.statusRaw === "failed" || card.statusRaw === "publish_failed" || card.retryExhausted) {
+    return "failed";
+  }
+  if (card.statusRaw === "completed") {
+    return card.publishedUrl?.trim() ? "published" : "waiting_links";
+  }
+  if (card.statusRaw === "agent_processing" || card.statusRaw === "processing") {
+    return "active";
+  }
+  return "pending";
+}
+
+function publishTaskOperatorAction(card: PublishTaskCardModel, localAgentOnline: boolean): string {
+  if (card.statusRaw === "failed" || card.statusRaw === "publish_failed" || card.retryExhausted) {
+    return card.canRetry ? "重试发布" : "转人工处理";
+  }
+  if (card.statusRaw === "completed" && !card.publishedUrl?.trim()) {
+    return "回填链接";
+  }
+  if (card.statusRaw === "agent_processing" || card.statusRaw === "processing") {
+    return "查看进度";
+  }
+  return localAgentOnline ? "发送到客户端" : "先打开客户端";
+}
+
+function publishTaskOperatorNextAction(card: PublishTaskCardModel, localAgentOnline: boolean): string {
+  if (card.statusRaw === "failed" || card.statusRaw === "publish_failed" || card.retryExhausted) {
+    return card.canRetry ? "先重试，仍失败则转人工发布并回填链接。" : "转人工发布，完成后回填公开链接。";
+  }
+  if (card.statusRaw === "completed" && !card.publishedUrl?.trim()) {
+    return "补齐公开链接，让内容进入效果验证。";
+  }
+  if (card.statusRaw === "agent_processing" || card.statusRaw === "processing") {
+    return "确认客户端处理结果，完成后回填公开链接。";
+  }
+  return localAgentOnline ? "发送到本地发布助手并完成人工确认。" : "先打开本地发布助手，或转人工发布。";
+}
+
+function buildOperatorAccountRow(card: PublishPagePlatformCard): PublishOperatorAccountRow {
+  switch (card.status) {
+    case "failed":
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: "异常",
+        impact: card.failureReason || "该平台最近发布失败，可能影响本月交付进度。",
+        nextStep: card.canRetry ? "重试发布；仍失败则转人工发布并回填链接。" : "转人工发布并回填链接。",
+        tone: "danger",
+      };
+    case "not_bound":
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: "未绑定",
+        impact: "无法自动进入发布流程，需要先补齐账号环境或改走人工发布。",
+        nextStep: "检查账号环境，完成绑定后再发布。",
+        tone: "danger",
+      };
+    case "pending_confirm":
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: "待确认",
+        impact: "已有内容但质量尚未确认，不建议直接发布。",
+        nextStep: "回到内容生产工作台补齐内容质量。",
+        tone: "warning",
+      };
+    case "no_content":
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: "暂无内容",
+        impact: "本月该平台没有可发布内容。",
+        nextStep: "如需覆盖该平台，先生成对应内容。",
+        tone: "default",
+      };
+    case "publishing":
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: "发布中",
+        impact: "内容正在处理，完成前暂不能进入效果验证。",
+        nextStep: "跟进发布结果，完成后回填公开链接。",
+        tone: "warning",
+      };
+    case "published":
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: "已发布",
+        impact: "该平台已有发布记录，下一步需要验证是否被看见。",
+        nextStep: "进入效果验证，跟进收录和 AI 识别情况。",
+        tone: "success",
+      };
+    case "manual_only":
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: "人工发布",
+        impact: "该平台需要人工完成发布，不阻断整体交付。",
+        nextStep: "人工发布后登记公开链接。",
+        tone: "warning",
+      };
+    case "ready":
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: "可发布",
+        impact: "账号与内容都已满足发布条件。",
+        nextStep: "加入发布队列，完成后回填公开链接。",
+        tone: "success",
+      };
+    default:
+      return {
+        key: card.key,
+        platformLabel: card.label,
+        statusLabel: card.statusLabel || "待确认",
+        impact: "平台状态需要运营人员确认。",
+        nextStep: "查看账号环境和任务队列。",
+        tone: "default",
+      };
+  }
+}
+
+function buildPublishOperatorConclusion(input: {
+  pendingWorkCount: number;
+  failedCount: number;
+  waitingLinkCount: number;
+  publishedWaitingVerifyCount: number;
+  readyPlatformCount: number;
+  hasPublishableContent: boolean;
+  localAgentNeeded: boolean;
+}): string {
+  if (!input.hasPublishableContent && input.pendingWorkCount === 0 && input.publishedWaitingVerifyCount === 0) {
+    return "当前没有可执行的发布任务。建议先回到执行进度生成可发布内容，再进入发布执行和效果验证。";
+  }
+  if (input.failedCount > 0) {
+    return `当前有 ${input.failedCount} 项发布异常需要优先处理。先处理失败或待重试任务，再回填公开链接进入效果验证。`;
+  }
+  if (input.pendingWorkCount > 0) {
+    return input.localAgentNeeded
+      ? `当前有 ${input.pendingWorkCount} 项内容待发布，且需要先确认本地发布助手可用。今天优先处理待发布队列和账号环境。`
+      : `当前有 ${input.pendingWorkCount} 项内容待发布。本地发布助手状态可用时，可按平台逐项执行并回填公开链接。`;
+  }
+  if (input.waitingLinkCount > 0) {
+    return `当前有 ${input.waitingLinkCount} 项发布记录缺少公开链接。先回填链接，才能进入收录和 AI 识别验证。`;
+  }
+  if (input.publishedWaitingVerifyCount > 0) {
+    return `当前已有 ${input.publishedWaitingVerifyCount} 项内容完成发布，今天重点是进入效果验证，确认内容是否被搜索和 AI 看见。`;
+  }
+  if (input.readyPlatformCount > 0) {
+    return `当前有 ${input.readyPlatformCount} 个平台满足发布条件。建议从可发布平台开始执行，形成可验证的公开链接。`;
+  }
+  return "当前发布链路暂无明确异常。建议继续检查平台账号、内容质量和效果验证进度。";
 }
 
 export function ContentPublishingCenterPage() {
@@ -914,6 +1084,320 @@ function ContentPublishingCenterPageInner() {
     }
   }
 
+  const openPublishTaskTab = useCallback((tab: PublishExecutionTabKey) => {
+    setExecutionTab(tab);
+    window.setTimeout(() => {
+      document
+        .querySelector("[data-testid='publish-task-queue-module']")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }, []);
+
+  const goToProjectPath = useCallback(
+    (path: string) => {
+      if (!selectedProjectId) return;
+      setLocation(buildProjectUrl(path, selectedProjectId));
+    },
+    [selectedProjectId, setLocation],
+  );
+
+  const pendingWorkCount = queueTabs.pending.length + queueTabs.active.length;
+  const publishedCards = useMemo(
+    () => cardsForExecutionTab("published", queueTabs),
+    [queueTabs],
+  );
+  const waitingLinkCards = useMemo(
+    () => cardsForExecutionTab("waiting_links", queueTabs),
+    [queueTabs],
+  );
+  const failedOrAttentionCards = useMemo(
+    () => cardsForExecutionTab("failed", queueTabs),
+    [queueTabs],
+  );
+  const platformAttentionCount = useMemo(
+    () =>
+      platformCards.filter(card =>
+        card.status === "failed" ||
+        card.status === "not_bound" ||
+        card.status === "pending_confirm",
+      ).length,
+    [platformCards],
+  );
+  const hasPublishableContent =
+    publishableArticles.length > 0 ||
+    taskCards.length > 0 ||
+    publishRecords.length > 0;
+  const localAgentNeededForOperator = pendingWorkCount > 0 || failedOrAttentionCards.length > 0;
+  const localAgentNeedLabel = localAgentNeededForOperator
+    ? localAgentConnectedOnline
+      ? "需要，当前已检测到可用连接"
+      : "需要，先打开客户端或改走人工发布"
+    : "暂不需要，当前重点是链接回填或效果验证";
+
+  const publishOperatorMetrics = useMemo<PublishOperatorMetric[]>(
+    () => [
+      {
+        label: "待发布内容",
+        value: formatOperatorCount(pendingWorkCount),
+        hint: pendingWorkCount > 0 ? "需要今天推进到发布或人工处理。" : "暂无待发布队列。",
+        tone: pendingWorkCount > 0 ? "warning" : "default",
+      },
+      {
+        label: "已发布待验证",
+        value: formatOperatorCount(publishedCards.length),
+        hint: publishedCards.length > 0 ? "下一步进入收录和 AI 识别验证。" : "暂无已发布待验证内容。",
+        tone: publishedCards.length > 0 ? "success" : "default",
+      },
+      {
+        label: "账号可用平台",
+        value: boundPlatformCount > 0 ? `${boundPlatformCount} 个` : "暂无",
+        hint:
+          readyPlatformCount > 0
+            ? `${readyPlatformCount} 个平台当前内容可加入发布。`
+            : "可用账号需结合内容状态确认。",
+        tone: boundPlatformCount > 0 ? "success" : "warning",
+      },
+      {
+        label: "异常/待处理平台",
+        value: formatOperatorCount(platformAttentionCount),
+        hint: platformAttentionCount > 0 ? "需要处理账号、质量或发布异常。" : "暂无明显平台卡点。",
+        tone: platformAttentionCount > 0 ? "danger" : "default",
+      },
+    ],
+    [
+      boundPlatformCount,
+      pendingWorkCount,
+      platformAttentionCount,
+      publishedCards.length,
+      readyPlatformCount,
+    ],
+  );
+
+  const publishOperatorBlockers = useMemo<PublishOperatorBlocker[]>(() => {
+    const blockers: PublishOperatorBlocker[] = [];
+    if (failedCount > 0) {
+      blockers.push({
+        title: "发布失败或待重试",
+        impact: "内容无法进入公开渠道，客户看不到执行结果。",
+        nextAction: "先处理失败任务，能重试则重试，不能重试则转人工发布并回填链接。",
+      });
+    }
+    if (waitingLinkCount > 0 || waitingLinkCards.length > 0) {
+      blockers.push({
+        title: "公开链接未回填",
+        impact: "没有公开链接就无法进入收录监测和 AI 复测。",
+        nextAction: "补齐公开链接，并确认内容进入效果验证。",
+      });
+    }
+    if (pendingWorkCount > 0 && !localAgentConnectedOnline) {
+      blockers.push({
+        title: "本地发布助手未就绪",
+        impact: "自动发布任务无法继续处理，可能拖慢交付节奏。",
+        nextAction: "打开客户端并刷新账号状态；不适合自动发布的平台走人工发布。",
+      });
+    }
+    if (platformAttentionCount > 0) {
+      blockers.push({
+        title: "平台账号或内容质量待处理",
+        impact: "部分平台无法直接发布，影响内容覆盖。",
+        nextAction: "检查账号环境、补齐登录状态或回到内容生产修正质量。",
+      });
+    }
+    if (!hasPublishableContent) {
+      blockers.push({
+        title: "暂无可发布内容",
+        impact: "发布中心没有可执行事项，客户无法看到本月执行进展。",
+        nextAction: "先回到执行进度生成并确认内容。",
+      });
+    }
+    return blockers.slice(0, 3);
+  }, [
+    failedCount,
+    hasPublishableContent,
+    localAgentConnectedOnline,
+    pendingWorkCount,
+    platformAttentionCount,
+    waitingLinkCards.length,
+    waitingLinkCount,
+  ]);
+
+  const publishOperatorFlowSteps = useMemo<PublishOperatorFlowStep[]>(() => {
+    const contentReady = publishableArticles.length > 0 || taskCards.length > 0 || publishRecords.length > 0;
+    const hasPublished = publishedCards.length > 0 || publishRecords.length > 0;
+    const hasVerification = autoInclusionByArticleAndUrl.size > 0 || retestQueueItems.length > 0;
+    const linkBackfillDone = hasPublished && waitingLinkCount === 0;
+    return [
+      {
+        label: "内容生成",
+        status: contentReady ? "done" : "current",
+        hint: contentReady ? "已有内容进入发布链路。" : "先生成可发布内容。",
+      },
+      {
+        label: "待发布",
+        status: pendingWorkCount > 0 || failedCount > 0 ? "current" : hasPublished ? "done" : "waiting",
+        hint: pendingWorkCount > 0 ? "当前重点处理待发布队列。" : "暂无待发布任务。",
+      },
+      {
+        label: "已发布",
+        status: hasPublished ? "done" : pendingWorkCount > 0 ? "waiting" : "current",
+        hint: hasPublished ? "已有发布记录。" : "完成发布后进入下一步。",
+      },
+      {
+        label: "链接回填",
+        status: waitingLinkCount > 0 ? "current" : linkBackfillDone ? "done" : "waiting",
+        hint: waitingLinkCount > 0 ? "需要补齐公开链接。" : linkBackfillDone ? "公开链接已具备验证条件。" : "发布后回填公开链接。",
+      },
+      {
+        label: "效果验证",
+        status: hasVerification ? "done" : hasPublished && waitingLinkCount === 0 ? "current" : "waiting",
+        hint: hasVerification ? "已有内容进入验证链路。" : "确认搜索收录和 AI 识别。",
+      },
+      {
+        label: "报告",
+        status: hasVerification ? "current" : "waiting",
+        hint: "把发布和验证结果沉淀到效果报告。",
+      },
+    ];
+  }, [
+    autoInclusionByArticleAndUrl.size,
+    failedCount,
+    pendingWorkCount,
+    publishRecords.length,
+    publishableArticles.length,
+    publishedCards.length,
+    retestQueueItems.length,
+    taskCards.length,
+    waitingLinkCount,
+  ]);
+
+  const publishOperatorPendingTasks = useMemo<PublishOperatorTaskRow[]>(() => {
+    const cards = [
+      ...failedOrAttentionCards,
+      ...queueTabs.active,
+      ...queueTabs.pending,
+      ...waitingLinkCards,
+    ];
+    return cards.slice(0, 6).map(card => ({
+      key: card.key,
+      title: card.title || "未命名内容",
+      platformLabel: card.platformLabel || "未标注平台",
+      statusLabel: card.statusLabel || "待处理",
+      nextAction: publishTaskOperatorNextAction(card, localAgentConnectedOnline),
+      operationLabel: publishTaskOperatorAction(card, localAgentConnectedOnline),
+      afterPublishLabel: "回填公开链接后，进入效果验证并沉淀到客户报告。",
+      targetTab: publishTaskOperatorTab(card),
+    }));
+  }, [
+    failedOrAttentionCards,
+    localAgentConnectedOnline,
+    queueTabs.active,
+    queueTabs.pending,
+    waitingLinkCards,
+  ]);
+
+  const publishOperatorAccountRows = useMemo<PublishOperatorAccountRow[]>(
+    () =>
+      platformCards
+        .map(buildOperatorAccountRow)
+        .sort((a, b) => {
+          const rank = (row: PublishOperatorAccountRow) =>
+            row.tone === "danger" ? 0 : row.tone === "warning" ? 1 : row.tone === "success" ? 2 : 3;
+          return rank(a) - rank(b);
+        }),
+    [platformCards],
+  );
+
+  const publishOperatorPublishedRows = useMemo<PublishOperatorPublishedRow[]>(
+    () =>
+      publishedCards.slice(0, 6).map(card => ({
+        key: card.key,
+        title: card.title || "未命名内容",
+        platformLabel: card.platformLabel || "未标注平台",
+        statusLabel: card.autoInclusionMonitoring ? "已进入效果验证" : "待效果验证",
+        nextStep: card.autoInclusionMonitoring
+          ? "继续跟进收录和 AI 复测结果。"
+          : "进入效果验证，确认内容是否被搜索和 AI 看见。",
+        publicLinkLabel: card.publishedUrl?.trim() ? "已回填" : "待回填",
+      })),
+    [publishedCards],
+  );
+
+  const publishOperatorPrimaryAction = useMemo(() => {
+    if (!hasPublishableContent) {
+      return {
+        label: "去生成可发布内容",
+        hint: "先回到执行进度，生成本月可发布内容。",
+        onClick: () => goToProjectPath("/weekly"),
+      };
+    }
+    if (failedOrAttentionCards.length > 0) {
+      return {
+        label: "处理失败任务",
+        hint: "优先处理失败或需人工介入的发布任务。",
+        onClick: () => openPublishTaskTab("failed"),
+      };
+    }
+    if (pendingWorkCount > 0) {
+      return {
+        label: "处理待发布",
+        hint: "进入任务队列，把内容发布到对应平台。",
+        onClick: () => openPublishTaskTab(queueTabs.active.length > 0 ? "active" : "pending"),
+      };
+    }
+    if (platformAttentionCount > 0) {
+      return {
+        label: "检查账号环境",
+        hint: "先处理账号或平台状态，再继续发布。",
+        onClick: handleOpenClient,
+      };
+    }
+    if (publishedCards.length > 0) {
+      return {
+        label: "去效果验证",
+        hint: "确认已发布内容是否被搜索和 AI 看见。",
+        onClick: () => goToProjectPath("/inclusion-monitoring"),
+      };
+    }
+    return {
+      label: "查看效果报告",
+      hint: "发布链路暂无待处理事项，进入报告沉淀交付结果。",
+      onClick: () => goToProjectPath("/delivery-reports"),
+    };
+  }, [
+    failedOrAttentionCards.length,
+    goToProjectPath,
+    handleOpenClient,
+    hasPublishableContent,
+    openPublishTaskTab,
+    pendingWorkCount,
+    platformAttentionCount,
+    publishedCards.length,
+    queueTabs.active.length,
+  ]);
+
+  const publishOperatorConclusion = useMemo(
+    () =>
+      buildPublishOperatorConclusion({
+        pendingWorkCount,
+        failedCount,
+        waitingLinkCount,
+        publishedWaitingVerifyCount: publishedCards.length,
+        readyPlatformCount,
+        hasPublishableContent,
+        localAgentNeeded: localAgentNeededForOperator && !localAgentConnectedOnline,
+      }),
+    [
+      failedCount,
+      hasPublishableContent,
+      localAgentConnectedOnline,
+      localAgentNeededForOperator,
+      pendingWorkCount,
+      publishedCards.length,
+      readyPlatformCount,
+      waitingLinkCount,
+    ],
+  );
+
   if (!enabled && !projectsLoading) {
     return (
       <div data-testid="publish-center-page">
@@ -958,7 +1442,7 @@ function ContentPublishingCenterPageInner() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-gray-900">发布执行中心</h1>
           <p className="text-sm text-gray-500">
-            查看待发布任务、检查账号与客户端、执行发布并回填公开链接。
+            面向代理运营的发布工作台：处理待发布内容、账号环境、失败重试、链接回填和效果验证。
           </p>
         </div>
         <Button
@@ -982,6 +1466,21 @@ function ContentPublishingCenterPageInner() {
           发布状态暂时无法加载，请稍后重试。
         </div>
       ) : null}
+
+      <PublishOperatorOverview
+        conclusion={publishOperatorConclusion}
+        localAgentNeedLabel={localAgentNeedLabel}
+        metrics={publishOperatorMetrics}
+        blockers={publishOperatorBlockers}
+        flowSteps={publishOperatorFlowSteps}
+        primaryAction={publishOperatorPrimaryAction}
+        pendingTasks={publishOperatorPendingTasks}
+        accountRows={publishOperatorAccountRows}
+        publishedRows={publishOperatorPublishedRows}
+        onOpenTaskTab={openPublishTaskTab}
+        onOpenAccountTools={handleOpenClient}
+        onOpenVerification={() => goToProjectPath("/inclusion-monitoring")}
+      />
 
       <PublishStatusBar
         localAgentLabel={localAgentLabel}
