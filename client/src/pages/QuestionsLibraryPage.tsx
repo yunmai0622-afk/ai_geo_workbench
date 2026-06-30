@@ -594,7 +594,7 @@ export default function QuestionsLibraryPage() {
             </h1>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-gray-500" data-testid="questions-page-subtitle">
-            AI 搜索机会地图：了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险；同时帮助代理运营判断哪些问题影响推荐、哪些问题应该生成内容、哪些问题需要复测。
+            AI 搜索机会地图现在先回答“今天应该围绕哪个 AI 搜索问题做内容，以及为什么值得做”，再帮助运营了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">

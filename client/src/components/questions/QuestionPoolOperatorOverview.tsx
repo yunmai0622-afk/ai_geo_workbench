@@ -59,6 +59,8 @@ export function QuestionPoolOperatorOverview({
   taskLinks,
   primaryAction,
 }: Props) {
+  const firstDecision = topItems[0] ?? null;
+
   return (
     <section className="space-y-5" data-testid="question-operator-overview">
       <P0Card className="border-blue-100 bg-blue-50/30">
@@ -82,6 +84,32 @@ export function QuestionPoolOperatorOverview({
             </Button>
             <p className="mt-2 max-w-[15rem] text-xs leading-5 text-gray-500">{primaryAction.hint}</p>
           </div>
+        </div>
+
+        <div
+          className="mt-5 rounded-xl border border-blue-100 bg-white p-4"
+          data-testid="question-operator-first-decision"
+        >
+          <p className="text-xs font-semibold text-blue-700">今日选题决策</p>
+          {firstDecision ? (
+            <div className="mt-2 grid gap-3 lg:grid-cols-[1fr_0.75fr]">
+              <div>
+                <h3 className="text-lg font-bold leading-7 text-gray-950">{firstDecision.questionText}</h3>
+                <p className="mt-2 text-sm leading-6 text-gray-600">
+                  为什么值得做：{firstDecision.reason}
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm">
+                <p className="font-medium text-gray-900">下一步：{firstDecision.nextAction}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">AI 表现：{firstDecision.aiPerformance}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">内容状态：{firstDecision.contentStatus}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm leading-6 text-gray-600">
+              暂无可判断选题。先生成问题池或完成 AI 实测，再决定今天发布什么。
+            </p>
+          )}
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="question-operator-metrics">

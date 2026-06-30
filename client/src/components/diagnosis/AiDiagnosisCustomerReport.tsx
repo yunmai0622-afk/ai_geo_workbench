@@ -392,7 +392,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
           <h1 className="text-2xl font-bold text-gray-900">诊断问题页</h1>
           <p className="mt-1 text-sm text-gray-500">回答“为什么现在 AI 还没有稳定推荐我？”</p>
           <p className="mt-4 text-sm leading-relaxed text-gray-600" data-testid="ai-diagnosis-before-suggestion">
-            当前诊断数据不足，建议先完成 AI 实测。系统将基于客户真实会问的问题，在豆包、DeepSeek、Kimi、通义千问、文心一言等平台中检测 AI 是否知道你、是否愿意推荐你。
+            当前还缺少一份优化前基线。先用客户真实会问的问题做 AI 现状诊断，确认 AI 是否认识你、是否愿意推荐你、是否把竞品放在你前面。
           </p>
           <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
             <p className="text-xs font-medium text-gray-700">检测完成后可获得：</p>
@@ -609,7 +609,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
               {reportConclusion}
             </p>
             <p className="mt-3 text-sm leading-6 text-gray-600">
-              这页只展示客户决策需要的信息：AI 是否知道你、是否愿意推荐你、问题卡在哪里，以及下一步怎么改。
+              第一屏只回答一个问题：为什么 AI 还没有稳定推荐，以及本月先改哪件事。完整证据和检测记录已下沉到运营明细。
             </p>
           </div>
           {primaryCta ? (
@@ -706,13 +706,13 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
               <h2 className="text-sm font-semibold text-gray-900">诊断证据摘要</h2>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <EvidenceItem label="实测回答" value={totalRunCount > 0 ? `${totalRunCount} 条` : "暂无"} />
+              <EvidenceItem label="AI 回答样本" value={totalRunCount > 0 ? `${totalRunCount} 条` : "暂无"} />
               <EvidenceItem label="覆盖平台" value={coveredPlatformCount > 0 ? `${coveredPlatformCount} 个` : "待诊断"} />
-              <EvidenceItem label="提到品牌" value={mentionedRunCount > 0 ? `${mentionedRunCount} 条` : "暂无"} />
-              <EvidenceItem label="推荐品牌" value={recommendedRunCount > 0 ? `${recommendedRunCount} 条` : "暂无"} />
+              <EvidenceItem label="品牌被提到" value={mentionedRunCount > 0 ? `${mentionedRunCount} 条` : "暂无"} />
+              <EvidenceItem label="品牌被推荐" value={recommendedRunCount > 0 ? `${recommendedRunCount} 条` : "暂无"} />
             </div>
             <p className="mt-3 text-xs leading-5 text-gray-500">
-              典型摘要：{platformCards.find(card => card.tested)?.summary ?? "当前诊断数据不足，建议先完成 AI 实测。"}
+              证据只保留客户能判断的摘要：{platformCards.find(card => card.tested)?.summary ?? "当前诊断数据不足，建议先完成 AI 实测。"}
             </p>
             {competitorNames.length > 0 ? (
               <p className="mt-2 text-xs leading-5 text-gray-500">

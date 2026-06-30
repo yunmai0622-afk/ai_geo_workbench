@@ -49,8 +49,8 @@ export function OnboardingWizardShell({
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" data-testid="wizard-completeness-header">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-700">建档完整度 {completionScore}%</p>
-            <p className="text-xs text-gray-500">8 步向导均等加权，补全越多 AI 理解越准确</p>
+            <p className="text-sm font-medium text-gray-700">AI 识别基础准备度 {completionScore}%</p>
+            <p className="text-xs text-gray-500">8 步资料准备均等加权，补全越多 AI 理解越准确</p>
           </div>
           <div className="h-2 w-full max-w-md overflow-hidden rounded-full bg-gray-100 sm:w-64">
             <div
@@ -114,7 +114,7 @@ export function OnboardingWizardShell({
       <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <nav
           className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"
-          aria-label="建档步骤"
+          aria-label="AI 识别基础建设步骤"
           data-testid="wizard-step-nav"
         >
           <ul className="space-y-1">

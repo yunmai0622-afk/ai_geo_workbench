@@ -690,8 +690,11 @@ export default function AssetCenterPage() {
     return (
       <div className="space-y-6 pb-12" data-testid="enterprise-profile-page">
         <header className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">{ONBOARDING_WIZARD_PAGE_TITLE}</h1>
-          <p className="text-sm text-gray-500">{ONBOARDING_WIZARD_PAGE_SUBTITLE}</p>
+          <p className="text-sm font-semibold text-blue-700">客户主流程 / 品牌资料准备</p>
+          <h1 className="text-2xl font-bold text-gray-900">品牌资料准备</h1>
+          <p className="text-sm text-gray-500">
+            {ONBOARDING_WIZARD_PAGE_TITLE}：{ONBOARDING_WIZARD_PAGE_SUBTITLE}
+          </p>
         </header>
         <ProjectContextEmptyState
           description="品牌资产建档必须归属一个客户项目。请先到客户管理台选择或新建客户项目。"
@@ -704,8 +707,11 @@ export default function AssetCenterPage() {
   return (
     <div className="space-y-6 pb-12" data-testid="enterprise-profile-page">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold text-gray-900">{ONBOARDING_WIZARD_PAGE_TITLE}</h1>
-        <p className="text-sm text-gray-500">{ONBOARDING_WIZARD_PAGE_SUBTITLE}</p>
+        <p className="text-sm font-semibold text-blue-700">客户主流程 / 品牌资料准备</p>
+        <h1 className="text-2xl font-bold text-gray-900">品牌资料准备</h1>
+        <p className="text-sm text-gray-500">
+          {ONBOARDING_WIZARD_PAGE_TITLE}：{ONBOARDING_WIZARD_PAGE_SUBTITLE}
+        </p>
       </header>
 
       {loading ? (
@@ -759,6 +765,47 @@ export default function AssetCenterPage() {
 
       {currentProjectId && !coreProfileLoadFailed ? (
         <>
+          <section
+            className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white p-6 shadow-sm"
+            data-testid="enterprise-profile-readiness-hero"
+          >
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-sm font-semibold text-blue-700">品牌资料准备 / AI 识别基础建设向导</p>
+                <h2 className="mt-2 text-xl font-bold text-gray-950">
+                  先让 AI 看懂 {currentProject?.enterpriseName ?? "这个品牌"} 是谁、服务谁、凭什么值得推荐
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-gray-600">
+                  这不是内部资料库，而是后续 AI 现状诊断、本月方案、内容生产和效果报告的基础。资料越清楚，AI 越容易识别同一个品牌并形成推荐理由。
+                </p>
+              </div>
+              <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-medium text-gray-500">AI 识别基础准备度</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums text-blue-700">{completionScore}%</p>
+                <p className="mt-2 text-xs leading-5 text-gray-500">
+                  低于 80% 时，诊断和内容生成容易缺少可靠依据。
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-white bg-white/80 p-4">
+                <p className="text-xs font-semibold text-gray-500">当前页面回答</p>
+                <p className="mt-2 text-sm font-semibold text-gray-900">AI 能不能确认这是同一个品牌？</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">品牌实体、官网、品类定位和公开信源要先统一。</p>
+              </div>
+              <div className="rounded-xl border border-white bg-white/80 p-4">
+                <p className="text-xs font-semibold text-gray-500">本月先补齐</p>
+                <p className="mt-2 text-sm font-semibold text-gray-900">客户画像、信任证据、竞品差异</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">这些资料会决定问题池、内容选题和推荐理由。</p>
+              </div>
+              <div className="rounded-xl border border-white bg-white/80 p-4">
+                <p className="text-xs font-semibold text-gray-500">完成后去哪里</p>
+                <p className="mt-2 text-sm font-semibold text-gray-900">进入 AI 现状诊断，建立优化前基线</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">诊断结果会转成本月 3 件可交付服务事项。</p>
+              </div>
+            </div>
+          </section>
+
           <span id="publish-platform-accounts" className="sr-only" aria-hidden="true" />
           <OnboardingWizardShell
             currentStep={currentStep}

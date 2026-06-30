@@ -3597,13 +3597,21 @@ export default function WeeklyContentPage() {
             onPrimaryAction={handleWeeklyCustomerPrimaryAction}
           />
 
-          <section id="weekly-operational-workbench" className="space-y-5" data-testid="weekly-operational-workbench">
-            <div className="space-y-1">
-              <h2 className={geoP0Surfaces.sectionTitle}>运营执行明细</h2>
-              <p className={geoP0Surfaces.muted}>
-                围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布；客户第一屏只看上方执行进度。
-              </p>
-            </div>
+          <details id="weekly-operational-workbench" className="group space-y-5 rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="weekly-operational-workbench">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">内部运营执行视图</p>
+                <h2 className={geoP0Surfaces.sectionTitle}>运营执行明细</h2>
+                <p className={geoP0Surfaces.muted}>
+                  客户只看上方“做到哪一步”；内部运营仍围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布。
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 group-open:bg-blue-50 group-open:text-blue-700">
+                展开处理
+              </span>
+            </summary>
+
+            <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
 
             {entryContext.questionId == null ? (
               monthlyPlanQuery.isLoading ? (
@@ -3798,7 +3806,8 @@ export default function WeeklyContentPage() {
                 />
               </>
             ) : null}
-          </section>
+            </div>
+          </details>
         </>
       )}
 
