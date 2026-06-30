@@ -6,6 +6,14 @@ import {
   recordToBrandSourceForm,
   type BrandSourceFormState,
 } from "@/components/source-graph/BrandSourceDrawer";
+import {
+  SourceEvidenceOperatorOverview,
+  type SourceEvidenceConsistencyRow,
+  type SourceEvidenceDistribution,
+  type SourceEvidenceMetric,
+  type SourceEvidenceSuggestion,
+  type SourceEvidenceWeakness,
+} from "@/components/source-graph/SourceEvidenceOperatorOverview";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -24,6 +32,8 @@ import {
   BRAND_SOURCE_TRUST_FILTERS,
   buildBrandSourceTrustSummary,
   filterBrandSourcesByTrust,
+  groupBrandSourcesByPlatformType,
+  isBrandSourceIncomplete,
   resolveBrandSourceCompletenessHint,
   resolveBrandSourceDisplayName,
   resolveBrandSourcePlatformLabel,
@@ -101,6 +111,105 @@ function verificationBadgeClass(status: string): string {
 
 function recommendationBadgeClass(): string {
   return "border-violet-200 bg-violet-50 text-violet-800";
+}
+
+function formatSourceOperatorCount(value: number | null | undefined, fallback = "暂无"): string {
+  if (value === null || value === undefined) return fallback;
+  return `${value}`;
+}
+
+function buildSourceEvidenceWeaknesses(input: {
+  records: EnrichedBrandSourceTrust[];
+  aiCitedCount: number;
+  priorityFixCount: number;
+  consistencyScore: number | null | undefined;
+  consistencyChecks: Array<{
+    anchorType: string;
+    anchorLabel: string;
+    status: string;
+    issueSummary: string;
+    suggestion: string;
+  }>;
+}): SourceEvidenceWeakness[] {
+  const { records, aiCitedCount, priorityFixCount, consistencyScore, consistencyChecks } = input;
+  const weaknesses: SourceEvidenceWeakness[] = [];
+
+  if (records.length === 0) {
+    weaknesses.push({
+      key: "no-sources",
+      title: "公开信源尚未建立",
+      problem: "当前没有可用于证明品牌可信度的公开信源记录。",
+      impact: "AI 缺少可引用证据，容易无法识别品牌或不愿推荐。",
+      nextStep: "先补充官网、平台主页、案例页和已发布内容链接。",
+    });
+  } else if (records.length < 5) {
+    weaknesses.push({
+      key: "low-source-count",
+      title: "公开信源数量偏少",
+      problem: `当前仅有 ${records.length} 条信源，证据面还不够完整。`,
+      impact: "AI 对品牌的理解容易依赖单一来源，推荐稳定性不足。",
+      nextStep: "补齐官网、知识平台、内容平台、媒体或案例证据。",
+    });
+  }
+
+  if (aiCitedCount === 0 && records.length > 0) {
+    weaknesses.push({
+      key: "no-ai-citation",
+      title: "缺少可被 AI 引用的证据",
+      problem: "现有信源尚未确认能被 AI 实测引用。",
+      impact: "客户问到相关问题时，AI 可能知道品牌但不给出有力推荐。",
+      nextStep: "优先优化包含品牌名、业务描述、关键词和客户证明的信源。",
+    });
+  }
+
+  if ((consistencyScore ?? 100) < 70) {
+    weaknesses.push({
+      key: "low-consistency",
+      title: "品牌关键信息不够一致",
+      problem: `当前一致性评分 ${consistencyScore ?? 0}，部分信源对品牌信息表达不一致。`,
+      impact: "AI 会难以判断哪个说法可信，影响识别和推荐信心。",
+      nextStep: "统一品牌名、官网、业务描述、核心产品和关键词表达。",
+    });
+  }
+
+  if (priorityFixCount > 0) {
+    weaknesses.push({
+      key: "priority-fixes",
+      title: "存在优先修复项",
+      problem: `当前有 ${priorityFixCount} 个信源或关键信息项需要优先处理。`,
+      impact: "这些缺口会直接影响 AI 能否把公开证据串成可信答案。",
+      nextStep: "按下方修复建议生成内容任务或补充信源。",
+    });
+  }
+
+  const unstableCheck = consistencyChecks.find(check => check.status === "conflict" || check.status === "missing");
+  if (unstableCheck) {
+    weaknesses.push({
+      key: `check-${unstableCheck.anchorType}`,
+      title: `${unstableCheck.anchorLabel}需要修复`,
+      problem: unstableCheck.issueSummary,
+      impact: "客户搜索相关问题时，AI 可能因为证据不完整而减少推荐。",
+      nextStep: unstableCheck.suggestion,
+    });
+  }
+
+  return weaknesses.slice(0, 3);
+}
+
+function buildFallbackSourceEvidenceSuggestion(weakness: SourceEvidenceWeakness): SourceEvidenceSuggestion {
+  return {
+    key: `fallback-${weakness.key}`,
+    title: weakness.title,
+    action: weakness.nextStep,
+    priority: "建议优先处理",
+  };
+}
+
+function consistencyLabelFromScore(score: number | null | undefined): string {
+  if (score === null || score === undefined) return "待确认";
+  if (score >= 85) return "较稳定";
+  if (score >= 70) return "需观察";
+  return "需修复";
 }
 
 export default function SourceGraphPage() {
@@ -206,7 +315,6 @@ export default function SourceGraphPage() {
     [records, trustFilter],
   );
   const discoverySummary = discoverySummaryQuery.data;
-
   const loading =
     enabled &&
     (sourcesQuery.isLoading ||
@@ -220,6 +328,149 @@ export default function SourceGraphPage() {
     deleteSourceMutation.isPending ||
     verifySourceMutation.isPending ||
     createTaskMutation.isPending;
+  const aiCitedCount = records.filter(record => record.aiCitationConfirmed).length;
+  const priorityFixCount = metrics?.priorityFixCount ?? 0;
+  const consistencyScore = metrics?.entityConsistency;
+  const incompleteCount = records.filter(isBrandSourceIncomplete).length;
+
+  const operatorMetrics: SourceEvidenceMetric[] = useMemo(
+    () => [
+      {
+        label: "信源数量",
+        value: formatSourceOperatorCount(trustSummary.totalCount),
+        hint: "官网、内容平台、媒体、案例等公开证据总量",
+      },
+      {
+        label: "一致性状态",
+        value: consistencyLabelFromScore(consistencyScore),
+        hint: `当前一致性评分 ${formatSourceOperatorCount(consistencyScore, "待确认")}`,
+      },
+      {
+        label: "可被 AI 引用的证据",
+        value: formatSourceOperatorCount(aiCitedCount),
+        hint: "已确认能支撑 AI 识别和推荐的公开证据",
+      },
+      {
+        label: "待修复信源",
+        value: formatSourceOperatorCount(incompleteCount),
+        hint: "可访问、品牌名、业务描述、官网、关键词或引用状态不完整",
+      },
+    ],
+    [aiCitedCount, consistencyScore, incompleteCount, trustSummary.totalCount],
+  );
+
+  const operatorWeaknesses = useMemo(
+    () =>
+      buildSourceEvidenceWeaknesses({
+        records,
+        aiCitedCount,
+        priorityFixCount,
+        consistencyScore,
+        consistencyChecks,
+      }),
+    [aiCitedCount, consistencyChecks, consistencyScore, priorityFixCount, records],
+  );
+
+  const operatorSuggestions: SourceEvidenceSuggestion[] = useMemo(() => {
+    const persisted = suggestions.slice(0, 4).map(suggestion => ({
+      key: String(suggestion.id),
+      title: suggestion.suggestionTitle,
+      action: suggestion.contentDirection,
+      priority: suggestion.priority,
+    }));
+    if (persisted.length > 0) return persisted;
+    return operatorWeaknesses.map(buildFallbackSourceEvidenceSuggestion);
+  }, [operatorWeaknesses, suggestions]);
+
+  const operatorDistribution: SourceEvidenceDistribution[] = useMemo(
+    () =>
+      groupBrandSourcesByPlatformType(records).map(group => ({
+        key: group.key,
+        label: group.label,
+        count: group.records.length,
+        hint:
+          group.key === "official"
+            ? "用于确认品牌身份、官网和业务描述"
+            : group.key === "knowledge"
+              ? "用于回答用户常问问题和建立专业认知"
+              : group.key === "content"
+                ? "用于承接内容覆盖、发布和复测"
+                : group.key === "media"
+                  ? "用于提供第三方背书和案例证明"
+                  : "用于补充其他可公开验证证据",
+      })),
+    [records],
+  );
+
+  const operatorConsistencyRows: SourceEvidenceConsistencyRow[] = useMemo(() => {
+    const rows = consistencyChecks.slice(0, 6).map(check => ({
+      key: check.anchorType,
+      label: check.anchorLabel,
+      status: resolveEntityConsistencyStatusLabel(check.status),
+      suggestion: check.suggestion,
+    }));
+    if (rows.length > 0) return rows;
+    return [
+      {
+        key: "pending",
+        label: "品牌关键信息",
+        status: "待确认",
+        suggestion: "补充公开信源后，系统会检查品牌名、官网、业务描述和关键词是否一致。",
+      },
+    ];
+  }, [consistencyChecks]);
+
+  const operatorConclusion = useMemo(() => {
+    if (records.length === 0) {
+      return "当前还没有可用信源证据。建议先补充官网、平台主页、客户案例和已发布内容，让 AI 有公开材料可以识别和引用。";
+    }
+    if (operatorWeaknesses.length === 0) {
+      return `当前已有 ${records.length} 条信源证据，其中 ${aiCitedCount} 条已确认可被 AI 引用，品牌关键信息整体较稳定。下一步建议保持定期复测，并把高价值内容继续补充为公开证据。`;
+    }
+    return `当前已有 ${records.length} 条信源证据，其中 ${aiCitedCount} 条已确认可被 AI 引用。主要短板是${operatorWeaknesses
+      .map(item => item.title)
+      .join("、")}，建议优先补齐证据并统一品牌表达，提升 AI 对品牌可信度的判断。`;
+  }, [aiCitedCount, operatorWeaknesses, records.length]);
+
+  const operatorPrimaryAction = useMemo(() => {
+    if (records.length === 0 || incompleteCount > 0) {
+      return {
+        label: "补充信源证据",
+        hint: "先补齐公开证据，再判断哪些内容需要进入发布和复测。",
+        disabled: !selectedProjectId || mutating,
+        onClick: openCreateDrawer,
+      };
+    }
+
+    const firstSuggestion = suggestions[0];
+    if (firstSuggestion?.linkedTaskId) {
+      return {
+        label: "查看修复任务",
+        hint: "已有信源修复内容任务，进入执行进度继续推进。",
+        disabled: !selectedProjectId || mutating,
+        onClick: () => goWeeklyWithTask(firstSuggestion.linkedTaskId),
+      };
+    }
+    if (firstSuggestion) {
+      return {
+        label: "生成修复任务",
+        hint: "把当前信源缺口转成内容生产任务，方便交付团队推进。",
+        disabled: !selectedProjectId || mutating,
+        onClick: () =>
+          createTaskMutation.mutate({
+            projectId: selectedProjectId!,
+            suggestionId: firstSuggestion.id,
+          }),
+      };
+    }
+
+    return {
+      label: "查看效果验证",
+      hint: "信源基础较完整时，进入收录和 AI 识别效果验证。",
+      disabled: !selectedProjectId,
+      onClick: () => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId)),
+    };
+  }, [incompleteCount, mutating, records.length, selectedProjectId, setLocation, suggestions]);
 
   function scrollToDiscovery() {
     document.getElementById("source-graph-discovery")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -275,12 +526,11 @@ export default function SourceGraphPage() {
           <div className="flex items-center gap-2">
             <Network className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900" data-testid="source-graph-page-title">
-              品牌信源图谱
+              信源证据与可信度修复工具
             </h1>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-gray-500">
-            检查企业在官网、内容平台、媒体稿、客户案例等公开信源中的品牌信息是否一致。AI
-            不推荐你，不只是内容少，也可能是可信信源不足。
+            品牌信源图谱用于帮助运营团队判断：AI 为什么不够信任这个品牌、哪些公开证据缺失、下一步该补哪类信源。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">
@@ -319,6 +569,16 @@ export default function SourceGraphPage() {
         </div>
       ) : (
         <>
+          <SourceEvidenceOperatorOverview
+            conclusion={operatorConclusion}
+            metrics={operatorMetrics}
+            weaknesses={operatorWeaknesses}
+            suggestions={operatorSuggestions}
+            distribution={operatorDistribution}
+            consistencyRows={operatorConsistencyRows}
+            primaryAction={operatorPrimaryAction}
+          />
+
           {completenessHint ? (
             <div
               className={`rounded-lg border px-4 py-3 text-sm ${
@@ -370,7 +630,7 @@ export default function SourceGraphPage() {
             </div>
           ) : null}
 
-          <P0Section title="信源总览" description="基于当前项目信源与关键信息一致性自动计算">
+          <P0Section title="运营明细：信源总览" description="基于当前项目信源与关键信息一致性自动计算">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="source-graph-overview">
               <P0MetricTile
                 label="信源完整度"
@@ -397,7 +657,7 @@ export default function SourceGraphPage() {
             </div>
           </P0Section>
 
-          <P0Section title="信源列表" description="录入各平台公开信源，查看可信度与 AI 推荐理由支撑">
+          <P0Section title="运营明细：信源列表" description="录入各平台公开信源，查看可信度与 AI 推荐理由支撑">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-gray-500">默认按官网优先、高可信度已验证信源优先排序</p>
               <Select value={trustFilter} onValueChange={value => setTrustFilter(value as BrandSourceTrustFilter)}>
@@ -536,7 +796,7 @@ export default function SourceGraphPage() {
             </div>
           </P0Section>
 
-          <P0Section title="品牌关键信息一致性" description="基于企业档案标准值与各信源观察值对比">
+          <P0Section title="运营明细：品牌关键信息一致性" description="基于企业档案标准值与各信源观察值对比">
             <div className="space-y-3" data-testid="entity-consistency-section">
               {consistencyChecks.length === 0 ? (
                 <div
@@ -577,7 +837,7 @@ export default function SourceGraphPage() {
             </div>
           </P0Section>
 
-          <P0Section title="内容增强建议" description="根据信源缺口与问题池提及情况生成">
+          <P0Section title="运营明细：内容增强建议" description="根据信源缺口与问题池提及情况生成">
             <div className="space-y-3" data-testid="source-graph-suggestions">
               {suggestions.length === 0 ? (
                 <div

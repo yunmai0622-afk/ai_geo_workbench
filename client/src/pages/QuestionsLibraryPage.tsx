@@ -7,6 +7,13 @@ import {
   type QuestionPoolFormState,
 } from "@/components/questions/QuestionSearchPoolDrawer";
 import { QuestionOpportunityMapPanel } from "@/components/questions/QuestionOpportunityMapPanel";
+import {
+  QuestionPoolOperatorOverview,
+  type QuestionOperatorMetric,
+  type QuestionOperatorScenario,
+  type QuestionOperatorTaskLink,
+  type QuestionOperatorTopItem,
+} from "@/components/questions/QuestionPoolOperatorOverview";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,6 +102,52 @@ function validatePoolForm(form: QuestionPoolFormState): string | null {
   if (!form.questionText.trim()) return "请输入问题内容";
   if (!form.searchPoolType) return "请选择问题类型";
   return null;
+}
+
+function formatQuestionOperatorCount(value: number, fallback = "暂无"): string {
+  return value > 0 ? `${value} 个` : fallback;
+}
+
+function resolveQuestionScenarioPerformance(
+  questions: EnrichedSearchPoolQuestion[],
+  hasDiagnosisData: boolean,
+): string {
+  if (questions.length === 0) return "暂无问题";
+  if (!hasDiagnosisData) return "待 AI 实测";
+  const recommended = questions.filter(q => q.lastTestResult === "recommended").length;
+  const mentioned = questions.filter(q => q.lastTestResult === "mentioned").length;
+  const weak = questions.filter(q => q.lastTestResult === "not_mentioned" || q.lastTestResult === "competitor_won").length;
+  if (weak > 0) return `${weak} 个问题表现偏弱`;
+  if (recommended > 0) return `${recommended} 个问题已获推荐`;
+  if (mentioned > 0) return `${mentioned} 个问题已被提及`;
+  return "待补充实测结果";
+}
+
+function resolveQuestionScenarioAction(questions: EnrichedSearchPoolQuestion[], hasDiagnosisData: boolean): string {
+  if (questions.length === 0) return "先生成该场景问题";
+  if (!hasDiagnosisData) return "加入 AI 诊断";
+  if (questions.some(q => !q.hasContentTask && Number(q.enabled) !== 0)) return "生成内容任务";
+  if (questions.some(q => q.contentStatus === "待复测" || q.contentStatus === "已发布")) return "进入效果验证";
+  return "跟进执行进度";
+}
+
+function resolveQuestionTopAction(question: EnrichedSearchPoolQuestion, hasDiagnosisData: boolean): string {
+  if (!hasDiagnosisData || !question.lastTestResult) return "查看诊断";
+  if (!question.hasContentTask) return "生成内容";
+  if (question.contentStatus === "已发布" || question.contentStatus === "待复测") return "复测";
+  return "查看执行进度";
+}
+
+function rankQuestionForOperator(question: EnrichedSearchPoolQuestion): number {
+  let score = 0;
+  if (question.monthlyFocus) score += 100;
+  if (question.opportunityLabel === "竞品占位") score += 90;
+  if (question.opportunityLabel === "高价值") score += 70;
+  if (question.lastTestResult === "not_mentioned" || question.lastTestResult === "competitor_won") score += 60;
+  if (!question.hasContentTask && Number(question.enabled) !== 0) score += 45;
+  if (question.priorityLevel === "high") score += 30;
+  if (question.contentStatus === "已发布") score -= 20;
+  return score;
 }
 
 export default function QuestionsLibraryPage() {
@@ -232,6 +285,121 @@ export default function QuestionsLibraryPage() {
     [questions, hasDiagnosisData, optimizationBriefQuery.data?.priorities],
   );
 
+  const operatorMetrics = useMemo<QuestionOperatorMetric[]>(
+    () => [
+      {
+        label: "问题总数",
+        value: formatQuestionOperatorCount(gapOverview?.totalQuestions ?? questions.length),
+        hint: "当前问题池可用于诊断、选题和复测。",
+      },
+      {
+        label: "高优先级问题",
+        value: formatQuestionOperatorCount(questions.filter(isQuestionPoolPriority).length),
+        hint: "适合作为本月内容和诊断重点。",
+      },
+      {
+        label: "已有内容承接问题",
+        value: formatQuestionOperatorCount(
+          questions.filter(q => q.hasContentTask || q.contentStatus === "已发布" || q.contentStatus === "待复测").length,
+        ),
+        hint: "这些问题已进入内容资产或发布链路。",
+      },
+      {
+        label: "待优化问题",
+        value: hasDiagnosisData
+          ? formatQuestionOperatorCount(
+              questions.filter(q =>
+                q.lastTestResult === "not_mentioned" ||
+                q.lastTestResult === "competitor_won" ||
+                (!q.hasContentTask && Number(q.enabled) !== 0),
+              ).length,
+            )
+          : "待确认",
+        hint: hasDiagnosisData ? "需要补内容、补信源或复测。" : "完成 AI 实测后可判断优化优先级。",
+      },
+    ],
+    [gapOverview?.totalQuestions, hasDiagnosisData, questions],
+  );
+
+  const operatorScenarios = useMemo<QuestionOperatorScenario[]>(
+    () =>
+      SEARCH_POOL_QUESTION_TYPES.map(type => {
+        const rows = grouped[type.value] ?? [];
+        const withContent = rows.filter(q => q.hasContentTask || q.contentStatus === "已发布" || q.contentStatus === "待复测").length;
+        return {
+          key: type.value,
+          label: type.label,
+          count: rows.length,
+          aiPerformance: resolveQuestionScenarioPerformance(rows, hasDiagnosisData),
+          contentCoverage: rows.length > 0 ? `${withContent}/${rows.length} 已有内容承接` : "暂无内容承接",
+          nextAction: resolveQuestionScenarioAction(rows, hasDiagnosisData),
+        };
+      }),
+    [grouped, hasDiagnosisData],
+  );
+
+  const operatorTopItems = useMemo<QuestionOperatorTopItem[]>(
+    () =>
+      [...questions]
+        .sort((a, b) => rankQuestionForOperator(b) - rankQuestionForOperator(a))
+        .slice(0, 5)
+        .map(question => ({
+          key: String(question.id),
+          questionText: question.questionText,
+          aiPerformance: hasDiagnosisData ? question.aiPerformanceLabel : "待 AI 实测",
+          reason:
+            question.diagnosisGap?.trim() ||
+            question.opportunityLabel ||
+            "该问题可能影响客户在 AI 搜索里的品牌认知与推荐表现。",
+          contentStatus: question.hasContentTask ? question.contentStatus : "未生成内容任务",
+          nextAction: resolveQuestionTopAction(question, hasDiagnosisData),
+          badgeLabel: question.opportunityLabel ?? (question.priorityLevel === "high" ? "高价值" : "待判断"),
+        })),
+    [hasDiagnosisData, questions],
+  );
+
+  const operatorTaskLinks = useMemo<QuestionOperatorTaskLink[]>(
+    () => [
+      {
+        key: "task",
+        label: "已有内容任务",
+        value: formatQuestionOperatorCount(questions.filter(q => q.hasContentTask).length),
+        hint: "已从问题进入执行进度的内容任务。",
+      },
+      {
+        key: "article",
+        label: "已有文章",
+        value: formatQuestionOperatorCount(questions.filter(q => q.contentStatus !== "未生成").length),
+        hint: "已有内容资产承接的问题。",
+      },
+      {
+        key: "published",
+        label: "已发布",
+        value: formatQuestionOperatorCount(questions.filter(q => q.contentStatus === "已发布").length),
+        hint: "可进入收录和 AI 识别验证。",
+      },
+      {
+        key: "retest",
+        label: "待复测",
+        value: formatQuestionOperatorCount(questions.filter(q => q.contentStatus === "待复测").length),
+        hint: "发布后需要进入效果验证的问题。",
+      },
+    ],
+    [questions],
+  );
+
+  const operatorConclusion = useMemo(() => {
+    const total = questions.length;
+    if (total === 0) return "暂无足够问题数据，建议先生成 AI 搜索问题池。";
+    const high = questions.filter(isQuestionPoolPriority).length;
+    const weak = questions.filter(q => q.lastTestResult === "not_mentioned" || q.lastTestResult === "competitor_won").length;
+    const uncovered = questions.filter(q => !q.hasContentTask && Number(q.enabled) !== 0).length;
+    if (!hasDiagnosisData) {
+      return `当前已覆盖 ${total} 个 AI 搜索问题，但尚缺稳定 AI 实测数据。本月建议先把高价值问题加入诊断，再决定内容选题。`;
+    }
+    return `当前已覆盖 ${total} 个 AI 搜索问题，其中 ${high} 个为高优先级，${weak} 个 AI 表现偏弱，${uncovered} 个还没有内容承接。本月建议优先处理品类推荐、场景需求和竞品比较中的高价值问题。`;
+  }, [hasDiagnosisData, questions]);
+
   function openCreateDrawer() {
     setDrawerMode("create");
     setEditQuestion(null);
@@ -367,6 +535,50 @@ export default function QuestionsLibraryPage() {
     toggleEnableMutation.mutate({ id: question.id, enabled: enabledNext });
   }
 
+  const operatorPrimaryAction = (() => {
+    if (questions.length === 0) {
+      return {
+        label: "生成 AI 搜索问题池",
+        hint: hasProfile ? "先生成客户会问 AI 的问题池。" : "需先完成企业档案建档。",
+        onClick: handleGenerate,
+        disabled: !selectedProjectId || !hasProfile || mutating,
+      };
+    }
+    const firstUncovered = questions.find(q => !q.hasContentTask && Number(q.enabled) !== 0);
+    if (firstUncovered) {
+      return {
+        label: "生成内容任务",
+        hint: "把高价值问题转成可执行内容任务。",
+        onClick: () => handleCreateContentTask(firstUncovered),
+        disabled: mutating || !selectedProjectId,
+      };
+    }
+    const hasPendingTask = questions.some(q => q.hasContentTask && q.contentStatus !== "已发布" && q.contentStatus !== "待复测");
+    if (hasPendingTask) {
+      return {
+        label: "查看执行进度",
+        hint: "已有内容任务，进入执行进度推进生成与发布。",
+        onClick: () => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId)),
+        disabled: !selectedProjectId,
+      };
+    }
+    const hasRetest = questions.some(q => q.contentStatus === "已发布" || q.contentStatus === "待复测");
+    if (hasRetest) {
+      return {
+        label: "去效果验证",
+        hint: "已发布或待复测的问题需要验证 AI 是否看见。",
+        onClick: () => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId)),
+        disabled: !selectedProjectId,
+      };
+    }
+    return {
+      label: "查看执行进度",
+      hint: "继续把问题池转成内容执行。",
+      onClick: () => selectedProjectId && setLocation(buildProjectUrl("/weekly", selectedProjectId)),
+      disabled: !selectedProjectId,
+    };
+  })();
+
   if (!enabled && !projectsLoading) {
     return <ProjectContextEmptyState />;
   }
@@ -378,11 +590,11 @@ export default function QuestionsLibraryPage() {
           <div className="flex items-center gap-2">
             <Library className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900" data-testid="questions-page-title">
-              AI 搜索机会地图
+              AI 搜索机会与内容选题工具
             </h1>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-gray-500" data-testid="questions-page-subtitle">
-            了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险。
+            AI 搜索机会地图：了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险；同时帮助代理运营判断哪些问题影响推荐、哪些问题应该生成内容、哪些问题需要复测。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">
@@ -429,6 +641,15 @@ export default function QuestionsLibraryPage() {
         </div>
       ) : (
         <>
+          <QuestionPoolOperatorOverview
+            conclusion={operatorConclusion}
+            metrics={operatorMetrics}
+            scenarios={operatorScenarios}
+            topItems={operatorTopItems}
+            taskLinks={operatorTaskLinks}
+            primaryAction={operatorPrimaryAction}
+          />
+
           <QuestionOpportunityMapPanel
             view={opportunityMapView}
             mutating={mutating}
@@ -436,7 +657,7 @@ export default function QuestionsLibraryPage() {
             onItemAction={handleOpportunityItemAction}
           />
 
-          <P0Section title="机会总览" description="核心问题覆盖、竞品占位与本月重点">
+          <P0Section title="运营明细：机会总览" description="核心问题覆盖、竞品占位与本月重点">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="question-pool-overview">
               <P0MetricTile
                 label="核心问题总数"
@@ -464,7 +685,7 @@ export default function QuestionsLibraryPage() {
             </div>
           </P0Section>
 
-          <P0Section title="问题分组" description="按 AI 搜索问题类型浏览机会分布">
+          <P0Section title="运营明细：问题场景分组" description="按 AI 搜索问题类型浏览完整问题、诊断映射和任务状态">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-gray-500">各分组内默认按价值排序，可切换排序方式</p>
               <Select
