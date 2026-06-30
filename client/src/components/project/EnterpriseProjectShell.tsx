@@ -49,8 +49,11 @@ export function EnterpriseProjectShell({ children }: Props) {
   const isQuestionsPage = pathname === "/questions" || pathname === "/question-bank";
   const isSourceGraphPage =
     pathname === "/brand-source-graph" || pathname === "/source-graph" || pathname === "/brand-sources";
+  const isAiDiagnosisPage =
+    pathname === "/ai-diagnosis" || pathname === "/diagnosis" || pathname === "/responses" || pathname === "/analysis" || pathname === "/scores";
   const isMaturityPage = pathname === "/maturity";
   const isWorkspacePage = pathname === "/workspace" || pathname === "/flow";
+  const hideDesktopAssistantPanel = isWorkspacePage || isAiDiagnosisPage;
   const isMobile = useIsMobile();
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
@@ -337,12 +340,14 @@ export function EnterpriseProjectShell({ children }: Props) {
           ) : null}
           {children}
         </div>
-        <div className="hidden shrink-0 lg:block" style={{ width: 300 }}>
-          <div className="sticky top-6 space-y-4">{sidebarPanel}</div>
-        </div>
+        {!hideDesktopAssistantPanel ? (
+          <div className="hidden shrink-0 lg:block" style={{ width: 300 }}>
+            <div className="sticky top-6 space-y-4">{sidebarPanel}</div>
+          </div>
+        ) : null}
       </div>
 
-      {isMobile ? (
+      {isMobile && !hideDesktopAssistantPanel ? (
         <ProjectNextActionMobileDock
           summaryLabel={
             isMaturityPage

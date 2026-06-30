@@ -10,8 +10,9 @@ describe("GEO V2.3 P0-B workspace customer overview", () => {
 
   it("turns /workspace into a customer-facing GEO service homepage", () => {
     for (const marker of [
-      "客户总览 / GEO 服务首页",
-      "一句话结论",
+      "客户可见",
+      "GEO 服务首页",
+      "当前 AI 可见度结论",
       "workspace-customer-conclusion",
       "workspace-core-metrics",
       "workspace-top-issues",
@@ -29,7 +30,7 @@ describe("GEO V2.3 P0-B workspace customer overview", () => {
     for (const label of ["AI 成熟度", "AI 是否知道你", "AI 是否愿意推荐你", "本月服务进度"]) {
       expect(page).toContain(label);
     }
-    for (const label of ["当前最大 3 个问题", "本月 Top 3 服务事项", "怎么看效果"]) {
+    for (const label of ["当前最重要的问题", "下一步服务动作", "月底报告能证明"]) {
       expect(page).toContain(label);
     }
   });

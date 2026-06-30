@@ -16,10 +16,19 @@ describe("GEO V2.3-P0-J sellable reduction pass", () => {
 
   it("keeps AI diagnosis focused on the customer problem and downgraded evidence", () => {
     const report = read("client/src/components/diagnosis/AiDiagnosisCustomerReport.tsx");
-    expect(report).toContain("第一屏只回答一个问题");
-    expect(report).toContain("完整证据和检测记录已下沉到运营明细");
+    expect(report).toContain("为什么 AI 还不稳定推荐你");
+    expect(report).toContain("先确认是认知不足、信任不足、竞品占位，还是证据不足");
+    expect(report).toContain("把实测结果翻译成客户能理解的原因、影响和本月修复动作");
+    expect(report).toContain("查看诊断证据");
     expect(report).toContain("证据只保留客户能判断的摘要");
     expect(report).toContain("AI 回答样本");
+  });
+
+  it("keeps customer core pages free of the desktop operator assistant panel", () => {
+    const shell = read("client/src/components/project/EnterpriseProjectShell.tsx");
+    expect(shell).toContain("hideDesktopAssistantPanel");
+    expect(shell).toContain("isWorkspacePage || isAiDiagnosisPage");
+    expect(shell).toContain('pathname === "/ai-diagnosis"');
   });
 
   it("repositions enterprise profile as brand readiness for AI recognition", () => {

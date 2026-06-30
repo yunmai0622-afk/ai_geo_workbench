@@ -43,7 +43,8 @@ describe("GEO V2.3-P0-I question pool and source evidence operator tools", () =>
     expect(sourcePage).toContain("信源证据与可信度修复工具");
     expect(sourcePage).toContain("SourceEvidenceOperatorOverview");
     expect(sourceOverview).toContain("source-evidence-operator-overview");
-    expect(sourceOverview).toContain("运营工具 · 信源证据与可信度修复");
+    expect(sourceOverview).toContain("运营后台 · 信源证据与可信度修复");
+    expect(sourceOverview).toContain("判断下步需要补哪些可信材料");
     expect(sourceOverview).toContain("AI 为什么不够信任这个品牌");
     expect(sourceOverview).toContain("source-evidence-operator-primary-cta");
   });

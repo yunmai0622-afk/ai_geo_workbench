@@ -68,8 +68,11 @@ export function SourceEvidenceOperatorOverview({
       <P0Card className="border-blue-100 bg-blue-50/30">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <p className="text-sm font-medium text-blue-700">运营工具 · 信源证据与可信度修复</p>
+            <p className="text-sm font-medium text-blue-700">运营后台 · 信源证据与可信度修复</p>
             <h2 className="mt-2 text-xl font-bold text-gray-950">AI 为什么不够信任这个品牌</h2>
+            <p className="mt-2 text-sm leading-6 text-gray-700">
+              这里用于检查 AI 是否有足够公开证据信任品牌，并判断下步需要补哪些可信材料。
+            </p>
             <p className="mt-2 text-sm leading-6 text-gray-700" data-testid="source-evidence-operator-conclusion">
               {conclusion}
             </p>

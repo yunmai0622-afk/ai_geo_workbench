@@ -1440,9 +1440,17 @@ function ContentPublishingCenterPageInner() {
     <div className="space-y-6 pb-12" data-testid="publish-center-page">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">发布执行中心</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+              运营后台
+            </span>
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+              不进入客户第一轮演示
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">运营发布执行中心</h1>
           <p className="text-sm text-gray-500">
-            面向代理运营的发布工作台：处理待发布内容、账号环境、失败重试、链接回填和效果验证。
+            面向代理运营的发布工作台：处理待发布内容、账号环境、失败重试、链接回填和效果验证；保留运营可用性，不作为客户首轮演示页。
           </p>
         </div>
         <Button

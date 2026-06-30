@@ -389,8 +389,16 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
           className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
           data-testid="ai-diagnosis-first-screen"
         >
-          <h1 className="text-2xl font-bold text-gray-900">诊断问题页</h1>
-          <p className="mt-1 text-sm text-gray-500">回答“为什么现在 AI 还没有稳定推荐我？”</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+              客户可见
+            </span>
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+              诊断问题页
+            </span>
+          </div>
+          <h1 className="mt-3 text-2xl font-bold text-gray-900">为什么 AI 还不稳定推荐你</h1>
+          <p className="mt-1 text-sm text-gray-500">先确认是认知不足、信任不足、竞品占位，还是证据不足。</p>
           <p className="mt-4 text-sm leading-relaxed text-gray-600" data-testid="ai-diagnosis-before-suggestion">
             当前还缺少一份优化前基线。先用客户真实会问的问题做 AI 现状诊断，确认 AI 是否认识你、是否愿意推荐你、是否把竞品放在你前面。
           </p>
@@ -488,9 +496,9 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
           data-testid="ai-diagnosis-first-screen"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">AI 正在后台检测中</h1>
+            <h1 className="text-2xl font-bold text-gray-900">AI 正在检测品牌推荐情况</h1>
             <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-              后台运行中
+              AI 正在后台检测中
             </span>
           </div>
           <p className="mt-2 text-sm text-gray-600" data-testid="ai-diagnosis-running-hint">
@@ -520,7 +528,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
                 </div>
               </>
             ) : null}
-            <p className="text-sm text-gray-600">当前状态：后台运行中</p>
+            <p className="text-sm text-gray-600">当前状态：正在生成客户可读诊断结论</p>
           </div>
 
           <p className="mt-4 text-sm leading-relaxed text-gray-600">{AI_DIAGNOSIS_RUNNING_BACKGROUND_HINT}</p>
@@ -596,9 +604,15 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
           <div className="max-w-3xl">
             <div className="flex items-center gap-2">
               <FileSearch className="size-5 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">诊断问题页</h1>
+              <span className="rounded-full border border-blue-200 bg-white px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                客户可见
+              </span>
+              <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                诊断问题页
+              </span>
             </div>
-            <p className="mt-1 text-sm text-gray-500">回答“为什么现在 AI 还没有稳定推荐我？”</p>
+            <h1 className="mt-3 text-2xl font-bold text-gray-900">为什么 AI 还不稳定推荐你</h1>
+            <p className="mt-1 text-sm text-gray-500">把实测结果翻译成客户能理解的原因、影响和本月修复动作。</p>
             {lastDiagnosisLabel !== "暂无" ? (
               <p className="mt-2 text-xs text-gray-500">最近检测：{lastDiagnosisLabel}</p>
             ) : null}
@@ -609,7 +623,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
               {reportConclusion}
             </p>
             <p className="mt-3 text-sm leading-6 text-gray-600">
-              第一屏只回答一个问题：为什么 AI 还没有稳定推荐，以及本月先改哪件事。完整证据和检测记录已下沉到运营明细。
+              不是 AI 不喜欢你，而是公开证据、内容覆盖或品牌表达还不足以支撑稳定推荐。
             </p>
           </div>
           {primaryCta ? (
@@ -845,12 +859,20 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
         </div>
       </section>
 
-      <section
-        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+      <details
+        className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
         data-testid="ai-diagnosis-platform-evidence-summary"
       >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+            查看诊断证据
+          </span>
+          <span className="text-xs font-normal text-gray-500">AI 平台证据摘要、检测范围和时间</span>
+        </summary>
+        <div className="border-t border-gray-100 px-6 pb-6 pt-4">
         <h2 className="text-lg font-semibold text-gray-900">AI 平台证据摘要</h2>
-        <p className="mt-1 text-xs text-gray-500">只展示摘要，不铺满原始回答；完整证据在下方“运营诊断明细 / 证据详情”。</p>
+        <p className="mt-1 text-xs text-gray-500">这里保留判断依据，避免首屏堆叠原始回答和检测明细。</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {platformCards.map(p => (
             <div
@@ -898,7 +920,8 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
             <p className="mt-1 text-sm font-medium text-gray-900">{detectionPhaseLabel}</p>
           </div>
         </div>
-      </section>
+        </div>
+      </details>
     </div>
   );
 }

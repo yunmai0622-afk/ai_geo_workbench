@@ -692,7 +692,18 @@ export default function EnterpriseWorkspacePage() {
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-medium text-blue-600">客户总览 / GEO 服务首页</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-blue-200 bg-white px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                    客户可见
+                  </span>
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                    服务进度
+                  </span>
+                  <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                    交付报告
+                  </span>
+                </div>
+                <p className="mt-3 text-xs font-medium text-blue-600">GEO 服务首页</p>
                 <h1 className={cn(geoTypography.pageTitle, "mt-1")} data-testid="workspace-enterprise-name">
                   {selectedProject?.enterpriseName ?? "当前企业"}
                 </h1>
@@ -701,7 +712,7 @@ export default function EnterpriseWorkspacePage() {
             </div>
 
             <div className="mt-5 rounded-2xl border border-blue-100 bg-white/80 p-5" data-testid="workspace-customer-conclusion">
-              <p className="text-xs font-medium text-gray-500">一句话结论</p>
+              <p className="text-xs font-medium text-gray-500">当前 AI 可见度结论</p>
               <p className="mt-2 text-base font-semibold leading-7 text-gray-900" data-testid="workspace-current-stage-headline">
                 {customerConclusion}
               </p>
@@ -738,8 +749,8 @@ export default function EnterpriseWorkspacePage() {
             <div className="mt-6 grid gap-4 lg:grid-cols-[0.95fr_1.15fr]" data-testid="workspace-customer-first-screen">
               <section className="rounded-2xl border border-gray-100 bg-white p-5" data-testid="workspace-top-issues">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-gray-900">当前最大 3 个问题</h2>
-                  <span className="text-xs text-gray-400">客户影响</span>
+                  <h2 className="text-sm font-semibold text-gray-900">当前最重要的问题</h2>
+                  <span className="text-xs text-gray-400">客户能理解的影响</span>
                 </div>
                 {customerIssues.length > 0 ? (
                   <div className="mt-4 space-y-3">
@@ -759,7 +770,7 @@ export default function EnterpriseWorkspacePage() {
 
               <section className="rounded-2xl border border-gray-100 bg-white p-5" data-testid="workspace-monthly-top3">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-gray-900">本月 Top 3 服务事项</h2>
+                  <h2 className="text-sm font-semibold text-gray-900">下一步服务动作</h2>
                   <Button
                     type="button"
                     variant="ghost"
@@ -782,14 +793,14 @@ export default function EnterpriseWorkspacePage() {
                             {priority.status}
                           </span>
                         </div>
-                        <p className="mt-2 text-sm leading-6 text-gray-600">为什么做：{priority.why}</p>
-                        <p className="mt-1 text-sm leading-6 text-gray-600">怎么看效果：{priority.proof}</p>
+                        <p className="mt-2 text-sm leading-6 text-gray-600">为什么现在做：{priority.why}</p>
+                        <p className="mt-1 text-sm leading-6 text-gray-600">月底报告能证明：{priority.proof}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <p className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
-                    暂无本月 Top 3 服务事项。建议先进入本月方案，把诊断短板转成可执行计划。
+                    暂无明确的下一步服务事项。建议先进入本月方案，把当前短板转成客户可验收的执行计划。
                   </p>
                 )}
               </section>

@@ -62,7 +62,7 @@ import {
   type SearchPoolSortMode,
 } from "@shared/questionSearchPool";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { Library, Plus, Sparkles, Star } from "lucide-react";
+import { ChevronDown, Library, Plus, Sparkles, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -132,7 +132,7 @@ function resolveQuestionScenarioAction(questions: EnrichedSearchPoolQuestion[], 
 }
 
 function resolveQuestionTopAction(question: EnrichedSearchPoolQuestion, hasDiagnosisData: boolean): string {
-  if (!hasDiagnosisData || !question.lastTestResult) return "查看诊断";
+  if (!hasDiagnosisData || !question.lastTestResult) return "加入诊断";
   if (!question.hasContentTask) return "生成内容";
   if (question.contentStatus === "已发布" || question.contentStatus === "待复测") return "复测";
   return "查看执行进度";
@@ -590,11 +590,22 @@ export default function QuestionsLibraryPage() {
           <div className="flex items-center gap-2">
             <Library className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900" data-testid="questions-page-title">
-              AI 搜索机会与内容选题工具
+              运营后台｜AI 搜索机会与内容选题工具
             </h1>
           </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+              运营后台
+            </Badge>
+            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+              不建议客户第一轮演示
+            </Badge>
+            <Badge variant="outline" className="border-gray-200 bg-gray-50 text-gray-700">
+              用于内部交付
+            </Badge>
+          </div>
           <p className="mt-1 max-w-3xl text-sm text-gray-500" data-testid="questions-page-subtitle">
-            AI 搜索机会地图现在先回答“今天应该围绕哪个 AI 搜索问题做内容，以及为什么值得做”，再帮助运营了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险。
+            这里用于运营团队判断今天应该围绕哪个 AI 搜索问题做内容，以及为什么值得做；了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险。AI 搜索机会地图保留给内部选题、诊断和内容任务流转使用。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">
@@ -657,106 +668,120 @@ export default function QuestionsLibraryPage() {
             onItemAction={handleOpportunityItemAction}
           />
 
-          <P0Section title="运营明细：机会总览" description="核心问题覆盖、竞品占位与本月重点">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="question-pool-overview">
-              <P0MetricTile
-                label="核心问题总数"
-                value={String(gapOverview?.totalQuestions ?? 0)}
-                hint="当前项目问题池总量"
-              />
-              <P0MetricTile
-                label="已覆盖内容问题数"
-                value={String(gapOverview?.coveredContentQuestions ?? 0)}
-                hint="已发布关联内容的问题"
-              />
-              <P0MetricTile
-                label="竞品占位问题数"
-                value={formatQuestionPoolGapMetricValue(
-                  gapOverview?.competitorOccupiedQuestions ?? 0,
-                  hasDiagnosisData,
-                )}
-                hint="AI 诊断中竞品出现率超过 50% 的问题"
-              />
-              <P0MetricTile
-                label="本月重点问题数"
-                value={String(gapOverview?.monthlyFocusQuestions ?? 0)}
-                hint="本月优化计划中标记的问题"
-              />
-            </div>
-          </P0Section>
+          <details
+            className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+            data-testid="questions-operator-details-fold"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                展开运营明细：完整问题池与内容任务
+              </span>
+              <span className="text-xs font-normal text-gray-500">长表、批量操作和诊断映射已收起</span>
+            </summary>
+            <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
+              <P0Section title="运营明细：机会总览" description="核心问题覆盖、竞品占位与本月重点">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="question-pool-overview">
+                  <P0MetricTile
+                    label="核心问题总数"
+                    value={String(gapOverview?.totalQuestions ?? 0)}
+                    hint="当前项目问题池总量"
+                  />
+                  <P0MetricTile
+                    label="已覆盖内容问题数"
+                    value={String(gapOverview?.coveredContentQuestions ?? 0)}
+                    hint="已发布关联内容的问题"
+                  />
+                  <P0MetricTile
+                    label="竞品占位问题数"
+                    value={formatQuestionPoolGapMetricValue(
+                      gapOverview?.competitorOccupiedQuestions ?? 0,
+                      hasDiagnosisData,
+                    )}
+                    hint="AI 诊断中竞品出现率超过 50% 的问题"
+                  />
+                  <P0MetricTile
+                    label="本月重点问题数"
+                    value={String(gapOverview?.monthlyFocusQuestions ?? 0)}
+                    hint="本月优化计划中标记的问题"
+                  />
+                </div>
+              </P0Section>
 
-          <P0Section title="运营明细：问题场景分组" description="按 AI 搜索问题类型浏览完整问题、诊断映射和任务状态">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-gray-500">各分组内默认按价值排序，可切换排序方式</p>
-              <Select
-                value={sortMode}
-                onValueChange={value => setSortMode(value as SearchPoolSortMode)}
-              >
-                <SelectTrigger className="w-[180px]" data-testid="question-pool-sort-mode">
-                  <SelectValue placeholder="排序方式" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEARCH_POOL_SORT_MODES.map(mode => (
-                    <SelectItem key={mode} value={mode} data-testid={`question-pool-sort-${mode}`}>
-                      {SEARCH_POOL_SORT_MODE_LABELS[mode]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <P0Section title="运营明细：问题场景分组" description="按 AI 搜索问题类型浏览完整问题、诊断映射和任务状态">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-gray-500">各分组内默认按价值排序，可切换排序方式</p>
+                  <Select
+                    value={sortMode}
+                    onValueChange={value => setSortMode(value as SearchPoolSortMode)}
+                  >
+                    <SelectTrigger className="w-[180px]" data-testid="question-pool-sort-mode">
+                      <SelectValue placeholder="排序方式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SEARCH_POOL_SORT_MODES.map(mode => (
+                        <SelectItem key={mode} value={mode} data-testid={`question-pool-sort-${mode}`}>
+                          {SEARCH_POOL_SORT_MODE_LABELS[mode]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="question-pool-tabs">
+                  <TabsList className="flex w-full flex-wrap gap-1">
+                    {SEARCH_POOL_QUESTION_TYPES.map(type => {
+                      const stats = groupStats?.[type.value];
+                      return (
+                        <TabsTrigger
+                          key={type.value}
+                          value={type.value}
+                          data-testid={`question-pool-tab-${type.value}`}
+                          className="gap-1.5"
+                        >
+                          <span>{type.label}</span>
+                          <span className="text-xs text-gray-500">({stats?.total ?? grouped[type.value].length})</span>
+                          {hasDiagnosisData && (stats?.competitorOccupiedCount ?? 0) > 0 ? (
+                            <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
+                              竞品 {stats?.competitorOccupiedCount}
+                            </span>
+                          ) : null}
+                          {(stats?.coveredCount ?? 0) > 0 ? (
+                            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                              已覆盖 {stats?.coveredCount}
+                            </span>
+                          ) : null}
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+                  {SEARCH_POOL_QUESTION_TYPES.map(type => {
+                    const stats = groupStats?.[type.value];
+                    return (
+                      <TabsContent key={type.value} value={type.value} className="mt-4 space-y-2">
+                        {stats ? (
+                          <p className="text-xs text-gray-500" data-testid={`question-pool-group-stats-${type.value}`}>
+                            启用 {stats.enabled} · 已实测 {hasDiagnosisData ? stats.tested : "暂无诊断数据"} · 缺口{" "}
+                            {hasDiagnosisData ? stats.gapCount : "暂无诊断数据"} · 内容就绪 {stats.contentReadyCount}
+                          </p>
+                        ) : null}
+                        <QuestionPoolTable
+                          questions={grouped[type.value]}
+                          hasDiagnosisData={hasDiagnosisData}
+                          mutating={mutating}
+                          onAddToRound={handleAddToRound}
+                          onCreateContentTask={handleCreateContentTask}
+                          onViewEvidence={handleViewQuestionEvidence}
+                          onTogglePriority={handleTogglePriority}
+                          onToggleEnabled={handleToggleEnabled}
+                          onEdit={openEditDrawer}
+                        />
+                      </TabsContent>
+                    );
+                  })}
+                </Tabs>
+              </P0Section>
             </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="question-pool-tabs">
-              <TabsList className="flex w-full flex-wrap gap-1">
-                {SEARCH_POOL_QUESTION_TYPES.map(type => {
-                  const stats = groupStats?.[type.value];
-                  return (
-                    <TabsTrigger
-                      key={type.value}
-                      value={type.value}
-                      data-testid={`question-pool-tab-${type.value}`}
-                      className="gap-1.5"
-                    >
-                      <span>{type.label}</span>
-                      <span className="text-xs text-gray-500">({stats?.total ?? grouped[type.value].length})</span>
-                      {hasDiagnosisData && (stats?.competitorOccupiedCount ?? 0) > 0 ? (
-                        <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
-                          竞品 {stats?.competitorOccupiedCount}
-                        </span>
-                      ) : null}
-                      {(stats?.coveredCount ?? 0) > 0 ? (
-                        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                          已覆盖 {stats?.coveredCount}
-                        </span>
-                      ) : null}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-              {SEARCH_POOL_QUESTION_TYPES.map(type => {
-                const stats = groupStats?.[type.value];
-                return (
-                  <TabsContent key={type.value} value={type.value} className="mt-4 space-y-2">
-                    {stats ? (
-                      <p className="text-xs text-gray-500" data-testid={`question-pool-group-stats-${type.value}`}>
-                        启用 {stats.enabled} · 已实测 {hasDiagnosisData ? stats.tested : "暂无诊断数据"} · 缺口{" "}
-                        {hasDiagnosisData ? stats.gapCount : "暂无诊断数据"} · 内容就绪 {stats.contentReadyCount}
-                      </p>
-                    ) : null}
-                    <QuestionPoolTable
-                      questions={grouped[type.value]}
-                      hasDiagnosisData={hasDiagnosisData}
-                      mutating={mutating}
-                      onAddToRound={handleAddToRound}
-                      onCreateContentTask={handleCreateContentTask}
-                      onViewEvidence={handleViewQuestionEvidence}
-                      onTogglePriority={handleTogglePriority}
-                      onToggleEnabled={handleToggleEnabled}
-                      onEdit={openEditDrawer}
-                    />
-                  </TabsContent>
-                );
-              })}
-            </Tabs>
-          </P0Section>
+          </details>
         </>
       )}
 
@@ -827,110 +852,141 @@ function QuestionPoolTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {questions.map(question => (
-            <TableRow key={question.id} data-testid={`question-pool-row-${question.id}`}>
-              <TableCell className="max-w-xs whitespace-normal">{question.questionText}</TableCell>
-              <TableCell data-testid={`question-opportunity-label-${question.id}`}>
-                {question.opportunityLabel ? (
-                  <Badge variant="outline" className={opportunityBadgeClass(question.opportunityLabel)}>
-                    {question.opportunityLabel}
-                  </Badge>
-                ) : (
-                  "—"
-                )}
-              </TableCell>
-              <TableCell>{resolveSearchPoolTypeLabel(question.searchPoolType)}</TableCell>
-              <TableCell className="max-w-[10rem] whitespace-normal text-sm text-gray-700">
-                {question.diagnosisGap}
-              </TableCell>
-              <TableCell data-testid={`question-ai-performance-${question.id}`}>
-                {hasDiagnosisData ? question.aiPerformanceLabel : "暂无诊断数据"}
-              </TableCell>
-              <TableCell data-testid={`question-content-status-${question.id}`}>
-                {question.contentStatus}
-              </TableCell>
-              <TableCell>
-                <Switch
-                  checked={Number(question.enabled) !== 0}
-                  disabled={mutating}
-                  data-testid={`question-toggle-enabled-${question.id}`}
-                  onCheckedChange={checked => onToggleEnabled(question, checked)}
-                />
-              </TableCell>
-              <TableCell>
-                {isQuestionPoolPriority(question) ? (
-                  <Badge className="border-rose-200 bg-rose-50 text-rose-800">是</Badge>
-                ) : (
-                  "否"
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {(question.requiredSourceTypes ?? []).map(sourceType => (
-                    <Badge key={sourceType} variant="outline" className="text-xs">
-                      {resolveSourceTypeLabel(sourceType)}
+          {questions.map(question => {
+            const primaryLabel = resolveQuestionTopAction(question, hasDiagnosisData);
+            const runPrimaryAction = () => {
+              if (primaryLabel === "生成内容") {
+                onCreateContentTask(question);
+                return;
+              }
+              if (primaryLabel === "加入诊断") {
+                onAddToRound(question);
+                return;
+              }
+              onViewEvidence(question);
+            };
+            return (
+              <TableRow key={question.id} data-testid={`question-pool-row-${question.id}`}>
+                <TableCell className="max-w-xs whitespace-normal">{question.questionText}</TableCell>
+                <TableCell data-testid={`question-opportunity-label-${question.id}`}>
+                  {question.opportunityLabel ? (
+                    <Badge variant="outline" className={opportunityBadgeClass(question.opportunityLabel)}>
+                      {question.opportunityLabel}
                     </Badge>
-                  ))}
-                  {(question.requiredSourceTypes ?? []).length === 0 ? "—" : null}
-                </div>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex flex-wrap justify-end gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>{resolveSearchPoolTypeLabel(question.searchPoolType)}</TableCell>
+                <TableCell className="max-w-[10rem] whitespace-normal text-sm text-gray-700">
+                  {question.diagnosisGap}
+                </TableCell>
+                <TableCell data-testid={`question-ai-performance-${question.id}`}>
+                  {hasDiagnosisData ? question.aiPerformanceLabel : "暂无诊断数据"}
+                </TableCell>
+                <TableCell data-testid={`question-content-status-${question.id}`}>
+                  {question.contentStatus}
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={Number(question.enabled) !== 0}
                     disabled={mutating}
-                    data-testid={`question-view-evidence-${question.id}`}
-                    onClick={() => onViewEvidence(question)}
-                  >
-                    查看证据
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={mutating}
-                    data-testid={`question-add-round-${question.id}`}
-                    onClick={() => onAddToRound(question)}
-                  >
-                    加入本轮诊断
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={mutating || question.hasContentTask}
-                    data-testid={`question-create-task-${question.id}`}
-                    onClick={() => onCreateContentTask(question)}
-                  >
-                    生成内容任务
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={question.priorityLevel === "high" ? "default" : "outline"}
-                    disabled={mutating}
-                    data-testid={`question-toggle-priority-${question.id}`}
-                    onClick={() => onTogglePriority(question)}
-                  >
-                    <Star className="mr-1 h-3.5 w-3.5" />
-                    {question.priorityLevel === "high" ? "取消重点" : "标记重点"}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={mutating}
-                    data-testid={`question-edit-${question.id}`}
-                    onClick={() => onEdit(question)}
-                  >
-                    编辑
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                    data-testid={`question-toggle-enabled-${question.id}`}
+                    onCheckedChange={checked => onToggleEnabled(question, checked)}
+                  />
+                </TableCell>
+                <TableCell>
+                  {isQuestionPoolPriority(question) ? (
+                    <Badge className="border-rose-200 bg-rose-50 text-rose-800">是</Badge>
+                  ) : (
+                    "否"
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {(question.requiredSourceTypes ?? []).map(sourceType => (
+                      <Badge key={sourceType} variant="outline" className="text-xs">
+                        {resolveSourceTypeLabel(sourceType)}
+                      </Badge>
+                    ))}
+                    {(question.requiredSourceTypes ?? []).length === 0 ? "—" : null}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex flex-col items-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={mutating || (primaryLabel === "生成内容" && question.hasContentTask)}
+                      data-testid={`question-primary-action-${question.id}`}
+                      onClick={runPrimaryAction}
+                    >
+                      {primaryLabel}
+                    </Button>
+                    <details className="group text-right" data-testid={`question-more-actions-${question.id}`}>
+                      <summary className="cursor-pointer list-none text-xs text-gray-500 hover:text-gray-700 [&::-webkit-details-marker]:hidden">
+                        更多操作
+                      </summary>
+                      <div className="mt-2 flex max-w-[13rem] flex-wrap justify-end gap-1 rounded-lg border border-gray-100 bg-gray-50 p-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={mutating}
+                          data-testid={`question-view-evidence-${question.id}`}
+                          onClick={() => onViewEvidence(question)}
+                        >
+                          查看证据
+                        </Button>
+                         <Button
+                           type="button"
+                           size="sm"
+                           variant="ghost"
+                           disabled={mutating}
+                           data-testid={`question-add-round-${question.id}`}
+                           onClick={() => onAddToRound(question)}
+                         >
+                          加入本轮诊断
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={mutating || question.hasContentTask}
+                          data-testid={`question-create-task-${question.id}`}
+                          onClick={() => onCreateContentTask(question)}
+                        >
+                          生成内容任务
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={mutating}
+                          data-testid={`question-toggle-priority-${question.id}`}
+                          onClick={() => onTogglePriority(question)}
+                        >
+                          <Star className="mr-1 h-3.5 w-3.5" />
+                          {question.priorityLevel === "high" ? "取消重点" : "标记重点"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={mutating}
+                          data-testid={`question-edit-${question.id}`}
+                          onClick={() => onEdit(question)}
+                        >
+                          编辑
+                        </Button>
+                      </div>
+                    </details>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

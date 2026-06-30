@@ -54,6 +54,7 @@ import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Circle,
   ExternalLink,
   Link2,
@@ -526,11 +527,22 @@ export default function SourceGraphPage() {
           <div className="flex items-center gap-2">
             <Network className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900" data-testid="source-graph-page-title">
-              信源证据与可信度修复工具
+              运营后台｜信源证据修复后台
             </h1>
           </div>
-          <p className="mt-1 max-w-3xl text-sm text-gray-500">
-            品牌信源图谱用于帮助运营团队判断：AI 为什么不够信任这个品牌、哪些公开证据缺失、下一步该补哪类信源。
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+              运营后台
+            </span>
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+              不建议客户第一轮演示
+            </span>
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+              用于内部交付
+            </span>
+          </div>
+          <p className="mt-2 max-w-3xl text-sm text-gray-500">
+            这里用于检查 AI 是否有足够公开证据信任品牌。品牌信源图谱和信源证据与可信度修复工具保留给运营团队判断证据缺口、实体一致性和修复顺序。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">
@@ -630,6 +642,18 @@ export default function SourceGraphPage() {
             </div>
           ) : null}
 
+          <details
+            className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+            data-testid="source-graph-operator-details-fold"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                展开运营明细：信源记录、实体一致性与修复建议
+              </span>
+              <span className="text-xs font-normal text-gray-500">长表、检测细节和内部状态已收起</span>
+            </summary>
+            <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
           <P0Section title="运营明细：信源总览" description="基于当前项目信源与关键信息一致性自动计算">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="source-graph-overview">
               <P0MetricTile
@@ -912,6 +936,8 @@ export default function SourceGraphPage() {
               )}
             </div>
           </P0Section>
+            </div>
+          </details>
         </>
       )}
 

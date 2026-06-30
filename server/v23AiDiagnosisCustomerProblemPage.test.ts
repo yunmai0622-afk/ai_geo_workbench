@@ -11,7 +11,8 @@ describe("GEO V2.3-P0-F AI diagnosis customer problem page", () => {
 
   it("turns AI diagnosis into a customer-readable problem page", () => {
     expect(report).toContain("诊断问题页");
-    expect(report).toContain("为什么现在 AI 还没有稳定推荐我");
+    expect(report).toContain("为什么 AI 还不稳定推荐你");
+    expect(report).toContain("把实测结果翻译成客户能理解的原因、影响和本月修复动作");
     expect(report).toContain("AI 是否知道你");
     expect(report).toContain("AI 是否愿意推荐你");
     expect(report).toContain("AI 是否说得准");
