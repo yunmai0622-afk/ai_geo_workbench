@@ -27,7 +27,7 @@ import {
 } from "@/components/auth/authMarketing";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
-import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
+import { buildProjectUrl, getSearchFromLocation, isProjectIdAccessible } from "@/lib/activeProject";
 import { filterNavGroupsForRole, resolveNavOperatorMode } from "@shared/roleBasedNavigation";
 import { canAccessOperatorAdminConsole } from "@shared/platformAdmin";
 import { filterNavigableProjects } from "@shared/projectNavigation";
@@ -278,7 +278,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = location.split("?")[0] || location;
   const searchParams = useMemo(
-    () => new URLSearchParams(location.split("?")[1] ?? ""),
+    () => new URLSearchParams(getSearchFromLocation(location)),
     [location],
   );
   const isOperatorNav = resolveNavOperatorMode(user?.role);
