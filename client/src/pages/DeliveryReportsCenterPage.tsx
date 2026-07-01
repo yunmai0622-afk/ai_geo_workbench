@@ -624,15 +624,13 @@ function RenewalDeliveryReportHero({
               { title: "收录与复测", desc: report.hasRetestData ? "已完成 AI 复测并形成对比。" : "等待收录数据和下一次复测。", path: "/inclusion-monitoring" },
               { title: "报告与下月建议", desc: "沉淀本月服务价值和下月续费理由。", path: "/delivery-reports" },
             ].map(item => (
-              <button
+              <div
                 key={item.title}
-                type="button"
-                className="rounded-xl border border-gray-200 bg-white p-3 text-left hover:bg-gray-50"
-                onClick={() => setLocation(buildProjectUrl(item.path, selectedProjectId))}
+                className="rounded-xl border border-gray-200 bg-white p-3 text-left"
               >
                 <p className="text-sm font-semibold text-gray-900">{item.title}</p>
                 <p className="mt-1 text-xs leading-5 text-gray-500">{item.desc}</p>
-              </button>
+              </div>
             ))}
           </div>
         </P0Card>
@@ -667,25 +665,28 @@ function RenewalDeliveryReportHero({
         </P0Card>
       </div>
 
-      <P0Card testId="delivery-report-share-entry" className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
+      <details className="rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="delivery-report-share-entry">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">
+          <span className="inline-flex items-center gap-2">
             <Share2 className="size-4 text-blue-600" />
-            <p className="text-sm font-semibold text-gray-900">客户分享 / 导出入口</p>
-          </div>
-          <p className="mt-2 text-sm leading-6 text-gray-600">
+            客户分享 / 导出入口
+          </span>
+          <span className="text-xs font-normal text-gray-500">需要交付时再展开</span>
+        </summary>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-gray-100 p-5">
+          <p className="text-sm leading-6 text-gray-600">
             如需给客户查看，可使用客户报告预览或已有分享链接入口；本轮不新增导出系统。
           </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setLocation(`/delivery-reports/share/${selectedProjectId}`)}
+          >
+            查看客户报告预览
+            <ArrowRight className="ml-1.5 size-4" />
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setLocation(`/delivery-reports/share/${selectedProjectId}`)}
-        >
-          查看客户报告预览
-          <ArrowRight className="ml-1.5 size-4" />
-        </Button>
-      </P0Card>
+      </details>
     </div>
   );
 }
@@ -1127,17 +1128,6 @@ export function DeliveryReportsCenterPage() {
               <p className="text-sm text-gray-700">
                 尚未生成本月优化计划。请先在「本月优化计划」制定计划并执行，完成后将自动生成本月成效报告。
               </p>
-              <Button
-                type="button"
-                className={`mt-4 ${geoP0Brand.primary}`}
-                data-testid="delivery-report-empty-cta"
-                onClick={() =>
-                  selectedProjectId && setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
-                }
-              >
-                前往本月优化计划
-                <ArrowRight className="ml-1.5 size-4" />
-              </Button>
             </div>
           </div>
         </P0Card>

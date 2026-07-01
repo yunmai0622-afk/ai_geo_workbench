@@ -9,7 +9,7 @@ describe("GEO V2.3-P0-J sellable reduction pass", () => {
   it("separates weekly customer progress from the internal operator view", () => {
     const weeklyPage = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weeklyPage).toContain("WeeklyCustomerExecutionOverview");
-    expect(weeklyPage).toContain("内部运营执行视图");
+    expect(weeklyPage).toContain("运营后台 · 不进入客户第一轮演示");
     expect(weeklyPage).toContain("客户只看上方“做到哪一步”");
     expect(weeklyPage).toContain('data-testid="weekly-operational-workbench"');
   });

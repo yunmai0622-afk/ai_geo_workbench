@@ -348,44 +348,14 @@ export default function EnterpriseWorkspacePage() {
     (metrics?.publishRecordCount ?? 0) + (metrics?.completedPublishTaskCount ?? 0);
   const customerMainCta = useMemo(() => {
     if (!selectedProjectId) return null;
-    if (!customerHasMonthlyPlan) {
-      return {
-        label: "查看/制定本月方案",
-        path: buildProjectUrl("/monthly-plan", selectedProjectId),
-        reason: "先把当前短板转成本月服务方案。",
-      };
-    }
-    if (
-      customerMonthlyProgress.totalCount > 0 &&
-      customerMonthlyProgress.completedCount < customerMonthlyProgress.totalCount
-    ) {
-      return {
-        label: "查看执行进度",
-        path: buildProjectUrl("/weekly", selectedProjectId),
-        reason: "本月服务事项还在推进中。",
-      };
-    }
-    if ((metrics?.monitoringRecordCount ?? 0) === 0 && (metrics?.retestComparisonCount ?? 0) === 0) {
-      return {
-        label: "查看效果验证",
-        path: buildProjectUrl("/inclusion-monitoring", selectedProjectId),
-        reason: "执行完成后，需要验证内容是否被搜索和 AI 看见。",
-      };
-    }
     return {
-      label: (metrics?.reportCount ?? 0) > 0 ? "查看效果报告" : "生成/查看效果报告",
-      path: buildProjectUrl("/delivery-reports", selectedProjectId),
-      reason: "把本月做了什么、产生了什么变化沉淀成客户报告。",
+      label: "查看本月服务计划",
+      path: buildProjectUrl("/monthly-plan", selectedProjectId),
+      reason: customerHasMonthlyPlan
+        ? "先看本月围绕哪 3 件事推进，再进入执行和验证。"
+        : "先把当前最大问题转成本月可执行的服务计划。",
     };
-  }, [
-    customerHasMonthlyPlan,
-    customerMonthlyProgress.completedCount,
-    customerMonthlyProgress.totalCount,
-    metrics?.monitoringRecordCount,
-    metrics?.reportCount,
-    metrics?.retestComparisonCount,
-    selectedProjectId,
-  ]);
+  }, [customerHasMonthlyPlan, selectedProjectId]);
   const customerConclusion = useMemo(() => {
     if (!metrics) return "正在加载客户 GEO 服务状态。";
     if (!metrics.p0ProfileComplete) {
@@ -771,15 +741,7 @@ export default function EnterpriseWorkspacePage() {
               <section className="rounded-2xl border border-gray-100 bg-white p-5" data-testid="workspace-monthly-top3">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold text-gray-900">下一步服务动作</h2>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-blue-700"
-                    onClick={() => setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))}
-                  >
-                    查看本月方案
-                  </Button>
+                  <span className="text-xs text-blue-700">唯一下一步：本月服务计划</span>
                 </div>
                 {customerServicePriorities.length > 0 ? (
                   <div className="mt-4 space-y-3">
@@ -817,19 +779,17 @@ export default function EnterpriseWorkspacePage() {
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-5">
               {customerFlowSteps.map(step => (
-                <button
+                <div
                   key={step.key}
-                  type="button"
                   className={cn(
                     "min-h-[132px] rounded-2xl border p-4 text-left transition-colors",
                     step.done
                       ? "border-emerald-200 bg-emerald-50"
                       : step.active
                         ? "border-blue-200 bg-blue-50"
-                        : "border-gray-200 bg-white hover:border-blue-100",
+                        : "border-gray-200 bg-white",
                   )}
                   data-testid={`workspace-service-flow-${step.key}`}
-                  onClick={() => setLocation(buildProjectUrl(step.path, selectedProjectId))}
                 >
                   <span
                     className={cn(
@@ -845,7 +805,7 @@ export default function EnterpriseWorkspacePage() {
                   </span>
                   <p className="mt-3 text-sm font-semibold text-gray-900">{step.label}</p>
                   <p className="mt-2 text-xs leading-5 text-gray-600">{step.next}</p>
-                </button>
+                </div>
               ))}
             </div>
           </section>
@@ -880,18 +840,16 @@ export default function EnterpriseWorkspacePage() {
               {customerRisks.length > 0 ? (
                 <div className="mt-4 space-y-3">
                   {customerRisks.map(risk => (
-                    <button
+                    <div
                       key={risk.title}
-                      type="button"
-                      className="w-full rounded-xl border border-amber-100 bg-amber-50 p-3 text-left transition-colors hover:bg-amber-100"
-                      onClick={() => setLocation(buildProjectUrl(risk.path, selectedProjectId))}
+                      className="w-full rounded-xl border border-amber-100 bg-amber-50 p-3 text-left"
                     >
                       <p className="inline-flex items-center gap-2 text-sm font-semibold text-amber-950">
                         <AlertTriangle className="size-4" aria-hidden />
                         {risk.title}
                       </p>
                       <p className="mt-1 text-sm leading-6 text-amber-900">{risk.description}</p>
-                    </button>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -1156,10 +1114,21 @@ export default function EnterpriseWorkspacePage() {
           </details>
 
           {metrics.t0ContentGapSuggestions ? (
-            <T0ContentGapSuggestionsCard
-              projectId={selectedProjectId}
-              suggestions={metrics.t0ContentGapSuggestions}
-            />
+            <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+                <span className="inline-flex items-center gap-2">
+                  <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                  内容缺口建议
+                </span>
+                <span className="text-xs font-normal text-gray-500">运营参考，客户首屏不展开</span>
+              </summary>
+              <div className="border-t border-gray-100 px-5 pb-5 pt-4">
+                <T0ContentGapSuggestionsCard
+                  projectId={selectedProjectId}
+                  suggestions={metrics.t0ContentGapSuggestions}
+                />
+              </div>
+            </details>
           ) : null}
 
           <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">

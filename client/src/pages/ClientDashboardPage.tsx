@@ -22,15 +22,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { activateProject, buildProjectUrl } from "@/lib/activeProject";
-import {
-  formatClientProjectMentionRate,
-  formatGeoScore,
-  formatMeasuredAt,
-} from "@/lib/projectWorkspaceDisplay";
 import { resolveClientProjectCardPrimaryAction } from "@shared/clientProjectCardPrimaryAction";
 import {
   formatSubscriptionExpiryLabel,
-  subscriptionServiceStatusBadgeClass,
   type SubscriptionServiceStatus,
 } from "@shared/companySubscriptionServiceStatus";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
@@ -170,7 +164,6 @@ function StatCard({
 function ProjectCard({
   project,
   onEnter,
-  metricsLoading,
   showArchived,
   onArchive,
   onUnarchive,
@@ -178,7 +171,6 @@ function ProjectCard({
 }: {
   project: ProjectSummary;
   onEnter: (id: number) => void;
-  metricsLoading: boolean;
   showArchived: boolean;
   onArchive: (id: number) => void;
   onUnarchive: (id: number) => void;
@@ -198,25 +190,18 @@ function ProjectCard({
     subscriptionServiceStatus: project.subscriptionServiceStatus,
   });
   const pipelineBadgeLabel = primaryAction.stageLabel;
-  const actionLabel = primaryAction.ctaLabel;
-  const stageActionUrl = buildProjectUrl(primaryAction.ctaPath, project.id);
+  const serviceHomeUrl = buildProjectUrl("/workspace", project.id);
   const nextStep = primaryAction.nextStepHint;
-  const geoScore = formatGeoScore(project.latestGeoScore);
-  const hasAiTestData = project.aiTestCount > 0 || project.lastDiagnosisAt != null;
-  const mentionRateText = formatClientProjectMentionRate({
-    mentionRate: project.t0BrandMentionRate,
-    hasAiTestData,
-    loading: metricsLoading,
-  });
-  const mentionRateIsPlaceholder = mentionRateText === "未实测" || mentionRateText === "加载中";
-  const industryLabel =
-    project.industry?.trim() && project.industry !== "待补充" ? project.industry.trim() : "未填写行业";
-  const lastMeasuredLabel = formatMeasuredAt(project.lastMeasuredAt ?? project.lastDiagnosisAt) ?? "暂无";
   const subscriptionStatus = (project.subscriptionServiceStatus ?? "not_configured") as SubscriptionServiceStatus;
   const subscriptionExpiryLabel = formatSubscriptionExpiryLabel(
     project.subscriptionExpiresAt,
     subscriptionStatus,
   );
+  const riskLabel = primaryAction.riskLabels.length > 0 ? primaryAction.riskLabels.join("、") : "暂无明显风险";
+  const reportReadyLabel = primaryAction.reportReady ? "可出报告" : "报告待积累";
+  const reportReadyClass = primaryAction.reportReady
+    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+    : "border-gray-200 bg-gray-50 text-gray-600";
 
   return (
     <article
@@ -246,6 +231,16 @@ function ProjectCard({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40 rounded-xl" onClick={e => e.stopPropagation()}>
+              <DropdownMenuItem
+                disabled
+                className="flex-col items-start gap-0 text-xs"
+                data-testid="client-project-subscription"
+              >
+                <span>套餐：{project.subscriptionPlanName ?? "未开通"}</span>
+                <span className="text-gray-400">
+                  {project.subscriptionServiceStatusLabel} · 到期 {subscriptionExpiryLabel}
+                </span>
+              </DropdownMenuItem>
               {showArchived ? (
                 <DropdownMenuItem
                   className="cursor-pointer"
@@ -272,58 +267,24 @@ function ProjectCard({
         </div>
       </div>
 
-      <p className="mb-3 text-[13px] text-gray-500" data-testid="client-project-industry">
-        {industryLabel}
-      </p>
-
-      <div
-        className="mb-3 flex flex-wrap items-center gap-2 text-[12px]"
-        data-testid="client-project-subscription"
-      >
-        <span className="text-gray-500">套餐：</span>
-        <span className="font-medium text-gray-800">
-          {project.subscriptionPlanName ?? "未开通"}
-        </span>
-        <span
-          className={cn(
-            "rounded-full border px-2 py-0.5 text-[11px] font-medium",
-            subscriptionServiceStatusBadgeClass(subscriptionStatus),
-          )}
-        >
-          {project.subscriptionServiceStatusLabel}
-        </span>
-        <span className="text-gray-400">到期 {subscriptionExpiryLabel}</span>
-      </div>
-
-      <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 px-3 py-2.5">
-        <div>
-          <p className="text-xs font-medium text-gray-500">GEO 分</p>
-          <p className="text-sm font-bold tabular-nums text-gray-900" data-testid="client-project-geo-score">
-            {geoScore}
-          </p>
+      <div className="mb-4 grid gap-2 rounded-lg border border-gray-100 bg-white px-3 py-3" data-testid="client-project-service-summary">
+        <div className="grid grid-cols-[5rem_1fr] gap-2 text-[12px] leading-5">
+          <span className="font-medium text-gray-500">当前阶段</span>
+          <span className="font-semibold text-gray-900">{pipelineBadgeLabel}</span>
         </div>
-        <div>
-          <p className="text-xs font-medium text-gray-500">品牌提及率</p>
-          <p
-            className={cn(
-              "text-sm font-bold tabular-nums text-gray-900",
-              mentionRateIsPlaceholder && "text-xs font-medium text-gray-500 tabular-nums",
-            )}
-            data-testid="client-project-mention-rate"
-          >
-            {mentionRateText}
-          </p>
+        <div className="grid grid-cols-[5rem_1fr] gap-2 text-[12px] leading-5">
+          <span className="font-medium text-gray-500">是否有风险</span>
+          <span className={primaryAction.riskLabels.length > 0 ? "font-semibold text-amber-800" : "text-gray-700"}>
+            {riskLabel}
+          </span>
         </div>
-      </div>
-
-      <div className="mb-4 space-y-2 rounded-lg border border-gray-100 bg-white px-3 py-3">
         <p className="text-[12px] leading-5 text-gray-600" data-testid="client-project-main-problem">
-          <span className="font-medium text-gray-500">最大问题：</span>
+          <span className="font-medium text-gray-500">风险说明：</span>
           {primaryAction.majorProblem}
         </p>
         <p className="text-[12px] leading-5 text-gray-600" data-testid="client-project-monthly-progress">
-          <span className="font-medium text-gray-500">本月进度：</span>
-          {primaryAction.monthlyProgressLabel}
+          <span className="font-medium text-gray-500">是否可出报告：</span>
+          {reportReadyLabel}
         </p>
         <p className="text-[12px] leading-5 text-gray-600" data-testid="client-project-next-step">
           <span className="font-medium text-gray-500">下一步：</span>
@@ -332,45 +293,22 @@ function ProjectCard({
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5" data-testid="client-project-risk-tags">
-        {primaryAction.riskLabels.length > 0 ? (
-          primaryAction.riskLabels.map(label => (
-            <span key={label} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-              {label}
-            </span>
-          ))
-        ) : (
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
-            暂无明显风险
-          </span>
-        )}
-        <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">
-          最近实测：{lastMeasuredLabel}
+        <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", reportReadyClass)}>
+          {reportReadyLabel}
         </span>
       </div>
 
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
+      <div className="mt-auto">
         <button
           type="button"
-          className="text-xs font-medium text-gray-500 hover:text-blue-700"
-          data-testid="client-project-overview-link"
-          onClick={e => {
-            e.stopPropagation();
-            setLocation(buildProjectUrl("/workspace", project.id));
-          }}
-        >
-          进入总览
-        </button>
-        <button
-          type="button"
-          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition-all hover:bg-blue-100 sm:w-auto sm:justify-start"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition-all hover:bg-blue-100"
           data-testid="enter-workspace-button"
           onClick={e => {
             e.stopPropagation();
-            setLocation(stageActionUrl);
+            setLocation(serviceHomeUrl);
           }}
         >
-          <span className="sr-only">{actionLabel}</span>
-          {actionLabel}
+          进入服务首页
           <ArrowRight className="h-3 w-3" />
         </button>
       </div>
@@ -638,7 +576,6 @@ export default function ClientDashboardPage() {
               key={project.id}
               project={project}
               onEnter={handleEnter}
-              metricsLoading={isLoading}
               showArchived={showArchived}
               onArchive={id =>
                 dangerousConfirm.requestConfirm(DANGEROUS_ACTION_LABELS.archiveProject, () => handleArchive(id))

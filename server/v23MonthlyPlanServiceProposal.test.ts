@@ -27,15 +27,12 @@ describe("GEO V2.3 P0-C monthly plan service proposal", () => {
     for (const label of [
       "解决的问题",
       "为什么做",
-      "完成标准",
-      "做完怎么验证",
       "客户能看到什么价值",
-      "关联任务数量",
+      "完成后怎么验证",
     ]) {
       expect(page).toContain(label);
     }
     expect(page).toContain("customerValueForDimension");
-    expect(page).toContain("priority.successCriteria");
     expect(page).toContain("priority.retestMethod");
   });
 

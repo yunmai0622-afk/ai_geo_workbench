@@ -823,6 +823,7 @@ export default function WeeklyContentPage() {
     () => new URLSearchParams(searchString).get("mode") === "content-production",
     [searchString],
   );
+  const isCustomerExecutionView = !isContentProductionWorkbench;
 
   const platformAccountGroups = useMemo(
     () =>
@@ -2061,6 +2062,7 @@ export default function WeeklyContentPage() {
   );
 
   const weeklyCustomerPrimaryActionLabel = useMemo(() => {
+    if (isCustomerExecutionView) return "查看收录与验证";
     if (monthlyContentTasks.length === 0) return "查看本月方案";
     if (taskProgress.publishedCount > 0) return "查看效果验证";
     if (taskProgress.enqueueReadyCount > 0 || taskProgress.queuedCount > 0) return "进入发布页面";
@@ -2068,6 +2070,7 @@ export default function WeeklyContentPage() {
     return "进入本月任务推进";
   }, [
     entryContext.questionId,
+    isCustomerExecutionView,
     monthlyContentTasks.length,
     taskProgress.enqueueReadyCount,
     taskProgress.publishedCount,
@@ -2076,6 +2079,10 @@ export default function WeeklyContentPage() {
 
   const handleWeeklyCustomerPrimaryAction = useCallback(() => {
     if (!selectedProjectId) return;
+    if (isCustomerExecutionView) {
+      setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId));
+      return;
+    }
     if (monthlyContentTasks.length === 0) {
       setLocation(buildProjectUrl("/monthly-plan", selectedProjectId));
       return;
@@ -2099,6 +2106,7 @@ export default function WeeklyContentPage() {
   }, [
     entryContext.questionId,
     handleSelectMonthlyContentTask,
+    isCustomerExecutionView,
     monthlyContentTasks,
     selectedProjectId,
     setLocation,
@@ -3522,7 +3530,7 @@ export default function WeeklyContentPage() {
         <p className="text-sm text-gray-500">
           {isContentProductionWorkbench
             ? "运营团队在这里围绕 AI 引用逻辑生成、质检并推进平台化内容。"
-            : "让客户看懂本月服务做到哪一步；运营人员可在下方继续内容任务推进。"}
+            : "让客户只看懂本月服务做到哪一步，以及下一步什么时候进入收录与验证。"}
         </p>
       </header>
 
@@ -3565,18 +3573,9 @@ export default function WeeklyContentPage() {
               type="button"
               className="bg-blue-600 text-white hover:bg-blue-700"
               data-testid="weekly-go-ai-diagnosis"
-              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
+              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))}
             >
-              去 AI 实测诊断
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className={geoP0Brand.primaryOutline}
-              data-testid="weekly-select-content-gap"
-              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
-            >
-              选择内容缺口
+              查看本月服务计划
             </Button>
           </div>
         </P0Card>
@@ -3607,10 +3606,11 @@ export default function WeeklyContentPage() {
             onPrimaryAction={handleWeeklyCustomerPrimaryAction}
           />
 
-          <details id="weekly-operational-workbench" className="group space-y-5 rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="weekly-operational-workbench">
+          {isContentProductionWorkbench ? (
+          <details id="weekly-operational-workbench" open className="group space-y-5 rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="weekly-operational-workbench">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
               <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">内部运营执行视图</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">运营后台 · 不进入客户第一轮演示</p>
                 <h2 className={geoP0Surfaces.sectionTitle}>运营执行明细</h2>
                 <p className={geoP0Surfaces.muted}>
                   客户只看上方“做到哪一步”；内部运营仍围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布。
@@ -3818,6 +3818,7 @@ export default function WeeklyContentPage() {
             ) : null}
             </div>
           </details>
+          ) : null}
         </>
       )}
 

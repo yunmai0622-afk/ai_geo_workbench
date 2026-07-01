@@ -41,7 +41,6 @@ type EffectVerificationPrimaryCta = {
   label: string;
   hint: string;
   path?: string;
-  anchorId?: string;
 };
 
 type EffectVerificationIssue = {
@@ -175,31 +174,16 @@ function buildEffectVerificationIssues(
 function buildEffectVerificationPrimaryCta(
   overview: ReturnType<typeof aggregateContentAssetEffectOverview>,
 ): EffectVerificationPrimaryCta {
-  if (overview.publishedCount === 0) {
-    return {
-      label: "去发布内容",
-      hint: "先完成内容发布，才有后续收录和 AI 复测证据。",
-      path: "/content-publishing",
-    };
-  }
-  if (overview.retestReadyCount > 0) {
-    return {
-      label: "查看可复测内容",
-      hint: "已有内容满足复测条件，可进入运营明细发起 AI 复测。",
-      anchorId: "content-asset-retest-ready",
-    };
-  }
-  if (overview.includedCount > 0) {
-    return {
-      label: "查看效果证据",
-      hint: "已有收录证据，继续补充阅读、曝光和复测数据。",
-      anchorId: "effect-verification-evidence-summary",
-    };
-  }
+  const hint =
+    overview.publishedCount === 0
+      ? "当前仍在执行中，报告会说明哪些内容待发布、待验证。"
+      : overview.retestReadyCount > 0 || overview.includedCount > 0
+        ? "已有验证线索，下一步把发布、收录和复测情况汇总成客户可读报告。"
+        : "已发布内容需要继续确认收录，报告会标明待验证项和复测时间。";
   return {
-    label: "查看待确认内容",
-    hint: "已发布内容需要继续确认是否被搜索看见。",
-    anchorId: "monitoring-operation-details",
+    label: "查看交付报告",
+    hint,
+    path: "/delivery-reports",
   };
 }
 
@@ -275,10 +259,6 @@ function EffectVerificationCustomerOverview({
   const handlePrimaryCta = () => {
     if (primaryCta.path) {
       onGoPath(buildProjectUrl(primaryCta.path, selectedProjectId));
-      return;
-    }
-    if (primaryCta.anchorId) {
-      document.getElementById(primaryCta.anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -646,15 +626,22 @@ export function InclusionMonitoringCenterPage() {
       />
 
       {workspaceSummaryQuery.data?.retestDueReminder && selectedProjectId ? (
-        <RetestDueReminderCard
-          reminder={workspaceSummaryQuery.data.retestDueReminder}
-          testId="inclusion-monitoring-retest-due-reminder"
-          onGoRetest={() =>
-            setLocation(
-              buildProjectUrl(workspaceSummaryQuery.data!.retestDueReminder!.ctaPath, selectedProjectId),
-            )
-          }
-        />
+        <details className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-900">
+            运营复测提醒
+          </summary>
+          <div className="border-t border-gray-100 p-5">
+            <RetestDueReminderCard
+              reminder={workspaceSummaryQuery.data.retestDueReminder}
+              testId="inclusion-monitoring-retest-due-reminder"
+              onGoRetest={() =>
+                setLocation(
+                  buildProjectUrl(workspaceSummaryQuery.data!.retestDueReminder!.ctaPath, selectedProjectId),
+                )
+              }
+            />
+          </div>
+        </details>
       ) : null}
 
       <EffectVerificationProcess overview={overview} records={records} />
@@ -713,14 +700,7 @@ export function InclusionMonitoringCenterPage() {
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
           <RadioTower className="mx-auto h-10 w-10 text-gray-300" />
           <p className="mt-4 text-sm font-medium text-gray-700">暂无已发布内容</p>
-          <p className="mt-1 text-xs text-gray-500">请先完成发布并回填公开链接。</p>
-          <Button
-            type="button"
-            className={`mt-5 ${geoP0Brand.primary}`}
-            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))}
-          >
-            去发布执行中心
-          </Button>
+          <p className="mt-1 text-xs text-gray-500">当前说明为“正在执行中”，发布与回填由运营后台继续处理。</p>
         </div>
       ) : (
         <details

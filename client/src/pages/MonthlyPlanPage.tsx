@@ -20,7 +20,6 @@ import {
   ClipboardList,
   Eye,
   ListChecks,
-  ShieldCheck,
   Sparkles,
   Target,
 } from "lucide-react";
@@ -406,23 +405,14 @@ export default function MonthlyPlanPage() {
         action: "generate" as const,
       };
     }
-    if (planPhase === "completed" || showCompletedPlan) {
-      return {
-        label: "查看效果报告",
-        hint: "查看本月执行、变化和下月建议。",
-        path: "/delivery-reports",
-      };
-    }
-    if (allTasksCompleted) {
-      return {
-        label: "查看效果验证",
-        hint: "验证内容是否被搜索和 AI 看见。",
-        path: "/inclusion-monitoring",
-      };
-    }
     return {
       label: "查看执行进度",
-      hint: "进入执行进度，推进本月服务事项。",
+      hint:
+        planPhase === "completed" || showCompletedPlan
+          ? "本月计划已完成，仍从执行进度进入验证和报告闭环。"
+          : allTasksCompleted
+            ? "本月服务事项已完成，下一步从执行进度进入收录与验证。"
+            : "确认本月 3 个优先事项后，只需要进入执行进度看服务推进。",
       path: "/weekly",
     };
   }, [allTasksCompleted, canGeneratePlan, hasMaturityReport, hasServiceItems, plan, planPhase, showCompletedPlan]);
@@ -532,21 +522,6 @@ export default function MonthlyPlanPage() {
           </div>
         </div>
 
-        <div data-testid="monthly-plan-customer-goals">
-          <div className="mb-3 flex items-center gap-2">
-            <ShieldCheck className="size-4 text-emerald-600" />
-            <p className="text-sm font-semibold text-gray-900">本月目标</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {customerGoals.map((goal, index) => (
-              <div key={goal} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                <p className="text-xs font-medium text-gray-500">目标 {index + 1}</p>
-                <p className="mt-1 text-sm font-semibold leading-6 text-gray-900">{goal}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div data-testid="monthly-plan-top3-service-items">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -595,20 +570,12 @@ export default function MonthlyPlanPage() {
                         <dd className="mt-1 text-gray-600">{priority.reason}</dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-gray-900">完成标准</dt>
-                        <dd className="mt-1 text-gray-600">{priority.successCriteria}</dd>
-                      </div>
-                      <div>
-                        <dt className="font-medium text-gray-900">做完怎么验证</dt>
-                        <dd className="mt-1 text-gray-600">{priority.retestMethod}</dd>
-                      </div>
-                      <div>
                         <dt className="font-medium text-gray-900">客户能看到什么价值</dt>
                         <dd className="mt-1 text-gray-600">{customerValueForDimension(priority.relatedDimensionKey)}</dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-gray-900">关联任务数量</dt>
-                        <dd className="mt-1 text-gray-600">{priority.source === "existing_task" ? `${priority.tasks.length} 项` : "待生成执行任务"}</dd>
+                        <dt className="font-medium text-gray-900">完成后怎么验证</dt>
+                        <dd className="mt-1 text-gray-600">{priority.retestMethod || priority.successCriteria}</dd>
                       </div>
                     </dl>
                   </article>
@@ -622,17 +589,26 @@ export default function MonthlyPlanPage() {
       {!maturityQuery.data && !maturityQuery.isLoading ? (
         <P0Card testId="monthly-plan-no-maturity">
           <p className="text-sm text-gray-700">请先完成 AI 品牌成熟度评估，再生成本月服务方案。</p>
-          <Button
-            type="button"
-            size="sm"
-            className="mt-3"
-            onClick={() => setLocation(buildProjectUrl("/maturity", selectedProjectId))}
-          >
-            前往 AI 品牌成熟度
-            <ArrowRight className="ml-1.5 size-3.5" />
-          </Button>
         </P0Card>
       ) : null}
+
+      <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-customer-goals">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
+            本月目标摘要
+          </span>
+          <span className="text-xs font-normal text-gray-500">首屏只保留 Top 3 服务事项</span>
+        </summary>
+        <div className="grid gap-3 border-t border-gray-100 px-5 pb-5 pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          {customerGoals.map((goal, index) => (
+            <div key={goal} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <p className="text-xs font-medium text-gray-500">目标 {index + 1}</p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-gray-900">{goal}</p>
+            </div>
+          ))}
+        </div>
+      </details>
 
       {showGenerateEmpty ? (
         <P0Card testId="monthly-plan-empty">
@@ -724,14 +700,19 @@ export default function MonthlyPlanPage() {
           </div>
         ) : null}
         {showActivePlan && retestReady ? (
-          <div className="flex flex-wrap gap-2">
+          <details className="rounded-xl border border-gray-200 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-700">
+              运营复测操作
+            </summary>
+            <div className="flex flex-wrap gap-2 border-t border-gray-100 p-4">
             <Button type="button" variant="outline" data-testid="monthly-plan-retest-btn" disabled={retestMutation.isPending} onClick={handleRetest}>
               {retestMutation.isPending ? "复测中…" : "立即复测"}
             </Button>
             <Button type="button" variant="outline" onClick={handleGoAiDiagnosis}>
               前往 AI 实测诊断
             </Button>
-          </div>
+            </div>
+          </details>
         ) : null}
       </P0Card>
 
@@ -818,19 +799,17 @@ export default function MonthlyPlanPage() {
             { label: "效果验证", path: "/inclusion-monitoring" },
             { label: "效果报告", path: "/delivery-reports" },
           ].map(item => (
-            <button
+            <div
               key={item.path}
-              type="button"
               className={cn(
                 "rounded-xl border px-3 py-2 text-left font-medium",
                 item.path === "/monthly-plan"
                   ? "border-blue-200 bg-blue-50 text-blue-800"
-                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
+                  : "border-gray-200 bg-white text-gray-700",
               )}
-              onClick={() => selectedProjectId && setLocation(buildProjectUrl(item.path, selectedProjectId))}
             >
               {item.label}
-            </button>
+            </div>
           ))}
         </div>
       </P0Card>
