@@ -13,7 +13,8 @@ describe("GEO V2.3-P0-M nav content production route fix", () => {
     expect(layout).toContain('path: `/weekly?mode=${CONTENT_PRODUCTION_MODE}`');
     expect(layout).toContain('activeQuery: { mode: CONTENT_PRODUCTION_MODE }');
     expect(layout).toContain("function isNavItemActive");
-    expect(layout).toContain("getSearchFromLocation");
+    expect(layout).toContain("useSearch");
+    expect(layout).toContain("const searchString = useSearch();");
     expect(layout).toContain('searchParams.get("mode") === CONTENT_PRODUCTION_MODE');
     expect(layout).toContain("<SidebarMenuItem key={item.key}>");
   });

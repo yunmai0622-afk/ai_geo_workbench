@@ -19,7 +19,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import LoginGatePanel from "@/components/auth/LoginGatePanel";
 import {
   PLATFORM_PRODUCT_NAME,
@@ -27,7 +27,7 @@ import {
 } from "@/components/auth/authMarketing";
 import { useActiveProjectId } from "@/hooks/useActiveProject";
 import { useIsMobile } from "@/hooks/useMobile";
-import { buildProjectUrl, getSearchFromLocation, isProjectIdAccessible } from "@/lib/activeProject";
+import { buildProjectUrl, isProjectIdAccessible } from "@/lib/activeProject";
 import { filterNavGroupsForRole, resolveNavOperatorMode } from "@shared/roleBasedNavigation";
 import { canAccessOperatorAdminConsole } from "@shared/platformAdmin";
 import { filterNavigableProjects } from "@shared/projectNavigation";
@@ -49,7 +49,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "wouter";
 import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { cn } from "@/lib/utils";
 import { EnterpriseProjectShell } from "./project/EnterpriseProjectShell";
@@ -263,6 +262,7 @@ type DashboardLayoutContentProps = {
 function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
+  const searchString = useSearch();
   const { activeProjectId } = useActiveProjectId();
   const { data: projectsRaw = [] } = trpc.geo.projects.list.useQuery();
   const navigableProjects = useMemo(() => filterNavigableProjects(projectsRaw), [projectsRaw]);
@@ -277,10 +277,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = location.split("?")[0] || location;
-  const searchParams = useMemo(
-    () => new URLSearchParams(getSearchFromLocation(location)),
-    [location],
-  );
+  const searchParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
   const isOperatorNav = resolveNavOperatorMode(user?.role);
   const visibleNavGroups = useMemo(
     () => filterNavGroupsForRole(navGroups, isOperatorNav),
