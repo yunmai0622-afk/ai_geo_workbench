@@ -74,18 +74,23 @@ const PATHS_WITHOUT_PROJECT_SHELL = new Set([
 ]);
 
 type MenuItem = {
+  key: string;
   icon: typeof Sparkles;
   label: string;
   desc: string;
   path: string;
   aliases: string[];
+  activeQuery?: Record<string, string>;
 };
+
+const CONTENT_PRODUCTION_MODE = "content-production";
 
 const navGroups: { title: string; items: MenuItem[] }[] = [
   {
     title: "客户主流程",
     items: [
       {
+        key: "workspace",
         icon: Sparkles,
         label: "总览",
         desc: "看当前状态、最大问题和下一步动作",
@@ -93,6 +98,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/workspace", "/flow"],
       },
       {
+        key: "ai-diagnosis",
         icon: Brain,
         label: "诊断",
         desc: "看 AI 是否知道并愿意推荐客户",
@@ -100,6 +106,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/ai-diagnosis", "/diagnosis", "/responses", "/analysis", "/scores"],
       },
       {
+        key: "monthly-plan",
         icon: ListChecks,
         label: "本月方案",
         desc: "看本月为什么做这几件事",
@@ -107,6 +114,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/monthly-plan"],
       },
       {
+        key: "weekly-execution",
         icon: FileText,
         label: "执行进度",
         desc: "看本月服务做到哪一步",
@@ -114,6 +122,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/weekly", "/content-generation", "/articles"],
       },
       {
+        key: "inclusion-monitoring",
         icon: LineChart,
         label: "效果验证",
         desc: "看内容是否被搜索和 AI 看见",
@@ -121,6 +130,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/inclusion-monitoring", "/monitoring"],
       },
       {
+        key: "delivery-reports",
         icon: FileBarChart2,
         label: "效果报告",
         desc: "看本月价值和下月续费理由",
@@ -133,6 +143,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
     title: "运营工具",
     items: [
       {
+        key: "enterprise-profile",
         icon: Building2,
         label: "品牌资料",
         desc: "补齐企业被 AI 理解的基础信息",
@@ -140,13 +151,16 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/enterprise-profile", "/assets", "/projects", "/maturity"],
       },
       {
+        key: "content-production",
         icon: FileText,
         label: "内容生产工作台",
         desc: "围绕 AI 引用逻辑生成品牌内容",
-        path: "/weekly",
-        aliases: [],
+        path: `/weekly?mode=${CONTENT_PRODUCTION_MODE}`,
+        aliases: ["/weekly"],
+        activeQuery: { mode: CONTENT_PRODUCTION_MODE },
       },
       {
+        key: "content-publishing",
         icon: Send,
         label: "发布执行中心",
         desc: "适配不同平台规则并执行发布",
@@ -154,6 +168,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/content-publishing", "/publish"],
       },
       {
+        key: "questions",
         icon: Library,
         label: "AI 问题池",
         desc: "管理客户真实会问的 AI 搜索问题",
@@ -161,6 +176,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/questions"],
       },
       {
+        key: "brand-source-graph",
         icon: Network,
         label: "信源与证据库",
         desc: "检查各平台信源与实体一致性",
@@ -168,6 +184,7 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/brand-source-graph", "/source-graph"],
       },
       {
+        key: "knowledge",
         icon: BookOpen,
         label: "使用指南",
         desc: "查看系统使用说明、账号环境与操作指引",
@@ -182,6 +199,17 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 292;
 const MIN_WIDTH = 230;
 const MAX_WIDTH = 480;
+
+function isNavItemActive(item: MenuItem, pathname: string, searchParams: URLSearchParams): boolean {
+  if (!item.aliases.includes(pathname)) return false;
+  if (item.activeQuery) {
+    return Object.entries(item.activeQuery).every(([key, value]) => searchParams.get(key) === value);
+  }
+  if (pathname === "/weekly" && searchParams.get("mode") === CONTENT_PRODUCTION_MODE) {
+    return false;
+  }
+  return true;
+}
 
 export default function DashboardLayout({
   children,
@@ -249,13 +277,17 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pathname = location.split("?")[0] || location;
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.split("?")[1] ?? ""),
+    [location],
+  );
   const isOperatorNav = resolveNavOperatorMode(user?.role);
   const visibleNavGroups = useMemo(
     () => filterNavGroupsForRole(navGroups, isOperatorNav),
     [isOperatorNav],
   );
   const allMenuItems = useMemo(() => visibleNavGroups.flatMap(g => g.items), [visibleNavGroups]);
-  const activeMenuItem = allMenuItems.find(item => item.aliases.includes(pathname));
+  const activeMenuItem = allMenuItems.find(item => isNavItemActive(item, pathname, searchParams));
   const isMobile = useIsMobile();
   const useProjectShell = !PATHS_WITHOUT_PROJECT_SHELL.has(pathname);
   const isClientsHub = pathname === "/clients";
@@ -334,9 +366,9 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                   ) : null}
                   <SidebarMenu className="px-0 py-0">
                     {group.items.map(item => {
-                      const isActive = item.aliases.includes(pathname);
+                      const isActive = isNavItemActive(item, pathname, searchParams);
                       return (
-                        <SidebarMenuItem key={item.path}>
+                        <SidebarMenuItem key={item.key}>
                           <SidebarMenuButton
                             isActive={isActive}
                             onClick={() => navigateWithProject(item.path)}

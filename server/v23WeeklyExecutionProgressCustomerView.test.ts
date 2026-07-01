@@ -11,7 +11,8 @@ describe("V2.3-P0-G Weekly execution progress customer view", () => {
 
   it("turns /weekly into a customer-readable execution progress page", () => {
     expect(weeklyPage).toContain("客户主流程 / 执行进度");
-    expect(weeklyPage).toContain("<h1 className=\"text-2xl font-bold text-gray-900\">执行进度</h1>");
+    expect(weeklyPage).toContain('"执行进度"');
+    expect(weeklyPage).toContain("isContentProductionWorkbench");
     expect(weeklyPage).toContain("WeeklyCustomerExecutionOverview");
     expect(customerOverview).toContain("weekly-customer-execution-overview");
     expect(customerOverview).toContain("一句话执行结论");

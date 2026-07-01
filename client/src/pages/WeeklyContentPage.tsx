@@ -819,6 +819,10 @@ export default function WeeklyContentPage() {
 
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
+  const isContentProductionWorkbench = useMemo(
+    () => new URLSearchParams(searchString).get("mode") === "content-production",
+    [searchString],
+  );
 
   const platformAccountGroups = useMemo(
     () =>
@@ -3509,10 +3513,16 @@ export default function WeeklyContentPage() {
         />
       ) : null}
       <header className="space-y-2">
-        <p className="text-sm font-semibold text-blue-700">客户主流程 / 执行进度</p>
-        <h1 className="text-2xl font-bold text-gray-900">执行进度</h1>
+        <p className="text-sm font-semibold text-blue-700">
+          {isContentProductionWorkbench ? "运营工具 / 内容生产工作台" : "客户主流程 / 执行进度"}
+        </p>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isContentProductionWorkbench ? "内容生产工作台" : "执行进度"}
+        </h1>
         <p className="text-sm text-gray-500">
-          让客户看懂本月服务做到哪一步；运营人员可在下方继续内容任务推进。
+          {isContentProductionWorkbench
+            ? "运营团队在这里围绕 AI 引用逻辑生成、质检并推进平台化内容。"
+            : "让客户看懂本月服务做到哪一步；运营人员可在下方继续内容任务推进。"}
         </p>
       </header>
 

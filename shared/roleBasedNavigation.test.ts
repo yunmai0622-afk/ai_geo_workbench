@@ -23,7 +23,7 @@ const sampleGroups = [
     title: "运营工具",
     items: [
       { path: "/enterprise-profile", label: "品牌资料" },
-      { path: "/weekly", label: "内容生产工作台" },
+      { path: "/weekly?mode=content-production", label: "内容生产工作台" },
       { path: "/content-publishing", label: "发布执行中心" },
       { path: "/questions", label: "AI 问题池" },
       { path: "/brand-source-graph", label: "信源与证据库" },
