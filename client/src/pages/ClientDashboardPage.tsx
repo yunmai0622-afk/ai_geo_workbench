@@ -202,6 +202,12 @@ function ProjectCard({
   const reportReadyClass = primaryAction.reportReady
     ? "border-emerald-200 bg-emerald-50 text-emerald-800"
     : "border-gray-200 bg-gray-50 text-gray-600";
+  const aiVisibilityLabel =
+    project.latestGeoScore != null
+      ? `${Math.round(project.latestGeoScore)} 分`
+      : project.aiTestCount > 0
+        ? "已有实测"
+        : "待实测";
 
   return (
     <article
@@ -271,6 +277,10 @@ function ProjectCard({
         <div className="grid grid-cols-[5rem_1fr] gap-2 text-[12px] leading-5">
           <span className="font-medium text-gray-500">当前阶段</span>
           <span className="font-semibold text-gray-900">{pipelineBadgeLabel}</span>
+        </div>
+        <div className="grid grid-cols-[5rem_1fr] gap-2 text-[12px] leading-5" data-testid="client-project-ai-visibility">
+          <span className="font-medium text-gray-500">AI 可见度</span>
+          <span className="font-semibold text-gray-900">{aiVisibilityLabel}</span>
         </div>
         <div className="grid grid-cols-[5rem_1fr] gap-2 text-[12px] leading-5">
           <span className="font-medium text-gray-500">是否有风险</span>

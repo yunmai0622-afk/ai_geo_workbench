@@ -97,14 +97,6 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         aliases: ["/workspace", "/flow"],
       },
       {
-        key: "ai-diagnosis",
-        icon: Brain,
-        label: "诊断",
-        desc: "看 AI 是否知道并愿意推荐客户",
-        path: "/ai-diagnosis",
-        aliases: ["/ai-diagnosis", "/diagnosis", "/responses", "/analysis", "/scores"],
-      },
-      {
         key: "monthly-plan",
         icon: ListChecks,
         label: "本月方案",
@@ -148,6 +140,14 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "补齐企业被 AI 理解的基础信息",
         path: "/enterprise-profile",
         aliases: ["/enterprise-profile", "/assets", "/projects", "/maturity"],
+      },
+      {
+        key: "ai-diagnosis",
+        icon: Brain,
+        label: "诊断",
+        desc: "内部判断 AI 为什么还不稳定推荐客户",
+        path: "/ai-diagnosis",
+        aliases: ["/ai-diagnosis", "/diagnosis", "/responses", "/analysis", "/scores"],
       },
       {
         key: "content-production",
@@ -357,9 +357,16 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
               {visibleNavGroups.map(group => (
                 <div key={group.title} className="px-2 py-2">
                   {!isCollapsed ? (
-                    <p className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                      {group.title}
-                    </p>
+                    <div className="px-2 pb-1 pt-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        {group.title}
+                      </p>
+                      {group.title === "运营工具" ? (
+                        <p className="mt-0.5 text-[10px] leading-4 text-gray-400">
+                          内部交付使用，不建议客户第一轮演示
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
                   <SidebarMenu className="px-0 py-0">
                     {group.items.map(item => {

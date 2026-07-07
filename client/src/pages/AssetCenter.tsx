@@ -690,10 +690,20 @@ export default function AssetCenterPage() {
     return (
       <div className="space-y-6 pb-12" data-testid="enterprise-profile-page">
         <header className="space-y-2">
-          <p className="text-sm font-semibold text-blue-700">客户主流程 / 品牌资料准备</p>
-          <h1 className="text-2xl font-bold text-gray-900">品牌资料准备</h1>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+              运营后台
+            </span>
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+              不建议客户第一轮演示
+            </span>
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+              用于内部交付
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">运营后台｜品牌资料建档</h1>
           <p className="text-sm text-gray-500">
-            {ONBOARDING_WIZARD_PAGE_TITLE}：{ONBOARDING_WIZARD_PAGE_SUBTITLE}
+            用于运营团队补齐企业被 AI 识别和信任所需的基础资料，不作为客户第一轮演示页面。
           </p>
         </header>
         <ProjectContextEmptyState
@@ -707,10 +717,20 @@ export default function AssetCenterPage() {
   return (
     <div className="space-y-6 pb-12" data-testid="enterprise-profile-page">
       <header className="space-y-1">
-        <p className="text-sm font-semibold text-blue-700">客户主流程 / 品牌资料准备</p>
-        <h1 className="text-2xl font-bold text-gray-900">品牌资料准备</h1>
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+            运营后台
+          </span>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+            不建议客户第一轮演示
+          </span>
+          <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+            用于内部交付
+          </span>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900">运营后台｜品牌资料建档</h1>
         <p className="text-sm text-gray-500">
-          {ONBOARDING_WIZARD_PAGE_TITLE}：{ONBOARDING_WIZARD_PAGE_SUBTITLE}
+          用于运营团队补齐企业被 AI 识别和信任所需的基础资料，保留资料填写、案例、信源和发布账号准备能力。
         </p>
       </header>
 

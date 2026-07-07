@@ -37,7 +37,9 @@ describe("GEO V2.3-P0-J sellable reduction pass", () => {
   it("repositions enterprise profile as brand readiness for AI recognition", () => {
     const asset = read("client/src/pages/AssetCenter.tsx");
     const shell = read("client/src/components/enterpriseProfile/wizard/OnboardingWizardShell.tsx");
-    expect(asset).toContain("品牌资料准备 / AI 识别基础建设向导");
+    expect(asset).toContain("运营后台｜品牌资料建档");
+    expect(asset).toContain("不建议客户第一轮演示");
+    expect(asset).toContain("用于内部交付");
     expect(asset).toContain('data-testid="enterprise-profile-readiness-hero"');
     expect(asset).toContain("AI 识别基础准备度");
     expect(shell).toContain("AI 识别基础建设步骤");

@@ -129,7 +129,7 @@ function buildEffectVerificationIssues(
     issues.push({
       title: "还没有可验证的公开内容",
       impact: "内容没有发布到公开平台前，AI 很难读取到新的品牌证据。",
-      nextStep: "先进入发布执行中心，完成内容发布并回填公开链接。",
+      nextStep: "服务团队先完成公开发布和链接回填，再进入收录与 AI 复测。",
     });
   }
   if (overview.publishedCount > 0 && overview.includedCount === 0) {
@@ -700,7 +700,7 @@ export function InclusionMonitoringCenterPage() {
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
           <RadioTower className="mx-auto h-10 w-10 text-gray-300" />
           <p className="mt-4 text-sm font-medium text-gray-700">暂无已发布内容</p>
-          <p className="mt-1 text-xs text-gray-500">当前说明为“正在执行中”，发布与回填由运营后台继续处理。</p>
+          <p className="mt-1 text-xs text-gray-500">当前说明为“正在执行中”，发布与回填由服务团队继续处理。</p>
         </div>
       ) : (
         <details

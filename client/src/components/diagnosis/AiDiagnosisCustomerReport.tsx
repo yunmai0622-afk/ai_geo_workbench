@@ -391,10 +391,13 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
         >
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-              客户可见
+              运营后台
             </span>
             <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-              诊断问题页
+              客户可读诊断问题页
+            </span>
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+              不建议客户第一轮演示
             </span>
           </div>
           <h1 className="mt-3 text-2xl font-bold text-gray-900">为什么 AI 还不稳定推荐你</h1>
@@ -605,10 +608,13 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
             <div className="flex items-center gap-2">
               <FileSearch className="size-5 text-blue-600" />
               <span className="rounded-full border border-blue-200 bg-white px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                客户可见
+                运营后台
               </span>
               <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                诊断问题页
+                客户可读诊断问题页
+              </span>
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                不建议客户第一轮演示
               </span>
             </div>
             <h1 className="mt-3 text-2xl font-bold text-gray-900">为什么 AI 还不稳定推荐你</h1>
