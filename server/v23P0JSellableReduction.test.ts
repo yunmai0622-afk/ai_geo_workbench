@@ -27,7 +27,10 @@ describe("GEO V2.3-P0-J sellable reduction pass", () => {
   it("keeps customer core pages free of the desktop operator assistant panel", () => {
     const shell = read("client/src/components/project/EnterpriseProjectShell.tsx");
     expect(shell).toContain("hideDesktopAssistantPanel");
-    expect(shell).toContain("isWorkspacePage || isAiDiagnosisPage");
+    expect(shell).toContain("isCustomerFirstPath || isAiDiagnosisPage");
+    expect(shell).toContain("isMonthlyPlanPage");
+    expect(shell).toContain("isWeeklyCustomerExecutionPage");
+    expect(shell).toContain("isDeliveryReportsPage");
     expect(shell).toContain('pathname === "/ai-diagnosis"');
   });
 

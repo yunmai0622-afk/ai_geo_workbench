@@ -42,10 +42,16 @@ export function EnterpriseProjectShell({ children }: Props) {
   const { selectedProjectId, selectedProject } = useActiveProjectSelection();
   const [location, setLocation] = useLocation();
   const pathname = location.split("?")[0] || location;
+  const searchString = location.includes("?") ? location.slice(location.indexOf("?")) : "";
+  const routeSearchParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
   const isWeeklyPage = pathname === "/weekly" || pathname === "/content-generation" || pathname === "/articles";
+  const isContentProductionMode = isWeeklyPage && routeSearchParams.get("mode") === "content-production";
+  const isWeeklyCustomerExecutionPage = pathname === "/weekly" && !isContentProductionMode;
   const isPublishPage = pathname === "/content-publishing" || pathname === "/publish";
   const isInclusionMonitoringPage =
     pathname === "/inclusion-monitoring" || pathname === "/monitoring";
+  const isMonthlyPlanPage = pathname === "/monthly-plan";
+  const isDeliveryReportsPage = pathname === "/delivery-reports" || pathname === "/reports";
   const isQuestionsPage = pathname === "/questions" || pathname === "/question-bank";
   const isSourceGraphPage =
     pathname === "/brand-source-graph" || pathname === "/source-graph" || pathname === "/brand-sources";
@@ -53,7 +59,13 @@ export function EnterpriseProjectShell({ children }: Props) {
     pathname === "/ai-diagnosis" || pathname === "/diagnosis" || pathname === "/responses" || pathname === "/analysis" || pathname === "/scores";
   const isMaturityPage = pathname === "/maturity";
   const isWorkspacePage = pathname === "/workspace" || pathname === "/flow";
-  const hideDesktopAssistantPanel = isWorkspacePage || isAiDiagnosisPage;
+  const isCustomerFirstPath =
+    isWorkspacePage ||
+    isMonthlyPlanPage ||
+    isWeeklyCustomerExecutionPage ||
+    isInclusionMonitoringPage ||
+    isDeliveryReportsPage;
+  const hideDesktopAssistantPanel = isCustomerFirstPath || isAiDiagnosisPage;
   const isMobile = useIsMobile();
 
   const summaryQuery = trpc.geo.workspace.summary.useQuery(
@@ -300,21 +312,21 @@ export function EnterpriseProjectShell({ children }: Props) {
         enterpriseName={selectedProject?.enterpriseName}
         stageLabel={stageLabel}
         geoScore={summaryQuery.data?.geoScore ?? null}
-        ctaStage={ctaStageForTopBar}
+        ctaStage={isCustomerFirstPath ? null : ctaStageForTopBar}
         projectId={selectedProjectId}
         loading={summaryQuery.isLoading && Boolean(selectedProjectId)}
         onCtaClick={
-          usePublishBindCtaHandler
+          !isCustomerFirstPath && usePublishBindCtaHandler
             ? () => void publishAccountBindCta.handlePublishAccountBindCta()
             : undefined
         }
-        ctaLabelOverride={usePublishBindCtaHandler ? publishAccountBindCta.ctaLabel : undefined}
+        ctaLabelOverride={!isCustomerFirstPath && usePublishBindCtaHandler ? publishAccountBindCta.ctaLabel : undefined}
       />
       {publishAccountBindCta.dialog}
       <ProfileCompletenessLowHint projectId={selectedProjectId ?? null} className="mt-4" />
       <div className="flex gap-6 pt-6">
         <div className={isMobile ? "min-w-0 flex-1 pb-28" : "min-w-0 flex-1"}>
-          {isMobile && publishBindMobileLabel && selectedProjectId && (usePublishBindCtaHandler || ctaPath) ? (
+          {isMobile && !isCustomerFirstPath && publishBindMobileLabel && selectedProjectId && (usePublishBindCtaHandler || ctaPath) ? (
             <div
               className="mb-4 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 lg:hidden"
               data-testid="next-action-mobile-inline-cta"

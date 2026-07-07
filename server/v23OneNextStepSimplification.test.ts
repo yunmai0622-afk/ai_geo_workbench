@@ -43,4 +43,18 @@ describe("GEO V2.3-P0-N one next step simplification", () => {
     expect(workspace).toContain("运营参考，客户首屏不展开");
     expect(delivery).toContain("需要交付时再展开");
   });
+
+  it("removes shared shell action panels from the customer first path", () => {
+    const shell = read("client/src/components/project/EnterpriseProjectShell.tsx");
+
+    expect(shell).toContain('const isContentProductionMode = isWeeklyPage && routeSearchParams.get("mode") === "content-production";');
+    expect(shell).toContain('const isWeeklyCustomerExecutionPage = pathname === "/weekly" && !isContentProductionMode;');
+    expect(shell).toContain("const isCustomerFirstPath =");
+    expect(shell).toContain("isMonthlyPlanPage");
+    expect(shell).toContain("isWeeklyCustomerExecutionPage");
+    expect(shell).toContain("isDeliveryReportsPage");
+    expect(shell).toContain("const hideDesktopAssistantPanel = isCustomerFirstPath || isAiDiagnosisPage;");
+    expect(shell).toContain("ctaStage={isCustomerFirstPath ? null : ctaStageForTopBar}");
+    expect(shell).toContain("isMobile && !isCustomerFirstPath && publishBindMobileLabel");
+  });
 });
