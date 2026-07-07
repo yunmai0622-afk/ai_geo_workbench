@@ -11,7 +11,7 @@ describe("GEO-V1-B 客户管理台唯一新建/选择入口", () => {
     expect(src).toContain("新建企业项目");
     expect(src).toContain("create-client-project-dialog");
     expect(src).toContain("create-client-project-button");
-    expect(src).toContain("还没有企业项目");
+    expect(src).toContain("当前账号暂无可管理客户项目");
     expect(src).toContain('buildProjectUrl("/onboarding"');
     expect(src).toContain("activateProject(created.id)");
     expect(src).toContain('setLocation(buildProjectUrl("/onboarding"');

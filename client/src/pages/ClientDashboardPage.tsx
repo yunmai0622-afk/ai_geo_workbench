@@ -547,7 +547,7 @@ export default function ClientDashboardPage() {
                   : "暂无已归档项目"
                 : search || statusFilter !== "all"
                   ? "没有匹配的企业项目"
-                  : "还没有企业项目"}
+                  : "当前账号暂无可管理客户项目"}
             </h2>
             <p className="max-w-md text-sm leading-relaxed text-gray-500">
               {showArchived
@@ -556,7 +556,7 @@ export default function ClientDashboardPage() {
                   : "归档后的项目会显示在这里，可随时取消归档恢复为进行中。"
                 : search || statusFilter !== "all"
                   ? "请调整搜索条件或筛选状态。"
-                  : "请先创建一个企业项目，完成基础资料建档后，即可发起 AI 搜索可见性诊断。"}
+                  : "请使用有客户数据的账号验证客户管理台，或先创建样板客户项目。"}
             </p>
           </div>
           {!search && statusFilter === "all" && !showArchived ? (

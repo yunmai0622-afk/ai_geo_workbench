@@ -61,6 +61,11 @@ type RenewalNextSuggestion = {
   value: string;
 };
 
+type EvidenceAccumulationItem = {
+  title: string;
+  text: string;
+};
+
 function formatPercent(rate: number | null): string {
   if (rate == null) return "—";
   return `${Math.round(rate * 100)}%`;
@@ -110,6 +115,61 @@ function buildRenewalReportConclusion(report: MonthlyReportView): string {
     return "本月已形成部分内容和公开资产，但尚未完成完整复测；建议继续观察收录与 AI 回答变化，再判断增长效果。";
   }
   return "当前暂无可确认增长，报告仍需等待内容发布、收录监测和 AI 复测形成证据。";
+}
+
+function needsEvidenceAccumulationNotice(report: MonthlyReportView): boolean {
+  if (report.planPhase === "no_plan") return true;
+  if (!report.hasRetestData) return true;
+  if (!report.actions.contentAssetProof.hasInclusionData) return true;
+  if (report.actions.contentAssetProof.includedCount < report.actions.contentCount) return true;
+  return report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount;
+}
+
+function buildEvidenceGapLine(report: MonthlyReportView): string {
+  const gaps: string[] = [];
+  if (report.actions.contentCount === 0) gaps.push("公开发布记录");
+  if (!report.actions.contentAssetProof.hasInclusionData) gaps.push("收录验证");
+  if (!report.hasRetestData) gaps.push("AI 复测");
+  if (report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount) {
+    gaps.push("本月服务事项闭环");
+  }
+  if (gaps.length === 0) return "继续补充更多真实发布、收录和复测样本，让续费判断更稳。";
+  return `还缺 ${gaps.join("、")}，当前重点是完成发布、链接回填、收录验证和 AI 复测，形成可用于续费判断的月度证据。`;
+}
+
+function buildEvidenceAccumulationItems(report: MonthlyReportView): EvidenceAccumulationItem[] {
+  return [
+    {
+      title: "本月做了什么",
+      text:
+        report.planPhase === "no_plan"
+          ? "尚未形成本月服务方案，报告会先提示补齐方案。"
+          : `已围绕 ${report.focusSummary || "关键 GEO 短板"} 推进本月服务，当前完成 ${report.progress.completedCount}/${report.progress.totalCount} 项。`,
+    },
+    {
+      title: "发布了什么",
+      text:
+        report.actions.contentCount > 0
+          ? `已形成 ${reportCount(report.actions.contentCount)} 篇内容记录，覆盖 ${reportCount(report.actions.questionCoverageCount)} 个 AI 搜索问题。`
+          : "本月还缺可验证的公开发布记录，不能把未发布内容当成效果证明。",
+    },
+    {
+      title: "验证了什么",
+      text: report.hasRetestData
+        ? "已形成阶段复测，可以查看 AI 回答变化摘要。"
+        : "当前尚未完成 AI 复测，只能说明服务动作正在推进，不能承诺 AI 推荐率提升。",
+    },
+    {
+      title: "还缺什么",
+      text: buildEvidenceGapLine(report),
+    },
+    {
+      title: "下月继续做什么",
+      text:
+        report.nextMonth.suggestions[0] ??
+        "继续补齐公开证据、发布链接、收录验证和复测样本，让月度报告更适合续费判断。",
+    },
+  ];
 }
 
 function buildRenewalCompletionItems(report: MonthlyReportView): RenewalCompletionItem[] {
@@ -473,6 +533,8 @@ function RenewalDeliveryReportHero({
   const issues = buildRenewalIssues(report);
   const suggestions = buildRenewalSuggestions(report, brief);
   const primaryCta = buildReportPrimaryCta(report);
+  const showEvidenceAccumulationNotice = needsEvidenceAccumulationNotice(report);
+  const evidenceAccumulationItems = buildEvidenceAccumulationItems(report);
 
   const handlePrimaryCta = () => {
     if (primaryCta.action === "generateNextPlan") {
@@ -517,6 +579,31 @@ function RenewalDeliveryReportHero({
             )}
           </Button>
         </div>
+
+        {showEvidenceAccumulationNotice ? (
+          <div
+            className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4"
+            data-testid="delivery-report-evidence-accumulation"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700">
+                当前仍处于样板交付积累阶段
+              </span>
+              <span className="text-sm font-semibold text-amber-900">本月证据仍在积累中</span>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-amber-900">
+              当前重点是完成发布、链接回填、收录验证和 AI 复测，形成可用于续费判断的月度证据。报告只展示已发生的服务动作和待补齐证据，不承诺 AI 推荐率提升。
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-5">
+              {evidenceAccumulationItems.map(item => (
+                <div key={item.title} className="rounded-xl border border-amber-100 bg-white/75 p-3">
+                  <p className="text-xs font-semibold text-amber-800">{item.title}</p>
+                  <p className="mt-2 text-xs leading-5 text-gray-700">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div data-testid="delivery-report-completed-items">
           <div className="mb-3 flex items-center gap-2">

@@ -3822,7 +3822,7 @@ export default function WeeklyContentPage() {
         </>
       )}
 
-      {enabled ? (
+      {enabled && isContentProductionWorkbench ? (
         <WeeklyLocalAgentStatusBar
           status={localAgentConnectionStatus}
           onGoPublishingPage={() =>
