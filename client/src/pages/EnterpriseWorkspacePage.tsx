@@ -497,17 +497,7 @@ export default function EnterpriseWorkspacePage() {
     customerPublishCount,
     metrics,
   ]);
-  const customerServicePriorities = useMemo(
-    () =>
-      (optimizationBriefQuery.data?.priorities ?? []).slice(0, 3).map(priority => ({
-        rank: priority.rank,
-        title: priority.title,
-        why: priority.reason,
-        status: customerPriorityStatus(priority.source, priority.tasks.map(task => task.status)),
-        proof: priority.retestMethod,
-      })),
-    [optimizationBriefQuery.data?.priorities],
-  );
+  const customerPrimaryIssue = customerIssues[0] ?? null;
   const customerFlowSteps = useMemo(() => {
     const done = {
       diagnosis: Boolean(metrics && workspaceHasAiTestData(metrics)),
@@ -609,7 +599,7 @@ export default function EnterpriseWorkspacePage() {
     if (metrics.reportCount === 0 && (customerHasMonthlyPlan || metrics.articleCount > 0 || customerPublishCount > 0)) {
       risks.push({ title: "报告未生成", description: "本月证据还没有沉淀成客户可读报告。", path: "/delivery-reports" });
     }
-    return risks;
+    return risks.slice(0, 3);
   }, [
     customerHasMonthlyPlan,
     customerMonthlyProgress.completedCount,
@@ -630,7 +620,7 @@ export default function EnterpriseWorkspacePage() {
     <div className="space-y-7" data-testid="workspace-page">
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.workspace}
-        message={`欢迎使用${PLATFORM_PRODUCT_NAME}，这里汇总当前问题、本月服务进度和下一步动作。`}
+        message={`欢迎使用${PLATFORM_PRODUCT_NAME}，客户只看当前状态、服务进度和下一步动作。`}
         data-testid="first-use-hint-workspace"
       />
       {summaryQuery.isLoading ? (
@@ -686,6 +676,19 @@ export default function EnterpriseWorkspacePage() {
               <p className="mt-2 text-base font-semibold leading-7 text-gray-900" data-testid="workspace-current-stage-headline">
                 {customerConclusion}
               </p>
+              <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/70 p-3" data-testid="workspace-top-issues">
+                <p className="text-xs font-medium text-amber-700">当前最大问题</p>
+                {customerPrimaryIssue ? (
+                  <p className="mt-1 text-sm leading-6 text-amber-950">
+                    <span className="font-semibold">{customerPrimaryIssue.title}：</span>
+                    {customerPrimaryIssue.impact}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm leading-6 text-amber-950">
+                    暂无明显阻断，建议继续按本月方案推进并复测效果。
+                  </p>
+                )}
+              </div>
               {customerMainCta ? (
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Button
@@ -714,58 +717,6 @@ export default function EnterpriseWorkspacePage() {
                   description={metric.description}
                 />
               ))}
-            </div>
-
-            <div className="mt-6 grid gap-4 lg:grid-cols-[0.95fr_1.15fr]" data-testid="workspace-customer-first-screen">
-              <section className="rounded-2xl border border-gray-100 bg-white p-5" data-testid="workspace-top-issues">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-gray-900">当前最重要的问题</h2>
-                  <span className="text-xs text-gray-400">客户能理解的影响</span>
-                </div>
-                {customerIssues.length > 0 ? (
-                  <div className="mt-4 space-y-3">
-                    {customerIssues.map(issue => (
-                      <div key={issue.title} className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
-                        <p className="text-sm font-semibold text-amber-950">{issue.title}</p>
-                        <p className="mt-1 text-sm leading-6 text-amber-900">{issue.impact}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
-                    暂无明显阻断，建议继续按本月方案推进并复测效果。
-                  </p>
-                )}
-              </section>
-
-              <section className="rounded-2xl border border-gray-100 bg-white p-5" data-testid="workspace-monthly-top3">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-gray-900">下一步服务动作</h2>
-                  <span className="text-xs text-blue-700">唯一下一步：本月服务计划</span>
-                </div>
-                {customerServicePriorities.length > 0 ? (
-                  <div className="mt-4 space-y-3">
-                    {customerServicePriorities.map(priority => (
-                      <div key={`${priority.rank}-${priority.title}`} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {priority.rank}. {priority.title}
-                          </p>
-                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700">
-                            {priority.status}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-gray-600">为什么现在做：{priority.why}</p>
-                        <p className="mt-1 text-sm leading-6 text-gray-600">月底报告能证明：{priority.proof}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
-                    暂无明确的下一步服务事项。建议先进入本月方案，把当前短板转成客户可验收的执行计划。
-                  </p>
-                )}
-              </section>
             </div>
           </section>
 
@@ -860,14 +811,27 @@ export default function EnterpriseWorkspacePage() {
             </section>
           </div>
 
-          <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="workspace-customer-detail-entry">
+          <details className="rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="workspace-operator-details">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
               <span className="inline-flex items-center gap-2">
-                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
-                查看诊断、成熟度与运营详情
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+                运营详情，仅内部参考
               </span>
+              <span className="text-xs font-normal text-gray-500">默认关闭，不进入客户第一轮演示</span>
             </summary>
-            <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
+            <div className="space-y-4 border-t border-gray-100 px-5 pb-5 pt-4">
+              <p className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm leading-6 text-gray-600">
+                诊断详情、成熟度、趋势、监测明细和运营建议保留给内部交付复盘；客户首页默认只看状态、进度和下一步。
+              </p>
+
+              <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="workspace-customer-detail-entry">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+                  <span className="inline-flex items-center gap-2">
+                    <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                    诊断、成熟度与运营详情
+                  </span>
+                </summary>
+                <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
               {selectedProjectId ? (
                 <AiBrandValueOverviewSection
                   projectId={selectedProjectId}
@@ -904,8 +868,8 @@ export default function EnterpriseWorkspacePage() {
                   }
                 />
               ) : null}
-            </div>
-          </details>
+                </div>
+              </details>
 
           <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
@@ -1264,6 +1228,8 @@ export default function EnterpriseWorkspacePage() {
           </section>
             </div>
           </details>
+            </div>
+          </details>
         </>
       ) : metrics === undefined && selectedProjectId ? (
         <P0Card testId="workspace-profile-zero" className="py-12 text-center">
@@ -1303,15 +1269,6 @@ function customerRateDisplay(
   if (value >= 0.35) return { value: `有基础 · ${percent}`, description: "AI 已开始在部分问题中推荐" };
   if (value >= 0.15) return { value: `不稳定 · ${percent}`, description: "AI 推荐意愿还需要加强" };
   return { value: `偏弱 · ${percent}`, description: "AI 暂时不太愿意主动推荐" };
-}
-
-function customerPriorityStatus(source: "existing_task" | "suggestion", taskStatuses: string[]): string {
-  if (source === "suggestion" || taskStatuses.length === 0) return "待纳入方案";
-  const doneValues = new Set(["done", "completed", "finished", "success"]);
-  const doneCount = taskStatuses.filter(status => doneValues.has(status)).length;
-  if (doneCount === taskStatuses.length) return "已完成";
-  if (doneCount > 0) return "进行中";
-  return "待处理";
 }
 
 function formatCustomerDate(value: Date | string): string {

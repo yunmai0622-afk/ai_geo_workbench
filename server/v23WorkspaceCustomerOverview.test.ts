@@ -16,11 +16,11 @@ describe("GEO V2.3 P0-B workspace customer overview", () => {
       "workspace-customer-conclusion",
       "workspace-core-metrics",
       "workspace-top-issues",
-      "workspace-monthly-top3",
       "workspace-service-flow",
       "workspace-recent-progress",
       "workspace-customer-risks",
       "workspace-primary-cta",
+      "workspace-operator-details",
     ]) {
       expect(page).toContain(marker);
     }
@@ -30,13 +30,15 @@ describe("GEO V2.3 P0-B workspace customer overview", () => {
     for (const label of ["AI 成熟度", "AI 是否知道你", "AI 是否愿意推荐你", "本月服务进度"]) {
       expect(page).toContain(label);
     }
-    for (const label of ["当前最重要的问题", "下一步服务动作", "月底报告能证明"]) {
+    for (const label of ["当前最大问题", "查看本月服务计划"]) {
       expect(page).toContain(label);
     }
+    expect(page).not.toContain("workspace-monthly-top3");
   });
 
   it("keeps operational details behind detail entries instead of the customer first screen", () => {
-    expect(page).toContain("查看诊断、成熟度与运营详情");
+    expect(page).toContain("运营详情，仅内部参考");
+    expect(page).toContain("默认关闭，不进入客户第一轮演示");
     expect(page).toContain("WorkspaceDashboardOverviewCards");
     expect(page).toContain("WorkspaceInclusionMonitoringSection");
     expect(page).not.toContain("questionId=");

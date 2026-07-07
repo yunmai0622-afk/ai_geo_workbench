@@ -69,7 +69,8 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     expect(page).toContain("workspace-customer-core-metric");
     expect(page).toContain("workspace-top-issues");
-    expect(page).toContain("workspace-monthly-top3");
+    expect(page).not.toContain("workspace-monthly-top3");
+    expect(page).toContain("workspace-operator-details");
     expect(page).toContain("workspace-service-flow");
     expect(page).toContain("workspace-dashboard-overview");
     expect(page).toContain("WorkspaceDashboardOverviewCards");
