@@ -84,6 +84,13 @@ describe("contentQualityGate publish integration", () => {
     expect(router).toContain("formatPublishPreflightBlockMessage");
   });
 
+  it("publish task readiness accepts completed T0 diagnosis rounds", () => {
+    const router = read("server/publishTasksRouter.ts");
+    expect(router).toContain("testRounds");
+    expect(router).toContain("hasCompletedT0Baseline");
+    expect(router).toContain("hasCompletedT0Baseline(t0RoundRows)");
+  });
+
   it("WeeklyContentPage uses unified publish readiness for dialog", () => {
     const page = read("client/src/pages/WeeklyContentPage.tsx");
     expect(page).toContain("evaluatePublishPreflight");

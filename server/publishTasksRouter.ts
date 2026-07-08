@@ -44,7 +44,7 @@ import { isP0GeoProfileCompleteFromRecord } from "@shared/geoProfileP0Readiness"
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
 import { markGeoArticlePublishedAt } from "./geoArticlePublishState";
 import { ensureInclusionMonitoringRecordForPublishRecord } from "./publishRecordMonitoring";
-import { analysisResults, enterpriseGeoProfiles, geoScores } from "../drizzle/schema";
+import { analysisResults, enterpriseGeoProfiles, geoScores, testRounds } from "../drizzle/schema";
 import { emitPublishFailedNotification, emitPublishSuccessNotification } from "./systemNotifications";
 import { retryFailedPublishTask } from "./publishTaskRetryService";
 import { canRetryPublishTask, isPublishRetryExhausted } from "@shared/publishTaskRetry";
@@ -55,6 +55,7 @@ import {
 } from "@shared/publishQueueDedup";
 import { buildDeliveryReportPublishStats } from "@shared/deliveryReportPublishStats";
 import { mapReviewEnqueueCustomerMessage, REVIEW_ENQUEUE_SUCCESS_MESSAGE } from "@shared/reviewEnqueueErrors";
+import { hasCompletedT0Baseline } from "@shared/workspaceMainChain";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -157,10 +158,18 @@ async function assertPublishReadinessForCreate(
     platform: z.infer<typeof publishPlatformSlugEnum>;
   },
 ) {
-  const [profileRows, analysisRows, scoreRows, accountRows] = await Promise.all([
+  const [profileRows, analysisRows, scoreRows, t0RoundRows, accountRows] = await Promise.all([
     db.select().from(enterpriseGeoProfiles).where(eq(enterpriseGeoProfiles.projectId, input.projectId)).limit(1),
     db.select({ id: analysisResults.id }).from(analysisResults).where(eq(analysisResults.projectId, input.projectId)).limit(1),
     db.select({ id: geoScores.id }).from(geoScores).where(eq(geoScores.projectId, input.projectId)).limit(1),
+    db
+      .select({
+        roundType: testRounds.roundType,
+        status: testRounds.status,
+        finishedAt: testRounds.finishedAt,
+      })
+      .from(testRounds)
+      .where(and(eq(testRounds.projectId, input.projectId), eq(testRounds.roundType, "T0_BASELINE"))),
     db.select().from(projectPlatformAccounts).where(eq(projectPlatformAccounts.projectId, input.projectId)),
   ]);
   const profileRecord = (profileRows[0] ?? null) as Record<string, unknown> | null;
@@ -191,7 +200,7 @@ async function assertPublishReadinessForCreate(
     projectAccessible: true,
     enterpriseProfileReady: isP0GeoProfileCompleteFromRecord(profileRecord),
     enterpriseProfile: profileRecord,
-    diagnosisReady: analysisRows.length > 0 || scoreRows.length > 0,
+    diagnosisReady: analysisRows.length > 0 || scoreRows.length > 0 || hasCompletedT0Baseline(t0RoundRows),
     platformAccounts,
     requestedPlatform: isBindingPublishPlatform(input.platform) ? input.platform : null,
     skipLocalAgentConnectionCheck: true,
