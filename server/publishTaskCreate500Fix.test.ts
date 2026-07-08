@@ -33,11 +33,34 @@ describe("GEO-V2.3 publishTasks.create 500 fix", () => {
     }
   });
 
+  it("blocks content that has not passed quality preflight", () => {
+    const router = read("server/publishTasksRouter.ts");
+    const readiness = router.slice(
+      router.indexOf("async function assertPublishReadinessForCreate"),
+      router.indexOf("function assertContentReviewReadyForCreate"),
+    );
+    expect(readiness).toContain('"QUALITY_PASSED"');
+    expect(readiness).toContain("formatPublishPreflightBlockMessage");
+    expect(readiness).toContain("发布前检查未通过");
+  });
+
   it("blocks content that has not passed manual review", () => {
     const router = read("server/publishTasksRouter.ts");
     expect(router).toContain("normalizeContentReviewStatus(article.contentReviewStatus)");
     expect(router).toContain('"已审核可发布"');
     expect(router).toContain("该内容尚未完成人工审核确认");
+  });
+
+  it("keeps project isolation before resolving accounts or inserting tasks", () => {
+    const block = createBlock();
+    const projectGuard = block.indexOf("article.projectId !== input.projectId");
+    const accessGuard = block.indexOf("requireProjectAccessConn");
+    const accountLookup = block.indexOf("resolvePublishPlatformAccount");
+    const insert = block.indexOf("insertPublishTaskRecord");
+    expect(projectGuard).toBeGreaterThan(-1);
+    expect(accessGuard).toBeGreaterThan(projectGuard);
+    expect(accountLookup).toBeGreaterThan(accessGuard);
+    expect(insert).toBeGreaterThan(accountLookup);
   });
 
   it("creates pending agent tasks only, not published tasks", () => {
@@ -55,5 +78,16 @@ describe("GEO-V2.3 publishTasks.create 500 fix", () => {
     const cover = read("shared/publishCoverPayload.ts");
     expect(cover).toContain("PUBLISH_TASK_COVER_IMAGE_URL_MAX_CHARS");
     expect(cover).toContain("fallbackCoverBase64");
+  });
+
+  it("does not turn post-create article sync failures into publishTasks.create 500", () => {
+    const insert = read("server/publishTasksRouter.ts").slice(
+      read("server/publishTasksRouter.ts").indexOf("async function insertPublishTaskRecord"),
+      read("server/publishTasksRouter.ts").indexOf("async function attachCoverImagePayload"),
+    );
+    expect(insert).toContain("publish task created but article lifecycle sync failed");
+    expect(insert).toContain("publish task will continue without persisted article coverBase64");
+    expect(insert).toContain("logPublishTaskCreateWarning");
+    expect(insert).not.toContain('throw err;\n  }\n\n  return {\n    taskId');
   });
 });

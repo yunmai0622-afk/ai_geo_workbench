@@ -95,6 +95,17 @@ function logReviewEnqueueError(
   });
 }
 
+function logPublishTaskCreateWarning(
+  step: string,
+  context: Record<string, unknown>,
+  err: unknown,
+): void {
+  console.warn(`[publishTasks.create] ${step}`, {
+    ...context,
+    error: formatReviewEnqueueError(err),
+  });
+}
+
 function throwReviewEnqueueInternal(step: string, context: Record<string, unknown>, err?: unknown): never {
   if (err !== undefined) {
     logReviewEnqueueError(step, context, err);
@@ -382,8 +393,11 @@ async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
           .set({ coverBase64: effectiveCoverBase64 })
           .where(eq(geoArticles.id, ctx.articleId));
       } catch (err) {
-        logReviewEnqueueError("persist article coverBase64", logCtx, err);
-        throw err;
+        logPublishTaskCreateWarning(
+          "publish task will continue without persisted article coverBase64",
+          logCtx,
+          err,
+        );
       }
     }
   }
@@ -479,8 +493,11 @@ async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
       publishTaskStatus: "pending_agent",
     });
   } catch (err) {
-    logReviewEnqueueError("appendArticleLifecycleEvent", { ...logCtx, taskId }, err);
-    throw err;
+    logPublishTaskCreateWarning(
+      "publish task created but article lifecycle sync failed",
+      { ...logCtx, taskId },
+      err,
+    );
   }
 
   return {
