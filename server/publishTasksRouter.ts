@@ -19,8 +19,13 @@ import {
   resolvePublishPlatformAccount,
   verifyPublishTaskAccount,
 } from "./projectPlatformAccounts";
-import { isValidStoredCoverBase64, parseStoredCoverBase64, resolveArticleCoverBase64ForPublish } from "@shared/articleCoverBase64";
-import { buildPublishCoverImageUrl, parseDataUrlCover } from "@shared/publishCoverPayload";
+import {
+  isValidStoredCoverBase64,
+  parseStoredCoverBase64,
+  resolveArticleCoverBase64ForPublish,
+  synthesizeSvgCoverBase64,
+} from "@shared/articleCoverBase64";
+import { buildPublishTaskCoverImageUrl, parseDataUrlCover } from "@shared/publishCoverPayload";
 import {
   BINDING_PUBLISH_PLATFORMS,
   type BindingPublishPlatform,
@@ -56,6 +61,7 @@ import {
 import { buildDeliveryReportPublishStats } from "@shared/deliveryReportPublishStats";
 import { mapReviewEnqueueCustomerMessage, REVIEW_ENQUEUE_SUCCESS_MESSAGE } from "@shared/reviewEnqueueErrors";
 import { hasCompletedT0Baseline } from "@shared/workspaceMainChain";
+import { normalizeContentReviewStatus } from "@shared/contentReviewStatus";
 
 const publishPlatformSlugEnum = z.enum([...BINDING_PUBLISH_PLATFORMS, "wechat"]);
 
@@ -228,6 +234,15 @@ async function assertPublishReadinessForCreate(
   }
 }
 
+function assertContentReviewReadyForCreate(article: typeof geoArticles.$inferSelect): void {
+  if (normalizeContentReviewStatus(article.contentReviewStatus) !== "已审核可发布") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "该内容尚未完成人工审核确认，请先标记为已审核可发布。",
+    });
+  }
+}
+
 async function assertPrePublishChecklistForCreate(
   db: Awaited<ReturnType<typeof requireDbConn>>,
   input: {
@@ -337,6 +352,12 @@ async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
   };
 
   const brandLabel = String(ctx.project.enterpriseName ?? "海豚知道").trim() || "海豚知道";
+  const articleTitle = String(ctx.article.title ?? "").trim();
+  const articleContent = String(ctx.article.markdownContent ?? "");
+  if (!articleTitle) {
+    throw new Error(`文章 ${ctx.articleId} 标题为空，无法创建发布任务`);
+  }
+
   const effectiveCoverBase64 = resolveArticleCoverBase64ForPublish(ctx.article, brandLabel);
   const rawCoverImageUrl = ctx.article.coverImageUrl?.trim() ?? "";
   if (!effectiveCoverBase64 && !rawCoverImageUrl) {
@@ -367,7 +388,24 @@ async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
     }
   }
 
-  const coverImageUrl = buildPublishCoverImageUrl(effectiveCoverBase64, ctx.article.coverImageUrl);
+  const fallbackCoverBase64 = synthesizeSvgCoverBase64({
+    template: ctx.article.coverTemplate,
+    title: articleTitle,
+    brandName: brandLabel,
+  });
+  const coverPayload = buildPublishTaskCoverImageUrl({
+    coverBase64: effectiveCoverBase64,
+    coverImageUrl: ctx.article.coverImageUrl,
+    fallbackCoverBase64,
+  });
+  if (coverPayload.originalTooLarge) {
+    console.warn("[publishTasks.create] cover payload too large; using safe publish task cover payload", {
+      ...logCtx,
+      coverPayloadSource: coverPayload.source,
+      coverImageUrlLength: coverPayload.coverImageUrl?.length ?? 0,
+    });
+  }
+  const coverImageUrl = coverPayload.coverImageUrl;
 
   let apiKey: string;
   try {
@@ -375,12 +413,6 @@ async function insertPublishTaskRecord(ctx: PublishTaskCreateContext) {
   } catch (err) {
     logReviewEnqueueError("ensureUserExtensionApiKey", logCtx, err);
     throw err;
-  }
-
-  const articleTitle = String(ctx.article.title ?? "").trim();
-  const articleContent = String(ctx.article.markdownContent ?? "");
-  if (!articleTitle) {
-    throw new Error(`文章 ${ctx.articleId} 标题为空，无法创建发布任务`);
   }
 
   let inserted: Array<{ id: number }>;
@@ -507,6 +539,13 @@ export const publishTasksRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const logCtx = {
+        projectId: input.projectId,
+        articleId: input.articleId,
+        platform: input.platform,
+        platformAccountId: input.platformAccountId ?? null,
+        userId: ctx.user?.id ?? null,
+      };
       const db = await requireDbConn();
       const articleRows = await db.select().from(geoArticles).where(eq(geoArticles.id, input.articleId)).limit(1);
       const article = articleRows[0];
@@ -519,6 +558,7 @@ export const publishTasksRouter = router({
         article,
         platform: input.platform,
       });
+      assertContentReviewReadyForCreate(article);
 
       const articlePlatform = getArticlePublishPlatform({
         generationBasis: article.generationBasis ?? null,
@@ -582,16 +622,22 @@ export const publishTasksRouter = router({
         platformAccountId: boundAccount.id,
       });
 
-      const created = await insertPublishTaskRecord({
-        db,
-        userId: ctx.user!.id,
-        projectId: input.projectId,
-        articleId: input.articleId,
-        article,
-        platform: input.platform,
-        boundAccount,
-        project,
-      });
+      let created;
+      try {
+        created = await insertPublishTaskRecord({
+          db,
+          userId: ctx.user!.id,
+          projectId: input.projectId,
+          articleId: input.articleId,
+          article,
+          platform: input.platform,
+          boundAccount,
+          project,
+        });
+      } catch (err) {
+        if (err instanceof TRPCError) throw err;
+        throwReviewEnqueueInternal("publishTasks.create insert publish task", logCtx, err);
+      }
       return {
         taskId: created.taskId,
         coverImageUrl: created.coverImageUrl,

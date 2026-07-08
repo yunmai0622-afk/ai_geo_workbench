@@ -40,7 +40,7 @@ describe("C7-A article asset editor and template cover", () => {
     expect(router).toContain("article.title");
     expect(router).toContain("article.markdownContent");
     expect(router).toContain("resolveArticleCoverBase64ForPublish");
-    expect(router).toContain("buildPublishCoverImageUrl(effectiveCoverBase64");
+    expect(router).toContain("buildPublishTaskCoverImageUrl");
     expect(router).not.toContain("generateCoverImage");
   });
 

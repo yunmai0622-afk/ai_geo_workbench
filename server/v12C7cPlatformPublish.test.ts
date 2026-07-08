@@ -22,7 +22,7 @@ describe("C7-C platform publish adapters", () => {
     const router = read("server/publishTasksRouter.ts");
     expect(router).toContain("article.title");
     expect(router).toContain("article.markdownContent");
-    expect(router).toContain("buildPublishCoverImageUrl");
+    expect(router).toContain("buildPublishTaskCoverImageUrl");
   });
 
   it("baijiahao publisher targets baijiahao write URL", () => {
