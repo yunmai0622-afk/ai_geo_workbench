@@ -17,10 +17,10 @@ describe("GEO-V1.1-Score-Explanation GEO评分权重说明", () => {
     expect(shared).toContain("weightPercent: 20");
   });
 
-  it("工作台 GEO 分旁展示说明入口", () => {
+  it("GEO 分说明保留在组件中，不嵌入客户服务首页", () => {
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(workspace).toContain("GeoScoreWeightExplanationHelp");
-    expect(workspace).toContain("workspace-geo-score-metric");
+    expect(workspace).not.toContain("GeoScoreWeightExplanationHelp");
+    expect(workspace).not.toContain("workspace-geo-score-metric");
     expect(read("client/src/components/project/ProjectSwitcher.tsx")).toContain(
       "project-switcher-geo-score-explanation",
     );

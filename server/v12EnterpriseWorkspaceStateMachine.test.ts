@@ -50,16 +50,16 @@ describe("GEO-V1-C 企业工作台状态机", () => {
 
   it("CTA 跳转带 projectId", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("workspaceCtaUrl");
+    expect(page).toContain("customerMainCta");
     expect(page).toContain("buildProjectUrl");
     expect(page).toContain("workspace-primary-cta");
     expect(read("client/src/pages/ClientDashboardPage.tsx")).toContain('buildProjectUrl("/workspace"');
   });
 
-  it("工作台展示收录监测明细区块", () => {
+  it("收录监测明细保留在独立验证页，不嵌入客户首页", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     const section = read("client/src/components/workspace/WorkspaceInclusionMonitoringSection.tsx");
-    expect(page).toContain("WorkspaceInclusionMonitoringSection");
+    expect(page).not.toContain("WorkspaceInclusionMonitoringSection");
     expect(section).toContain("workspace-inclusion-monitoring-section");
     expect(section).toContain("收录监测明细");
     expect(read("shared/workspaceInclusionMonitoring.ts")).toContain("buildWorkspaceInclusionPlatformRows");
@@ -70,19 +70,21 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(page).toContain("workspace-customer-core-metric");
     expect(page).toContain("workspace-top-issues");
     expect(page).not.toContain("workspace-monthly-top3");
-    expect(page).toContain("workspace-operator-details");
     expect(page).toContain("workspace-service-flow");
-    expect(page).toContain("workspace-dashboard-overview");
-    expect(page).toContain("WorkspaceDashboardOverviewCards");
-    expect(page).toContain("workspace-header-card");
-    expect(page).toContain("workspace-main-chain-progress");
-    for (const label of ["品牌提及率", "内容资产", "GEO 分", "发布记录"]) {
+    expect(page).toContain("workspace-recent-progress");
+    expect(page).toContain("workspace-customer-risks");
+    expect(page).not.toContain("workspace-operator-details");
+    expect(page).not.toContain("workspace-dashboard-overview");
+    expect(page).not.toContain("WorkspaceDashboardOverviewCards");
+    expect(page).not.toContain("workspace-header-card");
+    expect(page).not.toContain("workspace-main-chain-progress");
+    for (const label of ["AI 成熟度", "AI 是否知道你", "AI 是否愿意推荐你", "本月服务进度"]) {
       expect(page).toContain(label);
     }
     for (const label of ["发布次数", "AI提及率", "GEO评分"]) {
       expect(read("client/src/components/project/WorkspaceDashboardOverviewCards.tsx")).toContain(label);
     }
-    expect(page).toContain("resolveMainChainSteps");
+    expect(page).not.toContain("resolveMainChainSteps");
     expect(page).not.toContain("localAgentId");
     expect(page).not.toContain("rawJson");
     expect(page).not.toContain("profileId");

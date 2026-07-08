@@ -25,15 +25,11 @@ describe("GEO V2.3-P0-Q workspace one screen simplification", () => {
     expect(page).not.toContain("workspace-monthly-top3");
   });
 
-  it("keeps operational modules behind one default-closed internal reference entry", () => {
-    expect(page).toContain('data-testid="workspace-operator-details"');
-    expect(page).toContain("运营详情，仅内部参考");
-    expect(page).toContain("默认关闭，不进入客户第一轮演示");
-    expect(page).toContain("诊断详情、成熟度、趋势、监测明细和运营建议保留给内部交付复盘");
-
-    const operatorDetailsStart = page.indexOf('data-testid="workspace-operator-details"');
-    const firstOperationalModule = page.indexOf("AI 品牌成熟度详情");
-    expect(operatorDetailsStart).toBeGreaterThan(-1);
-    expect(firstOperationalModule).toBeGreaterThan(operatorDetailsStart);
+  it("does not render internal reference details on the customer homepage", () => {
+    expect(page).not.toContain('data-testid="workspace-operator-details"');
+    expect(page).not.toContain("运营详情，仅内部参考");
+    expect(page).not.toContain("默认关闭，不进入客户第一轮演示");
+    expect(page).not.toContain("诊断详情、成熟度、趋势、监测明细和运营建议保留给内部交付复盘");
+    expect(page).not.toContain("AI 品牌成熟度详情");
   });
 });

@@ -32,11 +32,12 @@ describe("GEO-V1.2-P1-D-Retest-Feedback-Loop", () => {
     expect(page).toContain("aiMentionCheck.run");
   });
 
-  it("workspace business results show retest coverage and consistency", () => {
+  it("workspace does not embed retest coverage and consistency internals", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("workspace-business-results");
-    expect(page).toContain("workspace-last-retest");
-    expect(page).toContain("workspace-question-pool-coverage");
-    expect(page).toContain("workspace-source-consistency");
+    expect(page).not.toContain("workspace-business-results");
+    expect(page).not.toContain("workspace-last-retest");
+    expect(page).not.toContain("workspace-question-pool-coverage");
+    expect(page).not.toContain("workspace-source-consistency");
+    expect(page).toContain("workspace-customer-risks");
   });
 });

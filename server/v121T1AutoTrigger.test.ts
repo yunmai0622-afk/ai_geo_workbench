@@ -16,13 +16,14 @@ describe("GEO-V1.1-T1-Auto-Trigger", () => {
     expect(summary).toContain('eq(publishTasks.status, "completed")');
   });
 
-  it("workbench and inclusion monitoring show reminder with CTA to ai-diagnosis", () => {
+  it("inclusion monitoring shows reminder with CTA to ai-diagnosis outside the workspace homepage", () => {
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
+    const summary = read("server/workspaceSummary.ts");
     const monitoring = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
     const card = read("client/src/components/diagnosis/T1RetestReminderCard.tsx");
-    expect(workspace).toContain("RetestDueReminderCard");
-    expect(workspace).toContain("retestDueReminder");
-    expect(workspace).toContain("workspace-retest-due-reminder");
+    expect(summary).toContain("retestDueReminder");
+    expect(workspace).not.toContain("RetestDueReminderCard");
+    expect(workspace).not.toContain("workspace-retest-due-reminder");
     expect(monitoring).toContain("inclusion-monitoring-retest-due-reminder");
     expect(monitoring).toContain("geo.workspace.summary");
     expect(card).toContain("T1_RETEST_AUTO_TRIGGER_MESSAGE");

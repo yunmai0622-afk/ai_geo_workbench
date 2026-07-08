@@ -15,11 +15,11 @@ describe("GEO-V1.1-T0-To-Content-Bridge", () => {
     expect(read("server/workspaceSummary.ts")).toContain("t0ContentGapSuggestions");
   });
 
-  it("renders workspace card with immediate generate actions", () => {
+  it("keeps gap suggestion actions out of the workspace customer homepage", () => {
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     const card = read("client/src/components/geo/T0ContentGapSuggestionsCard.tsx");
-    expect(workspace).toContain("T0ContentGapSuggestionsCard");
-    expect(workspace).toContain("t0ContentGapSuggestions");
+    expect(workspace).not.toContain("T0ContentGapSuggestionsCard");
+    expect(workspace).not.toContain("t0ContentGapSuggestions");
     expect(card).toContain("立即生成");
     expect(card).toContain("AI 实测结果");
   });

@@ -15,12 +15,13 @@ describe("GEO V2.2 P2 sellable delivery loop", () => {
     expect(shared).toContain("续费解释");
   });
 
-  it("integrates the sellable loop into the workspace first screen", () => {
+  it("keeps the sellable loop component available without embedding it on /workspace", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     const component = read("client/src/components/workspace/WorkspaceSellableDeliveryLoopCard.tsx");
     expect(page).toContain("geo.monthlyPlan.getOptimizationBrief");
-    expect(page).toContain("buildSellableDeliveryLoopView");
-    expect(page).toContain("WorkspaceSellableDeliveryLoopCard");
+    expect(page).not.toContain("buildSellableDeliveryLoopView");
+    expect(page).not.toContain("WorkspaceSellableDeliveryLoopCard");
+    expect(page).toContain("workspace-service-flow");
     expect(component).toContain("本月 GEO 交付闭环");
     expect(component).toContain("workspace-sellable-delivery-loop");
   });

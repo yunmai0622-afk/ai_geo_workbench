@@ -20,7 +20,6 @@ describe("GEO V2.3 P0-B workspace customer overview", () => {
       "workspace-recent-progress",
       "workspace-customer-risks",
       "workspace-primary-cta",
-      "workspace-operator-details",
     ]) {
       expect(page).toContain(marker);
     }
@@ -36,11 +35,12 @@ describe("GEO V2.3 P0-B workspace customer overview", () => {
     expect(page).not.toContain("workspace-monthly-top3");
   });
 
-  it("keeps operational details behind detail entries instead of the customer first screen", () => {
-    expect(page).toContain("运营详情，仅内部参考");
-    expect(page).toContain("默认关闭，不进入客户第一轮演示");
-    expect(page).toContain("WorkspaceDashboardOverviewCards");
-    expect(page).toContain("WorkspaceInclusionMonitoringSection");
+  it("does not expose operational details on the customer homepage", () => {
+    expect(page).not.toContain('data-testid="workspace-operator-details"');
+    expect(page).not.toContain("运营详情，仅内部参考");
+    expect(page).not.toContain("默认关闭，不进入客户第一轮演示");
+    expect(page).not.toContain("WorkspaceDashboardOverviewCards");
+    expect(page).not.toContain("WorkspaceInclusionMonitoringSection");
     expect(page).not.toContain("questionId=");
     expect(page).not.toContain("sourceType=");
     expect(page).not.toContain("taskId=");

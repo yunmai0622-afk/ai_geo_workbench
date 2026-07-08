@@ -40,7 +40,8 @@ describe("GEO V2.3-P0-N one next step simplification", () => {
     expect(weekly).toContain("运营后台 · 不进入客户第一轮演示");
     expect(weekly).toContain("{isContentProductionWorkbench ? (");
     expect(weekly).toContain('id="weekly-operational-workbench"');
-    expect(workspace).toContain("运营参考，客户首屏不展开");
+    expect(workspace).not.toContain("运营参考，客户首屏不展开");
+    expect(workspace).not.toContain("运营详情，仅内部参考");
     expect(delivery).toContain("需要交付时再展开");
   });
 

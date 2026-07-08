@@ -7,11 +7,12 @@ const root = resolve(__dirname, "..");
 const read = (rel: string) => readFileSync(resolve(root, rel), "utf-8");
 
 describe("GEO-V2.0-UX-Followup-Stage-CTA-Nav", () => {
-  it("工作台阶段与主按钮共用 resolveWorkspaceStagePrimaryAction", () => {
+  it("工作台主按钮收敛为客户服务首页的唯一下一步", () => {
     const page = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(page).toContain("resolveWorkspaceStagePrimaryAction");
+    expect(page).not.toContain("resolveWorkspaceStagePrimaryAction");
     expect(page).toContain("customerConclusion");
-    expect(page).toContain("customerMainCta.label");
+    expect(page).toContain("customerMainCta");
+    expect(page).toContain('label: "查看本月服务计划"');
     expect(page).toContain("workspace-current-stage-headline");
     expect(page).toContain("workspace-primary-cta");
   });

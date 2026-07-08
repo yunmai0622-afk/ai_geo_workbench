@@ -22,13 +22,12 @@ describe("GEO-V2.0-P0-D Completeness Score", () => {
     expect(shared).toContain("geoGoal");
   });
 
-  it("workspace business results shows profile completeness summary", () => {
+  it("workspace no longer embeds profile completeness details", () => {
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(workspace).toContain("geo.onboarding.getCompletenessReport");
-    expect(workspace).toContain("workspace-profile-completeness");
-    expect(workspace).toContain("建档完整度");
-    expect(workspace).toContain("主要缺口");
-    expect(workspace).toContain("workspace-go-complete-profile");
+    expect(workspace).not.toContain("geo.onboarding.getCompletenessReport");
+    expect(workspace).not.toContain("workspace-profile-completeness");
+    expect(workspace).not.toContain("主要缺口");
+    expect(workspace).not.toContain("workspace-go-complete-profile");
     expect(workspace).toContain('buildProjectUrl("/enterprise-profile"');
   });
 

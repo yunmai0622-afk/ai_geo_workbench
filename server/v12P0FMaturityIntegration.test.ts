@@ -84,9 +84,12 @@ describe("GEO-V2.0-P0-F Maturity Integration", () => {
     expect(pool).toContain("triggerMaturityCalculate");
   });
 
-  it("workspace links to /maturity not legacy maturity-report", () => {
+  it("maturity detail stays reachable without embedding maturity details on /workspace", () => {
+    const app = read("client/src/App.tsx");
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
-    expect(workspace).toContain('buildProjectUrl("/maturity"');
+    expect(app).toContain('path="/maturity"');
+    expect(workspace).not.toContain('buildProjectUrl("/maturity"');
     expect(workspace).not.toContain("/maturity-report");
+    expect(workspace).not.toContain("workspace-maturity-hero");
   });
 });
