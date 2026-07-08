@@ -657,72 +657,86 @@ export default function MonthlyPlanPage() {
         </div>
       </P0Card>
 
-      <P0Card testId="monthly-plan-next-verification" className="space-y-4">
-        <div className="flex items-center gap-2">
-          <CalendarClock className="size-4 text-blue-600" />
-          <p className="text-sm font-semibold text-gray-900">下一次验证安排</p>
-        </div>
-        <div>
-          <p className="text-base font-semibold text-gray-900">{verificationCopy.headline}</p>
-          <p className="mt-2 text-sm leading-6 text-gray-600">{verificationCopy.description}</p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {verificationCopy.schedule.map(item => (
-            <div key={item.label} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-              <p className="text-sm font-semibold text-gray-900">
-                {item.label} · {item.timing}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-gray-500">{item.purpose}</p>
+      <details
+        className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+        data-testid="monthly-plan-verification-details"
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
+            验证安排与完成收益
+          </span>
+          <span className="text-xs font-normal text-gray-500">默认收起，不抢本月 Top 3 主线</span>
+        </summary>
+        <div className="space-y-5 border-t border-gray-100 p-5">
+          <P0Card testId="monthly-plan-next-verification" className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CalendarClock className="size-4 text-blue-600" />
+              <p className="text-sm font-semibold text-gray-900">下一次验证安排</p>
             </div>
-          ))}
-        </div>
-        {showCompletedPlan && plan?.resultMaturityScore != null ? (
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-            <p className="text-sm text-emerald-800">
-              复测已完成 · 成熟度 {plan.baselineMaturityScore} → {plan.resultMaturityScore} 分
-            </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="monthly-plan-comparison">
-              {(comparisonQuery.data?.dimensions ?? []).map(dim => (
-                <div key={dim.key} className="rounded-lg bg-white/80 p-3">
-                  <p className="text-xs text-gray-500">{dim.label}</p>
-                  <p className="mt-1 text-sm font-semibold text-gray-900">
-                    {dim.baseline} → {dim.result ?? "—"}
-                    {dim.delta != null ? (
-                      <span className={cn("ml-2 text-xs", dim.delta >= 0 ? "text-emerald-600" : "text-red-600")}>
-                        {dim.delta >= 0 ? "+" : ""}
-                        {dim.delta}
-                      </span>
-                    ) : null}
+            <div>
+              <p className="text-base font-semibold text-gray-900">{verificationCopy.headline}</p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">{verificationCopy.description}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {verificationCopy.schedule.map(item => (
+                <div key={item.label} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {item.label} · {item.timing}
                   </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">{item.purpose}</p>
                 </div>
               ))}
             </div>
-          </div>
-        ) : null}
-        {showActivePlan && retestReady ? (
-          <details className="rounded-xl border border-gray-200 bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-700">
-              运营复测操作
-            </summary>
-            <div className="flex flex-wrap gap-2 border-t border-gray-100 p-4">
-            <Button type="button" variant="outline" data-testid="monthly-plan-retest-btn" disabled={retestMutation.isPending} onClick={handleRetest}>
-              {retestMutation.isPending ? "复测中…" : "立即复测"}
-            </Button>
-            <Button type="button" variant="outline" onClick={handleGoAiDiagnosis}>
-              前往 AI 实测诊断
-            </Button>
-            </div>
-          </details>
-        ) : null}
-      </P0Card>
+            {showCompletedPlan && plan?.resultMaturityScore != null ? (
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                <p className="text-sm text-emerald-800">
+                  复测已完成 · 成熟度 {plan.baselineMaturityScore} → {plan.resultMaturityScore} 分
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="monthly-plan-comparison">
+                  {(comparisonQuery.data?.dimensions ?? []).map(dim => (
+                    <div key={dim.key} className="rounded-lg bg-white/80 p-3">
+                      <p className="text-xs text-gray-500">{dim.label}</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">
+                        {dim.baseline} → {dim.result ?? "—"}
+                        {dim.delta != null ? (
+                          <span className={cn("ml-2 text-xs", dim.delta >= 0 ? "text-emerald-600" : "text-red-600")}>
+                            {dim.delta >= 0 ? "+" : ""}
+                            {dim.delta}
+                          </span>
+                        ) : null}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {showActivePlan && retestReady ? (
+              <details className="rounded-xl border border-gray-200 bg-white">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-700">
+                  运营复测操作
+                </summary>
+                <div className="flex flex-wrap gap-2 border-t border-gray-100 p-4">
+                  <Button type="button" variant="outline" data-testid="monthly-plan-retest-btn" disabled={retestMutation.isPending} onClick={handleRetest}>
+                    {retestMutation.isPending ? "复测中…" : "立即复测"}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleGoAiDiagnosis}>
+                    前往 AI 实测诊断
+                  </Button>
+                </div>
+              </details>
+            ) : null}
+          </P0Card>
 
-      {(showActivePlan || showCompletedPlan) && plan ? (
-        <MonthlyPlanCompletionBenefitsSection
-          progress={progress}
-          tasks={tasks}
-          boundPublishAccountCount={workspaceSummaryQuery.data?.boundPublishAccountCount ?? null}
-        />
-      ) : null}
+          {(showActivePlan || showCompletedPlan) && plan ? (
+            <MonthlyPlanCompletionBenefitsSection
+              progress={progress}
+              tasks={tasks}
+              boundPublishAccountCount={workspaceSummaryQuery.data?.boundPublishAccountCount ?? null}
+            />
+          ) : null}
+        </div>
+      </details>
 
       <P0Card testId="monthly-plan-customer-risks" className="space-y-3">
         <div className="flex items-center gap-2">
@@ -786,33 +800,42 @@ export default function MonthlyPlanPage() {
         </details>
       ) : null}
 
-      <P0Card testId="monthly-plan-flow-links" className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Eye className="size-4 text-blue-600" />
-          <p className="text-sm font-semibold text-gray-900">服务流程衔接</p>
+      <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-flow-links">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
+            服务流程衔接
+          </span>
+          <span className="text-xs font-normal text-gray-500">客户默认只点主 CTA</span>
+        </summary>
+        <div className="border-t border-gray-100 px-5 pb-5 pt-4">
+          <div className="flex items-center gap-2">
+            <Eye className="size-4 text-blue-600" />
+            <p className="text-sm font-semibold text-gray-900">状态 → 计划 → 执行 → 验证 → 报告</p>
+          </div>
+          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-5">
+            {[
+              { label: "总览", path: "/workspace" },
+              { label: "本月方案", path: "/monthly-plan" },
+              { label: "执行进度", path: "/weekly" },
+              { label: "效果验证", path: "/inclusion-monitoring" },
+              { label: "效果报告", path: "/delivery-reports" },
+            ].map(item => (
+              <div
+                key={item.path}
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-left font-medium",
+                  item.path === "/monthly-plan"
+                    ? "border-blue-200 bg-blue-50 text-blue-800"
+                    : "border-gray-200 bg-white text-gray-700",
+                )}
+              >
+                {item.label}
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid gap-2 text-sm sm:grid-cols-5">
-          {[
-            { label: "总览", path: "/workspace" },
-            { label: "本月方案", path: "/monthly-plan" },
-            { label: "执行进度", path: "/weekly" },
-            { label: "效果验证", path: "/inclusion-monitoring" },
-            { label: "效果报告", path: "/delivery-reports" },
-          ].map(item => (
-            <div
-              key={item.path}
-              className={cn(
-                "rounded-xl border px-3 py-2 text-left font-medium",
-                item.path === "/monthly-plan"
-                  ? "border-blue-200 bg-blue-50 text-blue-800"
-                  : "border-gray-200 bg-white text-gray-700",
-              )}
-            >
-              {item.label}
-            </div>
-          ))}
-        </div>
-      </P0Card>
+      </details>
 
       <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-history">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">

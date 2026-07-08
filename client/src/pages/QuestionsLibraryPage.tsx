@@ -613,37 +613,42 @@ export default function QuestionsLibraryPage() {
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!selectedProjectId || mutating}
-            onClick={openCreateDrawer}
-            data-testid="questions-library-add"
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            新增问题
-          </Button>
-          <Button
-            type="button"
-            className="bg-blue-600 text-white hover:bg-blue-700"
-            disabled={!selectedProjectId || !hasProfile || mutating}
-            onClick={handleGenerate}
-            data-testid="questions-library-generate"
-          >
-            {generateMutation.isPending ? (
-              <>
-                <Spinner className="mr-1.5 h-4 w-4" />
-                生成中…
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-1.5 h-4 w-4" />
-                生成高质量问题
-              </>
-            )}
-          </Button>
-        </div>
+        <details className="shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="questions-secondary-actions">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-700">
+            运营辅助操作
+          </summary>
+          <div className="flex flex-col gap-2 border-t border-gray-100 p-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!selectedProjectId || mutating}
+              onClick={openCreateDrawer}
+              data-testid="questions-library-add"
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              新增问题
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!selectedProjectId || !hasProfile || mutating}
+              onClick={handleGenerate}
+              data-testid="questions-library-generate"
+            >
+              {generateMutation.isPending ? (
+                <>
+                  <Spinner className="mr-1.5 h-4 w-4" />
+                  生成中…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                  生成高质量问题
+                </>
+              )}
+            </Button>
+          </div>
+        </details>
       </div>
 
       {loading ? (
@@ -661,12 +666,26 @@ export default function QuestionsLibraryPage() {
             primaryAction={operatorPrimaryAction}
           />
 
-          <QuestionOpportunityMapPanel
-            view={opportunityMapView}
-            mutating={mutating}
-            onPrimaryAction={selectedProjectId ? handleOpportunityPrimaryAction : undefined}
-            onItemAction={handleOpportunityItemAction}
-          />
+          <details
+            className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+            data-testid="questions-opportunity-map-fold"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+                运营机会地图
+              </span>
+              <span className="text-xs font-normal text-gray-500">证据、分层建议和长列表默认收起</span>
+            </summary>
+            <div className="border-t border-gray-100 p-5">
+              <QuestionOpportunityMapPanel
+                view={opportunityMapView}
+                mutating={mutating}
+                onPrimaryAction={selectedProjectId ? handleOpportunityPrimaryAction : undefined}
+                onItemAction={handleOpportunityItemAction}
+              />
+            </div>
+          </details>
 
           <details
             className="group rounded-2xl border border-gray-200 bg-white shadow-sm"

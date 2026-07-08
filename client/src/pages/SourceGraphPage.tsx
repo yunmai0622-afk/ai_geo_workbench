@@ -550,29 +550,34 @@ export default function SourceGraphPage() {
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!selectedProjectId || mutating}
-            onClick={openCreateDrawer}
-            data-testid="source-graph-add-source"
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            手动添加信源
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!selectedProjectId}
-            onClick={goEnterpriseProfile}
-            data-testid="source-graph-edit-profile"
-          >
-            <ExternalLink className="mr-1.5 h-4 w-4" />
-            查看企业档案
-          </Button>
-        </div>
+        <details className="shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="source-graph-secondary-actions">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-700">
+            运营辅助操作
+          </summary>
+          <div className="flex flex-col gap-2 border-t border-gray-100 p-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!selectedProjectId || mutating}
+              onClick={openCreateDrawer}
+              data-testid="source-graph-add-source"
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              手动添加信源
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!selectedProjectId}
+              onClick={goEnterpriseProfile}
+              data-testid="source-graph-edit-profile"
+            >
+              <ExternalLink className="mr-1.5 h-4 w-4" />
+              查看企业档案
+            </Button>
+          </div>
+        </details>
       </div>
 
       {loading ? (
@@ -617,29 +622,32 @@ export default function SourceGraphPage() {
           ) : null}
 
           {discoverySummary ? (
-            <div
-              className="grid gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4 sm:grid-cols-2 xl:grid-cols-4"
-              data-testid="source-graph-discovery-summary"
-            >
-              <div>
-                <p className="text-xs text-gray-500">上次自动发现</p>
-                <p className="mt-1 text-sm font-medium text-gray-900">
-                  {formatDateTime(discoverySummary.lastDiscoveryAt)}
-                </p>
+            <details className="rounded-xl border border-blue-100 bg-white shadow-sm" data-testid="source-graph-discovery-summary">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-900">
+                自动发现摘要
+                <span className="ml-2 text-xs font-normal text-gray-500">默认收起，不抢信源修复 Top 3</span>
+              </summary>
+              <div className="grid gap-3 border-t border-blue-50 bg-blue-50/50 p-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div>
+                  <p className="text-xs text-gray-500">上次自动发现</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">
+                    {formatDateTime(discoverySummary.lastDiscoveryAt)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">待处理新发现</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.newDiscoveryCount} 条</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">已验证信源</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.verifiedSourceCount} 条</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">待验证信源</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.pendingVerificationCount} 条</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">待处理新发现</p>
-                <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.newDiscoveryCount} 条</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">已验证信源</p>
-                <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.verifiedSourceCount} 条</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">待验证信源</p>
-                <p className="mt-1 text-sm font-medium text-gray-900">{discoverySummary.pendingVerificationCount} 条</p>
-              </div>
-            </div>
+            </details>
           ) : null}
 
           <details

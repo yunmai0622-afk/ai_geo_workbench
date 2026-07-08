@@ -59,8 +59,6 @@ export function QuestionPoolOperatorOverview({
   taskLinks,
   primaryAction,
 }: Props) {
-  const firstDecision = topItems[0] ?? null;
-
   return (
     <section className="space-y-5" data-testid="question-operator-overview">
       <P0Card className="border-blue-100 bg-blue-50/30">
@@ -90,20 +88,28 @@ export function QuestionPoolOperatorOverview({
           className="mt-5 rounded-xl border border-blue-100 bg-white p-4"
           data-testid="question-operator-first-decision"
         >
-          <p className="text-xs font-semibold text-blue-700">今日选题决策</p>
-          {firstDecision ? (
-            <div className="mt-2 grid gap-3 lg:grid-cols-[1fr_0.75fr]">
-              <div>
-                <h3 className="text-lg font-bold leading-7 text-gray-950">{firstDecision.questionText}</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  为什么值得做：{firstDecision.reason}
-                </p>
-              </div>
-              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm">
-                <p className="font-medium text-gray-900">下一步：{firstDecision.nextAction}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">AI 表现：{firstDecision.aiPerformance}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">内容状态：{firstDecision.contentStatus}</p>
-              </div>
+          <p className="text-xs font-semibold text-blue-700">今日优先问题 Top 3</p>
+          {topItems.length > 0 ? (
+            <div className="mt-3 grid gap-3 lg:grid-cols-3">
+              {topItems.slice(0, 3).map(item => (
+                <article key={item.key} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Badge variant="outline" className="border-blue-200 bg-white text-blue-800">
+                      {item.badgeLabel}
+                    </Badge>
+                    <span className="text-xs text-gray-500">{item.contentStatus}</span>
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold leading-6 text-gray-950">{item.questionText}</h3>
+                  <p className="mt-2 text-xs leading-5 text-gray-600">
+                    <span className="font-medium text-gray-800">为什么重要：</span>
+                    {item.reason}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-600">
+                    <span className="font-medium text-gray-800">推荐动作：</span>
+                    {item.nextAction}
+                  </p>
+                </article>
+              ))}
             </div>
           ) : (
             <p className="mt-2 text-sm leading-6 text-gray-600">
@@ -123,13 +129,13 @@ export function QuestionPoolOperatorOverview({
         </div>
       </P0Card>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_1.1fr]">
+      <div className="grid gap-5">
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="question-operator-scenarios">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">本月优先问题类型</h2>
-            <p className="mt-1 text-xs text-gray-500">按业务场景判断选题价值，不让表格抢第一屏。</p>
+            <h2 className="text-base font-semibold text-gray-900">分类概览</h2>
+            <p className="mt-1 text-xs text-gray-500">只看各类 AI 搜索问题数量，完整问题列表已折叠。</p>
           </div>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {scenarios.map(scenario => (
               <div key={scenario.key} className="rounded-lg border border-gray-100 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -138,63 +144,19 @@ export function QuestionPoolOperatorOverview({
                     覆盖 {scenario.count} 条
                   </span>
                 </div>
-                <dl className="mt-3 grid gap-2 text-xs text-gray-600 sm:grid-cols-3">
-                  <div>
-                    <dt className="font-medium text-gray-900">AI 表现</dt>
-                    <dd className="mt-1">{scenario.aiPerformance}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-gray-900">内容覆盖</dt>
-                    <dd className="mt-1">{scenario.contentCoverage}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-gray-900">建议动作</dt>
-                    <dd className="mt-1">{scenario.nextAction}</dd>
-                  </div>
-                </dl>
+                <p className="mt-2 text-xs leading-5 text-gray-500">{scenario.nextAction}</p>
               </div>
             ))}
           </div>
         </section>
-
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="question-operator-top-items">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">Top 优化问题</h2>
-            <p className="mt-1 text-xs text-gray-500">最多展示 5 个最值得推进的问题。</p>
-          </div>
-          <div className="mt-4 divide-y divide-gray-100">
-            {topItems.length > 0 ? (
-              topItems.map(item => (
-                <div key={item.key} className="py-3 first:pt-0 last:pb-0">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p className="max-w-2xl text-sm font-semibold leading-6 text-gray-950">{item.questionText}</p>
-                    <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800">
-                      {item.badgeLabel}
-                    </Badge>
-                  </div>
-                  <div className="mt-2 grid gap-2 text-xs text-gray-600 md:grid-cols-3">
-                    <p><span className="font-medium text-gray-900">当前 AI 表现：</span>{item.aiPerformance}</p>
-                    <p><span className="font-medium text-gray-900">内容任务：</span>{item.contentStatus}</p>
-                    <p><span className="font-medium text-gray-900">下一步：</span>{item.nextAction}</p>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-gray-500">为什么重要：{item.reason}</p>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
-                暂无足够问题数据。建议先生成 AI 搜索问题池，再结合诊断和内容任务判断优先级。
-              </div>
-            )}
-          </div>
-        </section>
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="question-operator-task-links">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">内容任务关联</h2>
-          <p className="mt-1 text-xs text-gray-500">看哪些问题已进入内容、发布和复测链路。</p>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="question-operator-task-links">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-900">
+          内容任务关联
+          <span className="ml-2 text-xs font-normal text-gray-500">默认收起，避免把选题页变成任务看板</span>
+        </summary>
+        <div className="grid gap-3 border-t border-gray-100 p-5 sm:grid-cols-2 xl:grid-cols-4">
           {taskLinks.map(item => (
             <div key={item.key} className="rounded-lg border border-gray-100 p-4">
               <p className="text-xs font-medium text-gray-500">{item.label}</p>
@@ -203,7 +165,7 @@ export function QuestionPoolOperatorOverview({
             </div>
           ))}
         </div>
-      </section>
+      </details>
     </section>
   );
 }

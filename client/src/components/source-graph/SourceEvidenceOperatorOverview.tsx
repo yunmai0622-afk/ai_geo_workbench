@@ -128,12 +128,12 @@ export function SourceEvidenceOperatorOverview({
 
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="source-evidence-suggestions">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">信源修复建议</h2>
-            <p className="mt-1 text-xs text-gray-500">把信源缺口转成运营人员能执行的动作。</p>
+            <h2 className="text-base font-semibold text-gray-900">优先修复清单 Top 3</h2>
+            <p className="mt-1 text-xs text-gray-500">把最影响 AI 信任的证据缺口转成运营动作。</p>
           </div>
           <div className="mt-4 space-y-3">
             {suggestions.length > 0 ? (
-              suggestions.map(item => (
+              suggestions.slice(0, 3).map(item => (
                 <div key={item.key} className="rounded-lg border border-gray-100 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-gray-900">{item.title}</p>
@@ -151,41 +151,47 @@ export function SourceEvidenceOperatorOverview({
         </section>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="source-evidence-distribution">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">信源类型分布</h2>
-            <p className="mt-1 text-xs text-gray-500">按运营可理解的证据类型查看覆盖情况。</p>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {distribution.map(item => (
-              <div key={item.key} className="rounded-lg border border-gray-100 p-4">
-                <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-                <p className="mt-2 text-xl font-semibold text-gray-950">{item.count} 条</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">{item.hint}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="source-evidence-consistency">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">一致性检查</h2>
-            <p className="mt-1 text-xs text-gray-500">第一屏只展示关键判断，完整字段放到下方运营明细。</p>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {consistencyRows.map(row => (
-              <div key={row.key} className="rounded-lg border border-gray-100 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-gray-900">{row.label}</p>
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{row.status}</span>
+      <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="source-evidence-summary-details">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-900">
+          信源分布与一致性摘要
+          <span className="ml-2 text-xs font-normal text-gray-500">默认收起，完整字段在运营明细中处理</span>
+        </summary>
+        <div className="grid gap-5 border-t border-gray-100 p-5 xl:grid-cols-[0.95fr_1.05fr]">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="source-evidence-distribution">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">信源类型分布</h2>
+              <p className="mt-1 text-xs text-gray-500">按运营可理解的证据类型查看覆盖情况。</p>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {distribution.map(item => (
+                <div key={item.key} className="rounded-lg border border-gray-100 p-4">
+                  <p className="text-sm font-semibold text-gray-900">{item.label}</p>
+                  <p className="mt-2 text-xl font-semibold text-gray-950">{item.count} 条</p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">{item.hint}</p>
                 </div>
-                <p className="mt-2 text-xs leading-5 text-gray-500">{row.suggestion}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="source-evidence-consistency">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">一致性检查</h2>
+              <p className="mt-1 text-xs text-gray-500">第一屏只展示关键判断，完整字段放到下方运营明细。</p>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {consistencyRows.map(row => (
+                <div key={row.key} className="rounded-lg border border-gray-100 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-900">{row.label}</p>
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{row.status}</span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-gray-500">{row.suggestion}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </details>
     </section>
   );
 }

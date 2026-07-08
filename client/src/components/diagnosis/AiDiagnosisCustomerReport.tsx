@@ -744,126 +744,140 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
         </div>
       </div>
 
-      <section
-        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-        data-testid="ai-diagnosis-scenario-breakdown"
+      <details
+        className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+        data-testid="ai-diagnosis-customer-details"
       >
-        <h2 className="text-lg font-semibold text-gray-900">问题场景拆解</h2>
-        <p className="mt-1 text-sm text-gray-500">把问题池和 AI 实测结果翻译成客户能理解的场景表现。</p>
-        {scenarioGroups.length > 0 ? (
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {scenarioGroups.slice(0, 6).map(group => (
-              <article key={group.questionType} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <p className="text-sm font-semibold text-gray-900">{group.label}</p>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-600">
-                  <div>
-                    <dt className="text-gray-400">是否提及</dt>
-                    <dd className="mt-0.5 font-medium text-gray-800">{formatT0Rate(group.mentionRate)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-400">是否推荐</dt>
-                    <dd className="mt-0.5 font-medium text-gray-800">{formatT0Rate(group.recommendRate)}</dd>
-                  </div>
-                </dl>
-                <p className="mt-3 text-xs leading-5 text-gray-600">
-                  <span className="font-medium text-gray-700">主要问题：</span>
-                  {scenarioIssueLabel(group)}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-gray-600">
-                  <span className="font-medium text-gray-700">建议动作：</span>
-                  {group.recommendRate === 0
-                    ? "围绕该场景补充可引用内容和推荐理由。"
-                    : "继续扩大相似问题覆盖，并在发布后复测。"}
-                </p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div
-            className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4"
-            data-testid="ai-diagnosis-scenario-breakdown-empty"
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+            查看诊断解释与修复路径
+          </span>
+          <span className="text-xs font-normal text-gray-500">场景、长文本原因和路径默认收起</span>
+        </summary>
+        <div className="space-y-5 border-t border-gray-100 p-5">
+          <section
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            data-testid="ai-diagnosis-scenario-breakdown"
           >
-            <p className="text-sm text-gray-600">暂无问题场景实测数据，建议先完成 AI 实测诊断。</p>
-            {selectedProjectId ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 border-gray-300"
-                data-testid="ai-diagnosis-view-question-pool-empty"
-                onClick={() => onNavigate(buildProjectUrl("/questions", selectedProjectId))}
+            <h2 className="text-lg font-semibold text-gray-900">问题场景拆解</h2>
+            <p className="mt-1 text-sm text-gray-500">把问题池和 AI 实测结果翻译成客户能理解的场景表现。</p>
+            {scenarioGroups.length > 0 ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {scenarioGroups.slice(0, 6).map(group => (
+                  <article key={group.questionType} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                    <p className="text-sm font-semibold text-gray-900">{group.label}</p>
+                    <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-600">
+                      <div>
+                        <dt className="text-gray-400">是否提及</dt>
+                        <dd className="mt-0.5 font-medium text-gray-800">{formatT0Rate(group.mentionRate)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-gray-400">是否推荐</dt>
+                        <dd className="mt-0.5 font-medium text-gray-800">{formatT0Rate(group.recommendRate)}</dd>
+                      </div>
+                    </dl>
+                    <p className="mt-3 text-xs leading-5 text-gray-600">
+                      <span className="font-medium text-gray-700">主要问题：</span>
+                      {scenarioIssueLabel(group)}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-gray-600">
+                      <span className="font-medium text-gray-700">建议动作：</span>
+                      {group.recommendRate === 0
+                        ? "围绕该场景补充可引用内容和推荐理由。"
+                        : "继续扩大相似问题覆盖，并在发布后复测。"}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div
+                className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4"
+                data-testid="ai-diagnosis-scenario-breakdown-empty"
               >
-                查看 AI 问题池
-              </Button>
-            ) : null}
-          </div>
-        )}
-      </section>
-
-      <section
-        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-        data-testid="ai-diagnosis-not-recommended-reasons"
-      >
-        <div className="flex items-center gap-2">
-          <Lightbulb className="size-5 text-amber-600" />
-          <h2 className="text-lg font-semibold text-gray-900">AI 为什么不稳定推荐</h2>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {aiMissReasons.map(reason => (
-            <div
-              key={reason.title}
-              className={`rounded-xl border p-4 ${reason.active ? "border-amber-200 bg-amber-50/70" : "border-gray-100 bg-gray-50"}`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-gray-900">{reason.title}</p>
-                {reason.active ? (
-                  <span className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-xs text-amber-800">
-                    当前重点
-                  </span>
+                <p className="text-sm text-gray-600">暂无问题场景实测数据，建议先完成 AI 实测诊断。</p>
+                {selectedProjectId ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 border-gray-300"
+                    data-testid="ai-diagnosis-view-question-pool-empty"
+                    onClick={() => onNavigate(buildProjectUrl("/questions", selectedProjectId))}
+                  >
+                    查看 AI 问题池
+                  </Button>
                 ) : null}
               </div>
-              <p className="mt-2 text-xs leading-5 text-gray-600">
-                <span className="font-medium text-gray-700">原因：</span>
-                {reason.why}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-gray-600">
-                <span className="font-medium text-gray-700">怎么改：</span>
-                {reason.fix}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+            )}
+          </section>
 
-      <section
-        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-        data-testid="ai-diagnosis-repair-path"
-      >
-        <div className="flex items-center gap-2">
-          <Route className="size-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-900">从诊断到修复路径</h2>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-5">
-          {repairSteps.map(step => (
-            <div
-              key={step.title}
-              className={`rounded-xl border p-3 ${
-                step.status === "current"
-                  ? "border-blue-200 bg-blue-50 text-blue-900"
-                  : step.status === "next"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                    : "border-gray-200 bg-gray-50 text-gray-600"
-              }`}
-            >
-              <p className="text-xs font-medium">
-                {step.status === "current" ? "当前页" : step.status === "next" ? "下一步" : "待开始"}
-              </p>
-              <p className="mt-1 text-sm font-semibold">{step.title}</p>
-              <p className="mt-2 text-xs leading-5">{step.description}</p>
+          <section
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            data-testid="ai-diagnosis-not-recommended-reasons"
+          >
+            <div className="flex items-center gap-2">
+              <Lightbulb className="size-5 text-amber-600" />
+              <h2 className="text-lg font-semibold text-gray-900">AI 为什么不稳定推荐</h2>
             </div>
-          ))}
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {aiMissReasons.map(reason => (
+                <div
+                  key={reason.title}
+                  className={`rounded-xl border p-4 ${reason.active ? "border-amber-200 bg-amber-50/70" : "border-gray-100 bg-gray-50"}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-gray-900">{reason.title}</p>
+                    {reason.active ? (
+                      <span className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-xs text-amber-800">
+                        当前重点
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-gray-600">
+                    <span className="font-medium text-gray-700">原因：</span>
+                    {reason.why}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-600">
+                    <span className="font-medium text-gray-700">怎么改：</span>
+                    {reason.fix}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+            data-testid="ai-diagnosis-repair-path"
+          >
+            <div className="flex items-center gap-2">
+              <Route className="size-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">从诊断到修复路径</h2>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-5">
+              {repairSteps.map(step => (
+                <div
+                  key={step.title}
+                  className={`rounded-xl border p-3 ${
+                    step.status === "current"
+                      ? "border-blue-200 bg-blue-50 text-blue-900"
+                      : step.status === "next"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "border-gray-200 bg-gray-50 text-gray-600"
+                  }`}
+                >
+                  <p className="text-xs font-medium">
+                    {step.status === "current" ? "当前页" : step.status === "next" ? "下一步" : "待开始"}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold">{step.title}</p>
+                  <p className="mt-2 text-xs leading-5">{step.description}</p>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
-      </section>
+      </details>
 
       <details
         className="group rounded-2xl border border-gray-200 bg-white shadow-sm"

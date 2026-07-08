@@ -305,7 +305,7 @@ function publishTaskOperatorNextAction(card: PublishTaskCardModel, localAgentOnl
   if (card.statusRaw === "agent_processing" || card.statusRaw === "processing") {
     return "确认客户端处理结果，完成后回填公开链接。";
   }
-  return localAgentOnline ? "发送到本地发布助手并完成人工确认。" : "先打开本地发布助手，或转人工发布。";
+  return localAgentOnline ? "提交发布处理并完成人工确认。" : "先确认发布环境，或转人工发布。";
 }
 
 function buildOperatorAccountRow(card: PublishPagePlatformCard): PublishOperatorAccountRow {
@@ -411,8 +411,8 @@ function buildPublishOperatorConclusion(input: {
   }
   if (input.pendingWorkCount > 0) {
     return input.localAgentNeeded
-      ? `当前有 ${input.pendingWorkCount} 项内容待发布，且需要先确认本地发布助手可用。今天优先处理待发布队列和账号环境。`
-      : `当前有 ${input.pendingWorkCount} 项内容待发布。本地发布助手状态可用时，可按平台逐项执行并回填公开链接。`;
+      ? `当前有 ${input.pendingWorkCount} 项内容待发布，且需要先确认发布环境可用。今天优先处理待发布队列和账号环境。`
+      : `当前有 ${input.pendingWorkCount} 项内容待发布。今天按平台逐项执行，并在发布后回填公开链接。`;
   }
   if (input.waitingLinkCount > 0) {
     return `当前有 ${input.waitingLinkCount} 项发布记录缺少公开链接。先回填链接，才能进入收录和 AI 识别验证。`;
@@ -1339,7 +1339,7 @@ function ContentPublishingCenterPageInner() {
     }
     if (pendingWorkCount > 0) {
       return {
-        label: "处理待发布",
+        label: "处理待发布任务",
         hint: "进入任务队列，把内容发布到对应平台。",
         onClick: () => openPublishTaskTab(queueTabs.active.length > 0 ? "active" : "pending"),
       };
@@ -1453,16 +1453,23 @@ function ContentPublishingCenterPageInner() {
             面向代理运营的发布工作台：处理待发布内容、账号环境、失败重试、链接回填和效果验证；保留运营可用性，不作为客户首轮演示页。
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className={`shrink-0 ${geoP0Brand.primaryOutline}`}
-          data-testid="publish-records-export-csv"
-          disabled={loading || !selectedProjectId}
-          onClick={handleExportPublishRecordsCsv}
-        >
-          导出发布记录
-        </Button>
+        <details className="shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-secondary-actions">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-gray-700">
+            发布辅助操作
+          </summary>
+          <div className="border-t border-gray-100 p-3">
+            <Button
+              type="button"
+              variant="outline"
+              className={geoP0Brand.primaryOutline}
+              data-testid="publish-records-export-csv"
+              disabled={loading || !selectedProjectId}
+              onClick={handleExportPublishRecordsCsv}
+            >
+              导出发布记录
+            </Button>
+          </div>
+        </details>
       </header>
 
       {publishDataLoadFailed ? (
@@ -1490,19 +1497,27 @@ function ContentPublishingCenterPageInner() {
         onOpenVerification={() => goToProjectPath("/inclusion-monitoring")}
       />
 
-      <PublishStatusBar
-        localAgentLabel={localAgentLabel}
-        readyAccountCount={boundPublishAccountCount}
-        pendingTaskCount={pendingCount}
-        activeTaskCount={activeTaskCount}
-        failedTaskCount={failedCount}
-        waitingLinkCount={waitingLinkCount}
-        checking={checkingAgent}
-        tasksFetching={autoPublishTasksQuery.isFetching}
-        onPullTasks={refreshPublishTasks}
-        onRefreshAccountStatus={() => void refreshAgentHealth()}
-        onOpenClient={handleOpenClient}
-      />
+      <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-status-bar-fold">
+        <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-900">
+          发布状态与客户端检查
+          <span className="ml-2 text-xs font-normal text-gray-500">Local Agent、账号刷新和拉取任务默认收起</span>
+        </summary>
+        <div className="border-t border-gray-100 p-5">
+          <PublishStatusBar
+            localAgentLabel={localAgentLabel}
+            readyAccountCount={boundPublishAccountCount}
+            pendingTaskCount={pendingCount}
+            activeTaskCount={activeTaskCount}
+            failedTaskCount={failedCount}
+            waitingLinkCount={waitingLinkCount}
+            checking={checkingAgent}
+            tasksFetching={autoPublishTasksQuery.isFetching}
+            onPullTasks={refreshPublishTasks}
+            onRefreshAccountStatus={() => void refreshAgentHealth()}
+            onOpenClient={handleOpenClient}
+          />
+        </div>
+      </details>
 
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}

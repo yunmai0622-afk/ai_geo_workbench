@@ -21,16 +21,18 @@ describe("GEO V2.3-P0-E effect verification customer page", () => {
     expect(page).toContain('data-testid="effect-verification-primary-cta"');
   });
 
-  it("shows a service flow and evidence summary before operational details", () => {
+  it("keeps service flow and evidence summary folded behind the customer overview", () => {
     const overviewIndex = page.indexOf("<EffectVerificationCustomerOverview");
     const processIndex = page.indexOf("<EffectVerificationProcess");
     const evidenceIndex = page.indexOf("<EffectVerificationEvidenceSummary");
     const advancedIndex = page.indexOf('data-testid="effect-verification-advanced-details"');
 
+    expect(page).toContain('data-testid="effect-verification-evidence-fold"');
     expect(page).toContain("发布 → 收录 → 数据回填 → AI 复测 → 效果报告");
     expect(page).toContain("客户可见证据摘要");
-    expect(page).toContain("下一份报告能证明什么");
-    expect(page).toContain("不承诺保证收录、排名或 AI 推荐");
+    expect(page).toContain("最近验证记录");
+    expect(page).toContain("证据仍在积累中");
+    expect(page).toContain("流程、技术证据和明细默认收起");
     expect(processIndex).toBeGreaterThan(overviewIndex);
     expect(evidenceIndex).toBeGreaterThan(processIndex);
     expect(advancedIndex).toBeGreaterThan(evidenceIndex);

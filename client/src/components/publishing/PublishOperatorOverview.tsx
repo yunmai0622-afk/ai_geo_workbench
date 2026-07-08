@@ -132,9 +132,6 @@ export function PublishOperatorOverview({
             <p className="text-sm leading-6 text-gray-600" data-testid="publish-operator-conclusion">
               {conclusion}
             </p>
-            <p className="text-xs text-gray-500">
-              当前是否需要本地发布助手：<span className="font-medium text-gray-800">{localAgentNeedLabel}</span>
-            </p>
           </div>
           <div className="shrink-0 rounded-lg border border-blue-100 bg-blue-50 p-3">
             <Button
@@ -158,6 +155,15 @@ export function PublishOperatorOverview({
             </div>
           ))}
         </div>
+        <details className="mt-4 rounded-lg border border-blue-100 bg-white" data-testid="publish-local-agent-summary-fold">
+          <summary className="cursor-pointer px-4 py-3 text-xs font-medium text-gray-700">
+            发布助手状态
+            <span className="ml-2 font-normal text-gray-500">默认收起，不作为首屏决策信息</span>
+          </summary>
+          <p className="border-t border-blue-50 px-4 py-3 text-xs leading-5 text-gray-500">
+            当前是否需要本地发布助手：<span className="font-medium text-gray-800">{localAgentNeedLabel}</span>
+          </p>
+        </details>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -207,8 +213,8 @@ export function PublishOperatorOverview({
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-pending-task-operator-list">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">待处理发布任务</h2>
-            <p className="mt-1 text-xs text-gray-500">按内容、平台、状态和下一步动作推进，不展示内部任务字段。</p>
+            <h2 className="text-base font-semibold text-gray-900">今天要发布什么</h2>
+            <p className="mt-1 text-xs text-gray-500">只展示最需要处理的 3 个任务；完整队列在下方任务区。</p>
           </div>
           <Button
             type="button"
@@ -222,7 +228,7 @@ export function PublishOperatorOverview({
         </div>
         {pendingTasks.length > 0 ? (
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            {pendingTasks.map(task => (
+            {pendingTasks.slice(0, 3).map(task => (
               <div key={task.key} className="rounded-lg border border-gray-100 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
@@ -251,71 +257,77 @@ export function PublishOperatorOverview({
         )}
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-account-operator-status">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">平台账号状态</h2>
-            <p className="mt-1 text-xs text-gray-500">用运营语言展示平台是否可发布；技术细节已折叠到高级区。</p>
+      <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-account-operator-status">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">
+          <span>平台账号状态</span>
+          <span className="text-xs font-normal text-gray-500">账号环境明细默认收起</span>
+        </summary>
+        <div className="border-t border-gray-100 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-gray-500">用运营语言展示平台是否可发布；技术细节已折叠到高级区。</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className={geoP0Brand.primaryOutline}
+              onClick={onOpenAccountTools}
+            >
+              查看账号环境
+            </Button>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className={geoP0Brand.primaryOutline}
-            onClick={onOpenAccountTools}
-          >
-            查看账号环境
-          </Button>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {accountRows.map(row => (
-            <div key={row.key} className="rounded-lg border border-gray-100 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-gray-900">{row.platformLabel}</p>
-                <span className={`rounded-full border px-2 py-0.5 text-xs ${accountToneClass(row.tone)}`}>
-                  {row.statusLabel}
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-gray-600">影响：{row.impact}</p>
-              <p className="mt-1 text-xs text-gray-500">下一步：{row.nextStep}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-published-verification">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">已发布，等待效果验证</h2>
-            <p className="mt-1 text-xs text-gray-500">发布不是结束，下一步要确认内容是否被搜索和 AI 看见。</p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className={geoP0Brand.primaryOutline}
-            onClick={onOpenVerification}
-          >
-            去效果验证
-          </Button>
-        </div>
-        {publishedRows.length > 0 ? (
-          <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            {publishedRows.map(row => (
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {accountRows.map(row => (
               <div key={row.key} className="rounded-lg border border-gray-100 p-4">
-                <p className="text-sm font-semibold text-gray-900 line-clamp-2">{row.title}</p>
-                <p className="mt-1 text-xs text-gray-500">{row.platformLabel} · {row.statusLabel}</p>
-                <p className="mt-2 text-xs text-gray-700">公开链接：{row.publicLinkLabel}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-gray-900">{row.platformLabel}</p>
+                  <span className={`rounded-full border px-2 py-0.5 text-xs ${accountToneClass(row.tone)}`}>
+                    {row.statusLabel}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-gray-600">影响：{row.impact}</p>
                 <p className="mt-1 text-xs text-gray-500">下一步：{row.nextStep}</p>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
-            暂无已发布待验证内容。完成发布并回填公开链接后，会在这里进入效果验证。
+        </div>
+      </details>
+
+      <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-published-verification">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">
+          <span>已发布，等待效果验证</span>
+          <span className="text-xs font-normal text-gray-500">发布后证据默认收起</span>
+        </summary>
+        <div className="border-t border-gray-100 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-gray-500">发布不是结束，下一步要确认内容是否被搜索和 AI 看见。</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className={geoP0Brand.primaryOutline}
+              onClick={onOpenVerification}
+            >
+              去效果验证
+            </Button>
           </div>
-        )}
-      </section>
+          {publishedRows.length > 0 ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {publishedRows.map(row => (
+                <div key={row.key} className="rounded-lg border border-gray-100 p-4">
+                  <p className="text-sm font-semibold text-gray-900 line-clamp-2">{row.title}</p>
+                  <p className="mt-1 text-xs text-gray-500">{row.platformLabel} · {row.statusLabel}</p>
+                  <p className="mt-2 text-xs text-gray-700">公开链接：{row.publicLinkLabel}</p>
+                  <p className="mt-1 text-xs text-gray-500">下一步：{row.nextStep}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
+              暂无已发布待验证内容。完成发布并回填公开链接后，会在这里进入效果验证。
+            </div>
+          )}
+        </div>
+      </details>
     </section>
   );
 }

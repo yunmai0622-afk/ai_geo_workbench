@@ -626,17 +626,20 @@ function RenewalDeliveryReportHero({
           </div>
         </div>
 
-        <div data-testid="delivery-report-effect-changes">
-          <div className="mb-3 flex items-center gap-2">
-            <TrendingUp className="size-4 text-blue-600" />
-            <p className="text-sm font-semibold text-gray-900">效果变化</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="delivery-report-effect-changes">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-gray-900">
+            <span className="inline-flex items-center gap-2">
+              <TrendingUp className="size-4 text-blue-600" />
+              效果变化明细
+            </span>
+            <span className="text-xs font-normal text-gray-500">未完成复测前默认收起，不承诺固定提升</span>
+          </summary>
+          <div className="grid gap-3 border-t border-gray-100 p-4 sm:grid-cols-2 lg:grid-cols-4">
             {effectChanges.map(item => (
               <ReportMetric key={item.label} label={item.label} value={item.value} hint={item.hint} />
             ))}
           </div>
-        </div>
+        </details>
       </P0Card>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]" data-testid="delivery-report-renewal-reasons">
@@ -698,59 +701,68 @@ function RenewalDeliveryReportHero({
         </P0Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]" data-testid="delivery-report-service-and-evidence-summary">
-        <P0Card className="space-y-4">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="size-4 text-blue-600" />
-            <p className="text-sm font-semibold text-gray-900">本月服务明细</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { title: "诊断与方案", desc: report.planPhase === "no_plan" ? "待生成服务方案。" : `本月围绕 ${report.focusSummary || "关键短板"} 推进。`, path: "/monthly-plan" },
-              { title: "内容与发布", desc: `发布 ${reportCount(report.actions.contentCount)} 篇内容，覆盖 ${reportCount(report.actions.questionCoverageCount)} 个问题。`, path: "/weekly" },
-              { title: "收录与复测", desc: report.hasRetestData ? "已完成 AI 复测并形成对比。" : "等待收录数据和下一次复测。", path: "/inclusion-monitoring" },
-              { title: "报告与下月建议", desc: "沉淀本月服务价值和下月续费理由。", path: "/delivery-reports" },
-            ].map(item => (
-              <div
-                key={item.title}
-                className="rounded-xl border border-gray-200 bg-white p-3 text-left"
-              >
-                <p className="text-sm font-semibold text-gray-900">{item.title}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </P0Card>
+      <details
+        className="rounded-2xl border border-gray-200 bg-white shadow-sm"
+        data-testid="delivery-report-service-and-evidence-summary"
+      >
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">
+          <span>本月服务与证据摘要</span>
+          <span className="text-xs font-normal text-gray-500">详细证据默认收起</span>
+        </summary>
+        <div className="grid gap-6 border-t border-gray-100 p-5 lg:grid-cols-[1fr_1fr]">
+          <P0Card className="space-y-4">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="size-4 text-blue-600" />
+              <p className="text-sm font-semibold text-gray-900">本月服务明细</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { title: "诊断与方案", desc: report.planPhase === "no_plan" ? "待生成服务方案。" : `本月围绕 ${report.focusSummary || "关键短板"} 推进。`, path: "/monthly-plan" },
+                { title: "内容与发布", desc: `发布 ${reportCount(report.actions.contentCount)} 篇内容，覆盖 ${reportCount(report.actions.questionCoverageCount)} 个问题。`, path: "/weekly" },
+                { title: "收录与复测", desc: report.hasRetestData ? "已完成 AI 复测并形成对比。" : "等待收录数据和下一次复测。", path: "/inclusion-monitoring" },
+                { title: "报告与下月建议", desc: "沉淀本月服务价值和下月续费理由。", path: "/delivery-reports" },
+              ].map(item => (
+                <div
+                  key={item.title}
+                  className="rounded-xl border border-gray-200 bg-white p-3 text-left"
+                >
+                  <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </P0Card>
 
-        <P0Card className="space-y-4" testId="delivery-report-evidence-summary">
-          <div className="flex items-center gap-2">
-            <Eye className="size-4 text-blue-600" />
-            <p className="text-sm font-semibold text-gray-900">效果证据摘要</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ReportMetric
-              label="成熟度变化"
-              value={formatMonthlyReportMaturityChange(report.summary.maturityBaseline, report.summary.maturityResult)}
-              hint="复测完成后用于证明整体变化。"
-            />
-            <ReportMetric
-              label="发布/收录证据"
-              value={`${reportCount(report.actions.contentCount)} / ${reportCount(report.actions.contentAssetProof.includedCount)}`}
-              hint="发布内容数 / 已收录内容数。"
-            />
-            <ReportMetric
-              label="AI 复测"
-              value={report.hasRetestData ? "已完成" : "待完成"}
-              hint={report.hasRetestData ? "可查看复测变化摘要。" : "完成验证后再判断趋势。"}
-            />
-            <ReportMetric
-              label="续费证明"
-              value={report.renewalJustification.hasData ? "已有依据" : "待完善"}
-              hint="基于执行、收录、竞品和推荐率综合判断。"
-            />
-          </div>
-        </P0Card>
-      </div>
+          <P0Card className="space-y-4" testId="delivery-report-evidence-summary">
+            <div className="flex items-center gap-2">
+              <Eye className="size-4 text-blue-600" />
+              <p className="text-sm font-semibold text-gray-900">效果证据摘要</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ReportMetric
+                label="成熟度变化"
+                value={formatMonthlyReportMaturityChange(report.summary.maturityBaseline, report.summary.maturityResult)}
+                hint="复测完成后用于证明整体变化。"
+              />
+              <ReportMetric
+                label="发布/收录证据"
+                value={`${reportCount(report.actions.contentCount)} / ${reportCount(report.actions.contentAssetProof.includedCount)}`}
+                hint="发布内容数 / 已收录内容数。"
+              />
+              <ReportMetric
+                label="AI 复测"
+                value={report.hasRetestData ? "已完成" : "待完成"}
+                hint={report.hasRetestData ? "可查看复测变化摘要。" : "完成验证后再判断趋势。"}
+              />
+              <ReportMetric
+                label="续费证明"
+                value={report.renewalJustification.hasData ? "已有依据" : "待完善"}
+                hint="基于执行、收录、竞品和推荐率综合判断。"
+              />
+            </div>
+          </P0Card>
+        </div>
+      </details>
 
       <details className="rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="delivery-report-share-entry">
         <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">

@@ -255,6 +255,7 @@ function EffectVerificationCustomerOverview({
   const issues = buildEffectVerificationIssues(overview, records);
   const primaryCta = buildEffectVerificationPrimaryCta(overview);
   const testedCount = records.filter(hasAiRetest).length;
+  const recentRecords = records.slice(0, 3);
 
   const handlePrimaryCta = () => {
     if (primaryCta.path) {
@@ -296,32 +297,49 @@ function EffectVerificationCustomerOverview({
           hint="进入公开平台后，才有机会被搜索和 AI 读取。"
         />
         <EffectVerificationMetric
-          label="搜索是否看见"
-          value={`${formatCustomerCount(overview.includedCount, " 条")}已收录`}
-          hint={overview.inclusionRate == null ? "暂无收录率。" : `当前收录率 ${formatRate(overview.inclusionRate)}。`}
+          label="待验证内容"
+          value={formatCustomerCount(overview.pendingCount, " 条")}
+          hint={overview.pendingCount > 0 ? "需要继续确认是否被搜索看见。" : "暂无待验证内容。"}
         />
         <EffectVerificationMetric
-          label="AI 是否可复测"
+          label="已被搜索看见"
+          value={formatCustomerCount(overview.includedCount, " 条")}
+          hint={overview.inclusionRate == null ? "证据仍在积累中。" : `当前收录率 ${formatRate(overview.inclusionRate)}。`}
+        />
+        <EffectVerificationMetric
+          label="可进入 AI 复测"
           value={formatCustomerCount(overview.retestReadyCount, " 条")}
-          hint={testedCount > 0 ? `${formatCustomerCount(testedCount, " 条")}已完成复测。` : "复测用于判断 AI 是否识别和引用品牌。"}
-        />
-        <EffectVerificationMetric
-          label="阅读 / 曝光证据"
-          value={
-            hasTrafficEvidence(overview)
-              ? [
-                  overview.totalReadCount != null ? `阅读 ${formatCustomerCount(overview.totalReadCount)}` : null,
-                  overview.totalImpressionCount != null ? `曝光 ${formatCustomerCount(overview.totalImpressionCount)}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" / ")
-              : "暂无"
-          }
-          hint="用于说明内容是否真实触达用户。"
+          hint={testedCount > 0 ? `${formatCustomerCount(testedCount, " 条")}已完成复测。` : "收录后再判断 AI 是否识别和引用品牌。"}
         />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-xl border border-blue-100 bg-white p-4" data-testid="effect-verification-recent-records">
+          <div className="flex items-center gap-2">
+            <Eye className="size-4 text-blue-600" />
+            <p className="text-sm font-semibold text-gray-900">最近验证记录</p>
+          </div>
+          {recentRecords.length === 0 ? (
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              证据仍在积累中。当前重点是完成发布、链接回填、收录验证和 AI 复测。
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {recentRecords.map(record => (
+                <li key={record.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-sm font-semibold text-gray-900 line-clamp-1">
+                    {record.articleTitle?.trim() || `内容 #${record.articleId}`}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">
+                    {(record.publishChannel ?? "").trim() || "未标注平台"} · {record.effectStatusLabel ?? "待验证"}
+                    {record.eligibleForAiRetest ? " · 可复测" : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-4" data-testid="effect-verification-blockers">
           <div className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-amber-700" />
@@ -346,21 +364,6 @@ function EffectVerificationCustomerOverview({
               ))}
             </ul>
           )}
-        </div>
-
-        <div className="rounded-xl border border-blue-100 bg-white p-4" data-testid="effect-verification-next-proof">
-          <div className="flex items-center gap-2">
-            <Eye className="size-4 text-blue-600" />
-            <p className="text-sm font-semibold text-gray-900">下一份报告能证明什么</p>
-          </div>
-          <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
-            <li>内容是否被搜索引擎看见，而不是只停留在“已发布”。</li>
-            <li>AI 回答是否开始提到品牌、引用内容或给出推荐理由。</li>
-            <li>哪些平台和问题值得继续投入，哪些内容需要补强。</li>
-          </ul>
-          <p className="mt-3 text-xs leading-5 text-gray-500">
-            说明：本页只展示当前可验证证据，不承诺保证收录、排名或 AI 推荐。
-          </p>
         </div>
       </div>
     </section>
@@ -644,57 +647,68 @@ export function InclusionMonitoringCenterPage() {
         </details>
       ) : null}
 
-      <EffectVerificationProcess overview={overview} records={records} />
-
-      <EffectVerificationEvidenceSummary
-        overview={overview}
-        platformSummary={platformSummary}
-        records={records}
-      />
-
-      <section
-        className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-        data-testid="inclusion-monitoring-overview"
+      <details
+        className="rounded-xl border border-gray-200 bg-white shadow-sm"
+        data-testid="effect-verification-evidence-fold"
       >
-        <h2 className="text-base font-semibold text-gray-900">运营指标</h2>
-        <p className="mt-1 text-xs text-gray-500">以下指标用于交付人员核对发布、收录和复测队列。</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {[
-            { label: "已发布内容数", value: overview.publishedCount, testId: "overview-published-count" },
-            { label: "已收录内容数", value: overview.includedCount, testId: "overview-included-count" },
-            { label: "收录率", value: formatRate(overview.inclusionRate), testId: "overview-inclusion-rate" },
-            { label: "待收录内容数", value: overview.pendingCount, testId: "overview-pending-count" },
-            {
-              label: "可进入AI复测数",
-              value: overview.retestReadyCount,
-              testId: "overview-retest-ready-count",
-            },
-            ...(overview.totalReadCount != null || overview.totalImpressionCount != null
-              ? [
-                  {
-                    label: "累计阅读/曝光",
-                    value: [
-                      overview.totalReadCount != null ? `阅读 ${overview.totalReadCount}` : null,
-                      overview.totalImpressionCount != null ? `曝光 ${overview.totalImpressionCount}` : null,
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">
+          <span>验证证据与运营指标</span>
+          <span className="text-xs font-normal text-gray-500">流程、技术证据和明细默认收起</span>
+        </summary>
+        <div className="space-y-5 border-t border-gray-100 p-5">
+          <EffectVerificationProcess overview={overview} records={records} />
+
+          <EffectVerificationEvidenceSummary
+            overview={overview}
+            platformSummary={platformSummary}
+            records={records}
+          />
+
+          <section
+            className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+            data-testid="inclusion-monitoring-overview"
+          >
+            <h2 className="text-base font-semibold text-gray-900">运营指标</h2>
+            <p className="mt-1 text-xs text-gray-500">以下指标用于交付人员核对发布、收录和复测队列。</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {[
+                { label: "已发布内容数", value: overview.publishedCount, testId: "overview-published-count" },
+                { label: "已收录内容数", value: overview.includedCount, testId: "overview-included-count" },
+                { label: "收录率", value: formatRate(overview.inclusionRate), testId: "overview-inclusion-rate" },
+                { label: "待收录内容数", value: overview.pendingCount, testId: "overview-pending-count" },
+                {
+                  label: "可进入AI复测数",
+                  value: overview.retestReadyCount,
+                  testId: "overview-retest-ready-count",
+                },
+                ...(overview.totalReadCount != null || overview.totalImpressionCount != null
+                  ? [
+                      {
+                        label: "累计阅读/曝光",
+                        value: [
+                          overview.totalReadCount != null ? `阅读 ${overview.totalReadCount}` : null,
+                          overview.totalImpressionCount != null ? `曝光 ${overview.totalImpressionCount}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" / "),
+                        testId: "overview-read-impression",
+                      },
                     ]
-                      .filter(Boolean)
-                      .join(" / "),
-                    testId: "overview-read-impression",
-                  },
-                ]
-              : []),
-          ].map(item => (
-            <div
-              key={item.testId}
-              className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
-              data-testid={item.testId}
-            >
-              <p className="text-xs text-gray-500">{item.label}</p>
-              <p className="mt-0.5 text-sm font-semibold text-gray-900">{item.value}</p>
+                  : []),
+              ].map(item => (
+                <div
+                  key={item.testId}
+                  className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+                  data-testid={item.testId}
+                >
+                  <p className="text-xs text-gray-500">{item.label}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-gray-900">{item.value}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          </section>
         </div>
-      </section>
+      </details>
 
       {publishRecordCount === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">

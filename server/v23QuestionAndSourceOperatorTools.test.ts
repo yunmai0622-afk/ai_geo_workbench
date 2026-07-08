@@ -20,23 +20,25 @@ describe("GEO V2.3-P0-I question pool and source evidence operator tools", () =>
     expect(questionOverview).toContain("question-operator-primary-cta");
   });
 
-  it("keeps question metrics, scenario grouping, top questions, and task linkage on the first screen", () => {
+  it("keeps question metrics, Top 3 questions, category overview, and folds task linkage", () => {
     expect(questionsPage).toContain("问题总数");
     expect(questionsPage).toContain("高优先级问题");
     expect(questionsPage).toContain("已有内容承接问题");
     expect(questionsPage).toContain("待优化问题");
     expect(questionOverview).toContain("question-operator-scenarios");
-    expect(questionOverview).toContain("本月优先问题类型");
-    expect(questionOverview).toContain("question-operator-top-items");
-    expect(questionOverview).toContain("Top 优化问题");
+    expect(questionOverview).toContain("今日优先问题 Top 3");
+    expect(questionOverview).toContain("分类概览");
+    expect(questionOverview).toContain("只看各类 AI 搜索问题数量");
     expect(questionOverview).toContain("question-operator-task-links");
     expect(questionOverview).toContain("内容任务关联");
+    expect(questionOverview).toContain("默认收起，避免把选题页变成任务看板");
   });
 
   it("downgrades detailed question records into operational detail sections", () => {
     expect(questionsPage).toContain("运营明细：机会总览");
     expect(questionsPage).toContain("运营明细：问题场景分组");
-    expect(questionsPage).toContain("AI 搜索机会地图");
+    expect(questionsPage).toContain("运营机会地图");
+    expect(questionsPage).toContain("证据、分层建议和长列表默认收起");
   });
 
   it("turns /brand-source-graph into a source evidence repair tool", () => {
@@ -49,7 +51,7 @@ describe("GEO V2.3-P0-I question pool and source evidence operator tools", () =>
     expect(sourceOverview).toContain("source-evidence-operator-primary-cta");
   });
 
-  it("keeps source metrics, weaknesses, suggestions, distribution, and consistency summary on the first screen", () => {
+  it("keeps source metrics, weaknesses, and Top 3 repair suggestions while folding distribution details", () => {
     expect(sourcePage).toContain("信源数量");
     expect(sourcePage).toContain("一致性状态");
     expect(sourcePage).toContain("可被 AI 引用的证据");
@@ -57,11 +59,13 @@ describe("GEO V2.3-P0-I question pool and source evidence operator tools", () =>
     expect(sourceOverview).toContain("source-evidence-weaknesses");
     expect(sourceOverview).toContain("当前信源短板");
     expect(sourceOverview).toContain("source-evidence-suggestions");
-    expect(sourceOverview).toContain("信源修复建议");
+    expect(sourceOverview).toContain("优先修复清单 Top 3");
     expect(sourceOverview).toContain("source-evidence-distribution");
     expect(sourceOverview).toContain("信源类型分布");
     expect(sourceOverview).toContain("source-evidence-consistency");
     expect(sourceOverview).toContain("一致性检查");
+    expect(sourceOverview).toContain("信源分布与一致性摘要");
+    expect(sourceOverview).toContain("默认收起，完整字段在运营明细中处理");
   });
 
   it("downgrades source lists and raw consistency fields into operational details", () => {

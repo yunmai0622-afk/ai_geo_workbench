@@ -50,7 +50,7 @@ describe("GEO V2.3-P0-J sellable reduction pass", () => {
     const overview = read("client/src/components/questions/QuestionPoolOperatorOverview.tsx");
     expect(questionsPage).toContain("今天应该围绕哪个 AI 搜索问题做内容");
     expect(overview).toContain('data-testid="question-operator-first-decision"');
-    expect(overview).toContain("今日选题决策");
-    expect(overview).toContain("为什么值得做");
+    expect(overview).toContain("今日优先问题 Top 3");
+    expect(overview).toContain("为什么重要");
   });
 });
