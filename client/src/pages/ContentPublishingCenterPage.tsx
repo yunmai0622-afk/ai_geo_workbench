@@ -1500,7 +1500,7 @@ function ContentPublishingCenterPageInner() {
       <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-status-bar-fold">
         <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-gray-900">
           发布状态与客户端检查
-          <span className="ml-2 text-xs font-normal text-gray-500">Local Agent、账号刷新和拉取任务默认收起</span>
+          <span className="ml-2 text-xs font-normal text-gray-500">发布客户端、账号刷新和拉取任务默认收起</span>
         </summary>
         <div className="border-t border-gray-100 p-5">
           <PublishStatusBar
