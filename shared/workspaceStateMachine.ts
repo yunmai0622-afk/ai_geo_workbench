@@ -274,6 +274,12 @@ export function workspaceCtaUrl(projectId: number, stage: WorkspaceStageDefiniti
   if (isLegacyOrphanProjectId(projectId)) {
     return stage.ctaPath;
   }
-  const base = `${stage.ctaPath}?projectId=${projectId}`;
-  return stage.ctaHash ? `${base}${stage.ctaHash}` : base;
+  const [pathWithSearch, hashFromPath = ""] = stage.ctaPath.split("#", 2);
+  const queryIndex = pathWithSearch.indexOf("?");
+  const basePath = queryIndex >= 0 ? pathWithSearch.slice(0, queryIndex) : pathWithSearch;
+  const params = new URLSearchParams(queryIndex >= 0 ? pathWithSearch.slice(queryIndex + 1) : "");
+  params.set("projectId", String(projectId));
+  const query = params.toString();
+  const hash = stage.ctaHash ?? (hashFromPath ? `#${hashFromPath}` : "");
+  return `${basePath}${query ? `?${query}` : ""}${hash}`;
 }

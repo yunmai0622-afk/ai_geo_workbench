@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { isP0GeoProfileComplete, resolveWorkspaceStage, WORKSPACE_STAGES } from "@shared/workspaceStateMachine";
+import {
+  isP0GeoProfileComplete,
+  resolveWorkspaceStage,
+  WORKSPACE_STAGES,
+  workspaceCtaUrl,
+} from "@shared/workspaceStateMachine";
 
 const root = resolve(__dirname, "..");
 const read = (rel: string) => readFileSync(resolve(root, rel), "utf-8");
@@ -54,6 +59,18 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(page).toContain("buildProjectUrl");
     expect(page).toContain("workspace-primary-cta");
     expect(read("client/src/pages/ClientDashboardPage.tsx")).toContain('buildProjectUrl("/workspace"');
+  });
+
+  it("CTA 跳转保留已有查询参数", () => {
+    expect(
+      workspaceCtaUrl(210001, {
+        id: "content_optimization",
+        label: "待优化",
+        blockerHint: "有内容质检未通过，建议进入内容生产处理。",
+        ctaLabel: "去内容生产 · 需修改",
+        ctaPath: "/weekly?mode=content-production",
+      }),
+    ).toBe("/weekly?mode=content-production&projectId=210001");
   });
 
   it("收录监测明细保留在独立验证页，不嵌入客户首页", () => {
