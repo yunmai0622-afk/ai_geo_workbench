@@ -7,7 +7,7 @@ import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const PRODUCTION_ORIGIN = "https://aigeoworkb-kzxhj9uy.manus.space";
+const PRODUCTION_ORIGIN = "https://aigeoworkbench00-production.up.railway.app";
 const HEALTH_URL = "http://127.0.0.1:39888/health";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const agentRoot = path.join(root, "local-agent");

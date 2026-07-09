@@ -17,7 +17,7 @@ const outDir = path.join(root, "client/public/downloads");
 const manifestPath = path.join(outDir, "manifest.json");
 
 const DEFAULT_MAC_ZIP = "/downloads/geo-local-agent-mac.zip";
-const DEFAULT_GEO_WEB_BASE_URL = "https://aigeoworkb-kzxhj9uy.manus.space";
+const DEFAULT_GEO_WEB_BASE_URL = "https://aigeoworkbench00-production.up.railway.app";
 const externalMacZip = process.env.AGENT_MAC_ZIP_URL?.trim() || null;
 
 function resolveMacZipUrl(prev = {}) {

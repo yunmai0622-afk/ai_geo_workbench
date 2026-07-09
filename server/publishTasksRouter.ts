@@ -857,7 +857,7 @@ export const publishTasksRouter = router({
       : typeof forwardedProto === "string"
         ? forwardedProto.split(",")[0]?.trim()
         : "https";
-    const host = ctx.req.headers.host || "aigeoworkb-kzxhj9uy.manus.space";
+    const host = ctx.req.headers.host || "aigeoworkbench00-production.up.railway.app";
     const origin = `${protocol || "https"}://${host}`;
 
     const tasks = await Promise.all(

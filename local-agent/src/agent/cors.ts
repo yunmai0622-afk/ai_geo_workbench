@@ -1,5 +1,8 @@
 /** 生产 Web 域名（浏览器 HTTPS → 本机 HTTP 需 CORS + Private Network Access） */
-export const LOCAL_AGENT_PRODUCTION_ORIGIN = "https://aigeoworkb-kzxhj9uy.manus.space";
+export const LOCAL_AGENT_PRODUCTION_ORIGIN = "https://aigeoworkbench00-production.up.railway.app";
+export const LOCAL_AGENT_LEGACY_PRODUCTION_ORIGINS = [
+  "https://aigeoworkb-kzxhj9uy.manus.space",
+] as const;
 
 export const LOCAL_AGENT_DEV_ORIGINS = [
   "http://localhost:5173",
@@ -10,6 +13,7 @@ export const LOCAL_AGENT_DEV_ORIGINS = [
 
 export const LOCAL_AGENT_ALLOWED_ORIGINS = new Set<string>([
   LOCAL_AGENT_PRODUCTION_ORIGIN,
+  ...LOCAL_AGENT_LEGACY_PRODUCTION_ORIGINS,
   ...LOCAL_AGENT_DEV_ORIGINS,
 ]);
 

@@ -6,7 +6,7 @@ import http from "http";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 
-const PRODUCTION_ORIGIN = "https://aigeoworkb-kzxhj9uy.manus.space";
+const PRODUCTION_ORIGIN = "https://aigeoworkbench00-production.up.railway.app";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const corsModulePath = path.join(root, "dist/agent/cors.js");
 

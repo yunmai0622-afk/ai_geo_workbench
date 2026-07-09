@@ -14,7 +14,7 @@ describe("localAgent CORS / PNA P0", () => {
 
   it("local agent HTTP server exposes CORS + Private Network Access headers", () => {
     expect(cors).toContain("Access-Control-Allow-Private-Network");
-    expect(cors).toContain("https://aigeoworkb-kzxhj9uy.manus.space");
+    expect(cors).toContain("https://aigeoworkbench00-production.up.railway.app");
     expect(cors).toContain("http://localhost:5173");
     expect(localServer).toContain("sendOptions");
     expect(localServer).toContain("buildLocalAgentCorsHeaders");
@@ -36,8 +36,8 @@ describe("localAgent CORS / PNA P0", () => {
     const result = classifyLocalAgentFetchFailure({
       fetchErrorName: "TypeError",
       fetchErrorMessage: "Failed to fetch",
-      pageOrigin: "https://aigeoworkb-kzxhj9uy.manus.space",
-      preflightAllowOrigin: "https://aigeoworkb-kzxhj9uy.manus.space",
+      pageOrigin: "https://aigeoworkbench00-production.up.railway.app",
+      preflightAllowOrigin: "https://aigeoworkbench00-production.up.railway.app",
       preflightAllowPrivateNetwork: null,
       preflightStatus: 204,
     });

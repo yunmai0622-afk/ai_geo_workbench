@@ -2,16 +2,28 @@
 
 export const LOCAL_AGENT_DEV_SERVER_URL = "http://127.0.0.1:3000";
 
-export const DEFAULT_GEO_WEB_BASE_URL = "https://aigeoworkb-kzxhj9uy.manus.space";
+export const DEFAULT_GEO_WEB_BASE_URL = "https://aigeoworkbench00-production.up.railway.app";
+export const LEGACY_GEO_WEB_BASE_URLS = [
+  "https://aigeoworkb-kzxhj9uy.manus.space",
+] as const;
+
+function normalizeServerUrl(url: string | null | undefined): string {
+  return (url ?? "").trim().toLowerCase().replace(/\/$/, "");
+}
 
 export function isLegacyDevServerUrl(url: string | null | undefined): boolean {
-  const u = (url ?? "").trim().toLowerCase().replace(/\/$/, "");
+  const u = normalizeServerUrl(url);
   return (
     u === "http://127.0.0.1:3000" ||
     u === "http://localhost:3000" ||
     u === "https://127.0.0.1:3000" ||
     u === "https://localhost:3000"
   );
+}
+
+export function isLegacyProductionServerUrl(url: string | null | undefined): boolean {
+  const u = normalizeServerUrl(url);
+  return LEGACY_GEO_WEB_BASE_URLS.some(legacy => normalizeServerUrl(legacy) === u);
 }
 
 export function resolvePackagedDefaultServerUrl(
@@ -43,6 +55,10 @@ export function migrateAgentServerUrl(input: {
   }
 
   if (input.isPackaged && isLegacyDevServerUrl(current)) {
+    return { serverUrl: defaultUrl, serverUrlUserConfigured: false, migrated: true };
+  }
+
+  if (input.isPackaged && !userConfigured && isLegacyProductionServerUrl(current)) {
     return { serverUrl: defaultUrl, serverUrlUserConfigured: false, migrated: true };
   }
 

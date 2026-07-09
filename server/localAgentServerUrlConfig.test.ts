@@ -36,6 +36,16 @@ describe("localAgentServerUrl", () => {
     expect(r.serverUrl).toBe(DEFAULT_GEO_WEB_BASE_URL);
   });
 
+  it("migrates old Manus default when it was not user configured", () => {
+    const r = migrateAgentServerUrl({
+      serverUrl: "https://aigeoworkb-kzxhj9uy.manus.space",
+      serverUrlUserConfigured: false,
+      isPackaged: true,
+    });
+    expect(r.migrated).toBe(true);
+    expect(r.serverUrl).toBe(DEFAULT_GEO_WEB_BASE_URL);
+  });
+
   it("keeps user-configured serverUrl", () => {
     const custom = "https://custom.example.com";
     const r = migrateAgentServerUrl({
@@ -59,7 +69,7 @@ describe("localAgentServerUrl", () => {
   it("manifest includes geoWebBaseUrl", () => {
     const manifest = read("client/public/downloads/manifest.json");
     expect(manifest).toContain("geoWebBaseUrl");
-    expect(manifest).toContain("aigeoworkb-kzxhj9uy.manus.space");
+    expect(manifest).toContain("aigeoworkbench00-production.up.railway.app");
   });
 
   it("agentConfig uses migration and packaged defaults", () => {

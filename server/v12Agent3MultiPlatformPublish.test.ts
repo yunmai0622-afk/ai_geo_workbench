@@ -60,9 +60,15 @@ describe("Agent-3 multi-platform local publish", () => {
   it("zhihu publisher uploads cover and clicks publish", () => {
     const zhihu = read("local-agent/src/agent/platforms/zhihuPublisher.ts");
     expect(zhihu).toContain("uploadZhihuCover");
+    expect(zhihu).toContain("cover_dialog_confirmed");
     expect(zhihu).toContain("封面上传失败，请手动在知乎编辑器中添加封面后发布");
     expect(zhihu).toContain('errorType: "cover_upload_failed"');
     expect(zhihu).toContain("attemptPublishArticle");
+    expect(zhihu).toContain("发布文章");
+    expect(zhihu).toContain("collectVisibleButtonDiagnostics");
+    expect(zhihu).toContain('"click_publish_button"');
+    expect(zhihu).toContain('"confirm_publish_dialog"');
+    expect(zhihu).toContain('"extract_public_url"');
     expect(zhihu).toContain('"publish_article"');
     expect(zhihu).toContain('status: "completed"');
     expect(zhihu).toContain("override async attemptSaveDraft");

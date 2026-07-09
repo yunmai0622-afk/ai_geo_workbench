@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const manifestPath = path.join(root, "client/public/downloads/manifest.json");
 const outPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "../dist/geoWebBaseUrl.json");
 
-const fallback = "https://aigeoworkb-kzxhj9uy.manus.space";
+const fallback = "https://aigeoworkbench00-production.up.railway.app";
 let geoWebBaseUrl = process.env.GEO_WEB_BASE_URL?.trim() || fallback;
 
 if (fs.existsSync(manifestPath)) {

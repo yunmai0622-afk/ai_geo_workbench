@@ -3,14 +3,14 @@
  * GEO-V1.1 生产 Local Agent 状态只读审计
  * 用法：
  *   PROJECT_ID=90001 node scripts/audit_production_local_agent_state.mjs
- *   GEO_WEB_BASE_URL=https://aigeoworkb-kzxhj9uy.manus.space PROJECT_ID=90001 node scripts/audit_production_local_agent_state.mjs
+ *   GEO_WEB_BASE_URL=https://aigeoworkbench00-production.up.railway.app PROJECT_ID=90001 node scripts/audit_production_local_agent_state.mjs
  */
 import "dotenv/config";
 import mysql from "mysql2/promise";
 
 const HEARTBEAT_WINDOW_MS = 5 * 60 * 1000;
 const projectId = Number(process.env.PROJECT_ID ?? "90001");
-const geoWebBaseUrl = (process.env.GEO_WEB_BASE_URL ?? "https://aigeoworkb-kzxhj9uy.manus.space").replace(
+const geoWebBaseUrl = (process.env.GEO_WEB_BASE_URL ?? "https://aigeoworkbench00-production.up.railway.app").replace(
   /\/$/,
   "",
 );

@@ -524,6 +524,31 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     }
   }
 
+  private async confirmZhihuCoverDialogIfPresent(page: Page): Promise<{
+    clicked: boolean;
+    message: string;
+  }> {
+    const dialog = page
+      .locator('[role="dialog"], [class*="Modal"], [class*="modal"]')
+      .filter({ hasText: /封面|裁剪|图片|上传/i })
+      .first();
+    if (!(await dialog.isVisible({ timeout: 1800 }).catch(() => false))) {
+      return { clicked: false, message: "cover_dialog_not_present" };
+    }
+
+    const confirm = dialog
+      .getByRole("button", { name: /^确定$|^完成$|^保存$|^确认$|^使用图片$|^应用$/ })
+      .or(dialog.locator("button").filter({ hasText: /^确定$|^完成$|^保存$|^确认$|^使用图片$|^应用$/ }))
+      .first();
+    if (await confirm.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await confirm.click({ timeout: 5000 }).catch(() => undefined);
+      await page.waitForTimeout(1000);
+      return { clicked: true, message: "cover_dialog_confirmed" };
+    }
+
+    return { clicked: false, message: "cover_dialog_confirm_button_not_found" };
+  }
+
   /** 上传专栏写作页封面；有封面载荷但上传失败时由调用方返回 manual_required */
   private async uploadZhihuCover(
     page: Page,
@@ -560,6 +585,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         if ((await input.count()) === 0) continue;
         try {
           await input.setInputFiles(resolved.filePath, { timeout: 8000 });
+          const coverDialog = await this.confirmZhihuCoverDialogIfPresent(page);
           const previewVisible = await page
             .waitForFunction(
               () => {
@@ -582,10 +608,24 @@ export class ZhihuPublisher extends BasePlatformPublisher {
             )
             .catch(() => null);
           if (previewVisible) {
-            return { ok: true, message: "cover_preview_visible", selector };
+            return {
+              ok: true,
+              message:
+                coverDialog.clicked
+                  ? "cover_preview_visible_after_confirm"
+                  : "cover_preview_visible",
+              selector,
+            };
           }
           await page.waitForTimeout(1500);
-          return { ok: true, message: "cover_file_set", selector };
+          return {
+            ok: true,
+            message:
+              coverDialog.clicked
+                ? "cover_file_set_after_confirm"
+                : "cover_file_set",
+            selector,
+          };
         } catch {
           /* try next selector */
         }
@@ -603,53 +643,114 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     return match ? match[0] : null;
   }
 
+  private async collectVisibleButtonDiagnostics(page: Page): Promise<string> {
+    const buttons = page.locator('button, [role="button"]');
+    const count = await buttons.count().catch(() => 0);
+    const rows: string[] = [];
+    for (let i = 0; i < Math.min(count, 40); i += 1) {
+      const btn = buttons.nth(i);
+      if (!(await btn.isVisible({ timeout: 300 }).catch(() => false))) continue;
+      const text = ((await btn.innerText().catch(() => "")) ?? "")
+        .replace(/\s+/g, " ")
+        .trim();
+      const aria = (await btn.getAttribute("aria-label").catch(() => null)) ?? "";
+      const title = (await btn.getAttribute("title").catch(() => null)) ?? "";
+      const label = text || aria || title || "[no-text]";
+      const disabled =
+        (await btn.isDisabled().catch(() => false)) ||
+        (await btn.getAttribute("aria-disabled").catch(() => null)) === "true";
+      rows.push(`${label}${disabled ? "（disabled）" : ""}`);
+    }
+    return rows.slice(0, 20).join(" | ");
+  }
+
+  private async clickFirstVisibleZhihuPublishCandidate(
+    page: Page,
+    scope: ReturnType<Page["locator"]>,
+    publishExact: RegExp,
+    skip: RegExp,
+  ): Promise<"clicked" | "disabled" | "none"> {
+    const candidates = scope.locator('button, [role="button"]');
+    const count = await candidates.count().catch(() => 0);
+    let sawDisabled = false;
+
+    for (let i = 0; i < count; i += 1) {
+      const btn = candidates.nth(i);
+      if (!(await btn.isVisible({ timeout: 500 }).catch(() => false))) continue;
+      const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
+      const aria = (await btn.getAttribute("aria-label").catch(() => null)) ?? "";
+      const title = (await btn.getAttribute("title").catch(() => null)) ?? "";
+      const label = text || aria || title;
+      if (!publishExact.test(label) || skip.test(label)) continue;
+      const disabled =
+        (await btn.isDisabled().catch(() => false)) ||
+        (await btn.getAttribute("aria-disabled").catch(() => null)) === "true";
+      if (disabled) {
+        sawDisabled = true;
+        continue;
+      }
+      await btn.click({ timeout: 5000 });
+      return "clicked";
+    }
+
+    return sawDisabled ? "disabled" : "none";
+  }
+
   /** 写作页顶部工具栏：点击「发布」（排除草稿/预览等） */
-  private async clickZhihuWritePagePublishButton(page: Page): Promise<boolean> {
-    const publishExact = /^发布$|^立即发布$/;
+  private async clickZhihuWritePagePublishButton(page: Page): Promise<{
+    clicked: boolean;
+    errorType?: "publish_button_not_found" | "publish_button_disabled";
+    message?: string;
+  }> {
+    const publishExact = /^发布$|^立即发布$|^发布文章$/;
     const skip = /草稿|预览|取消|删除|保存|设置/i;
 
     const toolbarScopes = [
+      page.locator('[class*="WriteIndex"]').first(),
       page.locator('[class*="Toolbar"]').first(),
       page.locator('[class*="Topbar"]').first(),
       page.locator('[class*="PublishPanel"]').first(),
+      page.locator('[class*="Publish"]').first(),
       page.locator("header").first(),
+      page.locator("body").first(),
     ];
 
+    let sawDisabled = false;
     for (const scope of toolbarScopes) {
       if (!(await scope.isVisible({ timeout: 600 }).catch(() => false))) continue;
-      const buttons = scope.getByRole("button");
-      const count = await buttons.count().catch(() => 0);
-      for (let i = 0; i < count; i += 1) {
-        const btn = buttons.nth(i);
-        if (!(await btn.isVisible({ timeout: 600 }).catch(() => false))) continue;
-        const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
-        if (!publishExact.test(text) || skip.test(text)) continue;
-        if (await btn.isDisabled().catch(() => false)) continue;
-        await btn.click({ timeout: 5000 });
-        return true;
-      }
+      const result = await this.clickFirstVisibleZhihuPublishCandidate(page, scope, publishExact, skip);
+      if (result === "clicked") return { clicked: true };
+      if (result === "disabled") sawDisabled = true;
     }
 
-    const buttons = page.getByRole("button");
-    for (let i = 0; i < (await buttons.count()); i += 1) {
-      const btn = buttons.nth(i);
-      if (!(await btn.isVisible({ timeout: 600 }).catch(() => false))) continue;
-      const text = ((await btn.innerText().catch(() => "")) ?? "").replace(/\s+/g, " ").trim();
-      if (!publishExact.test(text) || skip.test(text)) continue;
-      if (await btn.isDisabled().catch(() => false)) continue;
-      await btn.click({ timeout: 5000 });
-      return true;
+    const diagnostics = await this.collectVisibleButtonDiagnostics(page);
+    if (sawDisabled) {
+      return {
+        clicked: false,
+        errorType: "publish_button_disabled",
+        message: `找到发布按钮但不可点击，当前可见按钮：${diagnostics || "无"}`,
+      };
     }
-    return false;
+
+    return {
+      clicked: false,
+      errorType: "publish_button_not_found",
+      message: `未找到知乎写作页顶部「发布」按钮，当前 URL：${page.url()}；可见按钮：${diagnostics || "无"}`,
+    };
   }
 
   /** 发布前「发布设置」等中间弹窗：点「确认发布」或「发布」 */
-  private async confirmZhihuPublishSettingsIfPresent(page: Page): Promise<void> {
+  private async confirmZhihuPublishSettingsIfPresent(page: Page): Promise<{
+    clicked: boolean;
+    message: string;
+  }> {
     const dialog = page
       .locator('[role="dialog"], [class*="Modal"]')
       .filter({ hasText: /发布设置|定时发布|原创声明|确认发布/i })
       .first();
-    if (!(await dialog.isVisible({ timeout: 3000 }).catch(() => false))) return;
+    if (!(await dialog.isVisible({ timeout: 3000 }).catch(() => false))) {
+      return { clicked: false, message: "无发布确认弹窗" };
+    }
 
     const confirm = dialog
       .getByRole("button", { name: /^确认发布$|^发布$|^立即发布$/ })
@@ -658,7 +759,9 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     if (await confirm.isVisible({ timeout: 2000 }).catch(() => false)) {
       await confirm.click({ timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(800);
+      return { clicked: true, message: "已点击确认发布" };
     }
+    return { clicked: false, message: "检测到发布确认弹窗，但未找到确认按钮" };
   }
 
   /** 等待「发布成功」弹窗（含「感谢你的第X篇创作」） */
@@ -705,23 +808,32 @@ export class ZhihuPublisher extends BasePlatformPublisher {
     publicUrl?: string;
     errorType?: string;
     message?: string;
+    subSteps: PublishStepLog[];
   }> {
+    const subSteps: PublishStepLog[] = [];
     const errorPattern =
       /发布失败|请上传封面|请添加封面|缺少封面|内容不符合|违规|审核未通过|再试一次|操作失败/i;
 
     await page.waitForTimeout(800);
 
-    const clicked = await this.clickZhihuWritePagePublishButton(page);
-    if (!clicked) {
+    const clickResult = await this.clickZhihuWritePagePublishButton(page);
+    if (!clickResult.clicked) {
+      const message = clickResult.message ?? "未找到知乎写作页顶部「发布」按钮";
+      subSteps.push(stepLog("click_publish_button", "failed", message));
       return {
         published: false,
-        errorType: "publish_button_not_found",
-        message: "未找到知乎写作页顶部「发布」按钮",
+        errorType: clickResult.errorType ?? "publish_button_not_found",
+        message,
+        subSteps,
       };
     }
+    subSteps.push(stepLog("click_publish_button", "ok", "已点击发布"));
 
     await page.waitForTimeout(800);
-    await this.confirmZhihuPublishSettingsIfPresent(page);
+    const confirm = await this.confirmZhihuPublishSettingsIfPresent(page);
+    subSteps.push(
+      stepLog("confirm_publish_dialog", confirm.clicked ? "ok" : "skipped", confirm.message),
+    );
 
     const successDialogVisible = await this.waitForZhihuPublishSuccessDialog(page, 15000);
     if (!successDialogVisible) {
@@ -736,22 +848,34 @@ export class ZhihuPublisher extends BasePlatformPublisher {
           published: false,
           errorType: "publish_failed",
           message: errLine.slice(0, 240),
+          subSteps: [
+            ...subSteps,
+            stepLog("wait_publish_success", "failed", errLine.slice(0, 240)),
+          ],
         };
       }
       const fallbackUrl = this.extractZhihuArticlePublicUrl(page.url());
       if (fallbackUrl) {
+        subSteps.push(stepLog("wait_publish_success", "ok", "URL 已跳转但未检测到成功弹窗"));
+        subSteps.push(stepLog("extract_public_url", "ok", fallbackUrl));
         return {
           published: true,
           publicUrl: fallbackUrl,
           message: "url_redirect_without_success_dialog",
+          subSteps,
         };
       }
       return {
         published: false,
         errorType: "publish_failed",
         message: "等待「发布成功」弹窗超时（15秒）",
+        subSteps: [
+          ...subSteps,
+          stepLog("wait_publish_success", "failed", "等待「发布成功」弹窗超时（15秒）"),
+        ],
       };
     }
+    subSteps.push(stepLog("wait_publish_success", "ok", "检测到发布成功弹窗"));
 
     let publicUrl = this.extractZhihuArticlePublicUrl(page.url());
     if (!publicUrl) {
@@ -769,13 +893,23 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         published: false,
         errorType: "publish_failed",
         message: "发布成功弹窗已出现，但未从页面 URL 提取到 zhuanlan.zhihu.com/p/{id}",
+        subSteps: [
+          ...subSteps,
+          stepLog(
+            "extract_public_url",
+            "failed",
+            "发布成功弹窗已出现，但未从页面 URL 提取到 zhuanlan.zhihu.com/p/{id}",
+          ),
+        ],
       };
     }
 
+    subSteps.push(stepLog("extract_public_url", "ok", publicUrl));
     return {
       published: true,
       publicUrl,
       message: "publish_success_dialog",
+      subSteps,
     };
   }
 
@@ -1639,6 +1773,7 @@ export class ZhihuPublisher extends BasePlatformPublisher {
         lastDetectMessage: `填稿前检测：${name}`,
       });
 
+      page = await context.newPage();
       const writeNav = await this.gotoZhihuWritePage(page);
       if (!writeNav.ok) {
         if (writeNav.errorType === "manual_required") {
@@ -1720,6 +1855,15 @@ export class ZhihuPublisher extends BasePlatformPublisher {
           logs,
         };
       }
+      if (!this.writeUrlReady(page.url()) && !/zhuanlan\.zhihu\.com\/p\/\d+/i.test(page.url())) {
+        logs.push(stepLog("publish_page", "failed", `after_fill_content_left_write_page ${page.url()}`));
+        return {
+          status: "manual_required",
+          errorType: "write_page_left_after_fill",
+          errorMessage: "知乎写作页在填入正文后离开，已停止自动点击发布，请在已打开窗口人工确认内容并发布",
+          logs,
+        };
+      }
 
       const beforePublishFlow = await this.ensurePublishWritePage(context, page, logs, "before_publish_flow");
       if (!beforePublishFlow.ok) {
@@ -1770,6 +1914,9 @@ export class ZhihuPublisher extends BasePlatformPublisher {
       }
 
       const publishResult = await this.attemptPublishArticle(page);
+      for (const subStep of publishResult.subSteps) {
+        logs.push(subStep);
+      }
       logs.push(
         stepLog(
           "publish_article",
