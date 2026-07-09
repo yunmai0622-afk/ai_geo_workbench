@@ -225,6 +225,10 @@ export type MonthlyReportContentImpactProofItem = {
   platform: string;
   questionText: string | null;
   changeConclusion: string;
+  beforeMentionRate: number | null;
+  afterMentionRate: number | null;
+  beforeRecommendRate: number | null;
+  afterRecommendRate: number | null;
 };
 
 export function buildMonthlyReportContentImpactProof(
@@ -248,6 +252,10 @@ export function buildMonthlyReportContentImpactProof(
       platform: item.platform,
       questionText: item.questionText,
       changeConclusion: item.attribution.changeConclusion!,
+      beforeMentionRate: item.attribution.before.brandMentionRate,
+      afterMentionRate: item.attribution.after.brandMentionRate,
+      beforeRecommendRate: item.attribution.before.brandRecommendRate,
+      afterRecommendRate: item.attribution.after.brandRecommendRate,
     }));
 
   return {

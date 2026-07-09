@@ -36,6 +36,13 @@ describe("GEO-V2.1-P3 AI Retest Attribution", () => {
     expect(deliveryPage).toContain("内容影响证明");
     expect(deliveryPage).toContain("delivery-report-real-evidence-update");
     expect(deliveryPage).toContain("AI T1 发布后复测");
+    expect(deliveryPage).toContain("T1 未提及");
+    expect(deliveryPage).toContain("T1 未推荐");
+    expect(deliveryPage).toContain("delivery-report-continuous-retest-plan");
+    expect(deliveryPage).toContain("第 3 天");
+    expect(deliveryPage).toContain("第 7 天");
+    expect(deliveryPage).toContain("第 14 天");
+    expect(deliveryPage).toContain("不提前写成已收录或已提升");
     expect(deliveryPage).toContain("内容级发布后复测");
     expect(monthlyShared).toContain("contentImpactProof");
   });

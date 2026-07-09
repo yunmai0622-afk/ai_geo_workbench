@@ -66,6 +66,34 @@ type EvidenceAccumulationItem = {
   text: string;
 };
 
+type ContinuousRetestPlanItem = {
+  day: string;
+  title: string;
+  check: string;
+  decision: string;
+};
+
+const CONTINUOUS_RETEST_PLAN: ContinuousRetestPlanItem[] = [
+  {
+    day: "第 3 天",
+    title: "收录初查 + T2 轻量复测",
+    check: "检查 URL 是否仍可访问、搜索收录是否出现，并轻量复测是否提及海豚知道。",
+    decision: "如仍未收录或未提及，继续观察，不写成效果提升。",
+  },
+  {
+    day: "第 7 天",
+    title: "正式问题池 T2 复测",
+    check: "按同一问题池复测，对比 T0/T1/T2 的提及、推荐和竞品占位。",
+    decision: "判断是否需要第二篇内容或补充信源证据。",
+  },
+  {
+    day: "第 14 天",
+    title: "T3 复测 + 下月建议",
+    check: "第三次检查收录和 AI 回答，判断第一轮内容是否被 AI 吸收。",
+    decision: "输出下月继续优化建议，不伪造未来结果。",
+  },
+];
+
 function formatPercent(rate: number | null): string {
   if (rate == null) return "—";
   return `${Math.round(rate * 100)}%`;
@@ -89,6 +117,32 @@ function contentLevelRetestLine(report: MonthlyReportView): string | null {
   const first = report.contentImpactProof.items[0];
   if (!first) return null;
   return formatMonthlyReportImpactProofLine(first);
+}
+
+function formatRetestPlanDate(publishedAt: string | null, offsetDays: number): string | null {
+  if (!publishedAt) return null;
+  const date = new Date(publishedAt);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setDate(date.getDate() + offsetDays);
+  return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+}
+
+function contentLevelRetestStatusLine(
+  item: MonthlyReportView["contentImpactProof"]["items"][number],
+): string {
+  const mentionLine =
+    item.afterMentionRate == null
+      ? "T1 提及状态待确认"
+      : item.afterMentionRate > 0
+        ? `T1 已提及（${formatPercent(item.afterMentionRate)}）`
+        : "T1 未提及";
+  const recommendLine =
+    item.afterRecommendRate == null
+      ? "T1 推荐状态待确认"
+      : item.afterRecommendRate > 0
+        ? `T1 已推荐（${formatPercent(item.afterRecommendRate)}）`
+        : "T1 未推荐";
+  return `${mentionLine}，${recommendLine}`;
 }
 
 function customerValueForReportDimension(key: MonthlyOptimizationPriority["relatedDimensionKey"]): string {
@@ -577,6 +631,7 @@ function RenewalDeliveryReportHero({
   const primaryCta = buildReportPrimaryCta(report);
   const showEvidenceAccumulationNotice = needsEvidenceAccumulationNotice(report);
   const evidenceAccumulationItems = buildEvidenceAccumulationItems(report);
+  const firstPublishedAsset = report.actions.contentAssetProof.items[0] ?? null;
 
   const handlePrimaryCta = () => {
     if (primaryCta.action === "generateNextPlan") {
@@ -684,7 +739,12 @@ function RenewalDeliveryReportHero({
                   <p className="text-sm font-semibold text-gray-900">AI T1 发布后复测</p>
                   <ul className="mt-2 space-y-2 text-xs leading-5 text-gray-700">
                     {report.contentImpactProof.items.slice(0, 3).map(item => (
-                      <li key={item.articleId}>{formatMonthlyReportImpactProofLine(item)}</li>
+                      <li key={item.articleId}>
+                        {formatMonthlyReportImpactProofLine(item)}
+                        <span className="mt-1 block font-medium text-blue-800">
+                          {contentLevelRetestStatusLine(item)}
+                        </span>
+                      </li>
                     ))}
                   </ul>
                   <p className="mt-2 text-xs leading-5 text-gray-500">
@@ -692,6 +752,45 @@ function RenewalDeliveryReportHero({
                   </p>
                 </div>
               ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {firstPublishedAsset ? (
+          <div
+            className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4"
+            data-testid="delivery-report-continuous-retest-plan"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                持续复测计划
+              </span>
+              <span className="text-sm font-semibold text-emerald-950">
+                第一轮证据建设已完成，AI 推荐仍需持续优化
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-emerald-900">
+              当前收录状态仍为待观察，AI T1 结果尚未提及或推荐品牌。后续只在真实检查完成后记录结果，不提前写成已收录或已提升。
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {CONTINUOUS_RETEST_PLAN.map((item, index) => {
+                const scheduledDate = formatRetestPlanDate(firstPublishedAsset.publishedAt, [3, 7, 14][index]!);
+                return (
+                  <div key={item.day} className="rounded-xl border border-emerald-100 bg-white/80 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                        {item.day}
+                      </span>
+                      {scheduledDate ? (
+                        <span className="text-xs text-gray-500">{scheduledDate}</span>
+                      ) : null}
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-gray-900">{item.title}</p>
+                    <p className="mt-2 text-xs leading-5 text-gray-700">{item.check}</p>
+                    <p className="mt-2 text-xs leading-5 text-gray-500">{item.decision}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : null}

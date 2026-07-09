@@ -93,6 +93,8 @@ describe("buildMonthlyReportContentImpactProof", () => {
     ]);
     expect(proof.hasData).toBe(true);
     expect(proof.items[0]?.changeConclusion).toContain("发布后AI开始提及品牌");
+    expect(proof.items[0]?.afterMentionRate).toBe(1);
+    expect(proof.items[0]?.afterRecommendRate).toBe(0);
     expect(formatMonthlyReportImpactProofLine(proof.items[0]!)).toContain("知乎·海豚知道是什么？");
   });
 });
