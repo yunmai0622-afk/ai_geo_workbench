@@ -24,15 +24,19 @@ type GeneratedVersionInfo = {
   environment?: unknown;
 };
 
-const COMMIT_ENV_KEYS = [
-  "GIT_COMMIT",
+const DEPLOY_COMMIT_ENV_KEYS = [
   "RAILWAY_GIT_COMMIT_SHA",
   "GITHUB_SHA",
-  "SOURCE_VERSION",
-  "COMMIT_SHA",
 ] as const;
 
-const BUILD_TIME_ENV_KEYS = ["BUILD_TIME", "RAILWAY_BUILD_TIME"] as const;
+const FALLBACK_COMMIT_ENV_KEYS = [
+  "SOURCE_VERSION",
+  "COMMIT_SHA",
+  "GIT_COMMIT",
+] as const;
+
+const BUILD_TIME_ENV_KEYS = ["RAILWAY_BUILD_TIME"] as const;
+const FALLBACK_BUILD_TIME_ENV_KEYS = ["BUILD_TIME"] as const;
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -83,8 +87,16 @@ export function buildRuntimeVersionInfo(now: Date = new Date()): RuntimeVersionI
   return {
     ok: true,
     version: getAppVersion(),
-    commit: firstEnv(COMMIT_ENV_KEYS) ?? readString(generated.commit) ?? "unknown",
-    buildTime: firstEnv(BUILD_TIME_ENV_KEYS) ?? readString(generated.buildTime) ?? now.toISOString(),
+    commit:
+      firstEnv(DEPLOY_COMMIT_ENV_KEYS) ??
+      readString(generated.commit) ??
+      firstEnv(FALLBACK_COMMIT_ENV_KEYS) ??
+      "unknown",
+    buildTime:
+      firstEnv(BUILD_TIME_ENV_KEYS) ??
+      readString(generated.buildTime) ??
+      firstEnv(FALLBACK_BUILD_TIME_ENV_KEYS) ??
+      now.toISOString(),
     environment:
       readString(process.env.NODE_ENV) ??
       railwayEnvironment ??

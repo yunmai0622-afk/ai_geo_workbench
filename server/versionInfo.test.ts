@@ -6,6 +6,7 @@ const KEYS = [
   "RAILWAY_GIT_COMMIT_SHA",
   "GITHUB_SHA",
   "BUILD_TIME",
+  "RAILWAY_BUILD_TIME",
   "NODE_ENV",
   "RAILWAY_ENVIRONMENT_NAME",
   "RAILWAY_DEPLOYMENT_ID",
@@ -28,8 +29,8 @@ afterEach(() => {
 
 describe("buildRuntimeVersionInfo", () => {
   it("uses non-secret deployment metadata from environment variables", () => {
-    process.env.GIT_COMMIT = "05ceb68b9493f3aa678057cd25587fff5d902b39";
-    process.env.BUILD_TIME = "2026-06-26T10:00:00Z";
+    process.env.RAILWAY_GIT_COMMIT_SHA = "05ceb68b9493f3aa678057cd25587fff5d902b39";
+    process.env.RAILWAY_BUILD_TIME = "2026-06-26T10:00:00Z";
     process.env.NODE_ENV = "production";
     process.env.RAILWAY_DEPLOYMENT_ID = "deployment-id";
     process.env.RAILWAY_SERVICE_NAME = "geo-web";
@@ -47,5 +48,17 @@ describe("buildRuntimeVersionInfo", () => {
       service: "geo-web",
       environment: "production",
     });
+  });
+
+  it("does not let stale generic commit metadata override Railway deployment metadata", () => {
+    process.env.GIT_COMMIT = "old-generic-commit";
+    process.env.BUILD_TIME = "2026-06-01T00:00:00Z";
+    process.env.RAILWAY_GIT_COMMIT_SHA = "43c88f26f783f935d77e068970de65a847fe7a25";
+    process.env.RAILWAY_BUILD_TIME = "2026-07-09T12:50:00Z";
+
+    const info = buildRuntimeVersionInfo(new Date("2026-07-09T12:51:00Z"));
+
+    expect(info.commit).toBe("43c88f26f783f935d77e068970de65a847fe7a25");
+    expect(info.buildTime).toBe("2026-07-09T12:50:00Z");
   });
 });

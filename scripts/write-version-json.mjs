@@ -20,19 +20,19 @@ function git(args) {
 }
 
 const commit =
-  readEnv("GIT_COMMIT") ||
   readEnv("RAILWAY_GIT_COMMIT_SHA") ||
   readEnv("GITHUB_SHA") ||
+  git(["rev-parse", "HEAD"]) ||
   readEnv("SOURCE_VERSION") ||
   readEnv("COMMIT_SHA") ||
-  git(["rev-parse", "HEAD"]) ||
+  readEnv("GIT_COMMIT") ||
   "unknown";
 
 const payload = {
   ok: true,
   version: typeof packageJson.version === "string" ? packageJson.version : "unknown",
   commit,
-  buildTime: readEnv("BUILD_TIME") || new Date().toISOString(),
+  buildTime: readEnv("RAILWAY_BUILD_TIME") || new Date().toISOString(),
   environment: readEnv("NODE_ENV") || readEnv("RAILWAY_ENVIRONMENT_NAME") || "production",
   source: "build",
 };
