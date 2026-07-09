@@ -44,6 +44,7 @@ export type PlatformBoardRow = {
   qualityScoreLabel: string;
   accountStatusLabel: string;
   primaryActionKind: PlatformBoardPrimaryActionKind;
+  retryPublishTaskId?: number | null;
 };
 
 type Props = {
@@ -55,6 +56,7 @@ type Props = {
   onGenerate: (key: WeeklyPlatformDef["key"]) => void;
   onSaveAndQc: (key: WeeklyPlatformDef["key"]) => void;
   onEnqueue: (key: WeeklyPlatformDef["key"]) => void;
+  onRetryPublish?: (key: WeeklyPlatformDef["key"], taskId: number) => void;
   onView: (key: WeeklyPlatformDef["key"]) => void;
   onViewPublish?: (key: WeeklyPlatformDef["key"]) => void;
   onGoMonitoring?: () => void;
@@ -69,6 +71,7 @@ export function PlatformContentBoard({
   onGenerate,
   onSaveAndQc,
   onEnqueue,
+  onRetryPublish,
   onView,
   onViewPublish,
   onGoMonitoring,
@@ -113,7 +116,10 @@ export function PlatformContentBoard({
         {rows.map(row => {
           const { def, status, hasContent, lifecycle } = row;
           const statusLabel = lifecycle.label;
-          const action = resolvePlatformTaskAction(status, hasContent);
+          const retryTaskId = row.retryPublishTaskId ?? null;
+          const action = retryTaskId
+            ? ({ kind: "retry_publish" as const, label: "重试发布" })
+            : resolvePlatformTaskAction(status, hasContent);
           const disabled = shouldDisablePlatformGenerateButton({
             status,
             boardBusy,
@@ -127,7 +133,7 @@ export function PlatformContentBoard({
             generatingPlatformKey,
             activeInFlightPlatformKey,
             platformKey: def.key,
-            actionKind: action.kind,
+            actionKind: action.kind === "retry_publish" ? "enqueue" : action.kind,
           });
 
           return (
@@ -154,9 +160,17 @@ export function PlatformContentBoard({
                   type="button"
                   size="sm"
                   className={geoP0Brand.primary}
-                  disabled={disabled && (action.kind === "generate" || action.kind === "regenerate")}
+                  disabled={
+                    retryTaskId
+                      ? boardBusy
+                      : disabled && (action.kind === "generate" || action.kind === "regenerate")
+                  }
                   data-testid={`weekly-primary-${row.primaryActionKind}-${def.key}`}
-                  onClick={() => handleAction(row, action.kind)}
+                  onClick={() =>
+                    retryTaskId && onRetryPublish
+                      ? onRetryPublish(def.key, retryTaskId)
+                      : handleAction(row, action.kind === "retry_publish" ? "enqueue" : action.kind)
+                  }
                 >
                   {action.label}
                 </Button>

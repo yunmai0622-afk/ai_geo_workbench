@@ -608,6 +608,7 @@ type SingleTaskPrimaryActionKind =
   | "revise"
   | "review"
   | "enqueue"
+  | "retry_publish"
   | "go_publishing"
   | "backfill"
   | "monitoring";
@@ -743,6 +744,23 @@ function showPublishSuccessNotification(
   });
 }
 
+function isRetryableFailedPublishTask(
+  task:
+    | {
+        id?: number | null;
+        status?: string | null;
+        canRetry?: boolean | null;
+        retryExhausted?: boolean | null;
+        accountVerificationStatus?: string | null;
+        errorMessage?: string | null;
+        agentErrorMessage?: string | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  return typeof task?.id === "number" && task.status === "failed" && task.canRetry !== false && !task.retryExhausted;
+}
+
 export default function WeeklyContentPage() {
   const [location, setLocation] = useLocation();
   const searchString = useSearch();
@@ -800,6 +818,7 @@ export default function WeeklyContentPage() {
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
   const startPlatformDraftMutation = trpc.geo.articles.startPlatformDraftGeneration.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
+  const retryPublishTask = trpc.publishTasks.retry.useMutation();
   const reviewAndEnqueueArticle = trpc.publishTasks.reviewAndEnqueueArticle.useMutation();
   const syncLocalAgentSnapshot = trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
   const updateGeneratedArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
@@ -1836,6 +1855,8 @@ export default function WeeklyContentPage() {
         qualityScoreLabel: platformArticle ? (() => { const article = platformArticle!; const q = scoresByArticleId.get(article.id); const view = resolveQualityCardView(buildUnifiedQualityGateArticle(article, q ?? null)); return view ? `${view.score}分 · ${view.tier.label}` : "待质检"; })() : "暂无",
         accountStatusLabel: def.publishPlatformId && platformWithReadyAccount.has(def.publishPlatformId) ? "账号可用" : "待绑定账号",
         primaryActionKind: resolvePlatformBoardPrimaryActionKind(status, generatedCount > 0),
+        retryPublishTaskId:
+          isRetryableFailedPublishTask(latestTask) && typeof latestTask?.id === "number" ? latestTask.id : null,
       };
     });
   }, [
@@ -2177,6 +2198,10 @@ export default function WeeklyContentPage() {
     () => (singleTaskFocusModel ? (singleTaskFocusModel.article as ArticleRow) : null),
     [singleTaskFocusModel],
   );
+  const singleTaskLatestPublishTask = useMemo(
+    () => (singleTaskFocusModel ? latestPublishTaskByArticleId.get(singleTaskFocusModel.id) ?? null : null),
+    [latestPublishTaskByArticleId, singleTaskFocusModel],
+  );
 
   const currentContentTaskStatusLabel = useMemo(() => statusBarNextStep, [statusBarNextStep]);
   const taskSourceTypeLabel = useMemo(() => geoContentTaskSource?.sourceLabel?.trim() || "内容任务", [geoContentTaskSource?.sourceLabel]);
@@ -2228,7 +2253,7 @@ export default function WeeklyContentPage() {
     const platformLabel = singleTaskFocusModel.targetPlatform ?? "平台";
     const title = singleTaskFocusModel.title || singleTaskFocusArticle.title || "当前内容";
     const articlePhrase = `${platformLabel}稿《${title}》`;
-    const latestTask = latestPublishTaskByArticleId.get(singleTaskFocusModel.id);
+    const latestTask = singleTaskLatestPublishTask;
     const localCreateError =
       singleTaskPublishQueueError?.articleId === singleTaskFocusModel.id
         ? singleTaskPublishQueueError.message
@@ -2241,6 +2266,22 @@ export default function WeeklyContentPage() {
         nextActionLabel: "加入发布队列",
         nextActionKind: "enqueue",
         blockerText: normalizeSingleTaskBlocker(`发布任务创建失败：${localCreateError}`),
+        blockerTone: "error",
+      };
+    }
+
+    if (isRetryableFailedPublishTask(latestTask) && latestTask) {
+      return {
+        ...base,
+        statusText: `${articlePhrase}已有失败的发布任务，不需要重复加入队列；请直接重试发布。`,
+        nextActionLabel: "重试发布",
+        nextActionKind: "retry_publish",
+        blockerText: publishTaskStatusLabel({
+          status: latestTask.status,
+          accountVerificationStatus: latestTask.accountVerificationStatus,
+          errorMessage: latestTask.errorMessage,
+          agentErrorMessage: latestTask.agentErrorMessage,
+        }),
         blockerTone: "error",
       };
     }
@@ -2350,9 +2391,9 @@ export default function WeeklyContentPage() {
     entryContext.questionText,
     entryContext.sourceType,
     entryLinkedQuestionText,
-    latestPublishTaskByArticleId,
     singleTaskFocusArticle,
     singleTaskFocusModel,
+    singleTaskLatestPublishTask,
     singleTaskPublishQueueError,
   ]);
 
@@ -2643,10 +2684,52 @@ export default function WeeklyContentPage() {
     setPublishDialogOpen(true);
   };
 
+  const retryFailedArticlePublishTask = useCallback(
+    async (publishTaskRecordId: number, articleId: number) => {
+      if (!selectedProjectId) {
+        toast.error("请先选择客户项目");
+        return false;
+      }
+      try {
+        const res = await retryPublishTask.mutateAsync({
+          projectId: selectedProjectId,
+          ["taskId"]: publishTaskRecordId,
+          reason: "运营在内容生产与发布页重试失败发布任务",
+        });
+        setSingleTaskPublishQueueError(prev => (prev?.articleId === articleId ? null : prev));
+        await Promise.all([
+          utils.publishTasks.listRecentByProject.invalidate({ projectId: selectedProjectId }),
+          publishTasksQuery.refetch(),
+          invalidateArticles(),
+        ]);
+        toast.success(`已重新加入发布队列（第 ${res.retryCount} 次重试）`);
+        notifyPublishEffectPrediction();
+        return true;
+      } catch (err) {
+        const message = toUserFacingErrorFromUnknown(err, "重试发布失败，请到发布执行中心处理");
+        setSingleTaskPublishQueueError({ articleId, message });
+        toast.error(message);
+        return false;
+      }
+    },
+    [
+      invalidateArticles,
+      publishTasksQuery,
+      retryPublishTask,
+      selectedProjectId,
+      utils.publishTasks.listRecentByProject,
+    ],
+  );
+
   const requestEnqueuePublish = useCallback(
     (article: ArticleRow) => {
       if (blockPublishIfUnsaved(article.id)) return;
       if (blockPublishIfQualityReject(article)) return;
+      const latestPublishTask = latestPublishTaskByArticleId.get(article.id);
+      if (isRetryableFailedPublishTask(latestPublishTask) && typeof latestPublishTask?.id === "number") {
+        void retryFailedArticlePublishTask(latestPublishTask.id, article.id);
+        return;
+      }
       const legacyQuality = scoresByArticleId.get(article.id) ?? null;
       const preflight = evaluateArticlePublishPreflight(article);
       if (!preflight?.ready) {
@@ -2678,9 +2761,11 @@ export default function WeeklyContentPage() {
     [
       blockPublishIfUnsaved,
       blockPublishIfQualityReject,
-      selectedProjectId,
-      publishBaseContext,
+      latestPublishTaskByArticleId,
       preparePublishDialogForArticle,
+      retryFailedArticlePublishTask,
+      scoresByArticleId,
+      evaluateArticlePublishPreflight,
     ],
   );
 
@@ -3262,6 +3347,17 @@ export default function WeeklyContentPage() {
           toast.error("未找到可加入发布队列的内容，请先生成平台稿");
         }
         return;
+      case "retry_publish":
+        if (
+          singleTaskFocusArticle &&
+          isRetryableFailedPublishTask(singleTaskLatestPublishTask) &&
+          typeof singleTaskLatestPublishTask?.id === "number"
+        ) {
+          void retryFailedArticlePublishTask(singleTaskLatestPublishTask.id, singleTaskFocusArticle.id);
+        } else {
+          toast.error("未找到可重试的失败发布任务，请到发布执行中心处理。");
+        }
+        return;
       case "go_publishing":
       case "backfill":
         setLocation(buildProjectUrl("/content-publishing", selectedProjectId));
@@ -3275,6 +3371,7 @@ export default function WeeklyContentPage() {
   const singleTaskPrimaryBusy =
     (singleTaskSummary.nextActionKind === "generate" && platformAnyGenerating) ||
     (singleTaskSummary.nextActionKind === "enqueue" && createPublishTask.isPending) ||
+    (singleTaskSummary.nextActionKind === "retry_publish" && retryPublishTask.isPending) ||
     reviewConfirmBusy;
   const singleTaskDisabledReason =
     singleTaskSummary.nextActionKind === "generate" && platformAnyGenerating
@@ -4163,6 +4260,10 @@ export default function WeeklyContentPage() {
                       const hit = findArticleByPlatform(key);
                       if (hit) requestEnqueuePublish(hit);
                     }}
+                    onRetryPublish={(key, taskId) => {
+                      const hit = findArticleByPlatform(key);
+                      if (hit) void retryFailedArticlePublishTask(taskId, hit.id);
+                    }}
                     onView={handlePlatformView}
                     onViewPublish={() =>
                       selectedProjectId &&
@@ -4185,6 +4286,10 @@ export default function WeeklyContentPage() {
                     onEnqueue={key => {
                       const hit = findArticleByPlatform(key);
                       if (hit) requestEnqueuePublish(hit);
+                    }}
+                    onRetryPublish={(key, taskId) => {
+                      const hit = findArticleByPlatform(key);
+                      if (hit) void retryFailedArticlePublishTask(taskId, hit.id);
                     }}
                     onView={handlePlatformView}
                   />
@@ -4324,6 +4429,10 @@ export default function WeeklyContentPage() {
                     onEnqueue={key => {
                       const hit = findArticleByPlatform(key);
                       if (hit) requestEnqueuePublish(hit);
+                    }}
+                    onRetryPublish={(key, taskId) => {
+                      const hit = findArticleByPlatform(key);
+                      if (hit) void retryFailedArticlePublishTask(taskId, hit.id);
                     }}
                     onView={handlePlatformView}
                     onViewPublish={() =>

@@ -33,6 +33,15 @@ describe("GEO-V2.3 publishTasks.create 500 fix", () => {
     }
   });
 
+  it("requires platform account and preflight fields with clear errors before insertion", () => {
+    const block = createBlock();
+    const router = read("server/publishTasksRouter.ts");
+    expect(block).toContain("platformAccountId");
+    expect(block).toContain("publishMustSelectAccountMessage");
+    expect(block).toContain("assertPrePublishChecklistForCreate");
+    expect(router).toContain("formatPublishPreflightBlockMessage");
+  });
+
   it("blocks content that has not passed quality preflight", () => {
     const router = read("server/publishTasksRouter.ts");
     const readiness = router.slice(
@@ -89,5 +98,32 @@ describe("GEO-V2.3 publishTasks.create 500 fix", () => {
     expect(insert).toContain("publish task will continue without persisted article coverBase64");
     expect(insert).toContain("logPublishTaskCreateWarning");
     expect(insert).not.toContain('throw err;\n  }\n\n  return {\n    taskId');
+  });
+
+  it("keeps retryable failed publish tasks on retry path instead of duplicate create from Weekly", () => {
+    const weekly = read("client/src/pages/WeeklyContentPage.tsx");
+    expect(weekly).toContain("trpc.publishTasks.retry.useMutation()");
+    expect(weekly).toContain("function isRetryableFailedPublishTask");
+    expect(weekly).toContain("retryFailedArticlePublishTask");
+    expect(weekly).toContain('nextActionKind: "retry_publish"');
+    expect(weekly).toContain('nextActionLabel: "重试发布"');
+    expect(weekly).toContain("latestPublishTaskByArticleId.get(article.id)");
+    expect(weekly).toContain("void retryFailedArticlePublishTask(latestPublishTask.id, article.id)");
+  });
+
+  it("platform task boards expose retry publish action for failed publish tasks", () => {
+    const weekly = read("client/src/pages/WeeklyContentPage.tsx");
+    const board = read("client/src/components/weekly/ContentTaskProgressionView.tsx");
+    const compactBoard = read("client/src/components/weekly/PlatformContentBoard.tsx");
+
+    expect(weekly).toContain("retryPublishTaskId:");
+    expect(weekly).toContain("isRetryableFailedPublishTask(latestTask)");
+    expect(weekly).toContain("typeof latestTask?.id === \"number\" ? latestTask.id : null");
+    for (const source of [board, compactBoard]) {
+      expect(source).toContain("retryPublishTaskId");
+      expect(source).toContain("onRetryPublish");
+      expect(source).toContain('label: "重试发布"');
+      expect(source).toContain("action.kind === \"retry_publish\" ? \"enqueue\" : action.kind");
+    }
   });
 });

@@ -157,6 +157,7 @@ type PlatformTaskBoardProps = {
   onGenerate: (key: WeeklyPlatformKey) => void;
   onSaveAndQc: (key: WeeklyPlatformKey) => void;
   onEnqueue: (key: WeeklyPlatformKey) => void;
+  onRetryPublish?: (key: WeeklyPlatformKey, taskId: number) => void;
   onView: (key: WeeklyPlatformKey) => void;
   onViewPublish?: (key: WeeklyPlatformKey) => void;
   onGoMonitoring?: () => void;
@@ -172,6 +173,7 @@ export function PlatformTaskBoard({
   onGenerate,
   onSaveAndQc,
   onEnqueue,
+  onRetryPublish,
   onView,
   onViewPublish,
   onGoMonitoring,
@@ -222,7 +224,10 @@ export function PlatformTaskBoard({
           const { def, status, hasContent, lifecycle } = row;
           const reason = reasonMap.get(def.key);
           const statusLabel = lifecycle.label;
-          const action = resolvePlatformTaskAction(status, hasContent);
+          const retryTaskId = row.retryPublishTaskId ?? null;
+          const action = retryTaskId
+            ? ({ kind: "retry_publish" as const, label: "重试发布" })
+            : resolvePlatformTaskAction(status, hasContent);
           const disabled = shouldDisablePlatformGenerateButton({
             status,
             boardBusy,
@@ -236,7 +241,7 @@ export function PlatformTaskBoard({
             generatingPlatformKey,
             activeInFlightPlatformKey,
             platformKey: def.key,
-            actionKind: action.kind,
+            actionKind: action.kind === "retry_publish" ? "enqueue" : action.kind,
           });
 
           return (
@@ -274,9 +279,17 @@ export function PlatformTaskBoard({
                   type="button"
                   size="sm"
                   className={geoP0Brand.primary}
-                  disabled={disabled && (action.kind === "generate" || action.kind === "regenerate")}
+                  disabled={
+                    retryTaskId
+                      ? boardBusy
+                      : disabled && (action.kind === "generate" || action.kind === "regenerate")
+                  }
                   data-testid={`task-platform-action-${def.key}`}
-                  onClick={() => handleAction(row, action.kind)}
+                  onClick={() =>
+                    retryTaskId && onRetryPublish
+                      ? onRetryPublish(def.key, retryTaskId)
+                      : handleAction(row, action.kind === "retry_publish" ? "enqueue" : action.kind)
+                  }
                 >
                   {action.label}
                 </Button>
