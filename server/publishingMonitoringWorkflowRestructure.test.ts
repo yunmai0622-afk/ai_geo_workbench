@@ -48,8 +48,8 @@ describe("GEO-V1.2 publishing monitoring workflow restructure P0", () => {
     expect(publishAssistant).not.toContain("当前阻断");
   });
 
-  it("/inclusion-monitoring 第一屏展示客户可读效果验证与运营指标", () => {
-    expect(inclusionPage).toContain("效果验证");
+  it("/inclusion-monitoring 第一屏展示客户可读收录与 AI 复测与运营指标", () => {
+    expect(inclusionPage).toContain("收录与 AI 复测");
     expect(inclusionPage).toContain("客户可读结论");
     expect(inclusionPage).toContain("客户可见证据摘要");
     expect(inclusionPage).toContain('data-testid="effect-verification-customer-overview"');

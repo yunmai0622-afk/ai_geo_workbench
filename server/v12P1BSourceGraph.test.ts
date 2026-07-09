@@ -68,7 +68,7 @@ describe("GEO-V1.2-P1-B-Source-Graph-MVP", () => {
   });
 
   it("sidebar nav, route alias and assistant panel are wired", () => {
-    expect(nav).toContain("信源与证据库");
+    expect(nav).toContain("信源引用监测");
     expect(nav).toContain('path: "/brand-source-graph"');
     expect(app).toContain('path="/brand-source-graph"');
     expect(app).toContain('path="/brand-sources"');

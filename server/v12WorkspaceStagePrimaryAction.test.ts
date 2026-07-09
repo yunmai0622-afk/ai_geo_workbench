@@ -23,8 +23,8 @@ describe("GEO-V2.0-UX-Followup-Stage-CTA-Nav", () => {
     for (const text of [
       "完成品牌建档",
       "品牌建档期",
-      "AI 现状检测",
-      "开始 AI 现状检测",
+      "AI 能见度诊断",
+      "开始 AI 能见度诊断",
       "生成本月优化计划",
       "继续执行本月计划",
     ]) {
@@ -61,17 +61,17 @@ describe("GEO-V2.0-UX-Followup-Stage-CTA-Nav", () => {
       rewriteOpenCount: 0,
       maturityTotalScore: 80,
     });
-    expect(action?.stageHeadline).toBe("AI 现状检测");
-    expect(action?.ctaLabel).toBe("开始 AI 现状检测");
+    expect(action?.stageHeadline).toBe("AI 能见度诊断");
+    expect(action?.ctaLabel).toBe("开始 AI 能见度诊断");
     expect(action?.ctaPath).toBe("/ai-diagnosis");
   });
 
-  it("运营工具分组保留 AI 问题池与信源证据库，信任证据由建档第 6 步管理", () => {
+  it("运营工具分组保留 搜索问题挖掘与信源证据库，信任证据由建档第 6 步管理", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     expect(layout).not.toContain('label: "信任证据库"');
     expect(layout).toContain('title: "运营工具"');
-    expect(layout).toContain('label: "AI 问题池"');
-    expect(layout).toContain('label: "信源与证据库"');
+    expect(layout).toContain('label: "搜索问题挖掘"');
+    expect(layout).toContain('label: "信源引用监测"');
     expect(read("client/src/components/enterpriseProfile/TrustEvidenceManager.tsx")).toContain("信任证据库");
   });
 

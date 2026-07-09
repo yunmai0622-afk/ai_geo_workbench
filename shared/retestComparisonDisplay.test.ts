@@ -12,7 +12,7 @@ describe("retestComparisonDisplay", () => {
   const baseRound = {
     id: "t0-id",
     roundType: "T0_BASELINE",
-    roundName: "AI 现状检测",
+    roundName: "AI 能见度诊断",
     status: "completed",
     platforms: ["doubao", "deepseek"],
     questionsCount: 5,

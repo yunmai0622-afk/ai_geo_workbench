@@ -270,7 +270,7 @@ export const disabledOperations = ["新建项目", "编辑资料", "上传资料
 
 /** 演示引导流程步骤标题（GEO-V1.1-Demo-Flow） */
 export const demoFlowStepTitles = [
-  "AI 现状检测结果",
+  "AI 能见度诊断结果",
   "GEO 缺口分析",
   "内容资产",
   "发布记录",

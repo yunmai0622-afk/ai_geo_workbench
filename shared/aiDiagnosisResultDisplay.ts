@@ -41,7 +41,7 @@ export function resolveAiDiagnosisLastTestLabel(input: {
 
 export function diagnosisMentionRateHint(mentionPct: number | null, hasData: boolean): string {
   if (!hasData) {
-    return "尚未完成 AI 搜索实测，完成 AI 现状检测或运行内容诊断后将展示提及率。";
+    return "尚未完成 AI 搜索实测，完成 AI 能见度诊断或运行内容诊断后将展示提及率。";
   }
   if (mentionPct == null) return "";
   if (mentionPct === 0) {

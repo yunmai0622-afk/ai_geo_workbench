@@ -22,17 +22,17 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(layoutSource).toContain('title: "运营工具"');
     expect(layoutSource).not.toContain('title: "增长总览"');
     for (const label of [
-      "总览",
-      "诊断",
-      "本月方案",
+      "服务首页",
+      "AI 能见度诊断",
+      "月度优化计划",
       "执行进度",
-      "效果验证",
-      "效果报告",
+      "收录与 AI 复测",
+      "交付报告",
       "品牌资料",
-      "内容生产工作台",
+      "内容生产与发布",
       "发布执行中心",
-      "AI 问题池",
-      "信源与证据库",
+      "搜索问题挖掘",
+      "信源引用监测",
       "使用指南",
     ]) {
       expect(layoutSource).toContain(`label: "${label}"`);
@@ -126,7 +126,7 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     const t0Idx = flowSource.lastIndexOf("data-testid=\"ai-diagnosis-t0-baseline\"");
     expect(coreIdx).toBeGreaterThan(-1);
     expect(reportSource).toContain("诊断问题页");
-    expect(reportSource).toContain("开始 AI 现状诊断");
+    expect(reportSource).toContain("开始 AI 能见度诊断");
     expect(reportSource).toContain("当前最大 3 个诊断问题");
     expect(reportSource).toContain("AI 平台证据摘要");
     expect(detailFoldIdx).toBeGreaterThan(coreIdx);
@@ -134,8 +134,8 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     expect(flowSource).toContain("data-testid=\"ai-diagnosis-t0-baseline\"");
     expect(flowSource).toContain("data-testid=\"ai-diagnosis-load-hint\"");
     expect(reportSource).toContain("data-testid=\"ai-diagnosis-report-conclusion\"");
-    expect(reportSource).toContain("开始 AI 现状诊断");
-    expect(reportSource).toContain("制定本月服务方案");
+    expect(reportSource).toContain("开始 AI 能见度诊断");
+    expect(reportSource).toContain("制定月度优化计划");
     for (const text of [
       "内容诊断",
       "目标客户问题",
@@ -198,11 +198,11 @@ describe("V1.0 可售卖版产品体验静态回归", () => {
     ).toContain("一键发布所有平台");
   });
 
-  it("效果验证页展示客户摘要并保留运营内容资产列表", () => {
+  it("收录与 AI 复测页展示客户摘要并保留运营内容资产列表", () => {
     const inclusionSource = readProjectFile("client/src/pages/InclusionMonitoringCenterPage.tsx");
     const fillPanel = readProjectFile("client/src/components/inclusion-monitoring/ContentAssetEffectFillPanel.tsx");
     for (const text of [
-      "效果验证",
+      "收录与 AI 复测",
       "客户可见证据摘要",
       "运营明细与数据回填",
       "内容资产列表",

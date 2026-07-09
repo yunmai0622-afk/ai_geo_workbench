@@ -300,7 +300,7 @@ function publishTaskOperatorNextAction(card: PublishTaskCardModel, localAgentOnl
     return card.canRetry ? "先重试，仍失败则转人工发布并回填链接。" : "转人工发布，完成后回填公开链接。";
   }
   if (card.statusRaw === "completed" && !card.publishedUrl?.trim()) {
-    return "补齐公开链接，让内容进入效果验证。";
+    return "补齐公开链接，让内容进入收录与 AI 复测。";
   }
   if (card.statusRaw === "agent_processing" || card.statusRaw === "processing") {
     return "确认客户端处理结果，完成后回填公开链接。";
@@ -334,7 +334,7 @@ function buildOperatorAccountRow(card: PublishPagePlatformCard): PublishOperator
         platformLabel: card.label,
         statusLabel: "待确认",
         impact: "已有内容但质量尚未确认，不建议直接发布。",
-        nextStep: "回到内容生产工作台补齐内容质量。",
+        nextStep: "回到内容生产与发布补齐内容质量。",
         tone: "warning",
       };
     case "no_content":
@@ -351,7 +351,7 @@ function buildOperatorAccountRow(card: PublishPagePlatformCard): PublishOperator
         key: card.key,
         platformLabel: card.label,
         statusLabel: "发布中",
-        impact: "内容正在处理，完成前暂不能进入效果验证。",
+        impact: "内容正在处理，完成前暂不能进入收录与 AI 复测。",
         nextStep: "跟进发布结果，完成后回填公开链接。",
         tone: "warning",
       };
@@ -361,7 +361,7 @@ function buildOperatorAccountRow(card: PublishPagePlatformCard): PublishOperator
         platformLabel: card.label,
         statusLabel: "已发布",
         impact: "该平台已有发布记录，下一步需要验证是否被看见。",
-        nextStep: "进入效果验证，跟进收录和 AI 识别情况。",
+        nextStep: "进入收录与 AI 复测，跟进收录和 AI 识别情况。",
         tone: "success",
       };
     case "manual_only":
@@ -404,10 +404,10 @@ function buildPublishOperatorConclusion(input: {
   localAgentNeeded: boolean;
 }): string {
   if (!input.hasPublishableContent && input.pendingWorkCount === 0 && input.publishedWaitingVerifyCount === 0) {
-    return "当前没有可执行的发布任务。建议先回到执行进度生成可发布内容，再进入发布执行和效果验证。";
+    return "当前没有可执行的发布任务。建议先回到执行进度生成可发布内容，再进入发布执行和收录与 AI 复测。";
   }
   if (input.failedCount > 0) {
-    return `当前有 ${input.failedCount} 项发布异常需要优先处理。先处理失败或待重试任务，再回填公开链接进入效果验证。`;
+    return `当前有 ${input.failedCount} 项发布异常需要优先处理。先处理失败或待重试任务，再回填公开链接进入收录与 AI 复测。`;
   }
   if (input.pendingWorkCount > 0) {
     return input.localAgentNeeded
@@ -418,12 +418,12 @@ function buildPublishOperatorConclusion(input: {
     return `当前有 ${input.waitingLinkCount} 项发布记录缺少公开链接。先回填链接，才能进入收录和 AI 识别验证。`;
   }
   if (input.publishedWaitingVerifyCount > 0) {
-    return `当前已有 ${input.publishedWaitingVerifyCount} 项内容完成发布，今天重点是进入效果验证，确认内容是否被搜索和 AI 看见。`;
+    return `当前已有 ${input.publishedWaitingVerifyCount} 项内容完成发布，今天重点是进入收录与 AI 复测，确认内容是否被搜索和 AI 看见。`;
   }
   if (input.readyPlatformCount > 0) {
     return `当前有 ${input.readyPlatformCount} 个平台满足发布条件。建议从可发布平台开始执行，形成可验证的公开链接。`;
   }
-  return "当前发布链路暂无明确异常。建议继续检查平台账号、内容质量和效果验证进度。";
+  return "当前发布链路暂无明确异常。建议继续检查平台账号、内容质量和收录与 AI 复测进度。";
 }
 
 export function ContentPublishingCenterPage() {
@@ -1132,7 +1132,7 @@ function ContentPublishingCenterPageInner() {
     ? localAgentConnectedOnline
       ? "需要，当前已检测到可用连接"
       : "需要，先打开客户端或改走人工发布"
-    : "暂不需要，当前重点是链接回填或效果验证";
+    : "暂不需要，当前重点是链接回填或收录与 AI 复测";
 
   const publishOperatorMetrics = useMemo<PublishOperatorMetric[]>(
     () => [
@@ -1186,7 +1186,7 @@ function ContentPublishingCenterPageInner() {
       blockers.push({
         title: "公开链接未回填",
         impact: "没有公开链接就无法进入收录监测和 AI 复测。",
-        nextAction: "补齐公开链接，并确认内容进入效果验证。",
+        nextAction: "补齐公开链接，并确认内容进入收录与 AI 复测。",
       });
     }
     if (pendingWorkCount > 0 && !localAgentConnectedOnline) {
@@ -1248,14 +1248,14 @@ function ContentPublishingCenterPageInner() {
         hint: waitingLinkCount > 0 ? "需要补齐公开链接。" : linkBackfillDone ? "公开链接已具备验证条件。" : "发布后回填公开链接。",
       },
       {
-        label: "效果验证",
+        label: "收录与 AI 复测",
         status: hasVerification ? "done" : hasPublished && waitingLinkCount === 0 ? "current" : "waiting",
         hint: hasVerification ? "已有内容进入验证链路。" : "确认搜索收录和 AI 识别。",
       },
       {
         label: "报告",
         status: hasVerification ? "current" : "waiting",
-        hint: "把发布和验证结果沉淀到效果报告。",
+        hint: "把发布和验证结果沉淀到交付报告。",
       },
     ];
   }, [
@@ -1284,7 +1284,7 @@ function ContentPublishingCenterPageInner() {
       statusLabel: card.statusLabel || "待处理",
       nextAction: publishTaskOperatorNextAction(card, localAgentConnectedOnline),
       operationLabel: publishTaskOperatorAction(card, localAgentConnectedOnline),
-      afterPublishLabel: "回填公开链接后，进入效果验证并沉淀到客户报告。",
+      afterPublishLabel: "回填公开链接后，进入收录与 AI 复测并沉淀到客户报告。",
       targetTab: publishTaskOperatorTab(card),
     }));
   }, [
@@ -1313,10 +1313,10 @@ function ContentPublishingCenterPageInner() {
         key: card.key,
         title: card.title || "未命名内容",
         platformLabel: card.platformLabel || "未标注平台",
-        statusLabel: card.autoInclusionMonitoring ? "已进入效果验证" : "待效果验证",
+        statusLabel: card.autoInclusionMonitoring ? "已进入收录与 AI 复测" : "待收录与 AI 复测",
         nextStep: card.autoInclusionMonitoring
           ? "继续跟进收录和 AI 复测结果。"
-          : "进入效果验证，确认内容是否被搜索和 AI 看见。",
+          : "进入收录与 AI 复测，确认内容是否被搜索和 AI 看见。",
         publicLinkLabel: card.publishedUrl?.trim() ? "已回填" : "待回填",
       })),
     [publishedCards],
@@ -1353,13 +1353,13 @@ function ContentPublishingCenterPageInner() {
     }
     if (publishedCards.length > 0) {
       return {
-        label: "去效果验证",
+      label: "去收录与 AI 复测",
         hint: "确认已发布内容是否被搜索和 AI 看见。",
         onClick: () => goToProjectPath("/inclusion-monitoring"),
       };
     }
     return {
-      label: "查看效果报告",
+      label: "查看交付报告",
       hint: "发布链路暂无待处理事项，进入报告沉淀交付结果。",
       onClick: () => goToProjectPath("/delivery-reports"),
     };
@@ -1448,9 +1448,9 @@ function ContentPublishingCenterPageInner() {
               不进入客户第一轮演示
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">运营发布执行中心</h1>
+          <h1 className="text-2xl font-bold text-gray-900">发布执行中心</h1>
           <p className="text-sm text-gray-500">
-            面向代理运营的发布工作台：处理待发布内容、账号环境、失败重试、链接回填和效果验证；保留运营可用性，不作为客户首轮演示页。
+            运营团队处理待发布、链接回填和发布异常。
           </p>
         </div>
         <details className="shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-secondary-actions">

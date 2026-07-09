@@ -55,7 +55,7 @@ describe("geoProfileP0Readiness", () => {
 
   it("T0 阻断消息不暴露工程字段名", () => {
     expect(formatT0ProfileBlockingMessage(["企业名称"])).toBe(
-      "请先完善品牌资产建档中的基础信息，再启动 AI 现状检测",
+      "请先完善品牌资产建档中的基础信息，再启动 AI 能见度诊断",
     );
   });
 

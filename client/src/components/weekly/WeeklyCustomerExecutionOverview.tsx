@@ -42,10 +42,10 @@ function buildExecutionConclusion(input: {
 }): string {
   const { brandName, taskCount, completedTaskCount, progress } = input;
   if (taskCount === 0) {
-    return `${brandName} 本月还没有形成可执行的内容服务事项，建议先回到本月方案，把诊断问题转成可交付动作。`;
+    return `${brandName} 本月还没有形成可执行的内容服务事项，建议先回到月度优化计划，把诊断问题转成可交付动作。`;
   }
   if (progress.publishedCount > 0) {
-    return `${brandName} 本月已有内容完成发布，下一步重点是确认内容是否被搜索和 AI 看见，并进入效果验证。`;
+    return `${brandName} 本月已有内容完成发布，下一步重点是确认内容是否被搜索和 AI 看见，并进入收录与 AI 复测。`;
   }
   if (progress.queuedCount > 0 || progress.enqueueReadyCount > 0) {
     return `${brandName} 本月内容资产已进入发布前准备阶段，当前重点是完成入队、发布和链接回填。`;
@@ -71,7 +71,7 @@ function buildBlockers(input: {
     blockers.push({
       title: "本月服务事项未形成",
       impact: "客户暂时看不到本月准备交付什么，也无法判断执行是否推进。",
-      action: "先回到本月方案，把诊断问题转成 Top 服务事项。",
+      action: "先回到月度优化计划，把诊断问题转成 Top 服务事项。",
     });
   }
   if (taskCount > 0 && progress.generatedCount === 0) {
@@ -106,7 +106,7 @@ function buildBlockers(input: {
     blockers.push({
       title: "发布后尚需验证效果",
       impact: "内容发布只是第一步，还需要确认是否被搜索和 AI 看见。",
-      action: "进入效果验证，检查收录、提及和后续复测安排。",
+      action: "进入收录与 AI 复测，检查收录、提及和后续复测安排。",
     });
   }
   if (currentTaskProgress && currentTaskProgress.needGenerate > 0 && currentTaskProgress.generated > 0) {
@@ -121,7 +121,7 @@ function buildBlockers(input: {
     blockers.push({
       title: "暂无明显执行卡点",
       impact: "当前执行链路没有发现需要立即处理的阻断。",
-      action: "按计划继续推进，并在发布后进入效果验证。",
+      action: "按计划继续推进，并在发布后进入收录与 AI 复测。",
     });
   }
 
@@ -140,7 +140,7 @@ function buildFlowSteps(input: {
 
   return [
     {
-      label: "本月方案",
+      label: "月度优化计划",
       status: hasTasks ? "已完成" : "进行中",
       hint: hasTasks ? "已形成本月内容服务事项。" : "先确认本月要解决的问题。",
     },
@@ -155,7 +155,7 @@ function buildFlowSteps(input: {
       hint: hasPublishMotion ? "发布链路已启动或有内容可发布。" : "内容确认后进入发布。",
     },
     {
-      label: "效果验证",
+      label: "收录与 AI 复测",
       status: hasPublished ? "进行中" : "待开始",
       hint: hasPublished ? "确认内容是否被搜索和 AI 看见。" : "发布后再验证效果。",
     },
@@ -193,7 +193,7 @@ export function WeeklyCustomerExecutionOverview({
     {
       label: "本月服务事项",
       value: serviceProgress,
-      hint: monthlyTasks.length > 0 ? "按本月方案推进" : "待制定方案",
+      hint: monthlyTasks.length > 0 ? "按月度优化计划推进" : "待制定方案",
       icon: FileText,
     },
     {
@@ -211,7 +211,7 @@ export function WeeklyCustomerExecutionOverview({
     {
       label: "已发布待验证",
       value: `${progress.publishedCount} 篇`,
-      hint: progress.publishedCount > 0 ? "可进入效果验证" : "发布后验证效果",
+      hint: progress.publishedCount > 0 ? "可进入收录与 AI 复测" : "发布后验证效果",
       icon: Clock3,
     },
   ];
@@ -300,7 +300,7 @@ export function WeeklyCustomerExecutionOverview({
         <section className="space-y-3" data-testid="weekly-execution-flow">
           <div className="space-y-1">
             <h2 className={geoP0Surfaces.sectionTitle}>服务流程进度</h2>
-            <p className={geoP0Surfaces.muted}>从本月方案到效果验证，客户能看到当前卡在哪一步。</p>
+            <p className={geoP0Surfaces.muted}>从月度优化计划到收录与 AI 复测，客户能看到当前卡在哪一步。</p>
           </div>
           <P0Card className="space-y-3 p-4">
             {flowSteps.map((step, index) => (
@@ -360,7 +360,7 @@ export function WeeklyCustomerExecutionOverview({
         ) : (
           <P0Card className="p-4">
             <p className="text-sm leading-relaxed text-gray-600">
-              暂无本月执行事项。建议先进入本月方案，确认本月要解决的 Top 服务事项。
+              暂无本月执行事项。建议先进入月度优化计划，确认本月要解决的 Top 服务事项。
             </p>
           </P0Card>
         )}

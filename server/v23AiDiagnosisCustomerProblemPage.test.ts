@@ -11,8 +11,8 @@ describe("GEO V2.3-P0-F AI diagnosis customer problem page", () => {
 
   it("turns AI diagnosis into a customer-readable problem page", () => {
     expect(report).toContain("诊断问题页");
-    expect(report).toContain("为什么 AI 还不稳定推荐你");
-    expect(report).toContain("把实测结果翻译成客户能理解的原因、影响和本月修复动作");
+    expect(report).toContain("AI 能见度诊断");
+    expect(report).toContain("解释 AI 为什么还没有稳定识别和推荐品牌");
     expect(report).toContain("AI 是否知道你");
     expect(report).toContain("AI 是否愿意推荐你");
     expect(report).toContain("AI 是否说得准");
@@ -28,10 +28,10 @@ describe("GEO V2.3-P0-F AI diagnosis customer problem page", () => {
     expect(report).toContain("AI 为什么不稳定推荐");
     expect(report).toContain("从诊断到修复路径");
     expect(report).toContain("诊断问题");
-    expect(report).toContain("本月方案");
+    expect(report).toContain("月度优化计划");
     expect(report).toContain("内容执行");
-    expect(report).toContain("效果验证");
-    expect(report).toContain("效果报告");
+    expect(report).toContain("收录与 AI 复测");
+    expect(report).toContain("交付报告");
     expect(report).toContain('data-testid="ai-diagnosis-evidence-summary"');
     expect(report).toContain('data-testid="ai-diagnosis-scenario-breakdown"');
     expect(report).toContain('data-testid="ai-diagnosis-not-recommended-reasons"');

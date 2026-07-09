@@ -41,7 +41,7 @@ export function resolvePageNextActionSuggestion(
     case "questions": {
       if (!metrics.hasCompletedT0Baseline && !metrics.hasAnalysis && !metrics.hasGeoScore) {
         return {
-          ctaLabel: "开始 AI 现状检测",
+          ctaLabel: "开始 AI 能见度诊断",
           reason: AI_DIAGNOSIS_SOFT_RECOMMENDATION,
           nextStageName: "内容生产",
           ctaPath: "/ai-diagnosis",
@@ -150,4 +150,3 @@ export function resolvePageNextActionSuggestion(
       return null;
   }
 }
-

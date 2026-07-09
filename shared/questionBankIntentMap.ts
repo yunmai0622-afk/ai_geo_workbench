@@ -138,7 +138,7 @@ export function resolveQuestionTestStatus(
 
 export function resolveQuestionTestStatusHint(status: QuestionTestStatus): string | null {
   if (status !== "未测") return null;
-  return "尚未实测。完成 AI 现状检测后，将展示该问题在豆包、Kimi、DeepSeek 等平台中的品牌提及和推荐情况。";
+  return "尚未实测。完成 AI 能见度诊断后，将展示该问题在豆包、Kimi、DeepSeek 等平台中的品牌提及和推荐情况。";
 }
 
 export function resolveQuestionContentStatus(
@@ -268,7 +268,7 @@ export type TestRoundSummary = {
 };
 
 export function resolveTestRoundDisplayName(round: Pick<TestRoundSummary, "roundType" | "roundName">): string {
-  if (round.roundType === "T0_BASELINE") return "AI 现状检测";
+  if (round.roundType === "T0_BASELINE") return "AI 能见度诊断";
   if (round.roundType === "T1_RETEST") return "7天后复测";
   if (round.roundType === "T2_RETEST" || round.roundType === "T3_RETEST") {
     return round.roundName.trim() || "复测题组";
@@ -331,7 +331,7 @@ export function resolveQuestionBankAssistantNextAction(input: {
   if (input.enabledCount === 0) return "启用 5-10 个高价值问题";
   if (!input.hasCurrentRound) return "创建本轮实测题组";
   if (input.roundStatus === "running") return "查看 AI 实测进度";
-  if (!input.hasCompletedT0Baseline) return "完成 AI 现状检测";
+  if (!input.hasCompletedT0Baseline) return "完成 AI 能见度诊断";
   if (input.gapCount > 0) return "围绕缺口生成内容任务";
   return "查看实测结果并规划内容";
 }

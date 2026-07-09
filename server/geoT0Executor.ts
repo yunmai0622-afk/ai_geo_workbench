@@ -194,7 +194,7 @@ export async function createT0RoundWithQuestions(
   if (runningRows[0]) {
     throw new TRPCError({
       code: "CONFLICT",
-      message: "当前项目已有进行中的 AI 现状检测，请等待完成后再创建",
+      message: "当前项目已有进行中的 AI 能见度诊断，请等待完成后再创建",
     });
   }
 
@@ -224,7 +224,7 @@ export async function createT0RoundWithQuestions(
 
   const roundId = randomUUID();
   const runsPerQuestion = input.runsPerQuestion ?? 3;
-  const roundName = input.roundName?.trim() || "AI 现状检测";
+  const roundName = input.roundName?.trim() || "AI 能见度诊断";
 
   await db.insert(testRounds).values({
     id: roundId,
@@ -405,7 +405,7 @@ async function prepareT0ExecutionStart(db: DbConn, roundId: string) {
     throw new TRPCError({ code: "NOT_FOUND", message: "检测轮次不存在" });
   }
   if (round.roundType !== "T0_BASELINE") {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "仅 AI 现状检测轮次可执行此操作" });
+    throw new TRPCError({ code: "BAD_REQUEST", message: "仅 AI 能见度诊断轮次可执行此操作" });
   }
 
   const boundRows = await db

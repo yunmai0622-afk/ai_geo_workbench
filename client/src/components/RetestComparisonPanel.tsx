@@ -52,7 +52,7 @@ export function RetestComparisonPanel({ projectId, enabled }: RetestComparisonPa
       <P0Card testId="retest-comparison-empty" className="text-sm text-gray-600">
         <p className="font-medium text-gray-900">暂无优化前基线与复测对比数据</p>
         <p className="mt-2 leading-relaxed text-gray-600">
-          需先完成 AI 现状检测与 7天后复测，系统将自动生成对比结果。
+          需先完成 AI 能见度诊断与 7天后复测，系统将自动生成对比结果。
         </p>
       </P0Card>
     );

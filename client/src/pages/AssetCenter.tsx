@@ -760,7 +760,7 @@ export default function AssetCenterPage() {
           data-testid="wizard-completion-panel"
         >
           <p className="text-sm leading-relaxed text-emerald-950">
-            建档完成！系统正在计算 AI 品牌成熟度，建议接下来进行 AI 现状检测，了解AI目前是否推荐你的品牌。
+            建档完成！系统正在计算 AI 品牌成熟度，建议接下来进行 AI 能见度诊断，了解 AI 目前是否推荐你的品牌。
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button
@@ -796,7 +796,7 @@ export default function AssetCenterPage() {
                   先让 AI 看懂 {currentProject?.enterpriseName ?? "这个品牌"} 是谁、服务谁、凭什么值得推荐
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-gray-600">
-                  这不是内部资料库，而是后续 AI 现状诊断、本月方案、内容生产和效果报告的基础。资料越清楚，AI 越容易识别同一个品牌并形成推荐理由。
+                  这不是内部资料库，而是后续 AI 能见度诊断、月度优化计划、内容生产与发布和交付报告的基础。资料越清楚，AI 越容易识别同一个品牌并形成推荐理由。
                 </p>
               </div>
               <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
@@ -820,7 +820,7 @@ export default function AssetCenterPage() {
               </div>
               <div className="rounded-xl border border-white bg-white/80 p-4">
                 <p className="text-xs font-semibold text-gray-500">完成后去哪里</p>
-                <p className="mt-2 text-sm font-semibold text-gray-900">进入 AI 现状诊断，建立优化前基线</p>
+                <p className="mt-2 text-sm font-semibold text-gray-900">进入 AI 能见度诊断，建立优化前基线</p>
                 <p className="mt-1 text-xs leading-5 text-gray-500">诊断结果会转成本月 3 件可交付服务事项。</p>
               </div>
             </div>

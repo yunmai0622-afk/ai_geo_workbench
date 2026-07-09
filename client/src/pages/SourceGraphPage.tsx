@@ -466,8 +466,8 @@ export default function SourceGraphPage() {
     }
 
     return {
-      label: "查看效果验证",
-      hint: "信源基础较完整时，进入收录和 AI 识别效果验证。",
+      label: "查看收录与 AI 复测",
+      hint: "信源基础较完整时，进入收录和 AI 识别复测。",
       disabled: !selectedProjectId,
       onClick: () => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId)),
     };
@@ -527,7 +527,7 @@ export default function SourceGraphPage() {
           <div className="flex items-center gap-2">
             <Network className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900" data-testid="source-graph-page-title">
-              运营后台｜信源证据修复后台
+              信源引用监测
             </h1>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -542,7 +542,7 @@ export default function SourceGraphPage() {
             </span>
           </div>
           <p className="mt-2 max-w-3xl text-sm text-gray-500">
-            这里用于检查 AI 是否有足够公开证据信任品牌。品牌信源图谱和信源证据与可信度修复工具保留给运营团队判断证据缺口、实体一致性和修复顺序。
+            检查 AI 是否有足够公开证据信任品牌。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">

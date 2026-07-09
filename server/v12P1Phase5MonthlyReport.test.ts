@@ -28,7 +28,7 @@ describe("GEO-V2.0-P1-Phase5 Monthly Maturity Report", () => {
     const page = read("client/src/pages/DeliveryReportsCenterPage.tsx");
     expect(page).toContain("delivery-report-page");
     expect(page).toContain("monthly-report-title");
-    expect(page).toContain("效果报告 / 续费型交付报告");
+    expect(page).toContain("交付报告");
     expect(page).toContain("delivery-report-renewal-overview");
     expect(page).toContain("delivery-report-evidence-details");
     expect(page).toContain("证据详情与完整月报");
@@ -49,7 +49,7 @@ describe("GEO-V2.0-P1-Phase5 Monthly Maturity Report", () => {
 
   it("updates navigation label for delivery reports entry", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain('label: "效果报告"');
+    expect(layout).toContain('label: "交付报告"');
     expect(layout).toContain('path: "/delivery-reports"');
   });
 });

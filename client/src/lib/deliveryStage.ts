@@ -91,7 +91,7 @@ export function resolveDeliveryStageView(input: Input): DeliveryStageView {
       blockingReasons: ["尚未产出 AI 诊断与评分。"],
       primaryAction: { label: "开始诊断", path: "/ai-diagnosis" },
       secondaryActions: [{ label: "查看建档资料", path: "/enterprise-profile" }],
-      todos: ["执行 AI 现状检测", "确认核心问题集"],
+      todos: ["执行 AI 能见度诊断", "确认核心问题集"],
       progressSteps,
       metrics,
     };
@@ -273,7 +273,7 @@ export const DELIVERY_PHASE_CUSTOMER_COPY: Record<
 
 const DELIVERY_STAGE_HEADLINE: Record<DeliveryStageId, string> = {
   S1_PROFILE_INCOMPLETE: "完善品牌资料",
-  S2_READY_FOR_DIAGNOSIS: "AI 现状检测",
+  S2_READY_FOR_DIAGNOSIS: "AI 能见度诊断",
   S3_READY_FOR_CONTENT: "补充内容资产",
   S4_READY_FOR_PUBLISH: "发布内容到各平台",
   S5_WAITING_LINKS: "回填发布链接",

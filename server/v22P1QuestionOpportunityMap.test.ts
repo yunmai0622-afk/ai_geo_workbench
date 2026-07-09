@@ -29,7 +29,7 @@ describe("GEO V2.2 P1 AI search opportunity map", () => {
   it("keeps customer copy focused on opportunity, evidence and next action", () => {
     const panel = read("client/src/components/questions/QuestionOpportunityMapPanel.tsx");
     const shared = read("shared/questionOpportunityMap.ts");
-    expect(panel).toContain("AI 搜索机会地图");
+    expect(panel).toContain("搜索问题挖掘");
     expect(panel).toContain("下一步原因");
     expect(shared).toContain("抢竞品占位");
     expect(shared).toContain("补内容覆盖");

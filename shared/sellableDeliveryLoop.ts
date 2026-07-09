@@ -120,8 +120,8 @@ function resolveCurrentStep(done: Set<SellableDeliveryLoopStepId>): SellableDeli
 function resolveHeadline(currentStep: SellableDeliveryLoopStepId, input: SellableDeliveryLoopInput): string {
   if (currentStep === "diagnosis") return "先建立 AI 搜索现状基线";
   if (currentStep === "maturity") return "把诊断结果转成成熟度评分";
-  if (currentStep === "monthlyPlan") return "把短板转成本月服务方案";
-  if (currentStep === "content") return "本月服务方案执行中";
+  if (currentStep === "monthlyPlan") return "把短板转成月度优化计划";
+  if (currentStep === "content") return "月度优化计划执行中";
   if (currentStep === "publish") return "内容资产已生成，下一步发布成公开信源";
   if (currentStep === "monitoring") return "已进入发布后监测阶段";
   if (currentStep === "retest") return "等待 AI 复测证明变化";

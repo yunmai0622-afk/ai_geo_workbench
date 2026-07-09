@@ -29,7 +29,7 @@ describe("GEO-P0-C — 复测队列与重写池", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     const inclusion = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
     expect(weekly).toContain("新版内容建议");
-    expect(inclusion).toContain("效果验证");
+    expect(inclusion).toContain("收录与 AI 复测");
     expect(read("server/routers.ts")).toContain("retestQueue:");
     expect(read("server/routers.ts")).toContain("rewritePool:");
   });

@@ -127,7 +127,7 @@ function resolveQuestionScenarioAction(questions: EnrichedSearchPoolQuestion[], 
   if (questions.length === 0) return "先生成该场景问题";
   if (!hasDiagnosisData) return "加入 AI 诊断";
   if (questions.some(q => !q.hasContentTask && Number(q.enabled) !== 0)) return "生成内容任务";
-  if (questions.some(q => q.contentStatus === "待复测" || q.contentStatus === "已发布")) return "进入效果验证";
+  if (questions.some(q => q.contentStatus === "待复测" || q.contentStatus === "已发布")) return "进入收录与 AI 复测";
   return "跟进执行进度";
 }
 
@@ -382,7 +382,7 @@ export default function QuestionsLibraryPage() {
         key: "retest",
         label: "待复测",
         value: formatQuestionOperatorCount(questions.filter(q => q.contentStatus === "待复测").length),
-        hint: "发布后需要进入效果验证的问题。",
+        hint: "发布后需要进入收录与 AI 复测的问题。",
       },
     ],
     [questions],
@@ -565,7 +565,7 @@ export default function QuestionsLibraryPage() {
     const hasRetest = questions.some(q => q.contentStatus === "已发布" || q.contentStatus === "待复测");
     if (hasRetest) {
       return {
-        label: "去效果验证",
+        label: "去收录与 AI 复测",
         hint: "已发布或待复测的问题需要验证 AI 是否看见。",
         onClick: () => selectedProjectId && setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId)),
         disabled: !selectedProjectId,
@@ -590,7 +590,7 @@ export default function QuestionsLibraryPage() {
           <div className="flex items-center gap-2">
             <Library className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900" data-testid="questions-page-title">
-              运营后台｜AI 搜索机会与内容选题工具
+              搜索问题挖掘
             </h1>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -605,7 +605,7 @@ export default function QuestionsLibraryPage() {
             </Badge>
           </div>
           <p className="mt-1 max-w-3xl text-sm text-gray-500" data-testid="questions-page-subtitle">
-            这里用于运营团队判断今天应该围绕哪个 AI 搜索问题做内容，以及为什么值得做；了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险。AI 搜索机会地图保留给内部选题、诊断和内容任务流转使用。
+            运营团队判断哪些 AI 搜索问题最值得做内容。
           </p>
           {selectedProject?.enterpriseName ? (
             <p className="mt-2 text-sm text-gray-600">

@@ -162,9 +162,9 @@ function resolvePrimaryDiagnosisCta(hasExecutionTasks: boolean): { label: string
     };
   }
   return {
-    label: "制定本月服务方案",
+    label: "制定月度优化计划",
     path: "/monthly-plan",
-    hint: "先把诊断问题转成客户看得懂、交付能执行的本月服务方案。",
+    hint: "先把诊断问题转成客户看得懂、交付能执行的月度优化计划。",
   };
 }
 
@@ -195,7 +195,7 @@ function buildCustomerDiagnosisProblems(input: {
       title: "AI 知道品牌，但推荐意愿不足",
       impact: "AI 可能会提到你，但在推荐场景里仍更倾向竞品或泛化答案。",
       fix: "补充客户案例、对比理由、服务成果和可信证据，形成推荐理由。",
-      ctaLabel: "查看本月方案",
+      ctaLabel: "查看月度优化计划",
       path: "/monthly-plan",
     });
   }
@@ -233,8 +233,8 @@ function buildCustomerDiagnosisProblems(input: {
     problems.push({
       title: "诊断未发现明显单点阻断",
       impact: "当前样本表现相对稳定，但仍需要扩大问题覆盖，避免只在少数问题里表现好。",
-      fix: "继续按本月方案执行内容补齐，并在发布后安排效果验证。",
-      ctaLabel: "查看本月方案",
+      fix: "继续按月度优化计划执行内容补齐，并在发布后安排收录与 AI 复测。",
+      ctaLabel: "查看月度优化计划",
       path: "/monthly-plan",
     });
   }
@@ -294,7 +294,7 @@ function buildDiagnosisRepairSteps(hasExecutionTasks: boolean): DiagnosisRepairS
       description: "先确认 AI 是否知道你、是否愿意推荐你，以及卡在哪些问题场景。",
     },
     {
-      title: "本月方案",
+      title: "月度优化计划",
       status: "next",
       description: "把诊断问题翻译成本月要做的 3 件服务事项。",
     },
@@ -304,12 +304,12 @@ function buildDiagnosisRepairSteps(hasExecutionTasks: boolean): DiagnosisRepairS
       description: "围绕未覆盖问题生成并发布可被 AI 引用的内容。",
     },
     {
-      title: "效果验证",
+      title: "收录与 AI 复测",
       status: "pending",
       description: "发布后确认是否被搜索看见，并安排 AI 复测。",
     },
     {
-      title: "效果报告",
+      title: "交付报告",
       status: "pending",
       description: "把诊断、执行和变化整理成客户续费能看懂的证据。",
     },
@@ -400,10 +400,10 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
               不建议客户第一轮演示
             </span>
           </div>
-          <h1 className="mt-3 text-2xl font-bold text-gray-900">为什么 AI 还不稳定推荐你</h1>
-          <p className="mt-1 text-sm text-gray-500">先确认是认知不足、信任不足、竞品占位，还是证据不足。</p>
+          <h1 className="mt-3 text-2xl font-bold text-gray-900">AI 能见度诊断</h1>
+          <p className="mt-1 text-sm text-gray-500">解释 AI 为什么还没有稳定识别和推荐品牌。</p>
           <p className="mt-4 text-sm leading-relaxed text-gray-600" data-testid="ai-diagnosis-before-suggestion">
-            当前还缺少一份优化前基线。先用客户真实会问的问题做 AI 现状诊断，确认 AI 是否认识你、是否愿意推荐你、是否把竞品放在你前面。
+            当前还缺少一份优化前基线。先用客户真实会问的问题做 AI 能见度诊断，确认 AI 是否认识你、是否愿意推荐你、是否把竞品放在你前面。
           </p>
           <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
             <p className="text-xs font-medium text-gray-700">检测完成后可获得：</p>
@@ -424,7 +424,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
               disabled={startDisabled}
               onClick={onStartDiagnosis}
             >
-              开始 AI 现状诊断
+              开始 AI 能见度诊断
             </Button>
             <Button
               type="button"
@@ -471,7 +471,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
           </summary>
           <div className="space-y-3 border-t border-gray-100 px-5 pb-5 pt-4 text-sm leading-relaxed text-gray-600">
             <p>
-              AI 现状诊断会在主流 AI 平台模拟客户真实提问，检测品牌是否被认识、提及和推荐。结果将作为优化前的基线，发布内容后可再次复测对比成效。
+              AI 能见度诊断会在主流 AI 平台模拟客户真实提问，检测品牌是否被认识、提及和推荐。结果将作为优化前的基线，发布内容后可再次复测对比成效。
             </p>
             <p className="text-xs text-gray-500">
               复测节奏：优化前检测 → 发布后 7 天复测 → 发布后 14 天复测 → 发布后 30 天复测。
@@ -617,8 +617,8 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
                 不建议客户第一轮演示
               </span>
             </div>
-            <h1 className="mt-3 text-2xl font-bold text-gray-900">为什么 AI 还不稳定推荐你</h1>
-            <p className="mt-1 text-sm text-gray-500">把实测结果翻译成客户能理解的原因、影响和本月修复动作。</p>
+            <h1 className="mt-3 text-2xl font-bold text-gray-900">AI 能见度诊断</h1>
+            <p className="mt-1 text-sm text-gray-500">解释 AI 为什么还没有稳定识别和推荐品牌。</p>
             {lastDiagnosisLabel !== "暂无" ? (
               <p className="mt-2 text-xs text-gray-500">最近检测：{lastDiagnosisLabel}</p>
             ) : null}
@@ -805,7 +805,7 @@ export function AiDiagnosisCustomerReport(props: AiDiagnosisCustomerReportProps)
                     data-testid="ai-diagnosis-view-question-pool-empty"
                     onClick={() => onNavigate(buildProjectUrl("/questions", selectedProjectId))}
                   >
-                    查看 AI 问题池
+                    查看搜索问题挖掘
                   </Button>
                 ) : null}
               </div>

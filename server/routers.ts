@@ -2706,7 +2706,7 @@ const geoRouter = router({
       const analyses = await db.select().from(analysisResults).where(eq(analysisResults.projectId, input.projectId));
       const t0Metrics = await resolveLatestT0AiTestRunMetrics(db, input.projectId);
       if (analyses.length === 0 && !t0Metrics) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析或 AI 现状检测，再计算 GEO 评分" });
+        throw new TRPCError({ code: "BAD_REQUEST", message: "请先完成 AI 语义分析或 AI 能见度诊断，再计算 GEO 评分" });
       }
       const score = calculateGeoScore(resolveEffectiveAnalysisResults(analyses), t0Metrics);
       await db.insert(geoScores).values({ projectId: input.projectId, ...score });
@@ -4797,7 +4797,7 @@ ${article.markdownContent}`,
       .input(
         z.object({
           projectId: z.number().int().positive(),
-          roundName: z.string().min(1).max(255).optional().default("AI 现状检测"),
+          roundName: z.string().min(1).max(255).optional().default("AI 能见度诊断"),
           platforms: z.array(z.string().min(1)).min(1),
           runsPerQuestion: z.number().int().min(1).optional().default(3),
           questionIds: z.array(z.number().int().positive()).optional(),

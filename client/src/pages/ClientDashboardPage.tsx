@@ -451,7 +451,7 @@ export default function ClientDashboardPage() {
         <div className="min-w-0 space-y-1">
           <h1 className={geoTypography.pageTitle}>客户经营看板</h1>
           <p className="max-w-2xl text-sm leading-relaxed text-gray-500">
-            管理客户的 GEO 诊断、月度服务、执行进度、效果报告和续费风险。
+            管理客户的 GEO 诊断、月度服务、执行进度、交付报告和续费风险。
           </p>
         </div>
         <Button
@@ -474,9 +474,9 @@ export default function ClientDashboardPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-testid="client-business-metrics">
         <StatCard label="客户总数" value={stats.total} hint="当前列表中的客户项目" icon={UsersRound} />
-        <StatCard label="服务中客户" value={stats.inService} hint="已有本月方案或正在交付" icon={BarChart3} />
+        <StatCard label="服务中客户" value={stats.inService} hint="已有月度优化计划或正在交付" icon={BarChart3} />
         <StatCard label="待处理客户" value={stats.needsAttention} hint="需要建档、诊断、发布或制定方案" icon={AlertTriangle} />
-        <StatCard label="可出报告客户" value={stats.reportReady} hint="已有服务动作，可进入效果报告" icon={ClipboardCheck} />
+        <StatCard label="可出报告客户" value={stats.reportReady} hint="已有服务动作，可进入交付报告" icon={ClipboardCheck} />
         <StatCard label="有续费风险客户" value={stats.renewalRisk} hint="即将到期、已到期或服务暂停" icon={AlertTriangle} />
       </div>
 

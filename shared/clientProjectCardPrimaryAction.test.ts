@@ -18,7 +18,7 @@ describe("resolveClientProjectCardPrimaryAction", () => {
     expect(action.needsAttention).toBe(true);
   });
 
-  it("规则2：建档完成但未做 AI 现状检测", () => {
+  it("规则2：建档完成但未做 AI 能见度诊断", () => {
     const action = resolveClientProjectCardPrimaryAction({
       completionScore: 85,
       hasCompletedT0Baseline: false,
@@ -36,7 +36,7 @@ describe("resolveClientProjectCardPrimaryAction", () => {
       hasCompletedT0Baseline: true,
       hasActiveMonthlyPlan: false,
     });
-    expect(action.ctaLabel).toBe("去本月方案");
+    expect(action.ctaLabel).toBe("去月度优化计划");
     expect(action.ctaPath).toBe("/monthly-plan");
     expect(action.nextStepHint).toContain("本月 3 件服务事项");
     expect(action.stageLabel).toBe("待制定方案");
@@ -86,7 +86,7 @@ describe("resolveClientProjectCardPrimaryAction", () => {
     expect(action.reportReady).toBe(true);
   });
 
-  it("规则7：续费风险优先进入效果报告", () => {
+  it("规则7：续费风险优先进入交付报告", () => {
     const action = resolveClientProjectCardPrimaryAction({
       completionScore: 90,
       hasCompletedT0Baseline: true,

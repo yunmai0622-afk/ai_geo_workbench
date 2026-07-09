@@ -95,7 +95,7 @@ function customerValueForReportDimension(key: MonthlyOptimizationPriority["relat
 
 function buildRenewalReportConclusion(report: MonthlyReportView): string {
   if (report.planPhase === "no_plan") {
-    return "当前尚未生成本月服务方案，报告仍处于待建立阶段；建议先完成本月方案与执行动作，再形成续费证明。";
+    return "当前尚未生成月度优化计划，报告仍处于待建立阶段；建议先完成月度优化计划与执行动作，再形成续费证明。";
   }
   if (report.hasRetestData) {
     const maturityChange = formatMonthlyReportMaturityChange(
@@ -143,7 +143,7 @@ function buildEvidenceAccumulationItems(report: MonthlyReportView): EvidenceAccu
       title: "本月做了什么",
       text:
         report.planPhase === "no_plan"
-          ? "尚未形成本月服务方案，报告会先提示补齐方案。"
+          ? "尚未形成月度优化计划，报告会先提示补齐方案。"
           : `已围绕 ${report.focusSummary || "关键 GEO 短板"} 推进本月服务，当前完成 ${report.progress.completedCount}/${report.progress.totalCount} 项。`,
     },
     {
@@ -192,7 +192,7 @@ function buildRenewalCompletionItems(report: MonthlyReportView): RenewalCompleti
           : "暂无服务事项",
       description:
         report.planPhase === "no_plan"
-          ? "尚未形成本月服务方案。"
+          ? "尚未形成月度优化计划。"
           : "已把诊断短板转成本月服务事项，并用于后续执行与验证。",
     },
     {
@@ -258,7 +258,7 @@ function buildRenewalIssues(report: MonthlyReportView): RenewalIssue[] {
     issues.push({
       title: "发布后尚未完成复测",
       impact: "没有复测前，只能说明动作已执行，还不能确认 AI 是否发生变化。",
-      nextStep: "内容发布后按 7/14/30 天节奏完成效果验证。",
+      nextStep: "内容发布后按 7/14/30 天节奏完成收录与 AI 复测。",
     });
   }
   if (report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount) {
@@ -286,7 +286,7 @@ function fallbackRenewalSuggestions(report: MonthlyReportView): RenewalNextSugge
     title: line.replace(/^·\s*/, ""),
     reason: "这是基于当前报告数据的下月建议，不代表已经排期完成。",
     shortcoming: report.nextMonth.weakDimensions[index] ?? "当前仍需扩大 AI 可见度与推荐理由。",
-    verify: "通过收录监测、AI 复测和下月效果报告判断是否产生变化。",
+    verify: "通过收录监测、AI 复测和下月交付报告判断是否产生变化。",
     value: "让客户看到持续服务不是重复发内容，而是在持续补齐 AI 推荐所需证据。",
   }));
 }
@@ -342,7 +342,7 @@ function buildEffectChanges(report: MonthlyReportView): Array<{ label: string; v
 function buildReportPrimaryCta(report: MonthlyReportView): RenewalPrimaryCta {
   if (report.planPhase === "no_plan") {
     return {
-      label: "生成本月方案",
+      label: "生成月度优化计划",
       hint: "先制定服务方案，才能形成客户可读的月度报告。",
       path: "/monthly-plan",
     };
@@ -356,7 +356,7 @@ function buildReportPrimaryCta(report: MonthlyReportView): RenewalPrimaryCta {
   }
   if (!report.hasRetestData) {
     return {
-      label: "去效果验证",
+      label: "去收录与 AI 复测",
       hint: "执行完成后需要复测，才能证明 AI 回答是否发生变化。",
       path: "/inclusion-monitoring",
     };
@@ -364,13 +364,13 @@ function buildReportPrimaryCta(report: MonthlyReportView): RenewalPrimaryCta {
   if (report.nextMonth.canGenerateNextPlan) {
     return {
       label: "生成下月方案",
-      hint: "基于本月效果报告，继续生成下一轮优化计划。",
+      hint: "基于本月交付报告，继续生成下一轮优化计划。",
       action: "generateNextPlan",
     };
   }
   return {
-    label: "返回客户总览",
-    hint: "回到客户总览查看整体服务状态。",
+    label: "返回服务首页",
+    hint: "回到服务首页查看整体服务状态。",
     path: "/workspace",
   };
 }
@@ -1158,15 +1158,15 @@ export function DeliveryReportsCenterPage() {
 
   useEffect(() => {
     const name = selectedProject?.enterpriseName?.trim() || "企业";
-    document.title = `${name} - 效果报告`;
+    document.title = `${name} - 交付报告`;
   }, [selectedProject?.enterpriseName]);
 
   if (!selectedProjectId && !projectsLoading) {
     return (
       <div data-testid="delivery-report-page">
         <ProjectContextEmptyState
-          title="效果报告 / 续费型交付报告"
-          description="请先选择或创建项目后再查看本月效果报告。"
+          title="交付报告"
+          description="请先选择或创建项目后再查看本月交付报告。"
         />
       </div>
     );
@@ -1181,13 +1181,13 @@ export function DeliveryReportsCenterPage() {
           <FileBarChart2 className="mt-1 size-6 text-blue-600" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900" data-testid="monthly-report-title">
-              效果报告 / 续费型交付报告
+              交付报告
             </h1>
             <p className="mt-1 text-sm font-medium text-blue-700" data-testid="monthly-report-subtitle">
-              {report?.periodLabel ? `${report.periodLabel} 优化成效报告` : "优化成效报告"}
+              说明本月做了什么、验证了什么、下月为什么继续。
             </p>
             <p className="mt-3 max-w-3xl text-sm text-gray-600" data-testid="delivery-report-page-intro">
-              本页用于向客户说明本月做了什么、产生了什么变化、哪些问题仍需继续，以及下月为什么值得续费。
+              本页用于向客户说明本月做了什么、验证了什么、哪些问题仍需继续，以及下月为什么值得续费。
             </p>
           </div>
         </div>

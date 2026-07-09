@@ -27,7 +27,7 @@ describe("delivery report share page renders customer-facing sections", () => {
     expect(routerBlock.indexOf('path="/delivery-reports/public/:token"')).toBeLessThan(
       routerBlock.indexOf("<Route component={AuthenticatedAppShell}"),
     );
-    expect(reportPageSource).toContain("效果报告 / 续费型交付报告");
+    expect(reportPageSource).toContain("交付报告");
     expect(reportPageSource).toContain("delivery-report-evidence-details");
     expect(reportPageSource).toContain("geo.monthlyPlan.getReport");
     expect(readProjectFile("HARNESS.md")).toContain("0019_delivery_report_share_tokens");

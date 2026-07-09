@@ -50,7 +50,7 @@ export const WORKSPACE_STAGES: WorkspaceStageDefinition[] = [
   },
   {
     id: "ai_diagnosis",
-    label: "待 AI 现状诊断",
+    label: "待 AI 能见度诊断",
     blockerHint: "尚未完成 AI 内容诊断，系统无法给出内容方向与缺口。",
     ctaLabel: "开始 AI 实测诊断",
     ctaPath: "/ai-diagnosis",

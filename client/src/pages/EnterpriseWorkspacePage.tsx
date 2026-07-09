@@ -161,7 +161,7 @@ export default function EnterpriseWorkspacePage() {
       return "当前品牌资料仍待完善。建议先补齐基础信息，让 AI 能正确理解品牌是谁、服务什么客户。";
     }
     if (!workspaceHasAiTestData(metrics)) {
-      return "当前还没有完成 AI 现状诊断。建议先建立基线，确认 AI 是否知道你、是否愿意推荐你。";
+      return "当前还没有完成 AI 能见度诊断。建议先建立基线，确认 AI 是否知道你、是否愿意推荐你。";
     }
     const maturityText =
       customerMaturityScore == null
@@ -226,7 +226,7 @@ export default function EnterpriseWorkspacePage() {
         description:
           customerMonthlyProgress.totalCount > 0
             ? "本月 Top 服务事项完成情况"
-            : "先生成本月服务方案",
+            : "先生成月度优化计划",
       },
     ];
   }, [
@@ -248,7 +248,7 @@ export default function EnterpriseWorkspacePage() {
     }
     if (!workspaceHasAiTestData(metrics)) {
       issues.push({
-        title: "未完成 AI 现状诊断",
+        title: "未完成 AI 能见度诊断",
         impact: "还不知道 AI 当前是否提及和推荐品牌，无法证明优化前后的变化。",
       });
     }
@@ -309,11 +309,11 @@ export default function EnterpriseWorkspacePage() {
       report: (metrics?.reportCount ?? 0) > 0,
     };
     const steps = [
-      { key: "diagnosis", label: "诊断", path: "/ai-diagnosis", done: done.diagnosis, next: "完成 AI 现状诊断，建立优化前基线。" },
-      { key: "plan", label: "本月方案", path: "/monthly-plan", done: done.plan, next: "把短板转成本月 Top 3 服务事项。" },
+      { key: "diagnosis", label: "诊断", path: "/ai-diagnosis", done: done.diagnosis, next: "完成 AI 能见度诊断，建立优化前基线。" },
+      { key: "plan", label: "月度优化计划", path: "/monthly-plan", done: done.plan, next: "把短板转成本月 Top 3 服务事项。" },
       { key: "execution", label: "执行", path: "/weekly", done: done.execution, next: "生成、质检并推进内容资产。" },
-      { key: "verify", label: "效果验证", path: "/inclusion-monitoring", done: done.verify, next: "检查内容是否被搜索和 AI 看见。" },
-      { key: "report", label: "效果报告", path: "/delivery-reports", done: done.report, next: "汇总本月执行、变化和下月建议。" },
+      { key: "verify", label: "收录与 AI 复测", path: "/inclusion-monitoring", done: done.verify, next: "检查内容是否被搜索和 AI 看见。" },
+      { key: "report", label: "交付报告", path: "/delivery-reports", done: done.report, next: "汇总本月执行、变化和下月建议。" },
     ];
     const currentIndex = steps.findIndex(step => !step.done);
     return steps.map((step, index) => ({
@@ -333,7 +333,7 @@ export default function EnterpriseWorkspacePage() {
     if (metrics.lastDiagnosisAt) {
       items.push({
         title: "最近诊断",
-        description: `已在 ${formatCustomerDate(metrics.lastDiagnosisAt)} 完成 AI 现状检测。`,
+        description: `已在 ${formatCustomerDate(metrics.lastDiagnosisAt)} 完成 AI 能见度诊断。`,
       });
     }
     if (customerHasMonthlyPlan) {
@@ -341,7 +341,7 @@ export default function EnterpriseWorkspacePage() {
         title: "最近计划",
         description:
           customerMonthlyProgress.totalCount > 0
-            ? `本月方案包含 ${customerMonthlyProgress.totalCount} 项服务事项，已完成 ${customerMonthlyProgress.completedCount} 项。`
+            ? `月度优化计划包含 ${customerMonthlyProgress.totalCount} 项服务事项，已完成 ${customerMonthlyProgress.completedCount} 项。`
             : "本月 Top 3 优先级已明确，待生成具体执行任务。",
       });
     }
@@ -366,7 +366,7 @@ export default function EnterpriseWorkspacePage() {
     if (metrics.reportCount > 0) {
       items.push({
         title: "最近报告",
-        description: `已生成 ${metrics.reportCount} 份效果报告。`,
+        description: `已生成 ${metrics.reportCount} 份交付报告。`,
       });
     }
     return items.slice(0, 3);
@@ -462,6 +462,7 @@ export default function EnterpriseWorkspacePage() {
                   </span>
                 </div>
                 <p className="mt-3 text-xs font-medium text-blue-600">GEO 服务首页</p>
+                <p className="mt-1 text-sm text-gray-600">客户只看当前状态、服务进度和下一步动作。</p>
                 <h1 className={cn(geoTypography.pageTitle, "mt-1")} data-testid="workspace-enterprise-name">
                   {selectedProject?.enterpriseName ?? "当前企业"}
                 </h1>
@@ -483,7 +484,7 @@ export default function EnterpriseWorkspacePage() {
                   </p>
                 ) : (
                   <p className="mt-1 text-sm leading-6 text-amber-950">
-                    暂无明显阻断，建议继续按本月方案推进并复测效果。
+                    暂无明显阻断，建议继续按月度优化计划推进并复测效果。
                   </p>
                 )}
               </div>
@@ -576,7 +577,7 @@ export default function EnterpriseWorkspacePage() {
                 </div>
               ) : (
                 <p className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
-                  暂无可展示进展。建议先完成诊断和本月方案。
+                  暂无可展示进展。建议先完成诊断和月度优化计划。
                 </p>
               )}
             </section>

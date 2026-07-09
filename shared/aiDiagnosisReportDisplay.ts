@@ -9,12 +9,12 @@ import type { AiPlatformPerformanceStatus } from "./aiPlatformPerformance";
 
 export type AiDiagnosisFirstScreenState = "before" | "running" | "completed";
 
-export const AI_DIAGNOSIS_PAGE_TITLE = "AI 现状诊断";
+export const AI_DIAGNOSIS_PAGE_TITLE = "AI 能见度诊断";
 export const AI_DIAGNOSIS_PAGE_SUBTITLE =
-  "检测主流 AI 平台是否认识、提到并推荐你的品牌。";
+  "解释 AI 为什么还没有稳定识别和推荐品牌。";
 
 export const AI_DIAGNOSIS_RUNNING_BACKGROUND_HINT =
-  "你无需停留在本页等待，可以先继续执行本月优化任务。检测完成后，这里会自动生成 AI 现状诊断报告。";
+  "你无需停留在本页等待，可以先继续执行本月优化任务。检测完成后，这里会自动生成 AI 能见度诊断报告。";
 
 export const AI_DIAGNOSIS_RUNNING_PATIENCE_HINT =
   "部分平台响应较慢，系统会持续检测并自动更新结果。";
@@ -58,7 +58,7 @@ const TEST_ROUND_PHASE_LABELS: Record<string, string> = {
 
 export function resolveTestRoundPhaseLabel(roundType: string | null | undefined): string {
   if (!roundType) return "优化前检测";
-  return TEST_ROUND_PHASE_LABELS[roundType] ?? "AI 现状检测";
+  return TEST_ROUND_PHASE_LABELS[roundType] ?? "AI 能见度检测";
 }
 
 export function mapPlatformPerformanceToCustomerStatus(

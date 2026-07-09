@@ -5,11 +5,11 @@ import { isSmtpConfigured } from "./_core/env";
 describe("GEO-V1.1 email notification", () => {
   it("formats simple email body with title, result, and view link", () => {
     const body = formatSimpleEmailBody({
-      subject: "AI 现状检测完成",
+      subject: "AI 能见度诊断完成",
       result: "示例企业的优化前基线 已完成。",
       viewUrl: "https://app.example.com/ai-diagnosis?projectId=1",
     });
-    expect(body).toContain("标题：AI 现状检测完成");
+    expect(body).toContain("标题：AI 能见度诊断完成");
     expect(body).toContain("结果：示例企业的优化前基线 已完成。");
     expect(body).toContain("查看：https://app.example.com/ai-diagnosis?projectId=1");
   });

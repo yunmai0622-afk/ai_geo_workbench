@@ -96,7 +96,7 @@ export const PAGE_USAGE_HELP: Record<PageUsageHelpId, PageUsageHelpContent> = {
       {
         heading: "使用提示",
         lines: [
-          "生成前请确认品牌建档与 AI 现状检测已完成，缺口建议会更准确。",
+          "生成前请确认品牌建档与 AI 能见度诊断已完成，缺口建议会更准确。",
           "质量评分未达标时请先修订正文，再进入发布流程。",
         ],
       },

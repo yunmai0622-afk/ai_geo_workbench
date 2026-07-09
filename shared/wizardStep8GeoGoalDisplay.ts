@@ -6,7 +6,7 @@ export const WIZARD_STEP8_MENTION_INDUSTRY_REFERENCE = "30-50%";
 export const WIZARD_STEP8_RECOMMEND_INDUSTRY_REFERENCE = "20-40%";
 
 export const WIZARD_STEP8_RATE_EMPTY_HINT =
-  "完成 AI 现状检测后，系统会根据当前表现自动建议合理目标。";
+  "完成 AI 能见度诊断后，系统会根据当前表现自动建议合理目标。";
 
 export type WizardStep8RateSuggestion = {
   hasMeasuredData: boolean;

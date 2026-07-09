@@ -12,8 +12,8 @@ describe("GEO-V2.1-P3 Question Opportunity Map", () => {
   const shared = read("shared/questionOpportunityMap.ts");
 
   it("question bank page uses opportunity map branding and metrics", () => {
-    expect(page).toContain("AI 搜索机会地图");
-    expect(page).toContain("了解客户会怎么问 AI，发现品牌可见度机会与竞品占位风险");
+    expect(page).toContain("搜索问题挖掘");
+    expect(page).toContain("运营团队判断哪些 AI 搜索问题最值得做内容。");
     expect(page).toContain("机会总览");
     expect(page).toContain("已覆盖内容问题数");
     expect(page).toContain("竞品占位问题数");

@@ -181,7 +181,7 @@ export async function calculateRetestComparison(
     throw new TRPCError({ code: "FORBIDDEN", message: "对比轮次不属于当前项目" });
   }
   if (baseRound.roundType !== "T0_BASELINE") {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "基线轮次须为 AI 现状检测" });
+    throw new TRPCError({ code: "BAD_REQUEST", message: "基线轮次须为 AI 能见度诊断" });
   }
   if (!isCompareRetestRound(compareRound.roundType)) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "对比轮次须为发布后复测" });

@@ -67,7 +67,7 @@ export function deriveClientProjectCardDisplay(project: ClientProjectCardInput):
     return { stageLabel: "待生产", nextStep: "基于诊断结论生成内容资产" };
   }
   if (project.status === "responses_imported") {
-    return { stageLabel: "待诊断", nextStep: "完成 AI 现状诊断并查看 GEO 评分" };
+    return { stageLabel: "待诊断", nextStep: "完成 AI 能见度诊断并查看 GEO 评分" };
   }
   return { stageLabel: "待建档", nextStep: "完成 GEO 建档，补齐企业基础信息" };
 }

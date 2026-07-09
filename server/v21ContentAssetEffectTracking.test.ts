@@ -15,8 +15,8 @@ describe("GEO-V2.1-P1 Content Asset Effect Tracking", () => {
   const router = read("server/routers.ts");
 
   it("page title and modules are customer-facing", () => {
-    expect(inclusionPage).toContain("效果验证");
-    expect(inclusionPage).toContain("内容有没有被搜索看见");
+    expect(inclusionPage).toContain("收录与 AI 复测");
+    expect(inclusionPage).toContain("发布后验证内容是否被搜索和 AI 看见");
     expect(inclusionPage).toContain("客户可见证据摘要");
     expect(inclusionPage).toContain('data-testid="effect-verification-customer-overview"');
     expect(inclusionPage).toContain('data-testid="effect-verification-advanced-details"');

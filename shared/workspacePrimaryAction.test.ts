@@ -26,7 +26,7 @@ describe("resolveWorkspaceStagePrimaryAction", () => {
     expect(action?.ctaPath).toBe("/enterprise-profile");
   });
 
-  it("规则1：未完成 T0 时阶段与按钮一致指向 AI 现状检测", () => {
+  it("规则1：未完成 T0 时阶段与按钮一致指向 AI 能见度诊断", () => {
     const action = resolveWorkspaceStagePrimaryAction({
       ...base,
       profileCompletionPercent: 85,
@@ -34,8 +34,8 @@ describe("resolveWorkspaceStagePrimaryAction", () => {
       articleCount: 5,
       pendingPublishContentCount: 3,
     });
-    expect(action?.stageHeadline).toBe("AI 现状检测");
-    expect(action?.ctaLabel).toBe("开始 AI 现状检测");
+    expect(action?.stageHeadline).toBe("AI 能见度诊断");
+    expect(action?.ctaLabel).toBe("开始 AI 能见度诊断");
     expect(action?.ctaPath).toBe("/ai-diagnosis");
   });
 
@@ -53,7 +53,7 @@ describe("resolveWorkspaceStagePrimaryAction", () => {
     expect(
       resolveWorkspaceStagePrimaryAction({ ...base, articleCount: 0, pendingPublishContentCount: 0 })
         ?.ctaLabel,
-    ).toBe("去内容生产工作台");
+    ).toBe("去内容生产与发布");
     expect(
       resolveWorkspaceStagePrimaryAction({ ...base, pendingReviewCount: 2 })?.stageHeadline,
     ).toBe("内容优化期");

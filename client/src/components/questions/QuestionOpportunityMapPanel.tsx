@@ -33,7 +33,7 @@ export function QuestionOpportunityMapPanel({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Map className="size-4 text-blue-600" />
-            <p className="text-sm font-semibold text-gray-900">AI 搜索机会地图</p>
+            <p className="text-sm font-semibold text-gray-900">搜索问题挖掘</p>
           </div>
           <h2 className="mt-2 text-xl font-bold text-gray-950" data-testid="question-opportunity-map-headline">
             {view.headline}

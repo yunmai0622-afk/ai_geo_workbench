@@ -10,10 +10,10 @@ describe("GEO V2.3-P0-E effect verification customer page", () => {
   const fillPanel = read("client/src/components/inclusion-monitoring/ContentAssetEffectFillPanel.tsx");
 
   it("turns inclusion-monitoring into a customer-facing effect verification page", () => {
-    expect(page).toContain("效果验证");
+    expect(page).toContain("收录与 AI 复测");
     expect(page).toContain("客户可读结论");
-    expect(page).toContain("内容有没有被搜索看见");
-    expect(page).toContain("AI 有没有识别");
+    expect(page).toContain("发布后验证内容是否被搜索和 AI 看见");
+    expect(page).toContain("AI 复测");
     expect(page).toContain('data-testid="effect-verification-customer-overview"');
     expect(page).toContain('data-testid="effect-verification-conclusion"');
     expect(page).toContain('data-testid="effect-verification-core-metrics"');
@@ -28,7 +28,7 @@ describe("GEO V2.3-P0-E effect verification customer page", () => {
     const advancedIndex = page.indexOf('data-testid="effect-verification-advanced-details"');
 
     expect(page).toContain('data-testid="effect-verification-evidence-fold"');
-    expect(page).toContain("发布 → 收录 → 数据回填 → AI 复测 → 效果报告");
+    expect(page).toContain("发布 → 收录 → 数据回填 → AI 复测 → 交付报告");
     expect(page).toContain("客户可见证据摘要");
     expect(page).toContain("最近验证记录");
     expect(page).toContain("证据仍在积累中");

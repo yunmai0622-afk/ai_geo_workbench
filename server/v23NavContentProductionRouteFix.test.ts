@@ -22,8 +22,8 @@ describe("GEO V2.3-P0-M nav content production route fix", () => {
   it("keeps weekly as the shared component while labeling the operator entry", () => {
     const weeklyPage = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weeklyPage).toContain("isContentProductionWorkbench");
-    expect(weeklyPage).toContain("运营工具 / 内容生产工作台");
+    expect(weeklyPage).toContain("运营工具 / 内容生产与发布");
     expect(weeklyPage).toContain("客户主流程 / 执行进度");
-    expect(weeklyPage).toContain("运营团队在这里围绕 AI 引用逻辑生成、质检并推进平台化内容。");
+    expect(weeklyPage).toContain("运营团队在这里生成、质检并推进平台内容。");
   });
 });

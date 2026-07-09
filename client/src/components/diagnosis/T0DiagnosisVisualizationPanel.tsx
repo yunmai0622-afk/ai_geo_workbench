@@ -74,7 +74,7 @@ export function T0DiagnosisVisualizationPanel({ visualization }: { visualization
         <div>
           <h2 className="text-sm font-semibold text-gray-900">AI 实测结果可视化</h2>
           <p className="mt-1 text-xs text-gray-500">
-            基于 AI 现状检测真实数据，共 {visualization.totalRuns} 次实测
+            基于 AI 能见度诊断真实数据，共 {visualization.totalRuns} 次实测
           </p>
         </div>
         <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-medium text-indigo-700">

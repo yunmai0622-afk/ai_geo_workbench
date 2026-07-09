@@ -1,6 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PLATFORM_PRODUCT_NAME } from "@/components/auth/authMarketing";
-import { GEO_PRODUCT_MAIN_POSITIONING, GEO_PRODUCT_SUB_POSITIONING } from "@/lib/geoProductPositioning";
+import {
+  GEO_DELIVERY_SYSTEM_GUIDE_COPY,
+  GEO_PRODUCT_CAPABILITIES,
+  GEO_PRODUCT_MAIN_POSITIONING,
+  GEO_PRODUCT_SUB_POSITIONING,
+} from "@/lib/geoProductPositioning";
 import { GEO_UNIFIED_MAIN_PIPELINE_STEPS } from "@shared/workspaceMainChain";
 import { useEffect } from "react";
 
@@ -56,6 +61,24 @@ export default function KnowledgePage() {
             ：帮助企业发现 AI 搜索与问答场景中的品牌可见性缺口，并持续建设可被 AI 理解、检索与引用的内容资产。
           </p>
           <p>{GEO_PRODUCT_SUB_POSITIONING}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">系统定位与 8 大能力</CardTitle>
+          <CardDescription>面向 GEO 代运营交付，不是单纯查询或发文工具</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm leading-relaxed text-gray-700">{GEO_DELIVERY_SYSTEM_GUIDE_COPY}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {GEO_PRODUCT_CAPABILITIES.map(capability => (
+              <div key={capability.title} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                <p className="text-sm font-medium text-gray-900">{capability.title}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-600">{capability.description}</p>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

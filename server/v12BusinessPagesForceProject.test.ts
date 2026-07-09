@@ -66,7 +66,7 @@ describe("GEO-V1-E 业务页强制当前 activeProjectId", () => {
     expect(publish).toContain("发布执行中心");
     expect(publish).toContain("local-agent-status-card");
     expect(publish).toContain("publish-account-client-fold");
-    expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain("效果验证");
+    expect(read("client/src/pages/InclusionMonitoringCenterPage.tsx")).toContain("收录与 AI 复测");
     const report =
       read("client/src/pages/DeliveryReportsCenterPage.tsx") +
       read("shared/monthlyReportView.ts");

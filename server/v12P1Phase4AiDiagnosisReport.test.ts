@@ -11,12 +11,12 @@ describe("GEO-V2.0-P1-Phase4-AITest-Report", () => {
     const report = read("client/src/components/diagnosis/AiDiagnosisCustomerReport.tsx");
     expect(flow).toContain("resolveAiDiagnosisFirstScreenState");
     expect(flow).toContain("AiDiagnosisCustomerReport");
-    expect(report).toContain("开始 AI 现状诊断");
+    expect(report).toContain("开始 AI 能见度诊断");
     expect(report).toContain("AI 正在后台检测中");
     expect(report).toContain("刷新进度");
     expect(report).toContain("去执行本月任务");
     expect(report).toContain("诊断问题页");
-    expect(report).toContain("制定本月服务方案");
+    expect(report).toContain("制定月度优化计划");
   });
 
   it("core conclusion card and report copy helpers exist", () => {

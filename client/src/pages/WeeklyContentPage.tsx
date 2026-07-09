@@ -804,7 +804,7 @@ export default function WeeklyContentPage() {
       });
     }
     if (questionType) {
-      toast.message("AI 现状检测内容缺口建议", {
+      toast.message("AI 能见度诊断内容缺口建议", {
         description: `建议优先生成${resolveQuestionTypeDisplayLabel(questionType)}相关内容`,
       });
     }
@@ -2063,8 +2063,8 @@ export default function WeeklyContentPage() {
 
   const weeklyCustomerPrimaryActionLabel = useMemo(() => {
     if (isCustomerExecutionView) return "查看收录与验证";
-    if (monthlyContentTasks.length === 0) return "查看本月方案";
-    if (taskProgress.publishedCount > 0) return "查看效果验证";
+    if (monthlyContentTasks.length === 0) return "查看月度优化计划";
+    if (taskProgress.publishedCount > 0) return "查看收录与 AI 复测";
     if (taskProgress.enqueueReadyCount > 0 || taskProgress.queuedCount > 0) return "进入发布页面";
     if (entryContext.questionId != null) return "继续当前任务";
     return "进入本月任务推进";
@@ -3522,15 +3522,15 @@ export default function WeeklyContentPage() {
       ) : null}
       <header className="space-y-2">
         <p className="text-sm font-semibold text-blue-700">
-          {isContentProductionWorkbench ? "运营工具 / 内容生产工作台" : "客户主流程 / 执行进度"}
+          {isContentProductionWorkbench ? "运营工具 / 内容生产与发布" : "客户主流程 / 执行进度"}
         </p>
         <h1 className="text-2xl font-bold text-gray-900">
-          {isContentProductionWorkbench ? "内容生产工作台" : "执行进度"}
+          {isContentProductionWorkbench ? "内容生产与发布" : "执行进度"}
         </h1>
         <p className="text-sm text-gray-500">
           {isContentProductionWorkbench
-            ? "运营团队在这里围绕 AI 引用逻辑生成、质检并推进平台化内容。"
-            : "让客户只看懂本月服务做到哪一步，以及下一步什么时候进入收录与验证。"}
+            ? "运营团队在这里生成、质检并推进平台内容。"
+            : "查看本月服务执行到哪一步，以及下一步进入什么验证。"}
         </p>
       </header>
 

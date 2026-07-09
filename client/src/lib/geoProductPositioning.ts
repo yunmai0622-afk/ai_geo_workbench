@@ -3,11 +3,49 @@ import { GEO_UNIFIED_MAIN_PIPELINE_STEPS } from "@shared/workspaceMainChain";
 
 /** 系统主定位（客户可见） */
 export const GEO_PRODUCT_MAIN_POSITIONING =
-  "企业 AI 搜索可见性诊断与内容资产增长系统";
+  "GEO 代运营交付系统";
 
 /** 系统辅助说明（客户可见） */
 export const GEO_PRODUCT_SUB_POSITIONING =
-  "通过真实 AI 实测、品牌资产建设、平台化内容生产、发布收录监测和持续复盘，帮助企业提升在豆包、Kimi、DeepSeek、通义等 AI 平台中的提及率、推荐率和可信度。";
+  "通过 AI 能见度诊断、搜索问题挖掘、月度优化计划、内容生产与发布、收录复测和交付报告，帮助企业持续提升在 AI 搜索中的识别、信任和推荐机会。";
+
+export const GEO_DELIVERY_SYSTEM_GUIDE_COPY =
+  "这不是单纯发文章工具，而是一套 GEO 代运营交付系统。系统通过 AI 能见度诊断、搜索问题挖掘、月度优化计划、内容生产与发布、收录复测和交付报告，帮助企业持续提升在 AI 搜索中的识别、信任和推荐机会。";
+
+export const GEO_PRODUCT_CAPABILITIES = [
+  {
+    title: "AI 能见度诊断",
+    description: "看 AI 是否知道你、怎么描述你、是否愿意推荐你。",
+  },
+  {
+    title: "AI 口碑与推荐分析",
+    description: "看 AI 回答里对品牌的态度、推荐强弱和竞品对比。",
+  },
+  {
+    title: "搜索问题挖掘",
+    description: "挖掘用户会问 AI 的真实问题，找到高价值内容机会。",
+  },
+  {
+    title: "月度优化计划",
+    description: "把诊断结果转成每月 3 个重点服务事项。",
+  },
+  {
+    title: "内容生产与发布",
+    description: "按知乎、公众号、小红书、搜狐等平台规则生成并发布内容。",
+  },
+  {
+    title: "信源引用监测",
+    description: "检查 AI 是否能识别官网、公开资料、平台内容和品牌证据。",
+  },
+  {
+    title: "收录与 AI 复测",
+    description: "发布后监测内容是否被搜索/AI 看见，并做前后对比。",
+  },
+  {
+    title: "交付报告与续费证明",
+    description: "每月输出交付报告，说明做了什么、有什么变化、下月为什么继续。",
+  },
+] as const;
 
 export type CustomerStepStatus = "未开始" | "进行中" | "已完成" | "需补充" | "有风险";
 

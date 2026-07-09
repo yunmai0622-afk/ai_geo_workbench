@@ -11,22 +11,22 @@ const sampleGroups = [
   {
     title: "客户主流程",
     items: [
-      { path: "/workspace", label: "总览" },
-      { path: "/monthly-plan", label: "本月方案" },
+      { path: "/workspace", label: "服务首页" },
+      { path: "/monthly-plan", label: "月度优化计划" },
       { path: "/weekly", label: "执行进度" },
-      { path: "/inclusion-monitoring", label: "效果验证" },
-      { path: "/delivery-reports", label: "效果报告" },
+      { path: "/inclusion-monitoring", label: "收录与 AI 复测" },
+      { path: "/delivery-reports", label: "交付报告" },
     ],
   },
   {
     title: "运营工具",
     items: [
       { path: "/enterprise-profile", label: "品牌资料" },
-      { path: "/ai-diagnosis", label: "诊断" },
-      { path: "/weekly?mode=content-production", label: "内容生产工作台" },
+      { path: "/ai-diagnosis", label: "AI 能见度诊断" },
+      { path: "/weekly?mode=content-production", label: "内容生产与发布" },
       { path: "/content-publishing", label: "发布执行中心" },
-      { path: "/questions", label: "AI 问题池" },
-      { path: "/brand-source-graph", label: "信源与证据库" },
+      { path: "/questions", label: "搜索问题挖掘" },
+      { path: "/brand-source-graph", label: "信源引用监测" },
       { path: "/knowledge", label: "使用指南" },
     ],
   },
@@ -55,11 +55,11 @@ describe("roleBasedNavigation", () => {
     expect(groups[0]?.title).toBe("客户主流程");
     expect(groups[0]?.items.map(item => item.path)).toEqual([...CLIENT_NAV_PATHS]);
     expect(groups[0]?.items.map(item => item.label)).toEqual([
-      "总览",
-      "本月方案",
+      "服务首页",
+      "月度优化计划",
       "执行进度",
-      "效果验证",
-      "效果报告",
+      "收录与 AI 复测",
+      "交付报告",
     ]);
   });
 });

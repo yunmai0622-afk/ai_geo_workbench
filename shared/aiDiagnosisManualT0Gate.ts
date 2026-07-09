@@ -73,7 +73,7 @@ export function buildT0StartConfirmCopy(input: T0StartConfirmInput): T0StartConf
   const backgroundMode = estimatedMinutes > T0_LONG_RUNNING_BACKGROUND_THRESHOLD_MINUTES;
 
   return {
-    title: "开始 AI 推荐现状检测？",
+    title: "开始 AI 能见度诊断？",
     intro:
       "系统会用当前问题池测试主流 AI 平台，了解 AI 现在是否认识、提到并推荐你的品牌。本次结果会作为优化前的基线，后续可与发布内容后的复测结果对比。",
     questionCount,
@@ -83,7 +83,7 @@ export function buildT0StartConfirmCopy(input: T0StartConfirmInput): T0StartConf
     footerNote: backgroundMode
       ? ""
       : `预计${formatT0DurationText(estimatedMinutes)}完成，请保持页面打开。`,
-    confirmLabel: "创建 AI 现状检测任务",
+    confirmLabel: "创建 AI 能见度诊断任务",
     cancelLabel: "取消",
     completionOutcomes: T0_COMPLETION_OUTCOMES,
     backgroundMode,
@@ -108,6 +108,6 @@ export function countEnabledQuestionsForT0(
   return questions.filter(q => Number(q.enabled) !== 0).length;
 }
 
-/** 未完成 AI 现状检测时的推荐性引导（非阻断） */
+/** 未完成 AI 能见度诊断时的推荐性引导（非阻断） */
 export const AI_DIAGNOSIS_SOFT_RECOMMENDATION =
-  "建议先完成 AI 现状检测，这样后续生成的内容能更精准地针对 AI 推荐短板。你也可以先继续完善其他模块，AI 现状检测可以随时进行。";
+  "建议先完成 AI 能见度诊断，这样后续生成的内容能更精准地针对 AI 推荐短板。你也可以先继续完善其他模块，AI 能见度诊断可以随时进行。";

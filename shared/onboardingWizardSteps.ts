@@ -106,7 +106,7 @@ export function normalizeWizardTargetPlatforms(platforms: string[]): string[] {
 /** Step4：这些问题会用于 */
 export const ONBOARDING_QUESTION_GUIDE_USAGE_ITEMS = [
   "生成 AI 搜索问题池",
-  "执行多平台 AI 现状检测",
+  "执行多平台 AI 能见度诊断",
   "判断品牌提及率、推荐率和竞品出现率",
   "生成后续内容任务",
   "作为发布后复测基准",

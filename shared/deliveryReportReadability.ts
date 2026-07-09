@@ -295,7 +295,7 @@ function buildStageEmptyReason(
 
   if (stageKey === "T1") {
     if (!hasCompletedT0Baseline(input.testRounds)) {
-      return "原因：尚未完成优化前基线，无法安排 7天后复测。下一步：先完成 AI 现状检测并建立可对照基线。";
+      return "原因：尚未完成优化前基线，无法安排 7天后复测。下一步：先完成 AI 能见度诊断并建立可对照基线。";
     }
     if (input.publishWithLinkCount === 0) {
       return "原因：尚未登记带公开链接的发布记录。下一步：完成发布后在发布页回填链接，再按计划在发布后第 7 天执行 7天后复测。";
@@ -554,7 +554,7 @@ export function buildInternalChecklist(
     },
     {
       id: "t0",
-      label: "AI 现状检测已完成",
+      label: "AI 能见度诊断已完成",
       status: t0Done ? "已完成" : "待完成",
       blockReason: t0Done ? null : "尚未完成 AI 搜索优化前基线实测",
       ctaPath: "/ai-diagnosis",

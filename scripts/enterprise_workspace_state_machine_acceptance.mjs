@@ -44,7 +44,7 @@ const sm = read("shared/workspaceStateMachine.ts");
 const stageLabels = [
   "待绑定发布环境",
   "待完成品牌建档",
-  "待 AI 现状诊断",
+  "待 AI 能见度诊断",
   "待生成内容",
   "待发布",
   "待收录监测",

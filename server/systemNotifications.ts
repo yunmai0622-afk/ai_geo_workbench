@@ -80,7 +80,7 @@ export async function markAllNotificationsRead(db: DbConn, userId: number) {
 export async function emitT0CompleteNotification(db: DbConn, projectId: number, roundName: string) {
   const owner = await resolveProjectOwner(db, projectId);
   if (!owner) return;
-  const title = "AI 现状检测完成";
+  const title = "AI 能见度诊断完成";
   const gapSuggestions = await resolveT0ContentGapSuggestions(db, projectId).catch(() => null);
   const gapHint =
     gapSuggestions && gapSuggestions.items.length > 0

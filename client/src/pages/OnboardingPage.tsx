@@ -294,7 +294,7 @@ export default function OnboardingPage() {
           <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-lg" data-testid="onboarding-step-1">
             <div className="mb-6 space-y-1">
               <h1 className="text-xl font-semibold">填写企业资料</h1>
-              <p className="text-sm text-gray-500">这些信息将用于生成 AI 检索问题与 AI 现状检测</p>
+              <p className="text-sm text-gray-500">这些信息将用于生成 AI 检索问题与 AI 能见度诊断</p>
             </div>
             <form className="space-y-5" onSubmit={e => void handleStep1Submit(e)}>
               <div className="space-y-2">
@@ -370,7 +370,7 @@ export default function OnboardingPage() {
           <section className="rounded-3xl border border-gray-200 bg-white p-8 shadow-lg" data-testid="onboarding-step-2">
             <div className="mb-6 space-y-1">
               <h1 className="text-xl font-semibold">确认 AI 检索问题</h1>
-              <p className="text-sm text-gray-500">系统根据企业资料自动生成以下问题，用于 AI 现状检测</p>
+              <p className="text-sm text-gray-500">系统根据企业资料自动生成以下问题，用于 AI 能见度诊断</p>
             </div>
 
             {generateTargetQuestions.isPending || (questionsLoading && !questionsGenerated) ? (
@@ -420,7 +420,7 @@ export default function OnboardingPage() {
             </div>
             <h1 className="mt-5 text-xl font-semibold">你的企业资料已就绪</h1>
             <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-gray-500">
-              企业资料与问题集已保存。建议立即开始 AI 现状检测，了解当前 AI 搜索可见性水平。
+              企业资料与问题集已保存。建议立即开始 AI 能见度诊断，了解当前 AI 搜索可见性水平。
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Button
@@ -432,7 +432,7 @@ export default function OnboardingPage() {
                   setLocation(activeProjectId ? buildProjectUrl("/ai-diagnosis", activeProjectId) : "/clients");
                 }}
               >
-                开始 AI 现状检测
+                开始 AI 能见度诊断
               </Button>
               <Button
                 type="button"

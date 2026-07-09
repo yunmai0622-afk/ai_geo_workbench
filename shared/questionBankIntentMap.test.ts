@@ -78,7 +78,7 @@ describe("questionBankIntentMap", () => {
   it("formats test round labels", () => {
     expect(
       resolveTestRoundDisplayName({ roundType: "T0_BASELINE", roundName: "优化前基线" }),
-    ).toBe("AI 现状检测");
+    ).toBe("AI 能见度诊断");
     expect(resolveTestRoundStatusLabel("running")).toBe("检测中");
     expect(resolveQuestionTestStatus(
       { id: 1, questionText: "x", questionType: "品牌认知", enabled: 1 },

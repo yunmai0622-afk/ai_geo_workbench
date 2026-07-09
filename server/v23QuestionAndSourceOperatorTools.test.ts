@@ -12,7 +12,8 @@ describe("GEO V2.3-P0-I question pool and source evidence operator tools", () =>
   const sourceOverview = read("client/src/components/source-graph/SourceEvidenceOperatorOverview.tsx");
 
   it("turns /questions into an operator decision tool for AI search opportunities", () => {
-    expect(questionsPage).toContain("AI 搜索机会与内容选题工具");
+    expect(questionsPage).toContain("搜索问题挖掘");
+    expect(questionsPage).toContain("运营团队判断哪些 AI 搜索问题最值得做内容。");
     expect(questionsPage).toContain("QuestionPoolOperatorOverview");
     expect(questionOverview).toContain("question-operator-overview");
     expect(questionOverview).toContain("运营工具 · AI 搜索机会与内容选题");
@@ -42,7 +43,8 @@ describe("GEO V2.3-P0-I question pool and source evidence operator tools", () =>
   });
 
   it("turns /brand-source-graph into a source evidence repair tool", () => {
-    expect(sourcePage).toContain("信源证据与可信度修复工具");
+    expect(sourcePage).toContain("信源引用监测");
+    expect(sourcePage).toContain("检查 AI 是否有足够公开证据信任品牌。");
     expect(sourcePage).toContain("SourceEvidenceOperatorOverview");
     expect(sourceOverview).toContain("source-evidence-operator-overview");
     expect(sourceOverview).toContain("运营后台 · 信源证据与可信度修复");
@@ -73,7 +75,7 @@ describe("GEO V2.3-P0-I question pool and source evidence operator tools", () =>
     expect(sourcePage).toContain("运营明细：信源列表");
     expect(sourcePage).toContain("运营明细：品牌关键信息一致性");
     expect(sourcePage).toContain("运营明细：内容增强建议");
-    expect(sourcePage).toContain("品牌信源图谱");
+    expect(sourcePage).toContain("信源引用监测");
   });
 
   it("does not expose engineering fields in the two operator overview components", () => {

@@ -9,7 +9,7 @@ describe("deliveryReportExperimentalDisplay", () => {
   const baseRound = {
     id: "t0-id",
     roundType: "T0_BASELINE",
-    roundName: "AI 现状检测",
+    roundName: "AI 能见度诊断",
     status: "completed",
     platforms: ["doubao", "deepseek"],
     questionsCount: 5,
@@ -58,7 +58,7 @@ describe("deliveryReportExperimentalDisplay", () => {
   it("builds T0 baseline summary without engineering fields", () => {
     const summary = buildT0BaselineSummary([baseRound], []);
     expect(summary.hasData).toBe(true);
-    expect(summary.roundName).toBe("AI 现状检测");
+    expect(summary.roundName).toBe("AI 能见度诊断");
     expect(summary.summaryLines[0]).toContain("检测问题 5 个");
     expect(summary.summaryLines.join(" ")).not.toContain("roundType");
   });

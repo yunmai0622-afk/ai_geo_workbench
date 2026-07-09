@@ -53,13 +53,13 @@ describe("workspaceMainChain", () => {
     expect(steps.every(step => step.done)).toBe(true);
     expect(steps.map(step => step.name)).toEqual([
       "企业资料建档",
-      "AI 现状检测",
+      "AI 能见度诊断",
       "品牌资产补全",
       "内容资产生成",
       "平台适配发布",
-      "收录与引用监测（发布后复测）",
+      "收录与 AI 复测",
       "GEO评分与竞品对比",
-      "交付报告与下一轮优化",
+      "交付报告与续费证明",
     ]);
   });
 
@@ -77,9 +77,9 @@ describe("workspaceMainChain", () => {
     expect(steps[0]?.done).toBe(false);
   });
 
-  it("未完成 T0 时建议开始 AI 现状检测", () => {
+  it("未完成 T0 时建议开始 AI 能见度诊断", () => {
     const action = resolveMainChainNextActionPaths(baseMetrics(), []);
-    expect(action?.ctaLabel).toBe("开始 AI 现状检测");
+    expect(action?.ctaLabel).toBe("开始 AI 能见度诊断");
     expect(action?.ctaPath).toBe("/ai-diagnosis");
   });
 

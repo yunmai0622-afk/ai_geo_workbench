@@ -43,10 +43,10 @@ export const GEO_UNIFIED_MAIN_PIPELINE_STEPS: readonly UnifiedMainPipelineStep[]
   },
   {
     id: "ai_search_test_t0",
-    title: "AI 现状检测",
+    title: "AI 能见度诊断",
     shortLabel: "实测",
     customerDescription: "在豆包、Kimi、DeepSeek 等平台发起真实提问，查看品牌是否被提及与推荐。",
-    emptyHint: "暂无实测结果，请先发起 AI 搜索实测。",
+    emptyHint: "暂无实测结果，请先发起 AI 能见度诊断。",
     path: "/ai-diagnosis",
   },
   {
@@ -75,7 +75,7 @@ export const GEO_UNIFIED_MAIN_PIPELINE_STEPS: readonly UnifiedMainPipelineStep[]
   },
   {
     id: "inclusion_monitor_retest",
-    title: "收录与引用监测（发布后复测）",
+    title: "收录与 AI 复测",
     shortLabel: "监测",
     customerDescription: "跟踪内容收录、AI 引用、品牌提及与推荐，并按发布后复测节奏验证变化。",
     emptyHint: "暂无监测结果，请先完成发布记录并发起复测。",
@@ -91,7 +91,7 @@ export const GEO_UNIFIED_MAIN_PIPELINE_STEPS: readonly UnifiedMainPipelineStep[]
   },
   {
     id: "delivery_report",
-    title: "交付报告与下一轮优化",
+    title: "交付报告与续费证明",
     shortLabel: "交付",
     customerDescription: "整理本轮执行摘要、问题清单与优化建议，推进下一轮提升。",
     emptyHint: "暂无可交付报告，请先积累实测、发布与监测数据。",
@@ -213,16 +213,16 @@ export function resolveMainChainNextActionPaths(
 
   if (!progress.hasCompletedT0Baseline) {
     return {
-      ctaLabel: "开始 AI 现状检测",
+      ctaLabel: "开始 AI 能见度诊断",
       reason: AI_DIAGNOSIS_SOFT_RECOMMENDATION,
-      nextStageName: "AI 现状检测",
+      nextStageName: "AI 能见度诊断",
       ctaPath: "/ai-diagnosis",
     };
   }
   if (progress.articleCount === 0) {
     return {
       ctaLabel: "生成内容",
-      reason: "AI 现状检测已完成，建议围绕诊断结论生成内容资产。",
+      reason: "AI 能见度诊断已完成，建议围绕诊断结论生成内容资产。",
       nextStageName: "内容资产生成",
       ctaPath: "/weekly",
     };

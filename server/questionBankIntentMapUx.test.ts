@@ -11,8 +11,8 @@ describe("GEO-V1.2-P1-A-QuestionBank-UX", () => {
   const assistant = read("client/src/components/questions/QuestionBankAssistantPanel.tsx");
   const shell = read("client/src/components/project/EnterpriseProjectShell.tsx");
 
-  it("页面标题为 AI 搜索机会地图", () => {
-    expect(page).toContain("AI 搜索机会地图");
+  it("页面标题为搜索问题挖掘", () => {
+    expect(page).toContain("搜索问题挖掘");
     expect(page).toContain("questions-page-title");
     expect(page).toContain("questions-page-subtitle");
   });

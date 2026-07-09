@@ -90,7 +90,7 @@ export function GeoHealthBriefCard({
         <div className="space-y-1">
           <p className={geoP0Surfaces.sectionTitle}>健康度简报</p>
           <p className="text-sm text-gray-600">
-            基于本周发布记录与 AI 现状检测数据，一键生成可复制的周报摘要（规则生成，不调用 AI）。
+            基于本周发布记录与 AI 能见度诊断数据，一键生成可复制的周报摘要（规则生成，不调用 AI）。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

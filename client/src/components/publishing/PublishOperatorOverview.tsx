@@ -185,7 +185,7 @@ export function PublishOperatorOverview({
               ))
             ) : (
               <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-800">
-                暂无明显发布卡点。建议继续跟进已发布内容的效果验证。
+                暂无明显发布卡点。建议继续跟进已发布内容的收录与 AI 复测。
               </div>
             )}
           </div>
@@ -193,7 +193,7 @@ export function PublishOperatorOverview({
 
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="publish-operator-flow">
           <h2 className="text-base font-semibold text-gray-900">发布流程进度</h2>
-          <p className="mt-1 text-xs text-gray-500">当前页面聚焦“发布执行”，后续进入效果验证和报告。</p>
+          <p className="mt-1 text-xs text-gray-500">当前页面聚焦“发布执行”，后续进入收录与 AI 复测和报告。</p>
           <div className="mt-4 grid gap-2">
             {flowSteps.map(step => (
               <div key={step.label} className={`rounded-lg border px-3 py-2 ${flowStepClass(step.status)}`}>
@@ -294,7 +294,7 @@ export function PublishOperatorOverview({
 
       <details className="rounded-xl border border-gray-200 bg-white shadow-sm" data-testid="publish-published-verification">
         <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900">
-          <span>已发布，等待效果验证</span>
+          <span>已发布，等待收录与 AI 复测</span>
           <span className="text-xs font-normal text-gray-500">发布后证据默认收起</span>
         </summary>
         <div className="border-t border-gray-100 p-5">
@@ -307,7 +307,7 @@ export function PublishOperatorOverview({
               className={geoP0Brand.primaryOutline}
               onClick={onOpenVerification}
             >
-              去效果验证
+              去收录与 AI 复测
             </Button>
           </div>
           {publishedRows.length > 0 ? (
@@ -323,7 +323,7 @@ export function PublishOperatorOverview({
             </div>
           ) : (
             <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
-              暂无已发布待验证内容。完成发布并回填公开链接后，会在这里进入效果验证。
+              暂无已发布待验证内容。完成发布并回填公开链接后，会在这里进入收录与 AI 复测。
             </div>
           )}
         </div>

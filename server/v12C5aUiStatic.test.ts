@@ -18,13 +18,13 @@ describe("C5-A global product UI overhaul", () => {
     const marketing = read("client/src/components/auth/authMarketing.ts");
     expect(marketing).toContain("持续提升企业在 AI 搜索中的识别、信任与推荐");
     expect(layout).toContain("PLATFORM_PRODUCT_SUBTITLE");
-    expect(layout).toContain('label: "总览"');
-    expect(layout).toContain('label: "本月方案"');
+    expect(layout).toContain('label: "服务首页"');
+    expect(layout).toContain('label: "月度优化计划"');
     expect(layout).toContain('label: "执行进度"');
-    expect(layout).toContain("内容生产工作台");
+    expect(layout).toContain("内容生产与发布");
     expect(layout).toContain("发布执行中心");
-    expect(layout).toContain("效果验证");
-    expect(layout).toContain("效果报告");
+    expect(layout).toContain("收录与 AI 复测");
+    expect(layout).toContain("交付报告");
     expect(layout).toContain("使用指南");
   });
 

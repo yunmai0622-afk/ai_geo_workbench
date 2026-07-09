@@ -69,7 +69,7 @@ describe("delivery phase customer mapping", () => {
     const phase = resolveDeliveryPhaseCustomerView("S2_READY_FOR_DIAGNOSIS");
     expect(phase.phaseTitle).toBe("AI检测期");
     expect(phase.phaseDescription).toBe("检测AI目前是否推荐你");
-    expect(phase.currentStageHeadline).toBe("AI 现状检测");
+    expect(phase.currentStageHeadline).toBe("AI 能见度诊断");
     expect(phase.currentStageHeadline).not.toContain("S2_");
   });
 

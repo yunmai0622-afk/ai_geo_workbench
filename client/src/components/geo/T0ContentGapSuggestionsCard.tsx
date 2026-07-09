@@ -25,7 +25,7 @@ export function T0ContentGapSuggestionsCard({ projectId, suggestions, className 
           <Lightbulb className="h-4 w-4" aria-hidden />
         </div>
         <div>
-          <h2 className="text-sm font-bold text-amber-950">AI 现状检测内容缺口建议</h2>
+          <h2 className="text-sm font-bold text-amber-950">AI 能见度诊断内容缺口建议</h2>
           <p className="text-xs text-amber-800/80">数据来源：AI 实测结果</p>
         </div>
       </div>

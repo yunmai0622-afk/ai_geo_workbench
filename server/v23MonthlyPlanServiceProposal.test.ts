@@ -10,7 +10,7 @@ describe("GEO V2.3 P0-C monthly plan service proposal", () => {
 
   it("turns /monthly-plan into a customer-facing service proposal", () => {
     for (const marker of [
-      "本月服务方案",
+      "月度优化计划",
       "本月服务结论",
       "monthly-plan-service-conclusion",
       "monthly-plan-customer-goals",

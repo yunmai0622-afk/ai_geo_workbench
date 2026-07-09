@@ -1158,11 +1158,11 @@ export function AiDiagnosisFlowPage() {
     ]);
 
     if (displayT0Round.status === "completed") {
-      setT0Message("AI 现状检测已完成，以下为真实 AI 平台实测结果。");
+      setT0Message("AI 能见度诊断已完成，以下为真实 AI 平台实测结果。");
       setT0Error(undefined);
       void triggerMaturityCalculate({ silent: true });
     } else {
-      setT0Error("AI 现状检测未成功完成，请稍后重试或联系支持。");
+      setT0Error("AI 能见度诊断未成功完成，请稍后重试或联系支持。");
     }
   }, [displayT0Round?.id, displayT0Round?.status, selectedProjectId, utils, triggerMaturityCalculate]);
 
@@ -1458,7 +1458,7 @@ export function AiDiagnosisFlowPage() {
         setMessage(`${genHint} 但列表暂未同步到可用的「指定问题」，请刷新页面或点击「运行内容诊断」重试。`);
         return;
       }
-      setMessage(`${genHint} 请点击「运行 AI 实测诊断」或「开始 AI 现状检测」继续。`);
+      setMessage(`${genHint} 请点击「运行 AI 实测诊断」或「开始 AI 能见度诊断」继续。`);
     } catch (err) {
       setError(customerErrorMessage(err instanceof Error ? err.message : "生成问题失败"));
     }
@@ -1507,11 +1507,11 @@ export function AiDiagnosisFlowPage() {
       return;
     }
     if (!hasProfile) {
-      setT0Error("当前项目还没有企业档案，请先完成建档后再启动 AI 现状检测。");
+      setT0Error("当前项目还没有企业档案，请先完成建档后再启动 AI 能见度诊断。");
       return;
     }
     if (enabledQuestionCount === 0) {
-      setT0Error("当前没有启用的检测问题，请先在问题库启用问题后再开始 AI 现状检测。");
+      setT0Error("当前没有启用的检测问题，请先在问题库启用问题后再开始 AI 能见度诊断。");
       return;
     }
     if (selectedT0Platforms.length === 0) {
@@ -1549,19 +1549,19 @@ export function AiDiagnosisFlowPage() {
       await utils.geo.testRounds.list.invalidate({ projectId: selectedProjectId });
       toast.success(
         result.deletedRoundCount > 0
-          ? `已重置 AI 现状检测（清除 ${result.deletedRoundCount} 轮记录）`
-          : "当前没有可清除的 AI 现状检测记录",
+          ? `已重置 AI 能见度诊断（清除 ${result.deletedRoundCount} 轮记录）`
+          : "当前没有可清除的 AI 能见度诊断记录",
       );
     } catch (err) {
       const raw =
-        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "重置 AI 现状检测失败";
+        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "重置 AI 能见度诊断失败";
       toast.error(customerErrorMessage(raw));
     }
   }
 
   function handleExportT0ResultsCsv() {
     if (t0RunsQuery.isLoading || t0RoundQuestionsQuery.isLoading) {
-      toast.message("AI 现状检测结果加载中，请稍后再导出");
+      toast.message("AI 能见度诊断结果加载中，请稍后再导出");
       return;
     }
     const questionTextById = new Map<number, string>();
@@ -1580,7 +1580,7 @@ export function AiDiagnosisFlowPage() {
       testedAt: run.testedAt,
     }));
     downloadT0ResultsCsv({ projectName: t0ExportProjectName, rows });
-    toast.success(rows.length > 0 ? "AI 现状检测结果 CSV 已开始下载" : "已导出空表（暂无检测记录）");
+    toast.success(rows.length > 0 ? "AI 能见度诊断结果 CSV 已开始下载" : "已导出空表（暂无检测记录）");
   }
 
   async function handleStartT0Baseline() {
@@ -1589,7 +1589,7 @@ export function AiDiagnosisFlowPage() {
       return;
     }
     if (!hasProfile) {
-      setT0Error("当前项目还没有企业档案，请先完成建档后再启动 AI 现状检测。");
+      setT0Error("当前项目还没有企业档案，请先完成建档后再启动 AI 能见度诊断。");
       return;
     }
     setT0Message(undefined);
@@ -1602,7 +1602,7 @@ export function AiDiagnosisFlowPage() {
       });
       const roundId = createResult.round?.id;
       if (!roundId) {
-        setT0Error("AI 现状检测任务创建失败，请刷新后重试。");
+        setT0Error("AI 能见度诊断任务创建失败，请刷新后重试。");
         return;
       }
       t0CompletionHandledRef.current = null;
@@ -1613,18 +1613,18 @@ export function AiDiagnosisFlowPage() {
         roundId,
       });
       if (startResult.status !== "running") {
-        setT0Error("AI 现状检测未能启动，请刷新后重试。");
+        setT0Error("AI 能见度诊断未能启动，请刷新后重试。");
         return;
       }
       await utils.geo.testRounds.get.invalidate({ projectId: selectedProjectId, id: roundId });
-      setT0Message("AI 现状检测已启动，正在后台执行，请稍候…");
+      setT0Message("AI 能见度诊断已启动，正在后台执行，请稍候…");
     } catch (err) {
       if (handleSubscriptionLimitMutationError(err)) {
-        setT0Error((err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "当前套餐已达 AI 现状检测上限，请升级套餐。"));
+        setT0Error((err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "当前套餐已达 AI 能见度诊断上限，请升级套餐。"));
         return;
       }
       const raw =
-        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "启动 AI 现状检测失败";
+        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "启动 AI 能见度诊断失败";
       setT0Error(customerErrorMessage(raw));
     }
   }
@@ -1634,7 +1634,7 @@ export function AiDiagnosisFlowPage() {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center max-w-md shadow-sm">
           <Brain className="mx-auto h-10 w-10 text-blue-600" />
-          <h2 className="mt-4 text-lg font-semibold text-gray-900">AI 现状诊断</h2>
+          <h2 className="mt-4 text-lg font-semibold text-gray-900">AI 能见度诊断</h2>
           <p className="mt-2 text-sm text-gray-500">请先选择一个企业项目，再进行 AI 搜索可见性诊断。</p>
           <Button className="mt-5 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setLocation("/clients")}>前往企业项目</Button>
         </div>
@@ -1846,7 +1846,7 @@ export function AiDiagnosisFlowPage() {
 
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.aiDiagnosis}
-        message="点击「开始 AI 现状检测」并在确认后开始真实平台实测"
+        message="点击「开始 AI 能见度诊断」并在确认后开始真实平台实测"
         data-testid="first-use-hint-ai-diagnosis"
       />
 
@@ -2156,7 +2156,7 @@ export function AiDiagnosisFlowPage() {
         </details>
       ) : null}
 
-      {/* --- AI 现状检测（紧凑可折叠，不抢占首屏） --- */}
+      {/* --- AI 能见度诊断（紧凑可折叠，不抢占首屏） --- */}
       <details
         className="group rounded-xl border border-indigo-100 bg-white shadow-sm"
         data-testid="ai-diagnosis-t0-baseline"
@@ -2165,7 +2165,7 @@ export function AiDiagnosisFlowPage() {
         <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
             <ChevronDown className="h-4 w-4 text-indigo-600 transition-transform group-open:rotate-180" />
-            AI 现状检测
+            AI 能见度诊断
           </span>
           <span className="text-xs font-normal text-gray-500">
             {displayT0Round?.status === "completed"
@@ -2309,7 +2309,7 @@ export function AiDiagnosisFlowPage() {
             ) : null}
           </div>
         ) : displayT0Round?.status === "completed" && !t0ResultsDisplay ? (
-          <p className="text-sm text-gray-500">AI 现状检测已完成，但暂无可展示的实测记录。</p>
+          <p className="text-sm text-gray-500">AI 能见度诊断已完成，但暂无可展示的实测记录。</p>
         ) : null}
 
         <div className="border-t border-gray-200 pt-4">
@@ -2394,12 +2394,12 @@ export function AiDiagnosisFlowPage() {
                   data-testid="ai-diagnosis-start-t0"
                 >
                   {t0StartingMutation
-                    ? "正在启动 AI 现状检测…"
+                    ? "正在启动 AI 能见度诊断…"
                     : isT0Running
-                      ? "AI 现状检测进行中…"
+                      ? "AI 能见度诊断进行中…"
                       : hasT0BaselineResult
                         ? "重新诊断"
-                        : "开始 AI 现状检测"}
+                        : "开始 AI 能见度诊断"}
                 </Button>
               </div>
 

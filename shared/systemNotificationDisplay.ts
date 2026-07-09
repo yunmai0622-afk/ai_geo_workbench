@@ -1,7 +1,7 @@
 export const SYSTEM_NOTIFICATION_TYPES = ["t0_complete","publish_success","publish_failed","t1_retest_complete","weekly_growth_report"] as const;
 export type SystemNotificationType = (typeof SYSTEM_NOTIFICATION_TYPES)[number];
 export const SYSTEM_NOTIFICATION_TYPE_LABELS: Record<SystemNotificationType, string> = {
-  t0_complete: "AI 现状检测完成",
+  t0_complete: "AI 能见度诊断完成",
   publish_success: "内容发布成功",
   publish_failed: "发布失败",
   t1_retest_complete: "7天后复测完成",

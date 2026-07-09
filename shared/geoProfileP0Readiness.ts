@@ -66,7 +66,7 @@ export function isProfileCoreAdvantageFilled(profile: Record<string, unknown> | 
 
 export function formatT0ProfileBlockingMessage(missingLabels: string[]): string {
   if (missingLabels.length === 0) return T0_PROFILE_ENHANCEMENT_SUGGESTION;
-  return "请先完善品牌资产建档中的基础信息，再启动 AI 现状检测";
+  return "请先完善品牌资产建档中的基础信息，再启动 AI 能见度诊断";
 }
 
 /** P0 必填 6 项；customerPains / keyPoints 不纳入阻断 missingLabels */

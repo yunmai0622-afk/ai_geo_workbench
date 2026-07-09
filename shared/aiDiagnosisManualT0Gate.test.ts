@@ -23,15 +23,15 @@ describe("aiDiagnosisManualT0Gate", () => {
 
   it("builds customer-friendly T0 start confirm copy", () => {
     const copy = buildT0StartConfirmCopy({ questionCount: 3, platformCount: 2, runsPerQuestion: 3 });
-    expect(copy.title).toBe("开始 AI 推荐现状检测？");
+    expect(copy.title).toBe("开始 AI 能见度诊断？");
     expect(copy.intro).toContain("优化前的基线");
     expect(copy.analysisCount).toBe(6);
-    expect(copy.confirmLabel).toBe("创建 AI 现状检测任务");
+    expect(copy.confirmLabel).toBe("创建 AI 能见度诊断任务");
     expect(copy.completionOutcomes).toEqual(T0_COMPLETION_OUTCOMES);
 
     const longCopy = buildT0StartConfirmCopy({ questionCount: 12, platformCount: 3, runsPerQuestion: 3 });
     expect(longCopy.backgroundMode).toBe(true);
-    expect(longCopy.confirmLabel).toBe("创建 AI 现状检测任务");
+    expect(longCopy.confirmLabel).toBe("创建 AI 能见度诊断任务");
     expect(longCopy.estimatedMinutesLabel).toContain("这是后台任务");
     expect(longCopy.estimatedMinutesLabel).toContain("无需停留等待");
   });
@@ -55,7 +55,7 @@ describe("aiDiagnosisManualT0Gate", () => {
   });
 
   it("exposes soft recommendation copy for incomplete AI diagnosis", () => {
-    expect(AI_DIAGNOSIS_SOFT_RECOMMENDATION).toContain("建议先完成 AI 现状检测");
+    expect(AI_DIAGNOSIS_SOFT_RECOMMENDATION).toContain("建议先完成 AI 能见度诊断");
     expect(AI_DIAGNOSIS_SOFT_RECOMMENDATION).toContain("可以随时进行");
   });
 });

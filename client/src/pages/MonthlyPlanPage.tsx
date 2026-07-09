@@ -80,7 +80,7 @@ function customerGoalForDimension(key: MonthlyOptimizationPriority["relatedDimen
     aiVisibility: "提升 AI 是否知道你、是否愿意推荐你",
     sourceConsistency: "补齐 AI 推荐所需信任证据",
     contentExecution: "完成本月核心内容与发布动作",
-    retestDelivery: "完成发布后效果验证和月报证明",
+    retestDelivery: "完成发布后收录与 AI 复测和月报证明",
   };
   return goalByDimension[key];
 }
@@ -106,11 +106,11 @@ function buildServiceConclusion(input: {
   totalCount: number;
 }): string {
   if (!input.hasMaturity) {
-    return "当前还缺少 AI 品牌成熟度诊断，建议先完成诊断，建立本月服务方案的判断基线。";
+    return "当前还缺少 AI 能见度诊断，建议先完成诊断，建立月度优化计划的判断基线。";
   }
   const priorities = input.brief?.priorities ?? [];
   if (priorities.length === 0) {
-    return "当前缺少可用的本月服务事项，建议先补齐资料或重新生成本月方案。";
+    return "当前缺少可用的本月服务事项，建议先补齐资料或重新生成月度优化计划。";
   }
   const focus = priorities.slice(0, 3).map(priority => priority.title).join("、");
   if (!input.hasPlan) {
@@ -120,7 +120,7 @@ function buildServiceConclusion(input: {
     return `本月服务已进入报告阶段，重点回看 ${focus} 的执行证据和复测变化，为下月续费与优化提供依据。`;
   }
   if (input.totalCount > 0 && input.completedCount >= input.totalCount) {
-    return `本月 ${focus} 的主要执行动作已完成，下一步重点是做效果验证，确认 AI 是否更稳定地识别和推荐品牌。`;
+    return `本月 ${focus} 的主要执行动作已完成，下一步重点是做收录与 AI 复测，确认 AI 是否更稳定地识别和推荐品牌。`;
   }
   return `本月重点是 ${focus}，目标是补齐 AI 推荐所需的内容、信源和复测证据，提升品牌被识别和推荐的稳定性。`;
 }
@@ -133,7 +133,7 @@ function buildCustomerGoals(input: {
   totalCount: number;
 }): string[] {
   if (!input.hasMaturity) {
-    return ["完成 AI 品牌成熟度诊断", "建立本月服务基线", "明确最需要改善的问题"];
+    return ["完成 AI 能见度诊断", "建立本月服务基线", "明确最需要改善的问题"];
   }
   const goals: string[] = [];
   for (const priority of input.brief?.priorities ?? []) {
@@ -146,7 +146,7 @@ function buildCustomerGoals(input: {
   } else {
     goals.push("完成本月 Top3 服务事项确认");
   }
-  goals.push("完成发布后效果验证");
+  goals.push("完成发布后收录与 AI 复测");
   return [...new Set(goals)].slice(0, 4);
 }
 
@@ -162,14 +162,14 @@ function buildVerificationCopy(input: {
   ];
   if (input.planPhase === "completed") {
     return {
-      headline: "本月已完成验证，可进入效果报告。",
-      description: "复测结果会沉淀到效果报告中，用于说明本月服务动作带来的变化。",
+      headline: "本月已完成验证，可进入交付报告。",
+      description: "复测结果会沉淀到交付报告中，用于说明本月服务动作带来的变化。",
       schedule,
     };
   }
   if (input.planPhase === "retest_ready") {
     return {
-      headline: "当前已到验证窗口，建议立即查看效果验证。",
+      headline: "当前已到验证窗口，建议立即查看收录与 AI 复测。",
       description: "重点检查内容是否被收录，以及 AI 回答中是否开始更稳定地识别品牌。",
       schedule,
     };
@@ -177,12 +177,12 @@ function buildVerificationCopy(input: {
   if (input.retestScheduledAt) {
     return {
       headline: `预计验证时间：${formatDateTime(input.retestScheduledAt)}`,
-      description: "内容发布后按计划进入复测，验证结果会在效果验证页和效果报告中查看。",
+      description: "内容发布后按计划进入复测，验证结果会在收录与 AI 复测页和交付报告中查看。",
       schedule,
     };
   }
   return {
-    headline: "内容发布后 7 天开始第一次效果验证。",
+    headline: "内容发布后 7 天开始第一次收录与 AI 复测。",
     description: "检查是否被搜索引擎收录，以及 AI 回答中是否开始更稳定地识别品牌。",
     schedule,
   };
@@ -198,10 +198,10 @@ function buildCustomerRisks(input: {
 }): Array<{ title: string; suggestion: string }> {
   const risks: Array<{ title: string; suggestion: string }> = [];
   if (!input.hasMaturity) {
-    risks.push({ title: "未完成诊断", suggestion: "先完成 AI 品牌成熟度诊断，建立服务方案基线。" });
+    risks.push({ title: "未完成诊断", suggestion: "先完成 AI 能见度诊断，建立服务方案基线。" });
   }
   if (!input.hasPlan) {
-    risks.push({ title: "本月方案未生成", suggestion: "把诊断短板转成本月 Top3 服务事项。" });
+    risks.push({ title: "月度优化计划未生成", suggestion: "把诊断短板转成本月 Top3 服务事项。" });
   }
   if (input.hasPlan && input.totalCount > 0 && input.completedCount === 0) {
     risks.push({ title: "服务事项未开始", suggestion: "优先进入执行进度，推进第一批内容或信源任务。" });
@@ -210,10 +210,10 @@ function buildCustomerRisks(input: {
     risks.push({ title: "本月任务未执行完", suggestion: "继续完成本月 Top 服务事项，避免月底无法形成报告证据。" });
   }
   if (input.totalCount > 0 && input.completedCount >= input.totalCount && input.planPhase !== "completed") {
-    risks.push({ title: "发布后未验证", suggestion: "进入效果验证，确认内容是否被搜索和 AI 看见。" });
+    risks.push({ title: "发布后未验证", suggestion: "进入收录与 AI 复测，确认内容是否被搜索和 AI 看见。" });
   }
   if (input.hasPlan && input.planPhase !== "completed") {
-    risks.push({ title: "报告未生成", suggestion: "完成执行和复测后，生成客户可读的效果报告。" });
+    risks.push({ title: "报告未生成", suggestion: "完成执行和复测后，生成客户可读的交付报告。" });
   }
   if (input.priorities.some(priority => priority.relatedDimensionKey === "sourceConsistency")) {
     risks.push({ title: "信源证据不足", suggestion: "补齐公开信源和信任证据，让 AI 推荐理由更充分。" });
@@ -255,7 +255,7 @@ function serviceProgressSteps(input: {
     {
       label: "已验证",
       status: input.planPhase === "completed" ? "已完成" : "待开始",
-      description: "复测结果进入效果报告，支持续费沟通。",
+      description: "复测结果进入交付报告，支持续费沟通。",
     },
   ];
 }
@@ -303,7 +303,7 @@ export default function MonthlyPlanPage() {
 
   useEffect(() => {
     const name = selectedProject?.enterpriseName?.trim() || "企业";
-    document.title = `${name} - 本月服务方案`;
+    document.title = `${name} - 月度优化计划`;
   }, [selectedProject?.enterpriseName]);
 
   const current = currentQuery.data;
@@ -387,20 +387,20 @@ export default function MonthlyPlanPage() {
     if (!hasMaturityReport) {
       return {
         label: "完善诊断",
-        hint: "先完成 AI 品牌成熟度诊断，才能制定客户可读的本月服务方案。",
+        hint: "先完成 AI 能见度诊断，才能制定客户可读的月度优化计划。",
         path: "/maturity",
       };
     }
     if (!hasServiceItems && !canGeneratePlan) {
       return {
-        label: "回到总览",
-        hint: "当前缺少可执行服务事项，建议回到总览检查资料和诊断状态。",
+        label: "回到服务首页",
+        hint: "当前缺少可执行服务事项，建议回到服务首页检查资料和诊断状态。",
         path: "/workspace",
       };
     }
     if (!plan && canGeneratePlan) {
       return {
-        label: "生成本月服务方案",
+        label: "生成月度优化计划",
         hint: "把成熟度短板转成 Top 服务事项。",
         action: "generate" as const,
       };
@@ -409,9 +409,9 @@ export default function MonthlyPlanPage() {
       label: "查看执行进度",
       hint:
         planPhase === "completed" || showCompletedPlan
-          ? "本月计划已完成，仍从执行进度进入验证和报告闭环。"
-          : allTasksCompleted
-            ? "本月服务事项已完成，下一步从执行进度进入收录与验证。"
+            ? "月度优化计划已完成，仍从执行进度进入验证和报告闭环。"
+            : allTasksCompleted
+              ? "本月服务事项已完成，下一步从执行进度进入收录与 AI 复测。"
             : "确认本月 3 个优先事项后，只需要进入执行进度看服务推进。",
       path: "/weekly",
     };
@@ -449,7 +449,7 @@ export default function MonthlyPlanPage() {
   if (!selectedProjectId && !projectsLoading) {
     return (
       <div className="space-y-6" data-testid="monthly-plan-page">
-        <ProjectContextEmptyState title="本月服务方案" description="请先选择或创建项目后再制定本月服务方案。" />
+        <ProjectContextEmptyState title="月度优化计划" description="请先选择或创建项目后再制定月度优化计划。" />
       </div>
     );
   }
@@ -459,10 +459,10 @@ export default function MonthlyPlanPage() {
       <header className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-blue-600">客户主流程 · 本月方案</p>
-            <h1 className="mt-1 text-2xl font-bold text-gray-900">本月服务方案</h1>
+            <p className="text-sm font-medium text-blue-600">客户主流程 · 月度优化计划</p>
+            <h1 className="mt-1 text-2xl font-bold text-gray-900">月度优化计划</h1>
             <p className="mt-2 max-w-2xl text-sm text-gray-600">
-              把诊断短板翻译成本月 GEO 代运营服务事项，让客户看懂为什么做、做到哪、完成后怎么看效果。
+              把诊断结果转成本月 3 个重点服务事项。
             </p>
           </div>
           <Button
@@ -490,7 +490,7 @@ export default function MonthlyPlanPage() {
       {currentQuery.isLoading || maturityQuery.isLoading ? (
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Spinner className="size-4" />
-          加载本月服务方案…
+          加载月度优化计划…
         </div>
       ) : null}
 
@@ -537,7 +537,7 @@ export default function MonthlyPlanPage() {
           </div>
           {topPriorities.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
-              暂无本月 Top 3 服务事项。建议先完成诊断或生成本月服务方案，不会把建议项伪装成已完成结果。
+              暂无本月 Top 3 服务事项。建议先完成诊断或生成月度优化计划，不会把建议项伪装成已完成结果。
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-3">
@@ -588,7 +588,7 @@ export default function MonthlyPlanPage() {
 
       {!maturityQuery.data && !maturityQuery.isLoading ? (
         <P0Card testId="monthly-plan-no-maturity">
-          <p className="text-sm text-gray-700">请先完成 AI 品牌成熟度评估，再生成本月服务方案。</p>
+          <p className="text-sm text-gray-700">请先完成 AI 能见度诊断，再生成月度优化计划。</p>
         </P0Card>
       ) : null}
 
@@ -613,7 +613,7 @@ export default function MonthlyPlanPage() {
       {showGenerateEmpty ? (
         <P0Card testId="monthly-plan-empty">
           <p className="text-sm text-gray-700">
-            成熟度评估已完成（{maturityQuery.data?.totalScore ?? "—"} 分），点击上方主按钮生成本月服务方案。
+            成熟度评估已完成（{maturityQuery.data?.totalScore ?? "—"} 分），点击上方主按钮生成月度优化计划。
           </p>
         </P0Card>
       ) : null}
@@ -744,7 +744,7 @@ export default function MonthlyPlanPage() {
           <p className="text-sm font-semibold text-gray-900">风险与缺口</p>
         </div>
         {visibleRisks.length === 0 ? (
-          <p className="text-sm text-gray-600">暂无明显阻断，建议继续按本月服务方案推进并复测效果。</p>
+          <p className="text-sm text-gray-600">暂无明显阻断，建议继续按月度优化计划推进并复测效果。</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {visibleRisks.map(risk => (
@@ -815,11 +815,11 @@ export default function MonthlyPlanPage() {
           </div>
           <div className="mt-3 grid gap-2 text-sm sm:grid-cols-5">
             {[
-              { label: "总览", path: "/workspace" },
-              { label: "本月方案", path: "/monthly-plan" },
+              { label: "服务首页", path: "/workspace" },
+              { label: "月度优化计划", path: "/monthly-plan" },
               { label: "执行进度", path: "/weekly" },
-              { label: "效果验证", path: "/inclusion-monitoring" },
-              { label: "效果报告", path: "/delivery-reports" },
+              { label: "收录与 AI 复测", path: "/inclusion-monitoring" },
+              { label: "交付报告", path: "/delivery-reports" },
             ].map(item => (
               <div
                 key={item.path}

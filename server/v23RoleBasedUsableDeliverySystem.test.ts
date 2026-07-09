@@ -48,11 +48,11 @@ describe("GEO V2.3-P0-O role based usable delivery system", () => {
     expect(diagnosis).toContain("运营后台");
     expect(diagnosis).toContain("客户可读诊断问题页");
     expect(diagnosis).toContain("不建议客户第一轮演示");
-    expect(questions).toContain("运营后台｜AI 搜索机会与内容选题工具");
-    expect(sourceGraph).toContain("运营后台｜信源证据修复后台");
-    expect(publishing).toContain("运营发布执行中心");
+    expect(questions).toContain("搜索问题挖掘");
+    expect(sourceGraph).toContain("信源引用监测");
+    expect(publishing).toContain("发布执行中心");
     expect(publishing).toContain("不进入客户第一轮演示");
-    expect(weekly).toContain("运营工具 / 内容生产工作台");
+    expect(weekly).toContain("运营工具 / 内容生产与发布");
     expect(weekly).toContain("运营后台 · 不进入客户第一轮演示");
   });
 

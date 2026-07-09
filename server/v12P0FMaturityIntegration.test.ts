@@ -33,7 +33,7 @@ describe("GEO-V2.0-P0-F Maturity Integration", () => {
     expect(app).toContain("MaturityDetailPage");
 
     const layout = read("client/src/components/DashboardLayout.tsx");
-    expect(layout).toContain('label: "总览"');
+    expect(layout).toContain('label: "服务首页"');
     expect(layout).toContain('"/maturity"');
   });
 

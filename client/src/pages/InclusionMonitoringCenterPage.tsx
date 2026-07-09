@@ -215,9 +215,9 @@ function buildEffectVerificationSteps(
       description: testedCount > 0 ? `${formatCustomerCount(testedCount, " 条")}内容已完成复测。` : overview.retestReadyCount > 0 ? `${formatCustomerCount(overview.retestReadyCount, " 条")}内容可进入复测。` : "收录后等待复测窗口。",
     },
     {
-      title: "效果报告",
+      title: "交付报告",
       status: testedCount > 0 ? "current" : "pending",
-      description: testedCount > 0 ? "把复测变化沉淀到效果报告。" : "复测后形成客户可读证明。",
+      description: testedCount > 0 ? "把复测变化沉淀到交付报告。" : "复测后形成客户可读证明。",
     },
   ];
 }
@@ -393,9 +393,9 @@ function EffectVerificationProcess({
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="effect-verification-process">
       <div className="flex items-center gap-2">
         <RefreshCw className="size-4 text-blue-600" />
-        <h2 className="text-base font-semibold text-gray-900">效果验证流程</h2>
+        <h2 className="text-base font-semibold text-gray-900">收录与 AI 复测流程</h2>
       </div>
-      <p className="mt-1 text-sm text-gray-500">发布 → 收录 → 数据回填 → AI 复测 → 效果报告。</p>
+      <p className="mt-1 text-sm text-gray-500">发布 → 收录 → 数据回填 → AI 复测 → 交付报告。</p>
       <div className="mt-4 grid gap-3 md:grid-cols-5">
         {steps.map(step => (
           <div key={step.title} className={`rounded-xl border p-3 ${statusClass[step.status]}`}>
@@ -607,9 +607,9 @@ export function InclusionMonitoringCenterPage() {
   return (
     <div className="space-y-6 pb-12" data-testid="inclusion-monitoring-page">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">效果验证</h1>
+        <h1 className="text-2xl font-bold text-gray-900">收录与 AI 复测</h1>
         <p className="text-sm text-gray-500">
-          用客户能理解的方式确认内容有没有被搜索看见、AI 有没有识别，以及下一步如何形成效果报告。
+          发布后验证内容是否被搜索和 AI 看见。
         </p>
       </header>
 

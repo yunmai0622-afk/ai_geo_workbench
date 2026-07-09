@@ -10,7 +10,7 @@ describe("GEO V2.3 P0-D renewal delivery report", () => {
 
   it("turns /delivery-reports into a renewal-oriented customer report", () => {
     for (const marker of [
-      "效果报告 / 续费型交付报告",
+      "交付报告",
       "本月报告结论",
       "delivery-report-renewal-conclusion",
       "delivery-report-completed-items",

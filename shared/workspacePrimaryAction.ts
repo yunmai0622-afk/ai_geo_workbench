@@ -99,7 +99,7 @@ const MONTHLY_PLAN_STAGE_ACTIONS: Record<
 /**
  * 工作台阶段与主按钮统一规则（命中即停止）：
  * 0. 建档未完成（completionScore < 80）
- * 1. 未完成 AI 现状检测
+ * 1. 未完成 AI 能见度诊断
  * 2. 已完成检测但成熟度未计算/为 0
  * 3. 成熟度已计算，月度优化计划相关阶段
  * 4. 成熟度已计算，但有待审核/待生成内容
@@ -124,10 +124,10 @@ export function resolveWorkspaceStagePrimaryAction(
   if (!input.hasCompletedT0Baseline) {
     return {
       id: "ai_diagnosis",
-      stageHeadline: "AI 现状检测",
+      stageHeadline: "AI 能见度诊断",
       phaseTitle: "AI检测期",
       phaseDescription: "检测AI目前是否推荐你",
-      ctaLabel: "开始 AI 现状检测",
+      ctaLabel: "开始 AI 能见度诊断",
       ctaPath: "/ai-diagnosis",
       reason: AI_DIAGNOSIS_SOFT_RECOMMENDATION,
     };
@@ -142,7 +142,7 @@ export function resolveWorkspaceStagePrimaryAction(
       phaseDescription: "了解当前 AI 搜索可见性水平",
       ctaLabel: "查看 AI 品牌成熟度",
       ctaPath: "/maturity",
-      reason: "AI 现状检测已完成，建议查看 AI 品牌成熟度评估结果。",
+      reason: "AI 能见度诊断已完成，建议查看 AI 品牌成熟度评估结果。",
     };
   }
 
@@ -162,12 +162,12 @@ export function resolveWorkspaceStagePrimaryAction(
       stageHeadline: "内容优化期",
       phaseTitle: "内容优化期",
       phaseDescription: "补充内容和信源，提升AI推荐",
-      ctaLabel: "去内容生产工作台",
+      ctaLabel: "去内容生产与发布",
       ctaPath: "/weekly",
       reason:
         input.articleCount === 0
           ? "已有成熟度评估，建议围绕诊断结论生成首批内容资产。"
-          : "仍有待生成、待审核或待优化内容，建议先在内容生产工作台处理。",
+          : "仍有待生成、待审核或待优化内容，建议先在内容生产与发布处理。",
     };
   }
 

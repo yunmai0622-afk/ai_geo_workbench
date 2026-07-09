@@ -146,7 +146,7 @@ function resolveNextAction(snapshot: {
 }): string {
   if (snapshot.renewalRisk === "high") return "联系客户续费";
   if (snapshot.profileCompletionScore < 60) return "去完善建档";
-  if (!snapshot.hasAiTest) return "去创建 AI 现状检测";
+  if (!snapshot.hasAiTest) return "去创建 AI 能见度诊断";
   if (snapshot.monthlyPlanTotal === 0) return "去查看本月计划";
   if (snapshot.monthlyPlanCompleted < snapshot.monthlyPlanTotal) return "去查看本月计划";
   if (snapshot.contentPending > 0) return "去处理内容";

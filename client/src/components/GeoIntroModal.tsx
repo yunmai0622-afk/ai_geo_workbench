@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 
 const INTRO_STEPS = [
   "填写企业资料",
-  "执行 AI 现状检测",
+  "执行 AI 能见度诊断",
   "生成并发布内容",
   "追踪AI提及率变化",
 ] as const;
