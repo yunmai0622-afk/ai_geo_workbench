@@ -59,7 +59,7 @@ describe("resolveWorkspaceStagePrimaryAction", () => {
     ).toBe("内容优化期");
     expect(
       resolveWorkspaceStagePrimaryAction({ ...base, lowQualityArticleCount: 1 })?.ctaPath,
-    ).toBe("/weekly");
+    ).toBe("/weekly?mode=content-production");
   });
 
   it("规则4：有可入队内容时阶段与按钮一致指向发布", () => {

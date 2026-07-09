@@ -100,6 +100,6 @@ describe("GEO-V1.2 publishing monitoring workflow restructure P0", () => {
     expect(publishExecutionTabs).toContain("publish-queue-tab-pending");
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
     expect(weekly).not.toContain("收录复测中心");
-    expect(weekly).not.toContain("发布执行中心");
+    expect(weekly).toContain("运营发布信息");
   });
 });

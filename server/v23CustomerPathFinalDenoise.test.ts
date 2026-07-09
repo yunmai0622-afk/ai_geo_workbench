@@ -9,7 +9,7 @@ describe("GEO V2.3-P0-P customer path final denoise", () => {
   it("keeps local publishing controls out of the default customer weekly page", () => {
     const weekly = read("client/src/pages/WeeklyContentPage.tsx");
 
-    expect(weekly).toContain("{enabled && isContentProductionWorkbench ? (");
+    expect(weekly).toContain("{enabled && isContentProductionWorkbench && !isSingleTaskProgression ? (");
     expect(weekly).toContain("WeeklyLocalAgentStatusBar");
     expect(weekly).toContain('if (isCustomerExecutionView) return "查看收录与验证";');
   });

@@ -45,7 +45,10 @@ export function EnterpriseProjectShell({ children }: Props) {
   const searchString = location.includes("?") ? location.slice(location.indexOf("?")) : "";
   const routeSearchParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
   const isWeeklyPage = pathname === "/weekly" || pathname === "/content-generation" || pathname === "/articles";
-  const isContentProductionMode = isWeeklyPage && routeSearchParams.get("mode") === "content-production";
+  const isWeeklySingleTaskProgression = isWeeklyPage && Boolean(routeSearchParams.get("questionId"));
+  const isContentProductionMode =
+    isWeeklyPage &&
+    (routeSearchParams.get("mode") === "content-production" || isWeeklySingleTaskProgression);
   const isWeeklyCustomerExecutionPage = pathname === "/weekly" && !isContentProductionMode;
   const isPublishPage = pathname === "/content-publishing" || pathname === "/publish";
   const isInclusionMonitoringPage =

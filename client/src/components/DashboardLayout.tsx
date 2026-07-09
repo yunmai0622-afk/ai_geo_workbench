@@ -201,10 +201,18 @@ const MAX_WIDTH = 480;
 
 function isNavItemActive(item: MenuItem, pathname: string, searchParams: URLSearchParams): boolean {
   if (!item.aliases.includes(pathname)) return false;
+  const isWeeklySingleTask = pathname === "/weekly" && Boolean(searchParams.get("questionId"));
+  if (item.key === "content-production" && isWeeklySingleTask) {
+    return true;
+  }
   if (item.activeQuery) {
     return Object.entries(item.activeQuery).every(([key, value]) => searchParams.get(key) === value);
   }
-  if (pathname === "/weekly" && searchParams.get("mode") === CONTENT_PRODUCTION_MODE) {
+  if (
+    item.key === "weekly-execution" &&
+    pathname === "/weekly" &&
+    (searchParams.get("mode") === CONTENT_PRODUCTION_MODE || isWeeklySingleTask)
+  ) {
     return false;
   }
   return true;

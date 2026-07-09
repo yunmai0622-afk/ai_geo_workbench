@@ -38,7 +38,7 @@ describe("GEO V2.3-P0-N one next step simplification", () => {
     const delivery = read("client/src/pages/DeliveryReportsCenterPage.tsx");
 
     expect(weekly).toContain("运营后台 · 不进入客户第一轮演示");
-    expect(weekly).toContain("{isContentProductionWorkbench ? (");
+    expect(weekly).toContain("{isContentProductionWorkbench && !isSingleTaskProgression ? (");
     expect(weekly).toContain('id="weekly-operational-workbench"');
     expect(workspace).not.toContain("运营参考，客户首屏不展开");
     expect(workspace).not.toContain("运营详情，仅内部参考");
@@ -48,7 +48,8 @@ describe("GEO V2.3-P0-N one next step simplification", () => {
   it("removes shared shell action panels from the customer first path", () => {
     const shell = read("client/src/components/project/EnterpriseProjectShell.tsx");
 
-    expect(shell).toContain('const isContentProductionMode = isWeeklyPage && routeSearchParams.get("mode") === "content-production";');
+    expect(shell).toContain("const isWeeklySingleTaskProgression = isWeeklyPage && Boolean(routeSearchParams.get(\"questionId\"));");
+    expect(shell).toContain('(routeSearchParams.get("mode") === "content-production" || isWeeklySingleTaskProgression);');
     expect(shell).toContain('const isWeeklyCustomerExecutionPage = pathname === "/weekly" && !isContentProductionMode;');
     expect(shell).toContain("const isCustomerFirstPath =");
     expect(shell).toContain("isMonthlyPlanPage");

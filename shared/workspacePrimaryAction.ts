@@ -163,7 +163,7 @@ export function resolveWorkspaceStagePrimaryAction(
       phaseTitle: "内容优化期",
       phaseDescription: "补充内容和信源，提升AI推荐",
       ctaLabel: "去内容生产与发布",
-      ctaPath: "/weekly",
+      ctaPath: "/weekly?mode=content-production",
       reason:
         input.articleCount === 0
           ? "已有成熟度评估，建议围绕诊断结论生成首批内容资产。"

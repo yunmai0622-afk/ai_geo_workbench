@@ -81,7 +81,7 @@ export const WORKSPACE_STAGES: WorkspaceStageDefinition[] = [
     label: "待优化",
     blockerHint: "有内容质检未通过，建议进入内容生产处理。",
     ctaLabel: "去内容生产 · 需修改",
-    ctaPath: "/weekly",
+    ctaPath: "/weekly?mode=content-production",
   },
   {
     id: "delivery_report",
