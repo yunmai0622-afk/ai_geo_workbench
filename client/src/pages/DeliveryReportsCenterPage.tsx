@@ -81,6 +81,16 @@ function currentRateLabel(value: number | null): string {
   return `当前 ${formatPercent(value)}`;
 }
 
+function hasContentLevelRetest(report: MonthlyReportView): boolean {
+  return report.contentImpactProof.hasData && report.contentImpactProof.items.length > 0;
+}
+
+function contentLevelRetestLine(report: MonthlyReportView): string | null {
+  const first = report.contentImpactProof.items[0];
+  if (!first) return null;
+  return formatMonthlyReportImpactProofLine(first);
+}
+
 function customerValueForReportDimension(key: MonthlyOptimizationPriority["relatedDimensionKey"]): string {
   const valueByDimension: Record<MonthlyOptimizationPriority["relatedDimensionKey"], string> = {
     profile: "让 AI 和客户看到一致、清楚的品牌介绍，减少理解偏差。",
@@ -108,6 +118,10 @@ function buildRenewalReportConclusion(report: MonthlyReportView): string {
     );
     return `本月已完成阶段复测，AI 品牌成熟度变化为 ${maturityChange}，AI 推荐表现为 ${recommendChange}；下月应继续扩大内容覆盖和可信证据。`;
   }
+  if (hasContentLevelRetest(report)) {
+    const proofLine = contentLevelRetestLine(report);
+    return `本月已完成 ${report.contentImpactProof.items.length} 条内容级发布后 AI 复测${proofLine ? `：${proofLine}` : ""}；但收录仍待观察，月度轮次复测尚未闭环，不能证明 AI 推荐率提升。`;
+  }
   if (report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount) {
     return `当前仍处于基础建设阶段，本月服务事项完成 ${report.progress.completedCount}/${report.progress.totalCount} 项；暂无可确认增长，建议先补齐执行和发布后验证。`;
   }
@@ -129,7 +143,8 @@ function buildEvidenceGapLine(report: MonthlyReportView): string {
   const gaps: string[] = [];
   if (report.actions.contentCount === 0) gaps.push("公开发布记录");
   if (!report.actions.contentAssetProof.hasInclusionData) gaps.push("收录验证");
-  if (!report.hasRetestData) gaps.push("AI 复测");
+  if (!report.hasRetestData && !hasContentLevelRetest(report)) gaps.push("AI 复测");
+  if (!report.hasRetestData && hasContentLevelRetest(report)) gaps.push("月度轮次复测");
   if (report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount) {
     gaps.push("本月服务事项闭环");
   }
@@ -157,7 +172,9 @@ function buildEvidenceAccumulationItems(report: MonthlyReportView): EvidenceAccu
       title: "验证了什么",
       text: report.hasRetestData
         ? "已形成阶段复测，可以查看 AI 回答变化摘要。"
-        : "当前尚未完成 AI 复测，只能说明服务动作正在推进，不能承诺 AI 推荐率提升。",
+        : hasContentLevelRetest(report)
+          ? `已完成 ${report.contentImpactProof.items.length} 条内容级发布后 AI 复测，但结果不代表整体趋势，不能承诺 AI 推荐率提升。`
+          : "当前尚未完成 AI 复测，只能说明服务动作正在推进，不能承诺 AI 推荐率提升。",
     },
     {
       title: "还缺什么",
@@ -217,14 +234,20 @@ function buildRenewalCompletionItems(report: MonthlyReportView): RenewalCompleti
       title: "收录与复测",
       status: report.hasRetestData
         ? "已验证"
+        : hasContentLevelRetest(report)
+          ? "已复测"
         : report.actions.contentAssetProof.retestReadyCount > 0
           ? "可复测"
           : "待验证",
       value: report.hasRetestData
         ? "已完成复测"
+        : hasContentLevelRetest(report)
+          ? `${report.contentImpactProof.items.length} 条内容级复测`
         : `${reportCount(report.actions.contentAssetProof.includedCount)} 篇已收录`,
       description: report.hasRetestData
         ? "已经形成阶段复测结果，可用于说明效果变化。"
+        : hasContentLevelRetest(report)
+          ? "已形成发布后 AI 回答证据，但收录和月度轮次复测仍需继续观察。"
         : "需要继续观察内容是否被搜索和 AI 看见。",
     },
   ];
@@ -254,11 +277,18 @@ function buildRenewalIssues(report: MonthlyReportView): RenewalIssue[] {
       nextStep: "继续回填公开链接，跟踪收录、阅读和关键词触发。",
     });
   }
-  if (!report.hasRetestData) {
+  if (!report.hasRetestData && !hasContentLevelRetest(report)) {
     issues.push({
       title: "发布后尚未完成复测",
       impact: "没有复测前，只能说明动作已执行，还不能确认 AI 是否发生变化。",
       nextStep: "内容发布后按 7/14/30 天节奏完成收录与 AI 复测。",
+    });
+  }
+  if (!report.hasRetestData && hasContentLevelRetest(report)) {
+    issues.push({
+      title: "月度轮次复测尚未闭环",
+      impact: "已有内容级发布后复测，但样本量仍少，不能代表整体 AI 推荐趋势。",
+      nextStep: "继续观察收录，并按同一问题池完成 T1/T2/T3 轮次复测。",
     });
   }
   if (report.progress.totalCount > 0 && report.progress.completedCount < report.progress.totalCount) {
@@ -313,15 +343,27 @@ function buildEffectChanges(report: MonthlyReportView): Array<{ label: string; v
       label: "AI 是否更知道你",
       value: report.hasRetestData
         ? formatMonthlyReportRateChange(report.summary.mentionRateBaseline, report.summary.mentionRateResult)
+        : hasContentLevelRetest(report)
+          ? `${report.contentImpactProof.items.length} 条内容级复测`
         : currentRateLabel(report.summary.mentionRateBaseline),
-      hint: report.hasRetestData ? "基于本月复测对比。" : "暂无复测对比，建议完成下一次复测后判断。",
+      hint: report.hasRetestData
+        ? "基于本月复测对比。"
+        : hasContentLevelRetest(report)
+          ? "已有发布后回答证据，完整趋势仍看月度轮次复测。"
+          : "暂无复测对比，建议完成下一次复测后判断。",
     },
     {
       label: "AI 是否更愿意推荐你",
       value: report.hasRetestData
         ? formatMonthlyReportRateChange(report.summary.recommendRateBaseline, report.summary.recommendRateResult)
+        : hasContentLevelRetest(report)
+          ? "未证明提升"
         : currentRateLabel(report.summary.recommendRateBaseline),
-      hint: report.hasRetestData ? "推荐率越稳定，越容易形成可解释价值。" : "当前仅展示基线，不伪造增长。",
+      hint: report.hasRetestData
+        ? "推荐率越稳定，越容易形成可解释价值。"
+        : hasContentLevelRetest(report)
+          ? "内容级复测只记录真实回答，不承诺推荐率提升。"
+          : "当前仅展示基线，不伪造增长。",
     },
     {
       label: "AI 成熟度是否变化",
@@ -605,6 +647,55 @@ function RenewalDeliveryReportHero({
           </div>
         ) : null}
 
+        {(report.actions.contentAssetProof.items.length > 0 || hasContentLevelRetest(report)) ? (
+          <div
+            className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4"
+            data-testid="delivery-report-real-evidence-update"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-blue-700">
+                真实证据更新
+              </span>
+              <span className="text-sm font-semibold text-blue-950">
+                已展示真实发布、收录状态和发布后复测结果
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {report.actions.contentAssetProof.items.slice(0, 3).map(item => (
+                <div key={item.id} className="rounded-xl border border-blue-100 bg-white/80 p-3">
+                  <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {item.platform} · {item.inclusionStatusLabel}
+                  </p>
+                  {item.publicUrl ? (
+                    <a
+                      className="mt-2 block break-all text-xs font-medium text-blue-700 hover:text-blue-800"
+                      href={item.publicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {item.publicUrl}
+                    </a>
+                  ) : null}
+                </div>
+              ))}
+              {hasContentLevelRetest(report) ? (
+                <div className="rounded-xl border border-blue-100 bg-white/80 p-3 md:col-span-2">
+                  <p className="text-sm font-semibold text-gray-900">AI T1 发布后复测</p>
+                  <ul className="mt-2 space-y-2 text-xs leading-5 text-gray-700">
+                    {report.contentImpactProof.items.slice(0, 3).map(item => (
+                      <li key={item.articleId}>{formatMonthlyReportImpactProofLine(item)}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs leading-5 text-gray-500">
+                    该结果来自真实发布后的 AI 回答记录；当前不承诺推荐率提升，完整趋势仍需同一问题池的月度轮次复测。
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         <div data-testid="delivery-report-completed-items">
           <div className="mb-3 flex items-center gap-2">
             <CheckCircle2 className="size-4 text-emerald-600" />
@@ -719,7 +810,7 @@ function RenewalDeliveryReportHero({
               {[
                 { title: "诊断与方案", desc: report.planPhase === "no_plan" ? "待生成服务方案。" : `本月围绕 ${report.focusSummary || "关键短板"} 推进。`, path: "/monthly-plan" },
                 { title: "内容与发布", desc: `发布 ${reportCount(report.actions.contentCount)} 篇内容，覆盖 ${reportCount(report.actions.questionCoverageCount)} 个问题。`, path: "/weekly" },
-                { title: "收录与复测", desc: report.hasRetestData ? "已完成 AI 复测并形成对比。" : "等待收录数据和下一次复测。", path: "/inclusion-monitoring" },
+                { title: "收录与复测", desc: report.hasRetestData ? "已完成 AI 复测并形成对比。" : hasContentLevelRetest(report) ? "已完成内容级发布后复测，收录仍待观察。" : "等待收录数据和下一次复测。", path: "/inclusion-monitoring" },
                 { title: "报告与下月建议", desc: "沉淀本月服务价值和下月续费理由。", path: "/delivery-reports" },
               ].map(item => (
                 <div
@@ -751,8 +842,8 @@ function RenewalDeliveryReportHero({
               />
               <ReportMetric
                 label="AI 复测"
-                value={report.hasRetestData ? "已完成" : "待完成"}
-                hint={report.hasRetestData ? "可查看复测变化摘要。" : "完成验证后再判断趋势。"}
+                value={report.hasRetestData ? "已完成" : hasContentLevelRetest(report) ? "内容级已复测" : "待完成"}
+                hint={report.hasRetestData ? "可查看复测变化摘要。" : hasContentLevelRetest(report) ? "完整趋势仍需月度轮次复测。" : "完成验证后再判断趋势。"}
               />
               <ReportMetric
                 label="续费证明"

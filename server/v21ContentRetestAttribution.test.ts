@@ -34,6 +34,9 @@ describe("GEO-V2.1-P3 AI Retest Attribution", () => {
   it("monthly report includes content impact proof section", () => {
     expect(deliveryPage).toContain("monthly-report-content-impact-proof");
     expect(deliveryPage).toContain("内容影响证明");
+    expect(deliveryPage).toContain("delivery-report-real-evidence-update");
+    expect(deliveryPage).toContain("AI T1 发布后复测");
+    expect(deliveryPage).toContain("内容级发布后复测");
     expect(monthlyShared).toContain("contentImpactProof");
   });
 
