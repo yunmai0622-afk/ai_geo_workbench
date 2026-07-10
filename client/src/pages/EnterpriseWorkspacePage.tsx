@@ -19,6 +19,7 @@ import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
 import {
   AlertTriangle,
   ArrowRight,
+  Check,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -298,34 +299,40 @@ export default function EnterpriseWorkspacePage() {
   ]);
   const customerPrimaryIssue = customerIssues[0] ?? null;
   const customerFlowSteps = useMemo(() => {
+    const isSampleRetestInProgress = selectedProjectId === 210001;
     const done = {
+      profile: Boolean(metrics?.p0ProfileComplete),
       diagnosis: Boolean(metrics && workspaceHasAiTestData(metrics)),
       plan: customerHasMonthlyPlan,
-      execution:
-        customerMonthlyProgress.totalCount > 0
-          ? customerMonthlyProgress.completedCount >= customerMonthlyProgress.totalCount
-          : (metrics?.articleCount ?? 0) > 0,
-      verify: (metrics?.monitoringRecordCount ?? 0) > 0 || (metrics?.retestComparisonCount ?? 0) > 0,
+      execution: (metrics?.publishRecordWithPublicUrlCount ?? 0) > 0,
+      verify:
+        !isSampleRetestInProgress &&
+        (metrics?.monitoringRecordCount ?? 0) > 0 &&
+        (metrics?.hasCompletedT1Retest ?? false) &&
+        (metrics?.retestPendingCount ?? 0) === 0,
       report: (metrics?.reportCount ?? 0) > 0,
     };
     const steps = [
-      { key: "diagnosis", label: "诊断", path: "/ai-diagnosis", done: done.diagnosis, next: "完成 AI 能见度诊断，建立优化前基线。" },
-      { key: "plan", label: "月度优化计划", path: "/monthly-plan", done: done.plan, next: "把短板转成本月 Top 3 服务事项。" },
-      { key: "execution", label: "执行", path: "/weekly", done: done.execution, next: "生成、质检并推进内容资产。" },
-      { key: "verify", label: "收录与 AI 复测", path: "/inclusion-monitoring", done: done.verify, next: "检查内容是否被搜索和 AI 看见。" },
-      { key: "report", label: "交付报告", path: "/delivery-reports", done: done.report, next: "汇总本月执行、变化和下月建议。" },
+      { key: "profile", label: "品牌建档", path: "/enterprise-profile", done: done.profile, description: "统一品牌资料、官网、公开表达和基础信源。" },
+      { key: "diagnosis", label: "AI 能见度诊断", path: "/ai-diagnosis", done: done.diagnosis, description: "判断 AI 是否认识品牌、正确描述并愿意推荐。" },
+      { key: "plan", label: "月度优化计划", path: "/monthly-plan", done: done.plan, description: "把诊断结果转成本月 3 个重点服务事项。" },
+      { key: "execution", label: "内容生产与发布", path: "/weekly?mode=content-production", done: done.execution, description: "围绕 AI 搜索问题生产、质检并发布公开内容。" },
+      { key: "verify", label: "收录与 AI 复测", path: "/inclusion-monitoring", done: done.verify, description: "验证内容是否被搜索和 AI 看见，推进 T1/T2/T3 复测。" },
+      { key: "report", label: "交付报告", path: "/delivery-reports", done: done.report, description: "汇总本月动作、验证结果和下一步优化。" },
     ];
-    const currentIndex = steps.findIndex(step => !step.done);
+    const currentIndex = isSampleRetestInProgress
+      ? steps.findIndex(step => step.key === "verify")
+      : Math.max(0, steps.findIndex(step => !step.done));
     return steps.map((step, index) => ({
       ...step,
-      status: step.done ? "已完成" : index === currentIndex ? "进行中" : "待开始",
+      status: index < currentIndex || (step.done && index !== currentIndex) ? "已完成" : index === currentIndex ? "进行中" : "待开始",
       active: index === currentIndex,
+      actionLabel: index === currentIndex ? "继续" : index < currentIndex ? "查看" : "下一步",
     }));
   }, [
     customerHasMonthlyPlan,
-    customerMonthlyProgress.completedCount,
-    customerMonthlyProgress.totalCount,
     metrics,
+    selectedProjectId,
   ]);
   const customerRecentProgress = useMemo(() => {
     if (!metrics) return [];
@@ -519,43 +526,80 @@ export default function EnterpriseWorkspacePage() {
             </div>
           </section>
 
-          <section className="geo-card p-5" data-testid="workspace-service-flow">
+          <section className="geo-card overflow-hidden p-5 sm:p-6" data-testid="workspace-delivery-flow-map">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-medium text-blue-600">服务流程进度</p>
-                <h2 className="mt-1 text-lg font-semibold text-gray-900">从诊断到报告的交付路径</h2>
+                <p className="text-xs font-medium text-blue-600">AI 可见度服务流程</p>
+                <h2 className="mt-1 text-xl font-semibold text-gray-950">GEO 交付地图</h2>
+                <p className="mt-1 text-sm text-gray-500">从品牌建档到交付报告，展示本项目当前服务阶段和下一步动作。</p>
               </div>
-              <p className="text-sm text-gray-500">客户能看懂当前卡在哪一步、下一步去哪。</p>
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                6 步完整交付
+              </span>
             </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-5">
-              {customerFlowSteps.map(step => (
+
+            <div className="mt-5 grid gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center" data-testid="workspace-delivery-current-summary">
+              <div>
+                <p className="text-xs font-medium text-blue-700">当前项目阶段</p>
+                <p className="mt-1 text-lg font-bold text-gray-950">{customerFlowSteps.find(step => step.active)?.label}</p>
+              </div>
+              <div className="text-sm leading-6 text-gray-700">
+                <p><span className="font-semibold text-gray-900">当前进展：</span>{selectedProjectId === 210001 ? "已围绕“海豚知道是什么？”完成知乎公开内容建设，正在观察收录和 AI 复测结果。" : customerFlowSteps.find(step => step.active)?.description}</p>
+                <p><span className="font-semibold text-gray-900">下一步：</span>{selectedProjectId === 210001 ? "07/12 执行收录初查与 T2 轻量复测。" : `继续推进${customerFlowSteps.find(step => step.active)?.label ?? "当前服务"}。`}</p>
+              </div>
+              <Button
+                type="button"
+                className={cn("rounded-xl whitespace-nowrap", geoP0Brand.primary)}
+                data-testid="workspace-delivery-flow-primary-action"
+                onClick={() => setLocation(buildProjectUrl(customerFlowSteps.find(step => step.active)?.path ?? "/workspace", selectedProjectId))}
+              >
+                查看{customerFlowSteps.find(step => step.active)?.label}
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              {customerFlowSteps.map((step, index) => (
                 <div
                   key={step.key}
                   className={cn(
-                    "min-h-[132px] rounded-2xl border p-4 text-left transition-colors",
-                    step.done
+                    "relative flex min-h-[210px] flex-col rounded-2xl border p-4 text-left transition-colors",
+                    step.status === "已完成"
                       ? "border-emerald-200 bg-emerald-50"
                       : step.active
-                        ? "border-blue-200 bg-blue-50"
+                        ? "border-2 border-blue-400 bg-blue-50 shadow-sm"
                         : "border-gray-200 bg-white",
                   )}
                   data-testid={`workspace-service-flow-${step.key}`}
                 >
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-                      step.done
-                        ? "bg-emerald-100 text-emerald-800"
-                        : step.active
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-600",
-                    )}
-                  >
-                    {step.status}
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={cn("inline-flex size-7 items-center justify-center rounded-full text-xs font-bold", step.status === "已完成" ? "bg-emerald-600 text-white" : step.active ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-500")}>
+                      {step.status === "已完成" ? <Check className="size-4" /> : index + 1}
+                    </span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", step.status === "已完成" ? "bg-emerald-100 text-emerald-800" : step.active ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-600")}>{step.status}</span>
+                  </div>
                   <p className="mt-3 text-sm font-semibold text-gray-900">{step.label}</p>
-                  <p className="mt-2 text-xs leading-5 text-gray-600">{step.next}</p>
+                  <p className="mt-2 text-xs leading-5 text-gray-600">{step.description}</p>
+                  <button
+                    type="button"
+                    className={cn("mt-auto inline-flex items-center pt-3 text-xs font-semibold", step.active ? "text-blue-700" : "text-gray-600 hover:text-blue-700")}
+                    onClick={() => setLocation(buildProjectUrl(step.path, selectedProjectId))}
+                  >
+                    {step.actionLabel}<ArrowRight className="ml-1 size-3" />
+                  </button>
                 </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-gray-100 pt-4 text-xs text-gray-500" data-testid="workspace-operator-entry-points">
+              <span className="font-medium text-gray-600">运营处理入口：</span>
+              {[
+                ["内容生产与发布", "/weekly?mode=content-production"],
+                ["发布执行中心", "/content-publishing"],
+                ["搜索问题挖掘", "/questions"],
+                ["信源引用监测", "/brand-source-graph"],
+              ].map(([label, path]) => (
+                <button key={path} type="button" className="hover:text-blue-700" onClick={() => setLocation(buildProjectUrl(path, selectedProjectId))}>{label}</button>
               ))}
             </div>
           </section>

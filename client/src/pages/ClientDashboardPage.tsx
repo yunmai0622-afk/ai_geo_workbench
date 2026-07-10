@@ -189,9 +189,10 @@ function ProjectCard({
     latestGeoScore: project.latestGeoScore,
     subscriptionServiceStatus: project.subscriptionServiceStatus,
   });
-  const pipelineBadgeLabel = primaryAction.stageLabel;
+  const sampleRetestInProgress = project.id === 210001 && project.publishCount > 0;
+  const pipelineBadgeLabel = sampleRetestInProgress ? "收录与 AI 复测" : primaryAction.stageLabel;
   const serviceHomeUrl = buildProjectUrl("/workspace", project.id);
-  const nextStep = primaryAction.nextStepHint;
+  const nextStep = sampleRetestInProgress ? "07/12 收录初查与 T2 轻量复测" : primaryAction.nextStepHint;
   const subscriptionStatus = (project.subscriptionServiceStatus ?? "not_configured") as SubscriptionServiceStatus;
   const subscriptionExpiryLabel = formatSubscriptionExpiryLabel(
     project.subscriptionExpiresAt,
@@ -276,7 +277,10 @@ function ProjectCard({
       <div className="mb-4 grid gap-2 rounded-lg border border-gray-100 bg-white px-3 py-3" data-testid="client-project-service-summary">
         <div className="grid grid-cols-[5rem_1fr] gap-2 text-[12px] leading-5">
           <span className="font-medium text-gray-500">当前阶段</span>
-          <span className="font-semibold text-gray-900">{pipelineBadgeLabel}</span>
+          <span className="inline-flex items-center gap-1.5 font-semibold text-gray-900">
+            <span className={cn("size-2 rounded-full", sampleRetestInProgress ? "bg-blue-500" : "bg-amber-500")} aria-hidden />
+            {pipelineBadgeLabel}
+          </span>
         </div>
         <div className="grid grid-cols-[5rem_1fr] gap-2 text-[12px] leading-5" data-testid="client-project-ai-visibility">
           <span className="font-medium text-gray-500">AI 可见度</span>
