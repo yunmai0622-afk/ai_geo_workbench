@@ -6,6 +6,7 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
+import { whiteLabel } from "@/lib/whiteLabel";
 import {
   formatMonthlyReportMaturityChange,
   formatMonthlyReportMetricCount,
@@ -1575,6 +1576,9 @@ export function DeliveryReportsCenterPage() {
             </p>
             <p className="mt-3 max-w-3xl text-sm text-gray-600" data-testid="delivery-report-page-intro">
               本页用于向客户说明本月做了什么、验证了什么、哪些问题仍需继续，以及下月为什么值得续费。
+            </p>
+            <p className="mt-2 text-xs text-gray-500" data-testid="delivery-report-service-agency">
+              本报告由 {whiteLabel.reportBrandName} 为客户生成
             </p>
           </div>
         </div>

@@ -46,10 +46,12 @@ describe("GEO V2.3 OEM white-label readiness", () => {
 
   it("keeps OEM service provider separate from the customer project", () => {
     const report = read("client/src/components/DeliveryReportCustomerLightView.tsx");
+    const reportCenter = read("client/src/pages/DeliveryReportsCenterPage.tsx");
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     expect(report).toContain("服务方");
     expect(report).toContain("服务对象");
     expect(report).toContain("DELIVERY_REPORT_SERVICE_PROVIDER");
+    expect(reportCenter).toContain("whiteLabel.reportBrandName");
     expect(workspace).toContain("whiteLabel.agencyName");
     expect(read("client/src/lib/deliveryReportLightDisplay.ts")).not.toContain('= "海豚知道"');
   });
