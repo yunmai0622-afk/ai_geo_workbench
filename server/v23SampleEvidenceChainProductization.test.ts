@@ -10,11 +10,11 @@ describe("GEO V2.3 sample AI question occupancy evidence chain", () => {
     const page = read("client/src/pages/DeliveryReportsCenterPage.tsx");
     for (const marker of [
       "delivery-report-sample-evidence-chain",
-      "目标 AI 问题",
+      "目标问题",
       "海豚知道是什么？",
-      "发布知乎文章，补充公开品牌解释。",
-      "已发布，收录待观察，AI T1 暂未提及。",
-      "07/12 收录初查与 T2 轻量复测。",
+      "围绕该问题发布知乎公开内容，补充品牌解释和业务定位。",
+      "已发布；收录待观察；T1 暂未提及、未推荐；不代表已产生效果提升。",
+      "执行 3/7/14 天持续复查",
       "不代表文章已经收录",
     ]) {
       expect(page).toContain(marker);

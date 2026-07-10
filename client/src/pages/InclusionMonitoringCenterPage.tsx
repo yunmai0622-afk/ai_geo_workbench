@@ -649,6 +649,21 @@ export function InclusionMonitoringCenterPage() {
           <p className="mt-3 text-xs leading-5 text-gray-600">
             当前仅确认内容已公开发布；收录、AI 提及与推荐仍以之后的真实复测结果为准。
           </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3" data-testid="inclusion-sample-retest-timeline">
+            {[
+              ["07/12", "收录初查 + T2 轻量复测"],
+              ["07/16", "正式问题池 T2 复测"],
+              ["07/23", "T3 复测 + 下月建议"],
+            ].map(([date, title]) => (
+              <div key={date} className="rounded-xl border border-cyan-100 bg-white/80 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-cyan-800">{date}</span>
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">待执行</span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-gray-700">{title}</p>
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 

@@ -68,7 +68,9 @@ type EvidenceAccumulationItem = {
 
 type ContinuousRetestPlanItem = {
   day: string;
+  date: string;
   title: string;
+  goal: string;
   check: string;
   decision: string;
 };
@@ -76,19 +78,25 @@ type ContinuousRetestPlanItem = {
 const CONTINUOUS_RETEST_PLAN: ContinuousRetestPlanItem[] = [
   {
     day: "第 3 天",
+    date: "07/12",
     title: "收录初查 + T2 轻量复测",
+    goal: "确认公开 URL 是否仍可访问、是否出现搜索收录信号。",
     check: "检查 URL 是否仍可访问、搜索收录是否出现，并轻量复测是否提及海豚知道。",
     decision: "如仍未收录或未提及，继续观察，不写成效果提升。",
   },
   {
     day: "第 7 天",
+    date: "07/16",
     title: "正式问题池 T2 复测",
+    goal: "用同一问题池判断品牌提及、推荐和竞品占位是否发生变化。",
     check: "按同一问题池复测，对比 T0/T1/T2 的提及、推荐和竞品占位。",
     decision: "判断是否需要第二篇内容或补充信源证据。",
   },
   {
     day: "第 14 天",
+    date: "07/23",
     title: "T3 复测 + 下月建议",
+    goal: "判断第一轮内容是否被 AI 吸收，并形成下一轮服务建议。",
     check: "第三次检查收录和 AI 回答，判断第一轮内容是否被 AI 吸收。",
     decision: "输出下月继续优化建议，不伪造未来结果。",
   },
@@ -130,14 +138,6 @@ function contentLevelRetestLine(report: MonthlyReportView): string | null {
   const first = report.contentImpactProof.items[0];
   if (!first) return null;
   return formatMonthlyReportImpactProofLine(first);
-}
-
-function formatRetestPlanDate(publishedAt: string | null, offsetDays: number): string | null {
-  if (!publishedAt) return null;
-  const date = new Date(publishedAt);
-  if (Number.isNaN(date.getTime())) return null;
-  date.setDate(date.getDate() + offsetDays);
-  return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
 }
 
 function contentLevelRetestStatusLine(
@@ -770,6 +770,39 @@ function RenewalDeliveryReportHero({
         ) : null}
 
         {firstPublishedAsset ? (
+          selectedProjectId === 210001 ? (
+            <div
+              className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4"
+              data-testid="delivery-report-sample-project-status"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold text-sky-700">真实样板项目状态</p>
+                  <p className="mt-1 text-sm font-semibold text-sky-950">
+                    第一轮公开证据建设已完成，进入收录观察与 AI 复测阶段
+                  </p>
+                </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-sky-700">效果闭环进行中</span>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-sky-100 bg-white/80 p-3">
+                  <p className="text-xs font-semibold text-sky-800">已完成真实动作</p>
+                  <p className="mt-2 text-xs leading-5 text-gray-700">知乎内容已发布 · 真实 URL 已回填 · T1 已复测 · 已进入 3/7/14 天复查计划</p>
+                </div>
+                <div className="rounded-xl border border-sky-100 bg-white/80 p-3">
+                  <p className="text-xs font-semibold text-sky-800">当前真实结果</p>
+                  <p className="mt-2 text-xs leading-5 text-gray-700">收录待观察；T1 未稳定提及、未形成推荐，也未引用本次知乎文章。</p>
+                </div>
+                <div className="rounded-xl border border-sky-100 bg-white/80 p-3">
+                  <p className="text-xs font-semibold text-sky-800">当前结论</p>
+                  <p className="mt-2 text-xs leading-5 text-gray-700">第一轮公开证据建设已完成，但单篇内容通常不足以立即改变 AI 推荐，仍需收录观察、信源补强和多轮复测。</p>
+                </div>
+              </div>
+            </div>
+          ) : null
+        ) : null}
+
+        {firstPublishedAsset ? (
           <div
             className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4"
             data-testid="delivery-report-continuous-retest-plan"
@@ -786,21 +819,20 @@ function RenewalDeliveryReportHero({
               当前收录状态仍为待观察，AI T1 结果尚未提及或推荐品牌。后续只在真实检查完成后记录结果，不提前写成已收录或已提升。
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {CONTINUOUS_RETEST_PLAN.map((item, index) => {
-                const scheduledDate = formatRetestPlanDate(firstPublishedAsset.publishedAt, [3, 7, 14][index]!);
+              {CONTINUOUS_RETEST_PLAN.map(item => {
                 return (
                   <div key={item.day} className="rounded-xl border border-emerald-100 bg-white/80 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                         {item.day}
                       </span>
-                      {scheduledDate ? (
-                        <span className="text-xs text-gray-500">{scheduledDate}</span>
-                      ) : null}
+                      <span className="text-xs font-semibold text-gray-700">{item.date}</span>
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">待执行</span>
                     </div>
                     <p className="mt-3 text-sm font-semibold text-gray-900">{item.title}</p>
-                    <p className="mt-2 text-xs leading-5 text-gray-700">{item.check}</p>
-                    <p className="mt-2 text-xs leading-5 text-gray-500">{item.decision}</p>
+                    <p className="mt-2 text-xs leading-5 text-gray-700"><span className="font-medium">复查目标：</span>{item.goal}</p>
+                    <p className="mt-1 text-xs leading-5 text-gray-700"><span className="font-medium">验证内容：</span>{item.check}</p>
+                    <p className="mt-1 text-xs leading-5 text-gray-500"><span className="font-medium">后续判断：</span>{item.decision}</p>
                   </div>
                 );
               })}
@@ -819,13 +851,16 @@ function RenewalDeliveryReportHero({
               </span>
               <span className="text-sm font-semibold text-cyan-950">围绕一个 AI 搜索问题完成一次公开证据建设</span>
             </div>
+            <p className="mt-3 text-sm leading-6 text-cyan-900">
+              不是简单发布文章，而是围绕一个用户会问 AI 的问题，建设公开证据，并持续验证 AI 是否开始识别。
+            </p>
             <div className="mt-4 grid gap-3 md:grid-cols-5">
               {[
-                { label: "目标 AI 问题", value: "海豚知道是什么？" },
-                { label: "本轮优化动作", value: "发布知乎文章，补充公开品牌解释。" },
+                { label: "目标问题", value: "海豚知道是什么？" },
+                { label: "本轮动作", value: "围绕该问题发布知乎公开内容，补充品牌解释和业务定位。" },
                 { label: "公开证据", value: DOLPHIN_THREE_DAY_EARLY_CHECK.url, link: true },
-                { label: "当前验证状态", value: "已发布，收录待观察，AI T1 暂未提及。" },
-                { label: "下一步", value: "07/12 收录初查与 T2 轻量复测。" },
+                { label: "当前验证", value: "已发布；收录待观察；T1 暂未提及、未推荐；不代表已产生效果提升。" },
+                { label: "下一步", value: "执行 3/7/14 天持续复查；如仍未收录或未提及，补强官网信源和第二篇内容。" },
               ].map(item => (
                 <div key={item.label} className="rounded-xl border border-cyan-100 bg-white/80 p-3">
                   <p className="text-xs font-semibold text-cyan-800">{item.label}</p>
@@ -847,6 +882,32 @@ function RenewalDeliveryReportHero({
             <p className="mt-3 text-xs leading-5 text-gray-600">
               这条证据链证明公开内容建设动作已完成，不代表文章已经收录，也不代表 AI 提及或推荐已经提升。
             </p>
+          </div>
+        ) : null}
+
+        {selectedProjectId === 210001 ? (
+          <div className="grid gap-3 lg:grid-cols-2" data-testid="delivery-report-sample-service-playbook">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-sm font-semibold text-gray-900">下一步代运营服务动作</p>
+              <div className="mt-3 space-y-3">
+                {[
+                  { title: "继续观察", why: "搜索收录需要时间，过早判断会误读效果。", verify: "07/12 检查 URL、标题精确搜索和品牌词触发。", decide: "满 3 天后判断是否继续等待。" },
+                  { title: "信源补强", why: "统一公开表达能帮助搜索与 AI 稳定识别品牌实体。", verify: "核对官网、知乎和公开平台的品牌介绍与业务定位是否一致。", decide: "07/16 正式 T2 后判断是否继续补第三方信源。" },
+                  { title: "内容补强", why: "单篇内容可能不足以覆盖泛问题和推荐理由。", verify: "观察第 7 天收录状态及泛问题是否开始提及品牌。", decide: "若仍未收录或泛问题未提及，再启动第二篇内容。" },
+                ].map(item => (
+                  <div key={item.title} className="rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-700">
+                    <p className="font-semibold text-gray-900">{item.title}</p>
+                    <p>为什么做：{item.why}</p><p>怎么验证：{item.verify}</p><p>何时判断：{item.decide}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm font-semibold text-gray-900">这个样板案例怎么讲给客户听？</p>
+              <p className="mt-3 text-sm leading-7 text-gray-700">
+                我们不是只发文章，而是先找到一个用户会问 AI 的问题，围绕这个问题建设公开内容；发布后继续观察搜索收录，再用同一组问题复测 AI。即使暂时没有提升，也能根据证据告诉客户下一步该补信源还是补内容——这就是 GEO 代运营和普通发稿的区别。
+              </p>
+            </div>
           </div>
         ) : null}
 
