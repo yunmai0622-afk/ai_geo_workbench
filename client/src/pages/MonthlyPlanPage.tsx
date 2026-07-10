@@ -9,7 +9,10 @@ import { geoP0Brand } from "@/lib/geoP0Visual";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { isMonthlyPlanRetestReady } from "@shared/monthlyPlanGeneration";
-import type { MonthlyOptimizationBrief, MonthlyOptimizationPriority } from "@shared/monthlyOptimizationBrief";
+import type {
+  MonthlyOptimizationBrief,
+  MonthlyOptimizationPriority,
+} from "@shared/monthlyOptimizationBrief";
 import {
   ArrowRight,
   AlertTriangle,
@@ -47,34 +50,50 @@ function taskStatusLabel(status: string): string {
 }
 
 function taskStatusClass(status: string): string {
-  if (status === "completed") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "in_progress") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (status === "completed")
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "in_progress")
+    return "border-blue-200 bg-blue-50 text-blue-700";
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
 function priorityStatusLabel(
   priority: MonthlyOptimizationPriority,
-  planPhase: string | null | undefined,
+  planPhase: string | null | undefined
 ): string {
   if (priority.source === "suggestion") return "待纳入方案";
   if (priority.tasks.length === 0) return "待确认";
-  const allCompleted = priority.tasks.every(task => task.status === "completed");
+  const allCompleted = priority.tasks.every(
+    task => task.status === "completed"
+  );
   if (allCompleted && planPhase === "completed") return "已验证";
   if (allCompleted) return "待验证";
-  if (priority.tasks.some(task => task.status === "in_progress" || task.status === "completed")) return "执行中";
+  if (
+    priority.tasks.some(
+      task => task.status === "in_progress" || task.status === "completed"
+    )
+  )
+    return "执行中";
   return "计划中";
 }
 
 function priorityStatusClass(label: string): string {
-  if (label === "已验证" || label === "已完成") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (label === "已验证" || label === "已完成")
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (label === "执行中") return "border-blue-200 bg-blue-50 text-blue-700";
-  if (label === "待验证") return "border-indigo-200 bg-indigo-50 text-indigo-700";
+  if (label === "待验证")
+    return "border-indigo-200 bg-indigo-50 text-indigo-700";
   if (label === "待纳入方案") return "border-gray-200 bg-gray-50 text-gray-600";
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
-function customerGoalForDimension(key: MonthlyOptimizationPriority["relatedDimensionKey"]): string {
-  const goalByDimension: Record<MonthlyOptimizationPriority["relatedDimensionKey"], string> = {
+function customerGoalForDimension(
+  key: MonthlyOptimizationPriority["relatedDimensionKey"]
+): string {
+  const goalByDimension: Record<
+    MonthlyOptimizationPriority["relatedDimensionKey"],
+    string
+  > = {
     profile: "统一品牌资料与服务口径",
     questionCoverage: "覆盖用户常问的高价值问题",
     aiVisibility: "提升 AI 是否知道你、是否愿意推荐你",
@@ -85,8 +104,13 @@ function customerGoalForDimension(key: MonthlyOptimizationPriority["relatedDimen
   return goalByDimension[key];
 }
 
-function customerValueForDimension(key: MonthlyOptimizationPriority["relatedDimensionKey"]): string {
-  const valueByDimension: Record<MonthlyOptimizationPriority["relatedDimensionKey"], string> = {
+function customerValueForDimension(
+  key: MonthlyOptimizationPriority["relatedDimensionKey"]
+): string {
+  const valueByDimension: Record<
+    MonthlyOptimizationPriority["relatedDimensionKey"],
+    string
+  > = {
     profile: "让 AI 和客户看到一致、清楚的品牌介绍，减少理解偏差。",
     questionCoverage: "让用户常问的问题都有内容承接，提高被 AI 发现的机会。",
     aiVisibility: "提高品牌在 AI 回答中被准确识别和主动推荐的概率。",
@@ -112,7 +136,10 @@ function buildServiceConclusion(input: {
   if (priorities.length === 0) {
     return "当前缺少可用的本月服务事项，建议先补齐资料或重新生成月度优化计划。";
   }
-  const focus = priorities.slice(0, 3).map(priority => priority.title).join("、");
+  const focus = priorities
+    .slice(0, 3)
+    .map(priority => priority.title)
+    .join("、");
   if (!input.hasPlan) {
     return `本月建议优先围绕 ${focus} 制定服务方案，把诊断短板转成可执行动作。`;
   }
@@ -142,7 +169,9 @@ function buildCustomerGoals(input: {
     if (goals.length >= 3) break;
   }
   if (input.hasPlan && input.totalCount > 0) {
-    goals.push(`完成本月 Top 服务事项（${input.completedCount}/${input.totalCount}）`);
+    goals.push(
+      `完成本月 Top 服务事项（${input.completedCount}/${input.totalCount}）`
+    );
   } else {
     goals.push("完成本月 Top3 服务事项确认");
   }
@@ -154,36 +183,56 @@ function buildVerificationCopy(input: {
   brief?: MonthlyOptimizationBrief | null;
   planPhase?: string | null;
   retestScheduledAt?: Date | string | null;
-}): { headline: string; description: string; schedule: Array<{ label: string; timing: string; purpose: string }> } {
+}): {
+  headline: string;
+  description: string;
+  schedule: Array<{ label: string; timing: string; purpose: string }>;
+} {
   const schedule = input.brief?.reviewCalendar ?? [
-    { label: "T1", timing: "发布后 7 天", purpose: "确认内容是否被搜索和 AI 初步感知" },
-    { label: "T2", timing: "发布后 14 天", purpose: "观察提及、推荐和引用变化" },
-    { label: "T3", timing: "发布后 30 天", purpose: "沉淀月报证明与下月优先级" },
+    {
+      label: "T1",
+      timing: "发布后 7 天",
+      purpose: "确认内容是否被搜索和 AI 初步感知",
+    },
+    {
+      label: "T2",
+      timing: "发布后 14 天",
+      purpose: "观察提及、推荐和引用变化",
+    },
+    {
+      label: "T3",
+      timing: "发布后 30 天",
+      purpose: "沉淀月报证明与下月优先级",
+    },
   ];
   if (input.planPhase === "completed") {
     return {
       headline: "本月已完成验证，可进入交付报告。",
-      description: "复测结果会沉淀到交付报告中，用于说明本月服务动作带来的变化。",
+      description:
+        "复测结果会沉淀到交付报告中，用于说明本月服务动作带来的变化。",
       schedule,
     };
   }
   if (input.planPhase === "retest_ready") {
     return {
       headline: "当前已到验证窗口，建议立即查看收录与 AI 复测。",
-      description: "重点检查内容是否被收录，以及 AI 回答中是否开始更稳定地识别品牌。",
+      description:
+        "重点检查内容是否被收录，以及 AI 回答中是否开始更稳定地识别品牌。",
       schedule,
     };
   }
   if (input.retestScheduledAt) {
     return {
       headline: `预计验证时间：${formatDateTime(input.retestScheduledAt)}`,
-      description: "内容发布后按计划进入复测，验证结果会在收录与 AI 复测页和交付报告中查看。",
+      description:
+        "内容发布后按计划进入复测，验证结果会在收录与 AI 复测页和交付报告中查看。",
       schedule,
     };
   }
   return {
     headline: "内容发布后 7 天开始第一次收录与 AI 复测。",
-    description: "检查是否被搜索引擎收录，以及 AI 回答中是否开始更稳定地识别品牌。",
+    description:
+      "检查是否被搜索引擎收录，以及 AI 回答中是否开始更稳定地识别品牌。",
     schedule,
   };
 }
@@ -198,54 +247,94 @@ function buildCustomerRisks(input: {
 }): Array<{ title: string; suggestion: string }> {
   const risks: Array<{ title: string; suggestion: string }> = [];
   if (!input.hasMaturity) {
-    risks.push({ title: "未完成诊断", suggestion: "先完成 AI 能见度诊断，建立服务方案基线。" });
+    risks.push({
+      title: "未完成诊断",
+      suggestion: "先完成 AI 能见度诊断，建立服务方案基线。",
+    });
   }
   if (!input.hasPlan) {
-    risks.push({ title: "月度优化计划未生成", suggestion: "把诊断短板转成本月 Top3 服务事项。" });
+    risks.push({
+      title: "月度优化计划未生成",
+      suggestion: "把诊断短板转成本月 Top3 服务事项。",
+    });
   }
   if (input.hasPlan && input.totalCount > 0 && input.completedCount === 0) {
-    risks.push({ title: "服务事项未开始", suggestion: "优先进入执行进度，推进第一批内容或信源任务。" });
+    risks.push({
+      title: "服务事项未开始",
+      suggestion: "优先进入执行进度，推进第一批内容或信源任务。",
+    });
   }
-  if (input.hasPlan && input.totalCount > 0 && input.completedCount < input.totalCount) {
-    risks.push({ title: "本月任务未执行完", suggestion: "继续完成本月 Top 服务事项，避免月底无法形成报告证据。" });
+  if (
+    input.hasPlan &&
+    input.totalCount > 0 &&
+    input.completedCount < input.totalCount
+  ) {
+    risks.push({
+      title: "本月任务未执行完",
+      suggestion: "继续完成本月 Top 服务事项，避免月底无法形成报告证据。",
+    });
   }
-  if (input.totalCount > 0 && input.completedCount >= input.totalCount && input.planPhase !== "completed") {
-    risks.push({ title: "发布后未验证", suggestion: "进入收录与 AI 复测，确认内容是否被搜索和 AI 看见。" });
+  if (
+    input.totalCount > 0 &&
+    input.completedCount >= input.totalCount &&
+    input.planPhase !== "completed"
+  ) {
+    risks.push({
+      title: "发布后未验证",
+      suggestion: "进入收录与 AI 复测，确认内容是否被搜索和 AI 看见。",
+    });
   }
   if (input.hasPlan && input.planPhase !== "completed") {
-    risks.push({ title: "报告未生成", suggestion: "完成执行和复测后，生成客户可读的交付报告。" });
+    risks.push({
+      title: "报告未生成",
+      suggestion: "完成执行和复测后，生成客户可读的交付报告。",
+    });
   }
-  if (input.priorities.some(priority => priority.relatedDimensionKey === "sourceConsistency")) {
-    risks.push({ title: "信源证据不足", suggestion: "补齐公开信源和信任证据，让 AI 推荐理由更充分。" });
+  if (
+    input.priorities.some(
+      priority => priority.relatedDimensionKey === "sourceConsistency"
+    )
+  ) {
+    risks.push({
+      title: "信源证据不足",
+      suggestion: "补齐公开信源和信任证据，让 AI 推荐理由更充分。",
+    });
   }
-  return risks.slice(0, 4);
+  return risks.slice(0, 3);
 }
 
 function serviceProgressSteps(input: {
   hasPlan: boolean;
   allTasksCompleted: boolean;
   planPhase?: string | null;
-}): Array<{ label: string; status: "已完成" | "进行中" | "待开始"; description: string }> {
+}): Array<{
+  label: string;
+  status: "已完成" | "进行中" | "待开始";
+  description: string;
+}> {
   return [
     {
       label: "计划中",
       status: input.hasPlan ? "已完成" : "进行中",
-      description: input.hasPlan ? "本月服务事项已确认。" : "先把诊断短板转成服务事项。",
+      description: input.hasPlan
+        ? "本月服务事项已确认。"
+        : "先把诊断短板转成服务事项。",
     },
     {
       label: "执行中",
-      status: input.planPhase === "executing" ? "进行中" : input.allTasksCompleted || input.planPhase === "completed" ? "已完成" : "待开始",
+      status:
+        input.planPhase === "executing"
+          ? "进行中"
+          : input.allTasksCompleted || input.planPhase === "completed"
+            ? "已完成"
+            : "待开始",
       description: "推进内容、信源、资料和发布相关动作。",
-    },
-    {
-      label: "已完成",
-      status: input.allTasksCompleted || input.planPhase === "completed" ? "已完成" : "待开始",
-      description: "本月服务事项完成后进入验证窗口。",
     },
     {
       label: "待验证",
       status:
-        input.planPhase === "waiting_retest" || input.planPhase === "retest_ready"
+        input.planPhase === "waiting_retest" ||
+        input.planPhase === "retest_ready"
           ? "进行中"
           : input.planPhase === "completed"
             ? "已完成"
@@ -253,7 +342,7 @@ function serviceProgressSteps(input: {
       description: "检查发布内容是否被搜索和 AI 看见。",
     },
     {
-      label: "已验证",
+      label: "已验证 / 可报告",
       status: input.planPhase === "completed" ? "已完成" : "待开始",
       description: "复测结果进入交付报告，支持续费沟通。",
     },
@@ -262,42 +351,56 @@ function serviceProgressSteps(input: {
 
 export default function MonthlyPlanPage() {
   const [, setLocation] = useLocation();
-  const { selectedProjectId, selectedProject, enabled, projectsLoading } = useActiveProjectSelection();
+  const { selectedProjectId, selectedProject, enabled, projectsLoading } =
+    useActiveProjectSelection();
   const utils = trpc.useUtils();
 
   const currentQuery = trpc.geo.monthlyPlan.getCurrent.useQuery(
     { projectId: selectedProjectId! },
-    { enabled: enabled && Boolean(selectedProjectId) },
+    { enabled: enabled && Boolean(selectedProjectId) }
   );
   const historyQuery = trpc.geo.monthlyPlan.getHistory.useQuery(
     { projectId: selectedProjectId!, limit: 10 },
-    { enabled: enabled && Boolean(selectedProjectId) },
+    { enabled: enabled && Boolean(selectedProjectId) }
   );
   const maturityQuery = trpc.geo.maturity.getMaturityReport.useQuery(
     { projectId: selectedProjectId! },
-    { enabled: enabled && Boolean(selectedProjectId) },
+    { enabled: enabled && Boolean(selectedProjectId) }
   );
   const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
     { projectId: selectedProjectId! },
-    { enabled: enabled && Boolean(selectedProjectId) },
+    { enabled: enabled && Boolean(selectedProjectId) }
   );
-  const optimizationBriefQuery = trpc.geo.monthlyPlan.getOptimizationBrief.useQuery(
-    { projectId: selectedProjectId! },
-    { enabled: enabled && Boolean(selectedProjectId) },
-  );
+  const optimizationBriefQuery =
+    trpc.geo.monthlyPlan.getOptimizationBrief.useQuery(
+      { projectId: selectedProjectId! },
+      { enabled: enabled && Boolean(selectedProjectId) }
+    );
 
   const generateMutation = trpc.geo.monthlyPlan.generate.useMutation({
     onSuccess: () => {
-      void utils.geo.monthlyPlan.getCurrent.invalidate({ projectId: selectedProjectId! });
-      void utils.geo.monthlyPlan.getHistory.invalidate({ projectId: selectedProjectId! });
+      void utils.geo.monthlyPlan.getCurrent.invalidate({
+        projectId: selectedProjectId!,
+      });
+      void utils.geo.monthlyPlan.getHistory.invalidate({
+        projectId: selectedProjectId!,
+      });
     },
   });
   const retestMutation = trpc.geo.monthlyPlan.triggerRetest.useMutation({
     onSuccess: () => {
-      void utils.geo.monthlyPlan.getCurrent.invalidate({ projectId: selectedProjectId! });
-      void utils.geo.monthlyPlan.getHistory.invalidate({ projectId: selectedProjectId! });
-      void utils.geo.maturity.getMaturityReport.invalidate({ projectId: selectedProjectId! });
-      void utils.geo.maturity.getLatest.invalidate({ projectId: selectedProjectId! });
+      void utils.geo.monthlyPlan.getCurrent.invalidate({
+        projectId: selectedProjectId!,
+      });
+      void utils.geo.monthlyPlan.getHistory.invalidate({
+        projectId: selectedProjectId!,
+      });
+      void utils.geo.maturity.getMaturityReport.invalidate({
+        projectId: selectedProjectId!,
+      });
+      void utils.geo.maturity.getLatest.invalidate({
+        projectId: selectedProjectId!,
+      });
     },
   });
 
@@ -314,19 +417,23 @@ export default function MonthlyPlanPage() {
 
   const comparisonQuery = trpc.geo.monthlyPlan.getComparison.useQuery(
     { planId: plan?.id ?? 0 },
-    { enabled: Boolean(plan?.id && plan.status === "completed") },
+    { enabled: Boolean(plan?.id && plan.status === "completed") }
   );
 
   const retestReady = useMemo(
     () =>
       plan
-        ? isMonthlyPlanRetestReady({ retestScheduledAt: plan.retestScheduledAt })
+        ? isMonthlyPlanRetestReady({
+            retestScheduledAt: plan.retestScheduledAt,
+          })
         : false,
-    [plan],
+    [plan]
   );
 
-  const canGeneratePlan = Boolean(maturityQuery.data) && (!plan || plan.status === "completed");
-  const showGenerateEmpty = !currentQuery.isLoading && !plan && maturityQuery.data;
+  const canGeneratePlan =
+    Boolean(maturityQuery.data) && (!plan || plan.status === "completed");
+  const showGenerateEmpty =
+    !currentQuery.isLoading && !plan && maturityQuery.data;
   const showActivePlan = plan?.status === "active";
   const showCompletedPlan = plan?.status === "completed";
   const optimizationBrief = optimizationBriefQuery.data ?? null;
@@ -334,7 +441,8 @@ export default function MonthlyPlanPage() {
   const hasMaturityReport = Boolean(maturityQuery.data);
   const hasPlan = Boolean(plan);
   const hasServiceItems = topPriorities.length > 0 || tasks.length > 0;
-  const allTasksCompleted = progress.totalCount > 0 && progress.completedCount >= progress.totalCount;
+  const allTasksCompleted =
+    progress.totalCount > 0 && progress.completedCount >= progress.totalCount;
   const serviceConclusion = useMemo(
     () =>
       buildServiceConclusion({
@@ -345,7 +453,14 @@ export default function MonthlyPlanPage() {
         completedCount: progress.completedCount,
         totalCount: progress.totalCount,
       }),
-    [hasMaturityReport, hasPlan, optimizationBrief, planPhase, progress.completedCount, progress.totalCount],
+    [
+      hasMaturityReport,
+      hasPlan,
+      optimizationBrief,
+      planPhase,
+      progress.completedCount,
+      progress.totalCount,
+    ]
   );
   const customerGoals = useMemo(
     () =>
@@ -356,7 +471,13 @@ export default function MonthlyPlanPage() {
         completedCount: progress.completedCount,
         totalCount: progress.totalCount,
       }),
-    [hasMaturityReport, hasPlan, optimizationBrief, progress.completedCount, progress.totalCount],
+    [
+      hasMaturityReport,
+      hasPlan,
+      optimizationBrief,
+      progress.completedCount,
+      progress.totalCount,
+    ]
   );
   const verificationCopy = useMemo(
     () =>
@@ -365,7 +486,7 @@ export default function MonthlyPlanPage() {
         planPhase,
         retestScheduledAt: plan?.retestScheduledAt,
       }),
-    [optimizationBrief, plan?.retestScheduledAt, planPhase],
+    [optimizationBrief, plan?.retestScheduledAt, planPhase]
   );
   const visibleRisks = useMemo(
     () =>
@@ -377,11 +498,18 @@ export default function MonthlyPlanPage() {
         totalCount: progress.totalCount,
         planPhase,
       }),
-    [hasMaturityReport, hasPlan, planPhase, progress.completedCount, progress.totalCount, topPriorities],
+    [
+      hasMaturityReport,
+      hasPlan,
+      planPhase,
+      progress.completedCount,
+      progress.totalCount,
+      topPriorities,
+    ]
   );
   const progressSteps = useMemo(
     () => serviceProgressSteps({ hasPlan, allTasksCompleted, planPhase }),
-    [allTasksCompleted, hasPlan, planPhase],
+    [allTasksCompleted, hasPlan, planPhase]
   );
   const monthlyPrimaryCta = useMemo<MonthlyPlanPrimaryCta>(() => {
     if (!hasMaturityReport) {
@@ -409,13 +537,21 @@ export default function MonthlyPlanPage() {
       label: "查看执行进度",
       hint:
         planPhase === "completed" || showCompletedPlan
-            ? "月度优化计划已完成，仍从执行进度进入验证和报告闭环。"
-            : allTasksCompleted
-              ? "本月服务事项已完成，下一步从执行进度进入收录与 AI 复测。"
+          ? "月度优化计划已完成，仍从执行进度进入验证和报告闭环。"
+          : allTasksCompleted
+            ? "本月服务事项已完成，下一步从执行进度进入收录与 AI 复测。"
             : "确认本月 3 个优先事项后，只需要进入执行进度看服务推进。",
       path: "/weekly",
     };
-  }, [allTasksCompleted, canGeneratePlan, hasMaturityReport, hasServiceItems, plan, planPhase, showCompletedPlan]);
+  }, [
+    allTasksCompleted,
+    canGeneratePlan,
+    hasMaturityReport,
+    hasServiceItems,
+    plan,
+    planPhase,
+    showCompletedPlan,
+  ]);
 
   const handleGeneratePlan = () => {
     if (!selectedProjectId) return;
@@ -449,7 +585,10 @@ export default function MonthlyPlanPage() {
   if (!selectedProjectId && !projectsLoading) {
     return (
       <div className="space-y-6" data-testid="monthly-plan-page">
-        <ProjectContextEmptyState title="月度优化计划" description="请先选择或创建项目后再制定月度优化计划。" />
+        <ProjectContextEmptyState
+          title="月度优化计划"
+          description="请先选择或创建项目后再制定月度优化计划。"
+        />
       </div>
     );
   }
@@ -459,8 +598,12 @@ export default function MonthlyPlanPage() {
       <header className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-blue-600">客户主流程 · 月度优化计划</p>
-            <h1 className="mt-1 text-2xl font-bold text-gray-900">月度优化计划</h1>
+            <p className="text-sm font-medium text-blue-600">
+              客户主流程 · 月度优化计划
+            </p>
+            <h1 className="mt-1 text-2xl font-bold text-gray-900">
+              月度优化计划
+            </h1>
             <p className="mt-2 max-w-2xl text-sm text-gray-600">
               把诊断结果转成本月 3 个重点服务事项。
             </p>
@@ -469,10 +612,14 @@ export default function MonthlyPlanPage() {
             type="button"
             className={cn("rounded-lg", geoP0Brand.primary)}
             data-testid="monthly-plan-primary-cta"
-            disabled={monthlyPrimaryCta.action === "generate" && generateMutation.isPending}
+            disabled={
+              monthlyPrimaryCta.action === "generate" &&
+              generateMutation.isPending
+            }
             onClick={handlePrimaryCta}
           >
-            {monthlyPrimaryCta.action === "generate" && generateMutation.isPending ? (
+            {monthlyPrimaryCta.action === "generate" &&
+            generateMutation.isPending ? (
               <>
                 <Spinner className="mr-2 size-4" />
                 生成中…
@@ -495,30 +642,23 @@ export default function MonthlyPlanPage() {
       ) : null}
 
       <P0Card testId="monthly-plan-service-proposal" className="space-y-6">
-        <div className="grid gap-5 lg:grid-cols-[1.4fr_0.8fr]">
+        <div>
           <div>
             <div className="flex items-center gap-2">
               <Target className="size-4 text-blue-600" />
-              <p className="text-sm font-semibold text-gray-900">本月服务结论</p>
+              <p className="text-sm font-semibold text-gray-900">
+                本月服务结论
+              </p>
             </div>
-            <p className="mt-3 text-lg font-semibold leading-8 text-gray-900" data-testid="monthly-plan-service-conclusion">
+            <p
+              className="mt-3 text-lg font-semibold leading-8 text-gray-900"
+              data-testid="monthly-plan-service-conclusion"
+            >
               {serviceConclusion}
             </p>
-            <p className="mt-3 text-sm leading-6 text-gray-600">{monthlyPrimaryCta.hint}</p>
-          </div>
-          <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
-            <p className="text-xs font-medium text-blue-700">当前成熟度</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-blue-900">
-              {optimizationBrief?.maturityScore ?? maturityQuery.data?.totalScore ?? "—"} 分
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              {monthlyPrimaryCta.hint}
             </p>
-            <p className="mt-1 text-sm text-blue-800">
-              {optimizationBrief?.maturityLevel ?? "建议先完成诊断后生成方案"}
-            </p>
-            {plan ? (
-              <p className="mt-3 text-xs text-blue-700">
-                第 {plan.roundNumber} 轮 · 生成于 {formatDateTime(plan.generatedAt)}
-              </p>
-            ) : null}
           </div>
         </div>
 
@@ -526,7 +666,9 @@ export default function MonthlyPlanPage() {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <ListChecks className="size-4 text-blue-600" />
-              <p className="text-sm font-semibold text-gray-900">本月 Top 3 服务事项</p>
+              <p className="text-sm font-semibold text-gray-900">
+                本月 Top 3 服务事项
+              </p>
             </div>
             {optimizationBriefQuery.isLoading ? (
               <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-500">
@@ -537,7 +679,8 @@ export default function MonthlyPlanPage() {
           </div>
           {topPriorities.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
-              暂无本月 Top 3 服务事项。建议先完成诊断或生成月度优化计划，不会把建议项伪装成已完成结果。
+              暂无本月 Top 3
+              服务事项。建议先完成诊断或生成月度优化计划，不会把建议项伪装成已完成结果。
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-3">
@@ -552,32 +695,67 @@ export default function MonthlyPlanPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-medium text-blue-600">
-                          服务事项 {priority.rank} · {priority.relatedDimensionName}
+                          服务事项 {priority.rank} ·{" "}
+                          {priority.relatedDimensionName}
                         </p>
-                        <h2 className="mt-1 text-base font-semibold leading-6 text-gray-900">{priority.title}</h2>
+                        <h2 className="mt-1 text-base font-semibold leading-6 text-gray-900">
+                          {priority.title}
+                        </h2>
                       </div>
-                      <span className={cn("shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium", priorityStatusClass(status))}>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium",
+                          priorityStatusClass(status)
+                        )}
+                      >
                         {status}
                       </span>
                     </div>
-                    <dl className="mt-4 space-y-3 text-sm leading-6">
+                    <dl className="mt-4 space-y-2 text-sm leading-5">
                       <div>
-                        <dt className="font-medium text-gray-900">解决的问题</dt>
-                        <dd className="mt-1 text-gray-600">{priority.shortcoming || priority.reason}</dd>
+                        <dt className="inline font-medium text-gray-900">
+                          做什么：
+                        </dt>
+                        <dd className="inline text-gray-600">
+                          {priority.title}
+                        </dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-gray-900">为什么做</dt>
-                        <dd className="mt-1 text-gray-600">{priority.reason}</dd>
+                        <dt className="inline font-medium text-gray-900">
+                          为什么：
+                        </dt>
+                        <dd className="inline text-gray-600">
+                          {priority.reason}
+                        </dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-gray-900">客户能看到什么价值</dt>
-                        <dd className="mt-1 text-gray-600">{customerValueForDimension(priority.relatedDimensionKey)}</dd>
+                        <dt className="inline font-medium text-gray-900">
+                          完成标准：
+                        </dt>
+                        <dd className="inline text-gray-600">
+                          {priority.successCriteria}
+                        </dd>
                       </div>
                       <div>
-                        <dt className="font-medium text-gray-900">完成后怎么验证</dt>
-                        <dd className="mt-1 text-gray-600">{priority.retestMethod || priority.successCriteria}</dd>
+                        <dt className="inline font-medium text-gray-900">
+                          验证方式：
+                        </dt>
+                        <dd className="inline text-gray-600">
+                          {priority.retestMethod}
+                        </dd>
                       </div>
                     </dl>
+                    <details className="mt-3 border-t border-gray-100 pt-3 text-sm text-gray-600">
+                      <summary className="cursor-pointer font-medium text-gray-500">
+                        查看详细说明
+                      </summary>
+                      <p className="mt-2">
+                        {priority.shortcoming ||
+                          customerValueForDimension(
+                            priority.relatedDimensionKey
+                          )}
+                      </p>
+                    </details>
                   </article>
                 );
               })}
@@ -588,23 +766,35 @@ export default function MonthlyPlanPage() {
 
       {!maturityQuery.data && !maturityQuery.isLoading ? (
         <P0Card testId="monthly-plan-no-maturity">
-          <p className="text-sm text-gray-700">请先完成 AI 能见度诊断，再生成月度优化计划。</p>
+          <p className="text-sm text-gray-700">
+            请先完成 AI 能见度诊断，再生成月度优化计划。
+          </p>
         </P0Card>
       ) : null}
 
-      <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-customer-goals">
+      <details
+        className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+        data-testid="monthly-plan-customer-goals"
+      >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
             <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
-            本月目标摘要
+            查看本月目标补充说明
           </span>
-          <span className="text-xs font-normal text-gray-500">首屏只保留 Top 3 服务事项</span>
+          <span className="text-xs font-normal text-gray-500">默认收起</span>
         </summary>
         <div className="grid gap-3 border-t border-gray-100 px-5 pb-5 pt-4 sm:grid-cols-2 lg:grid-cols-4">
           {customerGoals.map((goal, index) => (
-            <div key={goal} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-              <p className="text-xs font-medium text-gray-500">目标 {index + 1}</p>
-              <p className="mt-1 text-sm font-semibold leading-6 text-gray-900">{goal}</p>
+            <div
+              key={goal}
+              className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+            >
+              <p className="text-xs font-medium text-gray-500">
+                目标 {index + 1}
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-gray-900">
+                {goal}
+              </p>
             </div>
           ))}
         </div>
@@ -613,7 +803,8 @@ export default function MonthlyPlanPage() {
       {showGenerateEmpty ? (
         <P0Card testId="monthly-plan-empty">
           <p className="text-sm text-gray-700">
-            成熟度评估已完成（{maturityQuery.data?.totalScore ?? "—"} 分），点击上方主按钮生成月度优化计划。
+            成熟度评估已完成（{maturityQuery.data?.totalScore ?? "—"}{" "}
+            分），点击上方主按钮生成月度优化计划。
           </p>
         </P0Card>
       ) : null}
@@ -623,11 +814,18 @@ export default function MonthlyPlanPage() {
           <div>
             <div className="flex items-center gap-2">
               <ClipboardList className="size-4 text-blue-600" />
-              <p className="text-sm font-semibold text-gray-900">服务进度</p>
+              <p className="text-sm font-semibold text-gray-900">
+                本月执行节奏
+              </p>
             </div>
-            <p className="mt-2 text-sm text-gray-600">计划中 → 执行中 → 已完成 → 待验证 → 已验证</p>
+            <p className="mt-2 text-sm text-gray-600">
+              计划中 → 执行中 → 待验证 → 已验证 / 可报告
+            </p>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-center" data-testid="monthly-plan-progress">
+          <div
+            className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-center"
+            data-testid="monthly-plan-progress"
+          >
             <p className="text-xs text-gray-500">本月进度</p>
             <p className="text-2xl font-bold tabular-nums text-blue-700">
               {progress.completedCount}/{progress.totalCount}
@@ -635,9 +833,12 @@ export default function MonthlyPlanPage() {
             <p className="text-xs text-gray-500">项完成</p>
           </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-4">
           {progressSteps.map(step => (
-            <div key={step.label} className="rounded-xl border border-gray-200 bg-white p-3">
+            <div
+              key={step.label}
+              className="rounded-xl border border-gray-200 bg-white p-3"
+            >
               <span
                 className={cn(
                   "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
@@ -645,13 +846,17 @@ export default function MonthlyPlanPage() {
                     ? "bg-emerald-50 text-emerald-700"
                     : step.status === "进行中"
                       ? "bg-blue-50 text-blue-700"
-                      : "bg-gray-100 text-gray-500",
+                      : "bg-gray-100 text-gray-500"
                 )}
               >
                 {step.status}
               </span>
-              <p className="mt-2 text-sm font-semibold text-gray-900">{step.label}</p>
-              <p className="mt-1 text-xs leading-5 text-gray-500">{step.description}</p>
+              <p className="mt-2 text-sm font-semibold text-gray-900">
+                {step.label}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">
+                {step.description}
+              </p>
             </div>
           ))}
         </div>
@@ -666,41 +871,65 @@ export default function MonthlyPlanPage() {
             <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
             验证安排与完成收益
           </span>
-          <span className="text-xs font-normal text-gray-500">默认收起，不抢本月 Top 3 主线</span>
+          <span className="text-xs font-normal text-gray-500">
+            默认收起，不抢本月 Top 3 主线
+          </span>
         </summary>
         <div className="space-y-5 border-t border-gray-100 p-5">
           <P0Card testId="monthly-plan-next-verification" className="space-y-4">
             <div className="flex items-center gap-2">
               <CalendarClock className="size-4 text-blue-600" />
-              <p className="text-sm font-semibold text-gray-900">下一次验证安排</p>
+              <p className="text-sm font-semibold text-gray-900">
+                下一次验证安排
+              </p>
             </div>
             <div>
-              <p className="text-base font-semibold text-gray-900">{verificationCopy.headline}</p>
-              <p className="mt-2 text-sm leading-6 text-gray-600">{verificationCopy.description}</p>
+              <p className="text-base font-semibold text-gray-900">
+                {verificationCopy.headline}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">
+                {verificationCopy.description}
+              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {verificationCopy.schedule.map(item => (
-                <div key={item.label} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <div
+                  key={item.label}
+                  className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                >
                   <p className="text-sm font-semibold text-gray-900">
                     {item.label} · {item.timing}
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-gray-500">{item.purpose}</p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">
+                    {item.purpose}
+                  </p>
                 </div>
               ))}
             </div>
             {showCompletedPlan && plan?.resultMaturityScore != null ? (
               <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
                 <p className="text-sm text-emerald-800">
-                  复测已完成 · 成熟度 {plan.baselineMaturityScore} → {plan.resultMaturityScore} 分
+                  复测已完成 · 成熟度 {plan.baselineMaturityScore} →{" "}
+                  {plan.resultMaturityScore} 分
                 </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="monthly-plan-comparison">
+                <div
+                  className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                  data-testid="monthly-plan-comparison"
+                >
                   {(comparisonQuery.data?.dimensions ?? []).map(dim => (
                     <div key={dim.key} className="rounded-lg bg-white/80 p-3">
                       <p className="text-xs text-gray-500">{dim.label}</p>
                       <p className="mt-1 text-sm font-semibold text-gray-900">
                         {dim.baseline} → {dim.result ?? "—"}
                         {dim.delta != null ? (
-                          <span className={cn("ml-2 text-xs", dim.delta >= 0 ? "text-emerald-600" : "text-red-600")}>
+                          <span
+                            className={cn(
+                              "ml-2 text-xs",
+                              dim.delta >= 0
+                                ? "text-emerald-600"
+                                : "text-red-600"
+                            )}
+                          >
                             {dim.delta >= 0 ? "+" : ""}
                             {dim.delta}
                           </span>
@@ -717,10 +946,20 @@ export default function MonthlyPlanPage() {
                   运营复测操作
                 </summary>
                 <div className="flex flex-wrap gap-2 border-t border-gray-100 p-4">
-                  <Button type="button" variant="outline" data-testid="monthly-plan-retest-btn" disabled={retestMutation.isPending} onClick={handleRetest}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    data-testid="monthly-plan-retest-btn"
+                    disabled={retestMutation.isPending}
+                    onClick={handleRetest}
+                  >
                     {retestMutation.isPending ? "复测中…" : "立即复测"}
                   </Button>
-                  <Button type="button" variant="outline" onClick={handleGoAiDiagnosis}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleGoAiDiagnosis}
+                  >
                     前往 AI 实测诊断
                   </Button>
                 </div>
@@ -732,7 +971,9 @@ export default function MonthlyPlanPage() {
             <MonthlyPlanCompletionBenefitsSection
               progress={progress}
               tasks={tasks}
-              boundPublishAccountCount={workspaceSummaryQuery.data?.boundPublishAccountCount ?? null}
+              boundPublishAccountCount={
+                workspaceSummaryQuery.data?.boundPublishAccountCount ?? null
+              }
             />
           ) : null}
         </div>
@@ -741,16 +982,27 @@ export default function MonthlyPlanPage() {
       <P0Card testId="monthly-plan-customer-risks" className="space-y-3">
         <div className="flex items-center gap-2">
           <AlertTriangle className="size-4 text-amber-600" />
-          <p className="text-sm font-semibold text-gray-900">风险与缺口</p>
+          <p className="text-sm font-semibold text-gray-900">
+            当前影响交付的 3 个卡点
+          </p>
         </div>
         {visibleRisks.length === 0 ? (
-          <p className="text-sm text-gray-600">暂无明显阻断，建议继续按月度优化计划推进并复测效果。</p>
+          <p className="text-sm text-gray-600">
+            暂无明显阻断，建议继续按月度优化计划推进并复测效果。
+          </p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {visibleRisks.map(risk => (
-              <div key={risk.title} className="rounded-xl border border-amber-100 bg-amber-50/70 p-3">
-                <p className="text-sm font-semibold text-amber-900">{risk.title}</p>
-                <p className="mt-1 text-sm leading-6 text-amber-800">{risk.suggestion}</p>
+              <div
+                key={risk.title}
+                className="rounded-xl border border-amber-100 bg-amber-50/70 p-3"
+              >
+                <p className="text-sm font-semibold text-amber-900">
+                  {risk.title}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-amber-800">
+                  {risk.suggestion}
+                </p>
               </div>
             ))}
           </div>
@@ -758,13 +1010,16 @@ export default function MonthlyPlanPage() {
       </P0Card>
 
       {(showActivePlan || showCompletedPlan) && plan ? (
-        <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-execution-details">
+        <details
+          className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+          data-testid="monthly-plan-execution-details"
+        >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
             <span className="inline-flex items-center gap-2">
               <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
-              运营执行明细
+              查看服务事项明细
             </span>
-            <span className="text-xs font-normal text-gray-500">详细任务清单已降级展示</span>
+            <span className="text-xs font-normal text-gray-500">默认收起</span>
           </summary>
           <div className="border-t border-gray-100 px-5 pb-5 pt-4">
             {tasks.length === 0 ? (
@@ -772,19 +1027,38 @@ export default function MonthlyPlanPage() {
             ) : (
               <ul className="space-y-3">
                 {tasks.map(task => (
-                  <li key={task.id} className="rounded-xl border border-gray-200 bg-white p-4" data-testid={`monthly-plan-task-${task.id}`}>
+                  <li
+                    key={task.id}
+                    className="rounded-xl border border-gray-200 bg-white p-4"
+                    data-testid={`monthly-plan-task-${task.id}`}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-xs font-medium", taskStatusClass(task.status))}>
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full border px-2 py-0.5 text-xs font-medium",
+                              taskStatusClass(task.status)
+                            )}
+                          >
                             {taskStatusLabel(task.status)}
                           </span>
                         </div>
-                        <p className="mt-2 font-medium text-gray-900">{task.title}</p>
-                        <p className="mt-1 text-sm text-gray-600">{task.reason}</p>
+                        <p className="mt-2 font-medium text-gray-900">
+                          {task.title}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          {task.reason}
+                        </p>
                       </div>
                       {task.status !== "completed" ? (
-                        <Button type="button" size="sm" variant="outline" data-testid={`monthly-plan-task-go-${task.id}`} onClick={() => handleGoTask(task.actionUrl)}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          data-testid={`monthly-plan-task-go-${task.id}`}
+                          onClick={() => handleGoTask(task.actionUrl)}
+                        >
                           去完成
                           <ArrowRight className="ml-1.5 size-3.5" />
                         </Button>
@@ -800,18 +1074,25 @@ export default function MonthlyPlanPage() {
         </details>
       ) : null}
 
-      <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-flow-links">
+      <details
+        className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+        data-testid="monthly-plan-flow-links"
+      >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
             <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
             服务流程衔接
           </span>
-          <span className="text-xs font-normal text-gray-500">客户默认只点主 CTA</span>
+          <span className="text-xs font-normal text-gray-500">
+            客户默认只点主 CTA
+          </span>
         </summary>
         <div className="border-t border-gray-100 px-5 pb-5 pt-4">
           <div className="flex items-center gap-2">
             <Eye className="size-4 text-blue-600" />
-            <p className="text-sm font-semibold text-gray-900">状态 → 计划 → 执行 → 验证 → 报告</p>
+            <p className="text-sm font-semibold text-gray-900">
+              状态 → 计划 → 执行 → 验证 → 报告
+            </p>
           </div>
           <div className="mt-3 grid gap-2 text-sm sm:grid-cols-5">
             {[
@@ -827,7 +1108,7 @@ export default function MonthlyPlanPage() {
                   "rounded-xl border px-3 py-2 text-left font-medium",
                   item.path === "/monthly-plan"
                     ? "border-blue-200 bg-blue-50 text-blue-800"
-                    : "border-gray-200 bg-white text-gray-700",
+                    : "border-gray-200 bg-white text-gray-700"
                 )}
               >
                 {item.label}
@@ -837,7 +1118,10 @@ export default function MonthlyPlanPage() {
         </div>
       </details>
 
-      <details className="group rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="monthly-plan-history">
+      <details
+        className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+        data-testid="monthly-plan-history"
+      >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
           <span className="inline-flex items-center gap-2">
             <ChevronDown className="size-4 text-gray-400 transition-transform group-open:rotate-180" />
@@ -857,9 +1141,12 @@ export default function MonthlyPlanPage() {
                     <Circle className="mt-1 size-3 text-gray-300" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        第 {entry.plan.roundNumber} 轮 · {formatDateTime(entry.plan.generatedAt)}
+                        第 {entry.plan.roundNumber} 轮 ·{" "}
+                        {formatDateTime(entry.plan.generatedAt)}
                       </p>
-                      <p className="mt-1 text-sm text-gray-600">{entry.summary}</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {entry.summary}
+                      </p>
                     </div>
                   </div>
                 </li>

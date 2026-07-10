@@ -46,10 +46,12 @@ type CurrentContentTaskCardProps = {
   sourceTypeLabel?: string;
 };
 
-export function CurrentContentTaskCard({ view, sourceTypeLabel }: CurrentContentTaskCardProps) {
+export function CurrentContentTaskCard({
+  view,
+  sourceTypeLabel,
+}: CurrentContentTaskCardProps) {
   const source =
-    sourceTypeLabel ??
-    (view.monthlyPlanId ? "本月优化计划" : "AI搜索问题");
+    sourceTypeLabel ?? (view.monthlyPlanId ? "本月优化计划" : "AI搜索问题");
 
   return (
     <section data-testid="task-current-content-card">
@@ -66,7 +68,10 @@ export function CurrentContentTaskCard({ view, sourceTypeLabel }: CurrentContent
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
                 当前内容任务
               </p>
-              <p className="mt-1 text-xs text-gray-500" data-testid="task-source-type">
+              <p
+                className="mt-1 text-xs text-gray-500"
+                data-testid="task-source-type"
+              >
                 当前内容来源：{source}
               </p>
             </div>
@@ -81,19 +86,26 @@ export function CurrentContentTaskCard({ view, sourceTypeLabel }: CurrentContent
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div data-testid="task-hero-reason">
-                <p className="text-xs font-medium text-gray-500">当前任务说明</p>
+                <p className="text-xs font-medium text-gray-500">
+                  当前任务说明
+                </p>
                 <p className="mt-0.5 text-sm text-gray-800">{view.taskTitle}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">为什么重要</p>
-                <p className="mt-0.5 text-sm text-gray-800">{view.taskReason}</p>
+                <p className="mt-0.5 text-sm text-gray-800">
+                  {view.taskReason}
+                </p>
               </div>
               <div className="sm:col-span-2" data-testid="task-hero-gap">
-                <p className="text-xs font-medium text-gray-500">对应成熟度短板</p>
+                <p className="text-xs font-medium text-gray-500">
+                  对应成熟度短板
+                </p>
                 <p className="mt-0.5 text-sm text-gray-800">
                   {view.relatedGap
                     ? `${view.relatedMaturityDimension}：${view.relatedGap}`
-                    : view.relatedMaturityDimension || humanizeTarget(view.targetImprovement)}
+                    : view.relatedMaturityDimension ||
+                      humanizeTarget(view.targetImprovement)}
                 </p>
               </div>
             </div>
@@ -111,10 +123,22 @@ const METRIC_ITEMS: Array<{
   label: string;
   testId: string;
 }> = [
-  { key: "needGenerate", label: "需生成", testId: "task-progress-need-generate" },
+  {
+    key: "needGenerate",
+    label: "需生成",
+    testId: "task-progress-need-generate",
+  },
   { key: "generated", label: "已生成", testId: "task-progress-generated" },
-  { key: "qualityPending", label: "待质检", testId: "task-progress-quality-pending" },
-  { key: "enqueueReady", label: "可入队", testId: "task-progress-enqueue-ready" },
+  {
+    key: "qualityPending",
+    label: "待质检",
+    testId: "task-progress-quality-pending",
+  },
+  {
+    key: "enqueueReady",
+    label: "可入队",
+    testId: "task-progress-enqueue-ready",
+  },
   { key: "queued", label: "已入队", testId: "task-progress-queued" },
   { key: "published", label: "发布完成", testId: "task-progress-published" },
 ];
@@ -134,8 +158,12 @@ export function TaskProgressOverview({ metrics }: TaskProgressOverviewProps) {
             className="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm"
             data-testid={item.testId}
           >
-            <p className="text-2xl font-bold tabular-nums text-gray-900">{metrics[item.key]}</p>
-            <p className="mt-1 text-xs font-medium text-gray-500">{item.label}</p>
+            <p className="text-2xl font-bold tabular-nums text-gray-900">
+              {metrics[item.key]}
+            </p>
+            <p className="mt-1 text-xs font-medium text-gray-500">
+              {item.label}
+            </p>
           </div>
         ))}
       </div>
@@ -178,8 +206,12 @@ export function PlatformTaskBoard({
   onViewPublish,
   onGoMonitoring,
 }: PlatformTaskBoardProps) {
-  const recommendedOrder = new Map(recommendedPlatforms.map((p, i) => [p.platformKey, i]));
-  const reasonMap = new Map(recommendedPlatforms.map(p => [p.platformKey, p.reason]));
+  const recommendedOrder = new Map(
+    recommendedPlatforms.map((p, i) => [p.platformKey, i])
+  );
+  const reasonMap = new Map(
+    recommendedPlatforms.map(p => [p.platformKey, p.reason])
+  );
 
   const sortedRows = [...rows].sort((a, b) => {
     const aOrder = recommendedOrder.get(a.def.key) ?? 999;
@@ -187,7 +219,10 @@ export function PlatformTaskBoard({
     return aOrder - bOrder;
   });
 
-  const handleAction = (row: PlatformBoardRow, kind: PlatformTaskActionKind) => {
+  const handleAction = (
+    row: PlatformBoardRow,
+    kind: PlatformTaskActionKind
+  ) => {
     switch (kind) {
       case "generate":
       case "regenerate":
@@ -217,16 +252,21 @@ export function PlatformTaskBoard({
     <section className="space-y-4" data-testid="task-platform-publish-plan">
       <div className="space-y-1">
         <h2 className={geoP0Surfaces.sectionTitle}>平台内容任务</h2>
-        <p className={geoP0Surfaces.muted}>按推荐优先级推进各平台内容生成、质检与发布。</p>
+        <p className={geoP0Surfaces.muted}>
+          按推荐优先级推进各平台内容生成、质检与发布。
+        </p>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="task-platform-plan-grid">
+      <div
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+        data-testid="task-platform-plan-grid"
+      >
         {sortedRows.map(row => {
           const { def, status, hasContent, lifecycle } = row;
           const reason = reasonMap.get(def.key);
           const statusLabel = lifecycle.label;
           const retryTaskId = row.retryPublishTaskId ?? null;
           const action = retryTaskId
-            ? ({ kind: "retry_publish" as const, label: "重试发布" })
+            ? { kind: "retry_publish" as const, label: "重试发布" }
             : resolvePlatformTaskAction(status, hasContent);
           const disabled = shouldDisablePlatformGenerateButton({
             status,
@@ -241,17 +281,24 @@ export function PlatformTaskBoard({
             generatingPlatformKey,
             activeInFlightPlatformKey,
             platformKey: def.key,
-            actionKind: action.kind === "retry_publish" ? "enqueue" : action.kind,
+            actionKind:
+              action.kind === "retry_publish" ? "enqueue" : action.kind,
           });
 
           return (
-            <P0Card key={def.key} testId={`task-platform-card-${def.key}`} className="flex flex-col">
+            <P0Card
+              key={def.key}
+              testId={`task-platform-card-${def.key}`}
+              className="flex flex-col"
+            >
               <div className="flex items-start justify-between gap-2">
-                <h3 className="text-base font-semibold text-gray-900">{def.label}</h3>
+                <h3 className="text-base font-semibold text-gray-900">
+                  {def.label}
+                </h3>
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                    contentAssetLifecycleBadgeClass(lifecycle.stage),
+                    contentAssetLifecycleBadgeClass(lifecycle.stage)
                   )}
                   data-testid={`weekly-platform-status-${def.key}`}
                 >
@@ -269,7 +316,10 @@ export function PlatformTaskBoard({
               ) : null}
 
               {serialHint ? (
-                <p className="mt-2 text-xs text-amber-700" data-testid={`task-platform-serial-hint-${def.key}`}>
+                <p
+                  className="mt-2 text-xs text-amber-700"
+                  data-testid={`task-platform-serial-hint-${def.key}`}
+                >
                   {WEEKLY_SERIAL_GENERATION_HINT}
                 </p>
               ) : null}
@@ -282,13 +332,20 @@ export function PlatformTaskBoard({
                   disabled={
                     retryTaskId
                       ? boardBusy
-                      : disabled && (action.kind === "generate" || action.kind === "regenerate")
+                      : disabled &&
+                        (action.kind === "generate" ||
+                          action.kind === "regenerate")
                   }
                   data-testid={`task-platform-action-${def.key}`}
                   onClick={() =>
                     retryTaskId && onRetryPublish
                       ? onRetryPublish(def.key, retryTaskId)
-                      : handleAction(row, action.kind === "retry_publish" ? "enqueue" : action.kind)
+                      : handleAction(
+                          row,
+                          action.kind === "retry_publish"
+                            ? "enqueue"
+                            : action.kind
+                        )
                   }
                 >
                   {action.label}
@@ -316,12 +373,22 @@ type NextStepSuggestionProps = {
   actionLabel?: string;
 };
 
-export function NextStepSuggestion({ suggestion, onAction, actionLabel }: NextStepSuggestionProps) {
+export function NextStepSuggestion({
+  suggestion,
+  onAction,
+  actionLabel,
+}: NextStepSuggestionProps) {
   return (
     <section data-testid="task-next-step-suggestion">
-      <P0Card testId="task-next-step-card" className="border-emerald-100 bg-emerald-50/50">
+      <P0Card
+        testId="task-next-step-card"
+        className="border-emerald-100 bg-emerald-50/50"
+      >
         <p className="text-xs font-semibold text-emerald-700">下一步建议</p>
-        <p className="mt-2 text-sm leading-relaxed text-gray-800" data-testid="task-next-what">
+        <p
+          className="mt-2 text-sm leading-relaxed text-gray-800"
+          data-testid="task-next-what"
+        >
           {suggestion}
         </p>
         {onAction && actionLabel ? (
@@ -355,6 +422,10 @@ export type MonthlyContentTaskItem = {
   questionId?: number | null;
   actionUrl: string;
   laggingLifecycleLabel?: string | null;
+  questionText?: string | null;
+  targetPlatform?: string | null;
+  currentStatus?: string | null;
+  nextAction?: string | null;
 };
 
 type MonthlyContentTaskListProps = {
@@ -367,6 +438,20 @@ function monthlyTaskStatusLabel(status: string): string {
   if (status === "completed") return "已完成";
   if (status === "in_progress") return "进行中";
   return "待处理";
+}
+
+function monthlyTaskPriority(task: MonthlyContentTaskItem): number {
+  const status = task.currentStatus ?? task.laggingLifecycleLabel ?? "待生成";
+  if (status.includes("待生成")) return 0;
+  if (
+    status.includes("质检") ||
+    status.includes("待发布") ||
+    status.includes("可发布")
+  )
+    return 1;
+  if (status.includes("已发布") || status.includes("待收录")) return 2;
+  if (status.includes("复测")) return 3;
+  return task.status === "completed" ? 4 : 1;
 }
 
 export function MonthlyContentTaskList({
@@ -399,48 +484,110 @@ export function MonthlyContentTaskList({
     );
   }
 
+  const sortedTasks = [...tasks].sort(
+    (a, b) => monthlyTaskPriority(a) - monthlyTaskPriority(b)
+  );
+  const retestCount = tasks.filter(task =>
+    (task.currentStatus ?? "").includes("复测")
+  ).length;
+  const pendingGenerateCount = tasks.filter(task =>
+    (task.currentStatus ?? "待生成").includes("待生成")
+  ).length;
+  const judgment = `当前有 ${tasks.length} 个内容任务${retestCount ? `，其中 ${retestCount} 个已进入复测` : ""}${pendingGenerateCount ? `，${pendingGenerateCount} 个仍待生成` : ""}。${pendingGenerateCount ? "建议优先处理待生成任务。" : "建议优先推进当前最慢环节。"}`;
+
   return (
-    <section className="space-y-4" data-testid="weekly-monthly-content-task-list">
+    <section
+      className="space-y-4"
+      data-testid="weekly-monthly-content-task-list"
+    >
       <div className="space-y-1">
         <h2 className={geoP0Surfaces.sectionTitle}>本月内容任务</h2>
-        <p className={geoP0Surfaces.muted}>选择一个任务进入内容推进，围绕 AI 搜索问题生成与发布内容。</p>
+        <p
+          className="text-sm font-medium text-gray-800"
+          data-testid="weekly-content-task-judgment"
+        >
+          {judgment}
+        </p>
       </div>
       <ul className="space-y-3">
-        {tasks.map(task => (
-          <li key={task.id}>
-            <P0Card testId={`weekly-content-task-item-${task.id}`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600">
-                      {monthlyTaskStatusLabel(task.status)}
-                    </span>
-                    {task.laggingLifecycleLabel ? (
-                      <span
-                        className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800"
-                        data-testid={`weekly-task-lifecycle-${task.id}`}
-                      >
-                        最落后平台：{task.laggingLifecycleLabel}
+        {sortedTasks.map((task, index) => {
+          const displayTitle = task.questionText
+            ? `围绕“${task.questionText}”${task.targetPlatform ? `生成${task.targetPlatform}内容` : "生成内容"}`
+            : task.title;
+          const nextAction = task.nextAction || "进入推进";
+          return (
+            <li key={task.id}>
+              <P0Card testId={`weekly-content-task-item-${task.id}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600">
+                        {monthlyTaskStatusLabel(task.status)}
                       </span>
-                    ) : null}
+                      {index === 0 ? (
+                        <span
+                          className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800"
+                          data-testid={`weekly-task-priority-${task.id}`}
+                        >
+                          建议优先
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 font-semibold text-gray-900">
+                      {displayTitle}
+                    </p>
+                    <dl className="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="inline font-medium text-gray-500">
+                          对应问题：
+                        </dt>
+                        <dd className="inline text-gray-800">
+                          {task.questionText || "业务说明类内容"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="inline font-medium text-gray-500">
+                          目标平台：
+                        </dt>
+                        <dd className="inline text-gray-800">
+                          {task.targetPlatform || "待确认"}
+                        </dd>
+                      </div>
+                      <div data-testid={`weekly-task-lifecycle-${task.id}`}>
+                        <dt className="inline font-medium text-gray-500">
+                          当前状态：
+                        </dt>
+                        <dd className="inline text-gray-800">
+                          {task.currentStatus ||
+                            task.laggingLifecycleLabel ||
+                            monthlyTaskStatusLabel(task.status)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="inline font-medium text-gray-500">
+                          下一步：
+                        </dt>
+                        <dd className="inline text-gray-800">{nextAction}</dd>
+                      </div>
+                    </dl>
                   </div>
-                  <p className="mt-2 font-medium text-gray-900">{task.title}</p>
-                  <p className="mt-1 text-sm text-gray-600">{task.reason}</p>
+                  {index === 0 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className={geoP0Brand.primary}
+                      data-testid={`weekly-select-content-task-${task.id}`}
+                      onClick={() => onSelectTask(task)}
+                    >
+                      {nextAction}
+                      <ArrowRight className="ml-1.5 h-4 w-4" />
+                    </Button>
+                  ) : null}
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  className={geoP0Brand.primary}
-                  data-testid={`weekly-select-content-task-${task.id}`}
-                  onClick={() => onSelectTask(task)}
-                >
-                  进入推进
-                  <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
-              </div>
-            </P0Card>
-          </li>
-        ))}
+              </P0Card>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -506,7 +653,10 @@ export function MotherArticleSummaryCard({
     <div className="space-y-3" data-testid="task-mother-article-summary">
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-base font-semibold text-gray-900" data-testid="mother-article-title">
+          <h3
+            className="text-base font-semibold text-gray-900"
+            data-testid="mother-article-title"
+          >
             {title}
           </h3>
           {status ? (
@@ -522,7 +672,10 @@ export function MotherArticleSummaryCard({
         {summary ? (
           <div>
             <p className="text-xs font-medium text-gray-500">摘要</p>
-            <p className="mt-1 text-sm leading-relaxed text-gray-700" data-testid="mother-article-summary">
+            <p
+              className="mt-1 text-sm leading-relaxed text-gray-700"
+              data-testid="mother-article-summary"
+            >
               {summary}
             </p>
           </div>
@@ -531,7 +684,10 @@ export function MotherArticleSummaryCard({
         {corePoints ? (
           <div>
             <p className="text-xs font-medium text-gray-500">核心观点</p>
-            <p className="mt-1 text-sm leading-relaxed text-gray-700" data-testid="mother-article-core-points">
+            <p
+              className="mt-1 text-sm leading-relaxed text-gray-700"
+              data-testid="mother-article-core-points"
+            >
               {corePoints}
             </p>
           </div>

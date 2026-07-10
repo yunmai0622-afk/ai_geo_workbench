@@ -30,9 +30,16 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { renderArticleCoverPng } from "@/lib/renderArticleCoverPng";
-import { encodeStoredCoverBase64, type StoredCoverMime } from "@shared/articleCoverBase64";
+import {
+  encodeStoredCoverBase64,
+  type StoredCoverMime,
+} from "@shared/articleCoverBase64";
 import { focusLocalAgentAccountsTab } from "@/lib/localAgentClient";
-import { PlatformContentBoard, type PlatformBoardPrimaryActionKind, type PlatformBoardRow } from "@/components/weekly/PlatformContentBoard";
+import {
+  PlatformContentBoard,
+  type PlatformBoardPrimaryActionKind,
+  type PlatformBoardRow,
+} from "@/components/weekly/PlatformContentBoard";
 import {
   buildTaskBoardNextStepSuggestion,
   WEEKLY_SERIAL_GENERATION_HINT,
@@ -71,7 +78,10 @@ import {
   type WeeklyContentTaskStatus,
 } from "@shared/weeklyContentTaskStatus";
 import { formatWeeklyArticleCustomerTitle } from "@shared/weeklyArticleCustomerTitle";
-import { CUSTOMER_STAGE_LABELS, deriveClientProjectCardDisplay } from "@/lib/projectWorkspaceDisplay";
+import {
+  CUSTOMER_STAGE_LABELS,
+  deriveClientProjectCardDisplay,
+} from "@/lib/projectWorkspaceDisplay";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
 import { mapPlatformContentErrorCategory } from "@/lib/aiTaskProgressErrors";
@@ -89,7 +99,11 @@ import { useLocalAgentConnection } from "@/hooks/useLocalAgentConnection";
 import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { useProjectScopedQueryRows } from "@/hooks/useProjectScopedQueryRows";
 import { useIsMobile } from "@/hooks/useMobile";
-import { buildProjectUrl, getActiveProjectId, getSearchFromLocation } from "@/lib/activeProject";
+import {
+  buildProjectUrl,
+  getActiveProjectId,
+  getSearchFromLocation,
+} from "@/lib/activeProject";
 import { publishPlatformCustomerLabel } from "@/lib/publishCenterDisplay";
 import { trpc } from "@/lib/trpc";
 import {
@@ -186,8 +200,12 @@ import { resolveQuestionTypeDisplayLabel } from "@shared/retestComparisonDisplay
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileText, Search } from "lucide-react";
 
-function resolvePlatformBoardPrimaryActionKind(status: WeeklyContentTaskStatus, hasContent: boolean): PlatformBoardPrimaryActionKind {
-  if (!hasContent || status === "UNGENERATED" || status === "GENERATING") return "generate_platform_draft";
+function resolvePlatformBoardPrimaryActionKind(
+  status: WeeklyContentTaskStatus,
+  hasContent: boolean
+): PlatformBoardPrimaryActionKind {
+  if (!hasContent || status === "UNGENERATED" || status === "GENERATING")
+    return "generate_platform_draft";
   if (status === "PUBLISH_READY") return "enqueue_publish";
   return "save_and_qc";
 }
@@ -210,9 +228,19 @@ import {
 } from "@shared/platformDraftGeneration";
 import { SubscriptionUpgradePrompt } from "@/components/SubscriptionUpgradePrompt";
 import { handleSubscriptionLimitMutationError } from "@/lib/subscriptionUpgrade";
-import { isSubscriptionLimitMessage, SUBSCRIPTION_LIMIT_CONTENT_MESSAGE } from "@shared/subscriptionLimits";
-import { toUserFacingError, toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { countStaleTopics, isTopicBoundToProjectTasks, taskIdSetFromList } from "@shared/platformContentDiagnosisGate";
+import {
+  isSubscriptionLimitMessage,
+  SUBSCRIPTION_LIMIT_CONTENT_MESSAGE,
+} from "@shared/subscriptionLimits";
+import {
+  toUserFacingError,
+  toUserFacingErrorFromUnknown,
+} from "@shared/userFacingErrors";
+import {
+  countStaleTopics,
+  isTopicBoundToProjectTasks,
+  taskIdSetFromList,
+} from "@shared/platformContentDiagnosisGate";
 import {
   buildArticleTopicIdSet,
   countUnassignedPendingTopics,
@@ -246,7 +274,10 @@ import {
   formatArticlePublishedAtSentence,
   resolveArticlePublishedAtForDisplay,
 } from "@shared/articlePublishState";
-import { computeContentTagStats, normalizeContentTags } from "@shared/geoArticleContentTags";
+import {
+  computeContentTagStats,
+  normalizeContentTags,
+} from "@shared/geoArticleContentTags";
 import {
   filterWeeklyContentCards,
   resolveArticleCoverPreviewSrc,
@@ -272,7 +303,7 @@ import {
 type ProjectOption = { id: number; enterpriseName: string };
 
 function flattenPlatformAccounts(
-  groups: Array<{ platform: string; accounts: PlatformAccountItem[] }>,
+  groups: Array<{ platform: string; accounts: PlatformAccountItem[] }>
 ): PublishReadyAccountRow[] {
   return groups.flatMap(g =>
     g.accounts.map(a => ({
@@ -282,7 +313,7 @@ function flattenPlatformAccounts(
       localProfileId: a.localProfileId,
       localAgentId: a.localAgentId,
       sessionStatus: a.sessionStatus,
-    })),
+    }))
   );
 }
 
@@ -373,17 +404,28 @@ type ArticleRow = {
 };
 
 function formatGeoQualitySummary(article: ArticleRow): string | null {
-  if (article.geoQualityScore == null || !article.geoQualityRecommendation) return null;
-  const label = getGeoQualityLabel(article.geoQualityRecommendation as GeoQualityRecommendation);
+  if (article.geoQualityScore == null || !article.geoQualityRecommendation)
+    return null;
+  const label = getGeoQualityLabel(
+    article.geoQualityRecommendation as GeoQualityRecommendation
+  );
   const stale = isGeoQualityScoreStale(article) ? " · 待重新质检" : "";
   return `GEO 质量：${article.geoQualityScore} 分 · ${label}${stale}`;
 }
 
-function articleMatchesQuestionId(article: ArticleRow, questionId: number): boolean {
+function articleMatchesQuestionId(
+  article: ArticleRow,
+  questionId: number
+): boolean {
   const basis = article.generationBasis ?? {};
   const sourceQuestionId = basis.sourceQuestionId;
-  if (typeof sourceQuestionId === "number" && sourceQuestionId === questionId) return true;
-  if (typeof sourceQuestionId === "string" && sourceQuestionId === String(questionId)) return true;
+  if (typeof sourceQuestionId === "number" && sourceQuestionId === questionId)
+    return true;
+  if (
+    typeof sourceQuestionId === "string" &&
+    sourceQuestionId === String(questionId)
+  )
+    return true;
   return false;
 }
 
@@ -423,12 +465,14 @@ type QualityScoreRow = {
 
 function resolveArticleLinkedQuestionText(
   article: ArticleRow | null | undefined,
-  questions: Array<{ id?: number; questionText?: string | null }>,
+  questions: Array<{ id?: number; questionText?: string | null }>
 ): string | null {
   if (!article) return null;
   const basis = article.generationBasis ?? {};
   const entryText =
-    typeof basis.entryQuestionText === "string" ? basis.entryQuestionText.trim() : "";
+    typeof basis.entryQuestionText === "string"
+      ? basis.entryQuestionText.trim()
+      : "";
   if (entryText) return entryText;
   const sourceQuestionId =
     typeof basis.sourceQuestionId === "number" ? basis.sourceQuestionId : null;
@@ -438,7 +482,9 @@ function resolveArticleLinkedQuestionText(
     if (text) return text;
   }
   const customerQuestion =
-    typeof basis.customerQuestion === "string" ? basis.customerQuestion.trim() : "";
+    typeof basis.customerQuestion === "string"
+      ? basis.customerQuestion.trim()
+      : "";
   if (customerQuestion) return customerQuestion;
   return null;
 }
@@ -452,7 +498,8 @@ const publishTaskStatusLabel = publishTaskStatusCustomerLabel;
 
 function mapContentTypeLabel(raw: string): string {
   if (raw?.includes("痛点") || raw?.includes("官网")) return "痛点解决";
-  if (raw?.includes("行业") || raw?.includes("场景") || raw?.includes("指南")) return "场景指南";
+  if (raw?.includes("行业") || raw?.includes("场景") || raw?.includes("指南"))
+    return "场景指南";
   if (raw?.includes("案例")) return "案例证据";
   if (raw?.includes("竞品") || raw?.includes("对比")) return "竞品对比";
   if (raw?.includes("FAQ") || raw?.includes("问答")) return "FAQ";
@@ -492,9 +539,11 @@ function useProjectSelection() {
 /** URL projectId 优先，避免多平台生成时 session 与路由上下文不一致 */
 function resolveMutationProjectId(
   selectedProjectId: number | undefined,
-  location: string,
+  location: string
 ): number | null {
-  const pid = selectedProjectId ?? getActiveProjectId({ search: getSearchFromLocation(location) });
+  const pid =
+    selectedProjectId ??
+    getActiveProjectId({ search: getSearchFromLocation(location) });
   if (pid == null || !Number.isFinite(pid) || pid <= 0) return null;
   return pid;
 }
@@ -502,7 +551,7 @@ function resolveMutationProjectId(
 function assertMutationProjectId(
   selectedProjectId: number | undefined,
   location: string,
-  accessibleProjectIds?: readonly number[],
+  accessibleProjectIds?: readonly number[]
 ): number {
   const pid = resolveMutationProjectId(selectedProjectId, location);
   if (!pid) throw new Error("项目未选择");
@@ -526,10 +575,12 @@ function parseKeyPointsFromBusinessReason(reason?: string | null): string[] {
 function topicMeta(topic: TopicRow, tasks: TaskRow[]) {
   const task = tasks.find(t => t.id === topic.optimizationTaskId);
   const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
-  const rawType = (card?.contentType || topic.articleType || "其他").trim() || "其他";
+  const rawType =
+    (card?.contentType || topic.articleType || "其他").trim() || "其他";
   const contentType = mapContentTypeLabel(rawType);
-  const keyPoints =
-    card?.keyPoints?.length ? card.keyPoints.slice(0, 2) : parseKeyPointsFromBusinessReason(topic.businessReason);
+  const keyPoints = card?.keyPoints?.length
+    ? card.keyPoints.slice(0, 2)
+    : parseKeyPointsFromBusinessReason(topic.businessReason);
   return { contentType, keyPoints };
 }
 
@@ -561,7 +612,7 @@ function buildArticlePublishPreflightInput(
     requestedPlatform?: BindingPublishPlatform | null;
     selectedAccount?: PublishReadyAccountRow | null;
     selectedAccountId?: number | null;
-  },
+  }
 ) {
   return {
     projectId,
@@ -625,11 +676,17 @@ type SingleTaskProgressionSummary = {
   articleTitle?: string | null;
 };
 
-function normalizeSingleTaskBlocker(raw: string | null | undefined): string | null {
+function normalizeSingleTaskBlocker(
+  raw: string | null | undefined
+): string | null {
   const message = raw?.trim();
   if (!message) return null;
   if (message.includes("发布任务创建失败")) return message;
-  if (message.includes("账号") || message.includes("绑定") || message.includes("登录")) {
+  if (
+    message.includes("账号") ||
+    message.includes("绑定") ||
+    message.includes("登录")
+  ) {
     return "账号未绑定或登录状态不可用";
   }
   if (message.includes("质检") || message.includes("QUALITY")) {
@@ -684,12 +741,16 @@ function SingleTaskProgressionCard({
             >
               {summary.questionText}
             </h2>
-            <p className="text-sm text-gray-500">当前内容来源：{summary.sourceLabel}</p>
+            <p className="text-sm text-gray-500">
+              当前内容来源：{summary.sourceLabel}
+            </p>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 md:col-span-2">
-              <p className="text-xs font-semibold text-gray-500">当前内容任务状态</p>
+              <p className="text-xs font-semibold text-gray-500">
+                当前内容任务状态
+              </p>
               <p
                 className="mt-1 text-sm leading-relaxed text-gray-900"
                 data-testid="single-task-current-status"
@@ -699,7 +760,10 @@ function SingleTaskProgressionCard({
             </div>
             <div className={cn("rounded-lg border px-4 py-3", blockerClass)}>
               <p className="text-xs font-semibold">当前阻断</p>
-              <p className="mt-1 text-sm leading-relaxed" data-testid="single-task-current-blocker">
+              <p
+                className="mt-1 text-sm leading-relaxed"
+                data-testid="single-task-current-blocker"
+              >
                 {summary.blockerText ?? "暂无阻断"}
               </p>
             </div>
@@ -707,12 +771,20 @@ function SingleTaskProgressionCard({
 
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-emerald-700">当前唯一下一步</p>
-              <p className="mt-1 text-sm font-medium text-gray-900" data-testid="single-task-next-action">
+              <p className="text-xs font-semibold text-emerald-700">
+                当前唯一下一步
+              </p>
+              <p
+                className="mt-1 text-sm font-medium text-gray-900"
+                data-testid="single-task-next-action"
+              >
                 {summary.nextActionLabel}
               </p>
               {disabled && disabledReason ? (
-                <p className="mt-1 text-xs text-amber-800" data-testid="single-task-action-disabled-reason">
+                <p
+                  className="mt-1 text-xs text-amber-800"
+                  data-testid="single-task-action-disabled-reason"
+                >
                   {disabledReason}
                 </p>
               ) : null}
@@ -735,7 +807,7 @@ function SingleTaskProgressionCard({
 
 function showPublishSuccessNotification(
   notice: PublishSuccessNotice,
-  setNotice: (value: PublishSuccessNotice | null) => void,
+  setNotice: (value: PublishSuccessNotice | null) => void
 ) {
   setNotice(notice);
   toast.success(PUBLISH_SUCCESS_NOTIFICATION_TITLE, {
@@ -756,9 +828,14 @@ function isRetryableFailedPublishTask(
         agentErrorMessage?: string | null;
       }
     | null
-    | undefined,
+    | undefined
 ): boolean {
-  return typeof task?.id === "number" && task.status === "failed" && task.canRetry !== false && !task.retryExhausted;
+  return (
+    typeof task?.id === "number" &&
+    task.status === "failed" &&
+    task.canRetry !== false &&
+    !task.retryExhausted
+  );
 }
 
 export default function WeeklyContentPage() {
@@ -766,70 +843,119 @@ export default function WeeklyContentPage() {
   const searchString = useSearch();
   const isMobile = useIsMobile();
   const [detailOpen, setDetailOpen] = useState(false);
-  const [detailModel, setDetailModel] = useState<WeeklyArticleCardModel | null>(null);
-  const [detailStatus, setDetailStatus] = useState<WeeklyContentTaskStatus | null>(null);
+  const [detailModel, setDetailModel] = useState<WeeklyArticleCardModel | null>(
+    null
+  );
+  const [detailStatus, setDetailStatus] =
+    useState<WeeklyContentTaskStatus | null>(null);
   const [reviewConfirmDialog, setReviewConfirmDialog] = useState<{
     open: boolean;
     article: ArticleRow | null;
     confirmed: boolean;
     mode: WeeklyContentReviewDialogMode;
-  }>({ open: false, article: null, confirmed: false, mode: "review_and_enqueue" });
+  }>({
+    open: false,
+    article: null,
+    confirmed: false,
+    mode: "review_and_enqueue",
+  });
   const [reviewConfirmBusy, setReviewConfirmBusy] = useState(false);
   const [generatedSectionOpen, setGeneratedSectionOpen] = useState(false);
   const utils = trpc.useUtils();
-  const { selectedProjectId, selectedProject, projectInput, enabled, projectsLoading, projects } =
-    useProjectSelection();
-  const accessibleProjectIds = useMemo(() => projects.map(p => p.id), [projects]);
+  const {
+    selectedProjectId,
+    selectedProject,
+    projectInput,
+    enabled,
+    projectsLoading,
+    projects,
+  } = useProjectSelection();
+  const accessibleProjectIds = useMemo(
+    () => projects.map(p => p.id),
+    [projects]
+  );
   const subscriptionUsageQuery = trpc.geo.subscription.usage.useQuery();
-  const contentLimitReached = subscriptionUsageQuery.data?.atLimit.contentArticle ?? false;
+  const contentLimitReached =
+    subscriptionUsageQuery.data?.atLimit.contentArticle ?? false;
 
   const scopedListInput = { projectId: selectedProjectId! };
   const scopedListEnabled = Boolean(selectedProjectId);
-  const tasksQuery = trpc.geo.tasks.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
-  const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, { enabled });
-  const analysisQuery = trpc.geo.analysis.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
-  const topicsQuery = trpc.geo.articles.topics.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
-  const articlesQuery = trpc.geo.articles.list.useQuery(scopedListInput, { enabled: scopedListEnabled });
+  const tasksQuery = trpc.geo.tasks.list.useQuery(scopedListInput, {
+    enabled: scopedListEnabled,
+  });
+  const questionsQuery = trpc.geo.questions.list.useQuery(projectInput, {
+    enabled,
+  });
+  const analysisQuery = trpc.geo.analysis.list.useQuery(scopedListInput, {
+    enabled: scopedListEnabled,
+  });
+  const topicsQuery = trpc.geo.articles.topics.list.useQuery(scopedListInput, {
+    enabled: scopedListEnabled,
+  });
+  const articlesQuery = trpc.geo.articles.list.useQuery(scopedListInput, {
+    enabled: scopedListEnabled,
+  });
   const platformAccountsQuery = trpc.geo.platformAccounts.list.useQuery(
     { projectId: selectedProjectId! },
-    { enabled: Boolean(selectedProjectId) },
+    { enabled: Boolean(selectedProjectId) }
   );
   const workspaceSummaryQuery = trpc.geo.workspace.summary.useQuery(
     { projectId: selectedProjectId! },
-    { enabled: Boolean(selectedProjectId) },
+    { enabled: Boolean(selectedProjectId) }
   );
   const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(
     { projectId: selectedProjectId! },
-    { enabled: Boolean(selectedProjectId) },
+    { enabled: Boolean(selectedProjectId) }
   );
-  const enterpriseProfileRecord = assetSummaryQuery.data?.profile as Record<string, unknown> | undefined;
-  const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(projectInput, { enabled });
-  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
-  const inclusionMonitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, {
-    enabled,
-  });
+  const enterpriseProfileRecord = assetSummaryQuery.data?.profile as
+    | Record<string, unknown>
+    | undefined;
+  const scoresQuery = trpc.geo.articles.latestQualityScores.useQuery(
+    projectInput,
+    { enabled }
+  );
+  const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(
+    projectInput,
+    { enabled }
+  );
+  const inclusionMonitoringQuery =
+    trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, {
+      enabled,
+    });
   const publishTasksQuery = trpc.publishTasks.listRecentByProject.useQuery(
     { projectId: selectedProjectId!, limit: 50 },
-    { enabled: Boolean(selectedProjectId) },
+    { enabled: Boolean(selectedProjectId) }
   );
 
-  const generateTopicsMutation = trpc.geo.articles.topics.generate.useMutation();
+  const generateTopicsMutation =
+    trpc.geo.articles.topics.generate.useMutation();
   const generateTasksMutation = trpc.geo.tasks.generate.useMutation();
   const generateArticleMutation = trpc.geo.articles.generate.useMutation();
-  const startPlatformDraftMutation = trpc.geo.articles.startPlatformDraftGeneration.useMutation();
+  const startPlatformDraftMutation =
+    trpc.geo.articles.startPlatformDraftGeneration.useMutation();
   const createPublishTask = trpc.publishTasks.create.useMutation();
   const retryPublishTask = trpc.publishTasks.retry.useMutation();
-  const reviewAndEnqueueArticle = trpc.publishTasks.reviewAndEnqueueArticle.useMutation();
-  const syncLocalAgentSnapshot = trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
-  const updateGeneratedArticle = trpc.geo.articles.updateGeneratedArticle.useMutation();
-  const setContentReviewStatus = trpc.geo.articles.setContentReviewStatus.useMutation({
-    onSuccess: async () => {
-      await invalidateArticles();
-    },
-    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "更新审核状态失败")),
-  });
-  const generateRewriteSuggestion = trpc.geo.articles.generateRewriteSuggestion.useMutation();
-  const [suggestionDialog, setSuggestionDialog] = useState<{ open: boolean; text: string; articleTitle: string }>({
+  const reviewAndEnqueueArticle =
+    trpc.publishTasks.reviewAndEnqueueArticle.useMutation();
+  const syncLocalAgentSnapshot =
+    trpc.geo.platformAccounts.syncLocalAgentSnapshot.useMutation();
+  const updateGeneratedArticle =
+    trpc.geo.articles.updateGeneratedArticle.useMutation();
+  const setContentReviewStatus =
+    trpc.geo.articles.setContentReviewStatus.useMutation({
+      onSuccess: async () => {
+        await invalidateArticles();
+      },
+      onError: err =>
+        toast.error(toUserFacingErrorFromUnknown(err, "更新审核状态失败")),
+    });
+  const generateRewriteSuggestion =
+    trpc.geo.articles.generateRewriteSuggestion.useMutation();
+  const [suggestionDialog, setSuggestionDialog] = useState<{
+    open: boolean;
+    text: string;
+    articleTitle: string;
+  }>({
     open: false,
     text: "",
     articleTitle: "",
@@ -837,68 +963,109 @@ export default function WeeklyContentPage() {
 
   const autoTopicsTriggeredRef = useRef(false);
   const [preparingTopics, setPreparingTopics] = useState(false);
-  const [generatingTopicIds, setGeneratingTopicIds] = useState<Set<number>>(() => new Set());
-  const [expandedTopicIds, setExpandedTopicIds] = useState<Set<number>>(() => new Set());
-  const [batchState, setBatchState] = useState<{ current: number; total: number; target: number } | null>(null);
-  const [countPreset, setCountPreset] = useState<"7" | "14" | "21" | "custom">("7");
-  const [customCount, setCustomCount] = useState(String(DEFAULT_WEEKLY_GENERATION_COUNT));
+  const [generatingTopicIds, setGeneratingTopicIds] = useState<Set<number>>(
+    () => new Set()
+  );
+  const [expandedTopicIds, setExpandedTopicIds] = useState<Set<number>>(
+    () => new Set()
+  );
+  const [batchState, setBatchState] = useState<{
+    current: number;
+    total: number;
+    target: number;
+  } | null>(null);
+  const [countPreset, setCountPreset] = useState<"7" | "14" | "21" | "custom">(
+    "7"
+  );
+  const [customCount, setCustomCount] = useState(
+    String(DEFAULT_WEEKLY_GENERATION_COUNT)
+  );
   const [countError, setCountError] = useState<string | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-  const [publishSuccessNotice, setPublishSuccessNotice] = useState<PublishSuccessNotice | null>(null);
+  const [publishSuccessNotice, setPublishSuccessNotice] =
+    useState<PublishSuccessNotice | null>(null);
   const [publishArticle, setPublishArticle] = useState<ArticleRow | null>(null);
-  const [manualPublishPlatform, setManualPublishPlatform] = useState<BindingPublishPlatform | "">("");
-  const [publishPlatformResolved, setPublishPlatformResolved] = useState<ResolvedArticlePublishPlatform | null>(
-    null,
+  const [manualPublishPlatform, setManualPublishPlatform] = useState<
+    BindingPublishPlatform | ""
+  >("");
+  const [publishPlatformResolved, setPublishPlatformResolved] =
+    useState<ResolvedArticlePublishPlatform | null>(null);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(
+    () => new Set()
   );
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(() => new Set());
   /** 发布弹窗内冻结的 Agent 状态，避免打开期间反复 sync/invalidate 导致抖动 */
-  const [publishDialogAgentOnline, setPublishDialogAgentOnline] = useState<boolean | null>(null);
-  const [publishDialogAccountSnapshot, setPublishDialogAccountSnapshot] = useState<
-    LocalAgentAccountStatusEntry[]
-  >([]);
+  const [publishDialogAgentOnline, setPublishDialogAgentOnline] = useState<
+    boolean | null
+  >(null);
+  const [publishDialogAccountSnapshot, setPublishDialogAccountSnapshot] =
+    useState<LocalAgentAccountStatusEntry[]>([]);
   const publishDialogPlatformsInitRef = useRef(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorArticle, setEditorArticle] = useState<ArticleRow | null>(null);
-  const [regeneratingCoverIds, setRegeneratingCoverIds] = useState<Set<number>>(() => new Set());
-  const [unsavedArticleIds, setUnsavedArticleIds] = useState<Set<number>>(() => new Set());
-  const [selectedPublishAccountIds, setSelectedPublishAccountIds] = useState<Record<string, number>>({});
-  const [platformStrategy, setPlatformStrategy] = useState<PlatformContentStrategyInput>(() =>
-    buildDefaultPlatformStrategy(),
+  const [regeneratingCoverIds, setRegeneratingCoverIds] = useState<Set<number>>(
+    () => new Set()
   );
-  const [selectedQuestionTemplateId, setSelectedQuestionTemplateId] = useState<number | null>(null);
-  const [selectedContentTaskId, setSelectedContentTaskId] = useState<number | null>(null);
-  const [entryContext, setEntryContext] = useState<WeeklyContentEntryContext>({});
+  const [unsavedArticleIds, setUnsavedArticleIds] = useState<Set<number>>(
+    () => new Set()
+  );
+  const [selectedPublishAccountIds, setSelectedPublishAccountIds] = useState<
+    Record<string, number>
+  >({});
+  const [platformStrategy, setPlatformStrategy] =
+    useState<PlatformContentStrategyInput>(() =>
+      buildDefaultPlatformStrategy()
+    );
+  const [selectedQuestionTemplateId, setSelectedQuestionTemplateId] = useState<
+    number | null
+  >(null);
+  const [selectedContentTaskId, setSelectedContentTaskId] = useState<
+    number | null
+  >(null);
+  const [entryContext, setEntryContext] = useState<WeeklyContentEntryContext>(
+    {}
+  );
   const entryContextRef = useRef<WeeklyContentEntryContext>({});
   const entryAutoGenerateHandledRef = useRef(false);
   const activeDraftPollsRef = useRef(new Set<number>());
   const recoveryPollsStartedRef = useRef(new Set<number>());
-  const [generatingPlatformKey, setGeneratingPlatformKey] = useState<WeeklyPlatformKey | null>(null);
-  const [platformBatchQueue, setPlatformBatchQueue] = useState<PlatformBatchQueueItem[] | null>(null);
+  const [generatingPlatformKey, setGeneratingPlatformKey] =
+    useState<WeeklyPlatformKey | null>(null);
+  const [platformBatchQueue, setPlatformBatchQueue] = useState<
+    PlatformBatchQueueItem[] | null
+  >(null);
   const [platformBatchRunning, setPlatformBatchRunning] = useState(false);
-  const [platformProgressLabelKey, setPlatformProgressLabelKey] = useState<WeeklyPlatformKey | null>(null);
-  const [platformProgressErrorCategory, setPlatformProgressErrorCategory] = useState<
-    AiTaskProgressErrorCategory | undefined
-  >();
-  const [platformProgressErrorMessage, setPlatformProgressErrorMessage] = useState<string>();
+  const [platformProgressLabelKey, setPlatformProgressLabelKey] =
+    useState<WeeklyPlatformKey | null>(null);
+  const [platformProgressErrorCategory, setPlatformProgressErrorCategory] =
+    useState<AiTaskProgressErrorCategory | undefined>();
+  const [platformProgressErrorMessage, setPlatformProgressErrorMessage] =
+    useState<string>();
   const [platformGenerationRetry, setPlatformGenerationRetry] = useState<{
     platformKey: WeeklyPlatformKey;
     topicId: number;
     strategyOverride: Partial<PlatformContentStrategyInput>;
     failCount: number;
   } | null>(null);
-  const platformContentProgress = useAiTaskStagedProgress({ stages: PLATFORM_CONTENT_PROGRESS_STAGES });
+  const platformContentProgress = useAiTaskStagedProgress({
+    stages: PLATFORM_CONTENT_PROGRESS_STAGES,
+  });
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const t0GapDeepLinkHandledRef = useRef(false);
-  const [filterStatus, setFilterStatus] = useState<ContentCardStatusFilter>("all");
+  const [filterStatus, setFilterStatus] =
+    useState<ContentCardStatusFilter>("all");
   const [filterContentTag, setFilterContentTag] = useState<string>("all");
   const [titleSearch, setTitleSearch] = useState("");
-  const [sortQuality, setSortQuality] = useState<ContentCardQualitySort>("none");
-  const [selectedCardIds, setSelectedCardIds] = useState<Set<number>>(() => new Set());
+  const [sortQuality, setSortQuality] =
+    useState<ContentCardQualitySort>("none");
+  const [selectedCardIds, setSelectedCardIds] = useState<Set<number>>(
+    () => new Set()
+  );
   const [batchEnqueueBusy, setBatchEnqueueBusy] = useState(false);
-  const [singleTaskPublishQueueError, setSingleTaskPublishQueueError] = useState<{
-    articleId: number;
-    message: string;
-  } | null>(null);
+  const [singleTaskPublishQueueError, setSingleTaskPublishQueueError] =
+    useState<{
+      articleId: number;
+      message: string;
+    } | null>(null);
 
   useEffect(() => {
     const parsed = parseWeeklyContentEntryContext(searchString);
@@ -915,7 +1082,9 @@ export default function WeeklyContentPage() {
     }
     if (entryContext.questionText?.trim()) {
       const q = entryContext.questionText.trim();
-      setPlatformStrategy(prev => (prev.targetQuestion.trim() === q ? prev : { ...prev, targetQuestion: q }));
+      setPlatformStrategy(prev =>
+        prev.targetQuestion.trim() === q ? prev : { ...prev, targetQuestion: q }
+      );
     }
     if (entryContext.platform) {
       const key = normalizeWeeklyPlatformKey(entryContext.platform);
@@ -932,17 +1101,18 @@ export default function WeeklyContentPage() {
     entryContext.articleId,
   ]);
 
-  const contentTaskViewQuery = trpc.geo.contentTasks.getCurrentTaskView.useQuery(
-    {
-      projectId: selectedProjectId!,
-      questionId: entryContext.questionId!,
-    },
-    { enabled: Boolean(selectedProjectId) && entryContext.questionId != null },
-  );
+  const contentTaskViewQuery =
+    trpc.geo.contentTasks.getCurrentTaskView.useQuery(
+      {
+        projectId: selectedProjectId!,
+        questionId: entryContext.questionId!,
+      },
+      { enabled: Boolean(selectedProjectId) && entryContext.questionId != null }
+    );
 
   const monthlyPlanQuery = trpc.geo.monthlyPlan.getCurrent.useQuery(
     { projectId: selectedProjectId! },
-    { enabled: Boolean(selectedProjectId) && entryContext.questionId == null },
+    { enabled: Boolean(selectedProjectId) && entryContext.questionId == null }
   );
 
   useEffect(() => {
@@ -978,11 +1148,13 @@ export default function WeeklyContentPage() {
   const brandName = selectedProject?.enterpriseName ?? "海豚知道";
   const projectName = selectedProject?.enterpriseName ?? "当前企业";
   const isContentProductionWorkbench = useMemo(
-    () => new URLSearchParams(searchString).get("mode") === "content-production",
-    [searchString],
+    () =>
+      new URLSearchParams(searchString).get("mode") === "content-production",
+    [searchString]
   );
   const isSingleTaskProgression = entryContext.questionId != null;
-  const isCustomerExecutionView = !isContentProductionWorkbench && !isSingleTaskProgression;
+  const isCustomerExecutionView =
+    !isContentProductionWorkbench && !isSingleTaskProgression;
 
   const platformAccountGroups = useMemo(
     () =>
@@ -990,14 +1162,19 @@ export default function WeeklyContentPage() {
         platform: string;
         accounts: PlatformAccountItem[];
       }>,
-    [platformAccountsQuery.data],
+    [platformAccountsQuery.data]
   );
 
   const boundPublishAccountCount = useMemo(() => {
     let count = 0;
     for (const group of platformAccountGroups) {
       for (const account of group.accounts ?? []) {
-        if (isPublishReadyPlatformAccount({ ...account, platform: group.platform })) {
+        if (
+          isPublishReadyPlatformAccount({
+            ...account,
+            platform: group.platform,
+          })
+        ) {
           count += 1;
         }
       }
@@ -1007,7 +1184,7 @@ export default function WeeklyContentPage() {
 
   const flattenedPlatformAccounts = useMemo(
     () => flattenPlatformAccounts(platformAccountGroups),
-    [platformAccountGroups],
+    [platformAccountGroups]
   );
 
   const {
@@ -1026,7 +1203,7 @@ export default function WeeklyContentPage() {
       setPublishDialogAgentOnline(online);
       setPublishDialogAccountSnapshot(snapshot);
     },
-    [],
+    []
   );
 
   const hydratePublishDialogAgent = useCallback(
@@ -1046,7 +1223,9 @@ export default function WeeklyContentPage() {
             projectId: selectedProjectId,
             accounts: result.accountSnapshot,
           });
-          await utils.geo.platformAccounts.list.invalidate({ projectId: selectedProjectId });
+          await utils.geo.platformAccounts.list.invalidate({
+            projectId: selectedProjectId,
+          });
         } catch {
           // 同步失败不阻断弹窗；状态已由本地快照更新
         }
@@ -1059,12 +1238,12 @@ export default function WeeklyContentPage() {
       selectedProjectId,
       syncLocalAgentSnapshot,
       utils.geo.platformAccounts.list,
-    ],
+    ]
   );
 
   const refreshLocalAgentHealth = useCallback(
     () => hydratePublishDialogAgent({ syncToWeb: true }),
-    [hydratePublishDialogAgent],
+    [hydratePublishDialogAgent]
   );
 
   const getAllEnabledAccountsForPlatform = useCallback(
@@ -1072,18 +1251,21 @@ export default function WeeklyContentPage() {
       const group = platformAccountGroups.find(g => g.platform === slug);
       return (group?.accounts ?? []) as PlatformAccountItem[];
     },
-    [platformAccountGroups],
+    [platformAccountGroups]
   );
 
   const getPublishReadyAccountsForPlatform = useCallback(
-    (slug: string) => getAllEnabledAccountsForPlatform(slug).filter(isPublishReadyAccount),
-    [getAllEnabledAccountsForPlatform],
+    (slug: string) =>
+      getAllEnabledAccountsForPlatform(slug).filter(isPublishReadyAccount),
+    [getAllEnabledAccountsForPlatform]
   );
 
   const getEnqueueSelectableAccountsForPlatform = useCallback(
     (slug: string) =>
-      getAllEnabledAccountsForPlatform(slug).filter(a => a.isEnabled && Boolean(a.accountName?.trim())),
-    [getAllEnabledAccountsForPlatform],
+      getAllEnabledAccountsForPlatform(slug).filter(
+        a => a.isEnabled && Boolean(a.accountName?.trim())
+      ),
+    [getAllEnabledAccountsForPlatform]
   );
 
   const pickSelectedPublishAccount = useCallback(
@@ -1097,7 +1279,7 @@ export default function WeeklyContentPage() {
       if (ready.length === 1) return ready[0]!;
       return null;
     },
-    [getEnqueueSelectableAccountsForPlatform, selectedPublishAccountIds],
+    [getEnqueueSelectableAccountsForPlatform, selectedPublishAccountIds]
   );
 
   const pickPublishAccount = useCallback(
@@ -1109,7 +1291,7 @@ export default function WeeklyContentPage() {
       if (ready.length === 1) return ready[0]!;
       return null;
     },
-    [pickSelectedPublishAccount, getPublishReadyAccountsForPlatform],
+    [pickSelectedPublishAccount, getPublishReadyAccountsForPlatform]
   );
 
   const rememberEnqueuePublishAccount = useCallback(
@@ -1118,31 +1300,55 @@ export default function WeeklyContentPage() {
       writeLastEnqueuePublishAccountId(selectedProjectId, slug, accountId);
       setSelectedPublishAccountIds(prev => ({ ...prev, [slug]: accountId }));
     },
-    [selectedProjectId],
+    [selectedProjectId]
   );
 
   const publishAccountGroupWarnings = useMemo(() => {
-    if (!publishArticle?.recommendedAccountGroup || !isAccountGroupType(publishArticle.recommendedAccountGroup)) {
-      return [] as Array<{ slug: string; platformLabel: string; message: string }>;
+    if (
+      !publishArticle?.recommendedAccountGroup ||
+      !isAccountGroupType(publishArticle.recommendedAccountGroup)
+    ) {
+      return [] as Array<{
+        slug: string;
+        platformLabel: string;
+        message: string;
+      }>;
     }
-    const recLabel = getAccountGroupLabel(publishArticle.recommendedAccountGroup);
-    const out: Array<{ slug: string; platformLabel: string; message: string }> = [];
+    const recLabel = getAccountGroupLabel(
+      publishArticle.recommendedAccountGroup
+    );
+    const out: Array<{ slug: string; platformLabel: string; message: string }> =
+      [];
     for (const slug of Array.from(selectedPlatforms)) {
       const row = pickSelectedPublishAccount(slug);
       if (!row) continue;
-      if (!accountGroupsMismatch(publishArticle.recommendedAccountGroup, row.accountGroup)) continue;
-      const boundLabel = getAccountGroupLabel(row.accountGroup) || "未设置账号组";
+      if (
+        !accountGroupsMismatch(
+          publishArticle.recommendedAccountGroup,
+          row.accountGroup
+        )
+      )
+        continue;
+      const boundLabel =
+        getAccountGroupLabel(row.accountGroup) || "未设置账号组";
       out.push({
         slug,
-        platformLabel: PUBLISH_QUEUE_PLATFORMS.find(p => p.slug === slug)?.label ?? slug,
+        platformLabel:
+          PUBLISH_QUEUE_PLATFORMS.find(p => p.slug === slug)?.label ?? slug,
         message: ACCOUNT_GROUP_MISMATCH_HINT(recLabel, boundLabel),
       });
     }
     return out;
   }, [publishArticle, selectedPlatforms, pickSelectedPublishAccount]);
 
-  const tasks = useProjectScopedQueryRows<TaskRow>(selectedProjectId, tasksQuery) as TaskRow[];
-  const analyses = useProjectScopedQueryRows<AnalysisRow>(selectedProjectId, analysisQuery) as AnalysisRow[];
+  const tasks = useProjectScopedQueryRows<TaskRow>(
+    selectedProjectId,
+    tasksQuery
+  ) as TaskRow[];
+  const analyses = useProjectScopedQueryRows<AnalysisRow>(
+    selectedProjectId,
+    analysisQuery
+  ) as AnalysisRow[];
   const geoContentTaskSource = useMemo(
     () =>
       resolveGeoContentTaskSource({
@@ -1152,7 +1358,13 @@ export default function WeeklyContentPage() {
         selectedTaskId: selectedContentTaskId,
         preferredTargetQuestion: platformStrategy.targetQuestion,
       }),
-    [tasks, analyses, questionsQuery.data, selectedContentTaskId, platformStrategy.targetQuestion],
+    [
+      tasks,
+      analyses,
+      questionsQuery.data,
+      selectedContentTaskId,
+      platformStrategy.targetQuestion,
+    ]
   );
 
   const targetQuestionOptions = useMemo(() => {
@@ -1160,22 +1372,37 @@ export default function WeeklyContentPage() {
     const fromQuestions = (questionsQuery.data ?? [])
       .map((q: { questionText?: string }) => q.questionText?.trim())
       .filter(Boolean) as string[];
-    const fromTasks = tasks.map(t => t.taskName?.trim()).filter(Boolean) as string[];
-    return Array.from(new Set([fromSource, ...fromQuestions, ...fromTasks].filter(Boolean) as string[]));
+    const fromTasks = tasks
+      .map(t => t.taskName?.trim())
+      .filter(Boolean) as string[];
+    return Array.from(
+      new Set(
+        [fromSource, ...fromQuestions, ...fromTasks].filter(Boolean) as string[]
+      )
+    );
   }, [questionsQuery.data, tasks, geoContentTaskSource?.linkedQuestion]);
 
   useEffect(() => {
     const linked = geoContentTaskSource?.linkedQuestion?.trim();
     if (linked) {
       setPlatformStrategy(prev =>
-        prev.targetQuestion.trim() === linked ? prev : { ...prev, targetQuestion: linked },
+        prev.targetQuestion.trim() === linked
+          ? prev
+          : { ...prev, targetQuestion: linked }
       );
       return;
     }
     if (!platformStrategy.targetQuestion.trim() && targetQuestionOptions[0]) {
-      setPlatformStrategy(prev => ({ ...prev, targetQuestion: targetQuestionOptions[0]! }));
+      setPlatformStrategy(prev => ({
+        ...prev,
+        targetQuestion: targetQuestionOptions[0]!,
+      }));
     }
-  }, [geoContentTaskSource?.linkedQuestion, targetQuestionOptions, platformStrategy.targetQuestion]);
+  }, [
+    geoContentTaskSource?.linkedQuestion,
+    targetQuestionOptions,
+    platformStrategy.targetQuestion,
+  ]);
 
   useEffect(() => {
     setSelectedQuestionTemplateId(null);
@@ -1183,17 +1410,18 @@ export default function WeeklyContentPage() {
 
   const platformStrategyError = useMemo(
     () => validatePlatformContentStrategy(platformStrategy),
-    [platformStrategy],
+    [platformStrategy]
   );
 
   const latestDiagnosisGap = useMemo(() => {
-    if (geoContentTaskSource?.contentGaps[0]) return geoContentTaskSource.contentGaps[0]!;
+    if (geoContentTaskSource?.contentGaps[0])
+      return geoContentTaskSource.contentGaps[0]!;
     return analyses.map(r => r.contentGap?.trim()).find(Boolean) ?? null;
   }, [geoContentTaskSource?.contentGaps, analyses]);
 
   const hasDiagnosisData = useMemo(
     () => hasGeoDiagnosisSourceData(tasks, analyses),
-    [tasks, analyses],
+    [tasks, analyses]
   );
 
   const enterpriseProfileReady = useMemo(() => {
@@ -1213,7 +1441,7 @@ export default function WeeklyContentPage() {
 
   const serverHeartbeatConnected = useMemo(
     () => inferServerHeartbeatConnected(flattenedPlatformAccounts),
-    [flattenedPlatformAccounts],
+    [flattenedPlatformAccounts]
   );
 
   const publishBaseContext = useMemo(
@@ -1225,7 +1453,9 @@ export default function WeeklyContentPage() {
       platformAccounts: flattenedPlatformAccounts,
       localAgentStatus: {
         serverHeartbeatConnected,
-        browserLocalAgentConnected: localAgentConnectedOnline ? true : localAgentOnline,
+        browserLocalAgentConnected: localAgentConnectedOnline
+          ? true
+          : localAgentOnline,
         localAgentAccountSnapshot,
       },
     }),
@@ -1238,7 +1468,7 @@ export default function WeeklyContentPage() {
       serverHeartbeatConnected,
       localAgentOnline,
       localAgentAccountSnapshot,
-    ],
+    ]
   );
 
   const publishDialogPreflightContext = useMemo(
@@ -1255,40 +1485,65 @@ export default function WeeklyContentPage() {
       serverHeartbeatConnected,
       publishDialogAgentOnline,
       publishDialogAccountSnapshot,
-    ],
+    ]
   );
 
-  const topics = useProjectScopedQueryRows<TopicRow>(selectedProjectId, topicsQuery) as TopicRow[];
-  const topicsById = useMemo(() => new Map(topics.map(topic => [topic.id, topic] as const)), [topics]);
-  const tasksById = useMemo(() => new Map(tasks.map(task => [task.id, task] as const)), [tasks]);
-  const taskIdSet = useMemo(() => taskIdSetFromList(tasks.map(t => t.id)), [tasks]);
-  const staleTopicCount = useMemo(() => countStaleTopics(topics, taskIdSet), [topics, taskIdSet]);
+  const topics = useProjectScopedQueryRows<TopicRow>(
+    selectedProjectId,
+    topicsQuery
+  ) as TopicRow[];
+  const topicsById = useMemo(
+    () => new Map(topics.map(topic => [topic.id, topic] as const)),
+    [topics]
+  );
+  const tasksById = useMemo(
+    () => new Map(tasks.map(task => [task.id, task] as const)),
+    [tasks]
+  );
+  const taskIdSet = useMemo(
+    () => taskIdSetFromList(tasks.map(t => t.id)),
+    [tasks]
+  );
+  const staleTopicCount = useMemo(
+    () => countStaleTopics(topics, taskIdSet),
+    [topics, taskIdSet]
+  );
   const hasStaleTopics = staleTopicCount > 0;
-  const articles = useProjectScopedQueryRows<ArticleRow>(selectedProjectId, articlesQuery) as ArticleRow[];
-  const scores = dedupeLatestQualityScoreRows((scoresQuery.data ?? []) as QualityScoreRow[]);
+  const articles = useProjectScopedQueryRows<ArticleRow>(
+    selectedProjectId,
+    articlesQuery
+  ) as ArticleRow[];
+  const scores = dedupeLatestQualityScoreRows(
+    (scoresQuery.data ?? []) as QualityScoreRow[]
+  );
 
-  const articlesById = useMemo(() => new Map(articles.map(a => [a.id, a] as const)), [articles]);
-  const scoresByArticleId = useMemo(() => new Map(scores.map(s => [s.articleId, s] as const)), [scores]);
+  const articlesById = useMemo(
+    () => new Map(articles.map(a => [a.id, a] as const)),
+    [articles]
+  );
+  const scoresByArticleId = useMemo(
+    () => new Map(scores.map(s => [s.articleId, s] as const)),
+    [scores]
+  );
 
   const evaluateArticlePublishPreflight = useCallback(
     (
       article: ArticleRow,
       ctxOverrides?: Partial<
         Parameters<typeof buildArticlePublishPreflightInput>[2]
-      >,
+      >
     ) => {
       if (selectedProjectId == null) return null;
       const legacyRow = scoresByArticleId.get(article.id) ?? null;
       return evaluatePublishPreflight({
-        ...buildArticlePublishPreflightInput(
-          selectedProjectId,
-          article,
-          { ...publishBaseContext, ...ctxOverrides },
-        ),
+        ...buildArticlePublishPreflightInput(selectedProjectId, article, {
+          ...publishBaseContext,
+          ...ctxOverrides,
+        }),
         qualityResult: buildUnifiedQualityGateArticle(article, legacyRow),
       });
     },
-    [selectedProjectId, publishBaseContext, scoresByArticleId],
+    [selectedProjectId, publishBaseContext, scoresByArticleId]
   );
 
   const articleByTopicId = useMemo(() => {
@@ -1300,9 +1555,14 @@ export default function WeeklyContentPage() {
   }, [articles]);
 
   const inFlightDraftByPlatform = useMemo(() => {
-    const map = new Map<WeeklyPlatformKey, { articleId: number; topicId: number }>();
+    const map = new Map<
+      WeeklyPlatformKey,
+      { articleId: number; topicId: number }
+    >();
     for (const article of articles) {
-      const record = readPlatformDraftGeneration(article.generationBasis ?? null);
+      const record = readPlatformDraftGeneration(
+        article.generationBasis ?? null
+      );
       if (!isPlatformDraftInFlight(record?.status)) continue;
       const resolved = getArticlePublishPlatform({
         generationBasis: article.generationBasis ?? null,
@@ -1336,22 +1596,32 @@ export default function WeeklyContentPage() {
       platformBatchRunning ||
       generatingPlatformKey != null ||
       inFlightDraftByPlatform.size > 0,
-    [platformBatchRunning, generatingPlatformKey, inFlightDraftByPlatform],
+    [platformBatchRunning, generatingPlatformKey, inFlightDraftByPlatform]
   );
 
-  const weeklyArticles = useMemo(() => articles.filter(a => isInThisWeek(a.createdAt)), [articles]);
-  const publishedCount = useMemo(() => articles.filter(a => a.status === "已发布").length, [articles]);
+  const weeklyArticles = useMemo(
+    () => articles.filter(a => isInThisWeek(a.createdAt)),
+    [articles]
+  );
+  const publishedCount = useMemo(
+    () => articles.filter(a => a.status === "已发布").length,
+    [articles]
+  );
   const sceneCount = topics.length > 0 ? topics.length : tasks.length;
 
   const pendingTopicIds = useMemo(
     () => topics.filter(t => !articleByTopicId.has(t.id)).map(t => t.id),
-    [topics, articleByTopicId],
+    [topics, articleByTopicId]
   );
 
   const queriesReady =
-    enabled && !tasksQuery.isLoading && !topicsQuery.isLoading && !analysisQuery.isLoading;
+    enabled &&
+    !tasksQuery.isLoading &&
+    !topicsQuery.isLoading &&
+    !analysisQuery.isLoading;
   const showDiagnosisEmpty = queriesReady && !hasDiagnosisData;
-  const showProjectTasksEmpty = queriesReady && hasDiagnosisData && tasks.length === 0;
+  const showProjectTasksEmpty =
+    queriesReady && hasDiagnosisData && tasks.length === 0;
   const showDirectionEmpty =
     queriesReady &&
     hasDiagnosisData &&
@@ -1384,10 +1654,17 @@ export default function WeeklyContentPage() {
         toast.message(PROJECT_SCOPED_CONTENT_TASK_STALE_CLIENT_MESSAGE);
       }
     }
-  }, [selectedProjectId, tasksQuery.isFetched, tasks, selectedContentTaskId, entryContext.questionId]);
+  }, [
+    selectedProjectId,
+    tasksQuery.isFetched,
+    tasks,
+    selectedContentTaskId,
+    entryContext.questionId,
+  ]);
 
   const resolvedContentTaskIdForGenerate = useMemo(() => {
-    const candidate = selectedContentTaskId ?? geoContentTaskSource?.contentTaskId ?? null;
+    const candidate =
+      selectedContentTaskId ?? geoContentTaskSource?.contentTaskId ?? null;
     if (!isContentTaskIdInProjectTaskList(candidate, tasks)) return undefined;
     return candidate ?? undefined;
   }, [selectedContentTaskId, geoContentTaskSource?.contentTaskId, tasks]);
@@ -1403,7 +1680,10 @@ export default function WeeklyContentPage() {
     const projectId = resolveMutationProjectId(selectedProjectId, location);
     if (!projectId) return;
     generateTopicsMutation
-      .mutateAsync({ projectId, generationCount: DEFAULT_WEEKLY_GENERATION_COUNT })
+      .mutateAsync({
+        projectId,
+        generationCount: DEFAULT_WEEKLY_GENERATION_COUNT,
+      })
       .then(async () => {
         await topicsQuery.refetch();
       })
@@ -1429,8 +1709,12 @@ export default function WeeklyContentPage() {
     if (!selectedProjectId) return;
     await Promise.all([
       utils.geo.articles.list.invalidate({ projectId: selectedProjectId }),
-      utils.geo.articles.latestQualityScores.invalidate({ projectId: selectedProjectId }),
-      utils.geo.articles.topics.list.invalidate({ projectId: selectedProjectId }),
+      utils.geo.articles.latestQualityScores.invalidate({
+        projectId: selectedProjectId,
+      }),
+      utils.geo.articles.topics.list.invalidate({
+        projectId: selectedProjectId,
+      }),
     ]);
     await articlesQuery.refetch();
     await scoresQuery.refetch();
@@ -1440,7 +1724,7 @@ export default function WeeklyContentPage() {
     async (
       projectId: number,
       articleId: number,
-      options?: { onProgress?: (stage: number) => void },
+      options?: { onProgress?: (stage: number) => void }
     ): Promise<{
       ok: boolean;
       errorMessage?: string;
@@ -1448,7 +1732,10 @@ export default function WeeklyContentPage() {
       canRetry?: boolean;
     }> => {
       if (activeDraftPollsRef.current.has(articleId)) {
-        return { ok: false, errorMessage: PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE };
+        return {
+          ok: false,
+          errorMessage: PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
+        };
       }
       activeDraftPollsRef.current.add(articleId);
       try {
@@ -1456,12 +1743,15 @@ export default function WeeklyContentPage() {
         const maxAttempts = 50;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           if (attempt > 0) {
-            await new Promise(resolve => window.setTimeout(resolve, pollIntervalMs));
+            await new Promise(resolve =>
+              window.setTimeout(resolve, pollIntervalMs)
+            );
           }
-          const status = await utils.geo.articles.getPlatformDraftGenerationStatus.fetch({
-            projectId,
-            articleId,
-          });
+          const status =
+            await utils.geo.articles.getPlatformDraftGenerationStatus.fetch({
+              projectId,
+              articleId,
+            });
           options?.onProgress?.(Math.min(92, 35 + attempt * 3));
           if (status.status === "generated") {
             await invalidateArticles();
@@ -1471,7 +1761,8 @@ export default function WeeklyContentPage() {
             await invalidateArticles();
             return {
               ok: false,
-              errorMessage: status.errorMessage ?? PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
+              errorMessage:
+                status.errorMessage ?? PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
               canRetry: status.canRetry,
             };
           }
@@ -1485,15 +1776,19 @@ export default function WeeklyContentPage() {
         activeDraftPollsRef.current.delete(articleId);
       }
     },
-    [utils, invalidateArticles],
+    [utils, invalidateArticles]
   );
 
   const generateOne = useCallback(
     async (
       topicId: number,
       strategyOverride?: Partial<PlatformContentStrategyInput>,
-      options?: { silentToast?: boolean },
-    ): Promise<{ ok: boolean; userNotice?: string | null; errorDetail?: string }> => {
+      options?: { silentToast?: boolean }
+    ): Promise<{
+      ok: boolean;
+      userNotice?: string | null;
+      errorDetail?: string;
+    }> => {
       const effectiveStrategy = { ...platformStrategy, ...strategyOverride };
       const strategyErr = validatePlatformContentStrategy(effectiveStrategy);
       if (strategyErr) {
@@ -1515,11 +1810,13 @@ export default function WeeklyContentPage() {
           targetQuestion: effectiveStrategy.targetQuestion.trim(),
           geoEnhancementGoal: effectiveStrategy.geoEnhancementGoal,
           targetAiPlatforms: [...effectiveStrategy.targetAiPlatforms],
-          contentTaskId: resolvedContentTaskIdForGenerate ?? ctx.taskId ?? undefined,
-          diagnosisFinding: geoContentTaskSource?.diagnosisFinding ?? ctx.relatedGeoGap,
+          contentTaskId:
+            resolvedContentTaskIdForGenerate ?? ctx.taskId ?? undefined,
+          diagnosisFinding:
+            geoContentTaskSource?.diagnosisFinding ?? ctx.relatedGeoGap,
           geoGap: geoContentTaskSource?.geoGapSummary ?? ctx.relatedGeoGap,
           platformRule: formatPlatformRuleSummaryForGeneration(
-            effectiveStrategy.targetPublishPlatform,
+            effectiveStrategy.targetPublishPlatform
           ),
           questionTemplateId: selectedQuestionTemplateId ?? undefined,
           questionId: ctx.questionId ?? undefined,
@@ -1532,7 +1829,10 @@ export default function WeeklyContentPage() {
         }
         return { ok: true, userNotice };
       } catch (err) {
-        if (!options?.silentToast && handleSubscriptionLimitMutationError(err)) {
+        if (
+          !options?.silentToast &&
+          handleSubscriptionLimitMutationError(err)
+        ) {
           return { ok: false, userNotice: null };
         }
         const msg = readGenerateArticleError(err);
@@ -1556,7 +1856,7 @@ export default function WeeklyContentPage() {
       geoContentTaskSource,
       resolvedContentTaskIdForGenerate,
       selectedQuestionTemplateId,
-    ],
+    ]
   );
 
   const handleGenerateOne = (topicId: number) => {
@@ -1592,14 +1892,19 @@ export default function WeeklyContentPage() {
         projectId,
         generationCount: targetCount,
       });
-      const [topicRefetch, articleRefetch] = await Promise.all([topicsQuery.refetch(), articlesQuery.refetch()]);
+      const [topicRefetch, articleRefetch] = await Promise.all([
+        topicsQuery.refetch(),
+        articlesQuery.refetch(),
+      ]);
       const refreshedTopics = (topicRefetch.data ?? []) as TopicRow[];
       const refreshedArticles = (articleRefetch.data ?? []) as ArticleRow[];
       const topicToArticle = new Map<number, ArticleRow>();
       for (const a of refreshedArticles) {
         if (typeof a.topicId === "number") topicToArticle.set(a.topicId, a);
       }
-      const pending = refreshedTopics.filter(t => !topicToArticle.has(t.id)).map(t => t.id);
+      const pending = refreshedTopics
+        .filter(t => !topicToArticle.has(t.id))
+        .map(t => t.id);
       const toGenerate = pending.slice(0, targetCount);
       const total = toGenerate.length;
       if (total === 0) {
@@ -1631,20 +1936,34 @@ export default function WeeklyContentPage() {
 
   const batchBusy = batchState !== null || platformBatchRunning;
   const anyGenerating =
-    batchBusy || generatingTopicIds.size > 0 || generateArticleMutation.isPending || platformBatchRunning;
-  const batchDone = !batchBusy && pendingTopicIds.length === 0 && topics.length > 0 && topics.every(t => articleByTopicId.has(t.id));
+    batchBusy ||
+    generatingTopicIds.size > 0 ||
+    generateArticleMutation.isPending ||
+    platformBatchRunning;
+  const batchDone =
+    !batchBusy &&
+    pendingTopicIds.length === 0 &&
+    topics.length > 0 &&
+    topics.every(t => articleByTopicId.has(t.id));
 
-  const estMinutesRemaining = batchState ? Math.max(1, Math.ceil((batchState.total - batchState.current + 1) * 2)) : 0;
+  const estMinutesRemaining = batchState
+    ? Math.max(1, Math.ceil((batchState.total - batchState.current + 1) * 2))
+    : 0;
 
   const generatedAssetCount = useMemo(
     () => topics.filter(t => articleByTopicId.has(t.id)).length,
-    [topics, articleByTopicId],
+    [topics, articleByTopicId]
   );
   const publishedAssetCount = useMemo(
-    () => topics.filter(t => articleByTopicId.get(t.id)?.status === "已发布").length,
-    [topics, articleByTopicId],
+    () =>
+      topics.filter(t => articleByTopicId.get(t.id)?.status === "已发布")
+        .length,
+    [topics, articleByTopicId]
   );
-  const pendingPublishCount = Math.max(0, generatedAssetCount - publishedAssetCount);
+  const pendingPublishCount = Math.max(
+    0,
+    generatedAssetCount - publishedAssetCount
+  );
 
   const displayTargetCount = useMemo(() => {
     if (batchState) return batchState.target;
@@ -1657,17 +1976,29 @@ export default function WeeklyContentPage() {
   }, [batchState, countPreset, customCount]);
 
   const platformBoardRows = useMemo((): PlatformBoardRow[] => {
-    const linkedQuestion = geoContentTaskSource?.linkedQuestion ?? platformStrategy.targetQuestion;
+    const linkedQuestion =
+      geoContentTaskSource?.linkedQuestion ?? platformStrategy.targetQuestion;
     const sceneLabel = geoContentTaskSource?.sceneLabel ?? "";
-    const geoGapDefault = geoContentTaskSource?.geoGapSummary ?? latestDiagnosisGap ?? null;
+    const geoGapDefault =
+      geoContentTaskSource?.geoGapSummary ?? latestDiagnosisGap ?? null;
     const publishTasks = publishTasksQuery.data?.tasks ?? [];
     const publishRecords = publishRecordsQuery.data ?? [];
     const inclusionRecords = inclusionMonitoringQuery.data ?? [];
-    const latestPublishTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
-    const latestPublishRecordByArticle = new Map<number, (typeof publishRecords)[number]>();
-    const latestInclusionRecordByArticle = new Map<number, (typeof inclusionRecords)[number]>();
+    const latestPublishTaskByArticle = new Map<
+      number,
+      (typeof publishTasks)[number]
+    >();
+    const latestPublishRecordByArticle = new Map<
+      number,
+      (typeof publishRecords)[number]
+    >();
+    const latestInclusionRecordByArticle = new Map<
+      number,
+      (typeof inclusionRecords)[number]
+    >();
     for (const task of publishTasks) {
-      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      const articleId =
+        typeof task.articleId === "number" ? task.articleId : null;
       if (!articleId) continue;
       const prev = latestPublishTaskByArticle.get(articleId);
       const taskTime = new Date(task.createdAt ?? 0).getTime();
@@ -1677,21 +2008,31 @@ export default function WeeklyContentPage() {
       }
     }
     for (const record of publishRecords) {
-      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      const articleId =
+        typeof record.articleId === "number" ? record.articleId : null;
       if (!articleId) continue;
       const prev = latestPublishRecordByArticle.get(articleId);
-      const recordTime = new Date(record.publishedAt ?? record.createdAt ?? 0).getTime();
-      const prevTime = prev ? new Date(prev.publishedAt ?? prev.createdAt ?? 0).getTime() : -1;
+      const recordTime = new Date(
+        record.publishedAt ?? record.createdAt ?? 0
+      ).getTime();
+      const prevTime = prev
+        ? new Date(prev.publishedAt ?? prev.createdAt ?? 0).getTime()
+        : -1;
       if (!prev || recordTime >= prevTime) {
         latestPublishRecordByArticle.set(articleId, record);
       }
     }
     for (const record of inclusionRecords) {
-      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      const articleId =
+        typeof record.articleId === "number" ? record.articleId : null;
       if (!articleId) continue;
       const prev = latestInclusionRecordByArticle.get(articleId);
-      const recordTime = new Date(record.updatedAt ?? record.createdAt ?? 0).getTime();
-      const prevTime = prev ? new Date(prev.updatedAt ?? prev.createdAt ?? 0).getTime() : -1;
+      const recordTime = new Date(
+        record.updatedAt ?? record.createdAt ?? 0
+      ).getTime();
+      const prevTime = prev
+        ? new Date(prev.updatedAt ?? prev.createdAt ?? 0).getTime()
+        : -1;
       if (!prev || recordTime >= prevTime) {
         latestInclusionRecordByArticle.set(articleId, record);
       }
@@ -1704,18 +2045,26 @@ export default function WeeklyContentPage() {
       }).weeklyPlatformKey;
     const pickPreferredPlatformArticle = (
       current: ArticleRow | undefined,
-      candidate: ArticleRow,
+      candidate: ArticleRow
     ): ArticleRow => {
       if (!current) return candidate;
-      if (current.status === "已发布" && candidate.status !== "已发布") return candidate;
-      if (current.status !== "已发布" && candidate.status === "已发布") return current;
+      if (current.status === "已发布" && candidate.status !== "已发布")
+        return candidate;
+      if (current.status !== "已发布" && candidate.status === "已发布")
+        return current;
       const currentTime = new Date(current.createdAt ?? 0).getTime();
       const candidateTime = new Date(candidate.createdAt ?? 0).getTime();
       return candidateTime >= currentTime ? candidate : current;
     };
     const platformWithReadyAccount = new Set<string>();
     for (const group of platformAccountsQuery.data?.accounts ?? []) {
-      const ready = (group.accounts ?? []).some(a => a.isEnabled && a.sessionStatus === "active" && a.localProfileId && a.localAgentId);
+      const ready = (group.accounts ?? []).some(
+        a =>
+          a.isEnabled &&
+          a.sessionStatus === "active" &&
+          a.localProfileId &&
+          a.localAgentId
+      );
       if (ready) platformWithReadyAccount.add(group.platform);
     }
 
@@ -1735,24 +2084,32 @@ export default function WeeklyContentPage() {
       const absorbPlatformArticle = (article: ArticleRow) => {
         if (countedArticleIds.has(article.id)) return;
         countedArticleIds.add(article.id);
-        platformArticle = pickPreferredPlatformArticle(platformArticle, article);
+        platformArticle = pickPreferredPlatformArticle(
+          platformArticle,
+          article
+        );
         const preflight = evaluateArticlePublishPreflight(article);
         const pass = preflight?.ready ?? false;
         if (article.status === "已发布") {
           counts.published += 1;
-          const publishedAt = article.publishedAt ?? article.lastPublishRecordAt ?? article.createdAt;
+          const publishedAt =
+            article.publishedAt ??
+            article.lastPublishRecordAt ??
+            article.createdAt;
           if (publishedAt) {
             const publishedDate = new Date(publishedAt);
             if (
               !Number.isNaN(publishedDate.getTime()) &&
-              (!lastPublishedAt || publishedDate.getTime() > lastPublishedAt.getTime())
+              (!lastPublishedAt ||
+                publishedDate.getTime() > lastPublishedAt.getTime())
             ) {
               lastPublishedAt = publishedDate;
             }
           }
         } else if (pass) counts.ready += 1;
         else counts.pendingConfirm += 1;
-        if (pass && isContentReviewPending(article.contentReviewStatus)) pendingReviewCount += 1;
+        if (pass && isContentReviewPending(article.contentReviewStatus))
+          pendingReviewCount += 1;
         const articleTask = latestPublishTaskByArticle.get(article.id);
         if (
           articleTask &&
@@ -1761,14 +2118,24 @@ export default function WeeklyContentPage() {
         ) {
           queuedCount += 1;
         }
-        const createdAt = article.createdAt ? new Date(article.createdAt) : null;
-        if (createdAt && (!lastGeneratedAt || createdAt.getTime() > lastGeneratedAt.getTime())) {
+        const createdAt = article.createdAt
+          ? new Date(article.createdAt)
+          : null;
+        if (
+          createdAt &&
+          (!lastGeneratedAt || createdAt.getTime() > lastGeneratedAt.getTime())
+        ) {
           lastGeneratedAt = createdAt;
         }
       };
       for (const topic of topics) {
-        const task = typeof topic.optimizationTaskId === "number" ? tasksById.get(topic.optimizationTaskId) : undefined;
-        const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
+        const task =
+          typeof topic.optimizationTaskId === "number"
+            ? tasksById.get(topic.optimizationTaskId)
+            : undefined;
+        const card = parseGeoOptimizationTaskCard(
+          task?.executionSuggestion ?? null
+        );
         const article = articleByTopicId.get(topic.id);
         const platformKey = article
           ? resolveArticlePlatformKey(article)
@@ -1792,15 +2159,21 @@ export default function WeeklyContentPage() {
       const draftFailed = draftRecord?.status === "failed";
       const platformGenerating = generating || draftInFlight;
       const published = platformArticle?.status === "已发布";
-      const latestTask = platformArticle ? latestPublishTaskByArticle.get(platformArticle.id) : undefined;
+      const latestTask = platformArticle
+        ? latestPublishTaskByArticle.get(platformArticle.id)
+        : undefined;
       const queued = Boolean(
-        latestTask && latestTask.status !== "failed" && latestTask.status !== "session_expired",
+        latestTask &&
+          latestTask.status !== "failed" &&
+          latestTask.status !== "session_expired"
       );
       const publishReady =
         platformArticle && selectedProjectId != null
           ? (evaluateArticlePublishPreflight(platformArticle)?.ready ?? false)
           : false;
-      const lifecycleView = platformArticle ? resolveArticleLifecycleView(platformArticle) : null;
+      const lifecycleView = platformArticle
+        ? resolveArticleLifecycleView(platformArticle)
+        : null;
       const status = resolveWeeklyPlatformContentStatus({
         hasArticle: Boolean(platformArticle) && !draftInFlight,
         generating: platformGenerating,
@@ -1812,12 +2185,17 @@ export default function WeeklyContentPage() {
       });
       const lifecycle = resolveArticleLifecycleForBoard({
         article: platformArticle ?? null,
-        publishRecord: platformArticle ? latestPublishRecordByArticle.get(platformArticle.id) ?? null : null,
-        inclusionRecord: platformArticle ? latestInclusionRecordByArticle.get(platformArticle.id) ?? null : null,
+        publishRecord: platformArticle
+          ? (latestPublishRecordByArticle.get(platformArticle.id) ?? null)
+          : null,
+        inclusionRecord: platformArticle
+          ? (latestInclusionRecordByArticle.get(platformArticle.id) ?? null)
+          : null,
         publishTask: latestTask ?? null,
         generating: platformGenerating && !platformArticle,
       });
-      const generatedCount = counts.pendingConfirm + counts.ready + counts.published;
+      const generatedCount =
+        counts.pendingConfirm + counts.ready + counts.published;
       const topicForArticle =
         platformArticle && typeof platformArticle.topicId === "number"
           ? topicsById.get(platformArticle.topicId)
@@ -1841,7 +2219,11 @@ export default function WeeklyContentPage() {
         lastGeneratedAtLabel,
         lastPublishedAtLabel,
         platformRole: getWeeklyPlatformContentRole(def.key),
-        platformGenerationGoal: buildWeeklyPlatformGenerationGoal(def.key, linkedQuestion, sceneLabel),
+        platformGenerationGoal: buildWeeklyPlatformGenerationGoal(
+          def.key,
+          linkedQuestion,
+          sceneLabel
+        ),
         publishHint:
           counts.ready > 0
             ? "本平台已有可发布内容，建议进入发布队列。"
@@ -1857,11 +2239,30 @@ export default function WeeklyContentPage() {
         hasContent: generatedCount > 0,
         articleId: platformArticle?.id ?? null,
         platformDraftStatusLabel: lifecycle.label,
-        qualityScoreLabel: platformArticle ? (() => { const article = platformArticle!; const q = scoresByArticleId.get(article.id); const view = resolveQualityCardView(buildUnifiedQualityGateArticle(article, q ?? null)); return view ? `${view.score}分 · ${view.tier.label}` : "待质检"; })() : "暂无",
-        accountStatusLabel: def.publishPlatformId && platformWithReadyAccount.has(def.publishPlatformId) ? "账号可用" : "待绑定账号",
-        primaryActionKind: resolvePlatformBoardPrimaryActionKind(status, generatedCount > 0),
+        qualityScoreLabel: platformArticle
+          ? (() => {
+              const article = platformArticle!;
+              const q = scoresByArticleId.get(article.id);
+              const view = resolveQualityCardView(
+                buildUnifiedQualityGateArticle(article, q ?? null)
+              );
+              return view ? `${view.score}分 · ${view.tier.label}` : "待质检";
+            })()
+          : "暂无",
+        accountStatusLabel:
+          def.publishPlatformId &&
+          platformWithReadyAccount.has(def.publishPlatformId)
+            ? "账号可用"
+            : "待绑定账号",
+        primaryActionKind: resolvePlatformBoardPrimaryActionKind(
+          status,
+          generatedCount > 0
+        ),
         retryPublishTaskId:
-          isRetryableFailedPublishTask(latestTask) && typeof latestTask?.id === "number" ? latestTask.id : null,
+          isRetryableFailedPublishTask(latestTask) &&
+          typeof latestTask?.id === "number"
+            ? latestTask.id
+            : null,
       };
     });
   }, [
@@ -1888,9 +2289,13 @@ export default function WeeklyContentPage() {
   const contentCardModels = useMemo((): WeeklyArticleCardModel[] => {
     const publishRecords = publishRecordsQuery.data ?? [];
     const publishTasks = publishTasksQuery.data?.tasks ?? [];
-    const latestPublishTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
+    const latestPublishTaskByArticle = new Map<
+      number,
+      (typeof publishTasks)[number]
+    >();
     for (const task of publishTasks) {
-      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      const articleId =
+        typeof task.articleId === "number" ? task.articleId : null;
       if (!articleId) continue;
       const prev = latestPublishTaskByArticle.get(articleId);
       const taskTime = new Date(task.createdAt ?? 0).getTime();
@@ -1902,24 +2307,37 @@ export default function WeeklyContentPage() {
     return articles
       .filter(a => typeof a.topicId === "number")
       .map(a => {
-        const topic = typeof a.topicId === "number" ? topicsById.get(a.topicId) : undefined;
+        const topic =
+          typeof a.topicId === "number" ? topicsById.get(a.topicId) : undefined;
         const task =
           topic && typeof topic.optimizationTaskId === "number"
             ? tasksById.get(topic.optimizationTaskId)
             : undefined;
-        const card = parseGeoOptimizationTaskCard(task?.executionSuggestion ?? null);
+        const card = parseGeoOptimizationTaskCard(
+          task?.executionSuggestion ?? null
+        );
         const taskRecommendedPlatform = card?.recommendedPlatform?.length
           ? card.recommendedPlatform.join("、")
           : null;
         const q = scoresByArticleId.get(a.id);
-        const unifiedQualityArticle = buildUnifiedQualityGateArticle(a, q ?? null);
+        const unifiedQualityArticle = buildUnifiedQualityGateArticle(
+          a,
+          q ?? null
+        );
         const preflight = evaluateArticlePublishPreflight(a);
         const pass = preflight?.ready ?? false;
         const published = a.status === "已发布";
-        const statusView = resolveContentCardStatus({ published, publishable: pass });
-        const ps = a.generationBasis?.platformContentStrategy as Record<string, unknown> | undefined;
+        const statusView = resolveContentCardStatus({
+          published,
+          publishable: pass,
+        });
+        const ps = a.generationBasis?.platformContentStrategy as
+          | Record<string, unknown>
+          | undefined;
         const keywords = Array.isArray(ps?.targetAiPlatforms)
-          ? (ps.targetAiPlatforms as string[]).filter(x => typeof x === "string")
+          ? (ps.targetAiPlatforms as string[]).filter(
+              x => typeof x === "string"
+            )
           : [];
         const platformResolved = getArticlePublishPlatform({
           generationBasis: a.generationBasis ?? null,
@@ -1930,14 +2348,14 @@ export default function WeeklyContentPage() {
         });
         const publishBlockHint = preflight?.ready
           ? null
-          : preflight?.checks.find(c => c.status === "fail")?.message ??
+          : (preflight?.checks.find(c => c.status === "fail")?.message ??
             preflight?.readiness?.message ??
-            null;
+            null);
         const latestTask = latestPublishTaskByArticle.get(a.id);
         const queuedForPublish = Boolean(
           latestTask &&
             latestTask.status !== "failed" &&
-            latestTask.status !== "session_expired",
+            latestTask.status !== "session_expired"
         );
         const platformKey = platformResolved.recognized
           ? normalizeWeeklyPlatformKey(platformResolved.label)
@@ -1951,19 +2369,23 @@ export default function WeeklyContentPage() {
             targetPlatform: a.targetPlatform,
             publishPlatform: a.publishPlatform,
           }),
-          targetPlatform: platformResolved.recognized ? platformResolved.label : a.targetPlatform,
+          targetPlatform: platformResolved.recognized
+            ? platformResolved.label
+            : a.targetPlatform,
           platformKey,
           contentTypeLabel: resolveContentTypeLabel(a),
           publishBlockHint,
           publishNextActionLabel: preflight?.ready
             ? null
-            : preflight?.checks.find(c => c.status === "fail")?.action ??
+            : (preflight?.checks.find(c => c.status === "fail")?.action ??
               preflight?.readiness?.nextActionLabel ??
-              null,
+              null),
           publishPreflightReady: pass,
           queuedForPublish,
           queuedStatusLabel: queuedForPublish
-            ? publishTaskStatusLabel({ status: latestTask?.status ?? "pending" })
+            ? publishTaskStatusLabel({
+                status: latestTask?.status ?? "pending",
+              })
             : null,
           contentGoal: geoContentTaskSource?.taskDisplayName ?? null,
           geoGap:
@@ -1977,8 +2399,11 @@ export default function WeeklyContentPage() {
           statusTone: statusView.tone,
           statusFilterKey: statusView.filterKey,
           qualityView: resolveQualityCardView(a, q ?? null),
-          qualityFailHints: resolveFriendlyQualityFailHints(unifiedQualityArticle),
-          qualityOptimizationSuggestions: resolveGeoQualityOptimizationSuggestions(a),
+          qualityFailHints: resolveFriendlyQualityFailHints(
+            unifiedQualityArticle
+          ),
+          qualityOptimizationSuggestions:
+            resolveGeoQualityOptimizationSuggestions(a),
           qualityScore: resolveEffectiveGeoQualityScore(a, q ?? null),
           qualityScoreRow: q ?? null,
           strategySummary: formatArticleStrategySummary(a),
@@ -1994,13 +2419,15 @@ export default function WeeklyContentPage() {
                 resolveArticlePublishedAtForDisplay({
                   publishedAt: a.publishedAt,
                   lastPublishRecordAt: a.lastPublishRecordAt,
-                }),
+                })
               )
             : null,
           lifecycle: a.lifecycle,
           postPublish: a.postPublish,
           contentTags: normalizeContentTags(a.contentTags),
-          contentReviewStatus: normalizeContentReviewStatus(a.contentReviewStatus),
+          contentReviewStatus: normalizeContentReviewStatus(
+            a.contentReviewStatus
+          ),
           article: a as Record<string, unknown>,
         };
       });
@@ -2030,26 +2457,41 @@ export default function WeeklyContentPage() {
   }, [contentCardModels, detailOpen, detailModel?.id]);
 
   const displayContentCards = useMemo((): WeeklyArticleCardModel[] => {
-    const filtered = filterWeeklyContentCards<WeeklyArticleCardModel>(contentCardModels, {
-      platform: filterPlatform,
-      status: filterStatus,
-      titleQuery: titleSearch,
-      contentTag: filterContentTag,
-    });
+    const filtered = filterWeeklyContentCards<WeeklyArticleCardModel>(
+      contentCardModels,
+      {
+        platform: filterPlatform,
+        status: filterStatus,
+        titleQuery: titleSearch,
+        contentTag: filterContentTag,
+      }
+    );
     return sortWeeklyContentCardsByQuality(filtered, sortQuality);
-  }, [contentCardModels, filterPlatform, filterStatus, filterContentTag, titleSearch, sortQuality]);
+  }, [
+    contentCardModels,
+    filterPlatform,
+    filterStatus,
+    filterContentTag,
+    titleSearch,
+    sortQuality,
+  ]);
 
-  const contentTagStats = useMemo(() => computeContentTagStats(contentCardModels), [contentCardModels]);
+  const contentTagStats = useMemo(
+    () => computeContentTagStats(contentCardModels),
+    [contentCardModels]
+  );
   const queuedContentCount = useMemo(
     () => contentCardModels.filter(card => card.queuedForPublish).length,
-    [contentCardModels],
+    [contentCardModels]
   );
   const pendingReviewCount = useMemo(
     () =>
       contentCardModels.filter(
-        c => c.publishPreflightReady && isContentReviewPending(c.contentReviewStatus),
+        c =>
+          c.publishPreflightReady &&
+          isContentReviewPending(c.contentReviewStatus)
       ).length,
-    [contentCardModels],
+    [contentCardModels]
   );
 
   const enqueueReadyCount = useMemo(
@@ -2059,16 +2501,22 @@ export default function WeeklyContentPage() {
           c.publishPreflightReady &&
           !isContentReviewPending(c.contentReviewStatus) &&
           !c.queuedForPublish &&
-          c.statusFilterKey !== "published",
+          c.statusFilterKey !== "published"
       ).length,
-    [contentCardModels],
+    [contentCardModels]
   );
 
   const taskProgress = useMemo((): WeeklyContentTaskProgress => {
     const generatedCount = contentCardModels.length;
-    const publishReadyCount = contentCardModels.filter(c => c.publishPreflightReady).length;
-    const queuedCount = contentCardModels.filter(c => c.queuedForPublish).length;
-    const publishedCount = contentCardModels.filter(c => c.statusFilterKey === "published").length;
+    const publishReadyCount = contentCardModels.filter(
+      c => c.publishPreflightReady
+    ).length;
+    const queuedCount = contentCardModels.filter(
+      c => c.queuedForPublish
+    ).length;
+    const publishedCount = contentCardModels.filter(
+      c => c.statusFilterKey === "published"
+    ).length;
     return {
       generatedCount,
       publishReadyCount,
@@ -2081,7 +2529,8 @@ export default function WeeklyContentPage() {
 
   const customerStageLabel = useMemo(() => {
     const metrics = workspaceSummaryQuery.data;
-    if (!metrics || !selectedProjectId) return CUSTOMER_STAGE_LABELS.generate_content;
+    if (!metrics || !selectedProjectId)
+      return CUSTOMER_STAGE_LABELS.generate_content;
     const projectStatus = metrics.hasAnalysis
       ? "analysis_done"
       : metrics.hasGeoScore
@@ -2105,12 +2554,15 @@ export default function WeeklyContentPage() {
         publishReadyCount: taskProgress.publishReadyCount,
         generatedCount: taskProgress.generatedCount,
       }),
-    [taskProgress],
+    [taskProgress]
   );
 
   const previewCards = useMemo(
-    () => displayContentCards.filter(card => card.statusFilterKey !== "published").slice(0, 6),
-    [displayContentCards],
+    () =>
+      displayContentCards
+        .filter(card => card.statusFilterKey !== "published")
+        .slice(0, 6),
+    [displayContentCards]
   );
 
   const entryMotherArticle = useMemo(() => {
@@ -2119,15 +2571,19 @@ export default function WeeklyContentPage() {
   }, [entryContext.articleId, articlesById]);
 
   const entryLinkedQuestionText = useMemo(() => {
-    if (entryContext.questionText?.trim()) return entryContext.questionText.trim();
+    if (entryContext.questionText?.trim())
+      return entryContext.questionText.trim();
     if (entryContext.questionId != null) {
       const fromList = (questionsQuery.data ?? []).find(
-        (q: { id?: number }) => q.id === entryContext.questionId,
+        (q: { id?: number }) => q.id === entryContext.questionId
       ) as { questionText?: string } | undefined;
       const text = fromList?.questionText?.trim();
       if (text) return text;
     }
-    return resolveArticleLinkedQuestionText(entryMotherArticle, questionsQuery.data ?? []);
+    return resolveArticleLinkedQuestionText(
+      entryMotherArticle,
+      questionsQuery.data ?? []
+    );
   }, [
     entryContext.questionText,
     entryContext.questionId,
@@ -2139,7 +2595,8 @@ export default function WeeklyContentPage() {
     const publishTasks = publishTasksQuery.data?.tasks ?? [];
     const latest = new Map<number, (typeof publishTasks)[number]>();
     for (const task of publishTasks) {
-      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      const articleId =
+        typeof task.articleId === "number" ? task.articleId : null;
       if (!articleId) continue;
       const prev = latest.get(articleId);
       const taskTime = new Date(task.createdAt ?? 0).getTime();
@@ -2150,11 +2607,16 @@ export default function WeeklyContentPage() {
   }, [publishTasksQuery.data?.tasks]);
 
   const singleTaskArticleModels = useMemo(() => {
-    if (entryContext.questionId == null && entryContext.articleId == null) return [] as WeeklyArticleCardModel[];
+    if (entryContext.questionId == null && entryContext.articleId == null)
+      return [] as WeeklyArticleCardModel[];
     const models = contentCardModels.filter(model => {
-      if (entryContext.articleId != null && model.id === entryContext.articleId) return true;
+      if (entryContext.articleId != null && model.id === entryContext.articleId)
+        return true;
       if (entryContext.questionId == null) return false;
-      return articleMatchesQuestionId(model.article as ArticleRow, entryContext.questionId);
+      return articleMatchesQuestionId(
+        model.article as ArticleRow,
+        entryContext.questionId
+      );
     });
     const seen = new Set<number>();
     return models.filter(model => {
@@ -2170,28 +2632,49 @@ export default function WeeklyContentPage() {
       ? normalizeWeeklyPlatformKey(entryContext.platform)
       : null;
     if (entryContext.articleId != null) {
-      const byId = singleTaskArticleModels.find(model => model.id === entryContext.articleId);
+      const byId = singleTaskArticleModels.find(
+        model => model.id === entryContext.articleId
+      );
       if (byId) return byId;
     }
     if (preferredPlatform) {
       const byPlatform = singleTaskArticleModels.find(
-        model => normalizeWeeklyPlatformKey(model.platformKey ?? model.targetPlatform) === preferredPlatform,
+        model =>
+          normalizeWeeklyPlatformKey(
+            model.platformKey ?? model.targetPlatform
+          ) === preferredPlatform
       );
       if (byPlatform) return byPlatform;
     }
     const priority = (model: WeeklyArticleCardModel) => {
       const article = model.article as ArticleRow;
       const latestTask = latestPublishTaskByArticleId.get(model.id);
-      if (latestTask?.status === "failed" || latestTask?.status === "session_expired") return 10;
+      if (
+        latestTask?.status === "failed" ||
+        latestTask?.status === "session_expired"
+      )
+        return 10;
       if (model.statusFilterKey === "published" && model.publishLink) return 20;
       if (model.statusFilterKey === "published") return 30;
       if (model.queuedForPublish) return 40;
-      if (model.publishPreflightReady && !isContentReviewPending(model.contentReviewStatus)) return 50;
+      if (
+        model.publishPreflightReady &&
+        !isContentReviewPending(model.contentReviewStatus)
+      )
+        return 50;
       if (model.publishPreflightReady) return 60;
-      if (shouldBlockPublishForGeoQuality(article) || (model.qualityFailHints?.length ?? 0) > 0) return 70;
+      if (
+        shouldBlockPublishForGeoQuality(article) ||
+        (model.qualityFailHints?.length ?? 0) > 0
+      )
+        return 70;
       return 80;
     };
-    return [...singleTaskArticleModels].sort((a, b) => priority(a) - priority(b))[0] ?? null;
+    return (
+      [...singleTaskArticleModels].sort(
+        (a, b) => priority(a) - priority(b)
+      )[0] ?? null
+    );
   }, [
     entryContext.articleId,
     entryContext.platform,
@@ -2200,35 +2683,61 @@ export default function WeeklyContentPage() {
   ]);
 
   const singleTaskFocusArticle = useMemo(
-    () => (singleTaskFocusModel ? (singleTaskFocusModel.article as ArticleRow) : null),
-    [singleTaskFocusModel],
+    () =>
+      singleTaskFocusModel
+        ? (singleTaskFocusModel.article as ArticleRow)
+        : null,
+    [singleTaskFocusModel]
   );
   const singleTaskLatestPublishTask = useMemo(
-    () => (singleTaskFocusModel ? latestPublishTaskByArticleId.get(singleTaskFocusModel.id) ?? null : null),
-    [latestPublishTaskByArticleId, singleTaskFocusModel],
+    () =>
+      singleTaskFocusModel
+        ? (latestPublishTaskByArticleId.get(singleTaskFocusModel.id) ?? null)
+        : null,
+    [latestPublishTaskByArticleId, singleTaskFocusModel]
   );
 
-  const currentContentTaskStatusLabel = useMemo(() => statusBarNextStep, [statusBarNextStep]);
-  const taskSourceTypeLabel = useMemo(() => geoContentTaskSource?.sourceLabel?.trim() || "内容任务", [geoContentTaskSource?.sourceLabel]);
+  const currentContentTaskStatusLabel = useMemo(
+    () => statusBarNextStep,
+    [statusBarNextStep]
+  );
+  const taskSourceTypeLabel = useMemo(
+    () => geoContentTaskSource?.sourceLabel?.trim() || "内容任务",
+    [geoContentTaskSource?.sourceLabel]
+  );
 
   const taskBoardProgress = useMemo(
     () => computeTaskBoardProgress(platformBoardRows),
-    [platformBoardRows],
+    [platformBoardRows]
   );
 
   const taskBoardNextStep = useMemo(
     () => buildTaskBoardNextStepSuggestion(taskBoardProgress),
-    [taskBoardProgress],
+    [taskBoardProgress]
   );
 
   const singleTaskActionPlatformKey = useMemo((): WeeklyPlatformKey | null => {
-    if (singleTaskFocusModel?.platformKey || singleTaskFocusModel?.targetPlatform) {
-      return normalizeWeeklyPlatformKey(singleTaskFocusModel.platformKey ?? singleTaskFocusModel.targetPlatform);
+    if (
+      singleTaskFocusModel?.platformKey ||
+      singleTaskFocusModel?.targetPlatform
+    ) {
+      return normalizeWeeklyPlatformKey(
+        singleTaskFocusModel.platformKey ?? singleTaskFocusModel.targetPlatform
+      );
     }
-    const recommended = contentTaskViewQuery.data?.recommendedPlatforms?.[0]?.platformKey;
+    const recommended =
+      contentTaskViewQuery.data?.recommendedPlatforms?.[0]?.platformKey;
     if (recommended) return normalizeWeeklyPlatformKey(recommended);
-    return platformBoardRows.find(row => row.status === "UNGENERATED")?.def.key ?? platformBoardRows[0]?.def.key ?? null;
-  }, [contentTaskViewQuery.data?.recommendedPlatforms, platformBoardRows, singleTaskFocusModel]);
+    return (
+      platformBoardRows.find(row => row.status === "UNGENERATED")?.def.key ??
+      platformBoardRows[0]?.def.key ??
+      null
+    );
+  }, [
+    contentTaskViewQuery.data?.recommendedPlatforms,
+    platformBoardRows,
+    singleTaskFocusModel,
+  ]);
 
   const singleTaskSummary = useMemo((): SingleTaskProgressionSummary => {
     const questionText =
@@ -2236,7 +2745,9 @@ export default function WeeklyContentPage() {
       contentTaskViewQuery.data?.questionText ??
       entryContext.questionText ??
       "当前 AI 搜索问题";
-    const sourceLabel = resolveWeeklyContentSourceTypeLabel(entryContext.sourceType);
+    const sourceLabel = resolveWeeklyContentSourceTypeLabel(
+      entryContext.sourceType
+    );
     const base = {
       questionText,
       sourceLabel,
@@ -2256,7 +2767,8 @@ export default function WeeklyContentPage() {
     }
 
     const platformLabel = singleTaskFocusModel.targetPlatform ?? "平台";
-    const title = singleTaskFocusModel.title || singleTaskFocusArticle.title || "当前内容";
+    const title =
+      singleTaskFocusModel.title || singleTaskFocusArticle.title || "当前内容";
     const articlePhrase = `${platformLabel}稿《${title}》`;
     const latestTask = singleTaskLatestPublishTask;
     const localCreateError =
@@ -2270,7 +2782,9 @@ export default function WeeklyContentPage() {
         statusText: `${articlePhrase}已具备发布条件，但加入发布队列失败。`,
         nextActionLabel: "加入发布队列",
         nextActionKind: "enqueue",
-        blockerText: normalizeSingleTaskBlocker(`发布任务创建失败：${localCreateError}`),
+        blockerText: normalizeSingleTaskBlocker(
+          `发布任务创建失败：${localCreateError}`
+        ),
         blockerTone: "error",
       };
     }
@@ -2291,7 +2805,10 @@ export default function WeeklyContentPage() {
       };
     }
 
-    if (latestTask?.status === "failed" || latestTask?.status === "session_expired") {
+    if (
+      latestTask?.status === "failed" ||
+      latestTask?.status === "session_expired"
+    ) {
       return {
         ...base,
         statusText: `${articlePhrase}已进入发布链路，但发布任务未完成，需要到发布执行中心处理。`,
@@ -2358,7 +2875,9 @@ export default function WeeklyContentPage() {
       isContentReviewPending(singleTaskFocusModel.contentReviewStatus)
     ) {
       const scoreText =
-        singleTaskFocusModel.qualityScore != null ? `质检分 ${singleTaskFocusModel.qualityScore}，` : "";
+        singleTaskFocusModel.qualityScore != null
+          ? `质检分 ${singleTaskFocusModel.qualityScore}，`
+          : "";
       return {
         ...base,
         statusText: `${articlePhrase}${scoreText}AI 质检通过，当前待人工审核确认。`,
@@ -2371,7 +2890,9 @@ export default function WeeklyContentPage() {
 
     if (singleTaskFocusModel.publishPreflightReady) {
       const scoreText =
-        singleTaskFocusModel.qualityScore != null ? `质检分 ${singleTaskFocusModel.qualityScore}，` : "";
+        singleTaskFocusModel.qualityScore != null
+          ? `质检分 ${singleTaskFocusModel.qualityScore}，`
+          : "";
       return {
         ...base,
         statusText: `${articlePhrase}已完成修订，${scoreText}AI 质检通过，人工审核已通过，当前待加入发布队列。`,
@@ -2382,11 +2903,14 @@ export default function WeeklyContentPage() {
       };
     }
 
-    const blocker = normalizeSingleTaskBlocker(singleTaskFocusModel.publishBlockHint);
+    const blocker = normalizeSingleTaskBlocker(
+      singleTaskFocusModel.publishBlockHint
+    );
     return {
       ...base,
       statusText: `${articlePhrase}已生成，但发布前检查尚未通过。`,
-      nextActionLabel: blocker === "内容未通过质检" ? "修改并重新质检" : "加入发布队列",
+      nextActionLabel:
+        blocker === "内容未通过质检" ? "修改并重新质检" : "加入发布队列",
       nextActionKind: blocker === "内容未通过质检" ? "revise" : "enqueue",
       blockerText: blocker,
       blockerTone: blocker ? "warning" : "neutral",
@@ -2404,39 +2928,62 @@ export default function WeeklyContentPage() {
 
   const profilePreview = useMemo(
     () => buildProfilePreviewFromRecord(enterpriseProfileRecord, brandName),
-    [enterpriseProfileRecord, brandName],
+    [enterpriseProfileRecord, brandName]
   );
 
   const monthlyContentTasks = useMemo((): MonthlyContentTaskItem[] => {
     const publishTasks = publishTasksQuery.data?.tasks ?? [];
     const publishRecords = publishRecordsQuery.data ?? [];
     const inclusionRecords = inclusionMonitoringQuery.data ?? [];
-    const latestPublishTaskByArticle = new Map<number, (typeof publishTasks)[number]>();
-    const latestPublishRecordByArticle = new Map<number, (typeof publishRecords)[number]>();
-    const latestInclusionRecordByArticle = new Map<number, (typeof inclusionRecords)[number]>();
+    const latestPublishTaskByArticle = new Map<
+      number,
+      (typeof publishTasks)[number]
+    >();
+    const latestPublishRecordByArticle = new Map<
+      number,
+      (typeof publishRecords)[number]
+    >();
+    const latestInclusionRecordByArticle = new Map<
+      number,
+      (typeof inclusionRecords)[number]
+    >();
     for (const task of publishTasks) {
-      const articleId = typeof task.articleId === "number" ? task.articleId : null;
+      const articleId =
+        typeof task.articleId === "number" ? task.articleId : null;
       if (!articleId) continue;
       const prev = latestPublishTaskByArticle.get(articleId);
       const taskTime = new Date(task.createdAt ?? 0).getTime();
       const prevTime = prev ? new Date(prev.createdAt ?? 0).getTime() : -1;
-      if (!prev || taskTime >= prevTime) latestPublishTaskByArticle.set(articleId, task);
+      if (!prev || taskTime >= prevTime)
+        latestPublishTaskByArticle.set(articleId, task);
     }
     for (const record of publishRecords) {
-      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      const articleId =
+        typeof record.articleId === "number" ? record.articleId : null;
       if (!articleId) continue;
       const prev = latestPublishRecordByArticle.get(articleId);
-      const recordTime = new Date(record.publishedAt ?? record.createdAt ?? 0).getTime();
-      const prevTime = prev ? new Date(prev.publishedAt ?? prev.createdAt ?? 0).getTime() : -1;
-      if (!prev || recordTime >= prevTime) latestPublishRecordByArticle.set(articleId, record);
+      const recordTime = new Date(
+        record.publishedAt ?? record.createdAt ?? 0
+      ).getTime();
+      const prevTime = prev
+        ? new Date(prev.publishedAt ?? prev.createdAt ?? 0).getTime()
+        : -1;
+      if (!prev || recordTime >= prevTime)
+        latestPublishRecordByArticle.set(articleId, record);
     }
     for (const record of inclusionRecords) {
-      const articleId = typeof record.articleId === "number" ? record.articleId : null;
+      const articleId =
+        typeof record.articleId === "number" ? record.articleId : null;
       if (!articleId) continue;
       const prev = latestInclusionRecordByArticle.get(articleId);
-      const recordTime = new Date(record.updatedAt ?? record.createdAt ?? 0).getTime();
-      const prevTime = prev ? new Date(prev.updatedAt ?? prev.createdAt ?? 0).getTime() : -1;
-      if (!prev || recordTime >= prevTime) latestInclusionRecordByArticle.set(articleId, record);
+      const recordTime = new Date(
+        record.updatedAt ?? record.createdAt ?? 0
+      ).getTime();
+      const prevTime = prev
+        ? new Date(prev.updatedAt ?? prev.createdAt ?? 0).getTime()
+        : -1;
+      if (!prev || recordTime >= prevTime)
+        latestInclusionRecordByArticle.set(articleId, record);
     }
 
     return (monthlyPlanQuery.data?.tasks ?? [])
@@ -2448,16 +2995,48 @@ export default function WeeklyContentPage() {
           actionUrl: t.actionUrl,
         });
         const taskArticles =
-          questionId != null ? articles.filter(article => articleMatchesQuestionId(article, questionId)) : [];
+          questionId != null
+            ? articles.filter(article =>
+                articleMatchesQuestionId(article, questionId)
+              )
+            : [];
         const lifecycleViews = taskArticles.map(article =>
           resolveArticleLifecycleForBoard({
             article,
             publishRecord: latestPublishRecordByArticle.get(article.id) ?? null,
-            inclusionRecord: latestInclusionRecordByArticle.get(article.id) ?? null,
+            inclusionRecord:
+              latestInclusionRecordByArticle.get(article.id) ?? null,
             publishTask: latestPublishTaskByArticle.get(article.id) ?? null,
-          }),
+          })
         );
         const lagging = pickLaggingContentAssetLifecycleStage(lifecycleViews);
+        const questionText =
+          (questionsQuery.data ?? [])
+            .find(question => question.id === questionId)
+            ?.questionText?.trim() || null;
+        const targetPlatforms = [
+          ...new Set(
+            taskArticles
+              .map(article => article.publishPlatform || article.targetPlatform)
+              .filter((platform): platform is string => Boolean(platform))
+              .map(publishPlatformCustomerLabel)
+          ),
+        ];
+        const currentStatus =
+          lagging?.label ??
+          (questionId != null
+            ? "待生成"
+            : weeklyContentTaskStatusLabel(
+                t.status as WeeklyContentTaskStatus
+              ));
+        const nextAction = currentStatus.includes("待生成")
+          ? "生成平台稿"
+          : currentStatus.includes("质检")
+            ? "修改后质检"
+            : currentStatus.includes("待发布") ||
+                currentStatus.includes("可发布")
+              ? "加入发布队列"
+              : "进入推进";
         return {
           id: t.id,
           projectId: t.projectId,
@@ -2466,7 +3045,12 @@ export default function WeeklyContentPage() {
           status: t.status,
           questionId,
           actionUrl: t.actionUrl,
-          laggingLifecycleLabel: lagging?.label ?? (questionId != null ? "待生成" : null),
+          laggingLifecycleLabel:
+            lagging?.label ?? (questionId != null ? "待生成" : null),
+          questionText,
+          targetPlatform: targetPlatforms.join(" / ") || null,
+          currentStatus,
+          nextAction,
         };
       });
   }, [
@@ -2475,6 +3059,7 @@ export default function WeeklyContentPage() {
     publishTasksQuery.data?.tasks,
     publishRecordsQuery.data,
     inclusionMonitoringQuery.data,
+    questionsQuery.data,
   ]);
 
   const handleSelectMonthlyContentTask = useCallback(
@@ -2485,7 +3070,9 @@ export default function WeeklyContentPage() {
         currentSearch: searchString || getSearchFromLocation(location),
       });
       if (entryUrl) {
-        const nextEntryContext = parseWeeklyContentEntryContext(getSearchFromLocation(entryUrl));
+        const nextEntryContext = parseWeeklyContentEntryContext(
+          getSearchFromLocation(entryUrl)
+        );
         setEntryContext(nextEntryContext);
         entryContextRef.current = nextEntryContext;
         entryAutoGenerateHandledRef.current = false;
@@ -2495,17 +3082,18 @@ export default function WeeklyContentPage() {
       toast.message(
         task.questionId
           ? "请先选择客户项目，再进入内容任务推进。"
-          : WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE,
+          : WEEKLY_CONTENT_TASK_UNBOUND_QUESTION_MESSAGE
       );
     },
-    [location, searchString, selectedProjectId, setLocation],
+    [location, searchString, selectedProjectId, setLocation]
   );
 
   const weeklyCustomerPrimaryActionLabel = useMemo(() => {
     if (isCustomerExecutionView) return "查看收录与验证";
     if (monthlyContentTasks.length === 0) return "查看月度优化计划";
     if (taskProgress.publishedCount > 0) return "查看收录与 AI 复测";
-    if (taskProgress.enqueueReadyCount > 0 || taskProgress.queuedCount > 0) return "进入发布页面";
+    if (taskProgress.enqueueReadyCount > 0 || taskProgress.queuedCount > 0)
+      return "进入发布页面";
     if (entryContext.questionId != null) return "继续当前任务";
     return "进入本月任务推进";
   }, [
@@ -2556,20 +3144,40 @@ export default function WeeklyContentPage() {
   ]);
 
   const platformProgressText = useMemo(() => {
-    const pending = platformBoardRows.reduce((sum, row) => sum + row.counts.pending, 0);
-    const generated = platformBoardRows.reduce(
-      (sum, row) => sum + row.counts.pendingConfirm + row.counts.ready + row.counts.published,
-      0,
+    const pending = platformBoardRows.reduce(
+      (sum, row) => sum + row.counts.pending,
+      0
     );
-    const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
-    const published = platformBoardRows.reduce((sum, row) => sum + row.counts.published, 0);
+    const generated = platformBoardRows.reduce(
+      (sum, row) =>
+        sum +
+        row.counts.pendingConfirm +
+        row.counts.ready +
+        row.counts.published,
+      0
+    );
+    const publishable = platformBoardRows.reduce(
+      (sum, row) => sum + row.counts.ready,
+      0
+    );
+    const published = platformBoardRows.reduce(
+      (sum, row) => sum + row.counts.published,
+      0
+    );
     return `待生成 ${pending} / 已生成 ${generated} / 可入队 ${publishable} / 已入队 ${queuedContentCount} / 已发布 ${published}`;
   }, [platformBoardRows, queuedContentCount]);
   const contentNextAction = useMemo(() => {
-    const publishable = platformBoardRows.reduce((sum, row) => sum + row.counts.ready, 0);
+    const publishable = platformBoardRows.reduce(
+      (sum, row) => sum + row.counts.ready,
+      0
+    );
     const generated = platformBoardRows.reduce(
-      (sum, row) => sum + row.counts.pendingConfirm + row.counts.ready + row.counts.published,
-      0,
+      (sum, row) =>
+        sum +
+        row.counts.pendingConfirm +
+        row.counts.ready +
+        row.counts.published,
+      0
     );
     if (publishable > 0) return "进入平台适配发布，将可发布内容加入发布队列。";
     if (generated > 0) return "优先完成内容质检，形成可发布资产。";
@@ -2577,18 +3185,24 @@ export default function WeeklyContentPage() {
   }, [platformBoardRows]);
 
   const averageQualityScore = useMemo(
-    () => computeAverageGeoQualityScore(contentCardModels.map(card => card.qualityScore)),
-    [contentCardModels],
+    () =>
+      computeAverageGeoQualityScore(
+        contentCardModels.map(card => card.qualityScore)
+      ),
+    [contentCardModels]
   );
 
-  const toggleCardSelection = useCallback((articleId: number, checked: boolean) => {
-    setSelectedCardIds(prev => {
-      const next = new Set(prev);
-      if (checked) next.add(articleId);
-      else next.delete(articleId);
-      return next;
-    });
-  }, []);
+  const toggleCardSelection = useCallback(
+    (articleId: number, checked: boolean) => {
+      setSelectedCardIds(prev => {
+        const next = new Set(prev);
+        if (checked) next.add(articleId);
+        else next.delete(articleId);
+        return next;
+      });
+    },
+    []
+  );
 
   const toggleSelectVisibleCards = useCallback(
     (checked: boolean) => {
@@ -2602,7 +3216,7 @@ export default function WeeklyContentPage() {
         return next;
       });
     },
-    [displayContentCards],
+    [displayContentCards]
   );
 
   const toggleExpand = (topicId: number) => {
@@ -2619,16 +3233,19 @@ export default function WeeklyContentPage() {
     setEditorOpen(true);
   };
 
-  const setArticleUnsaved = useCallback((articleId: number, unsaved: boolean) => {
-    setUnsavedArticleIds(prev => {
-      const has = prev.has(articleId);
-      if (unsaved === has) return prev;
-      const next = new Set(prev);
-      if (unsaved) next.add(articleId);
-      else next.delete(articleId);
-      return next;
-    });
-  }, []);
+  const setArticleUnsaved = useCallback(
+    (articleId: number, unsaved: boolean) => {
+      setUnsavedArticleIds(prev => {
+        const has = prev.has(articleId);
+        if (unsaved === has) return prev;
+        const next = new Set(prev);
+        if (unsaved) next.add(articleId);
+        else next.delete(articleId);
+        return next;
+      });
+    },
+    []
+  );
 
   const blockPublishIfUnsaved = useCallback(
     (articleId: number): boolean => {
@@ -2636,43 +3253,57 @@ export default function WeeklyContentPage() {
       toast.error(ARTICLE_UNSAVED_PUBLISH_BLOCK_MESSAGE);
       return true;
     },
-    [unsavedArticleIds],
+    [unsavedArticleIds]
   );
 
-  const blockPublishIfQualityReject = useCallback((article: ArticleRow): boolean => {
-    if (!shouldBlockPublishForGeoQuality(article)) return false;
-    toast.error("内容质量不足，建议优化后再发布");
-    return true;
-  }, []);
+  const blockPublishIfQualityReject = useCallback(
+    (article: ArticleRow): boolean => {
+      if (!shouldBlockPublishForGeoQuality(article)) return false;
+      toast.error("内容质量不足，建议优化后再发布");
+      return true;
+    },
+    []
+  );
 
-  const preparePublishDialogForArticle = useCallback((article: ArticleRow) => {
-    setPublishArticle(article);
-    setManualPublishPlatform("");
-    const resolved = getArticlePublishPlatform({
-      generationBasis: article.generationBasis ?? null,
-      targetPlatform: article.targetPlatform,
-      publishPlatform: article.publishPlatform,
-    });
-    setPublishPlatformResolved(resolved);
-    const publishSlug =
-      resolved.publishQueueSlug && resolved.supportedByLocalAgent && !resolved.queueBlockedReason
-        ? resolved.publishQueueSlug
-        : null;
-    setSelectedPlatforms(publishSlug ? new Set([publishSlug]) : new Set());
-    const restoredAccounts: Record<string, number> = {};
-    if (selectedProjectId && publishSlug) {
-      const lastId = readLastEnqueuePublishAccountId(selectedProjectId, publishSlug);
-      if (lastId != null) restoredAccounts[publishSlug] = lastId;
-    }
-    setSelectedPublishAccountIds(restoredAccounts);
-    publishDialogPlatformsInitRef.current = true;
-    applyPublishDialogAgentSnapshot(localAgentConnectedOnline, localAgentAccountSnapshot);
-  }, [
-    selectedProjectId,
-    localAgentConnectedOnline,
-    localAgentAccountSnapshot,
-    applyPublishDialogAgentSnapshot,
-  ]);
+  const preparePublishDialogForArticle = useCallback(
+    (article: ArticleRow) => {
+      setPublishArticle(article);
+      setManualPublishPlatform("");
+      const resolved = getArticlePublishPlatform({
+        generationBasis: article.generationBasis ?? null,
+        targetPlatform: article.targetPlatform,
+        publishPlatform: article.publishPlatform,
+      });
+      setPublishPlatformResolved(resolved);
+      const publishSlug =
+        resolved.publishQueueSlug &&
+        resolved.supportedByLocalAgent &&
+        !resolved.queueBlockedReason
+          ? resolved.publishQueueSlug
+          : null;
+      setSelectedPlatforms(publishSlug ? new Set([publishSlug]) : new Set());
+      const restoredAccounts: Record<string, number> = {};
+      if (selectedProjectId && publishSlug) {
+        const lastId = readLastEnqueuePublishAccountId(
+          selectedProjectId,
+          publishSlug
+        );
+        if (lastId != null) restoredAccounts[publishSlug] = lastId;
+      }
+      setSelectedPublishAccountIds(restoredAccounts);
+      publishDialogPlatformsInitRef.current = true;
+      applyPublishDialogAgentSnapshot(
+        localAgentConnectedOnline,
+        localAgentAccountSnapshot
+      );
+    },
+    [
+      selectedProjectId,
+      localAgentConnectedOnline,
+      localAgentAccountSnapshot,
+      applyPublishDialogAgentSnapshot,
+    ]
+  );
 
   const openPublishDialog = (article: ArticleRow) => {
     if (blockPublishIfUnsaved(article.id)) return;
@@ -2701,9 +3332,13 @@ export default function WeeklyContentPage() {
           ["taskId"]: publishTaskRecordId,
           reason: "运营在内容生产与发布页重试失败发布任务",
         });
-        setSingleTaskPublishQueueError(prev => (prev?.articleId === articleId ? null : prev));
+        setSingleTaskPublishQueueError(prev =>
+          prev?.articleId === articleId ? null : prev
+        );
         await Promise.all([
-          utils.publishTasks.listRecentByProject.invalidate({ projectId: selectedProjectId }),
+          utils.publishTasks.listRecentByProject.invalidate({
+            projectId: selectedProjectId,
+          }),
           publishTasksQuery.refetch(),
           invalidateArticles(),
         ]);
@@ -2711,7 +3346,10 @@ export default function WeeklyContentPage() {
         notifyPublishEffectPrediction();
         return true;
       } catch (err) {
-        const message = toUserFacingErrorFromUnknown(err, "重试发布失败，请到发布执行中心处理");
+        const message = toUserFacingErrorFromUnknown(
+          err,
+          "重试发布失败，请到发布执行中心处理"
+        );
         setSingleTaskPublishQueueError({ articleId, message });
         toast.error(message);
         return false;
@@ -2723,7 +3361,7 @@ export default function WeeklyContentPage() {
       retryPublishTask,
       selectedProjectId,
       utils.publishTasks.listRecentByProject,
-    ],
+    ]
   );
 
   const requestEnqueuePublish = useCallback(
@@ -2731,7 +3369,10 @@ export default function WeeklyContentPage() {
       if (blockPublishIfUnsaved(article.id)) return;
       if (blockPublishIfQualityReject(article)) return;
       const latestPublishTask = latestPublishTaskByArticleId.get(article.id);
-      if (isRetryableFailedPublishTask(latestPublishTask) && typeof latestPublishTask?.id === "number") {
+      if (
+        isRetryableFailedPublishTask(latestPublishTask) &&
+        typeof latestPublishTask?.id === "number"
+      ) {
         void retryFailedArticlePublishTask(latestPublishTask.id, article.id);
         return;
       }
@@ -2739,8 +3380,13 @@ export default function WeeklyContentPage() {
       const preflight = evaluateArticlePublishPreflight(article);
       if (!preflight?.ready) {
         const blocking = resolveQualityBlockingIssues(article, legacyQuality);
-        const detail = preflight ? formatPublishPreflightBlockMessage(preflight) : "";
-        toast.error([detail, blocking.join("；")].filter(Boolean).join("；") || "发布前检查未通过");
+        const detail = preflight
+          ? formatPublishPreflightBlockMessage(preflight)
+          : "";
+        toast.error(
+          [detail, blocking.join("；")].filter(Boolean).join("；") ||
+            "发布前检查未通过"
+        );
         return;
       }
       if (isContentReviewPending(article.contentReviewStatus)) {
@@ -2771,11 +3417,14 @@ export default function WeeklyContentPage() {
       retryFailedArticlePublishTask,
       scoresByArticleId,
       evaluateArticlePublishPreflight,
-    ],
+    ]
   );
 
   const openReviewConfirmDialog = useCallback(
-    (article: ArticleRow, mode: WeeklyContentReviewDialogMode = "review_only") => {
+    (
+      article: ArticleRow,
+      mode: WeeklyContentReviewDialogMode = "review_only"
+    ) => {
       setReviewConfirmDialog({
         open: true,
         article,
@@ -2783,11 +3432,15 @@ export default function WeeklyContentPage() {
         mode,
       });
     },
-    [],
+    []
   );
 
   const pickPendingTopicForPlatform = useCallback(
-    (platformKey: WeeklyPlatformKey, topicRows: TopicRow[], articleTopicIds: Set<number>) => {
+    (
+      platformKey: WeeklyPlatformKey,
+      topicRows: TopicRow[],
+      articleTopicIds: Set<number>
+    ) => {
       const def = WEEKLY_PLATFORM_DEFS.find(d => d.key === platformKey)!;
       return resolvePendingPlatformTopic({
         platformKey,
@@ -2799,7 +3452,7 @@ export default function WeeklyContentPage() {
         activeTaskId: geoContentTaskSource?.contentTaskId ?? null,
       });
     },
-    [tasks, taskIdSet, geoContentTaskSource?.contentTaskId],
+    [tasks, taskIdSet, geoContentTaskSource?.contentTaskId]
   );
 
   const recordPlatformGenerationFailure = useCallback(
@@ -2807,7 +3460,7 @@ export default function WeeklyContentPage() {
       platformKey: WeeklyPlatformKey,
       topicId: number,
       strategyOverride: Partial<PlatformContentStrategyInput>,
-      lastError: string,
+      lastError: string
     ) => {
       let failCount = 1;
       setPlatformGenerationRetry(prev => {
@@ -2816,33 +3469,51 @@ export default function WeeklyContentPage() {
       });
       return resolveContentGenerationFailureDisplay({ failCount, lastError });
     },
-    [],
+    []
   );
 
-  const clearPlatformGenerationRetry = useCallback((platformKey?: WeeklyPlatformKey) => {
-    setPlatformGenerationRetry(prev => {
-      if (!prev) return null;
-      if (platformKey && prev.platformKey !== platformKey) return prev;
-      return null;
-    });
-  }, []);
+  const clearPlatformGenerationRetry = useCallback(
+    (platformKey?: WeeklyPlatformKey) => {
+      setPlatformGenerationRetry(prev => {
+        if (!prev) return null;
+        if (platformKey && prev.platformKey !== platformKey) return prev;
+        return null;
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (!selectedProjectId) return;
-    for (const [platformKey, { articleId, topicId }] of inFlightDraftByPlatform.entries()) {
-      if (recoveryPollsStartedRef.current.has(articleId) || activeDraftPollsRef.current.has(articleId)) {
+    for (const [
+      platformKey,
+      { articleId, topicId },
+    ] of inFlightDraftByPlatform.entries()) {
+      if (
+        recoveryPollsStartedRef.current.has(articleId) ||
+        activeDraftPollsRef.current.has(articleId)
+      ) {
         continue;
       }
       recoveryPollsStartedRef.current.add(articleId);
       setGeneratingPlatformKey(prev => prev ?? platformKey);
-      void pollPlatformDraftUntilDone(selectedProjectId, articleId).then(result => {
-        if (!result.ok && result.errorMessage && topicId > 0) {
-          recordPlatformGenerationFailure(platformKey, topicId, {}, result.errorMessage);
-        } else if (result.ok) {
-          clearPlatformGenerationRetry(platformKey);
+      void pollPlatformDraftUntilDone(selectedProjectId, articleId).then(
+        result => {
+          if (!result.ok && result.errorMessage && topicId > 0) {
+            recordPlatformGenerationFailure(
+              platformKey,
+              topicId,
+              {},
+              result.errorMessage
+            );
+          } else if (result.ok) {
+            clearPlatformGenerationRetry(platformKey);
+          }
+          setGeneratingPlatformKey(prev =>
+            prev === platformKey ? null : prev
+          );
         }
-        setGeneratingPlatformKey(prev => (prev === platformKey ? null : prev));
-      });
+      );
     }
   }, [
     selectedProjectId,
@@ -2854,32 +3525,51 @@ export default function WeeklyContentPage() {
 
   const resolvePlatformGenerationParams = useCallback(
     async (
-      platformKey: WeeklyPlatformKey,
+      platformKey: WeeklyPlatformKey
     ): Promise<
-      | { ok: true; topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> }
+      | {
+          ok: true;
+          topicId: number;
+          strategyOverride: Partial<PlatformContentStrategyInput>;
+        }
       | { ok: false; errorMessage: string }
     > => {
       let projectId: number;
       try {
-        projectId = assertMutationProjectId(selectedProjectId, location, accessibleProjectIds);
+        projectId = assertMutationProjectId(
+          selectedProjectId,
+          location,
+          accessibleProjectIds
+        );
       } catch {
-        return { ok: false, errorMessage: PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE };
+        return {
+          ok: false,
+          errorMessage: PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE,
+        };
       }
 
       const publishId = resolvePublishSlugForWeeklyPlatform(platformKey);
       const strategyOverride: Partial<PlatformContentStrategyInput> = {};
       if (publishId) {
         strategyOverride.targetPublishPlatform = publishId;
-        setPlatformStrategy(prev => ({ ...prev, targetPublishPlatform: publishId }));
+        setPlatformStrategy(prev => ({
+          ...prev,
+          targetPublishPlatform: publishId,
+        }));
       }
       if (platformKey === "xiaohongshu") {
         strategyOverride.contentStrategyType = "seeding";
-        setPlatformStrategy(prev => ({ ...prev, contentStrategyType: "seeding" }));
+        setPlatformStrategy(prev => ({
+          ...prev,
+          contentStrategyType: "seeding",
+        }));
       }
 
       const entryCtx = entryContextRef.current;
       if (entryCtx.articleId != null) {
-        const articleList = (await utils.geo.articles.list.fetch({ projectId })) as ArticleRow[];
+        const articleList = (await utils.geo.articles.list.fetch({
+          projectId,
+        })) as ArticleRow[];
         const mother = articleList.find(a => a?.id === entryCtx.articleId);
         if (mother?.topicId) {
           return { ok: true, topicId: mother.topicId, strategyOverride };
@@ -2891,8 +3581,12 @@ export default function WeeklyContentPage() {
           utils.geo.articles.topics.list.fetch({ projectId }),
           utils.geo.articles.list.fetch({ projectId }),
         ]);
-        const rows = (topicList ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
-        const articleTopicIds = buildArticleTopicIdSet((articleList ?? []) as ArticleRow[]);
+        const rows = (topicList ?? []).filter(
+          t => t != null && typeof t.id === "number"
+        ) as TopicRow[];
+        const articleTopicIds = buildArticleTopicIdSet(
+          (articleList ?? []) as ArticleRow[]
+        );
         return { topicRows: rows, articleTopicIds };
       };
 
@@ -2906,35 +3600,62 @@ export default function WeeklyContentPage() {
         return reloadTopicGenerationSnapshot();
       };
 
-      let { topicRows, articleTopicIds } = await reloadTopicGenerationSnapshot();
-      let pending = pickPendingTopicForPlatform(platformKey, topicRows, articleTopicIds);
+      let { topicRows, articleTopicIds } =
+        await reloadTopicGenerationSnapshot();
+      let pending = pickPendingTopicForPlatform(
+        platformKey,
+        topicRows,
+        articleTopicIds
+      );
 
-      if (!pending && topicRows.length === 0 && tasks.length === 0 && analyses.length > 0) {
+      if (
+        !pending &&
+        topicRows.length === 0 &&
+        tasks.length === 0 &&
+        analyses.length > 0
+      ) {
         await generateTasksMutation.mutateAsync({ projectId });
         const tasksRefetch = await tasksQuery.refetch();
         const refreshedTasks = (tasksRefetch.data ?? []) as TaskRow[];
         if (refreshedTasks.length > 0) {
           ({ topicRows, articleTopicIds } = await regenTopicsIfNeeded());
-          pending = pickPendingTopicForPlatform(platformKey, topicRows, articleTopicIds);
+          pending = pickPendingTopicForPlatform(
+            platformKey,
+            topicRows,
+            articleTopicIds
+          );
         }
       }
 
       if (
         !pending &&
         tasks.length > 0 &&
-        countUnassignedPendingTopics(topicRows, articleTopicIds, taskIdSet) === 0
+        countUnassignedPendingTopics(topicRows, articleTopicIds, taskIdSet) ===
+          0
       ) {
         ({ topicRows, articleTopicIds } = await regenTopicsIfNeeded());
-        pending = pickPendingTopicForPlatform(platformKey, topicRows, articleTopicIds);
+        pending = pickPendingTopicForPlatform(
+          platformKey,
+          topicRows,
+          articleTopicIds
+        );
       }
 
       if (!pending?.id || !isTopicIdInRows(pending.id, topicRows)) {
-        ({ topicRows, articleTopicIds } = await reloadTopicGenerationSnapshot());
-        pending = pickPendingTopicForPlatform(platformKey, topicRows, articleTopicIds);
+        ({ topicRows, articleTopicIds } =
+          await reloadTopicGenerationSnapshot());
+        pending = pickPendingTopicForPlatform(
+          platformKey,
+          topicRows,
+          articleTopicIds
+        );
       }
 
       if (!pending?.id || !isTopicIdInRows(pending.id, topicRows)) {
-        return { ok: false, errorMessage: PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE };
+        return {
+          ok: false,
+          errorMessage: PLATFORM_CONTENT_NO_PLATFORM_TASK_MESSAGE,
+        };
       }
       return { ok: true, topicId: pending.id, strategyOverride };
     },
@@ -2950,7 +3671,7 @@ export default function WeeklyContentPage() {
       tasksQuery,
       taskIdSet,
       utils,
-    ],
+    ]
   );
 
   const generatePlatformContent = useCallback(
@@ -2959,8 +3680,11 @@ export default function WeeklyContentPage() {
       options?: {
         silentToast?: boolean;
         /** 重试时复用上次 topic 与策略参数，不再重新匹配选题 */
-        retryParams?: { topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> };
-      },
+        retryParams?: {
+          topicId: number;
+          strategyOverride: Partial<PlatformContentStrategyInput>;
+        };
+      }
     ): Promise<{
       ok: boolean;
       errorMessage?: string;
@@ -2969,13 +3693,25 @@ export default function WeeklyContentPage() {
       strategyOverride?: Partial<PlatformContentStrategyInput>;
     }> => {
       let resolved:
-        | { ok: true; topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> }
+        | {
+            ok: true;
+            topicId: number;
+            strategyOverride: Partial<PlatformContentStrategyInput>;
+          }
         | { ok: false; errorMessage: string };
       if (options?.retryParams) {
         try {
-          const projectId = assertMutationProjectId(selectedProjectId, location, accessibleProjectIds);
-          const topicList = await utils.geo.articles.topics.list.fetch({ projectId });
-          const topicRows = (topicList ?? []).filter(t => t != null && typeof t.id === "number") as TopicRow[];
+          const projectId = assertMutationProjectId(
+            selectedProjectId,
+            location,
+            accessibleProjectIds
+          );
+          const topicList = await utils.geo.articles.topics.list.fetch({
+            projectId,
+          });
+          const topicRows = (topicList ?? []).filter(
+            t => t != null && typeof t.id === "number"
+          ) as TopicRow[];
           if (isTopicIdInRows(options.retryParams.topicId, topicRows)) {
             resolved = {
               ok: true,
@@ -2986,7 +3722,10 @@ export default function WeeklyContentPage() {
             resolved = await resolvePlatformGenerationParams(platformKey);
           }
         } catch {
-          resolved = { ok: false, errorMessage: PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE };
+          resolved = {
+            ok: false,
+            errorMessage: PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE,
+          };
         }
       } else {
         resolved = await resolvePlatformGenerationParams(platformKey);
@@ -3001,7 +3740,11 @@ export default function WeeklyContentPage() {
       const { topicId, strategyOverride } = resolved;
       let projectId: number;
       try {
-        projectId = assertMutationProjectId(selectedProjectId, location, accessibleProjectIds);
+        projectId = assertMutationProjectId(
+          selectedProjectId,
+          location,
+          accessibleProjectIds
+        );
       } catch {
         const message = PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE;
         if (!options?.silentToast) toast.error(message);
@@ -3012,7 +3755,12 @@ export default function WeeklyContentPage() {
       const strategyErr = validatePlatformContentStrategy(effectiveStrategy);
       if (strategyErr) {
         if (!options?.silentToast) toast.error(strategyErr);
-        return { ok: false, errorMessage: strategyErr, topicId, strategyOverride };
+        return {
+          ok: false,
+          errorMessage: strategyErr,
+          topicId,
+          strategyOverride,
+        };
       }
 
       const ctx = entryContextRef.current;
@@ -3026,10 +3774,14 @@ export default function WeeklyContentPage() {
           targetQuestion: effectiveStrategy.targetQuestion.trim(),
           geoEnhancementGoal: effectiveStrategy.geoEnhancementGoal,
           targetAiPlatforms: [...effectiveStrategy.targetAiPlatforms],
-          contentTaskId: resolvedContentTaskIdForGenerate ?? ctx.taskId ?? undefined,
-          diagnosisFinding: geoContentTaskSource?.diagnosisFinding ?? ctx.relatedGeoGap,
+          contentTaskId:
+            resolvedContentTaskIdForGenerate ?? ctx.taskId ?? undefined,
+          diagnosisFinding:
+            geoContentTaskSource?.diagnosisFinding ?? ctx.relatedGeoGap,
           geoGap: geoContentTaskSource?.geoGapSummary ?? ctx.relatedGeoGap,
-          platformRule: formatPlatformRuleSummaryForGeneration(effectiveStrategy.targetPublishPlatform),
+          platformRule: formatPlatformRuleSummaryForGeneration(
+            effectiveStrategy.targetPublishPlatform
+          ),
           questionTemplateId: selectedQuestionTemplateId ?? undefined,
           questionId: ctx.questionId ?? undefined,
           sourceType: ctx.sourceType ?? undefined,
@@ -3039,15 +3791,19 @@ export default function WeeklyContentPage() {
           toast.message(startResult.message || PLATFORM_DRAFT_START_MESSAGE);
         }
 
-        const pollResult = await pollPlatformDraftUntilDone(projectId, startResult.articleId, {
-          onProgress: stage => platformContentProgress.setStage(stage),
-        });
+        const pollResult = await pollPlatformDraftUntilDone(
+          projectId,
+          startResult.articleId,
+          {
+            onProgress: stage => platformContentProgress.setStage(stage),
+          }
+        );
         if (!pollResult.ok) {
           const failure = recordPlatformGenerationFailure(
             platformKey,
             topicId,
             strategyOverride,
-            pollResult.errorMessage ?? PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
+            pollResult.errorMessage ?? PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE
           );
           return {
             ok: false,
@@ -3057,14 +3813,37 @@ export default function WeeklyContentPage() {
           };
         }
         clearPlatformGenerationRetry(platformKey);
-        return { ok: true, userNotice: pollResult.userNotice, topicId, strategyOverride };
+        return {
+          ok: true,
+          userNotice: pollResult.userNotice,
+          topicId,
+          strategyOverride,
+        };
       } catch (err) {
-        if (!options?.silentToast && handleSubscriptionLimitMutationError(err)) {
-          return { ok: false, errorMessage: SUBSCRIPTION_LIMIT_CONTENT_MESSAGE, topicId, strategyOverride };
+        if (
+          !options?.silentToast &&
+          handleSubscriptionLimitMutationError(err)
+        ) {
+          return {
+            ok: false,
+            errorMessage: SUBSCRIPTION_LIMIT_CONTENT_MESSAGE,
+            topicId,
+            strategyOverride,
+          };
         }
         const msg = readGenerateArticleError(err);
-        const failure = recordPlatformGenerationFailure(platformKey, topicId, strategyOverride, msg);
-        return { ok: false, errorMessage: failure.message, topicId, strategyOverride };
+        const failure = recordPlatformGenerationFailure(
+          platformKey,
+          topicId,
+          strategyOverride,
+          msg
+        );
+        return {
+          ok: false,
+          errorMessage: failure.message,
+          topicId,
+          strategyOverride,
+        };
       }
     },
     [
@@ -3082,12 +3861,17 @@ export default function WeeklyContentPage() {
       platformContentProgress,
       recordPlatformGenerationFailure,
       clearPlatformGenerationRetry,
-    ],
+    ]
   );
 
   const runPlatformContentGenerationUi = async (
     platformKey: WeeklyPlatformKey,
-    options?: { retryParams?: { topicId: number; strategyOverride: Partial<PlatformContentStrategyInput> } },
+    options?: {
+      retryParams?: {
+        topicId: number;
+        strategyOverride: Partial<PlatformContentStrategyInput>;
+      };
+    }
   ) => {
     setGeneratingPlatformKey(platformKey);
     setPlatformProgressLabelKey(platformKey);
@@ -3120,25 +3904,39 @@ export default function WeeklyContentPage() {
       if (result.userNotice) {
         toast.message(result.userNotice);
       } else {
-        toast.success(options?.retryParams ? "内容已重新生成并保存。" : "内容已生成并保存。");
+        toast.success(
+          options?.retryParams ? "内容已重新生成并保存。" : "内容已生成并保存。"
+        );
       }
       window.setTimeout(() => platformContentProgress.reset(), 5000);
     } catch (err) {
       const raw =
-        err instanceof TRPCClientError ? err.message : err instanceof Error ? err.message : "";
+        err instanceof TRPCClientError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "";
       const msg = readGenerateArticleError(err);
-      const topicId = options?.retryParams?.topicId ?? platformGenerationRetry?.topicId;
+      const topicId =
+        options?.retryParams?.topicId ?? platformGenerationRetry?.topicId;
       const strategyOverride =
-        options?.retryParams?.strategyOverride ?? platformGenerationRetry?.strategyOverride;
+        options?.retryParams?.strategyOverride ??
+        platformGenerationRetry?.strategyOverride;
       let displayMessage = msg;
       if (topicId != null && strategyOverride) {
-        const failure = recordPlatformGenerationFailure(platformKey, topicId, strategyOverride, msg);
+        const failure = recordPlatformGenerationFailure(
+          platformKey,
+          topicId,
+          strategyOverride,
+          msg
+        );
         displayMessage = failure.message;
       }
-      const exhausted = displayMessage === CONTENT_GENERATION_RETRY_EXHAUSTED_MESSAGE;
+      const exhausted =
+        displayMessage === CONTENT_GENERATION_RETRY_EXHAUSTED_MESSAGE;
       setPlatformProgressErrorMessage(displayMessage);
       setPlatformProgressErrorCategory(
-        exhausted ? undefined : mapPlatformContentErrorCategory(raw || msg),
+        exhausted ? undefined : mapPlatformContentErrorCategory(raw || msg)
       );
       platformContentProgress.fail();
       toastErrorDeduped(displayMessage);
@@ -3153,8 +3951,12 @@ export default function WeeklyContentPage() {
 
   const handlePlatformRegenerate = () => {
     if (!platformGenerationRetry) return;
-    const { platformKey, topicId, strategyOverride, failCount } = platformGenerationRetry;
-    const display = resolveContentGenerationFailureDisplay({ failCount, lastError: null });
+    const { platformKey, topicId, strategyOverride, failCount } =
+      platformGenerationRetry;
+    const display = resolveContentGenerationFailureDisplay({
+      failCount,
+      lastError: null,
+    });
     if (!display.canRegenerate) return;
     void runPlatformContentGenerationUi(platformKey, {
       retryParams: { topicId, strategyOverride },
@@ -3162,42 +3964,56 @@ export default function WeeklyContentPage() {
   };
 
   const runPlatformBatchItem = useCallback(
-    async (platformKey: WeeklyPlatformKey): Promise<{ ok: boolean; errorMessage?: string }> => {
+    async (
+      platformKey: WeeklyPlatformKey
+    ): Promise<{ ok: boolean; errorMessage?: string }> => {
       setGeneratingPlatformKey(platformKey);
       setPlatformBatchQueue(prev =>
         prev
-          ? updatePlatformBatchItemStatus(prev, platformKey, { status: "running", errorMessage: undefined })
-          : prev,
+          ? updatePlatformBatchItemStatus(prev, platformKey, {
+              status: "running",
+              errorMessage: undefined,
+            })
+          : prev
       );
       try {
-        const result = await generatePlatformContent(platformKey, { silentToast: true });
+        const result = await generatePlatformContent(platformKey, {
+          silentToast: true,
+        });
         setPlatformBatchQueue(prev =>
           prev
             ? updatePlatformBatchItemStatus(prev, platformKey, {
                 status: result.ok ? "completed" : "failed",
                 errorMessage: result.ok ? undefined : result.errorMessage,
               })
-            : prev,
+            : prev
         );
         return result;
       } catch (err) {
         const msg = readGenerateArticleError(err);
         setPlatformBatchQueue(prev =>
           prev
-            ? updatePlatformBatchItemStatus(prev, platformKey, { status: "failed", errorMessage: msg })
-            : prev,
+            ? updatePlatformBatchItemStatus(prev, platformKey, {
+                status: "failed",
+                errorMessage: msg,
+              })
+            : prev
         );
         return { ok: false, errorMessage: msg };
       } finally {
         setGeneratingPlatformKey(null);
       }
     },
-    [generatePlatformContent],
+    [generatePlatformContent]
   );
 
   const handleBatchGenerateAllPlatforms = async () => {
     try {
-      assertMutationProjectId(selectedProjectId, location, accessibleProjectIds);
+      assertMutationProjectId(
+        selectedProjectId,
+        location,
+        accessibleProjectIds
+      );
     } catch {
       toast.error(PLATFORM_CONTENT_PROJECT_ACCESS_MESSAGE);
       return;
@@ -3207,7 +4023,7 @@ export default function WeeklyContentPage() {
       return;
     }
     const queue = buildPlatformBatchQueue(
-      WEEKLY_PLATFORM_DEFS.map(def => ({ key: def.key, label: def.label })),
+      WEEKLY_PLATFORM_DEFS.map(def => ({ key: def.key, label: def.label }))
     );
     setPlatformBatchQueue(queue);
     setPlatformBatchRunning(true);
@@ -3236,7 +4052,9 @@ export default function WeeklyContentPage() {
     void (async () => {
       setPlatformBatchRunning(true);
       try {
-        const result = await runPlatformBatchItem(platformKey as WeeklyPlatformKey);
+        const result = await runPlatformBatchItem(
+          platformKey as WeeklyPlatformKey
+        );
         if (result.ok) {
           toast.success("该平台内容已重新生成");
         } else {
@@ -3260,7 +4078,7 @@ export default function WeeklyContentPage() {
         failCount: platformGenerationRetry?.failCount ?? 0,
         lastError: platformProgressErrorMessage,
       }),
-    [platformGenerationRetry?.failCount, platformProgressErrorMessage],
+    [platformGenerationRetry?.failCount, platformProgressErrorMessage]
   );
 
   const canRegeneratePlatformContent =
@@ -3276,9 +4094,11 @@ export default function WeeklyContentPage() {
         published: model.statusFilterKey === "published",
         queued: model.queuedForPublish,
         publishReady: model.publishPreflightReady,
-        article: model.article as Parameters<typeof resolveWeeklyPlatformContentStatus>[0]["article"],
+        article: model.article as Parameters<
+          typeof resolveWeeklyPlatformContentStatus
+        >[0]["article"],
         needsRewrite: model.lifecycle?.status === "needs_revision",
-      }),
+      })
     );
     setDetailOpen(true);
   }, []);
@@ -3292,14 +4112,16 @@ export default function WeeklyContentPage() {
     toast.message("该平台暂无已生成内容，请先点击「生成该平台内容」");
   };
 
-  const findArticleByPlatform = (platformKey: WeeklyPlatformKey): ArticleRow | undefined => {
+  const findArticleByPlatform = (
+    platformKey: WeeklyPlatformKey
+  ): ArticleRow | undefined => {
     return articles.find(
       a =>
         getArticlePublishPlatform({
           generationBasis: a.generationBasis ?? null,
           targetPlatform: a.targetPlatform,
           publishPlatform: a.publishPlatform,
-        }).weeklyPlatformKey === platformKey,
+        }).weeklyPlatformKey === platformKey
     );
   };
 
@@ -3308,7 +4130,9 @@ export default function WeeklyContentPage() {
     if (hit) openEditor(hit);
   };
 
-  const handlePlatformRegenerateFromBoard = (platformKey: WeeklyPlatformKey) => {
+  const handlePlatformRegenerateFromBoard = (
+    platformKey: WeeklyPlatformKey
+  ) => {
     void runPlatformContentGenerationUi(platformKey);
   };
 
@@ -3358,7 +4182,10 @@ export default function WeeklyContentPage() {
           isRetryableFailedPublishTask(singleTaskLatestPublishTask) &&
           typeof singleTaskLatestPublishTask?.id === "number"
         ) {
-          void retryFailedArticlePublishTask(singleTaskLatestPublishTask.id, singleTaskFocusArticle.id);
+          void retryFailedArticlePublishTask(
+            singleTaskLatestPublishTask.id,
+            singleTaskFocusArticle.id
+          );
         } else {
           toast.error("未找到可重试的失败发布任务，请到发布执行中心处理。");
         }
@@ -3368,15 +4195,20 @@ export default function WeeklyContentPage() {
         setLocation(buildProjectUrl("/content-publishing", selectedProjectId));
         return;
       case "monitoring":
-        setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId));
+        setLocation(
+          buildProjectUrl("/inclusion-monitoring", selectedProjectId)
+        );
         return;
     }
   };
 
   const singleTaskPrimaryBusy =
-    (singleTaskSummary.nextActionKind === "generate" && platformAnyGenerating) ||
-    (singleTaskSummary.nextActionKind === "enqueue" && createPublishTask.isPending) ||
-    (singleTaskSummary.nextActionKind === "retry_publish" && retryPublishTask.isPending) ||
+    (singleTaskSummary.nextActionKind === "generate" &&
+      platformAnyGenerating) ||
+    (singleTaskSummary.nextActionKind === "enqueue" &&
+      createPublishTask.isPending) ||
+    (singleTaskSummary.nextActionKind === "retry_publish" &&
+      retryPublishTask.isPending) ||
     reviewConfirmBusy;
   const singleTaskDisabledReason =
     singleTaskSummary.nextActionKind === "generate" && platformAnyGenerating
@@ -3394,7 +4226,11 @@ export default function WeeklyContentPage() {
     setRegeneratingCoverIds(prev => new Set(prev).add(article.id));
     try {
       const template = normalizeArticleCoverTemplateId(article.coverTemplate);
-      const { coverBase64 } = await renderArticleCoverPng({ template, title, brandName });
+      const { coverBase64 } = await renderArticleCoverPng({
+        template,
+        title,
+        brandName,
+      });
       await updateGeneratedArticle.mutateAsync({
         projectId: selectedProjectId,
         articleId: article.id,
@@ -3426,7 +4262,9 @@ export default function WeeklyContentPage() {
       return;
     }
     const mime: StoredCoverMime =
-      file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/webp"
+      file.type === "image/png" ||
+      file.type === "image/jpeg" ||
+      file.type === "image/webp"
         ? (file.type as StoredCoverMime)
         : "image/png";
     setRegeneratingCoverIds(prev => new Set(prev).add(article.id));
@@ -3504,7 +4342,7 @@ export default function WeeklyContentPage() {
             t.status === "failed" ||
             t.status === "draft_saved" ||
             t.status === "session_expired" ||
-            t.status === "manual_required",
+            t.status === "manual_required"
         );
         if (!allDone) continue;
 
@@ -3518,29 +4356,38 @@ export default function WeeklyContentPage() {
           showPublishSuccessNotification(
             {
               platformLabel: formatPublishSuccessPlatformPhrase(
-                ok.map(t => publishPlatformCustomerLabel(t.platform)),
+                ok.map(t => publishPlatformCustomerLabel(t.platform))
               ),
               articleUrl: resolvePublishSuccessArticleUrl(
-                ok.map(t => t.resultUrl ?? t.publishedUrl),
+                ok.map(t => t.resultUrl ?? t.publishedUrl)
               ),
             },
-            setPublishSuccessNotice,
+            setPublishSuccessNotice
           );
           if (ok.length < tracked.length) {
             toast.message(
-              `${ok.length} 个平台发布成功，${drafts.length} 个已存草稿，${failed.length} 个失败`,
+              `${ok.length} 个平台发布成功，${drafts.length} 个已存草稿，${failed.length} 个失败`
             );
           }
         } else if (drafts.length > 0 && failed.length === 0) {
           toast.success("内容已保存为平台草稿，请在平台内确认后正式发布");
-        } else if (manual.length > 0 && failed.length === 0 && ok.length === 0) {
+        } else if (
+          manual.length > 0 &&
+          failed.length === 0 &&
+          ok.length === 0
+        ) {
           toast.success(
             manual.length === tracked.length
               ? "本地 Agent 已填入标题与正文，状态为需人工确认：请在知乎窗口手动保存草稿，并在「资产发布记录」查看任务状态"
-              : `${manual.length} 个平台需人工确认保存，请在本地客户端窗口完成操作`,
+              : `${manual.length} 个平台需人工确认保存，请在本地客户端窗口完成操作`
           );
         } else {
-          const first = failed[0] ?? tracked.find(t => t.status === "session_expired" || t.status === "manual_required");
+          const first =
+            failed[0] ??
+            tracked.find(
+              t =>
+                t.status === "session_expired" || t.status === "manual_required"
+            );
           const detail =
             first?.agentErrorMessage?.trim() ||
             first?.errorMessage?.split("\n")[0] ||
@@ -3553,7 +4400,7 @@ export default function WeeklyContentPage() {
                   errorMessage: first.errorMessage,
                   agentErrorMessage: first.agentErrorMessage,
                 }) + (detail ? `：${detail}` : "")
-              : "发布失败，请稍后重试",
+              : "发布失败，请稍后重试"
           );
         }
         return;
@@ -3562,7 +4409,7 @@ export default function WeeklyContentPage() {
       await invalidateArticles();
       toast.message("发布仍在进行，请稍后刷新页面查看状态");
     },
-    [invalidateArticles, selectedProjectId, utils],
+    [invalidateArticles, selectedProjectId, utils]
   );
 
   const handleConfirmPublish = async () => {
@@ -3578,35 +4425,52 @@ export default function WeeklyContentPage() {
         ? evaluateArticlePublishPreflight(publishArticle, {
             ...publishDialogPreflightContext,
             requestedPlatform:
-              manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)
+              manualPublishPlatform &&
+              isBindingPublishPlatform(manualPublishPlatform)
                 ? manualPublishPlatform
                 : null,
           })
         : null);
     if (!preflight?.ready) {
       toast.error(
-        preflight ? formatPublishPreflightBlockMessage(preflight) : "发布前检查未通过",
+        preflight
+          ? formatPublishPreflightBlockMessage(preflight)
+          : "发布前检查未通过"
       );
       return;
     }
     await hydratePublishDialogAgent({ syncToWeb: true });
     const freshAccountGroups = selectedProjectId
-      ? (((await utils.geo.platformAccounts.list.fetch({ projectId: selectedProjectId }))?.accounts ??
-          []) as Array<{ platform: string; accounts: PlatformAccountItem[] }>)
+      ? (((
+          await utils.geo.platformAccounts.list.fetch({
+            projectId: selectedProjectId,
+          })
+        )?.accounts ?? []) as Array<{
+          platform: string;
+          accounts: PlatformAccountItem[];
+        }>)
       : platformAccountGroups;
     const getReadyAccountsFresh = (slug: string) => {
       const group = freshAccountGroups.find(g => g.platform === slug);
-      return (group?.accounts ?? []).filter(isPublishReadyAccount) as PlatformAccountItem[];
+      return (group?.accounts ?? []).filter(
+        isPublishReadyAccount
+      ) as PlatformAccountItem[];
     };
     const getAllEnabledFresh = (slug: string) => {
       const group = freshAccountGroups.find(g => g.platform === slug);
-      return (group?.accounts ?? []).filter(a => a.isEnabled) as PlatformAccountItem[];
+      return (group?.accounts ?? []).filter(
+        a => a.isEnabled
+      ) as PlatformAccountItem[];
     };
-    const pickPublishAccountFresh = (slug: string): PlatformAccountItem | null => {
+    const pickPublishAccountFresh = (
+      slug: string
+    ): PlatformAccountItem | null => {
       const ready = getReadyAccountsFresh(slug);
       if (ready.length === 0) return null;
       const stored =
-        selectedProjectId != null ? readLastEnqueuePublishAccountId(selectedProjectId, slug) : null;
+        selectedProjectId != null
+          ? readLastEnqueuePublishAccountId(selectedProjectId, slug)
+          : null;
       const preferredId = selectedPublishAccountIds[slug] ?? stored;
       if (preferredId) {
         const found = ready.find(a => a.id === preferredId);
@@ -3620,11 +4484,19 @@ export default function WeeklyContentPage() {
       const ready = getReadyAccountsFresh(slug);
       const allEnabled = getAllEnabledFresh(slug).filter(a => a.isEnabled);
       if (ready.length === 0) {
-        if (allEnabled.some(a => !a.localProfileId?.trim() || !a.localAgentId?.trim())) {
+        if (
+          allEnabled.some(
+            a => !a.localProfileId?.trim() || !a.localAgentId?.trim()
+          )
+        ) {
           toast.error(
-            `${publishBlockedNoLocalProfileMessage(slug)} 请先下载安装并启动本地发布客户端，然后到企业档案绑定发布账号。`,
+            `${publishBlockedNoLocalProfileMessage(slug)} 请先下载安装并启动本地发布客户端，然后到企业档案绑定发布账号。`
           );
-          selectedProjectId && setLocation(buildProjectUrl("/enterprise-profile", selectedProjectId) + "#publish-platform-accounts");
+          selectedProjectId &&
+            setLocation(
+              buildProjectUrl("/enterprise-profile", selectedProjectId) +
+                "#publish-platform-accounts"
+            );
           return;
         }
         if (allEnabled.some(a => a.sessionStatus !== "active")) {
@@ -3662,26 +4534,35 @@ export default function WeeklyContentPage() {
         }
       }
       toast.success("发布任务已发送至本地客户端，请保持客户端运行。");
-      setSingleTaskPublishQueueError(prev => (prev?.articleId === articleId ? null : prev));
+      setSingleTaskPublishQueueError(prev =>
+        prev?.articleId === articleId ? null : prev
+      );
       notifyPublishEffectPrediction();
       setPublishDialogOpen(false);
       setPublishArticle(null);
       void pollPublishTasksUntilDone(articleId, taskIds);
     } catch (err) {
-      const message = toUserFacingErrorFromUnknown(err, "发布任务创建失败，请处理发布任务创建异常");
+      const message = toUserFacingErrorFromUnknown(
+        err,
+        "发布任务创建失败，请处理发布任务创建异常"
+      );
       setSingleTaskPublishQueueError({ articleId, message });
       toast.error(message);
     }
   };
 
-  const enqueueArticleDirectly = async (article: ArticleRow): Promise<boolean> => {
+  const enqueueArticleDirectly = async (
+    article: ArticleRow
+  ): Promise<boolean> => {
     if (!selectedProjectId) return false;
     if (blockPublishIfUnsaved(article.id)) return false;
     if (blockPublishIfQualityReject(article)) return false;
     const preflight = evaluateArticlePublishPreflight(article);
     if (!preflight?.ready) {
       toast.error(
-        preflight ? formatPublishPreflightBlockMessage(preflight) : "发布前检查未通过",
+        preflight
+          ? formatPublishPreflightBlockMessage(preflight)
+          : "发布前检查未通过"
       );
       return false;
     }
@@ -3691,7 +4572,9 @@ export default function WeeklyContentPage() {
       publishPlatform: article.publishPlatform,
     });
     const slug =
-      resolved.publishQueueSlug && resolved.supportedByLocalAgent && !resolved.queueBlockedReason
+      resolved.publishQueueSlug &&
+      resolved.supportedByLocalAgent &&
+      !resolved.queueBlockedReason
         ? resolved.publishQueueSlug
         : null;
     if (!slug || !isBindingPublishPlatform(slug)) {
@@ -3699,18 +4582,25 @@ export default function WeeklyContentPage() {
       return false;
     }
     await hydratePublishDialogAgent({ syncToWeb: true });
-    const freshAccountGroups = (((await utils.geo.platformAccounts.list.fetch({ projectId: selectedProjectId }))
-      ?.accounts ?? []) as Array<{ platform: string; accounts: PlatformAccountItem[] }>);
-    const ready = (freshAccountGroups.find(g => g.platform === slug)?.accounts ?? []).filter(
-      isPublishReadyAccount,
-    ) as PlatformAccountItem[];
+    const freshAccountGroups = ((
+      await utils.geo.platformAccounts.list.fetch({
+        projectId: selectedProjectId,
+      })
+    )?.accounts ?? []) as Array<{
+      platform: string;
+      accounts: PlatformAccountItem[];
+    }>;
+    const ready = (
+      freshAccountGroups.find(g => g.platform === slug)?.accounts ?? []
+    ).filter(isPublishReadyAccount) as PlatformAccountItem[];
     if (ready.length === 0) {
       toast.error(publishBlockedNoAccountMessage(slug));
       return false;
     }
     const stored = readLastEnqueuePublishAccountId(selectedProjectId, slug);
     const picked =
-      (stored ? ready.find(a => a.id === stored) : null) ?? (ready.length === 1 ? ready[0]! : null);
+      (stored ? ready.find(a => a.id === stored) : null) ??
+      (ready.length === 1 ? ready[0]! : null);
     if (!picked) {
       preparePublishDialogForArticle(article);
       setPublishDialogOpen(true);
@@ -3728,13 +4618,18 @@ export default function WeeklyContentPage() {
         return false;
       }
       rememberEnqueuePublishAccount(slug, picked.id);
-      setSingleTaskPublishQueueError(prev => (prev?.articleId === article.id ? null : prev));
+      setSingleTaskPublishQueueError(prev =>
+        prev?.articleId === article.id ? null : prev
+      );
       toast.success("发布任务已发送至本地客户端，请保持客户端运行。");
       notifyPublishEffectPrediction();
       void pollPublishTasksUntilDone(article.id, [res.taskId]);
       return true;
     } catch (err) {
-      const message = toUserFacingErrorFromUnknown(err, "发布任务创建失败，请处理发布任务创建异常");
+      const message = toUserFacingErrorFromUnknown(
+        err,
+        "发布任务创建失败，请处理发布任务创建异常"
+      );
       setSingleTaskPublishQueueError({ articleId: article.id, message });
       toast.error(message);
       return false;
@@ -3768,31 +4663,44 @@ export default function WeeklyContentPage() {
         publishPlatform: article.publishPlatform,
       });
       const slug =
-        resolved.publishQueueSlug && resolved.supportedByLocalAgent && !resolved.queueBlockedReason
+        resolved.publishQueueSlug &&
+        resolved.supportedByLocalAgent &&
+        !resolved.queueBlockedReason
           ? resolved.publishQueueSlug
           : null;
       if (!slug || !isBindingPublishPlatform(slug)) {
-        toast.error(mapReviewEnqueueCustomerMessage("内容平台缺失：请重新生成该平台内容"));
+        toast.error(
+          mapReviewEnqueueCustomerMessage("内容平台缺失：请重新生成该平台内容")
+        );
         return;
       }
 
       await hydratePublishDialogAgent({ syncToWeb: true });
-      const freshAccountGroups = (((await utils.geo.platformAccounts.list.fetch({
-        projectId: selectedProjectId,
-      }))
-        ?.accounts ?? []) as Array<{ platform: string; accounts: PlatformAccountItem[] }>);
-      const ready = (freshAccountGroups.find(g => g.platform === slug)?.accounts ?? []).filter(
-        isPublishReadyAccount,
-      ) as PlatformAccountItem[];
+      const freshAccountGroups = ((
+        await utils.geo.platformAccounts.list.fetch({
+          projectId: selectedProjectId,
+        })
+      )?.accounts ?? []) as Array<{
+        platform: string;
+        accounts: PlatformAccountItem[];
+      }>;
+      const ready = (
+        freshAccountGroups.find(g => g.platform === slug)?.accounts ?? []
+      ).filter(isPublishReadyAccount) as PlatformAccountItem[];
       if (ready.length === 0) {
-        toast.error(mapReviewEnqueueCustomerMessage(publishBlockedNoAccountMessage(slug)));
+        toast.error(
+          mapReviewEnqueueCustomerMessage(publishBlockedNoAccountMessage(slug))
+        );
         return;
       }
       const stored = readLastEnqueuePublishAccountId(selectedProjectId, slug);
       const picked =
-        (stored ? ready.find(a => a.id === stored) : null) ?? (ready.length === 1 ? ready[0]! : null);
+        (stored ? ready.find(a => a.id === stored) : null) ??
+        (ready.length === 1 ? ready[0]! : null);
       if (!picked) {
-        toast.error(mapReviewEnqueueCustomerMessage(publishMustSelectAccountMessage(slug)));
+        toast.error(
+          mapReviewEnqueueCustomerMessage(publishMustSelectAccountMessage(slug))
+        );
         preparePublishDialogForArticle(article);
         setPublishDialogOpen(true);
         return;
@@ -3811,7 +4719,9 @@ export default function WeeklyContentPage() {
         confirmed: false,
         mode: "review_and_enqueue",
       });
-      setSingleTaskPublishQueueError(prev => (prev?.articleId === article.id ? null : prev));
+      setSingleTaskPublishQueueError(prev =>
+        prev?.articleId === article.id ? null : prev
+      );
       rememberEnqueuePublishAccount(slug, res.platformAccountId);
       toast.success(REVIEW_ENQUEUE_SUCCESS_MESSAGE);
       notifyPublishEffectPrediction();
@@ -3822,7 +4732,9 @@ export default function WeeklyContentPage() {
         err && typeof err === "object" && "message" in err
           ? String((err as { message: unknown }).message ?? "")
           : "";
-      const message = mapReviewEnqueueCustomerMessage(raw) || "发布任务创建失败，请处理发布任务创建异常";
+      const message =
+        mapReviewEnqueueCustomerMessage(raw) ||
+        "发布任务创建失败，请处理发布任务创建异常";
       setSingleTaskPublishQueueError({ articleId: article.id, message });
       toast.error(message);
     } finally {
@@ -3844,13 +4756,23 @@ export default function WeeklyContentPage() {
 
     try {
       await hydratePublishDialogAgent({ syncToWeb: true });
-      const freshAccountGroups = (((await utils.geo.platformAccounts.list.fetch({ projectId: selectedProjectId }))
-        ?.accounts ?? []) as Array<{ platform: string; accounts: PlatformAccountItem[] }>);
+      const freshAccountGroups = ((
+        await utils.geo.platformAccounts.list.fetch({
+          projectId: selectedProjectId,
+        })
+      )?.accounts ?? []) as Array<{
+        platform: string;
+        accounts: PlatformAccountItem[];
+      }>;
       const getReadyAccountsFresh = (slug: string) => {
         const group = freshAccountGroups.find(g => g.platform === slug);
-        return (group?.accounts ?? []).filter(isPublishReadyAccount) as PlatformAccountItem[];
+        return (group?.accounts ?? []).filter(
+          isPublishReadyAccount
+        ) as PlatformAccountItem[];
       };
-      const pickPublishAccountFresh = (slug: string): PlatformAccountItem | null => {
+      const pickPublishAccountFresh = (
+        slug: string
+      ): PlatformAccountItem | null => {
         const ready = getReadyAccountsFresh(slug);
         if (ready.length === 0) return null;
         const stored = readLastEnqueuePublishAccountId(selectedProjectId, slug);
@@ -3888,7 +4810,9 @@ export default function WeeklyContentPage() {
           publishPlatform: article.publishPlatform,
         });
         const slug =
-          resolved.publishQueueSlug && resolved.supportedByLocalAgent && !resolved.queueBlockedReason
+          resolved.publishQueueSlug &&
+          resolved.supportedByLocalAgent &&
+          !resolved.queueBlockedReason
             ? resolved.publishQueueSlug
             : null;
         if (!slug || !isBindingPublishPlatform(slug)) {
@@ -3924,7 +4848,9 @@ export default function WeeklyContentPage() {
         toast.success(`已将 ${successCount} 篇内容加入发布队列`);
         notifyPublishEffectPrediction();
         setSelectedCardIds(new Set());
-        for (const [articleId, taskIds] of Array.from(taskIdsByArticle.entries())) {
+        for (const [articleId, taskIds] of Array.from(
+          taskIdsByArticle.entries()
+        )) {
           void pollPublishTasksUntilDone(articleId, taskIds);
         }
       } else {
@@ -3958,7 +4884,7 @@ export default function WeeklyContentPage() {
         targetPlatform: publishArticle.targetPlatform,
         publishPlatform: publishArticle.publishPlatform,
       },
-      requested,
+      requested
     );
   }, [publishArticle, publishPlatformResolved, manualPublishPlatform]);
 
@@ -3971,7 +4897,10 @@ export default function WeeklyContentPage() {
     ) {
       return resolved.publishQueueSlug;
     }
-    if (manualPublishPlatform && isBindingPublishPlatform(manualPublishPlatform)) {
+    if (
+      manualPublishPlatform &&
+      isBindingPublishPlatform(manualPublishPlatform)
+    ) {
       return manualPublishPlatform;
     }
     return null;
@@ -3991,7 +4920,10 @@ export default function WeeklyContentPage() {
       ...publishDialogPreflightContext,
       requestedPlatform,
       selectedAccount: account
-        ? ({ ...account, platform: publishDialogSlug } as PublishReadyAccountRow)
+        ? ({
+            ...account,
+            platform: publishDialogSlug,
+          } as PublishReadyAccountRow)
         : null,
       selectedAccountId: account?.id ?? null,
     });
@@ -4008,13 +4940,18 @@ export default function WeeklyContentPage() {
   const publishDialogNicknamePendingHint = useMemo(() => {
     if (!publishDialogSlug) return false;
     const localEntry = publishDialogAccountSnapshot.find(
-      e => e.platform === publishDialogSlug && e.loginStatus === "valid",
+      e => e.platform === publishDialogSlug && e.loginStatus === "valid"
     );
     if (localEntry && !localEntry.displayNameVerified) return true;
     const rows = getPublishReadyAccountsForPlatform(publishDialogSlug);
-    return rows.some(a => a.accountName === LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME);
-  }, [publishDialogAccountSnapshot, publishDialogSlug, getPublishReadyAccountsForPlatform]);
-
+    return rows.some(
+      a => a.accountName === LOCAL_AGENT_ACCOUNT_SYNC_PENDING_DISPLAY_NAME
+    );
+  }, [
+    publishDialogAccountSnapshot,
+    publishDialogSlug,
+    getPublishReadyAccountsForPlatform,
+  ]);
 
   useEffect(() => {
     if (!publishDialogOpen) {
@@ -4029,16 +4966,21 @@ export default function WeeklyContentPage() {
 
   useEffect(() => {
     if (!publishDialogOpen || !publishDialogSlug || !selectedProjectId) return;
-    const selectable = getEnqueueSelectableAccountsForPlatform(publishDialogSlug);
+    const selectable =
+      getEnqueueSelectableAccountsForPlatform(publishDialogSlug);
     if (selectable.length === 0) return;
     setSelectedPublishAccountIds(prev => {
       if (prev[publishDialogSlug]) return prev;
-      const stored = readLastEnqueuePublishAccountId(selectedProjectId, publishDialogSlug);
+      const stored = readLastEnqueuePublishAccountId(
+        selectedProjectId,
+        publishDialogSlug
+      );
       if (stored && selectable.some(a => a.id === stored)) {
         return { ...prev, [publishDialogSlug]: stored };
       }
       const ready = selectable.filter(isPublishReadyAccount);
-      if (ready.length === 1) return { ...prev, [publishDialogSlug]: ready[0]!.id };
+      if (ready.length === 1)
+        return { ...prev, [publishDialogSlug]: ready[0]!.id };
       return prev;
     });
   }, [
@@ -4097,13 +5039,16 @@ export default function WeeklyContentPage() {
             <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-cyan-700">
               AI 问题占位
             </span>
-            <span className="text-sm font-semibold text-cyan-950">本轮不是只发一篇文章，而是在建设公开问题证据</span>
+            <span className="text-sm font-semibold text-cyan-950">
+              本轮不是只发一篇文章，而是在建设公开问题证据
+            </span>
           </div>
           <p className="mt-3 text-sm leading-6 text-gray-800">
             已围绕“海豚知道是什么？”完成知乎公开内容建设，等待收录和 AI 复测。
           </p>
           <p className="mt-1 text-xs leading-5 text-gray-600">
-            当前只确认发布动作完成，不代表已收录或 AI 提及已经提升；下一次收录初查与 T2 轻量复测为 07/12。
+            当前只确认发布动作完成，不代表已收录或 AI
+            提及已经提升；下一次收录初查与 T2 轻量复测为 07/12。
           </p>
         </section>
       ) : null}
@@ -4116,23 +5061,35 @@ export default function WeeklyContentPage() {
             variant="outline"
             className="mt-3"
             onClick={() => {
-              void Promise.all([tasksQuery.refetch(), topicsQuery.refetch(), articlesQuery.refetch()]);
+              void Promise.all([
+                tasksQuery.refetch(),
+                topicsQuery.refetch(),
+                articlesQuery.refetch(),
+              ]);
             }}
           >
             重试加载
           </Button>
         </div>
-      ) : !queriesReady || preparingTopics || generateTopicsMutation.isPending ? (
+      ) : !queriesReady ||
+        preparingTopics ||
+        generateTopicsMutation.isPending ? (
         <div className="flex flex-col items-center gap-3 py-16 text-gray-500">
           <Spinner className="size-6 text-blue-600" />
           <p className="text-sm">正在加载平台化内容生产数据…</p>
         </div>
       ) : showDiagnosisEmpty ? (
         <P0Card testId="weekly-no-diagnosis">
-          <p className="text-base font-semibold text-gray-900" data-testid="weekly-empty-task-title">
+          <p
+            className="text-base font-semibold text-gray-900"
+            data-testid="weekly-empty-task-title"
+          >
             暂无内容任务
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-gray-700" data-testid="weekly-no-diagnosis-message">
+          <p
+            className="mt-2 text-sm leading-relaxed text-gray-700"
+            data-testid="weekly-no-diagnosis-message"
+          >
             原因：尚未完成 AI 实测诊断或未选择内容缺口。
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -4140,7 +5097,10 @@ export default function WeeklyContentPage() {
               type="button"
               className="bg-blue-600 text-white hover:bg-blue-700"
               data-testid="weekly-go-ai-diagnosis"
-              onClick={() => selectedProjectId && setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))}
+              onClick={() =>
+                selectedProjectId &&
+                setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
+              }
             >
               查看本月服务计划
             </Button>
@@ -4148,14 +5108,20 @@ export default function WeeklyContentPage() {
         </P0Card>
       ) : showProjectTasksEmpty ? (
         <P0Card testId="weekly-no-project-content-tasks">
-          <p className="text-sm leading-relaxed text-gray-700" data-testid="weekly-no-project-content-tasks-message">
+          <p
+            className="text-sm leading-relaxed text-gray-700"
+            data-testid="weekly-no-project-content-tasks-message"
+          >
             {GEO_CONTENT_TASK_EMPTY_FOR_PROJECT_MESSAGE}
           </p>
           <Button
             type="button"
             className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
             data-testid="weekly-go-ai-diagnosis-from-empty-tasks"
-            onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))}
+            onClick={() =>
+              selectedProjectId &&
+              setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId))
+            }
           >
             去 AI 实测诊断
           </Button>
@@ -4176,7 +5142,9 @@ export default function WeeklyContentPage() {
               projectStageLabel={customerStageLabel}
               monthlyTasks={monthlyContentTasks}
               progress={taskProgress}
-              currentTaskProgress={entryContext.questionId != null ? taskBoardProgress : null}
+              currentTaskProgress={
+                entryContext.questionId != null ? taskBoardProgress : null
+              }
               currentTaskTitle={contentTaskViewQuery.data?.taskTitle ?? null}
               primaryActionLabel={weeklyCustomerPrimaryActionLabel}
               onPrimaryAction={handleWeeklyCustomerPrimaryAction}
@@ -4184,225 +5152,297 @@ export default function WeeklyContentPage() {
           )}
 
           {isContentProductionWorkbench && !isSingleTaskProgression ? (
-          <details id="weekly-operational-workbench" open className="group space-y-5 rounded-2xl border border-gray-200 bg-white shadow-sm" data-testid="weekly-operational-workbench">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">运营后台 · 不进入客户第一轮演示</p>
-                <h2 className={geoP0Surfaces.sectionTitle}>运营执行明细</h2>
-                <p className={geoP0Surfaces.muted}>
-                  客户只看上方“做到哪一步”；内部运营仍围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布。
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 group-open:bg-blue-50 group-open:text-blue-700">
-                展开处理
-              </span>
-            </summary>
+            <details
+              id="weekly-operational-workbench"
+              open
+              className="group space-y-5 rounded-2xl border border-gray-200 bg-white shadow-sm"
+              data-testid="weekly-operational-workbench"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    运营后台 · 不进入客户第一轮演示
+                  </p>
+                  <h2 className={geoP0Surfaces.sectionTitle}>运营执行明细</h2>
+                  <p className={geoP0Surfaces.muted}>
+                    客户只看上方“做到哪一步”；内部运营仍围绕一个 AI
+                    搜索问题，推进内容生成、质检、适配与发布。
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600 group-open:bg-blue-50 group-open:text-blue-700">
+                  展开处理
+                </span>
+              </summary>
 
-            <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
-
-            {entryContext.questionId == null ? (
-              monthlyPlanQuery.isLoading ? (
-                <P0Card testId="weekly-monthly-task-list-loading">
-                  <p className="text-sm text-gray-600">正在加载本月内容任务…</p>
-                </P0Card>
-              ) : (
-                <MonthlyContentTaskList
-                  tasks={monthlyContentTasks}
-                  onSelectTask={handleSelectMonthlyContentTask}
-                  onGoMonthlyPlan={() =>
-                    selectedProjectId
-                      ? setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
-                      : setLocation("/monthly-plan")
-                  }
-                />
-              )
-            ) : contentTaskViewQuery.isLoading ? (
-              <P0Card testId="weekly-content-task-control-loading">
-                <p className="text-sm text-gray-600">正在加载当前内容任务…</p>
-              </P0Card>
-            ) : contentTaskViewQuery.data ? (
-              <CurrentContentTaskCard
-                view={contentTaskViewQuery.data}
-                sourceTypeLabel={resolveWeeklyContentSourceTypeLabel(entryContext.sourceType)}
-              />
-            ) : (
-              <TaskProgressionFallback
-                onGoMonthlyPlan={() =>
-                  selectedProjectId
-                    ? setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
-                    : setLocation("/monthly-plan")
-                }
-              />
-            )}
-
-            {entryContext.questionId != null ? (
-              <>
-                <TaskProgressOverview metrics={taskBoardProgress} />
-
-                <NextStepSuggestion
-                  suggestion={taskBoardNextStep}
-                  actionLabel={
-                    taskBoardProgress.enqueueReady > 0
-                      ? "加入发布队列"
-                      : taskBoardProgress.qualityPending > 0
-                        ? "查看并质检"
-                        : taskBoardProgress.published > 0
-                          ? "去收录监测"
-                          : "生成平台稿"
-                  }
-                  onAction={() => {
-                    if (taskBoardProgress.enqueueReady > 0) {
-                      const readyRow = platformBoardRows.find(r => r.status === "PUBLISH_READY");
-                      if (readyRow) {
-                        const hit = findArticleByPlatform(readyRow.def.key);
-                        if (hit) requestEnqueuePublish(hit);
+              <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
+                {entryContext.questionId == null ? (
+                  monthlyPlanQuery.isLoading ? (
+                    <P0Card testId="weekly-monthly-task-list-loading">
+                      <p className="text-sm text-gray-600">
+                        正在加载本月内容任务…
+                      </p>
+                    </P0Card>
+                  ) : (
+                    <MonthlyContentTaskList
+                      tasks={monthlyContentTasks}
+                      onSelectTask={handleSelectMonthlyContentTask}
+                      onGoMonthlyPlan={() =>
+                        selectedProjectId
+                          ? setLocation(
+                              buildProjectUrl(
+                                "/monthly-plan",
+                                selectedProjectId
+                              )
+                            )
+                          : setLocation("/monthly-plan")
                       }
-                    } else if (taskBoardProgress.qualityPending > 0) {
-                      const qcRow = platformBoardRows.find(
-                        r => r.status === "QUALITY_PENDING" || r.status === "DRAFT",
-                      );
-                      if (qcRow) handlePlatformEdit(qcRow.def.key);
-                    } else if (taskBoardProgress.published > 0 && selectedProjectId) {
-                      setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId));
-                    } else {
-                      const ungen = platformBoardRows.find(r => r.status === "UNGENERATED");
-                      if (ungen) void handlePlatformGenerate(ungen.def.key);
-                    }
-                  }}
-                />
-
-                {contentTaskViewQuery.data ? (
-                  <PlatformTaskBoard
-                    rows={platformBoardRows}
-                    recommendedPlatforms={contentTaskViewQuery.data.recommendedPlatforms}
-                    boardBusy={batchBusy}
-                    generatingPlatformKey={generatingPlatformKey}
-                    activeInFlightPlatformKey={activeInFlightPlatformKey}
-                    anyGenerating={platformAnyGenerating}
-                    onGenerate={key => void handlePlatformGenerate(key)}
-                    onSaveAndQc={handlePlatformEdit}
-                    onEnqueue={key => {
-                      const hit = findArticleByPlatform(key);
-                      if (hit) requestEnqueuePublish(hit);
-                    }}
-                    onRetryPublish={(key, taskId) => {
-                      const hit = findArticleByPlatform(key);
-                      if (hit) void retryFailedArticlePublishTask(taskId, hit.id);
-                    }}
-                    onView={handlePlatformView}
-                    onViewPublish={() =>
-                      selectedProjectId &&
-                      setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-                    }
-                    onGoMonitoring={() =>
-                      selectedProjectId &&
-                      setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
-                    }
+                    />
+                  )
+                ) : contentTaskViewQuery.isLoading ? (
+                  <P0Card testId="weekly-content-task-control-loading">
+                    <p className="text-sm text-gray-600">
+                      正在加载当前内容任务…
+                    </p>
+                  </P0Card>
+                ) : contentTaskViewQuery.data ? (
+                  <CurrentContentTaskCard
+                    view={contentTaskViewQuery.data}
+                    sourceTypeLabel={resolveWeeklyContentSourceTypeLabel(
+                      entryContext.sourceType
+                    )}
                   />
                 ) : (
-                  <PlatformContentBoard
-                    rows={platformBoardRows}
-                    boardBusy={batchBusy}
-                    generatingPlatformKey={generatingPlatformKey}
-                    activeInFlightPlatformKey={activeInFlightPlatformKey}
-                    anyGenerating={platformAnyGenerating}
-                    onGenerate={key => void handlePlatformGenerate(key)}
-                    onSaveAndQc={handlePlatformEdit}
-                    onEnqueue={key => {
-                      const hit = findArticleByPlatform(key);
-                      if (hit) requestEnqueuePublish(hit);
-                    }}
-                    onRetryPublish={(key, taskId) => {
-                      const hit = findArticleByPlatform(key);
-                      if (hit) void retryFailedArticlePublishTask(taskId, hit.id);
-                    }}
-                    onView={handlePlatformView}
+                  <TaskProgressionFallback
+                    onGoMonthlyPlan={() =>
+                      selectedProjectId
+                        ? setLocation(
+                            buildProjectUrl("/monthly-plan", selectedProjectId)
+                          )
+                        : setLocation("/monthly-plan")
+                    }
                   />
                 )}
 
-                <WeeklyAdvancedInfoSections
-                  profilePreview={profilePreview}
-                  source={geoContentTaskSource}
-                  platformStrategy={platformStrategy}
-                  onPlatformStrategyChange={setPlatformStrategy}
-                  targetQuestionOptions={targetQuestionOptions}
-                  strategyDisabled={anyGenerating}
-                  platformBatchQueue={platformBatchQueue}
-                  platformBatchRunning={platformBatchRunning}
-                  onStartBatch={() => void handleBatchGenerateAllPlatforms()}
-                  onRetryBatchItem={handleRetryPlatformBatchItem}
-                  historyCards={displayContentCards}
-                  historyDisabled={anyGenerating || batchEnqueueBusy}
-                  onHistoryView={openContentDetail}
-                  onHistoryRegenerate={model => {
-                    const article = articlesById.get(model.id);
-                    if (article && typeof article.topicId === "number") void generateOne(article.topicId);
-                  }}
-                  onHistoryEnqueue={model => {
-                    const article = articlesById.get(model.id);
-                    if (article) requestEnqueuePublish(article);
-                  }}
-                  onHistoryGoPublishing={() =>
-                    selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
-                  }
-                  onHistoryReviewChange={(articleId, status) => {
-                    if (!selectedProjectId) return;
-                    setContentReviewStatus.mutate(
-                      { projectId: selectedProjectId, articleId, status },
-                      { onSuccess: () => toast.success("审核状态已更新") },
-                    );
-                  }}
-                  motherArticle={
-                    contentTaskViewQuery.data
-                      ? {
-                          title: contentTaskViewQuery.data.motherArticleTitle,
-                          summary: contentTaskViewQuery.data.motherArticleSummary,
-                          status: contentTaskViewQuery.data.motherArticleStatus,
-                          onViewFull: () => {
-                            if (previewCards[0]) openContentDetail(previewCards[0]);
-                          },
-                          onEdit: () => {
-                            if (previewCards[0]) {
-                              const article = articlesById.get(previewCards[0].id);
-                              if (article) openEditor(article);
-                            }
-                          },
-                          onApprove: () => {
-                            if (previewCards[0]) {
-                              const article = articlesById.get(previewCards[0].id);
-                              if (article) openReviewConfirmDialog(article, "review_only");
-                            }
-                          },
-                          approveDisabled: batchBusy,
+                {entryContext.questionId != null ? (
+                  <>
+                    <TaskProgressOverview metrics={taskBoardProgress} />
+
+                    <NextStepSuggestion
+                      suggestion={taskBoardNextStep}
+                      actionLabel={
+                        taskBoardProgress.enqueueReady > 0
+                          ? "加入发布队列"
+                          : taskBoardProgress.qualityPending > 0
+                            ? "查看并质检"
+                            : taskBoardProgress.published > 0
+                              ? "去收录监测"
+                              : "生成平台稿"
+                      }
+                      onAction={() => {
+                        if (taskBoardProgress.enqueueReady > 0) {
+                          const readyRow = platformBoardRows.find(
+                            r => r.status === "PUBLISH_READY"
+                          );
+                          if (readyRow) {
+                            const hit = findArticleByPlatform(readyRow.def.key);
+                            if (hit) requestEnqueuePublish(hit);
+                          }
+                        } else if (taskBoardProgress.qualityPending > 0) {
+                          const qcRow = platformBoardRows.find(
+                            r =>
+                              r.status === "QUALITY_PENDING" ||
+                              r.status === "DRAFT"
+                          );
+                          if (qcRow) handlePlatformEdit(qcRow.def.key);
+                        } else if (
+                          taskBoardProgress.published > 0 &&
+                          selectedProjectId
+                        ) {
+                          setLocation(
+                            buildProjectUrl(
+                              "/inclusion-monitoring",
+                              selectedProjectId
+                            )
+                          );
+                        } else {
+                          const ungen = platformBoardRows.find(
+                            r => r.status === "UNGENERATED"
+                          );
+                          if (ungen) void handlePlatformGenerate(ungen.def.key);
                         }
-                      : null
-                  }
-                  generationLog={{
-                    visible: platformContentProgress.status !== "idle" && Boolean(activePlatformProgressLabel),
-                    platformLabel: activePlatformProgressLabel,
-                    stepLabel: platformContentProgress.stepLabel,
-                    stepDescription: platformContentProgress.stepDescription,
-                    percent: platformContentProgress.percent,
-                    elapsedSec: platformContentProgress.elapsedSec,
-                    status: platformContentProgress.isFailed
-                      ? "failed"
-                      : platformContentProgress.isSuccess
-                        ? "success"
-                        : "running",
-                    errorCategory: platformProgressErrorCategory,
-                    errorMessage: platformContentProgress.isFailed
-                      ? platformProgressFailureDisplay.message
-                      : platformProgressErrorMessage,
-                    onRegenerate: canRegeneratePlatformContent
-                      ? () => handlePlatformRegenerate()
-                      : undefined,
-                    regenerateDisabled: anyGenerating,
-                  }}
-                />
-              </>
-            ) : null}
-            </div>
-          </details>
+                      }}
+                    />
+
+                    {contentTaskViewQuery.data ? (
+                      <PlatformTaskBoard
+                        rows={platformBoardRows}
+                        recommendedPlatforms={
+                          contentTaskViewQuery.data.recommendedPlatforms
+                        }
+                        boardBusy={batchBusy}
+                        generatingPlatformKey={generatingPlatformKey}
+                        activeInFlightPlatformKey={activeInFlightPlatformKey}
+                        anyGenerating={platformAnyGenerating}
+                        onGenerate={key => void handlePlatformGenerate(key)}
+                        onSaveAndQc={handlePlatformEdit}
+                        onEnqueue={key => {
+                          const hit = findArticleByPlatform(key);
+                          if (hit) requestEnqueuePublish(hit);
+                        }}
+                        onRetryPublish={(key, taskId) => {
+                          const hit = findArticleByPlatform(key);
+                          if (hit)
+                            void retryFailedArticlePublishTask(taskId, hit.id);
+                        }}
+                        onView={handlePlatformView}
+                        onViewPublish={() =>
+                          selectedProjectId &&
+                          setLocation(
+                            buildProjectUrl(
+                              "/content-publishing",
+                              selectedProjectId
+                            )
+                          )
+                        }
+                        onGoMonitoring={() =>
+                          selectedProjectId &&
+                          setLocation(
+                            buildProjectUrl(
+                              "/inclusion-monitoring",
+                              selectedProjectId
+                            )
+                          )
+                        }
+                      />
+                    ) : (
+                      <PlatformContentBoard
+                        rows={platformBoardRows}
+                        boardBusy={batchBusy}
+                        generatingPlatformKey={generatingPlatformKey}
+                        activeInFlightPlatformKey={activeInFlightPlatformKey}
+                        anyGenerating={platformAnyGenerating}
+                        onGenerate={key => void handlePlatformGenerate(key)}
+                        onSaveAndQc={handlePlatformEdit}
+                        onEnqueue={key => {
+                          const hit = findArticleByPlatform(key);
+                          if (hit) requestEnqueuePublish(hit);
+                        }}
+                        onRetryPublish={(key, taskId) => {
+                          const hit = findArticleByPlatform(key);
+                          if (hit)
+                            void retryFailedArticlePublishTask(taskId, hit.id);
+                        }}
+                        onView={handlePlatformView}
+                      />
+                    )}
+
+                    <WeeklyAdvancedInfoSections
+                      profilePreview={profilePreview}
+                      source={geoContentTaskSource}
+                      platformStrategy={platformStrategy}
+                      onPlatformStrategyChange={setPlatformStrategy}
+                      targetQuestionOptions={targetQuestionOptions}
+                      strategyDisabled={anyGenerating}
+                      platformBatchQueue={platformBatchQueue}
+                      platformBatchRunning={platformBatchRunning}
+                      onStartBatch={() =>
+                        void handleBatchGenerateAllPlatforms()
+                      }
+                      onRetryBatchItem={handleRetryPlatformBatchItem}
+                      historyCards={displayContentCards}
+                      historyDisabled={anyGenerating || batchEnqueueBusy}
+                      onHistoryView={openContentDetail}
+                      onHistoryRegenerate={model => {
+                        const article = articlesById.get(model.id);
+                        if (article && typeof article.topicId === "number")
+                          void generateOne(article.topicId);
+                      }}
+                      onHistoryEnqueue={model => {
+                        const article = articlesById.get(model.id);
+                        if (article) requestEnqueuePublish(article);
+                      }}
+                      onHistoryGoPublishing={() =>
+                        selectedProjectId &&
+                        setLocation(
+                          buildProjectUrl(
+                            "/content-publishing",
+                            selectedProjectId
+                          )
+                        )
+                      }
+                      onHistoryReviewChange={(articleId, status) => {
+                        if (!selectedProjectId) return;
+                        setContentReviewStatus.mutate(
+                          { projectId: selectedProjectId, articleId, status },
+                          { onSuccess: () => toast.success("审核状态已更新") }
+                        );
+                      }}
+                      motherArticle={
+                        contentTaskViewQuery.data
+                          ? {
+                              title:
+                                contentTaskViewQuery.data.motherArticleTitle,
+                              summary:
+                                contentTaskViewQuery.data.motherArticleSummary,
+                              status:
+                                contentTaskViewQuery.data.motherArticleStatus,
+                              onViewFull: () => {
+                                if (previewCards[0])
+                                  openContentDetail(previewCards[0]);
+                              },
+                              onEdit: () => {
+                                if (previewCards[0]) {
+                                  const article = articlesById.get(
+                                    previewCards[0].id
+                                  );
+                                  if (article) openEditor(article);
+                                }
+                              },
+                              onApprove: () => {
+                                if (previewCards[0]) {
+                                  const article = articlesById.get(
+                                    previewCards[0].id
+                                  );
+                                  if (article)
+                                    openReviewConfirmDialog(
+                                      article,
+                                      "review_only"
+                                    );
+                                }
+                              },
+                              approveDisabled: batchBusy,
+                            }
+                          : null
+                      }
+                      generationLog={{
+                        visible:
+                          platformContentProgress.status !== "idle" &&
+                          Boolean(activePlatformProgressLabel),
+                        platformLabel: activePlatformProgressLabel,
+                        stepLabel: platformContentProgress.stepLabel,
+                        stepDescription:
+                          platformContentProgress.stepDescription,
+                        percent: platformContentProgress.percent,
+                        elapsedSec: platformContentProgress.elapsedSec,
+                        status: platformContentProgress.isFailed
+                          ? "failed"
+                          : platformContentProgress.isSuccess
+                            ? "success"
+                            : "running",
+                        errorCategory: platformProgressErrorCategory,
+                        errorMessage: platformContentProgress.isFailed
+                          ? platformProgressFailureDisplay.message
+                          : platformProgressErrorMessage,
+                        onRegenerate: canRegeneratePlatformContent
+                          ? () => handlePlatformRegenerate()
+                          : undefined,
+                        regenerateDisabled: anyGenerating,
+                      }}
+                    />
+                  </>
+                ) : null}
+              </div>
+            </details>
           ) : null}
 
           {isSingleTaskProgression ? (
@@ -4424,18 +5464,24 @@ export default function WeeklyContentPage() {
               <div className="space-y-5 border-t border-gray-100 px-5 pb-5 pt-4">
                 {contentTaskViewQuery.isLoading ? (
                   <P0Card testId="weekly-content-task-control-loading">
-                    <p className="text-sm text-gray-600">正在加载当前内容任务…</p>
+                    <p className="text-sm text-gray-600">
+                      正在加载当前内容任务…
+                    </p>
                   </P0Card>
                 ) : contentTaskViewQuery.data ? (
                   <CurrentContentTaskCard
                     view={contentTaskViewQuery.data}
-                    sourceTypeLabel={resolveWeeklyContentSourceTypeLabel(entryContext.sourceType)}
+                    sourceTypeLabel={resolveWeeklyContentSourceTypeLabel(
+                      entryContext.sourceType
+                    )}
                   />
                 ) : (
                   <TaskProgressionFallback
                     onGoMonthlyPlan={() =>
                       selectedProjectId
-                        ? setLocation(buildProjectUrl("/monthly-plan", selectedProjectId))
+                        ? setLocation(
+                            buildProjectUrl("/monthly-plan", selectedProjectId)
+                          )
                         : setLocation("/monthly-plan")
                     }
                   />
@@ -4444,7 +5490,9 @@ export default function WeeklyContentPage() {
                 {contentTaskViewQuery.data ? (
                   <PlatformTaskBoard
                     rows={platformBoardRows}
-                    recommendedPlatforms={contentTaskViewQuery.data.recommendedPlatforms}
+                    recommendedPlatforms={
+                      contentTaskViewQuery.data.recommendedPlatforms
+                    }
                     boardBusy={batchBusy}
                     generatingPlatformKey={generatingPlatformKey}
                     activeInFlightPlatformKey={activeInFlightPlatformKey}
@@ -4457,16 +5505,27 @@ export default function WeeklyContentPage() {
                     }}
                     onRetryPublish={(key, taskId) => {
                       const hit = findArticleByPlatform(key);
-                      if (hit) void retryFailedArticlePublishTask(taskId, hit.id);
+                      if (hit)
+                        void retryFailedArticlePublishTask(taskId, hit.id);
                     }}
                     onView={handlePlatformView}
                     onViewPublish={() =>
                       selectedProjectId &&
-                      setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                      setLocation(
+                        buildProjectUrl(
+                          "/content-publishing",
+                          selectedProjectId
+                        )
+                      )
                     }
                     onGoMonitoring={() =>
                       selectedProjectId &&
-                      setLocation(buildProjectUrl("/inclusion-monitoring", selectedProjectId))
+                      setLocation(
+                        buildProjectUrl(
+                          "/inclusion-monitoring",
+                          selectedProjectId
+                        )
+                      )
                     }
                   />
                 ) : null}
@@ -4487,41 +5546,52 @@ export default function WeeklyContentPage() {
                   onHistoryView={openContentDetail}
                   onHistoryRegenerate={model => {
                     const article = articlesById.get(model.id);
-                    if (article && typeof article.topicId === "number") void generateOne(article.topicId);
+                    if (article && typeof article.topicId === "number")
+                      void generateOne(article.topicId);
                   }}
                   onHistoryEnqueue={model => {
                     const article = articlesById.get(model.id);
                     if (article) requestEnqueuePublish(article);
                   }}
                   onHistoryGoPublishing={() =>
-                    selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                    selectedProjectId &&
+                    setLocation(
+                      buildProjectUrl("/content-publishing", selectedProjectId)
+                    )
                   }
                   onHistoryReviewChange={(articleId, status) => {
                     if (!selectedProjectId) return;
                     setContentReviewStatus.mutate(
                       { projectId: selectedProjectId, articleId, status },
-                      { onSuccess: () => toast.success("审核状态已更新") },
+                      { onSuccess: () => toast.success("审核状态已更新") }
                     );
                   }}
                   motherArticle={
                     contentTaskViewQuery.data
                       ? {
                           title: contentTaskViewQuery.data.motherArticleTitle,
-                          summary: contentTaskViewQuery.data.motherArticleSummary,
+                          summary:
+                            contentTaskViewQuery.data.motherArticleSummary,
                           status: contentTaskViewQuery.data.motherArticleStatus,
                           onViewFull: () => {
-                            if (previewCards[0]) openContentDetail(previewCards[0]);
+                            if (previewCards[0])
+                              openContentDetail(previewCards[0]);
                           },
                           onEdit: () => {
                             if (previewCards[0]) {
-                              const article = articlesById.get(previewCards[0].id);
+                              const article = articlesById.get(
+                                previewCards[0].id
+                              );
                               if (article) openEditor(article);
                             }
                           },
                           onApprove: () => {
                             if (previewCards[0]) {
-                              const article = articlesById.get(previewCards[0].id);
-                              if (article) openReviewConfirmDialog(article, "review_only");
+                              const article = articlesById.get(
+                                previewCards[0].id
+                              );
+                              if (article)
+                                openReviewConfirmDialog(article, "review_only");
                             }
                           },
                           approveDisabled: batchBusy,
@@ -4529,7 +5599,9 @@ export default function WeeklyContentPage() {
                       : null
                   }
                   generationLog={{
-                    visible: platformContentProgress.status !== "idle" && Boolean(activePlatformProgressLabel),
+                    visible:
+                      platformContentProgress.status !== "idle" &&
+                      Boolean(activePlatformProgressLabel),
                     platformLabel: activePlatformProgressLabel,
                     stepLabel: platformContentProgress.stepLabel,
                     stepDescription: platformContentProgress.stepDescription,
@@ -4554,7 +5626,10 @@ export default function WeeklyContentPage() {
                 <WeeklyLocalAgentStatusBar
                   status={localAgentConnectionStatus}
                   onGoPublishingPage={() =>
-                    selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+                    selectedProjectId &&
+                    setLocation(
+                      buildProjectUrl("/content-publishing", selectedProjectId)
+                    )
                   }
                 />
               </div>
@@ -4567,7 +5642,10 @@ export default function WeeklyContentPage() {
         <WeeklyLocalAgentStatusBar
           status={localAgentConnectionStatus}
           onGoPublishingPage={() =>
-            selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+            selectedProjectId &&
+            setLocation(
+              buildProjectUrl("/content-publishing", selectedProjectId)
+            )
           }
         />
       ) : null}
@@ -4578,7 +5656,9 @@ export default function WeeklyContentPage() {
         model={detailModel}
         projectId={selectedProjectId}
         disabled={anyGenerating || batchEnqueueBusy}
-        coverGenerating={detailModel ? regeneratingCoverIds.has(detailModel.id) : false}
+        coverGenerating={
+          detailModel ? regeneratingCoverIds.has(detailModel.id) : false
+        }
         onQualityReviewed={() => void invalidateArticles()}
         onSave={() => {
           if (!detailModel) return;
@@ -4606,7 +5686,8 @@ export default function WeeklyContentPage() {
           if (article) void handleUploadCover(article, file);
         }}
         onGoPublishingPage={() =>
-          selectedProjectId && setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
+          selectedProjectId &&
+          setLocation(buildProjectUrl("/content-publishing", selectedProjectId))
         }
       />
 
@@ -4654,17 +5735,26 @@ export default function WeeklyContentPage() {
         />
       ) : null}
 
-      <Dialog open={suggestionDialog.open} onOpenChange={open => setSuggestionDialog(s => ({ ...s, open }))}>
+      <Dialog
+        open={suggestionDialog.open}
+        onOpenChange={open => setSuggestionDialog(s => ({ ...s, open }))}
+      >
         <DialogContent className="border-gray-200 bg-white text-gray-900 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>新版内容建议</DialogTitle>
-            <DialogDescription className="text-gray-500">{suggestionDialog.articleTitle}</DialogDescription>
+            <DialogDescription className="text-gray-500">
+              {suggestionDialog.articleTitle}
+            </DialogDescription>
           </DialogHeader>
           <pre className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
             {suggestionDialog.text}
           </pre>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setSuggestionDialog(s => ({ ...s, open: false }))}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSuggestionDialog(s => ({ ...s, open: false }))}
+            >
               关闭
             </Button>
           </DialogFooter>
@@ -4679,42 +5769,65 @@ export default function WeeklyContentPage() {
           <DialogHeader className="shrink-0 border-b border-gray-100 px-6 py-4">
             <DialogTitle>加入发布队列</DialogTitle>
             <DialogDescription className="text-gray-500">
-              确认发布目标后提交至本地客户端 · 各平台内容独立，本篇不支持一稿多发
+              确认发布目标后提交至本地客户端 ·
+              各平台内容独立，本篇不支持一稿多发
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <section className="space-y-3" data-testid="publish-dialog-target-section">
+            <section
+              className="space-y-3"
+              data-testid="publish-dialog-target-section"
+            >
               <p className="text-xs font-medium text-gray-500">发布目标</p>
               <div className="space-y-2 rounded-lg border border-gray-200 px-3 py-2">
                 <div>
                   <p className="text-xs text-gray-500">文章标题</p>
-                  <p className="text-sm font-medium text-gray-900">{publishArticle?.title ?? "当前文章"}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {publishArticle?.title ?? "当前文章"}
+                  </p>
                 </div>
                 {activePublishPreflight?.resolvedPlatform?.recognized ? (
-                  <p className="text-sm text-gray-700" data-testid="publish-dialog-platform-label">
+                  <p
+                    className="text-sm text-gray-700"
+                    data-testid="publish-dialog-platform-label"
+                  >
                     发布平台：
-                    <span className="font-medium">{activePublishPreflight.platformLabel}</span>
+                    <span className="font-medium">
+                      {activePublishPreflight.platformLabel}
+                    </span>
                     {!getArticlePublishPlatform({
                       generationBasis: publishArticle?.generationBasis ?? null,
                       targetPlatform: publishArticle?.targetPlatform,
                       publishPlatform: publishArticle?.publishPlatform,
                     }).recognized && manualPublishPlatform ? (
-                      <span className="ml-1 text-xs text-amber-700">（手动指定）</span>
+                      <span className="ml-1 text-xs text-amber-700">
+                        （手动指定）
+                      </span>
                     ) : null}
                   </p>
                 ) : (
-                  <div className="space-y-2" data-testid="publish-dialog-platform-unknown">
+                  <div
+                    className="space-y-2"
+                    data-testid="publish-dialog-platform-unknown"
+                  >
                     <p className="text-sm text-amber-800">
                       本篇为历史内容或未写入发布平台，无法自动识别。请手动选择发布平台后继续：
                     </p>
-                    <label className="block text-xs font-medium text-gray-600" htmlFor="manual-publish-platform">
+                    <label
+                      className="block text-xs font-medium text-gray-600"
+                      htmlFor="manual-publish-platform"
+                    >
                       手动指定发布平台
                     </label>
                     <select
                       id="manual-publish-platform"
                       className={aiInput}
                       value={manualPublishPlatform}
-                      onChange={e => setManualPublishPlatform(e.target.value as BindingPublishPlatform | "")}
+                      onChange={e =>
+                        setManualPublishPlatform(
+                          e.target.value as BindingPublishPlatform | ""
+                        )
+                      }
                       data-testid="manual-publish-platform-select"
                     >
                       <option value="">请选择</option>
@@ -4736,8 +5849,12 @@ export default function WeeklyContentPage() {
                   </div>
                 )}
                 {publishDialogSlug
-                  ? PUBLISH_QUEUE_PLATFORMS.filter(p => p.slug === publishDialogSlug).map(p => {
-                      const selectableAccounts = isBindingPublishPlatform(p.slug)
+                  ? PUBLISH_QUEUE_PLATFORMS.filter(
+                      p => p.slug === publishDialogSlug
+                    ).map(p => {
+                      const selectableAccounts = isBindingPublishPlatform(
+                        p.slug
+                      )
                         ? getEnqueueSelectableAccountsForPlatform(p.slug)
                         : [];
                       const readyAccounts = isBindingPublishPlatform(p.slug)
@@ -4745,14 +5862,17 @@ export default function WeeklyContentPage() {
                         : [];
                       const legacyAccounts = isBindingPublishPlatform(p.slug)
                         ? selectableAccounts.filter(
-                            a => !a.localProfileId?.trim() || !a.localAgentId?.trim(),
+                            a =>
+                              !a.localProfileId?.trim() ||
+                              !a.localAgentId?.trim()
                           )
                         : [];
                       const selected = isBindingPublishPlatform(p.slug)
                         ? pickSelectedPublishAccount(p.slug)
                         : null;
                       const needsPick =
-                        selectableAccounts.length > 1 && !selectedPublishAccountIds[p.slug];
+                        selectableAccounts.length > 1 &&
+                        !selectedPublishAccountIds[p.slug];
                       const sessionExpired =
                         selected != null &&
                         isBindingPublishPlatform(p.slug) &&
@@ -4772,8 +5892,12 @@ export default function WeeklyContentPage() {
                                   无可发布账号（需绑定本地环境且登录有效）
                                 </span>
                               ) : selectableAccounts.length === 1 ? (
-                                <span className="text-xs text-gray-600" data-testid="publish-dialog-single-account">
-                                  发布账号：{renderAccountSummary(selectableAccounts[0]!)}
+                                <span
+                                  className="text-xs text-gray-600"
+                                  data-testid="publish-dialog-single-account"
+                                >
+                                  发布账号：
+                                  {renderAccountSummary(selectableAccounts[0]!)}
                                 </span>
                               ) : (
                                 <>
@@ -4786,11 +5910,16 @@ export default function WeeklyContentPage() {
                                   <select
                                     id={`publish-account-${p.slug}`}
                                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-                                    value={selectedPublishAccountIds[p.slug] ?? ""}
+                                    value={
+                                      selectedPublishAccountIds[p.slug] ?? ""
+                                    }
                                     onChange={e => {
                                       const accountId = Number(e.target.value);
                                       if (!accountId) return;
-                                      rememberEnqueuePublishAccount(p.slug, accountId);
+                                      rememberEnqueuePublishAccount(
+                                        p.slug,
+                                        accountId
+                                      );
                                     }}
                                     onClick={e => e.stopPropagation()}
                                     data-testid="publish-dialog-account-select"
@@ -4814,7 +5943,9 @@ export default function WeeklyContentPage() {
                                   className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
                                   data-testid="publish-enqueue-session-expired"
                                 >
-                                  <p className="text-xs text-amber-900">{PUBLISH_ENQUEUE_SESSION_EXPIRED_HINT}</p>
+                                  <p className="text-xs text-amber-900">
+                                    {PUBLISH_ENQUEUE_SESSION_EXPIRED_HINT}
+                                  </p>
                                   <Button
                                     type="button"
                                     size="sm"
@@ -4824,10 +5955,23 @@ export default function WeeklyContentPage() {
                                     onClick={() => {
                                       void focusLocalAgentAccountsTab()
                                         .then(r => {
-                                          if (r.ok) toast.success("已切换到本地客户端「账号环境」");
-                                          else toast.error(toUserFacingError(r.message, "请手动打开本地客户端"));
+                                          if (r.ok)
+                                            toast.success(
+                                              "已切换到本地客户端「账号环境」"
+                                            );
+                                          else
+                                            toast.error(
+                                              toUserFacingError(
+                                                r.message,
+                                                "请手动打开本地客户端"
+                                              )
+                                            );
                                         })
-                                        .catch(() => toast.message("请在本机打开 GEO 本地发布客户端"));
+                                        .catch(() =>
+                                          toast.message(
+                                            "请在本机打开 GEO 本地发布客户端"
+                                          )
+                                        );
                                     }}
                                   >
                                     {PUBLISH_ENQUEUE_RELOGIN_ACTION_LABEL}
@@ -4836,13 +5980,18 @@ export default function WeeklyContentPage() {
                               ) : null}
                               {legacyAccounts.length > 0 ? (
                                 <p className="text-xs text-amber-600">
-                                  {legacyAccounts.length} 个账号需在企业档案重新绑定本地客户端后方可发布。
+                                  {legacyAccounts.length}{" "}
+                                  个账号需在企业档案重新绑定本地客户端后方可发布。
                                 </p>
                               ) : null}
                               {needsPick ? (
-                                <span className="text-xs text-red-600">该平台有多个账号，请选择后再发布</span>
+                                <span className="text-xs text-red-600">
+                                  该平台有多个账号，请选择后再发布
+                                </span>
                               ) : null}
-                              {selected && !isPublishReadyAccount(selected) && !sessionExpired ? (
+                              {selected &&
+                              !isPublishReadyAccount(selected) &&
+                              !sessionExpired ? (
                                 <span className="text-xs text-amber-600">
                                   当前账号尚未就绪，请完成本地绑定并检测登录态后再发布。
                                 </span>
@@ -4856,10 +6005,16 @@ export default function WeeklyContentPage() {
                               ) : null}
                             </>
                           ) : (
-                            <span className="text-xs text-gray-500">无需绑定平台账号</span>
+                            <span className="text-xs text-gray-500">
+                              无需绑定平台账号
+                            </span>
                           )}
-                          <p className="text-xs text-gray-500" data-testid="publish-time-suggest">
-                            建议发布时间：{getPublishTimeSuggest(publishDialogSlug)}
+                          <p
+                            className="text-xs text-gray-500"
+                            data-testid="publish-time-suggest"
+                          >
+                            建议发布时间：
+                            {getPublishTimeSuggest(publishDialogSlug)}
                           </p>
                         </div>
                       );
@@ -4867,7 +6022,10 @@ export default function WeeklyContentPage() {
                   : null}
               </div>
             </section>
-            <section className="space-y-2" data-testid="publish-dialog-check-section">
+            <section
+              className="space-y-2"
+              data-testid="publish-dialog-check-section"
+            >
               <p className="text-xs font-medium text-gray-500">检查结果</p>
               <PublishPrePublishChecklist
                 variant="summary"
@@ -4875,21 +6033,34 @@ export default function WeeklyContentPage() {
                 blockingCodes={activePublishPreflight?.blockingCodes}
               />
               {activePublishPreflight && !activePublishPreflight.ready ? (
-                <p className="text-xs text-red-700" data-testid="publish-readiness-block">
+                <p
+                  className="text-xs text-red-700"
+                  data-testid="publish-readiness-block"
+                >
                   {formatPublishPreflightBlockMessage(activePublishPreflight) ||
                     activePublishPreflight.readiness?.message}
                 </p>
               ) : null}
-              {activePublishPreflight?.ready && publishArticle?.geoQualityRecommendation === "revise" ? (
-                <p className="text-xs text-amber-600">内容有优化空间，确认后可继续发布。</p>
+              {activePublishPreflight?.ready &&
+              publishArticle?.geoQualityRecommendation === "revise" ? (
+                <p className="text-xs text-amber-600">
+                  内容有优化空间，确认后可继续发布。
+                </p>
               ) : null}
               {publishDialogNicknamePendingHint ? (
-                <p className="text-xs text-amber-600" data-testid="publish-dialog-nickname-pending-hint">
+                <p
+                  className="text-xs text-amber-600"
+                  data-testid="publish-dialog-nickname-pending-hint"
+                >
                   当前账号已登录有效，但暂未识别真实昵称，可继续发布。
                 </p>
               ) : null}
               {publishAccountGroupWarnings.map(w => (
-                <p key={w.slug} className="text-xs text-red-700" data-testid="account-group-mismatch-hint">
+                <p
+                  key={w.slug}
+                  className="text-xs text-red-700"
+                  data-testid="account-group-mismatch-hint"
+                >
                   <span className="font-medium">{w.platformLabel}：</span>
                   {w.message}
                 </p>
@@ -4897,7 +6068,12 @@ export default function WeeklyContentPage() {
             </section>
           </div>
           <DialogFooter className="sticky bottom-0 shrink-0 gap-2 border-t border-gray-100 bg-white px-6 py-4 sm:flex-row">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => setPublishDialogOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setPublishDialogOpen(false)}
+            >
               取消
             </Button>
             <Button
@@ -4906,7 +6082,8 @@ export default function WeeklyContentPage() {
               disabled={
                 createPublishTask.isPending ||
                 selectedPlatforms.size === 0 ||
-                (activePublishPreflight != null && !activePublishPreflight.ready)
+                (activePublishPreflight != null &&
+                  !activePublishPreflight.ready)
               }
               onClick={() => void handleConfirmPublish()}
             >
@@ -4915,7 +6092,6 @@ export default function WeeklyContentPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

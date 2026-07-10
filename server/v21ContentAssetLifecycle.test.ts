@@ -8,9 +8,15 @@ const read = (p: string) => readFileSync(resolve(root, p), "utf-8");
 describe("GEO-V2.1-P3 Content Asset Lifecycle", () => {
   const shared = read("shared/contentAssetLifecycle.ts");
   const weeklyPage = read("client/src/pages/WeeklyContentPage.tsx");
-  const inclusionPage = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
-  const platformBoard = read("client/src/components/weekly/PlatformContentBoard.tsx");
-  const taskList = read("client/src/components/weekly/ContentTaskProgressionView.tsx");
+  const inclusionPage = read(
+    "client/src/pages/InclusionMonitoringCenterPage.tsx"
+  );
+  const platformBoard = read(
+    "client/src/components/weekly/PlatformContentBoard.tsx"
+  );
+  const taskList = read(
+    "client/src/components/weekly/ContentTaskProgressionView.tsx"
+  );
 
   it("shared lifecycle resolver covers customer-facing stages", () => {
     expect(shared).toContain("resolveContentAssetLifecycleStage");
@@ -36,6 +42,7 @@ describe("GEO-V2.1-P3 Content Asset Lifecycle", () => {
   it("monthly task list shows lagging platform lifecycle", () => {
     expect(weeklyPage).toContain("pickLaggingContentAssetLifecycleStage");
     expect(taskList).toContain("laggingLifecycleLabel");
-    expect(taskList).toContain("最落后平台");
+    expect(taskList).toContain("当前状态：");
+    expect(taskList).not.toContain("最落后平台：");
   });
 });

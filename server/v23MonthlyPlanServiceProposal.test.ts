@@ -24,12 +24,7 @@ describe("GEO V2.3 P0-C monthly plan service proposal", () => {
   });
 
   it("explains each Top 3 service item in customer language", () => {
-    for (const label of [
-      "解决的问题",
-      "为什么做",
-      "客户能看到什么价值",
-      "完成后怎么验证",
-    ]) {
+    for (const label of ["做什么：", "为什么：", "完成标准：", "验证方式："]) {
       expect(page).toContain(label);
     }
     expect(page).toContain("customerValueForDimension");
@@ -37,16 +32,22 @@ describe("GEO V2.3 P0-C monthly plan service proposal", () => {
   });
 
   it("keeps detailed tasks downgraded as operational execution details", () => {
-    expect(page).toContain("运营执行明细");
-    expect(page).toContain("详细任务清单已降级展示");
+    expect(page).toContain("查看服务事项明细");
+    expect(page).toContain("默认收起");
     expect(page).toContain("monthly-plan-execution-details");
     expect(page).not.toContain("MonthlyOptimizationPrioritiesPanel");
   });
 
   it("does not present suggestion priorities as completed work", () => {
-    expect(page).toContain('priority.source === "suggestion") return "待纳入方案"');
-    expect(page).not.toContain('priority.source === "suggestion") return "已完成"');
-    expect(page).not.toContain('priority.source === "suggestion") return "已验证"');
+    expect(page).toContain(
+      'priority.source === "suggestion") return "待纳入方案"'
+    );
+    expect(page).not.toContain(
+      'priority.source === "suggestion") return "已完成"'
+    );
+    expect(page).not.toContain(
+      'priority.source === "suggestion") return "已验证"'
+    );
   });
 
   it("does not expose technical routing fields in customer copy", () => {
