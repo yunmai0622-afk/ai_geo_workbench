@@ -622,6 +622,36 @@ export function InclusionMonitoringCenterPage() {
         />
       ) : null}
 
+      {selectedProjectId === 210001 && records.length > 0 ? (
+        <section
+          className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-5"
+          data-testid="inclusion-question-occupancy-tracking"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-cyan-700">
+              问题占位追踪
+            </span>
+            <span className="text-sm font-semibold text-cyan-950">从公开内容建设跟踪到搜索收录与 AI 复测</span>
+          </div>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "问题", value: "海豚知道是什么？" },
+              { label: "内容", value: "知乎文章已发布" },
+              { label: "收录", value: "待观察" },
+              { label: "AI 复测", value: "T1 未提及，下一次复测 07/12" },
+            ].map(item => (
+              <div key={item.label} className="rounded-xl border border-cyan-100 bg-white/80 p-3">
+                <dt className="text-xs font-semibold text-cyan-800">{item.label}</dt>
+                <dd className="mt-2 text-sm leading-6 text-gray-800">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 text-xs leading-5 text-gray-600">
+            当前仅确认内容已公开发布；收录、AI 提及与推荐仍以之后的真实复测结果为准。
+          </p>
+        </section>
+      ) : null}
+
       <FirstUseHintBanner
         storageKey={FIRST_USE_HINT_KEYS.inclusionMonitoring}
         message="发布内容后先确认是否被搜索看见，再按复测节奏验证 AI 是否开始识别和引用品牌。"

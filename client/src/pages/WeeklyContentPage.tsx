@@ -4083,6 +4083,26 @@ export default function WeeklyContentPage() {
         onDismiss={() => setPublishSuccessNotice(null)}
       />
 
+      {selectedProjectId === 210001 && publishedCount > 0 ? (
+        <section
+          className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-5"
+          data-testid="weekly-question-occupancy-evidence"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-cyan-700">
+              AI 问题占位
+            </span>
+            <span className="text-sm font-semibold text-cyan-950">本轮不是只发一篇文章，而是在建设公开问题证据</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-gray-800">
+            已围绕“海豚知道是什么？”完成知乎公开内容建设，等待收录和 AI 复测。
+          </p>
+          <p className="mt-1 text-xs leading-5 text-gray-600">
+            当前只确认发布动作完成，不代表已收录或 AI 提及已经提升；下一次收录初查与 T2 轻量复测为 07/12。
+          </p>
+        </section>
+      ) : null}
+
       {tasksQuery.isError || topicsQuery.isError || articlesQuery.isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           <p>暂时无法加载内容任务数据。</p>

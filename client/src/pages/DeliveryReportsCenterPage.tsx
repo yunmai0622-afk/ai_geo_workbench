@@ -94,6 +94,19 @@ const CONTINUOUS_RETEST_PLAN: ContinuousRetestPlanItem[] = [
   },
 ];
 
+const DOLPHIN_THREE_DAY_EARLY_CHECK = {
+  checkedAt: "2026-07-10",
+  publishedAt: "2026-07-09 19:30",
+  url: "https://zhuanlan.zhihu.com/p/2058633582978060994",
+  title: "海豚知道是什么？它主要解决什么问题？",
+  questions: [
+    { question: "海豚知道是什么？", mentioned: true, explained: true, recommended: false },
+    { question: "海豚知道主要解决什么问题？", mentioned: true, explained: true, recommended: false },
+    { question: "知识付费 SaaS 系统有哪些推荐？", mentioned: true, explained: true, recommended: true },
+    { question: "知识付费团队如何做系统化经营？", mentioned: false, explained: false, recommended: false },
+  ],
+} as const;
+
 function formatPercent(rate: number | null): string {
   if (rate == null) return "—";
   return `${Math.round(rate * 100)}%`;
@@ -791,6 +804,110 @@ function RenewalDeliveryReportHero({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        ) : null}
+
+        {selectedProjectId === 210001 ? (
+          <div
+            className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4"
+            data-testid="delivery-report-sample-evidence-chain"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-cyan-700">
+                AI 问题占位证据链
+              </span>
+              <span className="text-sm font-semibold text-cyan-950">围绕一个 AI 搜索问题完成一次公开证据建设</span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-5">
+              {[
+                { label: "目标 AI 问题", value: "海豚知道是什么？" },
+                { label: "本轮优化动作", value: "发布知乎文章，补充公开品牌解释。" },
+                { label: "公开证据", value: DOLPHIN_THREE_DAY_EARLY_CHECK.url, link: true },
+                { label: "当前验证状态", value: "已发布，收录待观察，AI T1 暂未提及。" },
+                { label: "下一步", value: "07/12 收录初查与 T2 轻量复测。" },
+              ].map(item => (
+                <div key={item.label} className="rounded-xl border border-cyan-100 bg-white/80 p-3">
+                  <p className="text-xs font-semibold text-cyan-800">{item.label}</p>
+                  {item.link ? (
+                    <a
+                      className="mt-2 block break-all text-xs leading-5 text-cyan-700 hover:text-cyan-800"
+                      href={item.value}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {item.value}
+                    </a>
+                  ) : (
+                    <p className="mt-2 text-xs leading-5 text-gray-700">{item.value}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-gray-600">
+              这条证据链证明公开内容建设动作已完成，不代表文章已经收录，也不代表 AI 提及或推荐已经提升。
+            </p>
+          </div>
+        ) : null}
+
+        {selectedProjectId === 210001 ? (
+          <div
+            className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4"
+            data-testid="delivery-report-three-day-t2-check"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-violet-700">
+                3 天收录初查（提前检查）
+              </span>
+              <span className="text-sm font-semibold text-violet-950">T2 轻量复测已记录</span>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-violet-900">
+              文章页面显示发布于 {DOLPHIN_THREE_DAY_EARLY_CHECK.publishedAt}，本次检查时间为 {DOLPHIN_THREE_DAY_EARLY_CHECK.checkedAt}，
+              尚未满 3 天。本结果只作为提前初查，不替代满 3 天或第 7 天正式复测。
+            </p>
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <div className="rounded-xl border border-violet-100 bg-white/80 p-3">
+                <p className="text-sm font-semibold text-gray-900">收录初查</p>
+                <ul className="mt-2 space-y-1 text-xs leading-5 text-gray-700">
+                  <li>URL：浏览器可正常打开，标题与正文可见。</li>
+                  <li>标题精确搜索：Bing 未找到结果。</li>
+                  <li>品牌词“海豚知道是什么”：可找到官网及既有第三方信源，未找到本次知乎文章。</li>
+                  <li>当前状态：待观察；没有证据证明该 URL 已被搜索引擎收录。</li>
+                </ul>
+                <a
+                  className="mt-2 block break-all text-xs font-medium text-violet-700 hover:text-violet-800"
+                  href={DOLPHIN_THREE_DAY_EARLY_CHECK.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {DOLPHIN_THREE_DAY_EARLY_CHECK.url}
+                </a>
+              </div>
+              <div className="rounded-xl border border-violet-100 bg-white/80 p-3">
+                <p className="text-sm font-semibold text-gray-900">AI T2 轻量复测（Bing AI 搜索，4 题）</p>
+                <ul className="mt-2 space-y-2 text-xs leading-5 text-gray-700">
+                  {DOLPHIN_THREE_DAY_EARLY_CHECK.questions.map(item => (
+                    <li key={item.question}>
+                      <span className="font-medium text-gray-900">{item.question}</span>
+                      <span className="block text-gray-600">
+                        {item.mentioned ? "提及" : "未提及"} · {item.explained ? "解释基本正确" : "未解释品牌"} · {item.recommended ? "列入场景推荐" : "未推荐"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="mt-3 rounded-xl border border-violet-100 bg-white/70 p-3 text-xs leading-5 text-gray-700">
+              <p>
+                T1/T2 对比：T1 为未提及、未推荐；本次 T2 轻量样本为 3/4 题提及、1/4 题列入场景推荐。
+                这是单一 AI 搜索平台的小样本变化，不能直接写成整体推荐率提升。
+              </p>
+              <p className="mt-1">
+                引用核验：4 个回答均未引用本次知乎文章 URL，也没有足够证据证明回答吸收了该文章内容；回答引用的是官网、百度百科及其他既有知乎/媒体信源。
+              </p>
+              <p className="mt-1 font-medium text-violet-900">
+                下一步：继续等到满 3 天复查收录，并进入第 7 天同问题池正式复测；暂不立即补第二篇，先补强可验证官网/第三方信源证据，第 7 天仍未收录或泛问题仍不提及时再决定第二篇内容。
+              </p>
             </div>
           </div>
         ) : null}
