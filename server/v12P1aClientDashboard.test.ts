@@ -23,6 +23,16 @@ describe("P1-A client dashboard", () => {
     expect(router).toContain("monthlyOptimizationPlans");
   });
 
+  it("client list and direct project access share the owner-scoped access contract", () => {
+    const router = read("server/routers.ts");
+    const access = read("server/projectAccess.ts");
+    const dashboardBlock = router.slice(router.indexOf("clientDashboard: router({"), router.indexOf("projects: router({"));
+
+    expect(dashboardBlock).toContain("listAccessibleProjectIds(ctx)");
+    expect(access).toMatch(/listAccessibleProjectIds[\s\S]*?eq\(projects\.ownerUserId, userId\)/);
+    expect(access).toMatch(/requireProjectAccess[\s\S]*?eq\(projects\.id, projectId\)[\s\S]*?eq\(projects\.ownerUserId, userId\)/);
+  });
+
   it("clientDashboard does not mock project metrics", () => {
     const router = read("server/routers.ts");
     expect(router).not.toMatch(/mock.*articleCount/i);

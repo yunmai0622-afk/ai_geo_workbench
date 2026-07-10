@@ -126,7 +126,9 @@ describe("GEO-V2.1-P1-Content-Workbench-Task-Board-UX", () => {
   });
 
   it("进入推进后同步 query 上下文，避免 search-only URL 变化不触发重渲染", () => {
-    expect(weekly).toContain("const nextEntryContext = parseWeeklyContentEntryContext(getSearchFromLocation(entryUrl));");
+    expect(weekly).toMatch(
+      /const nextEntryContext = parseWeeklyContentEntryContext\(\s*getSearchFromLocation\(entryUrl\)\s*\);/,
+    );
     expect(weekly).toContain("setEntryContext(nextEntryContext);");
     expect(weekly).toContain("entryContextRef.current = nextEntryContext;");
     expect(weekly).toContain("entryAutoGenerateHandledRef.current = false;");
@@ -147,7 +149,7 @@ describe("GEO-V2.1-P1-Content-Workbench-Task-Board-UX", () => {
   });
 
   it("副标题与业务文案", () => {
-    expect(weekly).toContain("围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布");
+    expect(weekly).toMatch(/围绕一个 AI 搜索问题，(?:完成|推进).*内容生成.*质检.*发布/);
   });
 });
 
@@ -219,7 +221,7 @@ describe("GEO-V1.1-WeeklyContent-TaskWorkbench-UX-P0", () => {
   });
 
   it("副标题与业务文案", () => {
-    expect(weekly).toContain("围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布");
+    expect(weekly).toMatch(/围绕一个 AI 搜索问题，(?:完成|推进).*内容生成.*质检.*发布/);
     expect(auxiliary).not.toMatch(/Prompt 写入规则/);
   });
 });

@@ -49,4 +49,38 @@ describe("buildPublishingViewModel", () => {
       }),
     ).not.toThrow();
   });
+
+  it("keeps completed tasks with their real public URL in the published queue", () => {
+    const publicUrl = "https://example.com/published/article";
+    const vm = buildPublishingViewModel({
+      projectId: 72,
+      articles: [{ id: 901, title: "已发布内容" }],
+      scores: [],
+      publishRecords: [],
+      agentTasks: [
+        {
+          id: 540001,
+          articleId: 901,
+          articleTitle: "已发布内容",
+          platform: "zhihu",
+          status: "completed",
+          expectedAccountName: "运营账号",
+          resultUrl: publicUrl,
+        },
+      ],
+      accountGroups: [],
+      articleById: new Map([[901, { id: 901, title: "已发布内容" }]]),
+      autoInclusionByArticleAndUrl: new Set([`901:${publicUrl}`]),
+    });
+
+    expect(vm.queueTabs.pending).toHaveLength(0);
+    expect(vm.queueTabs.completed).toHaveLength(1);
+    expect(vm.queueTabs.completed[0]).toMatchObject({
+      taskId: 540001,
+      statusRaw: "completed",
+      statusLabel: "已发布",
+      publishedUrl: publicUrl,
+      autoInclusionMonitoring: true,
+    });
+  });
 });

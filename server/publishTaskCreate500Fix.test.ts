@@ -118,7 +118,9 @@ describe("GEO-V2.3 publishTasks.create 500 fix", () => {
 
     expect(weekly).toContain("retryPublishTaskId:");
     expect(weekly).toContain("isRetryableFailedPublishTask(latestTask)");
-    expect(weekly).toContain("typeof latestTask?.id === \"number\" ? latestTask.id : null");
+    expect(weekly).toMatch(
+      /typeof latestTask\?\.id === "number"\s*\? latestTask\.id\s*:\s*null/,
+    );
     for (const source of [board, compactBoard]) {
       expect(source).toContain("retryPublishTaskId");
       expect(source).toContain("onRetryPublish");

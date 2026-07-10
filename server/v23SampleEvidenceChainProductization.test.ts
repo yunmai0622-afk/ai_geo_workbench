@@ -39,6 +39,6 @@ describe("GEO V2.3 sample AI question occupancy evidence chain", () => {
     const page = read("client/src/pages/WeeklyContentPage.tsx");
     expect(page).toContain("weekly-question-occupancy-evidence");
     expect(page).toContain("已围绕“海豚知道是什么？”完成知乎公开内容建设，等待收录和 AI 复测。");
-    expect(page).toContain("不代表已收录或 AI 提及已经提升");
+    expect(page).toMatch(/不代表已收录或 AI\s*提及已经提升/);
   });
 });

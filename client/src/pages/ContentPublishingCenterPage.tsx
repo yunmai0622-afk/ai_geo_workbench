@@ -1318,6 +1318,7 @@ function ContentPublishingCenterPageInner() {
           ? "继续跟进收录和 AI 复测结果。"
           : "进入收录与 AI 复测，确认内容是否被搜索和 AI 看见。",
         publicLinkLabel: card.publishedUrl?.trim() ? "已回填" : "待回填",
+        publicUrl: card.publishedUrl?.trim() || null,
       })),
     [publishedCards],
   );

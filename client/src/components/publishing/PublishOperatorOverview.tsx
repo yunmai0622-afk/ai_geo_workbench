@@ -48,6 +48,7 @@ export type PublishOperatorPublishedRow = {
   statusLabel: string;
   nextStep: string;
   publicLinkLabel: string;
+  publicUrl: string | null;
 };
 
 export type PublishOperatorPrimaryAction = {
@@ -317,6 +318,16 @@ export function PublishOperatorOverview({
                   <p className="text-sm font-semibold text-gray-900 line-clamp-2">{row.title}</p>
                   <p className="mt-1 text-xs text-gray-500">{row.platformLabel} · {row.statusLabel}</p>
                   <p className="mt-2 text-xs text-gray-700">公开链接：{row.publicLinkLabel}</p>
+                  {row.publicUrl ? (
+                    <a
+                      href={row.publicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 block break-all text-xs text-blue-600 hover:underline"
+                    >
+                      {row.publicUrl}
+                    </a>
+                  ) : null}
                   <p className="mt-1 text-xs text-gray-500">下一步：{row.nextStep}</p>
                 </div>
               ))}
