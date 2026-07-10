@@ -5,9 +5,10 @@ const dryRun = process.argv.includes("--dry-run");
 runDueSampleRetests({ dryRun })
   .then(result => {
     console.log(JSON.stringify(result, null, 2));
-    if (!dryRun && "results" in result && result.results.some(item => item.status === "failed")) process.exitCode = 1;
+    const failed = !dryRun && "results" in result && result.results.some(item => item.status === "failed");
+    process.exit(failed ? 1 : 0);
   })
   .catch(error => {
     console.error("[scheduled-sample-retest] runner failed", error);
-    process.exitCode = 1;
+    process.exit(1);
   });
