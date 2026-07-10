@@ -908,8 +908,10 @@ export default function WeeklyContentPage() {
   }, [searchString]);
 
   useEffect(() => {
-    if (entryContext.taskId != null) {
+    if (entryContext.questionId == null && entryContext.taskId != null) {
       setSelectedContentTaskId(entryContext.taskId);
+    } else if (entryContext.questionId != null) {
+      setSelectedContentTaskId(null);
     }
     if (entryContext.questionText?.trim()) {
       const q = entryContext.questionText.trim();
@@ -924,6 +926,7 @@ export default function WeeklyContentPage() {
     }
   }, [
     entryContext.taskId,
+    entryContext.questionId,
     entryContext.questionText,
     entryContext.platform,
     entryContext.articleId,
@@ -1377,9 +1380,11 @@ export default function WeeklyContentPage() {
       !isContentTaskIdInProjectTaskList(selectedContentTaskId, tasks)
     ) {
       setSelectedContentTaskId(null);
-      toast.message(PROJECT_SCOPED_CONTENT_TASK_STALE_CLIENT_MESSAGE);
+      if (entryContext.questionId == null) {
+        toast.message(PROJECT_SCOPED_CONTENT_TASK_STALE_CLIENT_MESSAGE);
+      }
     }
-  }, [selectedProjectId, tasksQuery.isFetched, tasks, selectedContentTaskId]);
+  }, [selectedProjectId, tasksQuery.isFetched, tasks, selectedContentTaskId, entryContext.questionId]);
 
   const resolvedContentTaskIdForGenerate = useMemo(() => {
     const candidate = selectedContentTaskId ?? geoContentTaskSource?.contentTaskId ?? null;

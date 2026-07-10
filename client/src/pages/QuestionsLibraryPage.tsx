@@ -39,7 +39,6 @@ import { useActiveProjectSelection } from "@/hooks/useActiveProjectSelection";
 import { buildProjectUrl } from "@/lib/activeProject";
 import {
   buildWeeklyContentEntryUrl,
-  type WeeklyContentEntryContext,
 } from "@shared/weeklyContentEntryContext";
 import { trpc } from "@/lib/trpc";
 import type { EnrichedSearchPoolQuestion } from "@shared/questionSearchPoolEnrichment";
@@ -62,6 +61,11 @@ import {
   type SearchPoolSortMode,
 } from "@shared/questionSearchPool";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
+import {
+  buildContentProductionListUrl,
+  buildQuestionContentTaskUrl,
+  selectTopContentTaskCandidates,
+} from "@shared/questionContentTaskHandoff";
 import { ChevronDown, Library, Plus, Sparkles, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -160,7 +164,6 @@ export default function QuestionsLibraryPage() {
   const [formInitial, setFormInitial] = useState<QuestionPoolFormState>(() => defaultQuestionPoolForm());
   const [activeTab, setActiveTab] = useState<string>(SEARCH_POOL_QUESTION_TYPES[0].value);
   const [sortMode, setSortMode] = useState<SearchPoolSortMode>("value");
-  const [pendingContentQuestion, setPendingContentQuestion] = useState<EnrichedSearchPoolQuestion | null>(null);
 
   const searchPoolQuery = trpc.geo.questions.listSearchPool.useQuery(
     { projectId: selectedProjectId! },
@@ -220,29 +223,7 @@ export default function QuestionsLibraryPage() {
     },
     onError: err => toast.error(toUserFacingErrorFromUnknown(err, "加入诊断失败")),
   });
-  const createContentTaskMutation = trpc.geo.questions.createContentTaskFromQuestion.useMutation({
-    onSuccess: async result => {
-      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId! });
-      toast.success("已生成内容任务");
-      if (selectedProjectId && pendingContentQuestion) {
-        const entryPayload: WeeklyContentEntryContext = {
-          questionId: pendingContentQuestion.id,
-          questionText: pendingContentQuestion.questionText,
-          sourceType: "search_pool",
-          relatedGeoGap: pendingContentQuestion.diagnosisGap,
-          autoGenerate: true,
-        };
-        if (result.taskId) entryPayload.taskId = result.taskId;
-        setLocation(buildWeeklyContentEntryUrl(selectedProjectId, entryPayload));
-        setPendingContentQuestion(null);
-      } else if (selectedProjectId) {
-        const fallbackEntry: WeeklyContentEntryContext = {};
-        if (result.taskId) fallbackEntry.taskId = result.taskId;
-        setLocation(buildWeeklyContentEntryUrl(selectedProjectId, fallbackEntry));
-      }
-    },
-    onError: err => toast.error(toUserFacingErrorFromUnknown(err, "生成内容任务失败")),
-  });
+  const createContentTaskMutation = trpc.geo.questions.createContentTaskFromQuestion.useMutation();
 
   const poolPayload = searchPoolQuery.data;
   const questions = poolPayload?.questions ?? [];
@@ -453,7 +434,7 @@ export default function QuestionsLibraryPage() {
     addToRoundMutation.mutate({ projectId: selectedProjectId, questionId: question.id });
   }
 
-  function handleCreateContentTask(question: EnrichedSearchPoolQuestion) {
+  async function handleCreateContentTask(question: EnrichedSearchPoolQuestion) {
     if (!selectedProjectId) {
       toast.error("请先选择企业项目");
       return;
@@ -465,8 +446,48 @@ export default function QuestionsLibraryPage() {
       setLocation(buildProjectUrl("/ai-diagnosis", selectedProjectId));
       return;
     }
-    setPendingContentQuestion(question);
-    createContentTaskMutation.mutate({ projectId: selectedProjectId, questionId: question.id });
+    try {
+      await createContentTaskMutation.mutateAsync({ projectId: selectedProjectId, questionId: question.id });
+      await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId });
+      toast.success("已生成内容任务");
+      setLocation(buildQuestionContentTaskUrl(selectedProjectId, question.id));
+    } catch (err) {
+      toast.error(toUserFacingErrorFromUnknown(err, "生成内容任务失败"));
+    }
+  }
+
+  async function handleCreateTopContentTasks() {
+    if (!selectedProjectId) {
+      toast.error("请先选择企业项目");
+      return;
+    }
+    if (!hasDiagnosisData) {
+      toast.error("当前项目数据未加载完成，请先完成 AI 实测诊断");
+      return;
+    }
+    const candidates = selectTopContentTaskCandidates(
+      opportunityMapView.topItems.map(item => item.questionId),
+      questions,
+    );
+    if (candidates.length === 0) {
+      toast.message("当前没有可生成内容的问题", {
+        description: "今日优先问题可能已存在内容任务，请查看内容生产与发布。",
+      });
+      return;
+    }
+    let createdCount = 0;
+    for (const question of candidates) {
+      try {
+        await createContentTaskMutation.mutateAsync({ projectId: selectedProjectId, questionId: question.id });
+        createdCount += 1;
+      } catch (err) {
+        toast.error(toUserFacingErrorFromUnknown(err, `问题「${question.questionText}」生成失败`));
+      }
+    }
+    await utils.geo.questions.listSearchPool.invalidate({ projectId: selectedProjectId });
+    if (createdCount === 0) return;
+    toast.success(`已生成 ${createdCount} 个内容任务，可到内容生产与发布查看`);
+    setLocation(buildContentProductionListUrl(selectedProjectId));
   }
 
   function handleOpportunityItemAction(item: QuestionOpportunityMapItem) {
@@ -549,7 +570,7 @@ export default function QuestionsLibraryPage() {
       return {
         label: "生成内容任务",
         hint: "把高价值问题转成可执行内容任务。",
-        onClick: () => handleCreateContentTask(firstUncovered),
+        onClick: handleCreateTopContentTasks,
         disabled: mutating || !selectedProjectId,
       };
     }

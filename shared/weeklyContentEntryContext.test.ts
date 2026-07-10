@@ -31,6 +31,21 @@ describe("weeklyContentEntryContext", () => {
     expect(parsed.autoGenerate).toBe(true);
   });
 
+  it("uses URL parameters as the complete entry context without cached fallbacks", () => {
+    expect(parseWeeklyContentEntryContext("?projectId=210001&questionId=480001&sourceType=optimization_task")).toEqual({
+      questionId: 480001,
+      sourceType: "optimization_task",
+      taskId: undefined,
+      questionText: undefined,
+      selectedTitle: undefined,
+      relatedGeoGap: undefined,
+      articleId: undefined,
+      platform: undefined,
+      autoGenerate: undefined,
+      pendingContentTab: undefined,
+    });
+  });
+
   it("appends params to existing query", () => {
     const url = appendWeeklyContentEntryParams("/weekly?projectId=3", { taskId: 7 });
     expect(url).toContain("projectId=3");
