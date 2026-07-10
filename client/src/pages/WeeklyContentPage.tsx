@@ -2258,11 +2258,7 @@ export default function WeeklyContentPage() {
           status,
           generatedCount > 0
         ),
-        retryPublishTaskId:
-          isRetryableFailedPublishTask(latestTask) &&
-          typeof latestTask?.id === "number"
-            ? latestTask.id
-            : null,
+        retryPublishTaskId: isRetryableFailedPublishTask(latestTask) && typeof latestTask?.id === "number" ? latestTask.id : null,
       };
     });
   }, [
@@ -3070,9 +3066,7 @@ export default function WeeklyContentPage() {
         currentSearch: searchString || getSearchFromLocation(location),
       });
       if (entryUrl) {
-        const nextEntryContext = parseWeeklyContentEntryContext(
-          getSearchFromLocation(entryUrl)
-        );
+        const nextEntryContext = parseWeeklyContentEntryContext(getSearchFromLocation(entryUrl));
         setEntryContext(nextEntryContext);
         entryContextRef.current = nextEntryContext;
         entryAutoGenerateHandledRef.current = false;
@@ -5016,7 +5010,7 @@ export default function WeeklyContentPage() {
         </h1>
         <p className="text-sm text-gray-500">
           {isSingleTaskProgression
-            ? "围绕一个 AI 搜索问题，完成内容生成、质检和发布准备。"
+            ? "围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布。"
             : isContentProductionWorkbench
               ? "运营团队在这里生成、质检并推进平台内容。运营今天要处理哪些内容任务？"
               : "查看本月服务执行到哪一步，以及下一步进入什么验证。"}
@@ -5047,8 +5041,7 @@ export default function WeeklyContentPage() {
             已围绕“海豚知道是什么？”完成知乎公开内容建设，等待收录和 AI 复测。
           </p>
           <p className="mt-1 text-xs leading-5 text-gray-600">
-            当前只确认发布动作完成，不代表已收录或 AI
-            提及已经提升；下一次收录初查与 T2 轻量复测为 07/12。
+            当前只确认发布动作完成，不代表已收录或 AI 提及已经提升；下一次收录初查与 T2 轻量复测为 07/12。
           </p>
         </section>
       ) : null}

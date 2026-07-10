@@ -7,6 +7,9 @@ import {
 
 const root = resolve(process.cwd());
 const read = (relativePath) => readFileSync(resolve(root, relativePath), 'utf-8');
+const platformBrandSource =
+  read('client/src/components/auth/authMarketing.ts') +
+  read('client/src/lib/whiteLabel.ts');
 const sources = {
   home: read('client/src/components/V1WorkbenchOverview.tsx'),
   layout: read('client/src/components/DashboardLayout.tsx'),
@@ -61,10 +64,11 @@ for (const item of [
   assertContains('左侧导航', sources.layout, `label: "${item}"`);
 }
 assertContains('左侧导航', sources.layout, 'PLATFORM_PRODUCT_SUBTITLE');
-assertContains('平台品牌文案', read('client/src/components/auth/authMarketing.ts'), '持续提升企业在 AI 搜索中的识别、信任与推荐');
-assertContains('平台品牌文案', read('client/src/components/auth/authMarketing.ts'), 'AI 品牌经营系统');
+assertContains('平台品牌文案', platformBrandSource, '持续提升企业在 AI 搜索中的识别、信任与推荐');
+assertContains('平台品牌文案', platformBrandSource, 'GEO 代运营交付系统');
+assertContains('平台品牌文案', platformBrandSource, 'AI 可见度服务系统');
 for (const forbidden of ['GEO 增长工作台', 'GEO增长工作台', 'AI 搜索增长系统', 'AI搜索增长系统']) {
-  assertNotContains('平台品牌文案', read('client/src/components/auth/authMarketing.ts'), forbidden);
+  assertNotContains('平台品牌文案', platformBrandSource, forbidden);
   assertNotContains('左侧导航', sources.layout, forbidden);
   assertNotContains('index.html', read('client/index.html'), forbidden);
 }

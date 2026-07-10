@@ -9,13 +9,14 @@ import { geoP0Surfaces } from "@/lib/geoP0Visual";
 import { canAccessOperatorAdminConsole } from "@shared/platformAdmin";
 import { ChevronDown, Building2, LogOut, Settings } from "lucide-react";
 import { Link } from "wouter";
+import { WhiteLabelBrandMark } from "@/components/WhiteLabelBrandMark";
 
 export function ClientsHubTopBar() {
   const { user, logout } = useAuth();
   return (
     <header className={`-mx-4 -mt-4 mb-8 flex items-center justify-between px-6 md:-mx-6 lg:-mx-8 lg:px-8 ${geoP0Surfaces.topBar}`} data-testid="clients-hub-top-bar">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 shadow-sm shadow-blue-600/20"><span className="text-sm font-bold text-white">G</span></div>
+        <WhiteLabelBrandMark className="h-8 w-8 rounded-lg shadow-sm" />
         <div><p className="text-[15px] font-bold tracking-tight text-gray-900">{PLATFORM_PRODUCT_NAME}</p><p className="text-[11px] text-gray-400">{PLATFORM_PRODUCT_SUBTITLE}</p></div>
       </div>
       <div className="flex items-center gap-2">

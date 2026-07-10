@@ -56,6 +56,7 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { SystemAnnouncementBanner } from "./SystemAnnouncementBanner";
 import { CompanyServiceBanner } from "./CompanyServiceBanner";
 import { Button } from "./ui/button";
+import { WhiteLabelBrandMark } from "./WhiteLabelBrandMark";
 
 const PATHS_WITHOUT_PROJECT_SHELL = new Set([
   "/clients",
@@ -354,7 +355,10 @@ function DashboardLayoutContent({ children, setSidebarWidth }: DashboardLayoutCo
                 </button>
                 {!isCollapsed ? (
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-bold text-gray-900">{PLATFORM_PRODUCT_NAME}</span>
+                    <span className="flex items-center gap-2 truncate text-sm font-bold text-gray-900">
+                      <WhiteLabelBrandMark className="h-7 w-7 rounded-lg shadow-none" />
+                      <span className="truncate">{PLATFORM_PRODUCT_NAME}</span>
+                    </span>
                     <span className="block truncate text-[11px] text-gray-400">{PLATFORM_PRODUCT_SUBTITLE}</span>
                   </div>
                 ) : null}

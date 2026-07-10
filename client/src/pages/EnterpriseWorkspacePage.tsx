@@ -14,6 +14,7 @@ import {
 } from "@shared/workspaceCustomerDisplay";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { whiteLabel, whiteLabelPrimaryStyle } from "@/lib/whiteLabel";
 import { buildT0DiagnosisResultsDisplay } from "@shared/t0DiagnosisDisplay";
 import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
 import {
@@ -470,6 +471,9 @@ export default function EnterpriseWorkspacePage() {
                 </div>
                 <p className="mt-3 text-xs font-medium text-blue-600">GEO 服务首页</p>
                 <p className="mt-1 text-sm text-gray-600">客户只看当前状态、服务进度和下一步动作。</p>
+                <p className="mt-1 text-xs text-gray-500" data-testid="workspace-service-agency">
+                  由 {whiteLabel.agencyName} 提供 GEO 代运营服务
+                </p>
                 <h1 className={cn(geoTypography.pageTitle, "mt-1")} data-testid="workspace-enterprise-name">
                   {selectedProject?.enterpriseName ?? "当前企业"}
                 </h1>
@@ -502,6 +506,7 @@ export default function EnterpriseWorkspacePage() {
                     className={cn("rounded-xl px-6", geoP0Brand.primary)}
                     data-testid="workspace-primary-cta"
                     onClick={() => setLocation(customerMainCta.path)}
+                    style={whiteLabelPrimaryStyle}
                   >
                     {customerMainCta.label}
                     <ArrowRight className="ml-2 size-4" />

@@ -8,6 +8,7 @@ import {
 } from "@/lib/geoProductPositioning";
 import { GEO_UNIFIED_MAIN_PIPELINE_STEPS } from "@shared/workspaceMainChain";
 import { useEffect } from "react";
+import { whiteLabel } from "@/lib/whiteLabel";
 
 const WHY_GEO_POINTS = [
   "越来越多客户通过豆包、Kimi、DeepSeek 等 AI 问答获取选型建议，品牌若未被提及或推荐，会错失高意向线索。",
@@ -63,6 +64,12 @@ export default function KnowledgePage() {
           <p>{GEO_PRODUCT_SUB_POSITIONING}</p>
         </CardContent>
       </Card>
+
+      <footer className="pb-4 text-center text-xs text-gray-400" data-testid="knowledge-white-label-footer">
+        <p>{whiteLabel.agencyName} · GEO 代运营交付系统</p>
+        {whiteLabel.supportContact ? <p className="mt-1">服务联系：{whiteLabel.supportContact}</p> : null}
+        {whiteLabel.poweredByVisible ? <p className="mt-1">技术支持：GEO Engine</p> : null}
+      </footer>
 
       <Card>
         <CardHeader>

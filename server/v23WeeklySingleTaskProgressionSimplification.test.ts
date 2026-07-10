@@ -11,7 +11,7 @@ describe("GEO V2.3 weekly single task progression simplification", () => {
 
     expect(weekly).toContain("isSingleTaskProgression");
     expect(weekly).toContain("内容任务推进");
-    expect(weekly).toContain("围绕一个 AI 搜索问题，完成内容生成、质检和发布准备。");
+    expect(weekly).toContain("围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布。");
     expect(weekly).toContain('data-testid="weekly-single-task-progression"');
     expect(weekly).toContain('data-testid="single-task-question"');
     expect(weekly).toContain('data-testid="single-task-current-status"');

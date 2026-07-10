@@ -1,10 +1,10 @@
-/** 登录 / 注册页左侧产品介绍（固定产品文案，非企业档案字段） */
+import { whiteLabel } from "@/lib/whiteLabel";
 
-export const PLATFORM_PRODUCT_NAME = "AI 品牌经营系统";
+export const PLATFORM_PRODUCT_NAME = whiteLabel.agencyName;
 
-export const PLATFORM_PRODUCT_SUBTITLE = "持续提升企业在 AI 搜索中的识别、信任与推荐";
+export const PLATFORM_PRODUCT_SUBTITLE = whiteLabel.loginSubtitle;
 
-export const AUTH_PRODUCT_NAME = PLATFORM_PRODUCT_NAME;
+export const AUTH_PRODUCT_NAME = whiteLabel.loginTitle;
 
 export const AUTH_PRODUCT_TAGLINE = PLATFORM_PRODUCT_SUBTITLE;
 

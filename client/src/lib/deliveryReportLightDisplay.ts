@@ -5,8 +5,9 @@ import {
   formatDeliveryReportVisibilityScore,
   showPublishCompareSection,
 } from "@/lib/deliveryReportDisplay";
+import { whiteLabel } from "@/lib/whiteLabel";
 
-export const DELIVERY_REPORT_SERVICE_PROVIDER = "海豚知道";
+export const DELIVERY_REPORT_SERVICE_PROVIDER = whiteLabel.reportBrandName;
 
 export function buildDisplayReportNumber(params: {
   projectId?: number;

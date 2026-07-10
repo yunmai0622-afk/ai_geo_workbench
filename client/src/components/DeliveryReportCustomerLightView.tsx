@@ -16,6 +16,7 @@ import {
 import { formatDeliveryReportShareExpiryLabel, resolveDeliveryReportShareCountdown } from "@shared/deliveryReportPublicShare";
 import { buildDeliveryReportTitle } from "@shared/deliveryReportReadability";
 import { useMemo, useRef, type ReactNode } from "react";
+import { whiteLabel } from "@/lib/whiteLabel";
 
 const REPORT_TITLE = "GEO 增长交付报告";
 
@@ -113,7 +114,8 @@ export function DeliveryReportCustomerLightView({
 
         <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-100 bg-gradient-to-r from-sky-50 to-white px-5 py-6 sm:px-8 sm:py-8">
-            <p className="text-xs font-medium tracking-wide text-sky-700">{DELIVERY_REPORT_SERVICE_PROVIDER}</p>
+            <p className="text-xs font-medium tracking-wide text-sky-700" style={whiteLabel.brandColor ? { color: whiteLabel.brandColor } : undefined}>{DELIVERY_REPORT_SERVICE_PROVIDER}</p>
+            <p className="mt-1 text-xs text-gray-500">本报告由 {DELIVERY_REPORT_SERVICE_PROVIDER} 为客户生成</p>
             <p className="mt-2 text-sm font-medium text-gray-600">{REPORT_TITLE}</p>
             <h1 className="mt-3 text-xl font-bold leading-snug text-gray-900 sm:text-2xl">
               {buildDeliveryReportTitle(brandName || enterpriseName)}
@@ -122,8 +124,12 @@ export function DeliveryReportCustomerLightView({
           <div className="p-5 sm:p-8">
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-gray-500">客户名称</dt>
+                <dt className="text-gray-500">服务对象</dt>
                 <dd className="mt-0.5 font-medium text-gray-900">{enterpriseName}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">服务方</dt>
+                <dd className="mt-0.5 font-medium text-gray-900">{DELIVERY_REPORT_SERVICE_PROVIDER}</dd>
               </div>
               <div>
                 <dt className="text-gray-500">报告生成时间</dt>
@@ -134,6 +140,8 @@ export function DeliveryReportCustomerLightView({
                 <dd className="mt-0.5 font-mono text-sm font-medium text-gray-800">{reportNumber}</dd>
               </div>
             </dl>
+            {whiteLabel.supportContact ? <p className="mt-4 text-xs text-gray-500">服务联系：{whiteLabel.supportContact}</p> : null}
+            {whiteLabel.poweredByVisible ? <p className="mt-1 text-xs text-gray-400">技术支持：GEO Engine</p> : null}
           </div>
         </header>
 

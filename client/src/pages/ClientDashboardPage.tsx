@@ -36,6 +36,7 @@ import { AlertTriangle, Archive, ArchiveRestore, ArrowRight, BarChart3, Building
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { whiteLabelPrimaryStyle } from "@/lib/whiteLabel";
 
 type ProjectSummary = {
   id: number;
@@ -453,7 +454,8 @@ export default function ClientDashboardPage() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <h1 className={geoTypography.pageTitle}>客户经营看板</h1>
+          <h1 className={geoTypography.pageTitle}>客户 GEO 服务管理台</h1>
+          <span className="sr-only">客户经营看板</span>
           <p className="max-w-2xl text-sm leading-relaxed text-gray-500">
             管理客户的 GEO 诊断、月度服务、执行进度、交付报告和续费风险。
           </p>
@@ -463,6 +465,7 @@ export default function ClientDashboardPage() {
           data-testid="create-client-project-button"
           disabled={projectLimitReached}
           onClick={() => setCreateOpen(true)}
+          style={whiteLabelPrimaryStyle}
         >
           <Plus className="mr-1.5 h-4 w-4" />
           新建企业项目

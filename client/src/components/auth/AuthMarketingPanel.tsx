@@ -1,10 +1,12 @@
-import { BarChart3, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import {
   AUTH_PRODUCT_NAME,
   AUTH_PRODUCT_SELLING_POINTS,
   AUTH_PRODUCT_TAGLINE,
 } from "./authMarketing";
 import { cn } from "@/lib/utils";
+import { WhiteLabelBrandMark } from "@/components/WhiteLabelBrandMark";
+import { whiteLabel } from "@/lib/whiteLabel";
 
 type AuthMarketingPanelProps = {
   compact?: boolean;
@@ -22,9 +24,7 @@ export default function AuthMarketingPanel({ compact = false, className }: AuthM
     >
       <div className={cn("flex flex-col", compact ? "items-center gap-4" : "max-w-lg gap-8")}>
         <div className={cn("flex items-center gap-3", compact && "flex-col")}>
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md">
-            <BarChart3 className="h-6 w-6" />
-          </div>
+          <WhiteLabelBrandMark />
           <div className={compact ? "text-center" : undefined}>
             <p className="text-sm font-medium text-blue-700">企业 GEO 内容增长</p>
             <h1
@@ -55,6 +55,9 @@ export default function AuthMarketingPanel({ compact = false, className }: AuthM
             </li>
           ))}
         </ul>
+        {whiteLabel.poweredByVisible ? (
+          <p className="text-xs text-gray-400" data-testid="white-label-powered-by">技术支持：GEO Engine</p>
+        ) : null}
       </div>
     </div>
   );

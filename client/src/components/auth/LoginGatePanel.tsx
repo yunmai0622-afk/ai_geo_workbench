@@ -7,9 +7,10 @@ import { getLoginUrl, isLoginConfigured } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { toEmailLoginErrorMessage } from "@shared/emailLoginErrors";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
-import { BarChart3 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { WhiteLabelBrandMark } from "@/components/WhiteLabelBrandMark";
+import { whiteLabel, whiteLabelPrimaryStyle } from "@/lib/whiteLabel";
 
 export default function LoginGatePanel() {
   const utils = trpc.useUtils();
@@ -58,12 +59,10 @@ export default function LoginGatePanel() {
       }
     >
       <div className="mb-6 flex flex-col items-center text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 lg:hidden">
-          <BarChart3 className="h-6 w-6" />
-        </div>
-        <h2 className="text-2xl font-semibold tracking-tight">登录账号</h2>
+        <WhiteLabelBrandMark className="mb-4 lg:hidden" />
+        <h2 className="text-2xl font-semibold tracking-tight">{whiteLabel.loginTitle}</h2>
         <p className="mt-2 text-sm leading-6 text-gray-500">
-          登录后继续管理客户项目、内容资产与交付报告。
+          {whiteLabel.loginSubtitle}
         </p>
       </div>
 
@@ -74,10 +73,11 @@ export default function LoginGatePanel() {
           }}
           size="lg"
           className="w-full bg-blue-600 text-white hover:bg-blue-700"
+          style={whiteLabelPrimaryStyle}
         >
           使用 OAuth 登录
         </Button>
-      ) : (
+      ) : import.meta.env.DEV ? (
         <div className="space-y-3">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
             本地环境未配置外部 OAuth 登录参数。可使用本地开发登录进入系统验收页面；生产环境不会启用该入口。
@@ -87,6 +87,7 @@ export default function LoginGatePanel() {
             disabled={devLogin.isPending}
             size="lg"
             className="w-full bg-blue-600 text-white hover:bg-blue-700"
+            style={whiteLabelPrimaryStyle}
           >
             {devLogin.isPending ? "正在登录" : "本地开发登录"}
           </Button>
@@ -96,7 +97,7 @@ export default function LoginGatePanel() {
             </p>
           ) : null}
         </div>
-      )}
+      ) : null}
 
       <div className="mt-6 space-y-3 border-t border-gray-100 pt-6">
         <p className="text-center text-xs font-medium uppercase tracking-wide text-gray-400">

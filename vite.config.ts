@@ -8,6 +8,7 @@ const plugins = [react(), tailwindcss(), jsxLocPlugin()];
 
 export default defineConfig({
   plugins,
+  envPrefix: ["VITE_", "OEM_"],
   resolve: {
     extensions: [".mjs", ".ts", ".tsx", ".js", ".jsx", ".json"],
     alias: {
