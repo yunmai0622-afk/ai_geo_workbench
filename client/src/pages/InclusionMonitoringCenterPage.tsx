@@ -90,6 +90,13 @@ function formatCustomerCount(value: number | null | undefined, unit = "") {
   return `${value.toLocaleString("zh-CN")}${unit}`;
 }
 
+function scheduledRetestStatusLabel(value: unknown) {
+  if (value === "running") return "执行中";
+  if (value === "completed") return "已完成";
+  if (value === "failed") return "失败";
+  return "待执行";
+}
+
 function hasAiRetest(record: ContentAssetEffectViewRecord) {
   return Array.isArray(record.aiTestResults) && record.aiTestResults.length > 0;
 }
@@ -481,6 +488,10 @@ export function InclusionMonitoringCenterPage() {
   );
   const monitoringQuery = trpc.geo.articles.inclusionMonitoringRecords.useQuery(projectInput, { enabled });
   const publishRecordsQuery = trpc.geo.articles.publishRecords.useQuery(projectInput, { enabled });
+  const scheduledRetestQuery = trpc.geo.inclusionMonitoring.scheduledRetestStatus.useQuery(
+    { projectId: 210001 },
+    { enabled: selectedProjectId === 210001 },
+  );
 
   const records = useMemo(
     () =>
@@ -649,16 +660,25 @@ export function InclusionMonitoringCenterPage() {
           <p className="mt-3 text-xs leading-5 text-gray-600">
             当前仅确认内容已公开发布；收录、AI 提及与推荐仍以之后的真实复测结果为准。
           </p>
+          <div className="mt-3 rounded-xl border border-cyan-100 bg-white/80 p-3 text-xs leading-5 text-gray-700" data-testid="inclusion-automatic-retest-status">
+            <p className="font-semibold text-cyan-900">自动复测：已启用</p>
+            <p>执行频率：{scheduledRetestQuery.data?.frequency ?? "每天 20:30（Asia/Shanghai）"}</p>
+            <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.currentStatus)}</p>
+            {scheduledRetestQuery.data?.lastAiTestedAt ? <p>最近执行：{formatTime(scheduledRetestQuery.data.lastAiTestedAt)}</p> : <p>最近执行：暂无自动复测结果</p>}
+            {scheduledRetestQuery.data?.lastError ? <p className="text-red-700">失败原因：{scheduledRetestQuery.data.lastError}</p> : null}
+          </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-3" data-testid="inclusion-sample-retest-timeline">
             {[
               ["07/12", "收录初查 + T2 轻量复测"],
               ["07/16", "正式问题池 T2 复测"],
               ["07/23", "T3 复测 + 下月建议"],
-            ].map(([date, title]) => (
+            ].map(([date, title], index) => (
               <div key={date} className="rounded-xl border border-cyan-100 bg-white/80 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-cyan-800">{date}</span>
-                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">待执行</span>
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+                    {scheduledRetestStatusLabel(scheduledRetestQuery.data?.milestones[index]?.status)}
+                  </span>
                 </div>
                 <p className="mt-2 text-xs leading-5 text-gray-700">{title}</p>
               </div>

@@ -250,6 +250,7 @@ import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare
 import { isValidStoredCoverBase64 } from "@shared/articleCoverBase64";
 import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import { runDailyAiCheck } from "./scheduledAiCheck";
+import { SAMPLE_RETEST_MILESTONES, SAMPLE_RETEST_PROJECT_ID } from "./scheduledSampleRetest";
 import { fetchWorkspaceSummaryMetrics } from "./workspaceSummary";
 import { buildGeoTaskDurationLogBase, logGeoAnalysisRunDuration, logGeoArticlesGenerateDuration, type GeoArticlesGenerateStepTimings } from "./geoTaskDurationLog";
 import { assertContentGenerationRateLimit, assertT0DetectionRateLimit } from "./memoryRateLimit";
@@ -4286,6 +4287,43 @@ ${article.markdownContent}`,
     }),
   }),
   inclusionMonitoring: router({
+    scheduledRetestStatus: protectedProcedure
+      .input(z.object({ projectId: z.literal(SAMPLE_RETEST_PROJECT_ID) }))
+      .query(async ({ ctx, input }) => {
+        const db = await requireDb();
+        await requireProjectAccess(ctx, input.projectId);
+        const record = (await db.select({
+          rawJson: geoInclusionMonitoringRecords.rawJson,
+          lastAiTestedAt: geoInclusionMonitoringRecords.lastAiTestedAt,
+        }).from(geoInclusionMonitoringRecords)
+          .where(eq(geoInclusionMonitoringRecords.projectId, input.projectId))
+          .orderBy(desc(geoInclusionMonitoringRecords.createdAt)).limit(1))[0];
+        const raw = record?.rawJson && typeof record.rawJson === "object" && !Array.isArray(record.rawJson)
+          ? record.rawJson as Record<string, unknown>
+          : {};
+        const state = raw.scheduledRetest && typeof raw.scheduledRetest === "object" && !Array.isArray(raw.scheduledRetest)
+          ? raw.scheduledRetest as Record<string, unknown>
+          : {};
+        const completedKeys = Array.isArray(state.completedKeys) ? state.completedKeys.filter(v => typeof v === "string") : [];
+        return {
+          automatic: true,
+          frequency: "每天 20:30（Asia/Shanghai）",
+          currentStatus: typeof state.status === "string" ? state.status : "pending",
+          currentKey: typeof state.currentKey === "string" ? state.currentKey : null,
+          lastStartedAt: typeof state.lastStartedAt === "string" ? state.lastStartedAt : null,
+          lastFinishedAt: typeof state.lastFinishedAt === "string" ? state.lastFinishedAt : null,
+          lastError: typeof state.lastError === "string" ? state.lastError : null,
+          lastResultCount: typeof state.lastResultCount === "number" ? state.lastResultCount : null,
+          lastMentionRate: typeof state.lastMentionRate === "number" ? state.lastMentionRate : null,
+          lastRecommendRate: typeof state.lastRecommendRate === "number" ? state.lastRecommendRate : null,
+          lastAiTestedAt: record?.lastAiTestedAt ?? null,
+          milestones: SAMPLE_RETEST_MILESTONES.map(item => ({
+            key: item.key,
+            dueDate: item.dueDate,
+            status: completedKeys.includes(item.key) ? "completed" : state.currentKey === item.key ? state.status : "pending",
+          })),
+        } as const;
+      }),
     backfill: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {

@@ -130,6 +130,13 @@ function currentRateLabel(value: number | null): string {
   return `当前 ${formatPercent(value)}`;
 }
 
+function scheduledRetestStatusLabel(value: unknown): string {
+  if (value === "running") return "执行中";
+  if (value === "completed") return "已完成";
+  if (value === "failed") return "失败";
+  return "待执行";
+}
+
 function hasContentLevelRetest(report: MonthlyReportView): boolean {
   return report.contentImpactProof.hasData && report.contentImpactProof.items.length > 0;
 }
@@ -645,6 +652,10 @@ function RenewalDeliveryReportHero({
   const showEvidenceAccumulationNotice = needsEvidenceAccumulationNotice(report);
   const evidenceAccumulationItems = buildEvidenceAccumulationItems(report);
   const firstPublishedAsset = report.actions.contentAssetProof.items[0] ?? null;
+  const scheduledRetestQuery = trpc.geo.inclusionMonitoring.scheduledRetestStatus.useQuery(
+    { projectId: 210001 },
+    { enabled: selectedProjectId === 210001 },
+  );
 
   const handlePrimaryCta = () => {
     if (primaryCta.action === "generateNextPlan") {
@@ -798,6 +809,12 @@ function RenewalDeliveryReportHero({
                   <p className="mt-2 text-xs leading-5 text-gray-700">第一轮公开证据建设已完成，但单篇内容通常不足以立即改变 AI 推荐，仍需收录观察、信源补强和多轮复测。</p>
                 </div>
               </div>
+              <div className="mt-3 rounded-xl border border-sky-100 bg-white/80 p-3 text-xs leading-5 text-gray-700" data-testid="delivery-report-automatic-retest-status">
+                <p className="font-semibold text-sky-900">自动复测已启用 · {scheduledRetestQuery.data?.frequency ?? "每天 20:30（Asia/Shanghai）"}</p>
+                <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.currentStatus)}</p>
+                {scheduledRetestQuery.data?.lastResultCount != null ? <p>最近结果：{scheduledRetestQuery.data.lastResultCount} 条真实 AI 回答；提及率 {Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%，推荐率 {Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%。</p> : <p>最近结果：尚无自动复测结果</p>}
+                {scheduledRetestQuery.data?.lastError ? <p className="text-red-700">失败原因：{scheduledRetestQuery.data.lastError}</p> : null}
+              </div>
             </div>
           ) : null
         ) : null}
@@ -819,7 +836,7 @@ function RenewalDeliveryReportHero({
               当前收录状态仍为待观察，AI T1 结果尚未提及或推荐品牌。后续只在真实检查完成后记录结果，不提前写成已收录或已提升。
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {CONTINUOUS_RETEST_PLAN.map(item => {
+              {CONTINUOUS_RETEST_PLAN.map((item, index) => {
                 return (
                   <div key={item.day} className="rounded-xl border border-emerald-100 bg-white/80 p-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -827,7 +844,9 @@ function RenewalDeliveryReportHero({
                         {item.day}
                       </span>
                       <span className="text-xs font-semibold text-gray-700">{item.date}</span>
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">待执行</span>
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        {scheduledRetestStatusLabel(scheduledRetestQuery.data?.milestones[index]?.status)}
+                      </span>
                     </div>
                     <p className="mt-3 text-sm font-semibold text-gray-900">{item.title}</p>
                     <p className="mt-2 text-xs leading-5 text-gray-700"><span className="font-medium">复查目标：</span>{item.goal}</p>
