@@ -74,7 +74,7 @@ describe("GEO V2.3-P0-I question pool and source evidence operator tools", () =>
     expect(sourcePage).toContain("运营明细：信源总览");
     expect(sourcePage).toContain("运营明细：信源列表");
     expect(sourcePage).toContain("运营明细：品牌关键信息一致性");
-    expect(sourcePage).toContain("运营明细：内容增强建议");
+    expect(sourcePage).toContain("待补强的公开证据");
     expect(sourcePage).toContain("信源引用监测");
   });
 

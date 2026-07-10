@@ -114,6 +114,33 @@ function recommendationBadgeClass(): string {
   return "border-violet-200 bg-violet-50 text-violet-800";
 }
 
+function resolveSuggestionPriorityLabel(priority: string): string {
+  if (priority === "P0") return "最高优先级（P0）";
+  if (priority === "P1") return "高优先级（P1）";
+  return "普通优先级（P2）";
+}
+
+function resolveSuggestionReason(gapType: string): string {
+  const reasons: Record<string, string> = {
+    company_name: "不同平台对公司名称表述不一致，会影响 AI 判断这些内容是否属于同一个品牌。",
+    brand_name: "品牌名称缺少统一表达，会降低 AI 识别并合并品牌公开信息的稳定性。",
+    business_description: "公开内容对业务的说明不够一致，AI 难以准确理解品牌提供什么服务。",
+    official_site: "公开内容缺少统一的官网指向，AI 难以确认品牌信息的权威来源。",
+    core_keywords: "核心业务关键词覆盖不足，用户提出相关问题时 AI 不容易把品牌与需求关联起来。",
+  };
+  return reasons[gapType] ?? "现有公开内容对这项品牌信息的证明不足，会影响 AI 识别、引用和推荐品牌。";
+}
+
+function resolveSuggestionAction(input: {
+  contentDirection: string;
+  targetPlatform: string | null;
+}): string {
+  const platform = input.targetPlatform
+    ? resolveBrandSourcePlatformLabel(input.targetPlatform)
+    : "合适的公开平台";
+  return `生成一篇适合发布到${platform}的内容，${input.contentDirection.replace(/[。；;]+$/, "")}。`;
+}
+
 function formatSourceOperatorCount(value: number | null | undefined, fallback = "暂无"): string {
   if (value === null || value === undefined) return fallback;
   return `${value}`;
@@ -516,6 +543,11 @@ export default function SourceGraphPage() {
     setLocation(buildWeeklyContentEntryUrl(selectedProjectId, entryPayload));
   }
 
+  function goContentPublishing() {
+    if (!selectedProjectId) return;
+    setLocation(buildProjectUrl("/content-publishing", selectedProjectId));
+  }
+
   if (!enabled && !projectsLoading) {
     return <ProjectContextEmptyState />;
   }
@@ -869,7 +901,10 @@ export default function SourceGraphPage() {
             </div>
           </P0Section>
 
-          <P0Section title="运营明细：内容增强建议" description="根据信源缺口与问题池提及情况生成">
+          <P0Section
+            title="待补强的公开证据"
+            description="这些内容用于补齐 AI 识别品牌时缺少的公开证据，运营团队可按优先级生成和发布。"
+          >
             <div className="space-y-3" data-testid="source-graph-suggestions">
               {suggestions.length === 0 ? (
                 <div
@@ -889,36 +924,47 @@ export default function SourceGraphPage() {
                       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-medium text-gray-900">{suggestion.suggestionTitle}</p>
                           <span className="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                            {suggestion.priority}
+                            {resolveSuggestionPriorityLabel(suggestion.priority)}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600">对应缺口：{resolveGapTypeLabel(suggestion.gapType)}</p>
-                        {suggestion.targetPlatform ? (
-                          <p className="text-sm text-gray-600">
-                            建议平台：{resolveBrandSourcePlatformLabel(suggestion.targetPlatform)}
-                          </p>
-                        ) : null}
-                        <p className="text-sm text-gray-600">建议内容方向：{suggestion.contentDirection}</p>
-                        {suggestion.targetKeywords?.length ? (
-                          <p className="text-sm text-gray-600">
-                            强化关键词：{(suggestion.targetKeywords as string[]).join("、")}
-                          </p>
-                        ) : null}
+                        <div className="grid gap-3 text-sm text-gray-700 md:grid-cols-2">
+                          <div>
+                            <p className="font-medium text-gray-900">要补什么</p>
+                            <p className="mt-1 leading-6">{suggestion.suggestionTitle}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">为什么要补</p>
+                            <p className="mt-1 leading-6">{resolveSuggestionReason(suggestion.gapType)}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">建议怎么做</p>
+                            <p className="mt-1 leading-6">{resolveSuggestionAction(suggestion)}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">完成标准</p>
+                            <p className="mt-1 leading-6">内容发布到公开平台，并回填可访问的真实链接。</p>
+                          </div>
+                        </div>
                         <div className="flex flex-wrap gap-2">
-                          {suggestion.linkedTaskId ? (
-                            <>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => goWeeklyWithTask(suggestion.linkedTaskId)}
-                                data-testid="enhancement-go-existing-task"
-                              >
-                                查看已有内容任务
-                              </Button>
-                            </>
+                          {suggestion.status === "verified" ? (
+                            <Button type="button" size="sm" variant="outline" onClick={goContentPublishing}>
+                              查看发布记录
+                            </Button>
+                          ) : suggestion.status === "accepted" ? (
+                            <Button type="button" size="sm" variant="outline" onClick={goContentPublishing}>
+                              去内容生产与发布
+                            </Button>
+                          ) : suggestion.linkedTaskId ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => goWeeklyWithTask(suggestion.linkedTaskId)}
+                              data-testid="enhancement-go-existing-task"
+                            >
+                              查看已有内容任务
+                            </Button>
                           ) : (
                             <Button
                               type="button"
@@ -933,10 +979,26 @@ export default function SourceGraphPage() {
                               }
                               data-testid="enhancement-create-task"
                             >
-                              生成该平台内容
+                              生成内容任务
                             </Button>
                           )}
                         </div>
+                        {(!selectedProjectId || mutating) && !suggestion.linkedTaskId ? (
+                          <p className="text-xs text-amber-700">
+                            {!selectedProjectId ? "请先选择企业项目，再生成内容任务。" : "正在处理其他操作，请稍候。"}
+                          </p>
+                        ) : null}
+                        <details className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                          <summary className="cursor-pointer font-medium text-gray-700">查看运营细节</summary>
+                          <div className="mt-2 space-y-1 border-t border-gray-200 pt-2">
+                            <p>对应缺口：{resolveGapTypeLabel(suggestion.gapType)}</p>
+                            <p>建议平台：{suggestion.targetPlatform ? resolveBrandSourcePlatformLabel(suggestion.targetPlatform) : "未指定"}</p>
+                            <p>强化关键词：{suggestion.targetKeywords?.length ? (suggestion.targetKeywords as string[]).join("、") : "暂无"}</p>
+                            <p>内部优先级：{suggestion.priority}</p>
+                            <p>任务编号：{suggestion.linkedTaskId ?? "尚未生成"}</p>
+                            <p>内部状态：{suggestion.status}</p>
+                          </div>
+                        </details>
                       </div>
                     </div>
                   </div>
