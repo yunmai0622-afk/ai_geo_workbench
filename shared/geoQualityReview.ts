@@ -1,4 +1,5 @@
 /** GEO 发布前内容质量评分（C8-A） */
+import type { ContentIndexabilityResult } from "./contentIndexability";
 
 export type GeoQualityRecommendation = "publish" | "revise" | "reject";
 
@@ -21,6 +22,7 @@ export type GeoQualityReviewResult = {
   total: number;
   recommendation: GeoQualityRecommendation;
   suggestions: string[];
+  indexability?: ContentIndexabilityResult;
 };
 
 export const GEO_QUALITY_DIMENSION_META: Record<

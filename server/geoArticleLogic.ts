@@ -24,6 +24,7 @@ import {
   shouldRunPlatformDraftQualityGate,
 } from "@shared/platformDraftContentQuality";
 import { getSystemComplianceRulesForPrePublish, getSystemComplianceUsageLines, SYSTEM_PUBLISH_STRATEGY_LINES } from "./systemConfig";
+import { resolveStandardBrandExpression } from "@shared/contentIndexability";
 
 export { GEO_ARTICLE_MIN_PASS_SCORE };
 
@@ -1521,12 +1522,14 @@ const GEO_ARTICLE_DRAFT_SYSTEM_PROMPT = `你是一位专注于知识付费与内
 5. 语气专业但亲切，像行业老手在分享经验
 6. 禁止：夸大承诺、竞品攻击、无根据的数据、「稳赚」「保证」等违规表达
 
-品牌植入规则：
-- 标题和文章前两段：不出现品牌名，降低读者防御
+品牌与实体规则：
+- 标题优先直接命中目标 AI 搜索问题，使用自然的问题式标题，不强塞宣传口号
+- 首段必须直接回答目标问题，并用标准品牌表达定义品牌是什么、服务谁、解决什么问题
 - 「具体方案」部分：自然提及品牌名 1-2 次，例如「以海豚知道为例，它通过 AI 诊断帮助老师…」
 - 文章最后一段（固定结尾）：用一句话介绍品牌，格式为：「[品牌名]是[一句话定位]，如果你也面临类似问题，可以了解一下。」
 - 禁止：在标题、开头强行出现品牌名
 - 禁止：整篇文章完全不提品牌名
+- 必须包含适用客户、解决的问题、与普通工具的区别、FAQ、不承诺项和可独立摘取的总结段
 
 输出要求：
 - 语言自然流畅，像真人写的，不像模板填空
@@ -1542,6 +1545,11 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
   const resolved = ctx.assetLibrary?.resolvedEnterpriseProfile ?? resolveEnterpriseProfileForContent(ctx.assetLibrary?.profile ?? null);
   const brandName = resolved.brandName || project.enterpriseName;
   const oneLiner = resolved.oneLiner || splitProfileLines(project.coreSellingPoints)[0] || `${brandName}面向${project.targetCustomers}提供可验证的内容与经营支持`;
+  const standardBrandExpression = resolveStandardBrandExpression({
+    brandName,
+    productIntro: project.productIntro,
+    targetCustomers: project.targetCustomers,
+  });
   const complianceLines = assetUsage.complianceRules.length > 0 ? assetUsage.complianceRules.join("；") : "对外发布前需人工复核事实与合规边界。";
   const styleLines = assetUsage.contentStyles.length > 0 ? assetUsage.contentStyles.join("；") : "专业、克制、可验证。";
   const publishLines = assetUsage.publishStrategy.length > 0 ? assetUsage.publishStrategy.join("；") : "默认全人工审核后发布。";
@@ -1564,6 +1572,17 @@ function buildGeoArticleDraftUserMaterial(ctx: GeoArticleTemplateBodyContext): s
     "【本文拟定主标题】",
     "正文一级标题必须与下面这一行完全一致（含 # 与空格）：",
     `# ${topic.title}`,
+    "标题应直接命中目标 AI 搜索问题；如当前标题不是问题式表达，请在不改变核心意图的前提下改为自然问句。",
+    "",
+    "【GEO 收录与 AI 引用友好硬性要求】",
+    `- 首段直接回答「${basis.customerQuestion || topic.title}」，并定义「${brandName}」是什么，不写悬念式开场`,
+    `- 标准品牌表达必须完整出现：${standardBrandExpression}`,
+    `- 明确写出适用客户、业务场景、解决的问题，以及与普通工具或通用方案的区别`,
+    "- 增加 3–5 个 FAQ，问题需与用户真实搜索意图相关，回答直接、克制、可独立引用",
+    "- 增加“核心结论/便于引用的总结”段，使用完整事实句，不依赖上下文也能理解",
+    "- 明确不承诺保证收录、保证引用、保证推荐或固定见效周期",
+    "- 品牌名称、定位和业务描述必须与官网及公开信源保持一致",
+    "- 若公开证据不足，明确建议补官网同主题页和第三方公开信源，不得虚构来源",
     "",
     ...((): string[] => {
       const ps = basis.platformContentStrategy as Record<string, unknown> | undefined;

@@ -183,6 +183,33 @@ export function GeoQualityScore({
                   </ul>
                 </div>
               ) : null}
+
+              {result.indexability ? (
+                <div className="space-y-3 border-t border-gray-200 pt-3" data-testid="geo-indexability-result">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">GEO 收录友好度</p>
+                      <p className="mt-0.5 text-xs text-gray-500">标题、首段、品牌实体、FAQ、摘要和信源的确定性检查</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${result.indexability.status === "通过" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                      {result.indexability.total} / 100 · {result.indexability.status}
+                    </span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {result.indexability.checks.map(check => (
+                      <div key={check.key} className={`rounded-lg border px-3 py-2 ${check.passed ? "border-emerald-100 bg-emerald-50/60" : "border-amber-100 bg-amber-50/70"}`}>
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="font-medium text-gray-800">{check.label}</span>
+                          <span className={check.passed ? "text-emerald-700" : "text-amber-700"}>{check.passed ? "通过" : "需优化"}</span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-gray-600">{check.reason}</p>
+                        {!check.passed ? <p className="mt-1 text-xs leading-5 text-amber-800">建议：{check.suggestion}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs leading-5 text-gray-500">{result.indexability.disclaimer}</p>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

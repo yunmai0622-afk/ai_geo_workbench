@@ -6,7 +6,7 @@ export type QualityReviewContentInput = {
   contentType: string;
 };
 
-const SYSTEM_PROMPT = `你是一个 GEO 内容质量审核专家。GEO（Generative Engine Optimization）的目标是让内容容易被 AI 平台（豆包、DeepSeek、Kimi 等）识别、理解、收录和引用。你需要从 GEO 视角而非传统 SEO 或文采视角来评分。`;
+const SYSTEM_PROMPT = `你是一个 GEO 内容质量审核专家。GEO（Generative Engine Optimization）的目标是提高内容被搜索和 AI 平台识别、理解与引用的概率，不代表保证收录或推荐。你需要从 GEO 视角而非传统 SEO 或文采视角来评分。`;
 
 export function buildQualityReviewPrompt(content: QualityReviewContentInput): {
   systemPrompt: string;
@@ -30,6 +30,8 @@ ${content.body}
 4. case_evidence（满分 15）：是否有具体案例、数据、客户故事、可信证明。
 5. competitor_comparison（满分 15）：是否提到竞品或替代方案，是否解释为什么选择本品牌而不是其他方案。
 6. platform_friendly（满分 10）：结构是否清晰，标题是否规范，是否适合知乎、百家号、头条、搜狐等平台收录。
+
+同时检查但不要虚构结果：标题是否命中目标问题、首段是否直接定义品牌、标准品牌表达、FAQ、适用客户、夸大承诺、实体一致性、搜索摘要、AI 可引用总结、官网/第三方信源补强。suggestions 必须优先写具体缺项，不得写“保证收录”或“保证 AI 推荐”。
 
 recommendation 规则（你必须遵守，可与分项加总后自行校验）：
 - total >= 80 → publish

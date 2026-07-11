@@ -672,6 +672,14 @@ export default function QuestionsLibraryPage() {
         </details>
       </div>
 
+      <section className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4" data-testid="questions-indexability-guidance">
+        <p className="text-sm font-semibold text-blue-950">生成前先确认目标问题与 GEO 结构</p>
+        <p className="mt-1 text-sm leading-6 text-gray-700">
+          内容任务将绑定目标 AI 搜索问题，并要求问题式标题、首段直接定义、标准品牌表达、适用客户、FAQ、不承诺项和可引用总结。
+        </p>
+        <p className="mt-1 text-xs leading-5 text-gray-500">这些要求用于提高被搜索和 AI 理解、引用的概率，不代表保证收录或推荐。</p>
+      </section>
+
       {loading ? (
         <div className="flex min-h-[240px] items-center justify-center">
           <Spinner className="h-8 w-8 text-blue-600" />

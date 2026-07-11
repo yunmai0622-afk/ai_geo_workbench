@@ -370,6 +370,8 @@ export function buildQuestionContentTaskExecutionSuggestion(question: {
     `目标问题：${question.questionText.trim()}`,
     `目标关键词：${(question.targetKeywords ?? []).join("、") || "（待补充）"}`,
     `内容类型：场景指南`,
+    "生成要求：问题式标题；首段直接定义品牌；使用标准品牌表达；说明适用客户、解决的问题及与普通工具的区别；包含 FAQ、不承诺项和可引用总结段。",
+    "验证口径：以上结构用于提高被搜索和 AI 识别、引用的概率，不保证收录或 AI 推荐。",
     "",
     GEO_OPTIMIZATION_TASK_CARD_MARK,
     card,

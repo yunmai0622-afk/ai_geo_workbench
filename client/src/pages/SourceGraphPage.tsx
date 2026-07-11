@@ -612,6 +612,14 @@ export default function SourceGraphPage() {
         </details>
       </div>
 
+      <section className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4" data-testid="source-graph-indexability-guidance">
+        <p className="text-sm font-semibold text-indigo-950">未收录或未被 AI 引用时，先补公开证据链</p>
+        <p className="mt-1 text-sm leading-6 text-gray-700">
+          等待 3/7/14 天复测，同时补官网同主题页面，并在公众号、搜狐或百家号等第三方平台同步相同主题；统一各平台品牌名称和业务描述后，再执行正式问题池复测。
+        </p>
+        <p className="mt-1 text-xs leading-5 text-gray-500">公开且一致的官网与第三方信源能帮助搜索和 AI 稳定识别品牌实体，但不保证一定收录、引用或推荐。</p>
+      </section>
+
       {loading ? (
         <div className="flex min-h-[240px] items-center justify-center">
           <Spinner className="h-8 w-8 text-blue-600" />

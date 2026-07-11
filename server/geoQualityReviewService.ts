@@ -8,6 +8,7 @@ import { buildQualityReviewPrompt } from "./geoQualityPrompt";
 import { defaultModelRouter } from "./modelRouter";
 import { recordRewriteFromQualityReject } from "./rewritePoolService";
 import { appendArticleLifecycleEvent } from "./articleLifecycleService";
+import { evaluateContentIndexability, resolveStandardBrandExpression } from "@shared/contentIndexability";
 
 type Db = Awaited<ReturnType<typeof getDb>>;
 
@@ -94,6 +95,21 @@ export async function runContentQualityReview(
       message: e instanceof Error ? e.message : "质检结果格式异常，请重试",
     });
   }
+
+  const standardBrandExpression = resolveStandardBrandExpression({
+    brandName,
+    productIntro: project?.productIntro,
+    targetCustomers: project?.targetCustomers,
+  });
+  result.indexability = evaluateContentIndexability({
+    title: article.title,
+    body,
+    brandName,
+    targetQuestion: targetQuestion || article.title,
+    standardBrandExpression,
+    targetCustomers: project?.targetCustomers,
+    website: project?.website,
+  });
 
   const reviewedAt = new Date();
   await db
