@@ -14,7 +14,7 @@ describe("C3-D global AI product UI", () => {
     expect(css).toContain("ai-metric-card");
     const marketing = read("client/src/components/auth/authMarketing.ts");
     const indexHtml = read("client/index.html");
-    expect(marketing).toContain("whiteLabel.agencyName");
+    expect(marketing).toContain("whiteLabel.systemName");
     expect(marketing).toContain("whiteLabel.loginSubtitle");
     expect(read("client/src/lib/whiteLabel.ts")).toContain("GEO 代运营交付系统");
     for (const legacy of ["GEO 增长工作台", "GEO增长工作台", "AI 搜索增长系统", "AI搜索增长系统"]) {

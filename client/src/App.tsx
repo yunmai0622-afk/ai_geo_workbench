@@ -59,6 +59,7 @@ import PricingPage from "./pages/PricingPage";
 import RegisterPage from "./pages/RegisterPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import SettingsPage from "./pages/SettingsPage";
+import WhiteLabelSettingsPage from "./pages/WhiteLabelSettingsPage";
 import { PublishRecordsHistoryPage } from "./pages/PublishRecordsHistoryPage";
 import AdminConfigPage from "./pages/AdminConfigPage";
 import AdminPublishTasksPage from "./pages/AdminPublishTasksPage";
@@ -92,6 +93,10 @@ function isAdminShellPath(pathname: string): boolean {
   );
 }
 
+function isSettingsPath(pathname: string): boolean {
+  return pathname === "/settings" || pathname.startsWith("/settings/");
+}
+
 function PrivateRoutes() {
   return (
     <AccountReviewGate>
@@ -99,6 +104,7 @@ function PrivateRoutes() {
         <Suspense fallback={<RoutePageLoading />}>
         <Switch>
         <Route path="/clients" component={ClientDashboardPage} />
+        <Route path="/settings/white-label" component={WhiteLabelSettingsPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/admin/config" component={AdminConfigPage} />
         <Route path="/admin/publish-tasks" component={AdminPublishTasksPage} />
@@ -200,7 +206,7 @@ function AuthenticatedAppShell() {
     healedLegacyCacheRef.current = true;
     activateProject(resolved.projectId);
     const pathname = location.split("?")[0] || location;
-    if (pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname)) {
+    if (pathname !== "/clients" && pathname !== "/knowledge" && !isSettingsPath(pathname) && !isAdminShellPath(pathname)) {
       setLocation(buildProjectUrl(pathname, resolved.projectId));
     }
   }, [user, projectsListPending, projects, search, location, setLocation]);
@@ -232,7 +238,7 @@ function AuthenticatedAppShell() {
     return <Redirect to={projects.length === 0 ? "/onboarding" : "/clients"} />;
   }
 
-  if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname)) {
+  if (profileLoading && pathname !== "/clients" && pathname !== "/knowledge" && !isSettingsPath(pathname) && !isAdminShellPath(pathname)) {
     return (
       <DashboardLayout>
         <div className="flex min-h-[50vh] items-center justify-center text-gray-400">加载中...</div>
@@ -241,11 +247,11 @@ function AuthenticatedAppShell() {
   }
 
   // 首次登录无项目时强制进入 onboarding，避免进入无上下文页面
-  if (user && !projectsListPending && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
+  if (user && !projectsListPending && projects.length === 0 && pathname !== "/clients" && pathname !== "/knowledge" && !isSettingsPath(pathname) && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/onboarding" />;
   }
 
-  if (user && !projectsListPending && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && pathname !== "/settings" && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
+  if (user && !projectsListPending && projects.length > 0 && !activeProjectId && pathname !== "/clients" && pathname !== "/knowledge" && !isSettingsPath(pathname) && !isAdminShellPath(pathname) && !pathname.startsWith("/legacy/")) {
     return <Redirect to="/clients" />;
   }
 
@@ -258,7 +264,7 @@ function AuthenticatedAppShell() {
     pathname !== "/enterprise-profile" &&
     pathname !== "/clients" &&
     pathname !== "/knowledge" &&
-    pathname !== "/settings" &&
+    !isSettingsPath(pathname) &&
     !isAdminShellPath(pathname) &&
     !pathname.startsWith("/legacy/")
   ) {

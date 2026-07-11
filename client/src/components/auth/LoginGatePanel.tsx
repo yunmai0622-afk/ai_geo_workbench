@@ -10,7 +10,7 @@ import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
 import { useState } from "react";
 import { Link } from "wouter";
 import { WhiteLabelBrandMark } from "@/components/WhiteLabelBrandMark";
-import { whiteLabel, whiteLabelPrimaryStyle } from "@/lib/whiteLabel";
+import { whiteLabel, whiteLabelLoginPrimaryStyle } from "@/lib/whiteLabel";
 
 export default function LoginGatePanel() {
   const utils = trpc.useUtils();
@@ -73,7 +73,7 @@ export default function LoginGatePanel() {
           }}
           size="lg"
           className="w-full bg-blue-600 text-white hover:bg-blue-700"
-          style={whiteLabelPrimaryStyle}
+          style={whiteLabelLoginPrimaryStyle}
         >
           使用 OAuth 登录
         </Button>
@@ -87,7 +87,7 @@ export default function LoginGatePanel() {
             disabled={devLogin.isPending}
             size="lg"
             className="w-full bg-blue-600 text-white hover:bg-blue-700"
-            style={whiteLabelPrimaryStyle}
+            style={whiteLabelLoginPrimaryStyle}
           >
             {devLogin.isPending ? "正在登录" : "本地开发登录"}
           </Button>

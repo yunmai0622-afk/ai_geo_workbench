@@ -112,6 +112,17 @@ export default function SettingsPage() {
               </Button>
             </CardContent>
           </Card>
+          <Card data-testid="settings-admin-white-label-link">
+            <CardHeader>
+              <CardTitle>贴牌设置</CardTitle>
+              <CardDescription>配置运营公司品牌、登录页、报告展示和域名接入准备</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button type="button" variant="outline" asChild>
+                <a href="/settings/white-label">打开贴牌设置</a>
+              </Button>
+            </CardContent>
+          </Card>
           <Card data-testid="settings-admin-subscription-link">
             <CardHeader>
               <CardTitle>用户套餐管理</CardTitle>

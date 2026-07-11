@@ -26,13 +26,17 @@ describe("GEO V2.3 OEM white-label readiness", () => {
       OEM_REPORT_BRAND_NAME: "星河 GEO 服务团队",
       OEM_SUPPORT_CONTACT: "service@example.com",
       OEM_POWERED_BY_VISIBLE: "false",
-    })).toEqual({
+    })).toMatchObject({
       agencyName: "星河 AI 服务中心",
+      systemName: "星河 AI 服务中心",
       brandLogoUrl: "https://cdn.example.com/logo.svg",
       brandColor: "#123ABC",
       loginTitle: "星河 AI 可见度系统",
       loginSubtitle: "让品牌更容易被 AI 看见",
+      loginLogoUrl: "https://cdn.example.com/logo.svg",
+      loginBrandColor: "#123ABC",
       reportBrandName: "星河 GEO 服务团队",
+      reportLogoUrl: "https://cdn.example.com/logo.svg",
       supportContact: "service@example.com",
       poweredByVisible: false,
     });

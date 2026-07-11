@@ -62,6 +62,7 @@ const PATHS_WITHOUT_PROJECT_SHELL = new Set([
   "/clients",
   "/knowledge",
   "/settings",
+  "/settings/white-label",
   "/admin/config",
   "/admin/publish-tasks",
   "/admin/subscription",

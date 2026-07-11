@@ -114,6 +114,7 @@ export function DeliveryReportCustomerLightView({
 
         <header className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-100 bg-gradient-to-r from-sky-50 to-white px-5 py-6 sm:px-8 sm:py-8">
+            {whiteLabel.reportLogoUrl ? <img src={whiteLabel.reportLogoUrl} alt={`${DELIVERY_REPORT_SERVICE_PROVIDER} Logo`} className="mb-3 h-10 max-w-48 object-contain object-left" /> : null}
             <p className="text-xs font-medium tracking-wide text-sky-700" style={whiteLabel.brandColor ? { color: whiteLabel.brandColor } : undefined}>{DELIVERY_REPORT_SERVICE_PROVIDER}</p>
             <p className="mt-1 text-xs text-gray-500">本报告由 {DELIVERY_REPORT_SERVICE_PROVIDER} 为客户生成</p>
             <p className="mt-2 text-sm font-medium text-gray-600">{REPORT_TITLE}</p>
@@ -141,6 +142,7 @@ export function DeliveryReportCustomerLightView({
               </div>
             </dl>
             {whiteLabel.supportContact ? <p className="mt-4 text-xs text-gray-500">服务联系：{whiteLabel.supportContact}</p> : null}
+            {whiteLabel.reportFooterText ? <p className="mt-1 text-xs text-gray-500">{whiteLabel.reportFooterText}</p> : null}
             {whiteLabel.poweredByVisible ? <p className="mt-1 text-xs text-gray-400">技术支持：GEO Engine</p> : null}
           </div>
         </header>

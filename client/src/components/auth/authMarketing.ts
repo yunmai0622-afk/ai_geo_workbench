@@ -1,6 +1,6 @@
 import { whiteLabel } from "@/lib/whiteLabel";
 
-export const PLATFORM_PRODUCT_NAME = whiteLabel.agencyName;
+export const PLATFORM_PRODUCT_NAME = whiteLabel.systemName;
 
 export const PLATFORM_PRODUCT_SUBTITLE = whiteLabel.loginSubtitle;
 

@@ -24,7 +24,9 @@ export default function AuthMarketingPanel({ compact = false, className }: AuthM
     >
       <div className={cn("flex flex-col", compact ? "items-center gap-4" : "max-w-lg gap-8")}>
         <div className={cn("flex items-center gap-3", compact && "flex-col")}>
-          <WhiteLabelBrandMark />
+          {whiteLabel.loginLogoUrl && whiteLabel.loginLogoUrl !== whiteLabel.brandLogoUrl ? (
+            <img src={whiteLabel.loginLogoUrl} alt={`${whiteLabel.agencyName} 登录 Logo`} className="size-10 rounded-xl object-contain" />
+          ) : <WhiteLabelBrandMark />}
           <div className={compact ? "text-center" : undefined}>
             <p className="text-sm font-medium text-blue-700">企业 GEO 内容增长</p>
             <h1
@@ -33,7 +35,7 @@ export default function AuthMarketingPanel({ compact = false, className }: AuthM
                 compact ? "text-2xl" : "text-3xl",
               )}
             >
-              {AUTH_PRODUCT_NAME}
+              <span style={whiteLabel.loginBrandColor ? { color: whiteLabel.loginBrandColor } : undefined}>{AUTH_PRODUCT_NAME}</span>
             </h1>
           </div>
         </div>
