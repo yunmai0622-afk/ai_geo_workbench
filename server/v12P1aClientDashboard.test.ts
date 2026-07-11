@@ -29,8 +29,9 @@ describe("P1-A client dashboard", () => {
     const dashboardBlock = router.slice(router.indexOf("clientDashboard: router({"), router.indexOf("projects: router({"));
 
     expect(dashboardBlock).toContain("listAccessibleProjectIds(ctx)");
-    expect(access).toMatch(/listAccessibleProjectIds[\s\S]*?eq\(projects\.ownerUserId, userId\)/);
-    expect(access).toMatch(/requireProjectAccess[\s\S]*?eq\(projects\.id, projectId\)[\s\S]*?eq\(projects\.ownerUserId, userId\)/);
+    expect(access).toContain("return eq(projects.ownerUserId, userId)");
+    expect(access).toMatch(/listAccessibleProjectIds[\s\S]*?projectOwnerCondition\(userId\)/);
+    expect(access).toMatch(/requireProjectAccess[\s\S]*?eq\(projects\.id, projectId\)[\s\S]*?projectOwnerCondition\(userId\)/);
   });
 
   it("clientDashboard does not mock project metrics", () => {

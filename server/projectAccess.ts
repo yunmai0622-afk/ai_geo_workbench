@@ -17,6 +17,15 @@ import { getDb } from "./db";
 
 export const PROJECT_ACCESS_FORBIDDEN_MSG = "无权访问该客户项目";
 
+/** 客户列表和项目直达共用的 owner 归属规则；角色不会绕过项目隔离。 */
+export function isProjectOwnedByUser(projectOwnerUserId: number, userId: number): boolean {
+  return projectOwnerUserId === userId;
+}
+
+function projectOwnerCondition(userId: number) {
+  return eq(projects.ownerUserId, userId);
+}
+
 /**
  * 当前登录用户 id（来自 session cookie → sdk.authenticateRequest → ctx.user）。
  * 本地开发：auth.devLogin / Manus OAuth 写入 users 表后同样走此路径。
@@ -35,7 +44,7 @@ export async function listAccessibleProjectIds(ctx: TrpcContext): Promise<number
   const rows = await db
     .select({ id: projects.id })
     .from(projects)
-    .where(eq(projects.ownerUserId, userId))
+    .where(projectOwnerCondition(userId))
     .orderBy(projects.createdAt);
   return rows.map(r => r.id);
 }
@@ -44,7 +53,7 @@ export async function listAccessibleProjects(ctx: TrpcContext): Promise<Project[
   const db = await getDb();
   if (!db) return [];
   const userId = getCurrentUserId(ctx);
-  return db.select().from(projects).where(eq(projects.ownerUserId, userId)).orderBy(projects.createdAt);
+  return db.select().from(projects).where(projectOwnerCondition(userId)).orderBy(projects.createdAt);
 }
 
 /** Web / protectedProcedure：校验 projectId 归属当前用户 */
@@ -57,7 +66,7 @@ export async function requireProjectAccess(ctx: TrpcContext, projectId: number):
   const rows = await db
     .select()
     .from(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.ownerUserId, userId)))
+    .where(and(eq(projects.id, projectId), projectOwnerCondition(userId)))
     .limit(1);
   if (!rows[0]) {
     throw new TRPCError({ code: "FORBIDDEN", message: PROJECT_ACCESS_FORBIDDEN_MSG });
@@ -76,7 +85,7 @@ export async function requireProjectAccessConn(
   const rows = await db
     .select()
     .from(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.ownerUserId, ownerUserId)))
+    .where(and(eq(projects.id, projectId), projectOwnerCondition(ownerUserId)))
     .limit(1);
   if (!rows[0]) {
     throw new TRPCError({ code: "FORBIDDEN", message: PROJECT_ACCESS_FORBIDDEN_MSG });
@@ -99,7 +108,7 @@ export async function getProjectRowConn(
   if (!rows[0]) {
     throw new TRPCError({ code: "NOT_FOUND", message: "企业项目不存在" });
   }
-  if (userId != null && rows[0].ownerUserId !== userId) {
+  if (userId != null && !isProjectOwnedByUser(rows[0].ownerUserId, userId)) {
     throw new TRPCError({ code: "FORBIDDEN", message: PROJECT_ACCESS_FORBIDDEN_MSG });
   }
   return rows[0];
@@ -110,7 +119,7 @@ export async function filterAccessibleProjectIds(db: DbConn, projectIds: number[
   const rows = await db
     .select({ id: projects.id })
     .from(projects)
-    .where(and(inArray(projects.id, projectIds), eq(projects.ownerUserId, ownerUserId)));
+    .where(and(inArray(projects.id, projectIds), projectOwnerCondition(ownerUserId)));
   return rows.map(r => r.id);
 }
 
