@@ -10,6 +10,7 @@ import {
   isPlatformDraftInFlight,
   mergePlatformDraftGeneration,
   PLATFORM_DRAFT_GENERATION_FAILED_MESSAGE,
+  PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN,
   PLATFORM_DRAFT_SERIAL_BUSY_MESSAGE,
   PLATFORM_DRAFT_START_MESSAGE,
   readPlatformDraftGeneration,
@@ -74,8 +75,6 @@ import { getDb } from "./db";
 type DbConn = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
 const runningDraftJobs = new Set<number>();
-
-const PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN = "（内容生成中，请稍候刷新查看）";
 
 async function loadAssetLibraryContext(db: DbConn, projectId: number): Promise<P12AssetLibraryContext> {
   const [profiles, assetSources, cases, competitors, styles] = await Promise.all([

@@ -1,4 +1,5 @@
 import { getArticlePublishPlatform } from "./articlePublishPlatform";
+import { hasEditableArticleBody, resolveArticleContentEditState } from "./contentEditState";
 import { getContentQualityGateStatus, type ContentQualityGateArticle } from "./contentQualityGate";
 import {
   buildGeoContentTaskDisplayName,
@@ -235,8 +236,14 @@ function summarizeMarkdown(content?: string | null, maxLen = 160): string | null
   return `${text.slice(0, maxLen)}…`;
 }
 
-function qualityStatusLabel(article: ContentQualityGateArticle | null): string {
+function qualityStatusLabel(article: ContentOptimizationArticleInput | null): string {
   if (!article) return "尚未生成内容";
+  if (!hasEditableArticleBody(article)) {
+    const state = resolveArticleContentEditState(article);
+    if (state.state === "failed") return "生成失败，需重新生成";
+    if (state.state === "generating") return "内容生成中";
+    return "尚未生成内容";
+  }
   const gate = getContentQualityGateStatus(article);
   if (gate.passed) return "质检通过，可进入发布准备";
   if (gate.reason === "failed") return "质检未通过，需修改后重新质检";
@@ -250,6 +257,12 @@ function resolveArticleWeeklyStatus(
 ): WeeklyContentTaskStatus {
   const tasksForArticle = publishTasks.filter(task => task.articleId === article.id);
   const latestTask = tasksForArticle[0];
+  const editState = resolveArticleContentEditState(article);
+  if (!editState.editable) {
+    if (editState.state === "failed") return "NEEDS_REWRITE";
+    if (editState.state === "generating") return "GENERATING";
+    return "UNGENERATED";
+  }
   const published = article.status === "已发布" || tasksForArticle.some(task => task.status === "completed");
   const queued = Boolean(
     latestTask && latestTask.status !== "failed" && latestTask.status !== "session_expired",
@@ -429,18 +442,6 @@ export function buildContentOptimizationTaskView(
     };
   });
 
-  const gateMother: ContentQualityGateArticle | null = mother
-    ? {
-        geoQualityScore: mother.geoQualityScore,
-        geoQualityRecommendation: mother.geoQualityRecommendation,
-        geoQualityStale: mother.geoQualityStale,
-        lifecycleStatus: mother.lifecycleStatus,
-        lifecycleEvents: mother.lifecycleEvents,
-        status: mother.status,
-        qualityStatus: mother.contentReviewStatus,
-      }
-    : null;
-
   return {
     projectId: input.projectId,
     questionId: input.question.id,
@@ -464,7 +465,7 @@ export function buildContentOptimizationTaskView(
       input.question.searchPoolType,
     ),
     platformDrafts: platformDraftViews,
-    qualityStatus: qualityStatusLabel(gateMother),
+    qualityStatus: qualityStatusLabel(mother),
     publishQueueStatus: publishQueueStatusLabel(input.publishTasks),
     retestPlan: buildRetestPlanView({
       completedPublishTasks: input.completedPublishTasks ?? [],

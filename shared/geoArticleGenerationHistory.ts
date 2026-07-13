@@ -1,5 +1,7 @@
 /** GEO-V1.1-Generation-History：从 geo_articles 行与同条 optimizationVersions 构建生成/版本历史 */
 
+import { hasEditableArticleBody } from "./contentEditState";
+
 export type GeoArticleGenerationHistoryKind =
   | "current"
   | "prior_generation"
@@ -15,6 +17,7 @@ export type GeoArticleGenerationHistoryEntry = {
   title: string;
   markdownContent: string;
   canRestore: boolean;
+  isCurrentBody?: boolean;
   version?: number;
   priorArticleId?: number;
 };
@@ -28,6 +31,7 @@ export type GeoArticleHistoryRow = {
   createdAt: Date | string;
   updatedAt?: Date | string | null;
   optimizationVersions?: unknown;
+  generationBasis?: Record<string, unknown> | null;
 };
 
 type OptimizationSnapshot = {
@@ -81,20 +85,23 @@ export function buildGeoArticleGenerationHistory(input: {
   }>;
 }): GeoArticleGenerationHistoryEntry[] {
   const entries: GeoArticleGenerationHistoryEntry[] = [];
+  const currentIsGeneratedBody = hasEditableArticleBody(input.article);
 
   entries.push({
     key: "current",
     kind: "current",
     createdAt: toIsoTime(input.article.updatedAt ?? input.article.createdAt),
     statusLabel: input.article.status || "未知",
-    sourceLabel: "当前正文",
+    sourceLabel: currentIsGeneratedBody ? "当前正文" : "当前记录（未生成）",
     title: input.article.title,
-    markdownContent: input.article.markdownContent,
+    markdownContent: currentIsGeneratedBody ? input.article.markdownContent : "",
     canRestore: false,
+    isCurrentBody: currentIsGeneratedBody,
   });
 
   for (const row of input.priorGenerations) {
     if (row.id === input.article.id) continue;
+    if (!hasEditableArticleBody(row)) continue;
     entries.push({
       key: `gen:${row.id}`,
       kind: "prior_generation",

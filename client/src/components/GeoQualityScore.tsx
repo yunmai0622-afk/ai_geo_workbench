@@ -28,6 +28,8 @@ type GeoQualityScoreProps = {
   initial?: GeoQualityInitialState;
   onScoreLoaded?: (result: GeoQualityReviewResult, stale: boolean) => void;
   onRecommendationChange?: (recommendation: GeoQualityRecommendation | null, stale: boolean) => void;
+  disabled?: boolean;
+  disabledReason?: string | null;
 };
 
 function badgeClass(rec: GeoQualityRecommendation | null): string {
@@ -55,6 +57,8 @@ export function GeoQualityScore({
   initial,
   onScoreLoaded,
   onRecommendationChange,
+  disabled,
+  disabledReason,
 }: GeoQualityScoreProps) {
   const reviewMutation = trpc.geo.articles.contentQualityReview.useMutation();
   const [result, setResult] = useState<GeoQualityReviewResult | null>(() => parseDetail(initial?.detail));
@@ -85,6 +89,10 @@ export function GeoQualityScore({
   const showStale = stale && displayTotal != null;
 
   const runReview = async () => {
+    if (disabled) {
+      toast.error(disabledReason || "当前内容暂不能质检");
+      return;
+    }
     try {
       const data = await reviewMutation.mutateAsync({ articleId, projectId });
       if (data.result) {
@@ -109,7 +117,7 @@ export function GeoQualityScore({
           variant="outline"
           size="sm"
           className="border-blue-400/30 text-blue-700"
-          disabled={reviewMutation.isPending}
+          disabled={reviewMutation.isPending || disabled}
           data-testid="geo-quality-review-btn"
           onClick={() => void runReview()}
         >

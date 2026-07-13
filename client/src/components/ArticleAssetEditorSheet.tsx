@@ -55,6 +55,10 @@ import {
 } from "@shared/geoArticleContentTags";
 import { DANGEROUS_ACTION_LABELS } from "@shared/dangerousActionConfirm";
 import { isGeoQualityScoreStale } from "@shared/geoQualityStale";
+import {
+  CONTENT_NOT_GENERATED_EDIT_REASON,
+  resolveArticleContentEditState,
+} from "@shared/contentEditState";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -138,6 +142,8 @@ export function ArticleAssetEditorSheet({
   const [contentTagsInput, setContentTagsInput] = useState("");
   const [bodyCopied, setBodyCopied] = useState(false);
   const bodyCopyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const articleEditState = useMemo(() => resolveArticleContentEditState(article), [article]);
+  const canEditArticleContent = articleEditState.editable;
 
   const publishPlatformResolved = useMemo(
     () =>
@@ -185,7 +191,10 @@ export function ArticleAssetEditorSheet({
   }), []);
 
   const resetFromArticle = useCallback((a: EditableArticleAsset) => {
-    const cleanedContent = stripInternalArticleMetadataFromMarkdown(a.markdownContent ?? "");
+    const editState = resolveArticleContentEditState(a);
+    const cleanedContent = editState.editable
+      ? stripInternalArticleMetadataFromMarkdown(editState.body)
+      : "";
     setTitle(a.title ?? "");
     setContent(cleanedContent);
     setTemplate(normalizeArticleCoverTemplateId(a.coverTemplate));
@@ -302,6 +311,10 @@ export function ArticleAssetEditorSheet({
   };
 
   const copyBodyToClipboard = async () => {
+    if (!canEditArticleContent) {
+      toast.error(articleEditState.reason ?? CONTENT_NOT_GENERATED_EDIT_REASON);
+      return;
+    }
     const payload = content.trim();
     if (!payload) {
       toast.error("正文为空，无法复制");
@@ -337,6 +350,10 @@ export function ArticleAssetEditorSheet({
 
   const handleSave = async () => {
     if (!article || isSaving || updateArticle.isPending) return;
+    if (!canEditArticleContent) {
+      toast.error(articleEditState.reason ?? CONTENT_NOT_GENERATED_EDIT_REASON);
+      return;
+    }
     if (!title.trim() || !content.trim()) {
       toast.error("标题和正文不能为空");
       return;
@@ -406,6 +423,20 @@ export function ArticleAssetEditorSheet({
               lastPublishRecordAt={article.lastPublishRecordAt}
             />
           ) : null}
+          {!canEditArticleContent ? (
+            <div
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+              data-testid="article-content-not-ready-hint"
+            >
+              <p className="font-medium">内容尚未生成完成，暂不能编辑</p>
+              <p className="mt-1 text-xs leading-relaxed">
+                {articleEditState.reason ?? CONTENT_NOT_GENERATED_EDIT_REASON}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed">
+                如果长时间停留在该状态，请返回内容任务卡重新生成内容。
+              </p>
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="asset-title">文章标题</Label>
             <input
@@ -413,6 +444,7 @@ export function ArticleAssetEditorSheet({
               className={aiInput}
               value={title}
               onChange={e => setTitle(e.target.value)}
+              disabled={!canEditArticleContent}
               maxLength={255}
             />
           </div>
@@ -434,6 +466,7 @@ export function ArticleAssetEditorSheet({
                 onChange={e => setContentTagsInput(e.target.value)}
                 placeholder="例如：主推产品、竞品对比"
                 data-testid="article-content-tags-input"
+                disabled={!canEditArticleContent}
               />
               <div className="flex flex-wrap gap-2">
                 {CONTENT_TAG_PRESETS.map(preset => (
@@ -448,6 +481,7 @@ export function ArticleAssetEditorSheet({
                       if (current.some(t => t === preset)) return;
                       setContentTagsInput(formatContentTagsInput([...current, preset]));
                     }}
+                    disabled={!canEditArticleContent}
                   >
                     + {preset}
                   </Button>
@@ -462,6 +496,7 @@ export function ArticleAssetEditorSheet({
                 value={contentStrategyType}
                 onChange={e => setContentStrategyType(e.target.value as ContentAssetType | "")}
                 data-testid="article-strategy-type"
+                disabled={!canEditArticleContent}
               >
                 <option value="">未设置</option>
                 {CONTENT_ASSET_TYPE_OPTIONS.map(o => (
@@ -478,6 +513,7 @@ export function ArticleAssetEditorSheet({
                 className={aiInput}
                 value={publishIdentity}
                 onChange={e => setPublishIdentity(e.target.value as PublishIdentity | "")}
+                disabled={!canEditArticleContent}
               >
                 {PUBLISH_IDENTITY_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>
@@ -493,6 +529,7 @@ export function ArticleAssetEditorSheet({
                 className={aiInput}
                 value={recommendedAccountGroup}
                 onChange={e => setRecommendedAccountGroup(e.target.value as AccountGroupType | "")}
+                disabled={!canEditArticleContent}
               >
                 {ACCOUNT_GROUP_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>
@@ -504,11 +541,11 @@ export function ArticleAssetEditorSheet({
           </div>
 
           {xiaohongshuMaterial ? (
-            <XiaohongshuMaterialCard material={xiaohongshuMaterial} disabled={isSaving || updateArticle.isPending} />
+            <XiaohongshuMaterialCard material={xiaohongshuMaterial} disabled={isSaving || updateArticle.isPending || !canEditArticleContent} />
           ) : null}
 
           {wechatMaterial ? (
-            <WechatMaterialCard material={wechatMaterial} disabled={isSaving || updateArticle.isPending} />
+            <WechatMaterialCard material={wechatMaterial} disabled={isSaving || updateArticle.isPending || !canEditArticleContent} />
           ) : null}
 
           <div className="space-y-2">
@@ -521,6 +558,7 @@ export function ArticleAssetEditorSheet({
                   variant="outline"
                   className="border-gray-200 text-gray-700"
                   data-testid="article-copy-body-button"
+                  disabled={!canEditArticleContent}
                   onClick={() => void copyBodyToClipboard()}
                 >
                   {bodyCopied ? "已复制" : "一键复制正文"}
@@ -532,6 +570,8 @@ export function ArticleAssetEditorSheet({
               className={`${aiInput} min-h-[220px] resize-y font-mono text-sm leading-relaxed`}
               value={content}
               onChange={e => setContent(e.target.value)}
+              disabled={!canEditArticleContent}
+              placeholder={canEditArticleContent ? undefined : CONTENT_NOT_GENERATED_EDIT_REASON}
             />
           </div>
 
@@ -585,6 +625,8 @@ export function ArticleAssetEditorSheet({
                   stale: false,
                 });
               }}
+              disabled={!canEditArticleContent}
+              disabledReason={articleEditState.reason}
             />
           ) : null}
 
@@ -595,6 +637,7 @@ export function ArticleAssetEditorSheet({
               className={aiInput}
               value={template}
               onChange={e => setTemplate(normalizeArticleCoverTemplateId(e.target.value))}
+              disabled={!canEditArticleContent}
             >
               {ARTICLE_COVER_TEMPLATE_IDS.map(id => (
                 <option key={id} value={id}>
@@ -623,7 +666,7 @@ export function ArticleAssetEditorSheet({
               type="button"
               variant="outline"
               className="border-gray-200 text-gray-700"
-              disabled={coverGenerating}
+              disabled={coverGenerating || !canEditArticleContent}
               onClick={() => void regenerateCover()}
               data-testid="article-asset-generate-cover-button"
             >
@@ -674,7 +717,7 @@ export function ArticleAssetEditorSheet({
             <Button
               type="button"
               variant="ai"
-              disabled={isSaving || updateArticle.isPending || deleteArticle.isPending}
+              disabled={isSaving || updateArticle.isPending || deleteArticle.isPending || !canEditArticleContent}
               data-testid="article-asset-save-button"
               onClick={() => void handleSave()}
             >

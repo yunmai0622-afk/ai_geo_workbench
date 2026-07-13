@@ -3289,6 +3289,7 @@ const geoRouter = router({
             createdAt: article.createdAt,
             updatedAt: article.updatedAt,
             optimizationVersions: article.optimizationVersions,
+            generationBasis: article.generationBasis as Record<string, unknown> | null,
           },
           priorGenerations: priorRows,
         });
@@ -3340,6 +3341,7 @@ const geoRouter = router({
             createdAt: article.createdAt,
             updatedAt: article.updatedAt,
             optimizationVersions: article.optimizationVersions,
+            generationBasis: article.generationBasis as Record<string, unknown> | null,
           },
           priorGenerations: priorRows,
         });
@@ -3356,6 +3358,7 @@ const geoRouter = router({
             status: article.status,
             createdAt: article.createdAt,
             optimizationVersions: article.optimizationVersions,
+            generationBasis: article.generationBasis as Record<string, unknown> | null,
           },
           entry,
         });

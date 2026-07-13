@@ -77,6 +77,7 @@ import {
   type WeeklyContentTaskProgress,
   type WeeklyContentTaskStatus,
 } from "@shared/weeklyContentTaskStatus";
+import { hasEditableArticleBody, resolveArticleContentEditState } from "@shared/contentEditState";
 import { formatWeeklyArticleCustomerTitle } from "@shared/weeklyArticleCustomerTitle";
 import {
   CUSTOMER_STAGE_LABELS,
@@ -660,6 +661,7 @@ type SingleTaskPrimaryActionKind =
   | "review"
   | "enqueue"
   | "retry_publish"
+  | "refresh"
   | "go_publishing"
   | "backfill"
   | "monitoring";
@@ -2158,6 +2160,7 @@ export default function WeeklyContentPage() {
       const draftInFlight = isPlatformDraftInFlight(draftRecord?.status);
       const draftFailed = draftRecord?.status === "failed";
       const platformGenerating = generating || draftInFlight;
+      const platformArticleHasEditableBody = hasEditableArticleBody(platformArticle ?? null);
       const published = platformArticle?.status === "已发布";
       const latestTask = platformArticle
         ? latestPublishTaskByArticle.get(platformArticle.id)
@@ -2175,7 +2178,7 @@ export default function WeeklyContentPage() {
         ? resolveArticleLifecycleView(platformArticle)
         : null;
       const status = resolveWeeklyPlatformContentStatus({
-        hasArticle: Boolean(platformArticle) && !draftInFlight,
+        hasArticle: Boolean(platformArticle) && platformArticleHasEditableBody && !draftInFlight,
         generating: platformGenerating,
         published,
         queued,
@@ -2184,7 +2187,7 @@ export default function WeeklyContentPage() {
         needsRewrite: draftFailed || lifecycleView?.status === "needs_revision",
       });
       const lifecycle = resolveArticleLifecycleForBoard({
-        article: platformArticle ?? null,
+        article: platformArticleHasEditableBody ? (platformArticle ?? null) : null,
         publishRecord: platformArticle
           ? (latestPublishRecordByArticle.get(platformArticle.id) ?? null)
           : null,
@@ -2192,10 +2195,12 @@ export default function WeeklyContentPage() {
           ? (latestInclusionRecordByArticle.get(platformArticle.id) ?? null)
           : null,
         publishTask: latestTask ?? null,
-        generating: platformGenerating && !platformArticle,
+        generating: platformGenerating,
       });
       const generatedCount =
-        counts.pendingConfirm + counts.ready + counts.published;
+        platformArticleHasEditableBody
+          ? counts.pendingConfirm + counts.ready + counts.published
+          : 0;
       const topicForArticle =
         platformArticle && typeof platformArticle.topicId === "number"
           ? topicsById.get(platformArticle.topicId)
@@ -2256,7 +2261,7 @@ export default function WeeklyContentPage() {
             : "待绑定账号",
         primaryActionKind: resolvePlatformBoardPrimaryActionKind(
           status,
-          generatedCount > 0
+          platformArticleHasEditableBody && generatedCount > 0
         ),
         retryPublishTaskId: isRetryableFailedPublishTask(latestTask) && typeof latestTask?.id === "number" ? latestTask.id : null,
       };
@@ -2767,6 +2772,37 @@ export default function WeeklyContentPage() {
       singleTaskFocusModel.title || singleTaskFocusArticle.title || "当前内容";
     const articlePhrase = `${platformLabel}稿《${title}》`;
     const latestTask = singleTaskLatestPublishTask;
+    const contentEditState = resolveArticleContentEditState(singleTaskFocusArticle);
+    if (!contentEditState.editable) {
+      if (contentEditState.state === "failed") {
+        return {
+          ...base,
+          statusText: `${articlePhrase}生成失败，暂不能进入质检修改流程。`,
+          nextActionLabel: "重新生成",
+          nextActionKind: "generate",
+          blockerText: "生成失败",
+          blockerTone: "error",
+        };
+      }
+      if (contentEditState.state === "generating") {
+        return {
+          ...base,
+          statusText: `${articlePhrase}正在生成正文，完成前暂不能编辑或质检。`,
+          nextActionLabel: "刷新状态",
+          nextActionKind: "refresh",
+          blockerText: "内容生成中",
+          blockerTone: "warning",
+        };
+      }
+      return {
+        ...base,
+        statusText: `${articlePhrase}尚未生成完整正文，当前待生成平台稿。`,
+        nextActionLabel: "生成平台稿",
+        nextActionKind: "generate",
+        blockerText: "内容尚未生成",
+        blockerTone: "warning",
+      };
+    }
     const localCreateError =
       singleTaskPublishQueueError?.articleId === singleTaskFocusModel.id
         ? singleTaskPublishQueueError.message
@@ -4183,6 +4219,10 @@ export default function WeeklyContentPage() {
         } else {
           toast.error("未找到可重试的失败发布任务，请到发布执行中心处理。");
         }
+        return;
+      case "refresh":
+        void invalidateArticles();
+        toast.message("已刷新内容状态");
         return;
       case "go_publishing":
       case "backfill":

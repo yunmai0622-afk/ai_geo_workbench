@@ -24,6 +24,8 @@ export const PLATFORM_DRAFT_SERIAL_BUSY_MESSAGE =
 
 export const PLATFORM_DRAFT_GENERATION_BASIS_KEY = "platformDraftGeneration";
 
+export const PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN = "（内容生成中，请稍候刷新查看）";
+
 export type PlatformDraftGenerationRecord = {
   status: PlatformDraftStatus;
   platform?: string | null;

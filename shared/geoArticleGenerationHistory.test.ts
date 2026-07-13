@@ -4,6 +4,7 @@ import {
   buildGeoArticleGenerationHistory,
   findGeoArticleGenerationHistoryEntry,
 } from "./geoArticleGenerationHistory";
+import { PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN } from "./platformDraftGeneration";
 
 describe("geoArticleGenerationHistory", () => {
   const article = {
@@ -54,5 +55,34 @@ describe("geoArticleGenerationHistory", () => {
     expect(restored.markdownContent).toBe("旧正文");
     expect(restored.optimizationVersions).toHaveLength(2);
     expect(restored.optimizationVersions[1]?.mode).toBe("历史版本恢复");
+  });
+
+  it("does not mark pending placeholder drafts as current body", () => {
+    const entries = buildGeoArticleGenerationHistory({
+      article: {
+        ...article,
+        title: "统一公司名称表达 · 延伸篇 2",
+        markdownContent: PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN,
+        status: "待生成",
+        optimizationVersions: [],
+        generationBasis: {
+          platformDraftGeneration: { status: "generating" },
+        },
+      },
+      priorGenerations: [
+        {
+          id: 8,
+          title: "历史待生成",
+          markdownContent: PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN,
+          status: "待生成",
+          createdAt: "2026-06-01T07:00:00.000Z",
+        },
+      ],
+    });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.key).toBe("current");
+    expect(entries[0]?.sourceLabel).toBe("当前记录（未生成）");
+    expect(entries[0]?.isCurrentBody).toBe(false);
+    expect(entries[0]?.markdownContent).toBe("");
   });
 });

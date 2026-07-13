@@ -7,6 +7,7 @@ import {
   resolveMaturityDimensionForQuestion,
   UNPUBLISHED_RETEST_PLAN_SUMMARY,
 } from "./contentOptimizationTaskView";
+import { PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN } from "./platformDraftGeneration";
 
 describe("contentOptimizationTaskView", () => {
   const baseQuestion = {
@@ -88,6 +89,54 @@ describe("contentOptimizationTaskView", () => {
     expect(view.platformDrafts[0]?.platformLabel).toBe("知乎");
     expect(view.motherArticleId).toBe(1);
     expect(view.motherArticleTitle).toBe("母稿标题");
+  });
+
+  it("keeps generating placeholder drafts out of quality revision state", () => {
+    const view = buildContentOptimizationTaskView({
+      projectId: 150001,
+      question: baseQuestion,
+      articles: [
+        {
+          id: 3,
+          title: "知乎平台稿",
+          markdownContent: PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN,
+          status: "待生成",
+          generationBasis: {
+            platformContentStrategy: { targetPublishPlatform: "zhihu" },
+            platformDraftGeneration: { status: "generating" },
+          },
+          geoQualityScore: 40,
+          geoQualityRecommendation: "reject",
+        },
+      ],
+      publishTasks: [],
+    });
+    expect(view.platformDrafts[0]?.status).toBe("GENERATING");
+    expect(view.platformDrafts[0]?.statusLabel).toBe("生成中");
+    expect(view.platformDrafts[0]?.qualityStatusLabel).toBe("内容生成中");
+    expect(view.qualityStatus).toBe("内容生成中");
+  });
+
+  it("keeps pending placeholder drafts out of current generated content", () => {
+    const view = buildContentOptimizationTaskView({
+      projectId: 150001,
+      question: baseQuestion,
+      articles: [
+        {
+          id: 4,
+          title: "知乎平台稿",
+          markdownContent: PLATFORM_DRAFT_PLACEHOLDER_MARKDOWN,
+          status: "待生成",
+          generationBasis: {
+            platformContentStrategy: { targetPublishPlatform: "zhihu" },
+          },
+        },
+      ],
+      publishTasks: [],
+    });
+    expect(view.platformDrafts[0]?.status).toBe("UNGENERATED");
+    expect(view.platformDrafts[0]?.statusLabel).toBe("待生成");
+    expect(view.qualityStatus).toBe("尚未生成内容");
   });
 
   it("builds retest plan for unpublished and published content", () => {

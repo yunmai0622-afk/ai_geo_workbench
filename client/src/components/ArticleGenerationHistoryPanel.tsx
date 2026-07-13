@@ -159,8 +159,10 @@ export function ArticleGenerationHistoryPanel({
                     >
                       恢复
                     </Button>
+                  ) : entry.isCurrentBody ? (
+                    <span className="inline-flex h-7 items-center px-2 text-[11px] text-gray-500">当前正文</span>
                   ) : (
-                    <span className="inline-flex h-7 items-center px-2 text-[11px] text-gray-400">当前</span>
+                    <span className="inline-flex h-7 items-center px-2 text-[11px] text-gray-400">不可编辑</span>
                   )}
                 </div>
               </div>
