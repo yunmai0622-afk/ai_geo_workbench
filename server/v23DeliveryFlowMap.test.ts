@@ -33,11 +33,11 @@ describe("GEO V2.3 delivery flow map", () => {
 
   it("keeps sample project 210001 in truthful scheduled retest progress", () => {
     expect(workspace).toContain("selectedProjectId === 210001");
-    expect(workspace).toContain("07/12 执行收录初查与 T2 轻量复测。");
+    expect(workspace).toContain("补跑 07/12 失败节点，并保留 07/16、07/23 后续计划。");
     expect(workspace).toContain("已围绕“海豚知道是什么？”完成知乎公开内容建设");
     expect(clients).toContain('project.id === 210001 && project.publishCount > 0');
     expect(clients).toContain('"收录与 AI 复测"');
-    expect(clients).toContain('"07/12 收录初查与 T2 轻量复测"');
+    expect(clients).toContain('"补跑过期复测节点，并按验证中心推进下一未来节点"');
   });
 
   it("keeps internal operations secondary and free of technical identifiers", () => {

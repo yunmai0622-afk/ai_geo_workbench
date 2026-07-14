@@ -10,8 +10,8 @@ describe("GEO V2.3 P0-C monthly plan service proposal", () => {
 
   it("turns /monthly-plan into a customer-facing service proposal", () => {
     for (const marker of [
-      "月度优化计划",
-      "本月服务结论",
+      "本月资产建设计划",
+      "本月资产建设结论",
       "monthly-plan-service-conclusion",
       "monthly-plan-customer-goals",
       "monthly-plan-top3-service-items",
@@ -40,7 +40,7 @@ describe("GEO V2.3 P0-C monthly plan service proposal", () => {
 
   it("does not present suggestion priorities as completed work", () => {
     expect(page).toContain(
-      'priority.source === "suggestion") return "待纳入方案"'
+      'priority.source === "suggestion") return "待建设"'
     );
     expect(page).not.toContain(
       'priority.source === "suggestion") return "已完成"'

@@ -16,7 +16,7 @@ describe("GEO V2.3 sample delivery systemization", () => {
   });
 
   it("renders the three pending retest milestones without inventing results", () => {
-    for (const value of ["07/12", "07/16", "07/23", "复查目标：", "验证内容：", "后续判断：", "待执行"]) {
+    for (const value of ["07/12", "07/16", "07/23", "复查目标：", "验证内容：", "后续判断：", "scheduledRetestStatusLabel"]) {
       expect(report).toContain(value);
     }
   });
@@ -37,6 +37,6 @@ describe("GEO V2.3 sample delivery systemization", () => {
   it("shows the compact pending timeline in inclusion monitoring", () => {
     const monitoring = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
     expect(monitoring).toContain("inclusion-sample-retest-timeline");
-    for (const value of ["07/12", "07/16", "07/23", "待执行"]) expect(monitoring).toContain(value);
+    for (const value of ["07/12", "07/16", "07/23", "scheduledRetestStatusLabel"]) expect(monitoring).toContain(value);
   });
 });

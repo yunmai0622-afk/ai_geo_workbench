@@ -34,6 +34,7 @@ import { geoScorePercentToRate, resolveBrandMentionRate } from "@shared/brandMen
 import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestComparisonDisplay";
 import { computeMonthlyPlanProgress } from "@shared/monthlyPlanGeneration";
 import { hasCompletedT0Baseline } from "@shared/workspaceMainChain";
+import { deriveScheduledRetestState } from "@shared/trustworthyState";
 import { and, asc, desc, eq, getTableColumns, inArray, isNotNull, isNull, like, ne, not, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -4308,23 +4309,35 @@ ${article.markdownContent}`,
           ? raw.scheduledRetest as Record<string, unknown>
           : {};
         const completedKeys = Array.isArray(state.completedKeys) ? state.completedKeys.filter(v => typeof v === "string") : [];
+        const currentStatus = typeof state.status === "string" ? state.status : "pending";
+        const currentKey = typeof state.currentKey === "string" ? state.currentKey : null;
+        const lastError = typeof state.lastError === "string" ? state.lastError : null;
+        const derived = deriveScheduledRetestState({
+          currentStatus,
+          currentKey,
+          lastError,
+          milestones: SAMPLE_RETEST_MILESTONES.map(item => ({
+            key: item.key,
+            dueDate: item.dueDate,
+            status: completedKeys.includes(item.key) ? "completed" : currentKey === item.key ? currentStatus : "pending",
+          })),
+        });
         return {
           automatic: true,
           frequency: "每天 20:30（Asia/Shanghai）",
-          currentStatus: typeof state.status === "string" ? state.status : "pending",
-          currentKey: typeof state.currentKey === "string" ? state.currentKey : null,
+          currentStatus,
+          currentKey,
           lastStartedAt: typeof state.lastStartedAt === "string" ? state.lastStartedAt : null,
           lastFinishedAt: typeof state.lastFinishedAt === "string" ? state.lastFinishedAt : null,
-          lastError: typeof state.lastError === "string" ? state.lastError : null,
+          lastError,
           lastResultCount: typeof state.lastResultCount === "number" ? state.lastResultCount : null,
           lastMentionRate: typeof state.lastMentionRate === "number" ? state.lastMentionRate : null,
           lastRecommendRate: typeof state.lastRecommendRate === "number" ? state.lastRecommendRate : null,
           lastAiTestedAt: record?.lastAiTestedAt ?? null,
-          milestones: SAMPLE_RETEST_MILESTONES.map(item => ({
-            key: item.key,
-            dueDate: item.dueDate,
-            status: completedKeys.includes(item.key) ? "completed" : state.currentKey === item.key ? state.status : "pending",
-          })),
+          healthStatus: derived.healthStatus,
+          retryRequired: derived.retryRequired,
+          nextMilestone: derived.nextMilestone,
+          milestones: derived.milestones,
         } as const;
       }),
     backfill: protectedProcedure

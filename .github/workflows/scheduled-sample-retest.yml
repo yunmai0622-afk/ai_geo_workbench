@@ -6,7 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Only scan due milestones; do not call AI or write results"
+        description: "Validate the question pool and due milestones; do not call AI or write retest results"
+        required: false
+        default: true
+        type: boolean
+      ensure_questions:
+        description: "Insert missing required sample questions before validation"
         required: false
         default: true
         type: boolean
@@ -38,7 +43,11 @@ jobs:
       - name: Run due sample retests
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
-            corepack pnpm tsx scripts/run_scheduled_sample_retest.ts --dry-run
+            if [ "${{ inputs.ensure_questions }}" = "true" ]; then
+              corepack pnpm tsx scripts/run_scheduled_sample_retest.ts --dry-run --ensure-questions
+            else
+              corepack pnpm tsx scripts/run_scheduled_sample_retest.ts --dry-run
+            fi
           else
-            corepack pnpm tsx scripts/run_scheduled_sample_retest.ts
+            corepack pnpm tsx scripts/run_scheduled_sample_retest.ts --ensure-questions
           fi

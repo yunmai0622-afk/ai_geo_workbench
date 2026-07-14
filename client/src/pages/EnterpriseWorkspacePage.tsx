@@ -55,6 +55,10 @@ export default function EnterpriseWorkspacePage() {
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) },
   );
+  const scheduledRetestQuery = trpc.geo.inclusionMonitoring.scheduledRetestStatus.useQuery(
+    { projectId: 210001 },
+    { enabled: selectedProjectId === 210001 },
+  );
 
   useEffect(() => {
     const enterpriseName = selectedProject?.enterpriseName?.trim() || "企业";
@@ -207,9 +211,9 @@ export default function EnterpriseWorkspacePage() {
     const recommend = customerRateDisplay(aiBrandRecommendRate, "recommend");
     return [
       {
-        label: "AI 成熟度",
-        value: customerMaturityScore == null ? "待评分" : `${customerMaturityScore} 分`,
-        description: customerMaturityLevel ?? "完成诊断后生成评分",
+        label: "AI 品牌资产总分",
+        value: selectedProjectId === 210001 ? "46 分" : "待评估",
+        description: "六类公开证据资产的建设程度",
       },
       {
         label: "AI 是否知道你",
@@ -222,24 +226,23 @@ export default function EnterpriseWorkspacePage() {
         description: recommend.description,
       },
       {
-        label: "本月服务进度",
+        label: "本月资产建设进度",
         value:
           customerMonthlyProgress.totalCount > 0
             ? `${customerMonthlyProgress.completedCount}/${customerMonthlyProgress.totalCount} 项`
             : "待制定",
         description:
           customerMonthlyProgress.totalCount > 0
-            ? "本月 Top 服务事项完成情况"
-            : "先生成月度优化计划",
+            ? "本月 Top 资产任务完成情况"
+            : "先生成资产建设计划",
       },
     ];
   }, [
     aiBrandMentionRate,
     aiBrandRecommendRate,
-    customerMaturityLevel,
-    customerMaturityScore,
     customerMonthlyProgress.completedCount,
     customerMonthlyProgress.totalCount,
+    selectedProjectId,
   ]);
   const customerIssues = useMemo(() => {
     if (!metrics) return [];
@@ -538,7 +541,7 @@ export default function EnterpriseWorkspacePage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-medium text-blue-600">AI 品牌资产摘要</p>
-                <h2 className="mt-1 text-lg font-semibold text-gray-950">AI 品牌资产总分：{selectedProjectId === 210001 ? "46" : "待评估"}{selectedProjectId === 210001 ? " / 100" : ""}</h2>
+                <h2 className="mt-1 text-lg font-semibold text-gray-950">六类资产建设明细</h2>
                 <p className="mt-1 text-sm text-gray-600">资料录入不是资产完成；公开、稳定、一致、可验证的信息才是 AI 可识别资产。</p>
               </div>
               <Button type="button" className={cn("rounded-xl", geoP0Brand.primary)} onClick={() => setLocation(buildProjectUrl("/brand-assets", selectedProjectId))}>
@@ -548,7 +551,7 @@ export default function EnterpriseWorkspacePage() {
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-6" data-testid="workspace-six-asset-maturity">
               {getBrandAssets(selectedProjectId).map((asset, index) => <div key={asset.key} className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">{asset.name}</p><p className="mt-1 text-xs text-gray-600">成熟度 {selectedProjectId === 210001 ? [58, 48, 28, 52, 55, 35][index] : "—"} · {asset.status}</p></div>)}
             </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-3"><p className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-950"><span className="font-semibold">Top 3 缺口：</span>官网同主题定义页、第三方可信信源、稳定 AI 推荐证据。</p><p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950"><span className="font-semibold">本月建设：</span>业务定义、问题占位与第一条知乎公开内容证据。</p><p className="rounded-xl border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-950"><span className="font-semibold">下一次验证：</span>{selectedProjectId === 210001 ? "07/12 收录初查与 T2 轻量复测" : "待安排"}</p></div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-3"><p className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-950"><span className="font-semibold">Top 3 缺口：</span>官网同主题定义页、第三方可信信源、稳定 AI 推荐证据。</p><p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950"><span className="font-semibold">本月建设：</span>业务定义、问题占位与第一条知乎公开内容证据。</p><p className="rounded-xl border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-950"><span className="font-semibold">下一次验证：</span>{selectedProjectId === 210001 ? scheduledRetestQuery.data?.nextMilestone?.dueDate === "2026-07-16" ? "07/16 正式问题池 T2 复测；07/12 待补跑" : scheduledRetestQuery.data?.nextMilestone?.dueDate === "2026-07-23" ? "07/23 T3 复测；过期节点待补跑" : "等待新的未来节点；过期节点保留" : "待安排"}</p></div>
           </section>
 
           <section className="geo-card overflow-hidden p-5 sm:p-6" data-testid="workspace-delivery-flow-map">
@@ -570,7 +573,7 @@ export default function EnterpriseWorkspacePage() {
               </div>
               <div className="text-sm leading-6 text-gray-700">
                 <p><span className="font-semibold text-gray-900">当前进展：</span>{selectedProjectId === 210001 ? "已围绕“海豚知道是什么？”完成知乎公开内容建设，正在观察收录和 AI 复测结果。" : customerFlowSteps.find(step => step.active)?.description}</p>
-                <p><span className="font-semibold text-gray-900">下一步：</span>{selectedProjectId === 210001 ? "07/12 执行收录初查与 T2 轻量复测。" : `继续推进${customerFlowSteps.find(step => step.active)?.label ?? "当前服务"}。`}</p>
+                <p><span className="font-semibold text-gray-900">下一步：</span>{selectedProjectId === 210001 ? scheduledRetestQuery.data?.retryRequired ? "补跑 07/12 失败节点，并保留 07/16、07/23 后续计划。" : "按下一未来节点执行复测。" : `继续推进${customerFlowSteps.find(step => step.active)?.label ?? "当前服务"}。`}</p>
               </div>
               <Button
                 type="button"

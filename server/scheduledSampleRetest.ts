@@ -23,6 +23,13 @@ export const SAMPLE_RETEST_QUESTIONS = [
   "知识付费团队如何做系统化经营？",
 ] as const;
 
+const SAMPLE_RETEST_QUESTION_CONFIG = [
+  { questionText: SAMPLE_RETEST_QUESTIONS[0], searchPoolType: "brand_search" },
+  { questionText: SAMPLE_RETEST_QUESTIONS[1], searchPoolType: "brand_search" },
+  { questionText: SAMPLE_RETEST_QUESTIONS[2], searchPoolType: "category_recommend" },
+  { questionText: SAMPLE_RETEST_QUESTIONS[3], searchPoolType: "scene_need" },
+] as const;
+
 type Milestone = {
   key: "light_t2" | "t2" | "t3";
   dueDate: string;
@@ -50,6 +57,41 @@ export function dueSampleMilestoneKeys(now: Date): Milestone["key"][] {
   return SAMPLE_RETEST_MILESTONES.filter(item => item.dueDate <= today).map(item => item.key);
 }
 
+export function missingSampleRetestQuestions(questionTexts: readonly string[]): string[] {
+  const normalized = new Set(questionTexts.map(text => text.trim()));
+  return SAMPLE_RETEST_QUESTIONS.filter(text => !normalized.has(text));
+}
+
+async function inspectSampleRetestQuestionPool(db: NonNullable<Awaited<ReturnType<typeof getDb>>>) {
+  const rows = await db.select({ id: questions.id, questionText: questions.questionText })
+    .from(questions)
+    .where(and(
+      eq(questions.projectId, SAMPLE_RETEST_PROJECT_ID),
+      inArray(questions.questionText, [...SAMPLE_RETEST_QUESTIONS]),
+    ));
+  return { rows, missing: missingSampleRetestQuestions(rows.map(row => row.questionText)) };
+}
+
+async function ensureSampleRetestQuestionPool(db: NonNullable<Awaited<ReturnType<typeof getDb>>>) {
+  const before = await inspectSampleRetestQuestionPool(db);
+  if (before.missing.length) {
+    const configs = SAMPLE_RETEST_QUESTION_CONFIG.filter(item => before.missing.includes(item.questionText));
+    await db.insert(questions).values(configs.map(item => ({
+      projectId: SAMPLE_RETEST_PROJECT_ID,
+      questionText: item.questionText,
+      questionType: "指定问题" as const,
+      targetKeyword: "海豚知道",
+      intentLevel: "高",
+      businessValue: 5,
+      source: "manual" as const,
+      enabled: 1,
+      searchPoolType: item.searchPoolType,
+    })));
+  }
+  const after = await inspectSampleRetestQuestionPool(db);
+  return { insertedQuestions: before.missing, ...after };
+}
+
 function automationState(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const state = (raw as Record<string, unknown>).scheduledRetest;
@@ -71,7 +113,7 @@ async function updateMonitoringState(
   }).where(eq(geoInclusionMonitoringRecords.id, record.id));
 }
 
-export async function runDueSampleRetests(options: { now?: Date; dryRun?: boolean } = {}) {
+export async function runDueSampleRetests(options: { now?: Date; dryRun?: boolean; ensureQuestions?: boolean } = {}) {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
   const now = options.now ?? new Date();
@@ -88,16 +130,27 @@ export async function runDueSampleRetests(options: { now?: Date; dryRun?: boolea
   const dueKeys = dueSampleMilestoneKeys(now);
   const due = SAMPLE_RETEST_MILESTONES.filter(item => dueKeys.includes(item.key));
   const summary: Array<{ key: Milestone["key"]; status: string; detail?: string }> = [];
+  const pool = options.ensureQuestions
+    ? await ensureSampleRetestQuestionPool(db)
+    : { insertedQuestions: [] as string[], ...await inspectSampleRetestQuestionPool(db) };
+  if (pool.missing.length) {
+    throw new Error(`样板复测问题池缺失：${pool.missing.join("、")}。请先补齐问题配置后再执行复测。`);
+  }
   if (options.dryRun) {
-    return { projectId: SAMPLE_RETEST_PROJECT_ID, today, dryRun: true, due: due.map(item => item.key) };
+    return {
+      projectId: SAMPLE_RETEST_PROJECT_ID,
+      today,
+      dryRun: true,
+      due: due.map(item => item.key),
+      questionPoolComplete: true,
+      questionCount: pool.rows.length,
+      insertedQuestions: pool.insertedQuestions,
+      wroteRetestResults: false,
+    };
   }
 
-  const allQuestions = await db.select({ id: questions.id, questionText: questions.questionText })
-    .from(questions).where(eq(questions.projectId, SAMPLE_RETEST_PROJECT_ID));
-  const questionByText = new Map(allQuestions.map(row => [row.questionText.trim(), row]));
+  const questionByText = new Map(pool.rows.map(row => [row.questionText.trim(), row]));
   const selectedQuestions = SAMPLE_RETEST_QUESTIONS.map(text => questionByText.get(text));
-  const missing = SAMPLE_RETEST_QUESTIONS.filter((_, index) => !selectedQuestions[index]);
-  if (missing.length) throw new Error(`样板复测问题池缺失：${missing.join("、")}`);
   const competitors = await resolveProjectCompetitorNames(db, SAMPLE_RETEST_PROJECT_ID);
 
   const initialState = automationState(monitoring.rawJson);

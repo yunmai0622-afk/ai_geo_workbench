@@ -51,11 +51,11 @@ describe("GEO-V2.0-P0-E Maturity Score", () => {
     expect(shared).toContain("buildMaturityReport");
   });
 
-  it("workspace customer homepage shows only the core maturity metric", () => {
+  it("workspace customer homepage keeps diagnostic maturity behind the asset score", () => {
     const workspace = read("client/src/pages/EnterpriseWorkspacePage.tsx");
     expect(workspace).toContain("geo.maturity.getMaturityReport");
     expect(workspace).toContain("workspace-command-center");
-    expect(workspace).toContain("AI 成熟度");
+    expect(workspace).toContain("AI 品牌资产总分");
     expect(workspace).toContain("workspace-customer-core-metric");
     expect(workspace).not.toContain("workspace-maturity-hero");
     expect(workspace).not.toContain("workspace-maturity-dimension-");

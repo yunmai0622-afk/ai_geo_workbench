@@ -18,6 +18,7 @@ import {
 import { formatMonthlyReportImpactProofLine } from "@shared/contentRetestAttribution";
 import { getBrandAssets } from "@shared/brandAssets";
 import type { MonthlyOptimizationBrief, MonthlyOptimizationPriority } from "@shared/monthlyOptimizationBrief";
+import { deriveRetestReportState, scheduledRetestStatusLabel } from "@shared/trustworthyState";
 import {
   AlertTriangle,
   ArrowRight,
@@ -130,13 +131,6 @@ function reportCount(value: number | null | undefined): string {
 function currentRateLabel(value: number | null): string {
   if (value == null) return "暂无基线";
   return `当前 ${formatPercent(value)}`;
-}
-
-function scheduledRetestStatusLabel(value: unknown): string {
-  if (value === "running") return "执行中";
-  if (value === "completed") return "已完成";
-  if (value === "failed") return "失败";
-  return "待执行";
 }
 
 function hasContentLevelRetest(report: MonthlyReportView): boolean {
@@ -658,6 +652,18 @@ function RenewalDeliveryReportHero({
     { projectId: 210001 },
     { enabled: selectedProjectId === 210001 },
   );
+  const trustworthyState = deriveRetestReportState({
+    hasRetestRecord: report.hasRetestData || hasContentLevelRetest(report),
+    currentRetestReadyCount: report.actions.contentAssetProof.retestReadyCount,
+    automaticStatus: scheduledRetestQuery.data?.currentStatus,
+    retryRequired: scheduledRetestQuery.data?.retryRequired,
+    reportPageAvailable: true,
+    formalMonthlyReportGenerated: report.hasRetestData && report.planPhase === "completed",
+    effectLoopCompleted: report.hasRetestData
+      && report.planPhase === "completed"
+      && report.actions.contentAssetProof.includedCount > 0
+      && report.summary.recommendRateResult != null,
+  });
 
   const handlePrimaryCta = () => {
     if (primaryCta.action === "generateNextPlan") {
@@ -677,6 +683,11 @@ function RenewalDeliveryReportHero({
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">已形成公开证据</p><p className="mt-1 text-sm text-gray-600">真实知乎 URL 已回填；仅证明内容公开发布，不代表已收录、被引用或被推荐。</p></div>
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">当前 AI 复测结论与未闭环原因</p><p className="mt-1 text-sm text-gray-600">轻量核验未显示稳定提及、推荐或文章引用；正式 T2/T3 尚待执行，因此不能判断效果提升。</p></div>
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">下月资产建设建议</p><p className="mt-1 text-sm text-gray-600">补强官网同主题定义页和第三方可信信源，继续既定复测计划，并建设推荐类问题占位。</p></div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3" data-testid="delivery-report-trustworthy-state">
+          <div className="rounded-xl border border-gray-100 bg-white p-3"><p className="text-xs font-semibold text-gray-700">复测记录 / 当前可执行</p><p className="mt-1 text-sm text-gray-900">{trustworthyState.retestRecordLabel} · 当前 {trustworthyState.currentRetestReadyCount} 条</p></div>
+          <div className="rounded-xl border border-gray-100 bg-white p-3"><p className="text-xs font-semibold text-gray-700">报告状态</p><p className="mt-1 text-sm text-gray-900">页面可预览 · 正式月报{trustworthyState.formalMonthlyReportGenerated ? "已生成" : "待生成"}</p></div>
+          <div className="rounded-xl border border-gray-100 bg-white p-3"><p className="text-xs font-semibold text-gray-700">效果闭环</p><p className="mt-1 text-sm text-gray-900">{trustworthyState.effectLoopCompleted ? "已完成" : "尚未完成"}</p></div>
         </div>
       </P0Card>
       <P0Card testId="delivery-report-renewal-hero" className="space-y-6">
@@ -822,7 +833,10 @@ function RenewalDeliveryReportHero({
               </div>
               <div className="mt-3 rounded-xl border border-sky-100 bg-white/80 p-3 text-xs leading-5 text-gray-700" data-testid="delivery-report-automatic-retest-status">
                 <p className="font-semibold text-sky-900">自动复测已启用 · {scheduledRetestQuery.data?.frequency ?? "每天 20:30（Asia/Shanghai）"}</p>
+                <p>健康状态：{scheduledRetestQuery.data?.healthStatus === "needs_attention" ? "需处理" : scheduledRetestQuery.data?.healthStatus === "running" ? "执行中" : "正常"}</p>
                 <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.currentStatus)}</p>
+                {scheduledRetestQuery.data?.retryRequired ? <p className="font-medium text-amber-800">处置建议：补跑失败节点；后续计划不变。</p> : null}
+                {scheduledRetestQuery.data?.nextMilestone ? <p>下一计划节点：{scheduledRetestQuery.data.nextMilestone.dueDate}</p> : null}
                 {scheduledRetestQuery.data?.lastResultCount != null ? <p>最近结果：{scheduledRetestQuery.data.lastResultCount} 条真实 AI 回答；提及率 {Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%，推荐率 {Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%。</p> : <p>最近结果：尚无自动复测结果</p>}
                 {scheduledRetestQuery.data?.lastError ? <p className="text-red-700">失败原因：{scheduledRetestQuery.data.lastError}</p> : null}
               </div>
@@ -921,7 +935,7 @@ function RenewalDeliveryReportHero({
               <p className="text-sm font-semibold text-gray-900">下一步代运营服务动作</p>
               <div className="mt-3 space-y-3">
                 {[
-                  { title: "继续观察", why: "搜索收录需要时间，过早判断会误读效果。", verify: "07/12 检查 URL、标题精确搜索和品牌词触发。", decide: "满 3 天后判断是否继续等待。" },
+                  { title: "补跑过期节点", why: "07/12 自动复测未成功，失败记录必须保留并补跑。", verify: "补跑时检查 URL、标题精确搜索和品牌词触发。", decide: "补跑结果写入后再判断，不把失败节点改写成成功。" },
                   { title: "信源补强", why: "统一公开表达能帮助搜索与 AI 稳定识别品牌实体。", verify: "核对官网、知乎和公开平台的品牌介绍与业务定位是否一致。", decide: "07/16 正式 T2 后判断是否继续补第三方信源。" },
                   { title: "内容补强", why: "单篇内容可能不足以覆盖泛问题和推荐理由。", verify: "观察第 7 天收录状态及泛问题是否开始提及品牌。", decide: "若仍未收录或泛问题未提及，再启动第二篇内容。" },
                 ].map(item => (

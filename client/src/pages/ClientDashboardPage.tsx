@@ -193,7 +193,7 @@ function ProjectCard({
   const sampleRetestInProgress = project.id === 210001 && project.publishCount > 0;
   const pipelineBadgeLabel = sampleRetestInProgress ? "收录与 AI 复测" : primaryAction.stageLabel;
   const serviceHomeUrl = buildProjectUrl("/workspace", project.id);
-  const nextStep = sampleRetestInProgress ? "07/12 收录初查与 T2 轻量复测" : primaryAction.nextStepHint;
+  const nextStep = sampleRetestInProgress ? "补跑过期复测节点，并按验证中心推进下一未来节点" : primaryAction.nextStepHint;
   const subscriptionStatus = (project.subscriptionServiceStatus ?? "not_configured") as SubscriptionServiceStatus;
   const subscriptionExpiryLabel = formatSubscriptionExpiryLabel(
     project.subscriptionExpiresAt,

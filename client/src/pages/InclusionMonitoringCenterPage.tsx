@@ -21,6 +21,7 @@ import {
   aggregatePlatformEffectSummary,
 } from "@shared/contentAssetEffectTracking";
 import { toUserFacingErrorFromUnknown } from "@shared/userFacingErrors";
+import { scheduledRetestStatusLabel } from "@shared/trustworthyState";
 import {
   AlertTriangle,
   ArrowRight,
@@ -88,13 +89,6 @@ function formatRate(rate: number | null) {
 function formatCustomerCount(value: number | null | undefined, unit = "") {
   if (value == null || Number.isNaN(value)) return "暂无";
   return `${value.toLocaleString("zh-CN")}${unit}`;
-}
-
-function scheduledRetestStatusLabel(value: unknown) {
-  if (value === "running") return "执行中";
-  if (value === "completed") return "已完成";
-  if (value === "failed") return "失败";
-  return "待执行";
 }
 
 function hasAiRetest(record: ContentAssetEffectViewRecord) {
@@ -314,9 +308,9 @@ function EffectVerificationCustomerOverview({
           hint={overview.inclusionRate == null ? "证据仍在积累中。" : `当前收录率 ${formatRate(overview.inclusionRate)}。`}
         />
         <EffectVerificationMetric
-          label="可进入 AI 复测"
+          label="当前可执行复测"
           value={formatCustomerCount(overview.retestReadyCount, " 条")}
-          hint={testedCount > 0 ? `${formatCustomerCount(testedCount, " 条")}已完成复测。` : "收录后再判断 AI 是否识别和引用品牌。"}
+          hint={testedCount > 0 ? `另有 ${formatCustomerCount(testedCount, " 条")}历史复测记录。` : "这是当前可执行数量，不等于历史复测记录。"}
         />
       </div>
 
@@ -653,7 +647,14 @@ export function InclusionMonitoringCenterPage() {
               { label: "收录状态", value: "待观察，未写成已收录" },
               { label: "AI 提及状态", value: "T1 未稳定提及" },
               { label: "AI 推荐状态", value: "未推荐" },
-              { label: "下一次复测", value: "07/12 收录初查 + T2 轻量复测" },
+              {
+                label: "下一次复测",
+                value: scheduledRetestQuery.data?.nextMilestone?.key === "t2"
+                  ? "07/16 正式问题池 T2 复测"
+                  : scheduledRetestQuery.data?.nextMilestone?.key === "t3"
+                    ? "07/23 T3 复测 + 下月建议"
+                    : "等待新的未来复测节点",
+              },
               { label: "当前结论", value: "公开证据已形成，效果待验证" },
             ].map(item => (
               <div key={item.label} className="rounded-xl border border-cyan-100 bg-white/80 p-3">
@@ -668,7 +669,10 @@ export function InclusionMonitoringCenterPage() {
           <div className="mt-3 rounded-xl border border-cyan-100 bg-white/80 p-3 text-xs leading-5 text-gray-700" data-testid="inclusion-automatic-retest-status">
             <p className="font-semibold text-cyan-900">自动复测：已启用</p>
             <p>执行频率：{scheduledRetestQuery.data?.frequency ?? "每天 20:30（Asia/Shanghai）"}</p>
+            <p>健康状态：{scheduledRetestQuery.data?.healthStatus === "needs_attention" ? "需处理" : scheduledRetestQuery.data?.healthStatus === "running" ? "执行中" : "正常"}</p>
             <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.currentStatus)}</p>
+            {scheduledRetestQuery.data?.retryRequired ? <p className="font-medium text-amber-800">处置建议：补跑过期/失败节点；未来节点仍按原计划保留。</p> : null}
+            {scheduledRetestQuery.data?.nextMilestone ? <p>下一计划节点：{scheduledRetestQuery.data.nextMilestone.dueDate}</p> : null}
             {scheduledRetestQuery.data?.lastAiTestedAt ? <p>最近执行：{formatTime(scheduledRetestQuery.data.lastAiTestedAt)}</p> : <p>最近执行：暂无自动复测结果</p>}
             {scheduledRetestQuery.data?.lastError ? <p className="text-red-700">失败原因：{scheduledRetestQuery.data.lastError}</p> : null}
           </div>

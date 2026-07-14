@@ -36,6 +36,48 @@ type MonthlyPlanPrimaryCta = {
   action?: "generate";
 };
 
+type MonthlyPlanBriefView = Pick<MonthlyOptimizationBrief, "priorities"> &
+  Partial<Pick<MonthlyOptimizationBrief, "reviewCalendar">>;
+
+const SAMPLE_210001_ASSET_PRIORITIES: MonthlyOptimizationPriority[] = [
+  {
+    rank: 1,
+    title: "补业务定义资产：建设官网同主题定义页",
+    relatedDimensionKey: "profile",
+    relatedDimensionName: "业务定义资产",
+    source: "suggestion",
+    reason: "官网统一定义能让 AI 在品牌是什么、解决什么问题和适合谁上获得更稳定的一手依据。",
+    shortcoming: "知乎已有第一条定义型公开内容，但官网缺少同主题定义页。",
+    tasks: [{ id: null, title: "建设官网同主题定义页", status: "suggested", actionUrl: "/enterprise-profile" }],
+    successCriteria: "形成可公开访问的官网定义页，并与现有品牌标准表达保持一致。",
+    retestMethod: "检查页面可访问性与标题检索，并复测 AI 对“海豚知道是什么？”的解释是否一致。",
+  },
+  {
+    rank: 2,
+    title: "补可信信源资产：新增第三方公开证据",
+    relatedDimensionKey: "sourceConsistency",
+    relatedDimensionName: "可信信源资产",
+    source: "suggestion",
+    reason: "独立第三方信源能降低单一自述带来的可信度不足，为 AI 引用和推荐提供交叉验证。",
+    shortcoming: "当前主要证据来自知乎公开内容，官网与第三方可信信源仍不足。",
+    tasks: [{ id: null, title: "新增第三方公开信源", status: "suggested", actionUrl: "/brand-source-graph" }],
+    successCriteria: "新增至少一条可访问、主体清楚、表达一致的第三方公开信源。",
+    retestMethod: "验证 URL 可访问和核心事实一致性，并观察 AI 回答是否引用或复述新增信源。",
+  },
+  {
+    rank: 3,
+    title: "补第二个 AI 问题占位资产",
+    relatedDimensionKey: "questionCoverage",
+    relatedDimensionName: "AI 问题占位资产",
+    source: "suggestion",
+    reason: "从定义型问题扩展到推荐型问题，才能验证品牌是否进入用户真实决策场景。",
+    shortcoming: "目前只围绕“海豚知道是什么？”形成第一条公开答案，推荐类问题尚未完成占位。",
+    tasks: [{ id: null, title: "围绕“知识付费 SaaS 系统有哪些推荐？”建设公开答案", status: "suggested", actionUrl: "/questions" }],
+    successCriteria: "第二个目标问题形成公开可访问内容和稳定 URL，未公开前不计为完成。",
+    retestMethod: "使用同一推荐型问题执行 T1/T2/T3，分别记录提及、推荐、引用和竞品占位。",
+  },
+];
+
 function formatDateTime(value: Date | string | null | undefined): string {
   if (!value) return "—";
   const date = value instanceof Date ? value : new Date(value);
@@ -61,7 +103,7 @@ function priorityStatusLabel(
   priority: MonthlyOptimizationPriority,
   planPhase: string | null | undefined
 ): string {
-  if (priority.source === "suggestion") return "待纳入方案";
+  if (priority.source === "suggestion") return "待建设";
   if (priority.tasks.length === 0) return "待确认";
   const allCompleted = priority.tasks.every(
     task => task.status === "completed"
@@ -83,7 +125,7 @@ function priorityStatusClass(label: string): string {
   if (label === "执行中") return "border-blue-200 bg-blue-50 text-blue-700";
   if (label === "待验证")
     return "border-indigo-200 bg-indigo-50 text-indigo-700";
-  if (label === "待纳入方案") return "border-gray-200 bg-gray-50 text-gray-600";
+  if (label === "待建设") return "border-gray-200 bg-gray-50 text-gray-600";
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
@@ -122,7 +164,7 @@ function customerValueForDimension(
 }
 
 function buildServiceConclusion(input: {
-  brief?: MonthlyOptimizationBrief | null;
+  brief?: MonthlyPlanBriefView | null;
   hasMaturity: boolean;
   hasPlan: boolean;
   planPhase?: string | null;
@@ -134,7 +176,7 @@ function buildServiceConclusion(input: {
   }
   const priorities = input.brief?.priorities ?? [];
   if (priorities.length === 0) {
-    return "当前缺少可用的本月服务事项，建议先补齐资料或重新生成月度优化计划。";
+    return "当前缺少可用的本月资产建设任务，请从资产缺口生成 Top 3 任务。";
   }
   const focus = priorities
     .slice(0, 3)
@@ -153,7 +195,7 @@ function buildServiceConclusion(input: {
 }
 
 function buildCustomerGoals(input: {
-  brief?: MonthlyOptimizationBrief | null;
+  brief?: MonthlyPlanBriefView | null;
   hasMaturity: boolean;
   hasPlan: boolean;
   completedCount: number;
@@ -180,7 +222,7 @@ function buildCustomerGoals(input: {
 }
 
 function buildVerificationCopy(input: {
-  brief?: MonthlyOptimizationBrief | null;
+  brief?: MonthlyPlanBriefView | null;
   planPhase?: string | null;
   retestScheduledAt?: Date | string | null;
 }): {
@@ -406,7 +448,7 @@ export default function MonthlyPlanPage() {
 
   useEffect(() => {
     const name = selectedProject?.enterpriseName?.trim() || "企业";
-    document.title = `${name} - 月度优化计划`;
+    document.title = `${name} - 本月资产建设计划`;
   }, [selectedProject?.enterpriseName]);
 
   const current = currentQuery.data;
@@ -437,56 +479,70 @@ export default function MonthlyPlanPage() {
   const showActivePlan = plan?.status === "active";
   const showCompletedPlan = plan?.status === "completed";
   const optimizationBrief = optimizationBriefQuery.data ?? null;
-  const topPriorities = optimizationBrief?.priorities.slice(0, 3) ?? [];
-  const hasMaturityReport = Boolean(maturityQuery.data);
   const hasPlan = Boolean(plan);
+  const topPriorities = optimizationBrief?.priorities.length
+    ? optimizationBrief.priorities.slice(0, 3)
+    : selectedProjectId === 210001
+      ? SAMPLE_210001_ASSET_PRIORITIES
+      : [];
+  const displayBrief = optimizationBrief
+    ? { ...optimizationBrief, priorities: topPriorities }
+    : selectedProjectId === 210001
+      ? { priorities: topPriorities }
+      : null;
+  const displayProgress = progress.totalCount > 0
+    ? progress
+    : hasPlan && topPriorities.length > 0
+      ? { completedCount: 0, totalCount: topPriorities.length }
+      : progress;
+  const hasMaturityReport = Boolean(maturityQuery.data);
   const hasServiceItems = topPriorities.length > 0 || tasks.length > 0;
   const allTasksCompleted =
     progress.totalCount > 0 && progress.completedCount >= progress.totalCount;
   const serviceConclusion = useMemo(
     () =>
       buildServiceConclusion({
-        brief: optimizationBrief,
+        brief: displayBrief,
         hasMaturity: hasMaturityReport,
         hasPlan,
         planPhase,
-        completedCount: progress.completedCount,
-        totalCount: progress.totalCount,
+        completedCount: displayProgress.completedCount,
+        totalCount: displayProgress.totalCount,
       }),
     [
       hasMaturityReport,
       hasPlan,
-      optimizationBrief,
+      displayBrief,
       planPhase,
-      progress.completedCount,
-      progress.totalCount,
+      displayProgress.completedCount,
+      displayProgress.totalCount,
     ]
   );
   const customerGoals = useMemo(
     () =>
       buildCustomerGoals({
-        brief: optimizationBrief,
+        brief: displayBrief,
         hasMaturity: hasMaturityReport,
         hasPlan,
-        completedCount: progress.completedCount,
-        totalCount: progress.totalCount,
+        completedCount: displayProgress.completedCount,
+        totalCount: displayProgress.totalCount,
       }),
     [
       hasMaturityReport,
       hasPlan,
-      optimizationBrief,
-      progress.completedCount,
-      progress.totalCount,
+      displayBrief,
+      displayProgress.completedCount,
+      displayProgress.totalCount,
     ]
   );
   const verificationCopy = useMemo(
     () =>
       buildVerificationCopy({
-        brief: optimizationBrief,
+        brief: displayBrief,
         planPhase,
         retestScheduledAt: plan?.retestScheduledAt,
       }),
-    [optimizationBrief, plan?.retestScheduledAt, planPhase]
+    [displayBrief, plan?.retestScheduledAt, planPhase]
   );
   const visibleRisks = useMemo(
     () =>
@@ -494,16 +550,16 @@ export default function MonthlyPlanPage() {
         hasMaturity: hasMaturityReport,
         hasPlan,
         priorities: topPriorities,
-        completedCount: progress.completedCount,
-        totalCount: progress.totalCount,
+        completedCount: displayProgress.completedCount,
+        totalCount: displayProgress.totalCount,
         planPhase,
       }),
     [
       hasMaturityReport,
       hasPlan,
       planPhase,
-      progress.completedCount,
-      progress.totalCount,
+      displayProgress.completedCount,
+      displayProgress.totalCount,
       topPriorities,
     ]
   );
@@ -521,15 +577,15 @@ export default function MonthlyPlanPage() {
     }
     if (!hasServiceItems && !canGeneratePlan) {
       return {
-        label: "回到服务首页",
-        hint: "当前缺少可执行服务事项，建议回到服务首页检查资料和诊断状态。",
-        path: "/workspace",
+        label: "从资产缺口生成 Top 3 任务",
+        hint: "当前没有资产建设任务，请先生成本月计划。",
+        action: "generate" as const,
       };
     }
     if (!plan && canGeneratePlan) {
       return {
-        label: "生成月度优化计划",
-        hint: "把成熟度短板转成 Top 服务事项。",
+        label: "生成本月资产建设计划",
+        hint: "把资产缺口转成 Top 3 建设任务。",
         action: "generate" as const,
       };
     }
@@ -539,8 +595,8 @@ export default function MonthlyPlanPage() {
         planPhase === "completed" || showCompletedPlan
           ? "月度优化计划已完成，仍从执行进度进入验证和报告闭环。"
           : allTasksCompleted
-            ? "本月服务事项已完成，下一步从执行进度进入收录与 AI 复测。"
-            : "确认本月 3 个优先事项后，只需要进入执行进度看服务推进。",
+            ? "本月资产建设任务已完成，下一步进入收录与 AI 复测。"
+            : "本月 Top 3 资产任务已确认，可进入执行页查看推进。",
       path: "/weekly",
     };
   }, [
@@ -647,7 +703,7 @@ export default function MonthlyPlanPage() {
             <div className="flex items-center gap-2">
               <Target className="size-4 text-blue-600" />
               <p className="text-sm font-semibold text-gray-900">
-                本月服务结论
+                本月资产建设结论
               </p>
             </div>
             <p
@@ -670,7 +726,7 @@ export default function MonthlyPlanPage() {
                 本月要补强的 3 类品牌资产
               </p>
             </div>
-            {optimizationBriefQuery.isLoading ? (
+            {optimizationBriefQuery.isLoading && !plan ? (
               <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-500">
                 <Spinner className="size-3" />
                 生成中
@@ -832,7 +888,7 @@ export default function MonthlyPlanPage() {
           >
             <p className="text-xs text-gray-500">本月进度</p>
             <p className="text-2xl font-bold tabular-nums text-blue-700">
-              {progress.completedCount}/{progress.totalCount}
+              {displayProgress.completedCount}/{displayProgress.totalCount}
             </p>
             <p className="text-xs text-gray-500">项完成</p>
           </div>

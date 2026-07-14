@@ -26,7 +26,7 @@ describe("GEO V2.3 P0-B workspace customer overview", () => {
   });
 
   it("keeps the first-screen metrics customer-readable", () => {
-    for (const label of ["AI 成熟度", "AI 是否知道你", "AI 是否愿意推荐你", "本月服务进度"]) {
+    for (const label of ["AI 品牌资产总分", "AI 是否知道你", "AI 是否愿意推荐你", "本月资产建设进度"]) {
       expect(page).toContain(label);
     }
     for (const label of ["当前最大问题", "查看本月服务计划"]) {

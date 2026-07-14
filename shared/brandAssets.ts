@@ -46,7 +46,7 @@ export function getBrandAssets(projectId: number | null | undefined): BrandAsset
     { ...DEFAULT_ASSETS[1], status: BRAND_ASSET_STATUS.IN_PROGRESS, evidence: "已通过知乎文章建设第一条定义型公开内容。", gap: "官网尚缺同主题定义页，FAQ 与更多业务边界仍待补充。", nextAction: "在官网补充同主题定义页，并保持与知乎表达一致。", hasPublicEvidence: true },
     { ...DEFAULT_ASSETS[2], status: BRAND_ASSET_STATUS.INSUFFICIENT, evidence: "已有官网及既有公开来源可供核验，但信源结构仍薄弱。", gap: "官网主题页、第三方介绍、案例和客户背书仍需补强。" },
     { ...DEFAULT_ASSETS[3], status: BRAND_ASSET_STATUS.IN_PROGRESS, evidence: "已建立第一个问题占位：“海豚知道是什么？”，并对应真实公开内容。", gap: "尚无证据证明已被 AI 稳定提及、引用或推荐。", nextAction: "继续执行既定复查计划，并建设推荐类问题占位。", hasPublicEvidence: true, verifiedByAiRetest: true },
-    { ...DEFAULT_ASSETS[4], status: BRAND_ASSET_STATUS.TO_VERIFY, evidence: `已形成第一条知乎公开内容证据：${SAMPLE_210001_ZHIHU_URL}`, gap: "收录待观察，AI 提及、引用和推荐待验证。", nextAction: "保持公开 URL 稳定并进入 07/12、07/16、07/23 验证。", hasPublicEvidence: true },
-    { ...DEFAULT_ASSETS[5], status: BRAND_ASSET_STATUS.IN_PROGRESS, evidence: "已有 T1 复测记录，并安排 07/12、07/16、07/23 复测。", gap: "正式 T2/T3 尚待执行；尚无稳定提及、引用或推荐证据，效果闭环未完成。", nextAction: "保持既定自动复测计划，完成正式 T2/T3 后再形成结论。", hasPublicEvidence: true, verifiedByAiRetest: true },
+    { ...DEFAULT_ASSETS[4], status: BRAND_ASSET_STATUS.TO_VERIFY, evidence: `已形成第一条知乎公开内容证据：${SAMPLE_210001_ZHIHU_URL}`, gap: "收录待观察，AI 提及、引用和推荐待验证。", nextAction: "保持公开 URL 稳定；保留 07/12 待补跑记录，并推进 07/16、07/23 验证。", hasPublicEvidence: true },
+    { ...DEFAULT_ASSETS[5], status: BRAND_ASSET_STATUS.IN_PROGRESS, evidence: "已有 T1 复测记录；07/12 节点待补跑，07/16、07/23 计划保留。", gap: "正式 T2/T3 尚待执行；尚无稳定提及、引用或推荐证据，效果闭环未完成。", nextAction: "补跑失败节点并保持后续自动复测计划，完成正式 T2/T3 后再形成结论。", hasPublicEvidence: true, verifiedByAiRetest: true },
   ];
 }

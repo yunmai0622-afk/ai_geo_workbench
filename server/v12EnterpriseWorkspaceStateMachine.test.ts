@@ -95,7 +95,7 @@ describe("GEO-V1-C 企业工作台状态机", () => {
     expect(page).not.toContain("WorkspaceDashboardOverviewCards");
     expect(page).not.toContain("workspace-header-card");
     expect(page).not.toContain("workspace-main-chain-progress");
-    for (const label of ["AI 成熟度", "AI 是否知道你", "AI 是否愿意推荐你", "本月服务进度"]) {
+    for (const label of ["AI 品牌资产总分", "AI 是否知道你", "AI 是否愿意推荐你", "本月资产建设进度"]) {
       expect(page).toContain(label);
     }
     for (const label of ["发布次数", "AI提及率", "GEO评分"]) {

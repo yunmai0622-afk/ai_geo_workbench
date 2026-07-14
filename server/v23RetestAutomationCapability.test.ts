@@ -35,7 +35,9 @@ describe("GEO V2.3 scheduled sample retest", () => {
     expect(workflow).toContain('cron: "30 12 * * *"');
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("dry_run:");
+    expect(workflow).toContain("ensure_questions:");
     expect(workflow).toContain("--dry-run");
+    expect(workflow).toContain("--ensure-questions");
     expect(workflow).not.toContain("180001");
   });
 
@@ -44,9 +46,7 @@ describe("GEO V2.3 scheduled sample retest", () => {
     const report = read("client/src/pages/DeliveryReportsCenterPage.tsx");
     for (const source of [monitoring, report]) {
       expect(source).toContain("自动复测");
-      expect(source).toContain("待执行");
-      expect(source).toContain("执行中");
-      expect(source).toContain("已完成");
+      expect(source).toContain("scheduledRetestStatusLabel");
       expect(source).toContain("失败原因");
     }
   });
