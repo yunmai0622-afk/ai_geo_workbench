@@ -912,6 +912,10 @@ export default function WeeklyContentPage() {
     { projectId: 210001 },
     { enabled: selectedProjectId === 210001 },
   );
+  const understandingQuery = trpc.geo.understanding.getUnderstandingSummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId), retry: false },
+  );
   const assetSummaryQuery = trpc.geo.assetLibrary.summary.useQuery(
     { projectId: selectedProjectId! },
     { enabled: Boolean(selectedProjectId) }
@@ -5063,6 +5067,22 @@ export default function WeeklyContentPage() {
               : "查看本月品牌资产建设动作是否已生成、发布、回填并进入验证。"}
         </p>
       </header>
+
+      {(understandingQuery.data?.correctionTasks.length ?? 0) > 0 ? (
+        <section className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/40 p-5" data-testid="weekly-understanding-correction-tasks">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium text-fuchsia-700">Understand 纠偏执行</p>
+              <h2 className="mt-1 text-lg font-semibold text-gray-950">非文章类资产建设任务</h2>
+              <p className="mt-1 text-sm text-gray-600">官网、FAQ、Schema、案例、第三方资料、人工核验与再次复测都可独立执行。</p>
+            </div>
+            <Button variant="outline" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-understanding", selectedProjectId))}>查看偏差依据</Button>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {understandingQuery.data?.correctionTasks.slice(0, 6).map(task => <article key={task.id} className="rounded-xl bg-white p-4"><div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold text-gray-900">{task.actionDescription}</p><span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">{task.priority}</span></div><p className="mt-2 text-xs text-gray-500">资产类型：{task.recommendedAssetType}</p><p className="mt-1 text-xs text-gray-500">动作：{task.actionType}</p><p className="mt-2 text-xs leading-5 text-gray-600">完成标准：{task.completionCriteria}</p><p className="mt-2 text-xs font-medium text-blue-700">状态：{task.status}</p></article>)}
+          </div>
+        </section>
+      ) : null}
 
       <PublishSuccessNotificationCard
         visible={Boolean(publishSuccessNotice)}

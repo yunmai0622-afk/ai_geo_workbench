@@ -59,6 +59,7 @@ import { publishTasksRouter } from "./publishTasksRouter";
 import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
 import { brandSourceGraphRouter } from "./brandSourceGraphRouter";
+import { brandTruthRouter, understandingRouter } from "./brandTruthRouter";
 import { discoveryRouter } from "./discoveryRouter";
 import { trustEvidenceRouter } from "./trustEvidenceRouter";
 import { geoMaturityRouter } from "./geoMaturityRouter";
@@ -5312,6 +5313,10 @@ ${article.markdownContent}`,
   platformAccounts: projectPlatformAccountsRouter,
 
   brandSourceGraph: brandSourceGraphRouter,
+
+  brandTruth: brandTruthRouter,
+
+  understanding: understandingRouter,
 
   discovery: discoveryRouter,
 

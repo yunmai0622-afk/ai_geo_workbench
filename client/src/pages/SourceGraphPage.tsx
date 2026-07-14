@@ -268,6 +268,9 @@ export default function SourceGraphPage() {
   const discoverySummaryQuery = trpc.geo.discovery.getSourceDiscoverySummary.useQuery(projectQueryInput, {
     enabled: enabled && Boolean(selectedProjectId),
   });
+  const understandingQuery = trpc.geo.understanding.getUnderstandingSummary.useQuery(projectQueryInput, {
+    enabled: enabled && Boolean(selectedProjectId), retry: false,
+  });
 
   const invalidateAll = async () => {
     await Promise.all([
@@ -618,6 +621,12 @@ export default function SourceGraphPage() {
           等待 3/7/14 天复测，同时补官网同主题页面，并在公众号、搜狐或百家号等第三方平台同步相同主题；统一各平台品牌名称和业务描述后，再执行正式问题池复测。
         </p>
         <p className="mt-1 text-xs leading-5 text-gray-500">公开且一致的官网与第三方信源能帮助搜索和 AI 稳定识别品牌实体，但不保证一定收录、引用或推荐。</p>
+      </section>
+
+      <section className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/40 p-4" data-testid="source-graph-understanding-origin">
+        <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-medium text-fuchsia-700">理解偏差的可能来源</p><h2 className="mt-1 font-semibold text-gray-950">将 AI 错误表达追溯到缺证据、冲突或过时来源</h2></div><Button variant="outline" disabled={!selectedProjectId} onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-understanding", selectedProjectId))}>查看字段级偏差</Button></div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3"><div className="rounded-xl bg-white p-3"><p className="text-xs text-gray-500">缺少公开证据的事实</p><p className="mt-1 text-xl font-bold text-gray-900">{understandingQuery.data?.facts.filter(fact => (fact.sourceCount ?? 0) === 0).length ?? 0}</p></div><div className="rounded-xl bg-white p-3"><p className="text-xs text-gray-500">未解决来源冲突</p><p className="mt-1 text-xl font-bold text-red-700">{understandingQuery.data?.conflicts.filter(item => item.resolutionStatus !== "resolved").length ?? 0}</p></div><div className="rounded-xl bg-white p-3"><p className="text-xs text-gray-500">过时事实</p><p className="mt-1 text-xl font-bold text-amber-700">{understandingQuery.data?.facts.filter(fact => fact.verificationStatus === "outdated").length ?? 0}</p></div></div>
+        <p className="mt-3 text-xs text-gray-500">系统只展示已登记关联，不能仅凭相关性断言某个页面导致了 AI 的错误理解。</p>
       </section>
 
       {loading ? (

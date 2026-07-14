@@ -1432,3 +1432,302 @@ export type CompanySubscription = typeof companySubscriptions.$inferSelect;
 export type InsertCompanySubscription = typeof companySubscriptions.$inferInsert;
 export type CompanyProject = typeof companyProjects.$inferSelect;
 export type InsertCompanyProject = typeof companyProjects.$inferInsert;
+
+/** GEO V3.2：Brand Truth / Understand Engine。旧档案只作为待核验输入，不自动升级为已验证事实。 */
+export const brandTruthProfiles = mysqlTable(
+  "brand_truth_profiles",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    currentVersion: int("currentVersion").default(1).notNull(),
+    status: mysqlEnum("status", ["draft", "active", "needs_review", "archived"]).default("draft").notNull(),
+    completenessScore: int("completenessScore").default(0).notNull(),
+    verifiedFactRate: int("verifiedFactRate").default(0).notNull(),
+    conflictCount: int("conflictCount").default(0).notNull(),
+    outdatedFactCount: int("outdatedFactCount").default(0).notNull(),
+    lastReviewedAt: timestamp("lastReviewedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ projectUnique: uniqueIndex("brand_truth_profiles_project_unique").on(table.projectId) }),
+);
+
+export const brandTruthFacts = mysqlTable(
+  "brand_truth_facts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    profileId: int("profileId").notNull(),
+    projectId: int("projectId").notNull(),
+    category: mysqlEnum("category", ["identity", "business", "capability_boundary", "temporal"]).notNull(),
+    factType: varchar("factType", { length: 64 }).notNull(),
+    factKey: varchar("factKey", { length: 128 }).notNull(),
+    factValue: text("factValue").notNull(),
+    normalizedValue: text("normalizedValue"),
+    description: text("description"),
+    importance: mysqlEnum("importance", ["critical", "high", "medium", "low"]).default("medium").notNull(),
+    verificationStatus: mysqlEnum("verificationStatus", [
+      "provided_unverified", "official_verified", "third_party_verified", "multi_source_verified",
+      "conflicting", "outdated", "deprecated", "unknown",
+    ]).default("provided_unverified").notNull(),
+    validFrom: timestamp("validFrom"),
+    validTo: timestamp("validTo"),
+    sourceCount: int("sourceCount").default(0).notNull(),
+    officialSourceCount: int("officialSourceCount").default(0).notNull(),
+    thirdPartySourceCount: int("thirdPartySourceCount").default(0).notNull(),
+    conflictCount: int("conflictCount").default(0).notNull(),
+    lastVerifiedAt: timestamp("lastVerifiedAt"),
+    createdBy: int("createdBy"),
+    reviewedBy: int("reviewedBy"),
+    version: int("version").default(1).notNull(),
+    archivedAt: timestamp("archivedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    projectKeyIdx: index("brand_truth_facts_project_key_idx").on(table.projectId, table.factKey),
+    profileIdx: index("brand_truth_facts_profile_idx").on(table.profileId),
+  }),
+);
+
+export const brandTruthFactVersions = mysqlTable(
+  "brand_truth_fact_versions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    factId: int("factId").notNull(),
+    projectId: int("projectId").notNull(),
+    version: int("version").notNull(),
+    profileVersion: int("profileVersion").notNull(),
+    previousValue: text("previousValue"),
+    newValue: text("newValue").notNull(),
+    previousVerificationStatus: varchar("previousVerificationStatus", { length: 64 }),
+    newVerificationStatus: varchar("newVerificationStatus", { length: 64 }).notNull(),
+    changeReason: text("changeReason").notNull(),
+    evidenceChange: json("evidenceChange").$type<Record<string, unknown> | null>(),
+    affectsHistoricalInterpretation: boolean("affectsHistoricalInterpretation").default(false).notNull(),
+    requiresRevalidation: boolean("requiresRevalidation").default(true).notNull(),
+    effectiveAt: timestamp("effectiveAt"),
+    changedBy: int("changedBy"),
+    changedAt: timestamp("changedAt").defaultNow().notNull(),
+  },
+  table => ({ factVersionUnique: uniqueIndex("brand_truth_fact_versions_fact_version_unique").on(table.factId, table.version) }),
+);
+
+export const brandTruthEvidence = mysqlTable(
+  "brand_truth_evidence",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    evidenceType: varchar("evidenceType", { length: 64 }).notNull(),
+    title: varchar("title", { length: 500 }).notNull(),
+    url: varchar("url", { length: 2000 }),
+    publisher: varchar("publisher", { length: 255 }),
+    sourceOwner: varchar("sourceOwner", { length: 255 }),
+    sourceClass: mysqlEnum("sourceClass", ["official", "third_party", "enterprise_provided", "unknown"]).default("unknown").notNull(),
+    independentSource: boolean("independentSource").default(false).notNull(),
+    accessible: boolean("accessible").default(false).notNull(),
+    authorityLevel: mysqlEnum("authorityLevel", ["high", "medium", "low", "unknown"]).default("unknown").notNull(),
+    freshnessStatus: mysqlEnum("freshnessStatus", ["current", "aging", "outdated", "unknown"]).default("unknown").notNull(),
+    consistencyStatus: mysqlEnum("consistencyStatus", ["consistent", "partial", "conflicting", "unknown"]).default("unknown").notNull(),
+    verificationStatus: mysqlEnum("verificationStatus", ["pending", "verified", "rejected", "unverifiable"]).default("pending").notNull(),
+    evidenceExcerpt: text("evidenceExcerpt"),
+    evidenceHash: varchar("evidenceHash", { length: 128 }),
+    manualReviewStatus: mysqlEnum("manualReviewStatus", ["pending", "approved", "rejected"]).default("pending").notNull(),
+    publishedAt: timestamp("publishedAt"),
+    sourceUpdatedAt: timestamp("sourceUpdatedAt"),
+    capturedAt: timestamp("capturedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ projectIdx: index("brand_truth_evidence_project_idx").on(table.projectId) }),
+);
+
+export const brandTruthFactEvidenceLinks = mysqlTable(
+  "brand_truth_fact_evidence_links",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    factId: int("factId").notNull(),
+    evidenceId: int("evidenceId").notNull(),
+    supportType: mysqlEnum("supportType", ["supports", "contradicts", "context_only"]).default("supports").notNull(),
+    confidence: int("confidence").default(0).notNull(),
+    reviewedAt: timestamp("reviewedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({ linkUnique: uniqueIndex("brand_truth_fact_evidence_link_unique").on(table.factId, table.evidenceId) }),
+);
+
+export const brandTruthConflicts = mysqlTable(
+  "brand_truth_conflicts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    factKey: varchar("factKey", { length: 128 }).notNull(),
+    factId: int("factId").notNull(),
+    evidenceAId: int("evidenceAId"),
+    evidenceBId: int("evidenceBId"),
+    conflictType: varchar("conflictType", { length: 64 }).notNull(),
+    severity: mysqlEnum("severity", ["P0", "P1", "P2"]).default("P2").notNull(),
+    resolutionStatus: mysqlEnum("resolutionStatus", ["open", "reviewing", "resolved", "accepted_difference"]).default("open").notNull(),
+    resolutionNote: text("resolutionNote"),
+    resolvedBy: int("resolvedBy"),
+    resolvedAt: timestamp("resolvedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ projectStatusIdx: index("brand_truth_conflicts_project_status_idx").on(table.projectId, table.resolutionStatus) }),
+);
+
+export const understandingQuestionSets = mysqlTable(
+  "understanding_question_sets",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    version: int("version").default(1).notNull(),
+    status: mysqlEnum("status", ["draft", "active", "archived"]).default("draft").notNull(),
+    validFrom: timestamp("validFrom"),
+    validTo: timestamp("validTo"),
+    fixedAcrossPeriods: boolean("fixedAcrossPeriods").default(true).notNull(),
+    createdBy: int("createdBy"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ projectVersionUnique: uniqueIndex("understanding_question_sets_project_version_unique").on(table.projectId, table.version) }),
+);
+
+export const understandingQuestions = mysqlTable(
+  "understanding_questions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    questionSetId: int("questionSetId").notNull(),
+    category: varchar("category", { length: 64 }).notNull(),
+    questionType: mysqlEnum("questionType", ["system_default", "project_custom", "high_risk", "name_collision", "outdated_info", "competitor_confusion"]).notNull(),
+    questionText: text("questionText").notNull(),
+    verificationFactKeys: json("verificationFactKeys").$type<string[]>().notNull().default([]),
+    enabled: boolean("enabled").default(true).notNull(),
+    fixedAcrossPeriods: boolean("fixedAcrossPeriods").default(true).notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ setIdx: index("understanding_questions_set_idx").on(table.questionSetId) }),
+);
+
+export const understandingEvaluations = mysqlTable(
+  "understanding_evaluations",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: int("projectId").notNull(),
+    questionSetId: int("questionSetId").notNull(),
+    questionId: int("questionId").notNull(),
+    sourceAiTestRunId: varchar("sourceAiTestRunId", { length: 36 }),
+    testRoundId: varchar("testRoundId", { length: 36 }),
+    testedModel: varchar("testedModel", { length: 128 }).notNull(),
+    testedChannel: varchar("testedChannel", { length: 64 }).notNull(),
+    testedAt: timestamp("testedAt").notNull(),
+    rawAnswer: text("rawAnswer").notNull(),
+    extractedFacts: json("extractedFacts").$type<Record<string, unknown>>().notNull(),
+    uncertainStatements: json("uncertainStatements").$type<string[]>().notNull().default([]),
+    ruleResults: json("ruleResults").$type<Record<string, unknown>>().notNull(),
+    semanticJudgement: json("semanticJudgement").$type<Record<string, unknown> | null>(),
+    evidenceReferences: json("evidenceReferences").$type<number[]>().notNull().default([]),
+    evaluationVersion: varchar("evaluationVersion", { length: 32 }).notNull(),
+    truthProfileVersion: int("truthProfileVersion").notNull(),
+    questionSetVersion: int("questionSetVersion").notNull(),
+    extractionVersion: varchar("extractionVersion", { length: 32 }).notNull(),
+    extractorModel: varchar("extractorModel", { length: 128 }),
+    evaluatorModel: varchar("evaluatorModel", { length: 128 }),
+    manualReviewStatus: mysqlEnum("manualReviewStatus", ["not_required", "pending", "approved", "overridden"]).default("not_required").notNull(),
+    finalStatus: mysqlEnum("finalStatus", ["accurate", "mostly_accurate", "partially_accurate", "missing", "inaccurate", "outdated", "conflicting", "hallucinated", "unverifiable"]).notNull(),
+    severity: mysqlEnum("severity", ["P0", "P1", "P2"]).default("P2").notNull(),
+    reviewedBy: int("reviewedBy"),
+    reviewedAt: timestamp("reviewedAt"),
+    reviewNote: text("reviewNote"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ projectTestedIdx: index("understanding_evaluations_project_tested_idx").on(table.projectId, table.testedAt) }),
+);
+
+export const understandingDimensionResults = mysqlTable(
+  "understanding_dimension_results",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    evaluationId: varchar("evaluationId", { length: 36 }).notNull(),
+    dimension: varchar("dimension", { length: 64 }).notNull(),
+    score: int("score"),
+    status: varchar("status", { length: 64 }).notNull(),
+    expectedFacts: json("expectedFacts").$type<Record<string, unknown>[]>().notNull().default([]),
+    actualStatements: json("actualStatements").$type<string[]>().notNull().default([]),
+    matchedFacts: json("matchedFacts").$type<string[]>().notNull().default([]),
+    missingFacts: json("missingFacts").$type<string[]>().notNull().default([]),
+    inaccurateFacts: json("inaccurateFacts").$type<string[]>().notNull().default([]),
+    outdatedFacts: json("outdatedFacts").$type<string[]>().notNull().default([]),
+    conflictingFacts: json("conflictingFacts").$type<string[]>().notNull().default([]),
+    hallucinatedClaims: json("hallucinatedClaims").$type<string[]>().notNull().default([]),
+    unverifiableClaims: json("unverifiableClaims").$type<string[]>().notNull().default([]),
+    evidenceReferences: json("evidenceReferences").$type<number[]>().notNull().default([]),
+    severity: mysqlEnum("severity", ["P0", "P1", "P2"]).default("P2").notNull(),
+    customerExplanation: text("customerExplanation").notNull(),
+    recommendedCorrection: text("recommendedCorrection").notNull(),
+    verificationQuestionIds: json("verificationQuestionIds").$type<number[]>().notNull().default([]),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({ evaluationDimensionUnique: uniqueIndex("understanding_dimension_evaluation_unique").on(table.evaluationId, table.dimension) }),
+);
+
+export const understandingCorrectionTasks = mysqlTable(
+  "understanding_correction_tasks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    evaluationId: varchar("evaluationId", { length: 36 }),
+    factKey: varchar("factKey", { length: 128 }).notNull(),
+    expectedFact: text("expectedFact"),
+    observedStatement: text("observedStatement").notNull(),
+    severity: mysqlEnum("severity", ["P0", "P1", "P2"]).notNull(),
+    affectedStage: mysqlEnum("affectedStage", ["know", "understand", "trust", "recommend", "grow"]).default("understand").notNull(),
+    recommendedAssetType: varchar("recommendedAssetType", { length: 64 }).notNull(),
+    actionType: varchar("actionType", { length: 64 }).notNull(),
+    actionDescription: text("actionDescription").notNull(),
+    requiredEvidence: text("requiredEvidence").notNull(),
+    owner: varchar("owner", { length: 255 }),
+    priority: mysqlEnum("priority", ["P0", "P1", "P2"]).notNull(),
+    dependency: text("dependency"),
+    completionCriteria: text("completionCriteria").notNull(),
+    verificationQuestionIds: json("verificationQuestionIds").$type<number[]>().notNull().default([]),
+    targetRetestRound: varchar("targetRetestRound", { length: 64 }),
+    targetRetestAt: timestamp("targetRetestAt"),
+    status: mysqlEnum("status", ["pending", "in_progress", "completed", "retest_scheduled", "verified", "cancelled"]).default("pending").notNull(),
+    createdBy: int("createdBy"),
+    completedAt: timestamp("completedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ projectStatusIdx: index("understanding_correction_tasks_project_status_idx").on(table.projectId, table.status) }),
+);
+
+export const understandingRuleConfigs = mysqlTable(
+  "understanding_rule_configs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    projectId: int("projectId").notNull(),
+    ruleKey: varchar("ruleKey", { length: 128 }).notNull(),
+    ruleVersion: int("ruleVersion").default(1).notNull(),
+    configJson: json("configJson").$type<Record<string, unknown>>().notNull(),
+    status: mysqlEnum("status", ["draft", "active", "archived"]).default("draft").notNull(),
+    updatedBy: int("updatedBy"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({ projectRuleUnique: uniqueIndex("understanding_rule_configs_project_rule_unique").on(table.projectId, table.ruleKey) }),
+);
+
+export type BrandTruthProfile = typeof brandTruthProfiles.$inferSelect;
+export type BrandTruthFact = typeof brandTruthFacts.$inferSelect;
+export type BrandTruthEvidence = typeof brandTruthEvidence.$inferSelect;
+export type UnderstandingEvaluation = typeof understandingEvaluations.$inferSelect;
+export type UnderstandingCorrectionTask = typeof understandingCorrectionTasks.$inferSelect;
+export type UnderstandingRuleConfig = typeof understandingRuleConfigs.$inferSelect;

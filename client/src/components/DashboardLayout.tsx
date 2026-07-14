@@ -46,6 +46,7 @@ import {
   PanelLeft,
   Send,
   Settings,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
@@ -99,6 +100,14 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "看总分、六类资产成熟度、公开证据和缺口",
         path: "/workspace",
         aliases: ["/workspace", "/flow"],
+      },
+      {
+        key: "ai-understanding",
+        icon: Brain,
+        label: "AI 品牌理解",
+        desc: "看 AI 是否正确理解品牌及主要偏差",
+        path: "/ai-understanding",
+        aliases: ["/ai-understanding"],
       },
       {
         key: "monthly-plan",
@@ -192,6 +201,14 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
         desc: "检查公开资料和品牌证据是否被 AI 识别",
         path: "/brand-source-graph",
         aliases: ["/brand-source-graph", "/source-graph"],
+      },
+      {
+        key: "brand-truth-operations",
+        icon: ShieldCheck,
+        label: "品牌事实与理解校准",
+        desc: "维护事实、证据、冲突、评价与纠偏任务",
+        path: "/operations/brand-truth",
+        aliases: ["/operations/brand-truth"],
       },
       {
         key: "knowledge",

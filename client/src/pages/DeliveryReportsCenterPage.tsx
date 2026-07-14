@@ -1573,6 +1573,10 @@ export function DeliveryReportsCenterPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const understandingQuery = trpc.geo.understanding.getUnderstandingSummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId), retry: false },
+  );
 
   const generateMutation = trpc.geo.monthlyPlan.generate.useMutation({
     onSuccess: () => {
@@ -1625,6 +1629,12 @@ export function DeliveryReportsCenterPage() {
         <h2 className="text-lg font-semibold text-gray-900">6 类资产增长明细</h2>
         <p className="mt-1 text-sm text-gray-500">状态基于当前公开证据与复测记录计算，发布完成不等于效果提升。</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{getBrandAssets(selectedProjectId).map(asset => <article key={asset.key} className="rounded-xl border border-gray-100 bg-gray-50 p-4"><div className="flex justify-between gap-2"><h3 className="text-sm font-semibold text-gray-900">{asset.name}</h3><span className="text-xs font-medium text-blue-700">{asset.status}</span></div><p className="mt-2 text-xs leading-5 text-gray-600">证据：{asset.evidence}</p><p className="mt-1 text-xs leading-5 text-gray-600">缺口：{asset.gap}</p></article>)}</div>
+      </section> : null}
+
+      {selectedProjectId ? <section className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/40 p-5 shadow-sm" data-testid="delivery-report-understanding-change">
+        <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-medium text-fuchsia-700">本月 AI 品牌理解变化</p><h2 className="mt-1 text-lg font-semibold text-gray-950">纠偏前后必须使用同一问题、事实版本和真实回答证明</h2></div><Button variant="outline" onClick={() => setLocation(buildProjectUrl("/ai-understanding", selectedProjectId))}>查看完整理解证据</Button></div>
+        <div className="mt-4 grid gap-3 md:grid-cols-4"><div className="rounded-xl bg-white p-4"><p className="text-xs text-gray-500">建设前主要误解</p><p className="mt-2 text-sm font-semibold text-gray-900">{understandingQuery.data?.severityCounts.P0 || understandingQuery.data?.severityCounts.P1 ? `P0 ${understandingQuery.data.severityCounts.P0} 项、P1 ${understandingQuery.data.severityCounts.P1} 项` : understandingQuery.data?.latestTestedAt ? "暂无已确认严重偏差" : "尚未执行理解测试"}</p></div><div className="rounded-xl bg-white p-4"><p className="text-xs text-gray-500">标准事实</p><p className="mt-2 text-sm font-semibold text-gray-900">已核验 {understandingQuery.data?.facts.filter(fact => ["official_verified", "third_party_verified", "multi_source_verified"].includes(fact.verificationStatus)).length ?? 0} 条 · 待核验 {understandingQuery.data?.facts.filter(fact => fact.verificationStatus === "provided_unverified").length ?? 0} 条</p></div><div className="rounded-xl bg-white p-4"><p className="text-xs text-gray-500">本月纠偏动作</p><p className="mt-2 text-sm font-semibold text-gray-900">{understandingQuery.data?.correctionTasks.length ? `${understandingQuery.data.correctionTasks.length} 项已进入任务` : "尚无经人工确认的纠偏任务"}</p></div><div className="rounded-xl bg-white p-4"><p className="text-xs text-gray-500">最新 AI 表达</p><p className="mt-2 text-sm font-semibold text-gray-900">{understandingQuery.data?.latestTestedAt ? `最近验证 ${new Date(understandingQuery.data.latestTestedAt).toLocaleDateString("zh-CN")}` : "尚无法判断是否改善"}</p></div></div>
+        <div className="mt-4 rounded-xl border border-fuchsia-100 bg-white p-4 text-sm leading-6 text-gray-700"><p><span className="font-semibold">已改善：</span>{(understandingQuery.data?.evaluations ?? []).some(item => ["accurate", "mostly_accurate"].includes(item.finalStatus)) ? "已有部分回答与核验事实一致，仍需跨时间复测确认稳定性。" : "暂无足够前后对比证据。"}</p><p><span className="font-semibold">仍错误：</span>{(understandingQuery.data?.severityCounts.P0 ?? 0) + (understandingQuery.data?.severityCounts.P1 ?? 0)} 项 P0/P1 待处理或待复核。</p><p><span className="font-semibold">尚无法判断：</span>{understandingQuery.data?.dataSufficient ? "8 维数据已具备，可继续做跨期比较。" : "理解维度数据不完整，不形成增长结论。"}</p><p><span className="font-semibold">下一轮：</span>完成事实核验和非文章纠偏动作后，使用固定 Understand 问题集再次验证。</p></div>
       </section> : null}
 
       {reportQuery.isLoading ? (

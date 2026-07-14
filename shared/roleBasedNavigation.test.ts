@@ -12,6 +12,7 @@ const sampleGroups = [
     title: "客户主流程",
     items: [
       { path: "/workspace", label: "服务首页" },
+      { path: "/ai-understanding", label: "AI 品牌理解" },
       { path: "/monthly-plan", label: "月度优化计划" },
       { path: "/weekly", label: "执行进度" },
       { path: "/inclusion-monitoring", label: "收录与 AI 复测" },
@@ -27,6 +28,7 @@ const sampleGroups = [
       { path: "/content-publishing", label: "发布执行中心" },
       { path: "/questions", label: "搜索问题挖掘" },
       { path: "/brand-source-graph", label: "信源引用监测" },
+      { path: "/operations/brand-truth", label: "品牌事实与理解校准" },
       { path: "/knowledge", label: "使用指南" },
     ],
   },
@@ -44,8 +46,8 @@ describe("roleBasedNavigation", () => {
     const groups = filterNavGroupsForRole(sampleGroups, true);
     expect(countVisibleNavItems(sampleGroups, true)).toBe(OPERATOR_NAV_TOTAL_COUNT);
     expect(groups).toHaveLength(2);
-    expect(groups[0]?.items).toHaveLength(5);
-    expect(groups[1]?.items).toHaveLength(7);
+    expect(groups[0]?.items).toHaveLength(6);
+    expect(groups[1]?.items).toHaveLength(8);
   });
 
   it("shows client-only main flow navigation for brand customers", () => {
@@ -56,6 +58,7 @@ describe("roleBasedNavigation", () => {
     expect(groups[0]?.items.map(item => item.path)).toEqual([...CLIENT_NAV_PATHS]);
     expect(groups[0]?.items.map(item => item.label)).toEqual([
       "服务首页",
+      "AI 品牌理解",
       "月度优化计划",
       "执行进度",
       "收录与 AI 复测",

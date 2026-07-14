@@ -61,6 +61,8 @@ import RegisterPage from "./pages/RegisterPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import SettingsPage from "./pages/SettingsPage";
 import WhiteLabelSettingsPage from "./pages/WhiteLabelSettingsPage";
+import AIUnderstandingPage from "./pages/AIUnderstandingPage";
+import BrandTruthOperationsPage from "./pages/BrandTruthOperationsPage";
 import { PublishRecordsHistoryPage } from "./pages/PublishRecordsHistoryPage";
 import AdminConfigPage from "./pages/AdminConfigPage";
 import AdminPublishTasksPage from "./pages/AdminPublishTasksPage";
@@ -113,6 +115,7 @@ function PrivateRoutes() {
         <Route path="/admin/subscription" component={AdminSubscriptionPage} />
         <Route path="/knowledge" component={KnowledgePage} />
         <Route path="/workspace" component={EnterpriseWorkspacePage} />
+        <Route path="/ai-understanding" component={AIUnderstandingPage} />
         <Route path="/brand-assets" component={BrandAssetsPage} />
         <Route path="/maturity" component={MaturityDetailPage} />
         <Route path="/monthly-plan" component={MonthlyPlanPage} />
@@ -150,6 +153,7 @@ function PrivateRoutes() {
         <Route path="/questions" component={QuestionsLibraryPage} />
         <Route path="/question-bank" component={QuestionsLibraryPage} />
         <Route path="/brand-source-graph" component={SourceGraphPage} />
+        <Route path="/operations/brand-truth" component={BrandTruthOperationsPage} />
         <Route path="/brand-sources" component={SourceGraphPage} />
         <Route path="/source-graph">
           <Redirect to="/brand-source-graph" />

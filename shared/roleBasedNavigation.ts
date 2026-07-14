@@ -2,13 +2,14 @@
  * GEO-V2.3-P0-A：客户主流程 vs 代理运营工具左侧导航分层（纯展示逻辑）
  */
 
-export const OPERATOR_NAV_MAIN_FLOW_COUNT = 5;
-export const OPERATOR_NAV_TOOL_COUNT = 7;
+export const OPERATOR_NAV_MAIN_FLOW_COUNT = 6;
+export const OPERATOR_NAV_TOOL_COUNT = 8;
 export const OPERATOR_NAV_TOTAL_COUNT = OPERATOR_NAV_MAIN_FLOW_COUNT + OPERATOR_NAV_TOOL_COUNT;
 
 /** 品牌客户第一轮可见的主流程入口（5 项） */
 export const CLIENT_NAV_PATHS = [
   "/workspace",
+  "/ai-understanding",
   "/monthly-plan",
   "/weekly",
   "/inclusion-monitoring",

@@ -6,7 +6,7 @@ const root = resolve(import.meta.dirname, "..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf-8");
 
 describe("GEO V2.3-P0-O role based usable delivery system", () => {
-  it("keeps customer first navigation to five delivery pages and moves diagnosis to operator tools", () => {
+  it("keeps customer first navigation to six value pages and moves diagnosis to operator tools", () => {
     const layout = read("client/src/components/DashboardLayout.tsx");
     const customerGroup = layout.slice(
       layout.indexOf('title: "客户主流程"'),
@@ -15,6 +15,7 @@ describe("GEO V2.3-P0-O role based usable delivery system", () => {
     const operatorGroup = layout.slice(layout.indexOf('title: "运营工具"'));
 
     expect(customerGroup).toContain('key: "workspace"');
+    expect(customerGroup).toContain('key: "ai-understanding"');
     expect(customerGroup).toContain('key: "monthly-plan"');
     expect(customerGroup).toContain('key: "weekly-execution"');
     expect(customerGroup).toContain('key: "inclusion-monitoring"');
@@ -29,9 +30,10 @@ describe("GEO V2.3-P0-O role based usable delivery system", () => {
   it("filters brand-customer navigation to the customer first path only", () => {
     const nav = read("shared/roleBasedNavigation.ts");
 
-    expect(nav).toContain("export const OPERATOR_NAV_MAIN_FLOW_COUNT = 5;");
-    expect(nav).toContain("export const OPERATOR_NAV_TOOL_COUNT = 7;");
+    expect(nav).toContain("export const OPERATOR_NAV_MAIN_FLOW_COUNT = 6;");
+    expect(nav).toContain("export const OPERATOR_NAV_TOOL_COUNT = 8;");
     expect(nav).toContain('"/workspace"');
+    expect(nav).toContain('"/ai-understanding"');
     expect(nav).not.toContain('"/ai-diagnosis",\n  "/monthly-plan"');
   });
 

@@ -418,6 +418,10 @@ export default function MonthlyPlanPage() {
       { projectId: selectedProjectId! },
       { enabled: enabled && Boolean(selectedProjectId) }
     );
+  const understandingQuery = trpc.geo.understanding.getUnderstandingSummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId), retry: false },
+  );
 
   const generateMutation = trpc.geo.monthlyPlan.generate.useMutation({
     onSuccess: () => {
@@ -693,6 +697,26 @@ export default function MonthlyPlanPage() {
           <Spinner className="size-4" />
           加载月度优化计划…
         </div>
+      ) : null}
+
+      {(understandingQuery.data?.severityCounts.P0 ?? 0) + (understandingQuery.data?.severityCounts.P1 ?? 0) > 0 ? (
+        <section className="rounded-2xl border border-red-200 bg-red-50 p-5" data-testid="monthly-plan-understanding-corrections">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium text-red-700">Understand 优先纠偏</p>
+              <h2 className="mt-1 text-lg font-semibold text-red-950">本月先纠正 AI 的严重或重要理解偏差</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-red-900">当前有 {understandingQuery.data?.severityCounts.P0 ?? 0} 项 P0、{understandingQuery.data?.severityCounts.P1 ?? 0} 项 P1。纠偏动作应按错误类型选择官网定义页、FAQ、Schema、案例或第三方资料，不会一律生成文章。</p>
+            </div>
+            <Button variant="outline" className="border-red-200 bg-white text-red-800" onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-understanding", selectedProjectId))}>查看偏差与证据</Button>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {(understandingQuery.data?.correctionTasks.length ? understandingQuery.data.correctionTasks.slice(0, 3).map(task => ({ title: task.actionDescription, criteria: task.completionCriteria, type: task.actionType })) : [
+              { title: "复核标准事实与公开证据", criteria: "P0/P1 判断经人工确认", type: "人工核验" },
+              { title: "修正官网定义、FAQ 或 Schema", criteria: "形成可访问且表达一致的一手证据", type: "非文章动作" },
+              { title: "使用固定问题再次复测", criteria: "保留原始回答并绑定新事实版本", type: "效果验证" },
+            ]).map(item => <article key={item.title} className="rounded-xl bg-white p-4"><span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-800">{item.type}</span><p className="mt-3 text-sm font-semibold text-gray-900">{item.title}</p><p className="mt-2 text-xs leading-5 text-gray-600">完成标准：{item.criteria}</p></article>)}
+          </div>
+        </section>
       ) : null}
 
       <P0Card testId="monthly-plan-service-proposal" className="space-y-6">

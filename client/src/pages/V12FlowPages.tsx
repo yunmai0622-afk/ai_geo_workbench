@@ -943,6 +943,10 @@ export function AiDiagnosisFlowPage() {
     { projectId: selectedProjectId! },
     { enabled: enabled && Boolean(selectedProjectId) },
   );
+  const understandingQuery = trpc.geo.understanding.getUnderstandingSummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: enabled && Boolean(selectedProjectId), retry: false },
+  );
   const { triggerMaturityCalculate } = useMaturityAutoCalculate(selectedProjectId);
   const tasksQuery = trpc.geo.tasks.list.useQuery(
     { projectId: selectedProjectId! },
@@ -1780,6 +1784,24 @@ export function AiDiagnosisFlowPage() {
           当前项目还没有完成品牌资产建档，请先前往建档页补齐核心信息后再运行诊断。
         </div>
       )}
+
+      <section className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/40 p-5" data-testid="ai-diagnosis-understanding-section">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium text-fuchsia-700">Understand 独立诊断</p>
+            <h2 className="mt-1 text-lg font-semibold text-gray-950">AI 是否正确理解品牌</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">{understandingQuery.data?.oneSentenceConclusion ?? "理解准确度需要独立的事实基线、固定问题与字段级对比；不能用提及率或推荐率替代。"}</p>
+          </div>
+          <Button type="button" variant="outline" disabled={!selectedProjectId} onClick={() => selectedProjectId && setLocation(buildProjectUrl("/ai-understanding", selectedProjectId))}>查看理解准确度</Button>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl bg-white p-3"><p className="text-xs text-gray-500">理解准确度</p><p className="mt-1 text-lg font-bold">{understandingQuery.data?.totalScore == null ? "暂无法评估" : `${understandingQuery.data.totalScore} 分`}</p></div>
+          <div className="rounded-xl bg-white p-3"><p className="text-xs text-gray-500">P0</p><p className="mt-1 text-lg font-bold text-red-700">{understandingQuery.data?.severityCounts.P0 ?? 0}</p></div>
+          <div className="rounded-xl bg-white p-3"><p className="text-xs text-gray-500">P1</p><p className="mt-1 text-lg font-bold text-amber-700">{understandingQuery.data?.severityCounts.P1 ?? 0}</p></div>
+          <div className="rounded-xl bg-white p-3"><p className="text-xs text-gray-500">最近理解验证</p><p className="mt-1 text-sm font-semibold">{understandingQuery.data?.latestTestedAt ? new Date(understandingQuery.data.latestTestedAt).toLocaleDateString("zh-CN") : "尚未执行"}</p></div>
+        </div>
+        <p className="mt-3 text-xs text-gray-500">提及 = AI 说到品牌；理解 = 表达与已核验事实一致；信任 = 有理由相信；推荐 = 在具体问题中选择品牌。四者分别验证。</p>
+      </section>
 
       {firstScreenState !== "running" ? (
       <details

@@ -59,6 +59,10 @@ export default function EnterpriseWorkspacePage() {
     { projectId: 210001 },
     { enabled: selectedProjectId === 210001 },
   );
+  const understandingQuery = trpc.geo.understanding.getUnderstandingSummary.useQuery(
+    { projectId: selectedProjectId! },
+    { enabled: Boolean(selectedProjectId), retry: false },
+  );
 
   useEffect(() => {
     const enterpriseName = selectedProject?.enterpriseName?.trim() || "企业";
@@ -477,6 +481,15 @@ export default function EnterpriseWorkspacePage() {
                 <p className="mt-3 text-xs font-medium text-blue-600">AI 品牌资产增长系统</p>
                 <h1 className="mt-1 text-2xl font-bold text-gray-950">AI 品牌资产总览</h1>
                 <p className="mt-1 text-sm text-gray-600">持续建设让 AI 能识别、理解、信任、引用和推荐品牌的公开证据体系。</p>
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs" data-testid="workspace-five-stage-model">
+                  {[
+                    ["Know", "被知道"],
+                    ["Understand", "被正确理解"],
+                    ["Trust", "被信任"],
+                    ["Recommend", "被推荐"],
+                    ["Grow", "持续增长"],
+                  ].map(([en, zh], index) => <div key={en} className="flex items-center gap-2"><span className={cn("rounded-full border px-2.5 py-1", en === "Understand" ? "border-blue-300 bg-blue-100 font-semibold text-blue-800" : "border-gray-200 bg-white text-gray-600")}>{en} · {zh}</span>{index < 4 && <ArrowRight className="size-3 text-gray-300"/>}</div>)}
+                </div>
                 <p className="mt-1 text-xs text-gray-500" data-testid="workspace-service-agency">
                   由 {whiteLabel.agencyName} 提供 GEO 代运营服务
                 </p>
@@ -535,6 +548,26 @@ export default function EnterpriseWorkspacePage() {
                 />
               ))}
             </div>
+          </section>
+
+          <section className="geo-card border-blue-100 bg-blue-50/30 p-5 sm:p-6" data-testid="workspace-understanding-summary">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium text-blue-600">Understand · 被正确理解</p>
+                <h2 className="mt-1 text-lg font-semibold text-gray-950">AI 对品牌的理解是否准确</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">{understandingQuery.data?.oneSentenceConclusion ?? "正在读取独立的品牌理解状态。"}</p>
+              </div>
+              <Button type="button" className={cn("rounded-xl", geoP0Brand.primary)} onClick={() => setLocation(buildProjectUrl("/ai-understanding", selectedProjectId))}>
+                查看 AI 如何理解品牌<ArrowRight className="ml-2 size-4"/>
+              </Button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+              <div className="rounded-xl bg-white p-4"><p className="text-xs text-gray-500">理解准确度</p><p className="mt-1 text-xl font-bold text-gray-950">{understandingQuery.data?.totalScore == null ? "暂无法评估" : `${understandingQuery.data.totalScore} 分`}</p></div>
+              <div className="rounded-xl bg-white p-4"><p className="text-xs text-gray-500">P0 严重偏差</p><p className="mt-1 text-xl font-bold text-red-700">{understandingQuery.data?.severityCounts.P0 ?? 0}</p></div>
+              <div className="rounded-xl bg-white p-4"><p className="text-xs text-gray-500">P1 重要偏差</p><p className="mt-1 text-xl font-bold text-amber-700">{understandingQuery.data?.severityCounts.P1 ?? 0}</p></div>
+              <div className="rounded-xl bg-white p-4"><p className="text-xs text-gray-500">当前最大偏差</p><p className="mt-1 text-sm font-semibold leading-5 text-gray-900">{understandingQuery.data?.maxIssue?.actionDescription ?? (understandingQuery.data?.latestTestedAt ? "暂无已确认严重偏差" : "尚未完成独立理解测试")}</p></div>
+            </div>
+            <p className="mt-3 text-xs text-gray-500">被提及只说明 AI 说到了品牌，不代表 AI 已正确理解、信任或推荐品牌。</p>
           </section>
 
           <section className="geo-card p-5 sm:p-6" data-testid="workspace-brand-assets-summary">
