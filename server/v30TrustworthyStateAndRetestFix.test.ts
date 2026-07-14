@@ -93,6 +93,21 @@ describe("GEO V3.0 trustworthy state and scheduled retest fix", () => {
     expect(metricSection).toContain("AI 品牌资产总分");
     expect(metricSection).not.toContain("AI 成熟度");
     expect(assets).toContain("https://zhuanlan.zhihu.com/p/2058633582978060994");
-    expect(assets).toContain("07/12 节点待补跑");
+    expect(workspace).toContain("07/12 已完成补跑");
+    expect(assets).toContain("07/12 真实补跑记录");
+  });
+
+  it("surfaces the real backfill evidence without retaining stale retry copy", () => {
+    const routers = read("server/routers.ts");
+    const inclusion = read("client/src/pages/InclusionMonitoringCenterPage.tsx");
+    const report = read("client/src/pages/DeliveryReportsCenterPage.tsx");
+    for (const marker of ["platformResults", "citedSampleUrlCount", "expectedCount"]) {
+      expect(routers).toContain(marker);
+    }
+    expect(inclusion).toContain("07/12 补跑");
+    expect(inclusion).toContain("本次补跑未引用知乎 URL");
+    expect(report).toContain("07/12 已真实补跑");
+    expect(report).toContain("执行 07/16 正式 T2");
+    expect(report).not.toContain("07/12 自动复测未成功，失败记录必须保留并补跑");
   });
 });

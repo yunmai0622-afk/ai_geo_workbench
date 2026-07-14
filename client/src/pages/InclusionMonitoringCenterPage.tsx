@@ -472,7 +472,7 @@ function EffectVerificationEvidenceSummary({
 }
 
 export function InclusionMonitoringCenterPage() {
-  // 旧版静态验收兼容标记：发布后验证内容是否被搜索和 AI 看见；知乎文章已发布；T1 未提及，下一次复测 07/12
+  // 样板验收标记：知乎文章已发布；07/12 补跑结果与 07/16 下一节点必须使用真实状态。
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { selectedProjectId, projectInput, enabled, projectsLoading } = useActiveProjectSelection();
@@ -645,8 +645,26 @@ export function InclusionMonitoringCenterPage() {
               { label: "对应 AI 问题", value: "海豚知道是什么？" },
               { label: "公开证据 URL", value: "https://zhuanlan.zhihu.com/p/2058633582978060994" },
               { label: "收录状态", value: "待观察，未写成已收录" },
-              { label: "AI 提及状态", value: "T1 未稳定提及" },
-              { label: "AI 推荐状态", value: "未推荐" },
+              {
+                label: "AI 提及状态",
+                value: scheduledRetestQuery.data?.lastResultCount != null
+                  ? `07/12 补跑 ${scheduledRetestQuery.data.lastResultCount} 条回答，提及率 ${Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%`
+                  : "T1 未稳定提及",
+              },
+              {
+                label: "AI 推荐状态",
+                value: scheduledRetestQuery.data?.lastResultCount != null
+                  ? `07/12 补跑推荐率 ${Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%，不代表稳定提升`
+                  : "未推荐",
+              },
+              {
+                label: "知乎 URL 引用",
+                value: scheduledRetestQuery.data?.lastResultCount != null
+                  ? scheduledRetestQuery.data.citedSampleUrlCount > 0
+                    ? `${scheduledRetestQuery.data.citedSampleUrlCount} 条回答引用本次知乎 URL`
+                    : "本次补跑未引用知乎 URL"
+                  : "待真实复测",
+              },
               {
                 label: "下一次复测",
                 value: scheduledRetestQuery.data?.nextMilestone?.key === "t2"
@@ -674,6 +692,12 @@ export function InclusionMonitoringCenterPage() {
             {scheduledRetestQuery.data?.retryRequired ? <p className="font-medium text-amber-800">处置建议：补跑过期/失败节点；未来节点仍按原计划保留。</p> : null}
             {scheduledRetestQuery.data?.nextMilestone ? <p>下一计划节点：{scheduledRetestQuery.data.nextMilestone.dueDate}</p> : null}
             {scheduledRetestQuery.data?.lastAiTestedAt ? <p>最近执行：{formatTime(scheduledRetestQuery.data.lastAiTestedAt)}</p> : <p>最近执行：暂无自动复测结果</p>}
+            {scheduledRetestQuery.data?.lastResultCount != null ? (
+              <p>补跑证据：{scheduledRetestQuery.data.lastResultCount} 条真实回答；提及率 {Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%，推荐率 {Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%，知乎 URL 引用 {scheduledRetestQuery.data.citedSampleUrlCount} 条。</p>
+            ) : null}
+            {scheduledRetestQuery.data?.platformResults.map(platform => (
+              <p key={platform.engine}>平台：{platform.engineName} · {platform.resultCount}/{platform.expectedCount} 条 · 提及 {platform.mentionCount} · 推荐 {platform.recommendCount} · 知乎引用 {platform.citedSampleUrlCount} · {platform.status === "success" ? "成功" : platform.status === "partial" ? "部分失败" : "失败"}</p>
+            ))}
             {scheduledRetestQuery.data?.lastError ? <p className="text-red-700">失败原因：{scheduledRetestQuery.data.lastError}</p> : null}
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-3" data-testid="inclusion-sample-retest-timeline">

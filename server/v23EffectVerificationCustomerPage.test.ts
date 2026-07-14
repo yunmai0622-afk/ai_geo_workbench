@@ -12,7 +12,7 @@ describe("GEO V2.3-P0-E effect verification customer page", () => {
   it("turns inclusion-monitoring into a customer-facing effect verification page", () => {
     expect(page).toContain("收录与 AI 复测");
     expect(page).toContain("客户可读结论");
-    expect(page).toContain("发布后验证内容是否被搜索和 AI 看见");
+    expect(page).toContain("验证已建设的公开品牌资产是否被搜索和 AI 看见");
     expect(page).toContain("AI 复测");
     expect(page).toContain('data-testid="effect-verification-customer-overview"');
     expect(page).toContain('data-testid="effect-verification-conclusion"');

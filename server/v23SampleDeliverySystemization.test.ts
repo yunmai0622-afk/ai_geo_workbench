@@ -11,7 +11,7 @@ describe("GEO V2.3 sample delivery systemization", () => {
   it("shows an honest sample project status only for project 210001", () => {
     expect(report).toContain("delivery-report-sample-project-status");
     expect(report).toContain("第一轮公开证据建设已完成，进入收录观察与 AI 复测阶段");
-    expect(report).toContain("收录待观察；T1 未稳定提及、未形成推荐，也未引用本次知乎文章");
+    expect(report).toContain("07/12 已补跑");
     expect(report).toContain("selectedProjectId === 210001");
   });
 
@@ -24,7 +24,7 @@ describe("GEO V2.3 sample delivery systemization", () => {
   it("provides a sales-ready evidence chain and service actions", () => {
     for (const value of [
       "不是简单发布文章",
-      "不代表已产生效果提升",
+      "不代表 AI 提及或推荐已经提升",
       "delivery-report-sample-service-playbook",
       "继续观察",
       "信源补强",

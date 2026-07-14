@@ -16,7 +16,7 @@ describe("GEO-V2.1-P1 Content Asset Effect Tracking", () => {
 
   it("page title and modules are customer-facing", () => {
     expect(inclusionPage).toContain("收录与 AI 复测");
-    expect(inclusionPage).toContain("发布后验证内容是否被搜索和 AI 看见");
+    expect(inclusionPage).toContain("验证已建设的公开品牌资产是否被搜索和 AI 看见");
     expect(inclusionPage).toContain("客户可见证据摘要");
     expect(inclusionPage).toContain('data-testid="effect-verification-customer-overview"');
     expect(inclusionPage).toContain('data-testid="effect-verification-advanced-details"');

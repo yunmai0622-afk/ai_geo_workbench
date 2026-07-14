@@ -13,8 +13,8 @@ describe("GEO V2.3 sample AI question occupancy evidence chain", () => {
       "目标问题",
       "海豚知道是什么？",
       "围绕该问题发布知乎公开内容，补充品牌解释和业务定位。",
-      "已发布；收录待观察；T1 暂未提及、未推荐；不代表已产生效果提升。",
-      "执行 3/7/14 天持续复查",
+      "07/12 已补跑",
+      "进入 07/16 正式 T2 与 07/23 T3",
       "不代表文章已经收录",
     ]) {
       expect(page).toContain(marker);
@@ -29,7 +29,7 @@ describe("GEO V2.3 sample AI question occupancy evidence chain", () => {
       "问题占位追踪",
       "知乎文章已发布",
       "待观察",
-      "T1 未提及，下一次复测 07/12",
+      "07/12 补跑",
     ]) {
       expect(page).toContain(marker);
     }

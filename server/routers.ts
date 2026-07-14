@@ -35,6 +35,7 @@ import { findLatestCompletedRound, type TestRoundSummary } from "@shared/retestC
 import { computeMonthlyPlanProgress } from "@shared/monthlyPlanGeneration";
 import { hasCompletedT0Baseline } from "@shared/workspaceMainChain";
 import { deriveScheduledRetestState } from "@shared/trustworthyState";
+import { SAMPLE_210001_ZHIHU_URL } from "@shared/brandAssets";
 import { and, asc, desc, eq, getTableColumns, inArray, isNotNull, isNull, like, ne, not, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -251,7 +252,7 @@ import { buildDeliveryReportPublicPath } from "@shared/deliveryReportPublicShare
 import { isValidStoredCoverBase64 } from "@shared/articleCoverBase64";
 import { ARTICLE_COVER_TEMPLATE_IDS, normalizeArticleCoverTemplateId } from "@shared/articleCoverTemplate";
 import { runDailyAiCheck } from "./scheduledAiCheck";
-import { SAMPLE_RETEST_MILESTONES, SAMPLE_RETEST_PROJECT_ID } from "./scheduledSampleRetest";
+import { SAMPLE_RETEST_MILESTONES, SAMPLE_RETEST_PROJECT_ID, SAMPLE_RETEST_QUESTIONS } from "./scheduledSampleRetest";
 import { fetchWorkspaceSummaryMetrics } from "./workspaceSummary";
 import { buildGeoTaskDurationLogBase, logGeoAnalysisRunDuration, logGeoArticlesGenerateDuration, type GeoArticlesGenerateStepTimings } from "./geoTaskDurationLog";
 import { assertContentGenerationRateLimit, assertT0DetectionRateLimit } from "./memoryRateLimit";
@@ -4299,6 +4300,7 @@ ${article.markdownContent}`,
         const record = (await db.select({
           rawJson: geoInclusionMonitoringRecords.rawJson,
           lastAiTestedAt: geoInclusionMonitoringRecords.lastAiTestedAt,
+          aiTestResults: geoInclusionMonitoringRecords.aiTestResults,
         }).from(geoInclusionMonitoringRecords)
           .where(eq(geoInclusionMonitoringRecords.projectId, input.projectId))
           .orderBy(desc(geoInclusionMonitoringRecords.createdAt)).limit(1))[0];
@@ -4312,6 +4314,32 @@ ${article.markdownContent}`,
         const currentStatus = typeof state.status === "string" ? state.status : "pending";
         const currentKey = typeof state.currentKey === "string" ? state.currentKey : null;
         const lastError = typeof state.lastError === "string" ? state.lastError : null;
+        const scheduledResults = Array.isArray(record?.aiTestResults)
+          ? record.aiTestResults
+              .map(normalizeAiTestResult)
+              .filter(item => item?.testStage === "manual_check")
+          : [];
+        const platformResults = (["doubao", "deepseek"] as const).map(engine => {
+          const items = scheduledResults.filter(item => item?.engine === engine);
+          const resultCount = items.length;
+          return {
+            engine,
+            engineName: items[0]?.engineName ?? (engine === "doubao" ? "豆包" : "DeepSeek"),
+            resultCount,
+            expectedCount: SAMPLE_RETEST_QUESTIONS.length,
+            status: resultCount === SAMPLE_RETEST_QUESTIONS.length
+              ? "success"
+              : resultCount > 0
+                ? "partial"
+                : "failed",
+            mentionCount: items.filter(item => item?.mentionedBrand).length,
+            recommendCount: items.filter(item => item?.recommendedBrand).length,
+            citedSampleUrlCount: items.filter(item => item?.citedUrls.includes(SAMPLE_210001_ZHIHU_URL)).length,
+          } as const;
+        });
+        const citedSampleUrlCount = scheduledResults.filter(item =>
+          item?.citedUrls.includes(SAMPLE_210001_ZHIHU_URL),
+        ).length;
         const derived = deriveScheduledRetestState({
           currentStatus,
           currentKey,
@@ -4336,6 +4364,8 @@ ${article.markdownContent}`,
           lastResultCount: typeof state.lastResultCount === "number" ? state.lastResultCount : null,
           lastMentionRate: typeof state.lastMentionRate === "number" ? state.lastMentionRate : null,
           lastRecommendRate: typeof state.lastRecommendRate === "number" ? state.lastRecommendRate : null,
+          platformResults,
+          citedSampleUrlCount,
           lastAiTestedAt: record?.lastAiTestedAt ?? null,
           healthStatus: derived.healthStatus,
           retryRequired: derived.retryRequired,

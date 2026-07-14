@@ -681,7 +681,7 @@ function RenewalDeliveryReportHero({
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">本月新增资产</p><p className="mt-1 text-sm text-gray-600">新增一条业务定义资产与 AI 问题占位资产，围绕“海豚知道是什么？”形成公开内容。</p></div>
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">已形成公开证据</p><p className="mt-1 text-sm text-gray-600">真实知乎 URL 已回填；仅证明内容公开发布，不代表已收录、被引用或被推荐。</p></div>
-          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">当前 AI 复测结论与未闭环原因</p><p className="mt-1 text-sm text-gray-600">轻量核验未显示稳定提及、推荐或文章引用；正式 T2/T3 尚待执行，因此不能判断效果提升。</p></div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">当前 AI 复测结论与未闭环原因</p><p className="mt-1 text-sm text-gray-600">{scheduledRetestQuery.data?.lastResultCount != null ? `07/12 已真实补跑 ${scheduledRetestQuery.data.lastResultCount} 条回答，提及率 ${Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%、推荐率 ${Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%，知乎 URL 引用 ${scheduledRetestQuery.data.citedSampleUrlCount} 条；正式 T2/T3 尚待执行，不能据此判断整体效果提升。` : "正式复测证据仍待形成，当前不能判断提及、推荐或效果提升。"}</p></div>
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">下月资产建设建议</p><p className="mt-1 text-sm text-gray-600">补强官网同主题定义页和第三方可信信源，继续既定复测计划，并建设推荐类问题占位。</p></div>
         </div>
         <div className="grid gap-3 sm:grid-cols-3" data-testid="delivery-report-trustworthy-state">
@@ -824,7 +824,7 @@ function RenewalDeliveryReportHero({
                 </div>
                 <div className="rounded-xl border border-sky-100 bg-white/80 p-3">
                   <p className="text-xs font-semibold text-sky-800">当前真实结果</p>
-                  <p className="mt-2 text-xs leading-5 text-gray-700">收录待观察；T1 未稳定提及、未形成推荐，也未引用本次知乎文章。</p>
+                  <p className="mt-2 text-xs leading-5 text-gray-700">{scheduledRetestQuery.data?.lastResultCount != null ? `收录待观察；07/12 已补跑 ${scheduledRetestQuery.data.lastResultCount} 条真实回答，提及率 ${Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%、推荐率 ${Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%，知乎 URL 引用 ${scheduledRetestQuery.data.citedSampleUrlCount} 条。` : "收录待观察；T1 未稳定提及、未形成推荐，也未引用本次知乎文章。"}</p>
                 </div>
                 <div className="rounded-xl border border-sky-100 bg-white/80 p-3">
                   <p className="text-xs font-semibold text-sky-800">当前结论</p>
@@ -838,6 +838,8 @@ function RenewalDeliveryReportHero({
                 {scheduledRetestQuery.data?.retryRequired ? <p className="font-medium text-amber-800">处置建议：补跑失败节点；后续计划不变。</p> : null}
                 {scheduledRetestQuery.data?.nextMilestone ? <p>下一计划节点：{scheduledRetestQuery.data.nextMilestone.dueDate}</p> : null}
                 {scheduledRetestQuery.data?.lastResultCount != null ? <p>最近结果：{scheduledRetestQuery.data.lastResultCount} 条真实 AI 回答；提及率 {Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%，推荐率 {Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%。</p> : <p>最近结果：尚无自动复测结果</p>}
+                {scheduledRetestQuery.data?.lastResultCount != null ? <p>本次知乎 URL 引用：{scheduledRetestQuery.data.citedSampleUrlCount} 条。</p> : null}
+                {scheduledRetestQuery.data?.platformResults.map(platform => <p key={platform.engine}>{platform.engineName}：{platform.resultCount}/{platform.expectedCount} 条，提及 {platform.mentionCount}，推荐 {platform.recommendCount}，知乎引用 {platform.citedSampleUrlCount}，{platform.status === "success" ? "成功" : platform.status === "partial" ? "部分失败" : "失败"}。</p>)}
                 {scheduledRetestQuery.data?.lastError ? <p className="text-red-700">失败原因：{scheduledRetestQuery.data.lastError}</p> : null}
               </div>
             </div>
@@ -858,7 +860,7 @@ function RenewalDeliveryReportHero({
               </span>
             </div>
             <p className="mt-3 text-sm leading-6 text-emerald-900">
-              当前收录状态仍为待观察，AI T1 结果尚未提及或推荐品牌。后续只在真实检查完成后记录结果，不提前写成已收录或已提升。
+              当前收录状态仍为待观察；07/12 补跑结果只代表本次 8 条回答，不等于稳定提升。07/16、07/23 仍按同一问题池继续验证。
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               {CONTINUOUS_RETEST_PLAN.map((item, index) => {
@@ -903,8 +905,8 @@ function RenewalDeliveryReportHero({
                 { label: "目标问题", value: "海豚知道是什么？" },
                 { label: "本轮动作", value: "围绕该问题发布知乎公开内容，补充品牌解释和业务定位。" },
                 { label: "公开证据", value: DOLPHIN_THREE_DAY_EARLY_CHECK.url, link: true },
-                { label: "当前验证", value: "已发布；收录待观察；T1 暂未提及、未推荐；不代表已产生效果提升。" },
-                { label: "下一步", value: "执行 3/7/14 天持续复查；如仍未收录或未提及，补强官网信源和第二篇内容。" },
+                { label: "当前验证", value: scheduledRetestQuery.data?.lastResultCount != null ? `已发布；收录待观察；07/12 已补跑 ${scheduledRetestQuery.data.lastResultCount} 条回答，不能据此宣称稳定提升。` : "已发布；收录待观察；效果仍待持续复测。" },
+                { label: "下一步", value: "进入 07/16 正式 T2 与 07/23 T3；继续补强官网、第三方信源和第二个问题占位。" },
               ].map(item => (
                 <div key={item.label} className="rounded-xl border border-cyan-100 bg-white/80 p-3">
                   <p className="text-xs font-semibold text-cyan-800">{item.label}</p>
@@ -935,7 +937,7 @@ function RenewalDeliveryReportHero({
               <p className="text-sm font-semibold text-gray-900">下一步代运营服务动作</p>
               <div className="mt-3 space-y-3">
                 {[
-                  { title: "补跑过期节点", why: "07/12 自动复测未成功，失败记录必须保留并补跑。", verify: "补跑时检查 URL、标题精确搜索和品牌词触发。", decide: "补跑结果写入后再判断，不把失败节点改写成成功。" },
+                  ...(scheduledRetestQuery.data?.retryRequired ? [{ title: "补跑过期节点", why: "仍有自动复测节点未成功，失败记录必须保留并补跑。", verify: "补跑时检查问题池、平台结果和引用证据。", decide: "补跑结果写入后再判断，不把失败节点改写成成功。" }] : [{ title: "执行 07/16 正式 T2", why: "07/12 补跑已完成，但单次轻量结果不能代表稳定增长。", verify: "使用同一 4 题问题池，在豆包与 DeepSeek 继续验证提及、推荐和引用。", decide: "完成正式 T2 后再判断是否补更多信源或内容。" }]),
                   { title: "信源补强", why: "统一公开表达能帮助搜索与 AI 稳定识别品牌实体。", verify: "核对官网、知乎和公开平台的品牌介绍与业务定位是否一致。", decide: "07/16 正式 T2 后判断是否继续补第三方信源。" },
                   { title: "内容补强", why: "单篇内容可能不足以覆盖泛问题和推荐理由。", verify: "观察第 7 天收录状态及泛问题是否开始提及品牌。", decide: "若仍未收录或泛问题未提及，再启动第二篇内容。" },
                 ].map(item => (
