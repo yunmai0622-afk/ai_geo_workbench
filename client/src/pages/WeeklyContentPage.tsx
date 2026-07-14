@@ -84,6 +84,7 @@ import {
   deriveClientProjectCardDisplay,
 } from "@/lib/projectWorkspaceDisplay";
 import { P0Card } from "@/components/geo/P0UiPrimitives";
+import { SAMPLE_210001_ZHIHU_URL } from "@shared/brandAssets";
 import { useAiTaskStagedProgress } from "@/hooks/useAiTaskStagedProgress";
 import { mapPlatformContentErrorCategory } from "@/lib/aiTaskProgressErrors";
 import ProjectContextEmptyState from "@/components/ProjectContextEmptyState";
@@ -5083,7 +5084,7 @@ export default function WeeklyContentPage() {
               本轮不是只发一篇文章，而是在建设公开问题证据
             </span>
           </div>
-          <dl className="mt-3 grid gap-2 text-sm leading-6 text-gray-800 sm:grid-cols-2 lg:grid-cols-4"><div><dt className="font-medium">资产类型</dt><dd>业务定义 + AI 问题占位 + 公开内容证据</dd></div><div><dt className="font-medium">目标 AI 问题</dt><dd>海豚知道是什么？</dd></div><div><dt className="font-medium">公开证据形式</dt><dd>知乎文章 · 已形成公开 URL</dd></div><div><dt className="font-medium">当前阶段 / 下一步</dt><dd>已发布回填 · 已进入复测，等待收录验证</dd></div></dl>
+          <dl className="mt-3 grid gap-2 text-sm leading-6 text-gray-800 sm:grid-cols-2 lg:grid-cols-4"><div><dt className="font-medium">资产类型</dt><dd>业务定义 + AI 问题占位 + 公开内容证据</dd></div><div><dt className="font-medium">目标 AI 问题</dt><dd>海豚知道是什么？</dd></div><div><dt className="font-medium">公开证据形式</dt><dd>知乎文章 · <a className="break-all text-cyan-700 underline" href={SAMPLE_210001_ZHIHU_URL} target="_blank" rel="noreferrer">{SAMPLE_210001_ZHIHU_URL}</a></dd></div><div><dt className="font-medium">当前阶段 / 下一步</dt><dd>已发布回填 · 已进入复测，等待收录验证</dd></div></dl>
           <p className="mt-1 text-xs leading-5 text-gray-600">
             当前只确认发布动作完成，不代表已收录或 AI 提及已经提升；{scheduledRetestQuery.data?.retryRequired ? "07/12 自动复测失败，需补跑；" : ""}下一未来节点为 {scheduledRetestQuery.data?.nextMilestone?.dueDate === "2026-07-16" ? "07/16 正式问题池 T2 复测" : scheduledRetestQuery.data?.nextMilestone?.dueDate === "2026-07-23" ? "07/23 T3 复测" : "待安排"}。
           </p>
