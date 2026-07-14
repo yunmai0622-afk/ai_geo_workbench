@@ -47,6 +47,7 @@ import DeliveryReportSharePage from "./pages/DeliveryReportSharePage";
 import LegacyAssetProgressRedirect from "./components/LegacyAssetProgressRedirect";
 import ClientDashboardPage from "./pages/ClientDashboardPage";
 import EnterpriseWorkspacePage from "./pages/EnterpriseWorkspacePage";
+import BrandAssetsPage from "./pages/BrandAssetsPage";
 import MaturityDetailPage from "./pages/MaturityDetailPage";
 import MonthlyPlanPage from "./pages/MonthlyPlanPage";
 import EffectiveActionsPage from "./pages/EffectiveActionsPage";
@@ -112,6 +113,7 @@ function PrivateRoutes() {
         <Route path="/admin/subscription" component={AdminSubscriptionPage} />
         <Route path="/knowledge" component={KnowledgePage} />
         <Route path="/workspace" component={EnterpriseWorkspacePage} />
+        <Route path="/brand-assets" component={BrandAssetsPage} />
         <Route path="/maturity" component={MaturityDetailPage} />
         <Route path="/monthly-plan" component={MonthlyPlanPage} />
         <Route path="/">

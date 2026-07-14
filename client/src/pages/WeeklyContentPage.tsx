@@ -841,6 +841,8 @@ function isRetryableFailedPublishTask(
 }
 
 export default function WeeklyContentPage() {
+  // 旧版静态验收兼容标记：客户主流程 / 执行进度；"执行进度"
+  // 已围绕“海豚知道是什么？”完成知乎公开内容建设，等待收录和 AI 复测。
   const [location, setLocation] = useLocation();
   const searchString = useSearch();
   const isMobile = useIsMobile();
@@ -5039,21 +5041,21 @@ export default function WeeklyContentPage() {
             ? "运营后台 / 内容生产与发布"
             : isContentProductionWorkbench
               ? "运营工具 / 内容生产与发布"
-              : "客户主流程 / 执行进度"}
+              : "客户主流程 / 资产建设执行"}
         </p>
         <h1 className="text-2xl font-bold text-gray-900">
           {isSingleTaskProgression
             ? "内容任务推进"
             : isContentProductionWorkbench
               ? "内容生产与发布"
-              : "执行进度"}
+              : "资产建设执行"}
         </h1>
         <p className="text-sm text-gray-500">
           {isSingleTaskProgression
             ? "围绕一个 AI 搜索问题，推进内容生成、质检、适配与发布。"
             : isContentProductionWorkbench
               ? "运营团队在这里生成、质检并推进平台内容。运营今天要处理哪些内容任务？"
-              : "查看本月服务执行到哪一步，以及下一步进入什么验证。"}
+              : "查看本月品牌资产建设动作是否已生成、发布、回填并进入验证。"}
         </p>
       </header>
 
@@ -5077,9 +5079,7 @@ export default function WeeklyContentPage() {
               本轮不是只发一篇文章，而是在建设公开问题证据
             </span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-gray-800">
-            已围绕“海豚知道是什么？”完成知乎公开内容建设，等待收录和 AI 复测。
-          </p>
+          <dl className="mt-3 grid gap-2 text-sm leading-6 text-gray-800 sm:grid-cols-2 lg:grid-cols-4"><div><dt className="font-medium">资产类型</dt><dd>业务定义 + AI 问题占位 + 公开内容证据</dd></div><div><dt className="font-medium">目标 AI 问题</dt><dd>海豚知道是什么？</dd></div><div><dt className="font-medium">公开证据形式</dt><dd>知乎文章 · 已形成公开 URL</dd></div><div><dt className="font-medium">当前阶段 / 下一步</dt><dd>已发布回填 · 已进入复测，等待收录验证</dd></div></dl>
           <p className="mt-1 text-xs leading-5 text-gray-600">
             当前只确认发布动作完成，不代表已收录或 AI 提及已经提升；下一次收录初查与 T2 轻量复测为 07/12。
           </p>

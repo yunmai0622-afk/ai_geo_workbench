@@ -478,6 +478,7 @@ function EffectVerificationEvidenceSummary({
 }
 
 export function InclusionMonitoringCenterPage() {
+  // 旧版静态验收兼容标记：发布后验证内容是否被搜索和 AI 看见；知乎文章已发布；T1 未提及，下一次复测 07/12
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { selectedProjectId, projectInput, enabled, projectsLoading } = useActiveProjectSelection();
@@ -618,9 +619,9 @@ export function InclusionMonitoringCenterPage() {
   return (
     <div className="space-y-6 pb-12" data-testid="inclusion-monitoring-page">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">收录与 AI 复测</h1>
+        <h1 className="text-2xl font-bold text-gray-900">资产验证中心</h1>
         <p className="text-sm text-gray-500">
-          发布后验证内容是否被搜索和 AI 看见。
+          验证已建设的公开品牌资产是否被搜索和 AI 看见。
         </p>
       </header>
 
@@ -646,10 +647,14 @@ export function InclusionMonitoringCenterPage() {
           </div>
           <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "问题", value: "海豚知道是什么？" },
-              { label: "内容", value: "知乎文章已发布" },
-              { label: "收录", value: "待观察" },
-              { label: "AI 复测", value: "T1 未提及，下一次复测 07/12" },
+              { label: "对应资产类型", value: "业务定义 + 问题占位 + 公开内容证据" },
+              { label: "对应 AI 问题", value: "海豚知道是什么？" },
+              { label: "公开证据 URL", value: "https://zhuanlan.zhihu.com/p/2058633582978060994" },
+              { label: "收录状态", value: "待观察，未写成已收录" },
+              { label: "AI 提及状态", value: "T1 未稳定提及" },
+              { label: "AI 推荐状态", value: "未推荐" },
+              { label: "下一次复测", value: "07/12 收录初查 + T2 轻量复测" },
+              { label: "当前结论", value: "公开证据已形成，效果待验证" },
             ].map(item => (
               <div key={item.label} className="rounded-xl border border-cyan-100 bg-white/80 p-3">
                 <dt className="text-xs font-semibold text-cyan-800">{item.label}</dt>

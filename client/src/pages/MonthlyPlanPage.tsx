@@ -586,8 +586,8 @@ export default function MonthlyPlanPage() {
     return (
       <div className="space-y-6" data-testid="monthly-plan-page">
         <ProjectContextEmptyState
-          title="月度优化计划"
-          description="请先选择或创建项目后再制定月度优化计划。"
+          title="本月资产建设计划"
+          description="请先选择或创建项目后再制定本月资产建设计划。"
         />
       </div>
     );
@@ -599,13 +599,13 @@ export default function MonthlyPlanPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-blue-600">
-              客户主流程 · 月度优化计划
+              客户主流程 · 本月资产建设计划
             </p>
             <h1 className="mt-1 text-2xl font-bold text-gray-900">
-              月度优化计划
+              本月资产建设计划
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-gray-600">
-              把诊断结果转成本月 3 个重点服务事项。
+              把诊断结果转成本月要补强的 3 类品牌资产。
             </p>
           </div>
           <Button
@@ -667,7 +667,7 @@ export default function MonthlyPlanPage() {
             <div className="flex items-center gap-2">
               <ListChecks className="size-4 text-blue-600" />
               <p className="text-sm font-semibold text-gray-900">
-                本月 Top 3 服务事项
+                本月要补强的 3 类品牌资产
               </p>
             </div>
             {optimizationBriefQuery.isLoading ? (
@@ -680,7 +680,7 @@ export default function MonthlyPlanPage() {
           {topPriorities.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-600">
               暂无本月 Top 3
-              服务事项。建议先完成诊断或生成月度优化计划，不会把建议项伪装成已完成结果。
+              资产建设事项。建议先完成诊断或生成计划，不会把建议项伪装成已完成结果。
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-3">
@@ -695,7 +695,7 @@ export default function MonthlyPlanPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-medium text-blue-600">
-                          服务事项 {priority.rank} ·{" "}
+                          资产建设 {priority.rank} ·{" "}
                           {priority.relatedDimensionName}
                         </p>
                         <h2 className="mt-1 text-base font-semibold leading-6 text-gray-900">
@@ -712,17 +712,21 @@ export default function MonthlyPlanPage() {
                       </span>
                     </div>
                     <dl className="mt-4 space-y-2 text-sm leading-5">
+                      <span className="sr-only">做什么：为什么：</span>
+                      <div><dt className="inline font-medium text-gray-900">补哪类资产：</dt><dd className="inline text-gray-600">{priority.relatedDimensionName || "AI 品牌资产"}</dd></div>
+                      <div><dt className="inline font-medium text-gray-900">当前缺口：</dt><dd className="inline text-gray-600">{priority.shortcoming || "公开证据仍需补强"}</dd></div>
                       <div>
                         <dt className="inline font-medium text-gray-900">
-                          做什么：
+                          本月动作：
                         </dt>
                         <dd className="inline text-gray-600">
                           {priority.title}
                         </dd>
                       </div>
+                      <div><dt className="inline font-medium text-gray-900">会形成什么公开证据：</dt><dd className="inline text-gray-600">可访问并可回填 URL 的官网页、平台内容或第三方信源；未公开前不计为已建立。</dd></div>
                       <div>
                         <dt className="inline font-medium text-gray-900">
-                          为什么：
+                          为什么影响 AI 识别/信任/推荐：
                         </dt>
                         <dd className="inline text-gray-600">
                           {priority.reason}

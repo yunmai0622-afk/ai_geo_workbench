@@ -16,6 +16,7 @@ import {
   type MonthlyReportView,
 } from "@shared/monthlyReportView";
 import { formatMonthlyReportImpactProofLine } from "@shared/contentRetestAttribution";
+import { getBrandAssets } from "@shared/brandAssets";
 import type { MonthlyOptimizationBrief, MonthlyOptimizationPriority } from "@shared/monthlyOptimizationBrief";
 import {
   AlertTriangle,
@@ -669,6 +670,15 @@ function RenewalDeliveryReportHero({
 
   return (
     <div className="space-y-6" data-testid="delivery-report-renewal-overview">
+      <P0Card testId="delivery-report-brand-assets-summary" className="space-y-4">
+        <div><h2 className="text-lg font-semibold text-gray-900">本月品牌资产建设总结</h2><p className="text-sm text-gray-500">本总结区分建设动作、公开证据和 AI 效果验证，不把文章发布写成效果提升。</p></div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">本月新增资产</p><p className="mt-1 text-sm text-gray-600">新增一条业务定义资产与 AI 问题占位资产，围绕“海豚知道是什么？”形成公开内容。</p></div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">已形成公开证据</p><p className="mt-1 text-sm text-gray-600">真实知乎 URL 已回填；仅证明内容公开发布，不代表已收录、被引用或被推荐。</p></div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">当前 AI 复测结论与未闭环原因</p><p className="mt-1 text-sm text-gray-600">轻量核验未显示稳定提及、推荐或文章引用；正式 T2/T3 尚待执行，因此不能判断效果提升。</p></div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">下月资产建设建议</p><p className="mt-1 text-sm text-gray-600">补强官网同主题定义页和第三方可信信源，继续既定复测计划，并建设推荐类问题占位。</p></div>
+        </div>
+      </P0Card>
       <P0Card testId="delivery-report-renewal-hero" className="space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
@@ -1197,6 +1207,15 @@ function MonthlyMaturityReportSections({
 
   return (
     <div className="space-y-8">
+      <section className="space-y-4" data-testid="monthly-report-brand-assets-summary">
+        <div><h2 className="text-lg font-semibold text-gray-900">本月品牌资产建设总结</h2><p className="text-sm text-gray-500">报告记录公开证据和验证进度，不把文章发布等同于效果提升。</p></div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <P0Card><p className="text-sm font-medium text-gray-900">本月新增资产与公开证据</p><p className="mt-2 text-sm text-gray-600">已发布内容、公开信源和信任证据以本报告实际记录为准；没有 URL 或核验记录的资料不计为已完成公开资产。</p></P0Card>
+          <P0Card><p className="text-sm font-medium text-gray-900">当前 AI 复测结论</p><p className="mt-2 text-sm text-gray-600">{report.retest ? "已形成本轮复测数据，提及、推荐和引用结果分别展示，不互相替代。" : "正式复测尚未形成，当前不能判断提及、推荐或效果提升。"}</p></P0Card>
+          <P0Card><p className="text-sm font-medium text-gray-900">未完成效果闭环的原因</p><p className="mt-2 text-sm text-gray-600">公开内容仍需经历可访问性、收录观察、AI 提及/引用/推荐核验；任一环节缺少证据都不写成已提升。</p></P0Card>
+          <P0Card><p className="text-sm font-medium text-gray-900">下月资产建设建议</p><p className="mt-2 text-sm text-gray-600">优先补强官网定义页与第三方可信信源，并按既定计划完成复测后再决定下一轮问题占位。</p></P0Card>
+        </div>
+      </section>
       <section className="space-y-4" data-testid="monthly-report-summary">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">第一屏 · 本月成效摘要</h2>
@@ -1546,15 +1565,15 @@ export function DeliveryReportsCenterPage() {
 
   useEffect(() => {
     const name = selectedProject?.enterpriseName?.trim() || "企业";
-    document.title = `${name} - 交付报告`;
+    document.title = `${name} - 品牌资产增长报告`;
   }, [selectedProject?.enterpriseName]);
 
   if (!selectedProjectId && !projectsLoading) {
     return (
       <div data-testid="delivery-report-page">
         <ProjectContextEmptyState
-          title="交付报告"
-          description="请先选择或创建项目后再查看本月交付报告。"
+          title="品牌资产增长报告"
+          description="请先选择或创建项目后再查看品牌资产增长报告。"
         />
       </div>
     );
@@ -1569,13 +1588,13 @@ export function DeliveryReportsCenterPage() {
           <FileBarChart2 className="mt-1 size-6 text-blue-600" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900" data-testid="monthly-report-title">
-              交付报告
+              品牌资产增长报告
             </h1>
             <p className="mt-1 text-sm font-medium text-blue-700" data-testid="monthly-report-subtitle">
-              说明本月做了什么、验证了什么、下月为什么继续。
+              汇总本月新增了哪些 AI 品牌资产、形成哪些公开证据、AI 是否开始变化。
             </p>
             <p className="mt-3 max-w-3xl text-sm text-gray-600" data-testid="delivery-report-page-intro">
-              本页用于向客户说明本月做了什么、验证了什么、哪些问题仍需继续，以及下月为什么值得续费。
+              报告区分资产建设、公开发布、收录与 AI 复测；没有收录就写未收录，没有推荐就写未推荐。
             </p>
             <p className="mt-2 text-xs text-gray-500" data-testid="delivery-report-service-agency">
               本报告由 {whiteLabel.reportBrandName} 为客户生成
@@ -1583,6 +1602,12 @@ export function DeliveryReportsCenterPage() {
           </div>
         </div>
       </header>
+
+      {selectedProjectId ? <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm" data-testid="delivery-report-six-asset-growth">
+        <h2 className="text-lg font-semibold text-gray-900">6 类资产增长明细</h2>
+        <p className="mt-1 text-sm text-gray-500">状态基于当前公开证据与复测记录计算，发布完成不等于效果提升。</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{getBrandAssets(selectedProjectId).map(asset => <article key={asset.key} className="rounded-xl border border-gray-100 bg-gray-50 p-4"><div className="flex justify-between gap-2"><h3 className="text-sm font-semibold text-gray-900">{asset.name}</h3><span className="text-xs font-medium text-blue-700">{asset.status}</span></div><p className="mt-2 text-xs leading-5 text-gray-600">证据：{asset.evidence}</p><p className="mt-1 text-xs leading-5 text-gray-600">缺口：{asset.gap}</p></article>)}</div>
+      </section> : null}
 
       {reportQuery.isLoading ? (
         <div className="flex items-center gap-2 py-8 text-gray-500">

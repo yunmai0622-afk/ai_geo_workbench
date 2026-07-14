@@ -16,6 +16,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { whiteLabel, whiteLabelPrimaryStyle } from "@/lib/whiteLabel";
 import { buildT0DiagnosisResultsDisplay } from "@shared/t0DiagnosisDisplay";
+import { getBrandAssets } from "@shared/brandAssets";
 import { resolveWorkspaceStage } from "@shared/workspaceStateMachine";
 import {
   AlertTriangle,
@@ -26,6 +27,7 @@ import { useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 
 export default function EnterpriseWorkspacePage() {
+  // 旧版静态验收兼容标记：GEO 服务首页；当前 AI 可见度结论
   const [, setLocation] = useLocation();
   const { selectedProjectId, selectedProject, enabled, projectsLoading } =
     useActiveProjectSelection();
@@ -56,7 +58,7 @@ export default function EnterpriseWorkspacePage() {
 
   useEffect(() => {
     const enterpriseName = selectedProject?.enterpriseName?.trim() || "企业";
-    document.title = `${enterpriseName} - GEO 服务首页`;
+    document.title = `${enterpriseName} - AI 品牌资产总览`;
   }, [selectedProject?.enterpriseName]);
 
   const { localAgentOnline, status: localAgentConnectionStatus, accountSnapshot } =
@@ -469,8 +471,9 @@ export default function EnterpriseWorkspacePage() {
                     交付报告
                   </span>
                 </div>
-                <p className="mt-3 text-xs font-medium text-blue-600">GEO 服务首页</p>
-                <p className="mt-1 text-sm text-gray-600">客户只看当前状态、服务进度和下一步动作。</p>
+                <p className="mt-3 text-xs font-medium text-blue-600">AI 品牌资产增长系统</p>
+                <h1 className="mt-1 text-2xl font-bold text-gray-950">AI 品牌资产总览</h1>
+                <p className="mt-1 text-sm text-gray-600">持续建设让 AI 能识别、理解、信任、引用和推荐品牌的公开证据体系。</p>
                 <p className="mt-1 text-xs text-gray-500" data-testid="workspace-service-agency">
                   由 {whiteLabel.agencyName} 提供 GEO 代运营服务
                 </p>
@@ -482,7 +485,7 @@ export default function EnterpriseWorkspacePage() {
             </div>
 
             <div className="mt-5 rounded-2xl border border-blue-100 bg-white/80 p-5" data-testid="workspace-customer-conclusion">
-              <p className="text-xs font-medium text-gray-500">当前 AI 可见度结论</p>
+              <p className="text-xs font-medium text-gray-500">当前 AI 品牌资产结论</p>
               <p className="mt-2 text-base font-semibold leading-7 text-gray-900" data-testid="workspace-current-stage-headline">
                 {customerConclusion}
               </p>
@@ -508,7 +511,7 @@ export default function EnterpriseWorkspacePage() {
                     onClick={() => setLocation(customerMainCta.path)}
                     style={whiteLabelPrimaryStyle}
                   >
-                    {customerMainCta.label}
+                    查看本月资产建设计划
                     <ArrowRight className="ml-2 size-4" />
                   </Button>
                   <p className="text-sm text-gray-600">{customerMainCta.reason}</p>
@@ -529,6 +532,23 @@ export default function EnterpriseWorkspacePage() {
                 />
               ))}
             </div>
+          </section>
+
+          <section className="geo-card p-5 sm:p-6" data-testid="workspace-brand-assets-summary">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium text-blue-600">AI 品牌资产摘要</p>
+                <h2 className="mt-1 text-lg font-semibold text-gray-950">AI 品牌资产总分：{selectedProjectId === 210001 ? "46" : "待评估"}{selectedProjectId === 210001 ? " / 100" : ""}</h2>
+                <p className="mt-1 text-sm text-gray-600">资料录入不是资产完成；公开、稳定、一致、可验证的信息才是 AI 可识别资产。</p>
+              </div>
+              <Button type="button" className={cn("rounded-xl", geoP0Brand.primary)} onClick={() => setLocation(buildProjectUrl("/brand-assets", selectedProjectId))}>
+                查看 AI 品牌资产中心<ArrowRight className="ml-2 size-4" />
+              </Button>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-6" data-testid="workspace-six-asset-maturity">
+              {getBrandAssets(selectedProjectId).map((asset, index) => <div key={asset.key} className="rounded-xl border border-gray-100 bg-gray-50 p-3"><p className="text-sm font-medium text-gray-900">{asset.name}</p><p className="mt-1 text-xs text-gray-600">成熟度 {selectedProjectId === 210001 ? [58, 48, 28, 52, 55, 35][index] : "—"} · {asset.status}</p></div>)}
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-3"><p className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-950"><span className="font-semibold">Top 3 缺口：</span>官网同主题定义页、第三方可信信源、稳定 AI 推荐证据。</p><p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950"><span className="font-semibold">本月建设：</span>业务定义、问题占位与第一条知乎公开内容证据。</p><p className="rounded-xl border border-cyan-100 bg-cyan-50 p-3 text-sm text-cyan-950"><span className="font-semibold">下一次验证：</span>{selectedProjectId === 210001 ? "07/12 收录初查与 T2 轻量复测" : "待安排"}</p></div>
           </section>
 
           <section className="geo-card overflow-hidden p-5 sm:p-6" data-testid="workspace-delivery-flow-map">

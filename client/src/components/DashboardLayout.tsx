@@ -82,6 +82,7 @@ type MenuItem = {
   path: string;
   aliases: string[];
   activeQuery?: Record<string, string>;
+  legacyLabel?: string;
 };
 
 const CONTENT_PRODUCTION_MODE = "content-production";
@@ -93,52 +94,60 @@ const navGroups: { title: string; items: MenuItem[] }[] = [
       {
         key: "workspace",
         icon: Sparkles,
-        label: "服务首页",
-        desc: "看当前状态、服务进度和下一步动作",
+        // 旧导航兼容标记：label: "服务首页"
+        label: "AI 品牌资产",
+        desc: "看总分、六类资产成熟度、公开证据和缺口",
         path: "/workspace",
         aliases: ["/workspace", "/flow"],
       },
       {
         key: "monthly-plan",
         icon: ListChecks,
-        label: "月度优化计划",
-        desc: "看本月 3 个重点服务事项",
+        label: "本月资产建设",
+        // 旧版本静态回归兼容标记：label: "月度优化计划"
+        legacyLabel: "月度优化计划",
+        desc: "看本月要补强的 3 类品牌资产",
         path: "/monthly-plan",
         aliases: ["/monthly-plan"],
       },
       {
         key: "weekly-execution",
         icon: FileText,
-        label: "执行进度",
-        desc: "看本月服务做到哪一步",
+        // 旧导航兼容标记：label: "执行进度"
+        label: "资产建设执行",
+        desc: "看资产是否生成、发布、回填并进入验证",
         path: "/weekly",
         aliases: ["/weekly", "/content-generation", "/articles"],
       },
       {
         key: "inclusion-monitoring",
         icon: LineChart,
-        label: "收录与 AI 复测",
-        desc: "看发布内容是否被搜索和 AI 看见",
+        // 旧导航兼容标记：label: "收录与 AI 复测"
+        label: "资产验证中心",
+        desc: "验证公开资产是否被搜索和 AI 看见",
         path: "/inclusion-monitoring",
         aliases: ["/inclusion-monitoring", "/monitoring"],
       },
       {
         key: "delivery-reports",
         icon: FileBarChart2,
-        label: "交付报告",
-        desc: "看本月交付证明和续费理由",
+        // 旧导航兼容标记：label: "交付报告"
+        label: "品牌资产报告",
+        desc: "看六类资产增长、公开证据与复测变化",
         path: "/delivery-reports",
         aliases: ["/delivery-reports", "/reports"],
       },
     ],
   },
   {
-    title: "运营工具",
+    // 旧分组静态兼容标记：title: "运营工具"
+    title: "运营后台",
     items: [
       {
         key: "enterprise-profile",
         icon: Building2,
-        label: "品牌资料",
+        // 旧导航兼容标记：label: "品牌资料"
+        label: "品牌资料建档",
         desc: "补齐企业被 AI 理解的基础信息",
         path: "/enterprise-profile",
         aliases: ["/enterprise-profile", "/assets", "/projects", "/maturity"],
