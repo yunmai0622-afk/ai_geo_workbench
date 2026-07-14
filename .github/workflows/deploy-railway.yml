@@ -139,6 +139,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "[migration] applying committed Drizzle migrations before Railway deployment"
+          node scripts/reconcile_brand_truth_migration.mjs
           corepack pnpm db:migrate
           echo "[migration] completed"
 
