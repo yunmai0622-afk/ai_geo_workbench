@@ -233,8 +233,12 @@ import {
   getPlatformDraftGenerationStatus,
   startPlatformDraftGeneration,
 } from "./platformDraftGenerationService";
-import { mergeAiTestResultsByStage, normalizeAiTestResult } from "@shared/aiTestEvidence";
-import { buildAiMentionSuggestion, runAiMentionCheck } from "./geoAiMentionCheck";
+import { mergeAiTestResultsByStage, normalizeAiTestResult, type AiTestEvidenceItem } from "@shared/aiTestEvidence";
+import {
+  buildAiMentionSuggestion,
+  getAiMentionModelConfiguration,
+  runAiMentionCheck,
+} from "./geoAiMentionCheck";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
 import {
   buildDeliveryReportPublicEvidencePayload,
@@ -4314,13 +4318,22 @@ ${article.markdownContent}`,
         const currentStatus = typeof state.status === "string" ? state.status : "pending";
         const currentKey = typeof state.currentKey === "string" ? state.currentKey : null;
         const lastError = typeof state.lastError === "string" ? state.lastError : null;
-        const scheduledResults = Array.isArray(record?.aiTestResults)
+        const scheduledResults: AiTestEvidenceItem[] = Array.isArray(record?.aiTestResults)
           ? record.aiTestResults
               .map(normalizeAiTestResult)
-              .filter(item => item?.testStage === "manual_check")
+              .filter((item): item is AiTestEvidenceItem => item?.testStage === "manual_check")
+              .map(item => item.scheduledRetestKey
+                ? item
+                : { ...item, scheduledRetestKey: "light_t2", scheduledDueDate: "2026-07-12" })
+          : [];
+        const latestResultMilestone = [...SAMPLE_RETEST_MILESTONES].reverse().find(milestone =>
+          scheduledResults.some(item => item.scheduledRetestKey === milestone.key),
+        ) ?? null;
+        const latestResults = latestResultMilestone
+          ? scheduledResults.filter(item => item.scheduledRetestKey === latestResultMilestone.key)
           : [];
         const platformResults = (["doubao", "deepseek"] as const).map(engine => {
-          const items = scheduledResults.filter(item => item?.engine === engine);
+          const items = latestResults.filter(item => item.engine === engine);
           const resultCount = items.length;
           return {
             engine,
@@ -4337,9 +4350,10 @@ ${article.markdownContent}`,
             citedSampleUrlCount: items.filter(item => item?.citedUrls.includes(SAMPLE_210001_ZHIHU_URL)).length,
           } as const;
         });
-        const citedSampleUrlCount = scheduledResults.filter(item =>
-          item?.citedUrls.includes(SAMPLE_210001_ZHIHU_URL),
+        const citedSampleUrlCount = latestResults.filter(item =>
+          item.citedUrls.includes(SAMPLE_210001_ZHIHU_URL),
         ).length;
+        const modelConfiguration = getAiMentionModelConfiguration();
         const derived = deriveScheduledRetestState({
           currentStatus,
           currentKey,
@@ -4366,6 +4380,16 @@ ${article.markdownContent}`,
           lastRecommendRate: typeof state.lastRecommendRate === "number" ? state.lastRecommendRate : null,
           platformResults,
           citedSampleUrlCount,
+          latestResultMilestone: latestResultMilestone ? {
+            key: latestResultMilestone.key,
+            dueDate: latestResultMilestone.dueDate,
+            label: latestResultMilestone.key === "light_t2" ? "light_t2（轻量补跑）" : latestResultMilestone.key.toUpperCase(),
+          } : null,
+          modelChannels: {
+            independent: modelConfiguration.independent,
+            doubao: { source: modelConfiguration.doubao.source, fingerprint: modelConfiguration.doubao.fingerprint },
+            deepseek: { source: modelConfiguration.deepseek.source, fingerprint: modelConfiguration.deepseek.fingerprint },
+          },
           lastAiTestedAt: record?.lastAiTestedAt ?? null,
           healthStatus: derived.healthStatus,
           retryRequired: derived.retryRequired,

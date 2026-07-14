@@ -32,6 +32,7 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3' }}
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'ep-20251210143333-s6bb7' }}
+      ARK_DEEPSEEK_MODEL_ID: ${{ vars.ARK_DEEPSEEK_MODEL_ID }}
       OPENAI_TIMEOUT_MS: ${{ vars.OPENAI_TIMEOUT_MS || '60000' }}
       TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -273,6 +274,9 @@ jobs:
               GIT_COMMIT: commitSha,
               BUILD_TIME: buildTime,
             };
+            if (process.env.ARK_DEEPSEEK_MODEL_ID?.trim()) {
+              variables.ARK_DEEPSEEK_MODEL_ID = process.env.ARK_DEEPSEEK_MODEL_ID.trim();
+            }
 
             await railway(
               `mutation variableCollectionUpsert($input: VariableCollectionUpsertInput!) {

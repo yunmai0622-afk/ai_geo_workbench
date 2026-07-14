@@ -9,9 +9,12 @@ import {
   roundQuestions,
   testRounds,
 } from "../drizzle/schema";
-import { mergeAiTestResultsByStage } from "@shared/aiTestEvidence";
+import { mergeScheduledRetestResults } from "@shared/aiTestEvidence";
 import { getDb } from "./db";
-import { runAiMentionCheck } from "./geoAiMentionCheck";
+import {
+  assertIndependentRetestModelConfiguration,
+  runAiMentionCheck,
+} from "./geoAiMentionCheck";
 import { resolveProjectCompetitorNames } from "./geoAiMentionEvidence";
 import { applyRetestFeedbackFromRound } from "./retestFeedbackLoopService";
 
@@ -136,6 +139,12 @@ export async function runDueSampleRetests(options: { now?: Date; dryRun?: boolea
   if (pool.missing.length) {
     throw new Error(`样板复测问题池缺失：${pool.missing.join("、")}。请先补齐问题配置后再执行复测。`);
   }
+  const modelConfig = assertIndependentRetestModelConfiguration();
+  console.info("[scheduled-sample-retest] model_channels", {
+    doubao: { source: modelConfig.doubao.source, fingerprint: modelConfig.doubao.fingerprint },
+    deepseek: { source: modelConfig.deepseek.source, fingerprint: modelConfig.deepseek.fingerprint },
+    independent: modelConfig.independent,
+  });
   if (options.dryRun) {
     return {
       projectId: SAMPLE_RETEST_PROJECT_ID,
@@ -145,6 +154,11 @@ export async function runDueSampleRetests(options: { now?: Date; dryRun?: boolea
       questionPoolComplete: true,
       questionCount: pool.rows.length,
       insertedQuestions: pool.insertedQuestions,
+      modelChannels: {
+        independent: modelConfig.independent,
+        doubao: { source: modelConfig.doubao.source, fingerprint: modelConfig.doubao.fingerprint },
+        deepseek: { source: modelConfig.deepseek.source, fingerprint: modelConfig.deepseek.fingerprint },
+      },
       wroteRetestResults: false,
     };
   }
@@ -234,7 +248,13 @@ export async function runDueSampleRetests(options: { now?: Date; dryRun?: boolea
         await applyRetestFeedbackFromRound(db, SAMPLE_RETEST_PROJECT_ID, roundId, new Date());
       }
 
-      const savedResults = mergeAiTestResultsByStage(monitoring.aiTestResults ?? [], result.results, "manual_check");
+      const savedResults = mergeScheduledRetestResults(
+        monitoring.aiTestResults ?? [],
+        result.results,
+        milestone.key,
+        milestone.dueDate,
+        SAMPLE_RETEST_MILESTONES[0].dueDate,
+      );
       await db.update(geoInclusionMonitoringRecords).set({
         aiMentionMonitorStatus: result.mentionRate > 0 ? "已提及" : "未提及",
         aiRecommendMonitorStatus: result.recommendRate > 0 ? "已推荐" : "未推荐",

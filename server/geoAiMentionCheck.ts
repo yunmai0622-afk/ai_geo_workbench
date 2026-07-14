@@ -3,6 +3,7 @@
  * 支持：豆包（火山引擎）、DeepSeek、Kimi、通义千问、文心一言
  */
 
+import { createHash } from "node:crypto";
 import type { AiTestEvidenceItem, AiTestStage } from "@shared/aiTestEvidence";
 import { enrichAiTestResult, type EnrichAiTestResultContext } from "./geoAiMentionEvidence";
 
@@ -50,31 +51,16 @@ export interface AiMentionCheckOutput {
   >;
 }
 
-const ENGINE_CONFIG: Record<
-  AiEngine,
-  {
-    name: string;
-    apiUrl: string;
-    model: string;
-    apiKey: string;
-  }
+type EngineConfig = {
+  name: string;
+  apiUrl: string;
+  model: string;
+  apiKey: string;
+};
+
+const OTHER_ENGINE_CONFIG: Record<Exclude<AiEngine, "doubao" | "deepseek">,
+  EngineConfig
 > = {
-  doubao: {
-    name: "豆包",
-    apiUrl: process.env.OPENAI_BASE_URL
-      ? `${process.env.OPENAI_BASE_URL}/chat/completions`
-      : "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
-    model: process.env.OPENAI_MODEL ?? "ep-20251210143333-s6bb7",
-    apiKey: process.env.OPENAI_API_KEY ?? "",
-  },
-  deepseek: {
-    name: "DeepSeek",
-    apiUrl: process.env.OPENAI_BASE_URL
-      ? `${process.env.OPENAI_BASE_URL}/chat/completions`
-      : "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
-    model: process.env.ARK_DEEPSEEK_MODEL_ID ?? process.env.OPENAI_MODEL ?? "ep-20251210143333-s6bb7",
-    apiKey: process.env.OPENAI_API_KEY ?? "",
-  },
   kimi: {
     name: "Kimi",
     apiUrl: "https://api.moonshot.cn/v1/chat/completions",
@@ -95,6 +81,66 @@ const ENGINE_CONFIG: Record<
   },
 };
 
+const DEFAULT_ARK_MODEL_ID = "ep-20251210143333-s6bb7";
+
+export type AiMentionModelConfiguration = {
+  doubao: { modelId: string; source: "OPENAI_MODEL" | "default"; fingerprint: string };
+  deepseek: { modelId: string; source: "ARK_DEEPSEEK_MODEL_ID" | "OPENAI_MODEL_fallback"; fingerprint: string };
+  independent: boolean;
+};
+
+function modelFingerprint(modelId: string): string {
+  return createHash("sha256").update(modelId).digest("hex").slice(0, 8);
+}
+
+export function getAiMentionModelConfiguration(
+  env: NodeJS.ProcessEnv = process.env,
+): AiMentionModelConfiguration {
+  const configuredDoubao = env.OPENAI_MODEL?.trim();
+  const doubaoModel = configuredDoubao || DEFAULT_ARK_MODEL_ID;
+  const configuredDeepSeek = env.ARK_DEEPSEEK_MODEL_ID?.trim();
+  const deepseekModel = configuredDeepSeek || doubaoModel;
+  return {
+    doubao: {
+      modelId: doubaoModel,
+      source: configuredDoubao ? "OPENAI_MODEL" : "default",
+      fingerprint: modelFingerprint(doubaoModel),
+    },
+    deepseek: {
+      modelId: deepseekModel,
+      source: configuredDeepSeek ? "ARK_DEEPSEEK_MODEL_ID" : "OPENAI_MODEL_fallback",
+      fingerprint: modelFingerprint(deepseekModel),
+    },
+    independent: Boolean(configuredDeepSeek && configuredDeepSeek !== doubaoModel),
+  };
+}
+
+export function assertIndependentRetestModelConfiguration(
+  env: NodeJS.ProcessEnv = process.env,
+): AiMentionModelConfiguration {
+  const config = getAiMentionModelConfiguration(env);
+  if (!env.ARK_DEEPSEEK_MODEL_ID?.trim()) {
+    throw new Error("ARK_DEEPSEEK_MODEL_ID 未配置；不能执行豆包与 DeepSeek 独立模型通道复测。");
+  }
+  if (!config.independent) {
+    throw new Error("ARK_DEEPSEEK_MODEL_ID 与 OPENAI_MODEL 相同；请配置独立 DeepSeek 模型后再执行复测。");
+  }
+  return config;
+}
+
+function engineConfig(engine: AiEngine): EngineConfig {
+  if (engine === "doubao" || engine === "deepseek") {
+    const models = getAiMentionModelConfiguration();
+    return {
+      name: engine === "doubao" ? "豆包" : "DeepSeek",
+      apiUrl: `${process.env.OPENAI_BASE_URL?.replace(/\/$/, "") || "https://ark.cn-beijing.volces.com/api/v3"}/chat/completions`,
+      model: engine === "doubao" ? models.doubao.modelId : models.deepseek.modelId,
+      apiKey: process.env.OPENAI_API_KEY ?? "",
+    };
+  }
+  return OTHER_ENGINE_CONFIG[engine];
+}
+
 export function normalizePlatformToAiEngine(platform: string): AiEngine | null {
   const key = platform.trim().toLowerCase();
   if (key === "doubao" || key === "豆包") return "doubao";
@@ -106,11 +152,11 @@ export function normalizePlatformToAiEngine(platform: string): AiEngine | null {
 }
 
 export function getAiEngineDisplayName(engine: AiEngine): string {
-  return ENGINE_CONFIG[engine].name;
+  return engineConfig(engine).name;
 }
 
 export async function askEngine(engine: AiEngine, question: string): Promise<string | null> {
-  const config = ENGINE_CONFIG[engine];
+  const config = engineConfig(engine);
   const apiKey = config.apiKey;
 
   if (!apiKey) {
@@ -224,7 +270,7 @@ export async function runAiMentionCheck(input: AiMentionCheckInput): Promise<AiM
   const missReasonContext = input.missReasonContext;
 
   for (const engine of engines) {
-    const config = ENGINE_CONFIG[engine];
+    const config = engineConfig(engine);
 
     for (const question of questions) {
       const answer = await askEngine(engine, question);

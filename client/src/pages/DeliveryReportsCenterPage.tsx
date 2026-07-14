@@ -837,9 +837,11 @@ function RenewalDeliveryReportHero({
                 <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.displayStatus)}</p>
                 {scheduledRetestQuery.data?.retryRequired ? <p className="font-medium text-amber-800">处置建议：补跑失败节点；后续计划不变。</p> : null}
                 {scheduledRetestQuery.data?.nextMilestone ? <p>下一计划节点：{scheduledRetestQuery.data.nextMilestone.dueDate}</p> : null}
+                {scheduledRetestQuery.data?.latestResultMilestone ? <p>最近结果节点：{scheduledRetestQuery.data.latestResultMilestone.dueDate} {scheduledRetestQuery.data.latestResultMilestone.label}</p> : null}
+                <p className={scheduledRetestQuery.data?.modelChannels.independent ? "text-emerald-800" : "font-medium text-amber-800"}>{scheduledRetestQuery.data?.modelChannels.independent ? "豆包与 DeepSeek 独立模型通道配置已验证。" : "已完成多通道 AI 复测，独立模型通道配置待完善。"}</p>
                 {scheduledRetestQuery.data?.lastResultCount != null ? <p>最近结果：{scheduledRetestQuery.data.lastResultCount} 条真实 AI 回答；提及率 {Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%，推荐率 {Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%。</p> : <p>最近结果：尚无自动复测结果</p>}
                 {scheduledRetestQuery.data?.lastResultCount != null ? <p>本次知乎 URL 引用：{scheduledRetestQuery.data.citedSampleUrlCount} 条。</p> : null}
-                {scheduledRetestQuery.data?.platformResults.map(platform => <p key={platform.engine}>{platform.engineName}：{platform.resultCount}/{platform.expectedCount} 条，提及 {platform.mentionCount}，推荐 {platform.recommendCount}，知乎引用 {platform.citedSampleUrlCount}，{platform.status === "success" ? "成功" : platform.status === "partial" ? "部分失败" : "失败"}。</p>)}
+                {scheduledRetestQuery.data?.platformResults.map(platform => <p key={platform.engine}>{scheduledRetestQuery.data?.modelChannels.independent ? "独立模型通道" : "逻辑通道"} {platform.engineName}：{platform.resultCount}/{platform.expectedCount} 条，提及 {platform.mentionCount}，推荐 {platform.recommendCount}，知乎引用 {platform.citedSampleUrlCount}，{platform.status === "success" ? "成功" : platform.status === "partial" ? "部分失败" : "失败"}。</p>)}
                 {scheduledRetestQuery.data?.lastError ? <p className="text-red-700">失败原因：{scheduledRetestQuery.data.lastError}</p> : null}
               </div>
             </div>

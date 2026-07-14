@@ -1,6 +1,7 @@
 export type AiTestSentiment = "positive" | "neutral" | "negative";
 export type AiTestParseStatus = "success" | "partial" | "failed";
 export type AiTestStage = "before_publish" | "after_publish" | "manual_check";
+export type ScheduledRetestKey = "light_t2" | "t2" | "t3";
 
 const AI_TEST_STAGES: AiTestStage[] = ["before_publish", "after_publish", "manual_check"];
 
@@ -107,6 +108,9 @@ export type AiTestEvidenceItem = {
   parseError?: string | null;
   testStage: AiTestStage;
   missReason?: AiTestMissReason;
+  /** 样板自动复测节点；用于保留并区分 light_t2 / T2 / T3 证据。 */
+  scheduledRetestKey?: ScheduledRetestKey;
+  scheduledDueDate?: string;
 };
 
 export type AiTestStageMetrics = {
@@ -211,6 +215,38 @@ export function mergeAiTestResultsByStage(
   });
 
   return merged;
+}
+
+/**
+ * 同一自动复测节点可重跑替换，不同节点的真实结果必须保留。
+ * legacyLightT2DueDate 仅用于在首次正式 T2 写入时标记历史未分轮次的 07/12 样板结果。
+ */
+export function mergeScheduledRetestResults(
+  existing: unknown[],
+  incoming: AiTestEvidenceItem[],
+  key: ScheduledRetestKey,
+  dueDate: string,
+  legacyLightT2DueDate?: string,
+): AiTestEvidenceItem[] {
+  const normalized = existing
+    .map(raw => normalizeAiTestResult(raw))
+    .filter((item): item is AiTestEvidenceItem => item !== null)
+    .map(item =>
+      legacyLightT2DueDate && item.testStage === "manual_check" && !item.scheduledRetestKey
+        ? { ...item, scheduledRetestKey: "light_t2" as const, scheduledDueDate: legacyLightT2DueDate }
+        : item,
+    )
+    .filter(item => item.scheduledRetestKey !== key);
+
+  const nextBatch = incoming.map(item => ({
+    ...item,
+    testStage: "manual_check" as const,
+    scheduledRetestKey: key,
+    scheduledDueDate: dueDate,
+  }));
+  return [...normalized, ...nextBatch].sort((a, b) =>
+    String(a.testedAt).localeCompare(String(b.testedAt)),
+  );
 }
 
 export function formatPercentMetric(rate: number | null): string {
@@ -344,6 +380,11 @@ export function normalizeAiTestResult(raw: unknown): AiTestEvidenceItem | null {
 
   const missReasonRaw = r.missReason;
   const missReason = isAiTestMissReason(missReasonRaw) ? missReasonRaw : undefined;
+  const scheduledRetestKeyRaw = r.scheduledRetestKey;
+  const scheduledRetestKey =
+    scheduledRetestKeyRaw === "light_t2" || scheduledRetestKeyRaw === "t2" || scheduledRetestKeyRaw === "t3"
+      ? scheduledRetestKeyRaw
+      : undefined;
 
   return {
     engine: String(r.engine ?? "unknown"),
@@ -366,6 +407,8 @@ export function normalizeAiTestResult(raw: unknown): AiTestEvidenceItem | null {
     parseError: typeof r.parseError === "string" ? r.parseError : null,
     testStage: resolveTestStage(r),
     ...(missReason ? { missReason } : {}),
+    ...(scheduledRetestKey ? { scheduledRetestKey } : {}),
+    ...(typeof r.scheduledDueDate === "string" ? { scheduledDueDate: r.scheduledDueDate } : {}),
   };
 }
 
