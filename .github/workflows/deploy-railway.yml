@@ -135,6 +135,13 @@ jobs:
             exit 1
           fi
 
+      - name: Apply production database migrations
+        run: |
+          set -euo pipefail
+          echo "[migration] applying committed Drizzle migrations before Railway deployment"
+          corepack pnpm db:migrate
+          echo "[migration] completed"
+
       - name: Deploy to Railway
         run: |
           set -euo pipefail

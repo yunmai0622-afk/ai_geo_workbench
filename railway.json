@@ -5,7 +5,6 @@
     "buildCommand": "corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm build"
   },
   "deploy": {
-    "preDeployCommand": ["corepack pnpm db:migrate"],
     "startCommand": "corepack pnpm start",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
