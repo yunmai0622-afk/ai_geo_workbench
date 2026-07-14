@@ -480,11 +480,9 @@ export default function MonthlyPlanPage() {
   const showCompletedPlan = plan?.status === "completed";
   const optimizationBrief = optimizationBriefQuery.data ?? null;
   const hasPlan = Boolean(plan);
-  const topPriorities = optimizationBrief?.priorities.length
-    ? optimizationBrief.priorities.slice(0, 3)
-    : selectedProjectId === 210001
-      ? SAMPLE_210001_ASSET_PRIORITIES
-      : [];
+  const topPriorities = selectedProjectId === 210001
+    ? SAMPLE_210001_ASSET_PRIORITIES
+    : optimizationBrief?.priorities.slice(0, 3) ?? [];
   const displayBrief = optimizationBrief
     ? { ...optimizationBrief, priorities: topPriorities }
     : selectedProjectId === 210001
