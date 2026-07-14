@@ -4326,6 +4326,9 @@ ${article.markdownContent}`,
           automatic: true,
           frequency: "每天 20:30（Asia/Shanghai）",
           currentStatus,
+          displayStatus: currentStatus === "running"
+            ? "running"
+            : derived.retryMilestones[0]?.status ?? currentStatus,
           currentKey,
           lastStartedAt: typeof state.lastStartedAt === "string" ? state.lastStartedAt : null,
           lastFinishedAt: typeof state.lastFinishedAt === "string" ? state.lastFinishedAt : null,

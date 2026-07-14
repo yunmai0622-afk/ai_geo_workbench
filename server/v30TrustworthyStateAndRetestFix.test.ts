@@ -20,6 +20,7 @@ describe("GEO V3.0 trustworthy state and scheduled retest fix", () => {
       "知识付费团队如何做系统化经营？",
     ]);
     expect(read("server/scheduledSampleRetest.ts")).toContain("请先补齐问题配置后再执行复测");
+    expect(read("server/routers.ts")).toContain("derived.retryMilestones[0]?.status ?? currentStatus");
   });
 
   it("keeps the failed 07/12 node but rolls next validation to 07/16", () => {

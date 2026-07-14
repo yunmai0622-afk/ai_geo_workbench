@@ -834,7 +834,7 @@ function RenewalDeliveryReportHero({
               <div className="mt-3 rounded-xl border border-sky-100 bg-white/80 p-3 text-xs leading-5 text-gray-700" data-testid="delivery-report-automatic-retest-status">
                 <p className="font-semibold text-sky-900">自动复测已启用 · {scheduledRetestQuery.data?.frequency ?? "每天 20:30（Asia/Shanghai）"}</p>
                 <p>健康状态：{scheduledRetestQuery.data?.healthStatus === "needs_attention" ? "需处理" : scheduledRetestQuery.data?.healthStatus === "running" ? "执行中" : "正常"}</p>
-                <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.currentStatus)}</p>
+                <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.displayStatus)}</p>
                 {scheduledRetestQuery.data?.retryRequired ? <p className="font-medium text-amber-800">处置建议：补跑失败节点；后续计划不变。</p> : null}
                 {scheduledRetestQuery.data?.nextMilestone ? <p>下一计划节点：{scheduledRetestQuery.data.nextMilestone.dueDate}</p> : null}
                 {scheduledRetestQuery.data?.lastResultCount != null ? <p>最近结果：{scheduledRetestQuery.data.lastResultCount} 条真实 AI 回答；提及率 {Math.round((scheduledRetestQuery.data.lastMentionRate ?? 0) * 100)}%，推荐率 {Math.round((scheduledRetestQuery.data.lastRecommendRate ?? 0) * 100)}%。</p> : <p>最近结果：尚无自动复测结果</p>}

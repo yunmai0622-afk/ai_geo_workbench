@@ -670,7 +670,7 @@ export function InclusionMonitoringCenterPage() {
             <p className="font-semibold text-cyan-900">自动复测：已启用</p>
             <p>执行频率：{scheduledRetestQuery.data?.frequency ?? "每天 20:30（Asia/Shanghai）"}</p>
             <p>健康状态：{scheduledRetestQuery.data?.healthStatus === "needs_attention" ? "需处理" : scheduledRetestQuery.data?.healthStatus === "running" ? "执行中" : "正常"}</p>
-            <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.currentStatus)}</p>
+            <p>当前状态：{scheduledRetestStatusLabel(scheduledRetestQuery.data?.displayStatus)}</p>
             {scheduledRetestQuery.data?.retryRequired ? <p className="font-medium text-amber-800">处置建议：补跑过期/失败节点；未来节点仍按原计划保留。</p> : null}
             {scheduledRetestQuery.data?.nextMilestone ? <p>下一计划节点：{scheduledRetestQuery.data.nextMilestone.dueDate}</p> : null}
             {scheduledRetestQuery.data?.lastAiTestedAt ? <p>最近执行：{formatTime(scheduledRetestQuery.data.lastAiTestedAt)}</p> : <p>最近执行：暂无自动复测结果</p>}
