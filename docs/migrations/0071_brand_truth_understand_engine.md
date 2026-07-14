@@ -10,6 +10,7 @@
 - 不扫描或更新历史数据，预期不会形成现有大表的长事务锁。
 - 如果任一建表语句失败，部署必须停止；应用代码不得先于迁移对新表写入。
 - 生产导入由运营通过项目级 API 显式触发，导入项统一为 `provided_unverified`。
+- Understand 表的 JSON 数组由服务层显式写入，不使用 TiDB 不兼容的 JSON 默认表达式。
 
 若 MySQL 非事务 DDL 留下 0071 的部分执行状态，`scripts/reconcile_brand_truth_migration.mjs` 会先核对每张已存在表的完整字段集合，仅创建缺失的 0071 表和索引，并在 12 张表全部复核通过后写入 Drizzle migration marker。结构不一致时脚本立即停止，不删除、不改写既有表。
 
