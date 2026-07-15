@@ -4,8 +4,15 @@ import { AI_OBSERVATION_LEDGER_FEATURE_FLAG, LEGACY_UNDERSTANDING_EVALUATION_BOU
 const schema = readFileSync("drizzle/schema.ts", "utf8");
 const migration = readFileSync("drizzle/0073_ai_observation_ledger.sql", "utf8");
 const service = readFileSync("server/aiObservationLedgerService.ts", "utf8");
+const healthRoute = readFileSync("server/healthRoute.ts", "utf8");
+const productionGate = readFileSync("scripts/verify_observation_production_gate.mjs", "utf8");
 
 describe("PR-03.6A AI Observation Ledger", () => {
+  it("exposes only the parsed observation flag on lightweight health and keeps the production gate SELECT-only", () => {
+    expect(healthRoute).toContain("features: { aiObservationLedgerV2: isAiObservationLedgerV2Enabled() }");
+    expect(productionGate).toContain('delete: "delete_audit_unavailable"');
+    expect(productionGate).not.toMatch(/\.(?:query|execute)\(\s*[`"']\s*(?:INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|TRUNCATE)\b/i);
+  });
   it("creates seven explicit project-owned append-only domain tables", () => {
     for (const table of ["ai_observation_runs","ai_observation_run_events","ai_observation_answers","ai_observation_extractions","ai_extracted_brand_facts","ai_recommendation_results","ai_citation_results"]) {
       expect(migration).toContain(`CREATE TABLE \`${table}\``);
