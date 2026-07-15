@@ -491,6 +491,13 @@
       "when": 1784090400000,
       "tag": "0074_versioned_understand_governance",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "5",
+      "when": 1784094000000,
+      "tag": "0075_legacy_understanding_cutover",
+      "breakpoints": true
     }
   ]
 }
