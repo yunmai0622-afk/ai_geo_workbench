@@ -9,6 +9,6 @@ Run identity is immutable. `createRun` inserts the Run plus its queued/running i
 
 Each parent exposes `UNIQUE(id,projectId)` and each child uses a composite foreign key containing its own `projectId`. This prevents cross-project Run Event, Answer, Extraction or structured-child linkage when FK capability is enabled and verified on the target TiDB version.
 
-Schema verification uses `OBSERVATION_TEST_DATABASE_URL=... pnpm db:verify-ai-observation`. The read-only identity preflight uses `OBSERVATION_TIDB_PREFLIGHT_URL=... pnpm preflight:tidb-observation`; without that variable it reports `environment verification pending` and makes no connection.
+Schema verification uses `OBSERVATION_TEST_DATABASE_URL=... pnpm db:verify-ai-observation`. The production identity preflight uses the existing `DATABASE_URL` and executes only `SELECT VERSION(), @@version_comment`; it never prints the URL, host, database, account, or password. Without `DATABASE_URL` it reports `environment verification pending` and makes no connection.
 
 Future privacy/legal deletion requires a separate authorized and audited administrative purge. It is not a normal application API and is not implemented here.

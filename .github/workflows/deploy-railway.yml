@@ -138,9 +138,12 @@ jobs:
       - name: Apply production database migrations
         run: |
           set -euo pipefail
+          echo "[migration] database version preflight (connection details are never printed)"
+          corepack pnpm preflight:tidb-observation
           echo "[migration] applying committed Drizzle migrations before Railway deployment"
           node scripts/reconcile_brand_truth_migration.mjs
           corepack pnpm db:migrate
+          OBSERVATION_TEST_DATABASE_URL="$DATABASE_URL" corepack pnpm db:verify-ai-observation
           echo "[migration] completed"
 
       - name: Deploy to Railway
