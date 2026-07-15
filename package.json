@@ -50,6 +50,8 @@
     ,"understanding:shadow:210001": "tsx scripts/run_210001_shadow_understand.ts"
     ,"verify:primary-readiness-schema": "node scripts/verify_primary_readiness_schema.mjs"
     ,"understanding:primary-readiness:210001": "tsx scripts/prepare_210001_primary_readiness.ts"
+    ,"verify:understand-methodology-v2-schema": "node scripts/verify_understand_methodology_v2_schema.mjs"
+    ,"understanding:methodology-v2:210001": "tsx scripts/run_210001_methodology_v2.ts"
   },
   "engines": {
     "node": ">=20.20 <25"

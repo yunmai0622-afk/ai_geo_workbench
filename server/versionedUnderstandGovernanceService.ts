@@ -22,7 +22,7 @@ import {
 import type { DbConn } from "./projectAccess";
 
 const LEGACY_DIMENSIONS = ["identity", "business", "capability", "boundary", "temporal", "evidence", "consistency", "uncertainty"] as const;
-const FROZEN_DIMENSIONS = ["identity", "category", "business", "products_services", "customers", "scenarios", "capability_differentiation", "boundary_temporal"] as const;
+const FROZEN_DIMENSIONS = ["identity", "category", "business", "product_service", "target_customer", "scenario", "capability_differentiation", "boundary_temporal"] as const;
 const DIMENSIONS = [...new Set([...LEGACY_DIMENSIONS, ...FROZEN_DIMENSIONS])] as const;
 type Outcome = (typeof understandingAssessments.$inferInsert)["automaticOutcome"];
 

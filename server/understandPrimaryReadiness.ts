@@ -1,5 +1,5 @@
 export const FROZEN_UNDERSTAND_DIMENSIONS = [
-  "identity", "category", "business", "products_services", "customers", "scenarios", "capability_differentiation", "boundary_temporal",
+  "identity", "category", "business", "product_service", "target_customer", "scenario", "capability_differentiation", "boundary_temporal",
 ] as const;
 export const BASELINE_V1_DIMENSIONS = [
   "identity", "business", "capability", "boundary", "temporal", "evidence", "consistency", "uncertainty",
@@ -8,9 +8,9 @@ export const BASELINE_V1_DIMENSIONS = [
 export const BASELINE_V1_TO_FROZEN_MAPPING = {
   identity: ["identity"],
   business: ["category", "business"],
-  capability: ["products_services", "capability_differentiation"],
-  evidence: ["customers"],
-  consistency: ["scenarios"],
+  capability: ["product_service", "capability_differentiation"],
+  evidence: ["target_customer"],
+  consistency: ["scenario"],
   uncertainty: ["capability_differentiation"],
   boundary: ["boundary_temporal"],
   temporal: ["boundary_temporal"],
