@@ -14,6 +14,22 @@ on:
         options:
           - "false"
           - "true"
+      skip_migrations:
+        description: "Skip production database migrations for application-only deploys"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      skip_smoke:
+        description: "Skip production page smoke checks"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 concurrency:
   group: railway-production
@@ -136,11 +152,15 @@ jobs:
           fi
 
       - name: Apply production database migrations
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_migrations != 'true' }}
         run: |
           set -euo pipefail
+          echo "[migration] database version preflight (connection details are never printed)"
+          corepack pnpm preflight:tidb-observation
           echo "[migration] applying committed Drizzle migrations before Railway deployment"
           node scripts/reconcile_brand_truth_migration.mjs
           corepack pnpm db:migrate
+          OBSERVATION_TEST_DATABASE_URL="$DATABASE_URL" corepack pnpm db:verify-ai-observation
           echo "[migration] completed"
 
       - name: Deploy to Railway
@@ -379,6 +399,7 @@ jobs:
           exit 1
 
       - name: Smoke production pages
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_smoke != 'true' }}
         run: |
           set -euo pipefail
           base="${RAILWAY_PRODUCTION_URL%/}"

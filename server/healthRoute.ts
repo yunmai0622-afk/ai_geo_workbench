@@ -7,6 +7,7 @@ import {
   getAppVersion,
 } from "./healthChecks";
 import { buildRuntimeVersionInfo } from "./versionInfo";
+import { isAiObservationLedgerV2Enabled } from "./aiObservationLedgerService";
 
 export async function buildHealthResponse(): Promise<HealthResponse> {
   const [database, llm, operations] = await Promise.all([
@@ -35,6 +36,7 @@ export function registerHealthRoute(app: Express) {
       commit: versionInfo.commit,
       buildTime: versionInfo.buildTime,
       environment: versionInfo.environment,
+      features: { aiObservationLedgerV2: isAiObservationLedgerV2Enabled() },
     });
   });
 

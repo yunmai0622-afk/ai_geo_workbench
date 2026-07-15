@@ -1,4 +1,4 @@
-import { boolean, mediumtext, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, foreignKey, mediumtext, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -1633,6 +1633,9 @@ export const understandingEvaluations = mysqlTable(
     semanticJudgement: json("semanticJudgement").$type<Record<string, unknown> | null>(),
     evidenceReferences: json("evidenceReferences").$type<number[]>().notNull(),
     evaluationVersion: varchar("evaluationVersion", { length: 32 }).notNull(),
+    methodologyVersion: varchar("methodologyVersion", { length: 64 }).notNull(),
+    dimensionWeights: json("dimensionWeights").$type<Record<string, number>>().notNull(),
+    ruleVersion: varchar("ruleVersion", { length: 64 }).notNull(),
     truthProfileVersion: int("truthProfileVersion").notNull(),
     questionSetVersion: int("questionSetVersion").notNull(),
     extractionVersion: varchar("extractionVersion", { length: 32 }).notNull(),
@@ -1640,7 +1643,13 @@ export const understandingEvaluations = mysqlTable(
     evaluatorModel: varchar("evaluatorModel", { length: 128 }),
     manualReviewStatus: mysqlEnum("manualReviewStatus", ["not_required", "pending", "approved", "overridden"]).default("not_required").notNull(),
     finalStatus: mysqlEnum("finalStatus", ["accurate", "mostly_accurate", "partially_accurate", "missing", "inaccurate", "outdated", "conflicting", "hallucinated", "unverifiable"]).notNull(),
-    severity: mysqlEnum("severity", ["P0", "P1", "P2"]).default("P2").notNull(),
+    severity: mysqlEnum("severity", ["P0", "P1", "P2"]),
+    assessmentStatus: mysqlEnum("assessmentStatus", ["not_measured", "insufficient_data", "unknown", "no_issue_detected", "issue_detected"]).notNull(),
+    plannedQuestionCount: int("plannedQuestionCount").notNull(),
+    runQuestionCount: int("runQuestionCount").notNull(),
+    verifiedFactCount: int("verifiedFactCount").notNull(),
+    extractionCoverage: int("extractionCoverage").notNull(),
+    assessmentCoverage: int("assessmentCoverage").notNull(),
     reviewedBy: int("reviewedBy"),
     reviewedAt: timestamp("reviewedAt"),
     reviewNote: text("reviewNote"),
@@ -1669,7 +1678,7 @@ export const understandingDimensionResults = mysqlTable(
     hallucinatedClaims: json("hallucinatedClaims").$type<string[]>().notNull(),
     unverifiableClaims: json("unverifiableClaims").$type<string[]>().notNull(),
     evidenceReferences: json("evidenceReferences").$type<number[]>().notNull(),
-    severity: mysqlEnum("severity", ["P0", "P1", "P2"]).default("P2").notNull(),
+    severity: mysqlEnum("severity", ["P0", "P1", "P2"]),
     customerExplanation: text("customerExplanation").notNull(),
     recommendedCorrection: text("recommendedCorrection").notNull(),
     verificationQuestionIds: json("verificationQuestionIds").$type<number[]>().notNull(),
@@ -1731,3 +1740,141 @@ export type BrandTruthEvidence = typeof brandTruthEvidence.$inferSelect;
 export type UnderstandingEvaluation = typeof understandingEvaluations.$inferSelect;
 export type UnderstandingCorrectionTask = typeof understandingCorrectionTasks.$inferSelect;
 export type UnderstandingRuleConfig = typeof understandingRuleConfigs.$inferSelect;
+
+/** PR-03.6A: append-only raw AI Observation Ledger. Assessments remain outside this boundary. */
+export const aiObservationRuns = mysqlTable(
+  "ai_observation_runs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: int("projectId").notNull(),
+    questionSetId: int("questionSetId"),
+    questionSetVersionSnapshot: int("questionSetVersionSnapshot").notNull(),
+    provider: varchar("provider", { length: 64 }).notNull(),
+    modelName: varchar("modelName", { length: 128 }).notNull(),
+    modelVersion: varchar("modelVersion", { length: 128 }),
+    modelChannel: varchar("modelChannel", { length: 128 }),
+    runPurpose: varchar("runPurpose", { length: 64 }).notNull(),
+    locale: varchar("locale", { length: 32 }).notNull(),
+    startedAt: timestamp("startedAt").notNull(),
+    completedAt: timestamp("completedAt"),
+    runStatus: mysqlEnum("runStatus", ["queued", "running", "succeeded", "partially_succeeded", "failed", "cancelled"]).notNull(),
+    providerRequestId: varchar("providerRequestId", { length: 255 }),
+    systemPromptVersion: varchar("systemPromptVersion", { length: 64 }).notNull(),
+    systemPromptHash: varchar("systemPromptHash", { length: 128 }).notNull(),
+    systemPromptSnapshot: text("systemPromptSnapshot"),
+    samplingParameters: json("samplingParameters").$type<Record<string, unknown> | null>(),
+    applicationVersion: varchar("applicationVersion", { length: 128 }).notNull(),
+    errorCode: varchar("errorCode", { length: 128 }),
+    errorMessage: text("errorMessage"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdBy: int("createdBy"),
+  },
+  table => ({
+    idProjectUnique: uniqueIndex("ai_observation_runs_id_project_unique").on(table.id, table.projectId),
+    projectStartedIdx: index("ai_observation_runs_project_started_idx").on(table.projectId, table.startedAt),
+  }),
+);
+
+export const aiObservationRunEvents = mysqlTable(
+  "ai_observation_run_events",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: int("projectId").notNull(),
+    observationRunId: varchar("observationRunId", { length: 36 }).notNull(),
+    eventType: mysqlEnum("eventType", ["queued", "running", "succeeded", "partially_succeeded", "failed", "cancelled"]).notNull(),
+    eventSequence: int("eventSequence").notNull(),
+    occurredAt: timestamp("occurredAt").notNull(),
+    errorCode: varchar("errorCode", { length: 128 }),
+    errorMessage: text("errorMessage"),
+    eventMetadata: json("eventMetadata").$type<Record<string, unknown> | null>(),
+    createdBy: int("createdBy"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    runSequenceUnique: uniqueIndex("ai_observation_run_events_run_sequence_unique").on(table.observationRunId, table.eventSequence),
+    projectRunIdx: index("ai_observation_run_events_project_run_idx").on(table.projectId, table.observationRunId),
+    runProjectFk: foreignKey({ columns: [table.observationRunId, table.projectId], foreignColumns: [aiObservationRuns.id, aiObservationRuns.projectId], name: "ai_observation_run_events_run_project_fk" }),
+  }),
+);
+
+export const aiObservationAnswers = mysqlTable(
+  "ai_observation_answers",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: int("projectId").notNull(),
+    observationRunId: varchar("observationRunId", { length: 36 }).notNull(),
+    questionId: int("questionId"),
+    questionKey: varchar("questionKey", { length: 128 }).notNull(),
+    questionVersionSnapshot: int("questionVersionSnapshot").notNull(),
+    questionTextSnapshot: text("questionTextSnapshot").notNull(),
+    scenarioSnapshot: text("scenarioSnapshot"),
+    attemptNumber: int("attemptNumber").notNull(),
+    providerResponseId: varchar("providerResponseId", { length: 255 }),
+    rawAnswer: mediumtext("rawAnswer"),
+    rawProviderMetadata: json("rawProviderMetadata").$type<Record<string, unknown> | null>(),
+    answerContentHash: varchar("answerContentHash", { length: 128 }),
+    receivedAt: timestamp("receivedAt"),
+    latencyMs: int("latencyMs"),
+    inputTokens: int("inputTokens"),
+    outputTokens: int("outputTokens"),
+    totalTokens: int("totalTokens"),
+    finishReason: varchar("finishReason", { length: 128 }),
+    answerStatus: mysqlEnum("answerStatus", ["received", "empty", "provider_error", "blocked", "incomplete"]).notNull(),
+    citationCapability: mysqlEnum("citationCapability", ["supported", "unsupported", "unknown"]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    idProjectUnique: uniqueIndex("ai_observation_answers_id_project_unique").on(table.id, table.projectId),
+    runAttemptUnique: uniqueIndex("ai_observation_answers_run_question_attempt_unique").on(table.observationRunId, table.questionKey, table.attemptNumber),
+    projectRunIdx: index("ai_observation_answers_project_run_idx").on(table.projectId, table.observationRunId),
+    runProjectFk: foreignKey({ columns: [table.observationRunId, table.projectId], foreignColumns: [aiObservationRuns.id, aiObservationRuns.projectId], name: "ai_observation_answers_run_project_fk" }),
+  }),
+);
+
+export const aiObservationExtractions = mysqlTable(
+  "ai_observation_extractions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: int("projectId").notNull(),
+    observationAnswerId: varchar("observationAnswerId", { length: 36 }).notNull(),
+    attemptNumber: int("attemptNumber").notNull(),
+    extractorKey: varchar("extractorKey", { length: 128 }).notNull(),
+    extractorVersion: varchar("extractorVersion", { length: 64 }).notNull(),
+    extractionPromptVersion: varchar("extractionPromptVersion", { length: 64 }).notNull(),
+    extractionPromptHash: varchar("extractionPromptHash", { length: 128 }).notNull(),
+    extractionModelProvider: varchar("extractionModelProvider", { length: 64 }),
+    extractionModelName: varchar("extractionModelName", { length: 128 }),
+    extractionModelChannel: varchar("extractionModelChannel", { length: 128 }),
+    extractionStatus: mysqlEnum("extractionStatus", ["succeeded", "partially_succeeded", "failed", "insufficient_content"]).notNull(),
+    structuredPayload: json("structuredPayload").$type<Record<string, unknown> | null>(),
+    extractionCoverage: int("extractionCoverage"),
+    extractionConfidence: int("extractionConfidence"),
+    citationExtractionStatus: mysqlEnum("citationExtractionStatus", ["detected", "not_detected", "unsupported", "unknown", "extraction_failed"]).notNull(),
+    startedAt: timestamp("startedAt").notNull(),
+    completedAt: timestamp("completedAt"),
+    errorCode: varchar("errorCode", { length: 128 }),
+    errorMessage: text("errorMessage"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    idProjectUnique: uniqueIndex("ai_observation_extractions_id_project_unique").on(table.id, table.projectId),
+    answerAttemptUnique: uniqueIndex("ai_observation_extractions_answer_attempt_unique").on(table.observationAnswerId, table.extractorKey, table.extractorVersion, table.attemptNumber),
+    projectAnswerIdx: index("ai_observation_extractions_project_answer_idx").on(table.projectId, table.observationAnswerId),
+    answerProjectFk: foreignKey({ columns: [table.observationAnswerId, table.projectId], foreignColumns: [aiObservationAnswers.id, aiObservationAnswers.projectId], name: "ai_observation_extractions_answer_project_fk" }),
+  }),
+);
+
+export const aiExtractedBrandFacts = mysqlTable("ai_extracted_brand_facts", {
+  id: int("id").autoincrement().primaryKey(), projectId: int("projectId").notNull(), extractionId: varchar("extractionId", { length: 36 }).notNull(),
+  brandId: varchar("brandId", { length: 128 }), factKey: varchar("factKey", { length: 128 }).notNull(), extractedValue: text("extractedValue").notNull(), normalizedValue: text("normalizedValue"),
+  sourceTextSpan: text("sourceTextSpan"), confidence: int("confidence"), uncertaintyType: mysqlEnum("uncertaintyType", ["none", "explicit_uncertainty", "ambiguous", "inferred", "unavailable"]).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ extractionIdx: index("ai_extracted_brand_facts_project_extraction_idx").on(table.projectId, table.extractionId), extractionProjectFk: foreignKey({ columns: [table.extractionId, table.projectId], foreignColumns: [aiObservationExtractions.id, aiObservationExtractions.projectId], name: "ai_extracted_brand_facts_extraction_project_fk" }) }));
+
+export const aiRecommendationResults = mysqlTable("ai_recommendation_results", {
+  id: int("id").autoincrement().primaryKey(), projectId: int("projectId").notNull(), extractionId: varchar("extractionId", { length: 36 }).notNull(), targetBrand: varchar("targetBrand", { length: 255 }).notNull(), competitorIdentity: varchar("competitorIdentity", { length: 255 }),
+  mentionStatus: mysqlEnum("mentionStatus", ["detected", "not_detected", "unknown"]).notNull(), candidateStatus: mysqlEnum("candidateStatus", ["entered", "not_entered", "unknown"]).notNull(), recommendationStatus: mysqlEnum("recommendationStatus", ["recommended", "not_recommended", "unknown"]).notNull(), recommendationRank: int("recommendationRank"), recommendationReasonText: text("recommendationReasonText"), confidence: int("confidence"), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ extractionIdx: index("ai_recommendation_results_project_extraction_idx").on(table.projectId, table.extractionId), extractionProjectFk: foreignKey({ columns: [table.extractionId, table.projectId], foreignColumns: [aiObservationExtractions.id, aiObservationExtractions.projectId], name: "ai_recommendation_results_extraction_project_fk" }) }));
+
+export const aiCitationResults = mysqlTable("ai_citation_results", {
+  id: int("id").autoincrement().primaryKey(), projectId: int("projectId").notNull(), extractionId: varchar("extractionId", { length: 36 }).notNull(), citationStatus: mysqlEnum("citationStatus", ["detected", "not_detected", "unsupported", "unknown", "extraction_failed"]).notNull(), rawCitationText: text("rawCitationText"), normalizedUrl: varchar("normalizedUrl", { length: 2000 }), sourceTitle: varchar("sourceTitle", { length: 500 }), sourceOwner: varchar("sourceOwner", { length: 255 }), sourcePosition: int("sourcePosition"), accessibilityStatus: mysqlEnum("accessibilityStatus", ["accessible", "inaccessible", "unknown", "not_checked"]).notNull(), confidence: int("confidence"), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ extractionIdx: index("ai_citation_results_project_extraction_idx").on(table.projectId, table.extractionId), extractionProjectFk: foreignKey({ columns: [table.extractionId, table.projectId], foreignColumns: [aiObservationExtractions.id, aiObservationExtractions.projectId], name: "ai_citation_results_extraction_project_fk" }) }));

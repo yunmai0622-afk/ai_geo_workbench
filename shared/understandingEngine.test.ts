@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateUnderstandingTotalScore,
+  actualStatementsForFact,
   classifyUnsupportedClaim,
   compareStatementToTruth,
   DEFAULT_UNDERSTANDING_QUESTION_TEMPLATES,
@@ -9,6 +10,7 @@ import {
   recommendCorrectionAction,
   renderUnderstandingQuestion,
   UNDERSTANDING_DIMENSIONS,
+  DEFAULT_UNDERSTANDING_METHODOLOGY,
 } from "./understandingEngine";
 
 const verifiedFact = {
@@ -16,6 +18,7 @@ const verifiedFact = {
   factValue: "知识付费 SaaS 系统",
   verificationStatus: "official_verified" as const,
   sourceCount: 1,
+  officialSourceCount: 1,
 };
 
 describe("Understand Engine", () => {
@@ -28,7 +31,11 @@ describe("Understand Engine", () => {
 
   it("distinguishes missing from inaccurate", () => {
     expect(compareStatementToTruth({ expectedFact: verifiedFact, actualStatement: "" }).status).toBe("missing");
-    expect(compareStatementToTruth({ expectedFact: verifiedFact, actualStatement: "它是一家线下培训学校" }).status).toBe("inaccurate");
+    expect(compareStatementToTruth({
+      expectedFact: verifiedFact,
+      actualStatement: "它是一家线下培训学校",
+      semanticComparison: { factKey: "core_business", relation: "contradicts", actualStatement: "它是一家线下培训学校", reason: "业务类型明确相反" },
+    }).status).toBe("inaccurate");
   });
 
   it("accepts synonymous wording instead of automatically marking it wrong", () => {
@@ -39,6 +46,21 @@ describe("Understand Engine", () => {
     expect(compareStatementToTruth({ expectedFact: { ...verifiedFact, verificationStatus: "provided_unverified" }, actualStatement: "线下培训" }).status).toBe("unverifiable");
   });
 
+  it("does not turn different wording into an error without deterministic or semantic contradiction", () => {
+    expect(compareStatementToTruth({ expectedFact: verifiedFact, actualStatement: "它帮助创作者经营数字内容" }).status).toBe("unverifiable");
+    expect(compareStatementToTruth({
+      expectedFact: verifiedFact,
+      actualStatement: "它帮助创作者经营数字内容",
+      semanticComparison: { factKey: "core_business", relation: "supports", actualStatement: "它帮助创作者经营数字内容", reason: "语义覆盖知识服务经营" },
+    }).status).toBe("mostly_accurate");
+  });
+
+  it("maps structured extraction to the fact being assessed", () => {
+    const extracted = extractUnderstandingFactsByRule("海豚知道是一套系统", { brandName: "海豚知道" });
+    expect(actualStatementsForFact("brand_name", extracted)).toEqual(["海豚知道"]);
+    expect(actualStatementsForFact("target_customers", extracted)).toEqual([]);
+  });
+
   it("distinguishes outdated and suspected hallucination from unverifiable", () => {
     expect(compareStatementToTruth({ expectedFact: verifiedFact, actualStatement: "旧版课程业务", knownOutdatedValues: ["旧版课程业务"] }).status).toBe("outdated");
     expect(classifyUnsupportedClaim({ claim: "提供金融担保", conflictingVerifiedFact: verifiedFact, hasSupportingEvidence: false })).toBe("hallucinated");
@@ -47,9 +69,9 @@ describe("Understand Engine", () => {
 
   it("classifies P0/P1/P2 independently from the field status", () => {
     expect(deriveUnderstandingSeverity({ factKey: "brand_name", status: "inaccurate" })).toBe("P0");
-    expect(deriveUnderstandingSeverity({ factKey: "target_customers", status: "missing" })).toBe("P1");
-    expect(deriveUnderstandingSeverity({ factKey: "use_cases", status: "missing" })).toBe("P2");
-    expect(deriveUnderstandingSeverity({ factKey: "use_cases", status: "unverifiable", legalOrCommercialRisk: true })).toBe("P0");
+    expect(deriveUnderstandingSeverity({ factKey: "target_customers", status: "missing" })).toBeNull();
+    expect(deriveUnderstandingSeverity({ factKey: "use_cases", status: "missing" })).toBeNull();
+    expect(deriveUnderstandingSeverity({ factKey: "use_cases", status: "unverifiable", legalOrCommercialRisk: true })).toBeNull();
   });
 
   it("returns no fake score when one of eight dimensions is missing", () => {
@@ -62,6 +84,7 @@ describe("Understand Engine", () => {
   it("keeps the official 15/10/20/15/15/10/10/5 traceable weighting", () => {
     expect(UNDERSTANDING_DIMENSIONS.map(item => item.weight)).toEqual([15, 10, 20, 15, 15, 10, 10, 5]);
     expect(UNDERSTANDING_DIMENSIONS.reduce((sum, item) => sum + item.weight, 0)).toBe(100);
+    expect(DEFAULT_UNDERSTANDING_METHODOLOGY).toMatchObject({ id: "understand-accuracy-general-v1", version: 1, ruleVersion: "understand-severity-v1" });
   });
 
   it("supports default, high-risk and fixed project question semantics", () => {

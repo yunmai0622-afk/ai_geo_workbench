@@ -30,6 +30,12 @@
     "db:migrate": "drizzle-kit migrate",
     "db:patch-geo-quality": "node scripts/apply_geo_quality_columns.mjs",
     "db:patch-p1": "node scripts/apply_content_strategy_columns.mjs"
+    ,"db:verify-brand-truth": "node scripts/verify_brand_truth_schema.mjs"
+    ,"db:export-brand-truth": "node scripts/export_brand_truth_data.mjs"
+    ,"db:verify-ai-observation": "node scripts/verify_ai_observation_schema.mjs"
+    ,"test:db:ai-observation": "node scripts/test_ai_observation_immutability.mjs"
+    ,"preflight:tidb-observation": "node scripts/preflight_tidb_observation.mjs"
+    ,"verify:observation-production": "node scripts/verify_observation_production_gate.mjs"
   },
   "engines": {
     "node": ">=20.20 <25"
