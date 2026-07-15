@@ -1,0 +1,10 @@
+import { describe,expect,it } from "vitest";
+import { compareV1V2Quality, UNDERSTAND_V2_DEFINITIONS, UNDERSTAND_V2_DIMENSIONS, UNDERSTAND_V2_QUESTIONS, validateMethodologyV2 } from "./understandMethodologyV2";
+describe("formal Understand methodology v2",()=>{
+  it("uses exactly the frozen product dimensions",()=>{ expect(validateMethodologyV2()).toBe(true); expect(UNDERSTAND_V2_DIMENSIONS).toEqual(["identity","category","business","product_service","target_customer","scenario","capability_differentiation","boundary_temporal"]); });
+  it("does not substitute risk factors for primary dimensions",()=>{ expect(UNDERSTAND_V2_DIMENSIONS).not.toContain("evidence"); expect(UNDERSTAND_V2_DIMENSIONS).not.toContain("consistency"); expect(UNDERSTAND_V2_DIMENSIONS).not.toContain("uncertainty"); });
+  it("gives every question exactly one primary dimension and separates mixed questions",()=>{ expect(UNDERSTAND_V2_QUESTIONS).toHaveLength(9); expect(UNDERSTAND_V2_QUESTIONS.filter(q=>q.primaryDimension==="category")).toHaveLength(1); expect(UNDERSTAND_V2_QUESTIONS.filter(q=>q.primaryDimension==="business")).toHaveLength(1); expect(UNDERSTAND_V2_QUESTIONS.filter(q=>q.primaryDimension==="target_customer")).toHaveLength(1); expect(UNDERSTAND_V2_QUESTIONS.filter(q=>q.primaryDimension==="scenario")).toHaveLength(1); });
+  it("keeps boundary and temporal independent subresults",()=>{ expect(UNDERSTAND_V2_QUESTIONS.filter(q=>q.primaryDimension==="boundary_temporal").map(q=>q.subdimension)).toEqual(["boundary","temporal"]); });
+  it("never compares v1 and v2 total scores",()=>{ expect(compareV1V2Quality({v1:{question:1,extraction:1,truth:1,evidence:1,assessment:1,unverifiable:3},v2:{question:1,extraction:1,truth:1,evidence:1,assessment:1,unverifiable:1}}).totalScoreCompared).toBe(false); });
+  it("stores complete definitions per dimension",()=>{ expect(UNDERSTAND_V2_DEFINITIONS.every(d=>d.factKeys.length&&d.questionTypes.length&&d.extractionFields.length&&d.unverifiableConditions.length)).toBe(true); });
+});
