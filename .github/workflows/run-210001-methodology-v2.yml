@@ -31,7 +31,7 @@ jobs:
         with: {node-version: 24, cache: pnpm}
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - run: pnpm test -- server/understandMethodologyV2.test.ts server/understandPrimaryReadiness.test.ts
+      - run: pnpm exec vitest run server/understandMethodologyV2.test.ts server/understandPrimaryReadiness.test.ts
       - run: pnpm verify:understand-methodology-v2-schema
       - name: TiDB migration
         run: pnpm db:migrate
