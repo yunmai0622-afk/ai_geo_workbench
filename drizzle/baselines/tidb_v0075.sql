@@ -1757,10 +1757,10 @@ CREATE TABLE `legacy_understanding_migration_items` (
   KEY `legacy_understanding_migration_items_checksum_idx` (`sourceChecksum`),
   CONSTRAINT `legacy_understanding_migration_items_project_fk` FOREIGN KEY (`projectId`) REFERENCES `projects` (`id`),
   CONSTRAINT `legacy_understanding_migration_items_run_project_fk` FOREIGN KEY (`migrationRunId`,`projectId`) REFERENCES `legacy_understanding_migration_runs` (`id`,`projectId`),
-  CONSTRAINT `legacy_understanding_migration_items_target_run_project_fk` FOREIGN KEY (`targetRunId`,`projectId`) REFERENCES `ai_observation_runs` (`id`,`projectId`),
-  CONSTRAINT `legacy_understanding_migration_items_target_answer_project_fk` FOREIGN KEY (`targetAnswerId`,`projectId`) REFERENCES `ai_observation_answers` (`id`,`projectId`),
-  CONSTRAINT `legacy_understanding_migration_items_target_extraction_project_fk` FOREIGN KEY (`targetExtractionId`,`projectId`) REFERENCES `ai_observation_extractions` (`id`,`projectId`),
-  CONSTRAINT `legacy_understanding_migration_items_target_assessment_project_fk` FOREIGN KEY (`targetAssessmentId`,`projectId`) REFERENCES `understanding_assessments` (`id`,`projectId`)
+  CONSTRAINT `legacy_um_items_target_run_project_fk` FOREIGN KEY (`targetRunId`,`projectId`) REFERENCES `ai_observation_runs` (`id`,`projectId`),
+  CONSTRAINT `legacy_um_items_target_answer_project_fk` FOREIGN KEY (`targetAnswerId`,`projectId`) REFERENCES `ai_observation_answers` (`id`,`projectId`),
+  CONSTRAINT `legacy_um_items_target_extract_project_fk` FOREIGN KEY (`targetExtractionId`,`projectId`) REFERENCES `ai_observation_extractions` (`id`,`projectId`),
+  CONSTRAINT `legacy_um_items_target_assess_project_fk` FOREIGN KEY (`targetAssessmentId`,`projectId`) REFERENCES `understanding_assessments` (`id`,`projectId`)
 );
 CREATE TABLE `understanding_rollout_configs` (
   `id` int NOT NULL AUTO_INCREMENT, `projectId` int NOT NULL,
