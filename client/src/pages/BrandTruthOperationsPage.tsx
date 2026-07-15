@@ -53,6 +53,10 @@ export default function BrandTruthOperationsPage() {
     input,
     { enabled: Boolean(selectedProjectId && canOperate), retry: false }
   );
+  const readinessQuery = trpc.geo.understanding.getPrimaryReadiness.useQuery(
+    input,
+    { enabled: Boolean(selectedProjectId && canOperate), retry: false }
+  );
   const [factDraft, setFactDraft] = useState({
     category: "business" as const,
     factKey: "",
@@ -103,6 +107,9 @@ export default function BrandTruthOperationsPage() {
         projectId: selectedProjectId,
       }),
       utils.geo.understanding.readUnderstandingCutover.invalidate({
+        projectId: selectedProjectId,
+      }),
+      utils.geo.understanding.getPrimaryReadiness.invalidate({
         projectId: selectedProjectId,
       }),
     ]);
@@ -200,6 +207,10 @@ export default function BrandTruthOperationsPage() {
       toast.success("人工复核已保存");
       await invalidate();
     },
+    onError: error => toast.error(error.message),
+  });
+  const appendFormalReview = trpc.geo.understanding.appendFormalAssessmentReview.useMutation({
+    onSuccess: async () => { toast.success("人工复核事件已追加，自动判断保持不变"); await invalidate(); },
     onError: error => toast.error(error.message),
   });
   const createCorrectionTask =
@@ -343,6 +354,46 @@ export default function BrandTruthOperationsPage() {
             <div className="rounded-xl bg-white p-3"><p className="text-xs text-slate-500">写入路径</p><p className="mt-1 font-semibold">Legacy（无双写）</p></div>
           </div>
           <p className="mt-3 text-xs text-violet-700">分数仅在事实覆盖满足正式方法论时生成；方法论不兼容时只解释差异，不强求分数一致。切换建议须等待运营人工复核。</p>
+          {readinessQuery.data && (
+            <div className="mt-5 space-y-4 border-t border-violet-200 pt-4">
+              <div className="grid gap-3 sm:grid-cols-5">
+                {([
+                  ["问题执行", readinessQuery.data.coverage.questionExecution],
+                  ["Extraction", readinessQuery.data.coverage.extraction],
+                  ["已核验事实", readinessQuery.data.coverage.verifiedTruth],
+                  ["公开证据", readinessQuery.data.coverage.evidence],
+                  ["Assessment", readinessQuery.data.coverage.assessment],
+                ] as const).map(([label, value]) => <div key={label} className="rounded-xl bg-white p-3"><p className="text-xs text-slate-500">{label} coverage</p><p className="mt-1 font-semibold">{(value / 100).toFixed(0)}%</p></div>)}
+              </div>
+              <div className="rounded-xl bg-white p-4 text-sm">
+                <p className="font-semibold">实际 methodology version：V{readinessQuery.data.methodology.version}</p>
+                <p className="mt-1 text-slate-600">{readinessQuery.data.methodology.dimensions.join(" · ")}</p>
+                <p className="mt-2 text-amber-700">该版本与冻结八维并非纯展示别名；存在多对一、拆分和语义替代，当前 Gate 拒绝切换。</p>
+              </div>
+              <div className="space-y-2">
+                {readinessQuery.data.assessments.map(item => (
+                  <div key={item.id} className="rounded-xl bg-white p-4 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{item.dimension?.dimension ?? "未映射"} · 自动：{item.automaticOutcome} · 有效：{item.effectiveOutcome ?? "待人工复核"}</p>
+                      <span className="text-xs text-slate-500">confidence {((item.confidenceBasisPoints ?? 0) / 100).toFixed(0)}%</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">人工事件：{item.manualReview?.action ?? "尚未追加"}；自动结果不可修改。</p>
+                    {!item.manualReview && (
+                      <div className="mt-3 flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => appendFormalReview.mutate({ projectId: selectedProjectId!, assessmentId: item.id, action: "confirmed", reason: "运营逐项核对原始回答、Extraction、Brand Truth 与公开证据后确认自动判断。", evidenceSnapshot: [] })}>确认自动判断</Button>
+                        <Button size="sm" variant="outline" onClick={() => appendFormalReview.mutate({ projectId: selectedProjectId!, assessmentId: item.id, action: "request_evidence", reason: "当前公开证据或事实关联不足，保持自动结果并请求补充证据。", evidenceSnapshot: [] })}>请求补证</Button>
+                        <Button size="sm" variant="outline" onClick={() => appendFormalReview.mutate({ projectId: selectedProjectId!, assessmentId: item.id, action: "mark_insufficient_data", reason: "回答、抽取或事实覆盖不足，标记数据不足且不生成分数。", evidenceSnapshot: [] })}>标记数据不足</Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className={`rounded-xl p-4 text-sm ${readinessQuery.data.readiness.ready ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}>
+                <p className="font-semibold">v2_primary readiness：{readinessQuery.data.readiness.ready ? "满足" : "不满足，继续 shadow_read"}</p>
+                <p className="mt-1">未通过：{Object.entries(readinessQuery.data.readiness.gates).filter(([, passed]) => !passed).map(([gate]) => gate).join("、") || "无"}</p>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

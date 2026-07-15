@@ -48,6 +48,8 @@
     ,"verify:legacy-understanding-schema": "node scripts/verify_legacy_understanding_schema.mjs"
     ,"verify:shadow-understand-schema": "node scripts/verify_shadow_understand_schema.mjs"
     ,"understanding:shadow:210001": "tsx scripts/run_210001_shadow_understand.ts"
+    ,"verify:primary-readiness-schema": "node scripts/verify_primary_readiness_schema.mjs"
+    ,"understanding:primary-readiness:210001": "tsx scripts/prepare_210001_primary_readiness.ts"
   },
   "engines": {
     "node": ">=20.20 <25"

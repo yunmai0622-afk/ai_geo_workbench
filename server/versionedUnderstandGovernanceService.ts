@@ -21,7 +21,9 @@ import {
 } from "../drizzle/schema";
 import type { DbConn } from "./projectAccess";
 
-const DIMENSIONS = ["identity", "business", "capability", "boundary", "temporal", "evidence", "consistency", "uncertainty"] as const;
+const LEGACY_DIMENSIONS = ["identity", "business", "capability", "boundary", "temporal", "evidence", "consistency", "uncertainty"] as const;
+const FROZEN_DIMENSIONS = ["identity", "category", "business", "products_services", "customers", "scenarios", "capability_differentiation", "boundary_temporal"] as const;
+const DIMENSIONS = [...new Set([...LEGACY_DIMENSIONS, ...FROZEN_DIMENSIONS])] as const;
 type Outcome = (typeof understandingAssessments.$inferInsert)["automaticOutcome"];
 
 function assertBasisPoints(name: string, value: number) {
@@ -47,7 +49,8 @@ export class VersionedUnderstandGovernanceService {
     weights: Array<{ dimension: (typeof DIMENSIONS)[number]; weightBasisPoints: number }>;
   }) {
     const seen = new Set(input.weights.map(item => item.dimension));
-    if (seen.size !== DIMENSIONS.length || DIMENSIONS.some(dimension => !seen.has(dimension))) throw new Error("Methodology must define all 8 dimensions exactly once");
+    const validSet = [LEGACY_DIMENSIONS, FROZEN_DIMENSIONS].some(dimensions => seen.size === 8 && dimensions.every(dimension => seen.has(dimension)));
+    if (!validSet) throw new Error("Methodology must define exactly one registered 8-dimension version; dimension drift requires a new version");
     for (const weight of input.weights) assertBasisPoints("weightBasisPoints", weight.weightBasisPoints);
     if (input.weights.reduce((sum, item) => sum + item.weightBasisPoints, 0) !== 10_000) throw new Error("Methodology weights must total 10000 basis points");
     const id = randomUUID();
@@ -139,7 +142,7 @@ export class VersionedUnderstandGovernanceService {
       eq(understandingAssessmentManualReviews.assessmentId, assessmentId), eq(understandingAssessmentManualReviews.projectId, projectId),
     )).orderBy(desc(understandingAssessmentManualReviews.reviewedAt), desc(understandingAssessmentManualReviews.createdAt));
     const latest = reviews[0];
-    const effectiveOutcome: Outcome | null = latest?.action === "rejected" ? null : latest?.action === "overridden" ? latest.overriddenOutcome! : assessment.automaticOutcome;
+    const effectiveOutcome: Outcome | null = latest?.action === "rejected" || latest?.action === "request_evidence" || latest?.action === "mark_insufficient_data" ? null : latest?.action === "overridden" ? latest.overriddenOutcome! : assessment.automaticOutcome;
     return { ...assessment, effectiveOutcome, manualReviewStatus: latest?.action ?? "not_reviewed", reviews };
   }
 
