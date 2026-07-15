@@ -39,6 +39,13 @@
     ,"test:tidb:versioned-governance": "node scripts/test_versioned_governance_tidb.mjs"
     ,"verify:versioned-governance-schema": "node scripts/verify_versioned_governance_schema.mjs"
     ,"bootstrap:tidb:v0074": "node scripts/bootstrap_tidb_v0074.mjs"
+    ,"bootstrap:tidb:v0075": "node scripts/bootstrap_tidb_v0075.mjs"
+    ,"legacy:understanding:dry-run": "tsx scripts/migrate_legacy_understanding.ts --dry-run"
+    ,"legacy:understanding:migrate": "tsx scripts/migrate_legacy_understanding.ts --execute"
+    ,"legacy:understanding:verify": "node scripts/verify_legacy_understanding_migration.mjs"
+    ,"understanding:rollout": "node scripts/set_understanding_rollout.mjs"
+    ,"test:tidb:legacy-understanding": "node scripts/test_legacy_understanding_tidb.mjs"
+    ,"verify:legacy-understanding-schema": "node scripts/verify_legacy_understanding_schema.mjs"
   },
   "engines": {
     "node": ">=20.20 <25"

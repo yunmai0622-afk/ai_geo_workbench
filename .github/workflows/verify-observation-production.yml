@@ -2,6 +2,12 @@ name: Verify Observation Production Gate
 
 on:
   workflow_dispatch:
+    inputs:
+      run_legacy_tidb_gate:
+        description: Run isolated PR-03.6C TiDB 8.5.3 schema gate
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -30,5 +36,18 @@ jobs:
         with:
           name: observation-production-gate
           path: artifacts/observation-production-gate.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Run isolated legacy cutover TiDB gate
+        if: ${{ inputs.run_legacy_tidb_gate }}
+        env:
+          ALLOW_LEGACY_UNDERSTANDING_TIDB_TEST: "true"
+        run: corepack pnpm test:tidb:legacy-understanding
+      - name: Upload legacy cutover TiDB report
+        if: ${{ always() && inputs.run_legacy_tidb_gate }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-understanding-tidb-gate
+          path: artifacts/legacy-understanding-tidb.json
           if-no-files-found: error
           retention-days: 30
