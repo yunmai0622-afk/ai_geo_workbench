@@ -28,6 +28,18 @@ export const UNDERSTANDING_DIMENSIONS = [
   { id: "boundaries_temporal", label: "业务边界与时效", weight: 5, factKeys: ["unsupported_capabilities", "prohibited_promises", "current_limitations", "active_business", "discontinued_business", "outdated_data"] },
 ] as const;
 
+export const DEFAULT_UNDERSTANDING_METHODOLOGY = {
+  id: "understand-accuracy-general-v1",
+  version: 1,
+  industryTemplate: "general",
+  ruleVersion: "understand-severity-v1",
+  extractionVersion: "understand-extraction-v1",
+  dimensions: UNDERSTANDING_DIMENSIONS,
+} as const;
+
+export const ASSESSMENT_STATUSES = ["not_measured", "insufficient_data", "unknown", "no_issue_detected", "issue_detected"] as const;
+export type AssessmentStatus = (typeof ASSESSMENT_STATUSES)[number];
+
 export type UnderstandingDimensionId = (typeof UNDERSTANDING_DIMENSIONS)[number]["id"];
 
 export const DEFAULT_UNDERSTANDING_QUESTION_TEMPLATES = [
@@ -77,6 +89,13 @@ export type ExtractedUnderstandingFacts = {
   uncertainStatements: string[];
 };
 
+export type SemanticFactComparison = {
+  factKey: string;
+  relation: "supports" | "contradicts" | "not_mentioned" | "uncertain";
+  actualStatement: string | null;
+  reason: string;
+};
+
 export function emptyExtractedUnderstandingFacts(): ExtractedUnderstandingFacts {
   return {
     detectedBrandName: null, detectedCompanyName: null, detectedOfficialWebsite: null,
@@ -115,37 +134,112 @@ export type ComparableTruthFact = {
   normalizedValue?: string | null;
   verificationStatus: BrandTruthVerificationStatus;
   sourceCount?: number;
+  qualifiedOfficialSourceCount?: number;
+  qualifiedIndependentThirdPartySourceCount?: number;
+  officialSourceCount?: number;
+  thirdPartySourceCount?: number;
 };
 
-export function compareStatementToTruth(input: {
-  expectedFact: ComparableTruthFact | undefined;
-  actualStatement: string | null | undefined;
-  knownOutdatedValues?: string[];
-}): { status: UnderstandingFieldStatus; reason: string } {
-  const actual = input.actualStatement?.trim() ?? "";
-  if (!actual) return { status: "missing", reason: "AI 回答未覆盖该事实；缺失与错误分开记录。" };
-  const expected = input.expectedFact;
-  if (!expected || !canUseFactAsConfirmedTruth(expected)) {
-    return { status: "unverifiable", reason: "事实基线尚未公开核验，不能据此断言 AI 错误或虚构。" };
-  }
-  const normalizedActual = normalizeTruthValue(actual);
-  const normalizedExpected = expected.normalizedValue || normalizeTruthValue(expected.factValue);
-  const semanticNormalize = (value: string) => value
+const EXTRACTED_FACT_FIELDS: Partial<Record<string, keyof ExtractedUnderstandingFacts>> = {
+  brand_name: "detectedBrandName",
+  company_name: "detectedCompanyName",
+  official_website: "detectedOfficialWebsite",
+  industry: "detectedIndustry",
+  category: "detectedCategory",
+  one_line_definition: "detectedCoreBusiness",
+  core_business: "detectedCoreBusiness",
+  main_products: "detectedProducts",
+  main_services: "detectedServices",
+  problems_solved: "detectedProblemsSolved",
+  target_customers: "detectedTargetCustomers",
+  non_target_customers: "detectedNonTargetCustomers",
+  non_applicable_boundaries: "detectedNonTargetCustomers",
+  use_cases: "detectedUseCases",
+  core_capabilities: "detectedCapabilities",
+  differentiators: "detectedDifferentiators",
+  current_limitations: "detectedLimitations",
+  prohibited_promises: "detectedLimitations",
+  active_business: "detectedCoreBusiness",
+  misunderstood_business: "detectedCoreBusiness",
+  discontinued_business: "detectedHistoricalInfo",
+  outdated_data: "detectedHistoricalInfo",
+};
+
+export function actualStatementsForFact(
+  factKey: string,
+  extracted: ExtractedUnderstandingFacts,
+  semantic?: SemanticFactComparison | null,
+): string[] {
+  const values: string[] = [];
+  if (semantic?.actualStatement?.trim()) values.push(semantic.actualStatement.trim());
+  const field = EXTRACTED_FACT_FIELDS[factKey];
+  const extractedValue = field ? extracted[field] : null;
+  if (typeof extractedValue === "string" && extractedValue.trim()) values.push(extractedValue.trim());
+  if (Array.isArray(extractedValue)) values.push(...extractedValue.filter(Boolean));
+  return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
+}
+
+function semanticNormalize(value: string): string {
+  return normalizeTruthValue(value)
     .replaceAll("软件即服务", "saas")
     .replaceAll("人工智能", "ai")
     .replaceAll("官方网站", "官网")
     .replaceAll("目标用户", "目标客户")
     .replaceAll("服务对象", "目标客户")
+    .replaceAll("课程售卖", "课程销售")
+    .replaceAll("知识变现", "知识内容变现")
     .replaceAll(" ", "");
-  const semanticActual = semanticNormalize(normalizedActual);
-  const semanticExpected = semanticNormalize(normalizedExpected);
-  if (semanticActual.includes(semanticExpected) || semanticExpected.includes(semanticActual)) {
-    return { status: "accurate", reason: "AI 表达与已核验事实一致。" };
+}
+
+function bigramRecall(expected: string, actual: string): number {
+  const compactExpected = semanticNormalize(expected).replace(/[^a-z0-9\u3400-\u9fff]/g, "");
+  const compactActual = semanticNormalize(actual).replace(/[^a-z0-9\u3400-\u9fff]/g, "");
+  if (!compactExpected || !compactActual) return 0;
+  if (compactActual.includes(compactExpected) || compactExpected.includes(compactActual)) return 1;
+  if (compactExpected.length < 2) return compactActual.includes(compactExpected) ? 1 : 0;
+  const grams = new Set(Array.from({ length: compactExpected.length - 1 }, (_, index) => compactExpected.slice(index, index + 2)));
+  const matched = [...grams].filter(gram => compactActual.includes(gram)).length;
+  return matched / Math.max(grams.size, 1);
+}
+
+export function compareStatementToTruth(input: {
+  expectedFact: ComparableTruthFact | undefined;
+  actualStatement?: string | null;
+  actualStatements?: string[];
+  knownOutdatedValues?: string[];
+  semanticComparison?: SemanticFactComparison | null;
+}): { status: UnderstandingFieldStatus; reason: string } {
+  const expected = input.expectedFact;
+  if (!expected || !canUseFactAsConfirmedTruth(expected)) {
+    return { status: "unverifiable", reason: "事实基线尚未公开核验，不能据此断言 AI 错误或虚构。" };
   }
-  if ((input.knownOutdatedValues ?? []).some(value => normalizedActual.includes(normalizeTruthValue(value)))) {
+  const actualValues = Array.from(new Set([
+    ...(input.actualStatements ?? []),
+    ...(input.actualStatement?.trim() ? [input.actualStatement.trim()] : []),
+  ].map(value => value.trim()).filter(Boolean)));
+  if (!actualValues.length || input.semanticComparison?.relation === "not_mentioned") {
+    return { status: "missing", reason: "AI 回答未覆盖该事实；缺失与错误分开记录。" };
+  }
+  const combinedActual = actualValues.join("；");
+  if ((input.knownOutdatedValues ?? []).some(value => semanticNormalize(combinedActual).includes(semanticNormalize(value)))) {
     return { status: "outdated", reason: "AI 使用了事实基线中已标记过时或停用的信息。" };
   }
-  return { status: "inaccurate", reason: "AI 表达与已核验事实不一致；需要人工复核语义差异。" };
+  const coverage = Math.max(...actualValues.map(value => bigramRecall(expected.factValue, value)));
+  if (coverage >= 0.82) {
+    return { status: "accurate", reason: "AI 表达与已核验事实一致。" };
+  }
+  if (input.semanticComparison?.relation === "contradicts") {
+    return { status: "inaccurate", reason: `AI 表达与已核验事实存在明确矛盾；语义辅助理由：${input.semanticComparison.reason || "未提供"}。需人工复核后才能成为客户结论。` };
+  }
+  if (input.semanticComparison?.relation === "supports") {
+    return { status: coverage >= 0.35 ? "accurate" : "mostly_accurate", reason: "AI 使用了不同措辞，但语义辅助判断与已核验事实一致；仍保留人工可追溯依据。" };
+  }
+  if (input.semanticComparison?.relation === "uncertain") {
+    return { status: "unverifiable", reason: "AI 自身表达不确定，当前不判为错误或疑似虚构。" };
+  }
+  if (coverage >= 0.35) return { status: "mostly_accurate", reason: "AI 覆盖了已核验事实的主要语义，但表达不完整。" };
+  if (coverage >= 0.12) return { status: "partially_accurate", reason: "AI 仅覆盖部分已核验事实；缺失部分与错误分开记录。" };
+  return { status: "unverifiable", reason: "AI 有相关表达，但确定性规则无法证明一致或矛盾；不得仅因措辞不同判错，需人工核验。" };
 }
 
 export function classifyUnsupportedClaim(input: {
@@ -162,7 +256,8 @@ export function deriveUnderstandingSeverity(input: {
   status: UnderstandingFieldStatus;
   factKey: string;
   legalOrCommercialRisk?: boolean;
-}): "P0" | "P1" | "P2" {
+}): "P0" | "P1" | "P2" | null {
+  if (!["inaccurate", "outdated", "conflicting", "hallucinated"].includes(input.status)) return null;
   if (input.legalOrCommercialRisk) return "P0";
   if (["brand_name", "company_name", "core_business"].includes(input.factKey) && ["inaccurate", "outdated", "hallucinated", "conflicting"].includes(input.status)) return "P0";
   if (["category", "target_customers", "main_products", "main_services", "core_capabilities", "differentiators"].includes(input.factKey) && input.status !== "accurate") return "P1";
@@ -173,10 +268,18 @@ export function calculateUnderstandingTotalScore(results: Array<{
   dimension: UnderstandingDimensionId;
   score: number | null;
 }>): { score: number | null; sufficient: boolean; missingDimensions: UnderstandingDimensionId[] } {
+  return calculateUnderstandingTotalScoreWithMethodology(results, DEFAULT_UNDERSTANDING_METHODOLOGY);
+}
+
+export function calculateUnderstandingTotalScoreWithMethodology(
+  results: Array<{ dimension: UnderstandingDimensionId; score: number | null }>,
+  methodology: { dimensions: ReadonlyArray<{ id: UnderstandingDimensionId; weight: number }> },
+): { score: number | null; sufficient: boolean; missingDimensions: UnderstandingDimensionId[] } {
+  const configuredDimensions = methodology.dimensions;
   const byDimension = new Map(results.map(result => [result.dimension, result.score]));
-  const missingDimensions = UNDERSTANDING_DIMENSIONS.filter(dimension => byDimension.get(dimension.id) == null).map(dimension => dimension.id);
+  const missingDimensions = configuredDimensions.filter(dimension => byDimension.get(dimension.id) == null).map(dimension => dimension.id);
   if (missingDimensions.length > 0) return { score: null, sufficient: false, missingDimensions };
-  const score = UNDERSTANDING_DIMENSIONS.reduce((total, dimension) => total + ((byDimension.get(dimension.id) ?? 0) * dimension.weight) / 100, 0);
+  const score = configuredDimensions.reduce((total, dimension) => total + ((byDimension.get(dimension.id) ?? 0) * dimension.weight) / 100, 0);
   return { score: Math.round(score), sufficient: true, missingDimensions: [] };
 }
 

@@ -33,11 +33,13 @@ describe("modelRouter", () => {
   it("calls mocked client and returns string", async () => {
     const volcengine: ModelClient = {
       name: "volcengine",
+      modelId: "test-model-id",
       call: vi.fn().mockResolvedValue("ok-response"),
     };
     const router = new ModelRouter({ volcengine });
     const resp = await router.callModel("quality_review", "user prompt", { systemPrompt: "sys" });
     expect(resp.text).toBe("ok-response");
+    expect(resp).toMatchObject({ modelName: "volcengine", modelId: "test-model-id" });
     expect(volcengine.call).toHaveBeenCalledWith("user prompt", "sys");
   });
 });

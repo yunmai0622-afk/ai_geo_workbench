@@ -15,7 +15,7 @@ import {
   understandingQuestionSets,
   understandingRuleConfigs,
 } from "../drizzle/schema";
-import { BRAND_TRUTH_EVIDENCE_TYPES, BRAND_TRUTH_VERIFICATION_STATUSES, normalizeTruthValue } from "@shared/brandTruth";
+import { BRAND_TRUTH_EVIDENCE_TYPES, BRAND_TRUTH_VERIFICATION_STATUSES, canPromoteFactFromEvidence, isQualifiedPublicEvidence, normalizeTruthValue } from "@shared/brandTruth";
 import { CORRECTION_ACTION_TYPES, UNDERSTANDING_FIELD_STATUSES } from "@shared/understandingEngine";
 import { adminProcedure, operatorAdminProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
@@ -29,6 +29,7 @@ import {
   refreshTruthProfileStats,
   runUnderstandingTest,
 } from "./brandTruthService";
+import { applyBrandTruthVerificationBatch, brandTruthVerificationPlanSchema } from "./brandTruthVerificationBatch";
 
 async function requireDb() {
   const db = await getDb();
@@ -85,12 +86,9 @@ async function assertVerifiedStatusHasEvidence(db: NonNullable<Awaited<ReturnTyp
   const evidenceIds = links.filter(link => link.supportType === "supports").map(link => link.evidenceId);
   if (!evidenceIds.length) throw new TRPCError({ code: "BAD_REQUEST", message: "缺少支持该事实的公开证据" });
   const evidence = await db.select().from(brandTruthEvidence).where(and(eq(brandTruthEvidence.projectId, projectId), inArray(brandTruthEvidence.id, evidenceIds)));
-  const approved = evidence.filter(item => item.verificationStatus === "verified" && item.manualReviewStatus === "approved" && item.accessible);
-  const official = approved.filter(item => item.sourceClass === "official");
-  const thirdParty = approved.filter(item => item.sourceClass === "third_party");
-  if (status === "official_verified" && !official.length) throw new TRPCError({ code: "BAD_REQUEST", message: "没有已审核且可访问的官方证据" });
-  if (status === "third_party_verified" && !thirdParty.length) throw new TRPCError({ code: "BAD_REQUEST", message: "没有已审核且可访问的第三方证据" });
-  if (status === "multi_source_verified" && (!official.length || !thirdParty.length)) throw new TRPCError({ code: "BAD_REQUEST", message: "多来源一致需要至少一条官方证据和一条独立第三方证据" });
+  if (!canPromoteFactFromEvidence(status, evidence)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "事实升级条件不足：公开 URL、来源主体、访问记录、内容哈希、审核状态、独立性或多来源主体不符合要求" });
+  }
 }
 
 async function refreshFactEvidenceStats(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, projectId: number, factId: number) {
@@ -100,8 +98,8 @@ async function refreshFactEvidenceStats(db: NonNullable<Awaited<ReturnType<typeo
   const contradicting = linked.links.filter(link => link.supportType === "contradicts").length;
   await db.update(brandTruthFacts).set({
     sourceCount: supporting.length,
-    officialSourceCount: supporting.filter(item => item.sourceClass === "official").length,
-    thirdPartySourceCount: supporting.filter(item => item.sourceClass === "third_party").length,
+    officialSourceCount: supporting.filter(item => isQualifiedPublicEvidence(item) && item.sourceClass === "official").length,
+    thirdPartySourceCount: supporting.filter(item => isQualifiedPublicEvidence(item) && item.sourceClass === "third_party" && item.independentSource).length,
     conflictCount: contradicting,
   }).where(and(eq(brandTruthFacts.projectId, projectId), eq(brandTruthFacts.id, factId)));
 }
@@ -144,6 +142,20 @@ export const brandTruthRouter = router({
     const db = await requireDb();
     await requireProjectAccess(ctx, input.projectId);
     return createProfileFromExistingData(db, input.projectId, getCurrentUserId(ctx));
+  }),
+
+  applyVerificationBatch: adminProcedure.input(projectIdInput.extend({ plan: brandTruthVerificationPlanSchema })).mutation(async ({ ctx, input }) => {
+    const db = await requireDb();
+    await requireProjectAccess(ctx, input.projectId);
+    try {
+      return await applyBrandTruthVerificationBatch(db, {
+        projectId: input.projectId,
+        userId: getCurrentUserId(ctx),
+        plan: input.plan,
+      });
+    } catch (error) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "批量事实核验失败" });
+    }
   }),
 
   updateProfile: operatorAdminProcedure.input(projectIdInput.extend({ status: z.enum(["draft", "active", "needs_review", "archived"]), reviewNote: z.string().optional() })).mutation(async ({ ctx, input }) => {
@@ -290,6 +302,24 @@ const questionInput = z.object({
   fixedAcrossPeriods: z.boolean().default(true),
 });
 
+const correctionTaskInput = z.object({
+  evaluationId: z.string().uuid().optional().nullable(),
+  factKey: z.string().trim().min(1).max(128),
+  expectedFact: z.string().optional().nullable(),
+  observedStatement: z.string().trim().min(1),
+  severity: z.enum(["P0", "P1", "P2"]),
+  recommendedAssetType: z.string().trim().min(1).max(64),
+  actionType: z.enum(CORRECTION_ACTION_TYPES),
+  actionDescription: z.string().trim().min(1),
+  requiredEvidence: z.string().trim().min(1),
+  owner: z.string().max(255).optional().nullable(),
+  dependency: z.string().optional().nullable(),
+  completionCriteria: z.string().trim().min(1),
+  verificationQuestionIds: z.array(z.number().int().positive()).default([]),
+  targetRetestRound: z.string().max(64).optional().nullable(),
+  targetRetestAt: z.coerce.date().optional().nullable(),
+});
+
 export const understandingRouter = router({
   listQuestionSets: protectedProcedure.input(projectIdInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
@@ -368,14 +398,41 @@ export const understandingRouter = router({
     return { success: true as const };
   }),
 
-  createCorrectionTask: operatorAdminProcedure.input(projectIdInput.extend({
-    evaluationId: z.string().uuid().optional().nullable(), factKey: z.string().trim().min(1).max(128), expectedFact: z.string().optional().nullable(), observedStatement: z.string().trim().min(1), severity: z.enum(["P0", "P1", "P2"]), recommendedAssetType: z.string().trim().min(1).max(64), actionType: z.enum(CORRECTION_ACTION_TYPES), actionDescription: z.string().trim().min(1), requiredEvidence: z.string().trim().min(1), owner: z.string().max(255).optional().nullable(), dependency: z.string().optional().nullable(), completionCriteria: z.string().trim().min(1), verificationQuestionIds: z.array(z.number().int().positive()).default([]), targetRetestRound: z.string().max(64).optional().nullable(),
-  })).mutation(async ({ ctx, input }) => {
+  createCorrectionTask: operatorAdminProcedure.input(projectIdInput.extend(correctionTaskInput.shape)).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     await requireProjectAccess(ctx, input.projectId);
     if (input.evaluationId) await requireScopedRow(await db.select().from(understandingEvaluations).where(and(eq(understandingEvaluations.id, input.evaluationId), eq(understandingEvaluations.projectId, input.projectId))).limit(1), "理解评价不存在", ctx);
     const inserted = await db.insert(understandingCorrectionTasks).values({ ...input, affectedStage: "understand", priority: input.severity, status: "pending", createdBy: getCurrentUserId(ctx) }).$returningId();
     return { success: true as const, id: inserted[0]?.id };
+  }),
+
+  createCorrectionTasksBatch: adminProcedure.input(projectIdInput.extend({ tasks: z.array(correctionTaskInput).min(1).max(20) })).mutation(async ({ ctx, input }) => {
+    const db = await requireDb();
+    await requireProjectAccess(ctx, input.projectId);
+    const evaluationIds = Array.from(new Set(input.tasks.map(task => task.evaluationId).filter((id): id is string => Boolean(id))));
+    if (evaluationIds.length) {
+      const evaluations = await db.select({ id: understandingEvaluations.id }).from(understandingEvaluations).where(and(
+        eq(understandingEvaluations.projectId, input.projectId),
+        inArray(understandingEvaluations.id, evaluationIds),
+      ));
+      if (evaluations.length !== evaluationIds.length) throw new TRPCError({ code: "BAD_REQUEST", message: "纠偏任务引用了其他项目或不存在的理解评价" });
+    }
+    const insertedIds: number[] = [];
+    await db.transaction(async tx => {
+      for (const task of input.tasks) {
+        const inserted = await tx.insert(understandingCorrectionTasks).values({
+          ...task,
+          projectId: input.projectId,
+          affectedStage: "understand",
+          priority: task.severity,
+          status: task.targetRetestAt || task.targetRetestRound ? "retest_scheduled" : "pending",
+          createdBy: getCurrentUserId(ctx),
+        }).$returningId();
+        if (!inserted[0]?.id) throw new Error("纠偏任务写入失败");
+        insertedIds.push(inserted[0].id);
+      }
+    });
+    return { success: true as const, count: insertedIds.length, ids: insertedIds };
   }),
 
   scheduleRetest: operatorAdminProcedure.input(projectIdInput.extend({ taskId: z.number().int().positive(), targetRetestRound: z.string().trim().min(1).max(64), targetRetestAt: z.coerce.date().optional().nullable() })).mutation(async ({ ctx, input }) => {

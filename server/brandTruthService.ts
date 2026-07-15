@@ -19,6 +19,7 @@ import {
 import type { DbConn } from "./projectAccess";
 import {
   calculateTruthProfileStats,
+  canUseFactAsConfirmedTruth,
   listBrandTruthFactDefinitions,
   normalizeTruthValue,
   type BrandTruthVerificationStatus,
@@ -32,7 +33,10 @@ import {
   recommendCorrectionAction,
   renderUnderstandingQuestion,
   UNDERSTANDING_DIMENSIONS,
+  DEFAULT_UNDERSTANDING_METHODOLOGY,
+  actualStatementsForFact,
   type ExtractedUnderstandingFacts,
+  type SemanticFactComparison,
   type UnderstandingDimensionId,
   type UnderstandingFieldStatus,
 } from "@shared/understandingEngine";
@@ -94,25 +98,52 @@ function mergeStructuredExtraction(rule: ExtractedUnderstandingFacts, model: Rec
   return merged;
 }
 
-async function extractUnderstandingFactsWithModel(rawAnswer: string, ruleExtraction: ExtractedUnderstandingFacts) {
+function parseSemanticComparisons(value: unknown): SemanticFactComparison[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const row = item as Record<string, unknown>;
+    const relation = row.relation;
+    if (typeof row.factKey !== "string" || !["supports", "contradicts", "not_mentioned", "uncertain"].includes(String(relation))) return [];
+    return [{
+      factKey: row.factKey,
+      relation: relation as SemanticFactComparison["relation"],
+      actualStatement: typeof row.actualStatement === "string" ? row.actualStatement : null,
+      reason: typeof row.reason === "string" ? row.reason : "",
+    }];
+  });
+}
+
+async function extractUnderstandingFactsWithModel(
+  rawAnswer: string,
+  ruleExtraction: ExtractedUnderstandingFacts,
+  expectedFacts: Array<{ factKey: string; factValue: string }>,
+) {
   try {
     const result = await defaultModelRouter.callModel("diagnosis", [
-      "请只抽取下方 AI 回答中明确出现的信息，不补充外部知识，不判断对错，不给分。",
+      "请只抽取下方 AI 回答中明确出现的信息，不补充外部知识，不判断最终分数。",
       "输出一个 JSON 对象，字段必须包括：detectedBrandName, detectedCompanyName, detectedOfficialWebsite, detectedIndustry, detectedCategory, detectedCoreBusiness, detectedProducts, detectedServices, detectedProblemsSolved, detectedTargetCustomers, detectedNonTargetCustomers, detectedUseCases, detectedCapabilities, detectedDifferentiators, detectedLimitations, detectedCompetitors, detectedHistoricalInfo, detectedClaims, detectedCitations, uncertainStatements。",
       "前五项为 string 或 null，其余字段为 string[]。无法确认时使用 null 或空数组。",
+      "同时输出 semanticComparisons 数组。每项只包含 factKey、relation、actualStatement、reason；relation 只能是 supports、contradicts、not_mentioned、uncertain。它只是语义辅助，不是最终裁决。措辞不同但含义一致应为 supports；没有提到应为 not_mentioned；只有明确相反时才是 contradicts。",
+      `待比对的已核验事实：\n${JSON.stringify(expectedFacts)}`,
       `AI 回答：\n${rawAnswer}`,
-    ].join("\n\n"), { systemPrompt: "你是信息抽取器。不得新增原回答没有的事实，不得输出自由评分。" });
+    ].join("\n\n"), { systemPrompt: "你是信息抽取与语义比对助手。不得新增原回答没有的事实，不得输出自由评分，最终结论由确定性规则与人工复核决定。" });
     const parsed = parseModelJson(result.text);
+    const semanticComparisons = parseSemanticComparisons(parsed?.semanticComparisons);
     return {
       extracted: mergeStructuredExtraction(ruleExtraction, parsed),
-      extractorModel: result.modelName,
-      semanticJudgement: parsed ? { extractionSucceeded: true, model: result.modelName, scoringAuthority: false } : { extractionSucceeded: false, model: result.modelName, scoringAuthority: false, reason: "模型未返回可解析 JSON，保留规则抽取" },
+      extractorModel: result.modelId,
+      semanticComparisons,
+      semanticJudgement: parsed
+        ? { extractionSucceeded: true, model: result.modelId, channel: result.modelName, scoringAuthority: false, comparisons: semanticComparisons }
+        : { extractionSucceeded: false, model: result.modelId, channel: result.modelName, scoringAuthority: false, comparisons: [], reason: "模型未返回可解析 JSON，保留规则抽取" },
     };
   } catch (error) {
     return {
       extracted: ruleExtraction,
       extractorModel: "rule-v1",
-      semanticJudgement: { extractionSucceeded: false, scoringAuthority: false, reason: error instanceof Error ? error.message : "模型抽取失败，保留规则抽取" },
+      semanticComparisons: [] as SemanticFactComparison[],
+      semanticJudgement: { extractionSucceeded: false, scoringAuthority: false, comparisons: [], reason: error instanceof Error ? error.message : "模型抽取失败，保留规则抽取" },
     };
   }
 }
@@ -263,11 +294,36 @@ export async function buildUnderstandingSummary(db: DbConn, projectId: number) {
     ? await db.select().from(understandingDimensionResults).where(inArray(understandingDimensionResults.evaluationId, evaluationIds))
     : [];
   const dimensionSummary = UNDERSTANDING_DIMENSIONS.map(dimension => {
-    const rows = dimensionRows.filter(row => row.dimension === dimension.id && row.score != null);
-    const score = rows.length ? Math.round(rows.reduce((sum, row) => sum + (row.score ?? 0), 0) / rows.length) : null;
-    const statuses = rows.map(row => row.status as UnderstandingFieldStatus);
-    const status = statuses.includes("inaccurate") ? "inaccurate" : statuses.includes("outdated") ? "outdated" : statuses.includes("missing") ? "missing" : statuses.includes("unverifiable") ? "unverifiable" : statuses[0] ?? "unverifiable";
-    return { ...dimension, score, status };
+    const allRows = dimensionRows.filter(row => row.dimension === dimension.id);
+    const scoredRows = allRows.filter(row => row.score != null);
+    const score = scoredRows.length ? Math.round(scoredRows.reduce((sum, row) => sum + (row.score ?? 0), 0) / scoredRows.length) : null;
+    const statuses = allRows.map(row => row.status as UnderstandingFieldStatus);
+    const status: UnderstandingFieldStatus = statuses.includes("hallucinated") ? "hallucinated"
+      : statuses.includes("inaccurate") ? "inaccurate"
+        : statuses.includes("conflicting") ? "conflicting"
+          : statuses.includes("outdated") ? "outdated"
+            : statuses.includes("partially_accurate") ? "partially_accurate"
+              : statuses.includes("missing") ? "missing"
+                : statuses.includes("unverifiable") ? "unverifiable"
+                  : statuses.includes("mostly_accurate") ? "mostly_accurate" : statuses[0] ?? "unverifiable";
+    const severity = allRows.some(row => row.severity === "P0") ? "P0" : allRows.some(row => row.severity === "P1") ? "P1" : allRows.some(row => row.severity === "P2") ? "P2" : null;
+    const uniqueStrings = (values: string[]) => Array.from(new Set(values.filter(Boolean)));
+    return {
+      ...dimension,
+      score,
+      status,
+      severity,
+      expectedFacts: allRows.flatMap(row => row.expectedFacts),
+      actualStatements: uniqueStrings(allRows.flatMap(row => row.actualStatements)),
+      matchedFacts: uniqueStrings(allRows.flatMap(row => row.matchedFacts)),
+      missingFacts: uniqueStrings(allRows.flatMap(row => row.missingFacts)),
+      inaccurateFacts: uniqueStrings(allRows.flatMap(row => row.inaccurateFacts)),
+      outdatedFacts: uniqueStrings(allRows.flatMap(row => row.outdatedFacts)),
+      unverifiableClaims: uniqueStrings(allRows.flatMap(row => row.unverifiableClaims)),
+      evidenceReferences: Array.from(new Set(allRows.flatMap(row => row.evidenceReferences))),
+      customerExplanation: uniqueStrings(allRows.map(row => row.customerExplanation)).join(" "),
+      recommendedCorrection: uniqueStrings(allRows.map(row => row.recommendedCorrection)).join("；"),
+    };
   });
   const total = calculateUnderstandingTotalScore(dimensionSummary.map(row => ({ dimension: row.id, score: row.score })));
   const persistedFacts = context.facts;
@@ -329,91 +385,152 @@ export async function runUnderstandingTest(db: DbConn, input: {
   if (!context.profile) throw new Error("请先创建并复核品牌事实基线");
   const set = await ensureDefaultUnderstandingQuestionSet(db, input.projectId, input.userId, context.project.enterpriseName, context.legacyProfile);
   const allQuestions = await db.select().from(understandingQuestions).where(and(eq(understandingQuestions.questionSetId, set.id), eq(understandingQuestions.enabled, true))).orderBy(understandingQuestions.sortOrder);
-  const selected = input.questionIds?.length ? allQuestions.filter(row => input.questionIds!.includes(row.id)) : allQuestions.slice(0, 8);
+  const selected = input.questionIds?.length ? allQuestions.filter(row => input.questionIds!.includes(row.id)) : allQuestions.slice(0, 15);
   if (!selected.length) throw new Error("当前没有可执行的 Understand 问题");
-  const confirmedFacts = context.facts.filter(fact => ["official_verified", "third_party_verified", "multi_source_verified"].includes(fact.verificationStatus));
+  const confirmedFacts = context.facts.filter(fact => canUseFactAsConfirmedTruth(fact));
   if (!confirmedFacts.length) throw new Error("事实基线尚无公开核验事实，不能执行准确性判断");
+  const linkedEvidence = await db.select().from(brandTruthFactEvidenceLinks).where(and(
+    eq(brandTruthFactEvidenceLinks.projectId, input.projectId),
+    eq(brandTruthFactEvidenceLinks.supportType, "supports"),
+  ));
+  const evidenceIdsByFact = new Map<number, number[]>();
+  for (const link of linkedEvidence) evidenceIdsByFact.set(link.factId, [...(evidenceIdsByFact.get(link.factId) ?? []), link.evidenceId]);
+  const knownOutdatedValues = context.facts.filter(fact => fact.verificationStatus === "outdated").map(fact => fact.factValue);
   const batchTestedAt = new Date();
   const completed: string[] = [];
+  const failures: Array<{ questionId: number; question: string; reason: string }> = [];
   for (const question of selected) {
-    const response = await defaultModelRouter.callModel("diagnosis", question.questionText, {
-      systemPrompt: "请基于你当前可用的信息直接回答。未知时明确说未知，不要编造链接、数据或能力。",
-    });
-    const rawAnswer = response.text;
-    const brandName = context.facts.find(fact => fact.factKey === "brand_name")?.factValue ?? context.project.enterpriseName;
-    const ruleExtraction = extractUnderstandingFactsByRule(rawAnswer, {
-      brandName,
-      companyName: context.facts.find(fact => fact.factKey === "company_name")?.factValue,
-      officialWebsite: context.facts.find(fact => fact.factKey === "official_website")?.factValue,
-      competitors: context.legacyProfile?.competitors ?? context.project.competitorNames,
-    });
-    const extraction = await extractUnderstandingFactsWithModel(rawAnswer, ruleExtraction);
-    const extracted = extraction.extracted;
-    const evaluationId = randomUUID();
-    const comparisons = question.verificationFactKeys.map(factKey => {
-      const fact = context.facts.find(row => row.factKey === factKey);
-      const result = compareStatementToTruth({ expectedFact: fact, actualStatement: rawAnswer });
-      return { factKey, fact, ...result, severity: deriveUnderstandingSeverity({ status: result.status, factKey }) };
-    });
-    const finalStatus = comparisons.some(row => row.status === "inaccurate") ? "inaccurate"
-      : comparisons.some(row => row.status === "outdated") ? "outdated"
-        : comparisons.every(row => row.status === "missing") ? "missing"
-          : comparisons.some(row => row.status === "unverifiable") ? "unverifiable" : "mostly_accurate";
-    const severity = comparisons.some(row => row.severity === "P0") ? "P0" : comparisons.some(row => row.severity === "P1") ? "P1" : "P2";
-    await db.insert(understandingEvaluations).values({
-      id: evaluationId,
-      projectId: input.projectId,
-      questionSetId: set.id,
-      questionId: question.id,
-      testRoundId: input.targetRetestRound ?? null,
-      testedModel: response.modelName,
-      testedChannel: response.modelName,
-      testedAt: batchTestedAt,
-      rawAnswer,
-      extractedFacts: extracted,
-      uncertainStatements: extracted.uncertainStatements,
-      ruleResults: { comparisons },
-      semanticJudgement: extraction.semanticJudgement,
-      evidenceReferences: [],
-      evaluationVersion: "understand-v1",
-      truthProfileVersion: context.profile.currentVersion,
-      questionSetVersion: set.version,
-      extractionVersion: extraction.extractorModel === "rule-v1" ? "rule-v1" : "structured-model-v1+rule-v1",
-      extractorModel: extraction.extractorModel,
-      evaluatorModel: "deterministic-rule-v1+semantic-assist+manual-review",
-      manualReviewStatus: severity === "P0" || severity === "P1" ? "pending" : "not_required",
-      finalStatus,
-      severity,
-    });
-    for (const dimension of dimensionsForFactKeys(question.verificationFactKeys)) {
-      const related = comparisons.filter(row => (dimension.factKeys as readonly string[]).includes(row.factKey));
-      const status = related.some(row => row.status === "inaccurate") ? "inaccurate" : related.some(row => row.status === "outdated") ? "outdated" : related.some(row => row.status === "missing") ? "missing" : related.some(row => row.status === "unverifiable") ? "unverifiable" : "mostly_accurate";
-      const scoreMap: Record<string, number> = { accurate: 100, mostly_accurate: 85, partially_accurate: 65, missing: 40, unverifiable: 0, inaccurate: 20, outdated: 20, conflicting: 15, hallucinated: 0 };
-      await db.insert(understandingDimensionResults).values({
-        projectId: input.projectId,
-        evaluationId,
-        dimension: dimension.id,
-        score: status === "unverifiable" ? null : scoreMap[status],
-        status,
-        expectedFacts: related.map(row => ({ factKey: row.factKey, value: row.fact?.factValue, verificationStatus: row.fact?.verificationStatus })),
-        actualStatements: [rawAnswer],
-        matchedFacts: related.filter(row => row.status === "accurate" || row.status === "mostly_accurate").map(row => row.factKey),
-        missingFacts: related.filter(row => row.status === "missing").map(row => row.factKey),
-        inaccurateFacts: related.filter(row => row.status === "inaccurate").map(row => row.factKey),
-        outdatedFacts: related.filter(row => row.status === "outdated").map(row => row.factKey),
-        conflictingFacts: [],
-        hallucinatedClaims: [],
-        unverifiableClaims: related.filter(row => row.status === "unverifiable").map(row => row.factKey),
-        evidenceReferences: [],
-        severity,
-        customerExplanation: related.map(row => row.reason).join(" "),
-        recommendedCorrection: related.map(row => recommendCorrectionAction(row.factKey).label).filter((value, index, list) => list.indexOf(value) === index).join("；"),
-        verificationQuestionIds: [question.id],
+    try {
+      const response = await defaultModelRouter.callModel("diagnosis", question.questionText, {
+        systemPrompt: "请基于你当前可用的信息直接回答。未知时明确说未知，不要编造链接、数据或能力。",
       });
+      const rawAnswer = response.text;
+      const brandName = context.facts.find(fact => fact.factKey === "brand_name")?.factValue ?? context.project.enterpriseName;
+      const ruleExtraction = extractUnderstandingFactsByRule(rawAnswer, {
+        brandName,
+        companyName: context.facts.find(fact => fact.factKey === "company_name")?.factValue,
+        officialWebsite: context.facts.find(fact => fact.factKey === "official_website")?.factValue,
+        competitors: context.legacyProfile?.competitors ?? context.project.competitorNames,
+      });
+      const expectedFacts = question.verificationFactKeys.flatMap(factKey => {
+        const fact = confirmedFacts.find(row => row.factKey === factKey);
+        return fact ? [{ factKey, factValue: fact.factValue }] : [];
+      });
+      const extraction = await extractUnderstandingFactsWithModel(rawAnswer, ruleExtraction, expectedFacts);
+      const extracted = extraction.extracted;
+      const evaluationId = randomUUID();
+      const comparisons = question.verificationFactKeys.map(factKey => {
+        const fact = context.facts.find(row => row.factKey === factKey);
+        const semanticComparison = extraction.semanticComparisons.find(row => row.factKey === factKey) ?? null;
+        const actualStatements = actualStatementsForFact(factKey, extracted, semanticComparison);
+        const result = compareStatementToTruth({ expectedFact: fact, actualStatements, semanticComparison, knownOutdatedValues });
+        const severity = deriveUnderstandingSeverity({
+          status: result.status,
+          factKey,
+          legalOrCommercialRisk: factKey === "prohibited_promises" && ["inaccurate", "hallucinated", "conflicting"].includes(result.status),
+        });
+        return { factKey, fact, actualStatements, semanticComparison, ...result, severity };
+      });
+      const statuses = comparisons.map(row => row.status);
+      const finalStatus: UnderstandingFieldStatus = statuses.includes("hallucinated") ? "hallucinated"
+        : statuses.includes("inaccurate") ? "inaccurate"
+          : statuses.includes("conflicting") ? "conflicting"
+            : statuses.includes("outdated") ? "outdated"
+              : statuses.every(status => status === "missing") ? "missing"
+                : statuses.every(status => status === "unverifiable") ? "unverifiable"
+                  : statuses.includes("missing") || statuses.includes("unverifiable") || statuses.includes("partially_accurate") ? "partially_accurate"
+                    : statuses.includes("mostly_accurate") ? "mostly_accurate" : "accurate";
+      const severity = comparisons.some(row => row.severity === "P0") ? "P0" : comparisons.some(row => row.severity === "P1") ? "P1" : comparisons.some(row => row.severity === "P2") ? "P2" : null;
+      const evidenceReferences = Array.from(new Set(comparisons.flatMap(row => row.fact ? evidenceIdsByFact.get(row.fact.id) ?? [] : [])));
+      await db.insert(understandingEvaluations).values({
+        id: evaluationId,
+        projectId: input.projectId,
+        questionSetId: set.id,
+        questionId: question.id,
+        testRoundId: input.targetRetestRound ?? null,
+        testedModel: response.modelId,
+        testedChannel: response.modelName,
+        testedAt: batchTestedAt,
+        rawAnswer,
+        extractedFacts: extracted,
+        uncertainStatements: extracted.uncertainStatements,
+        ruleResults: { comparisons },
+        semanticJudgement: extraction.semanticJudgement,
+        evidenceReferences,
+        evaluationVersion: "understand-v2",
+        methodologyVersion: `${DEFAULT_UNDERSTANDING_METHODOLOGY.id}@${DEFAULT_UNDERSTANDING_METHODOLOGY.version}`,
+        dimensionWeights: Object.fromEntries(DEFAULT_UNDERSTANDING_METHODOLOGY.dimensions.map(item => [item.id, item.weight])),
+        ruleVersion: DEFAULT_UNDERSTANDING_METHODOLOGY.ruleVersion,
+        truthProfileVersion: context.profile.currentVersion,
+        questionSetVersion: set.version,
+        extractionVersion: extraction.extractorModel === "rule-v1" ? "rule-v1" : "structured-model-v2+rule-v1",
+        extractorModel: extraction.extractorModel,
+        evaluatorModel: "deterministic-rule-v2+semantic-assist+manual-review",
+        manualReviewStatus: severity === "P0" || severity === "P1" ? "pending" : "not_required",
+        finalStatus,
+        severity: severity ?? undefined,
+        assessmentStatus: comparisons.every(row => row.status === "unverifiable") ? "unknown" : severity ? "issue_detected" : "no_issue_detected",
+        plannedQuestionCount: selected.length,
+        runQuestionCount: 1,
+        verifiedFactCount: confirmedFacts.length,
+        extractionCoverage: Math.round((comparisons.filter(row => row.status !== "missing").length / Math.max(comparisons.length, 1)) * 100),
+        assessmentCoverage: Math.round((comparisons.filter(row => row.status !== "unverifiable").length / Math.max(comparisons.length, 1)) * 100),
+      });
+      for (const dimension of dimensionsForFactKeys(question.verificationFactKeys)) {
+        const related = comparisons.filter(row => (dimension.factKeys as readonly string[]).includes(row.factKey));
+        const relatedStatuses = related.map(row => row.status);
+        const status: UnderstandingFieldStatus = relatedStatuses.includes("hallucinated") ? "hallucinated"
+          : relatedStatuses.includes("inaccurate") ? "inaccurate"
+            : relatedStatuses.includes("conflicting") ? "conflicting"
+              : relatedStatuses.includes("outdated") ? "outdated"
+                : relatedStatuses.every(value => value === "unverifiable") ? "unverifiable"
+                  : relatedStatuses.every(value => value === "missing") ? "missing"
+                    : relatedStatuses.includes("missing") || relatedStatuses.includes("unverifiable") || relatedStatuses.includes("partially_accurate") ? "partially_accurate"
+                      : relatedStatuses.includes("mostly_accurate") ? "mostly_accurate" : "accurate";
+        const scoreMap: Record<UnderstandingFieldStatus, number> = { accurate: 100, mostly_accurate: 85, partially_accurate: 65, missing: 40, unverifiable: 0, inaccurate: 20, outdated: 20, conflicting: 15, hallucinated: 0 };
+        const dimensionEvidenceReferences = Array.from(new Set(related.flatMap(row => row.fact ? evidenceIdsByFact.get(row.fact.id) ?? [] : [])));
+        await db.insert(understandingDimensionResults).values({
+          projectId: input.projectId,
+          evaluationId,
+          dimension: dimension.id,
+          score: status === "unverifiable" ? null : scoreMap[status],
+          status,
+          expectedFacts: related.map(row => ({ factKey: row.factKey, value: row.fact?.factValue, verificationStatus: row.fact?.verificationStatus })),
+          actualStatements: Array.from(new Set(related.flatMap(row => row.actualStatements))),
+          matchedFacts: related.filter(row => row.status === "accurate" || row.status === "mostly_accurate").map(row => row.factKey),
+          missingFacts: related.filter(row => row.status === "missing").map(row => row.factKey),
+          inaccurateFacts: related.filter(row => row.status === "inaccurate").map(row => row.factKey),
+          outdatedFacts: related.filter(row => row.status === "outdated").map(row => row.factKey),
+          conflictingFacts: related.filter(row => row.status === "conflicting").map(row => row.factKey),
+          hallucinatedClaims: related.filter(row => row.status === "hallucinated").flatMap(row => row.actualStatements),
+          unverifiableClaims: related.filter(row => row.status === "unverifiable").map(row => row.factKey),
+          evidenceReferences: dimensionEvidenceReferences,
+          severity: severity ?? undefined,
+          customerExplanation: related.map(row => row.reason).join(" "),
+          recommendedCorrection: related.map(row => recommendCorrectionAction(row.factKey).label).filter((value, index, list) => list.indexOf(value) === index).join("；"),
+          verificationQuestionIds: [question.id],
+        });
+      }
+      completed.push(evaluationId);
+    } catch (error) {
+      failures.push({ questionId: question.id, question: question.questionText, reason: error instanceof Error ? error.message : "真实模型调用失败" });
     }
-    completed.push(evaluationId);
   }
-  return { testedAt: batchTestedAt, questionCount: completed.length, evaluationIds: completed, wroteData: true };
+  if (completed.length) {
+    await db.update(understandingEvaluations).set({ runQuestionCount: completed.length }).where(and(
+      eq(understandingEvaluations.projectId, input.projectId),
+      inArray(understandingEvaluations.id, completed),
+    ));
+  }
+  return {
+    testedAt: batchTestedAt,
+    plannedQuestionCount: selected.length,
+    questionCount: completed.length,
+    failedQuestionCount: failures.length,
+    failures,
+    evaluationIds: completed,
+    wroteData: completed.length > 0,
+  };
 }
 
 export async function listLinkedEvidence(db: DbConn, projectId: number, factId?: number) {
