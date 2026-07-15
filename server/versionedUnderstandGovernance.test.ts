@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 const migration = readFileSync("drizzle/0074_versioned_understand_governance.sql", "utf8");
 const schema = readFileSync("drizzle/schema.ts", "utf8");
 const service = readFileSync("server/versionedUnderstandGovernanceService.ts", "utf8");
+const baseline = readFileSync("drizzle/baselines/tidb_v0074.sql", "utf8");
+const bootstrap = readFileSync("scripts/bootstrap_tidb_v0074.mjs", "utf8");
 
 const tables = [
   "brand_fact_definitions", "brand_fact_definition_versions", "brand_fact_industry_template_versions", "brand_fact_industry_template_items",
@@ -82,5 +84,14 @@ describe("PR-03.6B versioned Understand governance", () => {
   it("keeps the Observation Ledger feature flag default-off", () => {
     const ledgerService = readFileSync("server/aiObservationLedgerService.ts", "utf8");
     expect(ledgerService).toContain('process.env.AI_OBSERVATION_LEDGER_V2?.toLowerCase() === "true"');
+  });
+
+  it("provides a guarded TiDB v0074 baseline with real journal hashes", () => {
+    for (const table of tables) expect(baseline).toContain(`CREATE TABLE \`${table}\``);
+    expect(bootstrap).toContain("Baseline refused: database namespace contains");
+    expect(bootstrap).toContain("Baseline refused: migration metadata already contains records");
+    expect(bootstrap).toContain('createHash("sha256").update(sql).digest("hex")');
+    expect(bootstrap).toContain("INSERT INTO");
+    expect(bootstrap).not.toContain("210001");
   });
 });

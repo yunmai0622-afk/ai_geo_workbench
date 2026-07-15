@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 const journal = JSON.parse(await readFile("drizzle/meta/_journal.json", "utf8"));
 const migration = await readFile("drizzle/0074_versioned_understand_governance.sql", "utf8");
 const schema = await readFile("drizzle/schema.ts", "utf8");
+const baseline = await readFile("drizzle/baselines/tidb_v0074.sql", "utf8");
 const tail = journal.entries.slice(-4).map(entry => entry.tag);
 const expectedTail = [
   "0071_brand_truth_understand_engine", "0072_brand_truth_understand_acceptance_gate",
@@ -12,6 +13,9 @@ if (JSON.stringify(tail) !== JSON.stringify(expectedTail)) throw new Error(`Migr
 
 const tables = [...migration.matchAll(/CREATE TABLE `([^`]+)`/g)].map(match => match[1]);
 for (const table of tables) if (!schema.includes(`"${table}"`)) throw new Error(`Schema export missing for ${table}`);
+const schemaTables = [...schema.matchAll(/mysqlTable\(\s*"([^"]+)"/g)].map(match => match[1]).sort();
+const baselineTables = [...baseline.matchAll(/CREATE TABLE `([^`]+)`/g)].map(match => match[1]).sort();
+if (JSON.stringify(schemaTables) !== JSON.stringify(baselineTables)) throw new Error("TiDB baseline table set differs from Drizzle schema");
 const requiredFks = [
   "understanding_assessments_observation_extraction_project_fk",
   "understanding_assessments_truth_profile_version_project_fk",
@@ -31,4 +35,4 @@ if (!migration.includes("`truthProfileVersionId`")) throw new Error("Truth profi
 if (migration.includes("`truthProfileVersion` int")) throw new Error("Legacy numeric truth profile version remains in formal Assessment");
 if (/\b(?:DROP|TRUNCATE|DELETE|UPDATE)\b/i.test(migration)) throw new Error("0074 contains a destructive or data-rewriting statement");
 
-console.log(JSON.stringify({ status: "passed", migrationOrder: tail, tables: tables.length, requiredCompositeForeignKeys: requiredFks.length }));
+console.log(JSON.stringify({ status: "passed", migrationOrder: tail, migration0074Tables: tables.length, baselineTables: baselineTables.length, requiredCompositeForeignKeys: requiredFks.length }));

@@ -38,6 +38,7 @@
     ,"verify:observation-production": "node scripts/verify_observation_production_gate.mjs"
     ,"test:tidb:versioned-governance": "node scripts/test_versioned_governance_tidb.mjs"
     ,"verify:versioned-governance-schema": "node scripts/verify_versioned_governance_schema.mjs"
+    ,"bootstrap:tidb:v0074": "node scripts/bootstrap_tidb_v0074.mjs"
   },
   "engines": {
     "node": ">=20.20 <25"
