@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import mysql from "mysql2/promise";
@@ -30,12 +29,11 @@ const changeTables = [
 ];
 
 const journal = JSON.parse(await readFile(new URL("../drizzle/meta/_journal.json", import.meta.url), "utf8"));
-const migrationSpecs = await Promise.all(["0072_brand_truth_understand_acceptance_gate", "0073_ai_observation_ledger"].map(async name => {
+const migrationSpecs = ["0072_brand_truth_understand_acceptance_gate", "0073_ai_observation_ledger"].map(name => {
   const entry = journal.entries.find(item => item.tag === name);
   if (!entry) throw new Error(`journal entry missing: ${name}`);
-  const sql = await readFile(new URL(`../drizzle/${name}.sql`, import.meta.url), "utf8");
-  return { name, hash: createHash("sha256").update(sql).digest("hex"), createdAt: entry.when };
-}));
+  return { name, createdAt: entry.when };
+});
 
 const healthResponse = await fetch(`${productionBaseUrl}/health`, { headers: { "Cache-Control": "no-cache" } });
 const health = await healthResponse.json().catch(() => null);
@@ -48,11 +46,12 @@ const db = await mysql.createConnection(databaseUrl);
 let report;
 try {
   const [migrationRows] = await db.execute(
-    "SELECT `hash`, `created_at` AS createdAt FROM `__drizzle_migrations` WHERE (`hash`=? AND `created_at`=?) OR (`hash`=? AND `created_at`=?)",
-    migrationSpecs.flatMap(item => [item.hash, item.createdAt]),
+    "SELECT `hash`, `created_at` AS createdAt FROM `__drizzle_migrations` WHERE `created_at` IN (?,?)",
+    migrationSpecs.map(item => item.createdAt),
   );
   const migrationRecords = migrationSpecs.map(spec => {
-    const row = migrationRows.find(item => item.hash === spec.hash && Number(item.createdAt) === spec.createdAt);
+    // Drizzle's MySQL migrator determines applied state from journal created_at; hash is stored but is not its status key.
+    const row = migrationRows.find(item => Number(item.createdAt) === spec.createdAt);
     return { migration: spec.name.slice(0, 4), time: row ? new Date(spec.createdAt).toISOString() : null, status: row ? "recorded" : "missing" };
   });
 
