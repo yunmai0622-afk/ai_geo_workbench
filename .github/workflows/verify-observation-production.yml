@@ -1,0 +1,34 @@
+name: Verify Observation Production Gate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Read-only production verification
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      RAILWAY_PRODUCTION_URL: ${{ secrets.RAILWAY_PRODUCTION_URL || vars.RAILWAY_PRODUCTION_URL }}
+      OBSERVATION_GATE_REPORT_PATH: artifacts/observation-production-gate.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: corepack enable && corepack pnpm install --frozen-lockfile
+      - name: Run SELECT-only production gate
+        run: corepack pnpm verify:observation-production
+      - name: Upload redacted gate report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: observation-production-gate
+          path: artifacts/observation-production-gate.json
+          if-no-files-found: error
+          retention-days: 30
