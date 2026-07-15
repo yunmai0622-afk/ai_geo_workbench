@@ -60,6 +60,7 @@ import { projectPlatformAccountsRouter } from "./projectPlatformAccountsRouter";
 import { effectiveActionsRouter } from "./effectiveActionsRouter";
 import { brandSourceGraphRouter } from "./brandSourceGraphRouter";
 import { brandTruthRouter, understandingRouter } from "./brandTruthRouter";
+import { evidenceLedgerRouter } from "./evidenceLedgerRouter";
 import { discoveryRouter } from "./discoveryRouter";
 import { trustEvidenceRouter } from "./trustEvidenceRouter";
 import { geoMaturityRouter } from "./geoMaturityRouter";
@@ -5315,6 +5316,7 @@ ${article.markdownContent}`,
   brandSourceGraph: brandSourceGraphRouter,
 
   brandTruth: brandTruthRouter,
+  evidenceLedger: evidenceLedgerRouter,
 
   understanding: understandingRouter,
 

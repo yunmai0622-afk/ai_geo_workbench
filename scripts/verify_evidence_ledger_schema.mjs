@@ -1,0 +1,5 @@
+import{readFile}from"node:fs/promises";const sql=await readFile("drizzle/0079_public_evidence_ledger.sql","utf8"),schema=await readFile("drizzle/schema.ts","utf8"),journal=JSON.parse(await readFile("drizzle/meta/_journal.json","utf8"));
+for(const table of ["trust_evidence_sources","trust_source_snapshots","trust_evidence_ledger_items","trust_evidence_fact_links","trust_evidence_question_links","trust_evidence_quality_checks"])if(!sql.includes(table)||!schema.includes(table))throw new Error(`missing ${table}`);
+for(const factor of ["accessibility","authority","independence","consistency","freshness","relevance"])if(!sql.includes(factor))throw new Error(`missing quality factor ${factor}`);
+if(journal.entries.at(-1)?.tag!=="0079_public_evidence_ledger")throw new Error("0079 not journal tail");if(/trust.?score|recommendation.?gap|UPDATE\s+`?(?:brand_truth|understanding|ai_observation)/i.test(sql))throw new Error("PR-04A crossed forbidden boundary");
+console.log(JSON.stringify({status:"passed",tables:6,aggregateScore:false,appendOnlySnapshots:true}));

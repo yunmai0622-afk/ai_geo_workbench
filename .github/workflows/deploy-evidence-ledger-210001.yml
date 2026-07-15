@@ -1,0 +1,37 @@
+name: Deploy Evidence Ledger and Import 210001
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project_id:
+        description: "Type 210001"
+        required: true
+        type: string
+concurrency: {group: evidence-ledger-210001, cancel-in-progress: false}
+jobs:
+  ledger:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions: {contents: read}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AI_OBSERVATION_LEDGER_V2: "false"
+      CONFIRM_210001_EVIDENCE_LEDGER: "true"
+      ALLOW_EVIDENCE_LEDGER_TIDB_TEST: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - run: test "${{ inputs.confirm_project_id }}" = "210001"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 24, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm exec vitest run server/evidenceLedgerService.test.ts
+      - run: pnpm verify:evidence-ledger-schema
+      - name: TiDB 0075 to 0076 regression
+        run: pnpm test:tidb:evidence-ledger
+      - name: Apply 0079
+        run: pnpm db:migrate
+      - name: Import existing public evidence without changing truth
+        run: pnpm evidence-ledger:import:210001 | tee evidence-ledger-210001.jsonl
+      - uses: actions/upload-artifact@v4
+        with: {name: evidence-ledger-210001, path: evidence-ledger-210001.jsonl, retention-days: 30}
