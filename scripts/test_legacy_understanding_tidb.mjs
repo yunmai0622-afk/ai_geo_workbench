@@ -61,7 +61,7 @@ async function verifyBehavior(prefix) {
   await connection.query(itemInsert, ["mi",100,"mr","legacy-1","sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","03.6C-v1","legacy_non_reproducible","legacy_non_reproducible"]);
   try { await connection.query(itemInsert, ["mi2",100,"mr","legacy-1","sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","03.6C-v1","legacy_non_reproducible","legacy_non_reproducible"]); } catch { report.idempotencyEnforced = true; }
   try { await connection.query(itemInsert, ["cross",200,"mr","legacy-2","sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","03.6C-v1","legacy_non_reproducible","legacy_non_reproducible"]); } catch { report.crossProjectRejected = true; }
-  const [[fk]] = await connection.query("SELECT COUNT(*) count FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN (?,?) AND REFERENCED_TABLE_NAME IS NOT NULL", [`${prefix}legacy_understanding_migration_runs`, `${prefix}legacy_understanding_migration_items`]);
+  const [[fk]] = await connection.query("SELECT COUNT(DISTINCT CONSTRAINT_NAME) count FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN (?,?) AND REFERENCED_TABLE_NAME IS NOT NULL", [`${prefix}legacy_understanding_migration_runs`, `${prefix}legacy_understanding_migration_items`]);
   report.migrationForeignKeys = Number(fk.count);
   const [[before]] = await connection.query(`SELECT COUNT(*) count FROM ${table(prefix,"legacy_understanding_migration_items")}`);
   await connection.query(`SELECT legacyEvaluationId,migrationStatus FROM ${table(prefix,"legacy_understanding_migration_items")} WHERE projectId=100`);
