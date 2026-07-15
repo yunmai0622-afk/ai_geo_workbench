@@ -2023,10 +2023,10 @@ export const legacyUnderstandingMigrationItems = mysqlTable("legacy_understandin
   checksumIdx: index("legacy_understanding_migration_items_checksum_idx").on(table.sourceChecksum),
   projectFk: foreignKey({ columns: [table.projectId], foreignColumns: [projects.id], name: "legacy_understanding_migration_items_project_fk" }),
   runProjectFk: foreignKey({ columns: [table.migrationRunId, table.projectId], foreignColumns: [legacyUnderstandingMigrationRuns.id, legacyUnderstandingMigrationRuns.projectId], name: "legacy_understanding_migration_items_run_project_fk" }),
-  targetRunProjectFk: foreignKey({ columns: [table.targetRunId, table.projectId], foreignColumns: [aiObservationRuns.id, aiObservationRuns.projectId], name: "legacy_understanding_migration_items_target_run_project_fk" }),
-  targetAnswerProjectFk: foreignKey({ columns: [table.targetAnswerId, table.projectId], foreignColumns: [aiObservationAnswers.id, aiObservationAnswers.projectId], name: "legacy_understanding_migration_items_target_answer_project_fk" }),
-  targetExtractionProjectFk: foreignKey({ columns: [table.targetExtractionId, table.projectId], foreignColumns: [aiObservationExtractions.id, aiObservationExtractions.projectId], name: "legacy_understanding_migration_items_target_extraction_project_fk" }),
-  targetAssessmentProjectFk: foreignKey({ columns: [table.targetAssessmentId, table.projectId], foreignColumns: [understandingAssessments.id, understandingAssessments.projectId], name: "legacy_understanding_migration_items_target_assessment_project_fk" }),
+  targetRunProjectFk: foreignKey({ columns: [table.targetRunId, table.projectId], foreignColumns: [aiObservationRuns.id, aiObservationRuns.projectId], name: "legacy_um_items_target_run_project_fk" }),
+  targetAnswerProjectFk: foreignKey({ columns: [table.targetAnswerId, table.projectId], foreignColumns: [aiObservationAnswers.id, aiObservationAnswers.projectId], name: "legacy_um_items_target_answer_project_fk" }),
+  targetExtractionProjectFk: foreignKey({ columns: [table.targetExtractionId, table.projectId], foreignColumns: [aiObservationExtractions.id, aiObservationExtractions.projectId], name: "legacy_um_items_target_extract_project_fk" }),
+  targetAssessmentProjectFk: foreignKey({ columns: [table.targetAssessmentId, table.projectId], foreignColumns: [understandingAssessments.id, understandingAssessments.projectId], name: "legacy_um_items_target_assess_project_fk" }),
 }));
 
 export const understandingRolloutConfigs = mysqlTable("understanding_rollout_configs", {
