@@ -12,6 +12,7 @@ const governance = { questionText: "原始问题", questionVersionId: "qv", ques
 describe("legacy understanding cutover", () => {
   it("defaults every project to legacy-only while the global flag is false", () => {
     expect(effectiveRollout(false, { readMode: "v2_only", writePath: "v2" })).toEqual({ readMode: "legacy_only", writePath: "legacy" });
+    expect(effectiveRollout(false, { readMode: "shadow_read", writePath: "v2" })).toEqual({ readMode: "shadow_read", writePath: "legacy" });
     expect(effectiveRollout(true, null)).toEqual({ readMode: "legacy_only", writePath: "legacy" });
     expect(effectiveRollout(true, { readMode: "shadow_read", writePath: "v2" })).toEqual({ readMode: "shadow_read", writePath: "legacy" });
     expect(effectiveRollout(true, { readMode: "v2_primary", writePath: "legacy" })).toEqual({ readMode: "v2_primary", writePath: "v2" });
