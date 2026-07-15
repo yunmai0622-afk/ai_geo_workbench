@@ -37,6 +37,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Apply pending schema migration
+        run: pnpm db:migrate
       - name: Verify schema contract
         run: pnpm verify:shadow-understand-schema
       - name: Run real-model formal baseline
