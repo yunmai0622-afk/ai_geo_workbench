@@ -396,7 +396,7 @@ export const understandingRouter = router({
     return db.select().from(understandingEvaluations).where(eq(understandingEvaluations.projectId, input.projectId)).orderBy(desc(understandingEvaluations.testedAt));
   }),
 
-  readUnderstandingCutover: protectedProcedure.input(projectIdInput).query(async ({ ctx, input }) => {
+  readUnderstandingCutover: operatorAdminProcedure.input(projectIdInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
     await requireProjectAccess(ctx, input.projectId);
     return new UnderstandReadService(db).readProject(input.projectId);

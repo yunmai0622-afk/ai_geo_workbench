@@ -49,6 +49,10 @@ export default function BrandTruthOperationsPage() {
     input,
     { enabled: Boolean(selectedProjectId && canOperate), retry: false }
   );
+  const shadowQuery = trpc.geo.understanding.readUnderstandingCutover.useQuery(
+    input,
+    { enabled: Boolean(selectedProjectId && canOperate), retry: false }
+  );
   const [factDraft, setFactDraft] = useState({
     category: "business" as const,
     factKey: "",
@@ -96,6 +100,9 @@ export default function BrandTruthOperationsPage() {
         projectId: selectedProjectId,
       }),
       utils.geo.understanding.listQuestionSets.invalidate({
+        projectId: selectedProjectId,
+      }),
+      utils.geo.understanding.readUnderstandingCutover.invalidate({
         projectId: selectedProjectId,
       }),
     ]);
@@ -318,6 +325,26 @@ export default function BrandTruthOperationsPage() {
           </span>
         </div>
       </header>
+
+      {shadowQuery.data?.mode === "shadow_read" && (
+        <section className="rounded-2xl border border-violet-200 bg-violet-50 p-5" data-testid="understand-shadow-read-operations">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">仅运营可见 · Shadow Read</p>
+              <h2 className="mt-1 text-lg font-semibold text-violet-950">Legacy / v2 差异观察</h2>
+              <p className="mt-1 text-sm text-violet-800">客户主读仍为 Legacy；shadow 结果不进入客户页面或趋势。</p>
+            </div>
+            <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-800">暂不建议切换 v2_primary</span>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl bg-white p-3"><p className="text-xs text-slate-500">Legacy 结果</p><p className="mt-1 text-xl font-semibold">{shadowQuery.data.legacyHistory.length}</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs text-slate-500">v2 Assessment</p><p className="mt-1 text-xl font-semibold">{shadowQuery.data.v2.length}</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs text-slate-500">趋势资格</p><p className="mt-1 font-semibold">不进入趋势</p></div>
+            <div className="rounded-xl bg-white p-3"><p className="text-xs text-slate-500">写入路径</p><p className="mt-1 font-semibold">Legacy（无双写）</p></div>
+          </div>
+          <p className="mt-3 text-xs text-violet-700">分数仅在事实覆盖满足正式方法论时生成；方法论不兼容时只解释差异，不强求分数一致。切换建议须等待运营人工复核。</p>
+        </section>
+      )}
 
       {!profileQuery.data?.profile && (
         <section

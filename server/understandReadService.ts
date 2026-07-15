@@ -26,7 +26,13 @@ export function effectiveRollout(
   globalEnabled: boolean,
   config?: { readMode: UnderstandReadMode; writePath: UnderstandWritePath } | null,
 ) {
-  if (!globalEnabled) return { readMode: "legacy_only" as const, writePath: "legacy" as const };
+  // Shadow reads are project-scoped observations: they never change the customer
+  // primary read or the legacy write path. The global flag remains the hard gate
+  // for either v2 primary mode.
+  if (!globalEnabled) {
+    if (config?.readMode === "shadow_read") return { readMode: "shadow_read" as const, writePath: "legacy" as const };
+    return { readMode: "legacy_only" as const, writePath: "legacy" as const };
+  }
   if (!config) return { readMode: "legacy_only" as const, writePath: "legacy" as const };
   return { readMode: config.readMode, writePath: (["v2_primary", "v2_only"] as UnderstandReadMode[]).includes(config.readMode) ? "v2" as const : "legacy" as const };
 }
