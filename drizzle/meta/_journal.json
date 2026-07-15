@@ -470,6 +470,13 @@
       "when": 1784027117147,
       "tag": "0071_brand_truth_understand_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "5",
+      "when": 1784083200000,
+      "tag": "0072_brand_truth_understand_acceptance_gate",
+      "breakpoints": true
     }
   ]
 }

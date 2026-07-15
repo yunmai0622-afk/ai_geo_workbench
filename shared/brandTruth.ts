@@ -11,6 +11,18 @@ export const BRAND_TRUTH_VERIFICATION_STATUSES = [
 
 export type BrandTruthVerificationStatus = (typeof BRAND_TRUTH_VERIFICATION_STATUSES)[number];
 
+export type BrandTruthEvidenceQualification = {
+  url?: string | null;
+  sourceOwner?: string | null;
+  sourceClass: "official" | "third_party" | "enterprise_provided" | "unknown";
+  independentSource?: boolean;
+  accessible?: boolean;
+  capturedAt?: Date | string | null;
+  evidenceHash?: string | null;
+  manualReviewStatus?: "pending" | "approved" | "rejected";
+  verificationStatus?: "pending" | "verified" | "rejected" | "unverifiable";
+};
+
 export const BRAND_TRUTH_STATUS_LABELS: Record<BrandTruthVerificationStatus, string> = {
   provided_unverified: "待核验",
   official_verified: "官方已确认",
@@ -97,8 +109,47 @@ export function isVerifiedTruthStatus(status: BrandTruthVerificationStatus): boo
 export function canUseFactAsConfirmedTruth(input: {
   verificationStatus: BrandTruthVerificationStatus;
   sourceCount?: number;
+  qualifiedOfficialSourceCount?: number;
+  qualifiedIndependentThirdPartySourceCount?: number;
+  officialSourceCount?: number;
+  thirdPartySourceCount?: number;
 }): boolean {
-  return isVerifiedTruthStatus(input.verificationStatus) && (input.sourceCount ?? 0) > 0;
+  const official = input.qualifiedOfficialSourceCount ?? input.officialSourceCount ?? 0;
+  const thirdParty = input.qualifiedIndependentThirdPartySourceCount ?? input.thirdPartySourceCount ?? 0;
+  if (input.verificationStatus === "official_verified") return official >= 1;
+  if (input.verificationStatus === "third_party_verified") return thirdParty >= 1;
+  if (input.verificationStatus === "multi_source_verified") {
+    return official >= 1 && thirdParty >= 1;
+  }
+  return false;
+}
+
+export function isQualifiedPublicEvidence(evidence: BrandTruthEvidenceQualification): boolean {
+  return Boolean(
+    evidence.url?.trim()
+    && evidence.sourceOwner?.trim()
+    && evidence.accessible
+    && evidence.capturedAt
+    && evidence.evidenceHash?.trim()
+    && evidence.manualReviewStatus === "approved"
+    && evidence.verificationStatus === "verified",
+  );
+}
+
+export function canPromoteFactFromEvidence(
+  status: BrandTruthVerificationStatus,
+  evidence: BrandTruthEvidenceQualification[],
+): boolean {
+  const qualified = evidence.filter(isQualifiedPublicEvidence);
+  const official = qualified.filter(item => item.sourceClass === "official");
+  const independentThirdParty = qualified.filter(item => item.sourceClass === "third_party" && item.independentSource);
+  if (status === "official_verified") return official.length >= 1;
+  if (status === "third_party_verified") return independentThirdParty.length >= 1;
+  if (status === "multi_source_verified") {
+    const distinctOwners = new Set([...official, ...independentThirdParty].map(item => item.sourceOwner!.trim().toLowerCase()));
+    return distinctOwners.size >= 2;
+  }
+  return !isVerifiedTruthStatus(status);
 }
 
 export function normalizeTruthValue(value: string): string {
@@ -108,6 +159,7 @@ export function normalizeTruthValue(value: string): string {
 export function calculateTruthProfileStats(facts: Array<{
   factKey: string;
   verificationStatus: BrandTruthVerificationStatus;
+  applicability?: "required" | "optional" | "not_applicable";
 }>): {
   completenessScore: number;
   verifiedFactRate: number;
@@ -115,11 +167,13 @@ export function calculateTruthProfileStats(facts: Array<{
   outdatedFactCount: number;
 } {
   const definitions = listBrandTruthFactDefinitions();
-  const active = facts.filter(fact => fact.verificationStatus !== "deprecated");
+  const active = facts.filter(fact => fact.verificationStatus !== "deprecated" && fact.applicability !== "not_applicable");
+  const applicableDefinitionKeys = new Set(definitions.map(item => item.key));
+  for (const fact of facts) if (fact.applicability === "not_applicable") applicableDefinitionKeys.delete(fact.factKey);
   const presentKeys = new Set(active.map(fact => fact.factKey));
   const verified = active.filter(fact => isVerifiedTruthStatus(fact.verificationStatus));
   return {
-    completenessScore: Math.round((presentKeys.size / definitions.length) * 100),
+    completenessScore: applicableDefinitionKeys.size ? Math.round((presentKeys.size / applicableDefinitionKeys.size) * 100) : 100,
     verifiedFactRate: active.length ? Math.round((verified.length / active.length) * 100) : 0,
     conflictCount: active.filter(fact => fact.verificationStatus === "conflicting").length,
     outdatedFactCount: active.filter(fact => fact.verificationStatus === "outdated").length,

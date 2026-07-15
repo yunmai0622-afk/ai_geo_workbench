@@ -30,6 +30,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:patch-geo-quality": "node scripts/apply_geo_quality_columns.mjs",
     "db:patch-p1": "node scripts/apply_content_strategy_columns.mjs"
+    ,"db:verify-brand-truth": "node scripts/verify_brand_truth_schema.mjs"
+    ,"db:export-brand-truth": "node scripts/export_brand_truth_data.mjs"
   },
   "engines": {
     "node": ">=20.20 <25"

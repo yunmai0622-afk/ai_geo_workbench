@@ -13,6 +13,7 @@ export type ModelProviderName = "deepseek" | "claude" | "gpt" | "volcengine";
 
 export interface ModelClient {
   name: string;
+  modelId?: string;
   call(prompt: string, systemPrompt?: string): Promise<string>;
 }
 
@@ -103,14 +104,18 @@ function deepseekChatConfig() {
 }
 
 export function createDefaultModelClients(): Record<ModelProviderName, ModelClient> {
+  const volcengine = volcengineChatConfig();
+  const deepseek = deepseekChatConfig();
   return {
     volcengine: {
       name: "volcengine",
-      call: (prompt, systemPrompt) => chatCompletionsRequest({ ...volcengineChatConfig(), prompt, systemPrompt }),
+      modelId: volcengine.model,
+      call: (prompt, systemPrompt) => chatCompletionsRequest({ ...volcengine, prompt, systemPrompt }),
     },
     deepseek: {
       name: "deepseek",
-      call: (prompt, systemPrompt) => chatCompletionsRequest({ ...deepseekChatConfig(), prompt, systemPrompt }),
+      modelId: deepseek.model,
+      call: (prompt, systemPrompt) => chatCompletionsRequest({ ...deepseek, prompt, systemPrompt }),
     },
     claude: {
       name: "claude",
@@ -149,10 +154,10 @@ export class ModelRouter {
     task: ModelTask,
     prompt: string,
     options?: { systemPrompt?: string },
-  ): Promise<{ text: string; modelName: string }> {
+  ): Promise<{ text: string; modelName: string; modelId: string }> {
     const client = this.getModel(task);
     const text = await client.call(prompt, options?.systemPrompt);
-    return { text, modelName: client.name };
+    return { text, modelName: client.name, modelId: client.modelId ?? client.name };
   }
 }
 
