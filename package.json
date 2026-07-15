@@ -32,6 +32,8 @@
     "db:patch-p1": "node scripts/apply_content_strategy_columns.mjs"
     ,"db:verify-brand-truth": "node scripts/verify_brand_truth_schema.mjs"
     ,"db:export-brand-truth": "node scripts/export_brand_truth_data.mjs"
+    ,"db:verify-ai-observation": "node scripts/verify_ai_observation_schema.mjs"
+    ,"test:db:ai-observation": "node scripts/test_ai_observation_immutability.mjs"
   },
   "engines": {
     "node": ">=20.20 <25"
