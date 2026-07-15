@@ -8,11 +8,18 @@ import {
   brandTruthFacts,
   brandTruthFactVersions,
   brandTruthProfiles,
+  aiObservationAnswers,
+  aiObservationExtractions,
+  understandingAssessmentDimensionResults,
+  understandingAssessmentManualReviews,
+  understandingAssessments,
   understandingCorrectionTasks,
   understandingDimensionResults,
   understandingEvaluations,
   understandingQuestions,
   understandingQuestionSets,
+  understandingMethodologyDimensionWeights,
+  understandingMethodologyVersions,
   understandingRuleConfigs,
 } from "../drizzle/schema";
 import { BRAND_TRUTH_EVIDENCE_TYPES, BRAND_TRUTH_VERIFICATION_STATUSES, canPromoteFactFromEvidence, isQualifiedPublicEvidence, normalizeTruthValue } from "@shared/brandTruth";
@@ -31,6 +38,8 @@ import {
 } from "./brandTruthService";
 import { applyBrandTruthVerificationBatch, brandTruthVerificationPlanSchema } from "./brandTruthVerificationBatch";
 import { executeExclusiveUnderstandWrite, UnderstandReadService } from "./understandReadService";
+import { VersionedUnderstandGovernanceService } from "./versionedUnderstandGovernanceService";
+import { BASELINE_V1_TO_FROZEN_MAPPING, calculateCoverage, evaluatePrimaryReadiness, UNVERIFIABLE_REVIEW_PLAN } from "./understandPrimaryReadiness";
 
 async function requireDb() {
   const db = await getDb();
@@ -400,6 +409,41 @@ export const understandingRouter = router({
     const db = await requireDb();
     await requireProjectAccess(ctx, input.projectId);
     return new UnderstandReadService(db).readProject(input.projectId);
+  }),
+
+  getPrimaryReadiness: operatorAdminProcedure.input(projectIdInput).query(async ({ ctx, input }) => {
+    const db = await requireDb();
+    await requireProjectAccess(ctx, input.projectId);
+    const latest = (await db.select().from(understandingAssessments).where(eq(understandingAssessments.projectId, input.projectId)).orderBy(desc(understandingAssessments.createdAt)).limit(1))[0];
+    if (!latest?.observationRunId) return null;
+    const assessments = await db.select().from(understandingAssessments).where(and(eq(understandingAssessments.projectId, input.projectId), eq(understandingAssessments.observationRunId, latest.observationRunId)));
+    const assessmentIds = assessments.map(row => row.id);
+    const [answers, extractions, dimensions, reviews, methodology, facts, links] = await Promise.all([
+      db.select().from(aiObservationAnswers).where(and(eq(aiObservationAnswers.projectId, input.projectId), eq(aiObservationAnswers.observationRunId, latest.observationRunId))),
+      db.select().from(aiObservationExtractions).where(eq(aiObservationExtractions.projectId, input.projectId)),
+      assessmentIds.length ? db.select().from(understandingAssessmentDimensionResults).where(and(eq(understandingAssessmentDimensionResults.projectId, input.projectId), inArray(understandingAssessmentDimensionResults.assessmentId, assessmentIds))) : Promise.resolve([]),
+      assessmentIds.length ? db.select().from(understandingAssessmentManualReviews).where(and(eq(understandingAssessmentManualReviews.projectId, input.projectId), inArray(understandingAssessmentManualReviews.assessmentId, assessmentIds))).orderBy(desc(understandingAssessmentManualReviews.reviewedAt)) : Promise.resolve([]),
+      db.select().from(understandingMethodologyVersions).where(and(eq(understandingMethodologyVersions.projectId, input.projectId), eq(understandingMethodologyVersions.id, latest.methodologyVersionId))).limit(1),
+      db.select().from(brandTruthFacts).where(and(eq(brandTruthFacts.projectId, input.projectId), inArray(brandTruthFacts.verificationStatus, ["official_verified", "third_party_verified", "multi_source_verified"]))),
+      db.select().from(brandTruthFactEvidenceLinks).where(eq(brandTruthFactEvidenceLinks.projectId, input.projectId)),
+    ]);
+    const weights = await db.select().from(understandingMethodologyDimensionWeights).where(and(eq(understandingMethodologyDimensionWeights.projectId, input.projectId), eq(understandingMethodologyDimensionWeights.methodologyVersionId, latest.methodologyVersionId)));
+    const answerIds = new Set(answers.map(row => row.id));
+    const relevantExtractions = extractions.filter(row => answerIds.has(row.observationAnswerId));
+    const evidencedFactIds = new Set(links.filter(row => row.supportType === "supports").map(row => row.factId));
+    const coverage = calculateCoverage({ plannedQuestions: 8, executedQuestions: answers.filter(row => row.answerStatus === "received").length, successfulExtractions: relevantExtractions.filter(row => row.extractionStatus === "succeeded").length, requiredTruthFacts: 14, verifiedTruthFacts: facts.length, requiredEvidenceFacts: 14, evidencedFacts: facts.filter(row => evidencedFactIds.has(row.id)).length, completedAssessments: assessments.filter(row => row.assessmentStatus === "completed").length });
+    const latestReviewByAssessment = new Map<string, typeof reviews[number]>();
+    for (const review of reviews) if (!latestReviewByAssessment.has(review.assessmentId)) latestReviewByAssessment.set(review.assessmentId, review);
+    const readiness = evaluatePrimaryReadiness({ fixedQuestionSetComplete: coverage.questionExecution === 10000, traceable: assessments.length === 8 && relevantExtractions.length === 8, reviewCount: latestReviewByAssessment.size, assessmentCount: assessments.length, methodologyDimensions: weights.map(row => row.dimension), minimumTruthMet: coverage.verifiedTruth >= 8000 && coverage.evidence >= 7000, unverifiableExplained: true, customerPresentationStable: true, differenceClassified: true, projectIsolationPassed: true, dualWrite: false, rollbackVerified: false });
+    return { runId: latest.observationRunId, methodology: { id: methodology[0]?.id, version: methodology[0]?.version, dimensions: weights.map(row => row.dimension) }, dimensionMapping: BASELINE_V1_TO_FROZEN_MAPPING, assessments: assessments.map(row => ({ ...row, dimension: dimensions.find(item => item.assessmentId === row.id) ?? null, manualReview: latestReviewByAssessment.get(row.id) ?? null, effectiveOutcome: latestReviewByAssessment.get(row.id)?.action === "confirmed" ? row.automaticOutcome : latestReviewByAssessment.get(row.id)?.action === "overridden" ? latestReviewByAssessment.get(row.id)?.overriddenOutcome : null })), coverage, unverifiableReviewPlan: UNVERIFIABLE_REVIEW_PLAN, readiness };
+  }),
+
+  appendFormalAssessmentReview: operatorAdminProcedure.input(projectIdInput.extend({ assessmentId: z.string().uuid(), action: z.enum(["confirmed", "rejected", "overridden", "request_evidence", "mark_insufficient_data"]), overriddenOutcome: z.enum(UNDERSTANDING_FIELD_STATUSES).optional().nullable(), reason: z.string().trim().min(8), evidenceSnapshot: z.array(z.record(z.string(), z.unknown())).default([]) })).mutation(async ({ ctx, input }) => {
+    const db = await requireDb();
+    await requireProjectAccess(ctx, input.projectId);
+    const { assessmentId, action, overriddenOutcome, reason, evidenceSnapshot } = input;
+    await new VersionedUnderstandGovernanceService(db).appendManualReview({ projectId: input.projectId, assessmentId, action, overriddenOutcome: overriddenOutcome ?? null, reason, evidenceSnapshot, reviewedBy: getCurrentUserId(ctx), reviewedAt: new Date() });
+    return { success: true as const };
   }),
 
   reviewEvaluation: operatorAdminProcedure.input(projectIdInput.extend({ id: z.string().uuid(), finalStatus: z.enum(UNDERSTANDING_FIELD_STATUSES), reviewNote: z.string().trim().min(1) })).mutation(async ({ ctx, input }) => {
