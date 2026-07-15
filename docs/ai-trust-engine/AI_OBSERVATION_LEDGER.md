@@ -11,7 +11,8 @@ Assessment and manual review are intentionally not implemented here. They are de
 
 ## Storage
 
-- `ai_observation_runs`: provider, model/version/channel, purpose, prompt version/hash/snapshot, sampling, application version, status and errors.
+- `ai_observation_runs`: immutable provider, model/version/channel, purpose, prompt version/hash/snapshot, sampling and application version.
+- `ai_observation_run_events`: append-only queued/running/terminal history, sequence, occurrence time and errors.
 - `ai_observation_answers`: immutable raw answer/metadata, content hash, question snapshots, provider response ID, nullable latency/token data and citation capability.
 - `ai_observation_extractions`: extractor/prompt/model versions, status, payload, coverage/confidence and citation extraction status.
 - `ai_extracted_brand_facts`: structured extracted facts with uncertainty; no path promotes these into `brand_truth_facts`.

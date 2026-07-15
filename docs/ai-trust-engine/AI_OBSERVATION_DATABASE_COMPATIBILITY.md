@@ -1,6 +1,6 @@
 # AI Observation Database Compatibility Decision
 
-Status: **No-Go / target identity unresolved**. Audited on 2026-07-15 from branch `codex/pr-03-6a-ai-observation-ledger` at `8715f4e7`.
+Status: **Code Ready / Environment Verification Pending**. Production engine is confirmed by the owner as TiDB Cloud; exact version and runtime grants remain unverified.
 
 ## Authoritative target identity
 
@@ -15,11 +15,11 @@ Status: **No-Go / target identity unresolved**. Audited on 2026-07-15 from branc
 | Local read-only identity query | `VERSION() = 9.6.0`, `@@version_comment = Homebrew` | Local test engine is MySQL 9.6.0 Homebrew only. |
 | Local `CURRENT_USER()` / `SHOW GRANTS` | `root@localhost`, global administrative grants with grant option | Local account is not an acceptable runtime-user model. |
 
-Production engine, exact version, managed provider, production-equivalent test version and production runtime grants are therefore **unknown**. No production connection was made.
+Production engine/provider are TiDB Cloud by owner confirmation. Exact version, production-equivalent test version and production runtime grants remain unknown. No production connection was made.
 
 ## Capability decision
 
-The current `0073_ai_observation_ledger.sql` contains MySQL `CREATE TRIGGER`, composite foreign keys and enum/json DDL. It is not approved for execution until the target is identified.
+The revised `0073_ai_observation_ledger.sql` contains no trigger DDL. It defines seven append-only tables, including `ai_observation_run_events`, plus composite foreign keys and enum/json DDL.
 
 - MySQL supports triggers, foreign keys and table/column privileges, but support alone is insufficient: 0073 must be executed against the same production major/minor family using separate migration and runtime users.
 - TiDB is not interchangeable with MySQL for DDL capability. Trigger and foreign-key behavior is version-dependent and must be proven for the exact target. If production is TiDB and its target version does not support any 0073 DDL, 0073 must be revised before it can be applied; a later migration cannot repair a failure that prevents 0073 from completing.
@@ -34,10 +34,7 @@ Official references to use once the target is known:
 
 ## Immutability scheme decision
 
-No final scheme is selected while the target is unknown.
-
-- If target is MySQL: retain database triggers only after production-version-equivalent execution; add immutable `ai_observation_run_events`; deny runtime UPDATE/DELETE/DDL and treat triggers as defense in depth.
-- If target is TiDB: remove unsupported triggers from 0073 before execution, add `ai_observation_run_events`, and enforce ledger append-only behavior with a runtime principal that has SELECT/INSERT only. Composite FK support must still be proven; it may not be silently removed.
+The selected TiDB scheme is append-only tables plus an INSERT/SELECT-only runtime principal. Run state is represented by `ai_observation_run_events`; no Ledger application path updates or deletes rows. Composite FK support must still be proven on the exact target version and may not be silently removed.
 
 In both cases the migration/admin principal must be distinct from the runtime principal. The application must use only the runtime URL; migration credentials must be supplied only to a dedicated migration job. The current repository exposes only `DATABASE_URL`; this separation is not yet implemented or verified.
 
@@ -45,14 +42,13 @@ In both cases the migration/admin principal must be distinct from the runtime pr
 
 Provisionally compatible only after exact-version testing:
 
-- Seven planned append-only ledger tables (the current migration has six; `ai_observation_run_events` is not implemented because target identity is unresolved).
+- Seven append-only Ledger tables, including `ai_observation_run_events`.
 - Explicit columns, unique keys and indexes.
 - Composite `(parentId, projectId)` foreign keys, subject to exact target support.
 - JSON, enum, timestamp and mediumtext types, subject to exact target semantics.
 
 Unapproved/unknown:
 
-- All ten `CREATE TRIGGER` statements.
 - Foreign-key enforcement and error behavior.
 - Runtime table/column privilege enforcement.
 - Migration marker behavior after DDL failure.

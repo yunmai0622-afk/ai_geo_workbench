@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import {
   aiCitationResults,
   aiExtractedBrandFacts,
   aiObservationAnswers,
   aiObservationExtractions,
+  aiObservationRunEvents,
   aiObservationRuns,
   aiRecommendationResults,
 } from "../drizzle/schema";
@@ -28,13 +29,37 @@ type FactInsert = typeof aiExtractedBrandFacts.$inferInsert;
 type RecommendationInsert = typeof aiRecommendationResults.$inferInsert;
 type CitationInsert = typeof aiCitationResults.$inferInsert;
 
+export const OBSERVATION_RUN_STATUSES = ["queued", "running", "succeeded", "partially_succeeded", "failed", "cancelled"] as const;
+export type ObservationRunStatus = (typeof OBSERVATION_RUN_STATUSES)[number];
+export type ObservationRunTerminalStatus = Extract<ObservationRunStatus, "succeeded" | "partially_succeeded" | "failed" | "cancelled">;
+
+const RUN_TRANSITIONS: Record<ObservationRunStatus, readonly ObservationRunStatus[]> = {
+  queued: ["running", "failed", "cancelled"],
+  running: ["succeeded", "partially_succeeded", "failed", "cancelled"],
+  succeeded: [], partially_succeeded: [], failed: [], cancelled: [],
+};
+
+export function assertObservationRunTransition(current: ObservationRunStatus, next: ObservationRunStatus): void {
+  if (!RUN_TRANSITIONS[current].includes(next)) throw new Error(`Illegal observation run transition: ${current} -> ${next}`);
+}
+
 export class AiObservationLedgerService {
   constructor(private readonly db: DbConn, private readonly allowWhenDisabled = false) {}
 
-  async createRun(input: Omit<RunInsert, "id" | "createdAt">) {
+  async createRun(input: Omit<RunInsert, "id" | "createdAt" | "runStatus" | "completedAt" | "errorCode" | "errorMessage"> & {
+    initialStatus: "queued" | "running";
+    initialEventMetadata?: Record<string, unknown> | null;
+  }) {
     requireEnabled(this.allowWhenDisabled);
     const id = randomUUID();
-    await this.db.insert(aiObservationRuns).values({ ...input, id });
+    const { initialStatus, initialEventMetadata, ...run } = input;
+    await this.db.transaction(async tx => {
+      await tx.insert(aiObservationRuns).values({ ...run, id, runStatus: initialStatus, completedAt: null, errorCode: null, errorMessage: null });
+      await tx.insert(aiObservationRunEvents).values({
+        id: randomUUID(), projectId: run.projectId, observationRunId: id, eventType: initialStatus,
+        eventSequence: 1, occurredAt: run.startedAt, eventMetadata: initialEventMetadata ?? null, createdBy: run.createdBy,
+      });
+    });
     return id;
   }
 
@@ -81,12 +106,47 @@ export class AiObservationLedgerService {
     return id;
   }
 
-  async markRunTerminal(input: { projectId: number; runId: string; status: "succeeded" | "partially_succeeded" | "failed" | "cancelled"; completedAt: Date; errorCode?: string | null; errorMessage?: string | null }) {
+  async appendRunEvent(input: {
+    projectId: number; runId: string; eventType: ObservationRunStatus; occurredAt: Date;
+    errorCode?: string | null; errorMessage?: string | null; eventMetadata?: Record<string, unknown> | null; createdBy?: number | null;
+  }) {
     requireEnabled(this.allowWhenDisabled);
-    const result = await this.db.update(aiObservationRuns).set({ runStatus: input.status, completedAt: input.completedAt, errorCode: input.errorCode, errorMessage: input.errorMessage }).where(and(
-      eq(aiObservationRuns.id, input.runId), eq(aiObservationRuns.projectId, input.projectId), inArray(aiObservationRuns.runStatus, ["queued", "running"]),
-    ));
-    return result;
+    return this.db.transaction(async tx => {
+      const run = await tx.select({ id: aiObservationRuns.id }).from(aiObservationRuns).where(and(
+        eq(aiObservationRuns.id, input.runId), eq(aiObservationRuns.projectId, input.projectId),
+      )).limit(1);
+      if (!run[0]) throw new Error("Observation run does not belong to project");
+      const latest = await tx.select().from(aiObservationRunEvents).where(and(
+        eq(aiObservationRunEvents.observationRunId, input.runId), eq(aiObservationRunEvents.projectId, input.projectId),
+      )).orderBy(desc(aiObservationRunEvents.eventSequence)).limit(1);
+      if (!latest[0]) throw new Error("Observation run has no initial event");
+      assertObservationRunTransition(latest[0].eventType, input.eventType);
+      const id = randomUUID();
+      await tx.insert(aiObservationRunEvents).values({
+        id, projectId: input.projectId, observationRunId: input.runId, eventType: input.eventType,
+        eventSequence: latest[0].eventSequence + 1, occurredAt: input.occurredAt,
+        errorCode: input.errorCode, errorMessage: input.errorMessage, eventMetadata: input.eventMetadata, createdBy: input.createdBy,
+      });
+      return id;
+    });
+  }
+
+  /** Compatibility wrapper. Terminal state is now an appended event; the Run row is never updated. */
+  async markRunTerminal(input: { projectId: number; runId: string; status: ObservationRunTerminalStatus; completedAt: Date; errorCode?: string | null; errorMessage?: string | null; createdBy?: number | null }) {
+    return this.appendRunEvent({
+      projectId: input.projectId, runId: input.runId, eventType: input.status, occurredAt: input.completedAt,
+      errorCode: input.errorCode, errorMessage: input.errorMessage, createdBy: input.createdBy,
+    });
+  }
+
+  async getRun(projectId: number, runId: string) {
+    requireEnabled(this.allowWhenDisabled);
+    const run = (await this.db.select().from(aiObservationRuns).where(and(eq(aiObservationRuns.id, runId), eq(aiObservationRuns.projectId, projectId))).limit(1))[0] ?? null;
+    if (!run) return null;
+    const statusHistory = await this.db.select().from(aiObservationRunEvents).where(and(
+      eq(aiObservationRunEvents.observationRunId, runId), eq(aiObservationRunEvents.projectId, projectId),
+    )).orderBy(asc(aiObservationRunEvents.eventSequence));
+    return { ...run, currentStatus: statusHistory.at(-1)?.eventType ?? null, statusHistory };
   }
 
   async getAnswer(projectId: number, answerId: string) {

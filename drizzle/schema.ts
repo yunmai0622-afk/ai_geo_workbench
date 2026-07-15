@@ -1775,6 +1775,28 @@ export const aiObservationRuns = mysqlTable(
   }),
 );
 
+export const aiObservationRunEvents = mysqlTable(
+  "ai_observation_run_events",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: int("projectId").notNull(),
+    observationRunId: varchar("observationRunId", { length: 36 }).notNull(),
+    eventType: mysqlEnum("eventType", ["queued", "running", "succeeded", "partially_succeeded", "failed", "cancelled"]).notNull(),
+    eventSequence: int("eventSequence").notNull(),
+    occurredAt: timestamp("occurredAt").notNull(),
+    errorCode: varchar("errorCode", { length: 128 }),
+    errorMessage: text("errorMessage"),
+    eventMetadata: json("eventMetadata").$type<Record<string, unknown> | null>(),
+    createdBy: int("createdBy"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    runSequenceUnique: uniqueIndex("ai_observation_run_events_run_sequence_unique").on(table.observationRunId, table.eventSequence),
+    projectRunIdx: index("ai_observation_run_events_project_run_idx").on(table.projectId, table.observationRunId),
+    runProjectFk: foreignKey({ columns: [table.observationRunId, table.projectId], foreignColumns: [aiObservationRuns.id, aiObservationRuns.projectId], name: "ai_observation_run_events_run_project_fk" }),
+  }),
+);
+
 export const aiObservationAnswers = mysqlTable(
   "ai_observation_answers",
   {

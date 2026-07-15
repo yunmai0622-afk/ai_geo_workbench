@@ -10,6 +10,17 @@ CREATE TABLE `ai_observation_runs` (
   KEY `ai_observation_runs_project_started_idx` (`projectId`,`startedAt`)
 );
 --> statement-breakpoint
+CREATE TABLE `ai_observation_run_events` (
+  `id` varchar(36) NOT NULL, `projectId` int NOT NULL, `observationRunId` varchar(36) NOT NULL,
+  `eventType` enum('queued','running','succeeded','partially_succeeded','failed','cancelled') NOT NULL,
+  `eventSequence` int NOT NULL, `occurredAt` timestamp NOT NULL, `errorCode` varchar(128) NULL, `errorMessage` text NULL,
+  `eventMetadata` json NULL, `createdBy` int NULL, `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ai_observation_run_events_run_sequence_unique` (`observationRunId`,`eventSequence`),
+  KEY `ai_observation_run_events_project_run_idx` (`projectId`,`observationRunId`),
+  CONSTRAINT `ai_observation_run_events_run_project_fk` FOREIGN KEY (`observationRunId`,`projectId`) REFERENCES `ai_observation_runs` (`id`,`projectId`)
+);
+--> statement-breakpoint
 CREATE TABLE `ai_observation_answers` (
   `id` varchar(36) NOT NULL, `projectId` int NOT NULL, `observationRunId` varchar(36) NOT NULL, `questionId` int NULL,
   `questionKey` varchar(128) NOT NULL, `questionVersionSnapshot` int NOT NULL, `questionTextSnapshot` text NOT NULL, `scenarioSnapshot` text NULL,
@@ -65,23 +76,3 @@ CREATE TABLE `ai_citation_results` (
   KEY `ai_citation_results_project_extraction_idx` (`projectId`,`extractionId`),
   CONSTRAINT `ai_citation_results_extraction_project_fk` FOREIGN KEY (`extractionId`,`projectId`) REFERENCES `ai_observation_extractions` (`id`,`projectId`)
 );
---> statement-breakpoint
-CREATE TRIGGER `ai_observation_answers_no_update` BEFORE UPDATE ON `ai_observation_answers` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_observation_answers is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_observation_answers_no_delete` BEFORE DELETE ON `ai_observation_answers` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_observation_answers is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_observation_extractions_no_update` BEFORE UPDATE ON `ai_observation_extractions` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_observation_extractions is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_observation_extractions_no_delete` BEFORE DELETE ON `ai_observation_extractions` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_observation_extractions is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_extracted_brand_facts_no_update` BEFORE UPDATE ON `ai_extracted_brand_facts` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_extracted_brand_facts is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_extracted_brand_facts_no_delete` BEFORE DELETE ON `ai_extracted_brand_facts` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_extracted_brand_facts is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_recommendation_results_no_update` BEFORE UPDATE ON `ai_recommendation_results` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_recommendation_results is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_recommendation_results_no_delete` BEFORE DELETE ON `ai_recommendation_results` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_recommendation_results is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_citation_results_no_update` BEFORE UPDATE ON `ai_citation_results` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_citation_results is append-only';
---> statement-breakpoint
-CREATE TRIGGER `ai_citation_results_no_delete` BEFORE DELETE ON `ai_citation_results` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ai_citation_results is append-only';

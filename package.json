@@ -34,6 +34,7 @@
     ,"db:export-brand-truth": "node scripts/export_brand_truth_data.mjs"
     ,"db:verify-ai-observation": "node scripts/verify_ai_observation_schema.mjs"
     ,"test:db:ai-observation": "node scripts/test_ai_observation_immutability.mjs"
+    ,"preflight:tidb-observation": "node scripts/preflight_tidb_observation.mjs"
   },
   "engines": {
     "node": ">=20.20 <25"
