@@ -484,6 +484,13 @@
       "when": 1784086800000,
       "tag": "0073_ai_observation_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "5",
+      "when": 1784090400000,
+      "tag": "0074_versioned_understand_governance",
+      "breakpoints": true
     }
   ]
 }

@@ -36,6 +36,8 @@
     ,"test:db:ai-observation": "node scripts/test_ai_observation_immutability.mjs"
     ,"preflight:tidb-observation": "node scripts/preflight_tidb_observation.mjs"
     ,"verify:observation-production": "node scripts/verify_observation_production_gate.mjs"
+    ,"test:tidb:versioned-governance": "node scripts/test_versioned_governance_tidb.mjs"
+    ,"verify:versioned-governance-schema": "node scripts/verify_versioned_governance_schema.mjs"
   },
   "engines": {
     "node": ">=20.20 <25"
