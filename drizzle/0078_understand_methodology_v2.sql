@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS `understanding_question_dimension_bindings` (
 );
 --> statement-breakpoint
 ALTER TABLE `brand_truth_facts`
-  ADD COLUMN `temporalStatus` enum('current','historical','discontinued','unknown') NOT NULL DEFAULT 'unknown' AFTER `validTo`,
-  ADD COLUMN `companyEntityChange` boolean NOT NULL DEFAULT false AFTER `temporalStatus`,
-  ADD COLUMN `productServiceStatus` enum('current','historical','discontinued','unknown') NOT NULL DEFAULT 'unknown' AFTER `companyEntityChange`;
+  ADD COLUMN IF NOT EXISTS `temporalStatus` enum('current','historical','discontinued','unknown') NOT NULL DEFAULT 'unknown' AFTER `validTo`;
+--> statement-breakpoint
+ALTER TABLE `brand_truth_facts`
+  ADD COLUMN IF NOT EXISTS `companyEntityChange` boolean NOT NULL DEFAULT false AFTER `validTo`;
+--> statement-breakpoint
+ALTER TABLE `brand_truth_facts`
+  ADD COLUMN IF NOT EXISTS `productServiceStatus` enum('current','historical','discontinued','unknown') NOT NULL DEFAULT 'unknown' AFTER `validTo`;
