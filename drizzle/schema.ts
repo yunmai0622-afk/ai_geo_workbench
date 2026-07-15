@@ -1993,3 +1993,52 @@ export const understandingAssessmentManualReviews = mysqlTable("understanding_as
 
 export type UnderstandingAssessment = typeof understandingAssessments.$inferSelect;
 export type UnderstandingAssessmentManualReview = typeof understandingAssessmentManualReviews.$inferSelect;
+
+/** PR-03.6C: append-only legacy import governance and project-scoped read/write rollout. */
+export const legacyUnderstandingMigrationRuns = mysqlTable("legacy_understanding_migration_runs", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(),
+  mode: mysqlEnum("mode", ["dry_run", "execute"]).notNull(), migrationVersion: varchar("migrationVersion", { length: 64 }).notNull(),
+  status: mysqlEnum("status", ["running", "completed", "partially_completed", "failed", "cancelled"]).default("running").notNull(),
+  resumeAfterLegacyEvaluationId: varchar("resumeAfterLegacyEvaluationId", { length: 36 }), scannedCount: int("scannedCount").default(0).notNull(),
+  migratedCount: int("migratedCount").default(0).notNull(), partialCount: int("partialCount").default(0).notNull(), skippedCount: int("skippedCount").default(0).notNull(),
+  failedCount: int("failedCount").default(0).notNull(), report: json("report").$type<Record<string, unknown> | null>(), startedAt: timestamp("startedAt").notNull(),
+  completedAt: timestamp("completedAt"), createdBy: int("createdBy"), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({
+  idProjectUnique: uniqueIndex("legacy_understanding_migration_runs_id_project_unique").on(table.id, table.projectId),
+  projectStartedIdx: index("legacy_understanding_migration_runs_project_started_idx").on(table.projectId, table.startedAt),
+  projectFk: foreignKey({ columns: [table.projectId], foreignColumns: [projects.id], name: "legacy_understanding_migration_runs_project_fk" }),
+}));
+
+export const legacyUnderstandingMigrationItems = mysqlTable("legacy_understanding_migration_items", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), migrationRunId: varchar("migrationRunId", { length: 36 }),
+  legacyEvaluationId: varchar("legacyEvaluationId", { length: 36 }).notNull(), sourceChecksum: varchar("sourceChecksum", { length: 71 }).notNull(), migrationVersion: varchar("migrationVersion", { length: 64 }).notNull(),
+  migrationStatus: mysqlEnum("migrationStatus", ["pending", "migratable", "partially_migratable", "migrated", "skipped", "failed", "legacy_non_reproducible"]).notNull(),
+  provenance: mysqlEnum("provenance", ["legacy_import"]).default("legacy_import").notNull(),
+  reproducibilityStatus: mysqlEnum("reproducibilityStatus", ["fully_reproducible", "observation_reproducible", "partially_reproducible", "legacy_non_reproducible"]).notNull(),
+  targetRunId: varchar("targetRunId", { length: 36 }), targetAnswerId: varchar("targetAnswerId", { length: 36 }), targetExtractionId: varchar("targetExtractionId", { length: 36 }), targetAssessmentId: varchar("targetAssessmentId", { length: 36 }),
+  missingFields: json("missingFields").$type<string[] | null>(), legacyPayloadSnapshot: json("legacyPayloadSnapshot").$type<Record<string, unknown> | null>(), failureReason: text("failureReason"), migratedAt: timestamp("migratedAt"), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({
+  sourceUnique: uniqueIndex("legacy_understanding_migration_items_source_unique").on(table.projectId, table.legacyEvaluationId, table.migrationVersion),
+  runStatusIdx: index("legacy_understanding_migration_items_run_status_idx").on(table.projectId, table.migrationRunId, table.migrationStatus),
+  checksumIdx: index("legacy_understanding_migration_items_checksum_idx").on(table.sourceChecksum),
+  projectFk: foreignKey({ columns: [table.projectId], foreignColumns: [projects.id], name: "legacy_understanding_migration_items_project_fk" }),
+  runProjectFk: foreignKey({ columns: [table.migrationRunId, table.projectId], foreignColumns: [legacyUnderstandingMigrationRuns.id, legacyUnderstandingMigrationRuns.projectId], name: "legacy_understanding_migration_items_run_project_fk" }),
+  targetRunProjectFk: foreignKey({ columns: [table.targetRunId, table.projectId], foreignColumns: [aiObservationRuns.id, aiObservationRuns.projectId], name: "legacy_understanding_migration_items_target_run_project_fk" }),
+  targetAnswerProjectFk: foreignKey({ columns: [table.targetAnswerId, table.projectId], foreignColumns: [aiObservationAnswers.id, aiObservationAnswers.projectId], name: "legacy_understanding_migration_items_target_answer_project_fk" }),
+  targetExtractionProjectFk: foreignKey({ columns: [table.targetExtractionId, table.projectId], foreignColumns: [aiObservationExtractions.id, aiObservationExtractions.projectId], name: "legacy_understanding_migration_items_target_extraction_project_fk" }),
+  targetAssessmentProjectFk: foreignKey({ columns: [table.targetAssessmentId, table.projectId], foreignColumns: [understandingAssessments.id, understandingAssessments.projectId], name: "legacy_understanding_migration_items_target_assessment_project_fk" }),
+}));
+
+export const understandingRolloutConfigs = mysqlTable("understanding_rollout_configs", {
+  id: int("id").autoincrement().primaryKey(), projectId: int("projectId").notNull(),
+  readMode: mysqlEnum("readMode", ["legacy_only", "shadow_read", "v2_primary", "v2_only"]).default("legacy_only").notNull(),
+  writePath: mysqlEnum("writePath", ["legacy", "v2"]).default("legacy").notNull(), reason: text("reason"), updatedBy: int("updatedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  projectUnique: uniqueIndex("understanding_rollout_configs_project_unique").on(table.projectId),
+  projectFk: foreignKey({ columns: [table.projectId], foreignColumns: [projects.id], name: "understanding_rollout_configs_project_fk" }),
+}));
+
+export type LegacyUnderstandingMigrationRun = typeof legacyUnderstandingMigrationRuns.$inferSelect;
+export type LegacyUnderstandingMigrationItem = typeof legacyUnderstandingMigrationItems.$inferSelect;
+export type UnderstandingRolloutConfig = typeof understandingRolloutConfigs.$inferSelect;

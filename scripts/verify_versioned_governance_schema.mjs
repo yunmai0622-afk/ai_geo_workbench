@@ -3,11 +3,12 @@ import { readFile } from "node:fs/promises";
 const journal = JSON.parse(await readFile("drizzle/meta/_journal.json", "utf8"));
 const migration = await readFile("drizzle/0074_versioned_understand_governance.sql", "utf8");
 const schema = await readFile("drizzle/schema.ts", "utf8");
-const baseline = await readFile("drizzle/baselines/tidb_v0074.sql", "utf8");
-const tail = journal.entries.slice(-4).map(entry => entry.tag);
+const baseline = await readFile("drizzle/baselines/tidb_v0075.sql", "utf8");
+const tail = journal.entries.slice(-5).map(entry => entry.tag);
 const expectedTail = [
   "0071_brand_truth_understand_engine", "0072_brand_truth_understand_acceptance_gate",
   "0073_ai_observation_ledger", "0074_versioned_understand_governance",
+  "0075_legacy_understanding_cutover",
 ];
 if (JSON.stringify(tail) !== JSON.stringify(expectedTail)) throw new Error(`Migration order mismatch: ${tail.join(", ")}`);
 

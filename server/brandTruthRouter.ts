@@ -30,6 +30,7 @@ import {
   runUnderstandingTest,
 } from "./brandTruthService";
 import { applyBrandTruthVerificationBatch, brandTruthVerificationPlanSchema } from "./brandTruthVerificationBatch";
+import { executeExclusiveUnderstandWrite, UnderstandReadService } from "./understandReadService";
 
 async function requireDb() {
   const db = await getDb();
@@ -360,7 +361,11 @@ export const understandingRouter = router({
     const db = await requireDb();
     await requireProjectAccess(ctx, input.projectId);
     try {
-      return await runUnderstandingTest(db, { ...input, userId: getCurrentUserId(ctx) });
+      const cutover = new UnderstandReadService(db);
+      return await executeExclusiveUnderstandWrite(await cutover.getWritePath(input.projectId), {
+        legacy: () => runUnderstandingTest(db, { ...input, userId: getCurrentUserId(ctx) }),
+        v2: async () => { throw new Error("v2 write orchestration is not enabled for this legacy endpoint"); },
+      });
     } catch (error) {
       throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "理解测试执行失败" });
     }
@@ -389,6 +394,12 @@ export const understandingRouter = router({
     const db = await requireDb();
     await requireProjectAccess(ctx, input.projectId);
     return db.select().from(understandingEvaluations).where(eq(understandingEvaluations.projectId, input.projectId)).orderBy(desc(understandingEvaluations.testedAt));
+  }),
+
+  readUnderstandingCutover: protectedProcedure.input(projectIdInput).query(async ({ ctx, input }) => {
+    const db = await requireDb();
+    await requireProjectAccess(ctx, input.projectId);
+    return new UnderstandReadService(db).readProject(input.projectId);
   }),
 
   reviewEvaluation: operatorAdminProcedure.input(projectIdInput.extend({ id: z.string().uuid(), finalStatus: z.enum(UNDERSTANDING_FIELD_STATUSES), reviewNote: z.string().trim().min(1) })).mutation(async ({ ctx, input }) => {
