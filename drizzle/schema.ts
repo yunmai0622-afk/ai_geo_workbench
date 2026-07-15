@@ -1731,3 +1731,83 @@ export type BrandTruthEvidence = typeof brandTruthEvidence.$inferSelect;
 export type UnderstandingEvaluation = typeof understandingEvaluations.$inferSelect;
 export type UnderstandingCorrectionTask = typeof understandingCorrectionTasks.$inferSelect;
 export type UnderstandingRuleConfig = typeof understandingRuleConfigs.$inferSelect;
+
+/** PR-03.6B: immutable governance registries and formal Understand Assessments. */
+export const brandFactDefinitions = mysqlTable("brand_fact_definitions", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), definitionKey: varchar("definitionKey", { length: 128 }).notNull(),
+  status: mysqlEnum("status", ["draft", "active", "retired"]).default("draft").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("brand_fact_definitions_id_project_unique").on(table.id, table.projectId), projectKeyUnique: uniqueIndex("brand_fact_definitions_project_key_unique").on(table.projectId, table.definitionKey) }));
+
+export const brandFactDefinitionVersions = mysqlTable("brand_fact_definition_versions", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), definitionId: varchar("definitionId", { length: 36 }).notNull(), version: int("version").notNull(),
+  displayName: varchar("displayName", { length: 255 }).notNull(), description: text("description"), requirement: mysqlEnum("requirement", ["required", "optional", "not_applicable"]).notNull(),
+  valueType: mysqlEnum("valueType", ["text", "integer", "decimal", "boolean", "date", "datetime", "url", "enum", "json"]).notNull(), cardinality: mysqlEnum("cardinality", ["one", "many"]).notNull(),
+  temporalSemantics: mysqlEnum("temporalSemantics", ["timeless", "effective_period", "point_in_time", "event_stream"]).notNull(), validationSchema: json("validationSchema").$type<Record<string, unknown> | null>(),
+  effectiveFrom: timestamp("effectiveFrom").notNull(), effectiveTo: timestamp("effectiveTo"), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("brand_fact_definition_versions_id_project_unique").on(table.id, table.projectId), definitionVersionUnique: uniqueIndex("brand_fact_definition_versions_definition_version_unique").on(table.definitionId, table.version) }));
+
+export const brandFactIndustryTemplateVersions = mysqlTable("brand_fact_industry_template_versions", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), industryKey: varchar("industryKey", { length: 128 }).notNull(), version: int("version").notNull(),
+  name: varchar("name", { length: 255 }).notNull(), status: mysqlEnum("status", ["draft", "active", "retired"]).default("draft").notNull(), effectiveFrom: timestamp("effectiveFrom").notNull(), effectiveTo: timestamp("effectiveTo"), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("brand_fact_industry_templates_id_project_unique").on(table.id, table.projectId), industryVersionUnique: uniqueIndex("brand_fact_industry_templates_project_industry_version_unique").on(table.projectId, table.industryKey, table.version) }));
+
+export const brandFactIndustryTemplateItems = mysqlTable("brand_fact_industry_template_items", {
+  id: int("id").autoincrement().primaryKey(), projectId: int("projectId").notNull(), templateVersionId: varchar("templateVersionId", { length: 36 }).notNull(), definitionVersionId: varchar("definitionVersionId", { length: 36 }).notNull(),
+  requirementOverride: mysqlEnum("requirementOverride", ["required", "optional", "not_applicable"]), sortOrder: int("sortOrder").default(0).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ itemUnique: uniqueIndex("brand_fact_industry_template_item_unique").on(table.templateVersionId, table.definitionVersionId) }));
+
+export const understandingQuestionSetVersions = mysqlTable("understanding_question_set_versions", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), questionSetKey: varchar("questionSetKey", { length: 128 }).notNull(), legacyQuestionSetId: int("legacyQuestionSetId"), version: int("version").notNull(),
+  nameSnapshot: varchar("nameSnapshot", { length: 255 }).notNull(), status: mysqlEnum("status", ["draft", "active", "retired"]).default("draft").notNull(), effectiveFrom: timestamp("effectiveFrom").notNull(), effectiveTo: timestamp("effectiveTo"), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("understanding_question_set_versions_id_project_unique").on(table.id, table.projectId), keyVersionUnique: uniqueIndex("understanding_question_set_versions_project_key_version_unique").on(table.projectId, table.questionSetKey, table.version) }));
+
+export const understandingQuestionVersions = mysqlTable("understanding_question_versions", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), questionSetVersionId: varchar("questionSetVersionId", { length: 36 }).notNull(), questionKey: varchar("questionKey", { length: 128 }).notNull(), legacyQuestionId: int("legacyQuestionId"), version: int("version").notNull(),
+  questionTextSnapshot: text("questionTextSnapshot").notNull(), scenarioSnapshot: text("scenarioSnapshot"), targetAudienceSnapshot: text("targetAudienceSnapshot"), importance: mysqlEnum("importance", ["critical", "high", "medium", "low"]).notNull(), purchaseIntent: mysqlEnum("purchaseIntent", ["none", "informational", "consideration", "transactional"]).notNull(),
+  effectiveFrom: timestamp("effectiveFrom").notNull(), effectiveTo: timestamp("effectiveTo"), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("understanding_question_versions_id_project_unique").on(table.id, table.projectId), setKeyVersionUnique: uniqueIndex("understanding_question_versions_set_key_version_unique").on(table.questionSetVersionId, table.questionKey, table.version) }));
+
+export const understandingMethodologyRegistry = mysqlTable("understanding_methodology_registry", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), methodologyKey: varchar("methodologyKey", { length: 128 }).notNull(), name: varchar("name", { length: 255 }).notNull(), status: mysqlEnum("status", ["draft", "active", "retired"]).default("draft").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("understanding_methodology_registry_id_project_unique").on(table.id, table.projectId), projectKeyUnique: uniqueIndex("understanding_methodology_registry_project_key_unique").on(table.projectId, table.methodologyKey) }));
+
+export const understandingMethodologyVersions = mysqlTable("understanding_methodology_versions", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), methodologyId: varchar("methodologyId", { length: 36 }).notNull(), version: int("version").notNull(), description: text("description"), coveragePolicy: json("coveragePolicy").$type<Record<string, unknown>>().notNull(), confidencePolicy: json("confidencePolicy").$type<Record<string, unknown>>().notNull(), effectiveFrom: timestamp("effectiveFrom").notNull(), effectiveTo: timestamp("effectiveTo"), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("understanding_methodology_versions_id_project_unique").on(table.id, table.projectId), methodologyVersionUnique: uniqueIndex("understanding_methodology_versions_methodology_version_unique").on(table.methodologyId, table.version) }));
+
+export const understandingMethodologyDimensionWeights = mysqlTable("understanding_methodology_dimension_weights", {
+  id: int("id").autoincrement().primaryKey(), projectId: int("projectId").notNull(), methodologyVersionId: varchar("methodologyVersionId", { length: 36 }).notNull(), dimension: mysqlEnum("dimension", ["identity", "business", "capability", "boundary", "temporal", "evidence", "consistency", "uncertainty"]).notNull(), weightBasisPoints: int("weightBasisPoints").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ dimensionUnique: uniqueIndex("understanding_methodology_dimension_unique").on(table.methodologyVersionId, table.dimension) }));
+
+export const understandingExtractionVersionRegistry = mysqlTable("understanding_extraction_version_registry", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), extractorKey: varchar("extractorKey", { length: 128 }).notNull(), version: int("version").notNull(), implementationVersion: varchar("implementationVersion", { length: 128 }).notNull(), promptHash: varchar("promptHash", { length: 128 }).notNull(), outputSchema: json("outputSchema").$type<Record<string, unknown>>().notNull(), status: mysqlEnum("status", ["draft", "active", "retired"]).default("draft").notNull(), effectiveFrom: timestamp("effectiveFrom").notNull(), effectiveTo: timestamp("effectiveTo"), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("understanding_extraction_versions_id_project_unique").on(table.id, table.projectId), keyVersionUnique: uniqueIndex("understanding_extraction_versions_project_key_version_unique").on(table.projectId, table.extractorKey, table.version) }));
+
+export const understandingRuleSets = mysqlTable("understanding_rule_sets", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), ruleSetKey: varchar("ruleSetKey", { length: 128 }).notNull(), name: varchar("name", { length: 255 }).notNull(), status: mysqlEnum("status", ["draft", "active", "retired"]).default("draft").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("understanding_rule_sets_id_project_unique").on(table.id, table.projectId), projectKeyUnique: uniqueIndex("understanding_rule_sets_project_key_unique").on(table.projectId, table.ruleSetKey) }));
+
+export const understandingRuleVersions = mysqlTable("understanding_rule_versions", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), ruleSetId: varchar("ruleSetId", { length: 36 }).notNull(), ruleKey: varchar("ruleKey", { length: 128 }).notNull(), version: int("version").notNull(), severity: mysqlEnum("severity", ["P0", "P1", "P2"]).notNull(), conditionJson: json("conditionJson").$type<Record<string, unknown>>().notNull(), outcomeJson: json("outcomeJson").$type<Record<string, unknown>>().notNull(), effectiveFrom: timestamp("effectiveFrom").notNull(), effectiveTo: timestamp("effectiveTo"), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("understanding_rule_versions_id_project_unique").on(table.id, table.projectId), setKeyVersionUnique: uniqueIndex("understanding_rule_versions_set_key_version_unique").on(table.ruleSetId, table.ruleKey, table.version) }));
+
+export const understandingAssessments = mysqlTable("understanding_assessments", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), observationRunId: varchar("observationRunId", { length: 36 }), observationAnswerId: varchar("observationAnswerId", { length: 36 }), extractionId: varchar("extractionId", { length: 36 }).notNull(),
+  truthProfileId: int("truthProfileId").notNull(), truthProfileVersion: int("truthProfileVersion").notNull(), questionVersionId: varchar("questionVersionId", { length: 36 }).notNull(), extractionVersionId: varchar("extractionVersionId", { length: 36 }).notNull(), methodologyVersionId: varchar("methodologyVersionId", { length: 36 }).notNull(), primaryRuleVersionId: varchar("primaryRuleVersionId", { length: 36 }).notNull(),
+  assessmentStatus: mysqlEnum("assessmentStatus", ["completed", "partial", "insufficient_data", "failed"]).notNull(), automaticOutcome: mysqlEnum("automaticOutcome", ["accurate", "mostly_accurate", "partially_accurate", "missing", "inaccurate", "outdated", "conflicting", "hallucinated", "unverifiable"]).notNull(), coverageBasisPoints: int("coverageBasisPoints").notNull(), confidenceBasisPoints: int("confidenceBasisPoints").notNull(), assessmentPayload: json("assessmentPayload").$type<Record<string, unknown>>().notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), createdBy: int("createdBy"),
+}, table => ({ idProjectUnique: uniqueIndex("understanding_assessments_id_project_unique").on(table.id, table.projectId), governanceUnique: uniqueIndex("understanding_assessments_extraction_governance_unique").on(table.extractionId, table.questionVersionId, table.extractionVersionId, table.methodologyVersionId, table.primaryRuleVersionId), projectCreatedIdx: index("understanding_assessments_project_created_idx").on(table.projectId, table.createdAt) }));
+
+export const understandingAssessmentDimensionResults = mysqlTable("understanding_assessment_dimension_results", {
+  id: int("id").autoincrement().primaryKey(), projectId: int("projectId").notNull(), assessmentId: varchar("assessmentId", { length: 36 }).notNull(), dimension: mysqlEnum("dimension", ["identity", "business", "capability", "boundary", "temporal", "evidence", "consistency", "uncertainty"]).notNull(), scoreBasisPoints: int("scoreBasisPoints"), coverageBasisPoints: int("coverageBasisPoints").notNull(), confidenceBasisPoints: int("confidenceBasisPoints").notNull(), resultPayload: json("resultPayload").$type<Record<string, unknown>>().notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ dimensionUnique: uniqueIndex("understanding_assessment_dimension_unique").on(table.assessmentId, table.dimension) }));
+
+export const understandingAssessmentRuleResults = mysqlTable("understanding_assessment_rule_results", {
+  id: int("id").autoincrement().primaryKey(), projectId: int("projectId").notNull(), assessmentId: varchar("assessmentId", { length: 36 }).notNull(), ruleVersionId: varchar("ruleVersionId", { length: 36 }).notNull(), matched: boolean("matched").notNull(), severity: mysqlEnum("severity", ["P0", "P1", "P2"]).notNull(), resultPayload: json("resultPayload").$type<Record<string, unknown>>().notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ ruleResultUnique: uniqueIndex("understanding_assessment_rule_result_unique").on(table.assessmentId, table.ruleVersionId) }));
+
+export const understandingAssessmentManualReviews = mysqlTable("understanding_assessment_manual_reviews", {
+  id: varchar("id", { length: 36 }).primaryKey(), projectId: int("projectId").notNull(), assessmentId: varchar("assessmentId", { length: 36 }).notNull(), action: mysqlEnum("action", ["confirmed", "rejected", "overridden"]).notNull(), overriddenOutcome: mysqlEnum("overriddenOutcome", ["accurate", "mostly_accurate", "partially_accurate", "missing", "inaccurate", "outdated", "conflicting", "hallucinated", "unverifiable"]), reason: text("reason").notNull(), evidenceSnapshot: json("evidenceSnapshot").$type<Record<string, unknown>[]>().notNull(), reviewedBy: int("reviewedBy").notNull(), reviewedAt: timestamp("reviewedAt").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ projectAssessmentIdx: index("understanding_assessment_reviews_project_assessment_idx").on(table.projectId, table.assessmentId, table.reviewedAt) }));
+
+export type UnderstandingAssessment = typeof understandingAssessments.$inferSelect;
+export type UnderstandingAssessmentManualReview = typeof understandingAssessmentManualReviews.$inferSelect;
